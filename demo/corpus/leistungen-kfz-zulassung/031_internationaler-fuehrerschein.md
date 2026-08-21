@@ -1,0 +1,61 @@
+# Internationaler Führerschein
+
+**Zuständige Stelle:** Bürgerbüro Rheinfurt – Sachgebiet Kfz-Zulassung
+**Aktenzeichen (Muster):** AZ 32.3-2026-0031
+**Formular:** RF-KFZ-031
+
+Für viele Länder außerhalb der Europäischen Union benötigen Sie einen Internationalen Führerschein.
+
+Es gibt zwei Arten des Internationalen Führerscheins:
+- Der Internationale Führerschein nach Anlage 8d zur Fahrerlaubnisverordnung (FeV) gilt für die Vertragsstaaten nach dem Wiener Übereinkommen vom 8.11.1968 über den Straßenverkehr und ist 3 Jahre nach Ausstellung gültig.
+- Der Internationale Führerschein nach Anlage 8c zur Fahrerlaubnisverordnung (FeV) gilt für die Vertragsstaaten nach dem internationalen Abkommen über den Kraftfahrzeugverkehr (Pariser Abkommen) vom 24.4.1926 über den Straßenverkehr und ist 1 Jahr nach Ausstellung gültig.
+Diese sind grundsätzlich nur in den Vertragsstaaten des jeweiligen Abkommens gültig.
+Die Auslandsvertretungen der Länder oder Automobilclubs können darüber Auskunft geben.
+
+Wenn Sie bereits einen Kartenführerschein haben, können Sie den Antrag online oder persönlich stellen, Sie können auch eine andere Person bevollmächtigen (mit schriftlicher Vollmacht und Ihrem Ausweis/ Pass). Die bevollmächtigte Person muss sich ebenfalls ausweisen können.
+Seit dem 1. September 2002 brauchen Sie einen deutschen EU-Kartenführerschein, um einen Internationalen Führerschein beantragen zu können.
+Wenn Sie noch keinen deutschen EU-Kartenführerscheins haben, müssen Sie diesen vor der Ausstellung eines internationalen Führerscheins beantragen. Sie sollten den Antrag mindestens VIER WOCHEN VOR dem geplanten Auslandsaufenthalt stellen, wenn Sie noch einen Papierführerschein(grau/ rosa) besitzen.
+Mehr Information zum Umtausch finden Sie hier.
+
+Voraussetzungen
+- Sie sind mit Hauptwohnsitz in Rheinfurt gemeldet.
+- Sie haben einen in Deutschland ausgestellten EU-Kartenführerschein
+
+Benötigte Unterlagen
+- Personalausweis oder Reisepass
+- biometrisches Passfoto
+- aktueller Führerschein
+
+Dauer & Kosten
+Bearbeitungszeit
+-  Wenn Sie bereits einen deutschen Kartenführerschein haben und einen Termin vor Ort ausmachen, bekommen Sie den Internationalen Führerschein sofort.
+- Wenn Sie den Online-Antrag nutzen, bekommen Sie den Internationalen Führerschein innerhalb von vier Wochen, wenn Sie uns alle benötigten Unterlagen zugesandt haben.
+- Wenn Sie noch keinen deutschen Kartenführerschein haben, dauert es etwa sechs Wochen bis Sie den Kartenführerschein und gleichzeitig den Internationalen Führerschein abholen können
+- Wenn Sie einen ausländischen Führerschein haben, dauert es etwa sechs Wochen bis Sie den Internationalen Führerschein abholen können.
+
+Gebührenrahmen
+18,30 Euro
+(wenn Sie einen Kartenführerschein beantragen müssen, fallen dafür noch weitere Gebühren an)
+
+Kreditkarte
+Visa, Mastercard
+SEPA-Lastschrift
+Anmeldeformular
+Barzahlung
+Kasse vor Ort
+EC-Karte
+Girocard
+Überweisung
+Bankverbindung
+
+Fragen & Antworten
+Ich habe einen ausländischen Karten- oder Papierführerschein. Was muss ich beachten, wenn ich einen Internationalen Führerschein beantragen will?
+Wenn Sie einen ausländischen Karten- oder Papierführerschein haben und einen Internationalen Führerschein beantragen möchten, erkundigen Sie sich bitte mindestens sechs Wochen vor dem Reisetermin bei der Fahrerlaubnisbehörde, welche Voraussetzungen Sie beachten müssen.
+Was passiert bei einem Fahrverbot?
+Bei einem Fahrverbot müssen Sie den internationalen Führerschein zusammen mit dem nationalen Führerschein abgeben.
+
+---
+
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+
+*Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

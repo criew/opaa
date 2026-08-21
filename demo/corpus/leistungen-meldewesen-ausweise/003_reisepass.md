@@ -1,0 +1,72 @@
+# Reisepass
+
+**Zuständige Stelle:** Bürgerbüro Rheinfurt – Sachgebiet Meldewesen & Ausweise
+**Aktenzeichen (Muster):** AZ 32.1-2026-0003
+**Formular:** RF-MW-003
+
+Wer außerhalb der Europäischen Union verreisen möchte, braucht einen Reisepass.
+
+Beim Überschreiten von Staatsgrenzen ist grundsätzlich das Mitführen eines Ausweisdokumentes erforderlich. Bei Reisen innerhalb der Europäischen Union und in die meisten Urlaubsländer reicht für Deutsche jedoch die Vorlage des Personalausweises beziehungsweise Kinderreisepasses aus.
+Express-Bestellung:
+Bei der Bundesdruckerei kann auch ein Reisepass im Expressverfahren bestellt werden. Die Bearbeitungszeit (Antragstellung bis Aushändigung) im Bürgerbüro, Passausgabe, Ruppertstraße 19, beträgt im Idealfall etwa drei bis vier Arbeitstage. In den Außenstellen des Bürgerbüros verlängert sich die Bearbeitungszeit um einen Arbeitstag. Sie können den Pass in jedem Bürgerbüro im Stadtgebiet beantragen und abholen. Zusätzlich zur Gebühr muss ein Aufpreis von 38 Euro gezahlt werden.
+Gültigkeit des Reisepasses:
+- Für Personen unter 24 Jahren gilt der Reisepass sechs Jahre, bei über 24-Jährigen ist er zehn Jahre gültig
+- Eine Verlängerung der Gültigkeitsdauer ist nicht möglich.
+
+Sie müssen in jedem Fall zur Beantragung persönlich vorsprechen.
+Einen Reisepass für Minderjährige (also vor Vollendung des 18. Lebensjahres) dürfen nur Personen beantragen, die als Sorgeberechtigte den Aufenthalt zu bestimmen haben. Der oder die Antragsberechtigte muss persönlich in Begleitung des oder der Minderjährigen bei uns vorsprechen, um den Reisepass zu beantragen. Sind beide Elternteile antragsberechtigt, reicht es, wenn ein Elternteil vorspricht, sofern dieser den schriftlichen Antrag des anderen Elternteils vorlegt.
+Für den Besuch in unseren Bürgerbüros müssen Sie einen Termin vereinbaren.
+Hinweis:
+Zusätzlich zum Passfoto werden die Fingerabdrücke gespeichert.
+
+Voraussetzungen
+Sie können den Reisepass grundsätzlich nur bei der Passbehörde an Ihrem Hauptwohnsitz beantragen. Einen Termin zur Antragstellung buchen Sie hier. Eine Ausnahme gibt es nur für Bundesbürger, die im Ausland leben, sich zu Besuch in Rheinfurt aufhalten und zwingend einen neuen Pass brauchen. In diesem Ausnahmefall können Sie keinen Termin in einem der Bürgerbüros buchen, da die Sachbearbeitung an einer zentralen Stelle erfolgt. Für Informationen zur Antragstellung und Terminvereinbarung (nur in diesem Ausnahmefall) kontaktieren Sie uns bitte unter der E-Mail Adresse passamt@stadt-rheinfurt.example. Die Passbehörde muss sowohl die Antragsberechtigung wie auch die Echtheit der Unterschrift prüfen. Bitte legen Sie entsprechende Ausweisdokumente (Personalausweis, Reisepass) vor.
+
+Benötigte Unterlagen
+- Aktuelles biometrisches Passbild
+- Ausweisdokument (bisheriger Reisepass, Personalausweis, Kinderreisepass - soweit vorhanden; bei Erstbeantragung Geburtsurkunde des Kindes im Original)
+- Bei unter 18-Jährigen: Personalausweis oder Reisepass aller sorgeberechtigten Personen
+- Falls erforderlich: Zustimmungserklärung des abwesenden Elternteils (zum Download erhältlich)
+- Wichtig: In Zweifelsfällen kann die Passbehörde weitere Unterlagen verlangen (zum Beispiel Sorgerechtsbeschlüsse, aktuelle Personenstandsurkunden, Nachweise über die deutsche Staatsangehörigkeit). In diesen Fällen müssen Sie unter Umständen ein weiteres Mal persönlich vorbeikommen.
+
+Dauer & Kosten
+Bearbeitungszeit
+Frühestens vier bis fünf  Wochen
+Hinweise zur Abholung:
+- Sie können online den Bearbeitungsstand Ihres Reisepasses abfragen.
+- Für die Abholung benötigen Sie einen vorab gebuchten Termin.
+- Abholen können Sie den Pass persönlich oder ein Bevollmächtigter, dem Sie eine schriftliche Vollmacht mitgeben (zum Download erhältlich). Eltern von minderjährigen Kindern brauchen keine Vollmacht, um deren Pass abzuholen. Minderjährige können ihren Pass nicht selbst, sondern nur zusammen mit einem Sorgeberechtigten, abholen. Für die Abholung können Sie optional auch ein entsprechend bevollmächtigtes Dienstleistungsunternehmen Ihrer Wahl engagieren.
+- Den Reisepass per Post zuzusenden, ist nicht zulässig.
+
+Gebührenrahmen
+- Unter 24 Jahren: 44,50 Euro
+- Über 24 Jahren: 71,20 Euro
+- Vielreisende (Reisepass mit 48 Seiten): Gebühr plus 26,10 Euro Aufpreis
+- Express-Bestellung: Gebühr plus 38 Euro Aufpreis
+- Vorläufiger Reisepass: 30,80 Euro
+
+Barzahlung
+Kasse vor Ort
+EC-Karte
+Girocard
+
+Fragen & Antworten
+Ich würde den alten Reisepass gerne behalten, auch wenn er ungültig ist. Geht das?
+Ja, Sie dürfen Ihren entwerteten Reisepass auf Wunsch behalten. Bringen Sie Ihren alten Reisepass mit, wenn Sie den neuen abholen. Er wird dann entwertet und Ihnen wieder mitgegeben.
+Ich brauche sofort einen Reisepass. Was nun?
+Sollten Sie den Reisepass dringend benötigen und sollte sogar die Express-Bestellung zu lange dauern, können Sie einen vorläufigen Reisepass beantragen, den Sie sofort mitnehmen können. Bitte bringen Sie dazu ein zusätzliches biometrisches Passbild mit. Der vorläufige Reisepass ist ein Jahr gültig, wird jedoch nicht von allen Ländern (zum Beispiel USA) akzeptiert.
+- Sie müssen nachweisen oder glaubhaft machen, dass Sie den vorläufigen Reisepass dringend benötigen.
+- Einzelheiten zu den jeweiligen Reisemodalitäten einzelner Länder können Sie beim Auswärtigen Amt, im Reisebüro oder bei der Botschaft desjeweiligen Landes erfragen.
+- Beantragen können Sie den vorläufigen Reisepass in jedem Bürgerbüro im Stadtgebiet.
+Können auch Kinder einen regulären Reisepass bekommen?
+Ja, für Kinder kann auch ein Reisepass beantragt werden. Bei Reisen in einige Länder ist ein Reisepass sogar vorgeschrieben. Es kann aber nur entweder ein Reisepass oder ein Kinderreisepass ausgestellt werden.
+Vorteil Reisepass: Er ist in allen Ländern gültig.
+Vorteil Kinderreisepass: Er kostet nur 15,40 Euro.
+Was passiert mit dem Reisepass von Verstorbenen?
+Der Reisepass wird im Todesfall automatisch ungültig. Sie haben dieMöglichkeit, den Reisepass an die Meldebehörde zurückzugeben, wo erentwertet und datenschutzgerecht vernichtet wird. Den entwertetenReisepass können Sie auf Wunsch behalten.
+
+---
+
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+
+*Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

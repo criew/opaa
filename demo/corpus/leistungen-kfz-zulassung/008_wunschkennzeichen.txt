@@ -1,0 +1,31 @@
+Wunschkennzeichen
+=================
+
+Zustaendige Stelle: Buergerbuero Rheinfurt - Sachgebiet Kfz-Zulassung
+Aktenzeichen (Muster): AZ 32.3-2026-0008
+Formular: RF-KFZ-008
+
+Wer bestimmte Buchstaben oder Ziffern nach dem „RF“ auf seinem Kennzeichenschild haben will, kann sich vorab ein Wunschkennzeichen reservieren.
+
+- Eine Kennzeichenreservierung ist über das Internet oder direkt bei der Kfz-Zulassungsbehörde oder einem der Bürgerbüros möglich.
+- Die Reservierung ist ausschließlich auf den Namen des zukünftigen Fahrzeughalters möglich. Dabei sind Name und Anschrift anzugeben.
+- Wenn Sie die Kennzeichenreservierung bei uns vornehmen, ist sie auf einen Monat begrenzt. Erfolgt innerhalb dieses Zeitraumes keine Zulassung, erlischt die Reservierung automatisch. Nutzen Sie unser Internetangebot haben sie drei Monate Zeit, bis die Reservierung verfällt.
+
+Dauer & Kosten
+Gebührenrahmen
+14,10 Euro
+bei Zulassung am Tag der Online-Reservierung: 11,30 Euro
+
+Fragen & Antworten
+Wie lange kann ich das Kennzeichen meines Fahrzeuges nach der Abmeldung reservieren, wenn ich dasselbe Fahrzeug später wieder anmelden möchte?
+Das Kennzeichen wird für ein Jahr reserviert, eine Gebühr fällt hier nicht
+an.
+Wie lange kann ich das Kennzeichen meines abgemeldeten Fahrzeugs reservieren, wenn ich ein anderes Auto auf dieses Kennzeichen zulassen will?
+Das Kennzeichen wird für drei Monate reserviert, die Gebühr über 11,30 Euro wird bei der Zulassung des neuen Fahrzeuges fällig.
+Die Wunschkennzeichenreservierung erfolgt unverbindlich. Es wird ausdrücklich darauf hingewiesen, dass durch die Reservierung eines Kennzeichens kein Rechtsanspruch entsteht und Ersatzansprüche ausgeschlossen sind.
+
+----
+
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+
+Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.

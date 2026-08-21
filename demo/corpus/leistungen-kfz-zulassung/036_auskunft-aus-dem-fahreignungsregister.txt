@@ -1,0 +1,27 @@
+Auskunft aus dem Fahreignungsregister
+=====================================
+
+Zustaendige Stelle: Buergerbuero Rheinfurt - Sachgebiet Kfz-Zulassung
+Aktenzeichen (Muster): AZ 32.3-2026-0036
+Formular: RF-KFZ-036
+
+Wenn Sie Ihre Eintragungen im Fahreignungsregister (Verkehrssünderkartei) einsehen möchten, können Sie beim Kraftfahrt-Bundesamt gebührenfrei eine Auskunft erhalten.
+
+Im Fahreignungsregister werden rechtskräftige Entscheidungen über Verkehrsverstöße und Fahrerlaubnismaßnahmen gespeichert. Eingetragene Verstöße werden nach Art und Schwere mit Punkten bewertet und nach bestimmten Fristen wieder gelöscht. In der Auskunft des Registers sehen Sie Ihren aktuellen Punktestand - für die Festlegung von Punkten und Maßnahmen nach dem Fahreignungs-Bewertungssystem sind die Fahrerlaubnisbehörden zuständig.
+Eine Auskunft aus dem Fahreignungsregister können Sie beim Kraftfahrt-Bundesamt online oder auf dem Postweg beantragen.
+Die Fahrerlaubnisbehörde der Stadt Rheinfurt kann Ihnen zu diesem Verfahren keine Auskunft erteilen.
+Bei Fragen wenden Sie sich bitte direkt an das Kraftfahrt-Bundesamt.
+
+Dauer & Kosten
+Gebührenrahmen
+Die Auskunft aus dem Fahreignungsregister erhalten Sie beim Kraftfahrt-Bundesamt kostenfrei.
+
+Rechtliche Grundlagen
+Fahrerlaubnisverordnung
+Straßenverkehrsgesetz
+
+----
+
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+
+Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.

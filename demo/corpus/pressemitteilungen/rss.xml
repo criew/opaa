@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Pressemitteilungen der Stadt Rheinfurt</title>
+    <link>http://presse.stadt-rheinfurt.example</link>
+    <description>Aktuelle Pressemitteilungen der Stadt Rheinfurt: Sperrungen, Veranstaltungen, geänderte Öffnungszeiten und Jubiläen.</description>
+    <language>de-de</language>
+    <item>
+      <title>Öffnungszeiten des Bürgerbüros über den Jahreswechsel</title>
+      <link>http://presse.stadt-rheinfurt.example/oeffnungszeiten-feiertage-jahreswechsel.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/oeffnungszeiten-feiertage-jahreswechsel.html</guid>
+      <pubDate>Thu, 10 Dec 2026 08:00:00 GMT</pubDate>
+      <category>Öffnungszeiten</category>
+      <description>Zwischen den Feiertagen bleibt das Bürgerbüro Rheinfurt an zwei Tagen geschlossen.</description>
+    </item>
+    <item>
+      <title>Winterdienst: Stadt Rheinfurt erinnert an Räum- und Streupflicht</title>
+      <link>http://presse.stadt-rheinfurt.example/winterdienst-hinweise.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/winterdienst-hinweise.html</guid>
+      <pubDate>Sun, 15 Nov 2026 08:00:00 GMT</pubDate>
+      <category>Sperrung</category>
+      <description>Mit Beginn der Frostperiode weist die Stadt Rheinfurt auf die Räum- und Streupflicht der Anliegerinnen und Anlieger hin.</description>
+    </item>
+    <item>
+      <title>Erster Jahrgang der 'Digitallotsen' verabschiedet</title>
+      <link>http://presse.stadt-rheinfurt.example/digitalratsschule-abschluss.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/digitalratsschule-abschluss.html</guid>
+      <pubDate>Thu, 05 Nov 2026 08:00:00 GMT</pubDate>
+      <category>Veranstaltung</category>
+      <description>20 ehrenamtliche Digitallotsinnen und -lotsen haben ihre Schulung im Bürgerbüro Rheinfurt abgeschlossen.</description>
+    </item>
+    <item>
+      <title>Rheinfurter Weihnachtsmarkt öffnet ab 27. November</title>
+      <link>http://presse.stadt-rheinfurt.example/weihnachtsmarkt-2026-termine.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/weihnachtsmarkt-2026-termine.html</guid>
+      <pubDate>Fri, 30 Oct 2026 08:00:00 GMT</pubDate>
+      <category>Veranstaltung</category>
+      <description>Der Weihnachtsmarkt auf dem Rathausplatz öffnet 2026 vom 27. November bis 23. Dezember.</description>
+    </item>
+    <item>
+      <title>Herbstliche Pflegearbeiten in den städtischen Grünanlagen</title>
+      <link>http://presse.stadt-rheinfurt.example/gruenanlagen-herbstpflege.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/gruenanlagen-herbstpflege.html</guid>
+      <pubDate>Mon, 05 Oct 2026 08:00:00 GMT</pubDate>
+      <category>Sperrung</category>
+      <description>Von 12. bis 23. Oktober 2026 finden Pflegearbeiten im Stadtpark statt; einzelne Wege sind zeitweise gesperrt.</description>
+    </item>
+    <item>
+      <title>40 Jahre Stadtarchiv Rheinfurt: Tag der offenen Archivtür</title>
+      <link>http://presse.stadt-rheinfurt.example/stadtarchiv-40-jahre.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/stadtarchiv-40-jahre.html</guid>
+      <pubDate>Sun, 20 Sep 2026 08:00:00 GMT</pubDate>
+      <category>Jubiläum</category>
+      <description>Das Stadtarchiv Rheinfurt feiert am 10. Oktober 2026 sein 40-jähriges Bestehen.</description>
+    </item>
+    <item>
+      <title>Marktstraße wegen Kanalbauarbeiten bis Ende Oktober gesperrt</title>
+      <link>http://presse.stadt-rheinfurt.example/sperrung-marktstrasse-kanalbau.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/sperrung-marktstrasse-kanalbau.html</guid>
+      <pubDate>Tue, 01 Sep 2026 08:00:00 GMT</pubDate>
+      <category>Sperrung</category>
+      <description>Die Marktstraße ist zwischen Rathausplatz und Domplatz seit 1. September wegen Kanalbauarbeiten voll gesperrt.</description>
+    </item>
+    <item>
+      <title>Stadttheater Rheinfurt eröffnet Jubiläumsspielzeit</title>
+      <link>http://presse.stadt-rheinfurt.example/gastspiel-stadttheater-jubilaeumsspielzeit.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/gastspiel-stadttheater-jubilaeumsspielzeit.html</guid>
+      <pubDate>Tue, 25 Aug 2026 08:00:00 GMT</pubDate>
+      <category>Jubiläum</category>
+      <description>Mit einer Festveranstaltung eröffnet das Stadttheater Rheinfurt am 12. September 2026 seine 75. Spielzeit.</description>
+    </item>
+    <item>
+      <title>Bahnhofsvorplatz wird ab Herbst umgebaut</title>
+      <link>http://presse.stadt-rheinfurt.example/sperrung-hauptbahnhofsvorplatz-umbau.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/sperrung-hauptbahnhofsvorplatz-umbau.html</guid>
+      <pubDate>Mon, 10 Aug 2026 08:00:00 GMT</pubDate>
+      <category>Sperrung</category>
+      <description>Ab 1. Oktober 2026 wird der Vorplatz des Rheinfurter Hauptbahnhofs für rund vier Monate umgebaut.</description>
+    </item>
+    <item>
+      <title>Feuerwehr Rheinfurt lädt zum Tag der offenen Tür</title>
+      <link>http://presse.stadt-rheinfurt.example/feuerwehr-tag-der-offenen-tuer.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/feuerwehr-tag-der-offenen-tuer.html</guid>
+      <pubDate>Sat, 01 Aug 2026 08:00:00 GMT</pubDate>
+      <category>Veranstaltung</category>
+      <description>Am 6. September 2026 öffnet die Feuerwache Rheinfurt-Mitte ihre Tore für die Öffentlichkeit.</description>
+    </item>
+    <item>
+      <title>Kfz-Zulassungsstelle: Angepasste Öffnungszeiten in den Sommerferien</title>
+      <link>http://presse.stadt-rheinfurt.example/oeffnungszeiten-kfz-zulassung-sommer.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/oeffnungszeiten-kfz-zulassung-sommer.html</guid>
+      <pubDate>Wed, 01 Jul 2026 08:00:00 GMT</pubDate>
+      <category>Öffnungszeiten</category>
+      <description>Während der Sommerferien öffnet die Kfz-Zulassungsstelle Rheinfurt mittwochs nachmittags nicht.</description>
+    </item>
+    <item>
+      <title>Neu gestalteter Spielplatz Rheinau wieder geöffnet</title>
+      <link>http://presse.stadt-rheinfurt.example/spielplatz-rheinau-neueroeffnung.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/spielplatz-rheinau-neueroeffnung.html</guid>
+      <pubDate>Thu, 25 Jun 2026 08:00:00 GMT</pubDate>
+      <category>Veranstaltung</category>
+      <description>Nach dreimonatiger Umbauzeit ist der Spielplatz im Stadtteil Rheinau seit 1. Juli wieder geöffnet.</description>
+    </item>
+    <item>
+      <title>Bürgerbüro am 20. Juni wegen Stadtfest geschlossen</title>
+      <link>http://presse.stadt-rheinfurt.example/buergerbuero-geschlossen-stadtfest.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/buergerbuero-geschlossen-stadtfest.html</guid>
+      <pubDate>Mon, 08 Jun 2026 08:00:00 GMT</pubDate>
+      <category>Sperrung</category>
+      <description>Das Bürgerbüro Rheinfurt bleibt am Freitag, 20. Juni 2026, wegen des Rheinfurter Stadtfests ganztägig geschlossen.</description>
+    </item>
+    <item>
+      <title>20 Jahre Städtepartnerschaft mit Vézelay</title>
+      <link>http://presse.stadt-rheinfurt.example/rheinfurt-partnerstadt-jubilaeum.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/rheinfurt-partnerstadt-jubilaeum.html</guid>
+      <pubDate>Sat, 30 May 2026 08:00:00 GMT</pubDate>
+      <category>Jubiläum</category>
+      <description>Rheinfurt feiert im Juni 2026 das 20-jährige Bestehen seiner Partnerschaft mit der französischen Stadt Vézelay.</description>
+    </item>
+    <item>
+      <title>Programm für das Rheinfurter Stadtfest 2026 steht fest</title>
+      <link>http://presse.stadt-rheinfurt.example/stadtfest-2026-programm.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/stadtfest-2026-programm.html</guid>
+      <pubDate>Wed, 20 May 2026 08:00:00 GMT</pubDate>
+      <category>Veranstaltung</category>
+      <description>Vom 19. bis 21. Juni 2026 feiert Rheinfurt sein traditionelles Stadtfest rund um den Rathausplatz und die Rheinpromenade.</description>
+    </item>
+    <item>
+      <title>Kostenlose Stadtführungen im Sommer 2026</title>
+      <link>http://presse.stadt-rheinfurt.example/stadtfuehrungen-sommerprogramm.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/stadtfuehrungen-sommerprogramm.html</guid>
+      <pubDate>Tue, 12 May 2026 08:00:00 GMT</pubDate>
+      <category>Veranstaltung</category>
+      <description>Von Juni bis August bietet die Stadt Rheinfurt jeden Samstag eine kostenlose Altstadtführung an.</description>
+    </item>
+    <item>
+      <title>Neuer Radweg entlang der Rheinpromenade eröffnet</title>
+      <link>http://presse.stadt-rheinfurt.example/radweg-rheinufer-eroeffnung.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/radweg-rheinufer-eroeffnung.html</guid>
+      <pubDate>Tue, 05 May 2026 08:00:00 GMT</pubDate>
+      <category>Veranstaltung</category>
+      <description>Der neue, 3,2 Kilometer lange Radweg entlang der Rheinpromenade wird am 12. Mai 2026 eröffnet.</description>
+    </item>
+    <item>
+      <title>Domplatz wegen Filmaufnahmen zwei Tage gesperrt</title>
+      <link>http://presse.stadt-rheinfurt.example/sperrung-domplatz-filmdreh.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/sperrung-domplatz-filmdreh.html</guid>
+      <pubDate>Tue, 28 Apr 2026 08:00:00 GMT</pubDate>
+      <category>Sperrung</category>
+      <description>Am 6. und 7. Mai 2026 ist der Domplatz für eine Filmproduktion gesperrt.</description>
+    </item>
+    <item>
+      <title>150 Jahre Marktbrunnen: Stadt Rheinfurt feiert Jubiläum</title>
+      <link>http://presse.stadt-rheinfurt.example/brunnen-marktplatz-jubilaeum.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/brunnen-marktplatz-jubilaeum.html</guid>
+      <pubDate>Tue, 14 Apr 2026 08:00:00 GMT</pubDate>
+      <category>Jubiläum</category>
+      <description>Der Marktbrunnen auf dem Rathausplatz wird 2026 anlässlich seines 150-jährigen Bestehens saniert und neu eingeweiht.</description>
+    </item>
+    <item>
+      <title>Stadtbibliothek testet Sonntagsöffnung ab April</title>
+      <link>http://presse.stadt-rheinfurt.example/stadtbibliothek-sonntagsoeffnung.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/stadtbibliothek-sonntagsoeffnung.html</guid>
+      <pubDate>Wed, 18 Mar 2026 08:00:00 GMT</pubDate>
+      <category>Öffnungszeiten</category>
+      <description>Die Stadtbibliothek Rheinfurt öffnet ab April 2026 versuchsweise auch sonntags von 13 bis 17 Uhr.</description>
+    </item>
+    <item>
+      <title>Standesamt bietet ab April Trausamstage im Monatstakt an</title>
+      <link>http://presse.stadt-rheinfurt.example/oeffnungszeiten-standesamt-erweitert.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/oeffnungszeiten-standesamt-erweitert.html</guid>
+      <pubDate>Tue, 10 Mar 2026 08:00:00 GMT</pubDate>
+      <category>Öffnungszeiten</category>
+      <description>Ab April 2026 bietet das Standesamt Rheinfurt einmal im Monat einen Trausamstag an.</description>
+    </item>
+    <item>
+      <title>Rheinbrücke wegen Bauarbeiten halbseitig gesperrt</title>
+      <link>http://presse.stadt-rheinfurt.example/sperrung-rheinbruecke-bauarbeiten.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/sperrung-rheinbruecke-bauarbeiten.html</guid>
+      <pubDate>Tue, 03 Mar 2026 08:00:00 GMT</pubDate>
+      <category>Sperrung</category>
+      <description>Vom 9. bis 27. März 2026 ist die Rheinbrücke wegen Fahrbahnsanierung halbseitig gesperrt.</description>
+    </item>
+    <item>
+      <title>Bauanträge künftig vollständig digital einreichbar</title>
+      <link>http://presse.stadt-rheinfurt.example/digitalisierung-baugenehmigungen.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/digitalisierung-baugenehmigungen.html</guid>
+      <pubDate>Wed, 25 Feb 2026 08:00:00 GMT</pubDate>
+      <category>Öffnungszeiten</category>
+      <description>Ab März 2026 können Bauanträge bei der Stadt Rheinfurt vollständig digital eingereicht werden.</description>
+    </item>
+    <item>
+      <title>Stadt Rheinfurt sucht Sachbearbeitung für das Meldewesen</title>
+      <link>http://presse.stadt-rheinfurt.example/stellenausschreibung-sachbearbeitung-meldewesen.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/stellenausschreibung-sachbearbeitung-meldewesen.html</guid>
+      <pubDate>Tue, 10 Feb 2026 08:00:00 GMT</pubDate>
+      <category>Veranstaltung</category>
+      <description>Das Bürgerbüro Rheinfurt schreibt zum 1. Mai 2026 eine Stelle in der Sachbearbeitung Meldewesen aus.</description>
+    </item>
+    <item>
+      <title>Uferpromenade wegen erhöhtem Rheinpegel gesperrt</title>
+      <link>http://presse.stadt-rheinfurt.example/sperrung-uferpromenade-hochwasser.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/sperrung-uferpromenade-hochwasser.html</guid>
+      <pubDate>Mon, 02 Feb 2026 08:00:00 GMT</pubDate>
+      <category>Sperrung</category>
+      <description>Wegen erhöhten Wasserstands ist die Uferpromenade seit 1. Februar bis auf Weiteres gesperrt.</description>
+    </item>
+    <item>
+      <title>Kostenlose Energieberatung jetzt auch im Bürgerbüro</title>
+      <link>http://presse.stadt-rheinfurt.example/energieberatung-buergerbuero.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/energieberatung-buergerbuero.html</guid>
+      <pubDate>Wed, 28 Jan 2026 08:00:00 GMT</pubDate>
+      <category>Öffnungszeiten</category>
+      <description>Ab Februar 2026 bietet die Verbraucherzentrale einmal wöchentlich eine kostenlose Energieberatung im Bürgerbüro Rheinfurt an.</description>
+    </item>
+    <item>
+      <title>Bürgerbüro erweitert Online-Terminvergabe auf alle Sachgebiete</title>
+      <link>http://presse.stadt-rheinfurt.example/buergerbuero-onlinetermine-erweitert.html</link>
+      <guid isPermaLink="true">http://presse.stadt-rheinfurt.example/buergerbuero-onlinetermine-erweitert.html</guid>
+      <pubDate>Thu, 15 Jan 2026 08:00:00 GMT</pubDate>
+      <category>Öffnungszeiten</category>
+      <description>Ab sofort lassen sich auch Termine für die Kfz-Zulassung online buchen.</description>
+    </item>
+  </channel>
+</rss>

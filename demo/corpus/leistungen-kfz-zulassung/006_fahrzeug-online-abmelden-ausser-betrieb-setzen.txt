@@ -1,0 +1,45 @@
+Fahrzeug online abmelden (außer Betrieb setzen)
+===============================================
+
+Zustaendige Stelle: Buergerbuero Rheinfurt - Sachgebiet Kfz-Zulassung
+Aktenzeichen (Muster): AZ 32.3-2026-0006
+Formular: RF-KFZ-006
+
+Wenn Ihr Fahrzeug nach 2015 zugelassen wurde und Sie einen Personalausweis mit aktivierter Online-Funktion haben, können Sie Ihr Fahrzeug online abmelden.
+
+Die Online-Abmeldung ist nicht möglich für
+- Fahrzeuge und Anhänger mit Wechselkennzeichen
+- sowie Fahrzeuge mit mitgenommenen Kennzeichen
+
+Voraussetzungen
+- Das Fahrzeug ist ab dem 1. Januar 2015 zugelassen worden. Nur Fahrzeuge, die ab diesem Zeitpunkt erstmals zugelassen oder wieder angemeldet wurden, haben die erforderlichen verdeckten Sicherheitscodes auf den Stempelplaketten (Siegel auf den Kennzeichenschildern) und auf der Zulassungsbescheinigung Teil I (Fahrzeugschein).
+- Sie haben einen Personalausweis mit aktivierter Online-Ausweisfunktion, um Ihre Identität nachzuweisen.
+
+Benötigte Unterlagen
+- Kennzeichen des Fahrzeugs
+- Sicherheitscodes der Stempelplaketten (Siegel auf den Autoschildern)
+- Sicherheitscode der Zulassungsbescheinigung Teil I (Fahrzeugschein)
+- elektronischer Personalausweis (mit aktivierter online-Ausweisfunktion)
+
+Dauer & Kosten
+Gebührenrahmen
+5,50 Euro (plus 2,30 Euro, wenn Sie das Kennzeichen für maximal 12 Monate reservieren möchten, nur für dasselbe Fahrzeug und dieselbe*denselben Halter*in)
+
+Rechtliche Grundlagen
+Fahrzeugzulassungsverordnung
+
+Fragen & Antworten
+Wie funktioniert die Online-Abmeldung?
+- Sicherheitscodes frei legen (auf Plaketten und Fahrzeugschein)
+- Codes notieren
+- Identität nachweisen (mit der online-Ausweisfunktion des Personalausweises)
+- Fahrzeugkennzeichen eingeben
+- Sicherheitscodes eingeben
+- Bezahlen mittels dem angebotenen e-Payment System
+- Die Daten werden dann an die zuständige Zulassungsbehörde übertragen. Den Bescheid erhalten Sie per Post oder DE-Mail.
+
+----
+
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+
+Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.
