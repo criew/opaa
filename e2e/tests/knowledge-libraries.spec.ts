@@ -16,14 +16,20 @@ import type { Page } from '@playwright/test'
 // Deterministic, tiny, and part of the repo (see AGENTS.md "Reproduktionsnachweis" context on
 // preferring committed fixtures over ad-hoc generated data) - not one of
 // backend/src/test/resources/test-documents/, which is Java test scope, not reachable from this
-// suite's own npm project. Lives under fixtures/test-documents/, not fixtures/documents/: the
+// suite's own npm project. Since #233, this suite's own frozen upload fixtures live under
+// demo/seed/e2e-data/test-documents/, next to demo/seed/profiles.py's E2E_PROFILE that governs
+// the same data profile - not under e2e/fixtures/ any more, which used to be a second, independent
+// way to fill an instance (see docs/features/demo-instance.md, "Installation und Seed"). The
 // repo's root .gitignore has a blanket `documents/` rule (for the bind-mounted, machine-local
-// backend/src/main/resources demo corpus path), which would silently swallow anything under a
-// plain "documents" directory anywhere in the tree.
+// backend/src/main/resources demo corpus path); "test-documents" does not match it, but stays
+// named that way for continuity with the file names below.
 const TEST_DOCUMENT_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
-  'fixtures',
+  '..',
+  'demo',
+  'seed',
+  'e2e-data',
   'test-documents',
   'wissensdokument.txt',
 )
@@ -40,7 +46,10 @@ const TEST_DOCUMENT_NAME = 'wissensdokument.txt'
 const OWN_DOCUMENT_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
-  'fixtures',
+  '..',
+  'demo',
+  'seed',
+  'e2e-data',
   'test-documents',
   'eigenesdokument.txt',
 )
@@ -115,9 +124,11 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
   })
 
   test('3. Freigeben und finden', async ({ authenticatedPage: adminPage, regularUserPage: bPage }) => {
-    // regularUserPage's fixture setup already logged dev-user in once (see fixtures/auth.ts),
-    // which is what provisions the account GET /v1/admin/users below can find - without this, the
-    // admin's picker would never list dev-user at all.
+    // dev-user is already provisioned by now regardless of this test's own regularUserPage fixture
+    // - the #233 seed run (scripts/run-e2e.mjs, before Playwright starts) already logs it in once
+    // as part of provision_users (demo/seed/seed.py). That authenticated request is what GET
+    // /v1/admin/users below actually needs to find the account; without either the seed or
+    // regularUserPage having done it, the admin's picker would never list dev-user at all.
     await shareLibraryWithPerson(adminPage, LIBRARY_NAME, 'Dev User', /Dev User/)
 
     await gotoLibraries(bPage)
@@ -162,7 +173,8 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
   })
 
   test('6. Freigabe an eine Gruppe', async ({ authenticatedPage: adminPage, outsiderPage: cPage }) => {
-    // outsiderPage's fixture setup provisions dev-outsider first, same reasoning as scenario 3.
+    // dev-outsider is already provisioned by the #233 seed run same as dev-user, same reasoning
+    // as scenario 3's comment above.
     await adminPage.goto('/admin/groups')
     await adminPage.getByRole('button', { name: 'Neue Gruppe' }).click()
     // CreateGroupDialog's field is labelled "Name" (not "Name der Gruppe" - that label belongs to

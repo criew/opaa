@@ -204,10 +204,13 @@ gepflegt.
   befüllt werden. Offen sind in **#207** unter anderem die Obergrenze der Freigabe für
   konnektorgespeiste Bibliotheken und der Ausschluss einzelner Konnektordokumente; für die Demo genügen
   gezielte Grants an die vier Nutzer.
-- **E2E-Suite:** Die heutige Suite unter `e2e/` bringt ihre Inhalte selbst mit — die Testdaten in
-  `e2e/fixtures/rss-feed/` und `e2e/fixtures/test-documents/`, die übrigen Dateien in `e2e/fixtures/`
-  sind Playwright-Fixtures (Anmeldung, Chat, Barrierefreiheit). Das `e2e`-Datenprofil des gemeinsamen
-  Seeds tritt an die Stelle dieser eigenen Testdatenbereitstellung.
+- **E2E-Suite:** Seit **#233** bezieht die Suite unter `e2e/` ihre Ausgangsdaten aus dem
+  `e2e`-Datenprofil des gemeinsamen Seeds (`demo/seed/seed.py --profile e2e`, von
+  `scripts/run-e2e.mjs` vor der Playwright-Suite ausgeführt) statt aus einer eigenen
+  Testdatenbereitstellung. Deren frühere Inhalte liegen jetzt unter `demo/seed/e2e-data/`
+  (`rss-feed/`, `test-documents/`), neben `demo/seed/profiles.py`s `E2E_PROFILE`, das sie
+  referenziert; `e2e/fixtures/` enthält nur noch echte Playwright-Fixtures (Anmeldung, Chat,
+  Barrierefreiheit).
 
 ---
 

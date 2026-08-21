@@ -13,7 +13,7 @@
 // so this script never reads or writes a developer's own .env.docker.
 
 import { spawnSync } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -95,6 +95,54 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   })
 }
 
+// Fills the freshly started stack with the e2e data profile (docs/features/demo-instance.md,
+// "Installation und Seed" - Issue #233): the same seed.py the "demo" Compose profile uses, run
+// here against the E2E stack's own dev-auth backend/port instead of Keycloak. This is the only
+// remaining way this suite gets pre-existing content into a fresh instance - e2e/fixtures/rss-feed/
+// and e2e/fixtures/test-documents/ used to be a second, independent one (see demo/seed/profiles.py
+// and this suite's own spec files for where their content lives now, under demo/seed/e2e-data/).
+const pythonCmd = isWindows ? 'python' : 'python3'
+const venvDir = join(e2eDir, '.venv')
+// A bare "pip install -r ..." would target whatever interpreter/site-packages "python"/"python3"
+// resolves to system-wide (PR #726 review, finding 1) - on PEP-668-managed systems (Debian/Ubuntu
+// >=23.04, Homebrew's own Python) that fails outright with "externally-managed-environment", and
+// even where it does not fail it writes into a shared environment no other part of this repo
+// touches. A dedicated venv under e2e/.venv (gitignored, reused across runs so a repeated `npm
+// test` does not reinstall every time) sidesteps both: its own interpreter is never
+// "externally managed", regardless of the host's system Python.
+const venvPython = isWindows
+  ? join(venvDir, 'Scripts', 'python.exe')
+  : join(venvDir, 'bin', 'python3')
+
+function runSeed() {
+  if (!existsSync(venvPython)) {
+    const createStatus = run(pythonCmd, ['-m', 'venv', venvDir])
+    if (createStatus !== 0) {
+      console.error(`Creating the venv at ${venvDir} failed`)
+      return createStatus
+    }
+  }
+  const installStatus = run(venvPython, [
+    '-m',
+    'pip',
+    'install',
+    '-q',
+    '-r',
+    'demo/seed/requirements.txt',
+  ])
+  if (installStatus !== 0) {
+    console.error('pip install for demo/seed failed')
+    return installStatus
+  }
+  return run(venvPython, [
+    'demo/seed/seed.py',
+    '--profile',
+    'e2e',
+    '--base-url',
+    `http://localhost:${backendPort}/api`,
+  ])
+}
+
 async function waitUntilReady(timeoutMs) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -139,6 +187,16 @@ async function main() {
     dumpLogs()
     teardown()
     process.exitCode = 1
+    return
+  }
+
+  console.log('> Seeding e2e data profile (demo/seed/seed.py --profile e2e, Issue #233)')
+  const seedStatus = runSeed()
+  if (seedStatus !== 0) {
+    console.error('Seed run failed')
+    dumpLogs()
+    teardown()
+    process.exitCode = seedStatus
     return
   }
 

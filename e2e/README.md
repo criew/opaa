@@ -22,20 +22,32 @@ festgehalten (ADR).
 
 ```
 e2e/
-  fixtures/                 Wiederverwendbare Playwright-Fixtures (z. B. Anmeldung)
+  fixtures/                 Wiederverwendbare Playwright-Fixtures (z. B. Anmeldung, Chat, a11y)
   tests/                    Testfälle (*.spec.ts)
-  scripts/run-e2e.mjs       Orchestrierung: Stack starten → Suite ausführen → Stack stoppen
+  scripts/run-e2e.mjs       Orchestrierung: Stack starten → Seed → Suite ausführen → Stack stoppen
   e2e.env                   Environment für den Docker-Compose-Stack der Suite (kein Secret enthalten)
   docker-compose.e2e.yml    Compose-Overlay: Secret-Injektion + dynamische CORS-Origin
   playwright.config.ts
 ```
 
 Neue Szenarien kommen als weitere `*.spec.ts`-Dateien unter `tests/`; neue wiederverwendbare
-Bausteine (z. B. Seiten-Interaktionen) gehören nach `fixtures/`.
+Bausteine (z. B. Seiten-Interaktionen) gehören nach `fixtures/`. `e2e/fixtures/` enthält seit #233
+nur noch echte Playwright-Fixtures (Anmeldung, Chat-Bausteine, Barrierefreiheit) — die frühere
+eigene Testdatenbereitstellung dieser Suite (`e2e/fixtures/rss-feed/`, `e2e/fixtures/test-documents/`)
+ist abgelöst: Beide leben jetzt unter [`demo/seed/e2e-data/`](../demo/seed/), Teil des gemeinsamen
+Seed-Mechanismus (`docs/features/demo-instance.md`, „Installation und Seed") statt eines zweiten,
+unabhängigen Befüllungswegs. Siehe „Lokal ausführen" unten, Schritt 3, für Details, was der Seed
+tatsächlich anlegt und was weiterhin einzelne Szenarien selbst über die Oberfläche einrichten.
 
 ## Lokal ausführen
 
-Voraussetzung: Docker Desktop (bzw. Docker Engine + Compose) läuft.
+Voraussetzung: Docker Desktop (bzw. Docker Engine + Compose) läuft, sowie Python 3 mit dem
+`venv`-Modul (Teil der Standardbibliothek) auf dem `PATH` (`python` unter Windows, `python3`
+sonst). `scripts/run-e2e.mjs` legt daraus bei Bedarf ein eigenes, gitignortes venv unter
+`e2e/.venv` an und nutzt ausschließlich dessen Interpreter für `pip install` und
+`demo/seed/seed.py` (Issue #233, PR #726 review) — kein Schreibzugriff auf die
+Systeminstallation, funktioniert daher auch mit PEP 668 „externally-managed-environment"
+(Debian/Ubuntu ≥ 23.04, Homebrew-Python).
 
 ```bash
 cd e2e
@@ -48,10 +60,22 @@ npm test
 
 1. `docker compose down -v` für das **eigene** Compose-Projekt `opaa-e2e` (definierte Ausgangslage;
    siehe "Isolation von einem laufenden Dev-Stack" unten).
-2. `docker compose up -d --build postgres backend frontend` unter diesem Projektnamen, mit eigenen
-   Host-Ports und `e2e/e2e.env` als Environment (siehe unten), und Warten auf Erreichbarkeit.
-3. `playwright test` ausführen.
-4. Stack wieder stoppen (`down -v`) — auch bei fehlgeschlagenen Tests, Abbrüchen (`Strg+C` /
+2. `docker compose up -d --build ai-stub rss-feed postgres backend frontend` unter diesem
+   Projektnamen, mit eigenen Host-Ports und `e2e/e2e.env` als Environment (siehe unten), und Warten
+   auf Erreichbarkeit.
+3. **Seed-Lauf (#233):** `demo/seed/seed.py --profile e2e --base-url http://localhost:$OPAA_BACKEND_PORT/api`
+   — derselbe gemeinsame Seed-Mechanismus, den auch das `demo`-Compose-Profil nutzt
+   (`demo/seed/profiles.py`, `E2E_PROFILE`), hier gegen den dev-Auth-Modus dieses Stacks statt
+   gegen Keycloak. Legt den Nutzer `dev-user` (und `dev-outsider`, ohne jede Freigabe) bereit, den
+   Space „E2E Space" und die Bibliothek „E2E Wissensbibliothek" mit einem einzigen, dediziert für
+   den Seed bestimmten Dokument (`demo/seed/e2e-data/test-documents/seed/e2e-basisdokument.txt`) —
+   bewusst *nicht* eine der Dateien, die einzelne Szenarien selbst über die Oberfläche hochladen
+   (`demo/seed/e2e-data/test-documents/*.txt`), sonst würde eine dauerhaft für `dev-user` lesbare
+   Kopie z. B. von `wissensdokument.txt` die Exklusivitätsprüfung in
+   `knowledge-libraries.spec.ts` (Szenario 5, „Entzug wirkt") unterlaufen. Ein Fehlschlag hier
+   bricht den Lauf ab wie ein fehlgeschlagener Stack-Start.
+4. `playwright test` ausführen.
+5. Stack wieder stoppen (`down -v`) — auch bei fehlgeschlagenen Tests, Abbrüchen (`Strg+C` /
    `SIGINT`/`SIGTERM`) oder Fehlern beim Hochfahren.
 
 Um nur Playwright gegen einen bereits laufenden Stack auszuführen (z. B. während der Entwicklung
@@ -206,7 +230,7 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   Bibliothek wird über das RSS-Feed-Template angelegt (Anlage #480, Detailseite #481, ADR-0018)
   und gegen einen erfundenen, generischen RSS-2.0-Feed einer fiktiven "Beispielbehörde" indiziert -
   ausgeliefert vom eigenen `rss-feed`-Service in `docker-compose.e2e.yml`
-  (`e2e/fixtures/rss-feed/htdocs/`, dasselbe "statischer Inhalt im Compose-Stack"-Muster wie #229's
+  (`demo/seed/e2e-data/rss-feed/htdocs/`, dasselbe "statischer Inhalt im Compose-Stack"-Muster wie #229's
   Demo-Korpus). Ein Eintrag verweist auf eine nicht existierende Detailseite (404, Negativpfad) -
   der Lauf bricht deswegen nicht ab und weist den Eintrag als übersprungen aus. Ein zweiter Lauf
   über den unveränderten Feed erzeugt keine neuen Dokumente (bedingter Feed-Abruf, ADR-0017).
@@ -232,7 +256,7 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   - "Verbindung testen" im Erstellungsdialog: eine erreichbare `HTTP_DIRECTORY`-Quelle
     (`http://rss-feed/webverzeichnis/`, ein eigens für diesen Test angelegtes, statisches
     Apache-FancyIndexing-HTMLTable-Fixture im selben `rss-feed`-Dienst wie #471 - siehe
-    `e2e/fixtures/rss-feed/htdocs/webverzeichnis/index.html`) zeigt einen Zählwert; eine
+    `demo/seed/e2e-data/rss-feed/htdocs/webverzeichnis/index.html`) zeigt einen Zählwert; eine
     Verbindung, die von einem intern auflösbaren Host (`ai-stub`) auf einem geschlossenen Port
     sofort abgelehnt wird, zeigt die deutsche Fehlermeldung, und Anlegen bleibt trotzdem möglich
     (#514).
@@ -271,7 +295,7 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   kleinstmöglichen Korpus, bevor diese Datei ihn selbst weiter aufbläht.
 
   Aus demselben Grund verwendet diese Datei ausschließlich eigene, in der gesamten Suite einmalige
-  Fixture-Dateien (`fixtures/test-documents/chatdokument-a.txt`/`chatdokument-b.txt`, nicht
+  Fixture-Dateien (`demo/seed/e2e-data/test-documents/chatdokument-a.txt`/`chatdokument-b.txt`, nicht
   `wissensdokument.txt`/`eigenesdokument.txt`) — sonst könnte eine gleichnamige Datei aus einer
   ihrer eigenen, unterschiedlich freigegebenen Bibliotheken (z. B. der dauerhaft an dev-user
   freigegebenen `E2E-Chat-Freigegeben-*`) #424s eigene Upload-/Freigabe-Assertionen unbemerkt

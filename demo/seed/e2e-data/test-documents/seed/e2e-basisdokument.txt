@@ -1,0 +1,12 @@
+Basisdokument des e2e-Datenprofils (Issue #233)
+
+Dieses Dokument entsteht ausschließlich durch den gemeinsamen Seed-Mechanismus
+(demo/seed/seed.py --profile e2e), nicht durch einen von der Suite selbst
+ausgeführten Upload. Es belegt, dass der Seed-Lauf tatsächlich stattgefunden hat
+(Bibliothek "E2E Wissensbibliothek" ist danach nicht leer) und dient bewusst
+keinem Szenario als Sucheingabe - ein eigener Dateiname, getrennt von den
+Dokumenten unter demo/seed/e2e-data/test-documents/, die einzelne Spec-Dateien
+selbst hochladen, verhindert eine Namenskollision mit deren Exklusivitätsprüfungen
+(siehe knowledge-libraries.spec.ts, Szenario 5 "Entzug wirkt").
+
+Kennsatz: OPAA-E2E-SEED-BASISDOKUMENT-233

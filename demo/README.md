@@ -168,7 +168,17 @@ Der Lauf richtet über die API ein:
 Für das minimale, eingefrorene `e2e`-Profil (dev-Auth, keine Keycloak-Anmeldung nötig) braucht es
 den separaten E2E-Stack (`e2e/docker-compose.e2e.yml`), nicht den `demo`-Stack — nur dieser
 provisioniert `dev-outsider` und veröffentlicht das Backend auf Port `18081` statt `8081`
-(`e2e/scripts/run-e2e.mjs`). Manuell hochfahren, ohne die Playwright-Suite mitlaufen zu lassen:
+(`e2e/scripts/run-e2e.mjs`). Seine Uploads (`E2E_PROFILE`s einzige `UPLOAD`-Bibliothek) kommen aus
+`demo/seed/e2e-data/test-documents/seed/` — nicht zu verwechseln mit
+`demo/seed/e2e-data/test-documents/*.txt` (Dateien, die einzelne E2E-Spec-Dateien selbst über die
+Oberfläche hochladen) oder `demo/seed/e2e-data/rss-feed/` (statisches Compose-Docroot für die
+E2E-Suite eigene, UI-getriebene Konnektor-Tests, `e2e/docker-compose.e2e.yml`s `rss-feed`-Service —
+kein Seed-Eingang).
+
+**`e2e/scripts/run-e2e.mjs` führt diesen Seed-Lauf bereits automatisch aus** (nach dem Hochfahren
+des Stacks, vor der Playwright-Suite, Issue #233) — die folgenden Befehle sind nur für einen
+manuellen Lauf ohne die Playwright-Suite nötig, z. B. um den E2E-Stack zwischendurch von Hand zu
+inspizieren:
 
 ```bash
 COMPOSE_PROJECT_NAME=opaa-e2e OPAA_ENV_FILE=e2e/e2e.env \
@@ -220,5 +230,4 @@ Deployment gemäß `docs/deployment.md`, Abschnitt „Härtung für erreichbare 
 
 - Demo-Drehbuch und Installationsanleitung — #713
 - Smoke-Test gegen das `demo`-Profil — #232
-- Umstellung der bestehenden E2E-Feature-Tests auf das `e2e`-Datenprofil — #233
 - Rollout auf einen erreichbaren Host — #230
