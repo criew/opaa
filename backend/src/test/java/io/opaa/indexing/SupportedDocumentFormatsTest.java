@@ -2,9 +2,16 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class SupportedDocumentFormatsTest {
+
+  @TempDir Path tempDir;
 
   @Test
   void extensionForContentTypeResolvesKnownTypes() {
@@ -94,5 +101,119 @@ class SupportedDocumentFormatsTest {
   @Test
   void contentMatchesExtensionRejectsAMissingDetectionResult() {
     assertThat(SupportedDocumentFormats.contentMatchesExtension(".pdf", null)).isFalse();
+  }
+
+  // --- #404: content decides, the extension is only a hint -----------------------------------
+
+  @Test
+  void extensionForDetectedContentResolvesEveryStrictType() {
+    assertThat(SupportedDocumentFormats.extensionForDetectedContent("application/pdf"))
+        .isEqualTo(".pdf");
+    assertThat(SupportedDocumentFormats.extensionForDetectedContent("application/msword"))
+        .isEqualTo(".doc");
+    assertThat(
+            SupportedDocumentFormats.extensionForDetectedContent(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+        .isEqualTo(".docx");
+  }
+
+  @Test
+  void extensionForDetectedContentReturnsNullForAmbiguousTextContent() {
+    // Deliberately not resolved here (#404): content alone cannot tell a Markdown file apart from
+    // a CSV export or a source file - see decideForFileName for how the ambiguity is resolved
+    // using the file's own name as a hint instead.
+    assertThat(SupportedDocumentFormats.extensionForDetectedContent("text/plain")).isNull();
+  }
+
+  @Test
+  void extensionForDetectedContentReturnsNullForUnsupportedOrMissingContent() {
+    assertThat(SupportedDocumentFormats.extensionForDetectedContent("application/zip")).isNull();
+    assertThat(SupportedDocumentFormats.extensionForDetectedContent(null)).isNull();
+  }
+
+  @Test
+  void decideForFileNameAcceptsMatchingExtensionWithoutAMismatch() {
+    var decision = SupportedDocumentFormats.decideForFileName("bescheid.pdf", "application/pdf");
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".pdf");
+    assertThat(decision.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void decideForFileNameAcceptsAndReportsAWrongExtensionOnReadableContent() {
+    // The core case #404 exists for: a spreadsheet-turned-.txt used to be indexed as garbled
+    // text; here the reverse - a real PDF mislabeled .csv - used to be rejected outright. Both
+    // are now accepted from their actual content, with the mismatch surfaced, not hidden.
+    var decision = SupportedDocumentFormats.decideForFileName("bescheid.csv", "application/pdf");
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".pdf");
+    assertThat(decision.extensionMismatch()).isTrue();
+  }
+
+  @Test
+  void decideForFileNameAcceptsAFileWithNoRecognizedExtensionAtAllAsAMismatch() {
+    var decision = SupportedDocumentFormats.decideForFileName("bescheid", "application/pdf");
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.extensionMismatch()).isTrue();
+  }
+
+  @Test
+  void decideForFileNameToleratesMdContentClaimedAsTxtAndViceVersa() {
+    assertThat(
+            SupportedDocumentFormats.decideForFileName("notes.md", "text/plain")
+                .extensionMismatch())
+        .isFalse();
+    assertThat(
+            SupportedDocumentFormats.decideForFileName("notes.txt", "text/plain")
+                .extensionMismatch())
+        .isFalse();
+  }
+
+  @Test
+  void decideForFileNameRejectsAmbiguousTextContentUnderAnUnrelatedExtension() {
+    // #404: the extension is consulted for ambiguous (text) content, not just for reporting a
+    // mismatch - a CSV export, a log file or source code carrying genuinely readable text must not
+    // silently widen the accepted Bestand to "any plain text whatsoever".
+    var decision = SupportedDocumentFormats.decideForFileName("export.csv", "text/plain");
+
+    assertThat(decision.supported()).isFalse();
+  }
+
+  @Test
+  void decideForFileNameRejectsAmbiguousTextContentWithNoExtensionAtAll() {
+    var decision = SupportedDocumentFormats.decideForFileName("README", "text/plain");
+
+    assertThat(decision.supported()).isFalse();
+  }
+
+  @Test
+  void decideForFileNameRejectsUnsupportedContentRegardlessOfExtension() {
+    var decision = SupportedDocumentFormats.decideForFileName("scan.pdf", "image/png");
+
+    assertThat(decision.supported()).isFalse();
+    assertThat(decision.detectedExtension()).isNull();
+    assertThat(decision.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void detectMediaTypeReadsContentAloneIgnoringTheFileName() throws IOException {
+    // Named .csv, but Tika detects it purely from the bytes - the magic string "%PDF-" is
+    // sufficient for PDF's own magic-byte match (no full PDF structure needed).
+    Path file = tempDir.resolve("bescheid.csv");
+    Files.write(
+        file, "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection".getBytes(StandardCharsets.UTF_8));
+
+    assertThat(SupportedDocumentFormats.detectMediaType(file)).isEqualTo("application/pdf");
+  }
+
+  @Test
+  void detectMediaTypeDetectsPlainText() throws IOException {
+    Path file = tempDir.resolve("data.bin");
+    Files.writeString(file, "Ganz gewöhnlicher Text ohne besondere Bytes.");
+
+    assertThat(SupportedDocumentFormats.detectMediaType(file)).startsWith("text/plain");
   }
 }

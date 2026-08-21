@@ -17,6 +17,7 @@ import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
 import java.io.IOException;
 import java.net.http.HttpClient;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -80,6 +81,11 @@ class UrlIndexingExecutorQuotaTest {
     Files.writeString(downloaded, "content");
     when(downloader.download(any(HttpClient.class), any(), anyString(), anyString()))
         .thenReturn(downloaded);
+    // #404 review, finding 1: the executor now reads a bounded prefix to decide before ever
+    // calling #download - this mock must answer it too, or the format decision sees a null
+    // sample and the entry never reaches the quota check this test exercises.
+    when(downloader.downloadPrefix(any(HttpClient.class), any(), anyString(), anyInt()))
+        .thenReturn("content".getBytes(StandardCharsets.UTF_8));
 
     executor =
         new UrlIndexingExecutor(

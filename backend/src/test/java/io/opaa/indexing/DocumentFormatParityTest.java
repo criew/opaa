@@ -2,40 +2,61 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.AutoindexCrawlerService.CrawledFileEntry;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFTextBox;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Issue #375: the filesystem path ({@link DocumentService}) and the network path ({@link
  * UrlIndexingExecutor}) used to carry their own extension lists, so the same document was accepted
- * or rejected depending on how it entered the system. Nobody can predict that, and nobody can
- * explain it to whoever runs the installation.
+ * or rejected depending on how it entered the system. Issue #404 replaces the extension-based
+ * decision itself with a content-based one on all three file-based paths (filesystem, web
+ * directory, RSS attachments), made through the very same {@link
+ * SupportedDocumentFormats#decideForFileName} - so none of them can drift apart on what "supported"
+ * means, by construction rather than by lists someone has to remember to keep in sync.
+ *
+ * <p><b>{@code .doc} is not covered here (#404 review, finding 7 follow-up).</b> Every other strict
+ * type below is generated as a genuine file via POI (already on the test classpath, see {@code
+ * io.opaa.library.LibraryDocumentServiceTest#realDocxFile}'s identical reasoning) - legacy binary
+ * {@code .doc} has no equivalent "build one from scratch" POI API ({@link
+ * org.apache.poi.hwpf.HWPFDocument} only ever opens an existing one), and no test in this codebase
+ * has needed one so far. {@link SupportedDocumentFormatsTest} already exercises {@code
+ * application/msword} detection directly against the media type string.
  */
 class DocumentFormatParityTest {
 
+  @TempDir Path tempDir;
+
+  private static final String PDF_MAGIC_BYTES = "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection";
+
   @ParameterizedTest
-  @ValueSource(
-      strings = {
-        "handbuch.md",
-        "notiz.txt",
-        "bescheid.pdf",
-        "vermerk.docx",
-        "folien.pptx",
-        "altes-schreiben.doc",
-        "haushalt.xlsx",
-        "liste.csv",
-        "scan.png",
-        "archiv.zip",
-        "DATEI-IN-GROSSBUCHSTABEN.PDF"
-      })
-  void bothIndexingPathsDecideAlikeForTheSameFile(String fileName) {
-    boolean acceptedFromFilesystem = new DocumentService().isSupportedFormat(Path.of(fileName));
+  @ValueSource(strings = {"handbuch.md", "notiz.txt", "scan.png", "archiv.zip"})
+  void bothIndexingPathsDecideAlikeForTheSameContent(String fileName) throws IOException {
+    // Plain, human-readable text - accepted regardless of the (possibly misleading) name above,
+    // except for the ones neither .md nor .txt (ambiguous text content only counts under one of
+    // those two, see SupportedDocumentFormats#decideForFileName).
+    Path file = tempDir.resolve(fileName);
+    Files.writeString(file, "Ganz gewöhnlicher, lesbarer Text.", StandardCharsets.UTF_8);
+
+    boolean acceptedFromFilesystem = new DocumentService().isSupportedFormat(file);
     boolean acceptedFromNetwork =
-        UrlIndexingExecutor.isSupportedFormat(
-            new CrawledFileEntry(
-                fileName, "https://example.invalid/" + fileName, "2026-01-01", "1k", "FILE", 0));
+        UrlIndexingExecutor.classifyDownloadedFile(file, fileName).supported();
 
     assertThat(acceptedFromNetwork)
         .as(
@@ -43,5 +64,132 @@ class DocumentFormatParityTest {
                 + "network says %s",
             fileName, acceptedFromFilesystem, acceptedFromNetwork)
         .isEqualTo(acceptedFromFilesystem);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bescheid.pdf", "DATEI-IN-GROSSBUCHSTABEN.PDF"})
+  void bothIndexingPathsAcceptAGenuinePdfUnderItsOwnExtension(String fileName) throws IOException {
+    Path file = tempDir.resolve(fileName);
+    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
+
+    assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
+    var networkDecision = UrlIndexingExecutor.classifyDownloadedFile(file, fileName);
+    assertThat(networkDecision.supported()).isTrue();
+    assertThat(networkDecision.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void bothIndexingPathsAcceptAGenuineDocxUnderItsOwnExtension() throws IOException {
+    // #404 review, finding 7: the strict Office types belong back in this test, not just the
+    // mismatch/rejection cases - a genuine .docx accepted under its own, matching extension is the
+    // baseline both other cases are contrasted against.
+    Path file = tempDir.resolve("vermerk.docx");
+    Files.write(file, realDocxBytes());
+
+    assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
+    var networkDecision = UrlIndexingExecutor.classifyDownloadedFile(file, "vermerk.docx");
+    assertThat(networkDecision.supported()).isTrue();
+    assertThat(networkDecision.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void bothIndexingPathsAcceptAGenuinePptxUnderItsOwnExtension() throws IOException {
+    Path file = tempDir.resolve("folien.pptx");
+    Files.write(file, realPptxBytes());
+
+    assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
+    var networkDecision = UrlIndexingExecutor.classifyDownloadedFile(file, "folien.pptx");
+    assertThat(networkDecision.supported()).isTrue();
+    assertThat(networkDecision.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void bothIndexingPathsAcceptReadableContentDespiteAWrongExtensionAndReportTheSameMismatch()
+      throws IOException {
+    // The core case #404 exists for: a real PDF mislabeled .csv used to be rejected outright on
+    // both paths - now both accept it and both report the exact same detected extension.
+    Path file = tempDir.resolve("bescheid.csv");
+    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
+
+    assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
+
+    var networkDecision = UrlIndexingExecutor.classifyDownloadedFile(file, "bescheid.csv");
+    assertThat(networkDecision.supported()).isTrue();
+    assertThat(networkDecision.extensionMismatch()).isTrue();
+    assertThat(networkDecision.detectedExtension()).isEqualTo(".pdf");
+  }
+
+  @Test
+  void bothIndexingPathsRejectUnsupportedContentEvenWithASupportedLookingExtension()
+      throws IOException {
+    Path file = tempDir.resolve("image.pdf");
+    Files.write(file, new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a});
+
+    assertThat(new DocumentService().isSupportedFormat(file)).isFalse();
+    assertThat(UrlIndexingExecutor.classifyDownloadedFile(file, "image.pdf").supported()).isFalse();
+  }
+
+  // --- #404 review, finding 2: the RSS attachment path decides alike too --------------------
+
+  @Test
+  void theRssAttachmentPathAcceptsTheSameMislabeledPdfTheOtherTwoPathsDo() throws IOException {
+    // Two things had to change for this to hold (#404 review, finding 2): AttachmentProfile.GENERIC
+    // used to exclude a link like this from ever becoming a candidate at all (its own extension is
+    // not one of SupportedDocumentFormats's six), and RssFeedIndexingExecutor#processAttachment
+    // itself makes the actual accept/reject call the exact same way DocumentService and
+    // UrlIndexingExecutor do, once a candidate's bytes are downloaded - see that method's own #404
+    // comment.
+    Element content =
+        Jsoup.parse(
+                "<main><a href=\"https://example.gov/downloads/bescheid.csv\">Bescheid</a></main>",
+                "https://example.gov/artikel/mein-artikel")
+            .body();
+    List<AttachmentCandidate> candidates =
+        AttachmentProfile.GENERIC.findAttachments(
+            content, URI.create("https://example.gov/artikel/mein-artikel"));
+    assertThat(candidates)
+        .as(
+            "a link with an extension SupportedDocumentFormats does not recognize must still "
+                + "become a candidate - only its downloaded content decides from here")
+        .hasSize(1);
+
+    AttachmentCandidate candidate = candidates.getFirst();
+    Path file = tempDir.resolve("downloaded-attachment");
+    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
+
+    var rssDecision =
+        SupportedDocumentFormats.decideForFileName(
+            candidate.suggestedFileName(), SupportedDocumentFormats.detectMediaType(file));
+    var filesystemDecision = new DocumentService().isSupportedFormat(file);
+    var networkDecision = UrlIndexingExecutor.classifyDownloadedFile(file, "bescheid.csv");
+
+    assertThat(rssDecision.supported()).isTrue();
+    assertThat(rssDecision.extensionMismatch()).isTrue();
+    assertThat(rssDecision.detectedExtension()).isEqualTo(".pdf");
+    assertThat(filesystemDecision).isEqualTo(rssDecision.supported());
+    assertThat(networkDecision.supported()).isEqualTo(rssDecision.supported());
+    assertThat(networkDecision.extensionMismatch()).isEqualTo(rssDecision.extensionMismatch());
+  }
+
+  private static byte[] realDocxBytes() throws IOException {
+    try (XWPFDocument document = new XWPFDocument()) {
+      XWPFParagraph paragraph = document.createParagraph();
+      XWPFRun run = paragraph.createRun();
+      run.setText("Ein echter DOCX-Inhalt fuer den Formaterkennungstest.");
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      document.write(out);
+      return out.toByteArray();
+    }
+  }
+
+  private static byte[] realPptxBytes() throws IOException {
+    try (XMLSlideShow slideShow = new XMLSlideShow()) {
+      XSLFSlide slide = slideShow.createSlide();
+      XSLFTextBox textBox = slide.createTextBox();
+      textBox.setText("Ein echter PPTX-Inhalt fuer den Formaterkennungstest.");
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      slideShow.write(out);
+      return out.toByteArray();
+    }
   }
 }

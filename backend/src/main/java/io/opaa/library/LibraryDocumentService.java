@@ -19,7 +19,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.UUID;
-import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -95,12 +94,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class LibraryDocumentService {
 
   private static final Logger log = LoggerFactory.getLogger(LibraryDocumentService.class);
-
-  // Magic-byte content detection for the upload path only (#435, see #uploadDocument and
-  // SupportedDocumentFormats#contentMatchesExtension). A single shared instance: Tika's facade is
-  // safe for concurrent #detect calls, and constructing it repeatedly re-parses its media-type
-  // registry for no benefit.
-  private final Tika tika = new Tika();
 
   private final KnowledgeLibraryRepository libraryRepository;
   private final UserRepository userRepository;
@@ -524,8 +517,8 @@ public class LibraryDocumentService {
    */
   private void requireContentMatchesExtension(Path storedFile, String extension) {
     String detectedMimeType;
-    try (InputStream contentStream = Files.newInputStream(storedFile)) {
-      detectedMimeType = tika.detect(contentStream);
+    try {
+      detectedMimeType = SupportedDocumentFormats.detectMediaType(storedFile);
     } catch (IOException e) {
       throw new UncheckedIOException("Datei konnte nicht auf ihr Format geprueft werden", e);
     }

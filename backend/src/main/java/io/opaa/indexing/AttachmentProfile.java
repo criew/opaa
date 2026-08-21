@@ -30,8 +30,21 @@ public enum AttachmentProfile {
 
   /**
    * The default profile (#468 acceptance criteria: "ohne Profilangabe greift das allgemeine
-   * Profil"): a link is an attachment when it points at one of the {@link SupportedDocumentFormats}
-   * extensions and stays on the detail page's own host.
+   * Profil"): a link is a candidate attachment when it carries some file extension at all and stays
+   * on the detail page's own host - {@code fileHasSomeExtension} below, not {@link
+   * SupportedDocumentFormats#isSupported} (#404 review, finding 2).
+   *
+   * <p><b>Deliberately not filtered down to {@link SupportedDocumentFormats}'s own six extensions
+   * here.</b> This method only ever sees a URL, never the bytes behind it - {@link
+   * RssFeedIndexingExecutor#processAttachment} is the one place that actually downloads a candidate
+   * and decides acceptance from its content via {@link SupportedDocumentFormats#decideForFileName},
+   * exactly like the filesystem and web-directory paths. Filtering candidates down to the six
+   * recognized extensions here, before any content is ever inspected, would have silently excluded
+   * the very case #404 exists for: a document linked under the wrong extension (a PDF published as
+   * {@code bescheid.csv}) never became a candidate at all, so its content was never even looked at.
+   * "Carries some extension" still excludes ordinary navigation links (an {@code /impressum} page,
+   * a "read more" link to another article) that a CMS routinely renders without one - the
+   * structural signal "this looks like a file, not a page", not a content-type whitelist.
    */
   GENERIC {
     @Override
@@ -48,7 +61,7 @@ public enum AttachmentProfile {
           continue;
         }
         String fileName = lastPathSegment(linkUri);
-        if (!SupportedDocumentFormats.isSupported(fileName)) {
+        if (!fileHasSomeExtension(fileName)) {
           continue;
         }
         candidates.add(new AttachmentCandidate(absoluteUrl, fileName));
@@ -155,6 +168,25 @@ public enum AttachmentProfile {
       case "http" -> 80;
       default -> -1;
     };
+  }
+
+  /**
+   * Whether {@code fileName}'s last path segment carries a file extension at all - a dot that is
+   * neither the first nor the last character (#404 review, finding 2). Used by {@link #GENERIC} as
+   * the structural "this looks like a file" signal instead of {@link
+   * SupportedDocumentFormats#isSupported}; see that constant's own Javadoc for why. Package-visible
+   * (not {@code private}) so {@link RssFeedIndexingExecutor#resolveFileName} can apply the
+   * identical rule when deciding whether a GENERIC candidate's name already carries a real
+   * extension (possibly one {@link SupportedDocumentFormats} does not recognize) that must be kept
+   * verbatim, rather than one only {@link AttachmentProfile#GSB}'s extension-less candidates
+   * actually need synthesized.
+   */
+  static boolean fileHasSomeExtension(String fileName) {
+    if (fileName == null || fileName.isBlank()) {
+      return false;
+    }
+    int lastDot = fileName.lastIndexOf('.');
+    return lastDot > 0 && lastDot < fileName.length() - 1;
   }
 
   private static String lastPathSegment(URI uri) {

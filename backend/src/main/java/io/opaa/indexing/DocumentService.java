@@ -3,9 +3,8 @@ package io.opaa.indexing;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,19 +17,30 @@ public class DocumentService {
 
   /**
    * Everything found below the document directory, split into what will be indexed and what was
-   * rejected because of its format. The rejected files are carried out of here on purpose: they
-   * belong in the indexing job's counters, not in a filter nobody sees (issue #375).
+   * rejected because of its format (issue #375) - and, since #404, which of the indexed files
+   * carried an extension that did not match their actually detected content. The rejected files are
+   * carried out of here on purpose: they belong in the indexing job's counters, not in a filter
+   * nobody sees.
    */
-  public record DiscoveredFiles(List<Path> supported, List<Path> rejected) {
+  public record DiscoveredFiles(
+      List<Path> supported, List<Path> rejected, List<FormatMismatch> mismatches) {
 
     static DiscoveredFiles empty() {
-      return new DiscoveredFiles(List.of(), List.of());
+      return new DiscoveredFiles(List.of(), List.of(), List.of());
     }
 
     public int totalFound() {
       return supported.size() + rejected.size();
     }
   }
+
+  /**
+   * A file that was accepted for indexing, but whose own extension did not match its Tika-detected
+   * content (#404 acceptance criteria: this is reported, never silently reinterpreted or rejected).
+   * {@code detectedExtension} is the extension {@link SupportedDocumentFormats} associates with the
+   * detected content, for the event message.
+   */
+  public record FormatMismatch(Path file, String detectedExtension) {}
 
   public DiscoveredFiles discoverFiles(Path directory) throws IOException {
     if (!Files.exists(directory)) {
@@ -41,13 +51,23 @@ public class DocumentService {
       log.warn("Path is not a directory: {}", directory);
       return DiscoveredFiles.empty();
     }
+    List<Path> supported = new ArrayList<>();
+    List<Path> rejected = new ArrayList<>();
+    List<FormatMismatch> mismatches = new ArrayList<>();
     try (Stream<Path> walk = Files.walk(directory)) {
-      Map<Boolean, List<Path>> partitioned =
-          walk.filter(Files::isRegularFile)
-              .collect(Collectors.partitioningBy(this::isSupportedFormat));
-      return new DiscoveredFiles(
-          partitioned.getOrDefault(true, List.of()), partitioned.getOrDefault(false, List.of()));
+      for (Path file : walk.filter(Files::isRegularFile).toList()) {
+        SupportedDocumentFormats.ContentDecision decision = classify(file);
+        if (!decision.supported()) {
+          rejected.add(file);
+          continue;
+        }
+        supported.add(file);
+        if (decision.extensionMismatch()) {
+          mismatches.add(new FormatMismatch(file, decision.detectedExtension()));
+        }
+      }
     }
+    return new DiscoveredFiles(supported, rejected, mismatches);
   }
 
   public List<org.springframework.ai.document.Document> parseDocument(Path file) {
@@ -57,7 +77,25 @@ public class DocumentService {
     return reader.read();
   }
 
+  /**
+   * Whether {@code file} is accepted for indexing, decided from its actual content (#404) - see
+   * {@link SupportedDocumentFormats#decideForFileName}. A file that cannot even be read for
+   * detection (deleted or permission-denied between {@link #discoverFiles}'s own walk and this
+   * call) is treated as unsupported rather than propagating the {@link IOException}, mirroring how
+   * an unreadable file was already silently absent from the old, extension-only listing.
+   */
   boolean isSupportedFormat(Path file) {
-    return SupportedDocumentFormats.isSupported(file.getFileName().toString());
+    return classify(file).supported();
+  }
+
+  private SupportedDocumentFormats.ContentDecision classify(Path file) {
+    try {
+      String detectedMimeType = SupportedDocumentFormats.detectMediaType(file);
+      return SupportedDocumentFormats.decideForFileName(
+          file.getFileName().toString(), detectedMimeType);
+    } catch (IOException e) {
+      log.warn("Could not read {} to detect its format, treating it as unsupported", file, e);
+      return SupportedDocumentFormats.decideForFileName(file.getFileName().toString(), null);
+    }
   }
 }
