@@ -60,12 +60,19 @@ Für die vollständige Demo-Instanz (Keycloak-Anmeldung, siehe „Seed ausführe
 SPRING_PROFILES_ACTIVE=docker,oidc
 OPAA_INITIAL_ADMIN_EMAIL=admin@stadt-rheinfurt.example
 OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example
+OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
 ```
 
 `OPAA_INITIAL_ADMIN_EMAIL` muss die E-Mail-Adresse des Keycloak-Nutzers `demo-admin` treffen
 (`keycloak/realm-export.json`) — sonst bekommt kein Konto der Demo `SYSTEM_ADMIN`, und Schritt 1 des
 Seeds (siehe unten) bricht mit einer klaren Fehlermeldung ab, statt eine falsche Rolle stillschweigend
 zu akzeptieren.
+
+`OPAA_CSP_CONNECT_SRC_EXTRA` ist beim `oidc`-Compose-Profil **zwingend** (`.env.docker.example`,
+Kommentar bei derselben Variable) — ohne sie blockiert die Content-Security-Policy des
+Frontend-nginx die OIDC-Anmeldung im Browser still (#409/#670): kein Fehler im Seed selbst (der
+spricht Keycloak direkt an, nicht über den Browser), aber ein Login über die Oberfläche schlägt
+sonst fehl, ohne dass die Ursache offensichtlich wäre.
 
 Dann genügt ein einziger Befehl — `keycloak` gehört seit #712 zusätzlich zum Profil `demo` (siehe
 `docker-compose.yml`, Kommentar am `keycloak`-Service), damit die Demo nie ohne Anmeldung erreichbar
@@ -151,31 +158,50 @@ Der Lauf richtet über die API ein:
    (ADR-0018): drei `HTTP_DIRECTORY` gegen `demo-corpus`, ein `RSS_FEED` gegen
    `presse.stadt-rheinfurt.example`, ein `UPLOAD`.
 4. **VIEWER-Rechte** exakt nach der Matrix aus `docs/features/demo-instance.md` sowie die 26
-   Upload-Dokumente aus `demo/corpus/interne-dienstanweisungen-meldewesen/`.
+   Upload-Dokumente aus `demo/corpus/interne-dienstanweisungen-meldewesen/` — der Seed wartet nach
+   dem Hochladen, bis kein Dokument mehr `PENDING` ist (Tika-Parsing und Embedding laufen
+   asynchron, #434), und bricht bei `FAILED` mit der jeweiligen `errorMessage` ab.
 5. **Indizierung je Bibliothek** über deren eigene Quellkonfiguration (nicht für die `UPLOAD`-Bibliothek
-   — die hat keinen eigenen Lauf, ADR-0018) — der Seed wartet auf `COMPLETED` und bricht bei
-   `documentsFailed > 0` ab.
+   — die hat keinen eigenen Lauf, ADR-0018, siehe Schritt 4) — der Seed wartet auf `COMPLETED` und
+   bricht bei `documentsFailed > 0` ab.
 
-Für das minimale, eingefrorene `e2e`-Profil (dev-Auth, keine Keycloak-Anmeldung nötig):
+Für das minimale, eingefrorene `e2e`-Profil (dev-Auth, keine Keycloak-Anmeldung nötig) braucht es
+den separaten E2E-Stack (`e2e/docker-compose.e2e.yml`), nicht den `demo`-Stack — nur dieser
+provisioniert `dev-outsider` und veröffentlicht das Backend auf Port `18081` statt `8081`
+(`e2e/scripts/run-e2e.mjs`). Manuell hochfahren, ohne die Playwright-Suite mitlaufen zu lassen:
 
 ```bash
-python seed.py --profile e2e
+COMPOSE_PROJECT_NAME=opaa-e2e OPAA_ENV_FILE=e2e/e2e.env \
+  docker compose -f docker-compose.yml -f e2e/docker-compose.e2e.yml \
+  up -d ai-stub rss-feed postgres backend frontend
+```
+
+Dann:
+
+```bash
+python seed.py --profile e2e --base-url http://localhost:18081/api
 ```
 
 **Idempotent:** Ein zweiter Lauf gegen dieselbe Instanz legt nichts doppelt an — Spaces und
 Bibliotheken werden vor dem Anlegen per Namenssuche geprüft (Spaces über die Session des jeweiligen
-Eigentümers, da ein Space nur für seine eigenen Mitglieder sichtbar ist), Uploads werden anhand des
-Dateinamens übersprungen, und `upsertAssetGrant` ersetzt statt zu duplizieren.
+Eigentümers, da ein Space nur für seine eigenen Mitglieder sichtbar ist), Uploads werden anhand von
+Dateiname und Status übersprungen (ein zuvor `FAILED`es Dokument wird dagegen erneut hochgeladen),
+und `upsertAssetGrant` ersetzt statt zu duplizieren.
 
-**Ratenbegrenzung:** Vier aufeinanderfolgende Indizierungsauslöser (eine je Konnektor-Bibliothek, die
-`UPLOAD`-Bibliothek hat keinen eigenen Lauf) als dasselbe Admin-Konto stoßen an
-das Standardkontingent `opaa.rate-limit.indexing` (1 Anfrage/60s je Nutzer). `seed.py` wartet bei HTTP
-429 automatisch (`--rate-limit-wait-seconds`, Default 65s) und läuft dadurch beim ersten vollständigen
-Aufbau je nach Bibliothekszahl mehrere Minuten.
+**Ratenbegrenzung:** `RateLimitFilter` schlüsselt die Indizierungsauslösung nach Client-IP **und**
+Bibliothek (`opaa.rate-limit.indexing`, Default 1 Anfrage/60s je IP+Bibliothek) sowie zusätzlich
+über ein separates, IP-weites Gesamtkontingent (Default 5 Anfragen/60s). Die vier Trigger des Seeds
+(eine je Konnektor-Bibliothek) landen auf vier verschiedenen Bibliotheken und lösen im Normalfall
+kein 429 aus; `seed.py` wartet bei HTTP 429 trotzdem automatisch (`--rate-limit-wait-seconds`,
+Default 65s) — relevant vor allem bei einem erneuten Lauf kurz nach einem vorherigen Versuch oder
+wenn mehrere Seed-Läufe dieselbe IP teilen.
 
 **Keycloak-Anmeldung des Seeds:** Das `demo`-Profil meldet sich über einen eigenen Client
-`opaa-seed` (`keycloak/realm-export.json`, Resource Owner Password Grant) an — bewusst getrennt vom
-`opaa-frontend`-Client, dessen `directAccessGrantsEnabled` aus gutem Grund `false` bleibt.
+`opaa-seed` (`keycloak/realm-export.json`, Resource Owner Password Grant, kein Client-Secret) an —
+bewusst getrennt vom `opaa-frontend`-Client, dessen `directAccessGrantsEnabled` aus gutem Grund
+`false` bleibt. **Dieser Client gehört vor jedem erreichbaren Deployment entfernt oder deaktiviert**
+(`docs/deployment.md`, Härtungstabelle, Punkt 6) — er ist ein passwortbasierter Tokenweg ohne
+Secret gegen jedes Realm-Konto und darf nicht dauerhaft scharf bleiben.
 
 ## Demo-Zugangsdaten
 

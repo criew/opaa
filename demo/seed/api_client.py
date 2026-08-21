@@ -23,12 +23,27 @@ class ApiError(RuntimeError):
         self.status_code = response.status_code
 
 
+def _rewind_files(kwargs: dict) -> None:
+    """A retried request (see Client.request below) reuses the same `files=` mapping - an open
+    file handle already consumed by the failed attempt would otherwise upload an empty body the
+    second time around, a silent trap rather than a visible failure."""
+    files = kwargs.get("files")
+    if not files:
+        return
+    for value in files.values():
+        candidate = value[1] if isinstance(value, tuple) else value
+        if hasattr(candidate, "seek"):
+            candidate.seek(0)
+
+
 class Client:
     """One authenticated session against the OPAA API for a single user.
 
-    Retries transparently on 429 (opaa.rate-limit.*, see application.yml) - the seed triggers
-    several indexing runs back to back as the same admin user, which the default per-user
-    indexing limit (1 request/60s) would otherwise reject outright. No Retry-After header is sent
+    Retries transparently on 429 (opaa.rate-limit.*, see application.yml). RateLimitFilter keys
+    the indexing trigger per client IP *and* library (so triggering four different libraries never
+    collides with itself), plus a separate global cap (default 5 requests/60s) shared across every
+    library and caller behind the same IP - relevant mainly when re-running the seed shortly after
+    a previous attempt, or when several seed runs share one IP. No Retry-After header is sent
     (RateLimitFilter does not set one), so this waits a fixed, configurable window instead.
     """
 
@@ -43,7 +58,11 @@ class Client:
 
     def request(self, method: str, path: str, **kwargs) -> requests.Response:
         url = f"{self.base_url}{path}"
+        first_attempt = True
         while True:
+            if not first_attempt:
+                _rewind_files(kwargs)
+            first_attempt = False
             headers = dict(kwargs.pop("headers", None) or {})
             headers.update(self._auth.headers())
             response = self._session.request(method, url, headers=headers, timeout=60, **kwargs)

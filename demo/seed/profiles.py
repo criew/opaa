@@ -73,12 +73,6 @@ class Profile:
     def all_users(self) -> tuple[UserDef, ...]:
         return (self.admin, *self.users)
 
-    def user_by_key(self, key: str) -> UserDef:
-        for user in self.all_users():
-            if user.key == key:
-                return user
-        raise KeyError(f"Unbekannter Nutzer-Schlüssel '{key}' im Profil '{self.name}'")
-
 
 DEMO_PASSWORD = "RheinfurtDemo!2026"  # nosec - documented demo credential, see demo/README.md
 

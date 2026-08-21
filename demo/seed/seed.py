@@ -23,11 +23,16 @@ import sys
 import time
 from pathlib import Path
 
+import requests
+
 from api_client import ApiError, Client
-from auth import DevHeaderAuth, KeycloakPasswordAuth
+from auth import AuthError, DevHeaderAuth, KeycloakPasswordAuth
 from profiles import PROFILES, LibraryDef, Profile, SpaceDef, UserDef
 
 INDEXING_POLL_INTERVAL_SECONDS = 3
+# Transient errors expected right after `docker compose ... up`: the backend/Keycloak container
+# exists but is not yet accepting connections, or (dev-auth) is still applying Liquibase.
+TRANSIENT_STARTUP_ERRORS = (ApiError, AuthError, requests.exceptions.ConnectionError)
 
 
 def build_client(
@@ -56,6 +61,28 @@ def build_client(
     )
 
 
+def wait_until_ready(admin_client: Client, timeout_seconds: int = 90) -> None:
+    """Waits for the backend (and, for the 'demo' profile, Keycloak's token endpoint via
+    admin_client's own auth provider) to accept requests. This is the normal case right after
+    `docker compose ... up`: neither the backend container nor keycloak has an explicit
+    `depends_on`/healthcheck gate on this script, so the very first request can easily race the
+    container's own startup."""
+    deadline = time.monotonic() + timeout_seconds
+    last_error: Exception | None = None
+    while time.monotonic() < deadline:
+        try:
+            admin_client.get_ok("/v1/auth/me")
+            return
+        except TRANSIENT_STARTUP_ERRORS as error:
+            last_error = error
+            time.sleep(3)
+    raise SystemExit(
+        f"Backend bzw. Keycloak nach {timeout_seconds}s nicht erreichbar (letzter Fehler: "
+        f"{last_error}). Läuft der Stack bereits vollständig (docker compose ... up, ggf. "
+        "--profile demo)?"
+    )
+
+
 def provision_users(clients: dict[str, Client], profile: Profile) -> dict[str, str]:
     """Triggers UserProvisioningFilter for every user by making one authenticated request each,
     and returns each user's database id, keyed by the profile's own user key."""
@@ -68,8 +95,13 @@ def provision_users(clients: dict[str, Client], profile: Profile) -> dict[str, s
     if admin_role != "SYSTEM_ADMIN":
         raise SystemExit(
             f"Admin-Konto '{profile.admin.identity}' hat nicht die Rolle SYSTEM_ADMIN "
-            f"(tatsächlich: {admin_role}). Prüfen Sie OPAA_INITIAL_ADMIN_EMAIL gegen "
-            f"{profile.admin.email}."
+            f"(tatsächlich: {admin_role}). UserService#findOrCreateUser vergibt SYSTEM_ADMIN nur "
+            "beim allerersten Anlegen der Nutzerzeile, anhand von OPAA_INITIAL_ADMIN_EMAIL zu "
+            "diesem Zeitpunkt - eine nachträglich geänderte Variable hebt eine bereits bestehende "
+            "Nutzerzeile nicht mehr an. Abhilfe: die Nutzerzeile aus der Datenbank entfernen oder "
+            "den Stack mit 'docker compose ... down -v' zurücksetzen und den Seed erneut laufen "
+            f"lassen - diesmal mit OPAA_INITIAL_ADMIN_EMAIL={profile.admin.email} bereits beim "
+            "allerersten Start gesetzt."
         )
     return user_ids
 
@@ -143,22 +175,36 @@ def ensure_grant(admin_client: Client, library_id: str, user_id: str, role: str 
     )
 
 
-def ensure_documents_uploaded(admin_client: Client, library_id: str, upload_dir: Path) -> None:
-    existing_names = set()
+def existing_documents_by_name(admin_client: Client, library_id: str) -> dict[str, dict]:
+    by_name: dict[str, dict] = {}
     page = 0
     while True:
         result = admin_client.get_ok(
             f"/v1/libraries/{library_id}/documents", params={"page": page, "size": 100}
         )
-        existing_names.update(item["fileName"] for item in result["items"])
+        for item in result["items"]:
+            by_name[item["fileName"]] = item
         if (page + 1) * result["size"] >= result["totalElements"] or not result["items"]:
             break
         page += 1
+    return by_name
 
+
+def upload_documents(admin_client: Client, library_id: str, upload_dir: Path) -> None:
+    """Uploads every file in upload_dir not already present with status PENDING/INDEXED. A
+    document whose previous attempt ended FAILED is re-uploaded rather than skipped - "already
+    there" only means so for a document that actually succeeded or is still being processed."""
+    existing = existing_documents_by_name(admin_client, library_id)
     for file_path in sorted(p for p in upload_dir.iterdir() if p.is_file()):
-        if file_path.name in existing_names:
-            print(f"    bereits hochgeladen: {file_path.name}")
+        current = existing.get(file_path.name)
+        if current is not None and current["status"] != "FAILED":
+            print(f"    bereits hochgeladen: {file_path.name} ({current['status']})")
             continue
+        if current is not None:
+            print(
+                f"    erneuter Versuch nach FAILED: {file_path.name} "
+                f"({current.get('errorMessage')})"
+            )
         content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
         with file_path.open("rb") as handle:
             admin_client.post_ok(
@@ -167,6 +213,36 @@ def ensure_documents_uploaded(admin_client: Client, library_id: str, upload_dir:
                 expected=(201,),
             )
         print(f"    hochgeladen: {file_path.name}")
+
+
+def wait_for_uploads_indexed(
+    admin_client: Client, library_id: str, name: str, timeout_seconds: int
+) -> None:
+    """Upload returns 201 while the document row is still PENDING (#434, ADR-0018) - Tika parsing
+    and embedding run afterwards, asynchronously, through the same executor infrastructure the
+    connector indexing paths use. Without waiting here, the seed would report success before a
+    single upload document is actually searchable, and a FAILED one would go unnoticed."""
+    deadline = time.monotonic() + timeout_seconds
+    documents: list[dict] = []
+    while True:
+        documents = list(existing_documents_by_name(admin_client, library_id).values())
+        pending = [d for d in documents if d["status"] == "PENDING"]
+        if not pending:
+            break
+        if time.monotonic() > deadline:
+            raise SystemExit(
+                f"Upload-Indizierung für '{name}' hat das Zeitlimit von {timeout_seconds}s "
+                f"überschritten ({len(pending)} Dokument(e) noch PENDING)."
+            )
+        time.sleep(INDEXING_POLL_INTERVAL_SECONDS)
+
+    failed = [d for d in documents if d["status"] == "FAILED"]
+    if failed:
+        details = "; ".join(f"{d['fileName']}: {d.get('errorMessage')}" for d in failed)
+        raise SystemExit(f"Upload-Indizierung für '{name}' fehlgeschlagen: {details}")
+
+    indexed = sum(1 for d in documents if d["status"] == "INDEXED")
+    print(f"  Uploads für '{name}' indiziert: {indexed} Dokument(e)")
 
 
 def trigger_indexing(admin_client: Client, library_id: str, name: str, timeout_seconds: int) -> None:
@@ -221,6 +297,9 @@ def run(args: argparse.Namespace) -> None:
     }
     admin_client = clients[profile.admin.key]
 
+    print("Warte auf Backend/Keycloak …")
+    wait_until_ready(admin_client)
+
     print("1/5 Nutzer bereitstellen (erste authentifizierte Anfrage je Nutzer) …")
     user_ids = provision_users(clients, profile)
 
@@ -244,7 +323,13 @@ def run(args: argparse.Namespace) -> None:
                     f"Upload-Verzeichnis für '{library_def.name}' fehlt: {library_def.upload_dir}"
                 )
             print(f"  Uploads für '{library_def.name}':")
-            ensure_documents_uploaded(admin_client, library_id, library_def.upload_dir)
+            upload_documents(admin_client, library_id, library_def.upload_dir)
+            wait_for_uploads_indexed(
+                admin_client,
+                library_id,
+                library_def.name,
+                timeout_seconds=args.indexing_timeout_seconds,
+            )
 
     print("5/5 Indizierung je Bibliothek auslösen (ADR-0018) …")
     for library_def in profile.libraries:
@@ -293,6 +378,12 @@ def main(argv: list[str]) -> int:
         run(args)
     except ApiError as error:
         print(f"API-Fehler: {error}", file=sys.stderr)
+        return 1
+    except AuthError as error:
+        print(f"Anmeldefehler: {error}", file=sys.stderr)
+        return 1
+    except requests.exceptions.ConnectionError as error:
+        print(f"Verbindungsfehler: {error}", file=sys.stderr)
         return 1
     except SystemExit as error:
         print(str(error), file=sys.stderr)
