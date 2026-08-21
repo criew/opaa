@@ -109,7 +109,9 @@ unten.
 
 Alle Passwörter sind offene **Demo-Werte, keine Secrets** — vor jedem erreichbaren Deployment gemäß
 [`deployment.md`, „Härtung für erreichbare Deployments"](./deployment.md#härtung-für-erreichbare-deployments)
-zu ersetzen.
+zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weicht davon für `demo-admin`
+bewusst ab — siehe [„Öffentliche Demo-Instanz"](#öffentliche-demo-instanz) unten und die Härtungstabelle,
+Punkt 1.
 
 | Konto | Rolle im Szenario | Spaces | Lesbare Bibliotheken | Passwort |
 |---|---|---|---|---|
