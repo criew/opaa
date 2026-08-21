@@ -115,3 +115,42 @@ sondern eines eigenen, blockierenden Issues ("Lokale Modellbereitstellung für d
 
 - Ports und Environment-Handling ändern sich für bestehende `docker compose up`-Nutzung nicht
   (Standardwerte identisch); die Container-Namen ändern sich einmalig (siehe Punkt 2).
+
+## Nachträge
+
+Punkt 4 hat die konkrete Umsetzung ausdrücklich einem eigenen, blockierenden Issue überlassen.
+Sobald ein solcher Punkt entschieden ist, kommt er hier als Nachtrag hinzu — der ADR-Wortlaut oben
+bleibt unverändert, damit erkennbar bleibt, was wann galt.
+
+### 21.08.2026 — Lokale Modellbereitstellung: OpenAI-kompatibler Stub statt Ollama
+
+- **Punkt:** Die in Punkt 4 offengelassene konkrete Umsetzung — lokaler Ollama-Service im
+  Compose-Stack vs. leichtgewichtiger OpenAI-kompatibler Stub.
+- **Entscheidung:** Ein eigener, minimaler OpenAI-kompatibler Stub-Server
+  (`e2e/ai-stub/server.mjs`) läuft als weiterer Dienst im E2E-Compose-Stack
+  (`e2e/docker-compose.e2e.yml`); `e2e/e2e.env` zeigt mit `OPAA_AI_CHAT_PROVIDER=openai` und
+  `OPAA_OPENAI_BASE_URL=http://ai-stub:8089` darauf. Ollama wird für den E2E-Stack nicht
+  eingesetzt.
+- **Begründung:** Der Stub beantwortet `POST /v1/embeddings` für jede Eingabe mit demselben festen
+  Vektor und `POST /v1/chat/completions`, indem er die im Prompt enthaltenen Zitationsmarkierungen
+  unverändert zurückgibt — beides ohne jede Modellinferenz, also bitgenau deterministisch über
+  jeden Lauf hinweg. Das ist mehr als ein Implementierungsdetail: Da die Rechteprüfung in der
+  Vektorsuche darüber entscheidet, welche Chunks überhaupt in eine Anfrage gelangen (siehe
+  `io.opaa.query.QueryService#libraryFilter`), hängt das Ergebnis der ACL-Szenarien in
+  `tests/knowledge-libraries.spec.ts` (#424) ausschließlich vom Rechtefilter ab, nie von einer
+  echten, potenziell schwankenden Relevanzbewertung eines Modells — genau das, was diese Szenarien
+  belegen sollen, nicht Antwortqualität (die ist Sache von Epic #224). Ein echtes Modell, auch
+  lokal über Ollama betrieben, hätte diese Eigenschaft nicht garantiert. Hinzu kommt der
+  Betriebsaufwand: Ollama bräuchte einen Modell-Download im Compose-Stack (Netzwerkabhängigkeit und
+  Laufzeit beim ersten Start bzw. in jedem CI-Lauf ohne persistenten Cache) und, für brauchbare
+  Antwortzeiten, GPU- oder zumindest nennenswerte CPU-Ressourcen auf dem CI-Runner — beides, was
+  der Stub, der ohne Modellgewichte auskommt und in Millisekunden antwortet, nicht braucht. Der
+  Stub kommt zudem ohne echten API-Key aus (`OPAA_OPENAI_API_KEY=sk-e2e-placeholder` wird nicht
+  geprüft), während ein reales `openai`-kompatibles Ziel eines voraussetzt. Der Preis der gewählten
+  Lösung: Der Stub bildet kein echtes Modellverhalten nach und eignet sich deshalb nicht für
+  Szenarien, die tatsächliche Antwortqualität oder Modell-Nichtdeterminismus prüfen wollen — dafür
+  bräuchte es weiterhin einen echten Anbieter oder ein lokal betriebenes Modell wie Ollama, außerhalb
+  des Umfangs dieser Suite.
+- **Verweis:** [#256](https://github.com/criew/opaa/issues/256) · `e2e/ai-stub/server.mjs` ·
+  `e2e/docker-compose.e2e.yml` · `e2e/e2e.env` ·
+  [e2e/README.md](../../e2e/README.md#ki-stub-statt-echtem-modell)
