@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
@@ -6,7 +7,6 @@ import Button from '@mui/material/Button'
 import FormControl from '@mui/material/FormControl'
 import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
-import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
@@ -26,6 +26,28 @@ import {
 import type { SpaceRole, SpaceVisibility, UserInfo } from '../types/api'
 
 const STEPS = ['Grunddaten', 'Mitglieder', 'Zusammenfassung'] as const
+
+/** Mockup 1b's field label: standalone above the field instead of MUI's floating variant. */
+function FieldLabel({
+  htmlFor,
+  id,
+  children,
+}: {
+  htmlFor?: string
+  id?: string
+  children: ReactNode
+}) {
+  return (
+    <Typography
+      component={htmlFor ? 'label' : 'span'}
+      htmlFor={htmlFor}
+      id={id}
+      sx={{ display: 'block', fontSize: 12, color: 'text.secondary', mb: '5px' }}
+    >
+      {children}
+    </Typography>
+  )
+}
 const MEMBER_ROLES: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
 interface PendingMember {
@@ -162,26 +184,34 @@ export default function SpaceCreatePage() {
 
         {activeStep === 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-            <TextField
-              label="Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              fullWidth
-            />
-            <TextField
-              label="Beschreibung (optional)"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              multiline
-              minRows={2}
-              fullWidth
-            />
+            <Box>
+              <FieldLabel htmlFor="space-create-name">Name</FieldLabel>
+              <TextField
+                id="space-create-name"
+                size="small"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="z. B. Widerspruchsstelle"
+                fullWidth
+              />
+            </Box>
+            <Box>
+              <FieldLabel htmlFor="space-create-description">Beschreibung (optional)</FieldLabel>
+              <TextField
+                id="space-create-description"
+                size="small"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                multiline
+                minRows={2}
+                fullWidth
+              />
+            </Box>
             <FormControl fullWidth>
-              <InputLabel id="space-create-visibility-label">Sichtbarkeit</InputLabel>
+              <FieldLabel id="space-create-visibility-label">Sichtbarkeit</FieldLabel>
               <Select
                 labelId="space-create-visibility-label"
-                label="Sichtbarkeit"
+                size="small"
                 value={visibility}
                 onChange={(e) => setVisibility(e.target.value as SpaceVisibility)}
                 aria-describedby="space-create-visibility-helper"
@@ -208,6 +238,7 @@ export default function SpaceCreatePage() {
             <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
               <Autocomplete
                 options={availableUsers}
+                size="small"
                 getOptionLabel={(option) =>
                   option.displayName
                     ? `${option.displayName} (${option.email ?? option.id})`
@@ -216,7 +247,14 @@ export default function SpaceCreatePage() {
                 value={selectedUser}
                 onChange={(_e, value) => setSelectedUser(value)}
                 renderInput={(params) => (
-                  <TextField {...params} label="Benutzer" placeholder="Benutzer suchen …" />
+                  <TextField
+                    {...params}
+                    placeholder="Benutzer suchen …"
+                    slotProps={{
+                      ...params.slotProps,
+                      htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Benutzer' },
+                    }}
+                  />
                 )}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 sx={{ minWidth: 280, flex: 1 }}
@@ -226,7 +264,7 @@ export default function SpaceCreatePage() {
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value as SpaceRole)}
                 aria-label="Rolle des neuen Mitglieds"
-                sx={{ width: 170, alignSelf: 'center' }}
+                sx={{ width: 170 }}
               >
                 {MEMBER_ROLES.map((role) => (
                   <MenuItem key={role} value={role}>
@@ -242,7 +280,6 @@ export default function SpaceCreatePage() {
                   setPendingMembers((prev) => [...prev, { user: selectedUser, role: selectedRole }])
                   setSelectedUser(null)
                 }}
-                sx={{ alignSelf: 'center' }}
               >
                 Vormerken
               </Button>
