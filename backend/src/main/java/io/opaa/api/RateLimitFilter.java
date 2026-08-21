@@ -110,7 +110,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     var body =
         Map.of(
-            "error", "Rate limit exceeded. Please try again later.",
+            "error", "Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut.",
             "status", HttpStatus.TOO_MANY_REQUESTS.value(),
             "timestamp", Instant.now().toString());
     jsonMapper.writeValue(response.getOutputStream(), body);

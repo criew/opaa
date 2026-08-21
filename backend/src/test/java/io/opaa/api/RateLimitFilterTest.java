@@ -80,7 +80,8 @@ class RateLimitFilterTest {
 
     assertThat(response.getStatus()).isEqualTo(429);
     assertThat(response.getContentType()).isEqualTo("application/json");
-    assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+    assertThat(response.getContentAsString())
+        .contains("Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut.");
     assertThat(chain.getRequest()).isNull();
   }
 
@@ -97,7 +98,8 @@ class RateLimitFilterTest {
     filter.doFilter(request, response, chain);
 
     assertThat(response.getStatus()).isEqualTo(429);
-    assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+    assertThat(response.getContentAsString())
+        .contains("Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut.");
   }
 
   @Test
@@ -111,7 +113,8 @@ class RateLimitFilterTest {
     filter.doFilter(request, response, chain);
 
     assertThat(response.getStatus()).isEqualTo(429);
-    assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+    assertThat(response.getContentAsString())
+        .contains("Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut.");
     assertThat(chain.getRequest()).isNull();
   }
 
@@ -221,7 +224,8 @@ class RateLimitFilterTest {
     filter.doFilter(request, response, chain);
 
     assertThat(response.getStatus()).isEqualTo(429);
-    assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+    assertThat(response.getContentAsString())
+        .contains("Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut.");
     assertThat(chain.getRequest()).isNull();
   }
 
