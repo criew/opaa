@@ -74,6 +74,7 @@ class QueryServiceTest {
             answerGenerationService,
             chatMemory,
             new CitationParser(),
+            new CitationValidator(),
             documentRepository,
             userRepository,
             libraryAccessService,
@@ -400,6 +401,7 @@ class QueryServiceTest {
             answerGenerationService,
             realChatMemory,
             new CitationParser(),
+            new CitationValidator(),
             documentRepository,
             userRepository,
             libraryAccessService,
@@ -520,6 +522,191 @@ class QueryServiceTest {
     assertThat(response.getSources()).hasSize(2);
     assertThat(response.getSources().get(0).getCited()).isTrue();
     assertThat(response.getSources().get(1).getCited()).isFalse();
+  }
+
+  /**
+   * #386 acceptance criterion + reproduction proof: a citation whose document id is not among the
+   * chunks retrieved for this answer must be flagged as invalid - never silently dropped, and never
+   * allowed to pass through as an ordinary, unflagged citation. Before the fix this fabricated
+   * citation produced no source entry at all (it matches no real chunk's document id in {@code
+   * mapSources}' original iteration), so nothing in the response indicated anything was wrong with
+   * it - this assertion is red on the pre-fix code (no entry exists to carry {@code citationValid:
+   * false} at all) and green after. Uses a file name that collides with no retrieved chunk, so the
+   * result is unaffected by the collision-folding {@link
+   * #queryFoldsACollidingSyntheticEntryIntoTheRealUncitedSourceInsteadOfAddingARow} covers
+   * separately.
+   */
+  @Test
+  void queryMarksCitationToAFabricatedDocumentIdAsInvalid() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var answer = "The answer is 42 【source: fabricated-id#0 | fabricated-name.pdf】";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources())
+        .anySatisfy(
+            source -> {
+              assertThat(source.getFileName()).isEqualTo("fabricated-name.pdf");
+              assertThat(source.getCitationValid()).isFalse();
+              assertThat(source.getCited()).isTrue();
+            });
+  }
+
+  /**
+   * #386 acceptance criterion: a citation with a valid document id and section but a file name that
+   * does not match that document is invalid - it is more misleading than no citation at all.
+   */
+  @Test
+  void queryMarksCitationWithMismatchedFileNameAsInvalid() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var answer = "The answer is 42 【source: doc-123#0 | wrong-name.pdf】";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources().getFirst().getFileName()).isEqualTo("readme.md");
+    assertThat(response.getSources().getFirst().getCitationValid()).isFalse();
+  }
+
+  /**
+   * #386 acceptance criterion: a section number that belongs to the cited document but was not
+   * among the chunks retrieved for this answer is invalid.
+   */
+  @Test
+  void queryMarksCitationWithSectionOutsideRetrievedChunksAsInvalid() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var answer = "The answer is 42 【source: doc-123#9 | readme.md】";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources().getFirst().getFileName()).isEqualTo("readme.md");
+    assertThat(response.getSources().getFirst().getCitationValid()).isFalse();
+  }
+
+  /** #386: a citation matching the retrieved chunk exactly stays unflagged. */
+  @Test
+  void queryLeavesAValidCitationUnflagged() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var answer = "The answer is 42 【source: doc-123#0 | readme.md】";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources().getFirst().getCitationValid()).isTrue();
+  }
+
+  /**
+   * #697 review, finding 4 + second round: a fabricated citation's synthetic entry must never merge
+   * with a real, retrieved-but-uncited source that happens to share its file name via the normal
+   * dedupe-by-filename merge - that would have made the real document appear falsely cited, with
+   * its real relevance score and its real "open in document" link, for a citation it was never
+   * actually named in. The second review round found that the first fix (never merging the two
+   * groups at all) traded that failure for another: two {@code SourceReference} rows sharing one
+   * file name, which the frontend's marker-to-source join resolves last-wins - always to the
+   * synthetic, zero-relevance row, corrupting even a source that {@code was} genuinely, validly
+   * cited (see the next test). The fix folds a colliding synthetic entry into the real one instead
+   * of adding a second row: only {@code citationValid} moves to {@code false}, nothing else about
+   * the real entry changes.
+   */
+  @Test
+  void queryFoldsACollidingSyntheticEntryIntoTheRealUncitedSourceInsteadOfAddingARow() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    // "fabricated-id" is not among the retrieved chunks, but the model still copied the correct,
+    // real file name into the fabricated citation - the exact collision finding 4 describes.
+    var answer = "The answer is 42 【source: fabricated-id#0 | readme.md】";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources()).hasSize(1);
+    SourceReference source = response.getSources().getFirst();
+    assertThat(source.getFileName()).isEqualTo("readme.md");
+    assertThat(source.getRelevanceScore()).isEqualTo(0.85);
+    assertThat(source.getMatchCount()).isEqualTo(1);
+    assertThat(source.getCited()).isFalse();
+    assertThat(source.getCitationValid()).isFalse();
+  }
+
+  /**
+   * #697 second review round's concrete scenario: a source is both validly cited <em>and</em> named
+   * by a colliding fabricated citation. Before this fix, the frontend's file-name join would have
+   * resolved to the synthetic, zero-relevance row for this file - the validly cited real source
+   * would have displayed with 0% relevance and no document link, even though a genuine citation
+   * pointed at it. Folding the collision into the real entry keeps its real {@code cited = true},
+   * relevance score and link intact; only {@code citationValid} reflects the separate, invalid
+   * citation that also named this file.
+   */
+  @Test
+  void queryPreservesRealMetadataOnAValidlyCitedSourceThatAlsoCollidesWithASyntheticEntry() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var answer =
+        "The answer is 42 【source: doc-123#0 | readme.md】 【source: fabricated-id#0 | readme.md】";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources()).hasSize(1);
+    SourceReference source = response.getSources().getFirst();
+    assertThat(source.getFileName()).isEqualTo("readme.md");
+    assertThat(source.getRelevanceScore()).isEqualTo(0.85);
+    assertThat(source.getCited()).isTrue();
+    assertThat(source.getCitationValid()).isFalse();
   }
 
   @Test

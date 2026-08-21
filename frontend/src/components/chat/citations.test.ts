@@ -3,7 +3,14 @@ import { buildCitationIndex } from './citations'
 import type { SourceReference } from '../../types/api'
 
 function source(fileName: string, cited: boolean): SourceReference {
-  return { fileName, relevanceScore: 0.9, matchCount: 1, cited, indexedAt: null }
+  return {
+    fileName,
+    relevanceScore: 0.9,
+    matchCount: 1,
+    cited,
+    indexedAt: null,
+    citationValid: true,
+  }
 }
 
 describe('buildCitationIndex', () => {
