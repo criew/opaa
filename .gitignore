@@ -60,6 +60,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+!.env.docker.example
 
 # Documents (user PDFs)
 documents/
