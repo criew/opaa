@@ -24,7 +24,7 @@ export function spaceRoleLabel(role: SpaceRole | string | undefined): string {
 
 // #272: mirrors the three-row table in docs/features/spaces-and-assets.md#space-sichtbarkeit -
 // PRIVATE is the default for every newly created space. The order here is also the order both
-// CreateSpaceDialog and SpaceManagementPage render their Select options in - a single source
+// SpaceCreatePage and SpaceManagementPage render their Select options in - a single source
 // keeps the two menus from drifting apart if a future enum value is added.
 export const spaceVisibilities: SpaceVisibility[] = ['PRIVATE', 'DISCOVERABLE', 'OPEN']
 

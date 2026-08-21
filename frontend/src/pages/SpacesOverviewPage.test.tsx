@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import SpacesOverviewPage from './SpacesOverviewPage'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -59,13 +60,19 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     expect(teamCard).toHaveTextContent('Archiviert')
   })
 
-  it('opens the create dialog from the trailing card', async () => {
+  it('navigates to the create wizard from the trailing card', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
+    renderWithProviders(
+      <Routes>
+        <Route path="/" element={<SpacesOverviewPage />} />
+        <Route path="/spaces/new" element={<div data-testid="create-wizard-route" />} />
+      </Routes>,
+      { withRouter: true },
+    )
 
     await user.click(screen.getByRole('button', { name: 'Neuen Space anlegen' }))
 
-    expect(await screen.findByText('Space erstellen')).toBeInTheDocument()
+    expect(await screen.findByTestId('create-wizard-route')).toBeInTheDocument()
   })
 
   it('shows a designed empty state without spaces', () => {

@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import SpacePage from './pages/SpacePage'
 import SpacesOverviewPage from './pages/SpacesOverviewPage'
+import SpaceCreatePage from './pages/SpaceCreatePage'
 import SpaceManagementPage from './pages/SpaceManagementPage'
 import GroupManagementPage from './pages/GroupManagementPage'
 import LibraryManagementPage from './pages/LibraryManagementPage'
@@ -65,6 +66,7 @@ export default function App() {
             >
               <Route index element={<Navigate to="/chat" replace />} />
               <Route path="chat" element={<ChatRedirect />} />
+              <Route path="spaces/new" element={<SpaceCreatePage />} />
               <Route path="spaces/:spaceId/chats/:chatId" element={<ChatPage />} />
               <Route path="spaces/:spaceId" element={<SpacePage />} />
               <Route path="spaces/:spaceId/manage" element={<SpaceManagementPage />} />
