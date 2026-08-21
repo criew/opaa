@@ -38,9 +38,10 @@ Testkorpus mit bekannter Ground Truth**. Deshalb werden sie hier gemeinsam spezi
 5. **Demo und Regression laufen entkoppelt.** Die Demo nutzt den bestehenden
    HTTP-Verzeichnis-Konnektor gegen einen statischen Webserver im Compose-Stack. Der
    Regressionstest ist ein JUnit-Integrationstest gegen Testcontainers und braucht die Demo nicht.
-6. **Eine Domäne komplett, dann die anderen.** Comichelden wird end-to-end durchgezogen (Generator
-   → Golden Dataset → Metriken → CI → Demo). Filme, Reiseziele und Tiere folgen erst danach über
-   denselben, dann bewährten Pfad.
+6. **Eine Domäne komplett, dann die nächste.** Comichelden wurde end-to-end durchgezogen (Generator
+   → Golden Dataset → Metriken → CI → Demo). Sehenswürdigkeiten in europäischen Großstädten
+   (Issue #234) folgte danach über denselben, bewährten Pfad — mit einer bewussten Ergänzung:
+   mehrchunkige statt einchunkiger Dokumente (siehe „Domänen und was sie prüfen sollen" oben).
 7. **Nur CC0 und CC BY.** Der verbreitete Korpus enthält ausschließlich Quellen unter CC0 oder
    CC BY. CC BY-SA wird vermieden, IMDb ist ausgeschlossen. Für Phase 1 ist die Quelle CC0.
 
@@ -304,10 +305,13 @@ Drei Folgerungen für den Generator:
 | Comichelden | `overall_score` | `null` (unbewertet) | 105 Dokumente | Prosa formuliert den fehlenden Wert als `0` aus — der Widerspruch ist Gegenstand von #226 |
 | Comichelden | `overall_score` | `"∞"` | 18 Dokumente | Prosa sagt wörtlich „his overall score is ∞"; erfüllt jede „größer als"-Bedingung |
 
-Für die Ausweitung auf weitere Domänen (#234 — Filme, Reiseziele, Tiere) ist diese Tabelle
-fortzuschreiben. Eine Domäne gilt erst dann als aufnahmefähig, wenn für jedes numerisch verwendete
-Feld geklärt ist, ob es Sentinel-Werte führt, und die gefundenen hier eingetragen sind — auch das
-Ergebnis „keine" gehört festgehalten, damit es später nicht als ungeprüft gilt.
+Für jede weitere Domäne ist diese Tabelle fortzuschreiben. Eine Domäne gilt erst dann als
+aufnahmefähig, wenn für jedes numerisch verwendete Feld geklärt ist, ob es Sentinel-Werte führt, und
+die gefundenen hier eingetragen sind — auch das Ergebnis „keine" gehört festgehalten, damit es später
+nicht als ungeprüft gilt. Die Domäne `city-landmarks` (#234) führt keine automatisch generierten
+`numeric_range`-artigen Fragen mit Schwellenwerten — ihr Golden Dataset ist stattdessen manuell aus
+den generierten Dokumenten und der Chunk-Map kuratiert (siehe `eval/golden/README.md`) — und hat
+damit keine eigene Zeile in dieser Tabelle.
 
 Die Regel bleibt bewusst in dieser Spezifikation und bekommt keinen eigenen ADR: Ablage,
 Versionierung und Einfrieren des Golden Dataset sind bereits im ADR zur Suchqualitäts-Evaluierung
@@ -492,7 +496,7 @@ Anforderungen an den Betrieb der Instanz:
 |---|---|---|
 | 1 | Comichelden: Generator, Golden Dataset, Metrik-Harness, CI-Job | Suchqualität ist eine Zahl, Regressionen fallen auf |
 | 2 | Demo-Ingestion im Compose-Stack, Rollout auf die bestehende Instanz, E2E-Szenarien | OPAA ist vorführbar |
-| 3 | Ausweitung auf Filme, Reiseziele, Tiere | breitere Abdeckung, Mehrsprachigkeit, Taxonomie |
+| 3 | Ausweitung auf Sehenswürdigkeiten in europäischen Großstädten (#234) — mehrchunkige, durchgängig deutschsprachige Domäne; Filme/Reiseziele/Tiere gestrichen (Maintainer-Entscheidung 21.08.2026) | Mehr-Chunk-Messfähigkeit (#374), deutschsprachiger Korpus |
 | 4 | Generationsmetriken (Spring-AI-Evaluatoren), später RAGAS-Sidecar | Antwortqualität statt nur Trefferqualität |
 
 Phase 1 und 2 sind der Gegenstand der jetzt erstellten Issues.
