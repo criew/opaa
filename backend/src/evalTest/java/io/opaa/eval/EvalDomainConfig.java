@@ -63,10 +63,12 @@ public record EvalDomainConfig(
   /**
    * The city-landmarks domain (issue #234): deliberately multi-chunk documents (200 European
    * cities, minimum 3 chunks each at the application's default {@code chunk-size=1000} — see {@code
-   * eval/corpus/city-landmarks/SOURCE.md} for the measured chunk-count distribution: minimum 3,
-   * median 5, maximum 11). {@code maxChunksPerDocument=12} is a deliberately conservative upper
-   * bound above the measured maximum (11), consistent with {@link RetrievalEvaluationHarnessTest}'s
-   * own runtime check that this value is never undersized (issue #721 review, Nit 4).
+   * eval/corpus/city-landmarks/SOURCE.md} for the measured chunk-count distribution: minimum 4,
+   * median 8, maximum 13, after the PR #730 second review round switched the city list to a
+   * GeoNames-based selection and raised {@code RANK_NEIGHBOR_RADIUS} to 40). {@code
+   * maxChunksPerDocument=15} is a deliberately conservative upper bound above the measured maximum
+   * (13), consistent with {@link RetrievalEvaluationHarnessTest}'s own runtime check that this
+   * value is never undersized (issue #721 review, Nit 4).
    */
   public static final EvalDomainConfig CITY_LANDMARKS =
       new EvalDomainConfig(
@@ -75,5 +77,5 @@ public record EvalDomainConfig(
           "city-landmarks.json",
           ChunkCountExpectation.atLeast(3),
           10,
-          12);
+          15);
 }
