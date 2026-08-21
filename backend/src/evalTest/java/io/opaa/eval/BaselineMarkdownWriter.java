@@ -64,12 +64,12 @@ public final class BaselineMarkdownWriter {
     // second, defensive check (PR #301 review): it still fires correctly against a hand-edited or
     // otherwise externally produced report, and protects this class against silently becoming
     // wrong if the harness is ever changed to write partial reports on invariant failure.
-    if (!result.oneChunkInvariantHolds()) {
+    if (!result.chunkCountInvariantHolds()) {
       sb.append(
-          "**Ein-Chunk-Invariante verletzt (ADR-0010).** Das ist ein harter Fehlschlag, kein "
-              + "Toleranzfall — die folgenden Dokumente ergaben mehr als einen Chunk:\n\n");
+          "**Chunk-Zahl-Invariante verletzt (ADR-0010).** Das ist ein harter Fehlschlag, kein "
+              + "Toleranzfall — die folgenden Dokumente verletzten die erwartete Chunk-Zahl:\n\n");
       sb.append("| Datei | Chunks |\n|---|---|\n");
-      for (var violation : result.oneChunkInvariantViolations()) {
+      for (var violation : result.chunkCountInvariantViolations()) {
         sb.append(
             String.format(
                 Locale.ROOT, "| `%s` | %d |\n", violation.fileName(), violation.chunkCount()));

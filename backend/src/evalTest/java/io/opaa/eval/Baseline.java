@@ -50,6 +50,17 @@ public record Baseline(
       int embeddingDimensions,
       int chunkSize,
       boolean chunkSizeMatchesApplicationDefault,
+      // Issue #721, ADR-0012 Nachtrag: chunkOverlap only ever existed as report metadata before —
+      // for a one-chunk-per-document domain it cannot change anything (overlap only exists between
+      // chunks), but for a multi-chunk domain it is a value that changes the measurement itself, so
+      // it is now a fixed point like every other measurement-contract value.
+      int chunkOverlap,
+      // Issue #721, ADR-0012 Nachtrag: the k-window is now explicitly document-bound — documentTopK
+      // is the number of distinct documents ranking metrics are computed over, chunkTopK is the
+      // similaritySearch topK actually used to reach that many after deduplication (see
+      // DocumentRanking). Both are measurement-contract values, not just run metadata.
+      int documentTopK,
+      int chunkTopK,
       // ADR-0012, decision 3: searchTopK and the (deliberately unset) production similarity
       // threshold are part of the measurement contract, not just run metadata — see
       // BaselineComparator's Javadoc and PR #301 review, Befund 4.

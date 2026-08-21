@@ -16,7 +16,7 @@ class MetricsAggregateTest {
   private static final double TOLERANCE = 1e-6;
 
   private static GoldenCase goldenCase(String category, List<String> expected) {
-    return new GoldenCase("id", "test", "query", expected, category, "easy", "en", "type");
+    return new GoldenCase("id", "test", "query", expected, category, "easy", "en", "type", null);
   }
 
   @Test

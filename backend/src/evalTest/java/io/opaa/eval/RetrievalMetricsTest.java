@@ -21,7 +21,8 @@ class RetrievalMetricsTest {
   private static final double TOLERANCE = 1e-4;
 
   private static GoldenCase caseWithExpected(List<String> expected) {
-    return new GoldenCase("t", "test", "query", expected, "category", "difficulty", "en", "type");
+    return new GoldenCase(
+        "t", "test", "query", expected, "category", "difficulty", "en", "type", null);
   }
 
   @Test

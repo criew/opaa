@@ -3,7 +3,7 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-import io.opaa.eval.EvaluationReport.OneChunkInvariantResult;
+import io.opaa.eval.EvaluationReport.ChunkCountInvariantResult;
 import io.opaa.eval.EvaluationReport.RunConfiguration;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -146,12 +146,15 @@ class BaselineComparatorTest {
         new EvaluationReport(
             1,
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new OneChunkInvariantResult(1458, List.of()),
+            new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()),
             new EvaluationReport.DatasetNotes(121, 94, "note"),
             overallMetrics(),
             Map.of("numeric_range", currentNumericRange),
             Map.of(),
             Map.of(),
+            ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+            fullDocumentWindowCoverage(),
+            noApplicableAnswerSpans(),
             List.of(),
             List.of());
 
@@ -204,12 +207,15 @@ class BaselineComparatorTest {
         new EvaluationReport(
             1,
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new OneChunkInvariantResult(1458, List.of()),
+            new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()),
             new EvaluationReport.DatasetNotes(121, 94, "note"),
             overallMetrics(),
             Map.of("numeric_range", currentNumericRange),
             Map.of(),
             Map.of(),
+            ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+            fullDocumentWindowCoverage(),
+            noApplicableAnswerSpans(),
             List.of(),
             List.of());
 
@@ -259,12 +265,15 @@ class BaselineComparatorTest {
         new EvaluationReport(
             1,
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new OneChunkInvariantResult(1458, List.of()),
+            new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()),
             new EvaluationReport.DatasetNotes(121, 94, "note"),
             overallMetrics(),
             Map.of("multi_attribute_filter", currentFilter),
             Map.of(),
             Map.of(),
+            ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+            fullDocumentWindowCoverage(),
+            noApplicableAnswerSpans(),
             List.of(),
             List.of());
 
@@ -311,12 +320,15 @@ class BaselineComparatorTest {
         new EvaluationReport(
             1,
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new OneChunkInvariantResult(1458, List.of()),
+            new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()),
             new EvaluationReport.DatasetNotes(121, 94, "note"),
             overallMetrics(),
             Map.of("numeric_range", currentNumericRange),
             Map.of(),
             Map.of(),
+            ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+            fullDocumentWindowCoverage(),
+            noApplicableAnswerSpans(),
             List.of(),
             List.of());
 
@@ -384,6 +396,8 @@ class BaselineComparatorTest {
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),
             cfg.chunkOverlap(),
+            cfg.documentTopK(),
+            cfg.chunkTopK(),
             50,
             cfg.productionSimilarityThreshold(),
             cfg.similarityThresholdNote(),
@@ -413,7 +427,7 @@ class BaselineComparatorTest {
     var result = BaselineComparator.compare(baseline, report);
 
     assertThat(result.baselineValid()).isTrue();
-    assertThat(result.oneChunkInvariantHolds()).isTrue();
+    assertThat(result.chunkCountInvariantHolds()).isTrue();
     assertThat(result.checks()).isNotEmpty();
     assertThat(result.passed()).isTrue();
   }
@@ -497,18 +511,20 @@ class BaselineComparatorTest {
   }
 
   @Test
-  void failsWhenOneChunkInvariantIsViolated() {
+  void failsWhenChunkCountInvariantIsViolated() {
     Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
     EvaluationReport report =
         reportWith(
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
             overallMetrics(),
-            new OneChunkInvariantResult(
-                1458, List.of(new OneChunkInvariantResult.Violation("comic-0999_x.md", 2))));
+            new ChunkCountInvariantResult(
+                "genau 1 Chunk je Dokument",
+                1458,
+                List.of(new ChunkCountInvariantResult.Violation("comic-0999_x.md", 2))));
 
     var result = BaselineComparator.compare(baseline, report);
 
-    assertThat(result.oneChunkInvariantHolds()).isFalse();
+    assertThat(result.chunkCountInvariantHolds()).isFalse();
     assertThat(result.passed()).isFalse();
   }
 
@@ -543,12 +559,15 @@ class BaselineComparatorTest {
         new EvaluationReport(
             1,
             cfg,
-            new OneChunkInvariantResult(1458, List.of()),
+            new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()),
             new EvaluationReport.DatasetNotes(121, 94, "note"),
             overallMetrics(),
             Map.of("crosslingual", overallMetrics()),
             Map.of(),
             Map.of("de", overallMetrics(), "en", overallMetrics()),
+            ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+            fullDocumentWindowCoverage(),
+            noApplicableAnswerSpans(),
             List.of(),
             List.of());
 
@@ -582,12 +601,15 @@ class BaselineComparatorTest {
         new EvaluationReport(
             1,
             cfg,
-            new OneChunkInvariantResult(1458, List.of()),
+            new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()),
             new EvaluationReport.DatasetNotes(121, 94, "note"),
             overallMetrics(),
             Map.of(),
             Map.of(),
             Map.of("de", overallMetrics()),
+            ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+            fullDocumentWindowCoverage(),
+            noApplicableAnswerSpans(),
             List.of(),
             List.of());
 
@@ -634,6 +656,14 @@ class BaselineComparatorTest {
     return new MetricsAggregate(121, 0.521, 0.461, 0.445, 0.490, 0.9708, 94, 63, 73);
   }
 
+  private static EvaluationReport.DocumentWindowCoverageResult fullDocumentWindowCoverage() {
+    return new EvaluationReport.DocumentWindowCoverageResult(121, 0, 10);
+  }
+
+  private static EvaluationReport.AnswerSpanResolutionResult noApplicableAnswerSpans() {
+    return new EvaluationReport.AnswerSpanResolutionResult(0, List.of());
+  }
+
   private static Baseline.FixedPoints fixedPoints(
       String model, String digest, String corpusSha, String goldenSha) {
     return new Baseline.FixedPoints(
@@ -642,6 +672,9 @@ class BaselineComparatorTest {
         768,
         1000,
         true,
+        0,
+        10,
+        10,
         10,
         0.3,
         "hnsw",
@@ -663,6 +696,8 @@ class BaselineComparatorTest {
         1000,
         true,
         0,
+        10,
+        10,
         10,
         0.3,
         "note",
@@ -691,11 +726,12 @@ class BaselineComparatorTest {
   }
 
   private static EvaluationReport reportWith(RunConfiguration cfg, MetricsAggregate overall) {
-    return reportWith(cfg, overall, new OneChunkInvariantResult(1458, List.of()));
+    return reportWith(
+        cfg, overall, new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()));
   }
 
   private static EvaluationReport reportWith(
-      RunConfiguration cfg, MetricsAggregate overall, OneChunkInvariantResult invariant) {
+      RunConfiguration cfg, MetricsAggregate overall, ChunkCountInvariantResult invariant) {
     return new EvaluationReport(
         1,
         cfg,
@@ -705,7 +741,123 @@ class BaselineComparatorTest {
         Map.of(),
         Map.of(),
         Map.of(),
+        ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+        fullDocumentWindowCoverage(),
+        noApplicableAnswerSpans(),
         List.of(),
         List.of());
+  }
+
+  // --- issue #721 code review, Nit 6: fixed-point drift for the new #721 fixed points -----------
+
+  @Test
+  void detectsChunkOverlapDrift() {
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    RunConfiguration withDifferentChunkOverlap =
+        new RunConfiguration(
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            200,
+            cfg.documentTopK(),
+            cfg.chunkTopK(),
+            cfg.searchTopK(),
+            cfg.productionSimilarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds());
+    EvaluationReport report = reportWith(withDifferentChunkOverlap);
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("chunkOverlap");
+  }
+
+  @Test
+  void detectsDocumentTopKDrift() {
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    RunConfiguration withDifferentDocumentTopK =
+        new RunConfiguration(
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
+            5,
+            cfg.chunkTopK(),
+            cfg.searchTopK(),
+            cfg.productionSimilarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds());
+    EvaluationReport report = reportWith(withDifferentDocumentTopK);
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("documentTopK");
+  }
+
+  @Test
+  void detectsChunkTopKDrift() {
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    RunConfiguration withDifferentChunkTopK =
+        new RunConfiguration(
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
+            cfg.documentTopK(),
+            80,
+            cfg.searchTopK(),
+            cfg.productionSimilarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds());
+    EvaluationReport report = reportWith(withDifferentChunkTopK);
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("chunkTopK");
   }
 }

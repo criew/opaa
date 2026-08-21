@@ -1,0 +1,62 @@
+package io.opaa.eval;
+
+/**
+ * Per-domain configuration for the retrieval harness (issue #721, ADR-0011/ADR-0012 Nachtrag).
+ * {@code RetrievalEvaluationHarnessTest} and {@code checkRetrievalBaseline} used to hardcode
+ * `comic-characters` at four places (corpus directory, manifest, golden dataset, baseline file) —
+ * this record is the single place those four names and the domain's chunk-count expectation live,
+ * so a future domain (#234) supplies its own instance instead of a second hardcoded copy.
+ *
+ * @param name the domain name, matching {@code GoldenCase#domain()} and the corpus directory under
+ *     {@code eval/corpus/<name>/}.
+ * @param goldenDatasetFileName file name under {@code eval/golden/}.
+ * @param baselineFileName file name under {@code eval/baseline/}.
+ * @param chunkCountExpectation what this domain's corpus is expected to look like after the real
+ *     splitter runs (ADR-0010 Nachtrag) — {@code comic-characters} keeps the original, unchanged
+ *     Ein-Chunk-Invariante.
+ * @param documentTopK the document-bound search window (ADR-0012 Nachtrag) — the number of
+ *     *distinct documents* the ranking metrics are computed over, always 10 for both domains today
+ *     (unchanged from the pre-#721 chunk-bound window, which is why it keeps the same name and
+ *     value the class Javadoc of {@link RetrievalMetrics} already documented).
+ * @param maxChunksPerDocument a per-domain upper-bound estimate of chunks per document, used only
+ *     to size the chunk-bound search ({@link DocumentRanking#documentTopKWindowSize}) so that
+ *     deduplication has enough chunks to reach {@code documentTopK} distinct documents. For {@code
+ *     comic-characters} this is 1 (the Ein-Chunk-Invariante guarantees it), which makes {@code
+ *     chunkTopK == documentTopK} — the mechanism behind this PR's bit-identical baseline claim.
+ */
+public record EvalDomainConfig(
+    String name,
+    String goldenDatasetFileName,
+    String baselineFileName,
+    ChunkCountExpectation chunkCountExpectation,
+    int documentTopK,
+    int maxChunksPerDocument) {
+
+  public EvalDomainConfig {
+    if (documentTopK <= 0) {
+      throw new IllegalArgumentException("documentTopK must be positive, got " + documentTopK);
+    }
+    if (maxChunksPerDocument <= 0) {
+      throw new IllegalArgumentException(
+          "maxChunksPerDocument must be positive, got " + maxChunksPerDocument);
+    }
+  }
+
+  /** The chunk-bound search window this domain needs — see the class Javadoc. */
+  public int chunkTopK() {
+    return DocumentRanking.documentTopKWindowSize(documentTopK, maxChunksPerDocument);
+  }
+
+  /**
+   * The frozen comic-characters domain (issues #225–#228): one chunk per document, unchanged from
+   * before #721 in every observable way.
+   */
+  public static final EvalDomainConfig COMIC_CHARACTERS =
+      new EvalDomainConfig(
+          "comic-characters",
+          "comic-characters.json",
+          "comic-characters.json",
+          ChunkCountExpectation.exactlyOneChunk(),
+          10,
+          1);
+}

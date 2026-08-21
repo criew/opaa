@@ -46,7 +46,10 @@ class BaselineRegressionTest {
         JsonMapper.builder()
             .build()
             .readValue(Files.readString(REPORT_FILE), EvaluationReport.class);
-    Path baselineFile = RepoPaths.evalDir().resolve("baseline").resolve("comic-characters.json");
+    Path baselineFile =
+        RepoPaths.evalDir()
+            .resolve("baseline")
+            .resolve(EvalDomainConfig.COMIC_CHARACTERS.baselineFileName());
     Baseline baseline = Baseline.load(baselineFile);
 
     BaselineComparator.ComparisonResult result = BaselineComparator.compare(baseline, report);
@@ -65,10 +68,10 @@ class BaselineRegressionTest {
               + ". Siehe eval/baseline/README.md für die bewusste Baseline-Aktualisierung.");
     }
 
-    assertThat(result.oneChunkInvariantHolds())
+    assertThat(result.chunkCountInvariantHolds())
         .as(
-            "Ein-Chunk-Invariante verletzt (ADR-0010) — harter Fehlschlag, kein Toleranzfall: %s",
-            result.oneChunkInvariantViolations())
+            "Chunk-Zahl-Invariante verletzt (ADR-0010) — harter Fehlschlag, kein Toleranzfall: %s",
+            result.chunkCountInvariantViolations())
         .isTrue();
 
     assertThat(result.failedChecks())

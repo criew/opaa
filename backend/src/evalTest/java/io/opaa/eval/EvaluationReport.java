@@ -7,12 +7,24 @@ import java.util.Map;
 public record EvaluationReport(
     int measurementContractVersion,
     RunConfiguration runConfiguration,
-    OneChunkInvariantResult oneChunkInvariant,
+    ChunkCountInvariantResult chunkCountInvariant,
     DatasetNotes datasetNotes,
     MetricsAggregate overall,
     Map<String, MetricsAggregate> byCategory,
     Map<String, MetricsAggregate> byDifficulty,
     Map<String, MetricsAggregate> byLanguage,
+    // Issue #721, ADR-0012 Nachtrag: the chunk-level answer-span metric family, overall only (not
+    // broken down by category/difficulty/language — the per-query detail in allQueryResults already
+    // lets a reader build any cross-tabulation needed). NOT_APPLICABLE (applicableCases=0) for a
+    // domain whose golden cases carry no answer_span, i.e. comic-characters today.
+    ChunkAnswerSpanMetrics.Aggregate answerSpanOverall,
+    // Issue #721 code review, Wichtig 1: ADR-0012 §8 and the issue's acceptance criteria both
+    // promise an explicit report of whether the document-bound window was actually reached, not
+    // just a silently-computed-and-discarded value — see DocumentWindowCoverageResult's Javadoc.
+    DocumentWindowCoverageResult documentWindowCoverage,
+    // Issue #721 code review, Wichtig 3: whether every applicable answer_span actually resolved to
+    // a chunk of one of its expected_documents — see AnswerSpanResolutionResult's Javadoc.
+    AnswerSpanResolutionResult answerSpanResolution,
     List<WorstQuery> worstQueries,
     List<WorstQuery> allQueryResults) {
 
@@ -20,8 +32,15 @@ public record EvaluationReport(
    * Version of the measurement contract this report was produced under — see ADR-0012. Bump this
    * whenever a change to gain function, IDCG basis, k-windows, threshold handling or the
    * micro/macro averaging choice would make historical reports incomparable to new ones.
+   *
+   * <p><b>Bumped to 2 by issue #721 (ADR-0012 Nachtrag):</b> the k-window is now explicitly
+   * document-bound rather than chunk-bound (see {@link DocumentRanking}), and a second metric
+   * family (chunk-level answer-span) was added. For a one-chunk-per-document corpus the two windows
+   * coincide (see {@code EvalDomainConfig#COMIC_CHARACTERS}), so this version bump changes report
+   * *shape*, not comic-characters' measured *values* — see the PR description's before/after
+   * comparison for the empirical confirmation.
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 1;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 2;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(
@@ -36,6 +55,23 @@ public record EvaluationReport(
       // measured with. On a corpus where the Ein-Chunk-Invariante holds this value cannot change
       // anything — overlap only exists between chunks — which is itself worth having in writing.
       int chunkOverlap,
+      // Issue #721, ADR-0012 Nachtrag: the k-window is now explicitly document-bound. documentTopK
+      // is the number of distinct documents the ranking metrics are computed over (10, unchanged in
+      // value from the pre-#721 chunk-bound topK); chunkTopK is the actual similaritySearch topK
+      // used to reach that many distinct documents after deduplication (DocumentRanking). For
+      // comic-characters chunkTopK == documentTopK == 10, because maxChunksPerDocument == 1.
+      int documentTopK,
+      int chunkTopK,
+      // Kept as a separate field from chunkTopK, not removed, for two reasons (issue #721 code
+      // review, "Klein"): (1) ADR-0012 decision 3 already named searchTopK a fixed point before
+      // #721, and every historical report/baseline written under measurement-contract version 1
+      // uses that name for "the literal topK argument passed to similaritySearch" — chunkTopK is
+      // the #721-introduced name for the same value, derived rather than independently chosen. (2)
+      // The two are only guaranteed equal *by construction* of the harness's own call site (it
+      // passes DOMAIN.chunkTopK() as both), not by any invariant the type system enforces; keeping
+      // both names lets a future refactor that decouples them (unlikely, but not impossible) show
+      // up as a value divergence instead of being silently absorbed by one field standing in for
+      // two concerns.
       int searchTopK,
       double productionSimilarityThreshold,
       String similarityThresholdNote,
@@ -49,17 +85,62 @@ public record EvaluationReport(
       double runDurationSeconds) {}
 
   /**
-   * The Ein-Chunk-Invariante check (ADR-0010): every corpus document must produce exactly one chunk
-   * after the real, production-configured {@code TokenTextSplitter} runs. This is the
-   * beweiskräftige (proof-carrying) check ADR-0010 assigns to this harness — the generator's own
-   * byte-size guard is only a cheap approximation.
+   * The chunk-count invariant check (ADR-0010, made a per-domain property by its #721 Nachtrag):
+   * every corpus document must satisfy the domain's declared {@link ChunkCountExpectation} after
+   * the real, production-configured {@code TokenTextSplitter} runs. This is the beweiskräftige
+   * (proof-carrying) check ADR-0010 assigns to this harness — the generator's own byte-size guard
+   * is only a cheap approximation.
    */
-  public record OneChunkInvariantResult(int documentsChecked, List<Violation> violations) {
+  public record ChunkCountInvariantResult(
+      String expectationDescription, int documentsChecked, List<Violation> violations) {
 
     public record Violation(String fileName, int chunkCount) {}
 
     public boolean holds() {
       return violations.isEmpty();
+    }
+  }
+
+  /**
+   * Whether every query's chunk-bound search actually surfaced {@code documentTopK} distinct
+   * documents after deduplication (issue #721, ADR-0012 §8) — the explicit report the acceptance
+   * criteria promise, instead of {@link DocumentRanking.DocumentWindowResult} being computed per
+   * query and then discarded. {@code queriesBelowDocumentTopK} counts queries where {@link
+   * DocumentRanking.DocumentWindowResult#reachedDocumentTopK()} was {@code false} — expected to be
+   * zero whenever the corpus has comfortably more than {@code documentTopK} documents
+   * (comic-characters: 1448 documents against {@code documentTopK=10}), and asserted as such by the
+   * harness for that domain. {@code minDistinctDocumentsReached} is the smallest per-query {@code
+   * distinctDocumentsReached} seen across the whole run — a single number that makes "did the
+   * window ever come up short, and by how much" readable without scanning {@code allQueryResults}.
+   */
+  public record DocumentWindowCoverageResult(
+      int queriesEvaluated, int queriesBelowDocumentTopK, int minDistinctDocumentsReached) {
+
+    public boolean alwaysReachedDocumentTopK() {
+      return queriesBelowDocumentTopK == 0;
+    }
+  }
+
+  /**
+   * Whether every applicable {@code answer_span} (issue #721) actually resolved to at least one
+   * chunk of at least one of its {@code expected_documents} (issue #721 code review, Wichtig 3). An
+   * unresolved span — a typo, a whitespace difference {@link SpanMatcher} does not absorb, or a
+   * chunking-parameter change that pushed the span across a chunk boundary — is numerically
+   * indistinguishable from a genuine retrieval failure: both make {@link
+   * ChunkAnswerSpanMetrics#evaluate} return {@code spanChunkRank=-1}. Left unchecked, a chunking
+   * change could look like a chunk-level regression when it is actually a broken fixture, exactly
+   * the failure mode {@code boundary_span} golden cases (#234) are meant to detect on purpose — the
+   * measurement would be silently wrong about which of the two happened.
+   *
+   * <p>The harness treats a non-empty {@code unresolvedCaseIds} as a hard abort for any domain that
+   * declares at least one {@code answer_span} case (mirrors {@link ChunkCountInvariantResult}: a
+   * broken measurement precondition, not a tolerance case). For {@code comic-characters} ({@code
+   * applicableCases=0}) this can never fire.
+   */
+  public record AnswerSpanResolutionResult(int applicableCases, List<String> unresolvedCaseIds) {
+
+    public boolean allResolved() {
+      return unresolvedCaseIds.isEmpty();
     }
   }
 

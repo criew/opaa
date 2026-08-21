@@ -7,13 +7,15 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Volume;
 import io.opaa.auth.SystemRole;
+import io.opaa.eval.EvaluationReport.ChunkCountInvariantResult;
 import io.opaa.eval.EvaluationReport.DatasetNotes;
-import io.opaa.eval.EvaluationReport.OneChunkInvariantResult;
 import io.opaa.eval.EvaluationReport.RunConfiguration;
 import io.opaa.eval.EvaluationReport.WorstQuery;
+import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobRepository;
@@ -35,9 +37,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -69,11 +71,14 @@ import tools.jackson.databind.json.JsonMapper;
  * VectorStore#similaritySearch}. No LLM, no {@code QueryService} — retrieval-only, per ADR-0011
  * decision 3.
  *
- * <p>Also carries out the Ein-Chunk-Invariante check ADR-0010 assigns to this harness: the
+ * <p>Also carries out the domain's chunk-count invariant check ADR-0010 assigns to this harness
+ * (see {@link ChunkCountExpectation}) — for comic-characters ({@link
+ * EvalDomainConfig#COMIC_CHARACTERS}) that is still, unchanged, the Ein-Chunk-Invariante: the
  * generator's own byte-size guard is only a cheap approximation, this is the proof.
  *
  * <p>The measurement contract this harness implements (gain function, IDCG basis, k-windows,
- * threshold handling, micro- vs. macro-averaging) is pinned in ADR-0012, versioned via {@link
+ * threshold handling, micro- vs. macro-averaging, the document-bound window from {@link
+ * DocumentRanking}) is pinned in ADR-0012, versioned via {@link
  * EvaluationReport#CURRENT_MEASUREMENT_CONTRACT_VERSION}.
  *
  * <p>Deliberately not part of {@code ./gradlew build}/{@code test} — see the {@code evalTest}
@@ -121,7 +126,10 @@ class RetrievalEvaluationHarnessTest {
 
   private static volatile String actualEmbeddingModelDigest;
 
-  private static final int SEARCH_TOP_K = 10;
+  // Issue #721: comic-characters' domain configuration — chunk-count expectation, document-bound
+  // k-window, chunk-search sizing. See EvalDomainConfig's Javadoc for why chunkTopK() == 10 here
+  // (maxChunksPerDocument=1), which is the mechanism behind this PR's bit-identical-baseline claim.
+  private static final EvalDomainConfig DOMAIN = EvalDomainConfig.COMIC_CHARACTERS;
 
   // The production query-time default (opaa.query.similarity-threshold); reported for context but
   // deliberately NOT applied to the searches below — see the "similarityThresholdNote" in the
@@ -327,6 +335,11 @@ class RetrievalEvaluationHarnessTest {
   @Autowired private IndexingProperties indexingProperties;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  // Issue #721: reused, not reimplemented, to build the chunk map — the same production beans
+  // FileProcessingService drives (see its Javadoc), so the chunk texts the map is built from are
+  // exactly what was actually indexed, not a second, potentially drifting re-implementation.
+  @Autowired private DocumentService documentService;
+  @Autowired private ChunkingService chunkingService;
 
   // #419: triggerIndexing needs a caller-chosen target library and an authorized caller -
   // set up once per run, not pinned to a well-known system library id, since #419 already stopped
@@ -395,9 +408,9 @@ class RetrievalEvaluationHarnessTest {
     Instant runStart = Instant.now();
 
     Path evalDir = RepoPaths.evalDir();
-    Path corpusDir = evalDir.resolve("corpus").resolve("comic-characters");
+    Path corpusDir = evalDir.resolve("corpus").resolve(DOMAIN.name());
     Path manifestFile = corpusDir.resolve("MANIFEST.sha256");
-    Path goldenFile = evalDir.resolve("golden").resolve("comic-characters.json");
+    Path goldenFile = evalDir.resolve("golden").resolve(DOMAIN.goldenDatasetFileName());
 
     // 1. Manifest verification — abort loudly on any manipulated byte (ADR-0011, decision 1 and 6;
     //    issue #227 acceptance criteria).
@@ -438,39 +451,202 @@ class RetrievalEvaluationHarnessTest {
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(manifest.fileNames().size());
     log.info("Indexed {} documents", completedJob.getDocumentsProcessed());
 
-    // 3. Ein-Chunk-Invariante (ADR-0010): the real, production-configured TokenTextSplitter just
-    //    ran. Verify every document produced exactly one chunk — the beweiskräftige check the
-    //    generator's own byte-size guard cannot provide.
+    // 3. Chunk-count invariant (ADR-0010, Nachtrag #721): the real, production-configured
+    //    TokenTextSplitter just ran. Verify every document satisfies the domain's declared
+    //    expectation — for comic-characters that is still, unchanged, "exactly one chunk".
     List<Document> documents = documentRepository.findAll();
-    List<OneChunkInvariantResult.Violation> chunkViolations =
+    List<ChunkCountExpectation.DocumentChunkCount> documentChunkCounts =
         documents.stream()
-            .filter(d -> d.getChunkCount() != 1)
-            .map(d -> new OneChunkInvariantResult.Violation(d.getFileName(), d.getChunkCount()))
-            .sorted(Comparator.comparing(OneChunkInvariantResult.Violation::fileName))
+            .map(
+                d ->
+                    new ChunkCountExpectation.DocumentChunkCount(
+                        d.getFileName(), d.getChunkCount()))
             .toList();
-    OneChunkInvariantResult invariantResult =
-        new OneChunkInvariantResult(documents.size(), chunkViolations);
+    List<ChunkCountExpectation.Violation> expectationViolations =
+        DOMAIN.chunkCountExpectation().violations(documentChunkCounts);
+    List<ChunkCountInvariantResult.Violation> chunkViolations =
+        expectationViolations.stream()
+            .map(v -> new ChunkCountInvariantResult.Violation(v.fileName(), v.chunkCount()))
+            .sorted(Comparator.comparing(ChunkCountInvariantResult.Violation::fileName))
+            .toList();
+    ChunkCountInvariantResult invariantResult =
+        new ChunkCountInvariantResult(
+            DOMAIN.chunkCountExpectation().describe(), documents.size(), chunkViolations);
     assertThat(chunkViolations)
         .as(
-            "every corpus document must produce exactly one chunk (ADR-0010) — violated by: %s",
-            chunkViolations)
+            "every corpus document must satisfy '%s' (ADR-0010) — violated by: %s",
+            DOMAIN.chunkCountExpectation().describe(), chunkViolations)
         .isEmpty();
-    log.info("Ein-Chunk-Invariante holds for all {} documents", documents.size());
+    log.info(
+        "Chunk-count invariant ('{}') holds for all {} documents",
+        DOMAIN.chunkCountExpectation().describe(),
+        documents.size());
 
-    // 4. Run every golden query directly against the vector store — retrieval only, no LLM.
+    // 3b. Issue #721 code review, Nit 4: EvalDomainConfig.maxChunksPerDocument sizes chunkTopK
+    //     (DocumentRanking#documentTopKWindowSize) but was never checked against reality — an
+    //     undersized declared value would silently undersize chunkTopK and DocumentRanking could
+    //     then fail to reach documentTopK distinct documents without any assertion catching why.
+    int measuredMaxChunksPerDocument =
+        documentChunkCounts.stream()
+            .mapToInt(ChunkCountExpectation.DocumentChunkCount::chunkCount)
+            .max()
+            .orElse(0);
+    assertThat(measuredMaxChunksPerDocument)
+        .as(
+            "EvalDomainConfig.maxChunksPerDocument (%d) must be >= the actually measured maximum "
+                + "chunk count per document (%d) in this run — otherwise chunkTopK "
+                + "(documentTopK * maxChunksPerDocument) is undersized and DocumentRanking cannot "
+                + "reliably reach documentTopK distinct documents after deduplication",
+            DOMAIN.maxChunksPerDocument(), measuredMaxChunksPerDocument)
+        .isLessThanOrEqualTo(DOMAIN.maxChunksPerDocument());
+
+    // 4. Run every golden query directly against the vector store — retrieval only, no LLM. The
+    //    chunk-search window is sized so deduplication (DocumentRanking) can reach documentTopK
+    //    distinct documents (ADR-0012 Nachtrag, issue #721) — for comic-characters chunkTopK ==
+    //    documentTopK == 10 because maxChunksPerDocument == 1, so this is the same search as before
+    //    #721 in every observable way.
     List<GoldenCase> goldenCases = GoldenDataset.load(goldenFile);
     List<RetrievalMetrics.QueryResult> results = new ArrayList<>(goldenCases.size());
+    List<ChunkAnswerSpanMetrics.ChunkQueryResult> answerSpanResults = new ArrayList<>();
+    List<DocumentRanking.DocumentWindowResult> windowResults = new ArrayList<>(goldenCases.size());
     for (GoldenCase goldenCase : goldenCases) {
       List<org.springframework.ai.document.Document> hits =
           vectorStore.similaritySearch(
               SearchRequest.builder()
                   .query(goldenCase.query())
-                  .topK(SEARCH_TOP_K)
+                  .topK(DOMAIN.chunkTopK())
                   .similarityThreshold(0.0)
                   .build());
-      results.add(RetrievalMetrics.evaluate(goldenCase, dedupeByFileName(hits)));
+      List<String> rankedChunkFileNames =
+          hits.stream()
+              .map(h -> h.getMetadata().get("file_name"))
+              .map(v -> v == null ? null : v.toString())
+              .toList();
+      var windowResult =
+          DocumentRanking.applyDocumentWindow(rankedChunkFileNames, DOMAIN.documentTopK());
+      windowResults.add(windowResult);
+      results.add(RetrievalMetrics.evaluate(goldenCase, windowResult.rankedFileNames()));
+
+      if (ChunkAnswerSpanMetrics.isApplicable(goldenCase)) {
+        List<String> rankedChunkTexts =
+            hits.stream().map(org.springframework.ai.document.Document::getText).toList();
+        answerSpanResults.add(ChunkAnswerSpanMetrics.evaluate(goldenCase, rankedChunkTexts));
+      }
     }
     log.info("Evaluated {} golden queries", results.size());
+    ChunkAnswerSpanMetrics.Aggregate answerSpanOverall =
+        ChunkAnswerSpanMetrics.aggregate(answerSpanResults);
+
+    // 4a. Issue #721 code review, Wichtig 1: ADR-0012 §8 and the issue's acceptance criteria
+    //     promise an explicit report of whether the document-bound window was actually reached —
+    //     compute it from the per-query DocumentWindowResult instead of discarding those values.
+    int queriesBelowDocumentTopK =
+        (int) windowResults.stream().filter(w -> !w.reachedDocumentTopK()).count();
+    int minDistinctDocumentsReached =
+        windowResults.stream()
+            .mapToInt(DocumentRanking.DocumentWindowResult::distinctDocumentsReached)
+            .min()
+            .orElse(0);
+    EvaluationReport.DocumentWindowCoverageResult documentWindowCoverage =
+        new EvaluationReport.DocumentWindowCoverageResult(
+            windowResults.size(), queriesBelowDocumentTopK, minDistinctDocumentsReached);
+    // comic-characters' corpus (1448 documents) is comfortably larger than documentTopK=10, so
+    // every query's chunk-bound search must reach the full document window — a query that does not
+    // would mean either a corpus/index problem or an undersized chunkTopK, not a fact about this
+    // domain the harness should silently accept. A future, deliberately small domain would need to
+    // relax or replace this assertion, not this domain.
+    assertThat(documentWindowCoverage.alwaysReachedDocumentTopK())
+        .as(
+            "%d of %d queries did not reach documentTopK=%d distinct documents (min reached: %d) "
+                + "— unexpected for a corpus of %d documents",
+            queriesBelowDocumentTopK,
+            windowResults.size(),
+            DOMAIN.documentTopK(),
+            minDistinctDocumentsReached,
+            manifest.fileNames().size())
+        .isTrue();
+    log.info(
+        "Document window coverage: {} distinct documents reached at minimum across {} queries "
+            + "(documentTopK={})",
+        minDistinctDocumentsReached,
+        windowResults.size(),
+        DOMAIN.documentTopK());
+
+    // 4b. Chunk map (issue #721): re-derive each document's real chunk texts through the same
+    //     production beans FileProcessingService uses (DocumentService/ChunkingService), so the map
+    //     reflects exactly what was indexed. Docker-free in principle (no embedding call needed),
+    //     kept here so the map always matches the corpus this specific run actually verified
+    // against
+    //     the manifest, rather than risking drift from a separately invoked step.
+    Map<String, String> answerSpansByCaseId = new LinkedHashMap<>();
+    for (GoldenCase goldenCase : goldenCases) {
+      if (ChunkAnswerSpanMetrics.isApplicable(goldenCase)) {
+        answerSpansByCaseId.put(goldenCase.id(), goldenCase.answerSpan());
+      }
+    }
+    List<ChunkMap.DocumentChunkMap> chunkMaps = new ArrayList<>(manifest.fileNames().size());
+    for (String fileName : manifest.fileNames()) {
+      Path file = corpusDir.resolve(fileName);
+      List<org.springframework.ai.document.Document> parsed = documentService.parseDocument(file);
+      String documentText =
+          parsed.stream()
+              .map(org.springframework.ai.document.Document::getText)
+              .reduce("", String::concat);
+      List<org.springframework.ai.document.Document> chunks =
+          chunkingService.chunkDocuments(fileName, parsed);
+      List<String> chunkTexts =
+          chunks.stream().map(org.springframework.ai.document.Document::getText).toList();
+      Map<String, String> spansForThisDocument = new LinkedHashMap<>();
+      for (GoldenCase goldenCase : goldenCases) {
+        String span = answerSpansByCaseId.get(goldenCase.id());
+        if (span != null && goldenCase.expectedDocuments().contains(fileName)) {
+          spansForThisDocument.put(goldenCase.id(), span);
+        }
+      }
+      chunkMaps.add(ChunkMap.build(fileName, documentText, chunkTexts, spansForThisDocument));
+    }
+    Path chunkMapFile = Path.of("build", "eval-reports", "chunk-map-" + DOMAIN.name() + ".json");
+    ChunkMapWriter.write(chunkMaps, chunkMapFile);
+    log.info("Chunk map written to {}", chunkMapFile.toAbsolutePath());
+
+    // 4c. Issue #721 code review, Wichtig 3: an answer_span that never resolves to any chunk of any
+    //     of its expected_documents (typo, a whitespace difference SpanMatcher does not absorb, or
+    //     a chunking-parameter change that pushed it across a chunk boundary) is numerically
+    //     indistinguishable from a genuine retrieval failure — both make spanChunkRank=-1. Detect
+    // it
+    //     explicitly instead of letting it silently masquerade as a chunk-level regression.
+    java.util.Set<String> resolvedAnswerSpanCaseIds = new java.util.LinkedHashSet<>();
+    for (var documentChunkMap : chunkMaps) {
+      resolvedAnswerSpanCaseIds.addAll(documentChunkMap.answerSpanChunkIndexByCaseId().keySet());
+    }
+    List<String> unresolvedAnswerSpanCaseIds =
+        answerSpansByCaseId.keySet().stream()
+            .filter(caseId -> !resolvedAnswerSpanCaseIds.contains(caseId))
+            .sorted()
+            .toList();
+    EvaluationReport.AnswerSpanResolutionResult answerSpanResolution =
+        new EvaluationReport.AnswerSpanResolutionResult(
+            answerSpansByCaseId.size(), unresolvedAnswerSpanCaseIds);
+    // Only a hard abort for a domain that actually declares answer_span cases (comic-characters
+    // declares none, so this can never fire here) — mirrors the chunk-count invariant's severity:
+    // a broken measurement precondition, not a tolerance case.
+    if (!answerSpansByCaseId.isEmpty()) {
+      assertThat(answerSpanResolution.allResolved())
+          .as(
+              "%d of %d applicable answer_span cases did not resolve to any chunk of any of their "
+                  + "expected_documents (ADR-0012 §9) — unresolved case ids: %s. This is either a "
+                  + "broken golden-dataset fixture (typo, unabsorbed whitespace difference) or a "
+                  + "chunking-parameter change that pushed the span across a chunk boundary; either "
+                  + "way it must not be measured as a chunk-level regression",
+              unresolvedAnswerSpanCaseIds.size(),
+              answerSpansByCaseId.size(),
+              unresolvedAnswerSpanCaseIds)
+          .isTrue();
+    }
+    log.info(
+        "Answer-span resolution: {} of {} applicable cases resolved",
+        answerSpansByCaseId.size() - unresolvedAnswerSpanCaseIds.size(),
+        answerSpansByCaseId.size());
 
     // 5. Aggregate and write the report.
     MetricsAggregate overall = MetricsAggregate.of(results);
@@ -512,7 +688,9 @@ class RetrievalEvaluationHarnessTest {
             actualChunkSize,
             actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
             indexingProperties.chunkOverlap(),
-            SEARCH_TOP_K,
+            DOMAIN.documentTopK(),
+            DOMAIN.chunkTopK(),
+            DOMAIN.chunkTopK(),
             PRODUCTION_SIMILARITY_THRESHOLD,
             "similarityThreshold=0.0 was used for every search in this run, not the production "
                 + "default above — ranking metrics need the full, unfiltered top-k order; production "
@@ -520,7 +698,7 @@ class RetrievalEvaluationHarnessTest {
             PGVECTOR_INDEX_TYPE,
             CorpusManifest.sha256Hex(manifestFile),
             manifest.fileNames().size(),
-            "eval/golden/comic-characters.json",
+            "eval/golden/" + DOMAIN.goldenDatasetFileName(),
             GoldenDataset.sha256(goldenFile),
             goldenCases.size(),
             runStart.toString(),
@@ -536,6 +714,9 @@ class RetrievalEvaluationHarnessTest {
             byCategory,
             byDifficulty,
             byLanguage,
+            answerSpanOverall,
+            documentWindowCoverage,
+            answerSpanResolution,
             worstQueries,
             allQueryResults);
 
@@ -559,18 +740,6 @@ class RetrievalEvaluationHarnessTest {
         r.recallAt10(),
         r.goldenCase().expectedDocuments(),
         r.rankedFileNames());
-  }
-
-  private static List<String> dedupeByFileName(
-      List<org.springframework.ai.document.Document> hits) {
-    Set<String> seen = new LinkedHashSet<>();
-    for (var hit : hits) {
-      Object fileName = hit.getMetadata().get("file_name");
-      if (fileName != null) {
-        seen.add(fileName.toString());
-      }
-    }
-    return List.copyOf(seen);
   }
 
   /**

@@ -2,7 +2,10 @@
 
 ## Status
 
-Vorgeschlagen
+Akzeptiert — ergänzt um den [Nachtrag vom 2026-08-21](#nachtrag-die-invariante-wird-eine-domänen-eigenschaft-issue-721)
+(Maintainer-Entscheidung zu Issue #721/#234: die Invariante ist eine Eigenschaft der jeweiligen
+Domäne, nicht ein globales Gesetz des Evaluierungskorpus; die ursprüngliche Entscheidung für
+`comic-characters` bleibt unverändert in Kraft).
 
 ## Kontext
 
@@ -112,3 +115,60 @@ Die „4 KB"-Grenze in den Abnahmekriterien von Issue #225 ist die ursprünglich
 Byte/Token-Ungenauigkeit, die dieses ADR behebt. Sie sollte dort und im Nachfolge-Issue #234
 korrigiert werden — entweder als Token-Budget oder mit einem expliziten Hinweis, dass es sich um
 eine konservative Annäherung handelt, keine Garantie.
+
+---
+
+## Nachtrag: Die Invariante wird eine Domänen-Eigenschaft (Issue #721)
+
+> **Nachtrag vom 2026-08-21, Maintainer-Entscheidung zu Issue #721/#234 (akzeptiert, nicht mehr
+> „proposed").** Dieser ADR ist bereits akzeptiert und wird deshalb nicht still umgeschrieben —
+> dieser Abschnitt hält fest, was sich ändert und was unverändert bleibt.
+
+### Was sich ändert
+
+Die Entscheidung oben formuliert die Invariante als Eigenschaft „des Evaluierungskorpus" — implizit
+also von `comic-characters`, der einzigen Domäne, die es zum Zeitpunkt der ursprünglichen Entscheidung
+gab. Issue #234 bringt mit „Sehenswürdigkeiten in europäischen Großstädten" eine zweite Domäne, die
+**bewusst mehrchunkig** ist — der ganze Zweck dieser Domäne ist, eine Chunk-Grenze überhaupt erst
+messbar zu machen (siehe Issue #721, Kontext). Eine wörtliche Anwendung der Ein-Chunk-Invariante auf
+diese Domäne würde den Harness an der allerersten Prüfung abbrechen lassen, bevor eine einzige Metrik
+entsteht.
+
+**Entscheidung:** Die Invariante wird eine **Domänen-Eigenschaft**, kein globales Gesetz des
+Harnesses. Jede Domäne deklariert eine `ChunkCountExpectation` (`io.opaa.eval`,
+`backend/src/evalTest/java/io/opaa/eval/`):
+
+- `ONE_CHUNK` — jedes Dokument muss **genau** einen Chunk ergeben. Das ist exakt die oben getroffene
+  Entscheidung, unverändert für `comic-characters`: derselbe Mechanismus (Prüfung (c), der reale
+  Java-Harness gegen den echten `TokenTextSplitter`), dieselbe Wortwahl, derselbe harte Abbruch bei
+  Verletzung.
+- `MIN_CHUNKS_PER_DOCUMENT` — jedes Dokument muss **mindestens** eine deklarierte Zahl Chunks
+  ergeben (Vorgabe für #234: 3). Eine **Mehr-Chunk-Invariante**, derselbe Mechanismus wie oben,
+  gespiegelt: Ein Dokument, das entgegen der Erwartung auf einen einzigen Chunk kollabiert, ist
+  ebenso ein Alarm wie ein `comic-characters`-Dokument, das unerwartet in zwei Chunks zerfällt.
+
+Beide Formen sind ein und derselbe Mechanismus — eine erwartete Chunk-Zahl-Eigenschaft je Domäne, die
+bei Verletzung den Lauf abbricht —, nicht zwei getrennte Prüfungen. `ChunkCountExpectation.violations`
+ist eine reine, Docker-freie Funktion (unit-getestet in `ChunkCountExpectationTest`, Teil von
+`evalUnitTest`) und dieselbe Klasse berechnet beide Fälle.
+
+### Was unverändert bleibt
+
+- **Für `comic-characters` ändert sich nichts Beobachtbares.** `EvalDomainConfig.COMIC_CHARACTERS`
+  deklariert `ChunkCountExpectation.exactlyOneChunk()` — bitgleiches Verhalten zur Entscheidung oben,
+  bitgleicher Abbruch bei Verletzung, bitgleiche Baseline-Zahlen (siehe die PR-#721-Beschreibung für
+  den empirischen Nachweis).
+- **Die Zwei-Ebenen-Absicherung (b)+(c) bleibt unverändert der gewählte Mechanismus.** Eine künftige
+  mehrchunkige Domäne bekommt ihre eigene, dort dokumentierte Vorabprüfung im Generator (Analogon zu
+  `MAX_DOCUMENT_BYTES`, hier als Mindest- statt Höchstgrenze) plus dieselbe beweiskräftige
+  Java-Harness-Prüfung — nur die Richtung der Grenze dreht sich um.
+- **Die Konsequenzen-Abschnitte oben gelten unverändert weiter.** Insbesondere: Ein grüner
+  Generator-Lauf beweist auch für eine Mehr-Chunk-Domäne die Invariante nicht; erst ein grüner
+  Harness-Lauf tut das.
+
+### Warum keine Neufassung
+
+Eine Neufassung hätte den historischen Kontext (die ursprüngliche Byte/Token-Ungenauigkeit aus PR
+#249, die Optionsabwägung a/b/c) unnötig verschüttet — dieser Nachtrag ändert die **Reichweite** der
+Entscheidung (eine Domäne statt aller), nicht ihre **Begründung** (warum eine harte, beweiskräftige
+Prüfung nötig ist). Dasselbe Muster wie der bestehende Nachtrag zu ADR-0011.

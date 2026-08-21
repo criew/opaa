@@ -22,11 +22,15 @@ ausgewertet wird sie von `io.opaa.eval.Baseline`/`io.opaa.eval.BaselineComparato
   Embedding-Modell samt Digest und Dimensionen, Chunk-Größe, `searchTopK`,
   `productionSimilarityThreshold`, `pgvectorIndexType`, Korpus- und Golden-Dataset-Hash,
   Messvertrag-Version (ADR-0013, Entscheidung 5 — die letzten drei kamen im Review zu PR #301
-  hinzu, weil sie ebenfalls Teil des Messvertrags nach ADR-0012 sind, nicht nur Metadaten). Weicht
-  auch nur eines davon vom aktuellen Lauf ab, ist die Baseline **ungültig** für diesen Lauf — der
-  Job meldet das ausdrücklich als "Baseline ungültig, Messgrundlage geändert" und vergleicht dann
-  **keine** Metrik, weil ein Vergleich unter unterschiedlicher Messgrundlage keine Aussage über
-  Retrieval-Qualität wäre (siehe ADR-0011, Konsequenzen; ADR-0012, Entscheidung 6).
+  hinzu, weil sie ebenfalls Teil des Messvertrags nach ADR-0012 sind, nicht nur Metadaten). Seit
+  Issue #721 (Messvertrag-Version 2, ADR-0012 Nachtrag) zusätzlich `chunkOverlap` (vorher nur
+  Report-Metadatum — für eine einchunkige Domäne folgenlos, für eine mehrchunkige aber
+  messgrundlagenbestimmend) sowie `documentTopK`/`chunkTopK` (das jetzt ausdrücklich
+  dokumentbezogene k-Fenster, siehe `io.opaa.eval.DocumentRanking`). Weicht auch nur eines davon
+  vom aktuellen Lauf ab, ist die Baseline **ungültig** für diesen Lauf — der Job meldet das
+  ausdrücklich als "Baseline ungültig, Messgrundlage geändert" und vergleicht dann **keine** Metrik,
+  weil ein Vergleich unter unterschiedlicher Messgrundlage keine Aussage über Retrieval-Qualität
+  wäre (siehe ADR-0011, Konsequenzen; ADR-0012, Entscheidung 6).
 - **`groups`** enthält die vier Kernmetriken (`hitRateAt5`, `mrr`, `ndcgAt10`, `recallAt10`) plus
   `recallAt10Ceiling`, `distinctExpectedDocumentSets` (die Grundgröße der Toleranzformel unten,
   `n_eff`) und `hitCountAt5`/`hitCountAt10` (Issue #306 — Zahl der Fälle mit einem Treffer in den
@@ -51,6 +55,22 @@ Verschiebung von 0,463 auf 0,445 bei identischem Korpus und identischer Golden-D
 der empirische Beleg dafür, dass `:latest` ohne Digest-Pin keine stabile Messgrundlage ist (siehe
 ADR-0011, Entscheidung 4, und den Digest-Assertion-Mechanismus in
 `RetrievalEvaluationHarnessTest`).
+
+### Neuziehung unter Messvertrag-Version 2 (Issue #721)
+
+Issue #721 macht den Harness mehrchunkfähig (dokumentbezogenes k-Fenster, je Domäne konfigurierbare
+Chunk-Zahl-Invariante, zweite Metrikfamilie auf Chunkebene — siehe ADR-0010/ADR-0012, jeweils
+Nachtrag). Das erhöht `measurementContractVersion` auf 2, was diese Baseline formal ungültig macht —
+sie wurde im selben PR mit einem frischen `evaluateRetrieval`-Lauf neu gezogen.
+
+**Erwartung: bitgleiche Zahlen.** `comic-characters` erfüllt weiterhin die Ein-Chunk-Invariante
+(`maxChunksPerDocument=1`), wodurch `chunkTopK == documentTopK == 10` gilt — die neue,
+dokumentbezogene Deduplizierung (`io.opaa.eval.DocumentRanking`) entfernt bei dieser Domäne nichts,
+das die alte, chunkbezogene Suche nicht auch schon als eindeutiges Dokument gesehen hätte. Die
+Chunkebenen-Metrik liefert `NOT_APPLICABLE` (kein `answer_span` in `comic-characters.json`). Der
+Vorher/Nachher-Vergleich der vier Kernmetriken (alte Baseline unter Vertrag Version 1 gegen den neuen
+Lauf unter Version 2) steht in der PR-Beschreibung zu Issue #721 — Abweichungen wären dort einzeln zu
+benennen und zu begründen; erwartet wird keine.
 
 ## Toleranzen je Gruppe (ADR-0013)
 
@@ -298,6 +318,20 @@ das die Änderung verursacht, damit Ursache und neue Zahl im selben Review sicht
    direkt im JSON-Report unter `allQueryResults` (Zahl der Fälle mit `hitRateAt5 > 0` bzw.
    `ndcgAt10 > 0`) und müssen aus demselben Lauf stammen wie die vier Mittelwerte, nicht separat
    nachgerechnet werden.
+
+   **Verbindliche Rundungsregel (Issue #721 code review, Nit 5):** Die vier gerundeten Mittelwerte
+   je Gruppe werden **wörtlich aus der `%.3f`-Textausgabe von `ReportWriter.renderSummary`**
+   übernommen (Konsolen-Log des Laufs bzw. `backend/build/eval-reports/`-Textausgabe), nie separat
+   von Hand oder mit einem anderen Werkzeug (Python, Taschenrechner, `BigDecimal`) nachgerundet.
+   Java rundet `String.format(Locale.ROOT, "%.3f", d)` über die kürzeste round-trip-fähige
+   Dezimaldarstellung von `d` (dieselbe wie `Double.toString`), **nicht** über den exakten
+   Binärwert — für einen Mittelwert, der exakt auf einer Rundungsgrenze liegt (z. B. `36.5/40 =
+   0.9125`), kann das von einer naiven Nachrundung des rohen `double`-Werts abweichen (siehe die
+   Begründung in `git log` zu dieser Zeile: `difficulty:easy`/`mrr` war in einer früheren,
+   von Hand eingetragenen Baseline-Fassung als `0.912` notiert, während der tatsächliche
+   `ReportWriter`-Output für denselben Wert `0.913` liefert — verifiziert direkt gegen die JVM,
+   nicht nur behauptet). Die `%.3f`-Ausgabe ist die einzige Quelle der Wahrheit für die
+   gerundete Baseline-Zahl.
 5. Wie jede andere Code-Änderung: Code Reviewer prüft den PR, ein Maintainer merged.
 
 **Nicht** ausreichend: Die Baseline-Datei ohne einen tatsächlichen `evaluateRetrieval`-Lauf von Hand

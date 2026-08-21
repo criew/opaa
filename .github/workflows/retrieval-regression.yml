@@ -73,6 +73,16 @@ jobs:
     # auf 45 Minuten und muss unter `timeout-minutes` bleiben, damit eine hängende Indizierung als
     # diagnostizierbarer Testfehlschlag endet statt als abgebrochener Job. Wer eines der beiden
     # Limits anfasst, prüft das andere mit.
+    #
+    # Update (Issue #721): der Harness unterstützt jetzt mehrchunkige Domänen (dokumentbezogenes
+    # k-Fenster, siehe ADR-0012 Nachtrag) — bewusst geprüft, ob dieses Budget dadurch schon jetzt
+    # angepasst werden muss. Für comic-characters (Ein-Chunk-Invariante, maxChunksPerDocument=1)
+    # ist chunkTopK == documentTopK == 10, also dieselbe Chunk-Zahl je Anfrage wie vor #721 — keine
+    # Laufzeitänderung. Die Chunk-Map-Erzeugung (neuer Schritt, io.opaa.eval.ChunkMap) parst und
+    # chunked den Korpus ein zweites Mal, aber ohne Embedding-Aufruf (kein Ollama-Roundtrip je
+    # Dokument) — die dominante, sequenzielle Ollama-Embedding-Latenz bleibt unverändert. Das
+    # Budget steigt erst mit der mehrchunkigen Domäne aus #234, dann anhand einer echten Messung
+    # ihres Korpus, nicht spekulativ hier.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -210,6 +220,7 @@ jobs:
           path: |
             backend/build/eval-reports/retrieval-metrics.json
             backend/build/eval-reports/baseline-comparison.md
+            backend/build/eval-reports/chunk-map-comic-characters.json
           if-no-files-found: warn
           retention-days: 90
 
