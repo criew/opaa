@@ -88,16 +88,23 @@ class RssFeedIndexingExecutorTest {
   }
 
   private RssFeedIndexingExecutor newExecutor(IndexingProperties.Rss rss) {
-    IndexingProperties properties = new IndexingProperties(null, 0, 0, 0, 0, null, rss, null, null);
+    IndexingProperties properties =
+        new IndexingProperties(null, 0, 0, 0, 0, null, rss, null, null, null);
+    // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest,
+    // RssFeedIndexingExecutorTargetValidationTest) - disabled here since every stub server this
+    // class talks to is deliberately loopback (com.sun.net.httpserver.HttpServer, #467's own
+    // acceptance criteria), which an enabled validator would reject by default.
+    TargetAddressValidator targetAddressValidator = TargetAddressValidator.disabled();
     return new RssFeedIndexingExecutor(
         new RssFeedParser(),
         fileProcessingService,
         indexingJobService,
         documentRepository,
         feedStateRepository,
-        new UrlFileDownloader(),
+        new UrlFileDownloader(targetAddressValidator),
         properties,
-        indexingRunEventRepository);
+        indexingRunEventRepository,
+        targetAddressValidator);
   }
 
   @AfterEach
@@ -677,8 +684,54 @@ class RssFeedIndexingExecutorTest {
                 event ->
                     event.getCategory() == IndexingEventCategory.REJECTED
                         && (baseUrl + "/a.html").equals(event.getReference())
+                        // Maintainer nachtrag to #693 (21.08.2026): a rejected redirect gets its
+                        // own, distinguishable message ("...auf einen fremden Host abgelehnt"),
+                        // not the generic HTTP-status wording ("abgewiesen") #513 introduced for
+                        // a 403/429 response.
                         && event.getMessage() != null
-                        && event.getMessage().contains("abgewiesen")));
+                        && event.getMessage().contains("fremden Host")));
+  }
+
+  @Test
+  void aRejectedRedirectsMessageNeverCarriesTheFullTargetUrlOnlyItsSanitizedOrigin() {
+    // Maintainer nachtrag to #693 (21.08.2026): the redirect's own Location header is
+    // server-controlled input that can carry a token or other sensitive query parameter - the
+    // run-log message must name only the rejected target's scheme and host, never its path or
+    // query. The pre-existing #513 comment on isForeignHostRedirect ("must never reach the UI")
+    // is about the *unsanitized* raw target this test's foreign server URL below stands in for.
+    serve(
+        "/feed.xml",
+        200,
+        "application/rss+xml",
+        feedXml(baseUrl + "/a.html", baseUrl + "/ok.html"));
+    server.createContext(
+        "/a.html",
+        exchange -> {
+          exchange
+              .getResponseHeaders()
+              .set("Location", "https://angreifer.invalid/pfad?token=geheimwert");
+          exchange.sendResponseHeaders(302, -1);
+          exchange.close();
+        });
+    serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && (baseUrl + "/a.html").equals(event.getReference())
+                        && event.getMessage() != null
+                        && event.getMessage().contains("https://angreifer.invalid")
+                        && !event.getMessage().contains("token")
+                        && !event.getMessage().contains("geheimwert")
+                        && !event.getMessage().contains("pfad")));
   }
 
   @Test

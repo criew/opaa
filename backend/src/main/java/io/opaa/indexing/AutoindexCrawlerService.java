@@ -47,6 +47,12 @@ public class AutoindexCrawlerService {
 
   private static final Logger log = LoggerFactory.getLogger(AutoindexCrawlerService.class);
 
+  private final TargetAddressValidator targetAddressValidator;
+
+  public AutoindexCrawlerService(TargetAddressValidator targetAddressValidator) {
+    this.targetAddressValidator = targetAddressValidator;
+  }
+
   public record CrawledFileEntry(
       String name, String url, String lastModified, String size, String type, int depth) {
     public boolean isDirectory() {
@@ -109,7 +115,8 @@ public class AutoindexCrawlerService {
     }
 
     HttpResponse<InputStream> response =
-        sendFollowingRedirects(httpClient, url, Duration.ofSeconds(60), headers);
+        sendFollowingRedirects(
+            httpClient, url, Duration.ofSeconds(60), headers, targetAddressValidator);
 
     try (InputStream body = response.body()) {
       if (response.statusCode() == 401) {
@@ -541,14 +548,26 @@ public class AutoindexCrawlerService {
    * <p>A redirect chain longer than {@link #MAX_REDIRECTS}, or a redirect response without a {@code
    * Location} header, ends the loop and returns that response as-is - the caller's own status-code
    * handling then reports it the same way it always reported an unexpected status.
+   *
+   * <p><b>{@code targetAddressValidator} (#267).</b> Validated against {@code currentUri} at the
+   * top of every iteration - the initial request and every redirect hop alike - before a single
+   * further byte is requested, so an SSRF target-address check applies identically whether the
+   * blocked address was the configured start URL or only reached via a redirect (including the
+   * http→https upgrade case #693 exempts from the foreign-host check just below: the target address
+   * is still re-validated for that hop, only the {@code Authorization} header treatment changes).
    */
   public static HttpResponse<InputStream> sendFollowingRedirects(
-      HttpClient httpClient, String url, Duration timeout, Map<String, String> headers)
+      HttpClient httpClient,
+      String url,
+      Duration timeout,
+      Map<String, String> headers,
+      TargetAddressValidator targetAddressValidator)
       throws IOException, InterruptedException {
     URI currentUri = URI.create(url);
     Map<String, String> currentHeaders = new LinkedHashMap<>(headers);
 
     for (int hop = 0; ; hop++) {
+      targetAddressValidator.validate(currentUri);
       HttpRequest.Builder reqBuilder =
           HttpRequest.newBuilder().uri(currentUri).timeout(timeout).GET();
       currentHeaders.forEach(reqBuilder::header);
@@ -571,7 +590,12 @@ public class AutoindexCrawlerService {
             "refusing to follow a redirect from https to http (protocol downgrade): "
                 + redirectUri);
       }
-      if (!sameOrigin(currentUri, redirectUri)) {
+      // #693: a same-host http->https upgrade redirect is not a foreign origin - see
+      // isRedirectOriginTrusted's Javadoc. Before this fix, sameOrigin's scheme comparison treated
+      // the ubiquitous upgrade redirect exactly like a genuine cross-origin one and stripped
+      // Authorization from it, breaking Basic-Auth-protected http:// sources the moment their
+      // server 301'd to https (as every well-behaved one does).
+      if (!isRedirectOriginTrusted(currentUri, redirectUri)) {
         currentHeaders.remove("Authorization");
       }
       currentUri = redirectUri;
@@ -632,6 +656,82 @@ public class AutoindexCrawlerService {
    */
   static boolean isSchemeDowngrade(URI from, URI to) {
     return "https".equalsIgnoreCase(from.getScheme()) && "http".equalsIgnoreCase(to.getScheme());
+  }
+
+  /**
+   * Whether a redirect from {@code from} to {@code to} may keep being treated as its own origin -
+   * {@link #sameOrigin}'s exact rule, <b>plus</b> the one exception #693 identified: a same-host
+   * {@code http} to {@code https} upgrade at matching ports (both left at their scheme's default,
+   * or both given the identical explicit port). {@code isSchemeDowngrade} already refuses the
+   * opposite direction (https to http) unconditionally and independently of this method - an
+   * upgrade is exactly the harmless, ubiquitous case that refusal was never meant to cover.
+   *
+   * <p><b>Why this needed its own method instead of loosening {@link #sameOrigin} itself.</b>
+   * {@link #sameOrigin} is also the identical comparison {@code isSameOriginAsBase} (this class),
+   * {@code authHeaderForTarget}/{@code httpClientForTarget} ({@code RssFeedIndexingExecutor}) and
+   * {@code SourceOriginMatcher} use for a different question each - whether a *link a page or feed
+   * itself carries* stays within a source configuration's own vetted origin, not whether a
+   * same-request redirect hop should still carry that request's own credentials. Loosening {@code
+   * sameOrigin} itself would have widened all of those unrelated checks too.
+   */
+  static boolean isRedirectOriginTrusted(URI from, URI to) {
+    return sameOrigin(from, to) || isSameHostSchemeUpgrade(from, to);
+  }
+
+  private static boolean isSameHostSchemeUpgrade(URI from, URI to) {
+    if (!"http".equalsIgnoreCase(from.getScheme()) || !"https".equalsIgnoreCase(to.getScheme())) {
+      return false;
+    }
+    if (from.getHost() == null || to.getHost() == null) {
+      return false;
+    }
+    if (!from.getHost().equalsIgnoreCase(to.getHost())) {
+      return false;
+    }
+    boolean bothDefaultPorts = from.getPort() == -1 && to.getPort() == -1;
+    boolean explicitPortsMatch = from.getPort() != -1 && from.getPort() == to.getPort();
+    return bothDefaultPorts || explicitPortsMatch;
+  }
+
+  /**
+   * Renders {@code uri} as {@code scheme://host[:port]} only - never path, query or fragment, which
+   * on a redirect's own {@code Location} target can carry a token or other sensitive data a run-log
+   * message must never surface (maintainer nachtrag to #693, 21.08.2026: "nur Schema/Host, NIE die
+   * vollständige Ziel-URL"). Used to name a rejected redirect's target in a user-facing message
+   * without repeating the full, potentially sensitive URL the way logging it (dev-only, never shown
+   * in the UI) already safely does.
+   */
+  static String sanitizedOrigin(URI uri) {
+    String scheme = uri.getScheme() == null ? "?" : uri.getScheme();
+    String host = uri.getHost() == null ? "?" : uri.getHost();
+    String portSuffix = uri.getPort() == -1 ? "" : ":" + uri.getPort();
+    return scheme + "://" + host + portSuffix;
+  }
+
+  /**
+   * Why a redirect was rejected outright (as opposed to merely dropping {@code Authorization} - see
+   * {@link #isRedirectOriginTrusted}) - shared by {@link
+   * UrlFileDownloader.ForeignHostRedirectException} and {@code RssFeedIndexingExecutor}'s own
+   * rejection exception, so both build the identically worded, sanitized run-log message {@link
+   * #redirectRejectionMessage} produces (maintainer nachtrag to #693, 21.08.2026: distinguishable
+   * messages per cause, never the full target URL).
+   */
+  public enum RedirectRejectionReason {
+    FOREIGN_HOST,
+    PROTOCOL_DOWNGRADE
+  }
+
+  /**
+   * Builds the German, user-facing run-log message for a rejected redirect - {@code target}'s path,
+   * query and fragment are never included (see {@link #sanitizedOrigin}), only for {@link
+   * RedirectRejectionReason#FOREIGN_HOST}, where {@code target} is even shown at all.
+   */
+  public static String redirectRejectionMessage(RedirectRejectionReason reason, URI target) {
+    return switch (reason) {
+      case FOREIGN_HOST ->
+          "Weiterleitung auf einen fremden Host abgelehnt (Ziel: " + sanitizedOrigin(target) + ")";
+      case PROTOCOL_DOWNGRADE -> "Weiterleitung von https auf http abgelehnt (Protokoll-Downgrade)";
+    };
   }
 
   private static int normalizedPort(URI uri) {

@@ -14,6 +14,7 @@ import io.opaa.indexing.RssFeedEntry;
 import io.opaa.indexing.RssFeedParseException;
 import io.opaa.indexing.RssFeedParser;
 import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.TargetAddressValidator;
 import io.opaa.indexing.UrlIndexingExecutor;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -89,6 +90,13 @@ import org.springframework.web.server.ResponseStatusException;
  * SourceOriginMatcher} rule {@link KnowledgeLibraryService#validateSourceConfigurationForUpdate}
  * already applies when saving, so a caller pointed at a different host cannot silently reuse a
  * credential it never entered.
+ *
+ * <p><b>The origin check above bounds the target, not the path (#617).</b> Whenever the credentials
+ * fallback fires, {@code sourceProxy}/{@code sourceInsecureSsl} are forced to the library's own
+ * stored values too - {@link #withStoredCredentialsIfOmitted}'s own Javadoc has the full reasoning.
+ * Without this, a caller who does not know the stored credential could still route it through a
+ * proxy of their own choosing (or disable certificate validation) on an otherwise same-origin
+ * request and read it back over a connection they control.
  */
 @Service
 public class SourceConnectionTestService {
@@ -109,6 +117,7 @@ public class SourceConnectionTestService {
   private final long maxPageSizeBytes;
   private final long maxFeedSizeBytes;
   private final int maxFeedEntries;
+  private final TargetAddressValidator targetAddressValidator;
 
   public SourceConnectionTestService(
       DocumentService documentService,
@@ -118,7 +127,8 @@ public class SourceConnectionTestService {
       UserRepository userRepository,
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
-      IndexingProperties properties) {
+      IndexingProperties properties,
+      TargetAddressValidator targetAddressValidator) {
     this.documentService = documentService;
     this.crawlerService = crawlerService;
     this.rssFeedParser = rssFeedParser;
@@ -130,6 +140,7 @@ public class SourceConnectionTestService {
     this.maxPageSizeBytes = properties.rss().maxPageSizeBytes();
     this.maxFeedSizeBytes = properties.rss().maxFeedSizeBytes();
     this.maxFeedEntries = properties.rss().maxEntries();
+    this.targetAddressValidator = targetAddressValidator;
   }
 
   /**
@@ -221,6 +232,20 @@ public class SourceConnectionTestService {
    * {@code sourceUrl} still names the same origin as the library's stored one (#544, same rule as
    * {@code KnowledgeLibraryService#validateSourceConfigurationForUpdate}) - a no-op for FILESYSTEM,
    * which carries no sourceUrl/sourceCredentials at all.
+   *
+   * <p><b>{@code sourceProxy}/{@code sourceInsecureSsl} are forced to the library's own stored
+   * values whenever this fallback fires (#617).</b> The origin check above only bounds the
+   * <em>target</em> the stored credential may be tested against - it says nothing about the
+   * <em>path</em> the request travels to get there. Before this fix, a caller with {@code
+   * AssetRole#MANAGER} on the library (enough to trigger this fallback, not enough to already know
+   * the stored credential) could still set their own {@code sourceProxy}/{@code sourceInsecureSsl}
+   * on the very same request - same origin, attacker-controlled proxy, certificate validation
+   * disabled - and have the stored Basic-Auth credential replayed straight through a connection
+   * they control. Forcing both fields to the library's own stored configuration (rather than
+   * rejecting the combination with 400) is the less disruptive of the two options #617 named: a
+   * caller who genuinely wants to test through a proxy of their own choosing already has to supply
+   * the credential themselves - that combination was never a legitimate use of this fallback to
+   * begin with, so nothing a real caller relied on changes.
    */
   private SourceConnectionTestRequest withStoredCredentialsIfOmitted(
       SourceConnectionTestRequest request, KnowledgeLibrary library) {
@@ -235,9 +260,9 @@ public class SourceConnectionTestService {
     return new SourceConnectionTestRequest(request.getSourceType())
         .sourcePath(request.getSourcePath())
         .sourceUrl(request.getSourceUrl())
-        .sourceProxy(request.getSourceProxy())
+        .sourceProxy(library.getSourceProxy())
         .sourceCredentials(library.getSourceCredentials())
-        .sourceInsecureSsl(request.getSourceInsecureSsl())
+        .sourceInsecureSsl(library.isSourceInsecureSsl())
         .libraryId(request.getLibraryId());
   }
 
@@ -340,7 +365,8 @@ public class SourceConnectionTestService {
       // replayed to a redirect target on a different host/scheme - see
       // AutoindexCrawlerService.sendFollowingRedirects's Javadoc.
       HttpResponse<InputStream> response =
-          AutoindexCrawlerService.sendFollowingRedirects(httpClient, url, REQUEST_TIMEOUT, headers);
+          AutoindexCrawlerService.sendFollowingRedirects(
+              httpClient, url, REQUEST_TIMEOUT, headers, targetAddressValidator);
       try (InputStream body = response.body()) {
         if (response.statusCode() == 401) {
           return unreachable(
@@ -425,7 +451,8 @@ public class SourceConnectionTestService {
     try {
       // #538: same reasoning as testHttpDirectory above.
       HttpResponse<InputStream> response =
-          AutoindexCrawlerService.sendFollowingRedirects(httpClient, url, REQUEST_TIMEOUT, headers);
+          AutoindexCrawlerService.sendFollowingRedirects(
+              httpClient, url, REQUEST_TIMEOUT, headers, targetAddressValidator);
       try (InputStream body = response.body()) {
         if (response.statusCode() == 401) {
           return unreachable(
@@ -539,6 +566,11 @@ public class SourceConnectionTestService {
    * own (English, sometimes internals-revealing) message.
    */
   private static String translateConnectionError(IOException e) {
+    // #267: TargetAddressValidator's own message is already German, user-facing and never carries
+    // more than the rejected host/scheme itself - shown as-is, ahead of the generic fallback below.
+    if (e instanceof TargetAddressValidator.TargetAddressBlockedException) {
+      return e.getMessage();
+    }
     if (e instanceof UnknownHostException) {
       return "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen).";
     }

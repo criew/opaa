@@ -110,6 +110,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private final UrlFileDownloader attachmentDownloader;
   private final IndexingProperties.Rss properties;
   private final IndexingRunEventRepository indexingRunEventRepository;
+  private final TargetAddressValidator targetAddressValidator;
 
   public RssFeedIndexingExecutor(
       RssFeedParser feedParser,
@@ -119,7 +120,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       RssFeedStateRepository feedStateRepository,
       UrlFileDownloader attachmentDownloader,
       IndexingProperties properties,
-      IndexingRunEventRepository indexingRunEventRepository) {
+      IndexingRunEventRepository indexingRunEventRepository,
+      TargetAddressValidator targetAddressValidator) {
     this.feedParser = feedParser;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
@@ -128,6 +130,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     this.attachmentDownloader = attachmentDownloader;
     this.properties = properties.rss();
     this.indexingRunEventRepository = indexingRunEventRepository;
+    this.targetAddressValidator = targetAddressValidator;
   }
 
   @Override
@@ -364,15 +367,23 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       // Deliberately kept apart from the catch below (ADR-0017): a 403/429/redirect to a
       // foreign host is the *other side* declining to hand over the page, not a failure of
       // OPAA's own processing - both still count as "skipped" (the job status has no separate
-      // bucket), but with a log message that says which of the two happened. #513: the German
-      // event message never repeats e.getMessage() verbatim - it can carry the raw redirect
-      // target URI (see isForeignHostRedirect), which must never reach the UI.
+      // bucket), but with a log message that says which of the two happened. #513/maintainer
+      // nachtrag to #693: the German event message is e.userMessage(), never e.getMessage() -
+      // the latter can carry the raw, unsanitized redirect target (see isForeignHostRedirect),
+      // which must never reach the UI; userMessage() is distinguishable per cause and already
+      // stripped to scheme/host only where a target is named at all.
       log.warn(
           "RSS detail page rejected by remote host, skipping: {} ({})", entryUrl, e.getMessage());
-      events.record(
-          IndexingEventCategory.REJECTED,
-          "Vom Quellserver abgewiesen (z. B. Bot-Schutz oder Weiterleitung auf einen fremden Host)",
-          entryUrl);
+      events.record(IndexingEventCategory.REJECTED, e.userMessage(), entryUrl);
+      progress.recordSkipped();
+      anyEntryDeferred.set(true);
+      return;
+    } catch (TargetAddressValidator.TargetAddressBlockedException e) {
+      // #267: e.getMessage() is already German, user-facing and never carries more than the
+      // rejected host itself (see TargetAddressValidator's own Javadoc) - safe to show as-is,
+      // unlike RejectedByRemoteException's raw message above.
+      log.warn("RSS detail page target rejected, skipping: {} ({})", entryUrl, e.getMessage());
+      events.record(IndexingEventCategory.REJECTED, e.getMessage(), entryUrl);
       progress.recordSkipped();
       anyEntryDeferred.set(true);
       return;
@@ -512,8 +523,19 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           e.getMessage());
       events.record(
           IndexingEventCategory.REJECTED,
-          "Vom Quellserver abgewiesen beim Nachladen von Anlagen (z. B. Bot-Schutz oder"
-              + " Weiterleitung auf einen fremden Host)",
+          e.userMessage() + " (beim Nachladen von Anlagen)",
+          entryUrl);
+      anyEntryDeferred.set(true);
+      return;
+    } catch (TargetAddressValidator.TargetAddressBlockedException e) {
+      log.warn(
+          "Could not fetch RSS detail page to backfill attachments, its target was rejected, will"
+              + " retry on a future run: {} ({})",
+          entryUrl,
+          e.getMessage());
+      events.record(
+          IndexingEventCategory.REJECTED,
+          e.getMessage() + " (beim Nachladen von Anlagen)",
           entryUrl);
       anyEntryDeferred.set(true);
       return;
@@ -744,10 +766,15 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           candidate.url(),
           entryUrl,
           e.getMessage());
-      events.record(
-          IndexingEventCategory.REJECTED,
-          "Anlage auf einen fremden Host umgeleitet (vermutlich Bot-Schutz)",
-          candidate.url());
+      events.record(IndexingEventCategory.REJECTED, e.userMessage() + " (Anlage)", candidate.url());
+      anyEntryDeferred.set(true);
+    } catch (TargetAddressValidator.TargetAddressBlockedException e) {
+      log.warn(
+          "RSS attachment target rejected, skipping: {} (from entry {}, {})",
+          candidate.url(),
+          entryUrl,
+          e.getMessage());
+      events.record(IndexingEventCategory.REJECTED, e.getMessage() + " (Anlage)", candidate.url());
       anyEntryDeferred.set(true);
     } catch (IOException | InterruptedException e) {
       log.warn(
@@ -843,7 +870,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           }
         });
     return AutoindexCrawlerService.sendFollowingRedirects(
-        httpClient, feedUrl, Duration.ofSeconds(60), headers);
+        httpClient, feedUrl, Duration.ofSeconds(60), headers, targetAddressValidator);
   }
 
   private void saveFeedState(
@@ -898,10 +925,15 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     // three throws, instead of leaking an open connection until GC gets around to it.
     try (InputStream body = response.body()) {
       if (response.statusCode() == 403 || response.statusCode() == 429) {
-        throw new RejectedByRemoteException("HTTP " + response.statusCode());
+        throw new RejectedByRemoteException(
+            "HTTP " + response.statusCode(),
+            "Vom Quellserver abgewiesen (HTTP " + response.statusCode() + ")");
       }
       if (isForeignHostRedirect(entryUrl, response.uri())) {
-        throw new RejectedByRemoteException("redirected to a foreign host: " + response.uri());
+        throw new RejectedByRemoteException(
+            "redirected to a foreign host: " + response.uri(),
+            AutoindexCrawlerService.redirectRejectionMessage(
+                AutoindexCrawlerService.RedirectRejectionReason.FOREIGN_HOST, response.uri()));
       }
       if (response.statusCode() != 200) {
         throw new IOException("HTTP " + response.statusCode() + " for URL: " + entryUrl);
@@ -971,6 +1003,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       throws IOException, InterruptedException {
     URI currentUri = URI.create(entryUrl);
     for (int hop = 0; ; hop++) {
+      targetAddressValidator.validate(currentUri);
       HttpRequest.Builder requestBuilder =
           HttpRequest.newBuilder()
               .uri(currentUri)
@@ -998,10 +1031,15 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       // AutoindexCrawlerService.isSchemeDowngrade's Javadoc.
       if (AutoindexCrawlerService.isSchemeDowngrade(currentUri, redirectUri)) {
         throw new RejectedByRemoteException(
-            "refusing a protocol downgrade redirect (https to http): " + redirectUri);
+            "refusing a protocol downgrade redirect (https to http): " + redirectUri,
+            AutoindexCrawlerService.redirectRejectionMessage(
+                AutoindexCrawlerService.RedirectRejectionReason.PROTOCOL_DOWNGRADE, redirectUri));
       }
       if (isForeignHostRedirect(currentUri.toString(), redirectUri)) {
-        throw new RejectedByRemoteException("redirected to a foreign host: " + redirectUri);
+        throw new RejectedByRemoteException(
+            "redirected to a foreign host: " + redirectUri,
+            AutoindexCrawlerService.redirectRejectionMessage(
+                AutoindexCrawlerService.RedirectRejectionReason.FOREIGN_HOST, redirectUri));
       }
       currentUri = redirectUri;
     }
@@ -1062,11 +1100,20 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * Falling back to "not foreign" on that failure would have silently matched the same
    * inverted-default bug the null-host fix above closes; {@code true} is the only answer consistent
    * with the rest of this method's "unparsable = untrustworthy" reasoning.
+   *
+   * <p><b>A same-host http→https upgrade is not foreign (#693).</b> Delegates to {@link
+   * AutoindexCrawlerService#isRedirectOriginTrusted} rather than {@code sameOrigin} directly - the
+   * production case this method's own class Javadoc already flagged as "now counts as a different
+   * origin too" was too strict for the ubiquitous upgrade redirect: a Basic-Auth-protected {@code
+   * http://} source whose server 301'd every request to {@code https://} had every one of its
+   * entries rejected as "redirected to a foreign host", observed on a real deployment (issue #693).
+   * {@code isSchemeDowngrade} still refuses the opposite direction unconditionally, independent of
+   * this method.
    */
   private boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
     try {
       URI originalUri = new URI(originalUrl);
-      return !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
+      return !AutoindexCrawlerService.isRedirectOriginTrusted(originalUri, finalUri);
     } catch (URISyntaxException e) {
       return true;
     }
@@ -1217,14 +1264,24 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private static final class FeedTooLargeException extends RuntimeException {}
 
   /**
-   * Thrown when the remote end itself declined to hand over a detail page (403/429, or a redirect
-   * to a foreign host) - kept distinct from an ordinary {@link IOException} so the caller can log
-   * and count it separately from a processing failure (ADR-0017's "Verhalten gegenüber fremden
-   * Zielen").
+   * Thrown when the remote end itself declined to hand over a detail page (403/429, a redirect to a
+   * foreign host, or a refused protocol downgrade) - kept distinct from an ordinary {@link
+   * IOException} so the caller can log and count it separately from a processing failure
+   * (ADR-0017's "Verhalten gegenüber fremden Zielen"). {@link #userMessage()} is a German,
+   * cause-specific, sanitized run-log text (maintainer nachtrag to #693, 21.08.2026) - distinct
+   * from this exception's own ({@code super}) message, which stays the unsanitized,
+   * developer-facing detail for the log only, exactly as {@link #getMessage()} always did here.
    */
   private static final class RejectedByRemoteException extends RuntimeException {
-    RejectedByRemoteException(String message) {
-      super(message);
+    private final String userMessage;
+
+    RejectedByRemoteException(String logMessage, String userMessage) {
+      super(logMessage);
+      this.userMessage = userMessage;
+    }
+
+    String userMessage() {
+      return userMessage;
     }
   }
 

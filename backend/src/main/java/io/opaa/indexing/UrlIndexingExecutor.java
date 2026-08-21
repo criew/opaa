@@ -162,6 +162,14 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
             progress.recordProcessed();
             log.info("Indexed URL document: {}", entry.name());
           }
+        } catch (TargetAddressValidator.TargetAddressBlockedException e) {
+          // #267: e.getMessage() is already German, user-facing and never carries more than the
+          // rejected host itself (see TargetAddressValidator's own Javadoc) - safe to show as-is.
+          // Treated as skipped, not failed - mirrors RssFeedIndexingExecutor's identical policy
+          // rejections, which are the remote/policy declining a target, not a processing error.
+          log.warn("URL document target rejected: {} ({})", entry.url(), e.getMessage());
+          events.record(IndexingEventCategory.REJECTED, e.getMessage(), entry.url());
+          progress.recordSkipped();
         } catch (Exception e) {
           log.error("Failed to process URL document: {} ({})", entry.name(), entry.url(), e);
           events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entry.url());

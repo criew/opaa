@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
@@ -25,10 +27,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class UrlFileDownloaderTest {
 
-  private final UrlFileDownloader downloader = new UrlFileDownloader();
+  // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest) -
+  // disabled here since every server this class talks to is deliberately loopback.
+  private final UrlFileDownloader downloader =
+      new UrlFileDownloader(TargetAddressValidator.disabled());
 
   private HttpServer server;
   private String baseUrl;
@@ -524,5 +530,57 @@ class UrlFileDownloaderTest {
                     httpClient, "https://example.com/anlage.pdf", "anlage.pdf", 10_000, null, null))
         .isInstanceOf(UrlFileDownloader.ForeignHostRedirectException.class)
         .hasMessageContaining("protocol downgrade");
+  }
+
+  @Test
+  void downloadBoundedFollowsASameHostHttpToHttpsUpgradeRedirectAndResendsAuthorization()
+      throws IOException, InterruptedException {
+    // #693: a same-host http->https upgrade at matching (here: both default) ports is not a
+    // foreign origin - before the fix, this was rejected outright with
+    // ForeignHostRedirectException, exactly like a genuine cross-origin redirect, breaking every
+    // Basic-Auth-protected http:// source whose server upgrades every request to https (as every
+    // well-behaved one does). Mocked at the HttpClient level (mirrors the protocol-downgrade test
+    // above) since neither example.com nor a real TLS listener is reachable from this test.
+    @SuppressWarnings("unchecked")
+    HttpResponse<InputStream> redirectResponse = mock(HttpResponse.class);
+    when(redirectResponse.statusCode()).thenReturn(301);
+    when(redirectResponse.uri()).thenReturn(URI.create("http://example.com/anlage.pdf"));
+    when(redirectResponse.headers())
+        .thenReturn(
+            HttpHeaders.of(
+                Map.of("Location", List.of("https://example.com/anlage.pdf")), (a, b) -> true));
+    when(redirectResponse.body()).thenReturn(InputStream.nullInputStream());
+
+    @SuppressWarnings("unchecked")
+    HttpResponse<InputStream> finalResponse = mock(HttpResponse.class);
+    when(finalResponse.statusCode()).thenReturn(200);
+    when(finalResponse.uri()).thenReturn(URI.create("https://example.com/anlage.pdf"));
+    when(finalResponse.headers())
+        .thenReturn(
+            HttpHeaders.of(Map.of("Content-Type", List.of("application/pdf")), (a, b) -> true));
+    when(finalResponse.body())
+        .thenReturn(new ByteArrayInputStream("Inhalt".getBytes(StandardCharsets.UTF_8)));
+
+    HttpClient httpClient = mock(HttpClient.class);
+    when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenReturn(redirectResponse, finalResponse);
+
+    UrlFileDownloader.DownloadedFile result =
+        downloader.downloadBounded(
+            httpClient,
+            "http://example.com/anlage.pdf",
+            "anlage.pdf",
+            10_000,
+            null,
+            "Basic geheim");
+
+    assertThat(result.contentType()).isEqualTo("application/pdf");
+    ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+    verify(httpClient, times(2)).send(requestCaptor.capture(), any());
+    HttpRequest secondRequest = requestCaptor.getAllValues().get(1);
+    assertThat(secondRequest.uri()).isEqualTo(URI.create("https://example.com/anlage.pdf"));
+    // Zugangsdaten-Verhalten (#693 Soll-Zustand): same host, more secure channel - the stored
+    // credential is resent, not dropped as it would be for a genuine cross-origin redirect.
+    assertThat(secondRequest.headers().firstValue("Authorization")).contains("Basic geheim");
   }
 }

@@ -71,6 +71,16 @@ public class IndexingConfiguration {
     return new FilesystemPathAllowlist(properties);
   }
 
+  /**
+   * Shared by every class fetching an {@code HTTP_DIRECTORY}/{@code RSS_FEED} target (#267) - a
+   * single instance so the operator's configuration ({@code opaa.indexing.target-validation}) is
+   * applied identically everywhere, mirroring {@link #filesystemPathAllowlist} above.
+   */
+  @Bean
+  TargetAddressValidator targetAddressValidator(IndexingProperties properties) {
+    return new TargetAddressValidator(properties.targetValidation());
+  }
+
   @Bean
   SourceIndexingExecutor asyncIndexingExecutor(
       DocumentService documentService,
@@ -87,13 +97,13 @@ public class IndexingConfiguration {
   }
 
   @Bean
-  AutoindexCrawlerService autoindexCrawlerService() {
-    return new AutoindexCrawlerService();
+  AutoindexCrawlerService autoindexCrawlerService(TargetAddressValidator targetAddressValidator) {
+    return new AutoindexCrawlerService(targetAddressValidator);
   }
 
   @Bean
-  UrlFileDownloader urlFileDownloader() {
-    return new UrlFileDownloader();
+  UrlFileDownloader urlFileDownloader(TargetAddressValidator targetAddressValidator) {
+    return new UrlFileDownloader(targetAddressValidator);
   }
 
   @Bean
@@ -127,7 +137,8 @@ public class IndexingConfiguration {
       RssFeedStateRepository rssFeedStateRepository,
       UrlFileDownloader urlFileDownloader,
       IndexingProperties properties,
-      IndexingRunEventRepository indexingRunEventRepository) {
+      IndexingRunEventRepository indexingRunEventRepository,
+      TargetAddressValidator targetAddressValidator) {
     return new RssFeedIndexingExecutor(
         rssFeedParser,
         fileProcessingService,
@@ -136,7 +147,8 @@ public class IndexingConfiguration {
         rssFeedStateRepository,
         urlFileDownloader,
         properties,
-        indexingRunEventRepository);
+        indexingRunEventRepository,
+        targetAddressValidator);
   }
 
   /**

@@ -213,7 +213,11 @@ class RssFeedIndexingExecutorInsecureSslTest {
 
     IndexingProperties.Rss rss =
         new IndexingProperties.Rss(200, 10_000, 10_000, 0, "OPAA-Indexer/test", null, null, 0, 0);
-    IndexingProperties properties = new IndexingProperties(null, 0, 0, 0, 0, null, rss, null, null);
+    IndexingProperties properties =
+        new IndexingProperties(null, 0, 0, 0, 0, null, rss, null, null, null);
+    // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest) -
+    // disabled here since every server this class talks to is deliberately loopback.
+    TargetAddressValidator targetAddressValidator = TargetAddressValidator.disabled();
     executor =
         new RssFeedIndexingExecutor(
             new RssFeedParser(),
@@ -221,9 +225,10 @@ class RssFeedIndexingExecutorInsecureSslTest {
             indexingJobService,
             documentRepository,
             feedStateRepository,
-            new UrlFileDownloader(),
+            new UrlFileDownloader(targetAddressValidator),
             properties,
-            indexingRunEventRepository);
+            indexingRunEventRepository,
+            targetAddressValidator);
   }
 
   private KnowledgeLibrary library(String feedUrl, boolean sourceInsecureSsl) {
