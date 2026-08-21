@@ -152,10 +152,11 @@ gepflegt.
 - **Anmeldung:** Die Demo läuft über **OIDC/Keycloak**, nicht über das dev-Auth-Profil. Sie soll das
   realistische Anmeldemodell zeigen, und die Zielinstanz opaa.ewerlin.com nutzt ohnehin Keycloak. Die
   Demo-Nutzer kommen über einen Realm-Import in den vorhandenen `keycloak`-Service.
-- **Startbefehl:** Der `keycloak`-Service liegt heute im Compose-Profil `oidc`. Entweder lautet der
-  dokumentierte Befehl `docker compose --profile demo --profile oidc up`, oder der Service wird dem
-  Profil `demo` zusätzlich zugeordnet, sodass `docker compose --profile demo up` genügt. Die Wahl trifft
-  das Umsetzungsticket; wichtig ist nur, dass die Anleitung keinen Stack ohne Anmeldung beschreibt.
+- **Startbefehl:** Entschieden in #712: Der `keycloak`-Service ist zusätzlich zu `oidc` auch dem
+  Compose-Profil `demo` zugeordnet (`docker-compose.yml`) — `docker compose --profile demo up`
+  genügt damit allein, kein zweiter, leicht vergessener `--profile oidc` auf jedem dokumentierten
+  Befehl. Ein reiner `--profile oidc`-Start (ohne `demo`) funktioniert unverändert weiter. Damit
+  beschreibt keine dokumentierte Anleitung mehr einen Stack ohne Anmeldung.
 - Der Stack bringt den Korpus-Webserver und den statischen RSS-Feed mit. Als Webserver ist Apache httpd
   mit `IndexOptions FancyIndexing HTMLTable` eine naheliegende, gut erprobte Wahl, aber **keine
   Notwendigkeit mehr**: Seit #550 versteht der `AutoindexCrawlerService` auch `<pre>`-Listings (nginx
