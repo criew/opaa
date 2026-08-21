@@ -34,6 +34,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -364,6 +366,81 @@ class QueryServiceTest {
 
     assertThat(response.getChatId()).isEqualTo(foreignChatId);
     verify(chatService, never()).appendTurn(any(), any(), any(), any());
+  }
+
+  /**
+   * #123 Nachtrag: expliziter Zwei-Konten-Test gegen den echten Cache-Stack ({@link
+   * MessageWindowChatMemory} über {@link CaffeineChatMemoryRepository}, genau wie {@link
+   * QueryConfiguration} ihn verdrahtet) statt des in dieser Testklasse sonst gemockten {@code
+   * chatMemory}-Feldes. Zwei Konten geben dieselbe {@code chatId} an - keines von beiden löst sie
+   * über {@link ChatService#findOwnedChat} auf, beide laufen also ephemer. Der Schlüsselbau ({@code
+   * currentUserId + ":" + effectiveChatId}, {@link QueryService#query}) sorgt strukturell dafür,
+   * dass die beiden Konten trotz identischer {@code chatId} nie denselben Cache-Eintrag teilen: Der
+   * Test simuliert dazu, was {@link AnswerGenerationService} in der Produktion tut - je Aufruf zwei
+   * Nachrichten unter dem übergebenen conversationKey in das Gedächtnis schreiben - und prüft
+   * danach beide Schlüssel direkt.
+   */
+  @Test
+  void sameChatIdForTwoDifferentUsersProducesIsolatedConversationHistories() {
+    ChatMemoryRepository realRepository = new CaffeineChatMemoryRepository(50, 60);
+    ChatMemory realChatMemory =
+        MessageWindowChatMemory.builder()
+            .chatMemoryRepository(realRepository)
+            .maxMessages(20)
+            .build();
+    QueryService serviceWithRealMemory =
+        new QueryService(
+            vectorStore,
+            answerGenerationService,
+            realChatMemory,
+            new CitationParser(),
+            documentRepository,
+            userRepository,
+            libraryAccessService,
+            permissionHistoryService,
+            chatService,
+            new QueryMetrics(new SimpleMeterRegistry()),
+            new QueryProperties(5, 0.3));
+
+    UUID otherUserId = UUID.randomUUID();
+    User otherUser = new User("other-subject", "issuer", "other@example.com", "Other User");
+    otherUser.setOrganizationId(organizationId);
+    when(userRepository.findById(otherUserId)).thenReturn(Optional.of(otherUser));
+    // useKnowledge=false with no requested library keeps the search scope empty regardless of
+    // what this account may read, so the readable-set stub's content is irrelevant here - the
+    // vector store and permission-history check are simply skipped for an empty scope (see
+    // QueryService#query and #checkAgainstPermissionHistory).
+    when(libraryAccessService.readableLibraryIds(otherUserId, organizationId)).thenReturn(Set.of());
+
+    UUID sharedChatId = UUID.randomUUID();
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              String conversationKey = invocation.getArgument(2);
+              realChatMemory.add(conversationKey, new UserMessage("frage von " + conversationKey));
+              realChatMemory.add(
+                  conversationKey, new AssistantMessage("antwort an " + conversationKey));
+              return chatResponse;
+            });
+
+    serviceWithRealMemory.query("Frage A", sharedChatId, currentUserId, false, List.of());
+    serviceWithRealMemory.query("Frage B", sharedChatId, otherUserId, false, List.of());
+
+    String keyUserA = currentUserId + ":" + sharedChatId;
+    String keyUserB = otherUserId + ":" + sharedChatId;
+
+    List<Message> historyUserA = realChatMemory.get(keyUserA);
+    List<Message> historyUserB = realChatMemory.get(keyUserB);
+
+    assertThat(historyUserA).hasSize(2);
+    assertThat(historyUserB).hasSize(2);
+    assertThat(historyUserA.stream().map(Message::getText))
+        .allMatch(text -> text.contains(keyUserA))
+        .noneMatch(text -> text.contains(keyUserB));
+    assertThat(historyUserB.stream().map(Message::getText))
+        .allMatch(text -> text.contains(keyUserB))
+        .noneMatch(text -> text.contains(keyUserA));
   }
 
   /**

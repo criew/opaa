@@ -52,6 +52,15 @@ public class CaffeineChatMemoryRepository implements ChatMemoryRepository {
         ttlMinutes);
   }
 
+  /**
+   * Returns every cache key, unfiltered by account. {@link ChatMemoryRepository} requires this
+   * method with no per-user variant, but the keys this repository actually stores are {@code
+   * currentUserId + ":" + effectiveChatId} (see {@code QueryService#query}) - so a caller that
+   * treats the result as a listing of conversations for "the current user" would in fact see every
+   * account's keys mixed together. #123 found no caller of this method (production or test) beyond
+   * the interface contract itself; it must never be used to build a user-facing conversation
+   * listing without first filtering by the caller's own user-id prefix.
+   */
   @Override
   public List<String> findConversationIds() {
     return List.copyOf(cache.asMap().keySet());
