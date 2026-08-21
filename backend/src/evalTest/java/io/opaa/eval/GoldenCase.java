@@ -20,10 +20,10 @@ public record GoldenCase(
     String difficulty,
     String language,
     String type,
-    // Issue #721: optional, frozen literal text excerpt the answer is known to sit in — the chunk-
-    // level ground truth for multi-chunk domains. Deliberately a literal span, not a chunk index
-    // (see ChunkAnswerSpanMetrics' class Javadoc for why): absent for every comic-characters case
-    // (Ein-Chunk-Invariante makes a chunk-level metric meaningless there), so this field defaults
-    // to
-    // null on the unmodified comic-characters.json — the schema extension this issue requires.
+    // Issue #721: optional, frozen literal text excerpt the answer is known to sit in — the
+    // chunk-level ground truth for multi-chunk domains. Deliberately a literal span, not a chunk
+    // index (see ChunkAnswerSpanMetrics' class Javadoc for why): absent for every comic-characters
+    // case (Ein-Chunk-Invariante makes a chunk-level metric meaningless there), so this field
+    // defaults to null on the unmodified comic-characters.json — the schema extension this issue
+    // requires.
     @JsonProperty("answer_span") String answerSpan) {}

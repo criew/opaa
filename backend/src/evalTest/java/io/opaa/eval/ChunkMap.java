@@ -72,7 +72,7 @@ public final class ChunkMap {
             return;
           }
           for (int i = 0; i < chunkTexts.size(); i++) {
-            if (chunkTexts.get(i).contains(span)) {
+            if (SpanMatcher.contains(chunkTexts.get(i), span)) {
               spanIndex.put(caseId, i);
               break;
             }

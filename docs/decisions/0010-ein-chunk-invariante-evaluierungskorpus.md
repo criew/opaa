@@ -149,8 +149,8 @@ Harnesses. Jede Domäne deklariert eine `ChunkCountExpectation` (`io.opaa.eval`,
 
 Beide Formen sind ein und derselbe Mechanismus — eine erwartete Chunk-Zahl-Eigenschaft je Domäne, die
 bei Verletzung den Lauf abbricht —, nicht zwei getrennte Prüfungen. `ChunkCountExpectation.violations`
-ist eine reine, Docker-freie Funktion (unit-getestet in `ChunkCountExpectationTest`, Teil von {@code
-evalUnitTest}) und dieselbe Klasse berechnet beide Fälle.
+ist eine reine, Docker-freie Funktion (unit-getestet in `ChunkCountExpectationTest`, Teil von
+`evalUnitTest`) und dieselbe Klasse berechnet beide Fälle.
 
 ### Was unverändert bleibt
 

@@ -64,7 +64,7 @@ public final class ChunkAnswerSpanMetrics {
     double hitRateAt5 =
         rankedChunkTexts.stream()
                 .limit(ANSWER_SPAN_HIT_RATE_K)
-                .anyMatch(chunkText -> chunkText != null && chunkText.contains(span))
+                .anyMatch(chunkText -> SpanMatcher.contains(chunkText, span))
             ? 1.0
             : 0.0;
     return new ChunkQueryResult(goldenCase, rankedChunkTexts, hitRateAt5, rank);
@@ -72,8 +72,7 @@ public final class ChunkAnswerSpanMetrics {
 
   private static int firstSpanRank(List<String> rankedChunkTexts, String span) {
     for (int i = 0; i < rankedChunkTexts.size(); i++) {
-      String chunkText = rankedChunkTexts.get(i);
-      if (chunkText != null && chunkText.contains(span)) {
+      if (SpanMatcher.contains(rankedChunkTexts.get(i), span)) {
         return i + 1;
       }
     }

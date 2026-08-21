@@ -318,6 +318,20 @@ das die Änderung verursacht, damit Ursache und neue Zahl im selben Review sicht
    direkt im JSON-Report unter `allQueryResults` (Zahl der Fälle mit `hitRateAt5 > 0` bzw.
    `ndcgAt10 > 0`) und müssen aus demselben Lauf stammen wie die vier Mittelwerte, nicht separat
    nachgerechnet werden.
+
+   **Verbindliche Rundungsregel (Issue #721 code review, Nit 5):** Die vier gerundeten Mittelwerte
+   je Gruppe werden **wörtlich aus der `%.3f`-Textausgabe von `ReportWriter.renderSummary`**
+   übernommen (Konsolen-Log des Laufs bzw. `backend/build/eval-reports/`-Textausgabe), nie separat
+   von Hand oder mit einem anderen Werkzeug (Python, Taschenrechner, `BigDecimal`) nachgerundet.
+   Java rundet `String.format(Locale.ROOT, "%.3f", d)` über die kürzeste round-trip-fähige
+   Dezimaldarstellung von `d` (dieselbe wie `Double.toString`), **nicht** über den exakten
+   Binärwert — für einen Mittelwert, der exakt auf einer Rundungsgrenze liegt (z. B. `36.5/40 =
+   0.9125`), kann das von einer naiven Nachrundung des rohen `double`-Werts abweichen (siehe die
+   Begründung in `git log` zu dieser Zeile: `difficulty:easy`/`mrr` war in einer früheren,
+   von Hand eingetragenen Baseline-Fassung als `0.912` notiert, während der tatsächliche
+   `ReportWriter`-Output für denselben Wert `0.913` liefert — verifiziert direkt gegen die JVM,
+   nicht nur behauptet). Die `%.3f`-Ausgabe ist die einzige Quelle der Wahrheit für die
+   gerundete Baseline-Zahl.
 5. Wie jede andere Code-Änderung: Code Reviewer prüft den PR, ein Maintainer merged.
 
 **Nicht** ausreichend: Die Baseline-Datei ohne einen tatsächlichen `evaluateRetrieval`-Lauf von Hand

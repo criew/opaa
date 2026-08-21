@@ -220,6 +220,7 @@ jobs:
           path: |
             backend/build/eval-reports/retrieval-metrics.json
             backend/build/eval-reports/baseline-comparison.md
+            backend/build/eval-reports/chunk-map-comic-characters.json
           if-no-files-found: warn
           retention-days: 90
 

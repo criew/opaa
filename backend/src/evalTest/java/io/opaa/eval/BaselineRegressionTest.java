@@ -46,7 +46,10 @@ class BaselineRegressionTest {
         JsonMapper.builder()
             .build()
             .readValue(Files.readString(REPORT_FILE), EvaluationReport.class);
-    Path baselineFile = RepoPaths.evalDir().resolve("baseline").resolve("comic-characters.json");
+    Path baselineFile =
+        RepoPaths.evalDir()
+            .resolve("baseline")
+            .resolve(EvalDomainConfig.COMIC_CHARACTERS.baselineFileName());
     Baseline baseline = Baseline.load(baselineFile);
 
     BaselineComparator.ComparisonResult result = BaselineComparator.compare(baseline, report);

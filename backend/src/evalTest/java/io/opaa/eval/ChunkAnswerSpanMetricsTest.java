@@ -92,6 +92,18 @@ class ChunkAnswerSpanMetricsTest {
   }
 
   @Test
+  void toleratesAWhitespaceOnlyDifferenceBetweenSpanAndChunkText() {
+    // Issue #721 code review, Wichtig 3: a span copied from rendered text can land on a different
+    // line-wrap than the indexed chunk without being a genuinely different span.
+    GoldenCase goldenCase = caseWithSpan("built in\n1889");
+    List<String> chunks = List.of("the tower was   built in 1889 in Paris");
+
+    var result = ChunkAnswerSpanMetrics.evaluate(goldenCase, chunks);
+
+    assertThat(result.spanChunkRank()).isEqualTo(1);
+  }
+
+  @Test
   void aggregateOverEmptyResultsIsNotApplicable() {
     var aggregate = ChunkAnswerSpanMetrics.aggregate(List.of());
 

@@ -82,6 +82,29 @@ public final class ReportWriter {
       sb.append("Antwort-Span-Metrik (Chunkebene): keine anwendbaren Fälle in dieser Domäne\n\n");
     }
 
+    var windowCoverage = report.documentWindowCoverage();
+    sb.append(
+        format(
+            "Dokumentfenster-Abdeckung: minimal %d unterschiedliche Dokumente über %d Anfragen "
+                + "erreicht (documentTopK=%d), %d Anfrage(n) darunter%s\n\n",
+            windowCoverage.minDistinctDocumentsReached(),
+            windowCoverage.queriesEvaluated(),
+            cfg.documentTopK(),
+            windowCoverage.queriesBelowDocumentTopK(),
+            windowCoverage.alwaysReachedDocumentTopK() ? "" : " — UNTER documentTopK"));
+
+    var spanResolution = report.answerSpanResolution();
+    if (spanResolution.applicableCases() > 0) {
+      sb.append(
+          format(
+              "Antwort-Span-Auflösung: %d von %d anwendbaren Fällen aufgelöst%s\n\n",
+              spanResolution.applicableCases() - spanResolution.unresolvedCaseIds().size(),
+              spanResolution.applicableCases(),
+              spanResolution.allResolved()
+                  ? ""
+                  : " — NICHT AUFGELÖST: " + spanResolution.unresolvedCaseIds()));
+    }
+
     var notes = report.datasetNotes();
     sb.append(
         format(

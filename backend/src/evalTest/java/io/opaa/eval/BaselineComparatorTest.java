@@ -153,6 +153,8 @@ class BaselineComparatorTest {
             Map.of(),
             Map.of(),
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+            fullDocumentWindowCoverage(),
+            noApplicableAnswerSpans(),
             List.of(),
             List.of());
 
@@ -212,6 +214,8 @@ class BaselineComparatorTest {
             Map.of(),
             Map.of(),
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+            fullDocumentWindowCoverage(),
+            noApplicableAnswerSpans(),
             List.of(),
             List.of());
 
@@ -268,6 +272,8 @@ class BaselineComparatorTest {
             Map.of(),
             Map.of(),
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+            fullDocumentWindowCoverage(),
+            noApplicableAnswerSpans(),
             List.of(),
             List.of());
 
@@ -321,6 +327,8 @@ class BaselineComparatorTest {
             Map.of(),
             Map.of(),
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+            fullDocumentWindowCoverage(),
+            noApplicableAnswerSpans(),
             List.of(),
             List.of());
 
@@ -558,6 +566,8 @@ class BaselineComparatorTest {
             Map.of(),
             Map.of("de", overallMetrics(), "en", overallMetrics()),
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+            fullDocumentWindowCoverage(),
+            noApplicableAnswerSpans(),
             List.of(),
             List.of());
 
@@ -598,6 +608,8 @@ class BaselineComparatorTest {
             Map.of(),
             Map.of("de", overallMetrics()),
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+            fullDocumentWindowCoverage(),
+            noApplicableAnswerSpans(),
             List.of(),
             List.of());
 
@@ -642,6 +654,14 @@ class BaselineComparatorTest {
 
   private static MetricsAggregate overallMetrics() {
     return new MetricsAggregate(121, 0.521, 0.461, 0.445, 0.490, 0.9708, 94, 63, 73);
+  }
+
+  private static EvaluationReport.DocumentWindowCoverageResult fullDocumentWindowCoverage() {
+    return new EvaluationReport.DocumentWindowCoverageResult(121, 0, 10);
+  }
+
+  private static EvaluationReport.AnswerSpanResolutionResult noApplicableAnswerSpans() {
+    return new EvaluationReport.AnswerSpanResolutionResult(0, List.of());
   }
 
   private static Baseline.FixedPoints fixedPoints(
@@ -722,7 +742,122 @@ class BaselineComparatorTest {
         Map.of(),
         Map.of(),
         ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
+        fullDocumentWindowCoverage(),
+        noApplicableAnswerSpans(),
         List.of(),
         List.of());
+  }
+
+  // --- issue #721 code review, Nit 6: fixed-point drift for the new #721 fixed points -----------
+
+  @Test
+  void detectsChunkOverlapDrift() {
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    RunConfiguration withDifferentChunkOverlap =
+        new RunConfiguration(
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            200,
+            cfg.documentTopK(),
+            cfg.chunkTopK(),
+            cfg.searchTopK(),
+            cfg.productionSimilarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds());
+    EvaluationReport report = reportWith(withDifferentChunkOverlap);
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("chunkOverlap");
+  }
+
+  @Test
+  void detectsDocumentTopKDrift() {
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    RunConfiguration withDifferentDocumentTopK =
+        new RunConfiguration(
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
+            5,
+            cfg.chunkTopK(),
+            cfg.searchTopK(),
+            cfg.productionSimilarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds());
+    EvaluationReport report = reportWith(withDifferentDocumentTopK);
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("documentTopK");
+  }
+
+  @Test
+  void detectsChunkTopKDrift() {
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    RunConfiguration withDifferentChunkTopK =
+        new RunConfiguration(
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
+            cfg.documentTopK(),
+            80,
+            cfg.searchTopK(),
+            cfg.productionSimilarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds());
+    EvaluationReport report = reportWith(withDifferentChunkTopK);
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("chunkTopK");
   }
 }

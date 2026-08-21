@@ -408,9 +408,9 @@ class RetrievalEvaluationHarnessTest {
     Instant runStart = Instant.now();
 
     Path evalDir = RepoPaths.evalDir();
-    Path corpusDir = evalDir.resolve("corpus").resolve("comic-characters");
+    Path corpusDir = evalDir.resolve("corpus").resolve(DOMAIN.name());
     Path manifestFile = corpusDir.resolve("MANIFEST.sha256");
-    Path goldenFile = evalDir.resolve("golden").resolve("comic-characters.json");
+    Path goldenFile = evalDir.resolve("golden").resolve(DOMAIN.goldenDatasetFileName());
 
     // 1. Manifest verification — abort loudly on any manipulated byte (ADR-0011, decision 1 and 6;
     //    issue #227 acceptance criteria).
@@ -482,6 +482,24 @@ class RetrievalEvaluationHarnessTest {
         DOMAIN.chunkCountExpectation().describe(),
         documents.size());
 
+    // 3b. Issue #721 code review, Nit 4: EvalDomainConfig.maxChunksPerDocument sizes chunkTopK
+    //     (DocumentRanking#documentTopKWindowSize) but was never checked against reality — an
+    //     undersized declared value would silently undersize chunkTopK and DocumentRanking could
+    //     then fail to reach documentTopK distinct documents without any assertion catching why.
+    int measuredMaxChunksPerDocument =
+        documentChunkCounts.stream()
+            .mapToInt(ChunkCountExpectation.DocumentChunkCount::chunkCount)
+            .max()
+            .orElse(0);
+    assertThat(measuredMaxChunksPerDocument)
+        .as(
+            "EvalDomainConfig.maxChunksPerDocument (%d) must be >= the actually measured maximum "
+                + "chunk count per document (%d) in this run — otherwise chunkTopK "
+                + "(documentTopK * maxChunksPerDocument) is undersized and DocumentRanking cannot "
+                + "reliably reach documentTopK distinct documents after deduplication",
+            DOMAIN.maxChunksPerDocument(), measuredMaxChunksPerDocument)
+        .isLessThanOrEqualTo(DOMAIN.maxChunksPerDocument());
+
     // 4. Run every golden query directly against the vector store — retrieval only, no LLM. The
     //    chunk-search window is sized so deduplication (DocumentRanking) can reach documentTopK
     //    distinct documents (ADR-0012 Nachtrag, issue #721) — for comic-characters chunkTopK ==
@@ -490,6 +508,7 @@ class RetrievalEvaluationHarnessTest {
     List<GoldenCase> goldenCases = GoldenDataset.load(goldenFile);
     List<RetrievalMetrics.QueryResult> results = new ArrayList<>(goldenCases.size());
     List<ChunkAnswerSpanMetrics.ChunkQueryResult> answerSpanResults = new ArrayList<>();
+    List<DocumentRanking.DocumentWindowResult> windowResults = new ArrayList<>(goldenCases.size());
     for (GoldenCase goldenCase : goldenCases) {
       List<org.springframework.ai.document.Document> hits =
           vectorStore.similaritySearch(
@@ -505,6 +524,7 @@ class RetrievalEvaluationHarnessTest {
               .toList();
       var windowResult =
           DocumentRanking.applyDocumentWindow(rankedChunkFileNames, DOMAIN.documentTopK());
+      windowResults.add(windowResult);
       results.add(RetrievalMetrics.evaluate(goldenCase, windowResult.rankedFileNames()));
 
       if (ChunkAnswerSpanMetrics.isApplicable(goldenCase)) {
@@ -516,6 +536,41 @@ class RetrievalEvaluationHarnessTest {
     log.info("Evaluated {} golden queries", results.size());
     ChunkAnswerSpanMetrics.Aggregate answerSpanOverall =
         ChunkAnswerSpanMetrics.aggregate(answerSpanResults);
+
+    // 4a. Issue #721 code review, Wichtig 1: ADR-0012 §8 and the issue's acceptance criteria
+    //     promise an explicit report of whether the document-bound window was actually reached —
+    //     compute it from the per-query DocumentWindowResult instead of discarding those values.
+    int queriesBelowDocumentTopK =
+        (int) windowResults.stream().filter(w -> !w.reachedDocumentTopK()).count();
+    int minDistinctDocumentsReached =
+        windowResults.stream()
+            .mapToInt(DocumentRanking.DocumentWindowResult::distinctDocumentsReached)
+            .min()
+            .orElse(0);
+    EvaluationReport.DocumentWindowCoverageResult documentWindowCoverage =
+        new EvaluationReport.DocumentWindowCoverageResult(
+            windowResults.size(), queriesBelowDocumentTopK, minDistinctDocumentsReached);
+    // comic-characters' corpus (1448 documents) is comfortably larger than documentTopK=10, so
+    // every query's chunk-bound search must reach the full document window — a query that does not
+    // would mean either a corpus/index problem or an undersized chunkTopK, not a fact about this
+    // domain the harness should silently accept. A future, deliberately small domain would need to
+    // relax or replace this assertion, not this domain.
+    assertThat(documentWindowCoverage.alwaysReachedDocumentTopK())
+        .as(
+            "%d of %d queries did not reach documentTopK=%d distinct documents (min reached: %d) "
+                + "— unexpected for a corpus of %d documents",
+            queriesBelowDocumentTopK,
+            windowResults.size(),
+            DOMAIN.documentTopK(),
+            minDistinctDocumentsReached,
+            manifest.fileNames().size())
+        .isTrue();
+    log.info(
+        "Document window coverage: {} distinct documents reached at minimum across {} queries "
+            + "(documentTopK={})",
+        minDistinctDocumentsReached,
+        windowResults.size(),
+        DOMAIN.documentTopK());
 
     // 4b. Chunk map (issue #721): re-derive each document's real chunk texts through the same
     //     production beans FileProcessingService uses (DocumentService/ChunkingService), so the map
@@ -553,6 +608,45 @@ class RetrievalEvaluationHarnessTest {
     Path chunkMapFile = Path.of("build", "eval-reports", "chunk-map-" + DOMAIN.name() + ".json");
     ChunkMapWriter.write(chunkMaps, chunkMapFile);
     log.info("Chunk map written to {}", chunkMapFile.toAbsolutePath());
+
+    // 4c. Issue #721 code review, Wichtig 3: an answer_span that never resolves to any chunk of any
+    //     of its expected_documents (typo, a whitespace difference SpanMatcher does not absorb, or
+    //     a chunking-parameter change that pushed it across a chunk boundary) is numerically
+    //     indistinguishable from a genuine retrieval failure — both make spanChunkRank=-1. Detect
+    // it
+    //     explicitly instead of letting it silently masquerade as a chunk-level regression.
+    java.util.Set<String> resolvedAnswerSpanCaseIds = new java.util.LinkedHashSet<>();
+    for (var documentChunkMap : chunkMaps) {
+      resolvedAnswerSpanCaseIds.addAll(documentChunkMap.answerSpanChunkIndexByCaseId().keySet());
+    }
+    List<String> unresolvedAnswerSpanCaseIds =
+        answerSpansByCaseId.keySet().stream()
+            .filter(caseId -> !resolvedAnswerSpanCaseIds.contains(caseId))
+            .sorted()
+            .toList();
+    EvaluationReport.AnswerSpanResolutionResult answerSpanResolution =
+        new EvaluationReport.AnswerSpanResolutionResult(
+            answerSpansByCaseId.size(), unresolvedAnswerSpanCaseIds);
+    // Only a hard abort for a domain that actually declares answer_span cases (comic-characters
+    // declares none, so this can never fire here) — mirrors the chunk-count invariant's severity:
+    // a broken measurement precondition, not a tolerance case.
+    if (!answerSpansByCaseId.isEmpty()) {
+      assertThat(answerSpanResolution.allResolved())
+          .as(
+              "%d of %d applicable answer_span cases did not resolve to any chunk of any of their "
+                  + "expected_documents (ADR-0012 §9) — unresolved case ids: %s. This is either a "
+                  + "broken golden-dataset fixture (typo, unabsorbed whitespace difference) or a "
+                  + "chunking-parameter change that pushed the span across a chunk boundary; either "
+                  + "way it must not be measured as a chunk-level regression",
+              unresolvedAnswerSpanCaseIds.size(),
+              answerSpansByCaseId.size(),
+              unresolvedAnswerSpanCaseIds)
+          .isTrue();
+    }
+    log.info(
+        "Answer-span resolution: {} of {} applicable cases resolved",
+        answerSpansByCaseId.size() - unresolvedAnswerSpanCaseIds.size(),
+        answerSpansByCaseId.size());
 
     // 5. Aggregate and write the report.
     MetricsAggregate overall = MetricsAggregate.of(results);
@@ -604,7 +698,7 @@ class RetrievalEvaluationHarnessTest {
             PGVECTOR_INDEX_TYPE,
             CorpusManifest.sha256Hex(manifestFile),
             manifest.fileNames().size(),
-            "eval/golden/comic-characters.json",
+            "eval/golden/" + DOMAIN.goldenDatasetFileName(),
             GoldenDataset.sha256(goldenFile),
             goldenCases.size(),
             runStart.toString(),
@@ -621,6 +715,8 @@ class RetrievalEvaluationHarnessTest {
             byDifficulty,
             byLanguage,
             answerSpanOverall,
+            documentWindowCoverage,
+            answerSpanResolution,
             worstQueries,
             allQueryResults);
 

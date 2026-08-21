@@ -143,6 +143,30 @@ verschiedener Chunking-Konfigurationen (#374) erst möglich. Für eine Domäne, 
 bedeutungslos), liefert die Aggregation `ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE`
 (`applicableCases=0`) statt eines gemessenen, aber bedeutungslosen Werts.
 
+**Präzisierung (Issue #721 code review, Wichtig 3): Stabil ist der Text, nicht seine
+Ein-Chunk-Auffindbarkeit.** Der Absatz oben stellt fest, dass der *Text* eines `answer_span`
+unter `chunk-size`/`chunk-overlap` stabil bleibt — das bleibt richtig. Nicht garantiert ist,
+dass dieser Text nach einer Chunking-Parameteränderung noch **in irgendeinem** zurückgegebenen
+Chunk vollständig enthalten ist: Eine Verkleinerung von `chunk-size` kann einen Span, der vorher
+mittig in einem Chunk lag, über eine neue Chunk-Grenze schieben, sodass er in keinem einzelnen
+Chunk mehr vollständig auftaucht. Das ist numerisch **identisch** zu einem echten
+Retrieval-Fehlschlag (`spanChunkRank=-1` in beiden Fällen) — für `boundary_span`-Fälle (#234, bewusst
+nah an einer Chunk-Grenze kuratiert) ist genau das der Fall, den ein Vergleich zweier
+Chunking-Konfigurationen messen soll, nicht ein Messfehler.
+
+Deshalb prüft der Harness nach dem Bau der Chunk-Map (`io.opaa.eval.ChunkMap`) zusätzlich, ob
+jeder anwendbare `answer_span` in **mindestens einem** Chunk **mindestens eines** seiner
+`expected_documents` auflösbar ist (`EvaluationReport.AnswerSpanResolutionResult`,
+`RetrievalEvaluationHarnessTest`). Ein nicht auflösbarer Span bei einer Domäne, die
+`answer_span`-Fälle führt, ist ein harter Abbruch — analog zur Chunk-Zahl-Invariante ein
+Messvoraussetzungsfehler, kein Toleranzfall: Andernfalls wäre nicht unterscheidbar, ob eine
+gemessene Verschlechterung eine echte Retrieval-Regression ist oder nur eine kaputte
+Golden-Dataset-Fixtur (Tippfehler, ein von `SpanMatcher` nicht abgefangener
+Whitespace-Unterschied) bzw. eine Chunking-Änderung, die den Span über eine Grenze geschoben hat.
+`SpanMatcher` mildert das Whitespace-Problem (Zeilenumbrüche/mehrfache Leerzeichen werden vor dem
+Vergleich kollabiert), löst aber nicht das Grenzproblem — das ist beabsichtigt: Der Abbruch macht
+eine echte Grenzverschiebung sichtbar, statt sie still falsch zu messen.
+
 ### 10. Messvertrag-Version 2
 
 `EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` wird von 1 auf 2 erhöht (Entscheidung 6 oben:
