@@ -44,11 +44,7 @@ PDF/DOCX/PPTX: [`generator/README.md`](generator/README.md) und [`corpus/SOURCE.
 Der Korpus wird im Docker-Compose-Stack unter dem Profil `demo` bereitgestellt — zwei zusätzliche,
 rein lesende Webserver-Services, über die **bestehende** Konnektoren (`AutoindexCrawlerService` für
 `HTTP_DIRECTORY`, der RSS-Konnektor für `RSS_FEED`) den Korpus indizieren, ohne eine Zeile neuen
-Ingestion-Codes. Dieser Stack läuft im **dev-Auth-Modus** (`SPRING_PROFILES_ACTIVE=docker,dev`, siehe
-`.env.docker.example`), also ohne echte Anmeldung — das ist noch **nicht** die fertige Demo-Instanz
-mit Keycloak-Anmeldung, Nutzern, Spaces und Rechten aus
-[`docs/features/demo-instance.md`](../docs/features/demo-instance.md); die bringen erst #712 (Seed)
-und #713 (Drehbuch, Installationsanleitung).
+Ingestion-Codes.
 
 Voraussetzung wie für jeden Compose-Start (siehe [`docs/deployment.md`](../docs/deployment.md),
 Abschnitt „Schnellstart"): eine eigene `.env.docker` aus der Vorlage:
@@ -57,18 +53,32 @@ Abschnitt „Schnellstart"): eine eigene `.env.docker` aus der Vorlage:
 cp .env.docker.example .env.docker
 ```
 
-Für das `demo`-Profil zusätzlich in dieser `.env.docker` eintragen (siehe unten, „Zielprüfung
-ausgehender Abrufe"):
+Für die vollständige Demo-Instanz (Keycloak-Anmeldung, siehe „Seed ausführen (#712)" unten) in dieser
+`.env.docker` zusätzlich setzen:
 
 ```bash
+SPRING_PROFILES_ACTIVE=docker,oidc
+OPAA_INITIAL_ADMIN_EMAIL=admin@stadt-rheinfurt.example
 OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example
 ```
 
-Dann:
+`OPAA_INITIAL_ADMIN_EMAIL` muss die E-Mail-Adresse des Keycloak-Nutzers `demo-admin` treffen
+(`keycloak/realm-export.json`) — sonst bekommt kein Konto der Demo `SYSTEM_ADMIN`, und Schritt 1 des
+Seeds (siehe unten) bricht mit einer klaren Fehlermeldung ab, statt eine falsche Rolle stillschweigend
+zu akzeptieren.
+
+Dann genügt ein einziger Befehl — `keycloak` gehört seit #712 zusätzlich zum Profil `demo` (siehe
+`docker-compose.yml`, Kommentar am `keycloak`-Service), damit die Demo nie ohne Anmeldung erreichbar
+ist:
 
 ```bash
 docker compose --profile demo up
 ```
+
+Wer nur den Korpus-Webserver ohne Anmeldung ausprobieren will (kein Login, keine Spaces/Rechte), lässt
+`SPRING_PROFILES_ACTIVE` auf `docker,dev` — `demo-corpus`/`demo-presse` starten trotzdem über
+`--profile demo`, `keycloak` läuft dann einfach mit, bleibt aber ungenutzt. Für den vollständigen Seed
+(unten) ist `docker,oidc` zwingend: Das `demo`-Datenprofil des Seeds meldet sich über Keycloak an.
 
 Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
 
@@ -107,15 +117,82 @@ dem Vorbild von [`e2e/docker-compose.e2e.yml`](../e2e/docker-compose.e2e.yml), d
 für sein eigenes, isoliertes `e2e.env` setzt. `.env.docker.example` führt die Variable bereits
 auskommentiert mit diesem Demo-Wert als Beispiel.
 
-Bibliotheken, Berechtigungen und das Auslösen der Indizierung selbst richtet der Seed aus #712 ein;
-bis dahin lassen sich Quellen manuell oder über die API anlegen (`sourceType: HTTP_DIRECTORY` mit
-`sourceUrl: http://demo-corpus/<verzeichnis>/`, bzw. `sourceType: RSS_FEED` mit
-`sourceUrl: http://presse.stadt-rheinfurt.example/rss.xml`).
+Bibliotheken, Berechtigungen und das Auslösen der Indizierung selbst richtet der Seed ein (siehe
+„Seed ausführen (#712)" unten).
 
-## Umfang außerhalb dieses Issues
+## Seed ausführen (#712)
 
-Dieses Verzeichnis liefert Korpus und Bereitstellung. Nicht Teil von Issue #229:
+`demo/seed/seed.py` ist der gemeinsame Seed-Mechanismus mit zwei **Datenprofilen**
+(`docs/features/demo-instance.md`, „Installation und Seed"): `demo` (dieser Rheinfurt-Korpus, Anmeldung
+über Keycloak) und `e2e` (minimal, eingefroren, Anmeldung über das dev-Auth-Profil). Beide Profile
+sprechen ausschließlich die öffentliche API an — kein direkter Datenbankzugriff, keine Umgehung von
+Validierung oder Audit-Protokollierung.
 
-- Erzeugung der Korpus-Inhalte selbst — #711
-- Nutzer, Spaces, Bibliotheken, Rechte, Indizierung — #712
+```bash
+cd demo/seed
+pip install -r requirements.txt
+python seed.py --profile demo
+```
+
+Voraussetzung: Der Stack läuft bereits mit `docker compose --profile demo up` (siehe oben) und ist
+erreichbar, per Voreinstellung unter `http://localhost:8081/api` (Backend) und `http://localhost:8180`
+(Keycloak) — beides über `--base-url`/`--keycloak-url` änderbar.
+
+Der Lauf richtet über die API ein:
+
+1. **Nutzer bereitstellen** — jeder der vier Demo-Nutzer plus das Admin-Konto meldet sich einmal an
+   (`GET /api/v1/auth/me`), was `UserProvisioningFilter` zum ersten Mal einen Datenbanksatz anlegen
+   lässt. Das Admin-Konto muss danach `SYSTEM_ADMIN` tragen — sonst bricht der Lauf ab (siehe oben,
+   `OPAA_INITIAL_ADMIN_EMAIL`).
+2. **Spaces** gemäß `docs/features/demo-instance.md` — „Meldewesen & Ausweise" (Maria Weber, Selin
+   Kaya), Marias eigener Space ohne weiteres Mitglied, „Kfz-Zulassung" (Thomas Klein), „Amtsleitung
+   Bürgerbüro" (Andrea Vogt).
+3. **Fünf Wissensbibliotheken** im Besitz des Admin-Kontos, je mit eigener Quellkonfiguration
+   (ADR-0018): drei `HTTP_DIRECTORY` gegen `demo-corpus`, ein `RSS_FEED` gegen
+   `presse.stadt-rheinfurt.example`, ein `UPLOAD`.
+4. **VIEWER-Rechte** exakt nach der Matrix aus `docs/features/demo-instance.md` sowie die 26
+   Upload-Dokumente aus `demo/corpus/interne-dienstanweisungen-meldewesen/`.
+5. **Indizierung je Bibliothek** über deren eigene Quellkonfiguration (nicht für die `UPLOAD`-Bibliothek
+   — die hat keinen eigenen Lauf, ADR-0018) — der Seed wartet auf `COMPLETED` und bricht bei
+   `documentsFailed > 0` ab.
+
+Für das minimale, eingefrorene `e2e`-Profil (dev-Auth, keine Keycloak-Anmeldung nötig):
+
+```bash
+python seed.py --profile e2e
+```
+
+**Idempotent:** Ein zweiter Lauf gegen dieselbe Instanz legt nichts doppelt an — Spaces und
+Bibliotheken werden vor dem Anlegen per Namenssuche geprüft (Spaces über die Session des jeweiligen
+Eigentümers, da ein Space nur für seine eigenen Mitglieder sichtbar ist), Uploads werden anhand des
+Dateinamens übersprungen, und `upsertAssetGrant` ersetzt statt zu duplizieren.
+
+**Ratenbegrenzung:** Vier aufeinanderfolgende Indizierungsauslöser (eine je Konnektor-Bibliothek, die
+`UPLOAD`-Bibliothek hat keinen eigenen Lauf) als dasselbe Admin-Konto stoßen an
+das Standardkontingent `opaa.rate-limit.indexing` (1 Anfrage/60s je Nutzer). `seed.py` wartet bei HTTP
+429 automatisch (`--rate-limit-wait-seconds`, Default 65s) und läuft dadurch beim ersten vollständigen
+Aufbau je nach Bibliothekszahl mehrere Minuten.
+
+**Keycloak-Anmeldung des Seeds:** Das `demo`-Profil meldet sich über einen eigenen Client
+`opaa-seed` (`keycloak/realm-export.json`, Resource Owner Password Grant) an — bewusst getrennt vom
+`opaa-frontend`-Client, dessen `directAccessGrantsEnabled` aus gutem Grund `false` bleibt.
+
+## Demo-Zugangsdaten
+
+Alle Konten des Realms `opaa` sind offene **Demo-Werte**, keine Secrets — vor jedem erreichbaren
+Deployment gemäß `docs/deployment.md`, Abschnitt „Härtung für erreichbare Deployments" zu ersetzen:
+
+| Konto | Rolle | Passwort |
+|---|---|---|
+| `demo-admin` (admin@stadt-rheinfurt.example) | `SYSTEM_ADMIN` | `RheinfurtDemo!2026` |
+| `maria.weber` | Sachbearbeiterin Meldewesen | `RheinfurtDemo!2026` |
+| `selin.kaya` | Sachbearbeiterin Meldewesen | `RheinfurtDemo!2026` |
+| `thomas.klein` | Sachbearbeiter Kfz-Zulassung | `RheinfurtDemo!2026` |
+| `andrea.vogt` | Amtsleitung Bürgerbüro | `RheinfurtDemo!2026` |
+
+## Umfang außerhalb dieses Verzeichnisses
+
 - Demo-Drehbuch und Installationsanleitung — #713
+- Smoke-Test gegen das `demo`-Profil — #232
+- Umstellung der bestehenden E2E-Feature-Tests auf das `e2e`-Datenprofil — #233
+- Rollout auf einen erreichbaren Host — #230

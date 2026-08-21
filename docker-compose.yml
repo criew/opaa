@@ -63,8 +63,15 @@ services:
       - "${OPAA_KEYCLOAK_PORT:-8180}:8180"
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    # Also part of "demo" (#712): the demo instance shows the realistic Keycloak login (see
+    # docs/features/demo-instance.md, "Installation und Seed") and must never be reachable without
+    # one - `docker compose --profile demo up` starting keycloak automatically is the only way to
+    # guarantee that without a second, easy-to-forget `--profile oidc` on every documented command.
+    # A plain oidc-only local dev stack (`--profile oidc`, no demo) still works exactly as before;
+    # this only adds a second profile membership, it does not remove the first one.
     profiles:
       - oidc
+      - demo
 
   # Serves the three HTTP_DIRECTORY libraries of the Rheinfurt demo corpus (#229, Epic #708) as
   # plain Apache directory listings - one subdirectory per library, so each stays separately
