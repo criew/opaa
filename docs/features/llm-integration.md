@@ -58,7 +58,9 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 8. **Eine zentrale Änderung wirkt sofort überall**, ohne Nacharbeit in Spaces und Agenten.
 9. **Die Passagen werden einzeln und mit ihrer Herkunft übergeben**, und die Belege kommen im Text
    zurück, nicht als Liste am Ende. Nur so lässt sich die Belegprüfung überhaupt ansetzen.
-10. **Die Ausgabe läuft im Fluss** — außer im Zitierzwang, wo erst nach der Belegprüfung ausgegeben wird.
+10. **Die Ausgabe läuft im Fluss.** Ein Modus, der stattdessen erst nach vollständiger Belegprüfung
+    ausgibt, war Teil des am 21.08.2026 verworfenen Zitierzwang-Verweigerungsapparats (siehe
+    [Zitierzwang](./data-indexing-rag.md#zitierzwang)) und ist nicht gebaut.
 11. **Die Absicherung gegen Missbrauch liegt nicht im Modell**, sondern in der Rechteprüfung davor, dem
     unveränderlichen Systemvorspann und der Belegprüfung danach.
 
@@ -173,9 +175,11 @@ erlaubte Modelle = Systemvorgabe
                  ∩ Vorgabe des eingesetzten Agenten
 ```
 
-Dieselbe Regel gilt für die übrigen Vorgaben, die an Modelle gebunden sind — zulässige Werkzeuge,
-Weitergabe nach außen, Zitierzwang. Es gibt genau eine Richtung: **Jede Ebene kann verschärfen, keine
-kann lockern.**
+Dieselbe Regel gilt für die übrigen an Modelle gebundenen Vorgaben — zulässige Werkzeuge, Weitergabe nach
+außen. Es gibt genau eine Richtung: **Jede Ebene kann verschärfen, keine kann lockern.** Ein
+Zitierzwang-Schalter auf einer dieser Ebenen war Teil des am 21.08.2026 verworfenen Verweigerungsapparats
+(siehe [Zitierzwang](./data-indexing-rag.md#zitierzwang)) und ist nicht gebaut; die deterministische
+Belegvalidierung, die stattdessen gebaut ist, greift unabhängig von Space, Bibliothek oder Agent.
 
 Der Vorteil ist, dass sich die Frage „warum wurde hier dieses Modell verwendet?" immer beantworten lässt,
 und zwar ohne Kenntnis der Reihenfolge, in der die Einstellungen entstanden sind. Der Preis ist, dass
@@ -349,11 +353,11 @@ Bestimmung des zulässigen Modells      ← Schnitt aller Vorgaben
   ↓
 Zusammenstellung: Systemvorspann + Passagen mit Fundstellen + Frage
   ↓
-Aufruf; Ausgabe im Fluss, außer im Zitierzwang
+Aufruf; Ausgabe im Fluss
   ↓
-Belegprüfung: trägt jede Aussage eine Fundstelle?
+Belegvalidierung: zeigt jeder Beleg auf eine tatsächlich abgerufene Fundstelle?
   ↓
-Ausgabe mit Fundstellen und Konfidenz — oder Verweigerung im Zitierzwang
+Ausgabe mit Fundstellen, ungültige Belege gekennzeichnet
 ```
 
 Wesentlich ist die Reihenfolge: **Die Bestimmung des Modells folgt der Bestimmung des Suchbereichs.**
@@ -418,31 +422,27 @@ es nicht ist. OPAA gibt sie deshalb **im Fluss** aus: Der Text erscheint, währe
 Vorgang lässt sich abbrechen, sobald erkennbar ist, dass die Antwort in die falsche Richtung läuft. Für
 die empfundene Antwortzeit ist das der wirksamste Einzelfaktor.
 
-Das steht in einer Spannung zum Zitierzwang, die benannt gehört: **Die Belegprüfung setzt an der
-fertigen Antwort an.** Wer im Fluss ausgibt, hat schon ausgegeben, wenn die Prüfung urteilt. Drei
-Auflösungen stehen zur Wahl.
+**Mit der gebauten Belegvalidierung entsteht hier keine Spannung.** Sie hält keine Antwort zurück — ein
+ungültiger Beleg wird gekennzeichnet, nicht die Ausgabe verweigert (siehe
+[Zitierzwang](./data-indexing-rag.md#zitierzwang)) —, also gibt es nichts, dessen Sichtbarkeit ein
+laufender Strom vorwegnehmen könnte. Die Ausgabe im Fluss kann deshalb, sobald sie gebaut ist, ohne
+weitere Abwägung überall greifen.
 
-**Option 1 — Erst prüfen, dann ausgeben.** Im Zitierzwang wird die Antwort vollständig erzeugt, geprüft
-und erst danach ausgegeben. Sauber und ohne Widerruf, aber der Zeitvorteil entfällt genau in dem Modus,
-in dem am sorgfältigsten gearbeitet wird.
+**Historisch, für den Fall einer Wiederaufnahme:** Der ursprünglich vorgesehene Verweigerungsapparat
+(am 21.08.2026 verworfen) hätte diese Spannung erzeugt — **die Belegprüfung setzt an der fertigen
+Antwort an**, ein Strom hätte einen unbelegten Satz aber schon gezeigt, bevor das Urteil feststeht. Drei
+Auflösungen standen dafür zur Wahl, falls die Frage mit einem künftigen Verweigerungsapparat wieder
+aufgemacht wird:
 
-**Option 2 — Ausgeben und widerrufen können.** Der Text läuft mit, und die Prüfung kann ihn nachträglich
-als nicht belegt kennzeichnen oder zurücknehmen. Schnell, aber jemand hat den unbelegten Satz bereits
-gelesen — und Gelesenes ist nicht widerrufbar. In einer Auskunft mit Außenwirkung ist das der falsche
-Kompromiss.
+- **Erst prüfen, dann ausgeben.** Die Antwort wird vollständig erzeugt, geprüft und erst danach
+  ausgegeben. Sauber und ohne Widerruf, aber ohne den Zeitvorteil des Flusses.
+- **Ausgeben und widerrufen können.** Der Text läuft mit, und die Prüfung kann ihn nachträglich als nicht
+  belegt kennzeichnen oder zurücknehmen. Schnell, aber jemand hat den unbelegten Satz bereits gelesen —
+  und Gelesenes ist nicht widerrufbar.
+- **Abschnittsweise prüfen.** Ausgegeben wird in belegten Abschnitten: Ein Abschnitt erscheint, sobald
+  seine Belege aufgelöst sind. Verbindet beide Vorteile, ist aber die aufwendigste Variante.
 
-**Option 3 — Abschnittsweise prüfen.** Ausgegeben wird in belegten Abschnitten: Ein Abschnitt erscheint,
-sobald seine Belege aufgelöst sind. Verbindet beide Vorteile, ist aber die aufwendigste Variante und
-setzt voraus, dass sich die Antwort verlässlich in prüfbare Abschnitte zerlegen lässt.
-
-**Empfehlung:** Option 1 im Zitierzwang, Ausgabe im Fluss überall sonst. Damit ist die Zusicherung
-eindeutig — im Zitierzwang wird nichts Unbelegtes sichtbar —, und der Zeitvorteil bleibt dort erhalten,
-wo er ohne Zusicherungsverlust zu haben ist. Dass der Zitierzwang spürbar langsamer ist, wird
-**angezeigt** statt kaschiert; es ist der ehrliche Preis der Prüfung. Option 3 bleibt als spätere
-Verbesserung offen.
-
-**Zielbild.** Die Ausgabe im Fluss ist heute nicht gebaut; die Antwort erscheint am Stück. Die Wahl
-zwischen den drei Optionen ist damit noch nicht durch eine Umsetzung vorentschieden.
+**Zielbild.** Die Ausgabe im Fluss ist heute nicht gebaut; die Antwort erscheint am Stück.
 
 ---
 
@@ -465,7 +465,9 @@ und keine davon ist eine Bitte an das Modell:
 - **Die Rechteprüfung sitzt vor dem Modell, nicht im Modell.** Kein Formulierungstrick kann Bestände
   öffnen, denn unberechtigte Passagen werden gar nicht erst geladen. Das ist die eigentliche Sicherung
   und der Grund, warum ein gelungener Umgehungsversuch bei OPAA vergleichsweise wenig einbringt.
-- **Der Zitierzwang begrenzt den Schaden.** Eine Antwort ohne Beleg ist im Zitierzwang keine Antwort.
+- **Die Belegvalidierung begrenzt den Schaden.** Ein von einer Umgehung erschlichener, unbelegter Satz
+  trägt keinen gültigen Beleg und wird als solcher gekennzeichnet — er kommt nicht als scheinbar
+  belegte Aussage durch (siehe [Zitierzwang](./data-indexing-rag.md#zitierzwang)).
 
 ### Untergeschobene Anweisungen aus Dokumenten
 
@@ -489,8 +491,9 @@ folgenlos, Schreiben verlangt eine menschliche Freigabe.
 ### Erfundene Aussagen
 
 Die frühere Fassung führte dies als eigenes Thema. Es ist inhaltlich in der **Belegbarkeit**
-aufgegangen: Antworten sind an Fundstellen gebunden, die Belegdeckung wird ausgewiesen, und im
-Zitierzwang gibt es ohne Beleg keine Antwort. Beschrieben ist das in
+aufgegangen: Antworten sind an Fundstellen gebunden, und jeder Beleg wird deterministisch gegen die
+abgerufenen Fundstellen geprüft — ein erfundener Beleg wird gekennzeichnet, nicht stillschweigend
+akzeptiert. Beschrieben ist das in
 [Wissensschicht und Retrieval](./data-indexing-rag.md#belegbarkeit). Hier steht es nur noch als Verweis,
 damit die Verlagerung nicht als Wegfall gelesen wird.
 
@@ -532,8 +535,8 @@ dort beschrieben.
 ## Integrationspunkte
 
 - **[Wissensschicht und Retrieval](./data-indexing-rag.md)** — Einbettungs-, Rerank- und Antwortmodell;
-  Zitierzwang und Belegprüfung; die Fähigkeitsabhängigkeit des Bildverständnisses. Dort wird bestimmt,
-  **welche** Passagen übergeben werden; hier, **wie**.
+  Belegvalidierung; die Fähigkeitsabhängigkeit des Bildverständnisses. Dort wird bestimmt, **welche**
+  Passagen übergeben werden; hier, **wie**.
 - **[Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md)** — die Vorgaben von Space, Bibliothek
   und Agent, ihre Verrechnung als Obergrenze und die Zuständigkeit für ihre Festlegung.
 - **[Wissensquellen und Konnektoren](./knowledge-sources.md)** — die Modellvorgabe einer
@@ -570,9 +573,10 @@ dort beschrieben.
   oder bleibt sie eine reine Vertrags- und Dokumentationsangabe?
 - Ab welcher Größe lohnt eine **getrennte Betriebsumgebung für Modelle** gegenüber dem gemeinsamen
   Betrieb mit der Anwendung?
-- Bleibt es im Zitierzwang bei der **vollständigen Prüfung vor der Ausgabe**, oder lohnt die
-  abschnittsweise Prüfung während der Ausgabe? Letztere hält den Zeitvorteil, verlangt aber eine
-  verlässliche Zerlegung der Antwort in prüfbare Abschnitte.
+- Falls ein Verweigerungsapparat über die Belegvalidierung hinaus wieder aufgemacht wird (siehe
+  [Zitierzwang](./data-indexing-rag.md#zitierzwang)): Bleibt es dann bei der **vollständigen Prüfung vor
+  der Ausgabe**, oder lohnt die abschnittsweise Prüfung während der Ausgabe? Letztere hält den
+  Zeitvorteil, verlangt aber eine verlässliche Zerlegung der Antwort in prüfbare Abschnitte.
 - Soll die **Filterung von Inhalten** im Zielbild bleiben? Sie war im früheren Bestand als Erweiterung
   geführt und ist hier unverändert übernommen. Dagegen spricht, dass sie eine Sicherheit suggeriert, die
   eine Mustererkennung nicht leisten kann, und dass sie mit der Belegbarkeit in Konflikt gerät.
