@@ -131,6 +131,19 @@ diese Bibliothek gar nicht erst, unabhängig davon, wie thematisch treffend ein 
 
 ---
 
+## Öffentliche Demo-Instanz
+
+Unter <https://opaa.ewerlin.com> läuft dieselbe Demo „Stadt Rheinfurt" öffentlich (#230, Epic #708) —
+Anmeldung erforderlich, kein anonymer Zugang. Ein Unterschied zur Tabelle oben: **`demo-admin`
+funktioniert dort nicht mit dem Passwort `RheinfurtDemo!2026`** — sein Passwort ist nach dem Rollout
+bewusst auf einen serverseitig verwahrten Zufallswert rotiert (siehe
+[`deployment.md`, „Öffentliche Testinstanz"](./deployment.md#öffentliche-testinstanz)). Die vier
+Fach-Demokonten (`maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt`) gelten dort unverändert
+mit dem oben dokumentierten Passwort und genügen für das komplette Drehbuch unten — keine der acht
+Fragen setzt `demo-admin` voraus.
+
+---
+
 ## Drehbuch
 
 Acht vorbereitete Fragen. Bei jeder Frage: als wer anmelden, was fragen, was zu erwarten ist, was sie

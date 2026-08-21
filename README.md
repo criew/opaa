@@ -63,9 +63,10 @@ Vorgaben gelten — alle erben es, Änderungen wirken sofort überall.
 
 ## Ausprobieren
 
-Eine öffentliche Test- und Demo-Instanz läuft unter [opaa.ewerlin.com](https://opaa.ewerlin.com)
-(Anmeldung erforderlich, kein anonymer Zugang). Details in der
-[Deployment-Dokumentation](docs/deployment.md#öffentliche-testinstanz).
+Eine öffentliche Test- und Demo-Instanz der Demo „Stadt Rheinfurt" läuft unter
+[opaa.ewerlin.com](https://opaa.ewerlin.com) — Anmeldung erforderlich, kein anonymer Zugang; die
+Demo-Konten stehen in [docs/demo-walkthrough.md](docs/demo-walkthrough.md#nutzerkonten). Details zum
+Betrieb in der [Deployment-Dokumentation](docs/deployment.md#öffentliche-testinstanz).
 
 Die eigene, lokal installierbare Demo-Instanz „Stadt Rheinfurt" — fiktiver Verwaltungskorpus, vier
 Demo-Nutzer mit Berechtigungsgrenze, ein ausformuliertes Drehbuch mit acht Vorführfragen — startet mit
