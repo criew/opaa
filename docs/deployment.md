@@ -153,6 +153,69 @@ Wer eine Bibliothek vom Typ `HTTP_DIRECTORY` oder `RSS_FEED` anlegt, bestimmt be
 
 Weist ein `sourcePath` außerhalb der Allowlist zurück, nennt die 400-Antwort bewusst keine Serverpfade — das würde die konfigurierten Basisverzeichnisse gegenüber einem nicht berechtigten Aufrufer preisgeben. Damit der abgewiesene Aufrufer trotzdem handlungsfähig bleibt, verweist die Meldung stattdessen auf die Systemverwaltung als Anlaufstelle für die freigegebenen Basisverzeichnisse.
 
+## Härtung für erreichbare Deployments
+
+Der mitgelieferte Compose-Stack (`docker-compose.yml`, `keycloak/realm-export.json`) ist ausdrücklich für
+die **lokale Entwicklung** gebaut, wie der Warnhinweis am Kopf von `docker-compose.yml` sagt. Seine
+Vorgabewerte sind dafür richtig gewählt — bequem, ohne Ersteinrichtung nutzbar, mit einem funktionierenden
+OIDC-Realm ab dem ersten Start. Für eine **öffentlich oder auch nur aus einem größeren Netz erreichbare
+Instanz** ist jeder dieser Vorgabewerte ein Problem, und der Warnhinweis allein sagt nicht, was konkret zu
+tun ist. Dieser Abschnitt schließt genau diese Lücke — die Doku, nicht der Betrieb: Für die reale
+öffentliche Testinstanz siehe [„Öffentliche Testinstanz"](#öffentliche-testinstanz) oben, deren Realm
+bereits nicht der hier mitgelieferte ist.
+
+Die folgende Liste geht die vier tatsächlich im Repository liegenden Vorgabewerte durch. Wo eine
+Gegenmaßnahme **zwingend** ist, steht das dabei; alles andere ist eine Empfehlung, deren Unterlassung
+begründet werden sollte, kein hartes Muss.
+
+| # | Fundstelle | Vorgabewert | Risiko bei erreichbarem Betrieb | Gegenmaßnahme |
+|---|---|---|---|---|
+| 1 | `keycloak/realm-export.json:27-42` | Realm-Benutzer `testuser`/`testpass`, `"temporary": false` | Bekanntes, öffentlich im Repository stehendes Zugangspaar zu einem echten Konto — jeder, der das Repository kennt, kennt dieses Login | **Zwingend.** Diesen Benutzer aus dem Realm-Export entfernen oder durch ein eigenes, beim Import per Skript gesetztes Zufallspasswort ersetzen, bevor der Realm importiert wird. Wer den mitgelieferten Realm unverändert importiert, importiert dieses Konto mit |
+| 2 | `keycloak/realm-export.json:6` | `"sslRequired": "none"` | Keycloak nimmt Anmeldungen und Admin-Zugriffe auch unverschlüsselt an — in Kombination mit einer erreichbaren Instanz eine offene Tür für das Mitlesen von Zugangsdaten | **Zwingend**, sobald die Instanz nicht ausschließlich über eine als vertrauenswürdig geltende Loopback-/interne Verbindung erreicht wird: auf `external` (TLS für externe Zugriffe verpflichtend, intern optional) oder `all` (TLS immer verpflichtend) setzen. TLS selbst terminiert dabei **nicht** Keycloak, sondern der vorgelagerte Reverse-Proxy — siehe [„Netzwerkzugang"](#netzwerkzugang) unten und das reale Beispiel unter [„Öffentliche Testinstanz"](#öffentliche-testinstanz) (nginx terminiert TLS, Keycloak selbst bleibt intern auf HTTP) |
+| 3 | `docker-compose.yml:57-58` | Keycloak-Bootstrap-Admin `KC_BOOTSTRAP_ADMIN_USERNAME`/`_PASSWORD` fest auf `admin`/`admin` | Voller administrativer Zugriff auf den Identitätsanbieter mit einem der bekanntesten Vorgabepasswörter überhaupt | **Zwingend.** Über eigene Umgebungsvariablen setzen (z. B. `KEYCLOAK_ADMIN_USERNAME`/`KEYCLOAK_ADMIN_PASSWORD` in `.env.docker`, in der Compose-Datei als `${...}` referenziert statt hartkodiert) und **nach der Ersteinrichtung ersetzen** — der Bootstrap-Admin legt beim allerersten Start einen administrativen Benutzer an; sein Passwort danach unverändert zu lassen, macht die einmalige Bootstrap-Vereinfachung zu einer dauerhaften Schwachstelle |
+| 4 | `docker-compose.yml:17-18` | `postgres` veröffentlicht seinen Port auch für den Host: `127.0.0.1:${OPAA_DB_PORT:-5432}:5432` | Auf `127.0.0.1` gebunden schützt zwar vor Zugriff aus dem Netz, aber nicht vor jedem anderen Prozess und Nutzerkonto auf demselben Host — auf einem geteilten oder mehrbenutzerfähigen Server eine unnötig offene Angriffsfläche auf die Datenbank | **Empfohlen.** Die `ports:`-Zuordnung des `postgres`-Service für den erreichbaren Betrieb ganz entfernen, statt sie nur auf Loopback zu binden — Backend und `postgres` erreichen sich ohnehin über das interne Compose-Netz (Servicename `postgres`), ein Host-Port wird dafür nicht gebraucht. Für lokale Entwicklung (Anschluss mit einem Datenbank-Client vom Host aus) bleibt die Loopback-Bindung dagegen sinnvoll — deshalb ist sie dort nicht als Fehler markiert |
+
+**Zugangsdaten, die zusätzlich zu ersetzen sind (empfohlen, unabhängig von den vier Fundstellen oben):**
+
+- `OPAA_DB_USERNAME`/`OPAA_DB_PASSWORD` — die Vorgabewerte `opaa`/`opaa` sind für die Entwicklung gewählt,
+  nicht für den Betrieb. Eine Änderung nach der Ersteinrichtung verlangt `docker compose down -v` (siehe
+  [„Datenbank"](#datenbank) unten), weil PostgreSQL den initialen Benutzer nur beim ersten Start anlegt —
+  das Zugangsdatenpaar also **vor** dem ersten Start setzen, nicht danach ändern wollen.
+- `OPAA_CREDENTIALS_ENCRYPTION_KEY` — sobald eine Bibliothek vom Typ `HTTP_DIRECTORY`/`RSS_FEED`
+  Zugangsdaten zu einer externen Quelle speichert (siehe [„Zugangsdaten-Verschlüsselung"](#zugangsdaten-verschlüsselung-483)
+  oben), muss ein eigener Schlüssel gesetzt sein — ohne ihn schlägt nur dieser eine Schreibvorgang fehl,
+  der Start selbst nicht. Der im `dev`-Profil hinterlegte Schlüssel ist ausdrücklich nicht
+  produktionstauglich und darf nicht übernommen werden.
+
+**Was es in diesem Repository nicht mehr gibt und deshalb hier auch nicht zu ersetzen ist:** Ein
+anwendungsseitiges JWT-Secret (früher `OPAA_AUTH_BASIC_SECRET`) existiert seit dessen ersatzloser
+Entfernung ([`fd04246`](https://github.com/criew/opaa/commit/fd0424621874270a2be78f05bfee5c550945fd3f))
+nicht mehr — OPAA verifiziert Tokens ausschließlich gegen die Signaturschlüssel des konfigurierten
+OIDC-Anbieters (`OPAA_OIDC_JWK_SET_URI`), es gibt kein eigenes Signier-Geheimnis, das rotiert werden
+müsste. Diese Verantwortung liegt beim Identitätsanbieter (dessen Realm-Schlüssel) statt bei OPAA. Ebenso
+gibt es keinen `OPAA_AUTH_MODE=mock` mehr: Der einzige ungeprüfte Modus ist heute das Spring-Profil `dev`
+— **es gehört nie auf eine erreichbare Instanz**, siehe die Warnung unter
+[„Entwicklungsmodus (dev)"](#entwicklungsmodus-dev) oben. Nur `SPRING_PROFILES_ACTIVE=...,oidc` ist für
+den erreichbaren Betrieb zulässig.
+
+**Woran erkennbar ist, was zwingend und was nur empfohlen ist:** Die Tabelle und die Liste oben markieren
+jeden Punkt einzeln als „Zwingend" oder „Empfohlen". Als Faustregel: Ein bekanntes, öffentlich im
+Repository stehendes Zugangsdatenpaar oder ein Klartext-Transportweg zu Anmeldedaten ist immer zwingend zu
+schließen; eine Einschränkung, die nur die Angriffsfläche auf einem sonst schon vertrauenswürdigen Host
+verkleinert (etwa Punkt 4), ist eine Empfehlung.
+
+**Separate Compose-Datei oder Textliste?** Für dieses Issue fällt die Entscheidung bewusst auf die
+Textliste oben statt auf eine eigene `docker-compose.prod.yml`/ein Override: Von den vier Fundstellen
+verlangen zwei eine Änderung an `keycloak/realm-export.json` (kein Compose-Override kann Inhalte einer
+importierten JSON-Datei patchen, ohne selbst wieder ein Geheimnis oder einen Generierungsschritt
+einzuführen) und eine einen echten Bootstrap-Vorgang (Passwort **nach** der Ersteinrichtung ändern, was
+keine Compose-Datei für sich allein leisten kann). Eine `docker-compose.prod.yml` würde damit nur den
+einen Port-Punkt automatisieren und für den Rest weiterhin auf genau diese Anleitung verweisen — der
+Mehrwert stünde in keinem Verhältnis zu einer zweiten, parallel zu pflegenden Compose-Datei. Sollte sich
+das Bild ändern (etwa durch ein eigenes Setup-Skript, das Realm-Import und Bootstrap-Rotation ohnehin
+automatisiert), ist eine separate Produktionsvariante ein guter Zeitpunkt, diese Punkte technisch statt nur
+dokumentarisch durchzusetzen — dann als eigenes Issue.
+
 ## Vor der Inbetriebnahme: mandantenfähiger Betrieb
 
 Eine Installation wird heute mit **genau einer** Organisation ausgeliefert. Solange das so bleibt, ist die Mandantengrenze unkritisch — es gibt nichts, was sie überschreiten könnte.
