@@ -84,7 +84,8 @@ da der einzige Testfall (Rauchtest) keinen KI-Aufruf auslöst. Sobald #232/#233 
 Chat-/Indizierungs-Läufe brauchen, darf kein Szenario von einem externen, kostenpflichtigen Dienst
 abhängen (Nichtdeterminismus, Kosten, Netzwerkabhängigkeit in CI). Die konkrete Umsetzung (lokaler
 Ollama-Service im Compose-Stack vs. OpenAI-kompatibler Stub) ist bewusst nicht Teil dieses ADRs,
-sondern eines eigenen, blockierenden Issues ("Lokale Modellbereitstellung für den E2E-Stack").
+sondern eines eigenen, blockierenden Issues ("Lokale Modellbereitstellung für den E2E-Stack") —
+**entschieden, siehe [Nachtrag vom 21.08.2026](#21082026--lokale-modellbereitstellung-openai-kompatibler-stub-statt-ollama)**.
 
 ## Konsequenzen
 
@@ -154,3 +155,25 @@ bleibt unverändert, damit erkennbar bleibt, was wann galt.
 - **Verweis:** [#256](https://github.com/criew/opaa/issues/256) · `e2e/ai-stub/server.mjs` ·
   `e2e/docker-compose.e2e.yml` · `e2e/e2e.env` ·
   [e2e/README.md](../../e2e/README.md#ki-stub-statt-echtem-modell)
+
+### 21.08.2026 — Punkt 2: Overlay-Datei statt reiner `docker-compose.yml`
+
+- **Punkt:** Punkt 2 sagt, der Stack werde über das bestehende `docker-compose.yml` gestartet,
+  „nicht über Testcontainers oder eine separate Compose-Datei". Das stimmt seit Längerem nicht mehr
+  wörtlich: `e2e/scripts/run-e2e.mjs` startet mit `-f docker-compose.yml -f
+  e2e/docker-compose.e2e.yml`, also mit genau einer zusätzlichen Compose-Datei als Overlay. Nicht
+  durch diesen PR verursacht, aber durch den neuen Nachtrag oben — der `e2e/docker-compose.e2e.yml`
+  bereits als Faktum zitiert — im selben Dokument erstmals sichtbar widersprüchlich.
+- **Entscheidung:** `e2e/docker-compose.e2e.yml` ist ein Overlay, keine zweite, eigenständige
+  Stack-Definition. Es startet keinen eigenen Postgres/Backend/Frontend, sondern ergänzt nur
+  E2E-eigene Dienste (`ai-stub`, `rss-feed`) und punktuelle Umgebungswerte um die in Punkt 2
+  beschriebenen Kerndienste aus `docker-compose.yml`. Die tragende Aussage von Punkt 2 —
+  dieselben Dockerfiles/Images wie für Produktion, keine zweite Infrastrukturdefinition für
+  Postgres/Backend/Frontend — bleibt richtig; nur die Formulierung „nicht über … eine separate
+  Compose-Datei" war zu absolut.
+- **Begründung:** E2E-spezifische Dienste wie `ai-stub` und `rss-feed` gehören nicht in den Stack,
+  den ein Entwickler mit einem gewöhnlichen `docker compose up` hochzieht — laut Kommentar bei
+  `ai-stub` in `e2e/docker-compose.e2e.yml` bewusst nicht Teil von `docker-compose.yml`, damit kein
+  Nicht-E2E-Gebrauch des Stacks aus Versehen darauf zeigen kann. Eine Overlay-Datei trägt genau
+  diese Trennung, ohne Postgres/Backend/Frontend selbst zu duplizieren.
+- **Verweis:** `e2e/scripts/run-e2e.mjs` · `e2e/docker-compose.e2e.yml`
