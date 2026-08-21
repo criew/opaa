@@ -1,5 +1,7 @@
 package io.opaa.space;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.api.dto.SpaceListResponse;
 import io.opaa.api.dto.SpaceMemberRequest;
 import io.opaa.api.dto.SpaceMemberResponse;
@@ -44,6 +46,19 @@ public class SpaceService {
   private final ChatRepository chatRepository;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
+  /**
+   * #307: caches "this user already has a personal space" so that every login after the first no
+   * longer needs {@link SpaceRepository#existsByOwnerIdAndIsDefaultTrue} at all - not even one
+   * pooled connection, let alone the two a first login previously spent on {@code
+   * ensureDefaultSpace} alone (the exists check plus the {@code REQUIRES_NEW} insert attempt). A
+   * default space is never deleted (see {@link #deleteSpace}'s and {@link #archiveSpace}'s guard),
+   * so once true this fact never goes stale - no TTL needed, only a size bound against unbounded
+   * growth. This is the Caffeine-cache option #137's closing comment asked to weigh here rather
+   * than as its own change: this is the same request-path connection pressure #307 investigates, so
+   * a second, independent cache next to it would double the bookkeeping for one problem.
+   */
+  private final Cache<UUID, Boolean> personalSpaceProvisioned;
+
   public SpaceService(
       SpaceRepository spaceRepository,
       UserRepository userRepository,
@@ -57,6 +72,9 @@ public class SpaceService {
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    // Same bound as GroupMembershipResolver's per-user cache; unlike that one this needs no
+    // expireAfterWrite, see the field Javadoc above.
+    this.personalSpaceProvisioned = Caffeine.newBuilder().maximumSize(50_000).build();
   }
 
   @Transactional
@@ -537,10 +555,40 @@ public class SpaceService {
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void ensureDefaultSpace(UUID userId, UUID organizationId) {
+    // #307: the common case - a returning user who already has a personal space - now costs zero
+    // pooled connections instead of one; see personalSpaceProvisioned's Javadoc.
+    if (Boolean.TRUE.equals(personalSpaceProvisioned.getIfPresent(userId))) {
+      return;
+    }
     if (spaceRepository.existsByOwnerIdAndIsDefaultTrue(userId)) {
+      personalSpaceProvisioned.put(userId, Boolean.TRUE);
       return;
     }
 
+    insertDefaultSpace(userId, organizationId);
+  }
+
+  /**
+   * Same guarantee as {@link #ensureDefaultSpace(UUID, UUID)}, but for a {@code userId} the caller
+   * already knows to be brand new - {@code UserService.findOrCreateUser} calls this only for a
+   * subject/issuer pair its own insert (not a concurrent winner's) just created (#307). A user row
+   * that did not exist a moment ago cannot already own a personal space, so the {@code existsBy}
+   * check {@link #ensureDefaultSpace(UUID, UUID)} performs first is guaranteed to return {@code
+   * false} here - calling it anyway would spend a whole extra pooled connection confirming a fact
+   * already known, exactly the redundant round trip {@code
+   * UserServiceConcurrentDistinctUserLoginIntegrationTest} put under pressure: twelve concurrent
+   * first logins of twelve different users, all guaranteed-new, at Hikari's production default
+   * {@code maximum-pool-size} of 10. Skipping it here halves this method's connection consumption
+   * for exactly that scenario (one {@code REQUIRES_NEW} insert instead of an exists check plus an
+   * insert), the same one-round-trip-per-caller economy #201/#305's {@code ON CONFLICT ... DO
+   * NOTHING} rewrite already established for the insert itself - see this method's sibling Javadoc.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public void ensureDefaultSpaceForNewUser(UUID userId, UUID organizationId) {
+    insertDefaultSpace(userId, organizationId);
+  }
+
+  private void insertDefaultSpace(UUID userId, UUID organizationId) {
     requiresNewTransactionTemplate.executeWithoutResult(
         status ->
             spaceRepository.insertDefaultSpaceIfAbsent(
@@ -550,6 +598,7 @@ public class SpaceService {
                 "Privater persönlicher Space",
                 userId,
                 organizationId));
+    personalSpaceProvisioned.put(userId, Boolean.TRUE);
   }
 
   private Space buildValidatedSpace(
