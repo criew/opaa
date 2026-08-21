@@ -92,8 +92,11 @@ class SourceConnectionTestServiceTest {
     when(filesystemAllowlist.isConfigured()).thenReturn(true);
     when(filesystemAllowlist.isAllowed(dir.toString())).thenReturn(true);
     Files.writeString(dir.resolve("a.txt"), "hello");
-    Files.writeString(dir.resolve("b.pdf"), "pdf-ish");
-    Files.writeString(dir.resolve("c.xyz"), "unsupported");
+    Files.write(dir.resolve("b.pdf"), "%PDF-1.4\n%mock-pdf-body".getBytes(StandardCharsets.UTF_8));
+    // #404: c.xyz is unsupported by its actual content (arbitrary binary, no accepted media type
+    // matches) - a supported-looking extension on genuinely readable text (the old fixture used
+    // "unsupported" as literal file content) would now be accepted, since content decides.
+    Files.write(dir.resolve("c.xyz"), new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3});
 
     SourceConnectionTestResponse response =
         service.test(

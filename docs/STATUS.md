@@ -56,6 +56,16 @@ Drei Zustände werden unterschieden:
 - Vektorspeicherung in PostgreSQL mit pgvector — der einzige unterstützte Vektorspeicher; ein Wechsel
   ist über die Schnittstelle von Spring AI technisch möglich, wird aber nicht unterstützt, nicht geprüft
   und nicht dokumentiert (#348)
+- **Formaterkennung anhand des tatsächlichen Inhalts, nicht der Dateiendung** (#404) — Zulassung und
+  Extraktionstyp entscheidet der per Tika erkannte Medientyp, auf allen drei Aufnahmewegen gleich
+  (Verzeichnis, Webverzeichnis, RSS-Anlagen). Die Endung ist nur noch ein Hinweis: Weicht sie vom
+  erkannten Inhalt ab, wird das protokolliert (`FORMAT_MISMATCH`), das Dokument aber trotzdem
+  indiziert. Ausnahme: Bei Markdown/Klartext bleibt die Endung Teil der Entscheidung (nicht nur
+  Hinweis), weil Tika am Inhalt allein nicht zwischen Text, CSV und Quellcode unterscheiden kann.
+  Der RSS-Anlagenweg wählt Kandidaten weiterhin über eine Endung im Link vor (irgendeine, nicht mehr
+  nur eine der sechs zugelassenen), bevor der Inhalt entscheidet. Weiterhin nur sechs Dateiendungen
+  zugelassen (`.md`, `.txt`, `.pdf`, `.docx`, `.doc`, `.pptx`) — eine bewusste fachliche Grenze,
+  keine technische; der Extraktor beherrscht 245 Medientypen.
 
 **Im Bau**
 - Messbarkeit der Suchqualität — Korpus, Golden Dataset und Regressionsprüfung (Epic #224, Verzeichnis
@@ -65,10 +75,6 @@ Drei Zustände werden unterschieden:
 - **Hybride Suche und Reranking** — es gibt weder Volltextsuche noch einen Reranker im Code. Reine
   Vektorsuche versagt genau bei attributreichen Fachdaten.
 - **Erklärbares Chunking** — die Zerlegung ist heute nicht nachvollziehbar dargestellt.
-- **Nur sechs Dateiendungen werden verarbeitet** (`.md`, `.txt`, `.pdf`, `.docx`, `.doc`, `.pptx`),
-  ausgewählt über eine Endungsliste statt über den erkannten Inhalt. Der eingesetzte Extraktor kann
-  weit mehr — er meldet 245 unterstützte Medientypen. Die Umstellung auf Inhaltserkennung wird in
-  #404 geführt. Beide Indizierungswege führen inzwischen dieselbe Liste (#375).
 - Konfidenz als eigenständige, erklärte Größe (heute nur Ähnlichkeitswert)
 
 **Geplant (Phase 2 und später)**
@@ -82,8 +88,9 @@ Drei Zustände werden unterschieden:
 - Aufnahme aus einem konfigurierten Verzeichnis (`OPAA_INDEXING_DOCUMENT_PATH`)
 - Indizierung aus dem Netz über URL (`UrlIndexingExecutor`, `UrlFileDownloader`, `AutoindexCrawlerService`)
 - Formate: Markdown, Text, PDF, DOCX, DOC, PPTX — an einer Stelle festgelegt
-  (`SupportedDocumentFormats`) und für beide Aufnahmewege verbindlich; ein abgewiesenes Dokument
-  zählt im Indizierungsauftrag als übersprungen statt lautlos zu verschwinden (#375). Tabellen (XLSX)
+  (`SupportedDocumentFormats`) und für alle Aufnahmewege verbindlich, seit #404 anhand des
+  tatsächlichen Inhalts entschieden (siehe A, oben); ein abgewiesenes Dokument zählt im
+  Indizierungsauftrag als übersprungen statt lautlos zu verschwinden (#375). Tabellen (XLSX)
   gehören nicht dazu — das stand hier bisher falsch
 - Wiedererkennung unveränderter Dateien über Prüfsummen (`ChecksumService`)
 - Auftragsverwaltung für Indizierungsläufe mit Status (`IndexingJobService`, seit ADR-0018 je
@@ -122,7 +129,10 @@ Drei Zustände werden unterschieden:
 - **Der erste Konnektor.** Bisher gibt es keinen — weder zu einer Dateiablage noch zu einem Wiki, einem
   Postfach oder einem Vorgangssystem. Was existiert, ist die Aufnahme über Verzeichnis, URL und Upload.
 - Selbst aktualisierende Wissensblöcke; Zeitpläne und Prioritäten
-- Zuordnung einer Konnektorquelle zu genau einer Wissensbibliothek (#207)
+- Offene Punkte der Quellzuordnung (#207): Obergrenze der Freigabe für konnektorgespeiste Bibliotheken
+  und Ausschluss einzelner Konnektordokumente. Die Zuordnung einer Quelle zu genau **einer**
+  Wissensbibliothek selbst ist seit ADR-0018 gebaut und strukturell erzwungen — die Bibliothek trägt
+  Quellentyp und Quellkonfiguration selbst
 
 **Geplant (Phase 2)**
 - Schreibender Zugriff je Integration · Spiegelung der Rechte aus dem Quellsystem

@@ -103,6 +103,17 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
               documentDir.toString(),
               discovered.rejected().stream().map(p -> p.getFileName().toString()).toList()));
 
+      // #404: a file whose own extension does not match its detected content is still indexed -
+      // only reported, never rejected or silently reinterpreted (acceptance criteria).
+      for (DocumentService.FormatMismatch mismatch : discovered.mismatches()) {
+        events.record(
+            IndexingEventCategory.FORMAT_MISMATCH,
+            "Dateiendung passt nicht zum erkannten Inhalt (erkannt: "
+                + mismatch.detectedExtension()
+                + ")",
+            mismatch.file().getFileName().toString());
+      }
+
       progress.setTotal(discovered.totalFound());
       progress.report();
 

@@ -8,6 +8,7 @@ import io.opaa.api.dto.IndexingRunListResponse;
 import io.opaa.api.dto.IndexingRunResponse;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
+import io.opaa.api.dto.IndexingTriggerSource;
 import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryListResponse;
@@ -303,6 +304,7 @@ public class LibraryController {
     return new IndexingRunResponse(
             job.getId(),
             status,
+            mapIndexingTriggerSource(job.getTriggeredBy()),
             job.getDocumentsProcessed(),
             job.getDocumentsTotal(),
             job.getDocumentsSkipped(),
@@ -315,6 +317,14 @@ public class LibraryController {
         .completedAt(job.getCompletedAt());
   }
 
+  private IndexingTriggerSource mapIndexingTriggerSource(
+      io.opaa.indexing.JobTriggerSource triggeredBy) {
+    return switch (triggeredBy) {
+      case MANUAL -> IndexingTriggerSource.MANUAL;
+      case SCHEDULED -> IndexingTriggerSource.SCHEDULED;
+    };
+  }
+
   private IndexingRunEvent toIndexingRunEventResponse(io.opaa.indexing.IndexingRunEvent event) {
     return new IndexingRunEvent(mapIndexingEventCategory(event.getCategory()), event.getMessage())
         .reference(event.getReference());
@@ -324,9 +334,11 @@ public class LibraryController {
     return switch (category) {
       case REJECTED -> IndexingRunEventCategory.REJECTED;
       case UNREACHABLE -> IndexingRunEventCategory.UNREACHABLE;
+      case SCHEDULE_SKIPPED -> IndexingRunEventCategory.SCHEDULE_SKIPPED;
       case UNSUPPORTED_FORMAT -> IndexingRunEventCategory.UNSUPPORTED_FORMAT;
       case ALLOWLIST -> IndexingRunEventCategory.ALLOWLIST;
       case ERROR -> IndexingRunEventCategory.ERROR;
+      case FORMAT_MISMATCH -> IndexingRunEventCategory.FORMAT_MISMATCH;
     };
   }
 

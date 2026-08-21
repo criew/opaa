@@ -373,11 +373,36 @@ heute läuft, und dem, was zum Zielbild gehört.
 | Nachricht aus einem Postfach | — | Einzelnachrichten (`.eml`, `.msg`), Postfachexporte (MBOX, PST) |
 | Bild oder gescannte Seite | — | Rasterbilder (`.png`, `.jpg`, `.tiff`), Bild-PDF über Texterkennung |
 
-Die Liste gilt für **beide dateibasierten Aufnahmewege gleichermaßen** — den Weg über ein Verzeichnis im
-Dateisystem und den Weg über ein Webverzeichnis (siehe
+Die Liste gilt für **alle dateibasierten Aufnahmewege gleichermaßen** — den Weg über ein Verzeichnis im
+Dateisystem, den Weg über ein Webverzeichnis und Anlagen eines Feed-Eintrags (siehe
 [Wissensquellen und Konnektoren](./knowledge-sources.md#webverzeichnis-gebaut)).
-Sie ist an genau einer Stelle im Code geführt; dieselbe Datei wird deshalb unabhängig davon, wie sie
-hereinkommt, gleich behandelt.
+Sie ist an genau einer Stelle im Code geführt (`SupportedDocumentFormats`); dieselbe Datei wird deshalb
+unabhängig davon, wie sie hereinkommt, gleich behandelt — und zwar anhand ihres **tatsächlichen,
+per Tika erkannten Inhalts (gebaut, #404)**, nicht anhand ihres Namens. Die Endung geht nur noch als
+Hinweis ein: Weicht sie vom erkannten Inhalt ab, wird das im Protokoll des Indizierungslaufs vermerkt
+(Kategorie `FORMAT_MISMATCH`) — das Dokument wird dennoch indiziert, denn eine falsche Endung in einem
+gewachsenen Bestand ist typischerweise ein Beschriftungsfehler, kein Grund, einen sonst lesbaren Inhalt
+zu verwerfen. Für den manuellen Upload gilt eine bewusste Ausnahme: Wer eine Datei über die Oberfläche
+hochlädt, hat Datei und Namen in derselben Handlung selbst gewählt — eine Abweichung dort wird abgewiesen,
+nicht nur vermerkt (#435).
+
+**Bei Markdown und Klartext bleibt die Endung Teil der Entscheidung, nicht nur ein Hinweis.** Tika kann
+am Inhalt allein nicht erkennen, ob eine lesbare Textdatei als Markdown, Klartext oder etwas fachfremdes
+(eine CSV-Exportdatei, eine Logdatei, Quellcode) gemeint war — jede dieser Dateien liest sich als
+schlichter Text. Ohne die Endung als Unterscheidungsmerkmal würde deshalb jede lesbare Textdatei,
+gleich wie benannt, in den zugelassenen Bestand aufgenommen — eine stille Erweiterung, die diese
+Umstellung ausdrücklich nicht wollte. Für diese beiden Typen gilt deshalb: Der Inhalt muss lesbarer Text
+sein, **und** die Datei muss bereits `.md` oder `.txt` heißen — eine lesbare Textdatei namens `README`
+oder `export.csv` wird abgewiesen, dieselben Bytes unter `notiz.txt` angenommen. Für die eindeutig
+erkennbaren Formate (PDF, Word, PowerPoint) gilt diese Einschränkung nicht: Ihr Byte-Muster ist
+eindeutig genug, dass die Endung dort wirklich nur noch Hinweis ist.
+
+Beim **RSS-Anlagenweg** kommt eine zweite, davon unabhängige Einschränkung hinzu: Welche Verweise einer
+Detailseite überhaupt als Anlage in Frage kommen, entscheidet weiterhin die Endung im Link — man kann
+nicht jeden Verweis einer Seite herunterladen, nur um seinen Inhalt zu prüfen. Diese Vorauswahl verlangt
+inzwischen nur noch irgendeine Dateiendung, nicht mehr eine der sechs zugelassenen; erst der
+heruntergeladene Inhalt der so gefundenen Kandidaten entscheidet dann, wie auf den anderen beiden Wegen,
+über Zulassung und eine etwaige Abweichungsmeldung.
 
 Der **Feed als Quelle** (siehe
 [Wissensquellen und Konnektoren](./knowledge-sources.md#feeds-als-quelle-gebaut)) ist davon in einem
@@ -390,11 +415,11 @@ durchlaufen dieselbe Liste wie jede andere.
 
 Eine Einschränkung des gebauten Stands gehört dazu, weil sie sonst überrascht:
 
-**Die Auswahl der Formate ist heute eine Endungsliste, keine Inhaltserkennung.** Die im Überblick
-beschriebene Erkennung anhand des tatsächlichen Inhalts ist Zielbild und wird in
-[#404](https://github.com/criew/opaa/issues/404) geführt. Der eingesetzte Extraktor beherrscht weit
-mehr Formate, als die Liste zulässt — er meldet auf dem aktuellen Classpath 245 unterstützte
-Medientypen. Die Begrenzung ist also eine bewusste fachliche Auswahl, keine Grenze der Extraktion.
+**Die Liste oben bleibt eine bewusste fachliche Auswahl, keine Grenze der Extraktion.** Der eingesetzte
+Extraktor beherrscht weit mehr Formate, als die Liste zulässt — er meldet auf dem aktuellen Classpath 245
+unterstützte Medientypen. Zugelassen ist nur, was oben unter "Gebaut" steht; alles andere wird abgewiesen,
+selbst wenn Tika es lesen könnte. Eine Erweiterung der Liste ist eine eigene fachliche Entscheidung, kein
+Nebeneffekt der in #404 umgesetzten Inhaltserkennung.
 
 Dateien mit nicht zugelassenem Format werden **nicht stillschweigend übersprungen**: Sie zählen zur
 Gesamtzahl des Indizierungslaufs, erscheinen dort als übersprungen und werden namentlich protokolliert.

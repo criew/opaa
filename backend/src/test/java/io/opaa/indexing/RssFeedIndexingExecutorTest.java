@@ -935,6 +935,56 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
+  void genericProfileAcceptsAPdfLinkedUnderAnUnrecognizedExtensionAndReportsTheMismatch()
+      throws IOException {
+    // #404 review, finding 2: the core case #404 exists for, now proven on the RSS attachment
+    // path too - a document linked under an extension SupportedDocumentFormats does not recognize
+    // ("bescheid.csv") used to never even become a candidate, and is now accepted from its actual
+    // content, with the deviation reported instead of hidden.
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/bescheid.csv\">Bescheid</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serveBytes(
+        "/downloads/bescheid.csv",
+        200,
+        "text/csv",
+        "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processUrlFile(
+            any(),
+            eq("bescheid.csv"),
+            eq(baseUrl + "/downloads/bescheid.csv"),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.RSS_FEED),
+            eq(baseUrl + "/a.html"));
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.FORMAT_MISMATCH
+                        && event.getReference().equals(baseUrl + "/downloads/bescheid.csv")));
+  }
+
+  @Test
   void anAttachmentOverTheLibraryStorageQuotaIsSkippedRecordedAsRejectedAndDefersTheFeedEtag()
       throws IOException {
     // #119, PR #700 review finding 4: the attachment branch is the one QUOTA_EXCEEDED handler
@@ -1012,11 +1062,20 @@ class RssFeedIndexingExecutorTest {
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve("/a.html", 200, "text/html", detailHtml);
     serveBytes(
-        "/downloads/erste.pdf", 200, "application/pdf", "erste".getBytes(StandardCharsets.UTF_8));
+        "/downloads/erste.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 erste".getBytes(StandardCharsets.UTF_8));
     serveBytes(
-        "/downloads/zweite.pdf", 200, "application/pdf", "zweite".getBytes(StandardCharsets.UTF_8));
+        "/downloads/zweite.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 zweite".getBytes(StandardCharsets.UTF_8));
     serveBytes(
-        "/downloads/dritte.pdf", 200, "application/pdf", "dritte".getBytes(StandardCharsets.UTF_8));
+        "/downloads/dritte.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 dritte".getBytes(StandardCharsets.UTF_8));
     when(fileProcessingService.processRssEntry(
             anyString(), anyString(), anyString(), any(), eq(library)))
         .thenReturn(FileProcessingResult.PROCESSED);
@@ -1267,9 +1326,15 @@ class RssFeedIndexingExecutorTest {
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve("/a.html", 200, "text/html", detailHtml);
     serveBytes(
-        "/downloads/erste.pdf", 200, "application/pdf", "erste".getBytes(StandardCharsets.UTF_8));
+        "/downloads/erste.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 erste".getBytes(StandardCharsets.UTF_8));
     serveBytes(
-        "/downloads/zweite.pdf", 200, "application/pdf", "zweite".getBytes(StandardCharsets.UTF_8));
+        "/downloads/zweite.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 zweite".getBytes(StandardCharsets.UTF_8));
     when(fileProcessingService.processRssEntry(
             anyString(), anyString(), anyString(), any(), eq(library)))
         .thenReturn(FileProcessingResult.PROCESSED);

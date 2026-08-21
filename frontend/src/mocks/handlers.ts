@@ -38,6 +38,7 @@ import type {
   DocumentStatus,
   IndexingStatusResponse,
   LibraryOwnerType,
+  LibraryScheduleRequest,
   LibraryVisibility,
   QueryRequest,
 } from '../types/api'
@@ -827,11 +828,26 @@ export const handlers = [
       description?: string
       visibility?: LibraryVisibility
       listed?: boolean
+      schedule?: LibraryScheduleRequest
     }
     library.name = body.name
     library.description = body.description ?? null
     library.visibility = body.visibility ?? library.visibility
     library.listed = body.listed ?? library.listed
+    if (body.schedule) {
+      library.schedule = {
+        frequency: body.schedule.frequency,
+        hour: body.schedule.hour ?? null,
+        minute: body.schedule.minute ?? null,
+        weekday: body.schedule.weekday ?? undefined,
+        // #485: a mock-plausible next run - not a real cron evaluation, just "soon" so the UI has
+        // something non-null to render when a schedule is enabled.
+        nextRunAt:
+          body.schedule.frequency === 'DISABLED'
+            ? null
+            : new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      }
+    }
     listEntry.name = library.name
     listEntry.description = library.description
     listEntry.visibility = library.visibility

@@ -6,6 +6,8 @@ import type {
   IndexingRunEventCategory,
   LibraryVisibility,
   PermissionSubjectType,
+  ScheduleFrequency,
+  ScheduleWeekday,
   SpaceRole,
   SpaceVisibility,
 } from '../types/api'
@@ -223,6 +225,10 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
   UNSUPPORTED_FORMAT: 'Format nicht unterstützt',
   ALLOWLIST: 'Allowlist',
   ERROR: 'Fehler',
+  // #404: indexed anyway, only the deviation between the file's own extension and its detected
+  // content is reported here.
+  FORMAT_MISMATCH: 'Endung weicht vom Inhalt ab',
+  SCHEDULE_SKIPPED: 'Geplanter Lauf übersprungen',
 }
 
 export function indexingRunEventCategoryLabel(
@@ -230,6 +236,47 @@ export function indexingRunEventCategoryLabel(
 ): string {
   if (!category) return ''
   return indexingRunEventCategoryLabels[category as IndexingRunEventCategory] ?? category
+}
+
+// #485: feste Intervallstufen für den Bibliotheks-Zeitplan - die Reihenfolge ist auch die
+// Optionsreihenfolge in EditLibraryScheduleDialog.
+export const scheduleFrequencies: ScheduleFrequency[] = ['DISABLED', 'HOURLY', 'DAILY', 'WEEKLY']
+
+const scheduleFrequencyLabels: Record<ScheduleFrequency, string> = {
+  DISABLED: 'Aus',
+  HOURLY: 'Stündlich',
+  DAILY: 'Täglich',
+  WEEKLY: 'Wöchentlich',
+}
+
+export function scheduleFrequencyLabel(frequency: ScheduleFrequency | string | undefined): string {
+  if (!frequency) return ''
+  return scheduleFrequencyLabels[frequency as ScheduleFrequency] ?? frequency
+}
+
+export const scheduleWeekdays: ScheduleWeekday[] = [
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+  'SUNDAY',
+]
+
+const scheduleWeekdayLabels: Record<ScheduleWeekday, string> = {
+  MONDAY: 'Montag',
+  TUESDAY: 'Dienstag',
+  WEDNESDAY: 'Mittwoch',
+  THURSDAY: 'Donnerstag',
+  FRIDAY: 'Freitag',
+  SATURDAY: 'Samstag',
+  SUNDAY: 'Sonntag',
+}
+
+export function scheduleWeekdayLabel(weekday: ScheduleWeekday | string | undefined): string {
+  if (!weekday) return ''
+  return scheduleWeekdayLabels[weekday as ScheduleWeekday] ?? weekday
 }
 
 /** Formats a byte count as a German-locale size string (e.g. "1,2 MB"), or an em dash if unknown. */

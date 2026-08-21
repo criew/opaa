@@ -94,6 +94,17 @@ public class IndexingJob {
   @Column(name = "organization_id", nullable = false, updatable = false)
   private UUID organizationId;
 
+  /**
+   * Who started this run (#485) - {@link JobTriggerSource#MANUAL} unless {@link
+   * io.opaa.indexing.IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource)}
+   * was called with {@link JobTriggerSource#SCHEDULED}. {@code KnowledgeLibraryService} uses this
+   * to compute {@code LibraryResponse.lastScheduledRunsFailed} without conflating a manual retry
+   * with the scheduled runs it retried after.
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "triggered_by", nullable = false, length = 20)
+  private JobTriggerSource triggeredBy = JobTriggerSource.MANUAL;
+
   protected IndexingJob() {}
 
   public IndexingJob(JobStatus status) {
@@ -205,5 +216,13 @@ public class IndexingJob {
 
   public void setOrganizationId(UUID organizationId) {
     this.organizationId = organizationId;
+  }
+
+  public JobTriggerSource getTriggeredBy() {
+    return triggeredBy;
+  }
+
+  public void setTriggeredBy(JobTriggerSource triggeredBy) {
+    this.triggeredBy = triggeredBy;
   }
 }

@@ -7,10 +7,8 @@ import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -97,35 +95,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
           crawlerService.crawl(
               url, proxyHost, proxyPort, username, password, request.insecureSsl());
 
-      // Step 2: Split into supported and rejected file types
-      Map<Boolean, List<AutoindexCrawlerService.CrawledFileEntry>> byFormatSupport =
-          allFiles.stream()
-              .collect(Collectors.partitioningBy(UrlIndexingExecutor::isSupportedFormat));
-      List<AutoindexCrawlerService.CrawledFileEntry> supportedFiles =
-          byFormatSupport.getOrDefault(true, List.of());
-      List<AutoindexCrawlerService.CrawledFileEntry> rejectedFiles =
-          byFormatSupport.getOrDefault(false, List.of());
-
-      log.info(
-          "Discovered {} files ({} supported) for URL indexing",
-          allFiles.size(),
-          supportedFiles.size());
-
-      // Issue #375: rejected documents are part of the job, not invisible. They count towards the
-      // total and are reported as skipped, so nobody has to guess why the number of indexed
-      // documents is lower than the number of files behind the URL. #513: each one now also
-      // becomes its own UNSUPPORTED_FORMAT event.
-      for (AutoindexCrawlerService.CrawledFileEntry rejected : rejectedFiles) {
-        events.record(
-            IndexingEventCategory.UNSUPPORTED_FORMAT,
-            "Dateiformat wird nicht unterstützt",
-            rejected.url());
-      }
-      progress.addSkipped(
-          RejectedDocumentReporter.reportRejected(
-              IndexingSourceType.HTTP_DIRECTORY,
-              url,
-              rejectedFiles.stream().map(AutoindexCrawlerService.CrawledFileEntry::name).toList()));
+      log.info("Discovered {} files for URL indexing", allFiles.size());
 
       progress.setTotal(allFiles.size());
       progress.report();
@@ -135,8 +105,14 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
           AutoindexCrawlerService.buildHttpClient(proxyHost, proxyPort, request.insecureSsl());
       String authHeader = AutoindexCrawlerService.buildAuthHeader(username, password);
 
-      // Step 3: Process each file
-      for (AutoindexCrawlerService.CrawledFileEntry entry : supportedFiles) {
+      // Step 2: Process each file. #404: whether a file is indexed at all is decided from its
+      // actual content, not from its name in the listing - but only a bounded prefix is read to
+      // decide (#404 review, finding 1), never the whole file: a directory listing routinely sits
+      // next to files nobody meant for indexing at all (an ISO image, a video, a backup archive),
+      // and downloading each of those in full before rejecting them would fill the temp
+      // partition and drastically slow every run down. Only an entry the prefix decision already
+      // accepts is downloaded in full via #download below.
+      for (AutoindexCrawlerService.CrawledFileEntry entry : allFiles) {
         // Check if document is unchanged before downloading (saves bandwidth)
         if (isUnchanged(entry.url(), entry.lastModified(), targetLibrary)) {
           log.info("Skipping unchanged URL document: {}", entry.name());
@@ -148,8 +124,44 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
         Path tempFile = null;
         try {
           log.info("Processing URL document: {} ({})", entry.name(), entry.url());
-          tempFile = downloader.download(httpClient, authHeader, entry.url(), entry.name());
 
+          byte[] prefix =
+              downloader.downloadPrefix(
+                  httpClient,
+                  authHeader,
+                  entry.url(),
+                  SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
+          SupportedDocumentFormats.ContentDecision decision =
+              SupportedDocumentFormats.decideForFileName(
+                  entry.name(), SupportedDocumentFormats.detectMediaType(prefix));
+          if (!decision.supported()) {
+            // Issue #375: rejected documents are part of the job, not invisible. #513: each one
+            // becomes its own UNSUPPORTED_FORMAT event. Rejected here, before #download ever
+            // runs - the full file behind this entry, whatever its actual size, is never
+            // transferred (#404 review, finding 1).
+            log.info(
+                "Rejecting URL document with an unsupported format: {} ({})",
+                entry.name(),
+                entry.url());
+            events.record(
+                IndexingEventCategory.UNSUPPORTED_FORMAT,
+                "Dateiformat wird nicht unterstützt",
+                entry.url());
+            progress.recordSkipped();
+            progress.report();
+            continue;
+          }
+          if (decision.extensionMismatch()) {
+            // #404 acceptance criteria: indexed anyway, only reported.
+            events.record(
+                IndexingEventCategory.FORMAT_MISMATCH,
+                "Dateiendung passt nicht zum erkannten Inhalt (erkannt: "
+                    + decision.detectedExtension()
+                    + ")",
+                entry.url());
+          }
+
+          tempFile = downloader.download(httpClient, authHeader, entry.url(), entry.name());
           long fileSize = Files.size(tempFile);
           FileProcessingResult result =
               fileProcessingService.processUrlFile(
@@ -271,8 +283,18 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
         && targetLibrary.getId().equals(existing.get().getLibraryId());
   }
 
-  static boolean isSupportedFormat(AutoindexCrawlerService.CrawledFileEntry entry) {
-    return SupportedDocumentFormats.isSupported(entry.name());
+  /**
+   * Classifies an already-downloaded file from its actual content (#404) - the network path's own
+   * call into {@link SupportedDocumentFormats#decideForFileName}, mirroring {@link
+   * DocumentService}'s equivalent for the filesystem path so both paths can never diverge on what
+   * "supported" means. {@code entryName} (the listing's own file name) is only the hint used for
+   * {@link SupportedDocumentFormats.ContentDecision#extensionMismatch()}, never for acceptance
+   * itself. Package-visible for {@code DocumentFormatParityTest}.
+   */
+  static SupportedDocumentFormats.ContentDecision classifyDownloadedFile(
+      Path downloadedFile, String entryName) throws IOException {
+    String detectedMimeType = SupportedDocumentFormats.detectMediaType(downloadedFile);
+    return SupportedDocumentFormats.decideForFileName(entryName, detectedMimeType);
   }
 
   /**

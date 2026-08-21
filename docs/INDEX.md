@@ -132,6 +132,12 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
   - [0010](./decisions/0010-ein-chunk-invariante-evaluierungskorpus.md) bis
     [0013](./decisions/0013-fehlerkriterium-retrieval-regression.md) — Evaluierung der Suchqualität
 
+### Demo und Vorführung
+
+- **[`features/demo-instance.md`](./features/demo-instance.md)** — Demo-Instanz „Stadt Rheinfurt":
+  fiktiver Verwaltungskorpus, Bibliotheken je Konnektortyp, Demo-Nutzer mit Berechtigungsgrenze,
+  Drehbuch und Seed-Mechanismus
+
 ### Recherche
 
 - **[`GraphRAG.md`](./GraphRAG.md)** — Wissensgraph als Ergänzung des Vektor-Retrievals:

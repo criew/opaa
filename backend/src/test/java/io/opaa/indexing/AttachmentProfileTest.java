@@ -34,7 +34,10 @@ class AttachmentProfileTest {
   }
 
   @Test
-  void genericIgnoresALinkWithoutASupportedExtension() {
+  void genericIgnoresALinkWithoutAnyExtensionAtAll() {
+    // An ordinary navigation link a CMS renders without a file extension - never a candidate,
+    // regardless of what its content turns out to be (there is no content to inspect for a link
+    // this method never downloads).
     Element content =
         contentArea(
             "<main><a href=\"https://example.gov/artikel/anderer-artikel\">Weiter</a></main>");
@@ -44,6 +47,26 @@ class AttachmentProfileTest {
             content, URI.create("https://example.gov/artikel/mein-artikel"));
 
     assertThat(attachments).isEmpty();
+  }
+
+  @Test
+  void genericFindsALinkWithAnExtensionSupportedDocumentFormatsDoesNotRecognize() {
+    // #404 review, finding 2: a candidate is no longer filtered down to SupportedDocumentFormats's
+    // six extensions here - a document linked under the wrong extension (a PDF published as
+    // bescheid.csv, the exact case #404 exists for) must still become a candidate, so
+    // RssFeedIndexingExecutor#processAttachment gets a chance to download it and decide from its
+    // actual content.
+    Element content =
+        contentArea(
+            "<main><a href=\"https://example.gov/downloads/bescheid.csv\">Bescheid</a></main>");
+
+    List<AttachmentCandidate> attachments =
+        AttachmentProfile.GENERIC.findAttachments(
+            content, URI.create("https://example.gov/artikel/mein-artikel"));
+
+    assertThat(attachments)
+        .containsExactly(
+            new AttachmentCandidate("https://example.gov/downloads/bescheid.csv", "bescheid.csv"));
   }
 
   @Test
