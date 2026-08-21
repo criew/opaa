@@ -1,7 +1,7 @@
 import type { DocumentSourceType } from '../types/api'
 import { documentSourceTypeConfigKind } from './labels'
 
-/** Raw, untyped field state as entered in CreateLibraryDialog/EditLibrarySourceDialog. */
+/** Raw, untyped field state as entered in LibraryCreatePage/EditLibrarySourceDialog. */
 export interface LibrarySourceFieldValues {
   sourcePath: string
   sourceUrl: string
@@ -20,7 +20,7 @@ export interface LibrarySourceConfigPayload {
 }
 
 /**
- * Client-side validation shared by CreateLibraryDialog and EditLibrarySourceDialog (#516/#542
+ * Client-side validation shared by LibraryCreatePage and EditLibrarySourceDialog (#516/#542
  * review, nit 4 - both dialogs previously carried a byte-identical copy of this check). A
  * stricter server-side check always runs afterwards regardless
  * (KnowledgeLibraryService#validateConfigurationForType for saving, SourceConnectionTestService

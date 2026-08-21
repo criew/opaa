@@ -244,7 +244,7 @@ describe('LibraryDetailPage', () => {
     const descriptionField = screen.getByLabelText(/beschreibung/i)
     await user.clear(descriptionField)
     await user.type(descriptionField, 'Aktualisierte Beschreibung')
-    await user.click(screen.getByRole('combobox', { name: /sichtbarkeit/i }))
+    await user.click(screen.getByRole('combobox', { name: /verteilungsstufe/i }))
     await user.click(await screen.findByRole('option', { name: 'privat' }))
     await user.click(screen.getByRole('button', { name: /speichern/i }))
 

@@ -91,6 +91,24 @@ export function libraryVisibilityLabel(visibility: LibraryVisibility | string | 
   return libraryVisibilityLabels[visibility as LibraryVisibility] ?? visibility
 }
 
+/** Render order of the distribution levels in LibraryCreatePage and LibraryDetailPage. */
+export const libraryVisibilities = Object.keys(libraryVisibilityLabels) as LibraryVisibility[]
+
+// One sentence per distribution level, following the semantics documented on the
+// LibraryVisibility schema in opaa-api.yaml and docs/features/spaces-and-assets.md.
+const libraryVisibilityDescriptions: Record<LibraryVisibility, string> = {
+  PRIVATE: 'Nur der Eigentümer nutzt den Bestand — bei Gruppen-Eigentum die Mitglieder der Gruppe.',
+  SHARED: 'Die Reichweite bestimmen die Freigaben an Personen und Gruppen.',
+  ORGANIZATION: 'Lesbar für alle Nutzer der Organisation.',
+}
+
+export function libraryVisibilityDescription(
+  visibility: LibraryVisibility | string | undefined,
+): string {
+  if (!visibility) return ''
+  return libraryVisibilityDescriptions[visibility as LibraryVisibility] ?? ''
+}
+
 const assetRoleLabels: Record<AssetRole, string> = {
   VIEWER: 'Betrachter',
   EDITOR: 'Bearbeiter',
@@ -143,7 +161,7 @@ export function documentStatusLabel(status: DocumentStatus | string | undefined)
 }
 
 const documentSourceTypeLabels: Record<DocumentSourceType, string> = {
-  UPLOAD: 'Hochgeladen',
+  UPLOAD: 'Upload',
   FILESYSTEM: 'Dateisystem',
   HTTP_DIRECTORY: 'Webverzeichnis',
   RSS_FEED: 'RSS-Feed',
@@ -156,13 +174,12 @@ export function documentSourceTypeLabel(
   return documentSourceTypeLabels[sourceType as DocumentSourceType] ?? sourceType
 }
 
-// One sentence per source type, shown as the template description in CreateLibraryDialog.
+// One sentence per source type, shown on the origin cards in LibraryCreatePage (mockup 1e wording).
 const documentSourceTypeDescriptions: Record<DocumentSourceType, string> = {
-  UPLOAD: 'Dokumente werden manuell hochgeladen und einzeln verwaltet.',
-  FILESYSTEM: 'Ein Verzeichnis auf dem Server wird regelmäßig eingelesen.',
-  HTTP_DIRECTORY:
-    'Eine über das Web (http/https) erreichbare Verzeichnisseite wird abgerufen, kein lokaler Ordner.',
-  RSS_FEED: 'Ein RSS-Feed und die verlinkten Detailseiten werden abgerufen.',
+  UPLOAD: 'Dateien auswählen oder hineinziehen; einzelne Dokumente pflegen.',
+  FILESYSTEM: 'Ein Pfad im Hausnetz wird regelmäßig eingelesen.',
+  HTTP_DIRECTORY: 'Eine interne Webadresse wird durchlaufen und indiziert.',
+  RSS_FEED: 'Neue Beiträge werden laufend übernommen, Anhänge wahlweise.',
 }
 
 export function documentSourceTypeDescription(
@@ -182,7 +199,7 @@ export function documentSourceTypeDescription(
 export const allDocumentSourceTypes = Object.keys(documentSourceTypeLabels) as DocumentSourceType[]
 
 /**
- * Which configuration fields CreateLibraryDialog renders and validates for each source type,
+ * Which configuration fields LibraryCreatePage renders and validates for each source type,
  * mirroring KnowledgeLibraryService#validateConfigurationForType (ADR-0018):
  * - 'none': no source configuration fields are shown/sent (UPLOAD).
  * - 'path': a required, server-absolute directory path (FILESYSTEM).
