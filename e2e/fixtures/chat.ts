@@ -164,12 +164,15 @@ export async function createLibraryWithDocument(
 ): Promise<void> {
   await gotoLibraries(page)
   await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-  await page.getByRole('dialog').getByLabel('Name').fill(libraryName)
-  // #481: the create dialog navigates straight to the new library's detail page on success -
-  // there is no separate documents page or picker to visit afterwards.
+  await page.getByLabel('Name').fill(libraryName)
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+  await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
+  // #481/#596: the create wizard navigates straight to the new library's detail page on success -
+  // there is no separate documents page or picker to visit afterwards. The wizard itself lives at
+  // /libraries/new, hence the lookahead.
   await Promise.all([
-    page.waitForURL(/\/libraries\/[^/]+$/),
-    page.getByRole('button', { name: 'Erstellen' }).click(),
+    page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
+    page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
   ])
   await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
 
