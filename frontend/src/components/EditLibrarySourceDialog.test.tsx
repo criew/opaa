@@ -15,7 +15,7 @@ const { mockUpdateLibrary, mockTestLibrarySource } = vi.hoisted(() => ({
   mockUpdateLibrary: vi.fn(async (_id: string, request: LibraryUpdateRequest) => {
     return { id: _id, ...request } as unknown as LibraryResponse
   }),
-  // Typed via the explicit generic (rather than CreateLibraryDialog.test.tsx's parameterless
+  // Typed via the explicit generic (rather than LibraryCreatePage.test.tsx's parameterless
   // implementation) so mockTestLibrarySource.mock.calls[0] below is typed as a tuple with an
   // element at index 0, not `[]`.
   mockTestLibrarySource: vi.fn<

@@ -77,7 +77,7 @@ export default function EditLibrarySourceDialog({
   const [sourceInsecureSsl, setSourceInsecureSsl] = useState(Boolean(library.sourceInsecureSsl))
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  // #544: mirrors CreateLibraryDialog's connection test - the result belongs to the currently
+  // #544: mirrors LibraryCreatePage's connection test - the result belongs to the currently
   // entered configuration only, so any edit to a field the test itself depends on invalidates a
   // previous result rather than leaving a stale "erreichbar" on screen for a since-changed
   // address.
@@ -101,7 +101,7 @@ export default function EditLibrarySourceDialog({
     onClose()
   }
 
-  // Shared by every onChange handler below (#544, mirroring CreateLibraryDialog's identical
+  // Shared by every onChange handler below (#544, mirroring LibraryCreatePage's identical
   // helper) - the functional updater form bails out of re-rendering on every keystroke before a
   // test has ever run, by far the common case, rather than triggering an extra state update no
   // one can see.
