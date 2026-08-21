@@ -58,17 +58,23 @@ const extraTestArgs = rawArgs
 const isDemo = target === 'demo'
 
 // The "demo" Compose profile's Keycloak realm (keycloak/realm-export.json) has a static
-// redirectUris list scoped to http://localhost:3000 and http://localhost:5173 - unlike the "e2e"
-// target, these ports are therefore not freely relocatable via env vars without also editing the
-// realm export. A demo-smoke run must not run alongside a developer's own dev stack on the same
-// host; it gets its own Compose project name instead (below) so at least container/volume/network
-// names never collide.
+// redirectUris list scoped to http://localhost:3000, and this run's own
+// OPAA_CSP_CONNECT_SRC_EXTRA/OPAA_OIDC_ISSUER_URI/OPAA_OIDC_AUTHORITY (e2e/demo-smoke.env) are all
+// pinned to Keycloak's default port 8180 - unlike the "e2e" target, the *frontend* and *keycloak*
+// ports are therefore not freely relocatable without also editing the realm export and that env
+// file, so keycloakPort below is deliberately a fixed constant, not overridable via an env var the
+// way every other port here is: a caller setting OPAA_KEYCLOAK_PORT to anything else would still
+// only move where the *container* publishes its port, while the realm/env file's own references
+// stayed at 8180 - breaking the login silently instead of loudly. Backend and database have no
+// such static reference anywhere, so they reuse the "e2e" target's own non-default ports below -
+// avoids colliding with a developer's own local Postgres/backend on the same host, exactly like
+// the "e2e" target already does.
 const composeProjectName =
   process.env.COMPOSE_PROJECT_NAME ?? (isDemo ? 'opaa-demo-smoke' : 'opaa-e2e')
-const backendPort = process.env.OPAA_BACKEND_PORT ?? (isDemo ? '8081' : '18081')
+const backendPort = process.env.OPAA_BACKEND_PORT ?? '18081'
 const frontendPort = process.env.OPAA_FRONTEND_PORT ?? (isDemo ? '3000' : '13000')
-const dbPort = process.env.OPAA_DB_PORT ?? (isDemo ? '5432' : '15432')
-const keycloakPort = process.env.OPAA_KEYCLOAK_PORT ?? '8180'
+const dbPort = process.env.OPAA_DB_PORT ?? '15432'
+const keycloakPort = '8180'
 const baseUrl = process.env.E2E_BASE_URL ?? `http://localhost:${frontendPort}`
 const readyUrl = `${baseUrl}/api/v1/auth/config`
 const skipBuild = process.env.E2E_SKIP_BUILD === 'true'

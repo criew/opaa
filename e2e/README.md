@@ -120,7 +120,9 @@ OPAA kennt zwei Auth-Modi (`opaa.auth.mode`: `oidc`, `dev` — siehe
 - `oidc` bräuchte zusätzlich Keycloak (siehe `docker-compose.yml`, Profil `oidc`): ein weiterer
   Container, der Realm-Import und der Weiterleitungsablauf des Autorisierungscode-Flusses im
   Prüfpfad — mehr Fehlerquellen ohne Aussagewert für die Fachszenarien. Der Anmeldeablauf selbst
-  ist bewusst nicht Teil der Suite.
+  ist bewusst nicht Teil **dieses** Laufs (Ziel `e2e`) — er ist stattdessen das eine Szenario des
+  separaten Demo-Smoke-Laufs (Ziel `demo`, siehe unten „Demo-Smoke (#232)"), der genau diesen
+  echten Keycloak-Login prüft.
 
 `e2e/fixtures/auth.ts` kapselt die Nutzerwahl als einzigen wiederverwendbaren Baustein: Der
 Query-Parameter `?devUser=<subject>` wird beim Laden der Anwendung ausgewertet, für die Dauer der
@@ -327,7 +329,11 @@ Ein separater, eigenständig startbarer Lauf gegen das Compose-Profil `demo`
 (`docs/features/demo-instance.md`) — bewusst **kein** Teil dieser Suite oder von `npm test`: Die
 Erstindizierung des Rheinfurt-Korpus (~150–300 Dokumente über vier Bibliotheken plus 26 Uploads)
 dauert deutlich länger als der minimale `e2e`-Datenprofil-Seed oben, selbst mit `ai-stub` als
-deterministischem Modell.
+deterministischem Modell. Zuletzt gemessene Laufzeit (Issue #232s eigenes Abnahmekriterium „Die
+Laufzeit ist dokumentiert und bleibt im Rahmen"): **3 Minuten 6 Sekunden gesamt**, davon rund 80s
+für den Seed-Lauf (5 Nutzer, 4 Spaces, 5 Bibliotheken, 26 Uploads, 129 indizierte Dokumente über
+vier Konnektor-Bibliotheken) und rund 9s für den eigentlichen Playwright-Test — Details und der
+konkrete Bild-Build-Anteil stehen im PR, der diesen Lauf eingeführt hat.
 
 ```bash
 cd e2e
@@ -364,7 +370,11 @@ Drehbuchfrage aus `docs/demo-walkthrough.md` (Gebührenfrage, garantiert beantwo
 bekommt eine belegte Antwort mit mindestens einer zitierten Quelle (`expectAnyCitedSource`,
 dieselbe Prüfung wie in `space-chats.spec.ts` oben) — Verhalten und Vorhandensein eines Belegs,
 nie ein Wortlaut oder eine Dokumentanzahl, die sich mit dem nächsten Korpuslauf verschieben
-könnte.
+könnte. Die konkrete Frage ist dabei mit `ai-stub` rein symbolisch: Wie in der übrigen Suite
+(„KI-Stub statt echtem Modell" oben) liefert der Stub für jeden Text denselben Vektor, sodass die
+Trefferauswahl ausschließlich über den Rechtefilter läuft, nie über inhaltliche Relevanz — dieser
+Test behauptet keine Kopplung an den tatsächlichen Korpusinhalt, das bleibt Sache des manuell
+verifizierten Drehbuchs in `docs/demo-walkthrough.md` (mit einem echten Modell) bzw. von Epic #224.
 
 **Isolation:** Die Keycloak-Realm des `demo`-Profils (`keycloak/realm-export.json`) trägt feste
 `redirectUris`/`webOrigins` für `http://localhost:3000` — anders als die `e2e`-Suite oben lässt

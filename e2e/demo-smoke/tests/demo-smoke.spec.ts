@@ -63,7 +63,11 @@ test.describe('Demo-Smoke (#232)', () => {
     // "Gebührenfrage" from docs/features/demo-instance.md's "Demo-Drehbuch (Skizze)", question 1
     // (also ausformuliert in docs/demo-walkthrough.md, #713) - guaranteed to have an answer in the
     // corpus (demo/generator, #711) and readable by every fach account, Maria included
-    // (docs/features/demo-instance.md, "Nutzer, Spaces und Berechtigungen").
+    // (docs/features/demo-instance.md, "Nutzer, Spaces und Berechtigungen"). The concrete wording
+    // is symbolic with ai-stub, though: every input gets the same embedding vector (see
+    // e2e/README.md, "KI-Stub statt echtem Modell"), so which chunks reach this answer is decided
+    // by the permission filter, never by relevance to this specific question - this test asserts
+    // no coupling to the corpus's actual content, only that the chain up to a cited answer works.
     await askQuestion(page, 'Was kostet ein Personalausweis für eine 22-Jährige?')
 
     // Per the issue's own acceptance criteria: behaviour and presence of a citation, never the

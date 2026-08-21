@@ -32,11 +32,21 @@ OPAA_INITIAL_ADMIN_EMAIL=admin@stadt-rheinfurt.example
 OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
 OPAA_PGVECTOR_DIMENSIONS=768
+OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY=30
 ```
 
 Ohne `OPAA_CSP_CONNECT_SRC_EXTRA` blockiert die Content-Security-Policy des Frontends die
 Keycloak-Anmeldung im Browser still (#409/#670) — der Seed selbst läuft trotzdem durch, weil er
 Keycloak direkt anspricht, aber niemand kann sich danach über die Oberfläche anmelden.
+
+`OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY=30` hebt die Standard-Warteschlange von
+`uploadTaskExecutor` (Default 20, `opaa.upload.thread-pool`) an: Der Seed lädt die 26 Dokumente
+der Bibliothek „Interne Dienstanweisungen Meldewesen" sequentiell und ohne Pause hoch, und mit
+lokal betriebenen Ollama-Embeddings (langsamer als ein Cloud-Anbieter) füllt sich die Warteschlange
+eher als mit einem schnellen Anbieter — ohne die Anhebung kann der letzte Upload oder die letzten
+zwei mit „Die Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen." fehlschlagen
+(siehe [`../demo/README.md`, „Seed ausführen"](../demo/README.md#seed-ausführen-712) für den
+Umgang, falls das trotzdem passiert).
 
 `OPAA_PGVECTOR_DIMENSIONS=768` ist mit den unveränderten Vorlagenwerten **zwingend**: Voreingestellt
 bleiben lokal betriebene Modelle über Ollama (`OPAA_AI_CHAT_PROVIDER=ollama`,

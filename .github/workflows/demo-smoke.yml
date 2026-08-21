@@ -12,8 +12,12 @@ on:
     - cron: '42 3 * * *'
   workflow_dispatch: {}
 
+# Same pattern as e2e.yml:26-27, adapted for this workflow's own triggers (no pull_request here):
+# github.sha in the group means a manual workflow_dispatch and the nightly schedule never share a
+# group unless they happen to target the exact same commit, so triggering one on demand shortly
+# before/after the nightly run cancels neither.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 env:
