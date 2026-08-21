@@ -21,6 +21,7 @@ import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
 import java.lang.reflect.Method;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -369,16 +370,21 @@ class QueryServiceTest {
   }
 
   /**
-   * #123 Nachtrag: expliziter Zwei-Konten-Test gegen den echten Cache-Stack ({@link
-   * MessageWindowChatMemory} über {@link CaffeineChatMemoryRepository}, genau wie {@link
-   * QueryConfiguration} ihn verdrahtet) statt des in dieser Testklasse sonst gemockten {@code
-   * chatMemory}-Feldes. Zwei Konten geben dieselbe {@code chatId} an - keines von beiden löst sie
-   * über {@link ChatService#findOwnedChat} auf, beide laufen also ephemer. Der Schlüsselbau ({@code
-   * currentUserId + ":" + effectiveChatId}, {@link QueryService#query}) sorgt strukturell dafür,
-   * dass die beiden Konten trotz identischer {@code chatId} nie denselben Cache-Eintrag teilen: Der
-   * Test simuliert dazu, was {@link AnswerGenerationService} in der Produktion tut - je Aufruf zwei
-   * Nachrichten unter dem übergebenen conversationKey in das Gedächtnis schreiben - und prüft
-   * danach beide Schlüssel direkt.
+   * #123 follow-up: explicit two-account test against the real cache stack ({@link
+   * MessageWindowChatMemory} over {@link CaffeineChatMemoryRepository}, exactly as {@link
+   * QueryConfiguration} wires it) instead of this test class's otherwise-mocked {@code chatMemory}
+   * field. Both accounts submit the same {@code chatId}; neither resolves it via {@link
+   * ChatService#findOwnedChat} (stubbed empty for every argument in {@link #setUp}), so both run
+   * ephemerally - see the class Javadoc on {@link
+   * #queryRunsEphemerallyWhenChatIdDoesNotBelongToTheCaller} for that pre-existing behaviour. The
+   * persisted-chat-owner-versus-foreign-account combination is not additionally covered here: it
+   * exercises the same key formula ({@code currentUserId + ":" + effectiveChatId}, {@link
+   * QueryService#query}) on the owner side that {@link
+   * #queryScopesAndPersistsWhenChatIdBelongsToTheCaller} already asserts via the mocked {@code
+   * chatMemory}, so it would not add coverage of a code path this test does not already reach. The
+   * test simulates what {@link AnswerGenerationService} does in production - write two messages per
+   * call under the given conversation key - and captures the key actually used per call instead of
+   * recomputing the formula, so the assertions stay valid even if the key format changes.
    */
   @Test
   void sameChatIdForTwoDifferentUsersProducesIsolatedConversationHistories() {
@@ -414,21 +420,26 @@ class QueryServiceTest {
 
     UUID sharedChatId = UUID.randomUUID();
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    List<String> usedConversationKeys = new ArrayList<>();
     when(answerGenerationService.generateAnswer(any(), any(), any()))
         .thenAnswer(
             invocation -> {
               String conversationKey = invocation.getArgument(2);
-              realChatMemory.add(conversationKey, new UserMessage("frage von " + conversationKey));
+              usedConversationKeys.add(conversationKey);
               realChatMemory.add(
-                  conversationKey, new AssistantMessage("antwort an " + conversationKey));
+                  conversationKey, new UserMessage("question from " + conversationKey));
+              realChatMemory.add(
+                  conversationKey, new AssistantMessage("answer to " + conversationKey));
               return chatResponse;
             });
 
-    serviceWithRealMemory.query("Frage A", sharedChatId, currentUserId, false, List.of());
-    serviceWithRealMemory.query("Frage B", sharedChatId, otherUserId, false, List.of());
+    serviceWithRealMemory.query("Question A", sharedChatId, currentUserId, false, List.of());
+    serviceWithRealMemory.query("Question B", sharedChatId, otherUserId, false, List.of());
 
-    String keyUserA = currentUserId + ":" + sharedChatId;
-    String keyUserB = otherUserId + ":" + sharedChatId;
+    assertThat(usedConversationKeys).hasSize(2);
+    String keyUserA = usedConversationKeys.get(0);
+    String keyUserB = usedConversationKeys.get(1);
+    assertThat(keyUserA).isNotEqualTo(keyUserB);
 
     List<Message> historyUserA = realChatMemory.get(keyUserA);
     List<Message> historyUserB = realChatMemory.get(keyUserB);
