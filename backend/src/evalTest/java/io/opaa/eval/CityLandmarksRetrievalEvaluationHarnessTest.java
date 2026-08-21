@@ -759,19 +759,26 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   }
 
   /**
-   * Waits for the corpus to finish indexing. The 45-minute budget mirrors the same budget {@link
-   * RetrievalEvaluationHarnessTest} uses for the 1448-document comic-characters corpus (see that
-   * class' Javadoc for the measured per-document indexing latency on a GitHub Actions runner). This
-   * domain indexes fewer documents (200) but each into several chunks (median 5, see {@link
-   * EvalDomainConfig#CITY_LANDMARKS}), so the total number of Ollama embedding calls is of a
-   * comparable order of magnitude — the same conservative budget is kept rather than re-deriving a
-   * separate one from an unmeasured assumption. The budget must also stay comfortably below the
-   * workflow's {@code timeout-minutes} so a genuinely stuck indexing run fails here — with a
-   * diagnosable test failure — instead of being killed as a cancelled job.
+   * Waits for the corpus to finish indexing. PR #730, second review round: the original 45-minute
+   * budget (copied from {@link RetrievalEvaluationHarnessTest}'s comic-characters figure under the
+   * "comparable order of magnitude" assumption below) turned out to be too tight after the
+   * GeoNames-based city selection raised {@code RANK_NEIGHBOR_RADIUS} to 40 (median 8, maximum 13
+   * chunks per document, see {@link EvalDomainConfig#CITY_LANDMARKS}) — a real GitHub Actions run
+   * only reached 78 of 200 documents in 45 minutes (~1.7 documents/minute) before this await timed
+   * out and the subsequent container teardown cascaded into unrelated-looking connection-pool
+   * errors. Extrapolated at that measured rate, 200 documents need roughly 115 minutes; the budget
+   * below (90 minutes) is a deliberately incomplete stopgap pending a proper fix (most likely
+   * parallelizing indexing or batching Ollama embedding calls) — see the PR description for this
+   * open risk. Locally (non-CI hardware) the full domain, including indexing, evaluation queries
+   * and this same corpus, finished in ~36 minutes end to end (see {@code
+   * eval/baseline/city-landmarks.json}'s {@code notes}), so this gap is specific to the GitHub
+   * Actions runner's embedding throughput, not the corpus itself. The budget must also stay
+   * comfortably below the workflow's {@code timeout-minutes} so a genuinely stuck indexing run
+   * fails here — with a diagnosable test failure — instead of being killed as a cancelled job.
    */
   private void awaitJobCompletion(IndexingJob job) {
     await()
-        .atMost(45, TimeUnit.MINUTES)
+        .atMost(90, TimeUnit.MINUTES)
         .pollInterval(2, TimeUnit.SECONDS)
         .until(
             () -> {
