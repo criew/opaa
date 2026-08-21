@@ -18,5 +18,7 @@ public enum IndexingEventCategory {
    * acceptance criteria) - never a reason to skip or reinterpret it, only to report the deviation
    * so it stays explainable.
    */
-  FORMAT_MISMATCH
+  FORMAT_MISMATCH,
+  /** A scheduled run (#485) was skipped because the library was still indexing. */
+  SCHEDULE_SKIPPED
 }

@@ -1,12 +1,13 @@
 import Alert from '@mui/material/Alert'
+import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Paper from '@mui/material/Paper'
-import Typography from '@mui/material/Typography'
+import LoginIcon from '@mui/icons-material/Login'
 import { Navigate, useLocation } from 'react-router'
 import BrandMark from '../components/BrandMark'
 import { useAuthStore } from '../stores/authStore'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { navyRoles, radius } from '../theme/tokens'
 
 export default function LoginPage() {
   const location = useLocation()
@@ -31,38 +32,56 @@ export default function LoginPage() {
   return (
     <Box
       sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        bgcolor: 'background.default',
+        display: 'grid',
+        placeItems: 'center',
+        minHeight: '100vh',
+        p: 3,
+        // The sign-in page is a brand surface like the sidebar: navy ground in both schemes
+        // (mockup 1f) - the card itself follows the active scheme.
+        bgcolor: navyRoles.bg1,
       }}
     >
-      <Paper sx={{ p: 4, maxWidth: 400, width: '100%' }}>
+      <Box
+        sx={{
+          width: 400,
+          maxWidth: '100%',
+          bgcolor: 'background.paper',
+          border: 2,
+          borderColor: 'primary.main',
+          borderRadius: `${radius.xl}px`,
+          px: 4.25,
+          py: 4.5,
+        }}
+      >
         {/*
           The sign-in page is the one screen that renders before there is a session, which is why
           #582's read endpoint is reachable without authentication (#583) - otherwise the first
           thing a user sees would be the only thing that could not carry their house's mark.
         */}
-        <Box component="h1" sx={{ m: 0, mb: 0.5 }}>
-          <BrandMark variant="h5" logoHeight={36} showClaim />
+        <Box component="h1" sx={{ m: 0, mb: 3.5 }}>
+          <BrandMark orientation="vertical" variant="h5" logoHeight={40} showClaim />
         </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 3 }}>
-          Zum Fortfahren anmelden
-        </Typography>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{ mb: 2.5, textAlign: 'left' }}>
+            <AlertTitle>Anmeldung fehlgeschlagen</AlertTitle>
             {error}
           </Alert>
         )}
 
         {mode === 'oidc' && (
-          <Button variant="contained" fullWidth onClick={loginOidc} disabled={isLoading}>
-            Mit SSO anmelden
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={loginOidc}
+            disabled={isLoading}
+            startIcon={<LoginIcon />}
+            sx={{ py: 1.375 }}
+          >
+            {isLoading ? 'Anmeldung läuft …' : 'Anmelden über den Verzeichnisdienst'}
           </Button>
         )}
-      </Paper>
+      </Box>
     </Box>
   )
 }

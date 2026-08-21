@@ -9,6 +9,8 @@ interface BrandMarkProps {
   showClaim?: boolean
   /** Typography variant of the product name - the sidebar and the sign-in page differ here. */
   variant?: 'h6' | 'h5'
+  /** 'vertical' stacks logo, name and claim centered - the sign-in card's block (mockup 1f). */
+  orientation?: 'horizontal' | 'vertical'
 }
 
 /**
@@ -26,12 +28,21 @@ export default function BrandMark({
   logoHeight = 28,
   showClaim = false,
   variant = 'h6',
+  orientation = 'horizontal',
 }: BrandMarkProps) {
   const branding = useBrandingStore((s) => s.branding)
+  const vertical = orientation === 'vertical'
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Box sx={vertical ? { textAlign: 'center' } : undefined}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: vertical ? 'column' : 'row',
+          alignItems: 'center',
+          gap: vertical ? 1.5 : 1,
+        }}
+      >
         {branding.logoUrl ? (
           <Box
             component="img"
@@ -81,12 +92,20 @@ export default function BrandMark({
             />
           </Box>
         )}
-        <Typography variant={variant} component="span" sx={{ fontWeight: 700 }}>
+        <Typography
+          variant={variant}
+          component="span"
+          sx={{ fontWeight: 700, ...(vertical && { fontSize: 24 }) }}
+        >
           {branding.productName}
         </Typography>
       </Box>
       {showClaim && branding.claim && (
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={vertical ? { display: 'block', fontSize: 12.5, mt: 0.5 } : undefined}
+        >
           {branding.claim}
         </Typography>
       )}

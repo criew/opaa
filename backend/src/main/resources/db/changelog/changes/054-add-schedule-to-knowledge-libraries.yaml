@@ -1,0 +1,55 @@
+databaseChangeLog:
+  # #485: a library's own indexing schedule (ADR-0018's "ausdrücklich offen" list names this
+  # ticket). Stored as schedule_enabled + a cron expression rather than the four UI intervalstufen
+  # (HOURLY/DAILY/WEEKLY/DISABLED) directly - LibraryScheduleCodec is the single place that knows
+  # how to translate between the two, so a later "expert cron field" would only be a UI/codec
+  # change, never a schema one. schedule_cron is only ever non-null while schedule_enabled is true
+  # (chk_knowledge_libraries_schedule below) - disabling a schedule clears it rather than
+  # remembering the previous frequency, mirroring how UPLOAD carries none of the source columns
+  # (migration 027) rather than a half-filled row.
+  - changeSet:
+      id: 054-add-schedule-to-knowledge-libraries
+      author: opaa
+      comment: >
+        Adds schedule_enabled/schedule_cron to knowledge_libraries (#485) plus
+        chk_knowledge_libraries_schedule, which binds the pair to each other (enabled requires a
+        cron, disabled forbids one) and, per the Zuschnitt decision (issue #485 comment,
+        21.08.2026: "nur Konnektorbibliotheken"), forbids enabling a schedule on a sourceType
+        UPLOAD library - the same shape as chk_knowledge_libraries_source_configuration (migration
+        027).
+      changes:
+        - addColumn:
+            tableName: knowledge_libraries
+            columns:
+              - column:
+                  name: schedule_enabled
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schedule_cron
+                  type: varchar(100)
+                  constraints:
+                    nullable: true
+        - sql:
+            comment: "Add check constraint binding knowledge_libraries schedule columns to each other and to sourceType"
+            sql: >
+              ALTER TABLE knowledge_libraries
+              ADD CONSTRAINT chk_knowledge_libraries_schedule
+              CHECK (
+                (schedule_enabled = false AND schedule_cron IS NULL)
+                OR (schedule_enabled = true AND schedule_cron IS NOT NULL
+                  AND source_type <> 'UPLOAD')
+              );
+      rollback:
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              DROP CONSTRAINT IF EXISTS chk_knowledge_libraries_schedule;
+        - dropColumn:
+            tableName: knowledge_libraries
+            columnName: schedule_cron
+        - dropColumn:
+            tableName: knowledge_libraries
+            columnName: schedule_enabled

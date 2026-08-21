@@ -32,6 +32,7 @@ import type {
   DocumentSourceType,
   IndexingRunResponse,
   LibraryDocumentResponse,
+  LibrarySchedule,
   LibraryVisibility,
 } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
@@ -46,9 +47,11 @@ import {
   formatFileSize,
   indexingRunEventCategoryLabel,
   libraryVisibilityLabel,
+  scheduleFrequencyLabel,
 } from '../utils/labels'
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
+import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
 import PageHeading from '../components/a11y/PageHeading'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
@@ -749,6 +752,8 @@ interface LibraryIndexingSectionProps {
     sourceProxy?: string | null
     sourceInsecureSsl?: boolean | null
     sourceCredentialsSet?: boolean | null
+    schedule?: LibrarySchedule | null
+    lastScheduledRunsFailed?: boolean | null
   }
   canTrigger: boolean
   canEditSource: boolean
@@ -761,6 +766,7 @@ function LibraryIndexingSection({
   canEditSource,
 }: LibraryIndexingSectionProps) {
   const [editSourceOpen, setEditSourceOpen] = useState(false)
+  const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const run = useIndexingStore((s) => s.runsByLibrary[libraryId] ?? IDLE_RUN_STATE)
   const {
     status,
@@ -878,6 +884,56 @@ function LibraryIndexingSection({
           libraryId={libraryId}
           library={library}
         />
+      )}
+
+      <Divider sx={{ mb: 2 }} />
+
+      {/* #485: Zeitplan - nur für Verwaltende sichtbar/bearbeitbar, dieselbe Schwelle wie die
+          Quellkonfiguration oben (canEditSource). */}
+      {canEditSource && (
+        <Box sx={{ mb: 2 }}>
+          <Stack
+            direction="row"
+            sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}
+          >
+            <Typography variant="subtitle1">Zeitplan</Typography>
+            <Button
+              size="small"
+              onClick={() => setEditScheduleOpen(true)}
+              aria-label="Zeitplan bearbeiten"
+            >
+              Bearbeiten
+            </Button>
+          </Stack>
+          <Typography variant="body2">
+            {scheduleFrequencyLabel(library.schedule?.frequency ?? 'DISABLED')}
+          </Typography>
+          {library.schedule?.nextRunAt && (
+            <Typography variant="body2" color="text.secondary">
+              Nächster geplanter Lauf:{' '}
+              {new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              })}
+            </Typography>
+          )}
+          {library.lastScheduledRunsFailed && (
+            <Alert severity="warning" sx={{ mt: 1 }}>
+              Die letzten geplanten Läufe dieser Bibliothek sind fehlgeschlagen. Der Zeitplan bleibt
+              aktiv und versucht es beim nächsten Termin erneut.
+            </Alert>
+          )}
+          <EditLibraryScheduleDialog
+            // Mirrors EditLibrarySourceDialog's own remount-on-open pattern above, so the dialog's
+            // internal field state always starts fresh from the current schedule.
+            key={editScheduleOpen ? 'schedule-edit-open' : 'schedule-edit-closed'}
+            open={editScheduleOpen}
+            onClose={() => setEditScheduleOpen(false)}
+            libraryId={libraryId}
+            schedule={library.schedule}
+            library={library}
+          />
+        </Box>
       )}
 
       <Divider sx={{ mb: 2 }} />

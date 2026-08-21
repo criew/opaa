@@ -60,10 +60,13 @@ describe('LoginPage', () => {
     expect(container.querySelector('img')).toBeNull()
   })
 
-  it('renders SSO button for oidc mode', () => {
+  it('renders the directory-service sign-in as the primary action (mockup 1f)', () => {
     useAuthStore.setState({ mode: 'oidc' })
     renderWithProviders(<LoginPage />, { withRouter: true })
-    expect(screen.getByRole('button', { name: /mit sso anmelden/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /anmelden über den verzeichnisdienst/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Fragen. Belegen. Entscheiden.')).toBeInTheDocument()
   })
 
   it('offers no credential form — there is no password-based mode', () => {
@@ -73,12 +76,13 @@ describe('LoginPage', () => {
     expect(screen.queryByLabelText(/passwort/i)).not.toBeInTheDocument()
   })
 
-  it('displays error message', () => {
+  it('displays a designed error state with a title', () => {
     useAuthStore.setState({
       mode: 'oidc',
       error: 'Die Authentifizierungskonfiguration konnte nicht geladen werden.',
     })
     renderWithProviders(<LoginPage />, { withRouter: true })
+    expect(screen.getByText('Anmeldung fehlgeschlagen')).toBeInTheDocument()
     expect(
       screen.getByText('Die Authentifizierungskonfiguration konnte nicht geladen werden.'),
     ).toBeInTheDocument()

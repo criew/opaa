@@ -8,6 +8,7 @@ import Link from '@mui/material/Link'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import CloseIcon from '@mui/icons-material/Close'
+import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
 import { fontFamily } from '../../theme/tokens'
@@ -24,6 +25,9 @@ interface EvidenceDoc {
   fileName: string
   numbers: number[]
   cited: boolean
+  /** #386: false when the backend's deterministic check found at least one citation naming this
+   *  source that does not match the chunks actually retrieved for this answer. */
+  citationValid: boolean
   spaceName?: string | null
   relevanceScore?: number
   indexedAt?: string | null
@@ -54,6 +58,7 @@ export default function SourceEvidenceDrawer({
       fileName: doc.fileName,
       numbers: doc.numbers,
       cited: true,
+      citationValid: doc.source?.citationValid !== false,
       spaceName: doc.source?.spaceName,
       relevanceScore: doc.source?.relevanceScore,
       indexedAt: doc.source?.indexedAt,
@@ -63,6 +68,7 @@ export default function SourceEvidenceDrawer({
       fileName: source.fileName,
       numbers: [],
       cited: false,
+      citationValid: source.citationValid !== false,
       spaceName: source.spaceName,
       relevanceScore: source.relevanceScore,
       indexedAt: source.indexedAt,
@@ -167,6 +173,7 @@ export default function SourceEvidenceDrawer({
               data-testid="evidence-doc"
               data-file={doc.fileName}
               data-cited={doc.cited ? 'true' : 'false'}
+              data-citation-valid={doc.citationValid ? 'true' : 'false'}
               sx={{
                 py: 1.25,
                 borderBottom: 1,
@@ -196,6 +203,22 @@ export default function SourceEvidenceDrawer({
                   <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
                     geprüft, nicht zitiert
                   </Typography>
+                )}
+                {!doc.citationValid && (
+                  // #697 review, Befund 2: reiner Text in warning.main unterschreitet auf heller
+                  // Fläche 4,5:1 (docs/design/accessibility.md 2.4, rund 1,8:1 gemessen). Die Farbe
+                  // trägt hier ohnehin nicht allein die Bedeutung (2.4, letzter Punkt) - das Icon in
+                  // error.main erfüllt die UI-Komponentenschwelle von 3:1 in beiden Schemata, der Text
+                  // selbst läuft in text.secondary (kontraststark, siehe "geprüft, nicht zitiert" oben).
+                  <Box
+                    component="span"
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    <ReportProblemOutlinedIcon sx={{ fontSize: 13, color: 'error.main' }} />
+                    <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                      Beleg nicht bestätigt
+                    </Typography>
+                  </Box>
                 )}
               </Box>
               <Box

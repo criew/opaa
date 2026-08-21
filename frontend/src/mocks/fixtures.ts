@@ -55,6 +55,7 @@ export const mockIndexingRuns: IndexingRunListResponse = {
     {
       id: '11111111-1111-1111-1111-111111111111',
       status: 'COMPLETED',
+      triggeredBy: 'MANUAL',
       documentCount: 37,
       totalDocuments: 42,
       documentsSkipped: 5,
@@ -92,6 +93,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 3,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
+        citationValid: true,
       },
       {
         fileName: 'getting-started.pdf',
@@ -100,6 +102,9 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
+        // #697 review, Nit 6: one mock source with an invalid citation, so the mocked frontend
+        // (VITE_ENABLE_MOCKS=true) can actually show the "Beleg nicht bestätigt" state (#386).
+        citationValid: false,
       },
       {
         fileName: 'adr-0002-technology-stack.md',
@@ -108,6 +113,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 2,
         indexedAt: '2025-01-14T08:00:00Z',
         cited: false,
+        citationValid: true,
       },
     ],
     metadata: {
@@ -133,6 +139,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
+        citationValid: true,
       },
     ],
     metadata: {
@@ -160,6 +167,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 2,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
+        citationValid: true,
       },
       {
         fileName: 'deployment-guide.pdf',
@@ -168,6 +176,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
+        citationValid: true,
       },
       {
         fileName: 'adr-0002-technology-stack.md',
@@ -176,6 +185,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 3,
         indexedAt: '2025-01-14T08:00:00Z',
         cited: true,
+        citationValid: true,
       },
       {
         fileName: 'ci-pipeline.md',
@@ -184,6 +194,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 1,
         indexedAt: '2025-01-13T15:00:00Z',
         cited: true,
+        citationValid: true,
       },
       {
         fileName: 'liquibase-changelog.xml',
@@ -192,6 +203,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 1,
         indexedAt: '2025-01-12T09:00:00Z',
         cited: true,
+        citationValid: true,
       },
       {
         fileName: 'postgres-setup.md',
@@ -200,6 +212,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 1,
         indexedAt: '2025-01-11T14:00:00Z',
         cited: false,
+        citationValid: true,
       },
       {
         fileName: 'environment-config.md',
@@ -208,6 +221,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 1,
         indexedAt: '2025-01-10T11:00:00Z',
         cited: false,
+        citationValid: true,
       },
       {
         fileName: 'monitoring-guide.md',
@@ -216,6 +230,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 1,
         indexedAt: '2025-01-09T16:00:00Z',
         cited: false,
+        citationValid: true,
       },
       {
         fileName: 'backup-strategy.pdf',
@@ -224,6 +239,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 1,
         indexedAt: null,
         cited: false,
+        citationValid: true,
       },
       {
         fileName: 'security-checklist.md',
@@ -232,6 +248,7 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 1,
         indexedAt: null,
         cited: false,
+        citationValid: true,
       },
     ],
     metadata: {

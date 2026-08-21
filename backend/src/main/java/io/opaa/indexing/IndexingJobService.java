@@ -60,9 +60,39 @@ public class IndexingJobService {
    */
   @Transactional
   public IndexingJob startJob(UUID libraryId, UUID organizationId) {
+    return doStartJob(libraryId, organizationId, JobTriggerSource.MANUAL);
+  }
+
+  /**
+   * Same as {@link #startJob(UUID, UUID)}, additionally recording {@code triggeredBy} (#485) -
+   * {@link io.opaa.indexing.LibraryIndexingScheduler} is the only caller that passes {@link
+   * JobTriggerSource#SCHEDULED}.
+   */
+  @Transactional
+  public IndexingJob startJob(UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy) {
+    return doStartJob(libraryId, organizationId, triggeredBy);
+  }
+
+  /**
+   * The actual work behind both {@code startJob} overloads above - deliberately a private helper
+   * both public, {@code @Transactional} entry points delegate to, rather than one overload calling
+   * the other directly (PR #705 review, blocker 2): a same-class call to another method on {@code
+   * this} never goes through the Spring AOP proxy that applies {@code @Transactional} in the first
+   * place, since the proxy only intercepts calls arriving from *outside* the bean. Before this fix,
+   * {@code startJob(UUID, UUID)} carried no {@code @Transactional} of its own and called {@code
+   * startJob(UUID, UUID, JobTriggerSource)} as a plain, unintercepted self-invocation - the
+   * manual-trigger path (every caller of the two-arg overload) ran {@link
+   * IndexingJobRepository#saveAndFlush} and {@link #pruneOldRuns} with no surrounding transaction
+   * at all, silently reproducing the #501 class of bug this codebase already learned to avoid. Both
+   * overloads are now themselves {@code @Transactional} and simply forward here once the proxy has
+   * already opened (or joined) a transaction - this method needs no annotation of its own.
+   */
+  private IndexingJob doStartJob(
+      UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy) {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
     job.setOrganizationId(organizationId);
+    job.setTriggeredBy(triggeredBy);
     IndexingJob saved;
     try {
       saved = indexingJobRepository.saveAndFlush(job);
@@ -245,6 +275,24 @@ public class IndexingJobService {
   public boolean isJobRunning(UUID libraryId, UUID organizationId) {
     return indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
         JobStatus.RUNNING, libraryId, organizationId);
+  }
+
+  /**
+   * Whether {@code libraryId}'s two most recent {@link JobTriggerSource#SCHEDULED} runs both ended
+   * {@link JobStatus#FAILED} (#485) - {@code false} when fewer than two scheduled runs exist yet,
+   * matching {@code LibraryResponse.lastScheduledRunsFailed}'s own "wiederholtes Scheitern"
+   * definition. A currently {@link JobStatus#RUNNING} scheduled run (the most recent one, say)
+   * counts as not-failed here, exactly like every other non-FAILED status - the banner only fires
+   * once a retry has actually failed again, not while one is in flight.
+   */
+  @Transactional(readOnly = true)
+  public boolean lastScheduledRunsFailed(UUID libraryId, UUID organizationId) {
+    List<IndexingJob> recentScheduled =
+        indexingJobRepository
+            .findTop2ByLibraryIdAndOrganizationIdAndTriggeredByOrderByStartedAtDesc(
+                libraryId, organizationId, JobTriggerSource.SCHEDULED);
+    return recentScheduled.size() == 2
+        && recentScheduled.stream().allMatch(job -> job.getStatus() == JobStatus.FAILED);
   }
 
   /**

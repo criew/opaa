@@ -76,7 +76,7 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 | Aktualität | statisch — die Fassung bleibt, wie sie übergeben wurde | selbst aktualisierend bei Änderung in der Quelle |
 | Ziel | eine eigene Bibliothek oder eine, an der die Person mindestens `EDITOR` ist | die eigene Bibliothek — sie **ist** die Quelle, Typ aus einem Template bei der Anlage gewählt |
 | Ablage des Originals | im Dokumentenspeicher von OPAA | im Quellsystem; OPAA hält Extrakt und Verweis |
-| Einrichtung | keine | Verzeichnispfad bzw. Adresse, Zugangsdaten, Proxy — an der Bibliothek hinterlegt; Zeitplan noch offen (#485) |
+| Einrichtung | keine | Verzeichnispfad bzw. Adresse, Zugangsdaten, Proxy, Zeitplan — an der Bibliothek hinterlegt (#485) |
 | Typischer Zweck | einzelner Vorgang, Anlage zu einer Frage, kurzlebiges Material | dauerhaft gepflegte Bestände, Rechtsquellen, Dienstanweisungen |
 
 Die beiden Wege stehen nicht in Konkurrenz. Der Fehler wäre, Dauerbestände über Uploads zu führen: Dann
@@ -298,9 +298,19 @@ höchstens ein Lauf gleichzeitig je Bibliothek. Der Fortschritt ist über
 
 **Was noch fehlt** — und zwar so, dass es benannt gehört:
 
-- **Zeitplan.** Der Lauf wird angestoßen, nicht geplant. Die Selbstaktualisierung im Sinne des
-  nächsten Kapitels ist damit noch nicht erreicht. Mit der Konfiguration an der Bibliothek hat ein
-  Zeitplan erstmals einen natürlichen Ort; entschieden wird das in **Issue #485**.
+- **Zielprüfung.** Die angegebene Adresse wird heute nicht gegen private, lokale und nicht routbare
+  Adressbereiche geprüft, und die zulässigen Schemata werden nicht ausdrücklich eingegrenzt.
+  Weiterleitungen werden gefolgt. Mit der Öffnung des Anstoßes auf jeden `EDITOR` (ADR-0018) und der
+  dauerhaft offenen Anlageberechtigung (ADR-0018, Entscheidung 6) ist diese Härtung dringlicher als
+  zuvor. Anders als beim Dateisystem-Typ, für den die Pfad-Allowlist die Anlage bereits absichert
+  (**gebaut**, #484), ist diese Zielprüfung für `HTTP_DIRECTORY`/`RSS_FEED` noch offen und der
+  verbleibende Blocker für den Mehrbenutzer-Produktivbetrieb. Erfasst als **Issue #267** — die
+  Lücke gilt seit #514 gleichermaßen für den Verbindungstest im Erstellungsdialog, der dieselben
+  ausgehenden Verbindungen aufbaut, nur synchron statt über einen Indizierungslauf.
+- **Zeitplan.** ~~Der Lauf wird angestoßen, nicht geplant.~~ **Gebaut (#485):** an- und abschaltbarer
+  Zeitplan je Bibliothek (stündlich / täglich / wöchentlich, feste Uhrzeit), zusätzlich zum
+  weiterhin möglichen manuellen Anstoß. Siehe ADR-0018, Nachtrag 2026-08-21, für die vollständige
+  Entscheidung (Zeitzone, verteilte Ausführung, Fehlerverhalten).
 
 ### Feeds als Quelle (gebaut)
 
