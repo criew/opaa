@@ -308,89 +308,146 @@ Chat und Einbettung laufen damit über Ollama (`OPAA_OLLAMA_BASE_URL` ist im Pro
 
 ### Alle Umgebungsvariablen
 
-| Variable | Standard | Beschreibung |
-|----------|---------|-------------|
-| **Allgemein** | | |
-| `OPAA_SERVER_ADDRESS` | `localhost` | Bind-Adresse (`0.0.0.0` für Netzwerkzugang) |
-| `OPAA_HTTP_FORCE_HTTP1` | `false` | HTTP/1.1 für vLLM-Kompatibilität erzwingen |
-| `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Erlaubte CORS-Origins (kommagetrennt) |
-| `OPAA_INDEXING_DOCUMENT_PATH_HOST` | `./documents` | Host-Pfad für Dokumente (in Container gemountet) |
-| `OPAA_UPLOAD_STORAGE_PATH_HOST` | `./uploads` | Host-Pfad für hochgeladene Dokumente (in Container gemountet) |
-| `OPAA_UPLOAD_MAX_FILE_SIZE` | `52428800` (50 MiB, Byte) | Maximale Dateigröße beim Dokument-Upload (`spring.servlet.multipart.max-file-size`/`max-request-size` und `opaa.upload.max-file-size` in `application.yml`, dieselbe Variable für beide). **Bei Docker Compose zusätzlich zu beachten:** Der nginx-Reverse-Proxy im Frontend-Container (`frontend/nginx.conf`) setzt `client_max_body_size` unabhängig davon fest auf `52m` — etwas oberhalb dieses Limits, weil nginx die gesamte Multipart-Anfrage misst (inklusive Framing-Overhead), das Backend dagegen nur die Dateigröße. Diese Datei wird beim Image-Build fest eingebacken (kein `envsubst`), wird also **nicht** automatisch aus `OPAA_UPLOAD_MAX_FILE_SIZE` übernommen. Wer `OPAA_UPLOAD_MAX_FILE_SIZE` erhöht, muss `client_max_body_size` in `frontend/nginx.conf` entsprechend mit anheben, sonst weist nginx größere Uploads bereits mit einer eigenen HTML-413-Seite ab, bevor die Backend-Prüfung überhaupt greift — siehe [#519](https://github.com/criew/opaa/issues/519). |
-| **Datenbank** | | |
-| `OPAA_DB_URL` | `jdbc:postgresql://localhost:5432/opaa` | JDBC-Verbindungs-URL |
-| `OPAA_DB_USERNAME` | `opaa` | PostgreSQL-Benutzername |
-| `OPAA_DB_PASSWORD` | `opaa` | PostgreSQL-Passwort |
-| **LLM / Embedding** | | |
-| `OPAA_AI_CHAT_PROVIDER` | `ollama` | Chat-Modell-Anbieter (`ollama` oder `openai`) |
-| `OPAA_AI_EMBEDDING_PROVIDER` | `ollama` | Embedding-Modell-Anbieter (`ollama` oder `openai`) |
-| `OPAA_OPENAI_API_KEY` | — | Zugangsschlüssel der openai-kompatiblen Schnittstelle |
-| `OPAA_OPENAI_BASE_URL` | — | Basis-Adresse der openai-kompatiblen Schnittstelle. **Ohne Voreinstellung; erforderlich, sobald ein Anbieter auf `openai` steht** — sonst bricht der Start ab |
-| `OPAA_OPENAI_CHAT_MODEL` | `gpt-4o` | OpenAI-Chat-Modellname |
-| `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | Chat-Antwort-Temperatur (0,0–2,0) |
-| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | Maximale Tokens in Chat-Antwort |
-| `OPAA_OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI-Embedding-Modellname |
-| `OPAA_OLLAMA_BASE_URL` | `http://ollama:11434` | Ollama-API-Basis-URL |
-| `OPAA_OLLAMA_CHAT_MODEL` | `phi3:mini` | Ollama-Chat-Modellname |
-| `OPAA_OLLAMA_EMBEDDING_MODEL` | `nomic-embed-text` | Ollama-Embedding-Modellname |
-| **Abfrage (RAG-Retrieval)** | | |
-| `OPAA_QUERY_TOP_K` | `5` | Anzahl der pro Abfrage abgerufenen Dokument-Chunks (1–100) |
-| `OPAA_QUERY_SIMILARITY_THRESHOLD` | `0.3` | Minimale Kosinus-Ähnlichkeit für Chunk-Aufnahme (0,0–1,0) |
-| **Indizierung** | | |
-| `OPAA_INDEXING_DOCUMENT_PATH` | `./documents` | Dateisystempfad für Quelldokumente |
-| `OPAA_INDEXING_CHUNK_SIZE` | `1000` | Ziel-Tokens pro Chunk (1–10.000) |
-| `OPAA_INDEXING_BATCH_SIZE` | `50` | Chunks pro Embedding-API-Aufruf (1–1.000) |
-| `OPAA_INDEXING_RETRY_ATTEMPTS` | `3` | Wiederholungsanzahl bei vorübergehenden Fehlern (0–10) |
-| `OPAA_INDEXING_THREAD_POOL_CORE_SIZE` | `2` | Kern-Threads für asynchrone Indizierung |
-| `OPAA_INDEXING_THREAD_POOL_MAX_SIZE` | `4` | Maximale Threads für asynchrone Indizierung |
-| `OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY` | `20` | Task-Queue-Kapazität für asynchrone Indizierung |
-| `OPAA_INDEXING_RSS_MAX_ENTRIES` | `200` | Max. Anzahl verarbeiteter RSS-Feed-Einträge je Lauf |
-| `OPAA_INDEXING_RSS_MAX_FEED_SIZE_BYTES` | `10485760` | Max. Größe des abgerufenen RSS-Feeds in Byte |
-| `OPAA_INDEXING_RSS_MAX_PAGE_SIZE_BYTES` | `5242880` | Max. Größe einer abgerufenen Detailseite in Byte |
-| `OPAA_INDEXING_RSS_REQUEST_DELAY_MS` | `1000` | Mindestabstand zwischen zwei Detailseiten-Abrufen in ms |
-| `OPAA_INDEXING_RSS_USER_AGENT` | `OPAA-Indexer/1.0` | User-Agent für RSS-Feed- und Detailseiten-Abrufe (kein Browser-Faking) |
-| `OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR` | `main, article, [role=main]` | CSS-Selektor (Jsoup-Syntax) für den Hauptinhalt einer Detailseite, Fallback `<body>` |
-| `OPAA_INDEXING_RSS_ATTACHMENT_PROFILE` | `GENERIC` | Anlagenprofil für RSS-Detailseiten: `GENERIC` oder `GSB` (Government Site Builder) — gilt für jeden RSS-Lauf dieser Installation, nicht je Lauf wählbar (#468) |
-| `OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY` | `10` | Max. Anzahl heruntergeladener Anlagen je RSS-Eintrag |
-| `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` | `20971520` | Max. Größe einer einzelnen RSS-Anlage in Byte |
-| `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` | — (leer; Profil dev: `/data,/tmp`) | Absolute Basisverzeichnisse, unter denen der `sourcePath` einer FILESYSTEM-Bibliothek liegen muss (kommagetrennt, #484/[ADR-0018](decisions/0018-quellkonfiguration-in-der-bibliothek.md) Entscheidung 6). Eine leere Allowlist deaktiviert den Quellentyp FILESYSTEM vollständig — sie ist die eigentliche Sicherung, nicht die Anlage-Berechtigung. Wird bei Anlage, Änderung **und** jedem Lauf geprüft, da die Allowlist nachträglich verengt werden kann. URL-basierte Quellentypen (HTTP_DIRECTORY, RSS_FEED) sind hiervon nicht erfasst — dafür siehe `OPAA_INDEXING_TARGET_VALIDATION_*` unten. Beispiel: `/srv/opaa/documents`. **Betriebsbedingung Symlinks:** Symlinks auf Dateien innerhalb eines freigegebenen Verzeichnisses werden mitindiziert (`Files::isRegularFile` folgt Links) — freigegebene Verzeichnisse dürfen deshalb nicht durch Endnutzer beschreibbar sein. |
-| `OPAA_INDEXING_TARGET_VALIDATION_ENABLED` | `true` | Ob `HTTP_DIRECTORY`/`RSS_FEED`-Abrufe (Indizierungsläufe **und** der Verbindungstest) ein Ziel ablehnen, dessen aufgelöste Adresse Loopback, Link-Local, privat oder anderweitig nicht routbar ist (#267, SSRF-Härtung). Vor dem ersten Abruf **und** nach jeder Weiterleitung geprüft. Standardmäßig aktiv — ein Betrieb mit legitimer interner Dokumentenquelle schaltet bewusst ab, kein stillschweigender Permissiv-Modus. |
-| `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | — (leer) | Hostnamen (kommagetrennt, exakter Vergleich ohne Groß-/Kleinschreibung), die von der Zielprüfung oben ausgenommen sind, auch während sie aktiv ist — erlaubt konkrete interne Quellen zu benennen, ohne die Prüfung für jedes andere Ziel abzuschalten. Beispiel: `intranet.example.org`. |
-| `OPAA_INDEXING_STALE_JOB_TIMEOUT` | `PT4H` (ISO-8601-Dauer) | Wie lange ein Lauf `RUNNING` bleiben darf, ohne dass sein Fortschritts-Heartbeat sich bewegt, bevor er als verwaist gilt und automatisch auf `FAILED` gesetzt wird (#501) — schützt vor Läufen, die durch eine verworfene `@Async`-Aufgabe oder einen abgestürzten Prozess dauerhaft `RUNNING` bleiben und damit ihre Bibliothek auf Dauer sperren würden (jeder weitere Anstoß derselben Bibliothek antwortet 409, solange die Zeile `RUNNING` ist). Ein tatsächlich aktiver Lauf eines großen Bestands bleibt unangetastet, solange er weiter Fortschritt meldet, auch über diese Zeitspanne hinaus. Wird beim Anwendungsstart (alle `RUNNING`-Zeilen gelten dann als verwaist) und danach periodisch geprüft. **Setzt genau eine Backend-Instanz voraus:** Startup-Recovery und periodischer Sweep kennen nur die `indexing_jobs`-Zeilen der eigenen Datenbank, nicht welcher Prozess sie tatsächlich noch bearbeitet — bei einem Rolling-Deployment oder einer zweiten Replik würde eine Instanz die noch laufenden Jobs der anderen als verwaist erkennen und abbrechen. |
-| **Dokument-Upload** | | |
-| `OPAA_UPLOAD_THREAD_POOL_CORE_SIZE` | `2` | Kern-Threads für die asynchrone Verarbeitung hochgeladener Dokumente (#434/#614) — eigener Pool, unabhängig von `OPAA_INDEXING_THREAD_POOL_*` |
-| `OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` | `4` | Maximale Threads für die asynchrone Verarbeitung hochgeladener Dokumente |
-| `OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY` | `20` | Task-Queue-Kapazität für den Upload-Pool — bei voller Queue wird der Upload sofort mit Status `FAILED` beantwortet, statt die Aufgabe still zu verwerfen |
-| `OPAA_UPLOAD_PENDING_RECOVERY_THRESHOLD_MINUTES` | `30` | Minuten, nach denen ein noch `PENDING` hängender Upload beim nächsten Anwendungsstart als durch einen Neustart abgebrochen auf `FAILED` gesetzt wird (#614) |
-| `OPAA_UPLOAD_LIBRARY_QUOTA_BYTES` | `10737418240` (10 GiB, Byte) | Speicherkontingent je Wissensbibliothek (#119) — Summe der `file_size`-Spalte aller Dokumente einer Bibliothek, durchgesetzt am Upload-Endpunkt (413) **und** an allen drei Konnektorpfaden (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED, dort als übersprungenes Dokument mit `REJECTED`-Ereignis im Laufprotokoll). Zählt den *Bibliotheksinhalt* (die Größe der Quelldateien), nicht den von OPAA tatsächlich belegten Plattenplatz — bei HTTP_DIRECTORY/RSS_FEED liegen die Dateien nur temporär auf der Platte, OPAA behält dauerhaft nur die Chunks im Vektorspeicher; ein Betreiber sieht deshalb ggf. „10 GiB belegt", obwohl der eigene Plattenverbrauch deutlich kleiner ist. **`0` oder ein negativer Wert deaktiviert das Kontingent vollständig** (kein Rückfall auf den Default) — wichtig für Bestandsinstallationen mit Bibliotheken über 10 GiB: das Kontingent wirkt rückwirkend auf bereits gewachsene Bibliotheken, ein Update auf diese Version würde dort sonst jeden weiteren Upload und jedes weitere Konnektordokument ablehnen, bis die Bibliothek unter das Kontingent geschrumpft ist. |
-| **pgvector** | | |
-| `OPAA_PGVECTOR_DIMENSIONS` | `1536` | Vektor-Dimensionen (muss mit Embedding-Modell übereinstimmen) |
-| `OPAA_PGVECTOR_DISTANCE_TYPE` | `cosine_distance` | Distanzfunktion für Ähnlichkeitssuche |
-| **Rate Limiting** | | |
-| `OPAA_RATE_LIMIT_ENABLED` | `true` | Rate Limiting aktivieren/deaktivieren |
-| `OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS` | `10` | Max. Abfrageanfragen pro IP pro Fenster |
-| `OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS` | `60` | Abfrage-Rate-Limit-Fenster in Sekunden |
-| `OPAA_RATE_LIMIT_QUERY_GLOBAL_MAX_REQUESTS` | `100` | Max. Abfrageanfragen über alle IPs pro Fenster |
-| `OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS` | `1` | Max. Indizierungsanfragen pro IP pro Fenster |
-| `OPAA_RATE_LIMIT_INDEXING_WINDOW_SECONDS` | `60` | Indizierungs-Rate-Limit-Fenster in Sekunden |
-| `OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS` | `5` | Max. Indizierungsanfragen über alle IPs pro Fenster |
-| **Authentifizierung** | | |
-| `SPRING_PROFILES_ACTIVE` | — | Muss `oidc` (Betrieb) oder `dev` (Entwicklung/Tests) enthalten; ohne eines der beiden startet das Backend nicht |
-| `OPAA_INITIAL_ADMIN_EMAIL` | `admin@opaa.local` | E-Mail für den automatisch erstellten initialen Admin-Benutzer |
-| **Entwicklungs-Auth (`dev`)** | | |
-| `OPAA_AUTH_DEV_ISSUER` | `opaa-dev` | Issuer-Claim der synthetischen Tokens |
-| `OPAA_AUTH_DEV_DEFAULT_USER` | `dev-admin` | Nutzer, als der ohne `X-OPAA-Dev-User`-Header authentifiziert wird |
-| **Zugangsdaten-Verschlüsselung** | | |
-| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | — (leer) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `knowledge_libraries.source_credentials` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb des Profils `dev`; erforderlich, sobald eine Bibliothek mit Zugangsdaten gespeichert wird** — siehe [Zugangsdaten-Verschlüsselung](#zugangsdaten-verschlüsselung-483) |
-| **OIDC** | | |
-| `OPAA_OIDC_JWK_SET_URI` | `http://localhost:8180/...` | JWK-Set-URI für Token-Verifizierung |
-| `OPAA_OIDC_ISSUER_URI` | `http://localhost:8180/realms/opaa` | OIDC-Issuer-URI für Token-Validierung |
-| `OPAA_OIDC_AUTHORITY` | `http://localhost:8180/realms/opaa` | OIDC-Authority-URL (vom Frontend verwendet) |
-| `OPAA_OIDC_CLIENT_ID` | `opaa-frontend` | OIDC-Client-ID |
-| `OPAA_CSP_CONNECT_SRC_EXTRA` | `http://localhost:8180` | Zusätzliche Origin(s) in der `connect-src`-Richtlinie des Frontend-nginx, leerzeichengetrennt bei mehreren. Erforderlich, wenn die OIDC-Authority auf einem anderen Origin liegt als das Frontend selbst — sonst blockiert die Content-Security-Policy die OIDC-Anmeldung stillschweigend (#409/#670) |
-| **Docker-Compose-Ports** | | |
-| `OPAA_BACKEND_PORT` | `8081` | Backend-Host-Port |
-| `OPAA_FRONTEND_PORT` | `3000` | Frontend-Host-Port |
+**„Standard" ist zweideutig — deshalb zwei Spalten.** Der **Anwendungs-Default** ist der Wert, den
+`backend/src/main/resources/application.yml` (bzw. das Docker-Compose-Setup selbst) annimmt, wenn die
+Variable **nirgends gesetzt** ist — etwa bei `./gradlew bootRun` ohne `.env`. Die **Compose-Belegung**
+ist der Wert, den `.env.example` tatsächlich vorgibt und den ein Nutzer erlebt, der es unverändert nach
+`.env.docker` kopiert. Beide Angaben können auseinanderlaufen, ohne dass eine davon falsch ist — sie
+beschreiben zwei verschiedene Ebenen. Eine leere Compose-Belegung („nicht gesetzt") bedeutet, dass
+`.env.example` die Variable auskommentiert lässt oder gar nicht enthält; dann gilt beim Kopieren nach
+`.env.docker` der Anwendungs-Default.
+
+**Vorrang der Konfigurationsquellen — zwei getrennte Mechanismen:**
+
+1. **Werte, die im Backend-Container ankommen und von Spring gelesen werden** (also praktisch jede
+   `opaa.*`/`spring.*`-Eigenschaft): Hier hat eine Umgebungsvariable, die explizit im
+   `environment:`-Abschnitt einer `docker-compose.yml` gesetzt ist, Vorrang vor demselben Namen in der
+   über `env_file:` eingebundenen `.env.docker`, und diese wiederum vor dem in `application.yml`
+   hinterlegten Anwendungs-Default (`${VARIABLE:default}`). Bei `./gradlew bootRun` ohne Docker Compose
+   tritt an die Stelle von `environment:`/`env_file` schlicht die Prozessumgebung der Shell, in der
+   `bootRun` läuft. Eine Host-Shell-Variable erreicht den Backend-Container in Docker Compose **nicht**
+   automatisch — nur wenn sie entweder in `environment:` referenziert wird (z. B. `OPAA_UPLOAD_STORAGE_PATH`
+   in `docker-compose.yml`) oder über `env_file: .env.docker` geladen wird, landet sie im Container.
+2. **Variablen, die `${...}` direkt in `docker-compose.yml` interpoliert** — Bind-Mounts, Host-Ports und
+   die `env_file`-Auswahl selbst (`OPAA_ENV_FILE`, siehe unten). Docker Compose löst diese Platzhalter
+   ausschließlich aus der **Prozessumgebung** und einer von Compose selbst automatisch geladenen
+   `.env`-Datei im Projektwurzelverzeichnis auf — **niemals** aus der über `env_file:` eingebundenen
+   `.env.docker` (`e2e/scripts/run-e2e.mjs` nutzt genau das, um Ports und die `env_file`-Auswahl der
+   E2E-Suite per Prozessumgebung zu setzen, ohne die Datei eines Entwicklers anzufassen). Ein Wert, den
+   `.env.example` für eine solche Variable vorschlägt, bleibt deshalb wirkungslos, solange er nur in
+   `.env.docker` steht — er muss als Shell-Variable exportiert oder in eine echte `.env`-Datei
+   geschrieben werden. In der Tabelle unten mit „wirkt nur aus Prozessumgebung/`.env`, **nicht** aus
+   `.env.docker`" gekennzeichnet.
+
+Ist eine Variable nirgends gesetzt, gilt in beiden Fällen der jeweilige Default.
+
+**Anbieterbedingte Variablen:** `OPAA_OPENAI_*` wirkt nur, solange der jeweilige Anbieter
+(`OPAA_AI_CHAT_PROVIDER` bzw. `OPAA_AI_EMBEDDING_PROVIDER`) auf `openai` steht; `OPAA_OLLAMA_*`
+entsprechend nur bei `ollama`. Ein gesetzter, aber wegen des falschen Anbieters wirkungsloser Wert wird
+nicht gemeldet — er bleibt einfach ungenutzt liegen.
+
+Manche Variablen dieser Tabelle sind kein Spring-Property, sondern werden ausschließlich von Docker
+Compose selbst ausgewertet (Bind-Mounts, Host-Ports, die `env_file`-Auswahl) oder vom
+`envsubst`-Template des Frontend-nginx — für sie gibt es keinen Anwendungs-Default im eigentlichen
+Sinn; das ist jeweils vermerkt.
+
+| Variable | Anwendungs-Default (`application.yml`) | Compose-Belegung (`.env.example`) | Beschreibung |
+|----------|------------------------------------------|-------------------------------------|-------------|
+| **Allgemein** | | | |
+| `OPAA_SERVER_ADDRESS` | `localhost` | `0.0.0.0` | Bind-Adresse (`0.0.0.0` für Netzwerkzugang). Docker Compose überschreibt den Anwendungs-Default bewusst — siehe Hinweis unter [Netzwerkzugang](#netzwerkzugang) |
+| `OPAA_HTTP_FORCE_HTTP1` | `false` | `false` | HTTP/1.1 für vLLM-Kompatibilität erzwingen |
+| `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | `http://localhost:5173` | Erlaubte CORS-Origins (kommagetrennt). Der Compose-Beispielwert passt nur außerhalb von Docker Compose (lokaler Vite-Dev-Server auf `:5173`) — unter Docker Compose muss die Variable stattdessen den Frontend-Host-Port tragen, standardmäßig `http://localhost:3000` (siehe [„Docker-spezifische Variablen"](#docker-spezifische-variablen) oben und [„POST-Anfragen geben 403 Forbidden zurück"](#post-anfragen-geben-403-forbidden-zurück) unten) — sonst schlägt jede POST-Anfrage aus dem Compose-Frontend am CORS-Preflight fehl |
+| `OPAA_INDEXING_DOCUMENT_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./documents`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.example` nennt `./documents`, das bleibt dort wirkungslos; ohne Shell-Export gilt der Compose-Default `./documents` | Host-Pfad für Dokumente (in Container gemountet) |
+| `OPAA_UPLOAD_STORAGE_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./uploads`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.example` gesetzt; ohne Shell-Export gilt der Compose-Default `./uploads` | Host-Pfad für hochgeladene Dokumente (in Container gemountet) |
+| `OPAA_UPLOAD_STORAGE_PATH` | `./uploads` | — (`docker-compose.yml` setzt sie im Backend-Container fest auf `/app/uploads`, nicht über `.env.docker` änderbar) | Container-interner Speicherpfad für hochgeladene Dokumente (`opaa.upload.storage-path`) — bei Docker Compose nicht mit dem Bind-Mount `OPAA_UPLOAD_STORAGE_PATH_HOST` zu verwechseln |
+| `OPAA_UPLOAD_MAX_FILE_SIZE` | `52428800` (50 MiB, Byte) | nicht gesetzt (Anwendungs-Default gilt) | Maximale Dateigröße beim Dokument-Upload (`spring.servlet.multipart.max-file-size`/`max-request-size` und `opaa.upload.max-file-size` in `application.yml`, dieselbe Variable für beide). **Bei Docker Compose zusätzlich zu beachten:** Der nginx-Reverse-Proxy im Frontend-Container (`frontend/nginx.conf`) setzt `client_max_body_size` unabhängig davon fest auf `52m` — etwas oberhalb dieses Limits, weil nginx die gesamte Multipart-Anfrage misst (inklusive Framing-Overhead), das Backend dagegen nur die Dateigröße. Diese Datei wird beim Image-Build fest eingebacken (kein `envsubst`), wird also **nicht** automatisch aus `OPAA_UPLOAD_MAX_FILE_SIZE` übernommen. Wer `OPAA_UPLOAD_MAX_FILE_SIZE` erhöht, muss `client_max_body_size` in `frontend/nginx.conf` entsprechend mit anheben, sonst weist nginx größere Uploads bereits mit einer eigenen HTML-413-Seite ab, bevor die Backend-Prüfung überhaupt greift — siehe [#519](https://github.com/criew/opaa/issues/519). |
+| **Datenbank** | | | |
+| `OPAA_DB_URL` | `jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0`; im Spring-Profil `docker` (ohne gesetzte Variable) stattdessen `jdbc:postgresql://postgres:5432/opaa?prepareThreshold=0` | `jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0` | JDBC-Verbindungs-URL. Der Compose-Beispielwert passt nur außerhalb von Docker Compose — die „Minimale `.env.docker`" oben lässt die Variable deshalb bewusst weg, damit der `docker`-Profil-Default mit dem Hostnamen `postgres` gilt |
+| `OPAA_DB_USERNAME` | `opaa` | `opaa` | PostgreSQL-Benutzername |
+| `OPAA_DB_PASSWORD` | `opaa` | `opaa` | PostgreSQL-Passwort |
+| `OPAA_DB_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `5432`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.example` gesetzt; ohne Shell-Export gilt der Compose-Default `5432` | Host-Port, auf den `docker-compose.yml` den PostgreSQL-Container bindet (nur `127.0.0.1`) |
+| **LLM / Embedding** | | | |
+| `OPAA_AI_CHAT_PROVIDER` | `ollama` | `ollama` | Chat-Modell-Anbieter (`ollama` oder `openai`) |
+| `OPAA_AI_EMBEDDING_PROVIDER` | `ollama` | `ollama` | Embedding-Modell-Anbieter (`ollama` oder `openai`) |
+| `OPAA_OPENAI_API_KEY` | `sk-placeholder` (Platzhalter, kein gültiger Schlüssel — greift nur, falls ein Anbieter auf `openai` steht und kein spezifischerer Schlüssel gesetzt ist) | gesetzt, aber leer (`.env.example` Zeile 21) — **überschreibt den Anwendungs-Default**: Eine leere `env_file`-Zeile löst `${OPAA_OPENAI_API_KEY:sk-placeholder}` zu einem leeren String auf, nicht zum Platzhalter | Zugangsschlüssel der openai-kompatiblen Schnittstelle. Wirkt nur bei mindestens einem Anbieter `openai` |
+| `OPAA_OPENAI_BASE_URL` | — (kein Default) | gesetzt, aber leer (`.env.example` Zeile 19) — funktional gleichwertig zu „nicht gesetzt", da der Anwendungs-Default hier ohnehin leer ist | Basis-Adresse der openai-kompatiblen Schnittstelle. **Ohne Voreinstellung; erforderlich, sobald ein Anbieter auf `openai` steht** — sonst bricht der Start ab (siehe [„Erforderliche Variablen"](#erforderliche-variablen) oben) |
+| `OPAA_OPENAI_CHAT_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | gesetzt, aber leer (`.env.example` Zeile 25) — überschreibt damit auch den Fallback auf `OPAA_OPENAI_API_KEY` | Eigener Zugangsschlüssel nur für den Chat-Aufruf, falls Chat- und Embedding-API unterschiedliche Schlüssel brauchen. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
+| `OPAA_OPENAI_CHAT_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:}}`) | gesetzt, aber leer (`.env.example` Zeile 27) — funktional gleichwertig zu „nicht gesetzt" | Eigene Zieladresse nur für den Chat-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten) |
+| `OPAA_OPENAI_CHAT_MODEL` | `gpt-4o` | `gpt-4o` | OpenAI-Chat-Modellname. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
+| `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | `0.7` | Chat-Antwort-Temperatur (0,0–2,0). Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
+| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | `2000` | Maximale Tokens in Chat-Antwort. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
+| `OPAA_OPENAI_EMBEDDING_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | gesetzt, aber leer (`.env.example` Zeile 37) — überschreibt damit auch den Fallback auf `OPAA_OPENAI_API_KEY` | Eigener Zugangsschlüssel nur für den Embedding-Aufruf. Wirkt nur bei `OPAA_AI_EMBEDDING_PROVIDER=openai` |
+| `OPAA_OPENAI_EMBEDDING_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:}}`) | gesetzt, aber leer (`.env.example` Zeile 39) — funktional gleichwertig zu „nicht gesetzt" | Eigene Zieladresse nur für den Embedding-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten) |
+| `OPAA_OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | `text-embedding-3-small` | OpenAI-Embedding-Modellname. Wirkt nur bei `OPAA_AI_EMBEDDING_PROVIDER=openai` |
+| `OPAA_OLLAMA_BASE_URL` | Profil `local`: `http://localhost:11434`; Profil `docker`: `http://ollama:11434` — kein profilunabhängiger Default | `http://ollama:11434` | Ollama-API-Basis-URL. Wirkt nur, solange mindestens ein Anbieter auf `ollama` steht |
+| `OPAA_OLLAMA_CHAT_MODEL` | `phi3:mini` | `phi3:mini` | Ollama-Chat-Modellname. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=ollama` |
+| `OPAA_OLLAMA_EMBEDDING_MODEL` | `nomic-embed-text` | `nomic-embed-text` | Ollama-Embedding-Modellname. Wirkt nur bei `OPAA_AI_EMBEDDING_PROVIDER=ollama` |
+| **Abfrage (RAG-Retrieval)** | | | |
+| `OPAA_QUERY_TOP_K` | `5` | `5` | Anzahl der pro Abfrage abgerufenen Dokument-Chunks (1–100) |
+| `OPAA_QUERY_SIMILARITY_THRESHOLD` | `0.3` | `0.3` | Minimale Kosinus-Ähnlichkeit für Chunk-Aufnahme (0,0–1,0) |
+| **Indizierung** | | | |
+| `OPAA_INDEXING_DOCUMENT_PATH` | `./documents` | `./documents` | Dateisystempfad für Quelldokumente |
+| `OPAA_INDEXING_CHUNK_SIZE` | `1000` | `1000` | Ziel-Tokens pro Chunk (1–10.000) |
+| `OPAA_INDEXING_CHUNK_OVERLAP` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Anzahl der Tokens, die jeder Chunk vom Ende seines Vorgängers wiederholt, damit eine Aussage an einer Chunk-Grenze in mindestens einem Chunk vollständig erhalten bleibt (#374). Muss kleiner als `OPAA_INDEXING_CHUNK_SIZE` sein; `0` deaktiviert die Überlappung, ein negativer Wert wird auf `0` normalisiert |
+| `OPAA_INDEXING_BATCH_SIZE` | `50` | `50` | Chunks pro Embedding-API-Aufruf (1–1.000) |
+| `OPAA_INDEXING_RETRY_ATTEMPTS` | `3` | `3` | Wiederholungsanzahl bei vorübergehenden Fehlern (0–10) |
+| `OPAA_INDEXING_THREAD_POOL_CORE_SIZE` | `2` | `2` | Kern-Threads für asynchrone Indizierung |
+| `OPAA_INDEXING_THREAD_POOL_MAX_SIZE` | `4` | `4` | Maximale Threads für asynchrone Indizierung |
+| `OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY` | `20` | `20` | Task-Queue-Kapazität für asynchrone Indizierung |
+| `OPAA_INDEXING_RSS_MAX_ENTRIES` | `200` | `200` | Max. Anzahl verarbeiteter RSS-Feed-Einträge je Lauf |
+| `OPAA_INDEXING_RSS_MAX_FEED_SIZE_BYTES` | `10485760` | `10485760` | Max. Größe des abgerufenen RSS-Feeds in Byte |
+| `OPAA_INDEXING_RSS_MAX_PAGE_SIZE_BYTES` | `5242880` | `5242880` | Max. Größe einer abgerufenen Detailseite in Byte |
+| `OPAA_INDEXING_RSS_REQUEST_DELAY_MS` | `1000` | `1000` | Mindestabstand zwischen zwei Detailseiten-Abrufen in ms |
+| `OPAA_INDEXING_RSS_USER_AGENT` | `OPAA-Indexer/1.0` | `OPAA-Indexer/1.0` | User-Agent für RSS-Feed- und Detailseiten-Abrufe (kein Browser-Faking) |
+| `OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR` | `main, article, [role=main]` | `main, article, [role=main]` | CSS-Selektor (Jsoup-Syntax) für den Hauptinhalt einer Detailseite, Fallback `<body>` |
+| `OPAA_INDEXING_RSS_ATTACHMENT_PROFILE` | `GENERIC` | `GENERIC` | Anlagenprofil für RSS-Detailseiten: `GENERIC` oder `GSB` (Government Site Builder) — gilt für jeden RSS-Lauf dieser Installation, nicht je Lauf wählbar (#468) |
+| `OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY` | `10` | `10` | Max. Anzahl heruntergeladener Anlagen je RSS-Eintrag |
+| `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` | `20971520` | `20971520` | Max. Größe einer einzelnen RSS-Anlage in Byte |
+| `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` | — (leer; Profil `dev`: `/data,/tmp`) | nicht gesetzt (auskommentiert; Beispielwert `/srv/opaa/documents`) | Absolute Basisverzeichnisse, unter denen der `sourcePath` einer FILESYSTEM-Bibliothek liegen muss (kommagetrennt, #484/[ADR-0018](decisions/0018-quellkonfiguration-in-der-bibliothek.md) Entscheidung 6). Eine leere Allowlist deaktiviert den Quellentyp FILESYSTEM vollständig — sie ist die eigentliche Sicherung, nicht die Anlage-Berechtigung. Wird bei Anlage, Änderung **und** jedem Lauf geprüft, da die Allowlist nachträglich verengt werden kann. URL-basierte Quellentypen (HTTP_DIRECTORY, RSS_FEED) sind hiervon nicht erfasst — dafür siehe `OPAA_INDEXING_TARGET_VALIDATION_*` unten. **Betriebsbedingung Symlinks:** Symlinks auf Dateien innerhalb eines freigegebenen Verzeichnisses werden mitindiziert (`Files::isRegularFile` folgt Links) — freigegebene Verzeichnisse dürfen deshalb nicht durch Endnutzer beschreibbar sein. |
+| `OPAA_INDEXING_TARGET_VALIDATION_ENABLED` | `true` | `true` | Ob `HTTP_DIRECTORY`/`RSS_FEED`-Abrufe (Indizierungsläufe **und** der Verbindungstest) ein Ziel ablehnen, dessen aufgelöste Adresse Loopback, Link-Local, privat oder anderweitig nicht routbar ist (#267, SSRF-Härtung). Vor dem ersten Abruf **und** nach jeder Weiterleitung geprüft. Standardmäßig aktiv — ein Betrieb mit legitimer interner Dokumentenquelle schaltet bewusst ab, kein stillschweigender Permissiv-Modus. |
+| `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | — (leer) | nicht gesetzt (auskommentiert; Beispielwert `intranet.example.org`) | Hostnamen (kommagetrennt, exakter Vergleich ohne Groß-/Kleinschreibung), die von der Zielprüfung oben ausgenommen sind, auch während sie aktiv ist — erlaubt konkrete interne Quellen zu benennen, ohne die Prüfung für jedes andere Ziel abzuschalten. |
+| `OPAA_INDEXING_STALE_JOB_TIMEOUT` | `PT4H` (ISO-8601-Dauer; als Java-Default in `IndexingProperties` hinterlegt, nicht als `${...:...}`-Platzhalter in `application.yml` — bindet über Spring Boots gelockerte Umgebungsvariablen-Zuordnung für `@ConfigurationProperties`) | nicht gesetzt (Anwendungs-Default gilt) | Wie lange ein Lauf `RUNNING` bleiben darf, ohne dass sein Fortschritts-Heartbeat sich bewegt, bevor er als verwaist gilt und automatisch auf `FAILED` gesetzt wird (#501) — schützt vor Läufen, die durch eine verworfene `@Async`-Aufgabe oder einen abgestürzten Prozess dauerhaft `RUNNING` bleiben und damit ihre Bibliothek auf Dauer sperren würden (jeder weitere Anstoß derselben Bibliothek antwortet 409, solange die Zeile `RUNNING` ist). Ein tatsächlich aktiver Lauf eines großen Bestands bleibt unangetastet, solange er weiter Fortschritt meldet, auch über diese Zeitspanne hinaus. Wird beim Anwendungsstart (alle `RUNNING`-Zeilen gelten dann als verwaist) und danach periodisch geprüft. **Setzt genau eine Backend-Instanz voraus:** Startup-Recovery und periodischer Sweep kennen nur die `indexing_jobs`-Zeilen der eigenen Datenbank, nicht welcher Prozess sie tatsächlich noch bearbeitet — bei einem Rolling-Deployment oder einer zweiten Replik würde eine Instanz die noch laufenden Jobs der anderen als verwaist erkennen und abbrechen. |
+| **Dokument-Upload** | | | |
+| `OPAA_UPLOAD_THREAD_POOL_CORE_SIZE` | `2` | `2` | Kern-Threads für die asynchrone Verarbeitung hochgeladener Dokumente (#434/#614) — eigener Pool, unabhängig von `OPAA_INDEXING_THREAD_POOL_*` |
+| `OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` | `4` | `4` | Maximale Threads für die asynchrone Verarbeitung hochgeladener Dokumente |
+| `OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY` | `20` | `20` | Task-Queue-Kapazität für den Upload-Pool — bei voller Queue wird der Upload sofort mit Status `FAILED` beantwortet, statt die Aufgabe still zu verwerfen |
+| `OPAA_UPLOAD_PENDING_RECOVERY_THRESHOLD_MINUTES` | `30` | `30` | Minuten, nach denen ein noch `PENDING` hängender Upload beim nächsten Anwendungsstart als durch einen Neustart abgebrochen auf `FAILED` gesetzt wird (#614) |
+| `OPAA_UPLOAD_LIBRARY_QUOTA_BYTES` | `10737418240` (10 GiB, Byte) | `10737418240` | Speicherkontingent je Wissensbibliothek (#119) — Summe der `file_size`-Spalte aller Dokumente einer Bibliothek, durchgesetzt am Upload-Endpunkt (413) **und** an allen drei Konnektorpfaden (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED, dort als übersprungenes Dokument mit `REJECTED`-Ereignis im Laufprotokoll). Zählt den *Bibliotheksinhalt* (die Größe der Quelldateien), nicht den von OPAA tatsächlich belegten Plattenplatz — bei HTTP_DIRECTORY/RSS_FEED liegen die Dateien nur temporär auf der Platte, OPAA behält dauerhaft nur die Chunks im Vektorspeicher; ein Betreiber sieht deshalb ggf. „10 GiB belegt", obwohl der eigene Plattenverbrauch deutlich kleiner ist. **`0` oder ein negativer Wert deaktiviert das Kontingent vollständig** (kein Rückfall auf den Default) — wichtig für Bestandsinstallationen mit Bibliotheken über 10 GiB: das Kontingent wirkt rückwirkend auf bereits gewachsene Bibliotheken, ein Update auf diese Version würde dort sonst jeden weiteren Upload und jedes weitere Konnektordokument ablehnen, bis die Bibliothek unter das Kontingent geschrumpft ist. |
+| **pgvector** | | | |
+| `OPAA_PGVECTOR_DIMENSIONS` | `1536` | `1536` | Vektor-Dimensionen (muss mit Embedding-Modell übereinstimmen) |
+| `OPAA_PGVECTOR_DISTANCE_TYPE` | `cosine_distance` | `cosine_distance` | Distanzfunktion für Ähnlichkeitssuche |
+| **Rate Limiting** | | | |
+| `OPAA_RATE_LIMIT_ENABLED` | `true` | `true` | Rate Limiting aktivieren/deaktivieren |
+| `OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS` | `10` | `10` | Max. Abfrageanfragen pro IP pro Fenster |
+| `OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS` | `60` | `60` | Abfrage-Rate-Limit-Fenster in Sekunden |
+| `OPAA_RATE_LIMIT_QUERY_GLOBAL_MAX_REQUESTS` | `100` | `100` | Max. Abfrageanfragen über alle IPs pro Fenster |
+| `OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS` | `1` | `1` | Max. Indizierungsanfragen pro IP pro Fenster |
+| `OPAA_RATE_LIMIT_INDEXING_WINDOW_SECONDS` | `60` | `60` | Indizierungs-Rate-Limit-Fenster in Sekunden |
+| `OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS` | `5` | `5` | Max. Indizierungsanfragen über alle IPs pro Fenster |
+| `OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS` | `10` | nicht gesetzt (Anwendungs-Default gilt) | Max. Verbindungstests (`POST /api/v1/libraries/source-test`) pro IP pro Fenster (#514) |
+| `OPAA_RATE_LIMIT_SOURCE_TEST_WINDOW_SECONDS` | `60` | nicht gesetzt (Anwendungs-Default gilt) | Verbindungstest-Rate-Limit-Fenster in Sekunden |
+| `OPAA_RATE_LIMIT_SOURCE_TEST_GLOBAL_MAX_REQUESTS` | `30` | nicht gesetzt (Anwendungs-Default gilt) | Max. Verbindungstests über alle IPs pro Fenster |
+| **Verzeichnis-Synchronisation (Gruppen, #237)** | | | |
+| `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | `0.3` | nicht gesetzt (Anwendungs-Default gilt) | Plausibilitätsschwelle: Würde ein Synchronisationslauf mehr als diesen Anteil der bestehenden Gruppenmitgliedschaften entfernen, wird er verworfen und gemeldet statt angewendet — Schutz vor einer fehlkonfigurierten Verzeichnisquelle, die scheinbar fast alle Mitgliedschaften löscht. Gemessen ausschließlich an Entfernungen, nicht an Hinzufügungen. Muss echt größer als `0` und höchstens `1` sein — ein ungültiger Wert lässt den Start fehlschlagen, statt sich stillschweigend zu lockern |
+| **Authentifizierung** | | | |
+| `SPRING_PROFILES_ACTIVE` | ohne Angabe ist das Spring-Profil `local` aktiv (`spring.profiles.default: local` in `application.yml`) — das enthält aber weder `oidc` noch `dev`, sodass `io.opaa.auth.AuthProfileGuard` den Start trotzdem mit einer Fehlermeldung abbricht | — (siehe „Minimale `.env.docker`" oben) | Muss `oidc` (Betrieb) oder `dev` (Entwicklung/Tests) enthalten; ohne eines der beiden startet das Backend nicht — das gilt für den Auth-Modus, nicht für das Spring-Profil an sich, das auch ohne Angabe einen Wert (`local`) hat |
+| `OPAA_INITIAL_ADMIN_EMAIL` | `admin@opaa.local` | `admin@opaa.local` | E-Mail für den automatisch erstellten initialen Admin-Benutzer |
+| **Entwicklungs-Auth (`dev`)** | | | |
+| `OPAA_AUTH_DEV_ISSUER` | `opaa-dev` | `opaa-dev` | Issuer-Claim der synthetischen Tokens |
+| `OPAA_AUTH_DEV_DEFAULT_USER` | `dev-admin` | `dev-admin` | Nutzer, als der ohne `X-OPAA-Dev-User`-Header authentifiziert wird |
+| **Zugangsdaten-Verschlüsselung** | | | |
+| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | — (leer) außerhalb des Profils `dev`; im Profil `dev` fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel (siehe [„Zugangsdaten-Verschlüsselung"](#zugangsdaten-verschlüsselung-483) unten) | nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in `.env.example`) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `knowledge_libraries.source_credentials` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb des Profils `dev`; erforderlich, sobald eine Bibliothek mit Zugangsdaten gespeichert wird** |
+| **OIDC** | | | |
+| `OPAA_OIDC_JWK_SET_URI` | `http://localhost:8180/realms/opaa/protocol/openid-connect/certs` | `http://keycloak:8180/realms/opaa/protocol/openid-connect/certs` | JWK-Set-URI für Token-Verifizierung. Die Compose-Belegung weicht bewusst vom Anwendungs-Default ab: Der Backend-Container muss den Docker-internen Hostnamen `keycloak` verwenden, siehe Hinweis unter [„OIDC (Keycloak)"](#oidc-keycloak) unten |
+| `OPAA_OIDC_ISSUER_URI` | `http://localhost:8180/realms/opaa` | `http://localhost:8180/realms/opaa` | OIDC-Issuer-URI für Token-Validierung — bleibt `localhost`, weil der Browser diese URL verwendet |
+| `OPAA_OIDC_AUTHORITY` | `http://localhost:8180/realms/opaa` | `http://localhost:8180/realms/opaa` | OIDC-Authority-URL (vom Frontend verwendet) |
+| `OPAA_OIDC_CLIENT_ID` | `opaa-frontend` | `opaa-frontend` | OIDC-Client-ID |
+| `OPAA_CSP_CONNECT_SRC_EXTRA` | — (kein Spring-Property; leer als Image-Default des Frontend-nginx-`envsubst`-Templates) | `http://localhost:8180` | Zusätzliche Origin(s) in der `connect-src`-Richtlinie des Frontend-nginx, leerzeichengetrennt bei mehreren. Erforderlich, wenn die OIDC-Authority auf einem anderen Origin liegt als das Frontend selbst — sonst blockiert die Content-Security-Policy die OIDC-Anmeldung stillschweigend (#409/#670) |
+| **Docker-Compose-Ports** | | | |
+| `OPAA_BACKEND_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8081`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.example` nennt `8081`, das bleibt dort wirkungslos; ohne Shell-Export gilt der Compose-Default `8081` | Backend-Host-Port |
+| `OPAA_FRONTEND_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `3000`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.example` nennt `3000`, das bleibt dort wirkungslos; ohne Shell-Export gilt der Compose-Default `3000` | Frontend-Host-Port |
+| `OPAA_KEYCLOAK_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8180`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8180` | Keycloak-Host-Port (nur `oidc`-Compose-Profil) |
+| `OPAA_ENV_FILE` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `.env.docker`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` selbst (zirkulär — siehe Hinweis oben) — nicht in `.env.example` gesetzt | Wählt die `env_file`, aus der `docker-compose.yml` die Container-Umgebung lädt (Standard `.env.docker`). Die E2E-Suite setzt sie per Prozessumgebung auf `e2e/e2e.env`, um denselben `docker-compose.yml` mit einem eigenen, von der Entwickler-`.env.docker` unabhängigen Umgebungssatz zu betreiben (siehe `e2e/scripts/run-e2e.mjs`) |
 
 **Laufzeit und Speicher eines RSS-Laufs.** Die Politeness-Wartezeit (`OPAA_INDEXING_RSS_REQUEST_DELAY_MS`, Voreinstellung 1000 ms) gilt für jede Anfrage einzeln — Detailseite und jede einzelne Anlage. Mit den Voreinstellungen (200 Einträge, bis zu 10 Anlagen je Eintrag) dauert ein Lauf, der bei jedem Eintrag das Limit ausschöpft, im ungünstigsten Fall rund 200 × 11 × 1 s ≈ 37 Minuten. Jede Anlage wird vor dem Schreiben auf die temporäre Datei vollständig in den Heap gelesen (`UrlFileDownloader#downloadBounded`) — bis zu `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` (Voreinstellung 20 MiB) je Anlage. Bei knapp bemessenem Heap `OPAA_INDEXING_THREAD_POOL_MAX_SIZE` und die Anlagen-Obergrenzen entsprechend niedriger wählen.
 
