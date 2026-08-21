@@ -33,11 +33,12 @@ lesen dürfen.
    Gebührenordnungen, Formularnummern, Amtsdeutsch.
 2. **Szenario:** das **Bürgerbüro Rheinfurt** mit mehreren Teams (Sachgebieten) — keine konstruierte
    amtsübergreifende Leitungsrolle, sondern die realistische Binnenstruktur eines Amtes mit Amtsleitung.
-3. **Alle Konnektortypen und mehrere Dateiformate:** HTTP-Verzeichnis (Markdown und PDF), RSS-Feed
-   (selbst gehostete, statische XML) und manueller Upload (DOCX, PDF, PPTX).
+3. **Alle Konnektortypen und mehrere Dateiformate:** HTTP-Verzeichnis (Markdown, Klartext und PDF),
+   RSS-Feed (selbst gehostete, statische XML) und manueller Upload (DOCX, PDF, PPTX).
 4. **Ein Befehl installiert alles:** Compose-Profil `demo` plus Seed-Skript richten Nutzer, Spaces,
-   Bibliotheken, Berechtigungen und Indizierung ein. Zielplattform ist gleichgültig — lokal,
-   opaa.ewerlin.com oder ein alternativer Host.
+   Bibliotheken, Berechtigungen und Indizierung ein. Angemeldet wird sich über Keycloak, wie in einer
+   echten Installation. Zielplattform ist gleichgültig — lokal, opaa.ewerlin.com oder ein alternativer
+   Host.
 5. **E2E-Tests getrennt, Seed-Infrastruktur geteilt:** Der Seed-Mechanismus kennt zwei Datenprofile —
    `demo` (reich, darf sich weiterentwickeln) und `e2e` (minimal, eingefroren). Die Demo selbst wird nur
    durch einen Smoke-Test abgesichert.
@@ -98,7 +99,12 @@ von Space"):
 | Selin Kaya | Sachbearbeiterin Meldewesen | Space „Meldewesen & Ausweise" |
 | Thomas Klein | Sachbearbeiter Kfz-Zulassung | Space „Kfz-Zulassung", alleiniges Mitglied |
 | Andrea Vogt | Amtsleitung Bürgerbüro | Space „Amtsleitung Bürgerbüro", alleiniges Mitglied |
-| dev-admin / Maintainer | Systemadministration | richtet ein und indiziert (`SYSTEM_ADMIN`) |
+| Administrationskonto | Systemadministration | richtet ein und indiziert (`SYSTEM_ADMIN`) |
+
+Das Administrationskonto ist ein reguläres Konto aus dem Keycloak-Realm der Demo; die Systemrolle
+erhält es über `OPAA_INITIAL_ADMIN_EMAIL` wie in jeder anderen Installation. Die Space-Spalte zählt nur
+die fachlich gestellten Spaces auf: Jeder Nutzer bekommt beim ersten Login zusätzlich automatisch seinen
+Default-Space (`SpaceService#ensureDefaultSpace`, `isDefault`), der nicht eigens eingerichtet wird.
 
 Leserechte auf den Bibliotheken — vergeben als Asset-Rolle `VIEWER`, die Bibliotheken selbst gehören dem
 Admin-Konto:
@@ -130,8 +136,11 @@ Etwa acht vorbereitete Fragen, dokumentiert mit erwartetem Antwortcharakter und 
 6. **Quer-Bibliotheks-Frage** („Was gilt bei Gebührenbefreiung wegen Bedürftigkeit?") — Satzung +
    Dienstanweisung, je nach Rechten unterschiedlich vollständig
 7. **Amtsleitungs-Frage** über beide Sachgebiete hinweg — nur Andrea bekommt die vollständige Antwort
-8. **Bewusst unbeantwortbare Frage** („Wie beantrage ich in Rheinfurt eine Fischereierlaubnis?") — zeigt,
-   dass keine Quellen erfunden werden und ungültige Belege gekennzeichnet sind (Belegvalidierung, #697)
+8. **Bewusst unbeantwortbare Frage** („Wie beantrage ich in Rheinfurt eine Fischereierlaubnis?") — zu
+   dieser Leistung liegt in keiner Bibliothek etwas vor: Die Antwort nennt keine Quelle und erfindet
+   auch keine. Einen eigenen Verweigerungsmodus gibt es dafür nicht (mit #697 verworfen); die
+   Belegvalidierung wird sichtbar, wenn ein Beleg tatsächlich ungültig ist — falls sich ein solches
+   Szenario reproduzierbar bauen lässt, kommt es als eigene Frage dazu
 
 Das ausformulierte Drehbuch entsteht mit dem Seed und wird in `docs/` neben der Installationsanleitung
 gepflegt.
@@ -140,21 +149,34 @@ gepflegt.
 
 ## Installation und Seed
 
-- `docker compose --profile demo up` startet den Stack inklusive Korpus-Webserver (Apache httpd mit
-  `IndexOptions FancyIndexing HTMLTable`, siehe Befund in #229 — das `autoindex` von nginx erzeugt eine
-  `<pre>`-Liste, die der `AutoindexCrawlerService` nicht auswerten kann) und des statischen RSS-Feeds.
+- **Anmeldung:** Die Demo läuft über **OIDC/Keycloak**, nicht über das dev-Auth-Profil. Sie soll das
+  realistische Anmeldemodell zeigen, und die Zielinstanz opaa.ewerlin.com nutzt ohnehin Keycloak. Die
+  Demo-Nutzer kommen über einen Realm-Import in den vorhandenen `keycloak`-Service.
+- **Startbefehl:** Der `keycloak`-Service liegt heute im Compose-Profil `oidc`. Entweder lautet der
+  dokumentierte Befehl `docker compose --profile demo --profile oidc up`, oder der Service wird dem
+  Profil `demo` zusätzlich zugeordnet, sodass `docker compose --profile demo up` genügt. Die Wahl trifft
+  das Umsetzungsticket; wichtig ist nur, dass die Anleitung keinen Stack ohne Anmeldung beschreibt.
+- Der Stack bringt den Korpus-Webserver und den statischen RSS-Feed mit. Als Webserver ist Apache httpd
+  mit `IndexOptions FancyIndexing HTMLTable` eine naheliegende, gut erprobte Wahl, aber **keine
+  Notwendigkeit mehr**: Seit #550 versteht der `AutoindexCrawlerService` auch `<pre>`-Listings (nginx
+  `autoindex on`, Apache ohne `HTMLTable`) und `<ul>`-Layouts (`-FancyIndexing`, Python `http.server`).
 - Ein Seed-Skript legt Nutzer (Keycloak-Realm-Import), Spaces, Bibliotheken und Berechtigungen an, lädt
   die Upload-Dokumente hoch und stößt die Indizierung je Bibliothek an. Seit
   [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) trägt die Bibliothek Quellentyp
   und Quellkonfiguration selbst; der Seed legt also je Bibliothek einmalig die Quelle an und löst
   anschließend deren Lauf aus.
-- Der Seed-Mechanismus ist als wiederverwendbarer Baustein mit zwei Datenprofilen geschnitten: `demo`
-  und `e2e`. E2E-Feature-Tests laufen ausschließlich gegen das minimale `e2e`-Profil; gegen das
+- Der Seed-Mechanismus ist als wiederverwendbarer Baustein mit zwei **Datenprofilen** geschnitten:
+  `demo` und `e2e`. E2E-Feature-Tests laufen ausschließlich gegen das minimale `e2e`-Profil; gegen das
   `demo`-Profil läuft genau ein Smoke-Test (Setup läuft durch, eine Suche liefert eine belegte Antwort).
-- **Zu klären in der Umsetzung:** Die mit #699 eingeführte Zielprüfung ausgehender Abrufe
-  (`opaa.indexing.target-validation`, standardmäßig aktiv) lehnt Adressen in privaten und
-  Loopback-Bereichen ab — genau dort liegen die Compose-internen Ziele der Demo. Das Demo-Profil braucht
-  deshalb voraussichtlich einen Eintrag in der Hostnamen-Allowlist für Korpus-Webserver und Feed.
+- **Geteilt sind die Daten, nicht die Nutzerbereitstellung.** Wie die Konten entstehen, hängt am
+  Auth-Modus und ist austauschbar: `e2e` bleibt beim dev-Auth-Profil mit `OPAA_AUTH_DEV_USERS_*`
+  (`e2e/e2e.env`, `e2e/docker-compose.e2e.yml`), `demo` nutzt den Keycloak-Realm-Import. Beide Profile
+  legen anschließend über denselben Weg Spaces, Bibliotheken und Berechtigungen an.
+- Die Zielprüfung ausgehender Abrufe (`opaa.indexing.target-validation`, standardmäßig aktiv, #267)
+  lehnt Adressen in privaten und Loopback-Bereichen ab — genau dort liegen die Compose-internen Ziele
+  der Demo. Das ist gelöst und nicht offen: Die E2E-Suite zeigt das Muster mit
+  `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` (`e2e/docker-compose.e2e.yml`); das Demo-Profil braucht
+  denselben Allowlist-Eintrag für Korpus-Webserver und Feed.
 - Dokumentation in `docs/`: Installation, Nutzerkonten mit Passwörtern (Demo-Werte, keine Secrets),
   Korpus-Aktualisierung, Drehbuch.
 
@@ -164,7 +186,9 @@ gepflegt.
 
 - **Epic #708** führt die Umsetzung; die aus #224 übernommenen Tickets #229, #230, #232 und #233 werden
   auf dieses Konzept nachgezogen. #229 verweist heute noch auf einen Bind-Mount von `eval/corpus/` mit
-  1.000 Superhelden-Dateien und muss auf `demo/` und die fünf Bibliotheken umgeschrieben werden.
+  1.000 Superhelden-Dateien und muss auf `demo/` und die fünf Bibliotheken umgeschrieben werden. Beim
+  selben Durchgang fällt sein „Wichtiger Befund" weg, nginx-`autoindex` sei für den Crawler unlesbar —
+  seit #550 stimmt das nicht mehr.
 - **Epic #224 (Eval)** bleibt unberührt; der Superhelden-Korpus ist ausschließlich Messartefakt. Der
   Abschnitt „Öffentliche Demo" in [search-quality-evaluation.md](./search-quality-evaluation.md)
   beschreibt den abgelösten Stand und wird mit der Umsetzung auf dieses Dokument verwiesen.
@@ -176,10 +200,13 @@ gepflegt.
   vorhandenen vor.
 - **Quellzuordnung:** Dass eine Konnektorquelle zu genau einer Wissensbibliothek gehört, ist seit
   ADR-0018 strukturell gegeben und damit Voraussetzung dafür, dass die fünf Bibliotheken sauber getrennt
-  befüllt werden. Offen ist in **#207** nur noch die Obergrenze der Freigabe für konnektorgespeiste
-  Bibliotheken; für die Demo genügen gezielte Grants an die vier Nutzer.
-- **E2E-Suite:** Die heutige Suite unter `e2e/` bringt ihre Testdaten als eigene Fixtures mit
-  (`e2e/fixtures/`). Das `e2e`-Profil des gemeinsamen Seeds tritt an die Stelle dieser Einzellösung.
+  befüllt werden. Offen sind in **#207** unter anderem die Obergrenze der Freigabe für
+  konnektorgespeiste Bibliotheken und der Ausschluss einzelner Konnektordokumente; für die Demo genügen
+  gezielte Grants an die vier Nutzer.
+- **E2E-Suite:** Die heutige Suite unter `e2e/` bringt ihre Inhalte selbst mit — die Testdaten in
+  `e2e/fixtures/rss-feed/` und `e2e/fixtures/test-documents/`, die übrigen Dateien in `e2e/fixtures/`
+  sind Playwright-Fixtures (Anmeldung, Chat, Barrierefreiheit). Das `e2e`-Datenprofil des gemeinsamen
+  Seeds tritt an die Stelle dieser eigenen Testdatenbereitstellung.
 
 ---
 
@@ -196,10 +223,10 @@ gepflegt.
 ## Erfolgs-Metriken
 
 - Ein Interessent startet den Stack mit einem Befehl und bekommt ohne weitere Handgriffe eine gefüllte,
-  durchsuchbare Instanz mit vier Konten.
+  durchsuchbare Instanz mit vier Konten hinter der regulären Keycloak-Anmeldung.
 - Die Berechtigungsgrenze ist live vorführbar: dieselbe Frage liefert je Konto nachvollziehbar
   unterschiedliche Antworten.
 - Jede der acht Drehbuchfragen führt zu einer belegten Antwort — außer der bewusst unbeantwortbaren,
-  die als solche gekennzeichnet wird.
+  bei der keine Quelle genannt und keine erfunden wird.
 - Der Smoke-Test gegen das `demo`-Profil läuft in der CI durch, ohne die E2E-Feature-Tests an den
   Demo-Inhalten zu koppeln.
