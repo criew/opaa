@@ -82,19 +82,33 @@ public final class BaselineMarkdownWriter {
     sb.append(
         "| Gruppe | Metrik | n | Baseline | Ist | Delta | Toleranz | Ergebnis |\n"
             + "|---|---|---|---|---|---|---|---|\n");
+    boolean anyCaseBased = false;
     for (var check : result.checks()) {
+      // Issue #306 (review Befund 1 — conjunction, not replacement): for a case-based pair,
+      // tolerance() is already the *effective* mean tolerance (max(meanTolerance, 1/n)) actually
+      // applied — the "*" plus the footnote below only flags that this pair *additionally*
+      // required the case-count check to pass, not that the unit of tolerance() changed.
+      anyCaseBased = anyCaseBased || check.caseBasedCheck();
       sb.append(
           String.format(
               Locale.ROOT,
-              "| %s | %s | %d | %.3f | %.3f | %+.3f | %.3f | %s |\n",
+              "| %s | %s%s | %d | %.3f | %.3f | %+.3f | %.3f | %s |\n",
               check.group(),
               check.metric(),
+              check.caseBasedCheck() ? "*" : "",
               check.n(),
               check.baselineValue(),
               check.currentValue(),
               check.delta(),
               check.tolerance(),
               check.passed() ? "✅" : "❌"));
+    }
+    if (anyCaseBased) {
+      sb.append(
+          "\n_* fallzahlbasierte Prüfung (issue #306): zusätzlich zur (auf mindestens eine "
+              + "Fallbreite `1/n` geweiteten) Mittelwert-Toleranz in der Tabelle oben muss die "
+              + "Zahl der Fälle mit einem Treffer gegenüber der Baseline um höchstens einen Fall "
+              + "sinken — beide Bedingungen müssen gelten, siehe `BaselineComparator`s Javadoc._\n");
     }
 
     if (!anyFailed) {

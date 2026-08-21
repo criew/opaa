@@ -91,8 +91,9 @@ Drei Zustände werden unterschieden:
 - Aufnahme aus einem konfigurierten Verzeichnis (`OPAA_INDEXING_DOCUMENT_PATH`)
 - Indizierung aus dem Netz über URL (`UrlIndexingExecutor`, `UrlFileDownloader`, `AutoindexCrawlerService`)
 - Formate: Markdown, Text, PDF, DOCX, DOC, PPTX — an einer Stelle festgelegt
-  (`SupportedDocumentFormats`) und für beide Aufnahmewege verbindlich; ein abgewiesenes Dokument
-  zählt im Indizierungsauftrag als übersprungen statt lautlos zu verschwinden (#375). Tabellen (XLSX)
+  (`SupportedDocumentFormats`) und für alle Aufnahmewege verbindlich, seit #404 anhand des
+  tatsächlichen Inhalts entschieden (siehe A, oben); ein abgewiesenes Dokument zählt im
+  Indizierungsauftrag als übersprungen statt lautlos zu verschwinden (#375). Tabellen (XLSX)
   gehören nicht dazu — das stand hier bisher falsch
 - Wiedererkennung unveränderter Dateien über Prüfsummen (`ChecksumService`)
 - Auftragsverwaltung für Indizierungsläufe mit Status (`IndexingJobService`, seit ADR-0018 je
@@ -135,8 +136,6 @@ Drei Zustände werden unterschieden:
 
 **Geplant (Phase 2)**
 - Schreibender Zugriff je Integration · Spiegelung der Rechte aus dem Quellsystem
-
-> Die Zielprüfung für URL-Indizierung (private Adressbereiche, Schema) ist offen — #267.
 
 ---
 

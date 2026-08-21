@@ -44,8 +44,18 @@ spring:
     url: ${OPAA_DB_URL:jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0}
     username: ${OPAA_DB_USERNAME:opaa}
     password: ${OPAA_DB_PASSWORD:opaa}
-  liquibase:
-    enabled: true
+    hikari:
+      # #307: written out explicitly as a deliberate value, not left as an implicit Spring Boot
+      # default that could silently drift on a future Boot upgrade. 10 is enough even for the
+      # highest-pressure case #307 measured - many different users' first logins arriving at once
+      # (e.g. a whole organization's staff onboarding in one morning) - because that path no longer
+      # spends more pooled connections than necessary: UserService.findOrCreateUser only ever holds
+      # one connection at a time (#293/#299), and SpaceService.ensureDefaultSpaceForNewUser skips
+      # the existence check that used to double a first login's round trips (see its Javadoc and
+      # UserServiceConcurrentDistinctUserLoginIntegrationTest, which exercises exactly this scenario
+      # at this pool size). Raising this number was considered and rejected as treating the symptom,
+      # not the cause - PR #305 already rejected it once for the same reason.
+      maximum-pool-size: 10
   ai:
     model:
       chat: ${OPAA_AI_CHAT_PROVIDER:ollama}
@@ -114,6 +124,10 @@ opaa:
     # must resolve underneath. No default on purpose - an empty allowlist disables the FILESYSTEM
     # quellentyp entirely, the safe default for a fresh installation.
     filesystem-allowlist: ${OPAA_INDEXING_FILESYSTEM_ALLOWLIST:}
+    # #267: SSRF hardening for HTTP_DIRECTORY/RSS_FEED fetches - see TargetAddressValidator.
+    target-validation:
+      enabled: ${OPAA_INDEXING_TARGET_VALIDATION_ENABLED:true}
+      allowlist: ${OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST:}
   upload:
     storage-path: ${OPAA_UPLOAD_STORAGE_PATH:./uploads}
     max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}
@@ -126,6 +140,11 @@ opaa:
     # dead process and set to FAILED at the next application startup - see
     # UploadPendingRecoveryRunner.
     pending-recovery-threshold-minutes: ${OPAA_UPLOAD_PENDING_RECOVERY_THRESHOLD_MINUTES:30}
+    # #119: maximum total size (bytes), summed across every document a library holds, that library
+    # may occupy - enforced at every path that stores document content (upload, and the FILESYSTEM/
+    # HTTP_DIRECTORY/RSS_FEED connectors), not only this REST endpoint. Default 10 GiB. 0 or
+    # negative disables the quota entirely - see UploadProperties#libraryQuotaBytes.
+    library-quota-bytes: ${OPAA_UPLOAD_LIBRARY_QUOTA_BYTES:10737418240}
   rate-limit:
     enabled: ${OPAA_RATE_LIMIT_ENABLED:true}
     query:

@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -75,14 +76,19 @@ class UrlIndexingExecutorExecuteTest {
     when(documentRepository.findByFilePath(anyString())).thenReturn(Optional.empty());
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
 
+    // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest) -
+    // disabled here so a loopback test server is actually reachable, mirroring
+    // UrlFileDownloaderTest/RssFeedIndexingExecutorTest's own setup.
+    TargetAddressValidator targetAddressValidator = TargetAddressValidator.disabled();
     executor =
         new UrlIndexingExecutor(
-            new AutoindexCrawlerService(),
-            new UrlFileDownloader(),
+            new AutoindexCrawlerService(targetAddressValidator),
+            new UrlFileDownloader(targetAddressValidator),
             fileProcessingService,
             indexingJobService,
             documentRepository,
-            indexingRunEventRepository);
+            indexingRunEventRepository,
+            mock(LibraryStorageQuotaService.class));
   }
 
   @AfterEach

@@ -38,7 +38,7 @@ async function gotoLibraries(page: Page) {
   ])
 }
 
-/** Reads the library id CreateLibraryDialog navigated to after a successful "Erstellen". */
+/** Reads the library id LibraryCreatePage navigated to after a successful "Bibliothek anlegen". */
 function libraryIdFromCurrentUrl(page: Page): string {
   const match = page.url().match(/\/libraries\/([^/]+)$/)
   if (!match) {
@@ -214,10 +214,14 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
 
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-    await page.getByRole('dialog').getByLabel('Name').fill(libraryName)
+    await page.getByLabel('Name').fill(libraryName)
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
     await Promise.all([
-      page.waitForURL(/\/libraries\/[^/]+$/),
-      page.getByRole('button', { name: 'Erstellen' }).click(),
+      // Negative lookahead: the wizard itself lives at /libraries/new, which the plain
+      // one-segment pattern would match immediately.
+      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
+      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
     ])
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
@@ -261,24 +265,25 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
 // was repeatedly reached before an UnknownHostException ever surfaced, producing a timeout message
 // instead of the intended "Host not found" one. A connection refused by a real, internally
 // resolvable host needs no DNS round trip at all and fails deterministically fast.
-test.describe('Verbindungstest im Erstellungsdialog (#514)', () => {
+test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
   const createdLibraryIds = cleanupLibraries()
 
   test('Erreichbare Quelle zeigt einen Zaehlwert', async ({ authenticatedPage: page }) => {
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-    const dialog = page.getByRole('dialog')
-    await dialog.getByRole('radio', { name: /Webverzeichnis/ }).click()
-    await dialog.getByLabel('Adresse (URL)').fill('http://rss-feed/webverzeichnis/')
-    await dialog.getByRole('button', { name: 'Verbindung testen' }).click()
+    await page.getByLabel('Name').fill(`E2E Verbindungstest ${runId}`)
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
+    await page.getByLabel('Adresse (URL)').fill('http://rss-feed/webverzeichnis/')
+    await page.getByRole('button', { name: 'Verbindung testen' }).click()
 
-    const result = dialog.getByRole('alert').filter({ hasText: 'Webverzeichnis erreichbar' })
+    const result = page.getByRole('alert').filter({ hasText: 'Webverzeichnis erreichbar' })
     await expect(result).toBeVisible({ timeout: 15_000 })
     await expect(result).toContainText(
       'Webverzeichnis erreichbar, 1 unterstütztes Dokument auf oberster Ebene gefunden.',
     )
-    // Deliberately never clicked "Erstellen" - this scenario only exercises the test call itself,
-    // no library was created and there is nothing for cleanupLibraries to remove.
+    // Deliberately never clicked "Bibliothek anlegen" - this scenario only exercises the test
+    // call itself, no library was created and there is nothing for cleanupLibraries to remove.
   })
 
   test('Nicht erreichbare Quelle zeigt eine deutsche Fehlermeldung, Anlegen bleibt moeglich', async ({
@@ -288,23 +293,24 @@ test.describe('Verbindungstest im Erstellungsdialog (#514)', () => {
 
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-    const dialog = page.getByRole('dialog')
-    await dialog.getByRole('radio', { name: /Webverzeichnis/ }).click()
-    await dialog.getByLabel('Name').fill(libraryName)
+    await page.getByLabel('Name').fill(libraryName)
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     // "ai-stub" resolves instantly (it is part of this very stack) - nothing listens on port 9,
     // so the backend's HTTP client gets an immediate, DNS-independent connection refusal.
-    await dialog.getByLabel('Adresse (URL)').fill('http://ai-stub:9/')
-    await dialog.getByRole('button', { name: 'Verbindung testen' }).click()
+    await page.getByLabel('Adresse (URL)').fill('http://ai-stub:9/')
+    await page.getByRole('button', { name: 'Verbindung testen' }).click()
 
-    const result = dialog.getByRole('alert').filter({ hasText: 'abgelehnt' })
+    const result = page.getByRole('alert').filter({ hasText: 'abgelehnt' })
     await expect(result).toBeVisible({ timeout: 15_000 })
     await expect(result).toContainText('Die Verbindung wurde vom Server abgelehnt.')
 
     // The failed test must not block creation itself (#514 acceptance criteria) - the source
     // configuration is only probed, never required to succeed.
+    await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
     await Promise.all([
-      page.waitForURL(/\/libraries\/[^/]+$/),
-      dialog.getByRole('button', { name: 'Erstellen' }).click(),
+      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
+      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
     ])
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
@@ -331,10 +337,12 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
 
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-    await page.getByRole('dialog').getByLabel('Name').fill(libraryName)
+    await page.getByLabel('Name').fill(libraryName)
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
     await Promise.all([
-      page.waitForURL(/\/libraries\/[^/]+$/),
-      page.getByRole('button', { name: 'Erstellen' }).click(),
+      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
+      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
     ])
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     const libraryId = libraryIdFromCurrentUrl(page)
@@ -399,13 +407,14 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
 
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-    const dialog = page.getByRole('dialog')
-    await dialog.getByRole('radio', { name: /Webverzeichnis/ }).click()
-    await dialog.getByLabel('Name').fill(libraryName)
-    await dialog.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
+    await page.getByLabel('Name').fill(libraryName)
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
+    await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
+    await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
     await Promise.all([
-      page.waitForURL(/\/libraries\/[^/]+$/),
-      dialog.getByRole('button', { name: 'Erstellen' }).click(),
+      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
+      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
     ])
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
@@ -432,16 +441,17 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
 
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-    const createDialog = page.getByRole('dialog')
-    await createDialog.getByRole('radio', { name: /Webverzeichnis/ }).click()
-    await createDialog.getByLabel('Name').fill(libraryName)
-    await createDialog.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
+    await page.getByLabel('Name').fill(libraryName)
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
+    await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
     // Credentials are set on creation so this test can prove they survive an edit that leaves the
     // field blank - a library created without any has nothing to preserve in the first place.
-    await createDialog.getByLabel('Anmeldedaten').fill('testuser:testpass')
+    await page.getByLabel('Anmeldedaten').fill('testuser:testpass')
+    await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
     await Promise.all([
-      page.waitForURL(/\/libraries\/[^/]+$/),
-      createDialog.getByRole('button', { name: 'Erstellen' }).click(),
+      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
+      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
     ])
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))

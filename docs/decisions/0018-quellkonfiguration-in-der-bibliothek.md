@@ -145,6 +145,13 @@ nachzuholen; #267 bleibt davon unabhängig nötig.
 > bleibt. Für `FILESYSTEM` ist die Allowlist (`opaa.indexing.filesystem-allowlist`) damit die
 > alleinige Sicherung. Für die URL-basierten Quellentypen steht die entsprechende Absicherung noch
 > aus; dort bleibt #267 der offene Blocker.
+>
+> **Nachtrag (2026-08-21, #267):** Umgesetzt wurde die analoge Absicherung für `HTTP_DIRECTORY`/
+> `RSS_FEED`: `TargetAddressValidator` lehnt eine aufgelöste Adresse im Loopback-, Link-Local-,
+> privaten oder anderweitig nicht routbaren Bereich ab (`opaa.indexing.target-validation`, siehe
+> [deployment.md](../deployment.md)), konfigurierbar und standardmäßig aktiv — mit derselben
+> Grundhaltung wie die Pfad-Allowlist: die Sicherung greift unabhängig davon, wer die Bibliothek
+> anlegt, nicht über eine zusätzliche Rolle. Damit ist dieser Abschnitt kein offener Blocker mehr.
 
 ## Ausdrücklich offen
 

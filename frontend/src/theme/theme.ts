@@ -309,8 +309,11 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
       MuiOutlinedInput: {
         styleOverrides: {
           root: {
-            backgroundColor: roles.bg3,
-            borderRadius: radius.md,
+            // Mockup field recipe: fields sit on the page surface with a hairline shadow, not on
+            // a grey fill; the dark scheme separates through one surface step instead.
+            backgroundColor: isDark ? roles.bg2 : roles.bg1,
+            boxShadow: isDark ? 'none' : shadow.hairline,
+            borderRadius: radius.sm,
             '& .MuiOutlinedInput-notchedOutline': {
               // Mockup 1a draws inputs with the crisper gray-300 line (#658).
               borderColor: isDark ? roles.borderStrong : gray[300],

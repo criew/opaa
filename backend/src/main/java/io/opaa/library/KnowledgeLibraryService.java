@@ -102,6 +102,7 @@ public class KnowledgeLibraryService {
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final IndexingJobRepository indexingJobRepository;
   private final RssFeedStateRepository rssFeedStateRepository;
+  private final LibraryStorageQuotaService storageQuotaService;
 
   public KnowledgeLibraryService(
       KnowledgeLibraryRepository libraryRepository,
@@ -117,7 +118,8 @@ public class KnowledgeLibraryService {
       VectorStore vectorStore,
       FilesystemPathAllowlist filesystemAllowlist,
       IndexingJobRepository indexingJobRepository,
-      RssFeedStateRepository rssFeedStateRepository) {
+      RssFeedStateRepository rssFeedStateRepository,
+      LibraryStorageQuotaService storageQuotaService) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
@@ -132,6 +134,7 @@ public class KnowledgeLibraryService {
     this.filesystemAllowlist = filesystemAllowlist;
     this.indexingJobRepository = indexingJobRepository;
     this.rssFeedStateRepository = rssFeedStateRepository;
+    this.storageQuotaService = storageQuotaService;
   }
 
   @Transactional
@@ -1048,6 +1051,14 @@ public class KnowledgeLibraryService {
           // lets a client phrase an accurate "leave blank to keep the current credential" hint
           // only when one is actually stored.
           .sourceCredentialsSet(library.getSourceCredentials() != null);
+    }
+    // #119: storage quota usage is administration detail, not something a mere VIEWER needs to
+    // manage the bestand - gated the same way sourcePath/sourceUrl above are, at MANAGER, rather
+    // than exposed to everyone with read access to the library.
+    if (myRole.atLeast(AssetRole.MANAGER)) {
+      response
+          .storageQuotaBytes(storageQuotaService.quotaBytes())
+          .storageUsedBytes(storageQuotaService.usedBytes(library.getId()));
     }
     return response;
   }

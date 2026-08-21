@@ -58,6 +58,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     IndexingJobRepository indexingJobRepository = mock(IndexingJobRepository.class);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
+    LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
 
     libraryService =
         new KnowledgeLibraryService(
@@ -74,7 +75,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             vectorStore,
             filesystemAllowlist,
             indexingJobRepository,
-            rssFeedStateRepository);
+            rssFeedStateRepository,
+            storageQuotaService);
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");

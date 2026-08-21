@@ -16,6 +16,7 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.RssFeedParser;
+import io.opaa.indexing.TargetAddressValidator;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -69,13 +70,14 @@ class SourceConnectionTestServiceTest {
     service =
         new SourceConnectionTestService(
             new DocumentService(),
-            new AutoindexCrawlerService(),
+            new AutoindexCrawlerService(TargetAddressValidator.disabled()),
             new RssFeedParser(),
             filesystemAllowlist,
             userRepository,
             libraryRepository,
             libraryAccessService,
-            new IndexingProperties(null, 1000, 0, 50, 3, null, null, null, null));
+            new IndexingProperties(null, 1000, 0, 50, 3, null, null, null, null, null),
+            TargetAddressValidator.disabled());
   }
 
   @AfterEach
@@ -450,7 +452,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestService tightService =
         new SourceConnectionTestService(
             new DocumentService(),
-            new AutoindexCrawlerService(),
+            new AutoindexCrawlerService(TargetAddressValidator.disabled()),
             new RssFeedParser(),
             filesystemAllowlist,
             userRepository,
@@ -465,7 +467,9 @@ class SourceConnectionTestServiceTest {
                 null,
                 new IndexingProperties.Rss(200, 10, 10, 0, null, null, null, 0, 0),
                 null,
-                null));
+                null,
+                null),
+            TargetAddressValidator.disabled());
     String html = "<table>" + "x".repeat(100) + "</table>";
     server.createContext(
         "/dir/",
@@ -591,7 +595,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestService cappedService =
         new SourceConnectionTestService(
             new DocumentService(),
-            new AutoindexCrawlerService(),
+            new AutoindexCrawlerService(TargetAddressValidator.disabled()),
             new RssFeedParser(),
             filesystemAllowlist,
             userRepository,
@@ -606,7 +610,9 @@ class SourceConnectionTestServiceTest {
                 null,
                 new IndexingProperties.Rss(1, 0, 0, 0, null, null, null, 0, 0),
                 null,
-                null));
+                null,
+                null),
+            TargetAddressValidator.disabled());
     String rss =
         """
         <?xml version="1.0"?>
@@ -645,7 +651,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestService tightService =
         new SourceConnectionTestService(
             new DocumentService(),
-            new AutoindexCrawlerService(),
+            new AutoindexCrawlerService(TargetAddressValidator.disabled()),
             new RssFeedParser(),
             filesystemAllowlist,
             userRepository,
@@ -660,7 +666,9 @@ class SourceConnectionTestServiceTest {
                 null,
                 new IndexingProperties.Rss(200, 10, 10, 0, null, null, null, 0, 0),
                 null,
-                null));
+                null,
+                null),
+            TargetAddressValidator.disabled());
     String rss =
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"
             + "x".repeat(50)
@@ -854,6 +862,71 @@ class SourceConnectionTestServiceTest {
     } finally {
       otherServer.stop(0);
     }
+  }
+
+  @Test
+  void libraryIdFallbackForcesTheLibrarysStoredProxyAndInsecureSslInsteadOfTheCallers()
+      throws IOException {
+    // #617: the origin check above bounds the *target* the stored credential may be tested
+    // against, but says nothing about the *path* the request travels to get there. A caller who
+    // does not know the stored credential (only enough access to trigger this fallback) could
+    // otherwise still set their own sourceProxy/sourceInsecureSsl on the very same, same-origin
+    // request and have the stored Basic-Auth credential replayed through a connection they
+    // control. Reproduced here with a caller-supplied proxy nothing listens on: before the fix,
+    // that bogus proxy is what buildHttpClient actually uses, and the request never reaches the
+    // real server at all (unreachable) - after the fix, the library's own stored proxy (none) is
+    // used instead, the real server is reached directly, and the stored credential is still the
+    // one sent.
+    UUID libraryId = UUID.randomUUID();
+    String expectedAuth =
+        "Basic "
+            + Base64.getEncoder().encodeToString("admin:secret".getBytes(StandardCharsets.UTF_8));
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Bibliothek",
+            null,
+            currentUserId,
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.HTTP_DIRECTORY,
+            null,
+            baseUrl + "/dir/",
+            null, // stored sourceProxy: none
+            "admin:secret",
+            false); // stored sourceInsecureSsl: false
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
+        .thenReturn(AssetRole.MANAGER);
+    AtomicReference<String> observedAuth = new AtomicReference<>();
+    server.createContext(
+        "/dir/",
+        exchange -> {
+          observedAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          byte[] body =
+              "<html><head><title>Index of /dir/</title></head><body><table></table></body>"
+                  .getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    // No sourceCredentials (falls back to the library's stored one), but a caller-supplied
+    // sourceProxy nothing listens on - port 1 is a well-known reserved TCP port real services do
+    // not bind, so connecting through it fails fast rather than hanging until a timeout.
+    SourceConnectionTestResponse response =
+        service.test(
+            new SourceConnectionTestRequest()
+                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create(baseUrl + "/dir/"))
+                .sourceProxy("127.0.0.1:1")
+                .sourceInsecureSsl(true)
+                .libraryId(libraryId),
+            currentUserId,
+            false);
+
+    assertThat(response.getReachable()).isTrue();
+    assertThat(observedAuth.get()).isEqualTo(expectedAuth);
   }
 
   @Test

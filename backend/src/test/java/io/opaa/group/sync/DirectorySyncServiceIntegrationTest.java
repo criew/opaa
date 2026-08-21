@@ -37,10 +37,10 @@ import org.testcontainers.utility.DockerImageName;
 /**
  * Exercises {@link DirectorySyncService} against a real Postgres database with the real, versioned
  * Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) - not
- * Hibernate-generated DDL. Follows {@code UserServicePersonalSpaceIntegrationTest}'s pattern rather
- * than {@code GroupServiceIntegrationTest}'s: this class's dissolution/reactivation scenarios and
- * the {@code fk_group_memberships_group_organization} composite foreign key both depend on real
- * constraints that only the versioned changelog creates.
+ * Hibernate-generated DDL, the same pattern {@code GroupServiceIntegrationTest} (#308) and {@code
+ * UserServicePersonalSpaceIntegrationTest} also follow: this class's dissolution/reactivation
+ * scenarios and the {@code fk_group_memberships_group_organization} composite foreign key both
+ * depend on real constraints that only the versioned changelog creates.
  *
  * <p>{@link FakeDirectoryClient} replaces the production {@link NoOpDirectoryClient} as the {@link
  * DirectoryClient} bean (marked {@code @Primary}, so it wins regardless of bean registration order)

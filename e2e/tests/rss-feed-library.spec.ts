@@ -58,20 +58,23 @@ async function gotoLibraries(page: Page) {
 }
 
 /**
- * Creates a library from the RSS-Feed template (#480/#481, ADR-0018: the source type is chosen at
- * creation, in CreateLibraryDialog's "Vorlage" selection, not in a later indexing form) and
- * returns its id, read back from the URL CreateLibraryDialog navigates to on success.
+ * Creates a library from the RSS-Feed origin (#480/#481, ADR-0018: the source type is chosen at
+ * creation, on LibraryCreatePage's origin step, not in a later indexing form) and returns its
+ * id, read back from the URL LibraryCreatePage navigates to on success.
  */
 async function createRssLibrary(page: Page, name: string, feedUrl: string): Promise<string> {
   await gotoLibraries(page)
   await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByRole('radio', { name: /RSS-Feed/ }).click()
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByLabel('Adresse (URL)').fill(feedUrl)
+  await page.getByLabel('Name').fill(name)
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+  await page.getByRole('radio', { name: /RSS-Feed/ }).click()
+  await page.getByLabel('Adresse (URL)').fill(feedUrl)
+  await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
   await Promise.all([
-    page.waitForURL(/\/libraries\/[^/]+$/),
-    dialog.getByRole('button', { name: 'Erstellen' }).click(),
+    // /libraries/new is the wizard itself - without the lookahead the wait would resolve
+    // immediately against the current URL.
+    page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
+    page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
   ])
   await expect(page.getByRole('heading', { name })).toBeVisible()
   const match = page.url().match(/\/libraries\/([^/]+)$/)

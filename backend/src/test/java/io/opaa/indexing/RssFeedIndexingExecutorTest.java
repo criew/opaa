@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -46,6 +47,7 @@ class RssFeedIndexingExecutorTest {
   private DocumentRepository documentRepository;
   private RssFeedStateRepository feedStateRepository;
   private IndexingRunEventRepository indexingRunEventRepository;
+  private LibraryStorageQuotaService storageQuotaService;
   private RssFeedIndexingExecutor executor;
 
   // #478: sourceUrl is mutated in place per test via execute(String) below
@@ -80,6 +82,7 @@ class RssFeedIndexingExecutorTest {
     when(feedStateRepository.findByLibraryIdAndFeedUrl(any(), anyString()))
         .thenReturn(Optional.empty());
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
+    storageQuotaService = mock(LibraryStorageQuotaService.class);
 
     executor =
         newExecutor(
@@ -88,16 +91,24 @@ class RssFeedIndexingExecutorTest {
   }
 
   private RssFeedIndexingExecutor newExecutor(IndexingProperties.Rss rss) {
-    IndexingProperties properties = new IndexingProperties(null, 0, 0, 0, 0, null, rss, null, null);
+    IndexingProperties properties =
+        new IndexingProperties(null, 0, 0, 0, 0, null, rss, null, null, null);
+    // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest,
+    // RssFeedIndexingExecutorTargetValidationTest) - disabled here since every stub server this
+    // class talks to is deliberately loopback (com.sun.net.httpserver.HttpServer, #467's own
+    // acceptance criteria), which an enabled validator would reject by default.
+    TargetAddressValidator targetAddressValidator = TargetAddressValidator.disabled();
     return new RssFeedIndexingExecutor(
         new RssFeedParser(),
         fileProcessingService,
         indexingJobService,
         documentRepository,
         feedStateRepository,
-        new UrlFileDownloader(),
+        new UrlFileDownloader(targetAddressValidator),
         properties,
-        indexingRunEventRepository);
+        indexingRunEventRepository,
+        targetAddressValidator,
+        storageQuotaService);
   }
 
   @AfterEach
@@ -513,6 +524,33 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
+  void anEntryOverTheLibraryStorageQuotaIsSkippedAndRecordedAsARejectedEvent() {
+    // #119: the connector run protocol (#604) must show why a document stopped being added, not
+    // just count it as skipped - QUOTA_EXCEEDED becomes its own REJECTED event with the exact
+    // wording LibraryStorageQuotaService produces.
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/over-quota.html"));
+    serve("/over-quota.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
+    when(storageQuotaService.quotaExceededMessage(library.getId()))
+        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    String expectedMessage =
+        "Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)";
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && (baseUrl + "/over-quota.html").equals(event.getReference())
+                        && expectedMessage.equals(event.getMessage())));
+  }
+
+  @Test
   void aFailedEventWriteNeverPreventsTheRunFromCompleting() {
     // #513, PR #604 review finding 2: a DB hiccup while writing the protocol must never leave the
     // job stuck RUNNING - uk_indexing_jobs_library_running (migration 028) would then permanently
@@ -677,8 +715,54 @@ class RssFeedIndexingExecutorTest {
                 event ->
                     event.getCategory() == IndexingEventCategory.REJECTED
                         && (baseUrl + "/a.html").equals(event.getReference())
+                        // Maintainer nachtrag to #693 (21.08.2026): a rejected redirect gets its
+                        // own, distinguishable message ("...auf einen fremden Host abgelehnt"),
+                        // not the generic HTTP-status wording ("abgewiesen") #513 introduced for
+                        // a 403/429 response.
                         && event.getMessage() != null
-                        && event.getMessage().contains("abgewiesen")));
+                        && event.getMessage().contains("fremden Host")));
+  }
+
+  @Test
+  void aRejectedRedirectsMessageNeverCarriesTheFullTargetUrlOnlyItsSanitizedOrigin() {
+    // Maintainer nachtrag to #693 (21.08.2026): the redirect's own Location header is
+    // server-controlled input that can carry a token or other sensitive query parameter - the
+    // run-log message must name only the rejected target's scheme and host, never its path or
+    // query. The pre-existing #513 comment on isForeignHostRedirect ("must never reach the UI")
+    // is about the *unsanitized* raw target this test's foreign server URL below stands in for.
+    serve(
+        "/feed.xml",
+        200,
+        "application/rss+xml",
+        feedXml(baseUrl + "/a.html", baseUrl + "/ok.html"));
+    server.createContext(
+        "/a.html",
+        exchange -> {
+          exchange
+              .getResponseHeaders()
+              .set("Location", "https://angreifer.invalid/pfad?token=geheimwert");
+          exchange.sendResponseHeaders(302, -1);
+          exchange.close();
+        });
+    serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && (baseUrl + "/a.html").equals(event.getReference())
+                        && event.getMessage() != null
+                        && event.getMessage().contains("https://angreifer.invalid")
+                        && !event.getMessage().contains("token")
+                        && !event.getMessage().contains("geheimwert")
+                        && !event.getMessage().contains("pfad")));
   }
 
   @Test
@@ -898,6 +982,59 @@ class RssFeedIndexingExecutorTest {
                 event ->
                     event.getCategory() == IndexingEventCategory.FORMAT_MISMATCH
                         && event.getReference().equals(baseUrl + "/downloads/bescheid.csv")));
+  }
+
+  @Test
+  void anAttachmentOverTheLibraryStorageQuotaIsSkippedRecordedAsRejectedAndDefersTheFeedEtag()
+      throws IOException {
+    // #119, PR #700 review finding 4: the attachment branch is the one QUOTA_EXCEEDED handler
+    // that behaves differently from the other three (AsyncIndexingExecutor, UrlIndexingExecutor,
+    // RssFeedIndexingExecutor's own entry-level handling just above) - it never calls
+    // progress.recordSkipped() (an attachment was never counted as a discrete unit of the run's
+    // total to begin with, see #518) and instead sets anyEntryDeferred, the same deliberate "try
+    // this attachment again next run" behaviour #492's lost-attachment handling already uses.
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/over-quota.pdf\">Anlage</a></main></body></html>";
+    serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html"), "\"etag-over-quota-attachment\"");
+    serve("/a.html", 200, "text/html", detailHtml);
+    serveBytes(
+        "/downloads/over-quota.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
+    when(storageQuotaService.quotaExceededMessage(library.getId()))
+        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
+
+    execute(baseUrl + "/feed.xml");
+
+    String expectedMessage =
+        "Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)";
+    // The entry itself still counts as processed and its own document as indexed - only the
+    // attachment was rejected, so documentsIndexedTotal stays at 1 (the entry), not 2.
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && (baseUrl + "/downloads/over-quota.pdf").equals(event.getReference())
+                        && expectedMessage.equals(event.getMessage())));
+    // Deferred, exactly like a lost/oversized attachment - a future 304 on the feed must not
+    // permanently suppress retrying this attachment.
+    verify(feedStateRepository, never()).save(any());
   }
 
   @Test

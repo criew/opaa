@@ -448,8 +448,8 @@ class AuditEventRecordingIntegrationTest {
         .hasSize(1);
 
     // #392 code review, nit 5: updateGroup's own audit write had no coverage against the real
-    // Liquibase schema - GroupServiceIntegrationTest mocks AuditEventRecorder entirely (see its
-    // Javadoc), so this was the only group event this class did not actually exercise.
+    // Liquibase schema - this remains the only place that exercises this specific event, even
+    // though GroupServiceIntegrationTest (#308) no longer mocks AuditEventRecorder either.
     groupService.updateGroup(groupId, new GroupUpdateRequest("Referat 5 neu"), admin);
     List<AuditLogEntry> changed =
         entriesFor(AuditObjectType.GROUP, groupId).stream()

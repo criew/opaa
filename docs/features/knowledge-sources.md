@@ -53,8 +53,8 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
    Freigabe. Dass die Anlage nicht auf die Systemverwaltung beschränkt ist, bleibt eine **dauerhafte**
    Entscheidung — kein Rollenkonstrukt tritt an ihre Stelle (ADR-0018, Entscheidung 6). Für `FILESYSTEM`
    sichert stattdessen die Pfad-Allowlist den Zugriff ab (**gebaut**, #484); für die URL-basierten
-   Quellentypen (`HTTP_DIRECTORY`, `RSS_FEED`) bleibt die entsprechende Zielprüfung offen und ist der
-   verbleibende Blocker vor einem Mehrbenutzer-Produktivbetrieb (**Issue #267**).
+   Quellentypen (`HTTP_DIRECTORY`, `RSS_FEED`) sichert eine Zielprüfung gegen private, lokale und
+   nicht routbare Adressbereiche ab (**gebaut**, #267).
 5. **Lesen ist der Normalfall, Schreiben die Ausnahme.** Schreibende Integrationen werden je Integration
    eigens freigeschaltet, laufen über einen menschlichen Freigabeschritt und werden vollständig
    protokolliert.
@@ -179,10 +179,19 @@ Pfad-Allowlist wie die Anlage selbst, siehe unten), `HTTP_DIRECTORY` die Anzahl 
 auf der obersten Verzeichnisebene, `RSS_FEED` die Anzahl der Feed-Einträge. Der Test ist optional und
 ersetzt weder die Ziel- noch die Formatprüfung des eigentlichen Laufs. Er nutzt für `HTTP_DIRECTORY`
 und `RSS_FEED` dieselben ausgehenden Verbindungen wie ein Lauf und unterliegt deshalb **derselben
-offenen Zielprüfung (#267)** — ein filternder Proxy oder eine Netzwerksegmentierung sind bis dahin die
-wirksame Absicherung, nicht dieser Endpoint. Er ist zusätzlich rate-limitiert
-(`opaa.rate-limit.source-test`), damit er nicht als schneller interner Portscanner missbraucht werden
-kann.
+Zielprüfung (gebaut, #267)** — konfigurierbar über `opaa.indexing.target-validation`, siehe
+[deployment.md](../deployment.md). Er ist zusätzlich rate-limitiert (`opaa.rate-limit.source-test`),
+damit er nicht als schneller interner Portscanner missbraucht werden kann.
+
+**Zugangsdaten-Fallback über `libraryId` (gebaut, #544/#617).** Testet der Dialog eine bereits
+gespeicherte, passwortgeschützte Quelle nach, muss der Aufrufer das Passwort nicht erneut eintippen —
+fehlt `sourceCredentials` in der Anfrage und benennt `sourceUrl` weiterhin denselben Ursprung wie die
+gespeicherte Bibliothek, greift `SourceConnectionTestService` auf das gespeicherte Zugangsdatum
+zurück. Dabei erzwingt er zugleich den gespeicherten `sourceProxy`/`sourceInsecureSsl` der Bibliothek
+und ignoriert einen davon abweichenden Wert der Anfrage (#617): Der Ursprungs-Abgleich sichert nur das
+**Ziel**, nicht den **Weg** — ohne diese Erzwingung könnte ein Berechtigter, der das Passwort selbst
+nicht kennt (aber genug Rechte für den Fallback hat), es über einen selbst kontrollierten Proxy oder
+mit abgeschalteter Zertifikatsprüfung mitlesen.
 
 Eine eigene Konnektor-Tabelle mit mehreren Quellen je Konnektor — das frühere Zielbild dieses
 Abschnitts, mit Konnektoren wie „Netzlaufwerk Kämmerei" oder „Intranet-Wiki", die mehrere Pfade auf
@@ -289,15 +298,6 @@ höchstens ein Lauf gleichzeitig je Bibliothek. Der Fortschritt ist über
 
 **Was noch fehlt** — und zwar so, dass es benannt gehört:
 
-- **Zielprüfung.** Die angegebene Adresse wird heute nicht gegen private, lokale und nicht routbare
-  Adressbereiche geprüft, und die zulässigen Schemata werden nicht ausdrücklich eingegrenzt.
-  Weiterleitungen werden gefolgt. Mit der Öffnung des Anstoßes auf jeden `EDITOR` (ADR-0018) und der
-  dauerhaft offenen Anlageberechtigung (ADR-0018, Entscheidung 6) ist diese Härtung dringlicher als
-  zuvor. Anders als beim Dateisystem-Typ, für den die Pfad-Allowlist die Anlage bereits absichert
-  (**gebaut**, #484), ist diese Zielprüfung für `HTTP_DIRECTORY`/`RSS_FEED` noch offen und der
-  verbleibende Blocker für den Mehrbenutzer-Produktivbetrieb. Erfasst als **Issue #267** — die
-  Lücke gilt seit #514 gleichermaßen für den Verbindungstest im Erstellungsdialog, der dieselben
-  ausgehenden Verbindungen aufbaut, nur synchron statt über einen Indizierungslauf.
 - **Zeitplan.** Der Lauf wird angestoßen, nicht geplant. Die Selbstaktualisierung im Sinne des
   nächsten Kapitels ist damit noch nicht erreicht. Mit der Konfiguration an der Bibliothek hat ein
   Zeitplan erstmals einen natürlichen Ort; entschieden wird das in **Issue #485**.
@@ -400,8 +400,6 @@ Auslösen darf, wer an der Bibliothek mindestens `EDITOR` ist, wie bei jedem lau
 
 - **Zeitplan.** Der Lauf wird angestoßen, nicht geplant, wie bei der Verzeichnisliste. Erfasst als
   **Issue #485**.
-- **Zielprüfung.** Wie bei der Verzeichnisliste wird die angegebene Feed-Adresse nicht gegen private,
-  lokale und nicht routbare Adressbereiche geprüft. Erfasst als **Issue #267**.
 
 ---
 
@@ -481,7 +479,7 @@ Entscheidung, kein Rollenkonstrukt tritt an ihre Stelle (ADR-0018, Entscheidung 
 
 | Wer | Entscheidet |
 |---|---|
-| Wer die Bibliothek anlegt | Quellentyp und Konfiguration — jeder mit Anlageberechtigung; für `FILESYSTEM` sichert die Pfad-Allowlist ab (**gebaut**, #484), für `HTTP_DIRECTORY`/`RSS_FEED` bleibt die Zielprüfung offen (#267) |
+| Wer die Bibliothek anlegt | Quellentyp und Konfiguration — jeder mit Anlageberechtigung; für `FILESYSTEM` sichert die Pfad-Allowlist ab (**gebaut**, #484), für `HTTP_DIRECTORY`/`RSS_FEED` sichert die Zielprüfung ab (**gebaut**, #267) |
 | Eigentümer der Bibliothek | wer den Bestand lesen darf, bis zur **Obergrenze der Freigabe** bei lauf-basierten Bibliotheken |
 
 Ohne die Obergrenze könnte ein Bibliothekseigentümer einen lauf-basierten Bestand organisationsweit

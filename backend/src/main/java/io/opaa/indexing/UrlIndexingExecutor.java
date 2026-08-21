@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
@@ -26,6 +27,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   private final IndexingJobService indexingJobService;
   private final DocumentRepository documentRepository;
   private final IndexingRunEventRepository indexingRunEventRepository;
+  private final LibraryStorageQuotaService storageQuotaService;
 
   public UrlIndexingExecutor(
       AutoindexCrawlerService crawlerService,
@@ -33,13 +35,15 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
-      IndexingRunEventRepository indexingRunEventRepository) {
+      IndexingRunEventRepository indexingRunEventRepository,
+      LibraryStorageQuotaService storageQuotaService) {
     this.crawlerService = crawlerService;
     this.downloader = downloader;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
     this.documentRepository = documentRepository;
     this.indexingRunEventRepository = indexingRunEventRepository;
+    this.storageQuotaService = storageQuotaService;
   }
 
   @Override
@@ -168,12 +172,27 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                   fileSize,
                   targetLibrary);
 
-          if (result == FileProcessingResult.SKIPPED) {
+          if (result == FileProcessingResult.QUOTA_EXCEEDED) {
+            // #119: see AsyncIndexingExecutor's own handling of this outcome.
+            events.record(
+                IndexingEventCategory.REJECTED,
+                storageQuotaService.quotaExceededMessage(targetLibrary.getId()),
+                entry.url());
+            progress.recordSkipped();
+          } else if (result == FileProcessingResult.SKIPPED) {
             progress.recordSkipped();
           } else {
             progress.recordProcessed();
             log.info("Indexed URL document: {}", entry.name());
           }
+        } catch (TargetAddressValidator.TargetAddressBlockedException e) {
+          // #267: e.getMessage() is already German, user-facing and never carries more than the
+          // rejected host itself (see TargetAddressValidator's own Javadoc) - safe to show as-is.
+          // Treated as skipped, not failed - mirrors RssFeedIndexingExecutor's identical policy
+          // rejections, which are the remote/policy declining a target, not a processing error.
+          log.warn("URL document target rejected: {} ({})", entry.url(), e.getMessage());
+          events.record(IndexingEventCategory.REJECTED, e.getMessage(), entry.url());
+          progress.recordSkipped();
         } catch (Exception e) {
           log.error("Failed to process URL document: {} ({})", entry.name(), entry.url(), e);
           events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entry.url());

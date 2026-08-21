@@ -221,14 +221,14 @@ describe('Sidebar', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/spaces')
   })
 
-  it('opens the create-space dialog via the switcher', async () => {
+  it('navigates to the create wizard via the switcher', async () => {
     const user = userEvent.setup()
     renderSidebarAtRoute('/settings')
 
     await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
     await user.click(screen.getByRole('menuitem', { name: 'Neuen Space anlegen' }))
 
-    expect(screen.getByText('Space erstellen')).toBeInTheDocument()
+    expect(mockNavigate).toHaveBeenCalledWith('/spaces/new')
   })
 
   it('links "Space einrichten" to the active space management page', () => {

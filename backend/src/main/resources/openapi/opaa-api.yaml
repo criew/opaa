@@ -2950,6 +2950,25 @@ components:
             accurate "leave blank to keep the current credential" hint only when one actually
             exists, instead of implying one is configured when none is. Set only if myRole is at
             least MANAGER (#507) - see sourcePath above for why.
+        storageQuotaBytes:
+          type: integer
+          format: int64
+          nullable: true
+          description: >
+            The configured per-library storage quota in bytes (#119, Standardkontingent je
+            Bibliothek) - the same value for every library today, since the quota is currently an
+            operator-wide setting rather than one configurable per library. Set only if myRole is
+            at least MANAGER (#507) - see sourcePath above for why: usage/quota is administration
+            detail, not something a mere VIEWER needs to manage the bestand.
+        storageUsedBytes:
+          type: integer
+          format: int64
+          nullable: true
+          description: >
+            The total bytes this library's documents currently occupy, summed across every
+            document regardless of who uploaded or indexed it - never broken down per user (#216,
+            "kein personenbezogener Auswertungspfad"). Set only if myRole is at least MANAGER
+            (#507) - see sourcePath above for why.
         createdAt:
           type: string
           format: date-time

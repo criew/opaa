@@ -43,6 +43,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     restart (#501) - see {@code IndexingJobService#recoverStaleJobs}. Default 4 hours: generous
  *     enough for a large FILESYSTEM/HTTP_DIRECTORY/RSS_FEED run to finish normally, short enough
  *     that a genuinely stuck run does not lock its library out for days.
+ * @param targetValidation the SSRF target-address check {@link TargetAddressValidator} applies to
+ *     every {@code HTTP_DIRECTORY}/{@code RSS_FEED} fetch (#267) - see {@link TargetValidation}'s
+ *     own Javadoc.
  */
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record IndexingProperties(
@@ -54,7 +57,8 @@ public record IndexingProperties(
     ThreadPool threadPool,
     Rss rss,
     List<String> filesystemAllowlist,
-    Duration staleJobTimeout) {
+    Duration staleJobTimeout,
+    TargetValidation targetValidation) {
 
   public IndexingProperties {
     if (documentPath == null) {
@@ -106,6 +110,9 @@ public record IndexingProperties(
     if (staleJobTimeout.isNegative() || staleJobTimeout.isZero()) {
       throw new IllegalArgumentException(
           "staleJobTimeout must be positive, got " + staleJobTimeout);
+    }
+    if (targetValidation == null) {
+      targetValidation = new TargetValidation(true, List.of());
     }
   }
 
@@ -213,6 +220,30 @@ public record IndexingProperties(
       }
       if (maxAttachmentSizeBytes <= 0) {
         maxAttachmentSizeBytes = 20_971_520L; // 20 MiB
+      }
+    }
+  }
+
+  /**
+   * SSRF hardening for {@code HTTP_DIRECTORY}/{@code RSS_FEED} fetches (#267): {@link
+   * TargetAddressValidator} rejects a target whose resolved address lies in a loopback, link-local,
+   * private or otherwise non-routable range, and any non-{@code http(s)} scheme.
+   *
+   * @param enabled whether the check runs at all. Default {@code true} - an operator with a
+   *     legitimate internal document source turns this off deliberately (env var {@code
+   *     OPAA_INDEXING_TARGET_VALIDATION_ENABLED}), the check does not default to permissive.
+   * @param allowlist hostnames (exact, case-insensitive match against the URI's own host - not a
+   *     resolved address) exempted from the address check even while {@code enabled} is {@code
+   *     true} - lets an operator name specific internal sources without disabling the check for
+   *     every other target. Comma-separated environment variable ({@code
+   *     OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST}), mirroring {@link
+   *     IndexingProperties#filesystemAllowlist()}'s configuration style. Empty by default.
+   */
+  public record TargetValidation(boolean enabled, List<String> allowlist) {
+
+    public TargetValidation {
+      if (allowlist == null) {
+        allowlist = List.of();
       }
     }
   }

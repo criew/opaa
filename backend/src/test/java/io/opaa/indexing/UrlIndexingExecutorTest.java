@@ -1,10 +1,17 @@
 package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.library.LibraryVisibility;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -19,7 +26,8 @@ class UrlIndexingExecutorTest {
           mock(FileProcessingService.class),
           mock(IndexingJobService.class),
           documentRepository,
-          mock(IndexingRunEventRepository.class));
+          mock(IndexingRunEventRepository.class),
+          mock(LibraryStorageQuotaService.class));
 
   // --- #550 review: blank lastModified must never be treated as "unchanged" -----------------
 
@@ -127,5 +135,47 @@ class UrlIndexingExecutorTest {
   void hasFileExtension_stripsFragmentBeforeChecking() {
     assertThat(UrlIndexingExecutor.hasFileExtension("https://example.com/docs#section")).isFalse();
     assertThat(UrlIndexingExecutor.hasFileExtension("https://example.com/doc.pdf#page=2")).isTrue();
+  }
+
+  // --- #267: SSRF target validation, wired through a real crawler/downloader -----------------
+
+  @Test
+  void aRunAgainstALoopbackTargetFailsWithAGermanSsrfMessageWhenValidationIsEnabled() {
+    TargetAddressValidator enabledValidator =
+        new TargetAddressValidator(new IndexingProperties.TargetValidation(true, List.of()));
+    IndexingJobService jobService = mock(IndexingJobService.class);
+    UrlIndexingExecutor executorWithRealCrawler =
+        new UrlIndexingExecutor(
+            new AutoindexCrawlerService(enabledValidator),
+            new UrlFileDownloader(enabledValidator),
+            mock(FileProcessingService.class),
+            jobService,
+            documentRepository,
+            mock(IndexingRunEventRepository.class),
+            mock(LibraryStorageQuotaService.class));
+    UUID jobId = UUID.randomUUID();
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Bibliothek",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.HTTP_DIRECTORY,
+            null,
+            // Loopback - never reachable from outside the server itself, exactly the class of
+            // target #267 exists to reject.
+            "http://127.0.0.1:1/dir/",
+            null,
+            null,
+            false);
+
+    executorWithRealCrawler.execute(jobId, library);
+
+    verify(jobService, timeout(2000))
+        .failJob(
+            eq(jobId),
+            argThat(message -> message != null && message.contains("gesperrten Adressbereich")));
   }
 }
