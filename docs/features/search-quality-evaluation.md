@@ -100,15 +100,23 @@ nicht.
 
 | Domäne | Prüft gezielt | Quelle (Phase) |
 |---|---|---|
-| Comichelden | viele numerische und kategoriale Attribute, kaum Prosa — hier bricht reine Vektorsuche | HuggingFace `jrtec/Superheroes`, **CC0-1.0** (Phase 1) |
-| Filme | lange Fließtexte, Multi-Value-Felder (Genres, Besetzung) | Wikidata (CC0), ersatzweise TMDB mit Attribution (Phase 2) |
-| Reiseziele | Geo-Bezug, deutsche Anfrage auf englischem Korpus | TourPedia (CC0), Wikivoyage, OpenStreetMap (Phase 2) |
-| Tiere | Taxonomie-Hierarchie, Anknüpfung an `docs/GraphRAG.md` | GBIF (CC0/CC BY), UCI Zoo (Phase 2) |
+| Comichelden | viele numerische und kategoriale Attribute, kaum Prosa — hier bricht reine Vektorsuche; Dokumente absichtlich einchunkig (Ein-Chunk-Invariante, ADR-0010) | HuggingFace `jrtec/Superheroes`, **CC0-1.0** (Phase 1) |
+| Sehenswürdigkeiten in europäischen Großstädten | mehrchunkige Dokumente — ob die richtige Stelle **innerhalb** eines Dokuments gefunden wird, nicht nur das richtige Dokument; durchgängig deutschsprachiger Korpus | Wikidata (SPARQL), **CC0-1.0** (Phase 2, Issue #234) |
 
-Comichelden zuerst, weil die Domäne den härtesten Fall abbildet: Attribut-Fragen („welche
-Marvel-Figuren sind böse und haben rote Haare?") sind exakt das, woran reines Vektor-Retrieval
-scheitert. Wenn der Harness diesen Fall messbar macht, ist er auch für die einfacheren Domänen
-tragfähig.
+**Comichelden zuerst**, weil die Domäne den härtesten Fall für kategoriale Attribut-Fragen abbildet
+(„welche Marvel-Figuren sind böse und haben rote Haare?") — reines Vektor-Retrieval scheitert daran
+typischerweise. **Sehenswürdigkeiten in europäischen Großstädten zweitens** (Issue #234, Epic #224):
+Der Comichelden-Korpus ist konstruktionsbedingt einchunkig, sodass Chunk-Überlappung
+(`opaa.indexing.chunk-overlap`) über alle seine Fälle bitgleiche Ergebnisse liefert — es gibt darin
+keine Chunk-Grenze, an der die Überlappung greifen könnte (siehe `eval/README.md`, „Was dieser Korpus
+nicht messen kann"). Die zweite Domäne schließt genau diese Lücke: 200 europäische Großstädte
+(Ballungsraum- bzw. Gemeinde-Einwohnerzahl, geografische Kontinentzugehörigkeit, siehe
+`eval/generator/frozen/SOURCE.md`), deren Dokumente bei `chunkSize=1000` bewusst in mindestens drei
+Chunks zerfallen. Der Harness dafür (dokumentbezogenes k-Fenster, Chunk-Zahl-Invariante je Domäne,
+Chunkebenen-Metrik über `answer_span`) stammt aus Issue #721; **ursprünglich für Phase 2 geplante
+weitere Domänen (Filme, Reiseziele, Tiere) sind gestrichen** (Maintainer-Entscheidung vom 21.08.2026,
+Issue #234) — sie hätten denselben einchunkigen Korpusbautyp verdreifacht, ohne diese Lücke zu
+schließen.
 
 ### Lizenz-Rahmen (hart)
 

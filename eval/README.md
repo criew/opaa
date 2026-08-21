@@ -9,21 +9,31 @@ Korpus-Änderungen, nie automatisch.
 ```
 eval/
 ├── generator/                       Python-Werkzeuge, ein Skript je Domäne
-│   ├── generate_corpus.py           Domäne Comichelden (Issue #225)
-│   ├── generate_golden_dataset.py   Golden Dataset für dieselbe Domäne (Issue #226)
+│   ├── generate_corpus.py                    Domäne Comichelden (Issue #225)
+│   ├── generate_golden_dataset.py            Golden Dataset für dieselbe Domäne (Issue #226)
+│   ├── generate_city_landmarks_corpus.py     Domäne Sehenswürdigkeiten (Issue #234)
+│   ├── frozen/                                eingefrorene Wikidata-SPARQL-Rohdaten, committet (Issue #234)
 │   ├── README.md                    Reproduktionsanleitung
 │   └── raw-source/                  gecachte Rohdaten, gitignored
 ├── corpus/                          generierte Markdown-Dokumente, committet
-│   └── comic-characters/
-│       ├── *.md                     ein Dokument je Entität
-│       ├── MANIFEST.sha256          SHA-256 über alle Dokumente dieser Domäne
-│       └── SOURCE.md                Quelle, Lizenz, Abrufdatum
+│   ├── comic-characters/
+│   │   ├── *.md                     ein Dokument je Entität
+│   │   ├── MANIFEST.sha256          SHA-256 über alle Dokumente dieser Domäne
+│   │   └── SOURCE.md                Quelle, Lizenz, Abrufdatum
+│   └── city-landmarks/
+│       ├── *.md                     ein Dokument je Stadt (mehrchunkig, deutsch)
+│       ├── MANIFEST.sha256
+│       └── SOURCE.md
 └── golden/                          Golden-Query-Datasets, committet (siehe eval/golden/README.md)
-    └── comic-characters.json
+    ├── comic-characters.json
+    └── city-landmarks.json
 ```
 
-Aktuell umgesetzt: die Domäne **Comichelden** (Issue #225/#226). Die weiteren drei Domänen (Filme,
-Reiseziele, Tiere) folgen über denselben Aufbau (Issue #234).
+Aktuell umgesetzt: die Domänen **Comichelden** (Issue #225/#226, einchunkig) und **Sehenswürdigkeiten
+in europäischen Großstädten** (Issue #234, bewusst mehrchunkig, deutschsprachig). Die ursprünglich für
+Phase 2 vorgesehenen weiteren Domänen (Filme, Reiseziele, Tiere) sind gestrichen (Maintainer-
+Entscheidung vom 21.08.2026, Issue #234) — Begründung siehe
+`docs/features/search-quality-evaluation.md`, Abschnitt „Domänen und was sie prüfen sollen".
 
 ## Retrieval-Evaluation ausführen (Issue #227)
 
@@ -34,10 +44,19 @@ Dieses Verzeichnis liefert ihm nur die Eingaben: Korpus, Manifest, Golden Datase
 
 ```bash
 cd backend
-./gradlew evaluateRetrieval
+./gradlew evaluateRetrieval               # comic-characters
+./gradlew evaluateCityLandmarksRetrieval  # city-landmarks (Issue #234)
 ```
 
-Das ist ein **eigener Gradle-Task, nicht Teil von `./gradlew build`/`test`**. Er läuft in
+Beide sind eigenständige Tasks mit eigenem Report, eigener Baseline-Datei
+(`eval/baseline/comic-characters.json` bzw. `eval/baseline/city-landmarks.json`) und eigener
+Testklasse (`RetrievalEvaluationHarnessTest` bzw. `CityLandmarksRetrievalEvaluationHarnessTest`) —
+bewusst kein parametrisierter, gemeinsamer Lauf (siehe Javadoc von
+`CityLandmarksRetrievalEvaluationHarnessTest`): Ein Fehlschlag ist damit immer eindeutig einer
+Domäne zugeordnet, und die comic-characters-Baseline bleibt von der zweiten Domäne unberührt.
+Analog dazu `checkRetrievalBaseline`/`checkCityLandmarksRetrievalBaseline`.
+
+Beide sind ein **eigener Gradle-Task, nicht Teil von `./gradlew build`/`test`**. Er läuft in
 einem eigenen Source-Set (`src/evalTest/`), das an keiner Stelle in `build`/`test` verdrahtet ist
 — ein normaler Entwicklerlauf wird dadurch nicht langsamer. Grund für den eigenen Task: Der Lauf
 braucht Docker, zieht zwei Testcontainer (`pgvector/pgvector:pg18`, `ollama/ollama:0.6.5`), lädt
