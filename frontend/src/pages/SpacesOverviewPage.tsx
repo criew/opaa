@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -7,7 +7,6 @@ import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink, useNavigate } from 'react-router'
-import CreateSpaceDialog from '../components/CreateSpaceDialog'
 import PageHeading from '../components/a11y/PageHeading'
 import { useSpaceStore } from '../stores/spaceStore'
 import { blue, fontFamily } from '../theme/tokens'
@@ -31,7 +30,6 @@ export default function SpacesOverviewPage() {
   const isLoading = useSpaceStore((s) => s.isLoadingList)
   const error = useSpaceStore((s) => s.error)
   const loadSpaces = useSpaceStore((s) => s.loadSpaces)
-  const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
     if (spaces.length === 0) {
@@ -50,7 +48,7 @@ export default function SpacesOverviewPage() {
         </Typography>
         <Button
           variant="contained"
-          onClick={() => setCreateOpen(true)}
+          onClick={() => navigate('/spaces/new')}
           sx={{ ml: 'auto', flex: 'none' }}
         >
           Neuer Space
@@ -160,7 +158,7 @@ export default function SpacesOverviewPage() {
           ))}
 
           <ButtonBase
-            onClick={() => setCreateOpen(true)}
+            onClick={() => navigate('/spaces/new')}
             aria-label="Neuen Space anlegen"
             sx={{
               minHeight: 150,
@@ -190,15 +188,6 @@ export default function SpacesOverviewPage() {
           </ButtonBase>
         </Box>
       )}
-
-      <CreateSpaceDialog
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={(spaceId) => {
-          setCreateOpen(false)
-          navigate(`/spaces/${spaceId}`)
-        }}
-      />
     </Box>
   )
 }

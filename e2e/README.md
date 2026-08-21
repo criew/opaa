@@ -124,6 +124,10 @@ jede Beziehung zu den Testdaten brauchen (der Negativfall in #424: eine Freigabe
 jemandem landen, dem sie nie erteilt wurde), verwenden ihn statt `dev-user` — dessen eigene
 Freigaben aus anderen Szenarien sonst das Ergebnis verfälschen könnten.
 
+Einordnung dieser drei Nutzer neben den übrigen Testkonto-Mustern des Repos (Keycloak-Realm-Nutzer,
+Quellenzugangsdaten): [`docs/deployment.md`, Abschnitt „Testkonten im
+Überblick"](../docs/deployment.md#testkonten-im-überblick).
+
 ### KI-Stub statt echtem Modell
 
 `docker-compose.e2e.yml` startet zusätzlich `ai-stub` (`e2e/ai-stub/server.mjs`), einen minimalen,

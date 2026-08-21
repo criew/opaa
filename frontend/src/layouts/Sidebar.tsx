@@ -24,7 +24,6 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore'
 import { NavLink, useLocation, useNavigate, useParams } from 'react-router'
 import BrandMark from '../components/BrandMark'
-import CreateSpaceDialog from '../components/CreateSpaceDialog'
 import ChatList from '../components/chat/ChatList'
 import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../stores/authStore'
@@ -62,7 +61,6 @@ export default function Sidebar() {
   const loadSpaces = useSpaceStore((s) => s.loadSpaces)
   const [spaceMenuAnchor, setSpaceMenuAnchor] = useState<HTMLElement | null>(null)
   const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(null)
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   // Light app: the sidebar keeps the mockup's navy block; dark app: it follows the carbon dark
   // scheme (guidelines 2.3, #654) - always with the same branding accent as the rest of the app.
@@ -226,7 +224,7 @@ export default function Sidebar() {
               <MenuItem
                 onClick={() => {
                   closeSpaceMenu()
-                  setCreateDialogOpen(true)
+                  navigate('/spaces/new')
                 }}
                 sx={{ fontWeight: 500, color: 'primary.main' }}
               >
@@ -374,15 +372,6 @@ export default function Sidebar() {
             </ThemeProvider>
           </>
         )}
-
-        <CreateSpaceDialog
-          open={createDialogOpen}
-          onClose={() => setCreateDialogOpen(false)}
-          onCreated={(spaceId) => {
-            setCreateDialogOpen(false)
-            navigate(`/spaces/${spaceId}`)
-          }}
-        />
       </Box>
     </ThemeProvider>
   )

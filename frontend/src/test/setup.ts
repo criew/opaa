@@ -11,7 +11,7 @@ import {
 // anything that pulls in the axios instance *from this file* makes a dozen unrelated dialog tests
 // fail - their requests stop being intercepted, so every "expected onCreated to be called" assertion
 // times out. Verified by adding a bare `import '../services/api'` here and watching
-// CreateSpaceDialog.test.tsx go red on its own. Store state that has to be reset between tests
+// SpaceCreatePage.test.tsx go red on its own. Store state that has to be reset between tests
 // belongs in that test file's own beforeEach.
 import { resetMockBranding } from '../mocks/fixtures'
 

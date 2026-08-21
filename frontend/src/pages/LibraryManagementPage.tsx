@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -19,7 +19,6 @@ import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { blue, fontFamily } from '../theme/tokens'
 import { assetRoleLabel, documentSourceTypeLabel, libraryVisibilityLabel } from '../utils/labels'
-import CreateLibraryDialog from '../components/CreateLibraryDialog'
 import PageHeading from '../components/a11y/PageHeading'
 
 function ownerTypeSummary(library: LibraryListResponse): string {
@@ -209,7 +208,6 @@ export default function LibraryManagementPage() {
   const isLoading = useLibraryStore((s) => s.isLoading)
   const error = useLibraryStore((s) => s.error)
   const loadLibraries = useLibraryStore((s) => s.loadLibraries)
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   useEffect(() => {
     void loadLibraries()
@@ -226,7 +224,7 @@ export default function LibraryManagementPage() {
         </Typography>
         <Button
           variant="contained"
-          onClick={() => setCreateDialogOpen(true)}
+          onClick={() => navigate('/libraries/new')}
           sx={{ ml: 'auto', flex: 'none' }}
         >
           Neue Bibliothek
@@ -252,15 +250,6 @@ export default function LibraryManagementPage() {
           ))}
         </Stack>
       )}
-
-      <CreateLibraryDialog
-        open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
-        onCreated={(libraryId) => {
-          setCreateDialogOpen(false)
-          navigate(`/libraries/${libraryId}`)
-        }}
-      />
     </Box>
   )
 }

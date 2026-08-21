@@ -23,9 +23,11 @@ import org.junit.jupiter.api.Test;
  * {@code fk_group_memberships_group_organization}, which is the mechanism that keeps a group
  * membership from ever crossing the organization boundary (see #200's acceptance criteria and
  * {@code SpaceService#requireUserInOrganization} for the analogous application-level check on
- * spaces). That constraint cannot be exercised by {@code GroupServiceIntegrationTest}, which runs
- * with {@code spring.liquibase.enabled=false} and a Hibernate-generated schema that never executes
- * this changeSet.
+ * spaces). {@code GroupServiceIntegrationTest} (#308) now also runs against the real, versioned
+ * schema and exercises this constraint through {@code GroupService}, but this class remains useful
+ * in its own right: it applies changelog 009 in isolation against a database built only through
+ * changeSet 008, and gets a fresh database per {@code @Test} method rather than sharing one context
+ * across an entire test class.
  *
  * <p>Each {@code @Test} method gets its own database, freshly cloned from the class's {@code
  * test-master-through-008.yaml} template ({@link AbstractMigrationTest}) - so there is nothing left

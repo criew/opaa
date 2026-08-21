@@ -502,6 +502,42 @@ Ein Testbenutzer ist im Keycloak-Realm vorkonfiguriert:
 
 Die Keycloak-Admin-Konsole ist unter http://localhost:8180 verfügbar (admin/admin).
 
+### Testkonten im Überblick
+
+Im Repository existieren mehrere Testkonto-Muster nebeneinander. Sie sind **bewusst nicht
+vereinheitlicht** — jedes gehört zu einem anderen Auth-Modus bzw. einer anderen Konfigurationsebene
+und folgt dessen jeweils eigenem Mechanismus:
+
+| Muster | Geltungsbereich | Nutzer |
+|--------|------------------|--------|
+| Entwicklungsnutzer des `dev`-Profils (`opaa.auth.dev.users`) | Lokale Entwicklung, `dev`-Auth-Modus (siehe [„Entwicklungsmodus (dev)"](#entwicklungsmodus-dev) oben) | `dev-admin` (`admin@opaa.local`, `SYSTEM_ADMIN`), `dev-user` (regulärer Nutzer) |
+| Keycloak-Realm-Nutzer (`keycloak/realm-export.json`) | `oidc`-Auth-Modus mit dem gebündelten Keycloak (siehe [„OIDC (Keycloak)"](#oidc-keycloak) oben) | `testuser`/`testpass` (E-Mail `test@opaa.local`) — wird zum `SYSTEM_ADMIN`, sobald `OPAA_INITIAL_ADMIN_EMAIL` in der lokalen `.env.docker` auf dieselbe Adresse gesetzt ist, sonst ein regulärer Nutzer |
+| E2E-Suite (`e2e/e2e.env`, `e2e/docker-compose.e2e.yml`) | Playwright-Suite (siehe [`e2e/README.md`](../e2e/README.md), Abschnitt „Drei Testnutzer") | Wiederverwendet `dev-admin` und `dev-user` aus dem `dev`-Profil, ergänzt um `dev-outsider` (nur für diese Suite, über `OPAA_AUTH_DEV_USERS_*` hinzugefügt) |
+| Quellenzugangsdaten (`sourceCredentials`, siehe [„Zugangsdaten-Verschlüsselung"](#zugangsdaten-verschlüsselung-483) oben) | Kein Testkonto für OPAA selbst — Basic-Auth-Zugangsdaten (`user:password`), mit denen eine `HTTP_DIRECTORY`- oder `RSS_FEED`-Bibliothek eine *externe* Dokumentenquelle abruft | Kein fester Beispielwert; frei je Bibliothek |
+
+Warum keine Vereinheitlichung:
+
+- Der `dev`-Modus prüft grundsätzlich **keine** Anmeldedaten — er authentifiziert jede Anfrage
+  ungeprüft als einen der konfigurierten Nutzer (siehe oben). Ein Passwort dafür zu vergeben wäre
+  irreführend, weil keines abgefragt wird.
+- Der Keycloak-`testuser` ist dagegen ein echtes, wenn auch bewusst schwaches Credential innerhalb
+  eines vollständigen OIDC-Identitätsanbieters — ein anderer Mechanismus mit eigenem Lebenszyklus
+  (Realm-Import), der sich nicht auf `dev`-Nutzer abbilden lässt.
+- `sourceCredentials` ist kein Konto zum Anmelden bei OPAA, sondern die Zugangsdaten, mit denen das
+  Backend selbst eine externe Quelle kontaktiert — fachlich und im Lebenszyklus unabhängig von den
+  beiden Auth-Modi oben.
+- Die E2E-Suite legt bewusst **kein** eigenes Kontoschema an, sondern läuft im `dev`-Auth-Modus und
+  nutzt dessen Nutzer weiter (siehe [„Warum der `dev`-Auth-Modus?"](../e2e/README.md#warum-der-dev-auth-modus) in `e2e/README.md`).
+- Ein früher skizziertes, separates `OPAA_AUTH_BASIC_USERNAME`/`OPAA_AUTH_BASIC_PASSWORD`/
+  `OPAA_AUTH_MODE`-Paar für eine app-globale Basic-Auth (Modi `mock`/`basic`) wurde mit
+  [`fd04246`](https://github.com/criew/opaa/commit/fd0424621874270a2be78f05bfee5c550945fd3f)
+  ersatzlos entfernt — die zugehörigen Konfigurationsschlüssel liest das Backend nicht mehr,
+  Authentifizierung läuft ausschließlich über einen der beiden Modi oben. Eine lokale,
+  eingerichtete `.env.docker` (gitignored, nicht Teil dieses Repositories) kann diesen Block aus
+  der Zeit vor `fd04246` noch enthalten; er ist dann wirkungsloser Altbestand, den ein
+  `docker compose up` stillschweigend ignoriert — löschen oder gegen die aktuelle
+  `.env.example` abgleichen.
+
 ## Dokumente
 
 Dokumente im `./documents`-Verzeichnis ablegen (oder `OPAA_INDEXING_DOCUMENT_PATH_HOST` in `.env.docker` ändern). Das Verzeichnis wird in den Backend-Container unter `/app/documents` gemountet.

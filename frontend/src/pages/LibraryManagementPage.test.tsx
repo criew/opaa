@@ -1,16 +1,11 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import LibraryManagementPage from './LibraryManagementPage'
 import { useLibraryStore } from '../stores/libraryStore'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
-import type {
-  GroupListResponse,
-  LibraryListResponse,
-  LibraryRequest,
-  LibraryResponse,
-} from '../types/api'
+import type { LibraryListResponse } from '../types/api'
 
 const mockNavigate = vi.fn()
 
@@ -22,36 +17,11 @@ vi.mock('react-router', async () => {
   }
 })
 
-const { mockCreateLibrary, mockGetMyGroups } = vi.hoisted(() => ({
-  mockCreateLibrary: vi.fn(async (request: LibraryRequest) => {
-    const created: LibraryListResponse = {
-      id: `library-${request.name}`,
-      name: request.name,
-      description: request.description ?? null,
-      ownerType: request.ownerType ?? 'USER',
-      visibility: request.visibility ?? 'PRIVATE',
-      listed: request.listed ?? false,
-      myRole: 'OWNER',
-      sourceType: request.sourceType,
-      documentCount: 0,
-      createdAt: '2026-03-01T10:00:00Z',
-      updatedAt: '2026-03-01T10:00:00Z',
-    }
-    // Simulates the real backend response influencing the next getLibraries() call, so the AC
-    // "erscheint ohne Neuladen in der Liste" is actually exercised instead of assumed.
-    useLibraryStore.setState((state) => ({ libraries: [...state.libraries, created] }))
-    return { ...created, ownerId: 'mock-user-id', documentCount: 0 } as LibraryResponse
-  }),
-  mockGetMyGroups: vi.fn(async () => [] as GroupListResponse[]),
-}))
-
 vi.mock('../services/api', async () => {
   const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
   return {
     ...actual,
-    getMyGroups: mockGetMyGroups,
     getLibraries: vi.fn(async () => useLibraryStore.getState().libraries),
-    createLibrary: mockCreateLibrary,
   }
 })
 
@@ -169,7 +139,7 @@ describe('LibraryManagementPage', () => {
     expect(await screen.findByText('431 Dok.')).toBeInTheDocument()
     expect(await screen.findByText('87 Dok.')).toBeInTheDocument()
     expect(screen.getByText('Dateisystem')).toBeInTheDocument()
-    expect(screen.getByText('Hochgeladen')).toBeInTheDocument()
+    expect(screen.getByText('Upload')).toBeInTheDocument()
   })
 
   it('shows the resolved owner name instead of a generic group label', async () => {
@@ -227,74 +197,13 @@ describe('LibraryManagementPage', () => {
     expect(link).toHaveAttribute('href', '/libraries/library-team')
   })
 
-  it('creates a new library owned by the caller and navigates to its detail page', async () => {
+  it('navigates to the create wizard from the header button', async () => {
     setLibraryState([])
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
-    await user.type(screen.getByLabelText(/^name/i), 'Frisch angelegte Bibliothek')
-    await user.click(screen.getByRole('button', { name: /^erstellen$/i }))
 
-    await waitFor(() => {
-      expect(mockCreateLibrary).toHaveBeenCalledWith({
-        name: 'Frisch angelegte Bibliothek',
-        description: undefined,
-        ownerType: 'USER',
-        ownerId: undefined,
-        sourceType: 'UPLOAD',
-        sourceInsecureSsl: false,
-      })
-    })
-    expect(mockNavigate).toHaveBeenCalledWith('/libraries/library-Frisch angelegte Bibliothek')
-  })
-
-  it('creates a group-owned library, offering only the groups returned for the user', async () => {
-    mockGetMyGroups.mockResolvedValueOnce([
-      {
-        id: 'group-referat-50',
-        name: 'Referat 50',
-        description: null,
-        kind: 'ORG_UNIT',
-        externalId: 'directory-guid',
-        parentGroupId: null,
-        memberCount: 3,
-        createdAt: '2026-03-01T10:00:00Z',
-        updatedAt: '2026-03-01T10:00:00Z',
-      },
-    ])
-    setLibraryState([])
-    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
-    const user = userEvent.setup()
-
-    await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
-    await user.type(screen.getByLabelText(/^name/i), 'Team-Bibliothek')
-    await user.click(screen.getByRole('radio', { name: /eine gruppe/i }))
-    await user.click(await screen.findByLabelText(/^gruppe$/i))
-    await user.click(await screen.findByRole('option', { name: 'Referat 50' }))
-    await user.click(screen.getByRole('button', { name: /^erstellen$/i }))
-
-    await waitFor(() => {
-      expect(mockCreateLibrary).toHaveBeenCalledWith({
-        name: 'Team-Bibliothek',
-        description: undefined,
-        ownerType: 'GROUP',
-        ownerId: 'group-referat-50',
-        sourceType: 'UPLOAD',
-        sourceInsecureSsl: false,
-      })
-    })
-  })
-
-  it('shows a visible hint instead of a silent empty list when the caller has no groups', async () => {
-    mockGetMyGroups.mockResolvedValueOnce([])
-    setLibraryState([])
-    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
-    const user = userEvent.setup()
-
-    await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
-    await user.click(screen.getByRole('radio', { name: /eine gruppe/i }))
-
-    expect(await screen.findByText(/keiner gruppe mitglied/i)).toBeInTheDocument()
+    expect(mockNavigate).toHaveBeenCalledWith('/libraries/new')
   })
 })
