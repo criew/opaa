@@ -28,11 +28,12 @@ ausgewertet wird sie von `io.opaa.eval.Baseline`/`io.opaa.eval.BaselineComparato
   **keine** Metrik, weil ein Vergleich unter unterschiedlicher Messgrundlage keine Aussage über
   Retrieval-Qualität wäre (siehe ADR-0011, Konsequenzen; ADR-0012, Entscheidung 6).
 - **`groups`** enthält die vier Kernmetriken (`hitRateAt5`, `mrr`, `ndcgAt10`, `recallAt10`) plus
-  `recallAt10Ceiling` und `distinctExpectedDocumentSets` (die Grundgröße der Toleranzformel unten,
-  `n_eff`) für `overall` und jede Ausprägung von Kategorie (`category:<name>`), Schwierigkeit
-  (`difficulty:<name>`) und Sprache (`language:<name>`) aus dem Golden Dataset — mit einer
-  Ausnahme, siehe [Konsolidierung von `language:de`](#konsolidierung-von-languagede-issue-304)
-  unten.
+  `recallAt10Ceiling`, `distinctExpectedDocumentSets` (die Grundgröße der Toleranzformel unten,
+  `n_eff`) und `hitCountAt5`/`hitCountAt10` (Issue #306 — Zahl der Fälle mit einem Treffer in den
+  Top 5 bzw. Top 10, Grundgröße der fallzahlbasierten Prüfung weiter unten) für `overall` und jede
+  Ausprägung von Kategorie (`category:<name>`), Schwierigkeit (`difficulty:<name>`) und Sprache
+  (`language:<name>`) aus dem Golden Dataset — mit einer Ausnahme, siehe [Konsolidierung von
+  `language:de`](#konsolidierung-von-languagede-issue-304) unten.
 - **`measuredAt`**/**`provenance`**/**`notes`** sind rein dokumentarisch (nie Teil des Vergleichs):
   wann, mit welchem PR und welchem Report gemessen wurde, inklusive Verweis auf frühere, hinfällige
   Zahlen (siehe unten).
@@ -143,10 +144,10 @@ Diese Tabelle ist reproduzierbar aus der committeten Baseline nachrechenbar
 (`BaselineComparator.toleranceFor`, unit-getestet in `BaselineComparatorTest`) und keine separate,
 von Hand gepflegte Angabe.
 
-**Bekannter, bewusst nicht gelöster Grenzfall — betrifft sechs Paare, nicht eines** (siehe ADR-0013,
-Abschnitt „Offen", korrigiert in dessen zweiter Review-Runde): Für die folgenden Metrik/Gruppen-Paare
-ist die Toleranz enger als die Verschiebung, die ein einzelner kippender Fall erzeugt (`1/n`) — dort
-kann ein einzelner Fall weiterhin einen Fehlschlag auslösen, ohne dass sich sonst etwas geändert hat:
+**Gelöster Grenzfall — betraf sechs Paare, nicht eines (Issue #306).** Für die folgenden
+Metrik/Gruppen-Paare ist die *Mittelwert*-Toleranz enger als die Verschiebung, die ein einzelner
+kippender Fall erzeugt (`1/n`) — dort konnte ein einzelner Fall bislang einen Fehlschlag auslösen,
+ohne dass sich sonst etwas geändert hatte:
 
 | Paar | Toleranz | 1/n | Verhältnis |
 |---|---|---|---|
@@ -157,13 +158,28 @@ kann ein einzelner Fall weiterhin einen Fehlschlag auslösen, ohne dass sich son
 | `numeric_range` / `hitRateAt5` | 0,0470 | 0,0625 | 0,75 |
 | `multi_attribute_filter` / `recallAt10` | 0,0398 | 0,0476 | 0,83 |
 
-Für `numeric_range`s nDCG@10 genügt es bereits, dass eine einzige der 16 Anfragen von Rang 1 auf
+Für `numeric_range`s nDCG@10 genügte es bereits, dass eine einzige der 16 Anfragen von Rang 1 auf
 Rang 3 rutscht — kein verlorener Treffer nötig —, um die Toleranz mehr als doppelt zu reißen. Die
 relative Deckelung, die die niedrigsten Werte wirksam schützt, fällt für andere, etwas weniger
-extreme Metriken derselben kleinen Gruppe enger aus als der Ein-Fall-Schutz. Eine fallzahlbasierte
-statt Mittelwert-Prüfung wäre der sauberere Fix und ist billiger als zunächst angenommen — die
-Einzelergebnisse liegen im Report bereits vor (`allQueryResults`) —, ist aber ein eigenes,
-nachverfolgtes Folge-Thema (Issue #306, `evaluation`, `ci`, `size:M`), kein PR-#301-Bug.
+extreme Metriken derselben kleinen Gruppe enger aus als der Ein-Fall-Schutz.
+
+**Fix (Issue #306): fallzahlbasierte *und* Mittelwert-Prüfung (Konjunktion), ausschließlich für
+Paare mit Toleranz < 1/n.** `BaselineComparator` bestimmt das dynamisch (`usesCaseBasedCheck`, nicht
+anhand einer festen Sechs-Paare-Liste) — ein künftiges Baseline-Update, das die Toleranz oder `n`
+eines Paares verschiebt, nimmt oder verliert die fallzahlbasierte Prüfung dafür automatisch. Für die
+betroffenen Paare müssen **beide** Bedingungen gelten: die Zahl der Fälle mit einem Treffer
+(`hitCountAt5` für `hitRateAt5`; `hitCountAt10` für `mrr`/`ndcgAt10`/`recallAt10` — dasselbe Ereignis
+pro Fall, da die Rangliste dieses Harness nie mehr als `searchTopK=10` Einträge hat) darf gegenüber
+der Baseline um höchstens `MAX_CASE_COUNT_DROP=1` sinken (exakt die in ADR-0013s Abschnitt „Offen"
+vorgeschlagene Prüfung), **und** der Mittelwert muss innerhalb der auf mindestens `1/n` geweiteten
+Toleranz bleiben (`max(toleranceFor(...), 1/n)`, nie enger als bisher). Eine reine Ersetzung der
+Mittelwert-Prüfung — die erste, im Review zu PR #694 korrigierte Fassung dieses Fixes — hätte für
+diese sechs Paare jeden Schutz gegen eine schwere Rang- oder Teiltreffer-Verschlechterung ohne
+verlorenen Treffer aufgegeben (Beispiel: `numeric_range`/`mrr` kann so um 75 % fallen); Details zur
+Korrektur: ADR-0013, Nachtrag zu Issue #306. `hitCountAt5`/`hitCountAt10` sind dafür neue, je Gruppe
+geführte Felder der Baseline-Datei — siehe [Aufbau](#aufbau) oben und `BaselineComparator`s Javadoc
+für die Begründung, warum sie nicht aus den bereits committeten Mittelwerten zurückgerechnet werden
+können (das wäre für `hitRateAt5` exakt, für die drei stetigen Metriken aber nicht).
 
 Diese engen Toleranzen sind bewusst gewählt, **weil** die Reproduzierbarkeit oben belegt ist: Eine
 weite Toleranz würde bei nachgewiesener Stabilität keinen zusätzlichen Schutz vor falschem
@@ -278,7 +294,10 @@ das die Änderung verursacht, damit Ursache und neue Zahl im selben Review sicht
 4. Die neuen Werte in `comic-characters.json` eintragen, `fixedPoints` entsprechend aktualisieren,
    `measuredAt` und `notes` fortschreiben (frühere, hinfällige Zahlen wie oben nicht löschen,
    sondern als überholt kennzeichnen — siehe die bestehende `notes`-Historie in dieser Datei als
-   Vorbild).
+   Vorbild). `hitCountAt5`/`hitCountAt10` (Issue #306) gehören für jede Gruppe dazu — sie stehen
+   direkt im JSON-Report unter `allQueryResults` (Zahl der Fälle mit `hitRateAt5 > 0` bzw.
+   `ndcgAt10 > 0`) und müssen aus demselben Lauf stammen wie die vier Mittelwerte, nicht separat
+   nachgerechnet werden.
 5. Wie jede andere Code-Änderung: Code Reviewer prüft den PR, ein Maintainer merged.
 
 **Nicht** ausreichend: Die Baseline-Datei ohne einen tatsächlichen `evaluateRetrieval`-Lauf von Hand

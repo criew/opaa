@@ -1128,6 +1128,29 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void getLibraryShowsStorageQuotaUsageOnlyToAManagerOrAbove() {
+    // #119: storage quota/usage is administration detail (like sourcePath above), gated the same
+    // way at MANAGER - a mere VIEWER does not need it to read the library.
+    UUID owner = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    LibraryResponse created =
+        libraryService.createLibrary(
+            new LibraryRequest("Rechtsquellen Soziales", DocumentSourceType.UPLOAD)
+                .visibility(LibraryVisibility.ORGANIZATION),
+            owner);
+
+    LibraryResponse asOwner = libraryService.getLibrary(created.getId(), owner, false);
+    assertThat(asOwner.getMyRole()).isEqualTo(AssetRole.OWNER);
+    assertThat(asOwner.getStorageQuotaBytes()).isNotNull().isPositive();
+    assertThat(asOwner.getStorageUsedBytes()).isNotNull().isZero();
+
+    LibraryResponse asViewer = libraryService.getLibrary(created.getId(), otherMember, false);
+    assertThat(asViewer.getMyRole()).isEqualTo(AssetRole.VIEWER);
+    assertThat(asViewer.getStorageQuotaBytes()).isNull();
+    assertThat(asViewer.getStorageUsedBytes()).isNull();
+  }
+
+  @Test
   void noAccessAtAllAnswers404ButInsufficientAccessAnswers403AcrossEveryLibraryEndpoint() {
     // #436: the same "no access at all" (404) vs. "some access, but not enough" (403) distinction
     // #420 introduced for the two upload endpoints, unified across the rest of the library API -

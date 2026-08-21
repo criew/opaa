@@ -60,6 +60,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
     FilesystemPathAllowlist filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     indexingJobRepository = mock(IndexingJobRepository.class);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
+    LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
 
     libraryService =
         new KnowledgeLibraryService(
@@ -76,7 +77,8 @@ class KnowledgeLibraryServiceDeleteLockTest {
             vectorStore,
             filesystemAllowlist,
             indexingJobRepository,
-            rssFeedStateRepository);
+            rssFeedStateRepository,
+            storageQuotaService);
 
     ownerId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();

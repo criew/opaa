@@ -243,8 +243,12 @@ rote Primärfläche als Standardaktion.
 
 ### 5.2 Formularfelder
 
-Beschriftung oberhalb (14 px, Gewicht 500), Feld auf `bg-3` mit `border-strong`, Radius md,
-Höhe 40 px; Hilfetext unterhalb in `fg-3`. Fokus: Rahmen in `accent` plus Fokusring. Fehler:
+Beschriftung oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
+schwebendes Label im Feld). Das Feld liegt auf `bg-1` mit `border-strong`, Radius sm,
+Haarlinien-Schatten und Höhe 40 px — keine gefüllte Grau-Fläche; im Dunkel-Schema hebt sich
+das Feld stattdessen eine Flächenstufe ab (`bg-2`, ohne Schatten). Suchfelder tragen keine
+sichtbare Beschriftung, sondern Platzhalter plus `aria-label` (Muster: Mockup-Suchfelder).
+Hilfetext unterhalb in `fg-3`. Fokus: Rahmen in `accent` plus Fokusring. Fehler:
 Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet
 (Details: [Barrierefreiheits-Richtlinie](./accessibility.md), 2.7).
 Pflichtfelder werden nicht mit Sternchen markiert — optionale Felder tragen „(optional)".

@@ -95,7 +95,8 @@ class RssFeedIndexingExecutorTargetValidationTest {
             new UrlFileDownloader(enabledValidator),
             properties,
             indexingRunEventRepository,
-            enabledValidator);
+            enabledValidator,
+            org.mockito.Mockito.mock(io.opaa.library.LibraryStorageQuotaService.class));
   }
 
   @AfterEach

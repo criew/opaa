@@ -22,6 +22,13 @@ import sys
 
 METRICS = ("hitRateAt5", "mrr", "ndcgAt10", "recallAt10")
 
+# Issue #306: the two case counts BaselineComparator reads for the case-count check on
+# group/metric pairs whose mean tolerance is tighter than one case's worth of shift. They live in
+# the same "groups" object as METRICS above, so a PR that lowers one silently narrows a group's
+# protection the same way a lowered mean would — worth surfacing here for the same reason, even
+# though this script never gates anything (see module docstring).
+CASE_COUNT_FIELDS = ("hitCountAt5", "hitCountAt10")
+
 
 def load(path):
     with open(path, encoding="utf-8") as f:
@@ -41,13 +48,14 @@ def find_lowered(main_baseline, pr_baseline):
     lowered = []
     main_groups = main_baseline.get("groups", {})
     pr_groups = pr_baseline.get("groups", {})
+    all_fields = METRICS + CASE_COUNT_FIELDS
     for group, pr_metrics in pr_groups.items():
         main_metrics = main_groups.get(group)
         if main_metrics is None:
             # A group that only exists on the PR side (e.g. a golden-dataset extension) has
             # nothing on main to be lower *than* — not a lowering, nothing to flag.
             continue
-        for metric in METRICS:
+        for metric in all_fields:
             main_value = main_metrics.get(metric)
             pr_value = pr_metrics.get(metric)
             if main_value is None or pr_value is None:
@@ -58,7 +66,7 @@ def find_lowered(main_baseline, pr_baseline):
     removed_groups = set(main_groups) - set(pr_groups)
     for group in sorted(removed_groups):
         main_metrics = main_groups[group]
-        for metric in METRICS:
+        for metric in all_fields:
             main_value = main_metrics.get(metric)
             if main_value is None:
                 continue
@@ -87,13 +95,19 @@ def render(lowered, main_ref, pr_ref):
         "|---|---|---|---|---|",
     ]
     for group, metric, main_value, pr_value in lowered:
+        # Case counts (issue #306) are integers — render them without the fractional-metric
+        # formatting so a genuine "3 -> 2" reads as a case count, not a fraction.
+        fmt = "{}" if metric in CASE_COUNT_FIELDS else "{:.3f}"
+        signed_fmt = "{:+d}" if metric in CASE_COUNT_FIELDS else "{:+.3f}"
         if pr_value is None:
             lines.append(
-                "| {} | {} | {:.3f} | entfernt | entfernt |".format(group, metric, main_value)
+                ("| {{}} | {{}} | {} | entfernt | entfernt |".format(fmt)).format(
+                    group, metric, main_value
+                )
             )
         else:
             lines.append(
-                "| {} | {} | {:.3f} | {:.3f} | {:+.3f} |".format(
+                ("| {{}} | {{}} | {} | {} | {} |".format(fmt, fmt, signed_fmt)).format(
                     group, metric, main_value, pr_value, pr_value - main_value
                 )
             )

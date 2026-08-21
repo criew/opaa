@@ -3,13 +3,9 @@ import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
-import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
 import FormHelperText from '@mui/material/FormHelperText'
-import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Paper from '@mui/material/Paper'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
@@ -26,6 +22,9 @@ import {
   spaceVisibilityLabel,
 } from '../utils/labels'
 import PageHeading from '../components/a11y/PageHeading'
+import FieldLabel from '../components/wizard/FieldLabel'
+import MetaBadge from '../components/MetaBadge'
+import SectionHead from '../components/SectionHead'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
@@ -109,14 +108,30 @@ export default function SpaceManagementPage() {
 
   if (!spaceId || !space) {
     return (
-      <Box sx={{ flexGrow: 1, p: 3 }}>
-        <PageHeading title="Space nicht geladen" variant="h6" />
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
+        <PageHeading title="Space nicht geladen" />
       </Box>
     )
   }
 
   return (
-    <Box sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, overflowY: 'auto' }}>
+    <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 2,
+          mb: 3,
+          maxWidth: 760,
+          flexWrap: 'wrap',
+        }}
+      >
+        <PageHeading title="Space einrichten" documentTitle={`${space.name} einrichten`} />
+        <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+          {space.name}
+        </Typography>
+        {space.archived && <MetaBadge>Archiviert</MetaBadge>}
+      </Box>
       {(error || localError) && (
         <Alert
           severity="error"
@@ -151,53 +166,59 @@ export default function SpaceManagementPage() {
         </Alert>
       )}
 
-      <Stack spacing={2.5}>
-        <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
-            <Typography variant="h6">Space-Einstellungen</Typography>
-            {space.archived && <Chip label="Archiviert" size="small" color="default" />}
-          </Stack>
+      <Stack spacing={5} sx={{ maxWidth: 760 }}>
+        <Box>
+          <SectionHead>Space-Einstellungen</SectionHead>
           {space.archived && (
             <Alert severity="info" sx={{ mb: 2 }}>
               Dieser Space ist archiviert und nimmt keinen neuen Inhalt mehr an. Private Chats
               bleiben für ihre Autoren weiterhin lesbar.
             </Alert>
           )}
-          <Divider sx={{ mb: 2 }} />
-          <Stack spacing={1.5}>
-            <TextField
-              label="Name des Space"
-              value={name}
-              onChange={(event) =>
-                setDraft({
-                  spaceId: activeSpaceId,
-                  name: event.target.value,
-                  description,
-                  visibility,
-                })
-              }
-              disabled={!canManage}
-            />
-            <TextField
-              label="Beschreibung"
-              value={description}
-              onChange={(event) =>
-                setDraft({
-                  spaceId: activeSpaceId,
-                  name,
-                  description: event.target.value,
-                  visibility,
-                })
-              }
-              multiline
-              minRows={2}
-              disabled={!canManage}
-            />
-            <FormControl disabled={!canManage}>
-              <InputLabel id="space-visibility-label">Sichtbarkeit</InputLabel>
+          <Stack spacing={2.5}>
+            <Box>
+              <FieldLabel htmlFor="space-manage-name">Name des Space</FieldLabel>
+              <TextField
+                id="space-manage-name"
+                size="small"
+                fullWidth
+                value={name}
+                onChange={(event) =>
+                  setDraft({
+                    spaceId: activeSpaceId,
+                    name: event.target.value,
+                    description,
+                    visibility,
+                  })
+                }
+                disabled={!canManage}
+              />
+            </Box>
+            <Box>
+              <FieldLabel htmlFor="space-manage-description">Beschreibung</FieldLabel>
+              <TextField
+                id="space-manage-description"
+                size="small"
+                fullWidth
+                value={description}
+                onChange={(event) =>
+                  setDraft({
+                    spaceId: activeSpaceId,
+                    name,
+                    description: event.target.value,
+                    visibility,
+                  })
+                }
+                multiline
+                minRows={2}
+                disabled={!canManage}
+              />
+            </Box>
+            <FormControl disabled={!canManage} fullWidth>
+              <FieldLabel id="space-visibility-label">Sichtbarkeit</FieldLabel>
               <Select
                 labelId="space-visibility-label"
-                label="Sichtbarkeit"
+                size="small"
                 value={visibility}
                 onChange={(event) =>
                   setDraft({
@@ -219,86 +240,87 @@ export default function SpaceManagementPage() {
                 {spaceVisibilityDescription(visibility)}
               </FormHelperText>
             </FormControl>
-            {canManage && (
-              <Button
-                variant="contained"
-                onClick={async () => {
-                  setLocalError(null)
-                  try {
-                    await updateDetails(spaceId, name, description, visibility)
-                    setSuccessMessage('Space aktualisiert')
-                  } catch (err) {
-                    setLocalError(
-                      err instanceof Error ? err.message : 'Aktualisierung fehlgeschlagen',
-                    )
-                  }
-                }}
-              >
-                Einstellungen speichern
-              </Button>
-            )}
-            {isOwner && !space.isDefault && !space.archived && (
-              <Button
-                variant="outlined"
-                onClick={async () => {
-                  if (
-                    !window.confirm(
-                      'Diesen Space archivieren? Er nimmt danach keinen neuen Inhalt mehr an ' +
-                        'und wird aus den regulären Listen ausgeblendet.',
-                    )
-                  ) {
-                    return
-                  }
-                  setLocalError(null)
-                  setDeleteBlockedByChats(false)
-                  try {
-                    await archiveSelectedSpace(spaceId)
-                    setSuccessMessage('Space archiviert')
-                  } catch (err) {
-                    setLocalError(err instanceof Error ? err.message : 'Archivieren fehlgeschlagen')
-                  }
-                }}
-              >
-                Space archivieren
-              </Button>
-            )}
-            {isOwner && !space.isDefault && (
-              <Button
-                color="error"
-                variant="outlined"
-                onClick={async () => {
-                  if (
-                    !window.confirm(
-                      'Diesen Space löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-                    )
-                  ) {
-                    return
-                  }
-                  setLocalError(null)
-                  setDeleteBlockedByChats(false)
-                  try {
-                    await deleteSelectedSpace(spaceId)
-                    navigate('/spaces')
-                  } catch (err) {
-                    const message = err instanceof Error ? err.message : 'Löschen fehlgeschlagen'
-                    setLocalError(message)
-                    // #543: deleteSpace's own 409 message names archiving as the way out - offer
-                    // it directly instead of leaving the user to figure out the next step.
-                    setDeleteBlockedByChats(message.includes('Archivieren'))
-                  }
-                }}
-              >
-                Space löschen
-              </Button>
-            )}
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+              {canManage && (
+                <Button
+                  variant="contained"
+                  onClick={async () => {
+                    setLocalError(null)
+                    try {
+                      await updateDetails(spaceId, name, description, visibility)
+                      setSuccessMessage('Space aktualisiert')
+                    } catch (err) {
+                      setLocalError(
+                        err instanceof Error ? err.message : 'Aktualisierung fehlgeschlagen',
+                      )
+                    }
+                  }}
+                >
+                  Einstellungen speichern
+                </Button>
+              )}
+              {isOwner && !space.isDefault && !space.archived && (
+                <Button
+                  variant="outlined"
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        'Diesen Space archivieren? Er nimmt danach keinen neuen Inhalt mehr an ' +
+                          'und wird aus den regulären Listen ausgeblendet.',
+                      )
+                    ) {
+                      return
+                    }
+                    setLocalError(null)
+                    setDeleteBlockedByChats(false)
+                    try {
+                      await archiveSelectedSpace(spaceId)
+                      setSuccessMessage('Space archiviert')
+                    } catch (err) {
+                      setLocalError(
+                        err instanceof Error ? err.message : 'Archivieren fehlgeschlagen',
+                      )
+                    }
+                  }}
+                >
+                  Space archivieren
+                </Button>
+              )}
+              {isOwner && !space.isDefault && (
+                <Button
+                  color="error"
+                  variant="outlined"
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        'Diesen Space löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
+                      )
+                    ) {
+                      return
+                    }
+                    setLocalError(null)
+                    setDeleteBlockedByChats(false)
+                    try {
+                      await deleteSelectedSpace(spaceId)
+                      navigate('/spaces')
+                    } catch (err) {
+                      const message = err instanceof Error ? err.message : 'Löschen fehlgeschlagen'
+                      setLocalError(message)
+                      // #543: deleteSpace's own 409 message names archiving as the way out - offer
+                      // it directly instead of leaving the user to figure out the next step.
+                      setDeleteBlockedByChats(message.includes('Archivieren'))
+                    }
+                  }}
+                >
+                  Space löschen
+                </Button>
+              )}
+            </Box>
           </Stack>
-        </Paper>
+        </Box>
 
-        <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Typography variant="h6" gutterBottom>
-            Mitglieder
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
+        <Box>
+          <SectionHead>Mitglieder</SectionHead>
           {space.isDefault && space.memberCount === 1 ? (
             <Alert severity="info">
               Dies ist Ihr Standard-Space. Sie arbeiten hier allein — Sie können jederzeit
@@ -316,7 +338,7 @@ export default function SpaceManagementPage() {
               sehen.
             </Alert>
           ) : (
-            <Stack spacing={1.5}>
+            <Stack spacing={0}>
               {members.map((member) => {
                 const memberIsOwner = member.userId === space.ownerId
                 return (
@@ -328,9 +350,16 @@ export default function SpaceManagementPage() {
                       justifyContent: 'space-between',
                       gap: 1,
                       flexWrap: 'wrap',
+                      py: 1.25,
+                      '& + &': { borderTop: 1, borderColor: 'divider' },
                     }}
                   >
-                    <Typography sx={member.displayName ? undefined : { fontFamily: 'monospace' }}>
+                    <Typography
+                      sx={{
+                        fontSize: 13.5,
+                        ...(member.displayName ? {} : { fontFamily: 'monospace' }),
+                      }}
+                    >
                       {member.displayName ?? member.userId}
                       {memberIsOwner ? ' · Eigentümer' : ''}
                     </Typography>
@@ -360,7 +389,7 @@ export default function SpaceManagementPage() {
                           ))}
                         </Select>
                       ) : (
-                        <Chip label={spaceRoleLabel(member.role)} size="small" />
+                        <MetaBadge>{spaceRoleLabel(member.role)}</MetaBadge>
                       )}
                       {canManage && !memberIsOwner && (
                         <Button
@@ -422,9 +451,10 @@ export default function SpaceManagementPage() {
               })}
 
               {canManage && (
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ pt: 1 }}>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ pt: 2 }}>
                   <Autocomplete
                     options={availableUsers}
+                    size="small"
                     getOptionLabel={(option) =>
                       option.displayName
                         ? `${option.displayName} (${option.email ?? option.id})`
@@ -433,15 +463,23 @@ export default function SpaceManagementPage() {
                     value={selectedUser}
                     onChange={(_event, value) => setSelectedUser(value)}
                     renderInput={(params) => (
-                      <TextField {...params} label="Benutzer" placeholder="Benutzer suchen …" />
+                      <TextField
+                        {...params}
+                        placeholder="Benutzer suchen …"
+                        slotProps={{
+                          ...params.slotProps,
+                          htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Benutzer' },
+                        }}
+                      />
                     )}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
-                    sx={{ minWidth: 280 }}
+                    sx={{ minWidth: 280, flex: 1 }}
                   />
                   <Select
                     size="small"
                     value={newMemberRole}
                     onChange={(event) => setNewMemberRole(event.target.value as SpaceRole)}
+                    aria-label="Rolle des neuen Mitglieds"
                     sx={{ width: 180 }}
                   >
                     {editableRoles.map((role) => (
@@ -475,7 +513,7 @@ export default function SpaceManagementPage() {
               )}
             </Stack>
           )}
-        </Paper>
+        </Box>
       </Stack>
     </Box>
   )

@@ -23,7 +23,9 @@
       "ndcgAt10": 0.445,
       "recallAt10": 0.490,
       "recallAt10Ceiling": 0.9708,
-      "distinctExpectedDocumentSets": 94
+      "distinctExpectedDocumentSets": 94,
+      "hitCountAt5": 63,
+      "hitCountAt10": 73
     },
     "category:attribute_lookup": {
       "n": 30,
@@ -32,7 +34,9 @@
       "ndcgAt10": 0.942,
       "recallAt10": 0.967,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 30
+      "distinctExpectedDocumentSets": 30,
+      "hitCountAt5": 29,
+      "hitCountAt10": 29
     },
     "category:entity_description": {
       "n": 20,
@@ -41,7 +45,9 @@
       "ndcgAt10": 0.575,
       "recallAt10": 0.750,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 20
+      "distinctExpectedDocumentSets": 20,
+      "hitCountAt5": 13,
+      "hitCountAt10": 15
     },
     "category:crosslingual": {
       "n": 34,
@@ -50,7 +56,9 @@
       "ndcgAt10": 0.302,
       "recallAt10": 0.322,
       "recallAt10Ceiling": 0.9666,
-      "distinctExpectedDocumentSets": 33
+      "distinctExpectedDocumentSets": 33,
+      "hitCountAt5": 13,
+      "hitCountAt10": 15
     },
     "category:multi_attribute_filter": {
       "n": 21,
@@ -59,7 +67,9 @@
       "ndcgAt10": 0.137,
       "recallAt10": 0.159,
       "recallAt10Ceiling": 0.9331,
-      "distinctExpectedDocumentSets": 21
+      "distinctExpectedDocumentSets": 21,
+      "hitCountAt5": 5,
+      "hitCountAt10": 10
     },
     "category:numeric_range": {
       "n": 16,
@@ -68,7 +78,9 @@
       "ndcgAt10": 0.063,
       "recallAt10": 0.060,
       "recallAt10Ceiling": 0.9382,
-      "distinctExpectedDocumentSets": 15
+      "distinctExpectedDocumentSets": 15,
+      "hitCountAt5": 3,
+      "hitCountAt10": 4
     },
     "difficulty:easy": {
       "n": 40,
@@ -77,7 +89,9 @@
       "ndcgAt10": 0.922,
       "recallAt10": 0.950,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 30
+      "distinctExpectedDocumentSets": 30,
+      "hitCountAt5": 38,
+      "hitCountAt10": 38
     },
     "difficulty:medium": {
       "n": 48,
@@ -86,7 +100,9 @@
       "ndcgAt10": 0.262,
       "recallAt10": 0.335,
       "recallAt10Ceiling": 0.9706,
-      "distinctExpectedDocumentSets": 35
+      "distinctExpectedDocumentSets": 35,
+      "hitCountAt5": 16,
+      "hitCountAt10": 20
     },
     "difficulty:hard": {
       "n": 33,
@@ -95,7 +111,9 @@
       "ndcgAt10": 0.134,
       "recallAt10": 0.157,
       "recallAt10Ceiling": 0.9359,
-      "distinctExpectedDocumentSets": 30
+      "distinctExpectedDocumentSets": 30,
+      "hitCountAt5": 9,
+      "hitCountAt10": 15
     },
     "language:en": {
       "n": 87,
@@ -104,7 +122,9 @@
       "ndcgAt10": 0.502,
       "recallAt10": 0.555,
       "recallAt10Ceiling": 0.9725,
-      "distinctExpectedDocumentSets": 85
+      "distinctExpectedDocumentSets": 85,
+      "hitCountAt5": 50,
+      "hitCountAt10": 58
     }
   },
   "measuredAt": "2026-08-03",
@@ -112,5 +132,5 @@
     "sourceReportRunStartedAt": "2026-08-03T00:00:00Z",
     "sourcePullRequest": "#299"
   },
-  "notes": "Baseline aus PR #299 (Issue #228), gemessen mit dem gepinnten Modell nomic-embed-text:v1.5 (Digest siehe fixedPoints), Laufzeit 1004 s. Drei unabhängige Läufe (zwei des Autors, einer des Reviewers auf fremder Hardware) lieferten byte-identische Metriken — die HNSW-Approximationsschwankung, die ADR-0011 als Risiko benennt, tritt bei dieser Korpusgröße nicht auf. Frühere Berichte nannten einen Gesamt-nDCG@10 von 0.463; die stammen vom ungepinnten nomic-embed-text:latest und sind hinfällig — die Verschiebung durch das Pinning ist der empirische Beleg dafür, warum das Pinning nötig war. Toleranzpolitik gemäß ADR-0013 (überarbeitet aus dem Review zu PR #301): tolerance = min(2/n_eff, 0.25*Baselinewert), harte Untergrenze der Gesamtmetriken = 80% des jeweils committeten Baselinewerts. distinctExpectedDocumentSets je Gruppe wurde am 2026-08-03 direkt aus eval/golden/comic-characters.json nachgerechnet (Korrektur: 94 statt der zuvor genannten 75 für 'overall' — die Zahl 75 aus einer früheren, ungeprüften Angabe war falsch). Aktualisierungsverfahren: eval/baseline/README.md. Nachtrag (Issue #304, 2026-08-20): die Gruppe 'language:de' wurde entfernt — sie ist konstruktionsbedingt exakt dieselbe Fallmenge wie 'category:crosslingual' (34 Fälle, 33 unterschiedliche Erwartungsmengen) und lieferte denselben Wert doppelt; siehe eval/baseline/README.md und ADR-0013 für die Begründung."
+  "notes": "Baseline aus PR #299 (Issue #228), gemessen mit dem gepinnten Modell nomic-embed-text:v1.5 (Digest siehe fixedPoints), Laufzeit 1004 s. Drei unabhängige Läufe (zwei des Autors, einer des Reviewers auf fremder Hardware) lieferten byte-identische Metriken — die HNSW-Approximationsschwankung, die ADR-0011 als Risiko benennt, tritt bei dieser Korpusgröße nicht auf. Frühere Berichte nannten einen Gesamt-nDCG@10 von 0.463; die stammen vom ungepinnten nomic-embed-text:latest und sind hinfällig — die Verschiebung durch das Pinning ist der empirische Beleg dafür, warum das Pinning nötig war. Toleranzpolitik gemäß ADR-0013 (überarbeitet aus dem Review zu PR #301): tolerance = min(2/n_eff, 0.25*Baselinewert), harte Untergrenze der Gesamtmetriken = 80% des jeweils committeten Baselinewerts. distinctExpectedDocumentSets je Gruppe wurde am 2026-08-03 direkt aus eval/golden/comic-characters.json nachgerechnet (Korrektur: 94 statt der zuvor genannten 75 für 'overall' — die Zahl 75 aus einer früheren, ungeprüften Angabe war falsch). Aktualisierungsverfahren: eval/baseline/README.md. Nachtrag (Issue #304, 2026-08-20): die Gruppe 'language:de' wurde entfernt — sie ist konstruktionsbedingt exakt dieselbe Fallmenge wie 'category:crosslingual' (34 Fälle, 33 unterschiedliche Erwartungsmengen) und lieferte denselben Wert doppelt; siehe eval/baseline/README.md und ADR-0013 für die Begründung. Nachtrag (Issue #306, 2026-08-21): hitCountAt5/hitCountAt10 je Gruppe ergänzt — Anzahl der Fälle mit einem Treffer in den Top 5 bzw. Top 10 (letzteres ist dasselbe Ereignis wie mrr>0/ndcgAt10>0/recallAt10>0, siehe MetricsAggregate-Javadoc). Diese Baseline hat sich nicht neu geändert; die Zähler wurden aus dem bit-identischen, artefaktverifizierten checkRetrievalBaseline-Lauf auf einem GitHub-Actions-Runner nachgetragen (Workflow-Run 32442551477, Commit 45faad2, planmäßiger nächtlicher Lauf auf main, 2026-08-21T03:12Z) — kein neuer Messvorgang, siehe BaselineComparator-Javadoc für die Begründung, warum ein Rückrechnen aus den bereits committeten Mittelwerten nicht exakt möglich gewesen wäre."
 }

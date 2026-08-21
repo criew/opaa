@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
 import java.util.List;
 import java.util.Optional;
@@ -25,7 +26,8 @@ class UrlIndexingExecutorTest {
           mock(FileProcessingService.class),
           mock(IndexingJobService.class),
           documentRepository,
-          mock(IndexingRunEventRepository.class));
+          mock(IndexingRunEventRepository.class),
+          mock(LibraryStorageQuotaService.class));
 
   // --- #550 review: blank lastModified must never be treated as "unchanged" -----------------
 
@@ -149,7 +151,8 @@ class UrlIndexingExecutorTest {
             mock(FileProcessingService.class),
             jobService,
             documentRepository,
-            mock(IndexingRunEventRepository.class));
+            mock(IndexingRunEventRepository.class),
+            mock(LibraryStorageQuotaService.class));
     UUID jobId = UUID.randomUUID();
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(

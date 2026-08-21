@@ -21,6 +21,7 @@ import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
 import java.lang.reflect.Method;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -34,6 +35,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -364,6 +367,91 @@ class QueryServiceTest {
 
     assertThat(response.getChatId()).isEqualTo(foreignChatId);
     verify(chatService, never()).appendTurn(any(), any(), any(), any());
+  }
+
+  /**
+   * #123 follow-up: explicit two-account test against the real cache stack ({@link
+   * MessageWindowChatMemory} over {@link CaffeineChatMemoryRepository}, exactly as {@link
+   * QueryConfiguration} wires it) instead of this test class's otherwise-mocked {@code chatMemory}
+   * field. Both accounts submit the same {@code chatId}; neither resolves it via {@link
+   * ChatService#findOwnedChat} (stubbed empty for every argument in {@link #setUp}), so both run
+   * ephemerally - see the class Javadoc on {@link
+   * #queryRunsEphemerallyWhenChatIdDoesNotBelongToTheCaller} for that pre-existing behaviour. The
+   * persisted-chat-owner-versus-foreign-account combination is not additionally covered here: it
+   * exercises the same key formula ({@code currentUserId + ":" + effectiveChatId}, {@link
+   * QueryService#query}) on the owner side that {@link
+   * #queryScopesAndPersistsWhenChatIdBelongsToTheCaller} already asserts via the mocked {@code
+   * chatMemory}, so it would not add coverage of a code path this test does not already reach. The
+   * test simulates what {@link AnswerGenerationService} does in production - write two messages per
+   * call under the given conversation key - and captures the key actually used per call instead of
+   * recomputing the formula, so the assertions stay valid even if the key format changes.
+   */
+  @Test
+  void sameChatIdForTwoDifferentUsersProducesIsolatedConversationHistories() {
+    ChatMemoryRepository realRepository = new CaffeineChatMemoryRepository(50, 60);
+    ChatMemory realChatMemory =
+        MessageWindowChatMemory.builder()
+            .chatMemoryRepository(realRepository)
+            .maxMessages(20)
+            .build();
+    QueryService serviceWithRealMemory =
+        new QueryService(
+            vectorStore,
+            answerGenerationService,
+            realChatMemory,
+            new CitationParser(),
+            documentRepository,
+            userRepository,
+            libraryAccessService,
+            permissionHistoryService,
+            chatService,
+            new QueryMetrics(new SimpleMeterRegistry()),
+            new QueryProperties(5, 0.3));
+
+    UUID otherUserId = UUID.randomUUID();
+    User otherUser = new User("other-subject", "issuer", "other@example.com", "Other User");
+    otherUser.setOrganizationId(organizationId);
+    when(userRepository.findById(otherUserId)).thenReturn(Optional.of(otherUser));
+    // useKnowledge=false with no requested library keeps the search scope empty regardless of
+    // what this account may read, so the readable-set stub's content is irrelevant here - the
+    // vector store and permission-history check are simply skipped for an empty scope (see
+    // QueryService#query and #checkAgainstPermissionHistory).
+    when(libraryAccessService.readableLibraryIds(otherUserId, organizationId)).thenReturn(Set.of());
+
+    UUID sharedChatId = UUID.randomUUID();
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    List<String> usedConversationKeys = new ArrayList<>();
+    when(answerGenerationService.generateAnswer(any(), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              String conversationKey = invocation.getArgument(2);
+              usedConversationKeys.add(conversationKey);
+              realChatMemory.add(
+                  conversationKey, new UserMessage("question from " + conversationKey));
+              realChatMemory.add(
+                  conversationKey, new AssistantMessage("answer to " + conversationKey));
+              return chatResponse;
+            });
+
+    serviceWithRealMemory.query("Question A", sharedChatId, currentUserId, false, List.of());
+    serviceWithRealMemory.query("Question B", sharedChatId, otherUserId, false, List.of());
+
+    assertThat(usedConversationKeys).hasSize(2);
+    String keyUserA = usedConversationKeys.get(0);
+    String keyUserB = usedConversationKeys.get(1);
+    assertThat(keyUserA).isNotEqualTo(keyUserB);
+
+    List<Message> historyUserA = realChatMemory.get(keyUserA);
+    List<Message> historyUserB = realChatMemory.get(keyUserB);
+
+    assertThat(historyUserA).hasSize(2);
+    assertThat(historyUserB).hasSize(2);
+    assertThat(historyUserA.stream().map(Message::getText))
+        .allMatch(text -> text.contains(keyUserA))
+        .noneMatch(text -> text.contains(keyUserB));
+    assertThat(historyUserB.stream().map(Message::getText))
+        .allMatch(text -> text.contains(keyUserB))
+        .noneMatch(text -> text.contains(keyUserA));
   }
 
   /**

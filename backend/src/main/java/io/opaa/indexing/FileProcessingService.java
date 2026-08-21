@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,6 +26,7 @@ public class FileProcessingService {
   private final VectorStore vectorStore;
   private final ChecksumService checksumService;
   private final IndexingMetrics metrics;
+  private final LibraryStorageQuotaService storageQuotaService;
 
   public FileProcessingService(
       DocumentService documentService,
@@ -32,13 +34,15 @@ public class FileProcessingService {
       DocumentRepository documentRepository,
       VectorStore vectorStore,
       ChecksumService checksumService,
-      IndexingMetrics metrics) {
+      IndexingMetrics metrics,
+      LibraryStorageQuotaService storageQuotaService) {
     this.documentService = documentService;
     this.chunkingService = chunkingService;
     this.documentRepository = documentRepository;
     this.vectorStore = vectorStore;
     this.checksumService = checksumService;
     this.metrics = metrics;
+    this.storageQuotaService = storageQuotaService;
   }
 
   public FileProcessingResult processFile(Path file, KnowledgeLibrary targetLibrary)
@@ -71,6 +75,18 @@ public class FileProcessingService {
 
     String contentType = Files.probeContentType(file);
     long fileSize = Files.size(file);
+
+    // #119: checked after the deletion above (if this file replaces an existing document), so
+    // usedBytes already excludes the content being superseded and this measures the true delta -
+    // see LibraryStorageQuotaService's own Javadoc.
+    if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), fileSize)) {
+      log.warn(
+          "Skipping {}: library {} storage quota would be exceeded",
+          fileName,
+          targetLibrary.getId());
+      metrics.recordSkipped();
+      return FileProcessingResult.QUOTA_EXCEEDED;
+    }
 
     var doc = new Document(fileName, filePath, contentType, fileSize);
     doc.setLibraryId(targetLibrary.getId());
@@ -181,6 +197,17 @@ public class FileProcessingService {
 
     String contentType = Files.probeContentType(localFile);
 
+    // #119: see processFile's own comment on why this runs after the existing-document deletion
+    // above.
+    if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), remoteFileSize)) {
+      log.warn(
+          "Skipping {}: library {} storage quota would be exceeded",
+          fileName,
+          targetLibrary.getId());
+      metrics.recordSkipped();
+      return FileProcessingResult.QUOTA_EXCEEDED;
+    }
+
     var doc = new Document(fileName, remoteUrl, contentType, remoteFileSize, sourceType);
     doc.setLibraryId(targetLibrary.getId());
     doc.setOrganizationId(targetLibrary.getOrganizationId());
@@ -251,6 +278,17 @@ public class FileProcessingService {
       logLibraryChange(existingDoc, targetLibrary);
       vectorStore.delete("document_id == '" + existingDoc.getId().toString() + "'");
       documentRepository.delete(existingDoc);
+    }
+
+    // #119: see processFile's own comment on why this runs after the existing-document deletion
+    // above.
+    if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), contentBytes.length)) {
+      log.warn(
+          "Skipping RSS entry {}: library {} storage quota would be exceeded",
+          entryUrl,
+          targetLibrary.getId());
+      metrics.recordSkipped();
+      return FileProcessingResult.QUOTA_EXCEEDED;
     }
 
     var doc =

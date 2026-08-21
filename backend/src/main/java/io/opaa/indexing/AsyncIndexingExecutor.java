@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -24,18 +25,21 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   private final IndexingJobService indexingJobService;
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final IndexingRunEventRepository indexingRunEventRepository;
+  private final LibraryStorageQuotaService storageQuotaService;
 
   public AsyncIndexingExecutor(
       DocumentService documentService,
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
       FilesystemPathAllowlist filesystemAllowlist,
-      IndexingRunEventRepository indexingRunEventRepository) {
+      IndexingRunEventRepository indexingRunEventRepository,
+      LibraryStorageQuotaService storageQuotaService) {
     this.documentService = documentService;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
     this.filesystemAllowlist = filesystemAllowlist;
     this.indexingRunEventRepository = indexingRunEventRepository;
+    this.storageQuotaService = storageQuotaService;
   }
 
   @Override
@@ -107,7 +111,16 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
         try {
           log.info("Processing: {}", fileName);
           FileProcessingResult result = fileProcessingService.processFile(file, targetLibrary);
-          if (result == FileProcessingResult.SKIPPED) {
+          if (result == FileProcessingResult.QUOTA_EXCEEDED) {
+            // #119: the library's storage quota was reached mid-run - the file is skipped, not
+            // treated as an error, and the reason is recorded so an operator can see why the
+            // bestand stopped growing (#604).
+            events.record(
+                IndexingEventCategory.REJECTED,
+                storageQuotaService.quotaExceededMessage(targetLibrary.getId()),
+                fileName);
+            progress.recordSkipped();
+          } else if (result == FileProcessingResult.SKIPPED) {
             progress.recordSkipped();
           } else {
             progress.recordProcessed();
