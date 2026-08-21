@@ -325,7 +325,7 @@ describe('chatStore', () => {
         http.post('/api/v1/query', () => {
           return HttpResponse.json(
             {
-              error: 'Rate limit exceeded. Please try again later.',
+              error: 'Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut.',
               status: 429,
               timestamp: new Date().toISOString(),
             },
@@ -337,7 +337,7 @@ describe('chatStore', () => {
       await useChatStore.getState().sendMessage('Hello')
 
       const state = useChatStore.getState()
-      expect(state.error).toBe('Rate limit exceeded. Please try again later.')
+      expect(state.error).toBe('Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut.')
       expect(state.isLoading).toBe(false)
       expect(state.messages).toHaveLength(1)
       expect(state.messages[0].role).toBe('user')
