@@ -116,10 +116,12 @@ class UserServiceConcurrentDistinctUserLoginIntegrationTest {
 
       List<User> results = new ArrayList<>();
       for (Future<User> future : futures) {
-        // A connection-pool timeout ("Connection is not available") surfaces here as a
-        // reproduction of #307 - none of the twelve distinct-user first logins may fail, even
-        // though there are more concurrent requests than Hikari's default maximum-pool-size of 10.
-        results.add(future.get(30, TimeUnit.SECONDS));
+        // #307 review, finding 1: 60s here, not 30s - Hikari's own connectionTimeout is 30s (the
+        // Spring Boot default, unchanged), so a 30s wait here raced it and could win, surfacing a
+        // bare TimeoutException from this line instead of Hikari's own "Connection is not
+        // available" message that actually names the defect. 60s lets Hikari's timeout fire first
+        // in every red run.
+        results.add(future.get(60, TimeUnit.SECONDS));
       }
 
       assertThat(results).extracting(User::getId).doesNotContainNull();
@@ -134,7 +136,15 @@ class UserServiceConcurrentDistinctUserLoginIntegrationTest {
         assertThat(spaces.getFirst().isDefault()).isEqualTo(true);
       }
     } finally {
-      executor.shutdown();
+      // #307 review, finding 2: shutdown() alone neither interrupts nor waits, so a red repetition
+      // could leave up to twelve threads still parked in HikariPool.getConnection when the next
+      // @RepeatedTest repetition starts - they would then compete with that repetition's cleanUp()
+      // and its own twelve fresh login threads for the same exhausted pool, making repetitions 2
+      // and 3 meaningless after a single red one. shutdownNow() interrupts the blocked borrow()
+      // calls (HikariPool.getConnection is interruptible) and awaitTermination bounds how long this
+      // finally block itself waits for that to take effect.
+      executor.shutdownNow();
+      executor.awaitTermination(10, TimeUnit.SECONDS);
     }
   }
 

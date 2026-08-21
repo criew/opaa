@@ -5,6 +5,7 @@ import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditSubjectKind;
+import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
 import java.time.Instant;
@@ -12,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -32,26 +32,19 @@ public class UserService {
   private final SpaceService spaceService;
   private final AuthProperties authProperties;
   private final AuditEventRecorder auditEventRecorder;
-
-  /**
-   * #307/#294: a running total of personal-space provisioning failures since this instance started,
-   * logged alongside every failure below so a repeatedly failing provisioning stands out in the
-   * logs instead of blending into a stream of identical-looking single-occurrence errors - the
-   * "mindestens ein WARN mit Zähler" #307 asks for, without standing up new metrics infrastructure
-   * for what is meant to be a rare, self-healing condition (each failure is retried on the user's
-   * next login, see {@link #ensurePersonalSpace}'s Javadoc).
-   */
-  private final AtomicLong failedProvisioningCount = new AtomicLong();
+  private final AuthMetrics authMetrics;
 
   public UserService(
       UserRepository userRepository,
       SpaceService spaceService,
       AuthProperties authProperties,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      AuthMetrics authMetrics) {
     this.userRepository = userRepository;
     this.spaceService = spaceService;
     this.authProperties = authProperties;
     this.auditEventRecorder = auditEventRecorder;
+    this.authMetrics = authMetrics;
   }
 
   /**
@@ -226,6 +219,13 @@ public class UserService {
    * winner's row) keeps calling the idempotent {@link SpaceService#ensureDefaultSpace}, which is
    * still the only one of the two that is actually safe to call when a personal space might already
    * exist.
+   *
+   * <p>#294 asked whether a failed provisioning attempt should become visible instead of merely
+   * logged; {@link AuthMetrics#recordPersonalSpaceProvisioningFailed()} answers that with the
+   * project's existing Micrometer counters ({@code IndexingMetrics}/{@code QueryMetrics} follow the
+   * same pattern) rather than a log line alone - the running total is still included in the log
+   * message below too, so a repeatedly failing provisioning stands out there as well instead of
+   * blending into a stream of identical-looking single-occurrence errors.
    */
   private void ensurePersonalSpace(UUID userId, UUID organizationId, boolean createdHere) {
     try {
@@ -235,13 +235,13 @@ public class UserService {
         spaceService.ensureDefaultSpace(userId, organizationId);
       }
     } catch (RuntimeException e) {
-      long failureCount = failedProvisioningCount.incrementAndGet();
+      authMetrics.recordPersonalSpaceProvisioningFailed();
       log.error(
           "Failed to provision personal space for user {} (organization {}); will retry on next"
               + " login (failure #{} since startup)",
           userId,
           organizationId,
-          failureCount,
+          (long) authMetrics.personalSpaceProvisioningFailedCount(),
           e);
     }
   }
