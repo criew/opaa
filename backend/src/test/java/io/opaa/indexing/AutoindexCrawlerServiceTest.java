@@ -53,6 +53,32 @@ class AutoindexCrawlerServiceTest {
   }
 
   @Test
+  void derivesNameFromHrefWhenTheDisplayedNameIsTruncatedInHtmlTableLayout() {
+    // #229 (validating the Rheinfurt demo corpus - realistic, long, hyphenated file names - against
+    // this format, docs/features/demo-instance.md's own "erprobte Empfehlung") surfaced that the
+    // #550 review, finding 4 fix (see derivesNameFromHrefWhenTheDisplayedNameIsTruncated above) was
+    // only ever applied to the link-based layouts (parseLinkBasedLayout) - Apache's "IndexOptions
+    // FancyIndexing HTMLTable" truncates the *displayed* name exactly the same way (rendered with a
+    // "..&gt;" suffix) and was never covered: parseHtmlTableLayout used the anchor's link text
+    // outright, silently losing the file extension and dropping every long-named entry from
+    // SupportedDocumentFormats for the very listing format this project recommends.
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[   ]"></td>\
+        <td><a href="a-quite-long-report-file-name-example.pdf">a-quite-long-repo..&gt;</a></td>\
+        <td>2025-06-10 14:22</td><td>4.5M</td></tr>
+        </table>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://example.com/files", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().name()).isEqualTo("a-quite-long-report-file-name-example.pdf");
+  }
+
+  @Test
   void skipsParentDirectoryByAltText() {
     String html =
         """
@@ -414,6 +440,27 @@ class AutoindexCrawlerServiceTest {
 
     assertThat(entries).hasSize(1);
     assertThat(entries.getFirst().name()).isEqualTo("a-quite-long-report-file-name-example.pdf");
+  }
+
+  @Test
+  void preservesALiteralPlusInAFileNameInsteadOfDecodingItToASpace() {
+    // #229 review, klein 6: URLDecoder.decode is built for application/x-www-form-urlencoded
+    // (query strings), where '+' means a space - but a listing's href is a URL *path* segment,
+    // where a literal '+' has no such meaning and can be an ordinary character in a real file
+    // name. Before the fix, "bericht+final.pdf" surfaced here as "bericht final.pdf".
+    String html =
+        """
+        <html><head><title>Index of /files/</title></head><body>
+        <pre><a href="bericht+final.pdf">bericht+final.pdf</a>\
+                  10-Jun-2025 14:22  1K
+        </pre></body></html>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://example.com/files", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().name()).isEqualTo("bericht+final.pdf");
   }
 
   @Test

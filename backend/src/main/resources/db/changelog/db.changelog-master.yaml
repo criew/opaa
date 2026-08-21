@@ -111,3 +111,5 @@ databaseChangeLog:
       file: db/changelog/changes/055-add-triggered-by-to-indexing-jobs.yaml
   - include:
       file: db/changelog/changes/056-widen-indexing-run-event-category-schedule-skipped.yaml
+  - include:
+      file: db/changelog/changes/057-widen-indexing-run-event-category-format-mismatch.yaml

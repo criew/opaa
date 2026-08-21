@@ -39,32 +39,83 @@ sha256sum -c MANIFEST.sha256
 Details zum Reproduktionsverfahren, den verwendeten Quellen und der Werkzeugwahl für
 PDF/DOCX/PPTX: [`generator/README.md`](generator/README.md) und [`corpus/SOURCE.md`](corpus/SOURCE.md).
 
+## Compose-Stack starten (#229)
+
+Der Korpus wird im Docker-Compose-Stack unter dem Profil `demo` bereitgestellt — zwei zusätzliche,
+rein lesende Webserver-Services, über die **bestehende** Konnektoren (`AutoindexCrawlerService` für
+`HTTP_DIRECTORY`, der RSS-Konnektor für `RSS_FEED`) den Korpus indizieren, ohne eine Zeile neuen
+Ingestion-Codes. Dieser Stack läuft im **dev-Auth-Modus** (`SPRING_PROFILES_ACTIVE=docker,dev`, siehe
+`.env.docker.example`), also ohne echte Anmeldung — das ist noch **nicht** die fertige Demo-Instanz
+mit Keycloak-Anmeldung, Nutzern, Spaces und Rechten aus
+[`docs/features/demo-instance.md`](../docs/features/demo-instance.md); die bringen erst #712 (Seed)
+und #713 (Drehbuch, Installationsanleitung).
+
+Voraussetzung wie für jeden Compose-Start (siehe [`docs/deployment.md`](../docs/deployment.md),
+Abschnitt „Schnellstart"): eine eigene `.env.docker` aus der Vorlage:
+
+```bash
+cp .env.docker.example .env.docker
+```
+
+Für das `demo`-Profil zusätzlich in dieser `.env.docker` eintragen (siehe unten, „Zielprüfung
+ausgehender Abrufe"):
+
+```bash
+OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example
+```
+
+Dann:
+
+```bash
+docker compose --profile demo up
+```
+
+Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
+
+- **`demo-corpus`** (`httpd:2.4-alpine`) liefert die drei `HTTP_DIRECTORY`-Bibliotheken als getrennte
+  Unterverzeichnisse aus: `leistungen-meldewesen-ausweise/`, `leistungen-kfz-zulassung/`,
+  `satzungen-gebuehrenordnungen/`. `interne-dienstanweisungen-meldewesen/` (die `UPLOAD`-Bibliothek,
+  #712) wird bewusst **nicht** gemountet — nichts davon darf über HTTP erreichbar sein.
+- **`demo-presse`** (`httpd:2.4-alpine`) liefert `pressemitteilungen/` (RSS-Feed + HTML-Detailseiten)
+  unter dem Compose-Netzwerk-Alias `presse.stadt-rheinfurt.example`, weil `rss.xml` seine Detailseiten
+  absolut unter dieser Domain verlinkt (siehe `generator/presse.py`, `FEED_BASE_URL`) — bewusst eine
+  realistische Domain statt `localhost`, damit die Demo das `RSS_FEED`-Konnektorverhalten so vorführt,
+  wie es auch gegen eine echte Domain liefe.
+
+Beide Services binden standardmäßig nur an `127.0.0.1` (Ports `OPAA_DEMO_CORPUS_PORT`, Default 8091,
+und `OPAA_DEMO_PRESSE_PORT`, Default 8092) — zum Prüfen im Browser, nicht als öffentlicher Zugang; das
+Backend erreicht beide ohnehin über das Compose-Netzwerk unter ihrem Servicenamen bzw. Alias, ein
+Hafen nach außen ist dafür nicht nötig:
+
+- <http://127.0.0.1:8091/leistungen-meldewesen-ausweise/> (ebenso für die anderen beiden Verzeichnisse)
+- <http://127.0.0.1:8092/rss.xml>
+
+Listing-Format: Apache `IndexOptions FancyIndexing HTMLTable`
+(`webserver/httpd-demo-autoindex.conf`) — die erprobte Referenz, seit #550 aber keine Notwendigkeit
+mehr, siehe [`docs/features/demo-instance.md`](../docs/features/demo-instance.md), „Installation und
+Seed".
+
+Die Zielprüfung ausgehender Abrufe (`opaa.indexing.target-validation`, #267, standardmäßig aktiv)
+lehnt Compose-interne Adressen in privaten Bereichen ab — ohne Allowlist-Eintrag würde jede
+Indizierung dieser Quellen mit „Zieladresse liegt in einem gesperrten Adressbereich" abgelehnt. Der
+Eintrag steht bewusst **nicht** in `docker-compose.yml`: Der Backend-Service dort läuft immer, mit
+oder ohne `demo`-Profil, und ein dort fest eingetragener `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
+würde jede eigene Belegung dieser Variablen aus einer Betreiber-`.env.docker` überschreiben (Vorrang
+von `environment:` vor `env_file:` in Compose) — auch dort, wo das `demo`-Profil nie gestartet wird.
+Stattdessen trägt die eigene `.env.docker` den Wert ein (siehe oben, „Compose-Stack starten"), nach
+dem Vorbild von [`e2e/docker-compose.e2e.yml`](../e2e/docker-compose.e2e.yml), das denselben Eintrag
+für sein eigenes, isoliertes `e2e.env` setzt. `.env.docker.example` führt die Variable bereits
+auskommentiert mit diesem Demo-Wert als Beispiel.
+
+Bibliotheken, Berechtigungen und das Auslösen der Indizierung selbst richtet der Seed aus #712 ein;
+bis dahin lassen sich Quellen manuell oder über die API anlegen (`sourceType: HTTP_DIRECTORY` mit
+`sourceUrl: http://demo-corpus/<verzeichnis>/`, bzw. `sourceType: RSS_FEED` mit
+`sourceUrl: http://presse.stadt-rheinfurt.example/rss.xml`).
+
 ## Umfang außerhalb dieses Issues
 
-Dieses Verzeichnis liefert ausschließlich den Korpus. Nicht Teil von Issue #711:
+Dieses Verzeichnis liefert Korpus und Bereitstellung. Nicht Teil von Issue #229:
 
-- Bereitstellung im Compose-Stack (Webserver, Feed-Hosting) — #229
+- Erzeugung der Korpus-Inhalte selbst — #711
 - Nutzer, Spaces, Bibliotheken, Rechte, Indizierung — #712
 - Demo-Drehbuch und Installationsanleitung — #713
-
-### Was #229 für die Pressemitteilungen-Bibliothek konkret leisten muss
-
-Der RSS-Feed unter `demo/corpus/pressemitteilungen/rss.xml` referenziert seine Detailseiten absolut
-unter `http://presse.stadt-rheinfurt.example/<slug>.html` (siehe `generator/presse.py`,
-`FEED_BASE_URL`) — bewusst eine realistische Domain statt `localhost`, weil die Demo das
-RSS_FEED-Konnektorverhalten so vorführt, wie es auch gegen eine echte Domain liefe. Damit der
-Compose-Stack das einlöst, braucht #229 zwei Dinge, nach dem Vorbild von
-[`e2e/docker-compose.e2e.yml`](../e2e/docker-compose.e2e.yml):
-
-1. **Netzwerk-Alias im Compose-Netzwerk:** Der Webserver-Container, der `demo/corpus/` ausliefert,
-   muss unter dem Hostnamen `presse.stadt-rheinfurt.example` erreichbar sein (Compose
-   `networks.<netz>.aliases`), damit der `rss.xml`-Feed und seine `<link>`-Einträge innerhalb des
-   Compose-Netzwerks auflösbar sind.
-2. **Allowlist-Eintrag für die Zielprüfung ausgehender Abrufe:** `opaa.indexing.target-validation`
-   (#267, standardmäßig aktiv) lehnt Compose-interne Adressen in privaten/Loopback-Bereichen ab.
-   `presse.stadt-rheinfurt.example` muss deshalb in
-   `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` eingetragen werden — siehe
-   `e2e/docker-compose.e2e.yml` für das bereits erprobte Muster mit dem e2e-Profil.
-
-Dieselbe Überlegung gilt für den HTTP_DIRECTORY-Webserver, der `leistungen-meldewesen-ausweise/`,
-`leistungen-kfz-zulassung/` und `satzungen-gebuehrenordnungen/` ausliefert.

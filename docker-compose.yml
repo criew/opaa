@@ -66,5 +66,87 @@ services:
     profiles:
       - oidc
 
+  # Serves the three HTTP_DIRECTORY libraries of the Rheinfurt demo corpus (#229, Epic #708) as
+  # plain Apache directory listings - one subdirectory per library, so each stays separately
+  # indexable. "interne-dienstanweisungen-meldewesen/" (the UPLOAD library, #712) is deliberately
+  # not mounted here: nothing under this docroot may ever surface it over HTTP.
+  #
+  # httpd:2.4-alpine over nginx/python http.server: same reasoning as the "rss-feed" fixture
+  # service in e2e/docker-compose.e2e.yml, plus IndexOptions FancyIndexing HTMLTable
+  # (demo/webserver/httpd-demo-autoindex.conf) as the well-tested reference listing format -
+  # docs/features/demo-instance.md, "Installation und Seed", and that file's own comment for why
+  # this is a recommendation, not a requirement, since AutoindexCrawlerService started parsing
+  # <pre>/<ul> listings too (#550).
+  demo-corpus:
+    image: httpd:2.4-alpine
+    volumes:
+      - ./demo/corpus/leistungen-meldewesen-ausweise:/usr/local/apache2/htdocs/leistungen-meldewesen-ausweise:ro
+      - ./demo/corpus/leistungen-kfz-zulassung:/usr/local/apache2/htdocs/leistungen-kfz-zulassung:ro
+      - ./demo/corpus/satzungen-gebuehrenordnungen:/usr/local/apache2/htdocs/satzungen-gebuehrenordnungen:ro
+      - ./demo/webserver/httpd-demo-autoindex.conf:/usr/local/apache2/conf/extra/httpd-demo-autoindex.conf:ro
+    # Appends an Include for the mounted snippet above instead of shipping a full httpd.conf
+    # override, which would drift out of sync with whatever the floating httpd:2.4-alpine tag
+    # ships next (see the snippet's own comment). The grep guard makes this idempotent: without
+    # it, a container stopped and restarted without being recreated (its writable layer, and with
+    # it conf/httpd.conf, persists across "docker compose stop && start") would append the same
+    # Include line again on every restart.
+    command: >-
+      sh -c "grep -qF 'Include conf/extra/httpd-demo-autoindex.conf' conf/httpd.conf ||
+      echo 'Include conf/extra/httpd-demo-autoindex.conf' >> conf/httpd.conf &&
+      httpd-foreground"
+    # The backend reaches this service over the Compose network under its service name
+    # ("demo-corpus"), never through this port. Published to 127.0.0.1 unconditionally whenever
+    # the "demo" profile is started (not only when OPAA_DEMO_CORPUS_PORT is set - that variable
+    # only overrides the default host port 8091), for the "prüfen im Browser" step the issue asks
+    # for.
+    ports:
+      - "127.0.0.1:${OPAA_DEMO_CORPUS_PORT:-8091}:80"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost/leistungen-meldewesen-ausweise/",
+        ]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    profiles:
+      - demo
+
+  # Serves the Rheinfurt press office's static RSS feed and its HTML detail pages (#229). Its own
+  # service, not a subpath of "demo-corpus" above: demo/corpus/pressemitteilungen/rss.xml links its
+  # <item>s with absolute URLs under http://presse.stadt-rheinfurt.example/<slug>.html (see
+  # demo/README.md, "Compose-Stack starten (#229)", and demo/generator/presse.py's FEED_BASE_URL) -
+  # a realistic domain, deliberately not "localhost",
+  # so the demo exercises RSS_FEED indexing the same way it would against a real one. The alias
+  # below is what makes that domain resolve inside the Compose network; RssFeedIndexingExecutor
+  # fetches the feed URL and each entry's own link directly, never a directory listing, so no
+  # autoindex config is needed here.
+  demo-presse:
+    image: httpd:2.4-alpine
+    volumes:
+      - ./demo/corpus/pressemitteilungen:/usr/local/apache2/htdocs:ro
+    networks:
+      default:
+        aliases:
+          - presse.stadt-rheinfurt.example
+    # The backend reaches this service over the Compose network under its alias above, never
+    # through this port. Published to 127.0.0.1 unconditionally whenever the "demo" profile is
+    # started (OPAA_DEMO_PRESSE_PORT only overrides the default host port 8092), for the "prüfen
+    # im Browser" step the issue asks for - same reasoning as demo-corpus's own port above.
+    ports:
+      - "127.0.0.1:${OPAA_DEMO_PRESSE_PORT:-8092}:80"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/rss.xml"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    profiles:
+      - demo
+
 volumes:
   opaa-postgres-data:
