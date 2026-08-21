@@ -41,11 +41,13 @@ public final class ReportWriter {
             cfg.ollamaImage()));
     sb.append(
         format(
-            "  chunkSize=%d (== Anwendungsdefault: %s), chunkOverlap=%d, searchTopK=%d, "
-                + "pgvectorIndexType=%s\n",
+            "  chunkSize=%d (== Anwendungsdefault: %s), chunkOverlap=%d, documentTopK=%d, "
+                + "chunkTopK=%d, searchTopK=%d, pgvectorIndexType=%s\n",
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),
             cfg.chunkOverlap(),
+            cfg.documentTopK(),
+            cfg.chunkTopK(),
             cfg.searchTopK(),
             cfg.pgvectorIndexType()));
     sb.append(
@@ -58,13 +60,27 @@ public final class ReportWriter {
             cfg.goldenDatasetFile(), cfg.goldenCaseCount(), shortHash(cfg.goldenDatasetSha256())));
     sb.append(format("  Laufzeit: %.1f s\n\n", cfg.runDurationSeconds()));
 
-    var invariant = report.oneChunkInvariant();
+    var invariant = report.chunkCountInvariant();
     sb.append(
         format(
-            "Ein-Chunk-Invariante: %d Dokumente geprüft, %d Verletzung(en)%s\n\n",
+            "Chunk-Zahl-Invariante (%s): %d Dokumente geprüft, %d Verletzung(en)%s\n\n",
+            invariant.expectationDescription(),
             invariant.documentsChecked(),
             invariant.violations().size(),
             invariant.holds() ? " — hält" : " — VERLETZT: " + invariant.violations()));
+
+    var answerSpan = report.answerSpanOverall();
+    if (answerSpan.applicableCases() > 0) {
+      String meanRank =
+          answerSpan.meanSpanRank() == null ? "n/a" : format("%.2f", answerSpan.meanSpanRank());
+      sb.append(
+          format(
+              "Antwort-Span-Metrik (Chunkebene): %d anwendbare Fälle, "
+                  + "answerSpanHitRate@5=%.3f, mittlerer Rang des ersten Treffers=%s\n\n",
+              answerSpan.applicableCases(), answerSpan.answerSpanHitRateAt5(), meanRank));
+    } else {
+      sb.append("Antwort-Span-Metrik (Chunkebene): keine anwendbaren Fälle in dieser Domäne\n\n");
+    }
 
     var notes = report.datasetNotes();
     sb.append(

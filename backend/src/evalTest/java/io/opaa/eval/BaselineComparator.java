@@ -286,13 +286,13 @@ public final class BaselineComparator {
   public record ComparisonResult(
       boolean baselineValid,
       List<FixedPointMismatch> fixedPointMismatches,
-      boolean oneChunkInvariantHolds,
-      List<EvaluationReport.OneChunkInvariantResult.Violation> oneChunkInvariantViolations,
+      boolean chunkCountInvariantHolds,
+      List<EvaluationReport.ChunkCountInvariantResult.Violation> chunkCountInvariantViolations,
       List<MetricCheck> checks) {
 
     public boolean passed() {
       return baselineValid
-          && oneChunkInvariantHolds
+          && chunkCountInvariantHolds
           && checks.stream().allMatch(MetricCheck::passed);
     }
 
@@ -304,7 +304,7 @@ public final class BaselineComparator {
   public static ComparisonResult compare(Baseline baseline, EvaluationReport report) {
     List<FixedPointMismatch> mismatches = fixedPointMismatches(baseline, report);
     boolean baselineValid = mismatches.isEmpty();
-    var invariant = report.oneChunkInvariant();
+    var invariant = report.chunkCountInvariant();
 
     List<MetricCheck> checks = new ArrayList<>();
     if (baselineValid) {
@@ -400,6 +400,20 @@ public final class BaselineComparator {
         "chunkSizeMatchesApplicationDefault",
         String.valueOf(fp.chunkSizeMatchesApplicationDefault()),
         String.valueOf(cfg.chunkSizeMatchesApplicationDefault()));
+    // Issue #721, ADR-0012 Nachtrag: chunkOverlap and the document-bound k-window are now
+    // measurement-contract fixed points — see FixedPoints' Javadoc for why.
+    addIfDiffers(
+        mismatches,
+        "chunkOverlap",
+        String.valueOf(fp.chunkOverlap()),
+        String.valueOf(cfg.chunkOverlap()));
+    addIfDiffers(
+        mismatches,
+        "documentTopK",
+        String.valueOf(fp.documentTopK()),
+        String.valueOf(cfg.documentTopK()));
+    addIfDiffers(
+        mismatches, "chunkTopK", String.valueOf(fp.chunkTopK()), String.valueOf(cfg.chunkTopK()));
     // ADR-0012, decision 3: searchTopK=10 and the deliberate omission of the production similarity
     // threshold are both part of the measurement contract (PR #301 review, Befund 4) — a change to
     // either would silently change what every metric means, not just how well retrieval scored.

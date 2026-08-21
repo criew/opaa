@@ -65,10 +65,10 @@ class BaselineRegressionTest {
               + ". Siehe eval/baseline/README.md für die bewusste Baseline-Aktualisierung.");
     }
 
-    assertThat(result.oneChunkInvariantHolds())
+    assertThat(result.chunkCountInvariantHolds())
         .as(
-            "Ein-Chunk-Invariante verletzt (ADR-0010) — harter Fehlschlag, kein Toleranzfall: %s",
-            result.oneChunkInvariantViolations())
+            "Chunk-Zahl-Invariante verletzt (ADR-0010) — harter Fehlschlag, kein Toleranzfall: %s",
+            result.chunkCountInvariantViolations())
         .isTrue();
 
     assertThat(result.failedChecks())

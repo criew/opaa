@@ -113,13 +113,24 @@ wieder aktivierte GPU-Anforderung nicht unbemerkt durchlässt.
    ADR-0010. Der Harness assertiert diesen Wert zusätzlich gegen den zum Zeitpunkt der letzten
    Baseline bekannten Anwendungsdefault (1000); weicht er ab, bricht der Lauf ab, statt still mit
    einer möglicherweise nicht mehr gültigen Ein-Chunk-Invariante weiterzumessen.
-3. Prüft die **Ein-Chunk-Invariante** (ADR-0010): Jedes Korpusdokument muss nach dem echten
-   `TokenTextSplitter`-Lauf genau einen Chunk ergeben. Das ist die beweiskräftige Prüfung, die die
-   Byte-Vorabprüfung im Generator (`MAX_DOCUMENT_BYTES`) nicht liefern kann — siehe ADR-0010.
-4. Führt jeden Fall aus `eval/golden/comic-characters.json` direkt gegen
-   `VectorStore.similaritySearch(topK=10)` aus — kein LLM, keine `QueryService`-Anbindung.
-5. Berechnet Hit Rate@5, MRR, nDCG@10 und Recall@10, gesamt sowie aufgeschlüsselt nach Kategorie,
-   Schwierigkeit und Sprache, und schreibt einen Report.
+3. Prüft die **Chunk-Zahl-Invariante** der jeweiligen Domäne (ADR-0010, Nachtrag Issue #721):
+   `comic-characters` verlangt weiterhin genau einen Chunk je Dokument (Ein-Chunk-Invariante,
+   unverändert). Das ist die beweiskräftige Prüfung, die die Byte-Vorabprüfung im Generator
+   (`MAX_DOCUMENT_BYTES`) nicht liefern kann — siehe ADR-0010.
+4. Führt jeden Fall aus `eval/golden/comic-characters.json` direkt gegen `VectorStore.similaritySearch`
+   aus — kein LLM, keine `QueryService`-Anbindung. Das Suchfenster ist ausdrücklich
+   **dokumentbezogen** (ADR-0012 Nachtrag, Issue #721): `io.opaa.eval.DocumentRanking` dedupliziert
+   die Chunk-Treffer zu Dokumenten (Rang eines Dokuments = Rang seines bestplatzierten Chunks —
+   vormals die private `dedupeByFileName`, jetzt explizit gemacht) und stellt sicher, dass
+   `documentTopK=10` unterschiedliche Dokumente im Fenster stehen, nicht nur zehn Chunks. Für
+   `comic-characters` (`maxChunksPerDocument=1`) ist das bitgleich zum bisherigen Verhalten.
+5. Berechnet Hit Rate@5, MRR, nDCG@10 und Recall@10 auf Dokumentebene, gesamt sowie aufgeschlüsselt
+   nach Kategorie, Schwierigkeit und Sprache, und schreibt einen Report. Zusätzlich (nur für Domänen
+   mit `answer_span`-Fällen — `comic-characters` hat keine): eine zweite Metrikfamilie auf
+   Chunkebene, `io.opaa.eval.ChunkAnswerSpanMetrics` (`answerSpanHitRate@5`, Rang des ersten
+   Treffer-Chunks). Der Lauf schreibt außerdem eine Chunk-Map
+   (`build/eval-reports/chunk-map-<domäne>.json`, nicht committet): welches Dokument in wie viele
+   Chunks zerfiel und an welchen Zeichenpositionen die Grenzen lagen.
 
 ### Report lesen
 
@@ -157,6 +168,16 @@ Der Report führt den verwendeten Wert deshalb als `chunkOverlap` mit: Zwei Repo
 auseinanderhalten, aber ein Vergleich beantwortet die Frage nicht. Eine belastbare Aussage über die
 Überlappung braucht Referenzfälle an mehrchunkigen Dokumenten, also einen eigenen Teilkorpus.
 
+**Update (Issue #721): Der Harness selbst kann das inzwischen messen — dieser Korpus weiterhin
+nicht.** `RetrievalEvaluationHarnessTest` unterstützt seit #721 mehrchunkige Domänen: ein
+dokumentbezogenes k-Fenster (`io.opaa.eval.DocumentRanking`), eine je Domäne konfigurierbare
+Chunk-Zahl-Erwartung (`io.opaa.eval.ChunkCountExpectation`, ADR-0010 Nachtrag) und eine zweite
+Metrikfamilie auf Chunkebene über eingefrorene Antwort-Textausschnitte
+(`io.opaa.eval.ChunkAnswerSpanMetrics`, ADR-0012 Nachtrag). `comic-characters` bleibt bewusst
+einchunkig (`ChunkCountExpectation.exactlyOneChunk()`) — die oben beschriebene Lücke schließt erst die
+mehrchunkige Domäne aus #234, sobald deren Korpus und Golden Dataset vorliegen. Details zum
+Messvertrag: [ADR-0012, Nachtrag](../docs/decisions/0012-messvertrag-retrieval-harness.md#nachtrag-dokumentbezogenes-k-fenster-und-chunkebene-issue-721).
+
 ### Kalibrierungshinweis
 
 Der Korpus ist absichtlich uniform (siehe `eval/golden/README.md`, Abschnitt „Kalibrierungshinweis
@@ -193,9 +214,10 @@ Baseline, die Schwellenwerte und die CI-Anbindung aufgesetzt:
 ### Messvertrag
 
 Was genau gemessen wird — Gain-Funktion, IDCG-Basis, die ungleichen Fenster von Hit Rate@5 und
-nDCG@10, dass ohne Ähnlichkeitsschwelle bei `topK=10` gemessen wird statt mit der
-Produktionskonfiguration (`top-k=5`/`threshold=0,3`), wie die Recall-Obergrenze bei `|E|>k`
-gehandhabt wird, und dass Mikro- statt Makro-Mittel gebildet wird — ist in
+nDCG@10, dass ohne Ähnlichkeitsschwelle gemessen wird statt mit der Produktionskonfiguration
+(`top-k=5`/`threshold=0,3`), wie die Recall-Obergrenze bei `|E|>k` gehandhabt wird, dass Mikro- statt
+Makro-Mittel gebildet wird, und (seit Messvertrag-Version 2, Issue #721) dass das k-Fenster
+ausdrücklich dokumentbezogen ist und eine zweite Metrikfamilie auf Chunkebene existiert — ist in
 [ADR-0012](../docs/decisions/0012-messvertrag-retrieval-harness.md) festgehalten, nicht nur im
 Code. Jeder Report führt die Version dieses Messvertrags (`measurementContractVersion`); eine
 künftige Änderung an einer dieser Festlegungen muss die Version erhöhen, damit historische Reports

@@ -2,7 +2,10 @@
 
 ## Status
 
-Vorgeschlagen — Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
+Akzeptiert — ergänzt um den [Nachtrag vom 2026-08-21](#nachtrag-dokumentbezogenes-k-fenster-und-chunkebene-issue-721)
+(Maintainer-Entscheidung zu Issue #721/#234: Messvertrag-Version 2, dokumentbezogenes k-Fenster,
+zweite Metrikfamilie auf Chunkebene; die Entscheidungen 1–7 unten bleiben unverändert in Kraft).
+Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
 
@@ -89,3 +92,70 @@ in "Offen" der Entwurfsfassung dieses ADRs aufgeworfene Frage, unten als entschi
 - Der JSON-Report wächst um die Ergebnisse aller Anfragen (bei 121 Fällen niedrige zweistellige
   KB-Größenordnung) — für dieses Korpus vernachlässigbar, bei künftigen, deutlich größeren
   Golden-Datasets (#234) erneut zu bewerten.
+
+---
+
+## Nachtrag: Dokumentbezogenes k-Fenster und Chunkebene (Issue #721)
+
+> **Nachtrag vom 2026-08-21, Maintainer-Entscheidung zu Issue #721/#234 (akzeptiert).** Dieser ADR
+> ist bereits akzeptiert; dieser Abschnitt schreibt den Messvertrag fort, statt ihn stillschweigend
+> umzuschreiben — die Entscheidungen 1–7 oben gelten unverändert für die Ranking-Metrikfamilie auf
+> Dokumentebene.
+
+### Warum eine Fortschreibung nötig ist
+
+Entscheidung 3 oben legt `topK=10` fest, ohne zwischen „Chunk" und „Dokument" zu unterscheiden — für
+`comic-characters` (Ein-Chunk-Invariante, ADR-0010) ist das dieselbe Zahl, weil dort jeder Chunk ein
+eigenes Dokument ist. Diese Vieldeutigkeit war folgenlos, solange nur einchunkige Domänen existierten.
+Issue #721 macht sie explizit, weil sie es für eine mehrchunkige Domäne (#234) nicht mehr sein darf:
+Zehn Chunks können nach Deduplizierung nur drei oder vier unterschiedliche Dokumente sein, und ohne
+diese Fortschreibung würde nDCG@10/Recall@10 dann faktisch über ein Fenster von drei bis vier
+Dokumenten gemessen — unbemerkt, weil `dedupeByFileName` (die schon vor #721 bestehende
+Chunk-zu-Dokument-Aggregation im Harness) das Fenster nie korrigierte.
+
+### 8. Das k-Fenster ist ausdrücklich dokumentbezogen
+
+Entscheidung 3 wird präzisiert, nicht ersetzt: „`topK=10`" heißt ab Messvertrag-Version 2
+„`documentTopK=10` unterschiedliche Dokumente", nicht „zehn Treffer der Rohsuche". Der Harness sucht
+mit einem separat geführten `chunkTopK`, das deterministisch groß genug gewählt wird, damit die
+Deduplizierung `documentTopK` unterschiedliche Dokumente erreichen kann:
+`chunkTopK = documentTopK · maxChunksPerDocument`, wobei `maxChunksPerDocument` eine je Domäne
+deklarierte Obergrenze ist (`io.opaa.eval.EvalDomainConfig`), keine zur Laufzeit ermittelte Schätzung
+— siehe `io.opaa.eval.DocumentRanking`. Für `comic-characters` ist `maxChunksPerDocument = 1`, also
+`chunkTopK == documentTopK == 10` — bitgleich zum Verhalten vor diesem Nachtrag.
+
+Ein Lauf, der `documentTopK` nicht erreicht (weil der Korpus selbst weniger Dokumente als
+`documentTopK` enthält oder `chunkTopK` nicht ausreicht), meldet das über
+`DocumentRanking.DocumentWindowResult#reachedDocumentTopK()` ausdrücklich, statt still ein kleineres
+Fenster zu messen.
+
+### 9. Zweite Metrikfamilie: Chunkebene über `answer_span`
+
+Zusätzlich zur (weiterhin primären, für Baseline und CI maßgeblichen) Ranking-Metrikfamilie auf
+Dokumentebene gibt es eine zweite, unabhängige Familie auf Chunkebene
+(`io.opaa.eval.ChunkAnswerSpanMetrics`): `answerSpanHitRate@5` und der Rang des ersten Chunks, der
+einen eingefrorenen, wörtlichen Textausschnitt (`GoldenCase#answerSpan()`, optionales
+Golden-Dataset-Feld `answer_span`) enthält. Bewusst ein Textausschnitt, keine Chunk-Index-Ground-Truth
+— ein Chunk-Index wird bei jeder Änderung von `chunk-size`/`chunk-overlap` lautlos falsch, ein
+wörtlicher Ausschnitt bleibt unter beiden Parametern stabil und macht dadurch den Vergleich
+verschiedener Chunking-Konfigurationen (#374) erst möglich. Für eine Domäne, deren Golden Cases kein
+`answer_span` führen (`comic-characters`: die Ein-Chunk-Invariante macht eine Chunk-Ebene dort
+bedeutungslos), liefert die Aggregation `ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE`
+(`applicableCases=0`) statt eines gemessenen, aber bedeutungslosen Werts.
+
+### 10. Messvertrag-Version 2
+
+`EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` wird von 1 auf 2 erhöht (Entscheidung 6 oben:
+jede Änderung an den Messvertrag-Festlegungen macht bestehende Baselines ungültig und erfordert einen
+bewussten neuen Baseline-Lauf). `chunkOverlap`, `documentTopK` und `chunkTopK` werden zusätzliche
+Gültigkeitsfelder (`Baseline.FixedPoints`) — `chunkOverlap` existierte vor #721 nur als
+Report-Metadatum (informativ, weil es bei einer Ein-Chunk-Domäne nichts verändern kann), ist aber für
+eine mehrchunkige Domäne ein Wert, der das Messergebnis unmittelbar bestimmt.
+
+### Erwartung an die comic-characters-Baseline
+
+Für eine Domäne mit `maxChunksPerDocument = 1` fallen `chunkTopK` und `documentTopK` zusammen, und die
+Chunkebene liefert `NOT_APPLICABLE` — die neue Fassung des Harnesses berechnet für `comic-characters`
+dieselbe Rangliste wie die alte. **Erwartung: bitgleiche Zahlen** gegenüber der unter
+Messvertrag-Version 1 gemessenen Baseline; die PR-Beschreibung zu Issue #721 enthält den
+Vorher/Nachher-Vergleich als Beleg.

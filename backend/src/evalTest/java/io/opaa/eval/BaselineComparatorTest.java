@@ -3,7 +3,7 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-import io.opaa.eval.EvaluationReport.OneChunkInvariantResult;
+import io.opaa.eval.EvaluationReport.ChunkCountInvariantResult;
 import io.opaa.eval.EvaluationReport.RunConfiguration;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -146,12 +146,13 @@ class BaselineComparatorTest {
         new EvaluationReport(
             1,
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new OneChunkInvariantResult(1458, List.of()),
+            new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()),
             new EvaluationReport.DatasetNotes(121, 94, "note"),
             overallMetrics(),
             Map.of("numeric_range", currentNumericRange),
             Map.of(),
             Map.of(),
+            ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             List.of(),
             List.of());
 
@@ -204,12 +205,13 @@ class BaselineComparatorTest {
         new EvaluationReport(
             1,
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new OneChunkInvariantResult(1458, List.of()),
+            new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()),
             new EvaluationReport.DatasetNotes(121, 94, "note"),
             overallMetrics(),
             Map.of("numeric_range", currentNumericRange),
             Map.of(),
             Map.of(),
+            ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             List.of(),
             List.of());
 
@@ -259,12 +261,13 @@ class BaselineComparatorTest {
         new EvaluationReport(
             1,
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new OneChunkInvariantResult(1458, List.of()),
+            new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()),
             new EvaluationReport.DatasetNotes(121, 94, "note"),
             overallMetrics(),
             Map.of("multi_attribute_filter", currentFilter),
             Map.of(),
             Map.of(),
+            ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             List.of(),
             List.of());
 
@@ -311,12 +314,13 @@ class BaselineComparatorTest {
         new EvaluationReport(
             1,
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new OneChunkInvariantResult(1458, List.of()),
+            new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()),
             new EvaluationReport.DatasetNotes(121, 94, "note"),
             overallMetrics(),
             Map.of("numeric_range", currentNumericRange),
             Map.of(),
             Map.of(),
+            ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             List.of(),
             List.of());
 
@@ -384,6 +388,8 @@ class BaselineComparatorTest {
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),
             cfg.chunkOverlap(),
+            cfg.documentTopK(),
+            cfg.chunkTopK(),
             50,
             cfg.productionSimilarityThreshold(),
             cfg.similarityThresholdNote(),
@@ -413,7 +419,7 @@ class BaselineComparatorTest {
     var result = BaselineComparator.compare(baseline, report);
 
     assertThat(result.baselineValid()).isTrue();
-    assertThat(result.oneChunkInvariantHolds()).isTrue();
+    assertThat(result.chunkCountInvariantHolds()).isTrue();
     assertThat(result.checks()).isNotEmpty();
     assertThat(result.passed()).isTrue();
   }
@@ -497,18 +503,20 @@ class BaselineComparatorTest {
   }
 
   @Test
-  void failsWhenOneChunkInvariantIsViolated() {
+  void failsWhenChunkCountInvariantIsViolated() {
     Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
     EvaluationReport report =
         reportWith(
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
             overallMetrics(),
-            new OneChunkInvariantResult(
-                1458, List.of(new OneChunkInvariantResult.Violation("comic-0999_x.md", 2))));
+            new ChunkCountInvariantResult(
+                "genau 1 Chunk je Dokument",
+                1458,
+                List.of(new ChunkCountInvariantResult.Violation("comic-0999_x.md", 2))));
 
     var result = BaselineComparator.compare(baseline, report);
 
-    assertThat(result.oneChunkInvariantHolds()).isFalse();
+    assertThat(result.chunkCountInvariantHolds()).isFalse();
     assertThat(result.passed()).isFalse();
   }
 
@@ -543,12 +551,13 @@ class BaselineComparatorTest {
         new EvaluationReport(
             1,
             cfg,
-            new OneChunkInvariantResult(1458, List.of()),
+            new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()),
             new EvaluationReport.DatasetNotes(121, 94, "note"),
             overallMetrics(),
             Map.of("crosslingual", overallMetrics()),
             Map.of(),
             Map.of("de", overallMetrics(), "en", overallMetrics()),
+            ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             List.of(),
             List.of());
 
@@ -582,12 +591,13 @@ class BaselineComparatorTest {
         new EvaluationReport(
             1,
             cfg,
-            new OneChunkInvariantResult(1458, List.of()),
+            new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()),
             new EvaluationReport.DatasetNotes(121, 94, "note"),
             overallMetrics(),
             Map.of(),
             Map.of(),
             Map.of("de", overallMetrics()),
+            ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             List.of(),
             List.of());
 
@@ -642,6 +652,9 @@ class BaselineComparatorTest {
         768,
         1000,
         true,
+        0,
+        10,
+        10,
         10,
         0.3,
         "hnsw",
@@ -663,6 +676,8 @@ class BaselineComparatorTest {
         1000,
         true,
         0,
+        10,
+        10,
         10,
         0.3,
         "note",
@@ -691,11 +706,12 @@ class BaselineComparatorTest {
   }
 
   private static EvaluationReport reportWith(RunConfiguration cfg, MetricsAggregate overall) {
-    return reportWith(cfg, overall, new OneChunkInvariantResult(1458, List.of()));
+    return reportWith(
+        cfg, overall, new ChunkCountInvariantResult("genau 1 Chunk je Dokument", 1458, List.of()));
   }
 
   private static EvaluationReport reportWith(
-      RunConfiguration cfg, MetricsAggregate overall, OneChunkInvariantResult invariant) {
+      RunConfiguration cfg, MetricsAggregate overall, ChunkCountInvariantResult invariant) {
     return new EvaluationReport(
         1,
         cfg,
@@ -705,6 +721,7 @@ class BaselineComparatorTest {
         Map.of(),
         Map.of(),
         Map.of(),
+        ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
         List.of(),
         List.of());
   }
