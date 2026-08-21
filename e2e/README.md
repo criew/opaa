@@ -36,13 +36,18 @@ nur noch echte Playwright-Fixtures (Anmeldung, Chat-Bausteine, Barrierefreiheit)
 eigene Testdatenbereitstellung dieser Suite (`e2e/fixtures/rss-feed/`, `e2e/fixtures/test-documents/`)
 ist abgelöst: Beide leben jetzt unter [`demo/seed/e2e-data/`](../demo/seed/), Teil des gemeinsamen
 Seed-Mechanismus (`docs/features/demo-instance.md`, „Installation und Seed") statt eines zweiten,
-unabhängigen Befüllungswegs. Siehe „Warum der `dev`-Auth-Modus?" unten für Details, was der Seed
+unabhängigen Befüllungswegs. Siehe „Lokal ausführen" unten, Schritt 3, für Details, was der Seed
 tatsächlich anlegt und was weiterhin einzelne Szenarien selbst über die Oberfläche einrichten.
 
 ## Lokal ausführen
 
-Voraussetzung: Docker Desktop (bzw. Docker Engine + Compose) läuft, sowie Python 3
-(`demo/seed/seed.py`, siehe unten) auf dem `PATH` (`python` unter Windows, `python3` sonst).
+Voraussetzung: Docker Desktop (bzw. Docker Engine + Compose) läuft, sowie Python 3 mit dem
+`venv`-Modul (Teil der Standardbibliothek) auf dem `PATH` (`python` unter Windows, `python3`
+sonst). `scripts/run-e2e.mjs` legt daraus bei Bedarf ein eigenes, gitignortes venv unter
+`e2e/.venv` an und nutzt ausschließlich dessen Interpreter für `pip install` und
+`demo/seed/seed.py` (Issue #233, PR #726 review) — kein Schreibzugriff auf die
+Systeminstallation, funktioniert daher auch mit PEP 668 „externally-managed-environment"
+(Debian/Ubuntu ≥ 23.04, Homebrew-Python).
 
 ```bash
 cd e2e

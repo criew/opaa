@@ -13,7 +13,7 @@
 // so this script never reads or writes a developer's own .env.docker.
 
 import { spawnSync } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -101,18 +101,40 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 // remaining way this suite gets pre-existing content into a fresh instance - e2e/fixtures/rss-feed/
 // and e2e/fixtures/test-documents/ used to be a second, independent one (see demo/seed/profiles.py
 // and this suite's own spec files for where their content lives now, under demo/seed/e2e-data/).
-// "-m pip install" first, not a bare "pip": matches how CI's own python -m pip invocations resolve
-// against whatever interpreter PATH actually picks, without assuming a "pip"/"pip3" script is on
-// PATH too (not guaranteed on every contributor machine, see e2e/README.md).
 const pythonCmd = isWindows ? 'python' : 'python3'
+const venvDir = join(e2eDir, '.venv')
+// A bare "pip install -r ..." would target whatever interpreter/site-packages "python"/"python3"
+// resolves to system-wide (PR #726 review, finding 1) - on PEP-668-managed systems (Debian/Ubuntu
+// >=23.04, Homebrew's own Python) that fails outright with "externally-managed-environment", and
+// even where it does not fail it writes into a shared environment no other part of this repo
+// touches. A dedicated venv under e2e/.venv (gitignored, reused across runs so a repeated `npm
+// test` does not reinstall every time) sidesteps both: its own interpreter is never
+// "externally managed", regardless of the host's system Python.
+const venvPython = isWindows
+  ? join(venvDir, 'Scripts', 'python.exe')
+  : join(venvDir, 'bin', 'python3')
 
 function runSeed() {
-  const installStatus = run(pythonCmd, ['-m', 'pip', 'install', '-q', '-r', 'demo/seed/requirements.txt'])
+  if (!existsSync(venvPython)) {
+    const createStatus = run(pythonCmd, ['-m', 'venv', venvDir])
+    if (createStatus !== 0) {
+      console.error(`Creating the venv at ${venvDir} failed`)
+      return createStatus
+    }
+  }
+  const installStatus = run(venvPython, [
+    '-m',
+    'pip',
+    'install',
+    '-q',
+    '-r',
+    'demo/seed/requirements.txt',
+  ])
   if (installStatus !== 0) {
     console.error('pip install for demo/seed failed')
     return installStatus
   }
-  return run(pythonCmd, [
+  return run(venvPython, [
     'demo/seed/seed.py',
     '--profile',
     'e2e',

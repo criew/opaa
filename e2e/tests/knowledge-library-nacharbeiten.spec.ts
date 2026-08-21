@@ -92,9 +92,9 @@ function cleanupLibraries(): string[] {
 
 /**
  * Builds a real, parseable PDF of roughly 2 MB, entirely in memory - not one of the suite's
- * committed fixtures under fixtures/test-documents/ (see knowledge-libraries.spec.ts's comment on
- * TEST_DOCUMENT_PATH for why those live there and stay tiny): a 2 MB binary has no business being
- * checked into git for a single regression test.
+ * committed fixtures under demo/seed/e2e-data/test-documents/ (see knowledge-libraries.spec.ts's
+ * comment on TEST_DOCUMENT_PATH for why those live there and stay tiny): a 2 MB binary has no
+ * business being checked into git for a single regression test.
  *
  * The extractable page text is a single short, real sentence - just enough to avoid
  * FileProcessingService#processUploadedFile's EmptyDocumentContentException (thrown when Tika
