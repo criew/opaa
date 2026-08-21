@@ -46,7 +46,14 @@ class CityLandmarksChunkSizeDryRunTest {
     int below3 = 0;
     try (Stream<Path> files = Files.list(corpusDir)) {
       List<Path> mdFiles =
-          files.filter(p -> p.getFileName().toString().endsWith(".md")).sorted().toList();
+          // "city-" prefix, not just ".md": the corpus directory also holds SOURCE.md (not a
+          // corpus entity, same exclusion the real harness applies via MANIFEST.sha256's
+          // file list — see CorpusManifest).
+          files
+              .filter(p -> p.getFileName().toString().startsWith("city-"))
+              .filter(p -> p.getFileName().toString().endsWith(".md"))
+              .sorted()
+              .toList();
       for (Path file : mdFiles) {
         var parsed = documentService.parseDocument(file);
         var chunks = chunkingService.chunkDocuments(file.getFileName().toString(), parsed);

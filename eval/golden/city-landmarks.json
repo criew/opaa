@@ -325,17 +325,17 @@
     "answer_span": "Kropotkinskaja wurde 1935 erbaut bzw. gegründet, geht auf Pläne von Yakov Likhtenberg zurück."
   },
   {
-    "id": "city-boundary_span-026",
+    "id": "city-landmark_detail-026",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Teatr Rossiya in Moskau erbaut?",
     "expected_documents": [
       "city-0002_moskau.md"
     ],
-    "category": "boundary_span",
+    "category": "landmark_detail",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Teatr Rossiya wurde 1961 erbaut bzw. gegründet, geht auf Pläne von Q30879538 zurück."
+    "answer_span": "Teatr Rossiya wurde 1961 erbaut bzw. gegründet."
   },
   {
     "id": "city-landmark_detail-027",
@@ -546,20 +546,7 @@
     "answer_span": "Palais Hardenberg wurde 1774 erbaut bzw. gegründet."
   },
   {
-    "id": "city-landmark_detail-043",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Prinz-Albrecht-Palais in Berlin erbaut?",
-    "expected_documents": [
-      "city-0004_berlin.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Prinz-Albrecht-Palais wurde 1839 erbaut bzw. gegründet."
-  },
-  {
-    "id": "city-boundary_span-044",
+    "id": "city-boundary_span-043",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Wiener Riesenrad in Wien erbaut?",
     "expected_documents": [
@@ -572,7 +559,7 @@
     "answer_span": "Wiener Riesenrad wurde 1897 erbaut bzw. gegründet, geht auf Pläne von Walter Bassett Basset zurück."
   },
   {
-    "id": "city-boundary_span-045",
+    "id": "city-boundary_span-044",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Przebendowski-Palast in Warschau erbaut?",
     "expected_documents": [
@@ -585,7 +572,7 @@
     "answer_span": "Przebendowski-Palast wurde 1728 erbaut bzw. gegründet, geht auf Pläne von Johann Sigmund Deybel von Hammerau zurück."
   },
   {
-    "id": "city-boundary_span-046",
+    "id": "city-boundary_span-045",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Borch-Palast in Warschau erbaut?",
     "expected_documents": [
@@ -598,7 +585,7 @@
     "answer_span": "Borch-Palast wurde 1800 erbaut bzw. gegründet, geht auf Pläne von Stanisław Marzyński zurück."
   },
   {
-    "id": "city-boundary_span-047",
+    "id": "city-boundary_span-046",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Cathedral of the Assumption of the Virgin, Tbilisi in Tiflis erbaut?",
     "expected_documents": [
@@ -611,7 +598,7 @@
     "answer_span": "Cathedral of the Assumption of the Virgin, Tbilisi wurde 1805 erbaut bzw. gegründet."
   },
   {
-    "id": "city-boundary_span-048",
+    "id": "city-boundary_span-047",
     "domain": "city-landmarks",
     "query": "Unter welchem Schutzstatus steht Church of All Saints (Nizhny Novgorod) in Nischni Nowgorod?",
     "expected_documents": [
@@ -624,7 +611,7 @@
     "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Objekt des regionalen kulturellen Erbes Russlands', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
   },
   {
-    "id": "city-boundary_span-049",
+    "id": "city-boundary_span-048",
     "domain": "city-landmarks",
     "query": "Unter welchem Schutzstatus steht Pushkin State Academic Opera and Ballet Theatre in Nischni Nowgorod?",
     "expected_documents": [
@@ -637,7 +624,7 @@
     "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Objekt des regionalen kulturellen Erbes Russlands', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
   },
   {
-    "id": "city-boundary_span-050",
+    "id": "city-boundary_span-049",
     "domain": "city-landmarks",
     "query": "Unter welchem Schutzstatus steht Erzengel-Michael-Kathedrale (Nischni Nowgorod) in Nischni Nowgorod?",
     "expected_documents": [
@@ -650,7 +637,7 @@
     "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Objekt des regionalen kulturellen Erbes Russlands', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
   },
   {
-    "id": "city-boundary_span-051",
+    "id": "city-boundary_span-050",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Sacred Heart Church in Samara erbaut?",
     "expected_documents": [
@@ -663,7 +650,7 @@
     "answer_span": "Sacred Heart Church wurde 1906 erbaut bzw. gegründet."
   },
   {
-    "id": "city-boundary_span-052",
+    "id": "city-boundary_span-051",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Erzengel-Michael-Kirche (Jaroslawl) in Jaroslawl erbaut?",
     "expected_documents": [
@@ -676,7 +663,7 @@
     "answer_span": "Erzengel-Michael-Kirche (Jaroslawl) wurde 1215 erbaut bzw. gegründet."
   },
   {
-    "id": "city-boundary_span-053",
+    "id": "city-boundary_span-052",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Former Theological School, Orenburg in Orenburg erbaut?",
     "expected_documents": [
@@ -689,7 +676,7 @@
     "answer_span": "Former Theological School, Orenburg wurde 1860 erbaut bzw. gegründet."
   },
   {
-    "id": "city-boundary_span-054",
+    "id": "city-boundary_span-053",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Can March in Palma erbaut?",
     "expected_documents": [
@@ -702,7 +689,7 @@
     "answer_span": "Can March wurde 1940 erbaut bzw. gegründet, geht auf Pläne von Luis Gutiérrez Soto zurück."
   },
   {
-    "id": "city-boundary_span-055",
+    "id": "city-boundary_span-054",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Jakabov palace in Košice erbaut?",
     "expected_documents": [
@@ -715,7 +702,7 @@
     "answer_span": "Jakabov palace wurde 1899 erbaut bzw. gegründet."
   },
   {
-    "id": "city-boundary_span-056",
+    "id": "city-boundary_span-055",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Burgaller-Schloss Rzeszów in Rzeszów erbaut?",
     "expected_documents": [
@@ -728,7 +715,7 @@
     "answer_span": "Burgaller-Schloss Rzeszów wurde 1823 erbaut bzw. gegründet."
   },
   {
-    "id": "city-boundary_span-057",
+    "id": "city-boundary_span-056",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Yıldız-Palast in Beşiktaş erbaut?",
     "expected_documents": [
@@ -741,7 +728,7 @@
     "answer_span": "Yıldız-Palast wurde 1790 erbaut bzw. gegründet, geht auf Pläne von Sarkis Bey Baylan zurück."
   },
   {
-    "id": "city-boundary_span-058",
+    "id": "city-boundary_span-057",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Tielsch Palace in Wałbrzych in Wałbrzych erbaut?",
     "expected_documents": [
@@ -754,30 +741,43 @@
     "answer_span": "Tielsch Palace in Wałbrzych wurde 1860 erbaut bzw. gegründet."
   },
   {
-    "id": "city-boundary_span-059",
+    "id": "city-boundary_span-058",
     "domain": "city-landmarks",
-    "query": "Unter welchem Schutzstatus steht Palacio de Polentinos in Ávila?",
+    "query": "Unter welchem Schutzstatus steht Donnersmarck Palace in Siemianowice Śląskie in Siemianowice Śląskie?",
     "expected_documents": [
-      "city-0116_vila.md"
+      "city-0109_siemianowice-l-skie.md"
     ],
     "category": "boundary_span",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'unbewegliches Denkmal (Polen)', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-059",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Rheinbaben Palace and grange complex in Siemianowice Śląskie?",
+    "expected_documents": [
+      "city-0109_siemianowice-l-skie.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'unbewegliches Denkmal (Polen)', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
   },
   {
     "id": "city-boundary_span-060",
     "domain": "city-landmarks",
-    "query": "Unter welchem Schutzstatus steht Palacio del Rey Niño in Ávila?",
+    "query": "Unter welchem Schutzstatus steht Rheinbaben Palace in Siemianowice Śląskie?",
     "expected_documents": [
-      "city-0116_vila.md"
+      "city-0109_siemianowice-l-skie.md"
     ],
     "category": "boundary_span",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'unbewegliches Denkmal (Polen)', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
   },
   {
     "id": "city-cross_chunk-061",
