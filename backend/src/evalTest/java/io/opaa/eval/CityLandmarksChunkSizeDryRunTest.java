@@ -1,5 +1,7 @@
 package io.opaa.eval;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.IndexingProperties;
@@ -94,5 +96,10 @@ class CityLandmarksChunkSizeDryRunTest {
             + sortedSizes.get(sortedSizes.size() - 1)
             + ", documents with <3 chunks="
             + below3);
+    // PR #730 review, Nit 10: this was print-only, so a future generator regression that pushed a
+    // handful of documents back below the 3-chunk floor would not fail this fast, Docker-free
+    // check — only the much slower, Docker-requiring evaluateCityLandmarksRetrieval run (via
+    // RetrievalEvaluationHarnessTest's own chunkCountInvariant assertion) would ever catch it.
+    assertThat(below3).isZero();
   }
 }

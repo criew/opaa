@@ -361,13 +361,14 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.label.name == 'evaluation'
     runs-on: ubuntu-latest
-    # Ungemessenes, konservatives Zeitbudget zum Zeitpunkt dieses PRs (siehe PR-Beschreibung von
-    # #234: der erste reale evaluateCityLandmarksRetrieval-Lauf steht noch aus). 200 Dokumente mit
-    # median 5 Chunks ergeben rund 1.000 Chunks — von derselben Größenordnung wie die 1.448 Chunks
-    # der comic-characters-Domäne (dort ~44 Minuten Vollauf auf einem GitHub-Actions-Runner, siehe
-    # Kommentar im Job oben). Dasselbe 60-Minuten-Budget wird deshalb übernommen, nicht neu
-    # geschätzt; nach dem ersten realen Lauf ist dieser Kommentar mit der gemessenen Zahl
-    # nachzuziehen (siehe eval/README.md, Abschnitt zur Laufzeit).
+    # Gemessen (PR #730, zweite Review-Runde, lokal auf Entwickler-Hardware): 200 Dokumente,
+    # median 8 Chunks (Maximum 13, RANK_NEIGHBOR_RADIUS=40 nach der GeoNames-basierten Städteliste,
+    # siehe eval/corpus/city-landmarks/SOURCE.md) — checkCityLandmarksRetrievalBaseline lief
+    # ~36,3 Minuten (runDurationSeconds=2176.7 laut retrieval-metrics-city-landmarks.json). Ein
+    # GitHub-Actions-Runner ist üblicherweise langsamer als lokale Entwickler-Hardware, deshalb
+    # bleibt das 60-Minuten-Budget bewusst über der gemessenen Zahl, statt sie 1:1 zu übernehmen.
+    # Bei künftigem Korpuswachstum: Laufzeit erneut messen und diesen Kommentar fortschreiben, statt
+    # das Budget blind zu erhöhen.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
