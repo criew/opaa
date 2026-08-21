@@ -2,12 +2,12 @@
 
 | | |
 |---|---|
-| **Quelle** | [Wikidata](https://www.wikidata.org) (SPARQL-Endpunkt) |
-| **Lizenz** | CC0-1.0 (gemeinfrei, keine Attributionspflicht) |
+| **Quelle** | GeoNames `cities15000` (Städteliste) + [Wikidata](https://www.wikidata.org) (Sehenswürdigkeiten, Stadtfakten) |
+| **Lizenz** | CC-BY 4.0 (GeoNames, Attribution „Data © GeoNames.org, CC-BY 4.0") + CC0-1.0 (Wikidata) |
 | **Abrufdatum** | 2026-08-21 |
-| **Eingefrorene Rohdaten** | [`../../generator/frozen/`](../../generator/frozen/), siehe dort `SOURCE.md` für die vollständigen Abfragen, Auswahlregeln und Fallstrick-Entscheidungen (Issue #234) |
+| **Eingefrorene Rohdaten** | [`../../generator/frozen/`](../../generator/frozen/), siehe dort `SOURCE.md` für die vollständigen Abfragen, Auswahlregeln und Fallstrick-Entscheidungen (Issue #234, PR #730 review) |
 | **Dokumente** | 200 (`city-0001_*.md` … `city-0200_*.md`), sortiert nach Rang (Einwohnerzahl, absteigend) |
-| **Sampling** | Kein Sampling im statistischen Sinn — deterministische Auswahlregel (Einwohnerzahl + Nebenbedingung „mindestens eine dokumentierte Sehenswürdigkeit"), siehe `../../generator/frozen/SOURCE.md` |
+| **Sampling** | Kein Sampling im statistischen Sinn — deterministische Auswahlregel (Einwohnerzahl unter Kandidaten mit ausreichend dokumentierten Sehenswürdigkeiten, GeoNames-Feature-Code `PPLX` ausgeschlossen), siehe `../../generator/frozen/SOURCE.md` |
 
 Ein Quellenhinweis wird geführt, obwohl CC0-1.0 ihn nicht verlangt — dasselbe Verfahren wie bei
 `comic-characters` (siehe dort).
@@ -33,23 +33,33 @@ Tatsächlich gemessen (nicht geschätzt), Stand des letzten Generator-Laufs:
 
 | | Bytes |
 |---|---|
-| Minimum | 5.534 |
-| Median | 11.809 |
-| Maximum | 34.103 |
-| Gesamtgröße | ca. 2,83 MB |
+| Minimum | 8.368 |
+| Median | 24.383 |
+| Maximum | 37.386 |
+| Gesamtgröße | ca. 4,62 MB |
 
 **Abweichung von der ursprünglichen Abschätzung (1,2–2,4 MB, Issue #234 „Prüfpunkt: Korpus-Ablage"):**
-Die tatsächliche Größe liegt darüber, weil die Zielgröße "6–12 KB je Dokument" allein aus den
-verfügbaren Sehenswürdigkeiten-Fakten nicht durchgängig erreichbar war (siehe unten) und stattdessen
-über zusätzlichen, weiterhin quellenbasierten Fließtext (Städtevergleich zu Rang-Nachbarn im Korpus)
-kompensiert wurde. Der Gesamtumfang bleibt mit rund 2,83 MB (zusammen mit den rund 1,9 MB von
-`comic-characters`: rund 4,7 MB) weiterhin deutlich unter der 25-MB-Prüfschwelle aus ADR-0011.
+Die tatsächliche Größe liegt darüber, aus zwei Gründen: (1) Die Zielgröße „6–12 KB je Dokument" war
+aus den verfügbaren Sehenswürdigkeiten-Fakten allein nicht durchgängig erreichbar (siehe unten) und
+wurde über zusätzlichen, weiterhin quellenbasierten Fließtext (Städtevergleich zu Rang-Nachbarn im
+Korpus, Radius 4) kompensiert; (2) die überarbeitete GeoNames-basierte Städteauswahl (PR #730 review)
+liefert für die meisten Städte deutlich mehr dokumentierte Sehenswürdigkeiten als die ursprüngliche
+Wikidata-only-Auswahl. Der Gesamtumfang bleibt mit rund 3,37 MB (zusammen mit den rund 1,9 MB von
+`comic-characters`: rund 5,3 MB) weiterhin deutlich unter der 25-MB-Prüfschwelle aus ADR-0011.
 
 **Chunk-Zahl-Verteilung** (echter `TokenTextSplitter`-Lauf, `chunkSize=1000`, `chunkOverlap=100` —
 Docker-freier Trockenlauf über `io.opaa.eval.CityLandmarksChunkSizeDryRunTest`, siehe PR-Beschreibung
-für den vollständigen `checkRetrievalBaseline`-Nachweis): Minimum 3, Median 5, Maximum 11 Chunks je
+für den vollständigen `checkRetrievalBaseline`-Nachweis): Minimum 4, Median 8, Maximum 13 Chunks je
 Dokument — die Domänen-Vorgabe „mindestens 3 Chunks je Dokument" (#721/#234) ist für alle 200
-Dokumente erfüllt.
+Dokumente erfüllt (0 Verletzungen).
+
+**`RANK_NEIGHBOR_RADIUS = 40`** (PR #730 zweite Review-Runde): deutlich höher als der vom
+Maintainer ursprünglich angestrebte Wert 2, weil drei Pflicht-Hauptstädte (Kopenhagen, Amsterdam,
+Valletta — siehe `../../generator/frozen/SOURCE.md`, Abschnitt „Pflicht-Aufnahme aller 27
+EU-Hauptstädte") null dokumentierte Sehenswürdigkeiten haben und die Mehr-Chunk-Vorgabe ohne diesen
+größeren Nachbarvergleichs-Abschnitt nicht erreichen. Für alle anderen 197 Städte ist der Radius
+großzügiger als nötig, aber notwendig, um die drei Ausnahmefälle ohne Sonderbehandlung im
+generischen Mechanismus abzudecken.
 
 ## Bekannte Eigenschaften und Grenzen dieses Korpus
 

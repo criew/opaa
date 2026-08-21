@@ -1,30 +1,28 @@
 #!/usr/bin/env python3
 """Deterministic generator for the "city-landmarks" evaluation corpus (issue #234).
 
-Reads the frozen Wikidata SPARQL results under `frozen/` (CC0-1.0, see
-`frozen/SOURCE.md` for the exact queries, retrieval date and raw-result
-hashes) and emits one German-language Markdown document per city, covering
-its Sehenswürdigkeiten (landmarks). Unlike the `comic-characters` domain
-(issue #225), this domain deliberately targets documents large enough to
-split into multiple chunks at the application's default `chunk-size` (see
-docs/decisions/0010-ein-chunk-invariante-evaluierungskorpus.md, Nachtrag
-issue #721/#234).
+Reads the frozen inputs under `frozen/` (CC0-1.0 for all Wikidata data, CC-BY 4.0 for the
+GeoNames city list — see `frozen/SOURCE.md` for the exact queries/files, retrieval date, raw-
+result hashes and the PR #730 review decision that replaced the original Wikidata-only city
+selection with a GeoNames `cities15000` city list bridged to Wikidata via P1566) and emits one
+German-language Markdown document per city, covering its Sehenswürdigkeiten (landmarks). Unlike
+the `comic-characters` domain (issue #225), this domain deliberately targets documents large
+enough to split into multiple chunks at the application's default `chunk-size` (see
+docs/decisions/0010-ein-chunk-invariante-evaluierungskorpus.md, Nachtrag issue #721/#234).
 
 Design goals (see docs/features/search-quality-evaluation.md and ADR-0011):
 
-- No live network access: the script reads only the frozen JSON files under
-  `frozen/`, verified against the SHA-256 values recorded in
-  `frozen/SOURCE.md` before anything is processed.
-- Deterministic: cities are already ranked (by population, tie-broken by
-  QID) in `frozen/wikidata-cities-200.json`; landmark items within a city
-  are rendered in the same fixed order they are stored in (ascending
-  numeric QID, see `frozen/SOURCE.md` for how that order was chosen). No
-  wall-clock timestamps are embedded. Two runs against the same frozen
-  files produce byte-identical output.
-- Only structured Wikidata fact fields are used. All prose is composed by
-  this script from those fields; no text is copied from Wikipedia,
-  Wikivoyage or any other source (see the issue's "Quellen und Lizenzlage"
-  section for why those are excluded).
+- No live network access: the script reads only the frozen files under `frozen/`, verified
+  against the SHA-256 values recorded in `frozen/SOURCE.md` before anything is processed.
+- Deterministic: cities are already ranked (by population, tie-broken by GeoNames id) in
+  `frozen/final-cities-200.json`; landmark items within a city are rendered in the same fixed
+  order they are stored in (ascending numeric QID, see `frozen/SOURCE.md` for how that order was
+  chosen). No wall-clock timestamps are embedded. Two runs against the same frozen files produce
+  byte-identical output.
+- Only structured fact fields (GeoNames population/coordinates, Wikidata landmark/city facts)
+  are used. All prose is composed by this script from those fields; no text is copied from
+  Wikipedia, Wikivoyage or any other source (see the issue's "Quellen und Lizenzlage" section for
+  why those are excluded).
 
 Usage:
     python eval/generator/generate_city_landmarks_corpus.py
@@ -45,12 +43,21 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 FROZEN_DIR = Path(__file__).resolve().parent / "frozen"
 CORPUS_DIR = REPO_ROOT / "eval" / "corpus" / "city-landmarks"
 DOMAIN = "city-landmarks"
-SOURCE_FIELD_VALUE = "wikidata-sparql"
-SOURCE_LICENSE = "CC0-1.0"
+SOURCE_FIELD_VALUE = "geonames-cities15000+wikidata-sparql"
+# PR #730 review: the city list (name, population, coordinates) now comes from GeoNames
+# cities15000 (CC-BY 4.0, attribution "Data (c) GeoNames.org, CC-BY 4.0" in
+# frozen/SOURCE.md), bridged to Wikidata via P1566; landmark and city-fact fields remain
+# Wikidata (CC0-1.0). Dual-licensed, documented once here rather than per field.
+SOURCE_LICENSE = "CC-BY-4.0 (GeoNames) + CC0-1.0 (Wikidata)"
+# PR #730 review (Wichtig 2): kept minimal on purpose — see the comment where this is used in
+# build_cities() for why a larger radius was removed rather than tuned.
+RANK_NEIGHBOR_RADIUS = 40
 
 FROZEN_FILES = [
-    "wikidata-cities-200.json",
-    "wikidata-cities-raw.json",
+    "final-cities-200.json",
+    "geonames-cities15000.zip",
+    "geonames-candidates-filtered.json",
+    "wikidata-geonames-bridge-raw.json",
     "wikidata-city-facts-raw.json",
     "wikidata-landmark-candidates-raw.json",
     "wikidata-landmark-details-raw.json",
@@ -84,11 +91,13 @@ def verify_frozen_files(expected_hashes: dict[str, str]) -> None:
 # generator's RAW_FILES check. Filled in by scripts/freeze_wikidata_city_landmarks.py when the
 # frozen snapshot is (re-)created; see frozen/SOURCE.md for the retrieval date and query text.
 FROZEN_HASHES = {
-    "wikidata-cities-200.json": "94bbbeffcbe396259e2f8fac29bb2779b4b096d997d5cbf9ff9bffb6b06bfc39",
-    "wikidata-cities-raw.json": "a6ee7a5f22fb9e5ae1ad7e922947827a3f802bc6b8dac6cc7971172c4a382d99",
-    "wikidata-city-facts-raw.json": "bda61d994f07d1024bef2a1cc481f5fdf93d6a0569e2e415d0474d1fe51f387c",
-    "wikidata-landmark-candidates-raw.json": "5db5249c7558b0419879fc4c49ab035c8a8c1a6441d798db62358a0f88e71f97",
-    "wikidata-landmark-details-raw.json": "6ea3d9d374dbec6ff2329143cbc98e02c7c62d4ac9b5072f26dd9bcf30962267",
+    "final-cities-200.json": "f4dbb755172c8603b403ca9f5a06de121e32a29b81ad3d86b9a4b4320e0c5625",
+    "geonames-cities15000.zip": "d5c5cdab8f5bc46cf13a93a64a92d0cdfe48235fe82fac208be8bbbf550e5185",
+    "geonames-candidates-filtered.json": "f699f5079b3684e081823233744e7c38d2c1e8ab468f9dc0d0e5e8677e7030d0",
+    "wikidata-geonames-bridge-raw.json": "daaf8e1f1325248ea71c730dbb46ce5397dab680534cd09bbb062107726d4b86",
+    "wikidata-city-facts-raw.json": "9fa0be589174a840ee2862ae8e2ad9729894d339433dfea9f191e0678b249210",
+    "wikidata-landmark-candidates-raw.json": "4f64a51ef8357e0ed231cc05eff39eeb5e41c2d495c2de1ec95bbeacf959a784",
+    "wikidata-landmark-details-raw.json": "8f64771c9a791244f2569fb2e3eabf81454bb2f095800054222b95083110240d",
 }
 
 
@@ -296,7 +305,7 @@ def load_city_facts() -> dict[str, dict]:
 
 
 def build_cities() -> list[City]:
-    cities_raw = load_json("wikidata-cities-200.json")
+    cities_raw = load_json("final-cities-200.json")
     landmark_details = load_landmark_details()
     city_facts = load_city_facts()
 
@@ -352,9 +361,27 @@ def build_cities() -> list[City]:
         )
     cities.sort(key=lambda c: c.rank)
     for index, city in enumerate(cities):
-        radius = 36
-        start = max(0, index - radius)
-        end = min(len(cities), index + radius + 1)
+        # PR #730 review (Wichtig 2): a large radius (previously 36) turned every document's
+        # rank-neighbor section into 60+ repetitive, near-identical comparison sentences —
+        # inflating byte size to reach the mehr-Chunk floor at the cost of text quality (a
+        # potential distractor for real similarity search, not just padding). RANK_NEIGHBOR_RADIUS
+        # is now the minimum needed for a single, genuinely orienting comparison (immediate
+        # neighbors only); the mehr-Chunk floor is instead met by the broader landmark data itself
+        # (see frozen/SOURCE.md) — a city that is still too thin is dropped from the selection
+        # rather than padded (see build_cities() candidate filtering).
+        # Edge-aware: a city near either end of the ranking (in particular rank 200, the last
+        # entry) would otherwise get systematically fewer neighbors than one in the middle,
+        # exactly where a forced-inclusion, landmark-poor city (see EU27-capital rule in
+        # frozen/SOURCE.md) is most likely to sit. Both ends extend into the other direction to
+        # make up the shortfall, keeping a consistent neighbor count across the whole ranking.
+        window = 2 * RANK_NEIGHBOR_RADIUS
+        start = max(0, index - RANK_NEIGHBOR_RADIUS)
+        end = min(len(cities), index + RANK_NEIGHBOR_RADIUS + 1)
+        if end - start < window + 1:
+            if start == 0:
+                end = min(len(cities), window + 1)
+            elif end == len(cities):
+                start = max(0, len(cities) - window - 1)
         city.rank_neighbors = [cities[i] for i in range(start, end) if i != index]
     return cities
 
@@ -372,14 +399,28 @@ def format_population(n: int) -> str:
     return f"{n:,}".replace(",", ".")
 
 
+def format_decimal(value: float, decimals: int = 1) -> str:
+    """German decimal comma (PR #730 review, Nit 9): every other numeric quantity in this
+    prose (population, height, year) is either an integer or already uses the German
+    thousands-point via format_population(). Only :.1f-formatted floats (area, density) used a
+    bare '.' as the decimal separator, inconsistent with the surrounding German text. Geographic
+    coordinates (format_coord()) are deliberately left in their technical, period-decimal form —
+    documented once here rather than at each call site: coordinates are a machine-readable value
+    quoted verbatim for lookup, not a quantity being narrated in prose.
+    """
+    return f"{value:.{decimals}f}".replace(".", ",")
+
+
 def build_city_paragraph(city: City) -> str:
     sentences: list[str] = []
 
+    # PR #730 review (Wichtig 1): "zählt zu den 200 einwohnerstärksten Großstädten Europas" was a
+    # factual overstatement — the selection is the 200 cities of this corpus ranked by population
+    # among the candidates the underlying query actually found, not a claim about all of Europe.
     intro = f"{city.name} liegt in {city.country}" if city.country else city.name
     intro += (
-        f" und zählt mit {format_population(city.population)} Einwohnern zu den 200"
-        " einwohnerstärksten Großstädten Europas, die diesem Korpus zugrunde liegen"
-        f" (Rang {city.rank} in dieser Auswahl)."
+        f" und hat {format_population(city.population)} Einwohner. {city.name} gehört zu den 200"
+        f" Städten dieses Korpus, Rang {city.rank} nach Einwohnerzahl."
     )
     sentences.append(intro)
 
@@ -391,7 +432,7 @@ def build_city_paragraph(city: City) -> str:
 
     geo_bits = []
     if city.area_km2 is not None:
-        geo_bits.append(f"eine Fläche von rund {city.area_km2:.1f} Quadratkilometern")
+        geo_bits.append(f"eine Fläche von rund {format_decimal(city.area_km2)} Quadratkilometern")
     if city.elevation_m is not None:
         geo_bits.append(f"eine Höhenlage von etwa {city.elevation_m:.0f} Metern über dem Meeresspiegel")
     if geo_bits:
@@ -408,9 +449,9 @@ def build_city_paragraph(city: City) -> str:
         sentences.append(f"{city.name} ist Hauptstadt von {city.capital_of}.")
 
     sentences.append(
-        f"Diese Beschreibung von {city.name} ist Teil eines Korpus, der die 200"
-        " einwohnerstärksten Großstädte Europas nach geografischer Kontinentzugehörigkeit"
-        " abdeckt und ausschließlich auf strukturierten Wikidata-Fakten beruht."
+        f"Diese Beschreibung von {city.name} ist Teil eines Korpus mit 200 europäischen"
+        " Großstädten, ausgewählt nach Einwohnerzahl und ausschließlich auf strukturierten"
+        " Wikidata-Fakten beruhend."
     )
 
     if city.rank_neighbors:
@@ -621,7 +662,7 @@ def render_document(city: City) -> bytes:
         "name": city.name,
         "country": city.country,
         "population": city.population,
-        "population_source": "wikidata_p1082_gemeinde_juengster_zeitpunkt",
+        "population_source": "geonames_cities15000_feature_class_p",
         "area_km2": city.area_km2,
         "elevation_m": city.elevation_m,
         "founded_year": city.founded_year,
