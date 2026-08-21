@@ -1,0 +1,1089 @@
+[
+  {
+    "id": "city-city_overview-001",
+    "domain": "city-landmarks",
+    "query": "Wie viele Einwohner hat Istanbul laut diesem Korpus?",
+    "expected_documents": [
+      "city-0001_istanbul.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-002",
+    "domain": "city-landmarks",
+    "query": "In welchem Land liegt Berlin?",
+    "expected_documents": [
+      "city-0004_berlin.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-003",
+    "domain": "city-landmarks",
+    "query": "Wie viele Einwohner hat Moskau laut diesem Korpus?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-004",
+    "domain": "city-landmarks",
+    "query": "In welchem Land liegt Wien?",
+    "expected_documents": [
+      "city-0007_wien.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-005",
+    "domain": "city-landmarks",
+    "query": "Wessen Hauptstadt ist Paris?",
+    "expected_documents": [
+      "city-0006_paris.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-006",
+    "domain": "city-landmarks",
+    "query": "Wie viele Einwohner hat Istanbul laut diesem Korpus?",
+    "expected_documents": [
+      "city-0001_istanbul.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-007",
+    "domain": "city-landmarks",
+    "query": "Wie viele Einwohner hat Krasnodar laut diesem Korpus?",
+    "expected_documents": [
+      "city-0021_krasnodar.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-008",
+    "domain": "city-landmarks",
+    "query": "Wie viele Einwohner hat Rjasan laut diesem Korpus?",
+    "expected_documents": [
+      "city-0041_rjasan.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-009",
+    "domain": "city-landmarks",
+    "query": "Wie viele Einwohner hat Toruń laut diesem Korpus?",
+    "expected_documents": [
+      "city-0061_toru.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-010",
+    "domain": "city-landmarks",
+    "query": "Wie viele Einwohner hat Giugliano in Campania laut diesem Korpus?",
+    "expected_documents": [
+      "city-0081_giugliano-in-campania.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-011",
+    "domain": "city-landmarks",
+    "query": "Wie viele Einwohner hat Kırklareli laut diesem Korpus?",
+    "expected_documents": [
+      "city-0101_k-rklareli.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-012",
+    "domain": "city-landmarks",
+    "query": "Wie viele Einwohner hat Piekary Śląskie laut diesem Korpus?",
+    "expected_documents": [
+      "city-0121_piekary-l-skie.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-013",
+    "domain": "city-landmarks",
+    "query": "Wie viele Einwohner hat Bielawa laut diesem Korpus?",
+    "expected_documents": [
+      "city-0141_bielawa.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-014",
+    "domain": "city-landmarks",
+    "query": "Wie viele Einwohner hat Myślenice laut diesem Korpus?",
+    "expected_documents": [
+      "city-0161_my-lenice.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-city_overview-015",
+    "domain": "city-landmarks",
+    "query": "Wie viele Einwohner hat Trzebnica laut diesem Korpus?",
+    "expected_documents": [
+      "city-0181_trzebnica.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-landmark_detail-016",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Topkapı-Palast in Istanbul erbaut?",
+    "expected_documents": [
+      "city-0001_istanbul.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Topkapı-Palast wurde 1460 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-017",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Çırağan-Palast in Istanbul erbaut?",
+    "expected_documents": [
+      "city-0001_istanbul.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Palast wurde 1863 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-018",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Kuskowo in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Kuskowo wurde 1737 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-019",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Kreml in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Kreml wurde 1420 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-020",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Tretjakow-Galerie in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Tretjakow-Galerie wurde 1856 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-021",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Conception Convent in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Conception Convent wurde 1584 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-022",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Schuchow-Radioturm in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Schuchow-Radioturm wurde 1922 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-023",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Moskau-Wolga-Kanal in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Moskau-Wolga-Kanal wurde 1932 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-024",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Russische Staatsbibliothek in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Russische Staatsbibliothek wurde 1862 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-025",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Kropotkinskaja in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Kropotkinskaja wurde 1935 erbaut bzw."
+  },
+  {
+    "id": "city-boundary_span-026",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Teatr Rossiya in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Teatr Rossiya wurde 1961 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-027",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Krutizy in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Krutizy wurde 1201 erbaut bzw."
+  },
+  {
+    "id": "city-boundary_span-028",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Sretenski-Kloster in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Sretenski-Kloster wurde 1301 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-029",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Marmorpalast in Sankt Petersburg erbaut?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Marmorpalast wurde 1768 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-030",
+    "domain": "city-landmarks",
+    "query": "Wie hoch ist Admiralität in Sankt Petersburg in Sankt Petersburg?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Admiralität in Sankt Petersburg erreicht eine Höhe von rund 74 Metern und zählt damit zu den vermessenen Bauwerken dieses Korpus."
+  },
+  {
+    "id": "city-landmark_detail-031",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Anitschkow-Brücke in Sankt Petersburg erbaut?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Anitschkow-Brücke wurde 1716 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-032",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Historisches Zentrum von Sankt Petersburg und zugehörige Monumente in Sankt Petersburg?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Objekt des kulturellen Erbes Russlands', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-landmark_detail-033",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Transfiguration Cathedral in Sankt Petersburg?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-landmark_detail-034",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Taurisches Palais in Sankt Petersburg erbaut?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Taurisches Palais wurde 1783 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-035",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Dreifaltigkeitskathedrale in Sankt Petersburg?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-landmark_detail-036",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Kikin-Palast in Sankt Petersburg?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-landmark_detail-037",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Sankt-Petersburg-Baltijskij in Sankt Petersburg erbaut?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Sankt-Petersburg-Baltijskij wurde 1857 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-038",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Mariinski-Palast in Sankt Petersburg?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-landmark_detail-039",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Staatliche Polytechnische Universität Sankt Petersburg in Sankt Petersburg?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-landmark_detail-040",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Grand Hotel Europe in Sankt Petersburg erbaut?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Grand Hotel Europe wurde 1875 erbaut bzw."
+  },
+  {
+    "id": "city-boundary_span-041",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Brandenburger Tor in Berlin erbaut?",
+    "expected_documents": [
+      "city-0004_berlin.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Brandenburger Tor wurde 1791 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-042",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Palais Hardenberg in Berlin erbaut?",
+    "expected_documents": [
+      "city-0004_berlin.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Palais Hardenberg wurde 1774 erbaut bzw."
+  },
+  {
+    "id": "city-landmark_detail-043",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Prinz-Albrecht-Palais in Berlin erbaut?",
+    "expected_documents": [
+      "city-0004_berlin.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Prinz-Albrecht-Palais wurde 1839 erbaut bzw."
+  },
+  {
+    "id": "city-boundary_span-044",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Cathedral of the Assumption of the Virgin, Tbilisi in Tiflis erbaut?",
+    "expected_documents": [
+      "city-0017_tiflis.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Cathedral of the Assumption of the Virgin, Tbilisi wurde 1805 erbaut bzw."
+  },
+  {
+    "id": "city-boundary_span-045",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Church of All Saints (Nizhny Novgorod) in Nischni Nowgorod?",
+    "expected_documents": [
+      "city-0019_nischni-nowgorod.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Objekt des regionalen kulturellen Erbes Russlands', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-046",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Pushkin State Academic Opera and Ballet Theatre in Nischni Nowgorod?",
+    "expected_documents": [
+      "city-0019_nischni-nowgorod.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Objekt des regionalen kulturellen Erbes Russlands', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-047",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Erzengel-Michael-Kathedrale (Nischni Nowgorod) in Nischni Nowgorod?",
+    "expected_documents": [
+      "city-0019_nischni-nowgorod.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Objekt des regionalen kulturellen Erbes Russlands', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-048",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Sacred Heart Church in Samara erbaut?",
+    "expected_documents": [
+      "city-0022_samara.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Sacred Heart Church wurde 1906 erbaut bzw."
+  },
+  {
+    "id": "city-boundary_span-049",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Erzengel-Michael-Kirche (Jaroslawl) in Jaroslawl erbaut?",
+    "expected_documents": [
+      "city-0037_jaroslawl.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Erzengel-Michael-Kirche (Jaroslawl) wurde 1215 erbaut bzw."
+  },
+  {
+    "id": "city-boundary_span-050",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Former Theological School, Orenburg in Orenburg erbaut?",
+    "expected_documents": [
+      "city-0040_orenburg.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Former Theological School, Orenburg wurde 1860 erbaut bzw."
+  },
+  {
+    "id": "city-boundary_span-051",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Can March in Palma erbaut?",
+    "expected_documents": [
+      "city-0043_palma.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Can March wurde 1940 erbaut bzw."
+  },
+  {
+    "id": "city-boundary_span-052",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Jakabov palace in Košice erbaut?",
+    "expected_documents": [
+      "city-0057_ko-ice.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Jakabov palace wurde 1899 erbaut bzw."
+  },
+  {
+    "id": "city-boundary_span-053",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Burgaller-Schloss Rzeszów in Rzeszów erbaut?",
+    "expected_documents": [
+      "city-0062_rzesz-w.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Burgaller-Schloss Rzeszów wurde 1823 erbaut bzw."
+  },
+  {
+    "id": "city-boundary_span-054",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Tielsch Palace in Wałbrzych in Wałbrzych erbaut?",
+    "expected_documents": [
+      "city-0091_wa-brzych.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Tielsch Palace in Wałbrzych wurde 1860 erbaut bzw."
+  },
+  {
+    "id": "city-boundary_span-055",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Palacio de Polentinos in Ávila?",
+    "expected_documents": [
+      "city-0116_vila.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-056",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Palacio del Rey Niño in Ávila?",
+    "expected_documents": [
+      "city-0116_vila.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-057",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Palacio de Bracamonte, Ávila in Ávila?",
+    "expected_documents": [
+      "city-0116_vila.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-058",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Palace of Superunda in Ávila?",
+    "expected_documents": [
+      "city-0116_vila.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-059",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Palacio de los Almarza in Ávila?",
+    "expected_documents": [
+      "city-0116_vila.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-060",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Palacio de Blasco Núñez Vela in Ávila?",
+    "expected_documents": [
+      "city-0116_vila.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-cross_chunk-061",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Istanbul entstand früher — Topkapı-Palast oder als Rumeli Hisarı?",
+    "expected_documents": [
+      "city-0001_istanbul.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Topkapı-Palast entstand später als Rumeli Hisarı."
+  },
+  {
+    "id": "city-cross_chunk-062",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Moskau entstand früher — Kreml oder als Kuskowo?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Kreml entstand früher als Kuskowo."
+  },
+  {
+    "id": "city-cross_chunk-063",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Sankt Petersburg entstand früher — Dreifaltigkeitskathedrale oder als Taurisches Palais?",
+    "expected_documents": [
+      "city-0003_sankt-petersburg.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Dreifaltigkeitskathedrale entstand später als Taurisches Palais."
+  },
+  {
+    "id": "city-cross_chunk-064",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Rom entstand früher — Palazzo Braschi oder als Palazzo Koch?",
+    "expected_documents": [
+      "city-0005_rom.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Palazzo Braschi entstand früher als Palazzo Koch."
+  },
+  {
+    "id": "city-cross_chunk-065",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Wien entstand früher — Wiener Riesenrad oder als Palais Coburg?",
+    "expected_documents": [
+      "city-0007_wien.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Wiener Riesenrad entstand später als Palais Coburg."
+  },
+  {
+    "id": "city-cross_chunk-066",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Minsk entstand früher — Pischtschalauski samak oder als Mariä-Namen-Kathedrale?",
+    "expected_documents": [
+      "city-0008_minsk.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Pischtschalauski samak entstand später als Mariä-Namen-Kathedrale."
+  },
+  {
+    "id": "city-cross_chunk-067",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Warschau entstand früher — Kulturpalast oder als Staszic-Palast?",
+    "expected_documents": [
+      "city-0010_warschau.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Kulturpalast entstand später als Staszic-Palast."
+  },
+  {
+    "id": "city-cross_chunk-068",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Bukarest entstand früher — Cantacuzino Palast oder als Kathedrale des Heiligen Basilius des Großen?",
+    "expected_documents": [
+      "city-0012_bukarest.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Cantacuzino Palast entstand früher als Kathedrale des Heiligen Basilius des Großen."
+  },
+  {
+    "id": "city-cross_chunk-069",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in München entstand früher — Alte Schanze oder als Palastartiges Mietsgebäude, später Palais Eichthal?",
+    "expected_documents": [
+      "city-0013_m-nchen.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Alte Schanze entstand früher als Palastartiges Mietsgebäude, später Palais Eichthal."
+  },
+  {
+    "id": "city-cross_chunk-070",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Mailand entstand früher — Santa Maria presso San Celso oder als Castello Sforzesco?",
+    "expected_documents": [
+      "city-0015_mailand.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Santa Maria presso San Celso entstand später als Castello Sforzesco."
+  },
+  {
+    "id": "city-cross_chunk-071",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Kasan entstand früher — Nurulla-Moschee oder als Sakabannaja-Moschee?",
+    "expected_documents": [
+      "city-0016_kasan.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Nurulla-Moschee entstand früher als Sakabannaja-Moschee."
+  },
+  {
+    "id": "city-cross_chunk-072",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Tiflis entstand früher — Cathedral of the Assumption of the Virgin, Tbilisi oder als Alexander-Newski-Kathedrale?",
+    "expected_documents": [
+      "city-0017_tiflis.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Cathedral of the Assumption of the Virgin, Tbilisi entstand früher als Alexander-Newski-Kathedrale."
+  },
+  {
+    "id": "city-cross_chunk-073",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Sofia entstand früher — Vrana-Palast oder als Kathedrale St?",
+    "expected_documents": [
+      "city-0018_sofia.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Vrana-Palast entstand früher als Kathedrale St."
+  },
+  {
+    "id": "city-cross_chunk-074",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Nischni Nowgorod entstand früher — Church of All Saints (Nizhny Novgorod) oder als Church of Elijah the Prophet?",
+    "expected_documents": [
+      "city-0019_nischni-nowgorod.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Church of All Saints (Nizhny Novgorod) entstand später als Church of Elijah the Prophet."
+  },
+  {
+    "id": "city-cross_chunk-075",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Belgrad entstand früher — Cathedral of the Blessed Virgin Mary, Belgrade oder als Genčić`s family house?",
+    "expected_documents": [
+      "city-0020_belgrad.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Cathedral of the Blessed Virgin Mary, Belgrade entstand später als Genčić`s family house."
+  },
+  {
+    "id": "city-multi_city-076",
+    "domain": "city-landmarks",
+    "query": "Welche Stadt hat mehr Einwohner — Istanbul oder Moskau?",
+    "expected_documents": [
+      "city-0001_istanbul.md",
+      "city-0002_moskau.md"
+    ],
+    "category": "multi_city",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_city-077",
+    "domain": "city-landmarks",
+    "query": "Welche Stadt hat mehr Einwohner — Berlin oder Hamburg?",
+    "expected_documents": [
+      "city-0004_berlin.md",
+      "city-0009_hamburg.md"
+    ],
+    "category": "multi_city",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_city-078",
+    "domain": "city-landmarks",
+    "query": "Welche Stadt hat mehr Einwohner — Warschau oder Belgrad?",
+    "expected_documents": [
+      "city-0010_warschau.md",
+      "city-0020_belgrad.md"
+    ],
+    "category": "multi_city",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_city-079",
+    "domain": "city-landmarks",
+    "query": "Welche Stadt hat mehr Einwohner — Sarıyer oder Radom?",
+    "expected_documents": [
+      "city-0050_sar-yer.md",
+      "city-0060_radom.md"
+    ],
+    "category": "multi_city",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_city-080",
+    "domain": "city-landmarks",
+    "query": "Welche Stadt hat mehr Einwohner — Nowy Sącz oder Aranjuez?",
+    "expected_documents": [
+      "city-0100_nowy-s-cz.md",
+      "city-0110_aranjuez.md"
+    ],
+    "category": "multi_city",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_city-081",
+    "domain": "city-landmarks",
+    "query": "Welche Stadt hat mehr Einwohner — Kłodzko oder Końskie?",
+    "expected_documents": [
+      "city-0150_k-odzko.md",
+      "city-0160_ko-skie.md"
+    ],
+    "category": "multi_city",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_city-082",
+    "domain": "city-landmarks",
+    "query": "Welche Stadt hat mehr Einwohner — Błonie oder Koronowo?",
+    "expected_documents": [
+      "city-0190_b-onie.md",
+      "city-0200_koronowo.md"
+    ],
+    "category": "multi_city",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_city-083",
+    "domain": "city-landmarks",
+    "query": "Welche Stadt hat mehr Einwohner — Saporischschja oder Orenburg?",
+    "expected_documents": [
+      "city-0030_saporischschja.md",
+      "city-0040_orenburg.md"
+    ],
+    "category": "multi_city",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  }
+]
