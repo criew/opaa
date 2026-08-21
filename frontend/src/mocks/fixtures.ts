@@ -55,6 +55,7 @@ export const mockIndexingRuns: IndexingRunListResponse = {
     {
       id: '11111111-1111-1111-1111-111111111111',
       status: 'COMPLETED',
+      triggeredBy: 'MANUAL',
       documentCount: 37,
       totalDocuments: 42,
       documentsSkipped: 5,

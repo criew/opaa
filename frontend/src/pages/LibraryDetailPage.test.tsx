@@ -555,6 +555,78 @@ describe('LibraryDetailPage', () => {
     })
   })
 
+  it('shows the current schedule and the next planned run for a MANAGER', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, {
+        sourceType: 'FILESYSTEM',
+        sourcePath: '/data/dokumente',
+        schedule: {
+          frequency: 'DAILY',
+          hour: 3,
+          minute: 30,
+          nextRunAt: '2026-03-02T03:30:00Z',
+        },
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(await screen.findByText('Täglich')).toBeInTheDocument()
+    expect(await screen.findByText(/nächster geplanter lauf/i)).toBeInTheDocument()
+  })
+
+  it('shows a warning when the last two scheduled runs failed', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, {
+        sourceType: 'FILESYSTEM',
+        sourcePath: '/data/dokumente',
+        schedule: { frequency: 'HOURLY', nextRunAt: '2026-03-02T03:00:00Z' },
+        lastScheduledRunsFailed: true,
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(
+      await screen.findByText(/letzten geplanten läufe dieser bibliothek sind fehlgeschlagen/i),
+    ).toBeInTheDocument()
+  })
+
+  it('edits the schedule through the dialog, resending the unrelated Stammdaten fields untouched', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, {
+        sourceType: 'FILESYSTEM',
+        sourcePath: '/data/dokumente',
+        schedule: { frequency: 'DISABLED' },
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: /^zeitplan bearbeiten$/i }))
+    await user.click(screen.getByRole('combobox', { name: /^zeitplan$/i }))
+    await user.click(await screen.findByRole('option', { name: 'Stündlich' }))
+    await user.click(screen.getByRole('button', { name: /^speichern$/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
+        name: ownerLibrary.name,
+        description: ownerLibrary.description,
+        visibility: ownerLibrary.visibility,
+        listed: ownerLibrary.listed,
+        sourceInsecureSsl: null,
+        schedule: {
+          frequency: 'HOURLY',
+          hour: null,
+          minute: null,
+          weekday: undefined,
+        },
+      } satisfies LibraryUpdateRequest)
+    })
+  })
+
   it('shows the plain document wording for a completed FILESYSTEM run', async () => {
     setLibraryState(
       managerLibrary,
@@ -594,6 +666,7 @@ describe('LibraryDetailPage', () => {
             {
               id: 'run-1',
               status: 'COMPLETED',
+              triggeredBy: 'MANUAL',
               documentCount: 10,
               totalDocuments: 12,
               documentsSkipped: 2,
@@ -648,6 +721,7 @@ describe('LibraryDetailPage', () => {
             {
               id: 'run-1',
               status: 'COMPLETED',
+              triggeredBy: 'MANUAL',
               documentCount: 1,
               totalDocuments: 600,
               documentsSkipped: 599,

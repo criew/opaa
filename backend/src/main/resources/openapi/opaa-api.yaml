@@ -1768,6 +1768,13 @@ components:
       enum: [IDLE, RUNNING, COMPLETED, FAILED]
       example: COMPLETED
 
+    IndexingTriggerSource:
+      type: string
+      description: >
+        Who started a run (#485): a person via "Jetzt indizieren", or the library's own schedule.
+      enum: [MANUAL, SCHEDULED]
+      example: MANUAL
+
     IndexingRunEventCategory:
       type: string
       description: >
@@ -1785,7 +1792,10 @@ components:
           * ALLOWLIST - the run's own source configuration (e.g. a FILESYSTEM library's
             sourcePath) falls outside an operator-configured allowlist (#484).
           * ERROR - processing started but failed unexpectedly (parsing, chunking, embedding).
-      enum: [REJECTED, UNREACHABLE, UNSUPPORTED_FORMAT, ALLOWLIST, ERROR]
+          * SCHEDULE_SKIPPED - a scheduled run (#485) found the library still indexing from a
+            previous run and did not start a second one; recorded against the still-running job's
+            own protocol, not a new run of its own.
+      enum: [REJECTED, UNREACHABLE, UNSUPPORTED_FORMAT, ALLOWLIST, ERROR, SCHEDULE_SKIPPED]
       example: REJECTED
 
     IndexingRunEvent:
@@ -1827,6 +1837,7 @@ components:
           startedAt,
           events,
           eventsTruncatedCount,
+          triggeredBy,
         ]
       properties:
         id:
@@ -1834,6 +1845,8 @@ components:
           format: uuid
         status:
           $ref: "#/components/schemas/IndexingStatus"
+        triggeredBy:
+          $ref: "#/components/schemas/IndexingTriggerSource"
         documentCount:
           type: integer
           example: 42
@@ -2728,6 +2741,90 @@ components:
           description: German, user-facing summary of the result.
           example: Verzeichnis erreichbar, 42 Dokumente gefunden
 
+    ScheduleFrequency:
+      type: string
+      description: >
+        The four fixed intervalstufen a library's indexing schedule may take (#485, Zuschnitt
+        21.08.2026) - deliberately not free-form cron: HOURLY runs on the hour, DAILY and WEEKLY
+        take an explicit hour/minute (WEEKLY additionally a weekday), DISABLED carries no time at
+        all. Stored internally as a cron expression (LibraryScheduleCodec) so a future expert
+        cron field would only be a UI change, but the API itself only ever accepts one of these
+        four shapes.
+      enum: [DISABLED, HOURLY, DAILY, WEEKLY]
+      example: DAILY
+
+    ScheduleWeekday:
+      type: string
+      description: Names match java.time.DayOfWeek exactly (#485).
+      enum:
+        [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+      example: MONDAY
+
+    LibraryScheduleRequest:
+      type: object
+      required: [frequency]
+      description: >
+        Sets or clears a connector library's indexing schedule (#485). Which of hour/minute/
+        weekday are required depends on frequency: DISABLED and HOURLY accept none of them
+        (HOURLY always runs at minute 0 of every hour), DAILY requires hour and minute, WEEKLY
+        additionally requires weekday. A combination that contradicts frequency is rejected with
+        400, the same shape LibraryRequest's sourceType-dependent fields already use. Rejected
+        with 400 for a sourceType UPLOAD library (#485 Zuschnitt: nur Konnektorbibliotheken).
+      properties:
+        frequency:
+          $ref: "#/components/schemas/ScheduleFrequency"
+        hour:
+          type: integer
+          minimum: 0
+          maximum: 23
+          nullable: true
+          description: Required for DAILY and WEEKLY, server local time (see LibrarySchedule).
+          example: 3
+        minute:
+          type: integer
+          minimum: 0
+          maximum: 59
+          nullable: true
+          description: Required for DAILY and WEEKLY.
+          example: 30
+        weekday:
+          $ref: "#/components/schemas/ScheduleWeekday"
+
+    LibrarySchedule:
+      type: object
+      required: [frequency]
+      description: >
+        A library's current indexing schedule (#485), returned by LibraryResponse. Same shape as
+        LibraryScheduleRequest plus nextRunAt, the one field only the server can compute -
+        deliberately a flat schema rather than composing over LibraryScheduleRequest via allOf, so
+        the generated Java model stays a single plain class.
+      properties:
+        frequency:
+          $ref: "#/components/schemas/ScheduleFrequency"
+        hour:
+          type: integer
+          minimum: 0
+          maximum: 23
+          nullable: true
+          example: 3
+        minute:
+          type: integer
+          minimum: 0
+          maximum: 59
+          nullable: true
+          example: 30
+        weekday:
+          $ref: "#/components/schemas/ScheduleWeekday"
+        nextRunAt:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+          description: >
+            The next time this schedule fires, computed from the stored cron expression at
+            server local time (opaa.scheduling.zone is not configurable yet - see the #485 PR
+            description for why server time was chosen). Null when frequency is DISABLED.
+
     LibraryUpdateRequest:
       type: object
       required: [name]
@@ -2744,7 +2841,10 @@ components:
         against the library's existing (unchangeable) sourceType exactly like LibraryRequest. The
         configuration is only replaced (as a whole) when the request carries at least one of
         these fields; a request that omits all of them (e.g. renaming the library) leaves the
-        stored configuration untouched rather than clearing it.
+        stored configuration untouched rather than clearing it. schedule (#485) follows the same
+        replace-as-a-whole rule: only present when the caller intends to change it, otherwise the
+        stored schedule stays untouched. Changing it requires the same AssetRole.MANAGER this
+        whole endpoint already enforces - there is no separate schedule endpoint.
       properties:
         name:
           type: string
@@ -2808,6 +2908,8 @@ components:
           description: >
             Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY or RSS_FEED.
           default: false
+        schedule:
+          $ref: "#/components/schemas/LibraryScheduleRequest"
 
     LibraryListResponse:
       type: object
@@ -2963,6 +3065,23 @@ components:
             accurate "leave blank to keep the current credential" hint only when one actually
             exists, instead of implying one is configured when none is. Set only if myRole is at
             least MANAGER (#507) - see sourcePath above for why.
+        schedule:
+          description: >
+            The library's indexing schedule (#485) - present only for a connector library
+            (sourceType other than UPLOAD) and only if myRole is at least MANAGER, the same
+            threshold sourcePath/sourceUrl above already use, since nextRunAt/frequency are
+            configuration detail exactly like the rest of the source setup.
+          allOf:
+            - $ref: "#/components/schemas/LibrarySchedule"
+        lastScheduledRunsFailed:
+          type: boolean
+          nullable: true
+          description: >
+            True when this library's two most recently completed scheduled runs both ended
+            FAILED (#485 Zuschnitt: "wiederholtes Scheitern wird ... sichtbar gemacht", without
+            automatically disabling the schedule - stille Ausfälle sollen aber nicht unbemerkt
+            bleiben). A single failed scheduled run, or any manually triggered run, does not set
+            this. Present only under the same conditions as schedule above.
         storageQuotaBytes:
           type: integer
           format: int64
