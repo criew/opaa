@@ -629,6 +629,53 @@ class QueryServiceTest {
     assertThat(response.getSources().getFirst().getCitationValid()).isTrue();
   }
 
+  /**
+   * #697 review, finding 4: a fabricated citation's synthetic entry must never merge with a real,
+   * retrieved-but-uncited source that happens to share its file name - that would have made the
+   * real document appear falsely cited, with its real relevance score and its real "open in
+   * document" link, for a citation it was never actually named in.
+   */
+  @Test
+  void queryDoesNotLetASyntheticEntryOverwriteARealUncitedSourceSharingItsFileName() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    // "fabricated-id" is not among the retrieved chunks, but the model still copied the correct,
+    // real file name into the fabricated citation - the exact collision finding 4 describes.
+    var answer = "The answer is 42 【source: fabricated-id#0 | readme.md】";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources()).hasSize(2);
+    assertThat(response.getSources())
+        .anySatisfy(
+            source -> {
+              // The real, retrieved chunk: untouched by the fabricated citation elsewhere.
+              assertThat(source.getFileName()).isEqualTo("readme.md");
+              assertThat(source.getRelevanceScore()).isEqualTo(0.85);
+              assertThat(source.getCited()).isFalse();
+              assertThat(source.getCitationValid()).isTrue();
+            });
+    assertThat(response.getSources())
+        .anySatisfy(
+            source -> {
+              // The synthetic entry for the fabricated citation: zero relevance, flagged invalid.
+              assertThat(source.getFileName()).isEqualTo("readme.md");
+              assertThat(source.getRelevanceScore()).isEqualTo(0.0);
+              assertThat(source.getMatchCount()).isEqualTo(0);
+              assertThat(source.getCited()).isTrue();
+              assertThat(source.getCitationValid()).isFalse();
+            });
+  }
+
   @Test
   void queryCountsMatchesPerFile() {
     when(chatMemory.get(any())).thenReturn(List.of());

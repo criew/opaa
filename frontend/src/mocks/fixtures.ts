@@ -101,7 +101,9 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
-        citationValid: true,
+        // #697 review, Nit 6: one mock source with an invalid citation, so the mocked frontend
+        // (VITE_ENABLE_MOCKS=true) can actually show the "Beleg nicht bestätigt" state (#386).
+        citationValid: false,
       },
       {
         fileName: 'adr-0002-technology-stack.md',

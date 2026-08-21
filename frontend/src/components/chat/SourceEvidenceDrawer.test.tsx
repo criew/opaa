@@ -91,7 +91,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(names).toEqual(['stark.md', 'mittel.md', 'schwach.md'])
   })
 
-  it('flags a source with an invalid citation as "Beleg nicht überprüfbar" (#386)', async () => {
+  it('flags a source with an invalid citation as "Beleg nicht bestätigt" (#386)', async () => {
     const user = userEvent.setup()
     renderWithProviders(
       <MessageBubble
@@ -109,7 +109,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
 
     const doc = within(drawer).getByTestId('evidence-doc')
     expect(doc).toHaveAttribute('data-citation-valid', 'false')
-    expect(within(doc).getByText('Beleg nicht überprüfbar')).toBeInTheDocument()
+    expect(within(doc).getByText('Beleg nicht bestätigt')).toBeInTheDocument()
   })
 
   it('does not flag a validly cited source (#386)', async () => {
@@ -119,7 +119,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     for (const doc of docs) {
       expect(doc).toHaveAttribute('data-citation-valid', 'true')
     }
-    expect(within(drawer).queryByText('Beleg nicht überprüfbar')).not.toBeInTheDocument()
+    expect(within(drawer).queryByText('Beleg nicht bestätigt')).not.toBeInTheDocument()
   })
 
   it('closes on Escape and returns focus to the trigger', async () => {

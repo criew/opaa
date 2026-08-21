@@ -1,7 +1,9 @@
 package io.opaa.query;
 
+import java.text.Normalizer;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.springframework.ai.document.Document;
 
@@ -25,9 +27,22 @@ public class CitationValidator {
    * Validates {@code citations} against {@code retrievedChunks} - the exact set handed to the
    * answer model for this answer, never a broader "everything indexed" set (that would defeat the
    * point: a citation must be grounded in what <em>this</em> answer actually used). A chunk with no
-   * {@code chunk_index} metadata defaults to index {@code 0}, matching the default {@link
-   * AnswerGenerationService#formatChunks} already applies when it writes the citation instructions
-   * the model copies from.
+   * {@code chunk_index} metadata defaults to index {@code 0} - the same default {@code
+   * AnswerGenerationService} falls back to when it writes the citation instructions the model
+   * copies from, so a chunk that never carried the metadata still matches the citation the model
+   * was told to produce for it.
+   *
+   * <p>#697 review, finding 3: the file name comparison is Unicode-normalised (NFC) and
+   * case-insensitive before matching - a model routinely echoes a file name back with a different
+   * capitalisation (a model correcting "readme.md" to "Readme.md") or, for a name that reached the
+   * index via a macOS upload, a different Unicode normal form for the same visible characters (an
+   * "ü" as a precomposed NFC code point versus a base letter plus combining diaeresis in NFD - both
+   * render identically but compare unequal as raw {@code String}s). Neither loosening admits a
+   * citation for a genuinely different name: a fabricated name still fails unless it is the same
+   * name up to case and normalisation, which is exactly the class of "harmless model rewrite" this
+   * validation should not punish. No other leniency is applied - a truncated name, a path prefix or
+   * a different extension still invalidates the citation, because those describe an actually
+   * different reference, not the same one written differently.
    */
   public List<ValidatedCitation> validate(
       List<CitationParser.ParsedCitation> citations, List<Document> retrievedChunks) {
@@ -38,7 +53,7 @@ public class CitationValidator {
       int chunkIndex = parseChunkIndex(chunk.getMetadata().getOrDefault("chunk_index", "0"));
       sectionsByDocument
           .computeIfAbsent(documentId, id -> new HashMap<>())
-          .put(chunkIndex, fileName);
+          .put(chunkIndex, normalize(fileName));
     }
 
     return citations.stream()
@@ -47,11 +62,21 @@ public class CitationValidator {
               Map<Integer, String> sections = sectionsByDocument.get(citation.documentId());
               boolean valid =
                   sections != null
-                      && citation.fileName().equals(sections.get(citation.chunkIndex()));
+                      && normalize(citation.fileName()).equals(sections.get(citation.chunkIndex()));
               return new ValidatedCitation(
                   citation.documentId(), citation.chunkIndex(), citation.fileName(), valid);
             })
         .toList();
+  }
+
+  /**
+   * Normalises a file name for the comparison in {@link #validate} - Unicode NFC plus lower-casing,
+   * so a harmless model rewrite (different normal form, different case) cannot turn a genuine
+   * citation into a false-invalid verdict. See {@link #validate}'s Javadoc for exactly what this
+   * does and does not forgive.
+   */
+  private String normalize(String fileName) {
+    return Normalizer.normalize(fileName, Normalizer.Form.NFC).toLowerCase(Locale.ROOT);
   }
 
   private int parseChunkIndex(Object rawChunkIndex) {

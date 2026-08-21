@@ -104,6 +104,10 @@ Drei Bedingungen, alle deterministisch, alle nach der Erzeugung und vor der Ausl
    abweichendem Dokumentnamen ist ungültig — er ist irreführender als gar keiner, weil er auf ein
    existierendes, aber falsches Dokument verweist.
 
+**Grenze der Erkennung:** Ein Beleg, der das Muster `【source: id#n | name】` nicht erfüllt — etwa ohne
+`#n` oder mit einem Zeichen in der Kennung, das der Parser nicht zulässt —, wird gar nicht erst als Beleg
+erkannt und damit weder geprüft noch gekennzeichnet.
+
 **Was die Prüfung ausdrücklich nicht prüft:** ob die zitierte Fundstelle die Aussage **inhaltlich trägt**.
 Ein formal gültiger Beleg ist der Nachweis, dass eine real abgerufene Passage benannt wurde — nicht der
 Nachweis, dass sie das Behauptete aussagt. Ein Modell kann eine korrekt bestehende Fundstelle an einen Satz
@@ -116,12 +120,15 @@ Ein ungültiger Beleg wird **nicht stillschweigend entfernt und nicht stillschwe
 behandelt.** Er bleibt im Antworttext stehen — die Belegprüfung greift nicht in die generierte Antwort ein
 — und die zugehörige Quellenangabe wird in der API-Antwort als ungültig gekennzeichnet
 (`SourceReference.citationValid = false`). Zeigt ein ungültiger Beleg auf ein Dokument, das gar nicht unter
-den abgerufenen Chunks war, entsteht dafür eine eigene, synthetische Quellenangabe ohne Relevanzwert — nur
-so lässt sich auch dieser Fall überhaupt kennzeichnen, da er sonst keiner realen Fundstelle zuzuordnen
-wäre.
+den abgerufenen Chunks war, entsteht dafür eine eigene, synthetische Quellenangabe ohne Relevanzwert und
+ohne Trefferzahl (`relevanceScore`/`matchCount` beide `0`) — nur so lässt sich auch dieser Fall überhaupt
+kennzeichnen, da er sonst keiner realen Fundstelle zuzuordnen wäre. Diese synthetische Angabe wird nie mit
+einer echten Quellenangabe gleichen Dateinamens zusammengeführt: Ein erfundener Beleg, der zufällig den
+Namen einer tatsächlich abgerufenen, aber unbenutzten Datei trägt, darf diese Datei nicht rückwirkend als
+zitiert erscheinen lassen, mit ihrem echten Relevanzwert und ihrem echten Sprunglink.
 
 Im Frontend erscheint eine so gekennzeichnete Quelle im Belegfenster mit dem dezenten Hinweis „Beleg nicht
-überprüfbar" (`SourceEvidenceDrawer`). Auf Backend-Seite wird die Zahl der Antworten mit mindestens einem
+bestätigt" (`SourceEvidenceDrawer`). Auf Backend-Seite wird die Zahl der Antworten mit mindestens einem
 ungültigen Beleg als Log-Information festgehalten (`QueryService`) — ohne eigene Metrik-Infrastruktur, als
 Grundlage für eine spätere Auswertung.
 
@@ -207,7 +214,8 @@ bewertende Modell beide zusammen und kann erkennen, ob die Passage die Frage tat
 Das Reranking ist der Punkt, an dem sich Aufwand und Qualität abwägen lassen, und deshalb
 konfigurierbar:
 Größe der Kandidatenmenge, Zahl der an die Antwort übergebenen Passagen und die Schwelle, unterhalb derer
-eine Passage nicht mehr als Beleg taugt. Diese Schwelle ist zugleich die Schwelle des Zitierzwangs.
+eine Passage nicht mehr als Beleg taugt. Diese Schwelle entscheidet damit auch, welche Passagen überhaupt
+für die Belegvalidierung (siehe [Zitierzwang](#zitierzwang)) infrage kommen.
 
 Zusätzliche Signale — Aktualität eines Dokuments, Vielfalt der Quellen, damit nicht fünf Passagen aus
 derselben Datei die Antwort tragen — wirken **nach** dem Reranking und sind einzeln abschaltbar. Ein
@@ -232,7 +240,7 @@ Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertba
 | **Mindestgröße eines Chunks** | 350 Zeichen **(gebaut)** | Wie stark der Bestand zu Kurzabschnitten neigt | Weniger inhaltsleere Splitter, aber Verlust kurzer, präziser Definitionen |
 | **Überlappung** | 100 Token **(gebaut)** | Ob Aussagen regelmäßig über Abschnittsgrenzen laufen | Weniger an der Grenze zerschnittene Aussagen, aber mehr Chunks, mehr Speicher und doppelte Treffer |
 | **`top-k`** | 5 **(gebaut)** | Wie viele Belegstellen eine typische Frage braucht | Höhere Trefferwahrscheinlichkeit, aber mehr Rauschen im Antwortkontext und höherer Verbrauch |
-| **Ähnlichkeitsschwelle** | 0,3 **(gebaut)** | Wie umgangssprachlich gefragt wird und wie homogen der Bestand ist | Weniger unpassende Treffer, aber mehr Fragen ohne Antwort — im Zitierzwang mehr Verweigerungen |
+| **Ähnlichkeitsschwelle** | 0,3 **(gebaut)** | Wie umgangssprachlich gefragt wird und wie homogen der Bestand ist | Weniger unpassende Treffer, aber häufiger keine ausreichend ähnliche Fundstelle und damit eine Antwort ohne Beleg |
 | **Bündelgröße der Einbettung** | 50 Chunks je Aufruf **(gebaut)** | Belastbarkeit des Einbettungsdienstes | Schnellere Läufe, aber Lastspitzen und größerer Speicherbedarf |
 | **Wiederholversuche je Dokument** | 3 **(gebaut)** | Zuverlässigkeit von Quelle und Modelldienst | Weniger verlorene Dokumente, aber längere Läufe bei dauerhaft defekten Dateien |
 
@@ -241,9 +249,11 @@ Drei Zusammenhänge sind dabei wesentlich:
 1. **Chunk-Größe und `top-k` hängen aneinander.** Beide bestimmen zusammen, wie viel Text in die
    Antwort eingeht. Wer die Chunks vergrößert, muss `top-k` in der Regel senken, sonst wächst der
    Antwortkontext über das hinaus, was das Modell verlässlich auswertet.
-2. **Die Ähnlichkeitsschwelle ist zugleich die Schwelle des Zitierzwangs.** Sie zu senken, um weniger
-   Verweigerungen zu erzeugen, verschiebt das Problem: Die Antworten werden dann auf schwächere Belege
-   gestützt. Genau deshalb wird eine Verweigerung ausdrücklich nicht als Störung gemessen.
+2. **Die Ähnlichkeitsschwelle bestimmt, welche Passagen als Beleg infrage kommen.** Sie zu senken, um
+   mehr Fragen mit einer Antwort statt mit einer Fundstellenlücke zu beantworten, verschiebt das
+   Problem: Die Antworten werden dann auf schwächere Belege gestützt. Die Belegvalidierung (siehe
+   [Zitierzwang](#zitierzwang)) stellt nur sicher, dass ein zitierter Beleg echt ist — nicht, dass er
+   inhaltlich trägt.
 3. **Die Überlappung entscheidet, ob ein Beleg seinen Bezug behält.** Ohne sie kann eine Definition
    von ihrer Überschrift getrennt werden, und der Beleg zeigt eine Passage, der ihr Bezug fehlt.
    Jeder Chunk wiederholt deshalb die letzten 100 Token seines Vorgängers — ein Zehntel der
@@ -454,8 +464,10 @@ Bestände durchsucht und welche Stellen verworfen wurden.
 Merkmale:
 
 - **Derselbe Rechtekontext** wie jede andere Suche; Deep Research eröffnet keinen zusätzlichen Zugriff.
-- **Zitierzwang gilt auch hier**, und zwar je Abschnitt. Ein Bericht, dessen Kapitel 3 unbelegt ist,
-  weist das an Ort und Stelle aus.
+- **Die Belegvalidierung gilt auch hier** (siehe [Zitierzwang](#zitierzwang)): Jeder Beleg im Bericht wird
+  gegen die für den jeweiligen Teilbericht abgerufenen Fundstellen geprüft, ein ungültiger Beleg wird
+  gekennzeichnet statt entfernt. Die je Kapitel zerlegte Ausweisung unbelegter Abschnitte war Teil des
+  am 21.08.2026 verworfenen Verweigerungsapparats und ist nicht gebaut.
 - **Widersprüche werden benannt statt geglättet.** Wenn zwei Fundstellen einander widersprechen, ist das
   ein Ergebnis und keine Störung — der Bericht stellt beide dar.
 - **Das Ergebnis ist ein Artefakt im Space** und unterliegt dessen Regeln zu Sichtbarkeit und
@@ -733,7 +745,10 @@ Idee wieder aufgemacht werden.
 
 ## Erfolgs-Metriken
 
-- **Belegdeckung** — Anteil der Antworten, in denen jede tragende Aussage eine Fundstelle trägt.
+- **Belegdeckung** — Anteil der Antworten mit mindestens einer gültigen Quellenangabe
+  (`SourceReference.cited = true` und `citationValid = true`). Bewusst nicht „Anteil der tragenden
+  Aussagen mit Fundstelle": Die dafür nötige Abschnittszerlegung mit Negativliste wurde am 21.08.2026
+  verworfen (siehe [Zitierzwang](#zitierzwang)) und ist ohne sie nicht messbar.
 - **Anteil ungültiger Belege** — Anteil der Antworten mit mindestens einem Beleg, der die deterministische
   Validierung nicht besteht (#386, heute als Log-Information erfasst). Ein durchgängig hoher Anteil
   deutet auf ein Modell hin, das die Belegform nachahmt, statt echte Fundstellen zu zitieren.

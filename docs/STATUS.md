@@ -49,7 +49,7 @@ Drei Zustände werden unterschieden:
   jeweilige Antwort abgerufenen Fundstellen geprüft — Dokument-Kennung, Abschnittsnummer und
   mitgeführte Dokumentbezeichnung müssen übereinstimmen. Ungültige Belege werden nicht stillschweigend
   entfernt, sondern in der Quellenangabe als ungültig gekennzeichnet (`SourceReference.citationValid`)
-  und im Belegfenster als „Beleg nicht überprüfbar" dargestellt. Kein zweiter Modellaufruf, keine
+  und im Belegfenster als „Beleg nicht bestätigt" dargestellt. Kein zweiter Modellaufruf, keine
   Verweigerung, kein Schalter am Space — siehe [Zitierzwang](./features/data-indexing-rag.md#zitierzwang)
   für den Zuschnitt und die Begründung, warum der Rest des ursprünglichen Vorhabens entfällt.
 - Gesprächsgedächtnis je Sitzung (`CaffeineChatMemoryRepository`)

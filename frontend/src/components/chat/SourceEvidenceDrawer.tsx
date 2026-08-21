@@ -8,6 +8,7 @@ import Link from '@mui/material/Link'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import CloseIcon from '@mui/icons-material/Close'
+import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
 import { fontFamily } from '../../theme/tokens'
@@ -204,12 +205,20 @@ export default function SourceEvidenceDrawer({
                   </Typography>
                 )}
                 {!doc.citationValid && (
-                  <Typography
+                  // #697 review, Befund 2: reiner Text in warning.main unterschreitet auf heller
+                  // Fläche 4,5:1 (docs/design/accessibility.md 2.4, rund 1,8:1 gemessen). Die Farbe
+                  // trägt hier ohnehin nicht allein die Bedeutung (2.4, letzter Punkt) - das Icon in
+                  // error.main erfüllt die UI-Komponentenschwelle von 3:1 in beiden Schemata, der Text
+                  // selbst läuft in text.secondary (kontraststark, siehe "geprüft, nicht zitiert" oben).
+                  <Box
                     component="span"
-                    sx={{ fontSize: 10.5, color: 'warning.main', fontStyle: 'italic' }}
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
                   >
-                    Beleg nicht überprüfbar
-                  </Typography>
+                    <ReportProblemOutlinedIcon sx={{ fontSize: 13, color: 'error.main' }} />
+                    <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                      Beleg nicht bestätigt
+                    </Typography>
+                  </Box>
                 )}
               </Box>
               <Box

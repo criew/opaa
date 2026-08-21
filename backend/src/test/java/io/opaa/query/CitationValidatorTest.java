@@ -36,6 +36,42 @@ class CitationValidatorTest {
   }
 
   /**
+   * #697 review, finding 3: a model correcting the casing of a real file name (e.g. "Readme.md" for
+   * the indexed "readme.md") must not turn a genuine citation into a false-invalid verdict.
+   */
+  @Test
+  void validCitationWithDifferentCapitalisationOfTheSameFileName() {
+    List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "README.md"));
+    List<Document> retrievedChunks = List.of(chunk("doc-1", 0, "readme.md"));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks);
+
+    assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "README.md", true));
+  }
+
+  /**
+   * #697 review, finding 3: the same visible file name can reach the retrieved chunk and the
+   * citation in different Unicode normal forms - e.g. an "ü" as a precomposed NFC code point in one
+   * and as a base letter plus a combining diaeresis (NFD) in the other, most commonly from a macOS
+   * upload. Both render identically and must compare equal.
+   */
+  @Test
+  void validCitationWhereFileNameDiffersOnlyInUnicodeNormalForm() {
+    String nfcName = java.text.Normalizer.normalize("Verfügung.pdf", java.text.Normalizer.Form.NFC);
+    String nfdName = java.text.Normalizer.normalize("Verfügung.pdf", java.text.Normalizer.Form.NFD);
+    // Sanity check: the two literals actually differ at the byte level, otherwise this test would
+    // pass even without normalisation and prove nothing.
+    assertThat(nfcName).isNotEqualTo(nfdName);
+
+    List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, nfcName));
+    List<Document> retrievedChunks = List.of(chunk("doc-1", 0, nfdName));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks);
+
+    assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, nfcName, true));
+  }
+
+  /**
    * #386 acceptance criterion: a document id that is not among the retrieved chunks is invalid,
    * even when the marker is formally well-formed.
    */

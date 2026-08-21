@@ -16,6 +16,7 @@ import io.opaa.observability.QueryMetrics;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -437,6 +438,15 @@ public class QueryService {
    * points at a document this answer never actually searched. {@code cited} now only reflects
    * <em>valid</em> citations - an invalid one is never allowed to make an unrelated, merely
    * pattern-matching citation count as a genuine one.
+   *
+   * <p>#697 review, finding 4: the synthetic entries are deliberately <b>not</b> run through the
+   * same file-name merge as the real, retrieved-chunk entries. A fabricated citation can coincide
+   * in file name with a real, retrieved-but-uncited document (the model routinely copies the
+   * correct name even for a fabricated id), and merging would have let the fabricated citation's
+   * {@code cited = true} overwrite the real entry's {@code cited = false} - the real document then
+   * appeared cited, with its real relevance score and real "open in document" link, for a citation
+   * it was never actually named in. Keeping the two groups apart means a synthetic entry can only
+   * ever add a new row, never silently rewrite a real one.
    */
   private List<SourceReference> mapSources(
       List<Document> chunks,
@@ -458,7 +468,7 @@ public class QueryService {
             .map(CitationValidator.ValidatedCitation::documentId)
             .collect(Collectors.toSet());
 
-    Stream<SourceReference> fromChunks =
+    List<SourceReference> fromChunks =
         chunks.stream()
             .map(
                 chunk -> {
@@ -478,44 +488,47 @@ public class QueryService {
                       .indexedAt(indexedAt)
                       .sourceEntryUrl(sourceEntryUrl)
                       .citationValid(citationValid);
-                });
+                })
+            .collect(
+                toMap(
+                    SourceReference::getFileName,
+                    source -> source,
+                    QueryService::mergeSourceReferences,
+                    LinkedHashMap::new))
+            .values()
+            .stream()
+            .toList();
 
     List<SourceReference> orphanEntries =
         buildOrphanSourceReferences(validatedCitations, retrievedDocumentIds);
 
-    return Stream.concat(fromChunks, orphanEntries.stream())
-        .collect(
-            toMap(
-                SourceReference::getFileName,
-                source -> source,
-                QueryService::mergeSourceReferences,
-                LinkedHashMap::new))
-        .values()
-        .stream()
-        .toList();
+    return Stream.concat(fromChunks.stream(), orphanEntries.stream()).toList();
   }
 
   /**
-   * Builds one synthetic, zero-relevance {@link SourceReference} per distinct file name an invalid
-   * citation claimed for a document id that matches no retrieved chunk at all (#386) - this is the
-   * only way such a citation can be flagged at all, since it does not correspond to any real
-   * retrieved chunk that would otherwise carry the flag.
+   * Builds one synthetic {@link SourceReference} per distinct file name an invalid citation claimed
+   * for a document id that matches no retrieved chunk at all (#386) - this is the only way such a
+   * citation can be flagged at all, since it does not correspond to any real retrieved chunk that
+   * would otherwise carry the flag. {@code relevanceScore} and {@code matchCount} are both {@code
+   * 0} - the honest signal that there is no real retrieved passage behind this entry, not merely a
+   * low one.
+   *
+   * <p>#697 review, finding 4: {@code cited = true} is deliberate, not an oversight - the citation
+   * is why this entry exists at all, so it must not be sorted into "checked but uncited" ({@link
+   * #mapSources}'s uncited group), which would misrepresent a fabricated reference as a real
+   * document that was merely retrieved and not used.
    */
   private List<SourceReference> buildOrphanSourceReferences(
       List<CitationValidator.ValidatedCitation> validatedCitations,
       Set<String> retrievedDocumentIds) {
-    Map<String, Long> countByFileName =
+    Set<String> orphanFileNames =
         validatedCitations.stream()
             .filter(c -> !c.valid())
             .filter(c -> !retrievedDocumentIds.contains(c.documentId()))
-            .collect(
-                Collectors.groupingBy(
-                    CitationValidator.ValidatedCitation::fileName, Collectors.counting()));
-    return countByFileName.entrySet().stream()
-        .map(
-            entry ->
-                new SourceReference(entry.getKey(), 0.0, entry.getValue().intValue(), true)
-                    .citationValid(false))
+            .map(CitationValidator.ValidatedCitation::fileName)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    return orphanFileNames.stream()
+        .map(fileName -> new SourceReference(fileName, 0.0, 0, true).citationValid(false))
         .toList();
   }
 
