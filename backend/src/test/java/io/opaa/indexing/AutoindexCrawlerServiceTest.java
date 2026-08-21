@@ -2,12 +2,16 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AutoindexCrawlerServiceTest {
 
-  private final AutoindexCrawlerService service = new AutoindexCrawlerService();
+  // Pure parsing coverage only (no .crawl() call in this class) - target validation is exercised
+  // on its own dedicated stand (TargetAddressValidatorTest).
+  private final AutoindexCrawlerService service =
+      new AutoindexCrawlerService(TargetAddressValidator.disabled());
 
   @Test
   void parsesTypicalDirectoryListing() {
@@ -464,5 +468,121 @@ class AutoindexCrawlerServiceTest {
 
     assertThat(entries).hasSize(1);
     assertThat(entries.getFirst().name()).isEqualTo("file.txt");
+  }
+
+  // --- #693: isRedirectOriginTrusted's http->https upgrade exception -------------------------
+
+  @Test
+  void redirectOriginTrusted_allowsASameHostUpgradeAtBothDefaultPorts() {
+    assertThat(
+            AutoindexCrawlerService.isRedirectOriginTrusted(
+                URI.create("http://host.example/a"), URI.create("https://host.example/a")))
+        .isTrue();
+  }
+
+  @Test
+  void redirectOriginTrusted_allowsASameHostUpgradeAtMatchingExplicitPorts() {
+    assertThat(
+            AutoindexCrawlerService.isRedirectOriginTrusted(
+                URI.create("http://host.example:8443/a"),
+                URI.create("https://host.example:8443/a")))
+        .isTrue();
+  }
+
+  @Test
+  void redirectOriginTrusted_allowsAnUpgradeWhereOnlyTheHttpSideNamesTheStandardPortExplicitly() {
+    // PR #699 review, finding 1: the original raw getPort() comparison missed this - an explicit
+    // ":80" on the http side compared unequal to the https side's unspecified (-1) port, even
+    // though both are the standard port for their own scheme.
+    assertThat(
+            AutoindexCrawlerService.isRedirectOriginTrusted(
+                URI.create("http://host.example:80/a"), URI.create("https://host.example/a")))
+        .isTrue();
+  }
+
+  @Test
+  void redirectOriginTrusted_allowsAnUpgradeWhereOnlyTheHttpsSideNamesTheStandardPortExplicitly() {
+    // PR #699 review, finding 1: the mirror image - a server that writes the standard https port
+    // explicitly into its own Location header.
+    assertThat(
+            AutoindexCrawlerService.isRedirectOriginTrusted(
+                URI.create("http://host.example/a"), URI.create("https://host.example:443/a")))
+        .isTrue();
+  }
+
+  @Test
+  void redirectOriginTrusted_rejectsAnUpgradeWithDifferingExplicitPorts() {
+    // #693's Soll-Zustand is deliberately narrow: "Standard-Ports (80->443) bzw. explizit
+    // gleicher Port" - an explicit http port that differs from an explicit https port is not
+    // covered, even though both individually look plausible.
+    assertThat(
+            AutoindexCrawlerService.isRedirectOriginTrusted(
+                URI.create("http://host.example:8080/a"),
+                URI.create("https://host.example:8443/a")))
+        .isFalse();
+  }
+
+  @Test
+  void redirectOriginTrusted_rejectsAnUpgradeToADifferentHost() {
+    assertThat(
+            AutoindexCrawlerService.isRedirectOriginTrusted(
+                URI.create("http://host.example/a"), URI.create("https://angreifer.example/a")))
+        .isFalse();
+  }
+
+  @Test
+  void redirectOriginTrusted_stillRejectsADowngrade() {
+    // isSchemeDowngrade is checked independently by every caller and refuses this before
+    // isRedirectOriginTrusted is even consulted (see
+    // AutoindexCrawlerService#sendFollowingRedirects)
+    // - this asserts the trust check itself would not accidentally treat a downgrade as trusted if
+    // that ordering were ever changed.
+    assertThat(
+            AutoindexCrawlerService.isRedirectOriginTrusted(
+                URI.create("https://host.example/a"), URI.create("http://host.example/a")))
+        .isFalse();
+  }
+
+  @Test
+  void redirectOriginTrusted_trueForAGenuineSameOriginRedirect() {
+    assertThat(
+            AutoindexCrawlerService.isRedirectOriginTrusted(
+                URI.create("https://host.example/a"), URI.create("https://host.example/b")))
+        .isTrue();
+  }
+
+  // --- maintainer nachtrag to #693 (21.08.2026): distinguishable, sanitized messages ---------
+
+  @Test
+  void redirectRejectionMessage_forForeignHostNeverCarriesPathQueryOrCredentials() {
+    // The Location header of a rejected redirect is server-controlled input that can carry a
+    // token, session id or other sensitive query parameter - the message must name only the
+    // rejected target's scheme and host, never its path, query, fragment or userinfo.
+    String message =
+        AutoindexCrawlerService.redirectRejectionMessage(
+            AutoindexCrawlerService.RedirectRejectionReason.FOREIGN_HOST,
+            URI.create("https://user:secret@angreifer.example:8443/pfad?token=geheim#frag"));
+
+    assertThat(message).contains("https://angreifer.example:8443");
+    assertThat(message).doesNotContain("secret");
+    assertThat(message).doesNotContain("token");
+    assertThat(message).doesNotContain("geheim");
+    assertThat(message).doesNotContain("pfad");
+    assertThat(message).doesNotContain("frag");
+  }
+
+  @Test
+  void redirectRejectionMessage_distinguishesForeignHostFromProtocolDowngrade() {
+    URI target = URI.create("http://host.example/a");
+    String foreignHostMessage =
+        AutoindexCrawlerService.redirectRejectionMessage(
+            AutoindexCrawlerService.RedirectRejectionReason.FOREIGN_HOST, target);
+    String downgradeMessage =
+        AutoindexCrawlerService.redirectRejectionMessage(
+            AutoindexCrawlerService.RedirectRejectionReason.PROTOCOL_DOWNGRADE, target);
+
+    assertThat(foreignHostMessage).isNotEqualTo(downgradeMessage);
+    assertThat(foreignHostMessage).contains("fremden Host");
+    assertThat(downgradeMessage).contains("Downgrade");
   }
 }

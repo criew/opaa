@@ -42,6 +42,14 @@ services:
       # never reaches COMPLETED for, timing out the test instead of failing it cleanly). Raised for
       # the same reason as the per-library limit above, not disabled.
       OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS: "20"
+      # #267: the SSRF target-address check defaults to active (opaa.indexing.target-validation),
+      # which would otherwise reject every HTTP_DIRECTORY/RSS_FEED fetch this suite makes - both
+      # "rss-feed" and "ai-stub" resolve to a container-internal address on the Compose network's
+      # own bridge, itself a private range (172.16.0.0/12 or similar, assigned by Docker). These are
+      # legitimate, operator-chosen fixture hosts for this suite, not an attacker-reachable target -
+      # exactly the case opaa.indexing.target-validation.allowlist exists for, mirroring how a real
+      # deployment names its own trusted internal sources.
+      OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: rss-feed,ai-stub
       # The E2E stack uses its own host ports (see run-e2e.mjs) so it can
       # run alongside a developer's own docker-compose.yml stack; the
       # allowed CORS origin must match the frontend's actual port.

@@ -124,6 +124,10 @@ opaa:
     # must resolve underneath. No default on purpose - an empty allowlist disables the FILESYSTEM
     # quellentyp entirely, the safe default for a fresh installation.
     filesystem-allowlist: ${OPAA_INDEXING_FILESYSTEM_ALLOWLIST:}
+    # #267: SSRF hardening for HTTP_DIRECTORY/RSS_FEED fetches - see TargetAddressValidator.
+    target-validation:
+      enabled: ${OPAA_INDEXING_TARGET_VALIDATION_ENABLED:true}
+      allowlist: ${OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST:}
   upload:
     storage-path: ${OPAA_UPLOAD_STORAGE_PATH:./uploads}
     max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}

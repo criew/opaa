@@ -130,8 +130,6 @@ Drei Zustände werden unterschieden:
 **Geplant (Phase 2)**
 - Schreibender Zugriff je Integration · Spiegelung der Rechte aus dem Quellsystem
 
-> Die Zielprüfung für URL-Indizierung (private Adressbereiche, Schema) ist offen — #267.
-
 ---
 
 ## C · Spaces, Assets & Verteilung
