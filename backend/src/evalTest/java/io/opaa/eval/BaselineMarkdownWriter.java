@@ -82,19 +82,34 @@ public final class BaselineMarkdownWriter {
     sb.append(
         "| Gruppe | Metrik | n | Baseline | Ist | Delta | Toleranz | Ergebnis |\n"
             + "|---|---|---|---|---|---|---|---|\n");
+    boolean anyCaseBased = false;
     for (var check : result.checks()) {
+      // Issue #306: for the case-count check, tolerance() is a case count (MAX_CASE_COUNT_DROP),
+      // not a metric-point amount — the "*" plus the footnote below makes that unit switch visible
+      // instead of silently formatting a case count as if it were a fraction of the metric.
+      anyCaseBased = anyCaseBased || check.caseBasedCheck();
       sb.append(
           String.format(
               Locale.ROOT,
-              "| %s | %s | %d | %.3f | %.3f | %+.3f | %.3f | %s |\n",
+              "| %s | %s%s | %d | %.3f | %.3f | %+.3f | %s | %s |\n",
               check.group(),
               check.metric(),
+              check.caseBasedCheck() ? "*" : "",
               check.n(),
               check.baselineValue(),
               check.currentValue(),
               check.delta(),
-              check.tolerance(),
+              check.caseBasedCheck()
+                  ? String.format(Locale.ROOT, "%.0f Fall/Fälle", check.tolerance())
+                  : String.format(Locale.ROOT, "%.3f", check.tolerance()),
               check.passed() ? "✅" : "❌"));
+    }
+    if (anyCaseBased) {
+      sb.append(
+          "\n_* fallzahlbasierte Prüfung (issue #306): die Zahl der Fälle mit einem Treffer darf "
+              + "gegenüber der Baseline um höchstens die angegebene Zahl sinken, statt den "
+              + "Mittelwert innerhalb einer Toleranz zu halten — siehe `BaselineComparator`s "
+              + "Javadoc._\n");
     }
 
     if (!anyFailed) {

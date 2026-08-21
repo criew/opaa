@@ -113,6 +113,43 @@ public record Baseline(
                         + "to the loosest possible value instead of failing loudly. Fix the field "
                         + "in the baseline file.");
               }
+              // Issue #306: same failure mode as above, for the two new case-count fields the
+              // case-count check (BaselineComparator) reads. A hand-edited or incompletely
+              // migrated baseline entry missing hitCountAt5/hitCountAt10 would deserialize them as
+              // 0 (Jackson's int default), which would make the case-count check pass almost
+              // unconditionally for that group/metric (any currentHitCount >= 0 - 1 is trivially
+              // true) — silently *widening* the check instead of failing loudly. A group whose
+              // mean says at least one case scored above zero but whose recorded count is 0 is
+              // exactly that missing-field situation.
+              if (aggregate.hitCountAt5() <= 0 && aggregate.hitRateAt5() > 0) {
+                throw new IllegalStateException(
+                    "Baseline group '"
+                        + key
+                        + "' in "
+                        + file.toAbsolutePath()
+                        + " has hitCountAt5="
+                        + aggregate.hitCountAt5()
+                        + " but hitRateAt5="
+                        + aggregate.hitRateAt5()
+                        + " (missing or zero count contradicts a positive mean) — this would "
+                        + "silently widen the issue #306 case-count check instead of failing "
+                        + "loudly. Fix the field in the baseline file.");
+              }
+              boolean anyTop10SignalPositive =
+                  aggregate.mrr() > 0 || aggregate.ndcgAt10() > 0 || aggregate.recallAt10() > 0;
+              if (aggregate.hitCountAt10() <= 0 && anyTop10SignalPositive) {
+                throw new IllegalStateException(
+                    "Baseline group '"
+                        + key
+                        + "' in "
+                        + file.toAbsolutePath()
+                        + " has hitCountAt10="
+                        + aggregate.hitCountAt10()
+                        + " but mrr/ndcgAt10/recallAt10 is positive (missing or zero count "
+                        + "contradicts a positive mean) — this would silently widen the issue "
+                        + "#306 case-count check instead of failing loudly. Fix the field in the "
+                        + "baseline file.");
+              }
             });
   }
 }

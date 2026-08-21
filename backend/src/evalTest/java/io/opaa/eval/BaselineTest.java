@@ -59,6 +59,31 @@ class BaselineTest {
         .hasMessageContaining("distinctExpectedDocumentSets=0");
   }
 
+  @Test
+  void rejectsAGroupWithZeroHitCountAt5DespiteAPositiveHitRateAt5() throws IOException {
+    // Issue #306: hitCountAt5=0 while hitRateAt5=0.521 contradicts itself — a missing/zero count
+    // would otherwise silently widen the case-count check for this group/metric instead of
+    // failing loudly, the same failure mode distinctExpectedDocumentSets=0 guards against above.
+    Path file = tempDir.resolve("baseline.json");
+    Files.writeString(
+        file, VALID_BASELINE_JSON.replace("\"hitCountAt5\": 63,", "\"hitCountAt5\": 0,"));
+
+    assertThatThrownBy(() -> Baseline.load(file))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("hitCountAt5=0");
+  }
+
+  @Test
+  void rejectsAGroupWithZeroHitCountAt10DespiteAPositiveNdcgAt10() throws IOException {
+    Path file = tempDir.resolve("baseline.json");
+    Files.writeString(
+        file, VALID_BASELINE_JSON.replace("\"hitCountAt10\": 73", "\"hitCountAt10\": 0"));
+
+    assertThatThrownBy(() -> Baseline.load(file))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("hitCountAt10=0");
+  }
+
   private static final String VALID_BASELINE_JSON =
       """
       {
@@ -86,7 +111,9 @@ class BaselineTest {
             "ndcgAt10": 0.445,
             "recallAt10": 0.490,
             "distinctExpectedDocumentSets": 94,
-            "recallAt10Ceiling": 0.9708
+            "recallAt10Ceiling": 0.9708,
+            "hitCountAt5": 63,
+            "hitCountAt10": 73
           }
         },
         "measuredAt": "2026-08-03",

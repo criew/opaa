@@ -4,7 +4,9 @@
 
 Vorgeschlagen — Entwurf aus dem Code-Review zu PR #301 (Issue #228, Epic #224), übernommen und in
 `io.opaa.eval.BaselineComparator` umgesetzt im selben PR. Siehe den [Nachtrag](#nachtrag-umsetzung-in-pr-301)
-für zwei Korrekturen gegenüber diesem Entwurf und den Umsetzungsstand.
+für zwei Korrekturen gegenüber diesem Entwurf und den Umsetzungsstand. Der ursprünglich offene Punkt
+des Abschnitts „Offen" (sechs zu enge Metrik/Gruppen-Paare) ist mit dem
+[Nachtrag zu Issue #306](#nachtrag-fallzahlbasierte-prüfung-für-zu-enge-paare-issue-306) gelöst.
 
 ## Kontext
 
@@ -109,6 +111,10 @@ nicht mehr allein auf der Aufmerksamkeit des Reviewers.
 
 ## Offen
 
+> **Gelöst — siehe [Nachtrag zu Issue #306](#nachtrag-fallzahlbasierte-prüfung-für-zu-enge-paare-issue-306).**
+> Der folgende Abschnitt bleibt als historischer Befund stehen (die Zahlen entstammen dem
+> damaligen Stand); die Lösung selbst steht im Nachtrag.
+
 - Ob Gruppen mit sehr niedrigem Baselinewert überhaupt über Mittelwerte geprüft werden sollten oder
   besser über die absolute Zahl getroffener Fälle (z. B. „die Zahl der Fälle mit nDCG@10 > 0 darf um
   höchstens 1 sinken"). **Konkret bekannt und bewusst nicht gelöst — korrigiert in der zweiten
@@ -211,3 +217,71 @@ weiteren Sprache oder Domäne zu erweitern, sodass beide Gruppen sich tatsächli
 wäre der grundsätzlichere Fix, verlangt aber einen neuen Corpus-/Golden-Dataset-Lauf und eine neu
 gezogene Baseline — ein eigenständiges, hier bewusst nicht gegangenes Vorhaben. Details und
 Begründung: `eval/baseline/README.md`, Abschnitt „Konsolidierung von `language:de`".
+
+## Nachtrag: Fallzahlbasierte Prüfung für zu enge Paare (Issue #306)
+
+> Löst den zweiten (verbliebenen) Punkt des „Offen"-Abschnitts auf.
+
+**Ausgangslage.** Sechs Metrik/Gruppen-Paare — alle in `numeric_range` und `multi_attribute_filter`,
+den beiden schwächsten Kategorien — haben eine Mittelwert-Toleranz, die enger ist als die
+Verschiebung, die ein einzelner kippender Fall erzeugt (`1/n`, siehe Tabelle im „Offen"-Abschnitt
+oben). Für `numeric_range`s nDCG@10 genügt es, dass eine einzige der 16 Anfragen von Rang 1 auf Rang
+3 rutscht — kein verlorener Treffer nötig —, um die Toleranz mehr als doppelt zu reißen.
+
+**Entscheidung: fallzahlbasierte statt Mittelwert-Prüfung, ausschließlich für Paare mit Toleranz
+< 1/n, ermittelt dynamisch statt über eine feste Paarliste.** `BaselineComparator.usesCaseBasedCheck`
+prüft für jedes Metrik/Gruppen-Paar, ob `toleranceFor(baselineValue, n_eff) < 1/n` gilt (`n` ist die
+rohe Fallzahl, dieselbe, durch die der Mittelwert tatsächlich geteilt wurde — nicht `n_eff`, das die
+Formel selbst verengt). Nur dort ersetzt eine fallzahlbasierte Prüfung die Mittelwert-Toleranz: die
+Zahl der Fälle mit einem Treffer darf gegenüber der Baseline um höchstens `MAX_CASE_COUNT_DROP = 1`
+sinken — exakt die Prüfung, die der „Offen"-Abschnitt oben vorschlug. Für `hitRateAt5` ist das die
+Zahl der Fälle mit einem Treffer in den Top 5 (`hitCountAt5`); für `mrr`, `ndcgAt10` und `recallAt10`
+dieselbe Zahl für die Top 10 (`hitCountAt10`) — diese drei sind für dieses Harness dasselbe
+Fall-Ereignis, nicht nur korreliert: `searchTopK=10` bedeutet, die Rangliste hat nie mehr als 10
+Einträge, also ist „ein Treffer irgendwo in der (bis zu 10 langen) Rangliste" (was `mrr` positiv
+macht) identisch mit „ein Treffer in den Top 10" (was `ndcgAt10`/`recallAt10` positiv macht).
+
+**Warum dynamisch statt einer festen Sechs-Paare-Liste.** Eine hartkodierte Liste würde nach dem
+nächsten Baseline-Update lautlos falsch: verschiebt sich ein Paar über oder unter die `1/n`-Grenze,
+folgt die Prüfung dem nicht automatisch. `usesCaseBasedCheck` rechnet stattdessen bei jedem Vergleich
+aus der *aktuell geladenen* Baseline neu nach — im selben selbstheilenden Geist wie der
+`language:de`-Skip aus dem vorherigen Nachtrag.
+
+**Warum `hitCountAt5`/`hitCountAt10` als neue Baseline-Felder, nicht aus den bereits committeten
+Mittelwerten zurückgerechnet.** Naheliegend wäre gewesen, die historische Fallzahl aus Mittelwert
+und `n` zu schätzen (z. B. `round(baselineValue * n)`) statt das Baseline-Schema zu erweitern. Das
+ist für `hitRateAt5` exakt (die Metrik ist pro Fall binär, ihr Mittelwert mal `n` ist genau die
+Trefferzahl), für `mrr`/`ndcgAt10`/`recallAt10` aber nicht: Diese sind pro Fall stetig (ein Treffer
+auf einem niedrigeren Rang zählt weniger als 1,0), sodass ihr Mittelwert die tatsächliche Trefferzahl
+unterschätzt. Am realen Fallmaterial hinter der aktuellen Baseline nachgerechnet: `numeric_range`s
+`ndcgAt10`-Mittelwert von 0,063 summiert sich über 16 Fälle zu 1,008 — die tatsächliche Trefferzahl
+ist aber 4, nicht 1. Eine Rückrechnung hätte also nicht „die Zahl der Fälle mit `ndcgAt10 > 0`"
+geliefert, sondern die Prüfung für genau die Paare stillschweigend zu locker gemacht, die sie
+schützen soll — das Gegenteil des Ziels. `hitCountAt5`/`hitCountAt10` sind deshalb zusätzliche,
+aus denselben Rohdaten wie die vier Mittelwerte geführte Felder je Gruppe (siehe
+`eval/baseline/README.md`, Abschnitt „Aufbau").
+
+**Woher die Zahlen für die aktuell committete Baseline stammen.** Keine neue Messung: Die Baseline
+selbst hat sich nicht geändert (Fixpunkte, Mittelwerte und `distinctExpectedDocumentSets` sind
+unverändert). Die Zähler wurden aus dem bit-identischen, artefaktverifizierten
+`checkRetrievalBaseline`-Lauf auf einem GitHub-Actions-eigenen Runner gelesen (planmäßiger
+nächtlicher Lauf auf `main`, Workflow-Run `32442551477`, Commit `45faad2`, 2026-08-21T03:12Z — vgl.
+den Nachtrag „zweite Review-Runde" oben, der genau diesen Runner-Lauf als offenen Punkt benannte).
+Dessen Delta-Tabelle zeigt für jede der vierzig Metrik/Gruppen-Zeilen ein Delta von `±0.000`
+gegenüber der committeten Baseline — die exakt gleiche Messgrundlage, aus der auch die vier
+Mittelwerte stammen, nicht eine andere oder neuere.
+
+**Warum `MAX_CASE_COUNT_DROP = 1` statt `K_MIN = 2` wie bei der Mittelwert-Toleranz.** Die
+fallbasierte Mittelwert-Toleranz braucht die Marge von zwei Fällen, um Fließkomma-Grenzfälle wie den
+aus dem PR-#301-Review (`category:entity_description`, `12/20 − 0,65 == −0,05000000000000004`
+gegen eine Toleranz von exakt `0,05`) abzufangen. Die fallzahlbasierte Prüfung vergleicht dagegen
+zwei Ganzzahlen exakt — es gibt keine Rundungsgrenze, an der ein Fall fälschlich kippen könnte —,
+sodass ein einzelner tolerierter Fall genügt, um genau das ursprüngliche Ziel aus Entscheidung 2
+(„zwei unabhängige Fälle sind Rauschen, drei sind ein Befund" — hier: ein Fall ist Rauschen, zwei
+sind ein Befund) ohne die zusätzliche Marge zu erreichen.
+
+**Auswirkung auf die anderen Prüfungen.** Keine — außerhalb der sechs betroffenen Paare bleibt die
+Mittelwert-Toleranzformel aus Entscheidung 2/3 unverändert in Kraft, unverändert von `evalUnitTest`
+abgedeckt (`BaselineComparatorTest`). `eval/baseline/diff_baseline.py` vergleicht zusätzlich
+`hitCountAt5`/`hitCountAt10` zwischen PR-Branch und `main` (rein informativ, wie die vier
+Mittelwerte auch), damit eine stille Absenkung der neuen Felder ebenfalls im PR sichtbar wird.

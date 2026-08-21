@@ -21,6 +21,18 @@ import java.util.function.Function;
  * identical expected-document set (e.g. every {@code crosslingual} case is the German twin of an
  * English one), so {@code n} alone overstates how many independent data points back a group's
  * average — see the report-level {@code datasetNotes} this mirrors at group granularity.
+ *
+ * <p><b>{@code hitCountAt5} / {@code hitCountAt10} (issue #306).</b> Counts of cases in this group
+ * that scored above zero at the two ranking depths this harness measures — {@code hitCountAt5} is
+ * the number of cases with {@code hitRateAt5 > 0} (a relevant document somewhere in the top 5);
+ * {@code hitCountAt10} is the number of cases with a relevant document anywhere in the (at most
+ * {@code searchTopK=10}-long) ranked list, which is exactly the same per-case event for {@code mrr
+ * > 0}, {@code ndcgAt10 > 0} and {@code recallAt10 > 0} — the ranked list this harness scores never
+ * has more than 10 entries (ADR-0012, {@code searchTopK}), so "a hit exists in the full ranked
+ * list" (what makes {@code mrr} positive) and "a hit exists in the top 10" (what makes {@code
+ * ndcgAt10}/{@code recallAt10} positive) are the identical event, not merely correlated. {@code
+ * BaselineComparator} uses these two counts, not the four continuous means, for the group/metric
+ * pairs where the mean tolerance is tighter than one case's worth of shift — see its class Javadoc.
  */
 public record MetricsAggregate(
     int n,
@@ -29,11 +41,13 @@ public record MetricsAggregate(
     double ndcgAt10,
     double recallAt10,
     double recallAt10Ceiling,
-    int distinctExpectedDocumentSets) {
+    int distinctExpectedDocumentSets,
+    int hitCountAt5,
+    int hitCountAt10) {
 
   public static MetricsAggregate of(List<RetrievalMetrics.QueryResult> results) {
     if (results.isEmpty()) {
-      return new MetricsAggregate(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0);
+      return new MetricsAggregate(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0);
     }
     int n = results.size();
     double hitRate =
@@ -57,8 +71,20 @@ public record MetricsAggregate(
             .map(r -> new java.util.TreeSet<>(r.goldenCase().expectedDocuments()))
             .distinct()
             .count();
+    long hitCountAt5 = results.stream().filter(r -> r.hitRateAt5() > 0).count();
+    // ndcgAt10 > 0 iff recallAt10 > 0 iff reciprocalRank > 0 for this harness (see class Javadoc)
+    // — ndcgAt10 is picked arbitrarily as the representative of the three.
+    long hitCountAt10 = results.stream().filter(r -> r.ndcgAt10() > 0).count();
     return new MetricsAggregate(
-        n, hitRate, mrr, ndcg, recall, recallCeiling, (int) distinctExpectedSets);
+        n,
+        hitRate,
+        mrr,
+        ndcg,
+        recall,
+        recallCeiling,
+        (int) distinctExpectedSets,
+        (int) hitCountAt5,
+        (int) hitCountAt10);
   }
 
   /**

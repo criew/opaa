@@ -7,6 +7,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.ToIntFunction;
 
 /**
  * Compares a freshly produced {@link EvaluationReport} against the committed {@link Baseline}
@@ -58,13 +59,17 @@ import java.util.TreeSet;
  * relative (not absolute) cap avoids that collision. (The hard *floor* below is a separate concern
  * and does combine a relative and an absolute term — see {@link #HARD_FLOOR_FRACTION_OF_BASELINE}.)
  *
- * <p>ADR-0013's own "Offen" section acknowledges a residual gap: whenever a group/metric pair's
- * tolerance is tighter than the shift a single case can cause ({@code 1/n}), one case flipping can
- * still fail that pair even though nothing changed elsewhere. As measured against the current
- * baseline this affects six pairs, not one, all in the two weakest categories:
+ * <h2>Case-based check for pairs where the mean tolerance is tighter than one case (issue #306)
+ * </h2>
+ *
+ * ADR-0013's "Offen" section originally acknowledged a residual gap: whenever a group/metric pair's
+ * mean tolerance ({@link #toleranceFor}) is tighter than the shift a single case can cause ({@code
+ * 1/n}), one case flipping could fail that pair even though nothing changed elsewhere. As measured
+ * against the baseline current as of issue #306, this affects six pairs, all in the two weakest
+ * categories:
  *
  * <table>
- *   <caption>Pairs where tolerance &lt; one case's worth of shift (1/n)</caption>
+ *   <caption>Pairs where the mean tolerance &lt; one case's worth of shift (1/n)</caption>
  *   <tr><th>Group / metric</th><th>Tolerance</th><th>1/n</th><th>Ratio</th></tr>
  *   <tr><td>{@code numeric_range} / {@code recallAt10}</td><td>0.0150</td><td>0.0625</td><td>0.24</td></tr>
  *   <tr><td>{@code numeric_range} / {@code ndcgAt10}</td><td>0.0158</td><td>0.0625</td><td>0.25</td></tr>
@@ -74,19 +79,54 @@ import java.util.TreeSet;
  *   <tr><td>{@code multi_attribute_filter} / {@code recallAt10}</td><td>0.0398</td><td>0.0476</td><td>0.83</td></tr>
  * </table>
  *
- * For {@code numeric_range}'s {@code ndcgAt10} it is enough for a single one of the 16 queries to
- * drop from rank 1 to rank 3 — no lost hit required — to breach the tolerance more than twice over.
- * This is a known, deliberately deferred gap (tracked as issue #306, from ADR-0013's "Offen"
- * section), not silently claimed as solved here: a case-count-based check (e.g. "the number of
- * cases with {@code ndcgAt10 > 0} may drop by at most one") would close it exactly, without needing
- * more calibration evidence, but is out of scope for this class.
+ * For {@code numeric_range}'s {@code ndcgAt10} it was enough for a single one of the 16 queries to
+ * drop from rank 1 to rank 3 — no lost hit required — to breach the mean tolerance more than twice
+ * over.
  *
- * <p>The downgrade of this gap from "must-fix before merge" to "tracked follow-up" rests on four
- * bit-identical {@code checkRetrievalBaseline} runs across three different machines reproducing
- * these exact tolerance-vs-one-case numbers with zero delta in the affected groups — see ADR-0013's
- * Nachtrag. That evidence is real but comes entirely from developer/reviewer machines; the first
- * scheduled run on GitHub Actions' own runner hardware is the actual first test of whether this
- * tightness holds outside that sample.
+ * <p><b>Fix (issue #306, ADR-0013 Nachtrag):</b> {@link #addMetricCheck} determines, per
+ * group/metric pair and dynamically (not from a hardcoded pair list — see {@link
+ * #usesCaseBasedCheck}), whether {@code toleranceFor(baselineValue, nEff) < 1.0 / n}. Where that
+ * holds, the mean-tolerance test is replaced by a case-count test: has the number of cases in the
+ * group scoring above zero ({@link MetricsAggregate#hitCountAt5()} for {@code hitRateAt5}; {@link
+ * MetricsAggregate#hitCountAt10()} for {@code mrr}/{@code ndcgAt10}/{@code recallAt10} — the same
+ * per-case event for all three, see {@code MetricsAggregate}'s Javadoc) dropped by more than {@link
+ * #MAX_CASE_COUNT_DROP} compared to the baseline's own recorded count for that group/metric? This
+ * is exactly the check ADR-0013's "Offen" section proposed ("die Zahl der Fälle mit {@code ndcgAt10
+ * > 0} darf um höchstens 1 sinken").
+ *
+ * <p>This needs the baseline to carry {@code hitCountAt5}/{@code hitCountAt10} per group — a small,
+ * one-time schema addition, not a new calibration exercise: both counts are derived from the exact
+ * same {@link EvaluationReport#allQueryResults()} that already produced every other number in the
+ * baseline, so populating them requires no new measurement, only reading a number that was already
+ * implicitly present in the run that produced the current baseline. The counts used for {@code
+ * eval/baseline/comic-characters.json} were read from the byte-identical, artifact-verified {@code
+ * checkRetrievalBaseline} run on GitHub Actions' own runner hardware referenced in ADR-0013's
+ * Nachtrag (run id {@code 32442551477}, commit {@code 45faad2}) — not invented or back-calculated
+ * from the committed means, which (see below) would not have been possible exactly.
+ *
+ * <p><b>Rejected alternative: derive the historical count from the baseline's already-committed
+ * mean and {@code n}</b> (e.g. {@code round(baselineValue * n)}), avoiding the schema addition
+ * entirely. Set aside because it is not exact for any metric except {@code hitRateAt5}: {@code
+ * hitRateAt5} is binary per case (its mean times {@code n} is exactly the hit count), but {@code
+ * ndcgAt10}/{@code recallAt10}/{@code mrr} are continuous per case (a hit ranked lower than 1st
+ * scores less than 1.0), so their means understate the true count of cases with a hit — confirmed
+ * against the real {@code numeric_range}/{@code multi_attribute_filter} per-case data behind the
+ * current baseline (e.g. {@code numeric_range}'s {@code ndcgAt10} mean of 0.063 sums to {@code
+ * 1.008}, not the actual hit count of 4). A count derived that way would not be the "number of
+ * cases with {@code ndcgAt10 > 0}" ADR-0013 asked for, and would silently under-protect these pairs
+ * rather than over-protect them.
+ *
+ * <p>The dynamic {@code toleranceFor(...) < 1/n} condition — rather than a hardcoded six-pair list
+ * — means this also self-adjusts: a future baseline re-measurement that shifts a pair's tolerance
+ * or {@code n} picks up or drops the case-based check for that pair automatically, the same
+ * self-healing spirit as the {@code language:de} skip below.
+ *
+ * <p>The evidence that the *mean*-tolerance formula itself is tight enough to need this fix rests
+ * on four bit-identical {@code checkRetrievalBaseline} runs across three different machines
+ * reproducing these exact tolerance-vs-one-case numbers with zero delta in the affected groups —
+ * see ADR-0013's Nachtrag. That evidence is real but comes entirely from developer/reviewer
+ * machines; the scheduled run on GitHub Actions' own runner hardware referenced above is the first
+ * confirmation that this tightness holds outside that sample.
  *
  * <p>Comparisons apply a small epsilon (see {@link #EPSILON}) so a boundary case that is
  * mathematically exactly on the tolerance line does not fail on floating-point rounding alone (PR
@@ -117,6 +157,18 @@ public final class BaselineComparator {
 
   /** Two independent cases flipping is treated as noise; a third is a finding (ADR-0013). */
   static final double K_MIN = 2.0;
+
+  /**
+   * Issue #306: for group/metric pairs whose mean tolerance is tighter than one case's worth of
+   * shift ({@code 1/n}), the case-count check (see class Javadoc) tolerates the success count
+   * dropping by at most this many cases — one flipped case is noise, two is a finding. Kept at 1,
+   * not {@link #K_MIN}'s 2: the case-count check already uses the *actual* per-case hit/miss
+   * outcome rather than the mean-tolerance formula's coarser case-based term, so it does not need
+   * the same margin to avoid the boundary-rounding failure mode {@link #K_MIN} was raised to 2 for
+   * (PR #301 review, {@code category:entity_description}) — an exact integer comparison has no
+   * floating-point boundary to begin with.
+   */
+  static final int MAX_CASE_COUNT_DROP = 1;
 
   /** No group/metric tolerates more than a 25% relative drop from its baseline (ADR-0013). */
   static final double RELATIVE_CAP_FRACTION = 0.25;
@@ -180,7 +232,12 @@ public final class BaselineComparator {
       double tolerance,
       boolean withinTolerance,
       double hardFloor,
-      boolean passesHardFloor) {
+      boolean passesHardFloor,
+      // Issue #306: true when this pair's mean tolerance was tighter than one case's worth of
+      // shift (1/n) and the case-count check (see BaselineComparator's class Javadoc) was used
+      // instead of the mean-tolerance formula. tolerance() above then holds MAX_CASE_COUNT_DROP
+      // (a case count, not a metric-point amount) rather than a toleranceFor(...) value.
+      boolean caseBasedCheck) {
 
     public boolean passed() {
       return withinTolerance && passesHardFloor;
@@ -190,13 +247,14 @@ public final class BaselineComparator {
     public String toString() {
       return String.format(
           Locale.ROOT,
-          "%-24s %-10s Baseline=%.3f Ist=%.3f Delta=%+.3f Toleranz=%.3f%s%s",
+          "%-24s %-10s Baseline=%.3f Ist=%.3f Delta=%+.3f Toleranz=%.3f%s%s%s",
           group,
           metric,
           baselineValue,
           currentValue,
           delta,
           tolerance,
+          caseBasedCheck ? " [fallzahlbasiert]" : "",
           withinTolerance ? "" : " [TOLERANZ VERLETZT]",
           passesHardFloor ? "" : " [UNTERGRENZE VERLETZT]");
     }
@@ -386,7 +444,10 @@ public final class BaselineComparator {
         base.hitRateAt5(),
         current.hitRateAt5(),
         nEff,
-        applyHardFloor ? HARD_FLOOR_ABSOLUTE_HIT_RATE : null);
+        applyHardFloor ? HARD_FLOOR_ABSOLUTE_HIT_RATE : null,
+        MetricsAggregate::hitCountAt5,
+        base,
+        current);
     addMetricCheck(
         checks,
         groupKey,
@@ -395,7 +456,10 @@ public final class BaselineComparator {
         base.mrr(),
         current.mrr(),
         nEff,
-        applyHardFloor ? HARD_FLOOR_ABSOLUTE_MRR : null);
+        applyHardFloor ? HARD_FLOOR_ABSOLUTE_MRR : null,
+        MetricsAggregate::hitCountAt10,
+        base,
+        current);
     addMetricCheck(
         checks,
         groupKey,
@@ -404,7 +468,10 @@ public final class BaselineComparator {
         base.ndcgAt10(),
         current.ndcgAt10(),
         nEff,
-        applyHardFloor ? HARD_FLOOR_ABSOLUTE_NDCG : null);
+        applyHardFloor ? HARD_FLOOR_ABSOLUTE_NDCG : null,
+        MetricsAggregate::hitCountAt10,
+        base,
+        current);
     addMetricCheck(
         checks,
         groupKey,
@@ -413,7 +480,10 @@ public final class BaselineComparator {
         base.recallAt10(),
         current.recallAt10(),
         nEff,
-        applyHardFloor ? HARD_FLOOR_ABSOLUTE_RECALL : null);
+        applyHardFloor ? HARD_FLOOR_ABSOLUTE_RECALL : null,
+        MetricsAggregate::hitCountAt10,
+        base,
+        current);
   }
 
   private static void addMetricCheck(
@@ -424,10 +494,27 @@ public final class BaselineComparator {
       double baselineValue,
       double currentValue,
       int nEff,
-      Double absoluteHardFloor) {
+      Double absoluteHardFloor,
+      ToIntFunction<MetricsAggregate> hitCountFn,
+      MetricsAggregate base,
+      MetricsAggregate current) {
     double delta = currentValue - baselineValue;
-    double tolerance = toleranceFor(baselineValue, nEff);
-    boolean withinTolerance = delta >= -tolerance - EPSILON;
+    double meanTolerance = toleranceFor(baselineValue, nEff);
+    // Issue #306: for pairs where the mean tolerance is tighter than one case's worth of shift
+    // (1/n), a single flipped case can fail the mean-tolerance test even though nothing else
+    // regressed — see class Javadoc.
+    boolean caseBasedCheck = usesCaseBasedCheck(meanTolerance, n);
+    double tolerance;
+    boolean withinTolerance;
+    if (caseBasedCheck) {
+      int baselineHitCount = hitCountFn.applyAsInt(base);
+      int currentHitCount = hitCountFn.applyAsInt(current);
+      tolerance = MAX_CASE_COUNT_DROP;
+      withinTolerance = currentHitCount >= baselineHitCount - MAX_CASE_COUNT_DROP;
+    } else {
+      tolerance = meanTolerance;
+      withinTolerance = delta >= -tolerance - EPSILON;
+    }
     // ADR-0013 Nachtrag (second PR #301 review round): the hard floor combines a baseline-relative
     // component with a fixed absolute one via max(...) — see HARD_FLOOR_FRACTION_OF_BASELINE's
     // Javadoc for why neither alone is sufficient.
@@ -447,7 +534,8 @@ public final class BaselineComparator {
             tolerance,
             withinTolerance,
             hardFloor,
-            passesHardFloor));
+            passesHardFloor,
+            caseBasedCheck));
   }
 
   /** The tolerance formula documented in the class Javadoc (ADR-0013), exposed for unit testing. */
@@ -455,5 +543,18 @@ public final class BaselineComparator {
     double caseBased = K_MIN / Math.max(nEff, 1);
     double relativeCap = RELATIVE_CAP_FRACTION * baselineValue;
     return Math.min(caseBased, relativeCap);
+  }
+
+  /**
+   * Issue #306: whether {@code meanTolerance} is tighter than the shift one flipped case causes
+   * ({@code 1/n}) — the condition under which {@link #addMetricCheck} replaces the mean-tolerance
+   * test with the case-count test. Deliberately computed from the *current* {@code
+   * toleranceFor(...)} result and raw case count {@code n} rather than a hardcoded pair list, so it
+   * self-adjusts to whichever pairs qualify under a future baseline re-measurement — see the class
+   * Javadoc. {@code n} (not {@code nEff}) matches the "1/n" wording in ADR-0013's "Offen" section
+   * and README table: it is the raw case count the group's mean was actually divided by.
+   */
+  static boolean usesCaseBasedCheck(double meanTolerance, int n) {
+    return n > 0 && meanTolerance < (1.0 / n) - EPSILON;
   }
 }

@@ -50,6 +50,176 @@ class BaselineComparatorTest {
     assertThat(tolerance).isGreaterThan(1.0 / 20);
   }
 
+  // --- issue #306: case-count check for pairs where the mean tolerance is tighter than 1/n -----
+
+  @Test
+  void usesCaseBasedCheckIdentifiesExactlyTheSixKnownAffectedPairs() {
+    // Nachgerechnet direkt aus der committeten Baseline (eval/baseline/comic-characters.json,
+    // Stand Issue #306) — siehe eval/baseline/README.md, Abschnitt "Bekannter ... Grenzfall", und
+    // BaselineComparator's class Javadoc for the same table. Recomputing this from the live
+    // toleranceFor(...)/usesCaseBasedCheck(...) formulas (rather than hardcoding "affected" as a
+    // boolean per case) is itself the point of issue #306's chosen design: this test would fail
+    // loudly if a future baseline edit silently changed which pairs are protected.
+    assertThat(
+            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.060, 15), 16))
+        .as("numeric_range/recallAt10")
+        .isTrue();
+    assertThat(
+            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.063, 15), 16))
+        .as("numeric_range/ndcgAt10")
+        .isTrue();
+    assertThat(
+            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.101, 15), 16))
+        .as("numeric_range/mrr")
+        .isTrue();
+    assertThat(
+            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.188, 15), 16))
+        .as("numeric_range/hitRateAt5")
+        .isTrue();
+    assertThat(
+            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.137, 21), 21))
+        .as("multi_attribute_filter/ndcgAt10")
+        .isTrue();
+    assertThat(
+            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.159, 21), 21))
+        .as("multi_attribute_filter/recallAt10")
+        .isTrue();
+
+    // Not affected — the mean tolerance already covers a single-case shift (1/n) for these:
+    assertThat(
+            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.238, 21), 21))
+        .as("multi_attribute_filter/hitRateAt5")
+        .isFalse();
+    assertThat(
+            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.206, 21), 21))
+        .as("multi_attribute_filter/mrr")
+        .isFalse();
+    assertThat(
+            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.521, 94), 121))
+        .as("overall/hitRateAt5")
+        .isFalse();
+  }
+
+  @Test
+  void oneCaseFlipInNumericRangeNoLongerFalselyFailsTheCaseBasedPairs() {
+    // Reproduces the exact scenario issue #306 was filed for: for numeric_range's ndcgAt10, it is
+    // enough for a *single* one of the 16 cases to drop from rank 1 (ndcg=1.0) to rank 3
+    // (ndcg=1/log2(4)=0.5) — no lost hit, the case still scores > 0 — to swing the group mean by
+    // 0.5/16=0.03125, more than twice the old mean tolerance (0.01575 = 0.25 * 0.063). This test
+    // proves two things at once: (1) the *old* mean-only tolerance would indeed have failed here
+    // (asserted directly below via toleranceFor, the exact pre-#306 formula, unchanged by this
+    // fix), and (2) BaselineComparator.compare(...) — using the new case-count check — passes,
+    // because the case-count check correctly reads "no hit was actually lost" from
+    // hitCountAt10 staying at 4.
+    MetricsAggregate baselineNumericRange =
+        new MetricsAggregate(16, 0.188, 0.101, 0.063, 0.060, 0.9382, 15, 3, 4);
+    // Simulates exactly one case's ndcg dropping from 1.0 to 0.5 while remaining a hit
+    // (hitCountAt10
+    // unchanged at 4) — the other three metrics are left at their baseline value for this test's
+    // focus on ndcgAt10, matching how a rank-only shift on a single case would only move ndcgAt10.
+    MetricsAggregate currentNumericRange =
+        new MetricsAggregate(16, 0.188, 0.101, 0.063 - 0.5 / 16, 0.060, 0.9382, 15, 3, 4);
+
+    double oldTolerance = BaselineComparator.toleranceFor(0.063, 15);
+    double actualDelta = currentNumericRange.ndcgAt10() - baselineNumericRange.ndcgAt10();
+    assertThat(-actualDelta)
+        .as("the swing a single rank-only flip causes must exceed the old mean tolerance")
+        .isGreaterThan(oldTolerance);
+
+    Baseline baseline =
+        new Baseline(
+            1,
+            fixedPoints("m1", "d1", "corpus-a", "golden-a"),
+            Map.of(
+                Baseline.OVERALL,
+                overallMetrics(),
+                Baseline.category("numeric_range"),
+                baselineNumericRange),
+            "2026-08-03",
+            null,
+            "test fixture — issue #306");
+    EvaluationReport report =
+        new EvaluationReport(
+            1,
+            runConfiguration("m1", "d1", "corpus-a", "golden-a"),
+            new OneChunkInvariantResult(1458, List.of()),
+            new EvaluationReport.DatasetNotes(121, 94, "note"),
+            overallMetrics(),
+            Map.of("numeric_range", currentNumericRange),
+            Map.of(),
+            Map.of(),
+            List.of(),
+            List.of());
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    var ndcgCheck =
+        result.checks().stream()
+            .filter(
+                c ->
+                    c.group().equals(Baseline.category("numeric_range"))
+                        && c.metric().equals("ndcgAt10"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(ndcgCheck.caseBasedCheck()).isTrue();
+    assertThat(ndcgCheck.withinTolerance())
+        .as("a rank-only flip with no lost hit must not be flagged as a regression")
+        .isTrue();
+    assertThat(result.passed()).isTrue();
+  }
+
+  @Test
+  void multipleLostHitsInNumericRangeStillFailTheCaseBasedCheck() {
+    // A real regression — more than MAX_CASE_COUNT_DROP (1) cases losing their only hit — must
+    // still be caught, proving the fix for issue #306 does not simply loosen the check.
+    MetricsAggregate baselineNumericRange =
+        new MetricsAggregate(16, 0.188, 0.101, 0.063, 0.060, 0.9382, 15, 3, 4);
+    // Two of the four previously-hitting cases now miss entirely (hitCountAt10 drops from 4 to 2).
+    MetricsAggregate currentNumericRange =
+        new MetricsAggregate(16, 0.188, 0.101, 0.063 - 2.0 / 16, 0.060, 0.9382, 15, 3, 2);
+
+    Baseline baseline =
+        new Baseline(
+            1,
+            fixedPoints("m1", "d1", "corpus-a", "golden-a"),
+            Map.of(
+                Baseline.OVERALL,
+                overallMetrics(),
+                Baseline.category("numeric_range"),
+                baselineNumericRange),
+            "2026-08-03",
+            null,
+            "test fixture — issue #306");
+    EvaluationReport report =
+        new EvaluationReport(
+            1,
+            runConfiguration("m1", "d1", "corpus-a", "golden-a"),
+            new OneChunkInvariantResult(1458, List.of()),
+            new EvaluationReport.DatasetNotes(121, 94, "note"),
+            overallMetrics(),
+            Map.of("numeric_range", currentNumericRange),
+            Map.of(),
+            Map.of(),
+            List.of(),
+            List.of());
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    var ndcgCheck =
+        result.checks().stream()
+            .filter(
+                c ->
+                    c.group().equals(Baseline.category("numeric_range"))
+                        && c.metric().equals("ndcgAt10"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(ndcgCheck.caseBasedCheck()).isTrue();
+    assertThat(ndcgCheck.withinTolerance())
+        .as("losing two of four hits must still be flagged as a regression")
+        .isFalse();
+    assertThat(result.passed()).isFalse();
+  }
+
   @Test
   void detectsCorpusManifestDrift() {
     Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
@@ -137,7 +307,7 @@ class BaselineComparatorTest {
     EvaluationReport report =
         reportWith(
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new MetricsAggregate(121, 0.10, 0.10, 0.10, 0.10, 1.0, 94));
+            new MetricsAggregate(121, 0.10, 0.10, 0.10, 0.10, 1.0, 94, 12, 12));
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -157,7 +327,7 @@ class BaselineComparatorTest {
     EvaluationReport report =
         reportWith(
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new MetricsAggregate(121, 0.45, 0.45, 0.45, 0.45, 1.0, 94));
+            new MetricsAggregate(121, 0.45, 0.45, 0.45, 0.45, 1.0, 94, 54, 54));
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -186,14 +356,16 @@ class BaselineComparatorTest {
         new Baseline(
             1,
             fixedPoints("m1", "d1", "corpus-a", "golden-a"),
-            Map.of(Baseline.OVERALL, new MetricsAggregate(121, 0.30, 0.461, 0.445, 0.490, 1.0, 94)),
+            Map.of(
+                Baseline.OVERALL,
+                new MetricsAggregate(121, 0.30, 0.461, 0.445, 0.490, 1.0, 94, 36, 73)),
             "2026-08-03",
             null,
             "eroded baseline fixture");
     EvaluationReport report =
         reportWith(
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new MetricsAggregate(121, 0.25, 0.461, 0.445, 0.490, 1.0, 94));
+            new MetricsAggregate(121, 0.25, 0.461, 0.445, 0.490, 1.0, 94, 30, 73));
 
     var result = BaselineComparator.compare(erodedBaseline, report);
 
@@ -342,7 +514,7 @@ class BaselineComparatorTest {
   // --- fixtures -----------------------------------------------------------------------------
 
   private static MetricsAggregate overallMetrics() {
-    return new MetricsAggregate(121, 0.521, 0.461, 0.445, 0.490, 0.9708, 94);
+    return new MetricsAggregate(121, 0.521, 0.461, 0.445, 0.490, 0.9708, 94, 63, 73);
   }
 
   private static Baseline.FixedPoints fixedPoints(
