@@ -50,8 +50,10 @@ class CityLandmarksBaselineRegressionTest {
 
     BaselineComparator.ComparisonResult result = BaselineComparator.compare(baseline, report);
 
-    String markdown = BaselineMarkdownWriter.render(result);
-    BaselineMarkdownWriter.write(result, MARKDOWN_FILE);
+    String markdown =
+        BaselineMarkdownWriter.render(result, EvalDomainConfig.CITY_LANDMARKS.baselineFileName());
+    BaselineMarkdownWriter.write(
+        result, MARKDOWN_FILE, EvalDomainConfig.CITY_LANDMARKS.baselineFileName());
     log.info(markdown);
     System.out.println(markdown);
     System.out.println("Delta-Tabelle geschrieben nach " + MARKDOWN_FILE.toAbsolutePath());
