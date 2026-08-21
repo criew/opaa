@@ -82,6 +82,17 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   }
 
   /**
+   * Backs {@code LibraryStorageQuotaService} (#119): the total bytes a library's documents
+   * currently occupy, one aggregate query rather than loading every {@link Document} row to sum
+   * {@link Document#getFileSize} in application code. {@code coalesce} maps the {@code SUM} of an
+   * empty result set (a library with no documents, or a brand-new library) to {@code 0} instead of
+   * {@code null} - callers would otherwise have to null-check a supposedly primitive byte count on
+   * every call.
+   */
+  @Query("select coalesce(sum(d.fileSize), 0) from Document d where d.libraryId = :libraryId")
+  long sumFileSizeByLibraryId(@Param("libraryId") UUID libraryId);
+
+  /**
    * Conditionally transitions an asynchronously-processed upload to {@code FAILED} (PR #589 review,
    * finding 1). {@code FileProcessingService#processUploadedFileAsync} re-reads the row by id
    * before it starts, but Tika parsing/embedding can run for seconds - long enough for {@code

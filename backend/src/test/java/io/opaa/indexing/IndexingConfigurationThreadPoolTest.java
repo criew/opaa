@@ -24,7 +24,7 @@ class IndexingConfigurationThreadPoolTest {
         new IndexingProperties(
             null, 0, 0, 0, 0, new IndexingProperties.ThreadPool(9, 20, 99), null, null, null);
     UploadProperties uploadProperties =
-        new UploadProperties(null, 0, new UploadProperties.ThreadPool(1, 2, 3), 0);
+        new UploadProperties(null, 0, new UploadProperties.ThreadPool(1, 2, 3), 0, 0);
 
     TaskExecutor indexingExecutor = configuration.indexingTaskExecutor(indexingProperties);
     TaskExecutor uploadExecutor = configuration.uploadTaskExecutor(uploadProperties);

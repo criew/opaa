@@ -61,6 +61,7 @@ class LibraryDocumentServiceTest {
   private ChecksumService checksumService;
   private FileProcessingService fileProcessingService;
   private VectorStore vectorStore;
+  private LibraryStorageQuotaService storageQuotaService;
   private LibraryDocumentService service;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -79,7 +80,13 @@ class LibraryDocumentServiceTest {
     fileProcessingService = mock(FileProcessingService.class);
     vectorStore = mock(VectorStore.class);
     UploadProperties uploadProperties =
-        new UploadProperties(storageDir.toString(), 10L * 1024, null, 0);
+        new UploadProperties(storageDir.toString(), 10L * 1024, null, 0, 0);
+    storageQuotaService = mock(LibraryStorageQuotaService.class);
+    // Default: plenty of headroom, so existing tests exercising other behaviour never trip the
+    // quota check unless they explicitly stub it otherwise (see
+    // uploadIsRejectedWithPayloadTooLargeWhenTheLibraryQuotaWouldBeExceeded below).
+    when(storageQuotaService.wouldExceedQuota(any(), org.mockito.ArgumentMatchers.anyLong()))
+        .thenReturn(false);
 
     service =
         new LibraryDocumentService(
@@ -90,7 +97,8 @@ class LibraryDocumentServiceTest {
             checksumService,
             fileProcessingService,
             vectorStore,
-            uploadProperties);
+            uploadProperties,
+            storageQuotaService);
 
     User user = new User("subject", "issuer", "user@example.com", "Test User");
     user.setOrganizationId(organizationId);
@@ -381,6 +389,30 @@ class LibraryDocumentServiceTest {
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.PAYLOAD_TOO_LARGE);
 
     assertNoFilesWereStored();
+  }
+
+  @Test
+  void anUploadThatWouldExceedTheLibraryQuotaIsRejectedWithoutBeingStored() throws IOException {
+    // #119: the library's storage quota is checked before anything is written to disk, exactly
+    // like the per-file size limit above - a rejected upload must leave the bestand unchanged.
+    grantEditor();
+    when(storageQuotaService.wouldExceedQuota(
+            eq(libraryId), org.mockito.ArgumentMatchers.anyLong()))
+        .thenReturn(true);
+    when(storageQuotaService.quotaExceededMessage(libraryId))
+        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("report.pdf", "content"), currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.PAYLOAD_TOO_LARGE)
+        .hasMessageContaining("Speicherkontingent der Bibliothek erschöpft")
+        .hasMessageContaining("10,0 GB von 10,0 GB belegt");
+
+    assertNoFilesWereStored();
+    verify(documentRepository, never()).save(any(Document.class));
   }
 
   @Test

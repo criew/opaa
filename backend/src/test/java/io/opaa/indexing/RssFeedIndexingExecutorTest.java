@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -46,6 +47,7 @@ class RssFeedIndexingExecutorTest {
   private DocumentRepository documentRepository;
   private RssFeedStateRepository feedStateRepository;
   private IndexingRunEventRepository indexingRunEventRepository;
+  private LibraryStorageQuotaService storageQuotaService;
   private RssFeedIndexingExecutor executor;
 
   // #478: sourceUrl is mutated in place per test via execute(String) below
@@ -80,6 +82,7 @@ class RssFeedIndexingExecutorTest {
     when(feedStateRepository.findByLibraryIdAndFeedUrl(any(), anyString()))
         .thenReturn(Optional.empty());
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
+    storageQuotaService = mock(LibraryStorageQuotaService.class);
 
     executor =
         newExecutor(
@@ -97,7 +100,8 @@ class RssFeedIndexingExecutorTest {
         feedStateRepository,
         new UrlFileDownloader(),
         properties,
-        indexingRunEventRepository);
+        indexingRunEventRepository,
+        storageQuotaService);
   }
 
   @AfterEach
@@ -510,6 +514,33 @@ class RssFeedIndexingExecutorTest {
                         // human-readable reason instead (#513 acceptance criteria).
                         && event.getMessage() != null
                         && event.getMessage().contains("abgewiesen")));
+  }
+
+  @Test
+  void anEntryOverTheLibraryStorageQuotaIsSkippedAndRecordedAsARejectedEvent() {
+    // #119: the connector run protocol (#604) must show why a document stopped being added, not
+    // just count it as skipped - QUOTA_EXCEEDED becomes its own REJECTED event with the exact
+    // wording LibraryStorageQuotaService produces.
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/over-quota.html"));
+    serve("/over-quota.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
+    when(storageQuotaService.quotaExceededMessage(library.getId()))
+        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    String expectedMessage =
+        "Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)";
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && (baseUrl + "/over-quota.html").equals(event.getReference())
+                        && expectedMessage.equals(event.getMessage())));
   }
 
   @Test

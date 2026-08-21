@@ -126,6 +126,10 @@ opaa:
     # dead process and set to FAILED at the next application startup - see
     # UploadPendingRecoveryRunner.
     pending-recovery-threshold-minutes: ${OPAA_UPLOAD_PENDING_RECOVERY_THRESHOLD_MINUTES:30}
+    # #119: maximum total size (bytes), summed across every document a library holds, that library
+    # may occupy - enforced at every path that stores document content (upload, and the FILESYSTEM/
+    # HTTP_DIRECTORY/RSS_FEED connectors), not only this REST endpoint. Default 10 GiB.
+    library-quota-bytes: ${OPAA_UPLOAD_LIBRARY_QUOTA_BYTES:10737418240}
   rate-limit:
     enabled: ${OPAA_RATE_LIMIT_ENABLED:true}
     query:

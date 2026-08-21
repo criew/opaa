@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,8 @@ class UrlIndexingExecutorTest {
           mock(FileProcessingService.class),
           mock(IndexingJobService.class),
           documentRepository,
-          mock(IndexingRunEventRepository.class));
+          mock(IndexingRunEventRepository.class),
+          mock(LibraryStorageQuotaService.class));
 
   // --- #550 review: blank lastModified must never be treated as "unchanged" -----------------
 

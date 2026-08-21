@@ -3,6 +3,7 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -38,6 +39,7 @@ class FileProcessingServiceTest {
   @Mock private DocumentRepository documentRepository;
   @Mock private VectorStore vectorStore;
   @Mock private ChecksumService checksumService;
+  @Mock private io.opaa.library.LibraryStorageQuotaService storageQuotaService;
 
   @TempDir Path tempDir;
 
@@ -60,9 +62,17 @@ class FileProcessingServiceTest {
             documentRepository,
             vectorStore,
             checksumService,
-            new IndexingMetrics(meterRegistry));
+            new IndexingMetrics(meterRegistry),
+            storageQuotaService);
     targetLibrary = library();
     otherLibrary = library();
+    // Default: plenty of headroom, so existing tests never trip the quota check unless they
+    // explicitly stub it otherwise (see the quota-specific tests below). lenient() because most
+    // tests never reach it (e.g. the "skips unchanged document" ones return before this is
+    // consulted).
+    org.mockito.Mockito.lenient()
+        .when(storageQuotaService.wouldExceedQuota(any(), org.mockito.ArgumentMatchers.anyLong()))
+        .thenReturn(false);
     // Default happy-path stubs for the conditional status-transition UPDATEs (#632) - tests that
     // exercise a deletion race override these explicitly to return 0. lenient() because tests
     // that never reach the success path (e.g. the "skips unchanged document" ones) never invoke
@@ -114,6 +124,28 @@ class FileProcessingServiceTest {
             idCaptor.capture(), eq(1), any(), checksumCaptor.capture(), eq(null));
     assertThat(idCaptor.getValue()).isEqualTo(docCaptor.getValue().getId());
     assertThat(checksumCaptor.getValue()).isEqualTo("abc123");
+  }
+
+  @Test
+  void processFileSkipsWithoutPersistingWhenTheLibraryQuotaWouldBeExceeded() throws IOException {
+    // #119: nothing is persisted - no document row, no chunks - once the library's quota would be
+    // exceeded, and the caller (an indexing executor) learns exactly why via the distinct
+    // QUOTA_EXCEEDED result, not a generic SKIPPED.
+    Path file = tempDir.resolve("over-quota.txt");
+    Files.writeString(file, "some content");
+
+    when(checksumService.computeSha256(file)).thenReturn("abc123");
+    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+    when(storageQuotaService.wouldExceedQuota(eq(targetLibrary.getId()), anyLong()))
+        .thenReturn(true);
+
+    FileProcessingResult result = service.processFile(file, targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.QUOTA_EXCEEDED);
+    verify(documentRepository, never()).save(any(Document.class));
+    verify(documentService, never()).parseDocument(any());
+    verify(vectorStore, never()).add(any());
   }
 
   @Test
@@ -382,6 +414,31 @@ class FileProcessingServiceTest {
     verify(documentRepository)
         .markIndexedFromSource(
             eq(lastSaved.getId()), eq(1), any(), eq("sha256-of-pdf"), eq("2025-06-15 10:30"));
+  }
+
+  @Test
+  void processUrlFileSkipsWithoutPersistingWhenTheLibraryQuotaWouldBeExceeded() throws IOException {
+    Path file = tempDir.resolve("over-quota-remote.pdf");
+    Files.writeString(file, "pdf content");
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-pdf");
+    when(documentRepository.findByFilePath("https://example.com/docs/over-quota-remote.pdf"))
+        .thenReturn(Optional.empty());
+    when(storageQuotaService.wouldExceedQuota(eq(targetLibrary.getId()), anyLong()))
+        .thenReturn(true);
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            file,
+            "over-quota-remote.pdf",
+            "https://example.com/docs/over-quota-remote.pdf",
+            "2025-06-15 10:30",
+            1024,
+            targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.QUOTA_EXCEEDED);
+    verify(documentRepository, never()).save(any(Document.class));
+    verify(documentService, never()).parseDocument(any());
   }
 
   @Test
@@ -718,6 +775,25 @@ class FileProcessingServiceTest {
     ArgumentCaptor<String> deleteFilterCaptor = ArgumentCaptor.forClass(String.class);
     verify(vectorStore).delete(deleteFilterCaptor.capture());
     assertThat(deleteFilterCaptor.getValue()).startsWith("document_id == '");
+  }
+
+  @Test
+  void processRssEntrySkipsWithoutPersistingWhenTheLibraryQuotaWouldBeExceeded() {
+    String entryUrl = "https://example.gov/artikel/over-quota";
+
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
+    when(documentRepository.findByFilePath(entryUrl)).thenReturn(Optional.empty());
+    when(storageQuotaService.wouldExceedQuota(eq(targetLibrary.getId()), anyLong()))
+        .thenReturn(true);
+
+    FileProcessingResult result =
+        service.processRssEntry(
+            "entry main text", "Titel", entryUrl, "2025-06-15T10:30:00Z", targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.QUOTA_EXCEEDED);
+    verify(documentRepository, never()).save(any(Document.class));
+    verify(chunkingService, never()).chunkDocuments(anyString(), any());
+    verify(vectorStore, never()).add(any());
   }
 
   @Test

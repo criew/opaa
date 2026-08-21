@@ -27,13 +27,23 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     it to {@code FAILED} at the next application startup (#614). Default 30 minutes: comfortably
  *     longer than parsing/embedding even a large upload should ever take, so a row is only ever
  *     caught here because nothing is actually still working on it.
+ * @param libraryQuotaBytes the maximum total size, summed across every document a library holds,
+ *     that library may occupy (#119, Maintainer-Entscheidung: Standardkontingent je Bibliothek).
+ *     Default 10 GiB (10 737 418 240): generous for a working knowledge library while still
+ *     bounding how much disk/vector-store space a single library - upload or connector-fed alike -
+ *     can consume unchecked. Enforced by {@link LibraryStorageQuotaService} at every ingestion path
+ *     that stores document content (upload via {@link LibraryDocumentService}, and the
+ *     FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connector paths via {@code
+ *     io.opaa.indexing.FileProcessingService}), not merely the upload endpoint - a connector run
+ *     can grow a library's bestand just as much as a human upload can.
  */
 @ConfigurationProperties(prefix = "opaa.upload")
 public record UploadProperties(
     String storagePath,
     long maxFileSize,
     ThreadPool threadPool,
-    int pendingRecoveryThresholdMinutes) {
+    int pendingRecoveryThresholdMinutes,
+    long libraryQuotaBytes) {
 
   public UploadProperties {
     if (storagePath == null || storagePath.isBlank()) {
@@ -47,6 +57,9 @@ public record UploadProperties(
     }
     if (pendingRecoveryThresholdMinutes <= 0) {
       pendingRecoveryThresholdMinutes = 30;
+    }
+    if (libraryQuotaBytes <= 0) {
+      libraryQuotaBytes = 10L * 1024 * 1024 * 1024;
     }
   }
 
