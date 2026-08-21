@@ -31,16 +31,25 @@ SPRING_PROFILES_ACTIVE=docker,oidc
 OPAA_INITIAL_ADMIN_EMAIL=admin@stadt-rheinfurt.example
 OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
+OPAA_PGVECTOR_DIMENSIONS=768
 ```
 
 Ohne `OPAA_CSP_CONNECT_SRC_EXTRA` blockiert die Content-Security-Policy des Frontends die
 Keycloak-Anmeldung im Browser still (#409/#670) — der Seed selbst läuft trotzdem durch, weil er
 Keycloak direkt anspricht, aber niemand kann sich danach über die Oberfläche anmelden.
 
-Voreingestellt bleiben lokal betriebene Modelle über Ollama (`OPAA_AI_CHAT_PROVIDER=ollama`,
-`OPAA_AI_EMBEDDING_PROVIDER=ollama`) — ein erreichbarer Ollama-Server ist also Voraussetzung, sonst
-schlägt die Indizierung im letzten Schritt des Seeds fehl. Wer stattdessen einen
-openai-kompatiblen Anbieter nutzt, setzt `OPAA_OPENAI_BASE_URL` zusätzlich (siehe
+`OPAA_PGVECTOR_DIMENSIONS=768` ist mit den unveränderten Vorlagenwerten **zwingend**: Voreingestellt
+bleiben lokal betriebene Modelle über Ollama (`OPAA_AI_CHAT_PROVIDER=ollama`,
+`OPAA_AI_EMBEDDING_PROVIDER=ollama`) mit dem Embedding-Modell `nomic-embed-text`, das 768
+Dimensionen liefert — `.env.docker.example` setzt `OPAA_PGVECTOR_DIMENSIONS` dagegen auf den
+Stack-Default 1536 (siehe [`deployment.md`, Zeile zu `OPAA_PGVECTOR_DIMENSIONS`](./deployment.md#alle-umgebungsvariablen)
+für dieselbe Kopplung auf der öffentlichen Instanz). Ohne die Anpassung schlägt der letzte
+Seed-Schritt fehl, weil die Vektorbreite nicht zum Modell passt. Der Wert muss zum jeweils
+verwendeten Embedding-Modell passen; eine nachträgliche Änderung an einer bereits laufenden Instanz
+erfordert `docker compose down -v` und eine vollständige Neuindizierung (siehe
+[`deployment.md`, „Was ein Update mit dem Index macht"](./deployment.md#was-ein-update-mit-dem-index-macht)).
+Wer stattdessen einen openai-kompatiblen Anbieter nutzt, setzt `OPAA_OPENAI_BASE_URL` zusätzlich
+und passt `OPAA_PGVECTOR_DIMENSIONS` auf dessen Embedding-Dimension an (siehe
 [`deployment.md`, „Erforderliche Variablen"](./deployment.md#erforderliche-variablen)).
 
 ### 2. Stack starten
@@ -74,9 +83,10 @@ an. Vollständiger Ablauf, Idempotenz und Fehlerfälle:
 wartet auf jede Indizierung und jeden Upload (Polling gegen `GET
 /api/v1/libraries/{libraryId}/indexing/status` bzw. den Dokumentstatus) und bricht mit einer klaren
 Fehlermeldung ab, wenn etwas schiefgeht — läuft `seed.py` bis zur Ausgabe „Seed-Profil 'demo'
-abgeschlossen." durch, ist die Instanz vollständig gefüllt und durchsuchbar. Bei rund 150–300
-Dokumenten und lokal betriebenen Modellen ist mit einigen Minuten zu rechnen, je nach
-Ollama-Hardware; ein zweiter Lauf gegen dieselbe Instanz ist idempotent und legt nichts doppelt an.
+abgeschlossen." durch, ist die Instanz vollständig gefüllt und durchsuchbar. Bei den 155 Dokumenten
+des Korpus (46 + 37 + 19 + 27 in den vier konnektorgespeisten Bibliotheken, 26 Uploads) und lokal
+betriebenen Modellen ist mit einigen Minuten zu rechnen, je nach Ollama-Hardware; ein zweiter Lauf
+gegen dieselbe Instanz ist idempotent und legt nichts doppelt an.
 
 ### 4. Anmelden und loslegen
 
@@ -116,6 +126,19 @@ diese Bibliothek gar nicht erst, unabhängig davon, wie thematisch treffend ein 
 Acht vorbereitete Fragen. Bei jeder Frage: als wer anmelden, was fragen, was zu erwarten ist, was sie
 zeigt. Die Fragen setzen auf konkreten Inhalten des Rheinfurt-Korpus auf (`demo/corpus/`) — bei einer
 Korpus-Aktualisierung (siehe unten) sind sie mit dem neuen Stand gegenzuprüfen.
+
+**Verifikationsgrundlage dieses Drehbuchs:** Gegen einen isolierten Compose-Stack wurde der Seed
+ausgeführt und drei Fragen (die Berechtigungs-Doppelfrage aus Frage 5 sowie Frage 6) per
+`POST /v1/query` geprüft — mit `ai-stub` (`e2e/ai-stub/server.mjs`, Muster aus #712) anstelle eines
+echten Chat-/Embedding-Anbieters. Das bestätigt deterministisch die Berechtigungsgrenze: Ein Konto
+ohne `VIEWER`-Recht auf einer Bibliothek erhält nie eine Quelle daraus, unabhängig vom Frageinhalt.
+Weil `ai-stub` für jede Eingabe denselben Embedding-Vektor liefert (Kosinus-Ähnlichkeit immer 1,0),
+lässt sich damit **keine** inhaltliche Relevanz prüfen — welche der für ein Konto lesbaren
+Bibliotheken tatsächlich die thematisch treffenden Quellen liefert, hängt vom echten
+Embedding-Modell ab. Die unten dokumentierten erwarteten Antworten und Dateizitate beruhen deshalb
+auf manueller Prüfung der tatsächlichen Korpusdateien, nicht auf einem `ai-stub`-Lauf; eine
+inhaltliche Relevanzmessung mit einem echten Embedding-Modell ist Aufgabe des Eval-Korpus (Epic
+#224), nicht dieser Demo.
 
 ### 1. Gebührenfrage
 
@@ -176,8 +199,11 @@ Korpus-Aktualisierung (siehe unten) sind sie mit dem neuen Stand gegenzuprüfen.
 - **Frage:** „Was gilt bei Gebührenbefreiung wegen Bedürftigkeit?"
 - **Erwartete Antwort als Maria:** die Rechtsgrundlage aus der Verwaltungsgebührensatzung (§ 3 VGS,
   „Satzungen & Gebührenordnungen") **plus** die praktische Schalter-Anleitung aus der internen
-  Dienstanweisung `02_gebuehrenbefreiung-beduerftigkeit.docx` (anerkannte Nachweise: Bürgergeld,
-  Grundsicherung, Wohngeld, Leistungen nach AsylbLG; Verfahrensschritte am Schalter).
+  Dienstanweisung `02_gebuehrenbefreiung-beduerftigkeit.docx` — die anerkannten Nachweise (Bürgergeld
+  usw.) stehen bereits in § 3 VGS selbst; der echte Mehrwert der internen Dienstanweisung liegt in den
+  Verfahrensschritten am Schalter (Antrag samt Nachweis vorlegen, Weiterleitung an die
+  Sachgebietsleitung, Amtshandlung bereits vor der Entscheidung) und der Drei-Monats-Frist, innerhalb
+  derer der Nachweis nicht älter sein darf.
 - **Erwartete Antwort als Thomas:** nur die Rechtsgrundlage aus der Satzung, ohne die interne
   Verfahrensanleitung — beide Konten lesen dieselbe Satzung, nur Meldewesen-Konten lesen zusätzlich
   die interne Dienstanweisung.
@@ -187,16 +213,30 @@ Korpus-Aktualisierung (siehe unten) sind sie mit dem neuen Stand gegenzuprüfen.
 ### 7. Amtsleitungs-Frage
 
 - **Konto:** `andrea.vogt`
-- **Frage:** „Gilt die Gebührenbefreiung wegen Bedürftigkeit auch bei der Kfz-Zulassung, und wie ist
-  das intern geregelt?"
-- **Erwartete Antwort:** die interne Dienstanweisung Meldewesen hält ausdrücklich fest, dass § 3 VGS
-  „für Kfz-Angelegenheiten entsprechend" gilt und dass „eine gesonderte Dienstanweisung für die
-  Kfz-Zulassung dazu nicht besteht" — eine vollständige Antwort setzt also sowohl den Zugriff auf die
-  interne Meldewesen-Bibliothek als auch auf die Kfz-Bibliothek voraus. Nur Andrea hält beide
-  Berechtigungen gleichzeitig; Maria/Selin sehen die interne Dienstanweisung, aber nicht die
-  Kfz-Bibliothek, Thomas umgekehrt.
-- **Zeigt:** dass die Amtsleitung als einziges Konto amtsweit über beide Sachgebiete hinweg
-  vollständig antworten kann — genau die Rolle, die Andrea im Szenario einnimmt.
+- **Frage:** „Wie ist die Terminvergabe im Bürgerbüro bei hohem Andrang zwischen Meldewesen und
+  Kfz-Zulassung geregelt, und welche Frist gilt für eine online reservierte
+  Wunschkennzeichen-Reservierung?"
+- **Erwartete Antwort:** zwei Teile aus zwei exklusiven Bibliotheken, die sich erst zusammen zur
+  vollständigen Antwort fügen:
+  - Aus der internen Dienstanweisung `09_terminvergabe-wartezeitmanagement.docx` (Bibliothek
+    „Interne Dienstanweisungen Meldewesen", nur für Meldewesen-Konten und Andrea lesbar): tägliche
+    feste Terminkontingente je Sachgebiet plus ein kleines Kontingent für dringende Spontanfälle;
+    bei hohem Andrang entscheidet die diensthabende Teamleitung über eine vorübergehende
+    Personalumverteilung zwischen den Empfangsbereichen Meldewesen und Kfz-Zulassung.
+  - Aus der Leistungsbeschreibung `008_wunschkennzeichen.txt` (Bibliothek „Leistungen
+    Kfz-Zulassung", nur für Thomas und Andrea lesbar): eine online reservierte
+    Wunschkennzeichen-Reservierung ist drei Monate gültig (gegenüber einem Monat bei Reservierung im
+    Bürgerbüro selbst), Gebühr 14,10 Euro bzw. 11,30 Euro bei Zulassung am Tag der
+    Online-Reservierung.
+  - **Als Maria/Selin:** nur der erste Teil (Terminvergabe) belegt, zur Wunschkennzeichenfrist keine
+    Quelle — die Kfz-Bibliothek ist ihnen nicht zugänglich.
+  - **Als Thomas:** nur der zweite Teil (Wunschkennzeichenfrist) belegt, zur internen Terminvergabe
+    keine Quelle — die interne Meldewesen-Bibliothek ist ihm nicht zugänglich.
+  - **Als Andrea:** beide Teile belegt, da sie als einziges Fachkonto beide Bibliotheken lesen darf.
+- **Zeigt:** dass die Amtsleitung als einziges Konto eine wirklich über beide Sachgebiete verteilte
+  Antwort vollständig zusammensetzen kann — anders als bei Frage 6 unterscheidet sich hier nicht nur
+  die Vollständigkeit einer einzelnen Quelle, sondern es fehlt je nach Konto eine ganze Antworthälfte
+  aus einer anderen Bibliothek.
 
 ### 8. Bewusst unbeantwortbare Frage
 
@@ -212,7 +252,7 @@ Korpus-Aktualisierung (siehe unten) sind sie mit dem neuen Stand gegenzuprüfen.
 
 **Neunte Frage mit tatsächlich ungültigem Beleg:** Ein Szenario, in dem die Suche einen Treffer
 liefert, dessen Beleg sich als ungültig herausstellt (statt schlicht keinen Treffer zu liefern), ließ
-sich beim Durchspielen dieses Drehbuchs nicht reproduzierbar konstruieren — die Belegvalidierung aus
+sich beim Konstruieren dieses Drehbuchs nicht reproduzierbar herstellen — die Belegvalidierung aus
 #697 prüft rein deterministisch, ob eine im Antworttext genannte Fundstelle tatsächlich unter den
 abgerufenen Chunks war; ein synthetischer Korpus ohne absichtlich widersprüchliche Inhalte produziert
 diesen Fall nicht von selbst. Bleibt offen für eine spätere, gezielt konstruierte Ergänzung.
@@ -230,8 +270,11 @@ python generate_corpus.py
 ```
 
 Läuft erneut, wenn sich eine der fünf Bibliotheken inhaltlich ändern soll. Zwei Läufe erzeugen
-byte-identische Dateien (Prüfsumme in `demo/corpus/MANIFEST.sha256`). Details, Werkzeugwahl und
-Quellen: [`../demo/README.md`, „Korpus neu erzeugen"](../demo/README.md#korpus-neu-erzeugen) und
+byte-identische Dateien (Prüfsumme in `demo/corpus/MANIFEST.sha256`) — allerdings nur unter den in
+[`generator/README.md`](../demo/generator/README.md) genannten Bedingungen: Netzzugriff auf den dort
+verankerten HuggingFace-Commit beim allerersten Lauf (danach lokal zwischengespeichert) und exakt die
+dort gepinnten Paketversionen. Details, Werkzeugwahl und Quellen:
+[`../demo/README.md`, „Korpus neu erzeugen"](../demo/README.md#korpus-neu-erzeugen) und
 [`../demo/corpus/SOURCE.md`](../demo/corpus/SOURCE.md).
 
 **Was danach neu indiziert werden muss:** Ein erneuter `python seed.py --profile demo`-Lauf gegen

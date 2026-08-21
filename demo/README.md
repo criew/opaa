@@ -206,18 +206,10 @@ Secret gegen jedes Realm-Konto und darf nicht dauerhaft scharf bleiben.
 ## Demo-Zugangsdaten
 
 Alle Konten des Realms `opaa` sind offene **Demo-Werte**, keine Secrets — vor jedem erreichbaren
-Deployment gemäß `docs/deployment.md`, Abschnitt „Härtung für erreichbare Deployments" zu ersetzen:
-
-| Konto | Rolle | Passwort |
-|---|---|---|
-| `demo-admin` (admin@stadt-rheinfurt.example) | `SYSTEM_ADMIN` | `RheinfurtDemo!2026` |
-| `maria.weber` | Sachbearbeiterin Meldewesen | `RheinfurtDemo!2026` |
-| `selin.kaya` | Sachbearbeiterin Meldewesen | `RheinfurtDemo!2026` |
-| `thomas.klein` | Sachbearbeiter Kfz-Zulassung | `RheinfurtDemo!2026` |
-| `andrea.vogt` | Amtsleitung Bürgerbüro | `RheinfurtDemo!2026` |
-
-Rollen, Spaces, lesbare Bibliotheken je Konto und das ausformulierte Vorführ-Drehbuch mit acht
-Fragen: [`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md).
+Deployment gemäß `docs/deployment.md`, Abschnitt „Härtung für erreichbare Deployments" zu ersetzen.
+Die vollständige Konto-Tabelle mit Rollen, Spaces, lesbaren Bibliotheken und Passwörtern sowie das
+ausformulierte Vorführ-Drehbuch mit acht Fragen stehen an einer Stelle, nicht dupliziert:
+[`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md).
 
 ## Umfang außerhalb dieses Verzeichnisses
 
