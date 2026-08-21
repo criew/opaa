@@ -7,6 +7,7 @@ import io.opaa.TestcontainersConfiguration;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.organization.Organization;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
@@ -149,9 +150,17 @@ class UserServicePersonalSpaceIntegrationTest {
     // the user row is already committed - exactly what UserService's afterCommit hook now
     // guarantees. Calling SpaceService directly (bypassing UserService) isolates the
     // partial-unique-index race from the user-creation race exercised above.
-    User user =
-        userService.findOrCreateUser(
-            UUID.randomUUID().toString(), "test-issuer", "race@example.com", "Race");
+    //
+    // Inserted directly via userRepository, not userService.findOrCreateUser (#307): the latter
+    // would report this user as brand new and populate SpaceService's personalSpaceProvisioned
+    // cache before the deleteAll() below ever runs, so the two ensureDefaultSpace calls under test
+    // would hit that cache instead of exercising the race this test targets - a false negative this
+    // test's own out-of-band deleteAll() would never see in production, where a default space is
+    // never deleted (see SpaceService#deleteSpace's guard).
+    User newUser =
+        new User(UUID.randomUUID().toString(), "test-issuer", "race@example.com", "Race");
+    newUser.setOrganizationId(Organization.DEFAULT_ID);
+    User user = userRepository.save(newUser);
     spaceRepository.deleteAll();
     assertThat(spaceRepository.findDistinctByMembershipsUserId(user.getId())).isEmpty();
 

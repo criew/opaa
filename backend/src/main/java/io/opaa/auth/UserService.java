@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -31,6 +32,16 @@ public class UserService {
   private final SpaceService spaceService;
   private final AuthProperties authProperties;
   private final AuditEventRecorder auditEventRecorder;
+
+  /**
+   * #307/#294: a running total of personal-space provisioning failures since this instance started,
+   * logged alongside every failure below so a repeatedly failing provisioning stands out in the
+   * logs instead of blending into a stream of identical-looking single-occurrence errors - the
+   * "mindestens ein WARN mit Zähler" #307 asks for, without standing up new metrics infrastructure
+   * for what is meant to be a rare, self-healing condition (each failure is retried on the user's
+   * next login, see {@link #ensurePersonalSpace}'s Javadoc).
+   */
+  private final AtomicLong failedProvisioningCount = new AtomicLong();
 
   public UserService(
       UserRepository userRepository,
@@ -64,17 +75,42 @@ public class UserService {
    * personal library provisioning was removed again in #522) follows the exact same reasoning:
    * {@code ensureDefaultSpace} never runs inside an ambient transaction started here, for the same
    * connection-budget reason.
+   *
+   * <p><b>#307:</b> besides not holding two connections per caller, this method now also spends
+   * fewer of them in total for the specific load #307 measured - many concurrent <em>first</em>
+   * logins of <em>different</em> users, e.g. an organization's whole staff onboarding in one
+   * morning. {@link #createOrFetchUser} reports back whether its own insert attempt actually won
+   * (as opposed to losing a concurrent race and reading the winner's row - see that method's
+   * Javadoc); only a genuine winner is guaranteed to be a user nobody has provisioned a personal
+   * space for yet, so only that case skips {@code ensureDefaultSpace}'s otherwise-redundant {@code
+   * existsBy} round trip via {@link SpaceService#ensureDefaultSpaceForNewUser} - see its Javadoc.
    */
   public User findOrCreateUser(String subject, String issuer, String email, String displayName) {
-    User user =
-        userRepository
-            .findBySubjectAndIssuer(subject, issuer)
-            .map(existing -> updateExistingUser(existing, email, displayName))
-            .orElseGet(() -> createOrFetchUser(subject, issuer, email, displayName));
+    Optional<User> existing = userRepository.findBySubjectAndIssuer(subject, issuer);
+    boolean createdHere;
+    User user;
+    if (existing.isPresent()) {
+      user = updateExistingUser(existing.get(), email, displayName);
+      createdHere = false;
+    } else {
+      UserCreationResult result = createOrFetchUser(subject, issuer, email, displayName);
+      user = result.user();
+      createdHere = result.createdHere();
+    }
 
-    ensurePersonalSpaceAfterCommit(user.getId(), user.getOrganizationId());
+    ensurePersonalSpaceAfterCommit(user.getId(), user.getOrganizationId(), createdHere);
     return user;
   }
+
+  /**
+   * @param user the user row, either freshly inserted by this call or read back after losing a
+   *     concurrent insert race - see {@link #createOrFetchUser}.
+   * @param createdHere {@code true} only if <em>this</em> call's own insert attempt won the race
+   *     and actually created {@code user}'s row - {@code false} both for an existing user found by
+   *     {@link #findOrCreateUser}'s initial lookup and for a race loser that read a concurrent
+   *     winner's already-committed row.
+   */
+  private record UserCreationResult(User user, boolean createdHere) {}
 
   private User updateExistingUser(User existing, String email, String displayName) {
     existing.setLastLoginAt(Instant.now());
@@ -99,12 +135,19 @@ public class UserService {
    * of surfacing a 500 for {@code uq_users_subject_issuer}. Same fallback-read pattern as {@code
    * SpaceService#ensureDefaultSpace}, but without that method's {@code REQUIRES_NEW} - there is no
    * ambient transaction here to escape from in the first place.
+   *
+   * <p>#307: also reports whether the insert attempt actually won, via {@link
+   * UserCreationResult#createdHere()} - see {@link #findOrCreateUser}'s Javadoc for why the caller
+   * needs to tell a genuine winner apart from a race loser here.
    */
-  private User createOrFetchUser(String subject, String issuer, String email, String displayName) {
+  private UserCreationResult createOrFetchUser(
+      String subject, String issuer, String email, String displayName) {
     try {
-      return insertUser(subject, issuer, email, displayName);
+      return new UserCreationResult(insertUser(subject, issuer, email, displayName), true);
     } catch (DataIntegrityViolationException raceLost) {
-      return userRepository.findBySubjectAndIssuer(subject, issuer).orElseThrow(() -> raceLost);
+      User winner =
+          userRepository.findBySubjectAndIssuer(subject, issuer).orElseThrow(() -> raceLost);
+      return new UserCreationResult(winner, false);
     }
   }
 
@@ -148,17 +191,18 @@ public class UserService {
    * (there is none in production today) - it must not silently skip provisioning if one ever
    * exists.
    */
-  private void ensurePersonalSpaceAfterCommit(UUID userId, UUID organizationId) {
+  private void ensurePersonalSpaceAfterCommit(
+      UUID userId, UUID organizationId, boolean createdHere) {
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
       TransactionSynchronizationManager.registerSynchronization(
           new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-              ensurePersonalSpace(userId, organizationId);
+              ensurePersonalSpace(userId, organizationId, createdHere);
             }
           });
     } else {
-      ensurePersonalSpace(userId, organizationId);
+      ensurePersonalSpace(userId, organizationId, createdHere);
     }
   }
 
@@ -175,16 +219,29 @@ public class UserService {
    * created users: {@code ensureDefaultSpace} is idempotent (it checks for an existing row first),
    * so a returning user whose personal space failed to provision on an earlier login gets one
    * created on their next login instead of being left without one indefinitely.
+   *
+   * <p>#307: {@code createdHere} selects {@link SpaceService#ensureDefaultSpaceForNewUser} for a
+   * user this very call just created, skipping its otherwise-redundant existence check - see that
+   * method's Javadoc. Every other case (an existing user, or a race loser that read a concurrent
+   * winner's row) keeps calling the idempotent {@link SpaceService#ensureDefaultSpace}, which is
+   * still the only one of the two that is actually safe to call when a personal space might already
+   * exist.
    */
-  private void ensurePersonalSpace(UUID userId, UUID organizationId) {
+  private void ensurePersonalSpace(UUID userId, UUID organizationId, boolean createdHere) {
     try {
-      spaceService.ensureDefaultSpace(userId, organizationId);
+      if (createdHere) {
+        spaceService.ensureDefaultSpaceForNewUser(userId, organizationId);
+      } else {
+        spaceService.ensureDefaultSpace(userId, organizationId);
+      }
     } catch (RuntimeException e) {
+      long failureCount = failedProvisioningCount.incrementAndGet();
       log.error(
           "Failed to provision personal space for user {} (organization {}); will retry on next"
-              + " login",
+              + " login (failure #{} since startup)",
           userId,
           organizationId,
+          failureCount,
           e);
     }
   }

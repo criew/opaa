@@ -59,7 +59,9 @@ class UserServiceTest {
     assertThat(user.getSubject()).isEqualTo("sub1");
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
     assertThat(user.getOrganizationId()).isEqualTo(Organization.DEFAULT_ID);
-    verify(spaceService).ensureDefaultSpace(user.getId(), Organization.DEFAULT_ID);
+    // #307: a genuinely new user (this call's own insert won) skips the redundant existsBy round
+    // trip via the ensureDefaultSpaceForNewUser fast path - see UserService#ensurePersonalSpace.
+    verify(spaceService).ensureDefaultSpaceForNewUser(user.getId(), Organization.DEFAULT_ID);
   }
 
   @Test
@@ -330,12 +332,12 @@ class UserServiceTest {
     when(authProperties.initialAdminEmail()).thenReturn(null);
     Mockito.doThrow(new RuntimeException("space provisioning failed"))
         .when(spaceService)
-        .ensureDefaultSpace(any(), any());
+        .ensureDefaultSpaceForNewUser(any(), any());
 
     User user = userService.findOrCreateUser("sub1", "issuer1", "test@example.com", "Test");
 
     assertThat(user.getSubject()).isEqualTo("sub1");
-    verify(spaceService).ensureDefaultSpace(any(), any());
+    verify(spaceService).ensureDefaultSpaceForNewUser(any(), any());
   }
 
   @Test
@@ -358,6 +360,11 @@ class UserServiceTest {
 
     assertThat(user).isEqualTo(winner);
     verify(userRepository, times(2)).findBySubjectAndIssuer("sub1", "issuer1");
+    // #307: a race loser did not itself create the row - the winner might already have provisioned
+    // the personal space - so it must keep using the idempotent ensureDefaultSpace, never the
+    // existsBy-skipping ensureDefaultSpaceForNewUser fast path reserved for a genuine winner.
+    verify(spaceService).ensureDefaultSpace(winner.getId(), Organization.DEFAULT_ID);
+    verify(spaceService, Mockito.never()).ensureDefaultSpaceForNewUser(any(), any());
   }
 
   @Test
