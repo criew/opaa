@@ -1,0 +1,128 @@
+{
+  "measurementContractVersion": 2,
+  "fixedPoints": {
+    "embeddingModel": "nomic-embed-text:v1.5",
+    "embeddingModelDigest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+    "embeddingDimensions": 768,
+    "chunkSize": 1000,
+    "chunkSizeMatchesApplicationDefault": true,
+    "chunkOverlap": 100,
+    "documentTopK": 10,
+    "chunkTopK": 120,
+    "searchTopK": 120,
+    "productionSimilarityThreshold": 0.3,
+    "pgvectorIndexType": "hnsw",
+    "corpusManifestSha256": "dc4f2a16ca905770f3fe02982d5455eeb422963bf42eb53a4e152e56f6b4212f",
+    "corpusDocumentCount": 200,
+    "goldenDatasetFile": "eval/golden/city-landmarks.json",
+    "goldenDatasetSha256": "4ab89682076739041ec42f2dd948841e7af1562dddb34697d4ed3a6f678ab023",
+    "goldenCaseCount": 83
+  },
+  "groups": {
+    "overall": {
+      "n": 83,
+      "hitRateAt5": 0.952,
+      "mrr": 0.881,
+      "ndcgAt10": 0.894,
+      "recallAt10": 0.958,
+      "recallAt10Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 43,
+      "hitCountAt5": 79,
+      "hitCountAt10": 81
+    },
+    "category:boundary_span": {
+      "n": 20,
+      "hitRateAt5": 1.0,
+      "mrr": 0.967,
+      "ndcgAt10": 0.975,
+      "recallAt10": 1.0,
+      "recallAt10Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 15,
+      "hitCountAt5": 20,
+      "hitCountAt10": 20
+    },
+    "category:city_overview": {
+      "n": 15,
+      "hitRateAt5": 0.8,
+      "mrr": 0.638,
+      "ndcgAt10": 0.708,
+      "recallAt10": 0.933,
+      "recallAt10Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 14,
+      "hitCountAt5": 12,
+      "hitCountAt10": 14
+    },
+    "category:cross_chunk": {
+      "n": 15,
+      "hitRateAt5": 1.0,
+      "mrr": 1.0,
+      "ndcgAt10": 1.0,
+      "recallAt10": 1.0,
+      "recallAt10Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 15,
+      "hitCountAt5": 15,
+      "hitCountAt10": 15
+    },
+    "category:landmark_detail": {
+      "n": 25,
+      "hitRateAt5": 0.96,
+      "mrr": 0.908,
+      "ndcgAt10": 0.921,
+      "recallAt10": 0.96,
+      "recallAt10Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 4,
+      "hitCountAt5": 24,
+      "hitCountAt10": 24
+    },
+    "category:multi_city": {
+      "n": 8,
+      "hitRateAt5": 1.0,
+      "mrr": 0.817,
+      "ndcgAt10": 0.754,
+      "recallAt10": 0.813,
+      "recallAt10Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 8,
+      "hitCountAt5": 8,
+      "hitCountAt10": 8
+    },
+    "difficulty:easy": {
+      "n": 23,
+      "hitRateAt5": 0.87,
+      "mrr": 0.7,
+      "ndcgAt10": 0.724,
+      "recallAt10": 0.891,
+      "recallAt10Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 22,
+      "hitCountAt5": 20,
+      "hitCountAt10": 22
+    },
+    "difficulty:medium": {
+      "n": 60,
+      "hitRateAt5": 0.983,
+      "mrr": 0.951,
+      "ndcgAt10": 0.959,
+      "recallAt10": 0.983,
+      "recallAt10Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 25,
+      "hitCountAt5": 59,
+      "hitCountAt10": 59
+    },
+    "language:de": {
+      "n": 83,
+      "hitRateAt5": 0.952,
+      "mrr": 0.881,
+      "ndcgAt10": 0.894,
+      "recallAt10": 0.958,
+      "recallAt10Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 43,
+      "hitCountAt5": 79,
+      "hitCountAt10": 81
+    }
+  },
+  "measuredAt": "2026-08-21",
+  "provenance": {
+    "sourceReportRunStartedAt": "2026-08-21T13:55:59.170052Z",
+    "sourcePullRequest": "#730"
+  },
+  "notes": "Erster evaluateCityLandmarksRetrieval-Lauf (Issue #234), Laufzeit 1698.2s (~28.3 Minuten). Werte woertlich aus der %.3f-ReportWriter-Ausgabe uebernommen (eval/baseline/README.md, verbindliche Rundungsregel). answerSpanHitRate@5=0.850 (60 anwendbare Faelle, mittlerer Rang des ersten Treffer-Chunks 3.76) - nicht Teil dieser Baseline-Datei (kein Feld in Baseline.FixedPoints/groups fuer die Chunkebenen-Metrik), im Report unter chunkAnswerSpanMetrics dokumentiert. language:de ist bei dieser Domaene by construction identisch mit overall (alle 83 Faelle sind deutsch, keine zweite Sprache) - anders als bei comic-characters keine Konsolidierung vorgenommen (Issue #304 loeste das dort ueber eine domain-spezifische BaselineComparator-Ausnahme, hier bewusst nicht uebernommen, um den Comichelden-Code unangetastet zu lassen). category:landmark_detail hat distinctExpectedDocumentSets=4 bei n=25 - mehrere Faelle konzentrieren sich auf wenige grosse Staedte (Moskau, Berlin, Warschau, Wien) mit vielen Sehenswuerdigkeiten; bekannte Einschraenkung, siehe eval/golden/README.md."
+}
