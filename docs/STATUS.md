@@ -129,7 +129,10 @@ Drei Zustände werden unterschieden:
 - **Der erste Konnektor.** Bisher gibt es keinen — weder zu einer Dateiablage noch zu einem Wiki, einem
   Postfach oder einem Vorgangssystem. Was existiert, ist die Aufnahme über Verzeichnis, URL und Upload.
 - Selbst aktualisierende Wissensblöcke; Zeitpläne und Prioritäten
-- Zuordnung einer Konnektorquelle zu genau einer Wissensbibliothek (#207)
+- Offene Punkte der Quellzuordnung (#207): Obergrenze der Freigabe für konnektorgespeiste Bibliotheken
+  und Ausschluss einzelner Konnektordokumente. Die Zuordnung einer Quelle zu genau **einer**
+  Wissensbibliothek selbst ist seit ADR-0018 gebaut und strukturell erzwungen — die Bibliothek trägt
+  Quellentyp und Quellkonfiguration selbst
 
 **Geplant (Phase 2)**
 - Schreibender Zugriff je Integration · Spiegelung der Rechte aus dem Quellsystem
