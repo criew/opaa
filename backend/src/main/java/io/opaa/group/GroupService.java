@@ -136,11 +136,18 @@ public class GroupService {
    * the only thing standing between the picker and a library owned by a group that no longer
    * organisationally exists.
    *
-   * <p>Also filters to the caller's organization, mirroring {@link #listGroups}: {@link #addMember}
-   * already enforces this at write time via {@code requireUserInOrganization}, so no membership
-   * should ever cross the boundary today, but the class Javadoc treats the boundary as a defense
-   * applied independently at every read rather than one relying on that invariant holding
-   * elsewhere.
+   * <p>Also filters to the caller's organization, mirroring {@link #listGroups}: as of migration
+   * 047 this filter is structurally unreachable, not merely unexercised - {@code
+   * fk_group_memberships_user_organization} (composite on {@code user_id, organization_id}) and
+   * {@code fk_group_memberships_group_organization} (migration 009, composite on {@code group_id,
+   * organization_id}) together force a membership row's {@code organization_id} to match both the
+   * member's and the group's actual organization, so no row this filter would ever reject can exist
+   * in the first place - see {@code
+   * GroupServiceIntegrationTest#aMembershipRowCanNeverCrossAnOrganizationBoundaryAtTheDatabaseLevel}
+   * (#308), which proves the database rejects constructing one directly. Left in place anyway as a
+   * second, independent defense line the class Javadoc's philosophy calls for - one that does not
+   * rely on the schema invariant above continuing to hold, in case a future migration ever loosens
+   * it.
    */
   public List<GroupListResponse> listMyGroups(UUID currentUserId) {
     User currentUser = requireUser(currentUserId);
