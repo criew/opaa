@@ -317,11 +317,29 @@ beschreiben zwei verschiedene Ebenen. Eine leere Compose-Belegung („nicht gese
 `.env.example` die Variable auskommentiert lässt oder gar nicht enthält; dann gilt beim Kopieren nach
 `.env.docker` der Anwendungs-Default.
 
-**Vorrang der Konfigurationsquellen:** Eine Umgebungsvariable, die im Prozess oder explizit im
-`environment:`-Abschnitt einer `docker-compose.yml` gesetzt ist, hat Vorrang vor demselben Namen in
-`.env.docker`/`.env` (geladen über `env_file`), und dieser wiederum vor dem in `application.yml`
-hinterlegten Anwendungs-Default (`${VARIABLE:default}`). Ist eine Variable nirgends gesetzt, gilt der
-Anwendungs-Default.
+**Vorrang der Konfigurationsquellen — zwei getrennte Mechanismen:**
+
+1. **Werte, die im Backend-Container ankommen und von Spring gelesen werden** (also praktisch jede
+   `opaa.*`/`spring.*`-Eigenschaft): Hier hat eine Umgebungsvariable, die explizit im
+   `environment:`-Abschnitt einer `docker-compose.yml` gesetzt ist, Vorrang vor demselben Namen in der
+   über `env_file:` eingebundenen `.env.docker`, und diese wiederum vor dem in `application.yml`
+   hinterlegten Anwendungs-Default (`${VARIABLE:default}`). Bei `./gradlew bootRun` ohne Docker Compose
+   tritt an die Stelle von `environment:`/`env_file` schlicht die Prozessumgebung der Shell, in der
+   `bootRun` läuft. Eine Host-Shell-Variable erreicht den Backend-Container in Docker Compose **nicht**
+   automatisch — nur wenn sie entweder in `environment:` referenziert wird (z. B. `OPAA_UPLOAD_STORAGE_PATH`
+   in `docker-compose.yml`) oder über `env_file: .env.docker` geladen wird, landet sie im Container.
+2. **Variablen, die `${...}` direkt in `docker-compose.yml` interpoliert** — Bind-Mounts, Host-Ports und
+   die `env_file`-Auswahl selbst (`OPAA_ENV_FILE`, siehe unten). Docker Compose löst diese Platzhalter
+   ausschließlich aus der **Prozessumgebung** und einer von Compose selbst automatisch geladenen
+   `.env`-Datei im Projektwurzelverzeichnis auf — **niemals** aus der über `env_file:` eingebundenen
+   `.env.docker` (`e2e/scripts/run-e2e.mjs` nutzt genau das, um Ports und die `env_file`-Auswahl der
+   E2E-Suite per Prozessumgebung zu setzen, ohne die Datei eines Entwicklers anzufassen). Ein Wert, den
+   `.env.example` für eine solche Variable vorschlägt, bleibt deshalb wirkungslos, solange er nur in
+   `.env.docker` steht — er muss als Shell-Variable exportiert oder in eine echte `.env`-Datei
+   geschrieben werden. In der Tabelle unten mit „wirkt nur aus Prozessumgebung/`.env`, **nicht** aus
+   `.env.docker`" gekennzeichnet.
+
+Ist eine Variable nirgends gesetzt, gilt in beiden Fällen der jeweilige Default.
 
 **Anbieterbedingte Variablen:** `OPAA_OPENAI_*` wirkt nur, solange der jeweilige Anbieter
 (`OPAA_AI_CHAT_PROVIDER` bzw. `OPAA_AI_EMBEDDING_PROVIDER`) auf `openai` steht; `OPAA_OLLAMA_*`
@@ -329,32 +347,37 @@ entsprechend nur bei `ollama`. Ein gesetzter, aber wegen des falschen Anbieters 
 nicht gemeldet — er bleibt einfach ungenutzt liegen.
 
 Manche Variablen dieser Tabelle sind kein Spring-Property, sondern werden ausschließlich von Docker
-Compose selbst ausgewertet (Bind-Mounts, Host-Ports) oder vom `envsubst`-Template des Frontend-nginx —
-für sie gibt es keinen Anwendungs-Default im eigentlichen Sinn; das ist jeweils vermerkt.
+Compose selbst ausgewertet (Bind-Mounts, Host-Ports, die `env_file`-Auswahl) oder vom
+`envsubst`-Template des Frontend-nginx — für sie gibt es keinen Anwendungs-Default im eigentlichen
+Sinn; das ist jeweils vermerkt.
 
 | Variable | Anwendungs-Default (`application.yml`) | Compose-Belegung (`.env.example`) | Beschreibung |
 |----------|------------------------------------------|-------------------------------------|-------------|
 | **Allgemein** | | | |
 | `OPAA_SERVER_ADDRESS` | `localhost` | `0.0.0.0` | Bind-Adresse (`0.0.0.0` für Netzwerkzugang). Docker Compose überschreibt den Anwendungs-Default bewusst — siehe Hinweis unter [Netzwerkzugang](#netzwerkzugang) |
 | `OPAA_HTTP_FORCE_HTTP1` | `false` | `false` | HTTP/1.1 für vLLM-Kompatibilität erzwingen |
-| `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | `http://localhost:5173` | Erlaubte CORS-Origins (kommagetrennt) |
-| `OPAA_INDEXING_DOCUMENT_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default ebenfalls `./documents`) | `./documents` | Host-Pfad für Dokumente (in Container gemountet) |
-| `OPAA_UPLOAD_STORAGE_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./uploads`) | nicht gesetzt (Compose-Default `./uploads` gilt) | Host-Pfad für hochgeladene Dokumente (in Container gemountet) |
-| `OPAA_UPLOAD_STORAGE_PATH` | `./uploads` | — (`docker-compose.yml` setzt sie im Backend-Container fest auf `/app/uploads`, nicht über `.env.docker` änderbar) | Container-interner Speicherpfad für hochgeladene Dokumente (`opaa.upload.storage-path`) — bei Docker Compose vom Bind-Mount `OPAA_UPLOAD_STORAGE_PATH_HOST` unabhängig zu verwechseln |
+| `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | `http://localhost:5173` | Erlaubte CORS-Origins (kommagetrennt). Der Compose-Beispielwert passt nur außerhalb von Docker Compose (lokaler Vite-Dev-Server auf `:5173`) — unter Docker Compose muss die Variable stattdessen den Frontend-Host-Port tragen, standardmäßig `http://localhost:3000` (siehe [„Docker-spezifische Variablen"](#docker-spezifische-variablen) oben und [„POST-Anfragen geben 403 Forbidden zurück"](#post-anfragen-geben-403-forbidden-zurück) unten) — sonst schlägt jede POST-Anfrage aus dem Compose-Frontend am CORS-Preflight fehl |
+| `OPAA_INDEXING_DOCUMENT_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./documents`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.example` nennt `./documents`, das bleibt dort wirkungslos; ohne Shell-Export gilt der Compose-Default `./documents` | Host-Pfad für Dokumente (in Container gemountet) |
+| `OPAA_UPLOAD_STORAGE_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./uploads`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.example` gesetzt; ohne Shell-Export gilt der Compose-Default `./uploads` | Host-Pfad für hochgeladene Dokumente (in Container gemountet) |
+| `OPAA_UPLOAD_STORAGE_PATH` | `./uploads` | — (`docker-compose.yml` setzt sie im Backend-Container fest auf `/app/uploads`, nicht über `.env.docker` änderbar) | Container-interner Speicherpfad für hochgeladene Dokumente (`opaa.upload.storage-path`) — bei Docker Compose nicht mit dem Bind-Mount `OPAA_UPLOAD_STORAGE_PATH_HOST` zu verwechseln |
 | `OPAA_UPLOAD_MAX_FILE_SIZE` | `52428800` (50 MiB, Byte) | nicht gesetzt (Anwendungs-Default gilt) | Maximale Dateigröße beim Dokument-Upload (`spring.servlet.multipart.max-file-size`/`max-request-size` und `opaa.upload.max-file-size` in `application.yml`, dieselbe Variable für beide). **Bei Docker Compose zusätzlich zu beachten:** Der nginx-Reverse-Proxy im Frontend-Container (`frontend/nginx.conf`) setzt `client_max_body_size` unabhängig davon fest auf `52m` — etwas oberhalb dieses Limits, weil nginx die gesamte Multipart-Anfrage misst (inklusive Framing-Overhead), das Backend dagegen nur die Dateigröße. Diese Datei wird beim Image-Build fest eingebacken (kein `envsubst`), wird also **nicht** automatisch aus `OPAA_UPLOAD_MAX_FILE_SIZE` übernommen. Wer `OPAA_UPLOAD_MAX_FILE_SIZE` erhöht, muss `client_max_body_size` in `frontend/nginx.conf` entsprechend mit anheben, sonst weist nginx größere Uploads bereits mit einer eigenen HTML-413-Seite ab, bevor die Backend-Prüfung überhaupt greift — siehe [#519](https://github.com/criew/opaa/issues/519). |
 | **Datenbank** | | | |
 | `OPAA_DB_URL` | `jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0`; im Spring-Profil `docker` (ohne gesetzte Variable) stattdessen `jdbc:postgresql://postgres:5432/opaa?prepareThreshold=0` | `jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0` | JDBC-Verbindungs-URL. Der Compose-Beispielwert passt nur außerhalb von Docker Compose — die „Minimale `.env.docker`" oben lässt die Variable deshalb bewusst weg, damit der `docker`-Profil-Default mit dem Hostnamen `postgres` gilt |
 | `OPAA_DB_USERNAME` | `opaa` | `opaa` | PostgreSQL-Benutzername |
 | `OPAA_DB_PASSWORD` | `opaa` | `opaa` | PostgreSQL-Passwort |
-| `OPAA_DB_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `5432`) | nicht gesetzt (Compose-Default `5432` gilt) | Host-Port, auf den `docker-compose.yml` den PostgreSQL-Container bindet (nur `127.0.0.1`) |
+| `OPAA_DB_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `5432`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.example` gesetzt; ohne Shell-Export gilt der Compose-Default `5432` | Host-Port, auf den `docker-compose.yml` den PostgreSQL-Container bindet (nur `127.0.0.1`) |
 | **LLM / Embedding** | | | |
 | `OPAA_AI_CHAT_PROVIDER` | `ollama` | `ollama` | Chat-Modell-Anbieter (`ollama` oder `openai`) |
 | `OPAA_AI_EMBEDDING_PROVIDER` | `ollama` | `ollama` | Embedding-Modell-Anbieter (`ollama` oder `openai`) |
-| `OPAA_OPENAI_API_KEY` | `sk-placeholder` (Platzhalter, kein gültiger Schlüssel — greift nur, falls ein Anbieter auf `openai` steht und kein spezifischerer Schlüssel gesetzt ist) | nicht gesetzt (leer) | Zugangsschlüssel der openai-kompatiblen Schnittstelle. Wirkt nur bei mindestens einem Anbieter `openai` |
-| `OPAA_OPENAI_BASE_URL` | — (kein Default) | nicht gesetzt (leer) | Basis-Adresse der openai-kompatiblen Schnittstelle. **Ohne Voreinstellung; erforderlich, sobald ein Anbieter auf `openai` steht** — sonst bricht der Start ab (siehe [„Erforderliche Variablen"](#erforderliche-variablen) oben) |
+| `OPAA_OPENAI_API_KEY` | `sk-placeholder` (Platzhalter, kein gültiger Schlüssel — greift nur, falls ein Anbieter auf `openai` steht und kein spezifischerer Schlüssel gesetzt ist) | gesetzt, aber leer (`.env.example` Zeile 21) — **überschreibt den Anwendungs-Default**: Eine leere `env_file`-Zeile löst `${OPAA_OPENAI_API_KEY:sk-placeholder}` zu einem leeren String auf, nicht zum Platzhalter | Zugangsschlüssel der openai-kompatiblen Schnittstelle. Wirkt nur bei mindestens einem Anbieter `openai` |
+| `OPAA_OPENAI_BASE_URL` | — (kein Default) | gesetzt, aber leer (`.env.example` Zeile 19) — funktional gleichwertig zu „nicht gesetzt", da der Anwendungs-Default hier ohnehin leer ist | Basis-Adresse der openai-kompatiblen Schnittstelle. **Ohne Voreinstellung; erforderlich, sobald ein Anbieter auf `openai` steht** — sonst bricht der Start ab (siehe [„Erforderliche Variablen"](#erforderliche-variablen) oben) |
+| `OPAA_OPENAI_CHAT_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | gesetzt, aber leer (`.env.example` Zeile 25) — überschreibt damit auch den Fallback auf `OPAA_OPENAI_API_KEY` | Eigener Zugangsschlüssel nur für den Chat-Aufruf, falls Chat- und Embedding-API unterschiedliche Schlüssel brauchen. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
+| `OPAA_OPENAI_CHAT_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:}}`) | gesetzt, aber leer (`.env.example` Zeile 27) — funktional gleichwertig zu „nicht gesetzt" | Eigene Zieladresse nur für den Chat-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten) |
 | `OPAA_OPENAI_CHAT_MODEL` | `gpt-4o` | `gpt-4o` | OpenAI-Chat-Modellname. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
 | `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | `0.7` | Chat-Antwort-Temperatur (0,0–2,0). Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
 | `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | `2000` | Maximale Tokens in Chat-Antwort. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
+| `OPAA_OPENAI_EMBEDDING_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | gesetzt, aber leer (`.env.example` Zeile 37) — überschreibt damit auch den Fallback auf `OPAA_OPENAI_API_KEY` | Eigener Zugangsschlüssel nur für den Embedding-Aufruf. Wirkt nur bei `OPAA_AI_EMBEDDING_PROVIDER=openai` |
+| `OPAA_OPENAI_EMBEDDING_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:}}`) | gesetzt, aber leer (`.env.example` Zeile 39) — funktional gleichwertig zu „nicht gesetzt" | Eigene Zieladresse nur für den Embedding-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten) |
 | `OPAA_OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | `text-embedding-3-small` | OpenAI-Embedding-Modellname. Wirkt nur bei `OPAA_AI_EMBEDDING_PROVIDER=openai` |
 | `OPAA_OLLAMA_BASE_URL` | Profil `local`: `http://localhost:11434`; Profil `docker`: `http://ollama:11434` — kein profilunabhängiger Default | `http://ollama:11434` | Ollama-API-Basis-URL. Wirkt nur, solange mindestens ein Anbieter auf `ollama` steht |
 | `OPAA_OLLAMA_CHAT_MODEL` | `phi3:mini` | `phi3:mini` | Ollama-Chat-Modellname. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=ollama` |
@@ -407,7 +430,7 @@ für sie gibt es keinen Anwendungs-Default im eigentlichen Sinn; das ist jeweils
 | **Verzeichnis-Synchronisation (Gruppen, #237)** | | | |
 | `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | `0.3` | nicht gesetzt (Anwendungs-Default gilt) | Plausibilitätsschwelle: Würde ein Synchronisationslauf mehr als diesen Anteil der bestehenden Gruppenmitgliedschaften entfernen, wird er verworfen und gemeldet statt angewendet — Schutz vor einer fehlkonfigurierten Verzeichnisquelle, die scheinbar fast alle Mitgliedschaften löscht. Gemessen ausschließlich an Entfernungen, nicht an Hinzufügungen. Muss echt größer als `0` und höchstens `1` sein — ein ungültiger Wert lässt den Start fehlschlagen, statt sich stillschweigend zu lockern |
 | **Authentifizierung** | | | |
-| `SPRING_PROFILES_ACTIVE` | — (kein Default; siehe `io.opaa.auth.AuthProfileGuard`) | — (siehe „Minimale `.env.docker`" oben) | Muss `oidc` (Betrieb) oder `dev` (Entwicklung/Tests) enthalten; ohne eines der beiden startet das Backend nicht |
+| `SPRING_PROFILES_ACTIVE` | ohne Angabe ist das Spring-Profil `local` aktiv (`spring.profiles.default: local` in `application.yml`) — das enthält aber weder `oidc` noch `dev`, sodass `io.opaa.auth.AuthProfileGuard` den Start trotzdem mit einer Fehlermeldung abbricht | — (siehe „Minimale `.env.docker`" oben) | Muss `oidc` (Betrieb) oder `dev` (Entwicklung/Tests) enthalten; ohne eines der beiden startet das Backend nicht — das gilt für den Auth-Modus, nicht für das Spring-Profil an sich, das auch ohne Angabe einen Wert (`local`) hat |
 | `OPAA_INITIAL_ADMIN_EMAIL` | `admin@opaa.local` | `admin@opaa.local` | E-Mail für den automatisch erstellten initialen Admin-Benutzer |
 | **Entwicklungs-Auth (`dev`)** | | | |
 | `OPAA_AUTH_DEV_ISSUER` | `opaa-dev` | `opaa-dev` | Issuer-Claim der synthetischen Tokens |
@@ -421,9 +444,10 @@ für sie gibt es keinen Anwendungs-Default im eigentlichen Sinn; das ist jeweils
 | `OPAA_OIDC_CLIENT_ID` | `opaa-frontend` | `opaa-frontend` | OIDC-Client-ID |
 | `OPAA_CSP_CONNECT_SRC_EXTRA` | — (kein Spring-Property; leer als Image-Default des Frontend-nginx-`envsubst`-Templates) | `http://localhost:8180` | Zusätzliche Origin(s) in der `connect-src`-Richtlinie des Frontend-nginx, leerzeichengetrennt bei mehreren. Erforderlich, wenn die OIDC-Authority auf einem anderen Origin liegt als das Frontend selbst — sonst blockiert die Content-Security-Policy die OIDC-Anmeldung stillschweigend (#409/#670) |
 | **Docker-Compose-Ports** | | | |
-| `OPAA_BACKEND_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8081`) | `8081` | Backend-Host-Port |
-| `OPAA_FRONTEND_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `3000`) | `3000` | Frontend-Host-Port |
-| `OPAA_KEYCLOAK_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8180`) | nicht gesetzt (Compose-Default `8180` gilt) | Keycloak-Host-Port (nur `oidc`-Compose-Profil) |
+| `OPAA_BACKEND_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8081`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.example` nennt `8081`, das bleibt dort wirkungslos; ohne Shell-Export gilt der Compose-Default `8081` | Backend-Host-Port |
+| `OPAA_FRONTEND_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `3000`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.example` nennt `3000`, das bleibt dort wirkungslos; ohne Shell-Export gilt der Compose-Default `3000` | Frontend-Host-Port |
+| `OPAA_KEYCLOAK_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8180`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8180` | Keycloak-Host-Port (nur `oidc`-Compose-Profil) |
+| `OPAA_ENV_FILE` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `.env.docker`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` selbst (zirkulär — siehe Hinweis oben) — nicht in `.env.example` gesetzt | Wählt die `env_file`, aus der `docker-compose.yml` die Container-Umgebung lädt (Standard `.env.docker`). Die E2E-Suite setzt sie per Prozessumgebung auf `e2e/e2e.env`, um denselben `docker-compose.yml` mit einem eigenen, von der Entwickler-`.env.docker` unabhängigen Umgebungssatz zu betreiben (siehe `e2e/scripts/run-e2e.mjs`) |
 
 **Laufzeit und Speicher eines RSS-Laufs.** Die Politeness-Wartezeit (`OPAA_INDEXING_RSS_REQUEST_DELAY_MS`, Voreinstellung 1000 ms) gilt für jede Anfrage einzeln — Detailseite und jede einzelne Anlage. Mit den Voreinstellungen (200 Einträge, bis zu 10 Anlagen je Eintrag) dauert ein Lauf, der bei jedem Eintrag das Limit ausschöpft, im ungünstigsten Fall rund 200 × 11 × 1 s ≈ 37 Minuten. Jede Anlage wird vor dem Schreiben auf die temporäre Datei vollständig in den Heap gelesen (`UrlFileDownloader#downloadBounded`) — bis zu `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` (Voreinstellung 20 MiB) je Anlage. Bei knapp bemessenem Heap `OPAA_INDEXING_THREAD_POOL_MAX_SIZE` und die Anlagen-Obergrenzen entsprechend niedriger wählen.
 
