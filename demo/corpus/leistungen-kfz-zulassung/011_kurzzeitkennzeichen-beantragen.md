@@ -6,7 +6,7 @@
 
 Kurzzeitkennzeichen sind nationale Kennzeichen, die nur für Probe- und Überführungsfahrten innerhalb Deutschlands zulässig sind. Sie gelten maximal fünf Tage.
 
-In Rheinfurt erhalten Sie das Kurzzeitkennzeichen ausschließlich an der Eichstätter Straße 2.
+In Rheinfurt erhalten Sie das Kurzzeitkennzeichen ausschließlich an der Feldstraße 2.
 
 Sollte die endgültige Zulassung des Fahrzeuges während der Laufzeit des Kurzzeitkennzeichens erfolgen, müssen die Kurzzeitkennzeichenschilder vorgelegt werden.
 Falls Sie für das Fahrzeug keine gültige Hauptuntersuchung oder Sicherheitsprüfung  haben, dürfen Fahrten nur zur nächstgelegenen Untersuchungsstelle innerhalb des Gebietes der Stadt Rheinfurt oder eines angrenzenden Zulassungsbezirks durchgeführt werden. Nur bei bestandener Hauptuntersuchung ist eine Weiterfahrt im gesamten Bundesgebiet möglich.
@@ -18,7 +18,7 @@ Das Kurzzeitkennzeichen können Sie wahlweise bei der Zulassungsbehörde des Ort
 - Sie wohnen (mit Hauptwohnsitz) , oder
 - das Fahrzeug zuletzt zugelassen war, oder
 - das Fahrzeug gekauft wurde (Kaufvertrag als Nachweis erforderlich), oder
-- sich das Fahrzeug aktuell befindet. Als Nachweis benötigen Sie eine Bestätigung der Prüforganisation oder des Fahrzeughändlers, bei dem das Fahrzeug vorgefahren beziehungsweise abgestellt wurde. In Rheinfurt können Sie das Fahrzeug auch direkt bei der Zulassungsbehörde an der Eichstätter Straße 2 vorfahren.
+- sich das Fahrzeug aktuell befindet. Als Nachweis benötigen Sie eine Bestätigung der Prüforganisation oder des Fahrzeughändlers, bei dem das Fahrzeug vorgefahren beziehungsweise abgestellt wurde. In Rheinfurt können Sie das Fahrzeug auch direkt bei der Zulassungsbehörde an der Feldstraße 2 vorfahren.
 - Der Prüfbericht über die letzte gültige Hauptuntersuchung ist - soweit vorhanden - im Original vorzulegen.
 - Das Fahrzeug muss abgemeldet (außer Betrieb gesetzt) sein.
 
@@ -47,6 +47,6 @@ Das Kennzeichen gehört dem Eigentümer, er kann es entsorgen oder behalten.
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

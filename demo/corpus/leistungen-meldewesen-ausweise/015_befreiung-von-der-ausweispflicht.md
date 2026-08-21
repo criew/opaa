@@ -46,6 +46,6 @@ gebührenfrei
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

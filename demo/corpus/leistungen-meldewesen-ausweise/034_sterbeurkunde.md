@@ -7,9 +7,9 @@
 Das Standesamt stellt nach einem Todesfall Sterbeurkunden aus. Um die Anzeige des Sterbefalls kümmert sich in der Regel das beauftragte Bestattungsunternehmen.
 
 Wir stellen nach einem aktuellen Todesfall auf Antrag Sterbeurkunden aus. Voraussetzung ist, dass der Sterbefall in Rheinfurt in unserem Zuständigkeitsbereich war.
-Bei Sterbefällen, die im Zuständigkeitsbereich des Standesamts Rheinfurt-Pasing (Klinikum Rheinfurt-Pasing und Altenheime der Stadtbezirke 21, 22, 23) waren, wenden Sie sich bitte an: Standesamt Rheinfurt-Pasing - Landsberger Straße 486, 81241 Rheinfurt, Telefon: 02351/44-7177.
-Fragen, die Ermittlungen von Erben und die Ausstellung eines Erbscheines betreffen, können vom  Nachlassgericht Rheinfurt in der Maxburgstraße 4, 80333 Rheinfurt, Telefon 02351/44-4876 beantwortet werden.
-Fragen zur Grablage (beispielsweise auf welchem Friedhof ist ein Verstorbener beerdigt?) kann Ihnen die Verwaltung der Städtischen Friedhöfe Rheinfurt in der Damenstiftstraße 8, 80331 Rheinfurt, Telefon 02351/44-0527 beantworten.
+Bei Sterbefällen, die im Zuständigkeitsbereich des Standesamts Rheinfurt-Rheinau (Klinikum Rheinfurt-Rheinau und Altenheime der Stadtbezirke 21, 22, 23) waren, wenden Sie sich bitte an: Standesamt Rheinfurt-Rheinau - Uferstraße 486, 00000 Rheinfurt, Telefon: 01234/44-7177.
+Fragen, die Ermittlungen von Erben und die Ausstellung eines Erbscheines betreffen, können vom  Nachlassgericht Rheinfurt in der Burgstraße 4, 00000 Rheinfurt, Telefon 01234/44-4876 beantwortet werden.
+Fragen zur Grablage (beispielsweise auf welchem Friedhof ist ein Verstorbener beerdigt?) kann Ihnen die Verwaltung der Städtischen Friedhöfe Rheinfurt in der Klosterstraße 8, 00000 Rheinfurt, Telefon 01234/44-0527 beantworten.
 
 Wir stellen nach einem Todesfall in unserem Zuständigkeitsbereich Sterbeurkunden aus. Um die Anzeige des Sterbefalls kümmert sich das Bestattungsunternehmen, das Sie mit der Abwicklung der Bestattung beauftragen. Nach Abschluss der Beurkundung erhalten Sie vom Bestattungsunternehmen die bestellten Sterbeurkunden.
 
@@ -45,6 +45,6 @@ Girocard
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

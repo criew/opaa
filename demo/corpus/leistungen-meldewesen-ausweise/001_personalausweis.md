@@ -11,7 +11,7 @@ Deutsche Staatsbürger sind verpflichtet einen gültigen Personalausweis (oder R
 - Für den Besuch im Bürgerbüro brauchen Sie einen Termin.
 
 Voraussetzungen
-Sie müssen in jedem Fall zur Beantragung persönlich vorsprechen. Sie können den Personalausweis grundsätzlich nur bei der Ausweisbehörde der Hauptwohnung beantragen. Einen Termin zur Antragstellung buchen Sie hier.
+Sie müssen in jedem Fall zur Beantragung persönlich vorsprechen. Sie können den Personalausweis grundsätzlich nur bei der Ausweisbehörde der Hauptwohnung beantragen. Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example.
 Eine Ausnahme gibt es nur für Bundesbürger, die im Ausland leben, sich zu Besuch in Rheinfurt aufhalten und zwingend einen neuen Ausweis brauchen. In diesem Ausnahmefall können Sie keinen Termin in einem der Bürgerbüros buchen, da die Sachbearbeitung an einer zentralen Stelle erfolgt. Für Informationen zur Antragstellung und Terminvereinbarung (nur in diesem Ausnahmefall) kontaktieren Sie uns bitte unter der E-Mail Adresse passamt@stadt-rheinfurt.example.
 Die Ausweisbehörde muss sowohl die Antragsberechtigung wie auch die Echtheit der Unterschrift prüfen. Bitte legen Sie entsprechende Ausweisdokumente (Personalausweis, Reisepass) vor.
 Gültigkeit der Personalausweise
@@ -69,13 +69,13 @@ Der Personalausweis wird im Todesfall automatisch ungültig.
 Wenn eine Sterbeurkunde ausgestellt wird, erfährt auch die Pass- und Ausweisbehörde vom Todesfall und veranlasst die Sperrung der Online-Ausweisfunktion beim zentralen Sperrlistenbetreiber. Nur wenn der elektronische Identitätsnachweis (eID) des Ausweises gesperrt ist, kann eine missbräuchliche Verwendung ausgeschlossen werden.
 Wenn auch die Unterschriftsfunktion aktiviert war, muss die elektronische Signatur (QES) separat gesperrt werden. Dies kann jedoch nicht von der Behörde  veranlasst werden. Dazu müssen Sie sich an den Anbieter wenden, bei dem das Signaturzertifikat gekauft wurde.
 Wie bekomme ich als sehbeeinträchtigte Person einen Braille-Aufkleber für meinen Ausweis?
-Sollten Sie sehbeeinträchtigt sein, können Sie für Ihren Personalausweis einen transparenten Aufkleber mit den Braille-Zeichen "ad" (für Ausweisdokument) bekommen. Sie können ihn bei uns bestellen, wenn Sie Ihren Personalausweis beantragen oder abholen. Den Braille-Aufkleber erhalten Sie jederzeit auch nachträglich. Rufen Sie dazu beim Bürgerbüro-Servicetelefon unter 02351/44-8122 an oder schreiben Sie eine E-Mail an: buergerbuero@stadt-rheinfurt.example
+Sollten Sie sehbeeinträchtigt sein, können Sie für Ihren Personalausweis einen transparenten Aufkleber mit den Braille-Zeichen "ad" (für Ausweisdokument) bekommen. Sie können ihn bei uns bestellen, wenn Sie Ihren Personalausweis beantragen oder abholen. Den Braille-Aufkleber erhalten Sie jederzeit auch nachträglich. Rufen Sie dazu beim Bürgerbüro-Servicetelefon unter 01234/44-8122 an oder schreiben Sie eine E-Mail an: buergerbuero@stadt-rheinfurt.example
 Welchen Service bietet das Bürgerbüro für besonders beeinträchtigte Personen an?
-Für besonders beeinträchtigte Personen bietet das Bürgerbüro Rheinfurt im Ausnahmefall an, den Antrag auf Ausstellung eines Personalausweises in der Wohnung der antragstellenden Person durch eine/n Bediensteten entgegen zu nehmen. Leider kann dieser Service auf Grund der anhaltenden Corona-Pandemie und der bestehenden Kontaktbeschränkungen bis auf weiteres nicht angeboten werden.
-Eine telefonische Beratung zu Alternativen erhalten Sie unter den Telefonnummern 02351/44-6477 oder 02351/44-3111.
+Für besonders beeinträchtigte Personen bietet das Bürgerbüro Rheinfurt im Ausnahmefall an, den Antrag auf Ausstellung eines Personalausweises in der Wohnung der antragstellenden Person durch eine/n Bediensteten entgegen zu nehmen.
+Eine telefonische Beratung zu Alternativen erhalten Sie unter den Telefonnummern 01234/44-6477 oder 01234/44-3111.
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

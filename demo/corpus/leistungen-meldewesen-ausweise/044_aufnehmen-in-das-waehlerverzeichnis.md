@@ -31,7 +31,7 @@ Sie sind außerdem wahlberechtigt, wenn
 
 Fragen & Antworten
 Wie kann ich mich in das Wählerverzeichnis aufnehmen lassen?
-Trifft einer der oben genannten Fälle auf Sie zu? Dann füllen Sie den „Antrag auf Aufnahme in das Wählerverzeichnis“ aus. Das Formular können Sie hier herunterladen. Sie können uns den ausgefüllten Antrag mit E-Mail an briefwahl@stadt-rheinfurt.example senden oder mit der Post an Bürgerbüro Rheinfurt, Wahlamt, Ruppertstr. 19, 80466 Rheinfurt.
+Trifft einer der oben genannten Fälle auf Sie zu? Dann füllen Sie den „Antrag auf Aufnahme in das Wählerverzeichnis“ aus. Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example. Sie können uns den ausgefüllten Antrag mit E-Mail an briefwahl@stadt-rheinfurt.example senden oder mit der Post an Bürgerbüro Rheinfurt, Wahlamt, Ruppertstr. 19, 00000 Rheinfurt.
 Welche Fristen muss ich beachten?
 Der Antrag muss spätestens am 3. März 2023 beim Wahlamt sein.
 Woher weiß ich, ob ich im Wählerverzeichnis stehe?
@@ -39,6 +39,6 @@ Melden Sie sich beim Wahlamt unter briefwahl@stadt-rheinfurt.example. Wir helfen
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

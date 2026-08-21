@@ -57,10 +57,10 @@ Girocard
 
 Fragen & Antworten
 Bei welchem Standesamt kann ich das Ehefähigkeitszeugnis beantragen?
-Grundsätzlich ist das Standesamt an Ihrem Wohnort zuständig. Wenn Sie mehrere Wohnsitze haben, können Sie eines der zuständigen Standesämter wählen. Sollte die*der deutsche Verlobte keinen Wohnsitz mehr in Deutschland haben, muss das Ehefähigkeitszeugnis beim Standesamt des letzten Wohnsitzes beantragt werden. Bestand niemals oder nur vorübergehend ein Aufenthalt im Inland, so ist der Standesbeamte des Standesamtes I in Berlin, Schönstedtstraße 5, 13357 Berlin, zuständig.
+Grundsätzlich ist das Standesamt an Ihrem Wohnort zuständig. Wenn Sie mehrere Wohnsitze haben, können Sie eines der zuständigen Standesämter wählen. Sollte die*der deutsche Verlobte keinen Wohnsitz mehr in Deutschland haben, muss das Ehefähigkeitszeugnis beim Standesamt des letzten Wohnsitzes beantragt werden. Bestand niemals oder nur vorübergehend ein Aufenthalt im Inland, so ist der Standesbeamte des Standesamtes I in Berlin, Gartenstraße 5, 13357 Berlin, zuständig.
 Kann ich in Rheinfurt zu jedem Standesamt gehen?
-Nein. Die Standesämter Rheinfurt und Rheinfurt-Pasing haben getrennte Amtsbezirke.
-Für die Rheinfurter Stadtbezirke 21 (Pasing – Obermenzing), 22 (Aubing – Lochhausen – Langwied) und 23 (Allach – Untermenzing) ist nur das Standesamt Rheinfurt-Pasing zuständig.
+Nein. Die Standesämter Rheinfurt und Rheinfurt-Rheinau haben getrennte Amtsbezirke.
+Für die Rheinfurter Stadtbezirke 21 (Rheinau – Südheim), 22 (Wiesengrund – Altfeld – Feldflur) und 23 (Westend – Nordheim) ist nur das Standesamt Rheinfurt-Rheinau zuständig.
 Für alle anderen Stadtbezirke ist nur das Standesamt Rheinfurt zuständig.
 Warum müssen Daten von beiden Partner*innen angegeben werden?
 Sie dürfen keine Person heiraten, die minderjährig ist, mit der Sie zu nah verwandt sind oder die bereits verheiratet ist. Damit das geprüft werden kann, braucht das Standesamt die Unterlagen von beiden künftigen Eheleuten.
@@ -71,6 +71,6 @@ Wir bitten um Verständnis, dass bei der Vielzahl der Fallgestaltungen gerade mi
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

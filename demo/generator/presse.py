@@ -46,21 +46,23 @@ class Pressemitteilung:
 PRESSEMITTEILUNGEN: list[Pressemitteilung] = [
     Pressemitteilung(
         "buergerbuero-geschlossen-stadtfest",
-        "Bürgerbüro am 20. Juni wegen Stadtfest geschlossen",
+        "Bürgerbüro am 19. Juni wegen Stadtfest geschlossen",
         "Sperrung",
         "2026-06-08",
-        "Das Bürgerbüro Rheinfurt bleibt am Freitag, 20. Juni 2026, wegen des Rheinfurter "
+        "Das Bürgerbüro Rheinfurt bleibt am Freitag, 19. Juni 2026, wegen des Rheinfurter "
         "Stadtfests ganztägig geschlossen.",
         [
             "Anlässlich des Rheinfurter Stadtfests bleibt das Bürgerbüro Rheinfurt am Freitag, "
-            "20. Juni 2026, ganztägig geschlossen. Der Rathausplatz und die angrenzenden "
+            "19. Juni 2026, ganztägig geschlossen. Der Rathausplatz und die angrenzenden "
             "Straßen werden ab Donnerstagabend für den Aufbau der Bühnen und Stände gesperrt.",
             "Bereits gebuchte Termine für diesen Tag werden automatisch auf den folgenden "
             "Werktag verschoben; betroffene Bürgerinnen und Bürger erhalten eine gesonderte "
             "Benachrichtigung per E-Mail.",
-            "Ab Samstag, 21. Juni 2026, sind die Dienststellen des Bürgerbüros wieder zu den "
-            "regulären Öffnungszeiten erreichbar. Für dringende Anliegen steht während der "
-            "Schließung die Leitstelle des Ordnungsamts telefonisch zur Verfügung.",
+            "Ab Montag, 22. Juni 2026, sind die Dienststellen des Bürgerbüros wieder zu den "
+            "regulären Öffnungszeiten erreichbar (das Stadtfest selbst läuft am Wochenende, "
+            "20. und 21. Juni, ohnehin außerhalb der Bürgerbüro-Öffnungszeiten weiter). Für "
+            "dringende Anliegen steht während der Schließung die Leitstelle des Ordnungsamts "
+            "telefonisch zur Verfügung.",
         ],
     ),
     Pressemitteilung(

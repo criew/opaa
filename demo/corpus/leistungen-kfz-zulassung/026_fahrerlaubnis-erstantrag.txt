@@ -13,7 +13,7 @@ Hinweise zur  Aushändigung/ Abholung:
 Der Führerschein wird bei der Bundesdruckerei in Berlin hergestellt.
 Sind die Voraussetzungen erfüllt erteilen wir den Prüfauftrag an die zuständige technische Prüfstelle, Ihre Fahrschule kann sich dort informieren.
 Wenn Sie Ihren Führerschein für mehr als eine Klasse beantragt haben, sind mehrere Prüfungen abzulegen. In diesem Fall kann der Führerschein nicht vorab ausgestellt werden, sondern Sie erhalten vom Prüfer jeweils eine Bestätigung über die bestandene Prüfung (Theorie und Praxis), die Sie bei der Fahrerlaubnisbehörde vorlegen müssen, um bei Bedarf sofort eine vorläufige Fahrerlaubnis zu erhalten, mit der Sie in Deutschland fahren dürfen.
-Wenn Sie den Führerschein für das Auto oder Motorrad bestanden haben, bietet die Verkehrswacht Rheinfurt im Rahmen der Aktion „Könner durch Er-fahrung“ ein kostenfreies Fahrsicherheitstraining an (Anmeldegebühr 29,10 Euro). Alles Wissenswerte dazu und weitere Informationen sehen Sie auf der Homepage der Verkehrswacht oder telefonisch unter 02351/44-2717.
+Wenn Sie den Führerschein für das Auto oder Motorrad bestanden haben, bietet die Verkehrswacht Rheinfurt im Rahmen der Aktion „Könner durch Er-fahrung“ ein kostenfreies Fahrsicherheitstraining an (Anmeldegebühr 29,10 Euro). Alles Wissenswerte dazu und weitere Informationen sehen Sie auf der Homepage der Verkehrswacht oder telefonisch unter 01234/44-2717.
 
 Die erstmalige Erteilung einer Fahrerlaubnis kann schriftlich oder über unseren Online-Service beantragt werden. Das Antragsformular muss vollständig ausgefüllt, unterschrieben und mit den geforderten Unterlagen eingereicht werden.
 
@@ -70,6 +70,6 @@ Straßenverkehrsgesetz
 
 ----
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.

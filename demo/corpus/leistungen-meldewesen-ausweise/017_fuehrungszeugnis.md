@@ -13,16 +13,16 @@ Sie bekommen das Führungszeugnis mit der Post zugeschickt und können es an die
 Führungszeugnis für eine Behörde
 Wenn Sie das Führungszeugnis für eine Behörde benötigen, wird der genaue Verwendungszweck im Antrag vermerkt und das Führungszeugnis direkt dorthin gesandt. Wenn Sie vorher erfahren wollen, was in Ihrem Führungszeugnis steht, können Sie bei einem Amtsgericht Ihrer Wahl Einsicht nehmen.
 Erweitertes Führungszeugnis
-Ein erweitertes Führungszeugnis benötigen Personen, die hauptberuflich oder ehrenamtlich im Kinder- und Jugendbereich oder mit erwachsenen Menschen mit Behinderung tätig sind beziehungsweise werden wollen (zum Beispiel Schule, Sportverein). Für den Antrag müssen Sie eine schriftliche Bestätigung der Stelle vorlegen, die das erweiterte Führungszeugnis von Ihnen verlangt. Einen Vordruck für dieses Aufforderungsschreiben finden Sie unter „Formulare & Links (als Download).
+Ein erweitertes Führungszeugnis benötigen Personen, die hauptberuflich oder ehrenamtlich im Kinder- und Jugendbereich oder mit erwachsenen Menschen mit Behinderung tätig sind beziehungsweise werden wollen (zum Beispiel Schule, Sportverein). Für den Antrag müssen Sie eine schriftliche Bestätigung der Stelle vorlegen, die das erweiterte Führungszeugnis von Ihnen verlangt. Einen Vordruck für dieses Aufforderungsschreiben erhalten Sie im Bürgerbüro Rheinfurt.
 Europäisches Führungszeugnis
 Ein Europäisches Führungszeugnis erhalten Personen, die - neben oder anstatt der deutschen - die Staatsangehörigkeit eines oder mehrerer anderer Mitgliedstaaten der Europäischen Union besitzen. In dieses Führungszeugnis werden auch die Eintragungen aufgenommen, die im Strafregister des Herkunftslandes gespeichert sind.
 
 Voraussetzungen
 Voraussetzung für den Antrag auf ein Führungszeugnis ist die Vollendung des 14. Lebensjahres.
 Online-Antrag:
-Wenn Sie einen elektronischen Personalausweis, elektronischen Aufenthaltstitel mit freigeschalteter Online-Ausweisfunktion oder eine eID-Karte besitzen, können Sie Ihr Führungszeugnis online über den oben stehenden Link direkt beim Bundesamt für Justiz beantragen.
+Wenn Sie einen elektronischen Personalausweis, elektronischen Aufenthaltstitel mit freigeschalteter Online-Ausweisfunktion oder eine eID-Karte besitzen, können Sie Ihr Führungszeugnis online direkt beim Bundesamt für Justiz beantragen.
 Persönliche Antragstellung:
-Aufgrund der aktuellen Situation im Zusammenhang mit dem Coronavirus können Sie den Antrag nur im Bürgerbüro Ruppertstraße stellen. Hierfür benötigen Sie einen Termin.
+Hierfür benötigen Sie einen Termin.
 Schriftliche Antragstellung
 Ein schriftlicher Antrag auf ein Führungszeugnis muss Folgendes enthalten:
 - Familienname (gegebenenfalls Geburtsname), Vorname(n)
@@ -33,10 +33,10 @@ Ein schriftlicher Antrag auf ein Führungszeugnis muss Folgendes enthalten:
 - Die amtliche (von einer siegelführenden Behörde) oder öffentliche (von einem Notar) Beglaubigung der Unterschrift.
 Wenn Sie das Führungszeugnis schriftlich beantragen, überweisen Sie vorab die Gebühr in Höhe von 11,80 Euro an das Bürgerbüro Rheinfurt und senden den Nachweis der Überweisung zusammen mit dem Antrag an uns. Ohne Zahlungsnachweis können eingehende Anträge nicht bearbeitet werden.
 Überweisung an:
-Stadtsparkasse Rheinfurt
-IBAN: DE86 7015 0000 0000 2030 00
-BIC: SSKMDEMM
-Verwendungszweck: 92004301010071
+Sparkasse Rheinfurt
+IBAN: DE58 8888 8888 8888 8888 88
+BIC: SPRHDEXX
+Verwendungszweck: Ihr Aktenzeichen (siehe oben)
 
 Benötigte Unterlagen
 Führungszeugnis für eine Behörde: Verwendungszweck und genaue Bezeichnung der Behörde (Anschrift mit Postleitzahl)
@@ -69,6 +69,6 @@ Bei mittellosen oder ehrenamtlich tätigen Personen kann im Einzelfall bei Vorla
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

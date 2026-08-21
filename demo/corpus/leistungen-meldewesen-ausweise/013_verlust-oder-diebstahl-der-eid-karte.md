@@ -4,7 +4,7 @@
 **Aktenzeichen (Muster):** AZ 32.1-2026-0013
 **Formular:** RF-MW-013
 
-Wenn Ihnen die eID-Karte verloren geht oder gestohlen wurde, gilt es einige Informationen zu beachten. Diese finden Sie hier.
+Wenn Ihnen die eID-Karte verloren geht oder gestohlen wurde, gilt es einige Informationen zu beachten. Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example.
 
 Mit der Meldung über den Verlust/Diebstahl wird die Onlinefunktion der eID-Karte gesperrt. Ein Onlineeinsatz ist dann nicht mehr möglich bis zu einer erneuten Freischaltung bei Vorsprache im Bürgerbüro.
 Wenn die verlorene oder gestohlene eID-Karte wieder auftaucht, informieren Sie bitte sofort Ihr Bürgerbüro. Sie können dies schriftlich erledigen oder persönlich vorbeikommen.
@@ -33,6 +33,6 @@ Gesetz über eine Karte für Unionsbürger und Angehörige des Europäischen Wir
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

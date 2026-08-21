@@ -6,7 +6,7 @@
 
 Sie können eine Bescheinigung über Ihre im Melderegister eingetragenen Daten beantragen.
 
-Die melderechtliche Bescheinigung können Sie online, schriftlich per Post oder per Fax beantragen. Aufgrund der aktuellen Entwicklungen im Zusammenhang mit der Verbreitung des Coronavirus, können Sie einen persönlichen Antrag nur im Bürgerbüro Ruppertstraße stellen. Hierfür benötigen Sie einen Termin.
+Die melderechtliche Bescheinigung können Sie online, schriftlich per Post oder per Fax beantragen. Hierfür benötigen Sie einen Termin.
 Um den Datenschutz zu gewährleisten, darf die Meldebescheinigung nur dem Antragstellenden persönlich ausgehändigt werden.
 Sie können auch eine andere Person bevollmächtigen, die Bescheinigung für Sie zu beantragen. Das Antragsformular, das auch die Vollmacht enthält, ist entsprechend vollständig auszufüllen. Zusätzlich werden die Ausweisdokumente des Antragstellenden und des Bevollmächtigen benötigt.
 
@@ -18,10 +18,10 @@ Benötigte Unterlagen
 - gegebenenfalls ausgefüllter Antrag (inklusive Vollmacht)
 - Zahlungsnachweis (bei schriftlichen Anträgen)
 Wenn Sie die Meldebescheinigung schriftlich beantragen, überweisen Sie vorab die Gebühr an das Bürgerbüro Rheinfurt:
-Stadtsparkasse Rheinfurt
-IBAN: DE86 7015 0000 0000 2030 00
-BIC: SSKMDEMM
-Verwendungszweck: 92004301010121
+Sparkasse Rheinfurt
+IBAN: DE58 8888 8888 8888 8888 88
+BIC: SPRHDEXX
+Verwendungszweck: Ihr Aktenzeichen (siehe oben)
 Ohne Zahlungsnachweis können eingehende Anträge nicht bearbeitet werden.
 Durchschlag oder Kopie des Überweisungsträgers gelten nicht als Zahlungsnachweis.
 
@@ -53,6 +53,6 @@ Das ist nicht notwendig. Voraussetzung ist allerdings, dass die anwesende Person
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

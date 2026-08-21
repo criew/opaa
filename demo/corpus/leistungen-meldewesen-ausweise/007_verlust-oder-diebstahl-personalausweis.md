@@ -4,7 +4,7 @@
 **Aktenzeichen (Muster):** AZ 32.1-2026-0007
 **Formular:** RF-MW-007
 
-Wenn Ihnen der Personalausweis verloren geht oder gestohlen wurde, gilt es einige Informationen zu beachten. Diese finden Sie hier.
+Wenn Ihnen der Personalausweis verloren geht oder gestohlen wurde, gilt es einige Informationen zu beachten. Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example.
 
 Vorläufiger Personalausweis für dringende Fälle:
 In sehr dringenden Fällen können Sie einen vorläufigen Ausweis beantragen, den Sie sofort mitnehmen können. Dieser ist drei Monate gültig. Bitte bringen Sie für diesen ein zusätzliches biometrisches Passfoto mit.
@@ -50,6 +50,6 @@ Wenn der verlorene oder gestohlene Ausweis wieder auftaucht, informieren Sie bit
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

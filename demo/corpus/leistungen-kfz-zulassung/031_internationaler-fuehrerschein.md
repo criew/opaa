@@ -15,7 +15,7 @@ Die Auslandsvertretungen der Länder oder Automobilclubs können darüber Auskun
 Wenn Sie bereits einen Kartenführerschein haben, können Sie den Antrag online oder persönlich stellen, Sie können auch eine andere Person bevollmächtigen (mit schriftlicher Vollmacht und Ihrem Ausweis/ Pass). Die bevollmächtigte Person muss sich ebenfalls ausweisen können.
 Seit dem 1. September 2002 brauchen Sie einen deutschen EU-Kartenführerschein, um einen Internationalen Führerschein beantragen zu können.
 Wenn Sie noch keinen deutschen EU-Kartenführerscheins haben, müssen Sie diesen vor der Ausstellung eines internationalen Führerscheins beantragen. Sie sollten den Antrag mindestens VIER WOCHEN VOR dem geplanten Auslandsaufenthalt stellen, wenn Sie noch einen Papierführerschein(grau/ rosa) besitzen.
-Mehr Information zum Umtausch finden Sie hier.
+Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example.
 
 Voraussetzungen
 - Sie sind mit Hauptwohnsitz in Rheinfurt gemeldet.
@@ -56,6 +56,6 @@ Bei einem Fahrverbot müssen Sie den internationalen Führerschein zusammen mit 
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

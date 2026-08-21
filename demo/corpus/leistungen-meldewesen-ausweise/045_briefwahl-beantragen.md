@@ -4,7 +4,7 @@
 **Aktenzeichen (Muster):** AZ 32.1-2026-0045
 **Formular:** RF-MW-045
 
-Am 19. März 2023 ist in Rheinfurt die Migrationsbeiratswahl. Wer wahlberechtigt ist, kann im Wahlraum wählen oder Briefwahl beantragen. Wie das geht, erfahren Sie hier.
+Am 19. März 2023 ist in Rheinfurt die Migrationsbeiratswahl. Wer wahlberechtigt ist, kann im Wahlraum wählen oder Briefwahl beantragen. Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example.
 
 So
 können Sie Briefwahlunterlagen beantragen:
@@ -61,7 +61,7 @@ Jahre oder älter sind,
 Sie sind außerdem wahlberechtigt, wenn
 - Sie eine ausländische und die deutsche Staatsangehörigkeit haben
 - Sie nach dem 18. März 2011 eingebürgert wurden und jetzt nur noch die deutsche Staatsbürgerschaft haben
-In diesen beiden Sonderfällen müssen Sie aber erst noch die Aufnahme ins Wählerverzeichnis beantragen. Den Antrag finden Sie hier.
+In diesen beiden Sonderfällen müssen Sie aber erst noch die Aufnahme ins Wählerverzeichnis beantragen. Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example.
 
 Dauer & Kosten
 Gebührenrahmen
@@ -77,16 +77,16 @@ Gemeinde- und Landkreiswahlordnung
 
 Fragen & Antworten
 Ich habe die Briefwahlunterlagen beantragt aber noch keine Briefwahlunterlagen bekommen – was tun?
-Melden Sie sich beim Wahlamt unter 02351/44-2132 oder briefwahl@stadt-rheinfurt.example
+Melden Sie sich beim Wahlamt unter 01234/44-2132 oder briefwahl@stadt-rheinfurt.example
 Wir sagen Ihnen, ob die Briefwahlunterlagen schon verschickt sind.
 Ich bin zur Zeit nicht an meinem Hauptwohnsitz und habe keinen Zugriff auf meinen Briefkasten.
-Melden Sie sich umgehend beim Wahlamt unter 02351/44-2132 oder briefwahl@stadt-rheinfurt.example. Wir können Ihnen die Briefwahlunterlagen auch an eine andere Adresse oder ins Ausland schicken. Dazu müssen Sie einen Antrag stellen. Wir helfen Ihnen dabei.
+Melden Sie sich umgehend beim Wahlamt unter 01234/44-2132 oder briefwahl@stadt-rheinfurt.example. Wir können Ihnen die Briefwahlunterlagen auch an eine andere Adresse oder ins Ausland schicken. Dazu müssen Sie einen Antrag stellen. Wir helfen Ihnen dabei.
 Bekomme ich neue Unterlagen, wenn ich etwas aus Versehen zerrissen, verlegt oder falsch ausgefüllt habe?
-Melden Sie sich unter 02351/44-2132 oder briefwahl@stadt-rheinfurt.example. Nennen Sie uns Ihre Adresse und wir schicken Ihnen einen neuen Stimmzettel oder einen neuen Umschlag zu.
+Melden Sie sich unter 01234/44-2132 oder briefwahl@stadt-rheinfurt.example. Nennen Sie uns Ihre Adresse und wir schicken Ihnen einen neuen Stimmzettel oder einen neuen Umschlag zu.
 Vorsicht:
 Der Wahlschein kann kein zweites Mal ausgestellt werden! Geht dieser verloren oder kaputt, bekommen Sie keinen Ersatz. Achten Sie daher besonders auf den Wahlschein! Alle sonstigen Unterlagen können Sie problemlos ein zweites Mal bekommen.
 Sie brauchen Hilfe beim Ausfüllen der Unterlagen?
-Melden Sie sich bei Fragen gerne beim Wahlamt unter 02351/44-2132 oder briefwahl@stadt-rheinfurt.example.
+Melden Sie sich bei Fragen gerne beim Wahlamt unter 01234/44-2132 oder briefwahl@stadt-rheinfurt.example.
 Bei Ihren Briefwahlunterlagen finden Sie eine Schritt-für-Schritt Anleitung zur Briefwahl.
 Bitte beachten Sie:
 Das Wahlamt erteilt keine Auskunft zu Kandidat*innen und kann keine Wahl-Empfehlung aussprechen.
@@ -94,7 +94,7 @@ Bis wann müssen die Briefwahlunterlagen zurückgeschickt werden und was ist zu 
 Die ausgefüllten Briefwahlunterlagen müssen spätestens am 19. März 2023 beim Wahlamt sein.
 Bitte beachten Sie, dass die Briefwahlunterlagen richtig verpackt sind (siehe Schritt-für-Schritt Anleitung bei den Briefwahlunterlagen).
 Sie können den Wahlbrief in jeden gelben Briefkasten der Deutschen Post werfen. Innerhalb Deutschlands benötigen Sie keine Briefmarke.
-Oder Sie werfen den Wahlbrief in den Nachtbriefkasten des Bürgerbüro Rheinfurts – Ruppertstraße 19, Eingang A.
+Oder Sie werfen den Wahlbrief in den Nachtbriefkasten des Bürgerbüro Rheinfurts – Rheinauer Straße 19, Eingang A.
 Derzeit können Sie Briefwahlunterlagen nicht persönlich im Wahlamt abgeben.
 Wenn Sie den Wahlbrief aus dem Ausland zurückschicken, planen Sie bitte ein, dass die Postlaufzeiten länger dauern können. Wahlbriefe, die nicht rechtzeitig ankommen, werden nicht mit ausgezählt.
 Ich besitze nur die deutsche Staatsangehörigkeit. Bin ich wahlberechtigt?
@@ -102,18 +102,18 @@ Deutsche Staatsangehörige sind zu dieser Wahl nicht wahlberechtigt.
 Ausnahmen:
 - Sie haben die deutsche Staatsangehörigkeit und eine andere Staatsangehörigkeit, oder
 - Sie wurden nach dem 18. März 2011 eingebürgert und haben jetzt nur noch die deutsche Staatsbürgerschaft
-Dann können Sie die Aufnahme ins Wählerverzeichnis beantragen. Den Antrag und weitere Informationen finden Sie hier.
+Dann können Sie die Aufnahme ins Wählerverzeichnis beantragen. Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example.
 Wo kann ich meine ausgefüllten Briefwahlunterlagen abgeben?
 Sie können die Briefwahlunterlagen entweder mit der Post ans Wahlamt zurückschicken oder persönlich im Wahlamt oder bei den Bezirksinspektionen abgeben.
 Sie können den Wahlbrief auch in einen dieser Behördenbriefkästen einwerfen:
 - Bürgerbüro Rheinfurt,
-Ruppertstraße 11 oder 19
-- Rathaus, Marienplatz 8
+Rheinauer Straße 11 oder 19
+- Rathaus, Rathausplatz 8
 Die Behördenbriefkästen werden am Wahlsonntag letztmalig um 18 Uhr geleert.
 Bitte beachten Sie: Sie können Briefwahlunterlagen nicht in unseren Wahlräumen (Wahllokalen) abgeben!
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

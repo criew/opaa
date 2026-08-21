@@ -4,11 +4,10 @@
 **Aktenzeichen (Muster):** AZ 32.1-2026-0018
 **Formular:** RF-MW-018
 
-Alle Informationen für ein (erweitertes) Führungszeugnis für Ihre ehrenamtliche Tätigkei bei einer gemeinnützigen oder vergleichbaren Einrichtung bekommen Sie hier.
+Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example.
 
-Wenn Sie für Ihre ehrenamtliche Tätigkeit bei einer gemeinnützigen oder vergleichbaren Einrichtung ein Führungszeugnis oder ein erweitertes Führungszeugnis brauchen, dann bekommen Sie hier alle Informationen.
+Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example.
 
-Aufgrund der aktuellen Entwicklungen im Zusammenhang mit dem Coronavirus kann ein Antrag nur im Bürgerbüro Rupperstraße gestellt werden.
 Ihren Antrag leiten wir an das Bundesamt für Justiz in Bonn weiter. Dort wird der Antrag bearbeitet und das Führungszeugnis ausgestellt.
 
 Voraussetzungen
@@ -21,7 +20,7 @@ Voraussetzungen
 Benötigte Unterlagen
 - Identitätsnachweis: Pass oder Personalausweis
 - Wenn Sie den Antrag per Post schicken: ausgefülltes Antragsformular mit beglaubigter Unterschrift. Bitte überweisen Sie die Bearbeitungsgebühr vorab und senden den Nachweis der Überweisung zusammen mit dem Antrag an uns. Ohne Zahlungsnachweis eingehende Anträge können nicht bearbeitet werden.
-Überweisung an die Stadtsparkasse Rheinfurt, IBAN: DE86 7015 0000 0000 2030 00, BIC: SSKMDEMM, Verwendungszweck: 92004301010063
+Überweisung an die Sparkasse Rheinfurt, IBAN: DE58 8888 8888 8888 8888 88, BIC: SPRHDEXX, Verwendungszweck: Ihr Aktenzeichen (siehe oben)
 - Nachweis über Ihre ehrenamtliche, gemeinnützige Tätigkeit (ausgestellt auf Ihren Namen, mit Stempel und Unterschrift der Einrichtung/Organisation, für die Sie tätig sind)
 - zusätzlich beim erweiterten Führungszeugnis: Aufforderungsschreiben (der Stelle, die das Führungszeugnis von Ihnen verlangt)
 
@@ -35,6 +34,6 @@ Gebührenfrei (bei Nachweis einer ehrenamtlichen, gemeinnützigen Tätigkeit)
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

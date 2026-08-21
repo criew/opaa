@@ -25,7 +25,7 @@ Dauer & Kosten
 Bearbeitungszeit
 Sofern Sie Urkunden schriftlich oder online anfordern, müssen Sie derzeit mit einer Bearbeitungszeit von etwa zwei Wochen rechnen (zuzüglich Postweg).
 Dies gilt nicht für
-- das Standesamt Rheinfurt-Pasing
+- das Standesamt Rheinfurt-Rheinau
 - die Erstausstellung von Urkunden nach Anmeldung einer Geburt oder eines Sterbefalles
 In dringenden Fällen empfehlen wir Ihnen, persönlich während der Öffnungszeiten die benötigte Urkunde zu beantragen. Sie können auch eine Person bevollmächtigen. Diese muss sich selbst ausweisen können und braucht neben einer schriftlichen Vollmacht eine Kopie Ihres Personalausweises oder Reisepasses.
 
@@ -71,10 +71,10 @@ Personenstandsregister werden nur begrenzte Zeit beim Standesamt aufbewahrt:
 - Kirchenaustritte: 30 Jahre
 Nur innerhalb dieses Zeitraums kann das Standesamt Personenstandsurkunden (wie beispielsweise Geburts- oder Eheurkunden) aus diesen Registern ausstellen. Nach Ablauf dieses Zeitraums unterliegen die Register dem Archivrecht.
 Das Standesamt Rheinfurt gibt Personenstandsregister die nicht mehr fortzuführen sind, jährlich an das Stadtarchiv ab. Aus diesen Registern können keinen Personenstandsurkunden mehr ausgestellt werden, sondern nur Kopien, die auf Wunsch auch beglaubigt werden. Zuständig ist hierfür das Stadtarchiv Rheinfurt. Bitte wenden Sie sich an:
-stadtarchiv@stadt-rheinfurt.example,  Postadresse: Stadtarchiv, Winzererstraße 68, 80797 Rheinfurt.
+stadtarchiv@stadt-rheinfurt.example,  Postadresse: Stadtarchiv, Uferpromenade 68, 00000 Rheinfurt.
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

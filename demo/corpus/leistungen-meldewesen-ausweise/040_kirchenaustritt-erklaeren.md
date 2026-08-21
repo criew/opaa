@@ -14,7 +14,7 @@ Selbstständige
 Bitte teilen Sie den Austritt aus der Kirche Ihrem Steuerberater mit, beziehungsweise fügen Sie Ihrer nächsten Steuererklärung die Abschrift der Kirchenaustrittserklärung bei.
 
 Zuständig ist das Standesamt an Ihrem Wohnort.
-Das Standesamt Rheinfurt-Pasing ist für die Stadtteile Pasing, Allach, Untermenzing, Obermenzing, Lochhausen, Langwied und Aubing zuständig.
+Das Standesamt Rheinfurt-Rheinau ist für die Stadtteile Rheinau, Westend, Nordheim, Südheim, Altfeld, Feldflur und Wiesengrund zuständig.
 Für alle anderen Stadtteil ist das Standesamt Rheinfurt zuständig.
 
 Voraussetzungen
@@ -90,6 +90,6 @@ Kirchenaustritt.
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

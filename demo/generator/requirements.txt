@@ -1,0 +1,8 @@
+# Pinned to the exact versions this generator was verified against (see
+# demo/generator/README.md, "Werkzeugwahl" and "Voraussetzungen"). Byte
+# identity across two runs is only guaranteed with these exact versions —
+# a newer reportlab/python-docx/python-pptx release could change its default
+# output bytes (e.g. font metrics, XML formatting) even with the same input.
+reportlab==4.5.1
+python-docx==1.2.0
+python-pptx==1.0.2

@@ -9,7 +9,7 @@ Wer in Rheinfurt seinen Hauptwohnsitz hat, muss den Verlust/ Diebstahl beim Bür
 - Wenn Sie einen neuen Reisepass beantragen wollen, müssen Sie dazu persönlich vorbeikommen und eine Erklärung über den Verlust/ Diebstahl unterschreiben oder die Verlust- oder Diebstahlanzeige der Polizei vorlegen.
 - Wenn Sie den Reisepass nicht kurzfristig benötigen und noch einen gültigen Personalausweis haben, können Sie mit den neuen Antrag noch etwas warten. Vielleicht taucht der verlorene Pass wieder auf oder wird vom Finder abgegeben.
 Express-Bestellung:
-Bei der Bundesdruckerei können Sie auch einen sogenannten Expresspass bestellen. Die Bearbeitungszeit (Antragstellung bis Aushändigung) im Bürgerbüro, Passausgabe, Ruppertstraße 19, beträgt etwa sechs Arbeitstage. In den Außenstellen des Bürgerbüros müssen Sie sieben Arbeitstage auf Ihren Expresspass warten. Sie können den Pass in jedem Bürgerbüro im Stadtgebiet beantragen und abholen. Zusätzlich zur Gebühr muss ein Aufpreis von 33 Euro gezahlt werden.
+Bei der Bundesdruckerei können Sie auch einen sogenannten Expresspass bestellen. Die Bearbeitungszeit (Antragstellung bis Aushändigung) im Bürgerbüro, Passausgabe, Rheinauer Straße 19, beträgt etwa sechs Arbeitstage. In den Außenstellen des Bürgerbüros müssen Sie sieben Arbeitstage auf Ihren Expresspass warten. Sie können den Pass in jedem Bürgerbüro im Stadtgebiet beantragen und abholen. Zusätzlich zur Gebühr muss ein Aufpreis von 33 Euro gezahlt werden.
 Vorläufiger Reisepass für dringende Fälle:
 - Sollten Sie den Reisepass dringend benötigen und sollte sogar die Express-Bestellung zu lange dauern, können Sie einen vorläufigen Reisepass beantragen, den Sie sofort mitnehmen können. Der vorläufige Reisepass ist ein Jahr gültig, wird jedoch nicht von allen Ländern (zum Beispiel USA) akzeptiert.
 - Sie müssen nachweisen oder glaubhaft machen, dass Sie den vorläufigen Reisepass dringend benötigen.
@@ -44,6 +44,6 @@ Für die Neuausstellung eines Reisepasses fallen folgende Gebühren an:
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

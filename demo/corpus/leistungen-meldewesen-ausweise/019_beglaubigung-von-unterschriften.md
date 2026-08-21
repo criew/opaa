@@ -6,7 +6,7 @@
 
 Die Meldebehörde ist zuständig für die amtliche Beglaubigung von Unterschriften, wenn das unterzeichnete Schriftstück zur Vorlage bei einer deutschen Behörde oder bei einer privaten Stelle (Unternehmen oder Bank), die beauftragt ist, öffentliche Aufgaben zu erfüllen oder bei der Erfüllung mitzuwirken (zum Beispiel Entgegennahme von Kreditanträgen bei öffentlicher Förderung).
 
-Unterschriftsbeglaubigungen für Rentenzwecke können Sie im Versicherungsamt gebührenfrei vornehmen. Die Informationen dazu finden Sie hier.
+Unterschriftsbeglaubigungen für Rentenzwecke können Sie im Versicherungsamt gebührenfrei vornehmen. Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example.
 
 Voraussetzungen
 Unterschriften und Handzeichen dürfen in der Regel nur beglaubigt werden, wenn sie in Gegenwart einer beglaubigenden Dienstkraft vollzogen und anerkannt werden.
@@ -35,6 +35,6 @@ Girocard
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

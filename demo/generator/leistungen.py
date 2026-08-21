@@ -10,11 +10,11 @@ from __future__ import annotations
 import re
 
 from leistungen_quelle import SELECTED_KFZ, SELECTED_MELDEWESEN, read_raw
-from rheinfurt_text import aktenzeichen, formularnummer, transform_service
+from rheinfurt_text import RHEINFURT_PLZ, aktenzeichen, formularnummer, transform_service
 
 CONTACT_LINE = (
     "Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, "
-    "Rathausplatz 1, 47138 Rheinfurt"
+    f"Rathausplatz 1, {RHEINFURT_PLZ} Rheinfurt"
 )
 SYNTHETIC_NOTICE = (
     "Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt "

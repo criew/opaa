@@ -1,16 +1,22 @@
 # Quellen, Lizenzen und Hinweis auf synthetische Inhalte
 
 **Alle Inhalte in diesem Korpus sind synthetisch.** Rheinfurt ist eine erfundene Stadt; jede
-Behörde, Adresse, Person, Telefonnummer, E-Mail-Adresse, jedes Aktenzeichen und jeder Euro-Betrag
-in diesem Verzeichnis ist frei erfunden oder aus realen Quellen deterministisch umgeschrieben (siehe
-unten). Übereinstimmungen mit realen Personen oder Behörden sind nicht beabsichtigt.
+Behörde, Adresse, Person, Telefonnummer, E-Mail-Adresse, Bankverbindung, jedes Aktenzeichen und
+jeder Euro-Betrag in diesem Verzeichnis ist frei erfunden oder aus realen Quellen deterministisch
+umgeschrieben (siehe unten). Übereinstimmungen mit realen Personen oder Behörden sind nicht
+beabsichtigt.
+
+Dieser Abschnitt sowie die Datei- und Dokumentzahlen unten werden **vom Generator selbst
+geschrieben** ([`generate_corpus.py::render_source_md`](../generator/generate_corpus.py)) — sie
+können nicht veralten, weil sie bei jedem Lauf aus der tatsächlich erzeugten Dateiliste neu
+berechnet werden.
 
 ## Rohmaterial: LHM-Dienstleistungen-Corpus
 
 | | |
 |---|---|
 | **Datensatz** | [`it-at-m/LHM-Dienstleistungen-Corpus`](https://huggingface.co/datasets/it-at-m/LHM-Dienstleistungen-Corpus) auf HuggingFace (Landeshauptstadt München) |
-| **Lizenz** | MIT |
+| **Lizenz** | MIT — vollständiger Lizenztext: [`THIRD-PARTY-LICENSES/LHM-Dienstleistungen-Corpus-MIT.txt`](THIRD-PARTY-LICENSES/LHM-Dienstleistungen-Corpus-MIT.txt) |
 | **Abgerufener Commit** | `3def28953f6d8d65bde7b6b3956fe36c9791a4de` |
 | **Abrufdatum** | 2026-08-21 |
 | **Verwendete Dateien** | 83 von ~740 Leistungsbeschreibungen (kuratierte Auswahl, siehe `generator/leistungen_quelle.py`) |
@@ -18,15 +24,35 @@ unten). Übereinstimmungen mit realen Personen oder Behörden sind nicht beabsic
 
 Die verwendeten Leistungsbeschreibungen der Landeshauptstadt München wurden automatisiert
 umgeschrieben: Ortsnamen, Behördenbezeichnungen (`Landeshauptstadt München` → `Stadt Rheinfurt`,
-`Kreisverwaltungsreferat (KVR)` → `Bürgerbüro Rheinfurt`), E-Mail-Domains (`muenchen.de` →
-`stadt-rheinfurt.example`), Telefonnummern (`089/…` → deterministisch abgeleitete `02351/44-…`)
-sowie Gebührenbeträge (deterministisch pro Dokument skaliert) wurden ersetzt. Die
-münchenspezifischen Abschnitte „Anlaufstellen in Ihrer Nähe" und „Links & Downloads" (reale
-Adressen, Kartenwidgets, muenchen.de-Downloadlinks) wurden vollständig entfernt statt umgeschrieben.
-Jedes generierte Dokument trägt zusätzlich ein Aktenzeichen- und Formularnummer-Muster sowie einen
-Hinweis auf die synthetische Herkunft.
+`Kreisverwaltungsreferat (KVR)` → `Bürgerbüro Rheinfurt`), Straßennamen und Stadtbezirke (z. B.
+`Ruppertstraße` → `Rheinauer Straße`, `Pasing` → `Rheinau`; vollständige Zuordnung in
+`rheinfurt_text.py`), Postleitzahlen (auf die erkennbar fiktive `00000`), Bankverbindungen
+(auf eine fiktive, prüfziffernkonforme IBAN `DE58 8888 8888 8888 8888 88` und BIC `SPRHDEXX`),
+E-Mail-Domains (`muenchen.de` → `stadt-rheinfurt.example`), Telefonnummern (`089/…` → deterministisch
+abgeleitete `01234/44-…`) sowie Gebührenbeträge (deterministisch pro
+Dokument skaliert) wurden ersetzt. Externe Links (z. B. ein echter `bzst.de`-Deeplink), veraltete
+Corona-Passagen und ins Leere verweisende Formulierungen aus der entfernten Link-Sektion
+("... finden Sie hier.") wurden entfernt bzw. umformuliert. Die münchenspezifischen Abschnitte
+„Anlaufstellen in Ihrer Nähe" und „Links & Downloads" (reale Adressen, Kartenwidgets,
+muenchen.de-Downloadlinks) wurden vollständig entfernt statt umgeschrieben. Jedes generierte
+Dokument trägt zusätzlich ein Aktenzeichen- und Formularnummer-Muster sowie einen Hinweis auf die
+synthetische Herkunft.
+
+Ein abschließender Validierungslauf (`generator/validation.py`) prüft die erzeugten Inhalte aller
+fünf Bibliotheken gegen eine Liste von Verbotsmustern (reale Ortsnamen, Straßen außerhalb einer
+Whitelist, reale Postleitzahlen, reale Bankverbindungen) und bricht den Generator-Lauf mit Fehler
+ab, falls eines davon gefunden wird.
 
 Reproduktion und SHA-256-Pins der verwendeten Rohdateien: [`generator/leistungen_quelle.py`](../generator/leistungen_quelle.py).
+
+### Entscheidung zu realen Bundesbehörden (Koordinator, PR #717 Review)
+
+Namentliche Nennungen echter Bundesbehörden — z. B. Kraftfahrt-Bundesamt, Bundesdruckerei,
+Bundesamt für Justiz, Bundeszentralamt für Steuern, Bundesamt für das Personalmanagement der
+Bundeswehr — **bleiben im Korpus erhalten**. Eine fiktive Kommune arbeitet fachlich korrekt mit
+real existierenden Bundesbehörden zusammen; das durch eine erfundene Behörde zu ersetzen wäre
+sachlich falsch. Entfernt werden ausschließlich **URLs, Postadressen und Kontodaten** dieser
+Behörden (siehe `rheinfurt_text.py::strip_external_links`).
 
 ## Stilvorlagen (keine Textübernahme)
 
@@ -62,7 +88,7 @@ sha256sum -c MANIFEST.sha256
 | Leistungen Meldewesen & Ausweise | `leistungen-meldewesen-ausweise/` | 46 | `.md` |
 | Leistungen Kfz-Zulassung | `leistungen-kfz-zulassung/` | 37 | `.md`, `.txt` |
 | Satzungen & Gebührenordnungen | `satzungen-gebuehrenordnungen/` | 19 | `.pdf` |
-| Pressemitteilungen Stadt Rheinfurt | `pressemitteilungen/` | 28 (1× `rss.xml` + 27 `.html`) | RSS-XML, HTML |
+| Pressemitteilungen Stadt Rheinfurt | `pressemitteilungen/` | 28 | RSS-XML, HTML |
 | Interne Dienstanweisungen Meldewesen | `interne-dienstanweisungen-meldewesen/` | 26 | `.docx`, `.pdf`, `.pptx` |
 
-Gesamtgröße rund 1,5 MB.
+Gesamtgröße rund 1,1 MB.

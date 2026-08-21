@@ -4,7 +4,7 @@
 **Aktenzeichen (Muster):** AZ 32.3-2026-0005
 **Formular:** RF-KFZ-005
 
-Wer sein Fahrzeug abmelden will, kann es für einen Zeitraum bis zu sieben Jahren außer  Betrieb setzen.
+Wer sein Fahrzeug abmelden will, kann es für einen Zeitraum bis zu sieben Jahren außer Betrieb setzen.
 
 - Sie können auch ein Fahrzeug mit einem auswärtigen Kennzeichen abmelden (Eine Reservierung eines auswärtigen Kennzeichens ist nicht möglich). Dazu müssen Sie die gleichen Unterlagen wie bei der Abmeldung eines Rheinfurter Fahrzeugs mitbringen.
 - Es besteht die Möglichkeit, das bestehende Kennzeichen für eine spätere Wiederinbetriebnahme (das selbe Fahrzeug auf den selben Halter), als “Verbleibskennzeichen“ für 12 Monate zu reservieren. Die Gebühr von 2,30 Euro für die Reservierung wird bei der Außerbetriebsetzung mit verrechnet.
@@ -45,6 +45,6 @@ Das Kennzeichen kann bei der Außerbetriebsetzung für ein Jahr reserviert werde
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

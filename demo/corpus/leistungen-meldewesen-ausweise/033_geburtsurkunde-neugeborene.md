@@ -17,7 +17,7 @@ Die Bestellung im Internet können Sie mit unserem Online-Service vornehmen. Wir
 Nachträgliche Exemplare der Geburtsurkunde:
 Sollten Sie später noch weitere Geburtsurkunden benötigen, wenden Sie sich bitte an die Urkundenstelle im Standesamt oder bestellen Sie die Urkunden mit dem Online-Service.
 Zuständigkeiten:
-In Rheinfurt gibt es zwei Standesämter. Zu welchem Standesamt Sie gehen müssen, hängt davon ab, in welchem Stadtbezirk Ihr Kind geboren wurde. Die Kliniken geben den Eltern in der Regel ein Infoblatt mit der Adresse des zuständigen Standesamtes mit.Für das Helios-Klinikum Rheinfurt-West, die Frauenklinik Rheinfurt-West (Krüsmannklinik) und für Hausgeburten in den Stadtbezirken Pasing-Obermenzing, Aubing-Lochhausen-Langwied und Allach-Untermenzing ist das Geburtenbüro im Standesamt Rheinfurt-Pasing im Rathaus Pasing an der Landsberger Straße 486, zuständig; für alle anderen Stadtbezirke das Geburtenbüro im Standesamt Rheinfurt im Bürgerbüro an der Ruppertstraße 11.
+In Rheinfurt gibt es zwei Standesämter. Zu welchem Standesamt Sie gehen müssen, hängt davon ab, in welchem Stadtbezirk Ihr Kind geboren wurde. Die Kliniken geben den Eltern in der Regel ein Infoblatt mit der Adresse des zuständigen Standesamtes mit.Für das Helios-Klinikum Rheinfurt-West, die Frauenklinik Rheinfurt-West (Krüsmannklinik) und für Hausgeburten in den Stadtbezirken Rheinau-Südheim, Wiesengrund-Altfeld-Feldflur und Westend-Nordheim ist das Geburtenbüro im Standesamt Rheinfurt-Rheinau im Rathaus Rheinau an der Uferstraße 486, zuständig; für alle anderen Stadtbezirke das Geburtenbüro im Standesamt Rheinfurt im Bürgerbüro an der Rheinauer Straße 11.
 
 Wenn Sie in Rheinfurt wohnen, aber Ihr Kind außerhalb der Stadt Rheinfurt geboren wurde, müssen Sie sich an das Standesamt am Geburtsort wenden.
 
@@ -66,6 +66,6 @@ Deutsche Personenstandsurkunden (beispielsweise die Einträge im Stammbuch der F
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

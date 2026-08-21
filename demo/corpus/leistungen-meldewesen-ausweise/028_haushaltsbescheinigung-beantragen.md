@@ -22,10 +22,10 @@ Wenn Sie eine andere Person beauftragen:
 - Ihr Ausweis (Vollmachtgeber) und der Ausweis des Bevollmächtigten, jeweils im Original
 - ausgefülltes und unterschriebenes Antragsformular (zum Download erhältlich)
 Wenn Sie die Haushaltsbescheinigung schriftlich beantragen, überweisen Sie vorab die Gebühr an das Bürgerbüro Rheinfurt:
-Stadtsparkasse Rheinfurt
-IBAN: DE86 7015 0000 0000 2030 00
-BIC: SSKMDEMM
-Verwendungszweck: 92004301010121
+Sparkasse Rheinfurt
+IBAN: DE58 8888 8888 8888 8888 88
+BIC: SPRHDEXX
+Verwendungszweck: Ihr Aktenzeichen (siehe oben)
 Ohne Zahlungsnachweis können eingehende Anträge nicht bearbeitet werden.
 Durchschlag oder Kopie des Überweisungsträgers gelten nicht als Zahlungsnachweis.
 
@@ -43,6 +43,6 @@ Girocard
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

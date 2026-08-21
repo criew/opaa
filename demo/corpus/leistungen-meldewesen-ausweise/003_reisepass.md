@@ -8,7 +8,7 @@ Wer außerhalb der Europäischen Union verreisen möchte, braucht einen Reisepas
 
 Beim Überschreiten von Staatsgrenzen ist grundsätzlich das Mitführen eines Ausweisdokumentes erforderlich. Bei Reisen innerhalb der Europäischen Union und in die meisten Urlaubsländer reicht für Deutsche jedoch die Vorlage des Personalausweises beziehungsweise Kinderreisepasses aus.
 Express-Bestellung:
-Bei der Bundesdruckerei kann auch ein Reisepass im Expressverfahren bestellt werden. Die Bearbeitungszeit (Antragstellung bis Aushändigung) im Bürgerbüro, Passausgabe, Ruppertstraße 19, beträgt im Idealfall etwa drei bis vier Arbeitstage. In den Außenstellen des Bürgerbüros verlängert sich die Bearbeitungszeit um einen Arbeitstag. Sie können den Pass in jedem Bürgerbüro im Stadtgebiet beantragen und abholen. Zusätzlich zur Gebühr muss ein Aufpreis von 38 Euro gezahlt werden.
+Bei der Bundesdruckerei kann auch ein Reisepass im Expressverfahren bestellt werden. Die Bearbeitungszeit (Antragstellung bis Aushändigung) im Bürgerbüro, Passausgabe, Rheinauer Straße 19, beträgt im Idealfall etwa drei bis vier Arbeitstage. In den Außenstellen des Bürgerbüros verlängert sich die Bearbeitungszeit um einen Arbeitstag. Sie können den Pass in jedem Bürgerbüro im Stadtgebiet beantragen und abholen. Zusätzlich zur Gebühr muss ein Aufpreis von 38 Euro gezahlt werden.
 Gültigkeit des Reisepasses:
 - Für Personen unter 24 Jahren gilt der Reisepass sechs Jahre, bei über 24-Jährigen ist er zehn Jahre gültig
 - Eine Verlängerung der Gültigkeitsdauer ist nicht möglich.
@@ -20,7 +20,7 @@ Hinweis:
 Zusätzlich zum Passfoto werden die Fingerabdrücke gespeichert.
 
 Voraussetzungen
-Sie können den Reisepass grundsätzlich nur bei der Passbehörde an Ihrem Hauptwohnsitz beantragen. Einen Termin zur Antragstellung buchen Sie hier. Eine Ausnahme gibt es nur für Bundesbürger, die im Ausland leben, sich zu Besuch in Rheinfurt aufhalten und zwingend einen neuen Pass brauchen. In diesem Ausnahmefall können Sie keinen Termin in einem der Bürgerbüros buchen, da die Sachbearbeitung an einer zentralen Stelle erfolgt. Für Informationen zur Antragstellung und Terminvereinbarung (nur in diesem Ausnahmefall) kontaktieren Sie uns bitte unter der E-Mail Adresse passamt@stadt-rheinfurt.example. Die Passbehörde muss sowohl die Antragsberechtigung wie auch die Echtheit der Unterschrift prüfen. Bitte legen Sie entsprechende Ausweisdokumente (Personalausweis, Reisepass) vor.
+Sie können den Reisepass grundsätzlich nur bei der Passbehörde an Ihrem Hauptwohnsitz beantragen. Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example. Eine Ausnahme gibt es nur für Bundesbürger, die im Ausland leben, sich zu Besuch in Rheinfurt aufhalten und zwingend einen neuen Pass brauchen. In diesem Ausnahmefall können Sie keinen Termin in einem der Bürgerbüros buchen, da die Sachbearbeitung an einer zentralen Stelle erfolgt. Für Informationen zur Antragstellung und Terminvereinbarung (nur in diesem Ausnahmefall) kontaktieren Sie uns bitte unter der E-Mail Adresse passamt@stadt-rheinfurt.example. Die Passbehörde muss sowohl die Antragsberechtigung wie auch die Echtheit der Unterschrift prüfen. Bitte legen Sie entsprechende Ausweisdokumente (Personalausweis, Reisepass) vor.
 
 Benötigte Unterlagen
 - Aktuelles biometrisches Passbild
@@ -67,6 +67,6 @@ Der Reisepass wird im Todesfall automatisch ungültig. Sie haben dieMöglichkeit
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

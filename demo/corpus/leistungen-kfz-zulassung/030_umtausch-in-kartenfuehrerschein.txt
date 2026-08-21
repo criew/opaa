@@ -57,6 +57,6 @@ Ihr Papierf체hrerschein wird durch die F체hrerscheinstelle einbehalten oder ung�
 
 ----
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | B체rgerb체ro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | B체rgerb체ro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.

@@ -4,7 +4,7 @@
 **Aktenzeichen (Muster):** AZ 32.3-2026-0007
 **Formular:** RF-KFZ-007
 
-Wenn ein Fahrzeug (auch Anhänger) abgemeldet war und nun wieder auf denselben Fahrzeughalter zugelassen werden soll, finden Sie hier alle Informationen.
+Nähere Informationen erhalten Sie im Bürgerbüro Rheinfurt oder unter buergerbuero@stadt-rheinfurt.example.
 
 - Wenn Sie bereits ein Euro-Kennzeichen haben, können Sie das „alte Kennzeichen“ wieder verwenden. Dies ist nur möglich, wenn Sie dieses Kennzeichen beim Abmelden für sich reserviert haben. Bitte bringen Sie Ihre Reservierungsbestätigung mit.
 - Sie haben die Möglichkeit, ein Wunschkennzeichen zu reservieren.
@@ -46,6 +46,6 @@ Anschließend müssen Sie  wieder zu uns kommen, damit wir die amtlichen Plaket
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

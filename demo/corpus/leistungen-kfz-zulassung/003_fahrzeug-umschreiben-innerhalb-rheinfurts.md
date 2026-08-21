@@ -4,7 +4,7 @@
 **Aktenzeichen (Muster):** AZ 32.3-2026-0003
 **Formular:** RF-KFZ-003
 
-Eine Umschreibung des Fahrzeugs (auch Anhänger)  ist notwendig, wenn Sie der neue Halter eines Fahrzeuges sind, das bereits in Rheinfurt zugelassen ist (Umschreibung innerhalb der Stadt).
+Eine Umschreibung des Fahrzeugs (auch Anhänger) ist notwendig, wenn Sie der neue Halter eines Fahrzeuges sind, das bereits in Rheinfurt zugelassen ist (Umschreibung innerhalb der Stadt).
 
 - Wenn das Fahrzeug in Rheinfurt noch zugelassen ist, können Sie das Kennzeichen behalten.
 - Wenn das Fahrzeug derzeit nicht in Betrieb (stillgelegt)  ist, benötigen Sie ein neues Kennzeichen.
@@ -51,6 +51,6 @@ Das Kennzeichen müssen Sie in diesen Fällen nicht mitbringen:
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

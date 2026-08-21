@@ -6,12 +6,12 @@
 
 Bevor Sie für sich oder andere Personen einen Personalausweis oder/ und Reisepass abholen, müssen Sie folgendes wissen.
 
-- Für die Abholung in den Bürgerbüro-Außenstellen (Orleansplatz,Leonrodstraße, Riesenfeldstraße, Forstenrieder Allee, Pasing) benötigen Sie keinen Termin.
-- Für die Abholung in der Bürgerbüro-Zentrale, Ruppertstraße 19A, müssen Sie einen Termin online oder über das Servicetelefon 233-96000 vereinbaren.
+- Für die Abholung in den Bürgerbüro-Außenstellen (Orleansplatz,Leonrodstraße, Riesenfeldstraße, Forstenrieder Allee, Rheinau) benötigen Sie keinen Termin.
+- Für die Abholung in der Bürgerbüro-Zentrale, Rheinauer Straße 19A, müssen Sie einen Termin online oder über das Servicetelefon 233-96000 vereinbaren.
 
 Voraussetzungen
 Auf Ihrem Abholschein steht, wo Ihr Ausweisdokument abgeholt werden kann.
-Bevor Sie sich zur Abholung auf den Weg in eine Bürgerbüro-Außenstelle machen oder einen Termin im Bürgerbüro an der Ruppertstraße 19A buchen, prüfen Sie bitte telefonisch oder im Internet, ob der Personalausweis oder Reisepass abholbereit ist. Die Informationen hierzu finden Sie auf Ihrem Abholschein.
+Bevor Sie sich zur Abholung auf den Weg in eine Bürgerbüro-Außenstelle machen oder einen Termin im Bürgerbüro an der Rheinauer Straße 19A buchen, prüfen Sie bitte telefonisch oder im Internet, ob der Personalausweis oder Reisepass abholbereit ist. Die Informationen hierzu finden Sie auf Ihrem Abholschein.
 
 Benötigte Unterlagen
 - Abholschein
@@ -43,6 +43,6 @@ HabenSie den PIN/PUK/ Sperrkennwort-Brief nichterhalten, müssen Sie den Persona
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

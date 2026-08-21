@@ -10,7 +10,7 @@ Die eID-Karte im Scheckkartenformat ist 10 Jahre gültig. Sie enthält kein Lich
 
 Sie müssen in jedem Fall zur Beantragung persönlich vorsprechen, auch wenn Sie noch nicht volljährig sind.
 Sollten Sie sehbeeinträchtigt sein, kann ab dem 1.11.2021 auf Ihrem Personalausweis ein Braille-Aufkleber angebracht werden, der die Unterscheidung zu anderen (Scheck-)Karten erleichtert. Sie können den Antrag bei der Beantragung oder der Abholung Ihres Personalausweises stellen.
-Auch ein nachträgliches Aufbringen auf bereits vorhandene Personalausweise ist möglich. Kontaktieren Sie bitte hierzu das Servicetelefon des Bürgerbüros unter 02351/44-8122.
+Auch ein nachträgliches Aufbringen auf bereits vorhandene Personalausweise ist möglich. Kontaktieren Sie bitte hierzu das Servicetelefon des Bürgerbüros unter 01234/44-8122.
 
 Voraussetzungen
 - Sie sind älter als 16 Jahre
@@ -46,6 +46,6 @@ Ja, Inhaber*innen einer ID-Karte, die eine Meldeadresse in Deutschland haben, k�
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

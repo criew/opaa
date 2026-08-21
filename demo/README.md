@@ -14,15 +14,16 @@ demo/
     ├── satzungen-gebuehrenordnungen/         .pdf
     ├── pressemitteilungen/                   rss.xml + .html
     ├── interne-dienstanweisungen-meldewesen/ .docx, .pdf, .pptx
-    ├── MANIFEST.sha256                       SHA-256 über alle 156 Dokumente
-    └── SOURCE.md                             Quellen, Lizenzen, Hinweis auf synthetische Inhalte
+    ├── MANIFEST.sha256                       SHA-256 über alle Dokumente
+    ├── SOURCE.md                             Quellen, Lizenzen, Hinweis auf synthetische Inhalte (vom Generator geschrieben)
+    └── THIRD-PARTY-LICENSES/                 Volltext der MIT-Lizenz des LHM-Dienstleistungen-Corpus
 ```
 
 ## Korpus neu erzeugen
 
 ```bash
 cd demo/generator
-pip install python-docx python-pptx reportlab
+pip install -r requirements.txt
 python generate_corpus.py
 ```
 
@@ -45,3 +46,25 @@ Dieses Verzeichnis liefert ausschließlich den Korpus. Nicht Teil von Issue #711
 - Bereitstellung im Compose-Stack (Webserver, Feed-Hosting) — #229
 - Nutzer, Spaces, Bibliotheken, Rechte, Indizierung — #712
 - Demo-Drehbuch und Installationsanleitung — #713
+
+### Was #229 für die Pressemitteilungen-Bibliothek konkret leisten muss
+
+Der RSS-Feed unter `demo/corpus/pressemitteilungen/rss.xml` referenziert seine Detailseiten absolut
+unter `http://presse.stadt-rheinfurt.example/<slug>.html` (siehe `generator/presse.py`,
+`FEED_BASE_URL`) — bewusst eine realistische Domain statt `localhost`, weil die Demo das
+RSS_FEED-Konnektorverhalten so vorführt, wie es auch gegen eine echte Domain liefe. Damit der
+Compose-Stack das einlöst, braucht #229 zwei Dinge, nach dem Vorbild von
+[`e2e/docker-compose.e2e.yml`](../e2e/docker-compose.e2e.yml):
+
+1. **Netzwerk-Alias im Compose-Netzwerk:** Der Webserver-Container, der `demo/corpus/` ausliefert,
+   muss unter dem Hostnamen `presse.stadt-rheinfurt.example` erreichbar sein (Compose
+   `networks.<netz>.aliases`), damit der `rss.xml`-Feed und seine `<link>`-Einträge innerhalb des
+   Compose-Netzwerks auflösbar sind.
+2. **Allowlist-Eintrag für die Zielprüfung ausgehender Abrufe:** `opaa.indexing.target-validation`
+   (#267, standardmäßig aktiv) lehnt Compose-interne Adressen in privaten/Loopback-Bereichen ab.
+   `presse.stadt-rheinfurt.example` muss deshalb in
+   `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` eingetragen werden — siehe
+   `e2e/docker-compose.e2e.yml` für das bereits erprobte Muster mit dem e2e-Profil.
+
+Dieselbe Überlegung gilt für den HTTP_DIRECTORY-Webserver, der `leistungen-meldewesen-ausweise/`,
+`leistungen-kfz-zulassung/` und `satzungen-gebuehrenordnungen/` ausliefert.

@@ -15,11 +15,11 @@ Probleme durch abweichende Schreibweisen von Familiennamen mit "ss" oder "ß" od
 Bei der Auswahl des neuen Familiennamens sind Sie nicht völlig frei. So darf der neue Familienname keine neuen Schwierigkeiten mit sich bringen, sei es weil es sich um einen Sammelnamen handelt oder weil er wie der bisherige Name schwierig zu schreiben und/oder auszusprechen ist. Bei Schwierigkeiten in der Schreibweise und Aussprache wird in der Regel die Änderung der Namensschreibweise ausreichen. Besondere Beschränkungen gibt es im Übrigen bei der Gewährung von Doppelnamen und Familiennamen mit einer früheren Adelsbezeichnung.
 Vorname
 Änderungen in der Vornamensführung sind wie die Familiennamensänderung nur möglich, wenn ein wichtiger Grund vorliegt. Das Recht der Vornamensgebung, das bei der Geburt eines Kindes ausgeübt wird, endet mit der Eintragung der zulässig gewählten Vornamen beim Standesamt.
-Keine Änderung im Sinn des Namensänderungsgesetzes ist die Änderung des Rufnamens. Wenn Ihr Name deutschem Recht unterliegt, können Sie seit dem 1.11.2018 die Reihenfolge Ihrer Vornamen im Standesamt ändern. Mit der Sortierung können Sie dafür sorgen, dass Ihr Rufname an die erste Stelle rückt. Bitte vereinbaren Sie für Ihre Vorsprache bei einem der Rheinfurter Standesämter einen Termin (Telefon 02351/44-3476).
+Keine Änderung im Sinn des Namensänderungsgesetzes ist die Änderung des Rufnamens. Wenn Ihr Name deutschem Recht unterliegt, können Sie seit dem 1.11.2018 die Reihenfolge Ihrer Vornamen im Standesamt ändern. Mit der Sortierung können Sie dafür sorgen, dass Ihr Rufname an die erste Stelle rückt. Bitte vereinbaren Sie für Ihre Vorsprache bei einem der Rheinfurter Standesämter einen Termin (Telefon 01234/44-3476).
 Künstlername (Pseudonym)
 Bei Künstlernamen, Ordensnamen, Pseudonymen und sonstigen Beinamen, die willkürlich gewählt und jederzeit ablegbar sind, handelt es sich zwar um keine echten Namen im Rechtssinn. Künstlernamen sind aber wie bürgerliche Namen Objekte des Namensschutzes.
 Rechtsverbindlich und zulässig ist die Unterschrift mit einem Pseudonym, sofern die als Aussteller in Betracht kommende Person ohne Zweifel feststeht. Wird mit dem Künstlernamen unterschrieben, so ist damit der gesetzlichen Schriftform grundsätzlich genügt.
-Künstler- und Ordensnamen können im Personalausweis und Reisepass eingetragen werden. Für weitere Fragen in diesem Zusammenhang wenden Sie sich bitte an das zuständige Bürgerbüro (www.stadt-rheinfurt.example oder Telefon 02351/44-8122).
+Künstler- und Ordensnamen können im Personalausweis und Reisepass eingetragen werden. Für weitere Fragen in diesem Zusammenhang wenden Sie sich bitte an das zuständige Bürgerbüro (www.stadt-rheinfurt.example oder Telefon 01234/44-8122).
 Gründe dafür, einen Künstlernamen durch eine behördliche Namensänderung zum Gegenstand des Rechts zu machen, werden selbst bei einer langjährigen Führung des Pseudonyms im Allgemeinen nicht vorliegen.
 Zuständigkeit für öffentlich-rechtliche Namensänderung
 Anträge auf Namensänderung (Vor- und Familiennamen) können Sie bei uns stellen, wenn Sie im Stadtgebiet Rheinfurt wohnen und deutsche Staatsangehörige sind (gleichgestellt sind beispielsweise hier wohnende ausländische Flüchtlinge und Asylberechtigte).
@@ -44,7 +44,7 @@ Bearbeitungszeit
 Bevor Sie einen gebührenpflichtigen Antrag einreichen, empfehlen wir Ihnen, sich zuerst unverbindlich zu Ihrem Anliegen beraten zu lassen. Bitte nutzen Sie dazu unser Kontaktformular. Die Namensänderungsbehörde wird sich dann bei Ihnen melden.
 
 Gebührenrahmen
-Änderung eines Familiennamens: 50 bis 1.469 Euro
+Änderung eines Familiennamens: 50 bis 1.407 Euro
 Änderung eines Vornamens: 25 bis 469 Euro.
 Die Gebührenschuld entsteht bereits mit dem Eingang des Antrags bei der zuständigen Behörde. In geeigneten Fällen kann die Bearbeitung des Namensänderungsantrags von der Zahlung eines angemessenen Vorschusses bis zur Höhe der voraussichtlich entstehenden Kosten abhängig gemacht werden. Bei der Festsetzung der Gebühr für die Namensänderung werden der mit der Amtshandlung verbundene Verwaltungsaufwand und die Bedeutung, der wirtschaftliche Wert oder der sonstige Nutzen der Amtshandlung für die antragstellende Person sowie die wirtschaftlichen Verhältnisse der antragstellenden Person berücksichtigt. Im Regelfall liegt in Rheinfurt die Gebühr für die Familiennamensänderung in etwa in der Mitte, für die Vornamensänderung in der oberen Rahmenhälfte der oben genannten Beträge. Falls Sie eine Gebührenermäßigung beantragen wollen, müssen Sie Nachweise über Ihre Einkommensverhältnisse vorlegen.
 
@@ -53,6 +53,6 @@ siehe unter "
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

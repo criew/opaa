@@ -54,11 +54,11 @@ Kann ein ausländischer EU-Bürger in Deutschland seinen Nebenwohnsitz anmelden,
 Nein, das deutsche Melderecht ist getrennt von der Wohnsituation im Ausland (egal ob EU-Ausland oder andere Länder) zu betrachten. Wenn Sie einen Wohnsitz in Deutschland haben, so ist dies nach deutschen Melderecht auch Ihr Hauptwohnsitz.
 Sie haben nach der Anmeldung Ihres Wohnsitzes keine Steueridentifikationsnummer (Steuer-IdNr.) erhalten oder finden diese nicht mehr?
 Über Ihre Steueridentifikationsnummer werden Sie und/ oder Ihre Familienangehörigen zirka 2-4 Wochen automatisch nach der erstmaligen Anmeldung vom Bundeszentralamt für Steuern (BZSt) durch ein Mitteilungsschreiben, das Sie per Post erhalten, informiert. Die Steueridentifikationsnummer benötigen Sie zum Beispiel bei der Aufnahme einer Erwerbstätigkeit für Ihren Arbeitgeber.
-Haben Sie dieses Schreiben nicht erhalten oder finden es nicht mehr, nutzen Sie bitte das Eingabeformular des Bundeszentralamtes für Steuern (BZSt) unter folgendem Link: https://www.bzst.de/SiteGlobals/Kontaktformulare/DE/Steuerliche_IDNr/Mitteilung_IdNr/mitteilung_IdNr_node.html. damit Ihre Steueridentifikationsnummer erneut übersandt wird.
+Haben Sie dieses Schreiben nicht erhalten oder finden es nicht mehr, nutzen Sie bitte das Eingabeformular des Bundeszentralamtes für Steuern (BZSt). Damit Ihre Steueridentifikationsnummer erneut übersandt wird.
 Voraussetzung für den Erhalt des Mitteilungsschreibens sind möglichst vollständige und genaue Angaben (zum Beispiel vollständige Vor- und Familiennamen angeben, konkrete detaillierte Adresszusätze wie Gebäudeteile benennen; deutliche Beschriftung des Briefkastens für die Postzustellung) zu Ihrer Wohnanschrift bei der Anmeldung.
 
 ---
 
-Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 47138 Rheinfurt
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
 
 *Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

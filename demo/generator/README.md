@@ -11,13 +11,21 @@ hier **keinen Ground-Truth-Zwang**: Die Demo misst nichts, sie zeigt.
 ## Voraussetzungen
 
 - Python 3.11 oder neuer
-- Die Pakete `python-docx`, `python-pptx` und `reportlab` (siehe unten, „Werkzeugwahl")
+- Die in `requirements.txt` gepinnten Pakete `python-docx`, `python-pptx` und `reportlab` (siehe
+  unten, „Werkzeugwahl")
 - Netzzugriff beim ersten Lauf, um die 83 ausgewählten Rohdateien des LHM-Dienstleistungen-Corpus
   von HuggingFace zu laden (danach genügt der lokale Cache unter `raw-source/`)
 
 ```bash
-pip install python-docx python-pptx reportlab
+pip install -r requirements.txt
 ```
+
+**Byte-Identität ist nur mit den in `requirements.txt` gepinnten Versionen zugesichert.** Ein
+neueres `reportlab`/`python-docx`/`python-pptx` kann sein Standardausgabeformat ändern (z. B.
+Font-Metriken, XML-Formatierung, Zip-Kompressionsdetails) und würde dann andere Bytes erzeugen,
+selbst bei identischem Input und identischer Generator-Logik. Wer die Pakete absichtlich
+aktualisiert, aktualisiert `requirements.txt` im selben Commit und dokumentiert das in der
+PR-Beschreibung.
 
 ## Lauf
 
@@ -44,10 +52,18 @@ Das Skript:
      (`presse.py`).
    - `interne-dienstanweisungen-meldewesen/` (`.docx`/`.pdf`/`.pptx`): 26 Dienstanweisungen,
      Eskalationsregeln, FAQ-Dokumente und Schulungsfolien (`intern.py`).
-3. Prüft, dass Verzeichnisinhalt und geschriebene Dateiliste exakt übereinstimmen (keine
+3. Validiert die erzeugten Inhalte aller fünf Bibliotheken gegen eine Liste von Verbotsmustern
+   (`validation.py`): reale Ortsnamen (München/KVR/Pasing/Landeshauptstadt/Fischerei), Straßen
+   außerhalb einer festen Whitelist fiktiver Rheinfurter Straßen, Postleitzahlen ungleich der
+   fiktiven Rheinfurt-PLZ, sowie IBAN/BIC ungleich der fiktiven Rheinfurt-Bankverbindung. Bricht
+   mit einer Liste aller Fundstellen ab, statt ein kontaminiertes Ergebnis stillschweigend zu
+   schreiben.
+4. Prüft, dass Verzeichnisinhalt und geschriebene Dateiliste exakt übereinstimmen (keine
    Karteileichen aus einem früheren, abweichenden Lauf).
-4. Schreibt `demo/corpus/MANIFEST.sha256` mit dem SHA-256 jeder erzeugten Datei (relativ zu
-   `demo/corpus/`, über alle fünf Bibliotheken hinweg).
+5. Schreibt `demo/corpus/MANIFEST.sha256` mit dem SHA-256 jeder erzeugten Datei (relativ zu
+   `demo/corpus/`, über alle fünf Bibliotheken hinweg) sowie `demo/corpus/SOURCE.md` selbst — die
+   dort genannten Dokumentzahlen sind damit immer die tatsächlich erzeugten, nicht von Hand
+   nachgeführte Werte (siehe PR #717 Review, NIT/KLEIN d).
 
 ## Verifikation
 
@@ -96,14 +112,16 @@ sauber extrahierbar.
 
 ```
 demo/generator/
-├── generate_corpus.py     Orchestriert alle fünf Bibliotheken, schreibt MANIFEST.sha256
+├── generate_corpus.py     Orchestriert alle fünf Bibliotheken, schreibt MANIFEST.sha256/SOURCE.md
 ├── leistungen_quelle.py    Pinning/Download der 83 ausgewählten LHM-Rohdateien
-├── rheinfurt_text.py       München→Rheinfurt-Texttransformation (Orte, Kontakte, Gebühren)
+├── rheinfurt_text.py       München→Rheinfurt-Texttransformation (Orte, Straßen, Kontakte, Gebühren)
 ├── leistungen.py            Rendert die zwei Leistungs-Bibliotheken (.md/.txt)
 ├── satzungen.py              Satzungsdaten + PDF-Rendering (reportlab)
 ├── presse.py                 Pressemitteilungsdaten + RSS/HTML-Rendering
 ├── intern.py                  Interne-Dienstanweisungen-Daten + DOCX/PDF/PPTX-Rendering
 ├── zip_utils.py               Entfernt nicht-reproduzierbare Zip-Zeitstempel aus DOCX/PPTX
+├── validation.py               Abschluss-Assert gegen reale Münchner Identifikatoren
+├── requirements.txt             Gepinnte Versionen von reportlab/python-docx/python-pptx
 └── raw-source/                 Gecachte LHM-Rohdaten, gitignored
 ```
 
@@ -127,6 +145,19 @@ demo/generator/
 
 ## Was nicht in diesem Korpus vorkommt
 
-Zur Fischereierlaubnis findet sich in keiner der fünf Bibliotheken irgendein Dokument — bewusst
-so belassen, damit die Drehbuchfrage „Wie beantrage ich in Rheinfurt eine Fischereierlaubnis?" aus
-`docs/features/demo-instance.md` unbeantwortbar bleibt.
+- Zur Fischereierlaubnis findet sich in keiner der fünf Bibliotheken irgendein Dokument — bewusst
+  so belassen, damit die Drehbuchfrage „Wie beantrage ich in Rheinfurt eine Fischereierlaubnis?"
+  aus `docs/features/demo-instance.md` unbeantwortbar bleibt.
+- Keine echte Münchner Straße, kein echter Stadtbezirk, keine echte Postleitzahl und keine echte
+  Bankverbindung überlebt die Umschreibung — geprüft durch den Abschluss-Assert in `validation.py`
+  (PR #717 Review). Vollständige Zuordnungstabelle: `rheinfurt_text.py`,
+  `_STREET_AND_DISTRICT_REPLACEMENTS`.
+- Externe Links auf reale Behördendomains (z. B. ein `bzst.de`-Deeplink in der Quelle) werden
+  entfernt; der **Name** der Behörde bleibt, siehe „Entscheidung zu realen Bundesbehörden" in
+  `demo/corpus/SOURCE.md`.
+- Veraltete Corona-Passagen aus der Quelle ("Antrag nur wegen der Corona-Pandemie möglich") werden
+  entfernt, nicht nur umformuliert — die Zugangsbeschränkung selbst gilt im 2026er-Korpus nicht
+  mehr, nicht nur ihr Anlass.
+- Sätze, die ausschließlich auf einen entfernten Link verweisen ("Diese finden Sie hier.", "Das
+  Formular können Sie hier herunterladen.") werden auf einen Verweis auf das Bürgerbüro Rheinfurt
+  umformuliert, damit kein Satz mehr ins Leere zeigt.
