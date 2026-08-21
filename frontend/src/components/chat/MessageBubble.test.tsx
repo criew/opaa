@@ -10,6 +10,7 @@ const citedSource = {
   matchCount: 1,
   indexedAt: '2025-01-15T10:30:00Z',
   cited: true,
+  citationValid: true,
 }
 
 const uncitedSource = {
@@ -18,6 +19,7 @@ const uncitedSource = {
   matchCount: 1,
   indexedAt: null,
   cited: false,
+  citationValid: true,
 }
 
 describe('MessageBubble', () => {
@@ -77,8 +79,22 @@ describe('MessageBubble', () => {
       role: 'assistant',
       content: 'Beleg【source: a#0 | erste.md】【source: b#0 | zweite.md】.',
       sources: [
-        { fileName: 'erste.md', relevanceScore: 0.9, matchCount: 1, cited: true, indexedAt: null },
-        { fileName: 'zweite.md', relevanceScore: 0.8, matchCount: 1, cited: true, indexedAt: null },
+        {
+          fileName: 'erste.md',
+          relevanceScore: 0.9,
+          matchCount: 1,
+          cited: true,
+          indexedAt: null,
+          citationValid: true,
+        },
+        {
+          fileName: 'zweite.md',
+          relevanceScore: 0.8,
+          matchCount: 1,
+          cited: true,
+          indexedAt: null,
+          citationValid: true,
+        },
       ],
       timestamp: new Date(),
     }
@@ -110,6 +126,7 @@ describe('MessageBubble', () => {
             matchCount: 1,
             cited: true,
             indexedAt: null,
+            citationValid: true,
           },
           {
             fileName: 'zweite.md',
@@ -117,6 +134,7 @@ describe('MessageBubble', () => {
             matchCount: 1,
             cited: true,
             indexedAt: null,
+            citationValid: true,
           },
         ],
         timestamp: new Date(),
@@ -149,6 +167,7 @@ describe('MessageBubble', () => {
         matchCount: 1,
         cited: true,
         indexedAt: null,
+        citationValid: true,
       })),
       timestamp: new Date(),
     }

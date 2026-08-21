@@ -24,6 +24,9 @@ interface EvidenceDoc {
   fileName: string
   numbers: number[]
   cited: boolean
+  /** #386: false when the backend's deterministic check found at least one citation naming this
+   *  source that does not match the chunks actually retrieved for this answer. */
+  citationValid: boolean
   spaceName?: string | null
   relevanceScore?: number
   indexedAt?: string | null
@@ -54,6 +57,7 @@ export default function SourceEvidenceDrawer({
       fileName: doc.fileName,
       numbers: doc.numbers,
       cited: true,
+      citationValid: doc.source?.citationValid !== false,
       spaceName: doc.source?.spaceName,
       relevanceScore: doc.source?.relevanceScore,
       indexedAt: doc.source?.indexedAt,
@@ -63,6 +67,7 @@ export default function SourceEvidenceDrawer({
       fileName: source.fileName,
       numbers: [],
       cited: false,
+      citationValid: source.citationValid !== false,
       spaceName: source.spaceName,
       relevanceScore: source.relevanceScore,
       indexedAt: source.indexedAt,
@@ -167,6 +172,7 @@ export default function SourceEvidenceDrawer({
               data-testid="evidence-doc"
               data-file={doc.fileName}
               data-cited={doc.cited ? 'true' : 'false'}
+              data-citation-valid={doc.citationValid ? 'true' : 'false'}
               sx={{
                 py: 1.25,
                 borderBottom: 1,
@@ -195,6 +201,14 @@ export default function SourceEvidenceDrawer({
                 {!doc.cited && (
                   <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
                     geprüft, nicht zitiert
+                  </Typography>
+                )}
+                {!doc.citationValid && (
+                  <Typography
+                    component="span"
+                    sx={{ fontSize: 10.5, color: 'warning.main', fontStyle: 'italic' }}
+                  >
+                    Beleg nicht überprüfbar
                   </Typography>
                 )}
               </Box>

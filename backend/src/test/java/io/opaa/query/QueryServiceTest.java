@@ -71,6 +71,7 @@ class QueryServiceTest {
             answerGenerationService,
             chatMemory,
             new CitationParser(),
+            new CitationValidator(),
             documentRepository,
             userRepository,
             libraryAccessService,
@@ -432,6 +433,111 @@ class QueryServiceTest {
     assertThat(response.getSources()).hasSize(2);
     assertThat(response.getSources().get(0).getCited()).isTrue();
     assertThat(response.getSources().get(1).getCited()).isFalse();
+  }
+
+  /**
+   * #386 acceptance criterion + reproduction proof: a citation whose document id is not among the
+   * chunks retrieved for this answer must be flagged as invalid - never silently dropped, and never
+   * allowed to pass through as an ordinary, unflagged citation. Before the fix this fabricated
+   * citation produced no source entry at all (it matches no real chunk's document id in {@code
+   * mapSources}' original iteration), so nothing in the response indicated anything was wrong with
+   * it - this assertion is red on the pre-fix code (no entry exists to carry {@code citationValid:
+   * false} at all) and green after.
+   */
+  @Test
+  void queryMarksCitationToAFabricatedDocumentIdAsInvalid() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var answer = "The answer is 42 【source: fabricated-id#0 | readme.md】";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources())
+        .anySatisfy(
+            source -> {
+              assertThat(source.getCitationValid()).isFalse();
+              assertThat(source.getCited()).isTrue();
+            });
+  }
+
+  /**
+   * #386 acceptance criterion: a citation with a valid document id and section but a file name that
+   * does not match that document is invalid - it is more misleading than no citation at all.
+   */
+  @Test
+  void queryMarksCitationWithMismatchedFileNameAsInvalid() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var answer = "The answer is 42 【source: doc-123#0 | wrong-name.pdf】";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources().getFirst().getFileName()).isEqualTo("readme.md");
+    assertThat(response.getSources().getFirst().getCitationValid()).isFalse();
+  }
+
+  /**
+   * #386 acceptance criterion: a section number that belongs to the cited document but was not
+   * among the chunks retrieved for this answer is invalid.
+   */
+  @Test
+  void queryMarksCitationWithSectionOutsideRetrievedChunksAsInvalid() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var answer = "The answer is 42 【source: doc-123#9 | readme.md】";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources().getFirst().getFileName()).isEqualTo("readme.md");
+    assertThat(response.getSources().getFirst().getCitationValid()).isFalse();
+  }
+
+  /** #386: a citation matching the retrieved chunk exactly stays unflagged. */
+  @Test
+  void queryLeavesAValidCitationUnflagged() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var answer = "The answer is 42 【source: doc-123#0 | readme.md】";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources().getFirst().getCitationValid()).isTrue();
   }
 
   @Test

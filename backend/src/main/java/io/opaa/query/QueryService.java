@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -47,6 +48,7 @@ public class QueryService {
   private final AnswerGenerationService answerGenerationService;
   private final ChatMemory chatMemory;
   private final CitationParser citationParser;
+  private final CitationValidator citationValidator;
   private final DocumentRepository documentRepository;
   private final UserRepository userRepository;
   private final LibraryAccessService libraryAccessService;
@@ -60,6 +62,7 @@ public class QueryService {
       AnswerGenerationService answerGenerationService,
       ChatMemory chatMemory,
       CitationParser citationParser,
+      CitationValidator citationValidator,
       DocumentRepository documentRepository,
       UserRepository userRepository,
       LibraryAccessService libraryAccessService,
@@ -71,6 +74,7 @@ public class QueryService {
     this.answerGenerationService = answerGenerationService;
     this.chatMemory = chatMemory;
     this.citationParser = citationParser;
+    this.citationValidator = citationValidator;
     this.documentRepository = documentRepository;
     this.userRepository = userRepository;
     this.libraryAccessService = libraryAccessService;
@@ -243,17 +247,20 @@ public class QueryService {
                         question, relevantChunks, conversationKey);
 
                 String answer = extractAnswer(chatResponse);
-                Set<String> citedDocumentIds = citationParser.extractCitedDocumentIds(answer);
+                List<CitationValidator.ValidatedCitation> validatedCitations =
+                    citationValidator.validate(
+                        citationParser.extractCitations(answer), relevantChunks);
+                logInvalidCitations(validatedCitations);
                 Map<String, Integer> matchCounts = countMatchesPerFile(relevantChunks);
                 Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId =
                     lookupSourceDocuments(relevantChunks);
                 List<SourceReference> sources =
                     mapSources(
-                        relevantChunks, citedDocumentIds, matchCounts, sourceDocumentsByDocId);
+                        relevantChunks, validatedCitations, matchCounts, sourceDocumentsByDocId);
 
                 log.debug(
-                    "Citations found: {} cited, {} total sources",
-                    citedDocumentIds.size(),
+                    "Citations found: {} validated, {} total sources",
+                    validatedCitations.size(),
                     sources.size());
 
                 long durationMs = System.currentTimeMillis() - startTime;
@@ -406,27 +413,77 @@ public class QueryService {
     return result;
   }
 
+  /**
+   * Logs the number of invalid citations found in this answer's response (#386) - deliberately a
+   * single log line per answer, not a new metric: the issue's scope is the deterministic validation
+   * itself, not new metrics infrastructure. Nothing is logged when every citation validated, so the
+   * log volume tracks only answers that actually need attention.
+   */
+  private void logInvalidCitations(List<CitationValidator.ValidatedCitation> validatedCitations) {
+    long invalidCount = validatedCitations.stream().filter(c -> !c.valid()).count();
+    if (invalidCount > 0) {
+      log.info(
+          "Answer contains {} invalid citation(s) out of {} total - flagged as invalid in the"
+              + " response rather than silently dropped or silently kept as genuine",
+          invalidCount,
+          validatedCitations.size());
+    }
+  }
+
+  /**
+   * Builds one {@link SourceReference} per retrieved file, plus a synthetic entry for every invalid
+   * citation whose document id matches none of the retrieved chunks at all (#386) - the only case
+   * where an invalid citation cannot attach to a real retrieved chunk's source entry, since it
+   * points at a document this answer never actually searched. {@code cited} now only reflects
+   * <em>valid</em> citations - an invalid one is never allowed to make an unrelated, merely
+   * pattern-matching citation count as a genuine one.
+   */
   private List<SourceReference> mapSources(
       List<Document> chunks,
-      Set<String> citedDocumentIds,
+      List<CitationValidator.ValidatedCitation> validatedCitations,
       Map<String, Integer> matchCounts,
       Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId) {
-    return chunks.stream()
-        .map(
-            chunk -> {
-              String fileName = chunk.getMetadata().getOrDefault("file_name", "unknown").toString();
-              String documentId = chunk.getMetadata().getOrDefault("document_id", "").toString();
-              double score = chunk.getScore() != null ? chunk.getScore() : 0.0;
-              boolean cited = citedDocumentIds.contains(documentId);
-              int matches = matchCounts.getOrDefault(fileName, 1);
-              io.opaa.indexing.Document sourceDocument = sourceDocumentsByDocId.get(documentId);
-              Instant indexedAt = sourceDocument != null ? sourceDocument.getIndexedAt() : null;
-              String sourceEntryUrl =
-                  sourceDocument != null ? sourceDocument.getSourceEntryUrl() : null;
-              return new SourceReference(fileName, score, matches, cited)
-                  .indexedAt(indexedAt)
-                  .sourceEntryUrl(sourceEntryUrl);
-            })
+    Set<String> retrievedDocumentIds =
+        chunks.stream()
+            .map(c -> c.getMetadata().getOrDefault("document_id", "").toString())
+            .collect(Collectors.toSet());
+    Set<String> validCitedDocumentIds =
+        validatedCitations.stream()
+            .filter(CitationValidator.ValidatedCitation::valid)
+            .map(CitationValidator.ValidatedCitation::documentId)
+            .collect(Collectors.toSet());
+    Set<String> documentIdsWithInvalidCitation =
+        validatedCitations.stream()
+            .filter(c -> !c.valid())
+            .map(CitationValidator.ValidatedCitation::documentId)
+            .collect(Collectors.toSet());
+
+    Stream<SourceReference> fromChunks =
+        chunks.stream()
+            .map(
+                chunk -> {
+                  String fileName =
+                      chunk.getMetadata().getOrDefault("file_name", "unknown").toString();
+                  String documentId =
+                      chunk.getMetadata().getOrDefault("document_id", "").toString();
+                  double score = chunk.getScore() != null ? chunk.getScore() : 0.0;
+                  boolean cited = validCitedDocumentIds.contains(documentId);
+                  boolean citationValid = !documentIdsWithInvalidCitation.contains(documentId);
+                  int matches = matchCounts.getOrDefault(fileName, 1);
+                  io.opaa.indexing.Document sourceDocument = sourceDocumentsByDocId.get(documentId);
+                  Instant indexedAt = sourceDocument != null ? sourceDocument.getIndexedAt() : null;
+                  String sourceEntryUrl =
+                      sourceDocument != null ? sourceDocument.getSourceEntryUrl() : null;
+                  return new SourceReference(fileName, score, matches, cited)
+                      .indexedAt(indexedAt)
+                      .sourceEntryUrl(sourceEntryUrl)
+                      .citationValid(citationValid);
+                });
+
+    List<SourceReference> orphanEntries =
+        buildOrphanSourceReferences(validatedCitations, retrievedDocumentIds);
+
+    return Stream.concat(fromChunks, orphanEntries.stream())
         .collect(
             toMap(
                 SourceReference::getFileName,
@@ -435,6 +492,30 @@ public class QueryService {
                 LinkedHashMap::new))
         .values()
         .stream()
+        .toList();
+  }
+
+  /**
+   * Builds one synthetic, zero-relevance {@link SourceReference} per distinct file name an invalid
+   * citation claimed for a document id that matches no retrieved chunk at all (#386) - this is the
+   * only way such a citation can be flagged at all, since it does not correspond to any real
+   * retrieved chunk that would otherwise carry the flag.
+   */
+  private List<SourceReference> buildOrphanSourceReferences(
+      List<CitationValidator.ValidatedCitation> validatedCitations,
+      Set<String> retrievedDocumentIds) {
+    Map<String, Long> countByFileName =
+        validatedCitations.stream()
+            .filter(c -> !c.valid())
+            .filter(c -> !retrievedDocumentIds.contains(c.documentId()))
+            .collect(
+                Collectors.groupingBy(
+                    CitationValidator.ValidatedCitation::fileName, Collectors.counting()));
+    return countByFileName.entrySet().stream()
+        .map(
+            entry ->
+                new SourceReference(entry.getKey(), 0.0, entry.getValue().intValue(), true)
+                    .citationValid(false))
         .toList();
   }
 
@@ -456,6 +537,10 @@ public class QueryService {
   static SourceReference mergeSourceReferences(SourceReference a, SourceReference b) {
     SourceReference preferred = a.getRelevanceScore() >= b.getRelevanceScore() ? a : b;
     boolean shouldBeCited = a.getCited() || b.getCited();
+    // #386: valid only if neither side carries an invalid citation - one invalid citation for
+    // this file is enough to flag the merged entry, mirroring shouldBeCited's OR but inverted,
+    // since "valid" is the property that must hold for *every* citation, not just one.
+    boolean mergedCitationValid = isCitationValid(a) && isCitationValid(b);
     String mergedSourceEntryUrl =
         Objects.equals(a.getSourceEntryUrl(), b.getSourceEntryUrl())
             ? preferred.getSourceEntryUrl()
@@ -468,11 +553,19 @@ public class QueryService {
               preferred.getMatchCount(),
               true)
           .indexedAt(preferred.getIndexedAt())
-          .sourceEntryUrl(mergedSourceEntryUrl);
+          .sourceEntryUrl(mergedSourceEntryUrl)
+          .citationValid(mergedCitationValid);
     }
 
     preferred.setSourceEntryUrl(mergedSourceEntryUrl);
+    preferred.setCitationValid(mergedCitationValid);
     return preferred;
+  }
+
+  /** {@code citationValid} defaults to {@code true} (absent = never flagged invalid) - #386. */
+  private static boolean isCitationValid(SourceReference source) {
+    Boolean citationValid = source.getCitationValid();
+    return citationValid == null || citationValid;
   }
 
   private String extractAnswer(ChatResponse response) {

@@ -11,8 +11,17 @@ function source(
   cited: boolean,
   relevanceScore: number,
   spaceName = 'Engineering',
+  citationValid: boolean | null = true,
 ): SourceReference {
-  return { fileName, spaceName, relevanceScore, matchCount: 1, cited, indexedAt: null }
+  return {
+    fileName,
+    spaceName,
+    relevanceScore,
+    matchCount: 1,
+    cited,
+    indexedAt: null,
+    citationValid,
+  }
 }
 
 /** An answer citing three documents, plus one checked-but-uncited source. */
@@ -80,6 +89,37 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
       .getAllByTestId('evidence-doc')
       .map((el) => el.getAttribute('data-file'))
     expect(names).toEqual(['stark.md', 'mittel.md', 'schwach.md'])
+  })
+
+  it('flags a source with an invalid citation as "Beleg nicht überprüfbar" (#386)', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MessageBubble
+        message={{
+          id: 'ev-invalid',
+          role: 'assistant',
+          content: 'Beleg【source: a#0 | schwach.md】.',
+          sources: [source('schwach.md', true, 0.41, 'Engineering', false)],
+          timestamp: new Date('2026-08-21T09:00:00'),
+        }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    const doc = within(drawer).getByTestId('evidence-doc')
+    expect(doc).toHaveAttribute('data-citation-valid', 'false')
+    expect(within(doc).getByText('Beleg nicht überprüfbar')).toBeInTheDocument()
+  })
+
+  it('does not flag a validly cited source (#386)', async () => {
+    const { drawer } = await openDrawer()
+
+    const docs = within(drawer).getAllByTestId('evidence-doc')
+    for (const doc of docs) {
+      expect(doc).toHaveAttribute('data-citation-valid', 'true')
+    }
+    expect(within(drawer).queryByText('Beleg nicht überprüfbar')).not.toBeInTheDocument()
   })
 
   it('closes on Escape and returns focus to the trigger', async () => {

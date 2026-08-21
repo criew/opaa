@@ -1997,6 +1997,23 @@ components:
         cited:
           type: boolean
           example: true
+        citationValid:
+          type: boolean
+          nullable: true
+          default: true
+          description: >
+            Deterministic citation validation (#386): whether the citation(s) pointing at this
+            source actually match the chunks retrieved for this answer - document id, section
+            (chunk index) and file name must all agree with the retrieved set. False means at
+            least one citation naming this source was invalid: it named a document id not among
+            the retrieved chunks, a section number that document does not have among them, or a
+            file name that does not match the id it claimed. An invalid citation is never silently
+            dropped from the answer text nor silently accepted as genuine - it stays in the answer
+            and its source entry is flagged here instead, including a synthetic entry (zero
+            relevance, zero match count) for a citation whose document id matches no retrieved
+            chunk at all. Absent/true for a source no citation flagged as invalid, and for a
+            source that was never cited in the first place.
+          example: true
 
     QueryMetadata:
       type: object
