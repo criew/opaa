@@ -134,9 +134,12 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 
 ### Demo und Vorführung
 
-- **[`features/demo-instance.md`](./features/demo-instance.md)** — Demo-Instanz „Stadt Rheinfurt":
-  fiktiver Verwaltungskorpus, Bibliotheken je Konnektortyp, Demo-Nutzer mit Berechtigungsgrenze,
-  Drehbuch und Seed-Mechanismus
+- **[`demo-walkthrough.md`](./demo-walkthrough.md)** — Anwenderdokumentation: Installation mit einem
+  Befehl, Nutzerkonten mit Anmeldedaten, ausformuliertes Drehbuch mit acht Vorführfragen,
+  Korpus-Aktualisierung
+- **[`features/demo-instance.md`](./features/demo-instance.md)** — Konzept: Demo-Instanz „Stadt
+  Rheinfurt", fiktiver Verwaltungskorpus, Bibliotheken je Konnektortyp, Demo-Nutzer mit
+  Berechtigungsgrenze, Seed-Mechanismus
 
 ### Recherche
 
