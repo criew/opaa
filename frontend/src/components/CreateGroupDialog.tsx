@@ -5,7 +5,9 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
+import FieldLabel from './wizard/FieldLabel'
 import { useGroupStore } from '../stores/groupStore'
 
 interface CreateGroupDialogProps {
@@ -58,29 +60,34 @@ export default function CreateGroupDialog({ open, onClose, onCreated }: CreateGr
             {error}
           </Alert>
         )}
-        <TextField
-          // Focus moves to the first field of a dialog the user just opened (WAI-ARIA APG dialog
-          // pattern); re-verified with a screenreader in the closing audit, see #598.
-          // eslint-disable-next-line jsx-a11y-x/no-autofocus
-          autoFocus
-          label="Name"
-          fullWidth
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          slotProps={{ htmlInput: { maxLength: 255 } }}
-          sx={{ mt: 1 }}
-        />
-        <TextField
-          label="Beschreibung"
-          fullWidth
-          multiline
-          minRows={2}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          slotProps={{ htmlInput: { maxLength: 2000 } }}
-          sx={{ mt: 2 }}
-        />
+        <Box sx={{ mt: 1 }}>
+          <FieldLabel htmlFor="create-group-name">Name</FieldLabel>
+          <TextField
+            // Focus moves to the first field of a dialog the user just opened (WAI-ARIA APG dialog
+            // pattern); re-verified with a screenreader in the closing audit, see #598.
+            // eslint-disable-next-line jsx-a11y-x/no-autofocus
+            autoFocus
+            id="create-group-name"
+            size="small"
+            fullWidth
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            slotProps={{ htmlInput: { maxLength: 255 } }}
+          />
+        </Box>
+        <Box sx={{ mt: 2 }}>
+          <FieldLabel htmlFor="create-group-description">Beschreibung (optional)</FieldLabel>
+          <TextField
+            id="create-group-description"
+            size="small"
+            fullWidth
+            multiline
+            minRows={2}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            slotProps={{ htmlInput: { maxLength: 2000 } }}
+          />
+        </Box>
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={submitting}>

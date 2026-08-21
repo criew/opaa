@@ -16,6 +16,7 @@ import type {
   SourceConnectionTestResponse,
 } from '../types/api'
 import { testLibrarySource } from '../services/api'
+import FieldLabel from './wizard/FieldLabel'
 import { useLibraryStore } from '../stores/libraryStore'
 import { documentSourceTypeConfigKind } from '../utils/labels'
 import {
@@ -215,63 +216,76 @@ export default function EditLibrarySourceDialog({
           {error && <Alert severity="error">{error}</Alert>}
 
           {configKind === 'path' && (
-            <TextField
-              label="Verzeichnispfad"
-              fullWidth
-              required
-              value={sourcePath}
-              onChange={(e) => {
-                setSourcePath(e.target.value)
-                clearTestResult()
-              }}
-              placeholder="/data/dokumente"
-              helperText="Absoluter Pfad auf dem Server, den OPAA regelmäßig einliest."
-              slotProps={{ htmlInput: { maxLength: 2000 } }}
-            />
+            <Box>
+              <FieldLabel htmlFor="edit-source-path">Verzeichnispfad</FieldLabel>
+              <TextField
+                id="edit-source-path"
+                size="small"
+                fullWidth
+                value={sourcePath}
+                onChange={(e) => {
+                  setSourcePath(e.target.value)
+                  clearTestResult()
+                }}
+                placeholder="/data/dokumente"
+                helperText="Absoluter Pfad auf dem Server, den OPAA regelmäßig einliest."
+                slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+              />
+            </Box>
           )}
 
           {configKind === 'url' && (
             <>
-              <TextField
-                label="Adresse (URL)"
-                fullWidth
-                required
-                value={sourceUrl}
-                onChange={(e) => {
-                  setSourceUrl(e.target.value)
-                  clearTestResult()
-                }}
-                placeholder="https://files.example.com/dokumente/"
-                helperText="http oder https."
-                slotProps={{ htmlInput: { maxLength: 2000 } }}
-              />
-              <TextField
-                label="Proxy"
-                fullWidth
-                value={sourceProxy}
-                onChange={(e) => {
-                  setSourceProxy(e.target.value)
-                  clearTestResult()
-                }}
-                placeholder="proxy.example.com:8080"
-                helperText="Optional."
-                autoComplete="off"
-                slotProps={{ htmlInput: { maxLength: 255 } }}
-              />
-              <TextField
-                label="Neue Zugangsdaten"
-                type="password"
-                fullWidth
-                value={sourceCredentials}
-                onChange={(e) => {
-                  setSourceCredentials(e.target.value)
-                  clearTestResult()
-                }}
-                placeholder="benutzer:passwort"
-                helperText={credentialsHelperText}
-                autoComplete="new-password"
-                slotProps={{ htmlInput: { maxLength: 500 } }}
-              />
+              <Box>
+                <FieldLabel htmlFor="edit-source-url">Adresse (URL)</FieldLabel>
+                <TextField
+                  id="edit-source-url"
+                  size="small"
+                  fullWidth
+                  value={sourceUrl}
+                  onChange={(e) => {
+                    setSourceUrl(e.target.value)
+                    clearTestResult()
+                  }}
+                  placeholder="https://files.example.com/dokumente/"
+                  helperText="http oder https."
+                  slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+                />
+              </Box>
+              <Box>
+                <FieldLabel htmlFor="edit-source-proxy">Proxy (optional)</FieldLabel>
+                <TextField
+                  id="edit-source-proxy"
+                  size="small"
+                  fullWidth
+                  value={sourceProxy}
+                  onChange={(e) => {
+                    setSourceProxy(e.target.value)
+                    clearTestResult()
+                  }}
+                  placeholder="proxy.example.com:8080"
+                  autoComplete="off"
+                  slotProps={{ htmlInput: { maxLength: 255 } }}
+                />
+              </Box>
+              <Box>
+                <FieldLabel htmlFor="edit-source-credentials">Neue Zugangsdaten</FieldLabel>
+                <TextField
+                  id="edit-source-credentials"
+                  size="small"
+                  type="password"
+                  fullWidth
+                  value={sourceCredentials}
+                  onChange={(e) => {
+                    setSourceCredentials(e.target.value)
+                    clearTestResult()
+                  }}
+                  placeholder="benutzer:passwort"
+                  helperText={credentialsHelperText}
+                  autoComplete="new-password"
+                  slotProps={{ htmlInput: { maxLength: 500 } }}
+                />
+              </Box>
               <FormControlLabel
                 control={
                   <Switch

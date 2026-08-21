@@ -6,7 +6,6 @@ import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
@@ -17,6 +16,8 @@ import { getUsers } from '../services/api'
 import { useGroupStore } from '../stores/groupStore'
 import { groupKindLabel } from '../utils/labels'
 import CreateGroupDialog from '../components/CreateGroupDialog'
+import FieldLabel from '../components/wizard/FieldLabel'
+import MetaBadge from '../components/MetaBadge'
 import PageHeading from '../components/a11y/PageHeading'
 
 function GroupCard({ group }: { group: GroupListResponse }) {
@@ -67,9 +68,9 @@ function GroupCard({ group }: { group: GroupListResponse }) {
     >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
-          <Typography sx={{ fontWeight: 600 }}>{group.name}</Typography>
-          <Chip label={groupKindLabel(group.kind)} size="small" variant="outlined" />
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto', mr: 1 }}>
+          <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>{group.name}</Typography>
+          <MetaBadge>{groupKindLabel(group.kind)}</MetaBadge>
+          <Typography sx={{ fontSize: 13, color: 'text.secondary', ml: 'auto', mr: 1 }}>
             {group.memberCount} {group.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}
           </Typography>
         </Stack>
@@ -87,23 +88,31 @@ function GroupCard({ group }: { group: GroupListResponse }) {
           </Alert>
         )}
 
-        <Stack spacing={1.5} sx={{ mb: 2 }}>
-          <TextField
-            label="Name der Gruppe"
-            value={name}
-            onChange={(e) => setDraft({ groupId: group.id, name: e.target.value, description })}
-            disabled={!isAdHoc}
-            size="small"
-          />
-          <TextField
-            label="Beschreibung"
-            value={description}
-            onChange={(e) => setDraft({ groupId: group.id, name, description: e.target.value })}
-            multiline
-            minRows={2}
-            disabled={!isAdHoc}
-            size="small"
-          />
+        <Stack spacing={2} sx={{ mb: 2 }}>
+          <Box>
+            <FieldLabel htmlFor={`group-${group.id}-name`}>Name der Gruppe</FieldLabel>
+            <TextField
+              id={`group-${group.id}-name`}
+              fullWidth
+              value={name}
+              onChange={(e) => setDraft({ groupId: group.id, name: e.target.value, description })}
+              disabled={!isAdHoc}
+              size="small"
+            />
+          </Box>
+          <Box>
+            <FieldLabel htmlFor={`group-${group.id}-description`}>Beschreibung</FieldLabel>
+            <TextField
+              id={`group-${group.id}-description`}
+              fullWidth
+              value={description}
+              onChange={(e) => setDraft({ groupId: group.id, name, description: e.target.value })}
+              multiline
+              minRows={2}
+              disabled={!isAdHoc}
+              size="small"
+            />
+          </Box>
           {isAdHoc && (
             <Stack direction="row" spacing={1}>
               <Button
@@ -150,7 +159,18 @@ function GroupCard({ group }: { group: GroupListResponse }) {
 
         <Divider sx={{ mb: 2 }} />
 
-        <Typography variant="subtitle2" gutterBottom>
+        <Typography
+          component="h3"
+          sx={{
+            fontFamily: 'monospace',
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'text.secondary',
+            mb: 1,
+          }}
+        >
           Mitglieder
         </Typography>
         <Stack spacing={1}>
@@ -205,7 +225,14 @@ function GroupCard({ group }: { group: GroupListResponse }) {
                 value={selectedUser}
                 onChange={(_event, value) => setSelectedUser(value)}
                 renderInput={(params) => (
-                  <TextField {...params} label="Benutzer" placeholder="Benutzer suchen …" />
+                  <TextField
+                    {...params}
+                    placeholder="Benutzer suchen …"
+                    slotProps={{
+                      ...params.slotProps,
+                      htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Benutzer' },
+                    }}
+                  />
                 )}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 size="small"
@@ -252,13 +279,20 @@ export default function GroupManagementPage() {
   }, [loadGroups])
 
   return (
-    <Box sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, overflowY: 'auto' }}>
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <PageHeading title="Gruppen" variant="h6" />
-        <Button variant="contained" onClick={() => setCreateDialogOpen(true)}>
+    <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
+        <PageHeading title="Gruppen" />
+        <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+          {groups.length === 1 ? '1 Gruppe' : `${groups.length} Gruppen`} für Eigentum und Freigaben
+        </Typography>
+        <Button
+          variant="contained"
+          onClick={() => setCreateDialogOpen(true)}
+          sx={{ ml: 'auto', flex: 'none' }}
+        >
           Neue Gruppe
         </Button>
-      </Stack>
+      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

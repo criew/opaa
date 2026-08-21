@@ -17,9 +17,10 @@ import { useTheme } from '@mui/material/styles'
 import type { LibraryListResponse } from '../types/api'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import { useLibraryStore } from '../stores/libraryStore'
-import { blue, fontFamily } from '../theme/tokens'
+import { fontFamily } from '../theme/tokens'
 import { assetRoleLabel, documentSourceTypeLabel, libraryVisibilityLabel } from '../utils/labels'
 import PageHeading from '../components/a11y/PageHeading'
+import MetaBadge from '../components/MetaBadge'
 
 function ownerTypeSummary(library: LibraryListResponse): string {
   if (library.ownerName) return library.ownerName
@@ -29,27 +30,6 @@ function ownerTypeSummary(library: LibraryListResponse): string {
 
 function documentCountSummary(documentCount: number): string {
   return `${documentCount.toLocaleString('de-DE')} ${documentCount === 1 ? 'Dokument' : 'Dokumente'}`
-}
-
-/** Mockup 1d's small meta badge - neutral for the Verteilungsstufe, accent-blue for the role. */
-function MetaBadge({ children, accent = false }: { children: string; accent?: boolean }) {
-  return (
-    <Typography
-      component="span"
-      sx={{
-        fontSize: 10.5,
-        color: accent ? blue[700] : 'text.secondary',
-        border: 1,
-        borderColor: accent ? blue[300] : 'divider',
-        borderRadius: '4px',
-        px: 1,
-        py: 0.25,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {children}
-    </Typography>
-  )
 }
 
 /** The Stand cell: a live run with mockup 1d's mini progress bar; a last-indexed date needs a

@@ -45,9 +45,9 @@ export default class ErrorBoundary extends Component<Props, State> {
             p: 4,
           }}
         >
-          <ErrorOutlineIcon sx={{ fontSize: 64 }} color="error" />
-          <Typography variant="h5">Etwas ist schiefgelaufen</Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center' }}>
+          <ErrorOutlineIcon sx={{ fontSize: 48 }} color="error" />
+          <Typography sx={{ fontSize: 26, fontWeight: 600 }}>Etwas ist schiefgelaufen</Typography>
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', textAlign: 'center' }}>
             Ein unerwarteter Fehler ist aufgetreten. Bitte laden Sie die Seite neu.
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
@@ -68,8 +68,10 @@ export default class ErrorBoundary extends Component<Props, State> {
                 p: 2,
                 maxWidth: 600,
                 width: '100%',
-                bgcolor: 'grey.100',
-                borderRadius: 1,
+                bgcolor: 'action.hover',
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: '10px',
                 overflow: 'auto',
               }}
             >
@@ -83,7 +85,8 @@ export default class ErrorBoundary extends Component<Props, State> {
                   sx={{
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-word',
-                    fontSize: '0.75rem',
+                    fontFamily: 'monospace',
+                    fontSize: 11.5,
                     color: 'text.secondary',
                     m: 0,
                   }}

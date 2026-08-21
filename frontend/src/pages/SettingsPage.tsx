@@ -1,23 +1,27 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import Paper from '@mui/material/Paper'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
 import LightModeIcon from '@mui/icons-material/LightMode'
 import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
 import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
+import { Link as RouterLink } from 'react-router'
+import { useAuthStore } from '../stores/authStore'
 import { useUiStore } from '../stores/uiStore'
 import type { ThemeMode } from '../stores/uiStore'
 import { useBrandingStore } from '../stores/brandingStore'
 import { resolveThemeMode } from '../theme/colorScheme'
 import PageHeading from '../components/a11y/PageHeading'
+import SectionHead from '../components/SectionHead'
 
 export default function SettingsPage() {
   const themeMode = useUiStore((s) => s.themeMode)
   const setThemeMode = useUiStore((s) => s.setThemeMode)
   const clearThemeMode = useUiStore((s) => s.clearThemeMode)
   const operatorDefault = useBrandingStore((s) => s.branding.defaultColorScheme)
+  const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
 
   // The toggle shows what actually applies, which for someone who has never chosen is the
   // operator's default - not an empty selection they would have to interpret (#583).
@@ -25,14 +29,17 @@ export default function SettingsPage() {
   const effectiveMode = resolveThemeMode(themeMode, operatorDefault)
 
   return (
-    <Box sx={{ flexGrow: 1, p: 4, maxWidth: 600 }}>
-      <PageHeading title="Einstellungen" gutterBottom />
+    <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
+      <Box sx={{ maxWidth: 640 }}>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+          <PageHeading title="Einstellungen" />
+          <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+            gelten nur für Ihr Konto
+          </Typography>
+        </Box>
 
-      <Paper variant="outlined" sx={{ p: 3, mt: 2 }}>
-        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
-          Darstellung
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <SectionHead>Darstellung</SectionHead>
+        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2 }}>
           {hasOwnChoice
             ? 'Ihre eigene Wahl gilt und bleibt von der Vorgabe Ihres Hauses unberührt.'
             : 'Aktuell gilt die Vorgabe Ihres Hauses. Sobald Sie hier wählen, gilt Ihre Wahl.'}
@@ -65,7 +72,25 @@ export default function SettingsPage() {
             </Button>
           </Box>
         )}
-      </Paper>
+
+        <Box sx={{ mt: 5 }}>
+          <SectionHead>Erscheinungsbild des Hauses</SectionHead>
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            Logo, Produktname, Akzentfarbe und das Standard-Farbschema stellt Ihr Haus zentral ein{' '}
+            {isSystemAdmin ? (
+              <>
+                — als Systemadministration unter{' '}
+                <Link component={RouterLink} to="/admin/branding">
+                  Branding
+                </Link>
+                .
+              </>
+            ) : (
+              '— wenden Sie sich dafür an Ihre Systemadministration.'
+            )}
+          </Typography>
+        </Box>
+      </Box>
     </Box>
   )
 }
