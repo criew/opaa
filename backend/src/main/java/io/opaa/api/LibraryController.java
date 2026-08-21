@@ -13,6 +13,7 @@ import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
+import io.opaa.api.dto.LibrarySpaceAssociationResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
@@ -29,6 +30,7 @@ import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
 import io.opaa.library.SourceConnectionTestService;
+import io.opaa.space.SpaceAssetAssociationService;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
@@ -65,6 +67,7 @@ public class LibraryController {
   private final DocumentIndexingService indexingService;
   private final UserService userService;
   private final SourceConnectionTestService sourceConnectionTestService;
+  private final SpaceAssetAssociationService associationService;
 
   public LibraryController(
       KnowledgeLibraryService libraryService,
@@ -72,13 +75,23 @@ public class LibraryController {
       LibraryDocumentService documentService,
       DocumentIndexingService indexingService,
       UserService userService,
-      SourceConnectionTestService sourceConnectionTestService) {
+      SourceConnectionTestService sourceConnectionTestService,
+      SpaceAssetAssociationService associationService) {
     this.libraryService = libraryService;
     this.grantService = grantService;
     this.documentService = documentService;
     this.indexingService = indexingService;
     this.userService = userService;
     this.sourceConnectionTestService = sourceConnectionTestService;
+    this.associationService = associationService;
+  }
+
+  @GetMapping("/{libraryId}/spaces")
+  public List<LibrarySpaceAssociationResponse> listSpaceAssociations(
+      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    return associationService.listForLibrary(
+        libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
   }
 
   @PostMapping

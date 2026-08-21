@@ -1,6 +1,8 @@
 package io.opaa.api;
 
 import io.opaa.api.dto.SpaceAddMemberRequest;
+import io.opaa.api.dto.SpaceLibraryAssociationRequest;
+import io.opaa.api.dto.SpaceLibraryAssociationResponse;
 import io.opaa.api.dto.SpaceListResponse;
 import io.opaa.api.dto.SpaceMemberResponse;
 import io.opaa.api.dto.SpaceRequest;
@@ -11,6 +13,7 @@ import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.space.SpaceService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -36,10 +39,15 @@ public class SpaceController {
   private static final String UNKNOWN_ISSUER = "unknown";
 
   private final SpaceService spaceService;
+  private final SpaceAssetAssociationService associationService;
   private final UserService userService;
 
-  public SpaceController(SpaceService spaceService, UserService userService) {
+  public SpaceController(
+      SpaceService spaceService,
+      SpaceAssetAssociationService associationService,
+      UserService userService) {
     this.spaceService = spaceService;
+    this.associationService = associationService;
     this.userService = userService;
   }
 
@@ -47,10 +55,54 @@ public class SpaceController {
   public ResponseEntity<SpaceResponse> createSpace(
       @Valid @RequestBody SpaceRequest request, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    SpaceResponse response =
-        spaceService.createSpace(
-            request, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    boolean systemAdmin = currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN;
+    SpaceResponse response = spaceService.createSpace(request, currentUser.getId(), systemAdmin);
+    // #686: the space assistant's data-source step submits libraryIds alongside the space itself
+    // - associated the same way the dedicated POST endpoint below would, right after creation, so
+    // the creator (an ADMIN member of their own new space, see
+    // SpaceService#appendInitialMemberships)
+    // qualifies as CURATOR-or-above for each one.
+    if (request.getLibraryIds() != null) {
+      for (UUID libraryId : request.getLibraryIds()) {
+        associationService.associate(response.getId(), libraryId, currentUser.getId(), systemAdmin);
+      }
+    }
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  @GetMapping("/{spaceId}/libraries")
+  public List<SpaceLibraryAssociationResponse> listLibraryAssociations(
+      @PathVariable UUID spaceId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    return associationService.listForSpace(
+        spaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+  }
+
+  @PostMapping("/{spaceId}/libraries")
+  public ResponseEntity<SpaceLibraryAssociationResponse> associateLibrary(
+      @PathVariable UUID spaceId,
+      @Valid @RequestBody SpaceLibraryAssociationRequest request,
+      @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    SpaceLibraryAssociationResponse response =
+        associationService.associate(
+            spaceId,
+            request.getLibraryId(),
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  @DeleteMapping("/{spaceId}/libraries/{libraryId}")
+  public ResponseEntity<Void> detachLibrary(
+      @PathVariable UUID spaceId, @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    associationService.detach(
+        spaceId,
+        libraryId,
+        currentUser.getId(),
+        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return ResponseEntity.noContent().build();
   }
 
   @GetMapping

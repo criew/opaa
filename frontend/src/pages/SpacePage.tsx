@@ -42,9 +42,26 @@ export default function SpacePage() {
   const isLoadingDetails = useSpaceStore((s) => s.isLoadingDetails)
   const error = useSpaceStore((s) => s.error)
   const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
+  const libraryAssociations = useSpaceStore((s) => s.libraryAssociations)
+  const isLoadingLibraryAssociations = useSpaceStore((s) => s.isLoadingLibraryAssociations)
+  const loadLibraryAssociations = useSpaceStore((s) => s.loadLibraryAssociations)
 
   const [membersExpanded, setMembersExpanded] = useState(true)
   const [chatsExpanded, setChatsExpanded] = useState(true)
+  const [librariesExpanded, setLibrariesExpanded] = useState(true)
+  // #203 acceptance criterion "die UI erklärt einmal, sichtbar, warum die Liste je Mitglied
+  // unterschiedlich sein kann" - a dismissible hint, shown once per browser rather than every
+  // visit, since a permanent warning banner on something that is by design (not an error) would
+  // itself become the "warning sign attached to nearly every space" the spec explicitly rejects
+  // for the mixed-audience case (docs/features/spaces-and-assets.md#geprüfte-und-verworfene-
+  // alternativen).
+  const [libraryHintDismissed, setLibraryHintDismissed] = useState(
+    () => window.localStorage.getItem('opaa.space-library-hint-dismissed') === 'true',
+  )
+  function dismissLibraryHint() {
+    window.localStorage.setItem('opaa.space-library-hint-dismissed', 'true')
+    setLibraryHintDismissed(true)
+  }
 
   useEffect(() => {
     if (spaces.length === 0) {
@@ -70,6 +87,12 @@ export default function SpacePage() {
       void loadMembers(space.id)
     }
   }, [loadMembers, space, isOwner])
+
+  useEffect(() => {
+    if (space) {
+      void loadLibraryAssociations(space.id)
+    }
+  }, [loadLibraryAssociations, space])
 
   if (isLoadingDetails && !space) {
     return (
@@ -183,6 +206,48 @@ export default function SpacePage() {
                   .map(([role, count]) => (
                     <Chip key={role} label={`${spaceRoleLabel(role)}: ${count}`} size="small" />
                   ))}
+              </Stack>
+            )}
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion
+          expanded={librariesExpanded}
+          onChange={(_, expanded) => setLibrariesExpanded(expanded)}
+          variant="outlined"
+          disableGutters
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
+            <Typography component="h2" variant="h6">
+              Datenquellen
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
+            <Divider sx={{ mb: 2 }} />
+            {!libraryHintDismissed && (
+              <Alert severity="info" sx={{ mb: 2 }} onClose={dismissLibraryHint}>
+                Diese Liste zeigt nur die Bibliotheken, auf die Sie selbst Zugriff haben. Eine
+                Zuordnung gewährt keinen zusätzlichen Zugriff — andere Mitglieder können deshalb
+                eine andere Liste sehen als Sie.
+              </Alert>
+            )}
+            {isLoadingLibraryAssociations ? (
+              <Typography color="text.secondary">Datenquellen werden geladen …</Typography>
+            ) : libraryAssociations.length === 0 ? (
+              <Typography color="text.secondary">
+                Diesem Space sind keine Bibliotheken zugeordnet — die Suche greift auf alle für Sie
+                lesbaren Bibliotheken zurück.
+              </Typography>
+            ) : (
+              <Stack spacing={1}>
+                {libraryAssociations.map((association) => (
+                  <Box
+                    key={association.libraryId}
+                    sx={{ display: 'flex', justifyContent: 'space-between' }}
+                  >
+                    <Typography>{association.libraryName}</Typography>
+                  </Box>
+                ))}
               </Stack>
             )}
           </AccordionDetails>

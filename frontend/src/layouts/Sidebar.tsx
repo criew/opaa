@@ -25,6 +25,7 @@ import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore'
 import { NavLink, useLocation, useNavigate, useParams } from 'react-router'
 import BrandMark from '../components/BrandMark'
 import ChatList from '../components/chat/ChatList'
+import NotificationBell from '../components/notifications/NotificationBell'
 import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../stores/authStore'
 import { useBrandingStore } from '../stores/brandingStore'
@@ -109,8 +110,18 @@ export default function Sidebar() {
           borderColor: 'divider',
         }}
       >
-        <Box sx={{ px: 2.5, pt: 2.5, pb: 2 }}>
+        <Box
+          sx={{
+            px: 2.5,
+            pt: 2.5,
+            pb: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
           <BrandMark variant="h5" />
+          <NotificationBell />
         </Box>
 
         <Box sx={{ px: 2, pb: 1.5 }}>

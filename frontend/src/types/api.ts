@@ -22,6 +22,14 @@ export type SpaceResponse = components['schemas']['SpaceResponse']
 export type SpaceAddMemberRequest = components['schemas']['SpaceAddMemberRequest']
 export type SpaceRoleUpdateRequest = components['schemas']['SpaceRoleUpdateRequest']
 export type SpaceTransferOwnershipRequest = components['schemas']['SpaceTransferOwnershipRequest']
+export type SpaceLibraryAssociationRequest = components['schemas']['SpaceLibraryAssociationRequest']
+export type SpaceLibraryAssociationResponse =
+  components['schemas']['SpaceLibraryAssociationResponse']
+export type LibrarySpaceAssociationResponse =
+  components['schemas']['LibrarySpaceAssociationResponse']
+
+export type NotificationType = components['schemas']['NotificationType']
+export type NotificationResponse = components['schemas']['NotificationResponse']
 
 type GeneratedSourceReference = components['schemas']['SourceReference']
 export type SourceReference = Omit<GeneratedSourceReference, 'indexedAt'> & {

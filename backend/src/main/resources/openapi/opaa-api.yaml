@@ -1291,6 +1291,178 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/libraries/{libraryId}/spaces:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listLibrarySpaceAssociations
+      tags: [library, space]
+      summary: >
+        Every space this library is associated with (MANAGER role or above on the library
+        required) - the owner-facing "bereitgestellt in" view (#203). Unlike GET
+        /v1/spaces/{spaceId}/libraries, this is never filtered - the owner sees every association,
+        regardless of whether they themselves are a member of the space.
+      description: >
+        docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
+        Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen."
+        narrowerReaderCircle on each entry is the same "not every member can already read this"
+        signal that triggers the owner notification when the association was created (#203) -
+        recomputed live here, not stored, since space membership and library grants both change
+        independently afterwards.
+      responses:
+        "200":
+          description: Every association of this library, across all spaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LibrarySpaceAssociationResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/spaces/{spaceId}/libraries:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listSpaceLibraryAssociations
+      tags: [space, library]
+      summary: >
+        The libraries associated with this space, filtered to what the calling member may
+        themselves read (#203 acceptance criterion "two members with different grants see
+        different asset lists"). Requires space membership.
+      description: >
+        docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren. An association
+        grants no access by itself - a library listed here only appears for a caller who already
+        has at least VIEWER on it through their own grants, a group grant, or organization-wide
+        visibility.
+      responses:
+        "200":
+          description: Associated libraries readable by the caller
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpaceLibraryAssociationResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: associateSpaceLibrary
+      tags: [space, library]
+      summary: >
+        Associates a library with this space (CURATOR role or above on the space required). The
+        caller must themselves have at least VIEWER on the library - a CURATOR may only associate
+        an asset they can already access themselves
+        (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren). Idempotent: an
+        already-associated library returns its existing association unchanged.
+      description: >
+        If the space has any member without read access to the library, the library owner is
+        actively notified (#203, "Benachrichtigung statt Zustimmung") - no consent required, the
+        association takes effect immediately regardless.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceLibraryAssociationRequest"
+      responses:
+        "201":
+          description: Association created (or already existed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceLibraryAssociationResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/spaces/{spaceId}/libraries/{libraryId}:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: detachSpaceLibrary
+      tags: [space, library]
+      summary: >
+        Removes the association (not the library itself). Allowed for a CURATOR or above on the
+        space, or - unilaterally, regardless of their own space membership - for a MANAGER or
+        above on the library itself
+        (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
+        Assets ... kann jede davon jederzeit einseitig lösen").
+      responses:
+        "204":
+          description: Association removed (or did not exist)
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/notifications:
+    get:
+      operationId: listNotifications
+      tags: [notification]
+      summary: The calling user's own notifications (#203), newest first.
+      responses:
+        "200":
+          description: The caller's notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationResponse"
+
+  /api/v1/notifications/{notificationId}/read:
+    parameters:
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: markNotificationRead
+      tags: [notification]
+      summary: Marks one of the caller's own notifications as read. Idempotent.
+      responses:
+        "204":
+          description: Marked read (or already was)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   # #393: exactly four revision access paths, each with a mandatory time range and a bounded
   # result set - see docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
   # There is deliberately no `actor`/`actorRef` query parameter on any of them and no `sort`
@@ -2071,6 +2243,19 @@ components:
           nullable: true
           items:
             $ref: "#/components/schemas/SpaceMemberRequest"
+        libraryIds:
+          type: array
+          nullable: true
+          description: >
+            Libraries to associate with the space on creation (#203/#686) - each must be at least
+            readable (VIEWER or above) by the creator, exactly the same rule the dedicated POST
+            /v1/spaces/{spaceId}/libraries endpoint enforces afterwards. Optional: a space created
+            without this is not narrower for search, it simply has no associations yet (the
+            permanent transition rule in docs/features/spaces-and-assets.md#suchbereich-je-chatart
+            - "ein Space ohne Assoziationen verengt nie").
+          items:
+            type: string
+            format: uuid
 
     SpaceUpdateRequest:
       type: object
@@ -2235,6 +2420,111 @@ components:
         userId:
           type: string
           format: uuid
+
+    SpaceLibraryAssociationRequest:
+      type: object
+      required: [libraryId]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+
+    SpaceLibraryAssociationResponse:
+      type: object
+      required: [libraryId, libraryName, createdByUserId, createdAt]
+      description: >
+        One space's view of one associated library - see
+        docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren. Only returned for a
+        library the caller may themselves read (#203 acceptance criterion "two members with
+        different grants see different asset lists") - GET
+        /v1/spaces/{spaceId}/libraries never lists a library the caller cannot access.
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+          example: Rechtsquellen Soziales
+        createdByUserId:
+          type: string
+          format: uuid
+        createdByDisplayName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    LibrarySpaceAssociationResponse:
+      type: object
+      required: [spaceId, spaceName, createdByUserId, createdAt, narrowerReaderCircle]
+      description: >
+        One library's view of one space it is associated with - the owner-facing "bereitgestellt
+        in" list (GET /v1/libraries/{libraryId}/spaces), never filtered by the caller's own space
+        membership.
+      properties:
+        spaceId:
+          type: string
+          format: uuid
+        spaceName:
+          type: string
+          example: Team Leistungsgewährung
+        createdByUserId:
+          type: string
+          format: uuid
+        createdByDisplayName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        narrowerReaderCircle:
+          type: boolean
+          description: >
+            True if at least one member of this space cannot themselves read the library - the
+            same condition that triggered the owner notification when the association was
+            created. Recomputed at read time, not stored, since both space membership and library
+            grants change independently afterwards.
+
+    NotificationType:
+      type: string
+      description: >
+        The closed vocabulary of a notification's type - see
+        io.opaa.notification.NotificationType, kept in lockstep with the database check
+        constraint chk_notifications_type (migration 052).
+      enum: [LIBRARY_ASSOCIATED_TO_MIXED_SPACE]
+      example: LIBRARY_ASSOCIATED_TO_MIXED_SPACE
+
+    NotificationResponse:
+      type: object
+      required: [id, type, title, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/NotificationType"
+        objectType:
+          allOf:
+            - $ref: "#/components/schemas/AuditObjectType"
+          nullable: true
+        objectId:
+          type: string
+          format: uuid
+          nullable: true
+        title:
+          type: string
+          example: Ihre Bibliothek wurde in einem Space bereitgestellt
+        body:
+          type: string
+          nullable: true
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
 
     ChatStatus:
       type: string

@@ -1,3 +1,19 @@
+# Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
+# changeSet 050 - i.e. the schema exactly as it existed immediately before migrations 051 and 052.
+#
+# Unlike test-master-through-046.yaml, migrations 051 (space_asset_associations) and 052
+# (notifications) both need uk_users_id_organization, which only exists from migration 047 onward
+# (047-add-users-id-organization-unique-index) - notifications.recipient_user_id is a composite
+# foreign key against users(id, organization_id), the same pattern every organization-scoped table
+# has used since migrations 046-050. Stopping at 046 like the other fixtures would fail with
+# "there is no unique constraint matching given keys for referenced table users".
+#
+# Used by:
+# - Migration051CreateSpaceAssetAssociationsTest, to build a realistic pre-migration database (via
+#   the real, versioned changelog files, not a hand-rolled schema) and then apply 051 in isolation.
+# - Migration052CreateNotificationsTest, likewise, applying 052 in isolation.
+#
+# See test-master-through-046.yaml for the pattern this fixture follows.
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-enable-pgvector-extension.yaml
@@ -99,7 +115,3 @@ databaseChangeLog:
       file: db/changelog/changes/049-bind-indexing-jobs-to-organization.yaml
   - include:
       file: db/changelog/changes/050-drop-redundant-space-memberships-space-fk.yaml
-  - include:
-      file: db/changelog/changes/051-create-space-asset-associations.yaml
-  - include:
-      file: db/changelog/changes/052-create-notifications.yaml

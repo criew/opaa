@@ -126,6 +126,31 @@ describe('api service', () => {
         initialMembers: [],
       })
     })
+
+    it('sends libraryIds when provided (#686)', async () => {
+      let capturedBody: unknown = null
+      server.use(
+        http.post('/api/v1/spaces', async ({ request }) => {
+          capturedBody = await request.json()
+          return HttpResponse.json({
+            id: 'space-new',
+            name: 'New Space',
+            isDefault: false,
+            visibility: 'PRIVATE',
+            ownerId: 'u1',
+            memberCount: 1,
+            roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
+            members: [],
+            createdAt: '2026-03-01T10:00:00Z',
+            updatedAt: '2026-03-01T10:00:00Z',
+          })
+        }),
+      )
+
+      await createSpace('New Space', 'A description', 'PRIVATE', ['lib-1', 'lib-2'])
+
+      expect(capturedBody).toMatchObject({ libraryIds: ['lib-1', 'lib-2'] })
+    })
   })
 
   describe('normalizeError', () => {

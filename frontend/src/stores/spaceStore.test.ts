@@ -83,7 +83,21 @@ vi.mock('../services/api', () => ({
   ]),
   createSpace: (...args: unknown[]) => mockCreateSpace(...args),
   archiveSpace: (...args: [string]) => mockArchiveSpace(...args),
+  getSpaceLibraryAssociations: (...args: unknown[]) => mockGetSpaceLibraryAssociations(...args),
+  associateSpaceLibrary: (...args: unknown[]) => mockAssociateSpaceLibrary(...args),
+  detachSpaceLibrary: (...args: unknown[]) => mockDetachSpaceLibrary(...args),
 }))
+
+const mockGetSpaceLibraryAssociations = vi.fn(async () => [
+  {
+    libraryId: 'lib-1',
+    libraryName: 'Rechtsquellen',
+    createdByUserId: 'u1',
+    createdAt: '2026-03-01T10:00:00Z',
+  },
+])
+const mockAssociateSpaceLibrary = vi.fn(async () => ({}))
+const mockDetachSpaceLibrary = vi.fn(async () => {})
 
 describe('spaceStore', () => {
   beforeEach(() => {
@@ -122,8 +136,64 @@ describe('spaceStore', () => {
 
     const id = await useSpaceStore.getState().createNewSpace('New Space', 'desc', 'DISCOVERABLE')
     expect(id).toBe('space-new')
-    expect(mockCreateSpace).toHaveBeenCalledWith('New Space', 'desc', 'DISCOVERABLE')
+    expect(mockCreateSpace).toHaveBeenCalledWith('New Space', 'desc', 'DISCOVERABLE', undefined)
     expect(useSpaceStore.getState().selectedSpaceId).toBe('space-new')
+  })
+
+  it('passes libraryIds through to createSpace when provided (#686)', async () => {
+    mockCreateSpace.mockResolvedValueOnce({
+      id: 'space-new',
+      name: 'New Space',
+      description: 'desc',
+      isDefault: false,
+      visibility: 'PRIVATE',
+      ownerId: 'u1',
+      memberCount: 1,
+      userRole: 'ADMIN',
+      roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
+      members: [{ userId: 'u1', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' }],
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    })
+
+    await useSpaceStore
+      .getState()
+      .createNewSpace('New Space', 'desc', 'DISCOVERABLE', ['lib-1', 'lib-2'])
+
+    expect(mockCreateSpace).toHaveBeenCalledWith('New Space', 'desc', 'DISCOVERABLE', [
+      'lib-1',
+      'lib-2',
+    ])
+  })
+
+  // #203: library associations - loaded on demand, not part of selectSpace, since only pages that
+  // actually show them (SpacePage, SpaceManagementPage) need the extra request.
+  it('loads library associations for a space', async () => {
+    await useSpaceStore.getState().loadLibraryAssociations('space-project')
+
+    expect(mockGetSpaceLibraryAssociations).toHaveBeenCalledWith('space-project')
+    expect(useSpaceStore.getState().libraryAssociations).toEqual([
+      {
+        libraryId: 'lib-1',
+        libraryName: 'Rechtsquellen',
+        createdByUserId: 'u1',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+    ])
+  })
+
+  it('associates a library and reloads the association list', async () => {
+    await useSpaceStore.getState().associateLibrary('space-project', 'lib-2')
+
+    expect(mockAssociateSpaceLibrary).toHaveBeenCalledWith('space-project', 'lib-2')
+    expect(mockGetSpaceLibraryAssociations).toHaveBeenCalledWith('space-project')
+  })
+
+  it('detaches a library and reloads the association list', async () => {
+    await useSpaceStore.getState().detachLibrary('space-project', 'lib-1')
+
+    expect(mockDetachSpaceLibrary).toHaveBeenCalledWith('space-project', 'lib-1')
+    expect(mockGetSpaceLibraryAssociations).toHaveBeenCalledWith('space-project')
   })
 
   // #543: archiveSelectedSpace is the way out of a space fk_chats_space makes permanently

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type {
+  SpaceLibraryAssociationResponse,
   SpaceListResponse,
   SpaceMemberResponse,
   SpaceRole,
@@ -9,9 +10,12 @@ import type {
 import {
   addSpaceMember,
   archiveSpace,
+  associateSpaceLibrary,
   createSpace,
   deleteSpace,
+  detachSpaceLibrary,
   getSpace,
+  getSpaceLibraryAssociations,
   getSpaces,
   listSpaceMembers,
   removeSpaceMember,
@@ -32,6 +36,10 @@ interface SpaceState {
   // reachable for ADMIN, owner and system admins (a 403 for anyone else leaves members empty).
   members: SpaceMemberResponse[]
   isLoadingMembers: boolean
+  // #203: the space's associated libraries, already filtered server-side to what the caller may
+  // themselves read - two members of the same space can legitimately see different lists here.
+  libraryAssociations: SpaceLibraryAssociationResponse[]
+  isLoadingLibraryAssociations: boolean
   reset: () => void
   loadSpaces: () => Promise<void>
   selectSpace: (spaceId: string) => Promise<void>
@@ -52,7 +60,11 @@ interface SpaceState {
     name: string,
     description: string,
     visibility?: SpaceVisibility,
+    libraryIds?: string[],
   ) => Promise<string>
+  loadLibraryAssociations: (spaceId: string) => Promise<void>
+  associateLibrary: (spaceId: string, libraryId: string) => Promise<void>
+  detachLibrary: (spaceId: string, libraryId: string) => Promise<void>
 }
 
 function sortSpaces(list: SpaceListResponse[]): SpaceListResponse[] {
@@ -72,6 +84,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   error: null,
   members: [],
   isLoadingMembers: false,
+  libraryAssociations: [],
+  isLoadingLibraryAssociations: false,
 
   reset: () =>
     set({
@@ -83,6 +97,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       error: null,
       members: [],
       isLoadingMembers: false,
+      libraryAssociations: [],
+      isLoadingLibraryAssociations: false,
     }),
 
   loadSpaces: async () => {
@@ -113,10 +129,16 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   selectSpace: async (spaceId: string) => {
     const sessionEpoch = currentSessionEpoch()
-    // #144: members belongs to whichever space was selected before - clearing it here prevents it
-    // from briefly appearing to belong to the newly selected space while the new list (or a 403
-    // for a non-admin) is still in flight.
-    set({ selectedSpaceId: spaceId, isLoadingDetails: true, error: null, members: [] })
+    // #144/#203: members and libraryAssociations belong to whichever space was selected before -
+    // clearing them here prevents either from briefly appearing to belong to the newly selected
+    // space while the new lists (or a 403 for a non-admin) are still in flight.
+    set({
+      selectedSpaceId: spaceId,
+      isLoadingDetails: true,
+      error: null,
+      members: [],
+      libraryAssociations: [],
+    })
     try {
       const space = await getSpace(spaceId)
       if (isStaleSessionEpoch(sessionEpoch)) return
@@ -204,10 +226,35 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  createNewSpace: async (name, description, visibility) => {
-    const space = await createSpace(name, description, visibility)
+  createNewSpace: async (name, description, visibility, libraryIds) => {
+    const space = await createSpace(name, description, visibility, libraryIds)
     await get().loadSpaces()
     await get().selectSpace(space.id)
     return space.id
+  },
+
+  loadLibraryAssociations: async (spaceId) => {
+    const sessionEpoch = currentSessionEpoch()
+    set({ isLoadingLibraryAssociations: true, error: null })
+    try {
+      const libraryAssociations = await getSpaceLibraryAssociations(spaceId)
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      set({ libraryAssociations, isLoadingLibraryAssociations: false })
+    } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      const message =
+        err instanceof Error ? err.message : 'Zugeordnete Bibliotheken konnten nicht geladen werden'
+      set({ error: message, libraryAssociations: [], isLoadingLibraryAssociations: false })
+    }
+  },
+
+  associateLibrary: async (spaceId, libraryId) => {
+    await associateSpaceLibrary(spaceId, libraryId)
+    await get().loadLibraryAssociations(spaceId)
+  },
+
+  detachLibrary: async (spaceId, libraryId) => {
+    await detachSpaceLibrary(spaceId, libraryId)
+    await get().loadLibraryAssociations(spaceId)
   },
 }))

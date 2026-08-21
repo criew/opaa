@@ -34,8 +34,10 @@ import type {
   DocumentSourceType,
   IndexingRunResponse,
   LibraryDocumentResponse,
+  LibrarySpaceAssociationResponse,
   LibraryVisibility,
 } from '../types/api'
+import { detachSpaceLibrary, getLibrarySpaceAssociations } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { DEFAULT_PAGE_SIZE, useDocumentStore } from '../stores/documentStore'
@@ -352,6 +354,8 @@ export default function LibraryDetailPage() {
           )}
         </Stack>
       </Paper>
+
+      {canEdit && <LibrarySpacesSection key={libraryId} libraryId={libraryId} />}
 
       {details && details.sourceType !== 'UPLOAD' && (
         <LibraryIndexingSection
@@ -722,6 +726,96 @@ function LibraryDocumentsSection({
             // aria-label string is German).
             aria-label="Dokumentenliste blättern"
           />
+        </Stack>
+      )}
+    </Paper>
+  )
+}
+
+interface LibrarySpacesSectionProps {
+  libraryId: string
+}
+
+// #203: the owner-facing "bereitgestellt in" view - every space this library is associated with,
+// never filtered by the caller's own space membership (docs/features/spaces-and-assets.md#assets-
+// in-einen-space-assoziieren: "Der Eigentümer des Assets sieht alle Assoziationen und kann jede
+// davon jederzeit einseitig lösen"). Only rendered for MANAGER/OWNER (see canEdit above), the same
+// threshold GET /v1/libraries/{libraryId}/spaces itself requires.
+function LibrarySpacesSection({ libraryId }: LibrarySpacesSectionProps) {
+  const [associations, setAssociations] = useState<LibrarySpaceAssociationResponse[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getLibrarySpaceAssociations(libraryId)
+      .then((data) => {
+        if (!cancelled) setAssociations(data)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Laden fehlgeschlagen')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [libraryId])
+
+  async function handleDetach(spaceId: string, spaceName: string) {
+    if (!window.confirm(`Bereitstellung im Space "${spaceName}" lösen?`)) return
+    setError(null)
+    try {
+      await detachSpaceLibrary(spaceId, libraryId)
+      setAssociations((prev) => prev?.filter((a) => a.spaceId !== spaceId) ?? null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Lösen fehlgeschlagen')
+    }
+  }
+
+  return (
+    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+      <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
+        Bereitgestellt in
+      </Typography>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      {associations === null ? (
+        <Typography color="text.secondary">Wird geladen …</Typography>
+      ) : associations.length === 0 ? (
+        <Typography color="text.secondary">
+          Diese Bibliothek ist derzeit keinem Space zugeordnet.
+        </Typography>
+      ) : (
+        <Stack spacing={1}>
+          {associations.map((association) => (
+            <Box
+              key={association.spaceId}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1.5,
+                flexWrap: 'wrap',
+              }}
+            >
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Typography>{association.spaceName}</Typography>
+                {association.narrowerReaderCircle && (
+                  <Tooltip title="Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf diese Bibliothek.">
+                    <Chip label="nicht alle Mitglieder lesen" size="small" color="warning" />
+                  </Tooltip>
+                )}
+              </Stack>
+              <Button
+                color="error"
+                size="small"
+                onClick={() => void handleDetach(association.spaceId, association.spaceName)}
+              >
+                Lösen
+              </Button>
+            </Box>
+          ))}
         </Stack>
       )}
     </Paper>
