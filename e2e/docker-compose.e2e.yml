@@ -110,11 +110,14 @@ services:
   # Since #547, this same docroot also backs the HTTP_DIRECTORY connection-test happy path (#514,
   # test(e2e) knowledge-library-nacharbeiten.spec.ts) via .../webverzeichnis/, a hand-crafted
   # directory-listing page - see that file's own docroot for why a real autoindex response from
-  # this image's stock config would not do.
+  # this image's stock config would not do. Since #233, the docroot lives under
+  # demo/seed/e2e-data/rss-feed/htdocs/, not e2e/fixtures/ - this content is what specs point
+  # library-creation UI flows at (#471, #514), the same "one place owns this suite's frozen data"
+  # move that also relocated e2e/fixtures/test-documents/ (see demo/seed/profiles.py).
   rss-feed:
     image: httpd:2.4-alpine
     volumes:
-      - ./e2e/fixtures/rss-feed/htdocs:/usr/local/apache2/htdocs:ro
+      - ./demo/seed/e2e-data/rss-feed/htdocs:/usr/local/apache2/htdocs:ro
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/feed-ok.xml"]
       interval: 2s

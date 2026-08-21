@@ -255,7 +255,7 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
 // renders (no "IndexOptions HTMLTable" needed any more), so .../anlagen/ would work here too - but
 // its exact rendering depends on the base image's autoindex defaults, which this suite does not
 // control. .../webverzeichnis/ instead serves a hand-crafted static index.html mimicking the
-// HTMLTable layout deliberately (see e2e/fixtures/rss-feed/htdocs/webverzeichnis/index.html for
+// HTMLTable layout deliberately (see demo/seed/e2e-data/rss-feed/htdocs/webverzeichnis/index.html for
 // why), with exactly one supported document and a count this test can assert on deterministically.
 //
 // Error path: a closed port on a hostname the backend container can resolve instantly via Docker's

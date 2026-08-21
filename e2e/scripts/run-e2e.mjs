@@ -95,6 +95,32 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   })
 }
 
+// Fills the freshly started stack with the e2e data profile (docs/features/demo-instance.md,
+// "Installation und Seed" - Issue #233): the same seed.py the "demo" Compose profile uses, run
+// here against the E2E stack's own dev-auth backend/port instead of Keycloak. This is the only
+// remaining way this suite gets pre-existing content into a fresh instance - e2e/fixtures/rss-feed/
+// and e2e/fixtures/test-documents/ used to be a second, independent one (see demo/seed/profiles.py
+// and this suite's own spec files for where their content lives now, under demo/seed/e2e-data/).
+// "-m pip install" first, not a bare "pip": matches how CI's own python -m pip invocations resolve
+// against whatever interpreter PATH actually picks, without assuming a "pip"/"pip3" script is on
+// PATH too (not guaranteed on every contributor machine, see e2e/README.md).
+const pythonCmd = isWindows ? 'python' : 'python3'
+
+function runSeed() {
+  const installStatus = run(pythonCmd, ['-m', 'pip', 'install', '-q', '-r', 'demo/seed/requirements.txt'])
+  if (installStatus !== 0) {
+    console.error('pip install for demo/seed failed')
+    return installStatus
+  }
+  return run(pythonCmd, [
+    'demo/seed/seed.py',
+    '--profile',
+    'e2e',
+    '--base-url',
+    `http://localhost:${backendPort}/api`,
+  ])
+}
+
 async function waitUntilReady(timeoutMs) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -139,6 +165,16 @@ async function main() {
     dumpLogs()
     teardown()
     process.exitCode = 1
+    return
+  }
+
+  console.log('> Seeding e2e data profile (demo/seed/seed.py --profile e2e, Issue #233)')
+  const seedStatus = runSeed()
+  if (seedStatus !== 0) {
+    console.error('Seed run failed')
+    dumpLogs()
+    teardown()
+    process.exitCode = seedStatus
     return
   }
 

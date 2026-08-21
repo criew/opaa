@@ -16,14 +16,20 @@ import type { Page } from '@playwright/test'
 // Deterministic, tiny, and part of the repo (see AGENTS.md "Reproduktionsnachweis" context on
 // preferring committed fixtures over ad-hoc generated data) - not one of
 // backend/src/test/resources/test-documents/, which is Java test scope, not reachable from this
-// suite's own npm project. Lives under fixtures/test-documents/, not fixtures/documents/: the
+// suite's own npm project. Since #233, this suite's own frozen upload fixtures live under
+// demo/seed/e2e-data/test-documents/, next to demo/seed/profiles.py's E2E_PROFILE that governs
+// the same data profile - not under e2e/fixtures/ any more, which used to be a second, independent
+// way to fill an instance (see docs/features/demo-instance.md, "Installation und Seed"). The
 // repo's root .gitignore has a blanket `documents/` rule (for the bind-mounted, machine-local
-// backend/src/main/resources demo corpus path), which would silently swallow anything under a
-// plain "documents" directory anywhere in the tree.
+// backend/src/main/resources demo corpus path); "test-documents" does not match it, but stays
+// named that way for continuity with the file names below.
 const TEST_DOCUMENT_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
-  'fixtures',
+  '..',
+  'demo',
+  'seed',
+  'e2e-data',
   'test-documents',
   'wissensdokument.txt',
 )
@@ -40,7 +46,10 @@ const TEST_DOCUMENT_NAME = 'wissensdokument.txt'
 const OWN_DOCUMENT_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
-  'fixtures',
+  '..',
+  'demo',
+  'seed',
+  'e2e-data',
   'test-documents',
   'eigenesdokument.txt',
 )
