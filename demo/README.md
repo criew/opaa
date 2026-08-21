@@ -61,7 +61,15 @@ SPRING_PROFILES_ACTIVE=docker,oidc
 OPAA_INITIAL_ADMIN_EMAIL=admin@stadt-rheinfurt.example
 OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
+OPAA_DEMO_MODE=true
 ```
+
+`OPAA_DEMO_MODE=true` zeigt den Quellen- und Demo-Hinweis in der Fußzeile der Oberfläche (#230) —
+synthetischer Korpus einer fiktiven Stadt, Rohmaterial LHM-Dienstleistungen-Corpus (MIT). Der
+Frontend-Container liest die Variable beim Start (`frontend/nginx.conf`, `envsubst`-Template); ein
+Rebuild ist dafür nicht nötig, ein Neustart des `frontend`-Containers genügt. Ohne diese Zeile
+bleibt der Hinweis aus (Image-Default `false`) — das ist der richtige Zustand für jede
+Nicht-Demo-Installation, siehe `docs/deployment.md`, Variablentabelle.
 
 `OPAA_INITIAL_ADMIN_EMAIL` muss die E-Mail-Adresse des Keycloak-Nutzers `demo-admin` treffen
 (`keycloak/realm-export.json`) — sonst bekommt kein Konto der Demo `SYSTEM_ADMIN`, und Schritt 1 des
@@ -216,19 +224,14 @@ Secret gegen jedes Realm-Konto und darf nicht dauerhaft scharf bleiben.
 ## Demo-Zugangsdaten
 
 Alle Konten des Realms `opaa` sind offene **Demo-Werte**, keine Secrets — vor jedem erreichbaren
-Deployment gemäß `docs/deployment.md`, Abschnitt „Härtung für erreichbare Deployments" zu ersetzen:
-
-| Konto | Rolle | Passwort |
-|---|---|---|
-| `demo-admin` (admin@stadt-rheinfurt.example) | `SYSTEM_ADMIN` | `RheinfurtDemo!2026` |
-| `maria.weber` | Sachbearbeiterin Meldewesen | `RheinfurtDemo!2026` |
-| `selin.kaya` | Sachbearbeiterin Meldewesen | `RheinfurtDemo!2026` |
-| `thomas.klein` | Sachbearbeiter Kfz-Zulassung | `RheinfurtDemo!2026` |
-| `andrea.vogt` | Amtsleitung Bürgerbüro | `RheinfurtDemo!2026` |
+Deployment gemäß `docs/deployment.md`, Abschnitt „Härtung für erreichbare Deployments" zu ersetzen.
+Die vollständige Konto-Tabelle mit Rollen, Spaces, lesbaren Bibliotheken und Passwörtern sowie das
+ausformulierte Vorführ-Drehbuch mit acht Fragen stehen an einer Stelle, nicht dupliziert:
+[`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md).
 
 ## Umfang außerhalb dieses Verzeichnisses
 
-- Demo-Drehbuch und Installationsanleitung — #713
+- Demo-Drehbuch und Installationsanleitung — [`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md) (#713)
 - Smoke-Test gegen das `demo`-Profil — #232 (`e2e/demo-smoke/`, `npm run test:demo-smoke` in
   `e2e/`, siehe [`e2e/README.md`, „Demo-Smoke (#232)"](../e2e/README.md#demo-smoke-232))
 - Rollout auf einen erreichbaren Host — #230
