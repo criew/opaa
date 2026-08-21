@@ -5,8 +5,30 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-20T01:58:31Z</updated>
+  <updated>2026-08-21T02:07:38Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Donnerstag, 20. August 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-20.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-20.html</id>
+    <updated>2026-08-21T02:07:38Z</updated>
+    <summary type="text">feat(frontend): Redesign der Weboberfläche nach dem Zielbild-Designsystem:
+— Eingabezeile mit Suchbereichs-Statuszeile und @-Vorschlag umgesetzt
+— Chat-Antworten mit Fußnoten-Fundstellen statt Quellkarten
+— Seitenleiste nach Zielbild mit Space-Wechsler und Bereichsnavigation
+— Automatisierte Barrierefreiheits-Prüfungen in Lint und E2E-Suite
+Epic: Nacharbeiten Wissensbibliotheken und Upload:
+— Verbindungstest-Meldungen mit echten Umlauten und korrektem Singular
+— HTTP_DIRECTORY erkennt weitere Autoindex-Layouts
+— Quellkonfiguration nur für Bearbeitende sichtbar, Audit-Einträge ergänzt
+Epic: Chats im Space und Suchbereich per @-Bibliotheksreferenzen:
+— Chats im Space, @-Referenzen und Wissens-Schalter abgedeckt
+— Chats als space-eigene Objekte mit Persistenz und Chatliste
+Sonstiges:
+— Bibliotheksreferenzen eines Chats an Organisation binden
+— Fundort und durchsuchte Bestände in Query-API ergänzt
+— Typografie, Dichte und Komponentenmetrik an Mockup angleichen</summary>
+  </entry>
   <entry>
     <title>Tagesreport Mittwoch, 19. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-19.html"/>
