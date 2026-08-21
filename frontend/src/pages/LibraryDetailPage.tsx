@@ -224,6 +224,16 @@ export default function LibraryDetailPage() {
       <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 3 }}>
         {(library.documentCount ?? 0).toLocaleString('de-DE')}{' '}
         {(library.documentCount ?? 0) === 1 ? 'Dokument' : 'Dokumente'}
+        {/* #119: storageQuotaBytes/storageUsedBytes are only sent to a caller with at least
+            MANAGER (see KnowledgeLibraryService#toLibraryResponse) - a VIEWER's library object
+            simply carries neither field, mirroring the source configuration fields below. */}
+        {details?.storageQuotaBytes != null && details.storageUsedBytes != null && (
+          <>
+            {' · '}
+            {formatFileSize(details.storageUsedBytes)} von{' '}
+            {formatFileSize(details.storageQuotaBytes)} Speicherkontingent belegt
+          </>
+        )}
       </Typography>
 
       {localError && (

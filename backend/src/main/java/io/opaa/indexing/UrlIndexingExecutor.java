@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
@@ -28,6 +29,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   private final IndexingJobService indexingJobService;
   private final DocumentRepository documentRepository;
   private final IndexingRunEventRepository indexingRunEventRepository;
+  private final LibraryStorageQuotaService storageQuotaService;
 
   public UrlIndexingExecutor(
       AutoindexCrawlerService crawlerService,
@@ -35,13 +37,15 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
-      IndexingRunEventRepository indexingRunEventRepository) {
+      IndexingRunEventRepository indexingRunEventRepository,
+      LibraryStorageQuotaService storageQuotaService) {
     this.crawlerService = crawlerService;
     this.downloader = downloader;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
     this.documentRepository = documentRepository;
     this.indexingRunEventRepository = indexingRunEventRepository;
+    this.storageQuotaService = storageQuotaService;
   }
 
   @Override
@@ -156,7 +160,14 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                   fileSize,
                   targetLibrary);
 
-          if (result == FileProcessingResult.SKIPPED) {
+          if (result == FileProcessingResult.QUOTA_EXCEEDED) {
+            // #119: see AsyncIndexingExecutor's own handling of this outcome.
+            events.record(
+                IndexingEventCategory.REJECTED,
+                storageQuotaService.quotaExceededMessage(targetLibrary.getId()),
+                entry.url());
+            progress.recordSkipped();
+          } else if (result == FileProcessingResult.SKIPPED) {
             progress.recordSkipped();
           } else {
             progress.recordProcessed();

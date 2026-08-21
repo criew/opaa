@@ -110,6 +110,7 @@ public class LibraryDocumentService {
   private final FileProcessingService fileProcessingService;
   private final VectorStore vectorStore;
   private final UploadProperties uploadProperties;
+  private final LibraryStorageQuotaService storageQuotaService;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -119,7 +120,8 @@ public class LibraryDocumentService {
       ChecksumService checksumService,
       FileProcessingService fileProcessingService,
       VectorStore vectorStore,
-      UploadProperties uploadProperties) {
+      UploadProperties uploadProperties,
+      LibraryStorageQuotaService storageQuotaService) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.accessService = accessService;
@@ -128,6 +130,7 @@ public class LibraryDocumentService {
     this.fileProcessingService = fileProcessingService;
     this.vectorStore = vectorStore;
     this.uploadProperties = uploadProperties;
+    this.storageQuotaService = storageQuotaService;
   }
 
   public LibraryDocumentResponse uploadDocument(
@@ -145,6 +148,15 @@ public class LibraryDocumentService {
           "Die Datei ist zu groß. Erlaubt sind höchstens "
               + (uploadProperties.maxFileSize() / (1024 * 1024))
               + " MB");
+    }
+    // #119: checked before anything is written to disk, so a rejected upload leaves the bestand
+    // (and the file system) exactly as it was - the same "nothing persisted" guarantee the size
+    // check above already gives. Deliberately does not net out a same-checksum FAILED row this
+    // upload might be about to replace (see the dedup check further down) - a conservative, simple
+    // check rather than one that would have to duplicate that lookup this early.
+    if (storageQuotaService.wouldExceedQuota(libraryId, file.getSize())) {
+      throw new ResponseStatusException(
+          HttpStatus.PAYLOAD_TOO_LARGE, storageQuotaService.quotaExceededMessage(libraryId));
     }
 
     String displayFileName = sanitizeDisplayFileName(file.getOriginalFilename());
