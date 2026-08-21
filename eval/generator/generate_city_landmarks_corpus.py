@@ -148,6 +148,24 @@ def literal(binding: dict, key: str) -> str | None:
     return entry.get("value")
 
 
+_BARE_QID = re.compile(r"^Q\d+$")
+
+
+def label(binding: dict, key: str) -> str | None:
+    """Like literal(), but for a wikibase:label SERVICE binding specifically: when no label
+    exists in any requested language, the label service falls back to the entity's own QID
+    string rather than omitting the binding (issue #234, technical hint "Rückfall: Objekt
+    auslassen, statt englisches Label in deutschen Text zu mischen" — a raw QID is worse than a
+    missing English label, since it is not even readable as a word). Treated as absent here so
+    every caller's existing "field missing" branch handles it, instead of a QID like "Q30879538"
+    leaking into German prose (e.g. "geht auf Pläne von Q30879538 zurück").
+    """
+    value = literal(binding, key)
+    if value is not None and _BARE_QID.match(value):
+        return None
+    return value
+
+
 def literal_float(binding: dict, key: str) -> float | None:
     value = literal(binding, key)
     if value is None:
@@ -265,11 +283,15 @@ def load_city_facts() -> dict[str, dict]:
     for row in raw["results"]["bindings"]:
         qid = row["city"]["value"].rsplit("/", 1)[-1]
         current = facts.setdefault(qid, {})
-        for key in ("area", "elevation", "inception", "capitalOfLabel"):
+        for key in ("area", "elevation", "inception"):
             if key not in current or current[key] is None:
                 value = literal(row, key)
                 if value is not None:
                     current[key] = value
+        if "capitalOfLabel" not in current or current["capitalOfLabel"] is None:
+            value = label(row, "capitalOfLabel")
+            if value is not None:
+                current["capitalOfLabel"] = value
     return facts
 
 
@@ -290,11 +312,11 @@ def build_cities() -> list[City]:
                 # every selected item was included in the detail fetch, see
                 # frozen/SOURCE.md) is skipped rather than rendered with only its QID.
                 continue
-            name = literal(detail, "itemLabel")
-            if name is None or name == item_qid:
+            name = label(detail, "itemLabel")
+            if name is None:
                 # Rückfall (issue #234, technical hints): an item without a German or English
-                # label is left out entirely, rather than mixing an English or QID placeholder
-                # into German prose.
+                # label is left out entirely, rather than mixing an English label or a raw QID
+                # placeholder into German prose.
                 continue
             landmarks.append(
                 Landmark(
@@ -302,12 +324,12 @@ def build_cities() -> list[City]:
                     name=name,
                     inception_year=year_from_iso(literal(detail, "inception")),
                     opening_year=year_from_iso(literal(detail, "opening")),
-                    architect=literal(detail, "architectLabel"),
-                    style=literal(detail, "styleLabel"),
+                    architect=label(detail, "architectLabel"),
+                    style=label(detail, "styleLabel"),
                     height_m=literal_float(detail, "height"),
                     coord=parse_coord(literal(detail, "coord")),
                     visitors=literal_float(detail, "visitors"),
-                    heritage=literal(detail, "heritageLabel"),
+                    heritage=label(detail, "heritageLabel"),
                 )
             )
         cities.append(
