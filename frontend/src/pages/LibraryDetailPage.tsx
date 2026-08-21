@@ -13,12 +13,10 @@ import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
-import InputLabel from '@mui/material/InputLabel'
 import LinearProgress from '@mui/material/LinearProgress'
 import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
 import Pagination from '@mui/material/Pagination'
-import Paper from '@mui/material/Paper'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
@@ -54,6 +52,9 @@ import {
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import PageHeading from '../components/a11y/PageHeading'
+import FieldLabel from '../components/wizard/FieldLabel'
+import MetaBadge from '../components/MetaBadge'
+import SectionHead from '../components/SectionHead'
 
 // Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - only a
 // client-side hint for the file picker; the backend remains the authority on what is accepted.
@@ -182,7 +183,7 @@ export default function LibraryDetailPage() {
 
   if (!libraryId) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2, md: 3 } }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
         <Alert severity="error">Keine Bibliothek angegeben.</Alert>
       </Box>
     )
@@ -190,7 +191,7 @@ export default function LibraryDetailPage() {
 
   if (!library) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2, md: 3 } }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
         {storeError ? (
           <Alert severity="error">{storeError}</Alert>
         ) : (
@@ -201,37 +202,41 @@ export default function LibraryDetailPage() {
   }
 
   return (
-    <Box sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, overflowY: 'auto' }}>
+    <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Link
         component={RouterLink}
         to="/libraries"
         underline="hover"
-        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 2 }}
+        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 2, fontSize: 13 }}
       >
         <ArrowBackIcon fontSize="small" />
         Zurück zur Übersicht
       </Link>
 
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 1 }}>
-        <PageHeading title={library.name} variant="h6" />
-        {details && (
-          <Chip
-            label={documentSourceTypeLabel(details.sourceType)}
-            size="small"
-            variant="outlined"
-          />
-        )}
-        <Chip label={assetRoleLabel(library.myRole)} size="small" variant="outlined" />
-        {isAdministrativeOverride && (
-          <Chip label="administrativ" size="small" color="info" variant="outlined" />
-        )}
+      <Stack
+        direction="row"
+        spacing={1.5}
+        sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.75 }}
+      >
+        <PageHeading title={library.name} />
+        {details && <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>}
+        <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
+        {isAdministrativeOverride && <MetaBadge>administrativ</MetaBadge>}
       </Stack>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 3 }}>
         {(library.documentCount ?? 0).toLocaleString('de-DE')}{' '}
         {(library.documentCount ?? 0) === 1 ? 'Dokument' : 'Dokumente'}
+        {/* #119: storageQuotaBytes/storageUsedBytes are only sent to a caller with at least
+            MANAGER (see KnowledgeLibraryService#toLibraryResponse) - a VIEWER's library object
+            simply carries neither field, mirroring the source configuration fields below. */}
+        {details?.storageQuotaBytes != null && details.storageUsedBytes != null && (
+          <>
+            {' · '}
+            {formatFileSize(details.storageUsedBytes)} von{' '}
+            {formatFileSize(details.storageQuotaBytes)} Speicherkontingent belegt
+          </>
+        )}
       </Typography>
-
-      <Divider sx={{ mb: 2 }} />
 
       {localError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setLocalError(null)}>
@@ -259,11 +264,9 @@ export default function LibraryDetailPage() {
         </Alert>
       )}
 
-      <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-        <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
-          Stammdaten
-        </Typography>
-        <Stack spacing={1.5}>
+      <Box sx={{ mb: 5, maxWidth: 760 }}>
+        <SectionHead>Stammdaten</SectionHead>
+        <Stack spacing={2}>
           {details && (
             <Typography variant="caption" color="text.secondary">
               Quellentyp: {documentSourceTypeLabel(details.sourceType)} — kann nach der Anlage nicht
@@ -274,27 +277,34 @@ export default function LibraryDetailPage() {
               order and screen readers entirely; readOnly keeps them focusable and readable while
               still blocking edits. Select supports the same prop directly - Checkbox does not (no
               native HTML readonly for checkboxes), so it stays on disabled. */}
-          <TextField
-            label="Name der Bibliothek"
-            value={name}
-            onChange={(e) => setDraft({ name: e.target.value, description, visibility, listed })}
-            slotProps={{ input: { readOnly: !canEdit } }}
-            size="small"
-          />
-          <TextField
-            label="Beschreibung"
-            value={description}
-            onChange={(e) => setDraft({ name, description: e.target.value, visibility, listed })}
-            multiline
-            minRows={2}
-            slotProps={{ input: { readOnly: !canEdit } }}
-            size="small"
-          />
-          <FormControl size="small">
-            <InputLabel id="library-detail-visibility-label">Sichtbarkeit</InputLabel>
+          <Box>
+            <FieldLabel htmlFor="library-detail-name">Name der Bibliothek</FieldLabel>
+            <TextField
+              id="library-detail-name"
+              fullWidth
+              value={name}
+              onChange={(e) => setDraft({ name: e.target.value, description, visibility, listed })}
+              slotProps={{ input: { readOnly: !canEdit } }}
+              size="small"
+            />
+          </Box>
+          <Box>
+            <FieldLabel htmlFor="library-detail-description">Beschreibung</FieldLabel>
+            <TextField
+              id="library-detail-description"
+              fullWidth
+              value={description}
+              onChange={(e) => setDraft({ name, description: e.target.value, visibility, listed })}
+              multiline
+              minRows={2}
+              slotProps={{ input: { readOnly: !canEdit } }}
+              size="small"
+            />
+          </Box>
+          <FormControl size="small" fullWidth>
+            <FieldLabel id="library-detail-visibility-label">Verteilungsstufe</FieldLabel>
             <Select
               labelId="library-detail-visibility-label"
-              label="Sichtbarkeit"
               value={visibility}
               readOnly={!canEdit}
               onChange={(e) =>
@@ -353,7 +363,7 @@ export default function LibraryDetailPage() {
             </Stack>
           )}
         </Stack>
-      </Paper>
+      </Box>
 
       {canEdit && <LibrarySpacesSection key={libraryId} libraryId={libraryId} />}
 
@@ -521,10 +531,8 @@ function LibraryDocumentsSection({
   }
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-      <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
-        Dokumente
-      </Typography>
+    <Box sx={{ mb: 5 }}>
+      <SectionHead>Dokumente</SectionHead>
 
       {/* #517 code review, nit 4: scoped to !canManage alone (not additionally isUploadLibrary,
           as an earlier version had it) - a VIEWER on a connector library lost this hint entirely
@@ -728,7 +736,7 @@ function LibraryDocumentsSection({
           />
         </Stack>
       )}
-    </Paper>
+    </Box>
   )
 }
 
@@ -878,12 +886,19 @@ function LibraryIndexingSection({
   const configKind = documentSourceTypeConfigKind[library.sourceType]
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+    <Box sx={{ mb: 5, maxWidth: 760 }}>
       <Stack
         direction="row"
-        sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}
+        sx={{
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: 1,
+          borderColor: 'divider',
+          pb: 1,
+          mb: 2,
+        }}
       >
-        <Typography variant="subtitle1">Quellkonfiguration</Typography>
+        <SectionHead underline={false}>Quellkonfiguration</SectionHead>
         {canEditSource && (
           <Button
             size="small"
@@ -1015,7 +1030,7 @@ function LibraryIndexingSection({
           Sie haben in dieser Bibliothek nur Leserechte und können keine Indizierung anstoßen.
         </Alert>
       )}
-    </Paper>
+    </Box>
   )
 }
 
@@ -1063,10 +1078,8 @@ function LibraryIndexingHistorySection({ libraryId }: LibraryIndexingHistorySect
   }, [libraryId, loadRunHistory])
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-      <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
-        Letzte Indizierungsläufe
-      </Typography>
+    <Box sx={{ mb: 5, maxWidth: 760 }}>
+      <SectionHead>Letzte Indizierungsläufe</SectionHead>
 
       {runs.length === 0 ? (
         <Typography color="text.secondary">Es liegen noch keine Läufe vor.</Typography>
@@ -1153,6 +1166,6 @@ function LibraryIndexingHistorySection({ libraryId }: LibraryIndexingHistorySect
           ))}
         </Stack>
       )}
-    </Paper>
+    </Box>
   )
 }

@@ -11,7 +11,6 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import FormLabel from '@mui/material/FormLabel'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import Link from '@mui/material/Link'
@@ -24,6 +23,8 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
+import FieldLabel from './wizard/FieldLabel'
+import SectionHead from './SectionHead'
 import type {
   AssetGrantResponse,
   AssetRole,
@@ -287,11 +288,11 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                     p: 1.5,
                     border: '1px solid',
                     borderColor: 'divider',
-                    borderRadius: 1,
+                    borderRadius: '10px',
                   }}
                 >
                   <Stack spacing={0.25} sx={{ minWidth: 160, flexGrow: 1 }}>
-                    <Typography sx={{ fontWeight: 600 }}>{subjectName}</Typography>
+                    <Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>{subjectName}</Typography>
                     <Typography variant="caption" color="text.secondary">
                       {permissionSubjectTypeLabel(grant.subjectType)} · erteilt von{' '}
                       {grantedByDisplayName(grant)} am{' '}
@@ -347,11 +348,11 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
           </Button>
         ) : (
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <Typography variant="subtitle2">Freigeben</Typography>
+            <SectionHead component="h3">Freigeben</SectionHead>
             {formError && <Alert severity="error">{formError}</Alert>}
 
             <FormControl>
-              <FormLabel id="grant-subject-type-label">Subjekt</FormLabel>
+              <FieldLabel id="grant-subject-type-label">Subjekt</FieldLabel>
               <RadioGroup
                 row
                 aria-labelledby="grant-subject-type-label"
@@ -493,12 +494,10 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
         )}
 
         <Divider sx={{ my: 2 }} />
-        <Typography variant="subtitle2" gutterBottom>
-          Rollen
-        </Typography>
+        <SectionHead component="h3">Rollen</SectionHead>
         <Stack spacing={0.5}>
           {grantableRoles.map((option) => (
-            <Typography key={option} variant="body2" color="text.secondary">
+            <Typography key={option} sx={{ fontSize: 12.5, color: 'text.secondary' }}>
               <strong>{assetRoleLabel(option)}</strong> · {assetRoleDescription(option)}
             </Typography>
           ))}

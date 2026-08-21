@@ -197,6 +197,30 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
   })
 
+  it('shows storage quota usage for a MANAGER but not for a VIEWER whose response omits it', async () => {
+    // #119: storageQuotaBytes/storageUsedBytes are only ever sent to a caller with at least
+    // MANAGER (see KnowledgeLibraryService#toLibraryResponse) - the frontend simply renders
+    // whatever the backend response carries, so a VIEWER's details object having neither field is
+    // enough to hide the line.
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, {
+        storageQuotaBytes: 10 * 1024 * 1024 * 1024,
+        storageUsedBytes: 3 * 1024 * 1024 * 1024,
+      }),
+    )
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    expect(
+      await screen.findByText(/3([.,]0)? GB von 10([.,]0)? GB Speicherkontingent belegt/i),
+    ).toBeInTheDocument()
+    unmount()
+
+    setLibraryState(viewerLibrary, detailsOf(viewerLibrary))
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    expect(await screen.findByText(/87 Dokumente/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Speicherkontingent belegt/i)).not.toBeInTheDocument()
+  })
+
   it('offers editing but not deleting for a MANAGER', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -244,7 +268,7 @@ describe('LibraryDetailPage', () => {
     const descriptionField = screen.getByLabelText(/beschreibung/i)
     await user.clear(descriptionField)
     await user.type(descriptionField, 'Aktualisierte Beschreibung')
-    await user.click(screen.getByRole('combobox', { name: /sichtbarkeit/i }))
+    await user.click(screen.getByRole('combobox', { name: /verteilungsstufe/i }))
     await user.click(await screen.findByRole('option', { name: 'privat' }))
     await user.click(screen.getByRole('button', { name: /speichern/i }))
 

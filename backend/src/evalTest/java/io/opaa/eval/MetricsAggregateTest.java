@@ -29,6 +29,8 @@ class MetricsAggregateTest {
     assertThat(aggregate.ndcgAt10()).isEqualTo(0.0);
     assertThat(aggregate.recallAt10()).isEqualTo(0.0);
     assertThat(aggregate.recallAt10Ceiling()).isEqualTo(0.0);
+    assertThat(aggregate.hitCountAt5()).isZero();
+    assertThat(aggregate.hitCountAt10()).isZero();
   }
 
   @Test
@@ -45,6 +47,25 @@ class MetricsAggregateTest {
     assertThat(aggregate.mrr()).isCloseTo(0.5, within(TOLERANCE));
     assertThat(aggregate.ndcgAt10()).isCloseTo(0.5, within(TOLERANCE));
     assertThat(aggregate.recallAt10()).isCloseTo(0.5, within(TOLERANCE));
+    assertThat(aggregate.hitCountAt5()).isEqualTo(1);
+    assertThat(aggregate.hitCountAt10()).isEqualTo(1);
+  }
+
+  @Test
+  void hitCountAt10CountsAHitAnywhereInTheRankedListEvenBelowTheHitRateAt5Window() {
+    // Issue #306: hitCountAt10 must count a hit ranked below position 5 (still positive
+    // ndcgAt10/recallAt10/mrr) even though hitRateAt5 is 0 for that case — the two counts are
+    // deliberately different windows, not aliases of each other.
+    RetrievalMetrics.QueryResult hitOutsideTop5 =
+        RetrievalMetrics.evaluate(
+            goldenCase("a", List.of("e")), List.of("d1", "d2", "d3", "d4", "d5", "e"));
+
+    MetricsAggregate aggregate = MetricsAggregate.of(List.of(hitOutsideTop5));
+
+    assertThat(aggregate.hitRateAt5()).isEqualTo(0.0);
+    assertThat(aggregate.hitCountAt5()).isZero();
+    assertThat(aggregate.ndcgAt10()).isGreaterThan(0.0);
+    assertThat(aggregate.hitCountAt10()).isEqualTo(1);
   }
 
   @Test

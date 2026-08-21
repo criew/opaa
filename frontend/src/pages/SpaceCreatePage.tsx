@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
@@ -20,6 +19,8 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import PageHeading from '../components/a11y/PageHeading'
+import FieldLabel from '../components/wizard/FieldLabel'
+import WizardStepBar from '../components/wizard/WizardStepBar'
 import { getLibraries, getUsers } from '../services/api'
 import { useSpaceStore } from '../stores/spaceStore'
 import {
@@ -32,71 +33,11 @@ import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserInfo } from '
 
 const STEPS = ['Grunddaten', 'Mitglieder', 'Datenquellen', 'Zusammenfassung'] as const
 
-/** Mockup 1b's field label: standalone above the field instead of MUI's floating variant. */
-function FieldLabel({
-  htmlFor,
-  id,
-  children,
-}: {
-  htmlFor?: string
-  id?: string
-  children: ReactNode
-}) {
-  return (
-    <Typography
-      component={htmlFor ? 'label' : 'span'}
-      htmlFor={htmlFor}
-      id={id}
-      sx={{ display: 'block', fontSize: 12, color: 'text.secondary', mb: '5px' }}
-    >
-      {children}
-    </Typography>
-  )
-}
 const MEMBER_ROLES: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
 interface PendingMember {
   user: UserInfo
   role: SpaceRole
-}
-
-/** Mockup 1b's step bar: the active step carries navy/500 with the 2px accent underline. */
-function StepBar({ active }: { active: number }) {
-  return (
-    <Box
-      component="ol"
-      sx={{
-        display: 'flex',
-        listStyle: 'none',
-        m: 0,
-        mb: 3.5,
-        p: 0,
-        fontSize: 12.5,
-        borderBottom: 1,
-        borderColor: 'divider',
-      }}
-    >
-      {STEPS.map((step, index) => (
-        <Box
-          component="li"
-          key={step}
-          aria-current={index === active ? 'step' : undefined}
-          sx={{
-            pr: 2.25,
-            pl: index === 0 ? 0 : 2.25,
-            pb: 1.25,
-            color: index === active ? 'text.primary' : 'text.secondary',
-            fontWeight: index === active ? 500 : 400,
-            borderBottom: index === active ? 2 : 0,
-            borderColor: 'primary.main',
-            mb: index === active ? '-1px' : 0,
-          }}
-        >
-          {index + 1} · {step}
-        </Box>
-      ))}
-    </Box>
-  )
 }
 
 /**
@@ -197,7 +138,7 @@ export default function SpaceCreatePage() {
         <Typography component="div" sx={{ fontSize: 26, fontWeight: 600, mb: 3 }} aria-hidden>
           {STEPS[activeStep]}
         </Typography>
-        <StepBar active={activeStep} />
+        <WizardStepBar steps={STEPS} active={activeStep} />
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>

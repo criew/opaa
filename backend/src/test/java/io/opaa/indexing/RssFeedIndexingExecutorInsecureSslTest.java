@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
 import java.io.File;
 import java.io.IOException;
@@ -223,7 +224,8 @@ class RssFeedIndexingExecutorInsecureSslTest {
             feedStateRepository,
             new UrlFileDownloader(),
             properties,
-            indexingRunEventRepository);
+            indexingRunEventRepository,
+            mock(LibraryStorageQuotaService.class));
   }
 
   private KnowledgeLibrary library(String feedUrl, boolean sourceInsecureSsl) {

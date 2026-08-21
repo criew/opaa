@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
+import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.UploadProperties;
 import io.opaa.observability.IndexingMetrics;
 import java.util.List;
@@ -50,14 +51,16 @@ public class IndexingConfiguration {
       DocumentRepository documentRepository,
       VectorStore vectorStore,
       ChecksumService checksumService,
-      IndexingMetrics indexingMetrics) {
+      IndexingMetrics indexingMetrics,
+      LibraryStorageQuotaService libraryStorageQuotaService) {
     return new FileProcessingService(
         documentService,
         chunkingService,
         documentRepository,
         vectorStore,
         checksumService,
-        indexingMetrics);
+        indexingMetrics,
+        libraryStorageQuotaService);
   }
 
   // Declared as SourceIndexingExecutor, not the concrete executor type: both beans carry @Async
@@ -77,13 +80,15 @@ public class IndexingConfiguration {
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
       FilesystemPathAllowlist filesystemPathAllowlist,
-      IndexingRunEventRepository indexingRunEventRepository) {
+      IndexingRunEventRepository indexingRunEventRepository,
+      LibraryStorageQuotaService libraryStorageQuotaService) {
     return new AsyncIndexingExecutor(
         documentService,
         fileProcessingService,
         indexingJobService,
         filesystemPathAllowlist,
-        indexingRunEventRepository);
+        indexingRunEventRepository,
+        libraryStorageQuotaService);
   }
 
   @Bean
@@ -103,14 +108,16 @@ public class IndexingConfiguration {
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
-      IndexingRunEventRepository indexingRunEventRepository) {
+      IndexingRunEventRepository indexingRunEventRepository,
+      LibraryStorageQuotaService libraryStorageQuotaService) {
     return new UrlIndexingExecutor(
         autoindexCrawlerService,
         urlFileDownloader,
         fileProcessingService,
         indexingJobService,
         documentRepository,
-        indexingRunEventRepository);
+        indexingRunEventRepository,
+        libraryStorageQuotaService);
   }
 
   @Bean
@@ -127,7 +134,8 @@ public class IndexingConfiguration {
       RssFeedStateRepository rssFeedStateRepository,
       UrlFileDownloader urlFileDownloader,
       IndexingProperties properties,
-      IndexingRunEventRepository indexingRunEventRepository) {
+      IndexingRunEventRepository indexingRunEventRepository,
+      LibraryStorageQuotaService libraryStorageQuotaService) {
     return new RssFeedIndexingExecutor(
         rssFeedParser,
         fileProcessingService,
@@ -136,7 +144,8 @@ public class IndexingConfiguration {
         rssFeedStateRepository,
         urlFileDownloader,
         properties,
-        indexingRunEventRepository);
+        indexingRunEventRepository,
+        libraryStorageQuotaService);
   }
 
   /**

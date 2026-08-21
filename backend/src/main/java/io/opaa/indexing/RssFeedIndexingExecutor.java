@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -110,6 +111,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private final UrlFileDownloader attachmentDownloader;
   private final IndexingProperties.Rss properties;
   private final IndexingRunEventRepository indexingRunEventRepository;
+  private final LibraryStorageQuotaService storageQuotaService;
 
   public RssFeedIndexingExecutor(
       RssFeedParser feedParser,
@@ -119,7 +121,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       RssFeedStateRepository feedStateRepository,
       UrlFileDownloader attachmentDownloader,
       IndexingProperties properties,
-      IndexingRunEventRepository indexingRunEventRepository) {
+      IndexingRunEventRepository indexingRunEventRepository,
+      LibraryStorageQuotaService storageQuotaService) {
     this.feedParser = feedParser;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
@@ -128,6 +131,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     this.attachmentDownloader = attachmentDownloader;
     this.properties = properties.rss();
     this.indexingRunEventRepository = indexingRunEventRepository;
+    this.storageQuotaService = storageQuotaService;
   }
 
   @Override
@@ -434,7 +438,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
               entryUrl,
               publishedAt.map(Instant::toString).orElse(null),
               targetLibrary);
-      if (result == FileProcessingResult.SKIPPED) {
+      if (result == FileProcessingResult.QUOTA_EXCEEDED) {
+        // #119: see AsyncIndexingExecutor's own handling of this outcome.
+        events.record(
+            IndexingEventCategory.REJECTED,
+            storageQuotaService.quotaExceededMessage(targetLibrary.getId()),
+            entryUrl);
+        progress.recordSkipped();
+      } else if (result == FileProcessingResult.SKIPPED) {
         progress.recordSkipped();
       } else {
         progress.recordProcessed();
@@ -720,6 +731,20 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
               targetLibrary,
               DocumentSourceType.RSS_FEED,
               entryUrl);
+      if (result == FileProcessingResult.QUOTA_EXCEEDED) {
+        // #119: see AsyncIndexingExecutor's own handling of this outcome. Deferred (not
+        // recordSkipped, see the field-level QUOTA_EXCEEDED branch above for the contrast) rather
+        // than counted, the same way a lost/oversized attachment already is just below - an
+        // attachment was never a discrete unit of the run's own total to begin with (#518, next
+        // comment), so there is nothing to mark skipped here, only the feed's ETag persistence to
+        // defer so a future run retries it.
+        events.record(
+            IndexingEventCategory.REJECTED,
+            storageQuotaService.quotaExceededMessage(targetLibrary.getId()),
+            candidate.url());
+        anyEntryDeferred.set(true);
+        return;
+      }
       // #518: an unchanged attachment (same checksum as an already-indexed document) is
       // deduplicated by processUrlFile itself and returns SKIPPED - it must not inflate the
       // document count a second time for a document already counted on a previous run.

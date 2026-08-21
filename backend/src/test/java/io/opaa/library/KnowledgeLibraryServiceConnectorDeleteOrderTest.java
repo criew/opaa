@@ -82,6 +82,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
             eq(JobStatus.RUNNING), any(), any()))
         .thenReturn(false);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
+    LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
 
     libraryService =
         new KnowledgeLibraryService(
@@ -98,7 +99,8 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
             vectorStore,
             filesystemAllowlist,
             indexingJobRepository,
-            rssFeedStateRepository);
+            rssFeedStateRepository,
+            storageQuotaService);
 
     ownerId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
