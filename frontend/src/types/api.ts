@@ -25,6 +25,8 @@ export type SpaceTransferOwnershipRequest = components['schemas']['SpaceTransfer
 export type SpaceLibraryAssociationRequest = components['schemas']['SpaceLibraryAssociationRequest']
 export type SpaceLibraryAssociationResponse =
   components['schemas']['SpaceLibraryAssociationResponse']
+export type SpaceLibraryAssociationListResponse =
+  components['schemas']['SpaceLibraryAssociationListResponse']
 export type LibrarySpaceAssociationResponse =
   components['schemas']['LibrarySpaceAssociationResponse']
 

@@ -1,6 +1,7 @@
 package io.opaa.api;
 
 import io.opaa.api.dto.SpaceAddMemberRequest;
+import io.opaa.api.dto.SpaceLibraryAssociationListResponse;
 import io.opaa.api.dto.SpaceLibraryAssociationRequest;
 import io.opaa.api.dto.SpaceLibraryAssociationResponse;
 import io.opaa.api.dto.SpaceListResponse;
@@ -56,22 +57,16 @@ public class SpaceController {
       @Valid @RequestBody SpaceRequest request, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     boolean systemAdmin = currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN;
+    // #686/#706 review: SpaceService#createSpace associates request.getLibraryIds() itself, in
+    // the same transaction as the space row - a library that cannot be associated rolls the whole
+    // creation back instead of leaving a half-created space behind (this controller used to loop
+    // over associationService.associate() here, which could not offer that guarantee).
     SpaceResponse response = spaceService.createSpace(request, currentUser.getId(), systemAdmin);
-    // #686: the space assistant's data-source step submits libraryIds alongside the space itself
-    // - associated the same way the dedicated POST endpoint below would, right after creation, so
-    // the creator (an ADMIN member of their own new space, see
-    // SpaceService#appendInitialMemberships)
-    // qualifies as CURATOR-or-above for each one.
-    if (request.getLibraryIds() != null) {
-      for (UUID libraryId : request.getLibraryIds()) {
-        associationService.associate(response.getId(), libraryId, currentUser.getId(), systemAdmin);
-      }
-    }
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @GetMapping("/{spaceId}/libraries")
-  public List<SpaceLibraryAssociationResponse> listLibraryAssociations(
+  public SpaceLibraryAssociationListResponse listLibraryAssociations(
       @PathVariable UUID spaceId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     return associationService.listForSpace(

@@ -48,12 +48,14 @@ class SpaceServiceTest {
     when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
     ChatRepository chatRepository = mock(ChatRepository.class);
+    SpaceAssetAssociationService associationService = mock(SpaceAssetAssociationService.class);
     spaceService =
         new SpaceService(
             spaceRepository,
             userRepository,
             auditEventRecorder,
             chatRepository,
+            associationService,
             transactionManager);
   }
 

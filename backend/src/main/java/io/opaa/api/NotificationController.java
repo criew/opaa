@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -23,6 +24,8 @@ import org.springframework.web.server.ResponseStatusException;
 public class NotificationController {
 
   private static final String UNKNOWN_ISSUER = "unknown";
+  private static final int DEFAULT_LIMIT = 50;
+  private static final int MAX_LIMIT = 100;
 
   private final NotificationService notificationService;
   private final UserService userService;
@@ -33,9 +36,15 @@ public class NotificationController {
   }
 
   @GetMapping
-  public List<NotificationResponse> listNotifications(@AuthenticationPrincipal Jwt jwt) {
+  public List<NotificationResponse> listNotifications(
+      @RequestParam(required = false) Integer limit, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return notificationService.listForRecipient(currentUser.getId()).stream()
+    int resolvedLimit = limit == null ? DEFAULT_LIMIT : limit;
+    if (resolvedLimit < 1 || resolvedLimit > MAX_LIMIT) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "limit muss zwischen 1 und " + MAX_LIMIT + " liegen");
+    }
+    return notificationService.listForRecipient(currentUser.getId(), resolvedLimit).stream()
         .map(this::toResponse)
         .toList();
   }

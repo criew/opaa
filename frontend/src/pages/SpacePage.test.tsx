@@ -5,7 +5,7 @@ import SpacePage from './SpacePage'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useChatListStore } from '../stores/chatListStore'
-import type { SpaceLibraryAssociationResponse, SpaceMemberResponse } from '../types/api'
+import type { SpaceLibraryAssociationListResponse, SpaceMemberResponse } from '../types/api'
 
 const currentSpaceId = 'space-personal'
 const mockNavigate = vi.fn()
@@ -29,7 +29,10 @@ vi.mock('react-router', async () => {
 const { mockListSpaceMembers, mockGetSpaceLibraryAssociations } = vi.hoisted(() => ({
   mockListSpaceMembers: vi.fn(async (): Promise<SpaceMemberResponse[]> => []),
   mockGetSpaceLibraryAssociations: vi.fn(
-    async (): Promise<SpaceLibraryAssociationResponse[]> => [],
+    async (): Promise<SpaceLibraryAssociationListResponse> => ({
+      hasAssociations: false,
+      items: [],
+    }),
   ),
 }))
 
@@ -49,7 +52,7 @@ describe('SpacePage', () => {
   beforeEach(() => {
     mockListSpaceMembers.mockClear()
     mockGetSpaceLibraryAssociations.mockClear()
-    mockGetSpaceLibraryAssociations.mockResolvedValue([])
+    mockGetSpaceLibraryAssociations.mockResolvedValue({ hasAssociations: false, items: [] })
     useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
     useAuthStore.setState({
       mode: 'dev',
@@ -116,14 +119,18 @@ describe('SpacePage', () => {
   // it can differ per member.
   it('shows the space’s associated libraries and a dismissible explanatory hint', async () => {
     window.localStorage.removeItem('opaa.space-library-hint-dismissed')
-    mockGetSpaceLibraryAssociations.mockResolvedValue([
-      {
-        libraryId: 'lib-1',
-        libraryName: 'Rechtsquellen Soziales',
-        createdByUserId: 'mock-user-id',
-        createdAt: '2026-03-01T10:00:00Z',
-      },
-    ])
+    mockGetSpaceLibraryAssociations.mockResolvedValue({
+      hasAssociations: true,
+      items: [
+        {
+          libraryId: 'lib-1',
+          libraryName: 'Rechtsquellen Soziales',
+          readableByCaller: true,
+          createdByUserId: 'mock-user-id',
+          createdAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+    })
 
     renderWithProviders(<SpacePage />, { withRouter: true })
 
@@ -132,12 +139,25 @@ describe('SpacePage', () => {
   })
 
   it('shows a fallback message when the space has no library associations', async () => {
-    mockGetSpaceLibraryAssociations.mockResolvedValue([])
+    mockGetSpaceLibraryAssociations.mockResolvedValue({ hasAssociations: false, items: [] })
 
     renderWithProviders(<SpacePage />, { withRouter: true })
 
     expect(
       await screen.findByText(/Diesem Space sind keine Bibliotheken zugeordnet/),
+    ).toBeInTheDocument()
+  })
+
+  // #706 review, finding 2: hasAssociations=true with an empty (filtered) items list must not be
+  // reported the same as "no association at all" - the space IS curated, the caller just cannot
+  // read any of what it curates.
+  it('shows the space-has-no-readable-knowledge message when curated but nothing is readable', async () => {
+    mockGetSpaceLibraryAssociations.mockResolvedValue({ hasAssociations: true, items: [] })
+
+    renderWithProviders(<SpacePage />, { withRouter: true })
+
+    expect(
+      await screen.findByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
     ).toBeInTheDocument()
   })
 

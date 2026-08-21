@@ -43,6 +43,7 @@ export default function SpacePage() {
   const error = useSpaceStore((s) => s.error)
   const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
   const libraryAssociations = useSpaceStore((s) => s.libraryAssociations)
+  const hasLibraryAssociations = useSpaceStore((s) => s.hasLibraryAssociations)
   const isLoadingLibraryAssociations = useSpaceStore((s) => s.isLoadingLibraryAssociations)
   const loadLibraryAssociations = useSpaceStore((s) => s.loadLibraryAssociations)
 
@@ -233,10 +234,19 @@ export default function SpacePage() {
             )}
             {isLoadingLibraryAssociations ? (
               <Typography color="text.secondary">Datenquellen werden geladen …</Typography>
-            ) : libraryAssociations.length === 0 ? (
+            ) : !hasLibraryAssociations ? (
               <Typography color="text.secondary">
                 Diesem Space sind keine Bibliotheken zugeordnet — die Suche greift auf alle für Sie
                 lesbaren Bibliotheken zurück.
+              </Typography>
+            ) : libraryAssociations.length === 0 ? (
+              // #706 review, finding 2: hasLibraryAssociations is true here, but the (rechtege-
+              // filterte) items list is empty - the space IS curated, just with libraries the
+              // viewer cannot read. Spec (docs/features/spaces-and-assets.md#suchbereich-je-
+              // chatart): a valid state, not an error, and deliberately without a count of the
+              // unreadable libraries.
+              <Typography color="text.secondary">
+                In diesem Space ist für Sie derzeit kein Wissen verfügbar.
               </Typography>
             ) : (
               <Stack spacing={1}>

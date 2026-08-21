@@ -3,6 +3,7 @@ package io.opaa.notification;
 import io.opaa.audit.AuditObjectType;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,8 +36,10 @@ public class NotificationService {
         new Notification(organizationId, recipientUserId, type, objectType, objectId, title, body));
   }
 
-  public List<Notification> listForRecipient(UUID currentUserId) {
-    return notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(currentUserId);
+  /** The recipient's newest notifications, newest first, capped at {@code limit} (#706 review). */
+  public List<Notification> listForRecipient(UUID currentUserId, int limit) {
+    return notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(
+        currentUserId, PageRequest.of(0, limit));
   }
 
   @Transactional

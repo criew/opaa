@@ -61,8 +61,20 @@ public enum AuditEventType {
   SPACE_MEMBER_REMOVED,
   GROUP_MEMBER_ADDED,
   GROUP_MEMBER_REMOVED,
-  /** A library made available in a space whose members do not all already have read access. */
+  /**
+   * A library associated with (made available in) a space (#203/#706 review) - recorded for every
+   * association, not only the mixed-audience case the name might suggest; whether the audience was
+   * mixed is a separate fact (the owner notification, {@code
+   * SpaceAssetAssociationService#notifyOwnerIfMixedAudience}), not part of this event's own
+   * condition. See {@link #LIBRARY_DETACHED_FROM_SPACE} for the reverse operation - the two are
+   * always distinguishable by type, never inferred from before/after payload shape.
+   */
   LIBRARY_SHARED_TO_SPACE,
+  /**
+   * The reverse of {@link #LIBRARY_SHARED_TO_SPACE} - a library detached from a space (#706
+   * review).
+   */
+  LIBRARY_DETACHED_FROM_SPACE,
   ASSET_OWNER_CHANGED,
   /** Taking over an asset left without a responsible owner. */
   ASSET_OWNERSHIP_CLAIMED,

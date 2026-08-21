@@ -103,3 +103,5 @@ databaseChangeLog:
       file: db/changelog/changes/051-create-space-asset-associations.yaml
   - include:
       file: db/changelog/changes/052-create-notifications.yaml
+  - include:
+      file: db/changelog/changes/053-widen-audit-event-type-library-detached-from-space.yaml

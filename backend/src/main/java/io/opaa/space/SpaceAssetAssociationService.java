@@ -1,6 +1,7 @@
 package io.opaa.space;
 
 import io.opaa.api.dto.LibrarySpaceAssociationResponse;
+import io.opaa.api.dto.SpaceLibraryAssociationListResponse;
 import io.opaa.api.dto.SpaceLibraryAssociationResponse;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
@@ -71,20 +72,32 @@ public class SpaceAssetAssociationService {
   }
 
   /**
-   * The space's associated libraries, filtered to what {@code currentUserId} may themselves read
-   * (#203 acceptance criterion: two members of the same space with different grants see different
-   * lists) - requires only space membership, not CURATOR.
+   * The space's associated libraries. For a plain {@code MEMBER}, filtered to what {@code
+   * currentUserId} may themselves read (#203 acceptance criterion: two members of the same space
+   * with different grants see different lists). For a {@code CURATOR}, {@code ADMIN} or the space
+   * owner, unfiltered - every association is returned, including one they cannot themselves read,
+   * with {@code readableByCaller=false} and no {@code libraryName} - so a manager can also see and
+   * detach an over-broad association they have no personal grant on (#706 review: the filtered list
+   * otherwise hid it from the one role that is supposed to be able to undo it).
+   *
+   * <p>{@link SpaceLibraryAssociationListResponse#getHasAssociations()} is computed unfiltered,
+   * independently of the (possibly filtered) item list - it is what lets the caller (via {@code
+   * ChatService#effectiveLibraryScope}'s counterpart logic, mirrored here for the read side)
+   * distinguish "no association at all" from "curated, but nothing the viewer may read" (#706
+   * review, finding 2).
    */
-  public List<SpaceLibraryAssociationResponse> listForSpace(
+  public SpaceLibraryAssociationListResponse listForSpace(
       UUID spaceId, UUID currentUserId, boolean systemAdmin) {
     Space space = loadSpace(spaceId, currentUserId);
     requireMember(space, currentUserId, systemAdmin);
 
     List<SpaceAssetAssociation> associations =
         associationRepository.findBySpaceIdOrderByCreatedAtAsc(space.getId());
+    boolean hasAssociations = !associations.isEmpty();
     if (associations.isEmpty()) {
-      return List.of();
+      return new SpaceLibraryAssociationListResponse(hasAssociations, List.of());
     }
+    boolean unfiltered = hasCuratorRole(space, currentUserId) || systemAdmin;
     Set<UUID> readable =
         libraryAccessService.readableLibraryIds(currentUserId, space.getOrganizationId());
     Map<UUID, String> displayNames =
@@ -92,19 +105,23 @@ public class SpaceAssetAssociationService {
             associations.stream().map(SpaceAssetAssociation::getCreatedByUserId).toList());
     Map<UUID, KnowledgeLibrary> librariesById = loadLibraries(associations);
 
-    return associations.stream()
-        .filter(association -> readable.contains(association.getLibraryId()))
-        .map(
-            association -> {
-              KnowledgeLibrary library = librariesById.get(association.getLibraryId());
-              return new SpaceLibraryAssociationResponse(
-                      association.getLibraryId(),
-                      library != null ? library.getName() : "",
-                      association.getCreatedByUserId(),
-                      association.getCreatedAt())
-                  .createdByDisplayName(displayNames.get(association.getCreatedByUserId()));
-            })
-        .toList();
+    List<SpaceLibraryAssociationResponse> items =
+        associations.stream()
+            .filter(association -> unfiltered || readable.contains(association.getLibraryId()))
+            .map(
+                association -> {
+                  boolean readableByCaller = readable.contains(association.getLibraryId());
+                  KnowledgeLibrary library = librariesById.get(association.getLibraryId());
+                  return new SpaceLibraryAssociationResponse(
+                          association.getLibraryId(),
+                          readableByCaller,
+                          association.getCreatedByUserId(),
+                          association.getCreatedAt())
+                      .libraryName(readableByCaller && library != null ? library.getName() : null)
+                      .createdByDisplayName(displayNames.get(association.getCreatedByUserId()));
+                })
+            .toList();
+    return new SpaceLibraryAssociationListResponse(hasAssociations, items);
   }
 
   /**
@@ -121,11 +138,13 @@ public class SpaceAssetAssociationService {
     // A CURATOR may only associate an asset they can themselves access - the same rule #203
     // states explicitly, checked through the caller's own real grants (never a system-admin
     // bypass, mirroring LibraryAccessService#readableLibraryIds's own no-bypass rule) so that
-    // "may associate" and "may search" never diverge.
-    if (!libraryAccessService.canRead(library, currentUserId, false)) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Sie haben selbst keinen Zugriff auf diese Bibliothek");
-    }
+    // "may associate" and "may search" never diverge. requireRole (not canRead + a 403) answers
+    // 404 for "no access", the same existence-oracle guard #436 already established elsewhere
+    // (LibraryAccessService#requireRole's own Javadoc, and this class's own listForLibrary) - a
+    // plain 403 here would let a caller distinguish "library exists in my organization but I lack
+    // access" from "no such library" for any id they can guess, regardless of whether they may
+    // ever see it (#706 review, finding 6).
+    libraryAccessService.requireRole(library, currentUserId, false, AssetRole.VIEWER);
 
     var existing = associationRepository.findBySpaceIdAndLibraryId(space.getId(), library.getId());
     if (existing.isPresent()) {
@@ -152,7 +171,7 @@ public class SpaceAssetAssociationService {
         AuditOutcome.SUCCESS,
         null);
 
-    notifyOwnerIfMixedAudience(space, library);
+    notifyOwnerIfMixedAudience(space, library, currentUserId);
 
     return toSpaceLibraryAssociationResponse(saved, library);
   }
@@ -184,7 +203,7 @@ public class SpaceAssetAssociationService {
               auditEventRecorder.recordUserAction(
                   space.getOrganizationId(),
                   currentUserId,
-                  AuditEventType.LIBRARY_SHARED_TO_SPACE,
+                  AuditEventType.LIBRARY_DETACHED_FROM_SPACE,
                   AuditObjectType.KNOWLEDGE_LIBRARY,
                   library.getId(),
                   library.getName(),
@@ -247,8 +266,14 @@ public class SpaceAssetAssociationService {
    * at least one member without read access to the library (#203: "Benachrichtigung statt
    * Zustimmung"). No consent is required - the association already took effect; this only ensures
    * the owner learns of it without having to check a list.
+   *
+   * <p>{@code triggeringUserId} - the caller who just created the association - is always excluded
+   * from the recipient set (#706 review): a curator who happens to be a member of the owning group
+   * already knows what they just did, and a self-notification would only be noise, never new
+   * information.
    */
-  private void notifyOwnerIfMixedAudience(Space space, KnowledgeLibrary library) {
+  private void notifyOwnerIfMixedAudience(
+      Space space, KnowledgeLibrary library, UUID triggeringUserId) {
     if (allMembersCanRead(space, library)) {
       return;
     }
@@ -267,6 +292,9 @@ public class SpaceAssetAssociationService {
             + space.getName()
             + "\" bereitgestellt, dessen Mitglieder nicht alle Lesezugriff darauf haben.";
     for (UUID recipientId : recipients) {
+      if (recipientId.equals(triggeringUserId)) {
+        continue;
+      }
       notificationService.notify(
           library.getOrganizationId(),
           recipientId,
@@ -378,9 +406,10 @@ public class SpaceAssetAssociationService {
       SpaceAssetAssociation association, KnowledgeLibrary library) {
     return new SpaceLibraryAssociationResponse(
             association.getLibraryId(),
-            library.getName(),
+            true,
             association.getCreatedByUserId(),
             association.getCreatedAt())
+        .libraryName(library.getName())
         .createdByDisplayName(
             resolveDisplayNames(List.of(association.getCreatedByUserId()))
                 .get(association.getCreatedByUserId()));

@@ -88,16 +88,30 @@ vi.mock('../services/api', () => ({
   detachSpaceLibrary: (...args: unknown[]) => mockDetachSpaceLibrary(...args),
 }))
 
-const mockGetSpaceLibraryAssociations = vi.fn(async () => [
-  {
-    libraryId: 'lib-1',
-    libraryName: 'Rechtsquellen',
-    createdByUserId: 'u1',
-    createdAt: '2026-03-01T10:00:00Z',
-  },
-])
-const mockAssociateSpaceLibrary = vi.fn(async () => ({}))
-const mockDetachSpaceLibrary = vi.fn(async () => {})
+const mockGetSpaceLibraryAssociations = vi.fn(async (spaceId: string) => {
+  void spaceId
+  return {
+    hasAssociations: true,
+    items: [
+      {
+        libraryId: 'lib-1',
+        libraryName: 'Rechtsquellen',
+        readableByCaller: true,
+        createdByUserId: 'u1',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+    ],
+  }
+})
+const mockAssociateSpaceLibrary = vi.fn(async (spaceId: string, libraryId: string) => {
+  void spaceId
+  void libraryId
+  return {}
+})
+const mockDetachSpaceLibrary = vi.fn(async (spaceId: string, libraryId: string) => {
+  void spaceId
+  void libraryId
+})
 
 describe('spaceStore', () => {
   beforeEach(() => {
@@ -176,10 +190,12 @@ describe('spaceStore', () => {
       {
         libraryId: 'lib-1',
         libraryName: 'Rechtsquellen',
+        readableByCaller: true,
         createdByUserId: 'u1',
         createdAt: '2026-03-01T10:00:00Z',
       },
     ])
+    expect(useSpaceStore.getState().hasLibraryAssociations).toBe(true)
   })
 
   it('associates a library and reloads the association list', async () => {

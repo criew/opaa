@@ -224,6 +224,19 @@ public class QueryService {
                                         requestedLibraryIds, readableLibraryIds));
                 boolean effectiveUseKnowledge = chat.map(Chat::isUseKnowledge).orElse(useKnowledge);
                 boolean answeredWithoutKnowledge = !effectiveUseKnowledge && searchScope.isEmpty();
+                // #706 review, finding 3: distinct from answeredWithoutKnowledge above - this is
+                // the #203 fail-open case where the chip stays on @Alles-Wissen (the caller never
+                // chose "ohne Wissen") but the chat's space is curated and none of its associated
+                // libraries are readable by this caller, so effectiveLibraryScope legitimately
+                // resolves to empty. Only meaningful for a persisted chat - an ephemeral query's
+                // empty searchScope instead means the caller simply has no readable library at
+                // all, unrelated to curation. See ChatService#spaceHasLibraryAssociations's own
+                // Javadoc.
+                boolean noKnowledgeAvailableInSpace =
+                    effectiveUseKnowledge
+                        && searchScope.isEmpty()
+                        && chat.map(c -> chatService.spaceHasLibraryAssociations(c.getSpaceId()))
+                            .orElse(false);
 
                 List<Document> relevantChunks =
                     searchScope.isEmpty()
@@ -275,7 +288,8 @@ public class QueryService {
 
                 QueryMetadata metadata =
                     new QueryMetadata(model, tokenCount, durationMs)
-                        .answeredWithoutKnowledge(answeredWithoutKnowledge);
+                        .answeredWithoutKnowledge(answeredWithoutKnowledge)
+                        .noKnowledgeAvailableInSpace(noKnowledgeAvailableInSpace);
                 return new QueryResponse(answer, sources, metadata, effectiveChatId)
                     .chatTitle(chatTitle);
               } catch (RuntimeException e) {

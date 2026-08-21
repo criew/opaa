@@ -252,6 +252,20 @@ public class ChatService {
   }
 
   /**
+   * Whether {@code spaceId} has at least one library association (#706 review) - used by {@code
+   * QueryService} to distinguish, in {@link #effectiveLibraryScope}'s @Alles-Wissen branch, the
+   * ordinary "no association at all" case (falls back to every readable library) from the fail-open
+   * case a curated-but-nothing-readable space produces: an empty {@link #effectiveLibraryScope}
+   * result together with {@code true} here means "curated, but nothing the caller may read", not
+   * "no curation configured" - the two need different frontend messages
+   * (docs/features/spaces-and-assets.md#suchbereich-je-chatart, "In diesem Space ist für dich
+   * derzeit kein Wissen verfügbar").
+   */
+  public boolean spaceHasLibraryAssociations(UUID spaceId) {
+    return !spaceAssetAssociationRepository.findLibraryIdsBySpaceId(spaceId).isEmpty();
+  }
+
+  /**
    * Persists one question/answer turn and, if the chat never had a title set explicitly, derives
    * one from the question (#525's "Titel-Default aus der ersten Frage ableiten"). Called from
    * {@code QueryService#query} after generating the answer - the caller has already verified {@code

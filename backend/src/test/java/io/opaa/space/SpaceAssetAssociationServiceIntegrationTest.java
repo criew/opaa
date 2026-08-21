@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.LibrarySpaceAssociationResponse;
+import io.opaa.api.dto.SpaceLibraryAssociationListResponse;
 import io.opaa.api.dto.SpaceLibraryAssociationResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -157,6 +158,10 @@ class SpaceAssetAssociationServiceIntegrationTest {
     assertThat(response.getLibraryId()).isEqualTo(library);
   }
 
+  // #706 review, finding 6: 404, not 403 - a plain 403 here would let a caller distinguish "this
+  // library exists in my organization but I lack access" from "no such library" for any guessed
+  // id, the exact existence-oracle gap #436 already closed for every other library-scoped
+  // endpoint (LibraryAccessService#requireRole).
   @Test
   void curatorCannotAssociateALibraryTheyThemselvesCannotRead() {
     UUID owner = createUser();
@@ -170,7 +175,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
         .satisfies(
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+                    .isEqualTo(HttpStatus.NOT_FOUND));
   }
 
   @Test
@@ -206,15 +211,56 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID memberWithoutAccess = createUser();
     addMember(space, memberWithoutAccess, SpaceRole.MEMBER);
 
-    List<SpaceLibraryAssociationResponse> seenByMemberWithAccess =
+    SpaceLibraryAssociationListResponse seenByMemberWithAccess =
         associationService.listForSpace(space, memberWithAccess, false);
-    List<SpaceLibraryAssociationResponse> seenByMemberWithoutAccess =
+    SpaceLibraryAssociationListResponse seenByMemberWithoutAccess =
         associationService.listForSpace(space, memberWithoutAccess, false);
 
-    assertThat(seenByMemberWithAccess)
+    assertThat(seenByMemberWithAccess.getItems())
         .extracting(SpaceLibraryAssociationResponse::getLibraryId)
         .containsExactly(library);
-    assertThat(seenByMemberWithoutAccess).isEmpty();
+    // #706 review, finding 2: a plain MEMBER with no readable association gets an empty items
+    // list, but hasAssociations still reports the true, unfiltered state of the space - the
+    // frontend needs both to tell "no curation" apart from "curated, nothing readable".
+    assertThat(seenByMemberWithoutAccess.getItems()).isEmpty();
+    assertThat(seenByMemberWithoutAccess.getHasAssociations()).isTrue();
+  }
+
+  @Test
+  void aSpaceWithNoAssociationsAtAllReportsHasAssociationsFalse() {
+    UUID member = createUser();
+    UUID space = createSpace(member, SpaceRole.ADMIN);
+
+    SpaceLibraryAssociationListResponse response =
+        associationService.listForSpace(space, member, false);
+
+    assertThat(response.getItems()).isEmpty();
+    assertThat(response.getHasAssociations()).isFalse();
+  }
+
+  // #706 review, finding 5: a CURATOR/ADMIN/owner sees every association, including one they
+  // cannot themselves read, so they can also detach it - unlike a plain MEMBER's filtered view.
+  @Test
+  void aSpaceAdminSeesAnAssociationTheyCannotThemselvesReadWithoutItsName() {
+    UUID owner = createUser();
+    UUID library = createLibrary(owner);
+    grant(library, owner, AssetRole.OWNER);
+    UUID curator = createUser();
+    grant(library, curator, AssetRole.VIEWER);
+    UUID space = createSpace(curator, SpaceRole.ADMIN);
+    associationService.associate(space, library, curator, false);
+
+    UUID otherAdmin = createUser();
+    addMember(space, otherAdmin, SpaceRole.ADMIN);
+
+    SpaceLibraryAssociationListResponse seenByOtherAdmin =
+        associationService.listForSpace(space, otherAdmin, false);
+
+    assertThat(seenByOtherAdmin.getItems()).hasSize(1);
+    SpaceLibraryAssociationResponse entry = seenByOtherAdmin.getItems().get(0);
+    assertThat(entry.getLibraryId()).isEqualTo(library);
+    assertThat(entry.getReadableByCaller()).isFalse();
+    assertThat(entry.getLibraryName()).isNull();
   }
 
   @Test
@@ -251,6 +297,47 @@ class SpaceAssetAssociationServiceIntegrationTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  // #706 review, finding 7b: a plain MEMBER (neither CURATOR/ADMIN/owner of the space nor MANAGER
+  // of the library) must not be able to detach an association.
+  @Test
+  void plainMemberCannotDetachAnAssociation() {
+    UUID owner = createUser();
+    UUID library = createLibrary(owner);
+    grant(library, owner, AssetRole.OWNER);
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
+    associationService.associate(space, library, owner, false);
+
+    UUID plainMember = createUser();
+    addMember(space, plainMember, SpaceRole.MEMBER);
+
+    assertThatThrownBy(() -> associationService.detach(space, library, plainMember, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+
+    assertThat(associationRepository.existsBySpaceIdAndLibraryId(space, library)).isTrue();
+  }
+
+  // #706 review, "Selbstbenachrichtigung": the curator who creates the association must never
+  // receive their own owner notification, even when they are also (part of) the library's owner.
+  @Test
+  void theTriggeringUserIsNeverNotifiedOfTheirOwnAssociation() {
+    UUID owner = createUser();
+    UUID library = createLibrary(owner);
+    grant(library, owner, AssetRole.OWNER);
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
+    UUID memberWithoutAccess = createUser();
+    addMember(space, memberWithoutAccess, SpaceRole.MEMBER);
+
+    // The owner themselves creates the association (they are ADMIN of their own space) - a mixed
+    // audience (memberWithoutAccess cannot read the library), but the owner is also the trigger.
+    associationService.associate(space, library, owner, false);
+
+    assertThat(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(owner)).isEmpty();
   }
 
   @Test

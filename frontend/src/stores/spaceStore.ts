@@ -36,9 +36,14 @@ interface SpaceState {
   // reachable for ADMIN, owner and system admins (a 403 for anyone else leaves members empty).
   members: SpaceMemberResponse[]
   isLoadingMembers: boolean
-  // #203: the space's associated libraries, already filtered server-side to what the caller may
-  // themselves read - two members of the same space can legitimately see different lists here.
+  // #203: the space's associated libraries - for a plain MEMBER, filtered server-side to what the
+  // caller may themselves read (two members of the same space can legitimately see different
+  // lists here); for a CURATOR/ADMIN/owner, unfiltered (#706 review, finding 5). hasAssociations
+  // is a count-free state field independent of the (possibly filtered) items list - it is what
+  // distinguishes "this space has no curation at all" from "curated, but nothing the caller may
+  // read" (#706 review, finding 2), two cases that look identical if only items is inspected.
   libraryAssociations: SpaceLibraryAssociationResponse[]
+  hasLibraryAssociations: boolean
   isLoadingLibraryAssociations: boolean
   reset: () => void
   loadSpaces: () => Promise<void>
@@ -85,6 +90,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   members: [],
   isLoadingMembers: false,
   libraryAssociations: [],
+  hasLibraryAssociations: false,
   isLoadingLibraryAssociations: false,
 
   reset: () =>
@@ -98,6 +104,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       members: [],
       isLoadingMembers: false,
       libraryAssociations: [],
+      hasLibraryAssociations: false,
       isLoadingLibraryAssociations: false,
     }),
 
@@ -138,6 +145,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       error: null,
       members: [],
       libraryAssociations: [],
+      hasLibraryAssociations: false,
     })
     try {
       const space = await getSpace(spaceId)
@@ -237,14 +245,23 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     const sessionEpoch = currentSessionEpoch()
     set({ isLoadingLibraryAssociations: true, error: null })
     try {
-      const libraryAssociations = await getSpaceLibraryAssociations(spaceId)
+      const response = await getSpaceLibraryAssociations(spaceId)
       if (isStaleSessionEpoch(sessionEpoch)) return
-      set({ libraryAssociations, isLoadingLibraryAssociations: false })
+      set({
+        libraryAssociations: response.items,
+        hasLibraryAssociations: response.hasAssociations,
+        isLoadingLibraryAssociations: false,
+      })
     } catch (err) {
       if (isStaleSessionEpoch(sessionEpoch)) return
       const message =
         err instanceof Error ? err.message : 'Zugeordnete Bibliotheken konnten nicht geladen werden'
-      set({ error: message, libraryAssociations: [], isLoadingLibraryAssociations: false })
+      set({
+        error: message,
+        libraryAssociations: [],
+        hasLibraryAssociations: false,
+        isLoadingLibraryAssociations: false,
+      })
     }
   },
 

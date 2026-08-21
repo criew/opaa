@@ -64,6 +64,9 @@ export default function SpaceCreatePage() {
   // (SpaceAssetAssociationService#associate).
   const [availableLibraries, setAvailableLibraries] = useState<LibraryListResponse[]>([])
   const [selectedLibraryIds, setSelectedLibraryIds] = useState<string[]>([])
+  // #706 review: a failed load must not read as "you have no libraries" - that is a legitimate,
+  // silent state, while a failed request needs its own visible message.
+  const [libraryLoadError, setLibraryLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     // Same source as the space management page: admin-only - a regular user simply gets an
@@ -73,7 +76,12 @@ export default function SpaceCreatePage() {
       .catch(() => setAllUsers([]))
     void getLibraries()
       .then(setAvailableLibraries)
-      .catch(() => setAvailableLibraries([]))
+      .catch((err) => {
+        setAvailableLibraries([])
+        setLibraryLoadError(
+          err instanceof Error ? err.message : 'Bibliotheken konnten nicht geladen werden.',
+        )
+      })
   }, [])
 
   function toggleLibrary(libraryId: string) {
@@ -293,7 +301,9 @@ export default function SpaceCreatePage() {
               die Sie selbst Zugriff haben, stehen zur Auswahl. Die Zuordnung gewährt niemandem
               zusätzlichen Zugriff und lässt sich später jederzeit in der Space-Verwaltung ändern.
             </Typography>
-            {availableLibraries.length === 0 ? (
+            {libraryLoadError ? (
+              <Alert severity="error">{libraryLoadError}</Alert>
+            ) : availableLibraries.length === 0 ? (
               <Typography color="text.secondary">
                 Sie haben derzeit keinen Zugriff auf eine Bibliothek.
               </Typography>

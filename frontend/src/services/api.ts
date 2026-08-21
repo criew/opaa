@@ -26,6 +26,7 @@ import type {
   QueryResponse,
   SourceConnectionTestRequest,
   SourceConnectionTestResponse,
+  SpaceLibraryAssociationListResponse,
   SpaceLibraryAssociationResponse,
   SpaceListResponse,
   SpaceMemberResponse,
@@ -293,13 +294,16 @@ export async function createSpace(
   }
 }
 
-// #203/#686: the space's own view of its associated libraries, filtered server-side to what the
-// calling member may themselves read - two members of the same space can see different lists.
+// #203/#686/#706: the space's own view of its associated libraries. For a plain MEMBER, filtered
+// server-side to what they may themselves read - two members of the same space can see different
+// lists. For a CURATOR/ADMIN/owner, unfiltered - see SpaceLibraryAssociationListResponse's own
+// description. hasAssociations is a count-free state field, independent of items, that
+// distinguishes "no curation at all" from "curated, but nothing the caller may read".
 export async function getSpaceLibraryAssociations(
   spaceId: string,
-): Promise<SpaceLibraryAssociationResponse[]> {
+): Promise<SpaceLibraryAssociationListResponse> {
   try {
-    const { data } = await client.get<SpaceLibraryAssociationResponse[]>(
+    const { data } = await client.get<SpaceLibraryAssociationListResponse>(
       `/v1/spaces/${spaceId}/libraries`,
     )
     return data

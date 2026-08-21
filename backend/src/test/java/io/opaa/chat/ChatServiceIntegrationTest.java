@@ -769,6 +769,40 @@ class ChatServiceIntegrationTest {
     assertThat(scope).containsExactly(associatedAndReadable);
   }
 
+  // #706 review, finding 7a: the fail-open branch - a space with at least one association, none
+  // of which are readable by this caller, must resolve to an EMPTY scope, never fall back to
+  // "every readable library". Distinct from
+  // effectiveLibraryScopeIsEveryReadableLibraryWhenTheSpaceHasNoAssociations, which covers the
+  // unrelated "no curation at all" case.
+  @Test
+  void effectiveLibraryScopeIsEmptyWhenTheSpaceIsCuratedButNothingIsReadable() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    UUID associatedButUnreadable = createLibrary(author);
+    UUID readableButNotAssociated = createLibrary(author);
+    associateLibrary(spaceId, associatedButUnreadable, author);
+    Chat chat = new Chat(spaceId, author, organizationA, null, true, Set.of());
+
+    // The caller's own readable set does not even contain associatedButUnreadable - simulating a
+    // caller with no grant on the one library this space curates.
+    Set<UUID> scope = chatService.effectiveLibraryScope(chat, Set.of(readableButNotAssociated));
+
+    assertThat(scope).isEmpty();
+  }
+
+  @Test
+  void spaceHasLibraryAssociationsReflectsWhetherAnyAssociationExists() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+
+    assertThat(chatService.spaceHasLibraryAssociations(spaceId)).isFalse();
+
+    UUID library = createLibrary(author);
+    associateLibrary(spaceId, library, author);
+
+    assertThat(chatService.spaceHasLibraryAssociations(spaceId)).isTrue();
+  }
+
   private void associateLibrary(UUID spaceId, UUID libraryId, UUID createdByUserId) {
     jdbcTemplate.update(
         "INSERT INTO space_asset_associations"

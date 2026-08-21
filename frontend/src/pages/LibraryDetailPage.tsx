@@ -779,10 +779,8 @@ function LibrarySpacesSection({ libraryId }: LibrarySpacesSectionProps) {
   }
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-      <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
-        Bereitgestellt in
-      </Typography>
+    <Box sx={{ mb: 5, maxWidth: 760 }}>
+      <SectionHead>Bereitgestellt in</SectionHead>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
@@ -826,7 +824,7 @@ function LibrarySpacesSection({ libraryId }: LibrarySpacesSectionProps) {
           ))}
         </Stack>
       )}
-    </Paper>
+    </Box>
   )
 }
 

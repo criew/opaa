@@ -104,6 +104,15 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             </Alert>
           )}
 
+          {/* #203/#706: distinct from answeredWithoutKnowledge above - the space is curated, but
+              none of its associated libraries are readable by this caller, not a deliberate
+              "ohne Wissen" choice. */}
+          {!isUser && message.noKnowledgeAvailableInSpace && (
+            <Alert severity="info" variant="outlined" sx={{ mt: 1 }}>
+              In diesem Space ist für Sie derzeit kein Wissen verfügbar.
+            </Alert>
+          )}
+
           {!isUser && (
             <SourceFootnotes
               messageId={message.id}
