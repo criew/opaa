@@ -8,6 +8,7 @@ import io.opaa.api.dto.ChatUpdateRequest;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.space.Space;
+import io.opaa.space.SpaceAssetAssociationRepository;
 import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
 import java.time.Instant;
@@ -76,6 +77,7 @@ public class ChatService {
   private final ChatMessageRepository chatMessageRepository;
   private final SpaceRepository spaceRepository;
   private final SpaceMembershipRepository spaceMembershipRepository;
+  private final SpaceAssetAssociationRepository spaceAssetAssociationRepository;
   private final LibraryAccessService libraryAccessService;
   private final ObjectMapper objectMapper;
   private final TransactionTemplate requiresNewTransactionTemplate;
@@ -86,6 +88,7 @@ public class ChatService {
       ChatMessageRepository chatMessageRepository,
       SpaceRepository spaceRepository,
       SpaceMembershipRepository spaceMembershipRepository,
+      SpaceAssetAssociationRepository spaceAssetAssociationRepository,
       LibraryAccessService libraryAccessService,
       ObjectMapper objectMapper,
       PlatformTransactionManager transactionManager,
@@ -94,6 +97,7 @@ public class ChatService {
     this.chatMessageRepository = chatMessageRepository;
     this.spaceRepository = spaceRepository;
     this.spaceMembershipRepository = spaceMembershipRepository;
+    this.spaceAssetAssociationRepository = spaceAssetAssociationRepository;
     this.libraryAccessService = libraryAccessService;
     this.objectMapper = objectMapper;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
@@ -222,18 +226,43 @@ public class ChatService {
   }
 
   /**
-   * The search scope for a query run in this chat (epic #523 "Entschiedene Semantik"): every
-   * readable library when {@code useKnowledge} is on, or the intersection of the
-   * sticky @-references with the readable libraries when it is off - never wider than {@code
-   * readableLibraryIds}, regardless of what the chat references.
+   * The search scope for a query run in this chat (epic #523 "Entschiedene Semantik", narrowed by
+   * #203's space↔library association): when {@code useKnowledge} is on (@Alles-Wissen), the scope
+   * is the space's associated libraries intersected with the readable libraries - or, if the space
+   * has no associations at all, every readable library (the permanent transition rule, see
+   * docs/features/spaces-and-assets.md#suchbereich-je-chatart: "Ein Space ohne Assoziationen
+   * verengt nie"). When {@code useKnowledge} is off, the scope is the intersection of the
+   * sticky @-references with the readable libraries. Neither branch is ever wider than {@code
+   * readableLibraryIds}, regardless of what the chat references or the space associates.
    */
   public Set<UUID> effectiveLibraryScope(Chat chat, Set<UUID> readableLibraryIds) {
     if (chat.isUseKnowledge()) {
-      return readableLibraryIds;
+      Set<UUID> associatedLibraryIds =
+          spaceAssetAssociationRepository.findLibraryIdsBySpaceId(chat.getSpaceId());
+      if (associatedLibraryIds.isEmpty()) {
+        return readableLibraryIds;
+      }
+      Set<UUID> scoped = new LinkedHashSet<>(associatedLibraryIds);
+      scoped.retainAll(readableLibraryIds);
+      return scoped;
     }
     Set<UUID> scoped = new LinkedHashSet<>(chat.getReferencedLibraryIds());
     scoped.retainAll(readableLibraryIds);
     return scoped;
+  }
+
+  /**
+   * Whether {@code spaceId} has at least one library association (#706 review) - used by {@code
+   * QueryService} to distinguish, in {@link #effectiveLibraryScope}'s @Alles-Wissen branch, the
+   * ordinary "no association at all" case (falls back to every readable library) from the fail-open
+   * case a curated-but-nothing-readable space produces: an empty {@link #effectiveLibraryScope}
+   * result together with {@code true} here means "curated, but nothing the caller may read", not
+   * "no curation configured" - the two need different frontend messages
+   * (docs/features/spaces-and-assets.md#suchbereich-je-chatart, "In diesem Space ist für dich
+   * derzeit kein Wissen verfügbar").
+   */
+  public boolean spaceHasLibraryAssociations(UUID spaceId) {
+    return !spaceAssetAssociationRepository.findLibraryIdsBySpaceId(spaceId).isEmpty();
   }
 
   /**

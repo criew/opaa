@@ -307,6 +307,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "ChatStatus" to "ChatStatus",
         "ChatRole" to "ChatRole",
         "ColorScheme" to "ColorScheme",
+        "NotificationType" to "NotificationType",
     ))
     importMappings.set(mapOf(
         "Instant" to "java.time.Instant",
@@ -332,6 +333,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "ChatStatus" to "io.opaa.chat.ChatStatus",
         "ChatRole" to "io.opaa.chat.ChatRole",
         "ColorScheme" to "io.opaa.branding.ColorScheme",
+        "NotificationType" to "io.opaa.notification.NotificationType",
     ))
 }
 
@@ -345,7 +347,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         // Remove generated enum files that are mapped to existing domain enums via typeMappings.
         // The generator still creates these files even with typeMappings configured.
         val generatedDir = generatedDtoDir.get().asFile
-        listOf("SpaceRole.java", "SpaceKind.java", "SpaceVisibility.java", "SystemRole.java", "GroupKind.java", "DirectorySyncOutcome.java", "LibraryOwnerType.java", "LibraryVisibility.java", "DocumentStatus.java", "DocumentSourceType.java", "AssetRole.java", "PermissionSubjectType.java", "ActorKind.java", "AuditSubjectKind.java", "AuditOutcome.java", "AuditObjectType.java", "AuditEventType.java", "AuditIncidentScopePurpose.java", "AuditIncidentScopeStatus.java", "ChatStatus.java", "ChatRole.java", "ColorScheme.java").forEach { fileName ->
+        listOf("SpaceRole.java", "SpaceKind.java", "SpaceVisibility.java", "SystemRole.java", "GroupKind.java", "DirectorySyncOutcome.java", "LibraryOwnerType.java", "LibraryVisibility.java", "DocumentStatus.java", "DocumentSourceType.java", "AssetRole.java", "PermissionSubjectType.java", "ActorKind.java", "AuditSubjectKind.java", "AuditOutcome.java", "AuditObjectType.java", "AuditEventType.java", "AuditIncidentScopePurpose.java", "AuditIncidentScopeStatus.java", "ChatStatus.java", "ChatRole.java", "ColorScheme.java", "NotificationType.java").forEach { fileName ->
             File(generatedDir, fileName).delete()
         }
     }

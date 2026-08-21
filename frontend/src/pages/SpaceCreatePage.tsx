@@ -13,10 +13,15 @@ import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { useNavigate } from 'react-router'
 import { useEffect } from 'react'
+import Checkbox from '@mui/material/Checkbox'
+import List from '@mui/material/List'
+import ListItemButton from '@mui/material/ListItemButton'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import ListItemText from '@mui/material/ListItemText'
 import PageHeading from '../components/a11y/PageHeading'
 import FieldLabel from '../components/wizard/FieldLabel'
 import WizardStepBar from '../components/wizard/WizardStepBar'
-import { getUsers } from '../services/api'
+import { getLibraries, getUsers } from '../services/api'
 import { useSpaceStore } from '../stores/spaceStore'
 import {
   spaceRoleLabel,
@@ -24,9 +29,9 @@ import {
   spaceVisibilityDescription,
   spaceVisibilityLabel,
 } from '../utils/labels'
-import type { SpaceRole, SpaceVisibility, UserInfo } from '../types/api'
+import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserInfo } from '../types/api'
 
-const STEPS = ['Grunddaten', 'Mitglieder', 'Zusammenfassung'] as const
+const STEPS = ['Grunddaten', 'Mitglieder', 'Datenquellen', 'Zusammenfassung'] as const
 
 const MEMBER_ROLES: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
@@ -36,9 +41,8 @@ interface PendingMember {
 }
 
 /**
- * The space creation wizard (#594, mockup 1b), replacing the former dialog. The mockup's
- * Datenquellen step waits on the backend's space↔library assignment (#203 follow-up) - the
- * wizard ships the steps today's API can honour: Grunddaten, Mitglieder, Zusammenfassung.
+ * The space creation wizard (#594, mockup 1b), replacing the former dialog. Grunddaten, Mitglieder,
+ * Datenquellen (#203/#686), Zusammenfassung.
  */
 export default function SpaceCreatePage() {
   const navigate = useNavigate()
@@ -55,6 +59,14 @@ export default function SpaceCreatePage() {
   const [allUsers, setAllUsers] = useState<UserInfo[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // #686: only libraries the creator may themselves read are offered - GET /v1/libraries already
+  // returns exactly that set, and the backend re-checks the same rule when the space is created
+  // (SpaceAssetAssociationService#associate).
+  const [availableLibraries, setAvailableLibraries] = useState<LibraryListResponse[]>([])
+  const [selectedLibraryIds, setSelectedLibraryIds] = useState<string[]>([])
+  // #706 review: a failed load must not read as "you have no libraries" - that is a legitimate,
+  // silent state, while a failed request needs its own visible message.
+  const [libraryLoadError, setLibraryLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     // Same source as the space management page: admin-only - a regular user simply gets an
@@ -62,7 +74,21 @@ export default function SpaceCreatePage() {
     void getUsers()
       .then(setAllUsers)
       .catch(() => setAllUsers([]))
+    void getLibraries()
+      .then(setAvailableLibraries)
+      .catch((err) => {
+        setAvailableLibraries([])
+        setLibraryLoadError(
+          err instanceof Error ? err.message : 'Bibliotheken konnten nicht geladen werden.',
+        )
+      })
   }, [])
+
+  function toggleLibrary(libraryId: string) {
+    setSelectedLibraryIds((prev) =>
+      prev.includes(libraryId) ? prev.filter((id) => id !== libraryId) : [...prev, libraryId],
+    )
+  }
 
   const availableUsers = useMemo(() => {
     const pendingIds = new Set(pendingMembers.map((m) => m.user.id))
@@ -82,7 +108,12 @@ export default function SpaceCreatePage() {
     setSubmitting(true)
     setError(null)
     try {
-      const spaceId = await createNewSpace(name.trim(), description.trim(), visibility)
+      const spaceId = await createNewSpace(
+        name.trim(),
+        description.trim(),
+        visibility,
+        selectedLibraryIds,
+      )
       const failed: string[] = []
       for (const member of pendingMembers) {
         try {
@@ -265,6 +296,46 @@ export default function SpaceCreatePage() {
 
         {activeStep === 2 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+              Wählen Sie die Bibliotheken, die dieser Space durchsuchen soll — nur Bibliotheken, auf
+              die Sie selbst Zugriff haben, stehen zur Auswahl. Die Zuordnung gewährt niemandem
+              zusätzlichen Zugriff und lässt sich später jederzeit in der Space-Verwaltung ändern.
+            </Typography>
+            {libraryLoadError ? (
+              <Alert severity="error">{libraryLoadError}</Alert>
+            ) : availableLibraries.length === 0 ? (
+              <Typography color="text.secondary">
+                Sie haben derzeit keinen Zugriff auf eine Bibliothek.
+              </Typography>
+            ) : (
+              <List dense sx={{ border: 1, borderColor: 'divider', borderRadius: '10px', py: 0 }}>
+                {availableLibraries.map((library) => (
+                  <ListItemButton
+                    key={library.id}
+                    onClick={() => toggleLibrary(library.id)}
+                    sx={{ '& + &': { borderTop: 1, borderColor: 'divider' } }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <Checkbox
+                        edge="start"
+                        checked={selectedLibraryIds.includes(library.id)}
+                        tabIndex={-1}
+                        disableRipple
+                        slotProps={{
+                          input: { 'aria-label': `Bibliothek ${library.name} zuordnen` },
+                        }}
+                      />
+                    </ListItemIcon>
+                    <ListItemText primary={library.name} />
+                  </ListItemButton>
+                ))}
+              </List>
+            )}
+          </Box>
+        )}
+
+        {activeStep === 3 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             {[
               { label: 'Name', value: name.trim() },
               { label: 'Beschreibung', value: description.trim() || '–' },
@@ -281,6 +352,16 @@ export default function SpaceCreatePage() {
                         )
                         .join(', '),
               },
+              {
+                label: 'Datenquellen',
+                value:
+                  selectedLibraryIds.length === 0
+                    ? 'keine — durchsucht bis auf Weiteres alles Lesbare'
+                    : availableLibraries
+                        .filter((l) => selectedLibraryIds.includes(l.id))
+                        .map((l) => l.name)
+                        .join(', '),
+              },
             ].map((row) => (
               <Box key={row.label} sx={{ display: 'flex', gap: 2 }}>
                 <Typography
@@ -294,10 +375,6 @@ export default function SpaceCreatePage() {
                 </Typography>
               </Box>
             ))}
-            <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 1 }}>
-              Die Datenquellen des Space ordnen Sie zu, sobald die Zuordnung verfügbar ist — bis
-              dahin bestimmt die @-Eingrenzung im Chat den Suchbereich.
-            </Typography>
           </Box>
         )}
 

@@ -52,11 +52,13 @@ class Migration040SpaceArchivedEventTypeTest extends AbstractMigrationTest {
 
   /**
    * Values added to {@link AuditEventType} by a migration <em>after</em> 040 - {@code
-   * BRANDING_SETTINGS_CHANGED} arrives with 042 (#582). This class applies 040 and stops there, so
-   * these cannot be in its constraint and must not be asserted against it.
+   * BRANDING_SETTINGS_CHANGED} arrives with 042 (#582), {@code LIBRARY_DETACHED_FROM_SPACE} with
+   * 053 (#706). This class applies 040 and stops there, so these cannot be in its constraint and
+   * must not be asserted against it.
    */
   private static final Set<AuditEventType> VALUES_ADDED_AFTER_MIGRATION_040 =
-      EnumSet.of(AuditEventType.BRANDING_SETTINGS_CHANGED);
+      EnumSet.of(
+          AuditEventType.BRANDING_SETTINGS_CHANGED, AuditEventType.LIBRARY_DETACHED_FROM_SPACE);
 
   @Override
   protected String baseFixtureChangelogPath() {

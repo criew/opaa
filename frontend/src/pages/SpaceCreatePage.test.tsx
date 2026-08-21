@@ -33,7 +33,8 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Neuer Space' })).toBeInTheDocument()
     expect(screen.getByText('1 · Grunddaten')).toBeInTheDocument()
     expect(screen.getByText('2 · Mitglieder')).toBeInTheDocument()
-    expect(screen.getByText('3 · Zusammenfassung')).toBeInTheDocument()
+    expect(screen.getByText('3 · Datenquellen')).toBeInTheDocument()
+    expect(screen.getByText('4 · Zusammenfassung')).toBeInTheDocument()
 
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
     await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
@@ -60,13 +61,19 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     await user.type(screen.getByLabelText(/Beschreibung/), 'Referat 12')
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
 
     expect(screen.getByText('Widerspruchsstelle')).toBeInTheDocument()
     expect(screen.getByText('Referat 12')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
 
-    expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', 'Referat 12', 'PRIVATE')
+    expect(mockCreateNewSpace).toHaveBeenCalledWith(
+      'Widerspruchsstelle',
+      'Referat 12',
+      'PRIVATE',
+      [],
+    )
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-neu')
   })
 

@@ -4,6 +4,7 @@ import IconButton from '@mui/material/IconButton'
 import Toolbar from '@mui/material/Toolbar'
 import MenuIcon from '@mui/icons-material/Menu'
 import BrandMark from '../components/BrandMark'
+import NotificationBell from '../components/notifications/NotificationBell'
 import { useUiStore } from '../stores/uiStore'
 
 export default function MobileHeader() {
@@ -29,6 +30,7 @@ export default function MobileHeader() {
           <BrandMark logoHeight={24} />
         </Box>
         <Box sx={{ flexGrow: 1 }} />
+        <NotificationBell />
       </Toolbar>
     </AppBar>
   )

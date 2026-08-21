@@ -44,6 +44,7 @@ public class SpaceService {
   private final UserRepository userRepository;
   private final AuditEventRecorder auditEventRecorder;
   private final ChatRepository chatRepository;
+  private final SpaceAssetAssociationService associationService;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   /**
@@ -64,11 +65,13 @@ public class SpaceService {
       UserRepository userRepository,
       AuditEventRecorder auditEventRecorder,
       ChatRepository chatRepository,
+      SpaceAssetAssociationService associationService,
       PlatformTransactionManager transactionManager) {
     this.spaceRepository = spaceRepository;
     this.chatRepository = chatRepository;
     this.userRepository = userRepository;
     this.auditEventRecorder = auditEventRecorder;
+    this.associationService = associationService;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -121,6 +124,19 @@ public class SpaceService {
         spaceAuditPayload(saved),
         AuditOutcome.SUCCESS,
         null);
+
+    // #686/#706 review: associated in the same transaction as the space itself, not in a
+    // best-effort loop at the controller - a library that cannot be associated (not found, or not
+    // readable by the creator) rolls the whole creation back rather than leaving a half-created
+    // space behind. associationService.associate participates in this method's own transaction
+    // (default REQUIRES propagation on a Spring-managed bean call), so a failure here rolls back
+    // both the space row and every association already inserted for it.
+    if (request.getLibraryIds() != null) {
+      for (UUID libraryId : request.getLibraryIds()) {
+        associationService.associate(saved.getId(), libraryId, currentUserId, systemAdmin);
+      }
+    }
+
     return toSpaceResponse(saved, currentUserId);
   }
 

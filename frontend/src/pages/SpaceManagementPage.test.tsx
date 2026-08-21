@@ -5,7 +5,7 @@ import { renderWithProviders } from '../test/test-utils'
 import SpaceManagementPage from './SpaceManagementPage'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import type { SpaceResponse } from '../types/api'
+import type { SpaceLibraryAssociationListResponse, SpaceResponse } from '../types/api'
 
 vi.mock('react-router', async () => {
   const actual = await vi.importActual<typeof import('react-router')>('react-router')
@@ -27,6 +27,7 @@ const {
   mockDeleteSpace,
   mockArchiveSpace,
   mockListSpaceMembers,
+  mockGetSpaceLibraryAssociations,
   membersBySpaceId,
 } = vi.hoisted(() => {
   const membersBySpaceId: Record<
@@ -53,6 +54,12 @@ const {
     mockDeleteSpace: vi.fn(async () => undefined),
     mockArchiveSpace: vi.fn(async () => ({}) as SpaceResponse),
     mockListSpaceMembers: vi.fn(async (spaceId: string) => membersBySpaceId[spaceId] ?? []),
+    mockGetSpaceLibraryAssociations: vi.fn(
+      async (spaceId: string): Promise<SpaceLibraryAssociationListResponse> => {
+        void spaceId
+        return { hasAssociations: false, items: [] }
+      },
+    ),
     membersBySpaceId,
   }
 })
@@ -67,6 +74,7 @@ vi.mock('../services/api', async () => {
       async (spaceId: string) => useSpaceStore.getState().selectedSpace ?? { id: spaceId },
     ),
     listSpaceMembers: mockListSpaceMembers,
+    getSpaceLibraryAssociations: mockGetSpaceLibraryAssociations,
     updateSpaceDetails: mockUpdateSpaceDetails,
     updateSpaceMemberRole: mockUpdateSpaceMemberRole,
     removeSpaceMember: mockRemoveSpaceMember,
@@ -143,6 +151,7 @@ function setSpaceState(space: SpaceResponse) {
 describe('SpaceManagementPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetSpaceLibraryAssociations.mockResolvedValue({ hasAssociations: false, items: [] })
     useAuthStore.setState({
       mode: 'dev',
       isAuthenticated: true,
@@ -287,5 +296,28 @@ describe('SpaceManagementPage', () => {
       expect(mockArchiveSpace).toHaveBeenCalledWith('space-team')
     })
     expect(screen.getByText('Space archiviert')).toBeInTheDocument()
+  })
+
+  // #706 review, finding 5: an ADMIN must see (and be able to detach) an association they cannot
+  // themselves read - the store's unfiltered items list carries readableByCaller=false and no
+  // libraryName for such an entry.
+  it('shows an unreadable association without its name and still offers to detach it', async () => {
+    mockGetSpaceLibraryAssociations.mockResolvedValue({
+      hasAssociations: true,
+      items: [
+        {
+          libraryId: 'lib-hidden',
+          readableByCaller: false,
+          createdByUserId: 'u2',
+          createdAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+    })
+    setSpaceState(teamSpace)
+
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText('Bibliothek ohne eigenen Zugriff')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^lösen$/i })).toBeInTheDocument()
   })
 })

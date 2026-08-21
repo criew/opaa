@@ -11,8 +11,8 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useNavigate, useParams } from 'react-router'
-import type { SpaceRole, SpaceVisibility, UserInfo } from '../types/api'
-import { getUsers } from '../services/api'
+import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserInfo } from '../types/api'
+import { getLibraries, getUsers } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import {
@@ -30,6 +30,13 @@ const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
 function canManageMembers(role: SpaceRole | undefined): boolean {
   return role === 'ADMIN'
+}
+
+// #203: a CURATOR may associate and detach libraries, one level below ADMIN's member management -
+// docs/features/spaces-and-assets.md#space-rollen ("CURATOR: zusätzlich Assets assoziieren und
+// lösen").
+function canManageLibraries(role: SpaceRole | undefined, isOwner: boolean): boolean {
+  return role === 'CURATOR' || role === 'ADMIN' || isOwner
 }
 
 export default function SpaceManagementPage() {
@@ -50,6 +57,11 @@ export default function SpaceManagementPage() {
   const updateDetails = useSpaceStore((s) => s.updateDetails)
   const deleteSelectedSpace = useSpaceStore((s) => s.deleteSelectedSpace)
   const archiveSelectedSpace = useSpaceStore((s) => s.archiveSelectedSpace)
+  const libraryAssociations = useSpaceStore((s) => s.libraryAssociations)
+  const isLoadingLibraryAssociations = useSpaceStore((s) => s.isLoadingLibraryAssociations)
+  const loadLibraryAssociations = useSpaceStore((s) => s.loadLibraryAssociations)
+  const associateLibrary = useSpaceStore((s) => s.associateLibrary)
+  const detachLibrary = useSpaceStore((s) => s.detachLibrary)
   const [draft, setDraft] = useState<{
     spaceId: string | null
     name: string
@@ -70,6 +82,8 @@ export default function SpaceManagementPage() {
   const [deleteBlockedByChats, setDeleteBlockedByChats] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [allUsers, setAllUsers] = useState<UserInfo[]>([])
+  const [readableLibraries, setReadableLibraries] = useState<LibraryListResponse[]>([])
+  const [selectedLibrary, setSelectedLibrary] = useState<LibraryListResponse | null>(null)
 
   useEffect(() => {
     if (spaceId) {
@@ -88,9 +102,20 @@ export default function SpaceManagementPage() {
   }, [loadMembers, spaceId])
 
   useEffect(() => {
+    if (spaceId) {
+      void loadLibraryAssociations(spaceId)
+    }
+  }, [loadLibraryAssociations, spaceId])
+
+  useEffect(() => {
     void getUsers()
       .then(setAllUsers)
       .catch(() => setAllUsers([]))
+    // #203: a CURATOR may only associate a library they themselves can read - GET /v1/libraries
+    // already returns exactly that set, and the backend re-checks the same rule.
+    void getLibraries()
+      .then(setReadableLibraries)
+      .catch(() => setReadableLibraries([]))
   }, [])
 
   const canManage = useMemo(() => canManageMembers(space?.userRole), [space?.userRole])
@@ -99,6 +124,11 @@ export default function SpaceManagementPage() {
     return allUsers.filter((u) => !memberIds.has(u.id))
   }, [allUsers, members])
   const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
+  const canManageAssociations = canManageLibraries(space?.userRole, isOwner)
+  const associableLibraries = useMemo(() => {
+    const associatedIds = new Set(libraryAssociations.map((a) => a.libraryId))
+    return readableLibraries.filter((l) => !associatedIds.has(l.id))
+  }, [readableLibraries, libraryAssociations])
   const activeSpaceId = space?.id ?? null
   const name = draft.spaceId === activeSpaceId ? draft.name : (space?.name ?? '')
   const description =
@@ -511,6 +541,99 @@ export default function SpaceManagementPage() {
                   </Button>
                 </Stack>
               )}
+            </Stack>
+          )}
+        </Box>
+
+        <Box>
+          <SectionHead>Datenquellen</SectionHead>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Eine Zuordnung stellt eine Bibliothek in diesem Space bereit, gewährt aber niemandem
+            zusätzlichen Zugriff — nur Mitglieder mit eigenem Leserecht auf die Bibliothek sehen
+            ihre Treffer.
+          </Typography>
+          {isLoadingLibraryAssociations ? (
+            <Typography color="text.secondary">Datenquellen werden geladen …</Typography>
+          ) : libraryAssociations.length === 0 ? (
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
+              Diesem Space sind keine Bibliotheken zugeordnet.
+            </Typography>
+          ) : (
+            <Stack spacing={0} sx={{ mb: 2 }}>
+              {libraryAssociations.map((association) => (
+                <Box
+                  key={association.libraryId}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    py: 1.25,
+                    '& + &': { borderTop: 1, borderColor: 'divider' },
+                  }}
+                >
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <Typography
+                      sx={
+                        association.readableByCaller
+                          ? undefined
+                          : { color: 'text.secondary', fontStyle: 'italic' }
+                      }
+                    >
+                      {association.readableByCaller
+                        ? association.libraryName
+                        : 'Bibliothek ohne eigenen Zugriff'}
+                    </Typography>
+                  </Stack>
+                  {canManageAssociations && (
+                    <Button
+                      color="error"
+                      size="small"
+                      onClick={async () => {
+                        setLocalError(null)
+                        try {
+                          await detachLibrary(spaceId, association.libraryId)
+                        } catch (err) {
+                          setLocalError(err instanceof Error ? err.message : 'Lösen fehlgeschlagen')
+                        }
+                      }}
+                    >
+                      Lösen
+                    </Button>
+                  )}
+                </Box>
+              ))}
+            </Stack>
+          )}
+          {canManageAssociations && (
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
+              <Autocomplete
+                options={associableLibraries}
+                getOptionLabel={(option) => option.name}
+                value={selectedLibrary}
+                onChange={(_event, value) => setSelectedLibrary(value)}
+                renderInput={(params) => (
+                  <TextField {...params} label="Bibliothek" placeholder="Bibliothek suchen …" />
+                )}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                sx={{ minWidth: 280 }}
+              />
+              <Button
+                variant="contained"
+                disabled={!selectedLibrary}
+                onClick={async () => {
+                  if (!selectedLibrary) return
+                  setLocalError(null)
+                  try {
+                    await associateLibrary(spaceId, selectedLibrary.id)
+                    setSelectedLibrary(null)
+                    setSuccessMessage('Bibliothek zugeordnet')
+                  } catch (err) {
+                    setLocalError(err instanceof Error ? err.message : 'Zuordnung fehlgeschlagen')
+                  }
+                }}
+              >
+                Zuordnen
+              </Button>
             </Stack>
           )}
         </Box>

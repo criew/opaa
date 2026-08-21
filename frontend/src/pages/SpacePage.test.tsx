@@ -5,7 +5,7 @@ import SpacePage from './SpacePage'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useChatListStore } from '../stores/chatListStore'
-import type { SpaceMemberResponse } from '../types/api'
+import type { SpaceLibraryAssociationListResponse, SpaceMemberResponse } from '../types/api'
 
 const currentSpaceId = 'space-personal'
 const mockNavigate = vi.fn()
@@ -26,8 +26,14 @@ vi.mock('react-router', async () => {
 // directly via useSpaceStore.setState below) with the shared fixture's ADMIN/mock-user-id space
 // once SpacePage's own selectSpace effect resolves. vi.hoisted because vi.mock's factory below is
 // itself hoisted above this module's regular top-level statements.
-const { mockListSpaceMembers } = vi.hoisted(() => ({
+const { mockListSpaceMembers, mockGetSpaceLibraryAssociations } = vi.hoisted(() => ({
   mockListSpaceMembers: vi.fn(async (): Promise<SpaceMemberResponse[]> => []),
+  mockGetSpaceLibraryAssociations: vi.fn(
+    async (): Promise<SpaceLibraryAssociationListResponse> => ({
+      hasAssociations: false,
+      items: [],
+    }),
+  ),
 }))
 
 vi.mock('../services/api', async () => {
@@ -38,12 +44,15 @@ vi.mock('../services/api', async () => {
       async (spaceId: string) => useSpaceStore.getState().selectedSpace ?? { id: spaceId },
     ),
     listSpaceMembers: mockListSpaceMembers,
+    getSpaceLibraryAssociations: mockGetSpaceLibraryAssociations,
   }
 })
 
 describe('SpacePage', () => {
   beforeEach(() => {
     mockListSpaceMembers.mockClear()
+    mockGetSpaceLibraryAssociations.mockClear()
+    mockGetSpaceLibraryAssociations.mockResolvedValue({ hasAssociations: false, items: [] })
     useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
     useAuthStore.setState({
       mode: 'dev',
@@ -104,6 +113,52 @@ describe('SpacePage', () => {
 
     expect(await screen.findByText('Architektur des Projekts')).toBeInTheDocument()
     expect(await screen.findByText('Deployment-Fragen')).toBeInTheDocument()
+  })
+
+  // #203 acceptance criteria: the associated-libraries list and its once-shown explanation for why
+  // it can differ per member.
+  it('shows the space’s associated libraries and a dismissible explanatory hint', async () => {
+    window.localStorage.removeItem('opaa.space-library-hint-dismissed')
+    mockGetSpaceLibraryAssociations.mockResolvedValue({
+      hasAssociations: true,
+      items: [
+        {
+          libraryId: 'lib-1',
+          libraryName: 'Rechtsquellen Soziales',
+          readableByCaller: true,
+          createdByUserId: 'mock-user-id',
+          createdAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+    })
+
+    renderWithProviders(<SpacePage />, { withRouter: true })
+
+    expect(await screen.findByText('Rechtsquellen Soziales')).toBeInTheDocument()
+    expect(screen.getByText(/andere Mitglieder können deshalb/)).toBeInTheDocument()
+  })
+
+  it('shows a fallback message when the space has no library associations', async () => {
+    mockGetSpaceLibraryAssociations.mockResolvedValue({ hasAssociations: false, items: [] })
+
+    renderWithProviders(<SpacePage />, { withRouter: true })
+
+    expect(
+      await screen.findByText(/Diesem Space sind keine Bibliotheken zugeordnet/),
+    ).toBeInTheDocument()
+  })
+
+  // #706 review, finding 2: hasAssociations=true with an empty (filtered) items list must not be
+  // reported the same as "no association at all" - the space IS curated, the caller just cannot
+  // read any of what it curates.
+  it('shows the space-has-no-readable-knowledge message when curated but nothing is readable', async () => {
+    mockGetSpaceLibraryAssociations.mockResolvedValue({ hasAssociations: true, items: [] })
+
+    renderWithProviders(<SpacePage />, { withRouter: true })
+
+    expect(
+      await screen.findByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
+    ).toBeInTheDocument()
   })
 
   // #674 review, nit e: the non-admin path - a MEMBER must see only the aggregated roleCounts,

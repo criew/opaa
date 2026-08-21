@@ -24,6 +24,7 @@ import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
 import io.opaa.library.SourceConnectionTestService;
+import io.opaa.space.SpaceAssetAssociationService;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -63,6 +64,7 @@ class LibraryControllerDocumentTest {
   @MockitoBean private DocumentIndexingService indexingService;
   @MockitoBean private UserService userService;
   @MockitoBean private SourceConnectionTestService sourceConnectionTestService;
+  @MockitoBean private SpaceAssetAssociationService associationService;
 
   private final UUID currentUserId = UUID.randomUUID();
 

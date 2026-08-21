@@ -1,0 +1,111 @@
+databaseChangeLog:
+  # #203/#686: space_asset_associations - the pure-curation association between a Space and an
+  # asset (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren). Only knowledge
+  # libraries exist as an asset type today (#201), so this table carries library_id directly rather
+  # than a polymorphic (asset_type, asset_id) pair - the entity/table names stay generic
+  # ("SpaceAssetAssociation"/"space_asset_associations") so a future asset type (agent, prompt
+  # library) does not require a rename, but the schema itself is not pre-built for polymorphism it
+  # cannot yet exercise or test.
+  #
+  # The association itself grants nothing (docs/features/spaces-and-assets.md#assoziation): it only
+  # records that a library is curated into a space, by whom and when. All three foreign keys -
+  # space, library and creator - are composite against (id, organization_id) from the start
+  # (OrganizationBoundarySchemaTest's structural rule: every foreign key from an
+  # organization_id-carrying table to another must be composite) - this is a brand new table, so
+  # unlike migrations 046-050 there is no retrofit dance (add nullable column, backfill, clear
+  # cross-organization rows, enforce) needed; the organization boundary is correct from the first
+  # row.
+  #
+  # ON DELETE CASCADE on both sides:
+  #   - space_id: deleting a space removes its associations but leaves every library untouched
+  #     (#203 acceptance criterion "Deleting a space removes associations but leaves the assets
+  #     untouched") - the association is the only thing that belonged to the space.
+  #   - library_id: deleting a library removes it from every space it was associated with, for the
+  #     same reason - there is nothing left to curate.
+  - changeSet:
+      id: 051-create-space-asset-associations
+      author: opaa
+      comment: >
+        Creates space_asset_associations (#203/#686) - the record that a knowledge library is
+        curated into a space. Unique per (space_id, library_id): associating the same library twice
+        into the same space is a no-op, not a second row. created_by_user_id names the space
+        CURATOR/ADMIN (or system admin) who created the association, for the owner-facing "who put
+        this here" view - RESTRICT rather than CASCADE/SET NULL, mirroring
+        asset_grants.granted_by_user_id's post-migration-047 shape (fk_asset_grants_granted_by_user_organization):
+        the association itself must be explicitly removed before its creator's account can be
+        deleted, never silently orphaned. Composite against (id, organization_id) like the other
+        two foreign keys below, not the single-column shape migration 013 originally gave
+        granted_by_user_id before 047 corrected it - this table has no such pre-047 history to
+        carry forward.
+      changes:
+        - createTable:
+            tableName: space_asset_associations
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: space_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: library_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by_user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: space_asset_associations
+            baseColumnNames: space_id, organization_id
+            referencedTableName: spaces
+            referencedColumnNames: id, organization_id
+            constraintName: fk_space_asset_associations_space_organization
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: space_asset_associations
+            baseColumnNames: library_id, organization_id
+            referencedTableName: knowledge_libraries
+            referencedColumnNames: id, organization_id
+            constraintName: fk_space_asset_associations_library_organization
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: space_asset_associations
+            baseColumnNames: created_by_user_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_space_asset_associations_created_by_user_organization
+            onDelete: RESTRICT
+        - addUniqueConstraint:
+            tableName: space_asset_associations
+            columnNames: space_id, library_id
+            constraintName: uk_space_asset_associations_space_library
+        - createIndex:
+            tableName: space_asset_associations
+            indexName: idx_space_asset_associations_library_organization
+            columns:
+              - column:
+                  name: library_id
+              - column:
+                  name: organization_id
+      rollback:
+        - dropTable:
+            tableName: space_asset_associations

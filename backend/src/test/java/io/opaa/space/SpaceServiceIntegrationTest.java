@@ -121,6 +121,27 @@ class SpaceServiceIntegrationTest {
     return userRepository.save(user).getId();
   }
 
+  private UUID createReadableLibrary(UUID organizationId, UUID ownerId) {
+    io.opaa.library.KnowledgeLibrary library =
+        io.opaa.library.KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Bibliothek",
+            null,
+            ownerId,
+            io.opaa.library.LibraryVisibility.PRIVATE,
+            false);
+    UUID libraryId = libraryRepository.save(library).getId();
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at)"
+            + " VALUES (?, ?, ?, 'USER', ?, 'OWNER', now(), now())",
+        UUID.randomUUID(),
+        libraryId,
+        organizationId,
+        ownerId);
+    return libraryId;
+  }
+
   @Test
   void systemAdminCanCreateTeamSpace() {
     UUID adminUserId = createUser(organizationA);
@@ -947,5 +968,40 @@ class SpaceServiceIntegrationTest {
 
     assertThat(visibleToSystemAdmin).hasSize(1);
     assertThat(visibleToSystemAdmin.getFirst().getArchived()).isTrue();
+  }
+
+  // #706 review, finding 4: libraryIds are associated in the same transaction as the space itself
+  // - a library the creator cannot associate (here: does not exist) must roll the whole creation
+  // back, not leave a half-created space with only some of the requested associations.
+  @Test
+  void createSpaceRollsBackEntirelyWhenOneOfTheRequestedLibraryIdsCannotBeAssociated() {
+    UUID creator = createUser(organizationA);
+    UUID readableLibrary = createReadableLibrary(organizationA, creator);
+    UUID nonExistentLibrary = UUID.randomUUID();
+    SpaceRequest request =
+        new SpaceRequest("Datenraum").libraryIds(List.of(readableLibrary, nonExistentLibrary));
+
+    assertThatThrownBy(() -> spaceService.createSpace(request, creator, false))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+
+    assertThat(spaceRepository.findDistinctByMembershipsUserId(creator)).isEmpty();
+  }
+
+  @Test
+  void createSpaceAssociatesEveryRequestedLibraryAtomicallyOnSuccess() {
+    UUID creator = createUser(organizationA);
+    UUID libraryOne = createReadableLibrary(organizationA, creator);
+    UUID libraryTwo = createReadableLibrary(organizationA, creator);
+    SpaceRequest request =
+        new SpaceRequest("Datenraum").libraryIds(List.of(libraryOne, libraryTwo));
+
+    SpaceResponse created = spaceService.createSpace(request, creator, false);
+
+    List<UUID> associatedLibraryIds =
+        jdbcTemplate.query(
+            "SELECT library_id FROM space_asset_associations WHERE space_id = ?",
+            (rs, rowNum) -> (UUID) rs.getObject("library_id"),
+            created.getId());
+    assertThat(associatedLibraryIds).containsExactlyInAnyOrder(libraryOne, libraryTwo);
   }
 }

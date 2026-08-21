@@ -19,11 +19,15 @@ import type {
   LibraryListResponse,
   LibraryRequest,
   LibraryResponse,
+  LibrarySpaceAssociationResponse,
   LibraryUpdateRequest,
+  NotificationResponse,
   QueryRequest,
   QueryResponse,
   SourceConnectionTestRequest,
   SourceConnectionTestResponse,
+  SpaceLibraryAssociationListResponse,
+  SpaceLibraryAssociationResponse,
   SpaceListResponse,
   SpaceMemberResponse,
   SpaceRequest,
@@ -267,6 +271,7 @@ export async function createSpace(
   name: string,
   description: string,
   visibility?: SpaceVisibility,
+  libraryIds?: string[],
 ): Promise<SpaceResponse> {
   try {
     const currentUserId = useAuthStore.getState().user?.id ?? null
@@ -276,8 +281,69 @@ export async function createSpace(
       visibility,
       ownerId: currentUserId,
       initialMembers: [],
+      // #686: the assistant's Datenquellen step submits the creator's chosen libraries alongside
+      // the space itself - the backend associates each one right after creation, requiring the
+      // creator to already be able to read it (SpaceAssetAssociationService#associate), the same
+      // rule the dedicated endpoints below enforce afterwards.
+      libraryIds: libraryIds && libraryIds.length > 0 ? libraryIds : undefined,
     }
     const { data } = await client.post<SpaceResponse>('/v1/spaces', body)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+// #203/#686/#706: the space's own view of its associated libraries. For a plain MEMBER, filtered
+// server-side to what they may themselves read - two members of the same space can see different
+// lists. For a CURATOR/ADMIN/owner, unfiltered - see SpaceLibraryAssociationListResponse's own
+// description. hasAssociations is a count-free state field, independent of items, that
+// distinguishes "no curation at all" from "curated, but nothing the caller may read".
+export async function getSpaceLibraryAssociations(
+  spaceId: string,
+): Promise<SpaceLibraryAssociationListResponse> {
+  try {
+    const { data } = await client.get<SpaceLibraryAssociationListResponse>(
+      `/v1/spaces/${spaceId}/libraries`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function associateSpaceLibrary(
+  spaceId: string,
+  libraryId: string,
+): Promise<SpaceLibraryAssociationResponse> {
+  try {
+    const { data } = await client.post<SpaceLibraryAssociationResponse>(
+      `/v1/spaces/${spaceId}/libraries`,
+      { libraryId },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function detachSpaceLibrary(spaceId: string, libraryId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/spaces/${spaceId}/libraries/${libraryId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+// #203: the library owner's view - every space this library is associated with, never filtered by
+// the caller's own space membership (requires MANAGER role or above on the library).
+export async function getLibrarySpaceAssociations(
+  libraryId: string,
+): Promise<LibrarySpaceAssociationResponse[]> {
+  try {
+    const { data } = await client.get<LibrarySpaceAssociationResponse[]>(
+      `/v1/libraries/${libraryId}/spaces`,
+    )
     return data
   } catch (err) {
     normalizeError(err)
@@ -618,6 +684,25 @@ export async function deleteBrandingLogo(): Promise<BrandingResponse> {
   try {
     const { data } = await client.delete<BrandingResponse>('/v1/system/branding/logo')
     return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+// #203: minimal in-app notification, deliberately narrow (see io.opaa.notification.Notification's
+// Javadoc) - currently only used for "your library was associated into a mixed-audience space".
+export async function getNotifications(): Promise<NotificationResponse[]> {
+  try {
+    const { data } = await client.get<NotificationResponse[]>('/v1/notifications')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function markNotificationRead(notificationId: string): Promise<void> {
+  try {
+    await client.post(`/v1/notifications/${notificationId}/read`)
   } catch (err) {
     normalizeError(err)
   }
