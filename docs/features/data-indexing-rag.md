@@ -158,7 +158,7 @@ das nicht. OPAA weist deshalb **zwei getrennte Größen** aus:
 | Größe | Frage | Grundlage |
 |---|---|---|
 | **Trefferqualität** | Wie gut passen die gefundenen Stellen zur Frage? | Bewertung nach dem Reranking, je Fundstelle |
-| **Belegdeckung** | Wie viel der Antwort ist belegt? | Anteil der tragenden Aussagen mit Fundstelle |
+| **Belegdeckung** | Wie viel der Antwort ist belegt? | Anteil der Quellenangaben mit einem gültigen Beleg (`cited = true` und `citationValid = true`, siehe [Zitierzwang](#zitierzwang)) |
 
 Beide werden in Stufen dargestellt — hoch, mittel, gering — und nicht als Nachkommastelle, die eine
 Genauigkeit vortäuscht, die das Verfahren nicht hat. Der Zahlenwert bleibt in der Detailansicht und im
@@ -645,7 +645,7 @@ Suchbereich bestimmen  (lesbare Bibliotheken ∩ Kontext)  → spaces-and-assets
         ↓
 Hybride Suche  →  Zusammenführung  →  Reranking
         ↓
-Antwort mit Fundstellen · Konfidenz · gegebenenfalls Verweigerung
+Antwort mit Fundstellen, ungültige Belege gekennzeichnet
 ```
 
 Die Aktualisierung läuft **inkrementell**: Nur neue und geänderte Dokumente werden verarbeitet, geänderte

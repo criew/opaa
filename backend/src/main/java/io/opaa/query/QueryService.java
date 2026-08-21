@@ -14,6 +14,7 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -441,12 +442,23 @@ public class QueryService {
    *
    * <p>#697 review, finding 4: the synthetic entries are deliberately <b>not</b> run through the
    * same file-name merge as the real, retrieved-chunk entries. A fabricated citation can coincide
-   * in file name with a real, retrieved-but-uncited document (the model routinely copies the
-   * correct name even for a fabricated id), and merging would have let the fabricated citation's
-   * {@code cited = true} overwrite the real entry's {@code cited = false} - the real document then
-   * appeared cited, with its real relevance score and real "open in document" link, for a citation
-   * it was never actually named in. Keeping the two groups apart means a synthetic entry can only
-   * ever add a new row, never silently rewrite a real one.
+   * in file name with a real, retrieved document (the model routinely copies the correct name even
+   * for a fabricated id), and merging would have let the fabricated citation's {@code cited =
+   * true}, relevance score and "open in document" link overwrite the real entry's own values - the
+   * real document then appeared cited, or more relevant than it is, for a citation it was never
+   * actually named in.
+   *
+   * <p>#697 second review round: dropping the synthetic entry silently on a collision (rather than
+   * merging it) traded that problem for another - two {@link SourceReference} rows sharing one
+   * {@code fileName} in the response, which {@code frontend/src/components/chat/citations.ts} joins
+   * to the answer text purely by file name and resolves last-wins, i.e. always to the synthetic,
+   * zero-relevance row. A genuinely, validly cited real source would then have displayed with "0%"
+   * relevance and no document link - the exact opposite failure from finding 4, now hitting a
+   * <em>valid</em> citation instead of an invalid one. The fix folds a colliding synthetic entry
+   * into the real one instead of adding a second row: only {@code citationValid} is set to {@code
+   * false} on the real entry; its {@code cited}, relevance score, match count and document link are
+   * left exactly as the real, retrieved chunk(s) determined them. A synthetic entry is only ever
+   * appended as an extra row when no real entry shares its file name.
    */
   private List<SourceReference> mapSources(
       List<Document> chunks,
@@ -468,7 +480,7 @@ public class QueryService {
             .map(CitationValidator.ValidatedCitation::documentId)
             .collect(Collectors.toSet());
 
-    List<SourceReference> fromChunks =
+    Map<String, SourceReference> fromChunksByFileName =
         chunks.stream()
             .map(
                 chunk -> {
@@ -494,15 +506,22 @@ public class QueryService {
                     SourceReference::getFileName,
                     source -> source,
                     QueryService::mergeSourceReferences,
-                    LinkedHashMap::new))
-            .values()
-            .stream()
-            .toList();
+                    LinkedHashMap::new));
 
     List<SourceReference> orphanEntries =
         buildOrphanSourceReferences(validatedCitations, retrievedDocumentIds);
+    List<SourceReference> unmatchedOrphanEntries = new ArrayList<>();
+    for (SourceReference orphan : orphanEntries) {
+      SourceReference collidingRealEntry = fromChunksByFileName.get(orphan.getFileName());
+      if (collidingRealEntry != null) {
+        collidingRealEntry.setCitationValid(false);
+      } else {
+        unmatchedOrphanEntries.add(orphan);
+      }
+    }
 
-    return Stream.concat(fromChunks.stream(), orphanEntries.stream()).toList();
+    return Stream.concat(fromChunksByFileName.values().stream(), unmatchedOrphanEntries.stream())
+        .toList();
   }
 
   /**
