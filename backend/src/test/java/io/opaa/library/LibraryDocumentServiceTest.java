@@ -3,6 +3,7 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -85,8 +86,7 @@ class LibraryDocumentServiceTest {
     // Default: plenty of headroom, so existing tests exercising other behaviour never trip the
     // quota check unless they explicitly stub it otherwise (see
     // uploadIsRejectedWithPayloadTooLargeWhenTheLibraryQuotaWouldBeExceeded below).
-    when(storageQuotaService.wouldExceedQuota(any(), org.mockito.ArgumentMatchers.anyLong()))
-        .thenReturn(false);
+    when(storageQuotaService.wouldExceedQuota(any(), anyLong())).thenReturn(false);
 
     service =
         new LibraryDocumentService(
@@ -396,9 +396,7 @@ class LibraryDocumentServiceTest {
     // #119: the library's storage quota is checked before anything is written to disk, exactly
     // like the per-file size limit above - a rejected upload must leave the bestand unchanged.
     grantEditor();
-    when(storageQuotaService.wouldExceedQuota(
-            eq(libraryId), org.mockito.ArgumentMatchers.anyLong()))
-        .thenReturn(true);
+    when(storageQuotaService.wouldExceedQuota(eq(libraryId), anyLong())).thenReturn(true);
     when(storageQuotaService.quotaExceededMessage(libraryId))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
 

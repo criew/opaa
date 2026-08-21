@@ -84,12 +84,23 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * Backs {@code LibraryStorageQuotaService} (#119): the total bytes a library's documents
    * currently occupy, one aggregate query rather than loading every {@link Document} row to sum
-   * {@link Document#getFileSize} in application code. {@code coalesce} maps the {@code SUM} of an
-   * empty result set (a library with no documents, or a brand-new library) to {@code 0} instead of
-   * {@code null} - callers would otherwise have to null-check a supposedly primitive byte count on
-   * every call.
+   * {@link Document#getFileSize} in application code. Two {@code coalesce} layers, not one (PR #700
+   * review, finding 6):
+   *
+   * <ul>
+   *   <li>the outer one maps the {@code SUM} of an empty result set (a library with no documents,
+   *       or a brand-new library) to {@code 0} instead of {@code null} - callers would otherwise
+   *       have to null-check a supposedly primitive byte count on every call;
+   *   <li>the inner one makes explicit, rather than leaving to {@code SUM}'s own null-skipping
+   *       behaviour, that an individual row with no recorded {@code file_size} (the column is
+   *       nullable, migration 002) counts as {@code 0} - see {@code
+   *       LibraryStorageQuotaService#usedBytes}'s own Javadoc for which rows that can actually be
+   *       and why that is an accepted, documented gap rather than a silent one.
+   * </ul>
    */
-  @Query("select coalesce(sum(d.fileSize), 0) from Document d where d.libraryId = :libraryId")
+  @Query(
+      "select coalesce(sum(coalesce(d.fileSize, 0)), 0) from Document d where d.libraryId ="
+          + " :libraryId")
   long sumFileSizeByLibraryId(@Param("libraryId") UUID libraryId);
 
   /**

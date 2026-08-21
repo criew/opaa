@@ -882,6 +882,59 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
+  void anAttachmentOverTheLibraryStorageQuotaIsSkippedRecordedAsRejectedAndDefersTheFeedEtag()
+      throws IOException {
+    // #119, PR #700 review finding 4: the attachment branch is the one QUOTA_EXCEEDED handler
+    // that behaves differently from the other three (AsyncIndexingExecutor, UrlIndexingExecutor,
+    // RssFeedIndexingExecutor's own entry-level handling just above) - it never calls
+    // progress.recordSkipped() (an attachment was never counted as a discrete unit of the run's
+    // total to begin with, see #518) and instead sets anyEntryDeferred, the same deliberate "try
+    // this attachment again next run" behaviour #492's lost-attachment handling already uses.
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/over-quota.pdf\">Anlage</a></main></body></html>";
+    serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html"), "\"etag-over-quota-attachment\"");
+    serve("/a.html", 200, "text/html", detailHtml);
+    serveBytes(
+        "/downloads/over-quota.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
+    when(storageQuotaService.quotaExceededMessage(library.getId()))
+        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
+
+    execute(baseUrl + "/feed.xml");
+
+    String expectedMessage =
+        "Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)";
+    // The entry itself still counts as processed and its own document as indexed - only the
+    // attachment was rejected, so documentsIndexedTotal stays at 1 (the entry), not 2.
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && (baseUrl + "/downloads/over-quota.pdf").equals(event.getReference())
+                        && expectedMessage.equals(event.getMessage())));
+    // Deferred, exactly like a lost/oversized attachment - a future 304 on the feed must not
+    // permanently suppress retrying this attachment.
+    verify(feedStateRepository, never()).save(any());
+  }
+
+  @Test
   void anEntryWithMultipleAttachmentsIncreasesTheDocumentCounterForEachAttachment()
       throws IOException {
     // #518 acceptance criteria: a feed entry carrying several attachments must increase the

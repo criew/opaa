@@ -731,11 +731,13 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
               targetLibrary,
               DocumentSourceType.RSS_FEED,
               entryUrl);
-      // #518: an unchanged attachment (same checksum as an already-indexed document) is
-      // deduplicated by processUrlFile itself and returns SKIPPED - it must not inflate the
-      // document count a second time for a document already counted on a previous run.
       if (result == FileProcessingResult.QUOTA_EXCEEDED) {
-        // #119: see AsyncIndexingExecutor's own handling of this outcome.
+        // #119: see AsyncIndexingExecutor's own handling of this outcome. Deferred (not
+        // recordSkipped, see the field-level QUOTA_EXCEEDED branch above for the contrast) rather
+        // than counted, the same way a lost/oversized attachment already is just below - an
+        // attachment was never a discrete unit of the run's own total to begin with (#518, next
+        // comment), so there is nothing to mark skipped here, only the feed's ETag persistence to
+        // defer so a future run retries it.
         events.record(
             IndexingEventCategory.REJECTED,
             storageQuotaService.quotaExceededMessage(targetLibrary.getId()),
@@ -743,6 +745,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         anyEntryDeferred.set(true);
         return;
       }
+      // #518: an unchanged attachment (same checksum as an already-indexed document) is
+      // deduplicated by processUrlFile itself and returns SKIPPED - it must not inflate the
+      // document count a second time for a document already counted on a previous run.
       if (result == FileProcessingResult.PROCESSED) {
         progress.recordDocumentIndexed();
       }

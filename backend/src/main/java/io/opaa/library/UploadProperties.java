@@ -29,13 +29,18 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     caught here because nothing is actually still working on it.
  * @param libraryQuotaBytes the maximum total size, summed across every document a library holds,
  *     that library may occupy (#119, Maintainer-Entscheidung: Standardkontingent je Bibliothek).
- *     Default 10 GiB (10 737 418 240): generous for a working knowledge library while still
- *     bounding how much disk/vector-store space a single library - upload or connector-fed alike -
- *     can consume unchecked. Enforced by {@link LibraryStorageQuotaService} at every ingestion path
- *     that stores document content (upload via {@link LibraryDocumentService}, and the
- *     FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connector paths via {@code
- *     io.opaa.indexing.FileProcessingService}), not merely the upload endpoint - a connector run
- *     can grow a library's bestand just as much as a human upload can.
+ *     {@code application.yml}'s own default resolves the underlying env var to 10 GiB (10 737 418
+ *     240) when unset - generous for a working knowledge library while still bounding how much
+ *     disk/vector-store space a single library - upload or connector-fed alike - can consume
+ *     unchecked. <b>Deliberately not defaulted here the way the other properties in this record are
+ *     (PR #700 review, finding 2):</b> {@code 0} or negative means <em>unbegrenzt</em> (no quota
+ *     enforced at all), not "fall back to 10 GiB" - an operator with an existing library already
+ *     larger than 10 GiB must be able to opt out of the new limit entirely rather than have every
+ *     upload and connector document into it rejected the moment this version starts. Enforced by
+ *     {@link LibraryStorageQuotaService} at every ingestion path that stores document content
+ *     (upload via {@link LibraryDocumentService}, and the FILESYSTEM/HTTP_DIRECTORY/ RSS_FEED
+ *     connector paths via {@code io.opaa.indexing.FileProcessingService}), not merely the upload
+ *     endpoint - a connector run can grow a library's bestand just as much as a human upload can.
  */
 @ConfigurationProperties(prefix = "opaa.upload")
 public record UploadProperties(
@@ -58,9 +63,9 @@ public record UploadProperties(
     if (pendingRecoveryThresholdMinutes <= 0) {
       pendingRecoveryThresholdMinutes = 30;
     }
-    if (libraryQuotaBytes <= 0) {
-      libraryQuotaBytes = 10L * 1024 * 1024 * 1024;
-    }
+    // libraryQuotaBytes is deliberately NOT defaulted here - see its own Javadoc above. A value
+    // <= 0 is a real, supported "unbegrenzt" configuration, resolved by
+    // LibraryStorageQuotaService, not normalized away on this record.
   }
 
   /** Mirrors {@code IndexingProperties.ThreadPool}'s own validation - see its Javadoc. */

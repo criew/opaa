@@ -6,13 +6,17 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
+import io.opaa.library.UploadProperties;
 import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -22,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +44,7 @@ class FileProcessingServiceTest {
   @Mock private DocumentRepository documentRepository;
   @Mock private VectorStore vectorStore;
   @Mock private ChecksumService checksumService;
-  @Mock private io.opaa.library.LibraryStorageQuotaService storageQuotaService;
+  @Mock private LibraryStorageQuotaService storageQuotaService;
 
   @TempDir Path tempDir;
 
@@ -70,17 +75,15 @@ class FileProcessingServiceTest {
     // explicitly stub it otherwise (see the quota-specific tests below). lenient() because most
     // tests never reach it (e.g. the "skips unchanged document" ones return before this is
     // consulted).
-    org.mockito.Mockito.lenient()
-        .when(storageQuotaService.wouldExceedQuota(any(), org.mockito.ArgumentMatchers.anyLong()))
-        .thenReturn(false);
+    lenient().when(storageQuotaService.wouldExceedQuota(any(), anyLong())).thenReturn(false);
     // Default happy-path stubs for the conditional status-transition UPDATEs (#632) - tests that
     // exercise a deletion race override these explicitly to return 0. lenient() because tests
     // that never reach the success path (e.g. the "skips unchanged document" ones) never invoke
     // them, which strict stubbing would otherwise flag as unnecessary.
-    org.mockito.Mockito.lenient()
+    lenient()
         .when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), any(), any()))
         .thenReturn(1);
-    org.mockito.Mockito.lenient().when(documentRepository.markFailed(any(), any())).thenReturn(1);
+    lenient().when(documentRepository.markFailed(any(), any())).thenReturn(1);
   }
 
   private KnowledgeLibrary library() {
@@ -146,6 +149,74 @@ class FileProcessingServiceTest {
     verify(documentRepository, never()).save(any(Document.class));
     verify(documentService, never()).parseDocument(any());
     verify(vectorStore, never()).add(any());
+  }
+
+  @Test
+  void quotaCheckMeasuresTheDeltaOnlyAfterAnExistingDocumentHasBeenDeleted() throws IOException {
+    // #119, PR #700 review finding 5: uses a REAL LibraryStorageQuotaService, not a mock, so the
+    // "checked after the old row is deleted, measures the true delta" promise is genuinely
+    // exercised rather than merely asserted against a stub. documentRepository stays a mock (a
+    // data-layer boundary, not the thing under test) - its sumFileSizeByLibraryId answer flips
+    // from the pre-delete to the post-delete figure the moment documentRepository.delete is
+    // called, exactly mirroring how the real aggregate query would behave once that DELETE has
+    // actually run.
+    //
+    // Quota 1000, an existing 900-byte document being replaced by a 950-byte one: checking BEFORE
+    // the delete would see 900 (old) + 950 (new) = 1850 > 1000 and wrongly reject; checking AFTER
+    // (the actual, correct order) sees 0 (old already gone) + 950 = 950 <= 1000 and accepts. A
+    // regression that reordered the two calls would flip this test's result from PROCESSED to
+    // QUOTA_EXCEEDED.
+    LibraryStorageQuotaService realQuotaService =
+        new LibraryStorageQuotaService(
+            documentRepository, new UploadProperties(null, 0, null, 0, 1000));
+    FileProcessingService serviceWithRealQuota =
+        new FileProcessingService(
+            documentService,
+            chunkingService,
+            documentRepository,
+            vectorStore,
+            checksumService,
+            new IndexingMetrics(meterRegistry),
+            realQuotaService);
+
+    Path file = tempDir.resolve("replace-under-quota.txt");
+    String newContent = "x".repeat(950);
+    Files.writeString(file, newContent);
+
+    Document existingDoc =
+        new Document(
+            "replace-under-quota.txt", file.toAbsolutePath().toString(), "text/plain", 900L);
+    existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setChecksum("old-checksum");
+    existingDoc.setStatus(DocumentStatus.INDEXED);
+
+    AtomicBoolean oldRowDeleted = new AtomicBoolean(false);
+    when(checksumService.computeSha256(file)).thenReturn("new-checksum");
+    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+        .thenReturn(Optional.of(existingDoc));
+    doAnswer(
+            inv -> {
+              oldRowDeleted.set(true);
+              return null;
+            })
+        .when(documentRepository)
+        .delete(existingDoc);
+    when(documentRepository.sumFileSizeByLibraryId(targetLibrary.getId()))
+        .thenAnswer(inv -> oldRowDeleted.get() ? 0L : 900L);
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), any(), any()))
+        .thenReturn(1);
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("replace-under-quota.txt"), eq(parsed)))
+        .thenReturn(chunks);
+
+    FileProcessingResult result = serviceWithRealQuota.processFile(file, targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    verify(documentRepository).delete(existingDoc);
   }
 
   @Test

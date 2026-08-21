@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.indexing.DocumentRepository;
@@ -20,11 +21,18 @@ class LibraryStorageQuotaServiceTest {
   }
 
   @Test
-  void defaultsToTenGibWhenNoQuotaIsConfigured() {
-    // UploadProperties itself defaults libraryQuotaBytes to 10 GiB when <= 0 - covered here via
-    // the service's own quotaBytes() accessor.
-    LibraryStorageQuotaService quotaService = service(0);
-    assertThat(quotaService.quotaBytes()).isEqualTo(10L * 1024 * 1024 * 1024);
+  void zeroOrNegativeQuotaConfigurationMeansUnlimited() {
+    // #119, PR #700 review finding 2: 0/negative is a real "unbegrenzt" configuration, not a
+    // silent fallback to the 10 GiB default - important for an existing library already larger
+    // than the default, which would otherwise be permanently blocked the moment this quota ships.
+    LibraryStorageQuotaService zeroQuotaService = service(0);
+    when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(50L * 1024 * 1024 * 1024);
+    assertThat(zeroQuotaService.quotaBytes()).isZero();
+    assertThat(zeroQuotaService.wouldExceedQuota(libraryId, 1024)).isFalse();
+
+    LibraryStorageQuotaService negativeQuotaService = service(-1);
+    assertThat(negativeQuotaService.quotaBytes()).isNegative();
+    assertThat(negativeQuotaService.wouldExceedQuota(libraryId, Long.MAX_VALUE / 2)).isFalse();
   }
 
   @Test
@@ -39,11 +47,27 @@ class LibraryStorageQuotaServiceTest {
   }
 
   @Test
-  void quotaExceededMessageNamesUsedAndTotalQuotaInGermanFormattedGigabytes() {
-    LibraryStorageQuotaService quotaService = service(10L * 1024 * 1024 * 1024);
+  void quotaExceededMessageNamesUsedAndTotalQuotaAdaptivelyFormatted() {
+    // PR #700 review finding 3: adaptive units (mirrors the frontend's formatFileSize), so a
+    // sub-GB quota never reads as the indistinguishable "0,0 GB von 0,0 GB belegt".
+    LibraryStorageQuotaService gibQuotaService = service(10L * 1024 * 1024 * 1024);
     when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(3L * 1024 * 1024 * 1024);
-
-    assertThat(quotaService.quotaExceededMessage(libraryId))
+    assertThat(gibQuotaService.quotaExceededMessage(libraryId))
         .isEqualTo("Speicherkontingent der Bibliothek erschöpft (3,0 GB von 10,0 GB belegt)");
+
+    LibraryStorageQuotaService smallQuotaService = service(200L * 1024 * 1024);
+    when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(150L * 1024 * 1024);
+    assertThat(smallQuotaService.quotaExceededMessage(libraryId))
+        .isEqualTo("Speicherkontingent der Bibliothek erschöpft (150,0 MB von 200,0 MB belegt)");
+  }
+
+  @Test
+  void quotaExceededMessageOverloadAvoidsARecomputationWhenTheCallerAlreadyKnowsUsedBytes() {
+    LibraryStorageQuotaService quotaService = service(10L * 1024 * 1024 * 1024);
+
+    assertThat(quotaService.quotaExceededMessage(libraryId, 3L * 1024 * 1024 * 1024))
+        .isEqualTo("Speicherkontingent der Bibliothek erschöpft (3,0 GB von 10,0 GB belegt)");
+    // The overload never consults the repository at all - the caller supplies usedBytes itself.
+    verifyNoInteractions(documentRepository);
   }
 }
