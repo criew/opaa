@@ -2,12 +2,20 @@ databaseChangeLog:
   # #229 (validating the Rheinfurt demo corpus against a real Compose stack) surfaced that
   # chk_indexing_run_events_category never accepted FORMAT_MISMATCH (io.opaa.indexing.
   # IndexingEventCategory), even though #404 introduced that category and both UrlIndexingExecutor
-  # and RssFeedIndexingExecutor have recorded it since. Any file whose extension does not match its
-  # Tika-detected content - routine for plain-text formats like .md, which Tika often reports as
-  # text/plain - hit this constraint on the very first such event, turning what #404 says should
-  # only be reported (the document is still indexed) into a silently skipped document instead: the
-  # INSERT into indexing_run_events fails and rolls back the whole per-document transaction with it.
-  # Same widen-only shape as 056, one changeSet after it in the same table's history.
+  # and RssFeedIndexingExecutor have recorded it since. The actual trigger in the demo run was a
+  # separate, now-fixed crawler bug (AutoindexCrawlerService#parseHtmlTableLayout losing a long file
+  # name's extension to Apache's truncated display text, see the AutoindexCrawlerServiceTest fix in
+  # the same PR): a document Tika detected as e.g. application/pdf while its own name still ended in
+  # something else is a genuine extensionMismatch, and every one of those hit this constraint.
+  #
+  # IndexingRunEventRecorder#record already catches any persistence failure here (PR #604 review,
+  # finding 2, "Never breaks the run") - so this was never a document-indexing bug: no run failed and
+  # no document was skipped because of it. What actually happened is narrower: every FORMAT_MISMATCH
+  # event was silently dropped instead of persisted (one log.warn per occurrence), and
+  # IndexingJob#eventsTruncatedCount was incremented for each one - the "… und N weitere" a caller
+  # sees for a run's protocol is thereby overstated by exactly that many events, without any of them
+  # ever being either shown or actually truncated for capacity reasons. Same widen-only shape as 056,
+  # one changeSet after it in the same table's history.
   - changeSet:
       id: 057-widen-indexing-run-event-category-format-mismatch
       author: opaa

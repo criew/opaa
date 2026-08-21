@@ -21,10 +21,14 @@ import org.junit.jupiter.api.Test;
  * predecessor) - already past migration 037 ({@code indexing_run_events} creation).
  *
  * <p>Proves the bug #229 surfaced while validating the Rheinfurt demo corpus against a real Compose
- * stack: {@code chk_indexing_run_events_category} never accepted {@code FORMAT_MISMATCH} (#404), so
- * the very first such event on an otherwise-successful run rolled back that document's whole
- * per-document transaction - turning "indexed, mismatch only reported" (#404's own acceptance
- * criteria) into "silently skipped".
+ * stack: {@code chk_indexing_run_events_category} never accepted {@code FORMAT_MISMATCH} (#404).
+ * {@code IndexingRunEventRecorder#record} already catches any persistence failure here (PR #604
+ * review, finding 2, "Never breaks the run"), so this was never a document-indexing bug - no run
+ * failed and no document was skipped because of it. What actually happened is narrower: every
+ * {@code FORMAT_MISMATCH} event was silently dropped instead of persisted, and {@code
+ * IndexingJob#eventsTruncatedCount} was incremented for each one instead, overstating a run's own
+ * "… und N weitere" without any of those events ever being either shown or genuinely truncated for
+ * capacity reasons.
  */
 class Migration057WidenIndexingRunEventCategoryFormatMismatchTest extends AbstractMigrationTest {
 

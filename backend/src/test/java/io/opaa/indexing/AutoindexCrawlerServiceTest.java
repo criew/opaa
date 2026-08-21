@@ -443,6 +443,27 @@ class AutoindexCrawlerServiceTest {
   }
 
   @Test
+  void preservesALiteralPlusInAFileNameInsteadOfDecodingItToASpace() {
+    // #229 review, klein 6: URLDecoder.decode is built for application/x-www-form-urlencoded
+    // (query strings), where '+' means a space - but a listing's href is a URL *path* segment,
+    // where a literal '+' has no such meaning and can be an ordinary character in a real file
+    // name. Before the fix, "bericht+final.pdf" surfaced here as "bericht final.pdf".
+    String html =
+        """
+        <html><head><title>Index of /files/</title></head><body>
+        <pre><a href="bericht+final.pdf">bericht+final.pdf</a>\
+                  10-Jun-2025 14:22  1K
+        </pre></body></html>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://example.com/files", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().name()).isEqualTo("bericht+final.pdf");
+  }
+
+  @Test
   void looksLikeDirectoryListingRecognizesEveryLayout() {
     assertThat(service.looksLikeDirectoryListing("<table><tr><td>a</td></tr></table>")).isTrue();
     assertThat(

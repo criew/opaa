@@ -44,7 +44,27 @@ PDF/DOCX/PPTX: [`generator/README.md`](generator/README.md) und [`corpus/SOURCE.
 Der Korpus wird im Docker-Compose-Stack unter dem Profil `demo` bereitgestellt — zwei zusätzliche,
 rein lesende Webserver-Services, über die **bestehende** Konnektoren (`AutoindexCrawlerService` für
 `HTTP_DIRECTORY`, der RSS-Konnektor für `RSS_FEED`) den Korpus indizieren, ohne eine Zeile neuen
-Ingestion-Codes:
+Ingestion-Codes. Dieser Stack läuft im **dev-Auth-Modus** (`SPRING_PROFILES_ACTIVE=docker,dev`, siehe
+`.env.docker.example`), also ohne echte Anmeldung — das ist noch **nicht** die fertige Demo-Instanz
+mit Keycloak-Anmeldung, Nutzern, Spaces und Rechten aus
+[`docs/features/demo-instance.md`](../docs/features/demo-instance.md); die bringen erst #712 (Seed)
+und #713 (Drehbuch, Installationsanleitung).
+
+Voraussetzung wie für jeden Compose-Start (siehe [`docs/deployment.md`](../docs/deployment.md),
+Abschnitt „Schnellstart"): eine eigene `.env.docker` aus der Vorlage:
+
+```bash
+cp .env.docker.example .env.docker
+```
+
+Für das `demo`-Profil zusätzlich in dieser `.env.docker` eintragen (siehe unten, „Zielprüfung
+ausgehender Abrufe"):
+
+```bash
+OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example
+```
+
+Dann:
 
 ```bash
 docker compose --profile demo up
@@ -76,11 +96,16 @@ mehr, siehe [`docs/features/demo-instance.md`](../docs/features/demo-instance.md
 Seed".
 
 Die Zielprüfung ausgehender Abrufe (`opaa.indexing.target-validation`, #267, standardmäßig aktiv)
-lehnt Compose-interne Adressen in privaten Bereichen ab; `docker-compose.yml` trägt deshalb
-`demo-corpus` und `presse.stadt-rheinfurt.example` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` des
-Backend-Service ein (kommentiert, nach dem Vorbild in
-[`e2e/docker-compose.e2e.yml`](../e2e/docker-compose.e2e.yml)) — ohne diesen Eintrag würde jede
-Indizierung dieser Quellen mit „Zieladresse liegt in einem gesperrten Adressbereich" abgelehnt.
+lehnt Compose-interne Adressen in privaten Bereichen ab — ohne Allowlist-Eintrag würde jede
+Indizierung dieser Quellen mit „Zieladresse liegt in einem gesperrten Adressbereich" abgelehnt. Der
+Eintrag steht bewusst **nicht** in `docker-compose.yml`: Der Backend-Service dort läuft immer, mit
+oder ohne `demo`-Profil, und ein dort fest eingetragener `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
+würde jede eigene Belegung dieser Variablen aus einer Betreiber-`.env.docker` überschreiben (Vorrang
+von `environment:` vor `env_file:` in Compose) — auch dort, wo das `demo`-Profil nie gestartet wird.
+Stattdessen trägt die eigene `.env.docker` den Wert ein (siehe oben, „Compose-Stack starten"), nach
+dem Vorbild von [`e2e/docker-compose.e2e.yml`](../e2e/docker-compose.e2e.yml), das denselben Eintrag
+für sein eigenes, isoliertes `e2e.env` setzt. `.env.docker.example` führt die Variable bereits
+auskommentiert mit diesem Demo-Wert als Beispiel.
 
 Bibliotheken, Berechtigungen und das Auslösen der Indizierung selbst richtet der Seed aus #712 ein;
 bis dahin lassen sich Quellen manuell oder über die API anlegen (`sourceType: HTTP_DIRECTORY` mit

@@ -38,16 +38,6 @@ services:
       - ${OPAA_UPLOAD_STORAGE_PATH_HOST:-./uploads}:/app/uploads
     environment:
       OPAA_UPLOAD_STORAGE_PATH: /app/uploads
-      # #229/#267: the outbound target-address check (opaa.indexing.target-validation, active by
-      # default) would otherwise reject every fetch against the "demo" profile's own corpus
-      # webservers, both of which resolve to a Compose-network-internal address - a private range
-      # this check exists to reject for everyone else. Named explicitly here rather than disabling
-      # the check, mirroring e2e/docker-compose.e2e.yml's identical
-      # OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST pattern. Inert unless the "demo" profile is
-      # actually started (a stack without it never resolves these hostnames), so this stays set
-      # unconditionally on the always-on "backend" service instead of duplicating "backend" behind
-      # its own "demo" profile just to attach this one setting.
-      OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: demo-corpus,presse.stadt-rheinfurt.example
     depends_on:
       postgres:
         condition: service_healthy
@@ -96,13 +86,19 @@ services:
       - ./demo/webserver/httpd-demo-autoindex.conf:/usr/local/apache2/conf/extra/httpd-demo-autoindex.conf:ro
     # Appends an Include for the mounted snippet above instead of shipping a full httpd.conf
     # override, which would drift out of sync with whatever the floating httpd:2.4-alpine tag
-    # ships next (see the snippet's own comment).
+    # ships next (see the snippet's own comment). The grep guard makes this idempotent: without
+    # it, a container stopped and restarted without being recreated (its writable layer, and with
+    # it conf/httpd.conf, persists across "docker compose stop && start") would append the same
+    # Include line again on every restart.
     command: >-
-      sh -c "echo 'Include conf/extra/httpd-demo-autoindex.conf' >> conf/httpd.conf &&
+      sh -c "grep -qF 'Include conf/extra/httpd-demo-autoindex.conf' conf/httpd.conf ||
+      echo 'Include conf/extra/httpd-demo-autoindex.conf' >> conf/httpd.conf &&
       httpd-foreground"
-    # No host port by default: the backend reaches this service over the Compose network under
-    # its service name ("demo-corpus"). Bound to 127.0.0.1 only, and only when a caller actually
-    # sets OPAA_DEMO_CORPUS_PORT, for the "prüfen im Browser" step the issue asks for.
+    # The backend reaches this service over the Compose network under its service name
+    # ("demo-corpus"), never through this port. Published to 127.0.0.1 unconditionally whenever
+    # the "demo" profile is started (not only when OPAA_DEMO_CORPUS_PORT is set - that variable
+    # only overrides the default host port 8091), for the "prüfen im Browser" step the issue asks
+    # for.
     ports:
       - "127.0.0.1:${OPAA_DEMO_CORPUS_PORT:-8091}:80"
     healthcheck:
@@ -138,6 +134,10 @@ services:
       default:
         aliases:
           - presse.stadt-rheinfurt.example
+    # The backend reaches this service over the Compose network under its alias above, never
+    # through this port. Published to 127.0.0.1 unconditionally whenever the "demo" profile is
+    # started (OPAA_DEMO_PRESSE_PORT only overrides the default host port 8092), for the "prüfen
+    # im Browser" step the issue asks for - same reasoning as demo-corpus's own port above.
     ports:
       - "127.0.0.1:${OPAA_DEMO_PRESSE_PORT:-8092}:80"
     healthcheck:

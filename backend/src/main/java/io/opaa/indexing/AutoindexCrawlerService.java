@@ -396,7 +396,14 @@ public class AutoindexCrawlerService {
       return null;
     }
     try {
-      return URLDecoder.decode(lastSegment, StandardCharsets.UTF_8);
+      // #229 review, klein 6: URLDecoder is built for application/x-www-form-urlencoded (query
+      // strings), where a literal '+' means a space - but this decodes a URL *path* segment,
+      // where '+' has no such meaning and a listing's href may contain one as an ordinary
+      // character (e.g. "bericht+final.pdf"). Escaping every literal '+' to "%2B" first makes
+      // URLDecoder treat it like any other already-percent-encoded byte, so it round-trips back
+      // to '+' - while a genuine "%2B" in the href (an actual encoded plus) decodes exactly the
+      // same way it already did, and every other %XX escape is unaffected.
+      return URLDecoder.decode(lastSegment.replace("+", "%2B"), StandardCharsets.UTF_8);
     } catch (IllegalArgumentException e) {
       return lastSegment;
     }
