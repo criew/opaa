@@ -53,9 +53,12 @@ Drei Zustände werden unterschieden:
   Extraktionstyp entscheidet der per Tika erkannte Medientyp, auf allen drei Aufnahmewegen gleich
   (Verzeichnis, Webverzeichnis, RSS-Anlagen). Die Endung ist nur noch ein Hinweis: Weicht sie vom
   erkannten Inhalt ab, wird das protokolliert (`FORMAT_MISMATCH`), das Dokument aber trotzdem
-  indiziert. Weiterhin nur sechs Dateiendungen zugelassen (`.md`, `.txt`, `.pdf`, `.docx`, `.doc`,
-  `.pptx`) — eine bewusste fachliche Grenze, keine technische; der Extraktor beherrscht 245
-  Medientypen.
+  indiziert. Ausnahme: Bei Markdown/Klartext bleibt die Endung Teil der Entscheidung (nicht nur
+  Hinweis), weil Tika am Inhalt allein nicht zwischen Text, CSV und Quellcode unterscheiden kann.
+  Der RSS-Anlagenweg wählt Kandidaten weiterhin über eine Endung im Link vor (irgendeine, nicht mehr
+  nur eine der sechs zugelassenen), bevor der Inhalt entscheidet. Weiterhin nur sechs Dateiendungen
+  zugelassen (`.md`, `.txt`, `.pdf`, `.docx`, `.doc`, `.pptx`) — eine bewusste fachliche Grenze,
+  keine technische; der Extraktor beherrscht 245 Medientypen.
 
 **Im Bau**
 - Messbarkeit der Suchqualität — Korpus, Golden Dataset und Regressionsprüfung (Epic #224, Verzeichnis

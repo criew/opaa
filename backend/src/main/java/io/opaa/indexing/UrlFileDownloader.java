@@ -63,6 +63,45 @@ public class UrlFileDownloader {
   }
 
   /**
+   * Reads at most {@code maxBytes} of {@code fileUrl}'s response body, for content detection alone
+   * (#404 review, finding 1) - never written to disk, held entirely in memory since {@link
+   * SupportedDocumentFormats#detectMediaType(byte[])} needs only a bounded sample. {@link
+   * UrlIndexingExecutor} calls this before {@link #download}, so a directory listing entry this
+   * system ends up rejecting (an ISO image, a video, any file {@link SupportedDocumentFormats} does
+   * not accept) costs a bounded read - never the full transfer {@link #download} performs -
+   * regardless of how large the actual file behind it is. Follows redirects exactly like {@link
+   * #download} (dropping {@code Authorization} off origin, refusing a protocol downgrade) via the
+   * same {@link AutoindexCrawlerService#sendFollowingRedirects}.
+   *
+   * <p>Costs a second request for every entry this system ends up indexing (one bounded read here,
+   * one full transfer via {@link #download} once accepted) - accepted deliberately in favour of the
+   * simpler, easier-to-reason-about two-step shape over streaming a single connection through both
+   * a bounded detection phase and an unbounded copy phase.
+   */
+  public byte[] downloadPrefix(
+      HttpClient httpClient, String authHeader, String fileUrl, int maxBytes)
+      throws IOException, InterruptedException {
+
+    log.debug("Downloading (bounded to {} bytes, for detection): {}", maxBytes, fileUrl);
+
+    Map<String, String> headers = new LinkedHashMap<>();
+    if (authHeader != null) {
+      headers.put("Authorization", authHeader);
+    }
+
+    HttpResponse<InputStream> response =
+        AutoindexCrawlerService.sendFollowingRedirects(
+            httpClient, fileUrl, Duration.ofSeconds(120), headers);
+
+    try (InputStream body = response.body()) {
+      if (response.statusCode() != 200) {
+        throw new IOException("HTTP " + response.statusCode() + " downloading: " + fileUrl);
+      }
+      return body.readNBytes(maxBytes);
+    }
+  }
+
+  /**
    * Downloads a file from {@code fileUrl}, capped at {@code maxBytes} while streaming (#468) - the
    * response body is read in a bounded chunk rather than handed straight to {@link
    * HttpResponse.BodyHandlers#ofFile}, so a remote end that keeps sending past the configured limit

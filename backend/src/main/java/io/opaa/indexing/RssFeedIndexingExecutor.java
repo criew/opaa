@@ -690,9 +690,30 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       // #404: the same content-based decision the other two indexing paths use, now that the
       // attachment's bytes are already on disk - a declared Content-Type header (used only for
       // resolveFileName above) is server-asserted, not verified content.
+      //
+      // #404 review, finding 5: detectMediaType's IOException is caught right here, not by the
+      // broader catch (IOException | InterruptedException e) below - that one reports "Anlage
+      // nicht erreichbar", which would be misleading for a failure reading a file already
+      // downloaded and sitting on local disk; the remote end answered just fine.
+      String detectedMimeType;
+      try {
+        detectedMimeType = SupportedDocumentFormats.detectMediaType(downloaded.path());
+      } catch (IOException e) {
+        log.warn(
+            "Could not read downloaded RSS attachment to detect its format, skipping: {} (from"
+                + " entry {})",
+            candidate.url(),
+            entryUrl,
+            e);
+        events.record(
+            IndexingEventCategory.ERROR,
+            "Anlage konnte nach dem Herunterladen nicht auf ihr Format geprüft werden",
+            candidate.url());
+        anyEntryDeferred.set(true);
+        return;
+      }
       SupportedDocumentFormats.ContentDecision decision =
-          SupportedDocumentFormats.decideForFileName(
-              fileName, SupportedDocumentFormats.detectMediaType(downloaded.path()));
+          SupportedDocumentFormats.decideForFileName(fileName, detectedMimeType);
       if (!decision.supported()) {
         log.info(
             "Skipping RSS attachment with an unsupported format: {} (from entry {}, Content-Type"
@@ -795,12 +816,34 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Appends an extension derived from {@code contentType} when {@code suggestedFileName} does not
-   * already carry a supported one (#468, the Government Site Builder profile's case) - a no-op for
-   * {@link AttachmentProfile#GENERIC} candidates, which always already carry one.
+   * Appends an extension derived from {@code contentType} when {@code suggestedFileName} carries no
+   * extension at all (#468, the Government Site Builder profile's case) - a no-op for {@link
+   * AttachmentProfile#GENERIC} candidates, which always already carry one.
+   *
+   * <p><b>Checks {@code AttachmentProfile.fileHasSomeExtension}, not {@link
+   * SupportedDocumentFormats#isSupported} (#404 review, finding 2 follow-up).</b> A GENERIC
+   * candidate can now carry an extension {@link SupportedDocumentFormats} does not recognize (a
+   * document linked as {@code bescheid.csv}, the exact case #404 exists for) - the old {@code
+   * isSupported} check would have treated that the same as GSB's extension-less case and appended a
+   * second, content-type-derived extension on top ({@code bescheid.csv.pdf}), corrupting the very
+   * name {@link SupportedDocumentFormats#decideForFileName} below needs intact to compare against
+   * the actual detected content. Only a name with no extension whatsoever still gets one
+   * synthesized here - from here on, only the actually detected content (never this declared,
+   * server-asserted {@code contentType}) decides acceptance.
+   *
+   * <p><b>Residual gap for GSB's own extension-less candidates (#404 review, finding 6).</b> A GSB
+   * attachment carries no URL extension to begin with, so the text-tolerant branch of {@link
+   * SupportedDocumentFormats#decideForFileName} - which only accepts ambiguous, text-like content
+   * once the file's own claimed extension already says {@code .md}/{@code .txt} - can only ever be
+   * satisfied here via the extension this method just synthesized from the declared {@code
+   * Content-Type} header, not from anything independently verified. A GSB endpoint that mislabels a
+   * non-text response as {@code Content-Type: text/plain} would therefore still be trusted for that
+   * one disambiguating bit, same as before #404. Accepted as a narrow, pre-existing gap: GSB's
+   * addresses carry no extension of their own at all, so the declared header is the only hint
+   * available - the alternative would be rejecting every GSB text attachment outright.
    */
   private static String resolveFileName(String suggestedFileName, String contentType) {
-    if (SupportedDocumentFormats.isSupported(suggestedFileName)) {
+    if (AttachmentProfile.fileHasSomeExtension(suggestedFileName)) {
       return suggestedFileName;
     }
     String extension = SupportedDocumentFormats.extensionForContentType(contentType);

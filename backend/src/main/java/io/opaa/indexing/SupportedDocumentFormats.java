@@ -1,7 +1,9 @@
 package io.opaa.indexing;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -187,6 +189,36 @@ public final class SupportedDocumentFormats {
   public static String detectMediaType(Path file) throws IOException {
     try (InputStream in = Files.newInputStream(file)) {
       return TIKA.detect(in);
+    }
+  }
+
+  /**
+   * The number of leading bytes {@link #detectMediaType(byte[])} needs to reliably identify every
+   * type {@link #EXTENSIONS} accepts (#404 review, finding 1) - mirrors the 64 KiB default buffer
+   * Tika's own {@code MimeTypes} magic detection reads from a stream ({@code
+   * MimeTypes#getMinLength()}), so a caller that only has this many bytes available loses nothing
+   * {@link #detectMediaType(Path)} would otherwise have seen either.
+   */
+  public static final int DETECTION_PREFIX_BYTES = 65_536;
+
+  /**
+   * Detects a media type from a leading byte sample alone (#404 review, finding 1) - the network
+   * path's own counterpart to {@link #detectMediaType(Path)}, used before a file behind a listing
+   * is downloaded in full: {@link UrlIndexingExecutor} reads at most {@link
+   * #DETECTION_PREFIX_BYTES} to decide whether an entry is worth downloading at all, so an
+   * arbitrarily large file linked from a directory listing (a multi-gigabyte ISO, a video) never
+   * has to be written to disk in full only to be rejected afterwards.
+   */
+  public static String detectMediaType(byte[] contentPrefix) {
+    try {
+      return TIKA.detect(new ByteArrayInputStream(contentPrefix));
+    } catch (IOException e) {
+      // ByteArrayInputStream never actually throws - Tika#detect(InputStream) only declares the
+      // checked exception because it accepts any InputStream. Wrapped rather than propagated as
+      // checked so callers already handling a network-facing IOException (the case this overload
+      // exists to avoid, see the class Javadoc above) are not forced to catch a second one that
+      // can never actually happen here.
+      throw new UncheckedIOException(e);
     }
   }
 

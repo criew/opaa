@@ -501,6 +501,24 @@ zu verwerfen. Für den manuellen Upload gilt eine bewusste Ausnahme: Wer eine Da
 hochlädt, hat Datei und Namen in derselben Handlung selbst gewählt — eine Abweichung dort wird abgewiesen,
 nicht nur vermerkt (#435).
 
+**Bei Markdown und Klartext bleibt die Endung Teil der Entscheidung, nicht nur ein Hinweis.** Tika kann
+am Inhalt allein nicht erkennen, ob eine lesbare Textdatei als Markdown, Klartext oder etwas fachfremdes
+(eine CSV-Exportdatei, eine Logdatei, Quellcode) gemeint war — jede dieser Dateien liest sich als
+schlichter Text. Ohne die Endung als Unterscheidungsmerkmal würde deshalb jede lesbare Textdatei,
+gleich wie benannt, in den zugelassenen Bestand aufgenommen — eine stille Erweiterung, die diese
+Umstellung ausdrücklich nicht wollte. Für diese beiden Typen gilt deshalb: Der Inhalt muss lesbarer Text
+sein, **und** die Datei muss bereits `.md` oder `.txt` heißen — eine lesbare Textdatei namens `README`
+oder `export.csv` wird abgewiesen, dieselben Bytes unter `notiz.txt` angenommen. Für die eindeutig
+erkennbaren Formate (PDF, Word, PowerPoint) gilt diese Einschränkung nicht: Ihr Byte-Muster ist
+eindeutig genug, dass die Endung dort wirklich nur noch Hinweis ist.
+
+Beim **RSS-Anlagenweg** kommt eine zweite, davon unabhängige Einschränkung hinzu: Welche Verweise einer
+Detailseite überhaupt als Anlage in Frage kommen, entscheidet weiterhin die Endung im Link — man kann
+nicht jeden Verweis einer Seite herunterladen, nur um seinen Inhalt zu prüfen. Diese Vorauswahl verlangt
+inzwischen nur noch irgendeine Dateiendung, nicht mehr eine der sechs zugelassenen; erst der
+heruntergeladene Inhalt der so gefundenen Kandidaten entscheidet dann, wie auf den anderen beiden Wegen,
+über Zulassung und eine etwaige Abweichungsmeldung.
+
 Der **Feed als Quelle** (siehe
 [Wissensquellen und Konnektoren](./knowledge-sources.md#feeds-als-quelle-gebaut)) ist davon in einem
 Punkt ausgenommen: Der Artikeltext einer Feed-Detailseite ist bereits extrahierter Text, keine Datei —

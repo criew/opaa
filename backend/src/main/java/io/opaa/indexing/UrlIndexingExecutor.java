@@ -102,11 +102,12 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       String authHeader = AutoindexCrawlerService.buildAuthHeader(username, password);
 
       // Step 2: Process each file. #404: whether a file is indexed at all is decided from its
-      // actually downloaded content, not from its name in the listing - so every entry is
-      // downloaded first (unless already unchanged), and only then classified by
-      // SupportedDocumentFormats. This trades the bandwidth the old name-based pre-filter saved
-      // on an obviously-wrong extension for a decision that cannot be fooled by a wrong one
-      // either (#404 acceptance criteria).
+      // actual content, not from its name in the listing - but only a bounded prefix is read to
+      // decide (#404 review, finding 1), never the whole file: a directory listing routinely sits
+      // next to files nobody meant for indexing at all (an ISO image, a video, a backup archive),
+      // and downloading each of those in full before rejecting them would fill the temp
+      // partition and drastically slow every run down. Only an entry the prefix decision already
+      // accepts is downloaded in full via #download below.
       for (AutoindexCrawlerService.CrawledFileEntry entry : allFiles) {
         // Check if document is unchanged before downloading (saves bandwidth)
         if (isUnchanged(entry.url(), entry.lastModified(), targetLibrary)) {
@@ -119,13 +120,21 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
         Path tempFile = null;
         try {
           log.info("Processing URL document: {} ({})", entry.name(), entry.url());
-          tempFile = downloader.download(httpClient, authHeader, entry.url(), entry.name());
 
+          byte[] prefix =
+              downloader.downloadPrefix(
+                  httpClient,
+                  authHeader,
+                  entry.url(),
+                  SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
           SupportedDocumentFormats.ContentDecision decision =
-              classifyDownloadedFile(tempFile, entry.name());
+              SupportedDocumentFormats.decideForFileName(
+                  entry.name(), SupportedDocumentFormats.detectMediaType(prefix));
           if (!decision.supported()) {
             // Issue #375: rejected documents are part of the job, not invisible. #513: each one
-            // becomes its own UNSUPPORTED_FORMAT event.
+            // becomes its own UNSUPPORTED_FORMAT event. Rejected here, before #download ever
+            // runs - the full file behind this entry, whatever its actual size, is never
+            // transferred (#404 review, finding 1).
             log.info(
                 "Rejecting URL document with an unsupported format: {} ({})",
                 entry.name(),
@@ -148,6 +157,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                 entry.url());
           }
 
+          tempFile = downloader.download(httpClient, authHeader, entry.url(), entry.name());
           long fileSize = Files.size(tempFile);
           FileProcessingResult result =
               fileProcessingService.processUrlFile(

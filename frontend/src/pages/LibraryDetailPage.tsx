@@ -1016,8 +1016,8 @@ function LibraryIndexingHistorySection({ libraryId }: LibraryIndexingHistorySect
                 )}
                 {run.events.length === 0 ? (
                   <Typography variant="body2" color="text.secondary">
-                    Dieser Lauf hat keine übersprungenen oder fehlgeschlagenen Elemente
-                    protokolliert.
+                    Dieser Lauf hat keine übersprungenen, fehlgeschlagenen oder abweichend erkannten
+                    Elemente protokolliert.
                   </Typography>
                 ) : (
                   <Stack spacing={1}>

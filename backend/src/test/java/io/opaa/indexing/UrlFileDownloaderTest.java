@@ -502,6 +502,77 @@ class UrlFileDownloaderTest {
         .hasMessageContaining("protocol downgrade");
   }
 
+  // --- #404 review, finding 1: downloadPrefix never reads more than the requested cap ----------
+
+  @Test
+  void downloadPrefixNeverReturnsMoreThanMaxBytesEvenWhenTheResponseIsLarger() throws Exception {
+    // The core BLOCKER fix: UrlIndexingExecutor decides from this bounded sample alone, before
+    // #download's own unbounded, full transfer ever runs - a multi-gigabyte file behind a listing
+    // must not have to be written to disk in full just to be rejected.
+    byte[] body = "x".repeat(5_000).getBytes(StandardCharsets.UTF_8);
+    server.createContext(
+        "/big.iso",
+        exchange -> {
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    byte[] prefix = downloader.downloadPrefix(httpClient, null, baseUrl + "/big.iso", 100);
+
+    assertThat(prefix).hasSize(100);
+  }
+
+  @Test
+  void downloadPrefixReturnsTheWholeBodyWhenItIsSmallerThanMaxBytes()
+      throws IOException, InterruptedException {
+    server.createContext(
+        "/anlage.pdf",
+        exchange -> {
+          byte[] bytes = "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+
+    byte[] prefix = downloader.downloadPrefix(httpClient, null, baseUrl + "/anlage.pdf", 10_000);
+
+    assertThat(new String(prefix, StandardCharsets.UTF_8)).isEqualTo("%PDF-1.4 not real content");
+  }
+
+  @Test
+  void downloadPrefixThrowsOnNon200Status() {
+    server.createContext(
+        "/missing.pdf",
+        exchange -> {
+          exchange.sendResponseHeaders(404, -1);
+          exchange.close();
+        });
+
+    assertThatThrownBy(
+            () -> downloader.downloadPrefix(httpClient, null, baseUrl + "/missing.pdf", 10_000))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("HTTP 404");
+  }
+
+  @Test
+  void downloadPrefixSendsTheGivenAuthorizationHeader() throws IOException, InterruptedException {
+    AtomicReference<String> authorization = new AtomicReference<>();
+    server.createContext(
+        "/anlage.pdf",
+        exchange -> {
+          authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+
+    downloader.downloadPrefix(httpClient, "Basic dGVzdDp0ZXN0", baseUrl + "/anlage.pdf", 10_000);
+
+    assertThat(authorization.get()).isEqualTo("Basic dGVzdDp0ZXN0");
+  }
+
   @Test
   void downloadBoundedRejectsAProtocolDowngradeRedirect() throws IOException, InterruptedException {
     @SuppressWarnings("unchecked")
