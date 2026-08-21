@@ -875,11 +875,20 @@ class RssFeedIndexingExecutorTest {
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve("/a.html", 200, "text/html", detailHtml);
     serveBytes(
-        "/downloads/erste.pdf", 200, "application/pdf", "erste".getBytes(StandardCharsets.UTF_8));
+        "/downloads/erste.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 erste".getBytes(StandardCharsets.UTF_8));
     serveBytes(
-        "/downloads/zweite.pdf", 200, "application/pdf", "zweite".getBytes(StandardCharsets.UTF_8));
+        "/downloads/zweite.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 zweite".getBytes(StandardCharsets.UTF_8));
     serveBytes(
-        "/downloads/dritte.pdf", 200, "application/pdf", "dritte".getBytes(StandardCharsets.UTF_8));
+        "/downloads/dritte.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 dritte".getBytes(StandardCharsets.UTF_8));
     when(fileProcessingService.processRssEntry(
             anyString(), anyString(), anyString(), any(), eq(library)))
         .thenReturn(FileProcessingResult.PROCESSED);
@@ -1130,9 +1139,15 @@ class RssFeedIndexingExecutorTest {
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve("/a.html", 200, "text/html", detailHtml);
     serveBytes(
-        "/downloads/erste.pdf", 200, "application/pdf", "erste".getBytes(StandardCharsets.UTF_8));
+        "/downloads/erste.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 erste".getBytes(StandardCharsets.UTF_8));
     serveBytes(
-        "/downloads/zweite.pdf", 200, "application/pdf", "zweite".getBytes(StandardCharsets.UTF_8));
+        "/downloads/zweite.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 zweite".getBytes(StandardCharsets.UTF_8));
     when(fileProcessingService.processRssEntry(
             anyString(), anyString(), anyString(), any(), eq(library)))
         .thenReturn(FileProcessingResult.PROCESSED);

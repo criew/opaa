@@ -1785,7 +1785,9 @@ components:
           * ALLOWLIST - the run's own source configuration (e.g. a FILESYSTEM library's
             sourcePath) falls outside an operator-configured allowlist (#484).
           * ERROR - processing started but failed unexpectedly (parsing, chunking, embedding).
-      enum: [REJECTED, UNREACHABLE, UNSUPPORTED_FORMAT, ALLOWLIST, ERROR]
+          * FORMAT_MISMATCH - the item was indexed, but its file extension did not match its
+            detected content (#404) - reported, not a reason to skip it.
+      enum: [REJECTED, UNREACHABLE, UNSUPPORTED_FORMAT, ALLOWLIST, ERROR, FORMAT_MISMATCH]
       example: REJECTED
 
     IndexingRunEvent:

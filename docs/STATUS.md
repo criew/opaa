@@ -49,6 +49,13 @@ Drei Zustände werden unterschieden:
 - Vektorspeicherung in PostgreSQL mit pgvector — der einzige unterstützte Vektorspeicher; ein Wechsel
   ist über die Schnittstelle von Spring AI technisch möglich, wird aber nicht unterstützt, nicht geprüft
   und nicht dokumentiert (#348)
+- **Formaterkennung anhand des tatsächlichen Inhalts, nicht der Dateiendung** (#404) — Zulassung und
+  Extraktionstyp entscheidet der per Tika erkannte Medientyp, auf allen drei Aufnahmewegen gleich
+  (Verzeichnis, Webverzeichnis, RSS-Anlagen). Die Endung ist nur noch ein Hinweis: Weicht sie vom
+  erkannten Inhalt ab, wird das protokolliert (`FORMAT_MISMATCH`), das Dokument aber trotzdem
+  indiziert. Weiterhin nur sechs Dateiendungen zugelassen (`.md`, `.txt`, `.pdf`, `.docx`, `.doc`,
+  `.pptx`) — eine bewusste fachliche Grenze, keine technische; der Extraktor beherrscht 245
+  Medientypen.
 
 **Im Bau**
 - Messbarkeit der Suchqualität — Korpus, Golden Dataset und Regressionsprüfung (Epic #224, Verzeichnis
@@ -68,10 +75,6 @@ Drei Zustände werden unterschieden:
 - **Hybride Suche und Reranking** — es gibt weder Volltextsuche noch einen Reranker im Code. Reine
   Vektorsuche versagt genau bei attributreichen Fachdaten.
 - **Erklärbares Chunking** — die Zerlegung ist heute nicht nachvollziehbar dargestellt.
-- **Nur sechs Dateiendungen werden verarbeitet** (`.md`, `.txt`, `.pdf`, `.docx`, `.doc`, `.pptx`),
-  ausgewählt über eine Endungsliste statt über den erkannten Inhalt. Der eingesetzte Extraktor kann
-  weit mehr — er meldet 245 unterstützte Medientypen. Die Umstellung auf Inhaltserkennung wird in
-  #404 geführt. Beide Indizierungswege führen inzwischen dieselbe Liste (#375).
 - Konfidenz als eigenständige, erklärte Größe (heute nur Ähnlichkeitswert)
 
 **Geplant (Phase 2 und später)**

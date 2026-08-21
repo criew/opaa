@@ -12,5 +12,11 @@ public enum IndexingEventCategory {
   UNREACHABLE,
   UNSUPPORTED_FORMAT,
   ALLOWLIST,
-  ERROR
+  ERROR,
+  /**
+   * The item was indexed, but its own file extension did not match its Tika-detected content (#404
+   * acceptance criteria) - never a reason to skip or reinterpret it, only to report the deviation
+   * so it stays explainable.
+   */
+  FORMAT_MISMATCH
 }

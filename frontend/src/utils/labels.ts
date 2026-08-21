@@ -206,6 +206,9 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
   UNSUPPORTED_FORMAT: 'Format nicht unterstützt',
   ALLOWLIST: 'Allowlist',
   ERROR: 'Fehler',
+  // #404: indexed anyway, only the deviation between the file's own extension and its detected
+  // content is reported here.
+  FORMAT_MISMATCH: 'Endung weicht vom Inhalt ab',
 }
 
 export function indexingRunEventCategoryLabel(

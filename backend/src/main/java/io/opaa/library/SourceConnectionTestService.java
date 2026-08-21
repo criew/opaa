@@ -367,15 +367,21 @@ public class SourceConnectionTestService {
         String html = new String(bytes, StandardCharsets.UTF_8);
         List<AutoindexCrawlerService.CrawledFileEntry> entries =
             crawlerService.parseTopLevelEntries(html, url);
-        // PR #537 review, nit 4: filtered by SupportedDocumentFormats, exactly like
-        // UrlIndexingExecutor#isSupportedFormat, so "Dokumente" here means what it means for
-        // FILESYSTEM - a document the run would actually index, not just any linked entry (a
-        // directory of 30 .zip files would otherwise be reported as "30 documents found" while the
-        // real run indexes zero and skips all 30). Still only the top level, unlike the run's
-        // recursive crawl - a synchronous, rate-limited probe deliberately does not recurse an
-        // arbitrary external directory tree (see this class's own Javadoc on why timeouts here are
-        // kept short); documented as "oberste Ebene" in both the response wording and the OpenAPI
+        // PR #537 review, nit 4: filtered by SupportedDocumentFormats, so "Dokumente" here means
+        // roughly what it means for an actual run - not just any linked entry (a directory of 30
+        // .zip files would otherwise be reported as "30 documents found" while the real run
+        // indexes zero and skips all 30). Still only the top level, unlike the run's recursive
+        // crawl - a synchronous, rate-limited probe deliberately does not recurse an arbitrary
+        // external directory tree (see this class's own Javadoc on why timeouts here are kept
+        // short); documented as "oberste Ebene" in both the response wording and the OpenAPI
         // schema description rather than silently under-reporting subdirectory content.
+        //
+        // #404: an approximation by name only, deliberately - the run itself now decides
+        // acceptance from each file's actually downloaded content, but downloading every linked
+        // entry just to preview a count here would turn a short connectivity probe into a full
+        // crawl. A file whose extension does not match its content shows up here under whatever
+        // its name promises, and only the real run's own per-file decision (and its
+        // FORMAT_MISMATCH event, see UrlIndexingExecutor#execute) is authoritative.
         long linkedDocuments =
             entries.stream()
                 .filter(e -> !e.isDirectory())

@@ -683,9 +683,17 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
       // The GSB profile's candidates carry no extension in their URL (#468) - resolved here, once
       // the response's actual Content-Type is known, rather than in AttachmentProfile itself,
-      // which never downloads anything.
+      // which never downloads anything. Only a display name / hint from here on (#404) - the
+      // actual accept/reject decision below is made from the downloaded bytes.
       String fileName = resolveFileName(candidate.suggestedFileName(), contentType);
-      if (!SupportedDocumentFormats.isSupported(fileName)) {
+
+      // #404: the same content-based decision the other two indexing paths use, now that the
+      // attachment's bytes are already on disk - a declared Content-Type header (used only for
+      // resolveFileName above) is server-asserted, not verified content.
+      SupportedDocumentFormats.ContentDecision decision =
+          SupportedDocumentFormats.decideForFileName(
+              fileName, SupportedDocumentFormats.detectMediaType(downloaded.path()));
+      if (!decision.supported()) {
         log.info(
             "Skipping RSS attachment with an unsupported format: {} (from entry {}, Content-Type"
                 + " {})",
@@ -698,6 +706,15 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             candidate.url());
         anyEntryDeferred.set(true);
         return;
+      }
+      if (decision.extensionMismatch()) {
+        // #404 acceptance criteria: indexed anyway, only reported.
+        events.record(
+            IndexingEventCategory.FORMAT_MISMATCH,
+            "Dateiendung passt nicht zum erkannten Inhalt (erkannt: "
+                + decision.detectedExtension()
+                + ")",
+            candidate.url());
       }
 
       // #492 review, finding 7: the downloaded temp file's own suffix reflects

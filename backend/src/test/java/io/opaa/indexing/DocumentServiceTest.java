@@ -3,6 +3,7 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -14,23 +15,29 @@ class DocumentServiceTest {
 
   @TempDir Path tempDir;
 
+  // A PDF's magic string alone ("%PDF-") is enough for Tika's own magic-byte detection to report
+  // application/pdf, without a fully valid PDF structure.
+  private static final String PDF_MAGIC_BYTES = "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection";
+
   @Test
   void discoverFilesFindsSupported() throws IOException {
     Files.writeString(tempDir.resolve("readme.md"), "# Hello");
     Files.writeString(tempDir.resolve("notes.txt"), "Some notes");
-    Files.writeString(tempDir.resolve("data.csv"), "a,b,c");
+    // Binary garbage that Tika cannot resolve to any of the accepted content types.
+    Files.write(
+        tempDir.resolve("data.csv"), new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3});
 
     var discovered = service.discoverFiles(tempDir);
 
-    assertThat(discovered.supported()).hasSize(2);
     assertThat(discovered.supported())
         .extracting(p -> p.getFileName().toString())
-        .containsOnly("readme.md", "notes.txt");
+        .containsExactlyInAnyOrder("readme.md", "notes.txt");
     // Issue #375: the rejected file is handed back, not swallowed by the filter.
     assertThat(discovered.rejected())
         .extracting(p -> p.getFileName().toString())
         .containsOnly("data.csv");
     assertThat(discovered.totalFound()).isEqualTo(3);
+    assertThat(discovered.mismatches()).isEmpty();
   }
 
   @Test
@@ -59,22 +66,70 @@ class DocumentServiceTest {
     assertThat(discovered.rejected()).isEmpty();
   }
 
+  // --- #404: content decides, the extension is only a hint ------------------------------------
+
   @Test
-  void isSupportedFormatAcceptsValidExtensions() {
-    assertThat(service.isSupportedFormat(Path.of("doc.md"))).isTrue();
-    assertThat(service.isSupportedFormat(Path.of("doc.txt"))).isTrue();
-    assertThat(service.isSupportedFormat(Path.of("doc.pdf"))).isTrue();
-    assertThat(service.isSupportedFormat(Path.of("doc.docx"))).isTrue();
-    assertThat(service.isSupportedFormat(Path.of("doc.pptx"))).isTrue();
-    // Issue #375: legacy .doc used to be accepted on the network path only.
-    assertThat(service.isSupportedFormat(Path.of("doc.doc"))).isTrue();
+  void discoverFilesAcceptsReadableContentDespiteAWrongExtension() throws IOException {
+    // The core case #404 exists for: a real PDF mislabeled with an unsupported extension used to
+    // be rejected outright, even though Tika can read it perfectly well.
+    Path file = tempDir.resolve("bescheid.csv");
+    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
+
+    var discovered = service.discoverFiles(tempDir);
+
+    assertThat(discovered.supported()).containsExactly(file);
+    assertThat(discovered.rejected()).isEmpty();
+    assertThat(discovered.mismatches())
+        .extracting(DocumentService.FormatMismatch::detectedExtension)
+        .containsExactly(".pdf");
   }
 
   @Test
-  void isSupportedFormatRejectsUnsupported() {
-    assertThat(service.isSupportedFormat(Path.of("image.png"))).isFalse();
-    assertThat(service.isSupportedFormat(Path.of("data.csv"))).isFalse();
-    assertThat(service.isSupportedFormat(Path.of("code.java"))).isFalse();
+  void discoverFilesReportsNoMismatchWhenExtensionMatchesContent() throws IOException {
+    Path file = tempDir.resolve("bescheid.pdf");
+    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
+
+    var discovered = service.discoverFiles(tempDir);
+
+    assertThat(discovered.supported()).containsExactly(file);
+    assertThat(discovered.mismatches()).isEmpty();
+  }
+
+  @Test
+  void discoverFilesRejectsUnsupportedContentEvenWithASupportedLookingExtension()
+      throws IOException {
+    // A file wearing a supported extension whose content Tika cannot resolve to any accepted
+    // type must still be rejected - the extension alone is never enough to accept it.
+    Path file = tempDir.resolve("image.pdf");
+    Files.write(file, new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a});
+
+    var discovered = service.discoverFiles(tempDir);
+
+    assertThat(discovered.rejected()).containsExactly(file);
+    assertThat(discovered.supported()).isEmpty();
+  }
+
+  @Test
+  void isSupportedFormatAcceptsAFileWhoseContentMatchesAnAcceptedType() throws IOException {
+    Path file = tempDir.resolve("doc.pdf");
+    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
+
+    assertThat(service.isSupportedFormat(file)).isTrue();
+  }
+
+  @Test
+  void isSupportedFormatRejectsUnsupportedContent() throws IOException {
+    Path file = tempDir.resolve("image.png");
+    Files.write(file, new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a});
+
+    assertThat(service.isSupportedFormat(file)).isFalse();
+  }
+
+  @Test
+  void isSupportedFormatTreatsAnUnreadableFileAsUnsupported() {
+    Path missing = tempDir.resolve("does-not-exist.pdf");
+
+    assertThat(service.isSupportedFormat(missing)).isFalse();
   }
 
   @Test
