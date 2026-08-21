@@ -111,6 +111,7 @@ public class KnowledgeLibraryService {
   private final IndexingJobService indexingJobService;
   private final RssFeedStateRepository rssFeedStateRepository;
   private final Clock schedulingClock;
+  private final LibraryStorageQuotaService storageQuotaService;
 
   public KnowledgeLibraryService(
       KnowledgeLibraryRepository libraryRepository,
@@ -128,7 +129,8 @@ public class KnowledgeLibraryService {
       IndexingJobRepository indexingJobRepository,
       IndexingJobService indexingJobService,
       RssFeedStateRepository rssFeedStateRepository,
-      Clock schedulingClock) {
+      Clock schedulingClock,
+      LibraryStorageQuotaService storageQuotaService) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
@@ -145,6 +147,7 @@ public class KnowledgeLibraryService {
     this.indexingJobService = indexingJobService;
     this.rssFeedStateRepository = rssFeedStateRepository;
     this.schedulingClock = schedulingClock;
+    this.storageQuotaService = storageQuotaService;
   }
 
   @Transactional
@@ -1152,6 +1155,14 @@ public class KnowledgeLibraryService {
           .lastScheduledRunsFailed(
               indexingJobService.lastScheduledRunsFailed(
                   library.getId(), library.getOrganizationId()));
+    }
+    // #119: storage quota usage is administration detail, not something a mere VIEWER needs to
+    // manage the bestand - gated the same way sourcePath/sourceUrl above are, at MANAGER, rather
+    // than exposed to everyone with read access to the library.
+    if (myRole.atLeast(AssetRole.MANAGER)) {
+      response
+          .storageQuotaBytes(storageQuotaService.quotaBytes())
+          .storageUsedBytes(storageQuotaService.usedBytes(library.getId()));
     }
     return response;
   }

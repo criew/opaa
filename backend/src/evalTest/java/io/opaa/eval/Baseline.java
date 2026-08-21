@@ -113,6 +113,85 @@ public record Baseline(
                         + "to the loosest possible value instead of failing loudly. Fix the field "
                         + "in the baseline file.");
               }
+              validateCaseCounts(key, aggregate, file);
             });
+  }
+
+  /**
+   * Issue #306 review, Befund 3: the original guard only fired when the mean said "at least one
+   * case scored above zero" but the recorded count was zero or missing — it caught a completely
+   * absent field, but not a *wrong, still-positive* count (e.g. {@code 3} typed instead of {@code
+   * 30}). Three stronger, exact-or-provably-sound checks replace it:
+   *
+   * <ol>
+   *   <li>{@code hitCountAt5 == round(hitRateAt5 * n)} — an exact equality, not a heuristic: {@code
+   *       hitRateAt5} is binary per case (see {@code RetrievalMetrics}), so its mean times {@code
+   *       n} is exactly the hit count, up to the baseline file's 3-decimal rounding (which {@code
+   *       Math.round} absorbs cleanly for every {@code n} in this baseline — verified against all
+   *       ten committed groups in the issue #306 review).
+   *   <li>{@code 0 <= hitCountAt5 <= hitCountAt10 <= n} — every top-5 hit is also a top-10 hit (the
+   *       ranked list this harness scores is a single ordered list, top 5 is a prefix of top 10),
+   *       and neither count can exceed the case count itself.
+   *   <li>{@code hitCountAt10 >= max(mrr, ndcgAt10, recallAt10) * n} — each of these three metrics
+   *       sums, across the group's cases, to at most {@code hitCountAt10} (every contributing case
+   *       scores at most 1.0, see {@code RetrievalMetrics}), so the count can never be *smaller*
+   *       than any of the three means times {@code n}. A small epsilon absorbs the same 3-decimal
+   *       rounding as above.
+   * </ol>
+   */
+  private static void validateCaseCounts(String key, MetricsAggregate aggregate, Path file) {
+    long expectedHitCountAt5 = Math.round(aggregate.hitRateAt5() * aggregate.n());
+    if (aggregate.hitCountAt5() != expectedHitCountAt5) {
+      throw new IllegalStateException(
+          "Baseline group '"
+              + key
+              + "' in "
+              + file.toAbsolutePath()
+              + " has hitCountAt5="
+              + aggregate.hitCountAt5()
+              + " but hitRateAt5="
+              + aggregate.hitRateAt5()
+              + " over n="
+              + aggregate.n()
+              + " implies exactly "
+              + expectedHitCountAt5
+              + " (hitRateAt5 is binary per case, so its mean times n is the exact hit count) — "
+              + "fix the field in the baseline file.");
+    }
+    if (aggregate.hitCountAt5() < 0
+        || aggregate.hitCountAt5() > aggregate.hitCountAt10()
+        || aggregate.hitCountAt10() > aggregate.n()) {
+      throw new IllegalStateException(
+          "Baseline group '"
+              + key
+              + "' in "
+              + file.toAbsolutePath()
+              + " violates 0 <= hitCountAt5 <= hitCountAt10 <= n (hitCountAt5="
+              + aggregate.hitCountAt5()
+              + ", hitCountAt10="
+              + aggregate.hitCountAt10()
+              + ", n="
+              + aggregate.n()
+              + ") — every top-5 hit is also a top-10 hit, and neither count can exceed the case "
+              + "count. Fix the field(s) in the baseline file.");
+    }
+    // Rounding epsilon: the baseline stores means rounded to 3 decimals, so the implied sum can
+    // be off by up to n * 0.0005 (well under 0.1 for every group size in this baseline).
+    double impliedMinimumHits =
+        Math.max(aggregate.mrr(), Math.max(aggregate.ndcgAt10(), aggregate.recallAt10()))
+            * aggregate.n();
+    if (aggregate.hitCountAt10() + 0.1 < impliedMinimumHits) {
+      throw new IllegalStateException(
+          "Baseline group '"
+              + key
+              + "' in "
+              + file.toAbsolutePath()
+              + " has hitCountAt10="
+              + aggregate.hitCountAt10()
+              + ", too small for mrr/ndcgAt10/recallAt10 over n="
+              + aggregate.n()
+              + " (each case contributes at most 1.0 to every one of those three metrics, so their "
+              + "sum can never exceed hitCountAt10) — fix the field(s) in the baseline file.");
+    }
   }
 }

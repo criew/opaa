@@ -2010,6 +2010,23 @@ components:
         cited:
           type: boolean
           example: true
+        citationValid:
+          type: boolean
+          nullable: true
+          default: true
+          description: >
+            Deterministic citation validation (#386): whether the citation(s) pointing at this
+            source actually match the chunks retrieved for this answer - document id, section
+            (chunk index) and file name must all agree with the retrieved set. False means at
+            least one citation naming this source was invalid: it named a document id not among
+            the retrieved chunks, a section number that document does not have among them, or a
+            file name that does not match the id it claimed. An invalid citation is never silently
+            dropped from the answer text nor silently accepted as genuine - it stays in the answer
+            and its source entry is flagged here instead, including a synthetic entry (zero
+            relevance, zero match count) for a citation whose document id matches no retrieved
+            chunk at all. Absent/true for a source no citation flagged as invalid, and for a
+            source that was never cited in the first place.
+          example: true
 
     QueryMetadata:
       type: object
@@ -3065,6 +3082,25 @@ components:
             automatically disabling the schedule - stille Ausfälle sollen aber nicht unbemerkt
             bleiben). A single failed scheduled run, or any manually triggered run, does not set
             this. Present only under the same conditions as schedule above.
+        storageQuotaBytes:
+          type: integer
+          format: int64
+          nullable: true
+          description: >
+            The configured per-library storage quota in bytes (#119, Standardkontingent je
+            Bibliothek) - the same value for every library today, since the quota is currently an
+            operator-wide setting rather than one configurable per library. Set only if myRole is
+            at least MANAGER (#507) - see sourcePath above for why: usage/quota is administration
+            detail, not something a mere VIEWER needs to manage the bestand.
+        storageUsedBytes:
+          type: integer
+          format: int64
+          nullable: true
+          description: >
+            The total bytes this library's documents currently occupy, summed across every
+            document regardless of who uploaded or indexed it - never broken down per user (#216,
+            "kein personenbezogener Auswertungspfad"). Set only if myRole is at least MANAGER
+            (#507) - see sourcePath above for why.
         createdAt:
           type: string
           format: date-time

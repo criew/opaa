@@ -63,6 +63,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
     indexingJobRepository = mock(IndexingJobRepository.class);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
     IndexingJobService indexingJobService = mock(IndexingJobService.class);
+    LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
 
     libraryService =
         new KnowledgeLibraryService(
@@ -81,7 +82,8 @@ class KnowledgeLibraryServiceDeleteLockTest {
             indexingJobRepository,
             indexingJobService,
             rssFeedStateRepository,
-            Clock.systemDefaultZone());
+            Clock.systemDefaultZone(),
+            storageQuotaService);
 
     ownerId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();

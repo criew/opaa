@@ -61,6 +61,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     IndexingJobRepository indexingJobRepository = mock(IndexingJobRepository.class);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
     IndexingJobService indexingJobService = mock(IndexingJobService.class);
+    LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
 
     libraryService =
         new KnowledgeLibraryService(
@@ -79,7 +80,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             indexingJobRepository,
             indexingJobService,
             rssFeedStateRepository,
-            Clock.systemDefaultZone());
+            Clock.systemDefaultZone(),
+            storageQuotaService);
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");

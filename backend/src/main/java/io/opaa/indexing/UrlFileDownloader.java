@@ -22,6 +22,12 @@ public class UrlFileDownloader {
 
   private static final Logger log = LoggerFactory.getLogger(UrlFileDownloader.class);
 
+  private final TargetAddressValidator targetAddressValidator;
+
+  public UrlFileDownloader(TargetAddressValidator targetAddressValidator) {
+    this.targetAddressValidator = targetAddressValidator;
+  }
+
   /**
    * Downloads a file from the given URL using the provided HTTP client and auth header. Returns the
    * path to a temporary file. The caller is responsible for deleting the temp file.
@@ -41,7 +47,7 @@ public class UrlFileDownloader {
     // AutoindexCrawlerService.sendFollowingRedirects's Javadoc.
     HttpResponse<InputStream> response =
         AutoindexCrawlerService.sendFollowingRedirects(
-            httpClient, fileUrl, Duration.ofSeconds(120), headers);
+            httpClient, fileUrl, Duration.ofSeconds(120), headers, targetAddressValidator);
 
     // Preserve original extension for correct content-type detection
     String suffix = extractExtension(fileName);
@@ -105,6 +111,7 @@ public class UrlFileDownloader {
 
     URI currentUri = URI.create(fileUrl);
     for (int hop = 0; ; hop++) {
+      targetAddressValidator.validate(currentUri);
       HttpRequest.Builder requestBuilder =
           HttpRequest.newBuilder().uri(currentUri).timeout(Duration.ofSeconds(120)).GET();
       if (userAgent != null && !userAgent.isBlank()) {
@@ -121,7 +128,10 @@ public class UrlFileDownloader {
         // Covers a client that already followed the redirect itself (e.g. Redirect.NORMAL) -
         // response.uri() then already reflects the followed target.
         if (isForeignHostRedirect(fileUrl, response.uri())) {
-          throw new ForeignHostRedirectException("redirected to a foreign host: " + response.uri());
+          throw new ForeignHostRedirectException(
+              "redirected to a foreign host: " + response.uri(),
+              AutoindexCrawlerService.redirectRejectionMessage(
+                  AutoindexCrawlerService.RedirectRejectionReason.FOREIGN_HOST, response.uri()));
         }
 
         // #538: covers the production client (Redirect.NEVER,
@@ -139,10 +149,16 @@ public class UrlFileDownloader {
           // AutoindexCrawlerService.isSchemeDowngrade's Javadoc.
           if (AutoindexCrawlerService.isSchemeDowngrade(currentUri, redirectUri)) {
             throw new ForeignHostRedirectException(
-                "refusing a protocol downgrade redirect (https to http): " + redirectUri);
+                "refusing a protocol downgrade redirect (https to http): " + redirectUri,
+                AutoindexCrawlerService.redirectRejectionMessage(
+                    AutoindexCrawlerService.RedirectRejectionReason.PROTOCOL_DOWNGRADE,
+                    redirectUri));
           }
           if (isForeignHostRedirect(currentUri.toString(), redirectUri)) {
-            throw new ForeignHostRedirectException("redirected to a foreign host: " + redirectUri);
+            throw new ForeignHostRedirectException(
+                "redirected to a foreign host: " + redirectUri,
+                AutoindexCrawlerService.redirectRejectionMessage(
+                    AutoindexCrawlerService.RedirectRejectionReason.FOREIGN_HOST, redirectUri));
           }
           currentUri = redirectUri;
           continue;
@@ -181,11 +197,17 @@ public class UrlFileDownloader {
    * always {@code fileUrl} or an already-followed, previously-vetted redirect hop here, so a {@code
    * new URI(...)} failure at this point has no legitimate cause - falling back to {@code false}
    * would reintroduce the same inverted "unparsable = trusted" default the null-host fix removes.
+   *
+   * <p><b>A same-host http→https upgrade is not foreign (#693).</b> Delegates to {@link
+   * AutoindexCrawlerService#isRedirectOriginTrusted} rather than {@code sameOrigin} directly - see
+   * that method's Javadoc: the ubiquitous upgrade redirect a well-behaved http:// source's server
+   * sends was, before this fix, indistinguishable from a genuine cross-origin redirect and rejected
+   * outright, breaking every attachment on such a source.
    */
   private static boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
     try {
       URI originalUri = new URI(originalUrl);
-      return !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
+      return !AutoindexCrawlerService.isRedirectOriginTrusted(originalUri, finalUri);
     } catch (URISyntaxException e) {
       return true;
     }
@@ -223,10 +245,24 @@ public class UrlFileDownloader {
    */
   public static final class AttachmentTooLargeException extends RuntimeException {}
 
-  /** Thrown by {@link #downloadBounded} when the request was redirected to a foreign host. */
+  /**
+   * Thrown by {@link #downloadBounded} when the request was redirected to a foreign host, or
+   * refused a protocol downgrade. {@link #userMessage()} is a German, user-facing text distinct per
+   * cause and stripped of path/query/fragment - see {@link
+   * AutoindexCrawlerService#redirectRejectionMessage} - while this exception's own ({@code super})
+   * message stays the unsanitized, developer-facing detail for the log only (maintainer nachtrag to
+   * #693, 21.08.2026).
+   */
   public static final class ForeignHostRedirectException extends RuntimeException {
-    ForeignHostRedirectException(String message) {
-      super(message);
+    private final String userMessage;
+
+    ForeignHostRedirectException(String logMessage, String userMessage) {
+      super(logMessage);
+      this.userMessage = userMessage;
+    }
+
+    public String userMessage() {
+      return userMessage;
     }
   }
 }

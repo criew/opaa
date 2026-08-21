@@ -128,4 +128,51 @@ class SpaceServiceTest {
     assertThatCode(() -> spaceService.ensureDefaultSpace(userId, organizationId))
         .doesNotThrowAnyException();
   }
+
+  @Test
+  void ensureDefaultSpaceForNewUserSkipsTheExistenceCheck() {
+    // #307: a caller that already knows userId is brand new (UserService.findOrCreateUser, for a
+    // subject/issuer pair its own insert just created) must not spend an extra pooled connection
+    // confirming a fact it already knows - see SpaceService#ensureDefaultSpaceForNewUser's Javadoc.
+    UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+
+    spaceService.ensureDefaultSpaceForNewUser(userId, organizationId);
+
+    verify(spaceRepository, never()).existsByOwnerIdAndIsDefaultTrue(any(UUID.class));
+    verify(spaceRepository)
+        .insertDefaultSpaceIfAbsent(
+            any(UUID.class),
+            any(UUID.class),
+            any(String.class),
+            any(String.class),
+            eq(userId),
+            eq(organizationId));
+  }
+
+  @Test
+  void ensureDefaultSpaceCachesAProvisionedPersonalSpaceAcrossCalls() {
+    // #307/#137: once a personal space is known to exist for userId, a later ensureDefaultSpace
+    // call for the same user - the returning-user steady state, by far the common case - must not
+    // spend a pooled connection re-confirming it.
+    UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+    when(spaceRepository.existsByOwnerIdAndIsDefaultTrue(userId)).thenReturn(true);
+
+    spaceService.ensureDefaultSpace(userId, organizationId);
+    spaceService.ensureDefaultSpace(userId, organizationId);
+
+    verify(spaceRepository, org.mockito.Mockito.times(1)).existsByOwnerIdAndIsDefaultTrue(userId);
+  }
+
+  @Test
+  void ensureDefaultSpaceForNewUserAlsoPopulatesTheCacheForLaterCalls() {
+    UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+
+    spaceService.ensureDefaultSpaceForNewUser(userId, organizationId);
+    spaceService.ensureDefaultSpace(userId, organizationId);
+
+    verify(spaceRepository, never()).existsByOwnerIdAndIsDefaultTrue(any(UUID.class));
+  }
 }

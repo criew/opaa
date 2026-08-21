@@ -338,3 +338,36 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   [#289](https://github.com/criew/opaa/issues/289) ·
   [#271](https://github.com/criew/opaa/issues/271) ·
   [features/spaces-and-assets.md](../features/spaces-and-assets.md#wie-die-grenze-gehalten-wird)
+
+### 21.08.2026 — Zitierzwang: Verweigerungsapparat verworfen
+
+- **Punkt:** Rücknahme des Nachtrags vom 14.08.2026 zum Zitierzwang (siehe
+  [Nachträge: entschiedene Punkte](#nachträge-entschiedene-punkte) oben, Eintrag „Zitierzwang: Schnitt
+  der Belegprüfung und Ort des Schalters"). Bei der Umsetzung von Stufe 1 (#386) stellte sich die Frage,
+  ob der dort beschlossene
+  Zwangs- und Verweigerungsapparat — Verweigerung mit Auskunft über den Suchvorgang (#387), Schalter am
+  Space mit erzwingender Systemvorgabe (#388), inhaltliche Deckungsprüfung als Stufe 2 (#389) — im
+  vollen Umfang gebaut werden soll.
+- **Entscheidung:** Nein. Gebaut wird ausschließlich der deterministische Kern: Jeder Beleg wird gegen
+  die für seine Antwort abgerufenen Fundstellen geprüft (Dokument-Kennung, Abschnittsnummer,
+  Dokumentbezeichnung); ein ungültiger Beleg wird gekennzeichnet, nicht stillschweigend entfernt und
+  nicht stillschweigend als gültig behandelt. Verweigerung bei fehlendem Beleg, die Abschnittszerlegung
+  mit Negativliste für „tragende Aussagen", die Formregel gegen Belegverdünnung, der Schalter am Space
+  und die inhaltliche Deckungsprüfung entfallen — nicht aufgeschoben, sondern entschieden nicht gebaut.
+  #387, #388 und #389 sind geschlossen. Der Wortlaut des Nachtrags vom 14.08.2026 bleibt unverändert
+  stehen, damit erkennbar bleibt, was zwischen dem 14. und dem 21.08.2026 galt; dieser Eintrag nimmt ihn
+  zurück, statt ihn zu überschreiben.
+- **Begründung:** Das Modell kommuniziert bereits selbst, wenn es nichts gefunden hat, und fehlende
+  Belege sind für Nutzende im Belegfenster unmittelbar sichtbar — die Validierung stellt sicher, dass
+  *vorhandene* Belege echt sind, mehr leistet sie nicht und mehr braucht sie auch nicht zu leisten. Ein
+  Zwangs- und Verweigerungsapparat darüber steht in keinem Verhältnis zum Nutzen: Er hätte einen zweiten,
+  komplexen Prüfweg (Abschnittszerlegung, Negativliste, Formregel) gebraucht, dessen Fehlerkosten
+  (unnötige Verweigerung einer ansonsten belegten Antwort) real und schwer messbar sind, während der
+  eigentliche Schaden — ein erfundener Beleg — bereits durch die deterministische Validierung
+  ausgeschlossen ist. Die Verankerung am Space war ohnehin schon als „ausdrücklich die schwächere von
+  zwei Möglichkeiten" geführt; mit dem Wegfall des Verweigerungsapparats entfällt der Grund, sie
+  überhaupt zu bauen. Die inhaltliche Deckungsprüfung (Stufe 2) verliert mit dem Verweigerungsapparat den
+  Apparat, den sie hätte absichern sollen, und damit ihre Grundlage.
+- **Verweis:** [#354](https://github.com/criew/opaa/issues/354) ·
+  [#386](https://github.com/criew/opaa/issues/386) ·
+  [features/data-indexing-rag.md](../features/data-indexing-rag.md#zitierzwang)

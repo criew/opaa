@@ -71,6 +71,11 @@ public class QueryConfiguration {
   }
 
   @Bean
+  CitationValidator citationValidator() {
+    return new CitationValidator();
+  }
+
+  @Bean
   QueryMetrics queryMetrics(MeterRegistry meterRegistry) {
     return new QueryMetrics(meterRegistry);
   }
@@ -81,6 +86,7 @@ public class QueryConfiguration {
       AnswerGenerationService answerGenerationService,
       ChatMemory chatMemory,
       CitationParser citationParser,
+      CitationValidator citationValidator,
       DocumentRepository documentRepository,
       UserRepository userRepository,
       LibraryAccessService libraryAccessService,
@@ -93,6 +99,7 @@ public class QueryConfiguration {
         answerGenerationService,
         chatMemory,
         citationParser,
+        citationValidator,
         documentRepository,
         userRepository,
         libraryAccessService,

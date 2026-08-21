@@ -10,8 +10,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
+import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
 import java.util.Optional;
@@ -37,6 +39,7 @@ class UserServiceTest {
   private SpaceService spaceService;
   private AuthProperties authProperties;
   private AuditEventRecorder auditEventRecorder;
+  private AuthMetrics authMetrics;
   private UserService userService;
 
   @BeforeEach
@@ -45,7 +48,13 @@ class UserServiceTest {
     spaceService = mock(SpaceService.class);
     authProperties = mock(AuthProperties.class);
     auditEventRecorder = mock(AuditEventRecorder.class);
-    userService = new UserService(userRepository, spaceService, authProperties, auditEventRecorder);
+    // A real AuthMetrics backed by a real (test-local) registry, not a mock (#307 review, finding
+    // 3): this lets ensuresPersonalSpaceWithoutPropagatingAFailure below assert the Micrometer
+    // counter itself actually incremented, not just that some method was called on a mock.
+    authMetrics = new AuthMetrics(new SimpleMeterRegistry());
+    userService =
+        new UserService(
+            userRepository, spaceService, authProperties, auditEventRecorder, authMetrics);
   }
 
   @Test
@@ -59,7 +68,9 @@ class UserServiceTest {
     assertThat(user.getSubject()).isEqualTo("sub1");
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
     assertThat(user.getOrganizationId()).isEqualTo(Organization.DEFAULT_ID);
-    verify(spaceService).ensureDefaultSpace(user.getId(), Organization.DEFAULT_ID);
+    // #307: a genuinely new user (this call's own insert won) skips the redundant existsBy round
+    // trip via the ensureDefaultSpaceForNewUser fast path - see UserService#ensurePersonalSpace.
+    verify(spaceService).ensureDefaultSpaceForNewUser(user.getId(), Organization.DEFAULT_ID);
   }
 
   @Test
@@ -324,18 +335,19 @@ class UserServiceTest {
     //
     // The user is still returned successfully; the failure is only logged (see log output captured
     // by the test framework, not asserted here - the observable contract is "the call did not
-    // throw").
+    // throw") and recorded in AuthMetrics (asserted below, #307 review, finding 3).
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.empty());
     when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     when(authProperties.initialAdminEmail()).thenReturn(null);
     Mockito.doThrow(new RuntimeException("space provisioning failed"))
         .when(spaceService)
-        .ensureDefaultSpace(any(), any());
+        .ensureDefaultSpaceForNewUser(any(), any());
 
     User user = userService.findOrCreateUser("sub1", "issuer1", "test@example.com", "Test");
 
     assertThat(user.getSubject()).isEqualTo("sub1");
-    verify(spaceService).ensureDefaultSpace(any(), any());
+    verify(spaceService).ensureDefaultSpaceForNewUser(any(), any());
+    assertThat(authMetrics.personalSpaceProvisioningFailedCount()).isEqualTo(1.0);
   }
 
   @Test
@@ -358,6 +370,11 @@ class UserServiceTest {
 
     assertThat(user).isEqualTo(winner);
     verify(userRepository, times(2)).findBySubjectAndIssuer("sub1", "issuer1");
+    // #307: a race loser did not itself create the row - the winner might already have provisioned
+    // the personal space - so it must keep using the idempotent ensureDefaultSpace, never the
+    // existsBy-skipping ensureDefaultSpaceForNewUser fast path reserved for a genuine winner.
+    verify(spaceService).ensureDefaultSpace(winner.getId(), Organization.DEFAULT_ID);
+    verify(spaceService, Mockito.never()).ensureDefaultSpaceForNewUser(any(), any());
   }
 
   @Test
