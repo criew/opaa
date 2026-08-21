@@ -1,0 +1,29 @@
+databaseChangeLog:
+  # #229 (validating the Rheinfurt demo corpus against a real Compose stack) surfaced that
+  # chk_indexing_run_events_category never accepted FORMAT_MISMATCH (io.opaa.indexing.
+  # IndexingEventCategory), even though #404 introduced that category and both UrlIndexingExecutor
+  # and RssFeedIndexingExecutor have recorded it since. Any file whose extension does not match its
+  # Tika-detected content - routine for plain-text formats like .md, which Tika often reports as
+  # text/plain - hit this constraint on the very first such event, turning what #404 says should
+  # only be reported (the document is still indexed) into a silently skipped document instead: the
+  # INSERT into indexing_run_events fails and rolls back the whole per-document transaction with it.
+  # Same widen-only shape as 056, one changeSet after it in the same table's history.
+  - changeSet:
+      id: 057-widen-indexing-run-event-category-format-mismatch
+      author: opaa
+      comment: "Widens chk_indexing_run_events_category to also accept FORMAT_MISMATCH (#229, #404)"
+      changes:
+        - sql:
+            comment: "Drop and recreate chk_indexing_run_events_category to include FORMAT_MISMATCH"
+            sql: >
+              ALTER TABLE indexing_run_events DROP CONSTRAINT chk_indexing_run_events_category;
+              ALTER TABLE indexing_run_events
+              ADD CONSTRAINT chk_indexing_run_events_category
+              CHECK (category IN ('REJECTED', 'UNREACHABLE', 'UNSUPPORTED_FORMAT', 'ALLOWLIST', 'ERROR', 'SCHEDULE_SKIPPED', 'FORMAT_MISMATCH'));
+      rollback:
+        - sql:
+            sql: >
+              ALTER TABLE indexing_run_events DROP CONSTRAINT chk_indexing_run_events_category;
+              ALTER TABLE indexing_run_events
+              ADD CONSTRAINT chk_indexing_run_events_category
+              CHECK (category IN ('REJECTED', 'UNREACHABLE', 'UNSUPPORTED_FORMAT', 'ALLOWLIST', 'ERROR', 'SCHEDULE_SKIPPED'));

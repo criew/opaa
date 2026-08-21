@@ -53,6 +53,32 @@ class AutoindexCrawlerServiceTest {
   }
 
   @Test
+  void derivesNameFromHrefWhenTheDisplayedNameIsTruncatedInHtmlTableLayout() {
+    // #229 (validating the Rheinfurt demo corpus - realistic, long, hyphenated file names - against
+    // this format, docs/features/demo-instance.md's own "erprobte Empfehlung") surfaced that the
+    // #550 review, finding 4 fix (see derivesNameFromHrefWhenTheDisplayedNameIsTruncated above) was
+    // only ever applied to the link-based layouts (parseLinkBasedLayout) - Apache's "IndexOptions
+    // FancyIndexing HTMLTable" truncates the *displayed* name exactly the same way (rendered with a
+    // "..&gt;" suffix) and was never covered: parseHtmlTableLayout used the anchor's link text
+    // outright, silently losing the file extension and dropping every long-named entry from
+    // SupportedDocumentFormats for the very listing format this project recommends.
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[   ]"></td>\
+        <td><a href="a-quite-long-report-file-name-example.pdf">a-quite-long-repo..&gt;</a></td>\
+        <td>2025-06-10 14:22</td><td>4.5M</td></tr>
+        </table>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://example.com/files", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().name()).isEqualTo("a-quite-long-report-file-name-example.pdf");
+  }
+
+  @Test
   void skipsParentDirectoryByAltText() {
     String html =
         """

@@ -240,13 +240,13 @@ public class AutoindexCrawlerService {
         continue;
       }
       String href = link.attr("href");
-      String name = link.text();
+      String linkText = link.text();
 
-      if (href.isEmpty() || name.isEmpty()) {
+      if (href.isEmpty() || linkText.isEmpty()) {
         continue;
       }
 
-      if ("PARENTDIR".equalsIgnoreCase(altText) || name.contains("Parent Directory")) {
+      if ("PARENTDIR".equalsIgnoreCase(altText) || linkText.contains("Parent Directory")) {
         continue;
       }
 
@@ -269,8 +269,15 @@ public class AutoindexCrawlerService {
         fullUrl = resolveUrl(baseUrl, href);
       }
 
+      // #229: derived from href, not linkText, for the same reason deriveEntryName already exists
+      // for parseLinkBasedLayout (#550 review, finding 4) - Apache's "IndexOptions NameWidth"
+      // truncates only the *displayed* name here too (rendered "some-long-file-na..&gt;"), and this
+      // layout (IndexOptions FancyIndexing HTMLTable) is the one this project's own demo corpus
+      // (docs/features/demo-instance.md) recommends, so a long, realistic file name must not lose
+      // its extension and silently drop out of SupportedDocumentFormats.
       String type = "DIR".equalsIgnoreCase(altText) ? "DIR" : altText;
-      entries.add(new CrawledFileEntry(name.trim(), fullUrl, date, size, type, depth));
+      entries.add(
+          new CrawledFileEntry(deriveEntryName(href, linkText), fullUrl, date, size, type, depth));
     }
 
     return entries;
