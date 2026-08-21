@@ -83,9 +83,11 @@ vi.mock('../services/api', () => ({
   ]),
   createSpace: (...args: unknown[]) => mockCreateSpace(...args),
   archiveSpace: (...args: [string]) => mockArchiveSpace(...args),
-  getSpaceLibraryAssociations: (...args: unknown[]) => mockGetSpaceLibraryAssociations(...args),
-  associateSpaceLibrary: (...args: unknown[]) => mockAssociateSpaceLibrary(...args),
-  detachSpaceLibrary: (...args: unknown[]) => mockDetachSpaceLibrary(...args),
+  getSpaceLibraryAssociations: (spaceId: string) => mockGetSpaceLibraryAssociations(spaceId),
+  associateSpaceLibrary: (spaceId: string, libraryId: string) =>
+    mockAssociateSpaceLibrary(spaceId, libraryId),
+  detachSpaceLibrary: (spaceId: string, libraryId: string) =>
+    mockDetachSpaceLibrary(spaceId, libraryId),
 }))
 
 const mockGetSpaceLibraryAssociations = vi.fn(async (spaceId: string) => {

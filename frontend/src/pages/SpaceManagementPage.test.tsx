@@ -5,7 +5,7 @@ import { renderWithProviders } from '../test/test-utils'
 import SpaceManagementPage from './SpaceManagementPage'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import type { SpaceResponse } from '../types/api'
+import type { SpaceLibraryAssociationListResponse, SpaceResponse } from '../types/api'
 
 vi.mock('react-router', async () => {
   const actual = await vi.importActual<typeof import('react-router')>('react-router')
@@ -54,10 +54,12 @@ const {
     mockDeleteSpace: vi.fn(async () => undefined),
     mockArchiveSpace: vi.fn(async () => ({}) as SpaceResponse),
     mockListSpaceMembers: vi.fn(async (spaceId: string) => membersBySpaceId[spaceId] ?? []),
-    mockGetSpaceLibraryAssociations: vi.fn(async (spaceId: string) => {
-      void spaceId
-      return { hasAssociations: false, items: [] }
-    }),
+    mockGetSpaceLibraryAssociations: vi.fn(
+      async (spaceId: string): Promise<SpaceLibraryAssociationListResponse> => {
+        void spaceId
+        return { hasAssociations: false, items: [] }
+      },
+    ),
     membersBySpaceId,
   }
 })
