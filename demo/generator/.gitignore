@@ -1,0 +1,6 @@
+# Cached raw LHM-Dienstleistungen-Corpus files (see README.md). Not committed:
+# the source snapshot is documented via URL, pinned commit hash and SHA-256
+# instead (see leistungen_quelle.py).
+raw-source/
+
+__pycache__/

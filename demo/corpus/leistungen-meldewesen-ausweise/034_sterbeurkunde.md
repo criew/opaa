@@ -1,0 +1,50 @@
+# Sterbeurkunde
+
+**Zuständige Stelle:** Bürgerbüro Rheinfurt – Sachgebiet Meldewesen & Ausweise
+**Aktenzeichen (Muster):** AZ 32.1-2026-0034
+**Formular:** RF-MW-034
+
+Das Standesamt stellt nach einem Todesfall Sterbeurkunden aus. Um die Anzeige des Sterbefalls kümmert sich in der Regel das beauftragte Bestattungsunternehmen.
+
+Wir stellen nach einem aktuellen Todesfall auf Antrag Sterbeurkunden aus. Voraussetzung ist, dass der Sterbefall in Rheinfurt in unserem Zuständigkeitsbereich war.
+Bei Sterbefällen, die im Zuständigkeitsbereich des Standesamts Rheinfurt-Rheinau (Klinikum Rheinfurt-Rheinau und Altenheime der Stadtbezirke 21, 22, 23) waren, wenden Sie sich bitte an: Standesamt Rheinfurt-Rheinau - Uferstraße 486, 00000 Rheinfurt, Telefon: 01234/44-7177.
+Fragen, die Ermittlungen von Erben und die Ausstellung eines Erbscheines betreffen, können vom  Nachlassgericht Rheinfurt in der Burgstraße 4, 00000 Rheinfurt, Telefon 01234/44-4876 beantwortet werden.
+Fragen zur Grablage (beispielsweise auf welchem Friedhof ist ein Verstorbener beerdigt?) kann Ihnen die Verwaltung der Städtischen Friedhöfe Rheinfurt in der Klosterstraße 8, 00000 Rheinfurt, Telefon 01234/44-0527 beantworten.
+
+Wir stellen nach einem Todesfall in unserem Zuständigkeitsbereich Sterbeurkunden aus. Um die Anzeige des Sterbefalls kümmert sich das Bestattungsunternehmen, das Sie mit der Abwicklung der Bestattung beauftragen. Nach Abschluss der Beurkundung erhalten Sie vom Bestattungsunternehmen die bestellten Sterbeurkunden.
+
+Voraussetzungen
+Der Sterbefall muss dem Standesamt angezeigt werden. Wenn der Tod in einem Krankenhaus, einer Seniorenresidenz oder einem Pflegeheim eingetreten ist, ist diese Einrichtung zur Anzeige verpflichtet. Bei einem Sterbefall in der Wohnung muss der Sterbefall von einer Person angezeigt werden, die aus eigenem Wissen davon unterrichtet ist. Wird ein Bestattungsunternehmen beauftragt, kümmert sich dieses um alle Formalitäten.
+Das Standesamt benötigt neben der Sterbefallanzeige und der ärztlichen Todesbescheinigung Belege für alle persönlichen Daten der verstorbenen Person (siehe „Benötigte Unterlagen“).
+Der Sterbefall wird im Sterberegister beurkundet. Auf Basis der Daten, die im Sterberegister eingetragen sind, werden auf Antrag Sterbeurkunden ausgestellt.
+
+Benötigte Unterlagen
+Unterlagen und Urkunden im Original für das Bestattungsunternehmen:
+- Geburtsurkunde
+- Eheurkunde (Heiratsurkunde), beglaubigte Abschrift des Eheregisters mit Hinweisen oder Familienstammbuch
+- gegebenenfalls Sterbeurkunde des vorverstorbenen Ehegatten (bei Verwitweten) oder Scheidungsurteil mit Rechtskraftvermerk (bei Geschiedenen)
+- ausländische Personenstandsurkunden/ Scheidungsurteile sind mit Übersetzung durch einen vereidigten Übersetzer vorzulegen
+- gegebenenfalls Einbürgerungsurkunde, Flüchtlingsausweis, Registrierschein
+- Reisepass/ Identitätsnachweis (wichtig bei ausländischen Staatsangehörigen)
+- Lebenspartnerschaftsurkunde
+Falls Sie das Bestattungsunternehmen im Auftrag des Standesamtes bittet, weitere Unterlagen nachzureichen und Sie nicht sicher sind, ob Sie die richtigen Dokumente besitzen, können Sie das Kontaktformular mit Upload-Funktion verwenden. So können Sie klären, welche Unterlagen Sie möglicherweise noch beschaffen und im Original nachreichen müssen.
+
+Dauer & Kosten
+Bearbeitungszeit
+Der Sterbefall kann beurkundet werden, sobald dem Standesamt alle erforderlichen Unterlagen vorliegen. Danach werden die beantragten Sterbeurkunden ausgestellt.
+
+Gebührenrahmen
+Für Krankenkasse und Rentenzwecke: Je 1 gebührenfreie Urkunde
+Sterbeurkunden für den privaten Gebrauch: 13,90 Euro
+Bescheinigungen über die Zurückstellung der Beurkundung: 13,90 Euro
+
+Barzahlung
+Kasse vor Ort
+EC-Karte
+Girocard
+
+---
+
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
+
+*Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*

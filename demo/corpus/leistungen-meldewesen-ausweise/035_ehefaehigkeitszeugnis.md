@@ -1,0 +1,76 @@
+# Ehefähigkeitszeugnis
+
+**Zuständige Stelle:** Bürgerbüro Rheinfurt – Sachgebiet Meldewesen & Ausweise
+**Aktenzeichen (Muster):** AZ 32.1-2026-0035
+**Formular:** RF-MW-035
+
+Sie wollen im Ausland heiraten? Dann brauchen Sie in vielen Staaten ein Ehefähigkeitszeugnis.
+
+Wenn Deutsche oder Personen, die deutschem Recht unterstehen, im Ausland heiraten wollen, brauchen sie in vielen Staaten ein Ehefähigkeitszeugnis. Falls der fremde Staat stattdessen eine Bescheinigung über die Eheschließungsvoraussetzungen der deutschen Auslandsvertretung verlangt, müssen Sie dort ein Ehefähigkeitszeugnis vorlegen. Sind beide Verlobte deutsche Staatsangehörige, genügt meist die Ausstellung eines Ehefähigkeitszeugnisses für beide.
+Ob Sie ein Ehefähigkeitszeugnis brauchen, erfahren Sie im ausländischen Standesamt, bei der ausländischen Vertretung in der Bundesrepublik Deutschland oder bei der deutschen Vertretung im Eheschließungsstaat.
+Wollen Sie in Österreich, der Schweiz oder in Luxemburg heiraten, kann das Ehefähigkeitszeugnis auch direkt durch das dortige zuständige Standesamt/ Zivilstandsamt im Rahmen des dortigen Eheanmeldeverfahrens angefordert werden.
+Die Rheinfurter Standesämter stellen ein Ehefähigkeitszeugnis nur aus, wenn die*er deutsche Partner*in mit Haupt- oder Nebenwohnung in Rheinfurt gemeldet ist.
+
+Mit dem Ehefähigkeitszeugnis wird bestätigt, dass Ihrer geplanten Ehe nach deutschem Gesetz kein Hindernis entgegensteht. Dazu sind Daten und Unterlagen von beiden künftigen Eheleuten notwendig.
+Sie beantragen das Ehefähigkeitszeugnis beim Standesamt an Ihrem Wohnort.
+
+Voraussetzungen
+Beide Verlobte müssen volljährig sein.
+
+Benötigte Unterlagen
+Gültiger Reisepass oder Personalausweis
+Für ledige Deutsche ohne Auslandsbezug:
+- Beglaubigter Ausdruck aus dem Geburtenregister, neu ausgestellt vom Standesamt des Geburtsortes
+- Wenn der Hauptwohnsitz nicht in Rheinfurt ist: aktuelle Meldebescheinigung mit Angabe des Familienstandes und der Staatsangehörigkeit von der Meldebehörde am Hauptwohnsitz
+Hinweis: Ein Auslandsbezug liegt vor, wenn einer der künftigen Eheleute
+- eine ausländische Staatsangehörigkeit besitzt
+- nicht im Bundesgebiet geboren wurde oder im Ausland adoptiert wurde
+- eine frühere Ehe/ Lebenspartnerschaft im Ausland geschlossen hat
+- eine frühere Ehe/ Lebenspartnerschaft im Ausland geschieden wurde
+Zusätzlich für Deutsche, die im Inland verheiratet waren:
+- Neu ausgestellter beglaubigter Ausdruck aus dem Eheregister der letzten Ehe. Die Auflösung der Ehe müsste eingetragen sein.
+- Wenn nicht, außerdem: Scheidungsurteil oder Sterbeurkunde der*des ehemaligen Partner*in.
+- Waren Sie mehrmals verheiratet, geben Sie alle Ehen an. Mögliche Nachweise: ältere Heiratsurkunde, Familienbuchabschrift, Sterbeurkunde, Scheidungsurteil
+Zusätzlich für ledige ausländische Staatsangehörige:
+- Aktuelle Geburtsurkunde mit Angabe der Eltern
+- amtliche Bescheinigung über den aktuellen Familienstand, nicht älter als 6 Monate, erhältlich in der Regel am Wohnort der*des ausländischen Verlobten im Ausland oder beim zuständigen ausländischen Standesamt oder Registeramt.
+- Wenn die Urkunden nicht mehrsprachig sind: Übersetzung durch einen im Bundesgebiet oder bei der deutschen Auslandsvertretung anerkannten und öffentlich beeidigten Übersetzer.
+- Reisepass oder Identitätskarte (gut lesbare Kopie)
+In allen anderen Fällen, wenn
+- Sie nicht im Bundesgebiet geboren oder adoptiert sind,
+- Sie ihre letzte Ehe im Ausland geschlossen haben, oder eine frühere Ehe im Ausland geschie-den wurde,
+- Sie bereits eine eingetragene Lebenspartnerschaft begründet hatten,
+- die*der ausländische Verlobte bereits verheiratet war,
+ist leider keine pauschale Auskunft möglich. Bitte benutzen Sie für eine persönliche Auskunft unser Kontaktformular.
+
+Dauer & Kosten
+Bearbeitungszeit
+Wenn Sie den Antrag auf Ihr Ehefähigkeitszeugnis zusammen mit allen erforderlichen Unterlagen schriftlich beim Standesamt eingereicht haben, dauert die Bearbeitung in der Regel zwei bis drei Wochen. Im Einzelfall kann das Verfahren auch deutlich länger dauern.
+
+Gebührenrahmen
+Ausstellung des Ehefähigkeitszeugnisses: 60 bis 179,70 Euro
+
+Barzahlung
+Kasse vor Ort
+EC-Karte
+Girocard
+
+Fragen & Antworten
+Bei welchem Standesamt kann ich das Ehefähigkeitszeugnis beantragen?
+Grundsätzlich ist das Standesamt an Ihrem Wohnort zuständig. Wenn Sie mehrere Wohnsitze haben, können Sie eines der zuständigen Standesämter wählen. Sollte die*der deutsche Verlobte keinen Wohnsitz mehr in Deutschland haben, muss das Ehefähigkeitszeugnis beim Standesamt des letzten Wohnsitzes beantragt werden. Bestand niemals oder nur vorübergehend ein Aufenthalt im Inland, so ist der Standesbeamte des Standesamtes I in Berlin, Gartenstraße 5, 13357 Berlin, zuständig.
+Kann ich in Rheinfurt zu jedem Standesamt gehen?
+Nein. Die Standesämter Rheinfurt und Rheinfurt-Rheinau haben getrennte Amtsbezirke.
+Für die Rheinfurter Stadtbezirke 21 (Rheinau – Südheim), 22 (Wiesengrund – Altfeld – Feldflur) und 23 (Westend – Nordheim) ist nur das Standesamt Rheinfurt-Rheinau zuständig.
+Für alle anderen Stadtbezirke ist nur das Standesamt Rheinfurt zuständig.
+Warum müssen Daten von beiden Partner*innen angegeben werden?
+Sie dürfen keine Person heiraten, die minderjährig ist, mit der Sie zu nah verwandt sind oder die bereits verheiratet ist. Damit das geprüft werden kann, braucht das Standesamt die Unterlagen von beiden künftigen Eheleuten.
+Wo bekomme ich eine Familienstandsbescheinigung (nur) für mich?
+Nicht in allen Ländern wird ein Ehefähigkeitszeugnis verlangt. Reicht eine Bescheinigung über Ihren aktuellen Familienstand, beantragen Sie bitte eine Meldebescheinigung mit Angabe des Familienstandes und der Staatsangehörigkeit bei der Meldebehörde an Ihrem Wohnsitz.
+Gibt es eine telefonische Beratung?
+Wir bitten um Verständnis, dass bei der Vielzahl der Fallgestaltungen gerade mit Auslandsbezug keine Telefonberatung zu den Unterlagen, die Sie im Einzelfall benötigen, möglich ist.
+
+---
+
+Kontakt: buergerbuero@stadt-rheinfurt.example | Bürgerbüro Rheinfurt, Rathausplatz 1, 00000 Rheinfurt
+
+*Diese Leistungsbeschreibung ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Alle Namen, Aktenzeichen und Kontaktangaben sind frei erfunden.*
