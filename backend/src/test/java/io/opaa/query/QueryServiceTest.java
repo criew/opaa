@@ -401,6 +401,7 @@ class QueryServiceTest {
             answerGenerationService,
             realChatMemory,
             new CitationParser(),
+            new CitationValidator(),
             documentRepository,
             userRepository,
             libraryAccessService,
