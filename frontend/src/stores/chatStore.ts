@@ -215,6 +215,12 @@ function scopeFromChatDetail(useKnowledge: boolean, referencedLibraryIds: string
   return referencedLibraryIds.length > 0 ? 'libraries' : 'none'
 }
 
+// #619 review: loadChat's settings-race guard below needs every field applyChatDetail returns
+// *except* scope/referencedLibraryIds - omitKeys(), not a hand-maintained field list, is what keeps
+// that guarded write-back in sync with this function's return type. Adding a field here (e.g. a
+// future ChatDetail property) is automatically picked up by that write-back without touching
+// loadChat at all; only add a field to omitKeys' call site if the *new* field also needs the same
+// settings-race protection as scope/referencedLibraryIds.
 function applyChatDetail(detail: ChatDetail) {
   const referencedLibraryIds = detail.referencedLibraryIds ?? []
   const scope = scopeFromChatDetail(detail.useKnowledge, referencedLibraryIds)
@@ -228,6 +234,18 @@ function applyChatDetail(detail: ChatDetail) {
     referencedLibraryIds: scope === 'libraries' ? referencedLibraryIds : [],
     messages: detail.messages.map(toChatMessage),
   }
+}
+
+/** Shallow-omits `keys` from `obj`, typed so the result is exactly `Omit<T, K>` (#619 review). Used
+ * instead of a hand-picked field list so a write-back that means "everything but a few guarded
+ * fields" stays correct as the source object's shape evolves, rather than silently dropping new
+ * fields until someone remembers to update a parallel list. */
+function omitKeys<T extends object, K extends keyof T>(obj: T, keys: readonly K[]): Omit<T, K> {
+  const clone: Partial<T> = { ...obj }
+  keys.forEach((key) => {
+    delete clone[key]
+  })
+  return clone as Omit<T, K>
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -264,13 +282,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const settingsRacedByPatch =
         (settingsChangeSequenceByChatId.get(chatId) ?? 0) !== settingsSequenceAtStart
       if (settingsRacedByPatch) {
-        set({
-          spaceId: detailState.spaceId,
-          chatId: detailState.chatId,
-          title: detailState.title,
-          messages: detailState.messages,
-          isLoadingChat: false,
-        })
+        set({ ...omitKeys(detailState, ['scope', 'referencedLibraryIds']), isLoadingChat: false })
       } else {
         set({ ...detailState, isLoadingChat: false })
         // The just-loaded settings are the server's own record - the rollback base for any PATCH
