@@ -17,7 +17,9 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingJobRepository;
+import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.RssFeedStateRepository;
+import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,6 +60,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     IndexingJobRepository indexingJobRepository = mock(IndexingJobRepository.class);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
+    IndexingJobService indexingJobService = mock(IndexingJobService.class);
 
     libraryService =
         new KnowledgeLibraryService(
@@ -74,7 +77,9 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             vectorStore,
             filesystemAllowlist,
             indexingJobRepository,
-            rssFeedStateRepository);
+            indexingJobService,
+            rssFeedStateRepository,
+            Clock.systemDefaultZone());
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");

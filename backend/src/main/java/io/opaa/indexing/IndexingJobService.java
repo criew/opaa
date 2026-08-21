@@ -58,11 +58,21 @@ public class IndexingJobService {
    * of the race gets the exact same 409 the in-memory check already produces for the same-thread
    * case, so callers cannot tell which of the two guards actually caught it.
    */
-  @Transactional
   public IndexingJob startJob(UUID libraryId, UUID organizationId) {
+    return startJob(libraryId, organizationId, JobTriggerSource.MANUAL);
+  }
+
+  /**
+   * Same as {@link #startJob(UUID, UUID)}, additionally recording {@code triggeredBy} (#485) -
+   * {@link io.opaa.indexing.LibraryIndexingScheduler} is the only caller that passes {@link
+   * JobTriggerSource#SCHEDULED}.
+   */
+  @Transactional
+  public IndexingJob startJob(UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy) {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
     job.setOrganizationId(organizationId);
+    job.setTriggeredBy(triggeredBy);
     IndexingJob saved;
     try {
       saved = indexingJobRepository.saveAndFlush(job);
@@ -245,6 +255,24 @@ public class IndexingJobService {
   public boolean isJobRunning(UUID libraryId, UUID organizationId) {
     return indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
         JobStatus.RUNNING, libraryId, organizationId);
+  }
+
+  /**
+   * Whether {@code libraryId}'s two most recent {@link JobTriggerSource#SCHEDULED} runs both ended
+   * {@link JobStatus#FAILED} (#485) - {@code false} when fewer than two scheduled runs exist yet,
+   * matching {@code LibraryResponse.lastScheduledRunsFailed}'s own "wiederholtes Scheitern"
+   * definition. A currently {@link JobStatus#RUNNING} scheduled run (the most recent one, say)
+   * counts as not-failed here, exactly like every other non-FAILED status - the banner only fires
+   * once a retry has actually failed again, not while one is in flight.
+   */
+  @Transactional(readOnly = true)
+  public boolean lastScheduledRunsFailed(UUID libraryId, UUID organizationId) {
+    List<IndexingJob> recentScheduled =
+        indexingJobRepository
+            .findTop2ByLibraryIdAndOrganizationIdAndTriggeredByOrderByStartedAtDesc(
+                libraryId, organizationId, JobTriggerSource.SCHEDULED);
+    return recentScheduled.size() == 2
+        && recentScheduled.stream().allMatch(job -> job.getStatus() == JobStatus.FAILED);
   }
 
   /**

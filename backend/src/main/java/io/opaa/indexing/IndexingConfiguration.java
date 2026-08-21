@@ -6,6 +6,7 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.UploadProperties;
 import io.opaa.observability.IndexingMetrics;
+import java.time.Clock;
 import java.util.List;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
@@ -216,5 +217,33 @@ public class IndexingConfiguration {
     executor.setThreadNamePrefix("upload-");
     executor.initialize();
     return executor;
+  }
+
+  /**
+   * Server local time (#485) - the same "server time, no separate timezone configuration yet"
+   * choice {@code io.opaa.audit.AuditRetentionScheduler}'s own {@code @Scheduled(cron = ...)}
+   * already makes implicitly (Spring's default {@code @Scheduled} zone is the JVM's). A named
+   * {@link Clock} bean, rather than {@code Clock.systemDefaultZone()} called directly in {@link
+   * LibraryIndexingScheduler}, so a test can substitute a fixed clock without needing to control
+   * wall-clock time.
+   */
+  @Bean
+  Clock schedulingClock() {
+    return Clock.systemDefaultZone();
+  }
+
+  @Bean
+  LibraryIndexingScheduler libraryIndexingScheduler(
+      KnowledgeLibraryRepository libraryRepository,
+      DocumentIndexingService documentIndexingService,
+      IndexingJobService indexingJobService,
+      IndexingRunEventRepository indexingRunEventRepository,
+      Clock schedulingClock) {
+    return new LibraryIndexingScheduler(
+        libraryRepository,
+        documentIndexingService,
+        indexingJobService,
+        indexingRunEventRepository,
+        schedulingClock);
   }
 }

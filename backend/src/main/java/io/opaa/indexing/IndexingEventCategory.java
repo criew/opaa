@@ -12,5 +12,7 @@ public enum IndexingEventCategory {
   UNREACHABLE,
   UNSUPPORTED_FORMAT,
   ALLOWLIST,
-  ERROR
+  ERROR,
+  /** A scheduled run (#485) was skipped because the library was still indexing. */
+  SCHEDULE_SKIPPED
 }

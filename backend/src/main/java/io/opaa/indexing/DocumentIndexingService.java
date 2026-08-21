@@ -102,6 +102,36 @@ public class DocumentIndexingService {
   }
 
   /**
+   * Triggers a scheduled run for {@code library} (#485) - called only by {@link
+   * LibraryIndexingScheduler}, never from an HTTP request, so unlike {@link #triggerIndexing} there
+   * is no caller to authorize: the library was already selected because its own stored schedule
+   * says it is due. Otherwise mirrors {@link #triggerIndexing}'s shape ({@code isJobRunning}
+   * pre-check, {@code TaskRejectedException} handling) except the caller (the scheduler) has
+   * already checked {@code isJobRunning} itself and records the skip event, so a conflict here
+   * simply propagates as the same 409 {@link IndexingJobService#startJob(UUID, UUID,
+   * JobTriggerSource)} already throws for the TOCTOU case - the scheduler treats that identically
+   * to its own pre-check finding a run already in progress.
+   */
+  public IndexingJob triggerScheduledIndexing(KnowledgeLibrary library) {
+    IndexingSourceType sourceType = toIndexingSourceType(library.getSourceType());
+    SourceIndexingExecutor executor = executorRegistry.resolve(sourceType);
+    var job =
+        indexingJobService.startJob(
+            library.getId(), library.getOrganizationId(), JobTriggerSource.SCHEDULED);
+    try {
+      executor.execute(job.getId(), library);
+    } catch (TaskRejectedException e) {
+      indexingJobService.failJob(
+          job.getId(), "Indizierungslauf abgelehnt: Kapazität derzeit erschöpft");
+      throw new ResponseStatusException(
+          HttpStatus.SERVICE_UNAVAILABLE,
+          "Indizierung derzeit nicht möglich, bitte später erneut versuchen",
+          e);
+    }
+    return job;
+  }
+
+  /**
    * The current or most recently completed run for {@code libraryId}, for whoever can at least read
    * the library (a narrower bar than {@link #requireEditableLibrary}'s {@code EDITOR} - seeing the
    * last run's outcome is not the same right as starting a new one). Uses {@link

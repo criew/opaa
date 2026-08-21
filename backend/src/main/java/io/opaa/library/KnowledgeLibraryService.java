@@ -5,7 +5,10 @@ import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
+import io.opaa.api.dto.LibrarySchedule;
+import io.opaa.api.dto.LibraryScheduleRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
+import io.opaa.api.dto.ScheduleFrequency;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -21,9 +24,13 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingJobRepository;
+import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
+import io.opaa.indexing.LibraryScheduleCodec;
 import io.opaa.indexing.RssFeedStateRepository;
 import java.net.URI;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -101,7 +108,9 @@ public class KnowledgeLibraryService {
   private final VectorStore vectorStore;
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final IndexingJobRepository indexingJobRepository;
+  private final IndexingJobService indexingJobService;
   private final RssFeedStateRepository rssFeedStateRepository;
+  private final Clock schedulingClock;
 
   public KnowledgeLibraryService(
       KnowledgeLibraryRepository libraryRepository,
@@ -117,7 +126,9 @@ public class KnowledgeLibraryService {
       VectorStore vectorStore,
       FilesystemPathAllowlist filesystemAllowlist,
       IndexingJobRepository indexingJobRepository,
-      RssFeedStateRepository rssFeedStateRepository) {
+      IndexingJobService indexingJobService,
+      RssFeedStateRepository rssFeedStateRepository,
+      Clock schedulingClock) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
@@ -131,7 +142,9 @@ public class KnowledgeLibraryService {
     this.vectorStore = vectorStore;
     this.filesystemAllowlist = filesystemAllowlist;
     this.indexingJobRepository = indexingJobRepository;
+    this.indexingJobService = indexingJobService;
     this.rssFeedStateRepository = rssFeedStateRepository;
+    this.schedulingClock = schedulingClock;
   }
 
   @Transactional
@@ -430,6 +443,12 @@ public class KnowledgeLibraryService {
     boolean replacesSourceConfiguration = hasSourceConfigurationFields(request);
     SourceConfiguration sourceConfiguration =
         replacesSourceConfiguration ? validateSourceConfigurationForUpdate(library, request) : null;
+    // #485: schedule follows the same replace-as-a-whole rule as the source configuration above -
+    // only present when the caller actually intends to change it (LibraryUpdateRequest.schedule),
+    // so a request that only renames the library leaves an already-configured schedule untouched.
+    boolean replacesSchedule = request.getSchedule() != null;
+    ValidatedSchedule validatedSchedule =
+        replacesSchedule ? validateSchedule(request.getSchedule(), library.getSourceType()) : null;
 
     String normalizedName = validateName(request.getName());
     validateDescription(request.getDescription());
@@ -445,6 +464,9 @@ public class KnowledgeLibraryService {
     boolean previousSourceInsecureSsl = library.isSourceInsecureSsl();
     library.updateDetails(
         normalizedName, request.getDescription(), request.getVisibility(), listed);
+    if (replacesSchedule) {
+      library.updateSchedule(validatedSchedule.enabled(), validatedSchedule.cron());
+    }
     if (replacesSourceConfiguration) {
       library.updateSourceConfiguration(
           sourceConfiguration.sourcePath(),
@@ -943,6 +965,65 @@ public class KnowledgeLibraryService {
     return value == null || value.isBlank() ? null : value.trim();
   }
 
+  /**
+   * Validates {@code request} against the four intervalstufen {@link ScheduleFrequency} allows
+   * (#485) and returns the {@code (enabled, cron)} pair {@link KnowledgeLibrary#updateSchedule}
+   * takes - {@code cron} built by {@link LibraryScheduleCodec#toCron}. Rejects a schedule on a
+   * {@code UPLOAD} library outright (#485, Zuschnitt 21.08.2026: "nur Konnektorbibliotheken"),
+   * mirroring the database's own {@code chk_knowledge_libraries_schedule} (migration 051) as a
+   * 400-before-insert.
+   */
+  private ValidatedSchedule validateSchedule(
+      LibraryScheduleRequest request, DocumentSourceType sourceType) {
+    ScheduleFrequency frequency = request.getFrequency();
+    if (frequency == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "frequency ist erforderlich");
+    }
+    if (frequency != ScheduleFrequency.DISABLED && sourceType == DocumentSourceType.UPLOAD) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "Ein Zeitplan ist nur für Konnektorbibliotheken verfügbar, nicht für UPLOAD");
+    }
+    Integer hour = request.getHour();
+    Integer minute = request.getMinute();
+    var weekday = request.getWeekday();
+    switch (frequency) {
+      case DISABLED, HOURLY -> {
+        if (hour != null || minute != null || weekday != null) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST,
+              "hour, minute und weekday sind für frequency " + frequency + " nicht zulässig");
+        }
+      }
+      case DAILY -> {
+        if (hour == null || minute == null) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST,
+              "hour und minute sind erforderlich, wenn frequency DAILY ist");
+        }
+        if (weekday != null) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST, "weekday ist für frequency DAILY nicht zulässig");
+        }
+      }
+      case WEEKLY -> {
+        if (hour == null || minute == null || weekday == null) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST,
+              "hour, minute und weekday sind erforderlich, wenn frequency WEEKLY ist");
+        }
+      }
+    }
+    if (frequency == ScheduleFrequency.DISABLED) {
+      return new ValidatedSchedule(false, null);
+    }
+    return new ValidatedSchedule(
+        true, LibraryScheduleCodec.toCron(frequency, hour, minute, weekday));
+  }
+
+  /** The validated {@code (enabled, cron)} pair {@link KnowledgeLibrary#updateSchedule} takes. */
+  private record ValidatedSchedule(boolean enabled, String cron) {}
+
   /** Groups a validated {@link LibraryRequest}'s source fields for the two entity factories. */
   private record SourceConfiguration(
       DocumentSourceType sourceType,
@@ -1048,6 +1129,29 @@ public class KnowledgeLibraryService {
           // lets a client phrase an accurate "leave blank to keep the current credential" hint
           // only when one is actually stored.
           .sourceCredentialsSet(library.getSourceCredentials() != null);
+    }
+    // #485: schedule/lastScheduledRunsFailed follow the same MANAGER threshold and the same
+    // "connector libraries only" restriction as the source configuration above - a schedule
+    // cannot exist on a UPLOAD library at all (chk_knowledge_libraries_schedule), and nextRunAt
+    // would otherwise leak the same "does an internal crawl target exist" detail #507 already
+    // gates.
+    if (library.getSourceType() != DocumentSourceType.UPLOAD && myRole.atLeast(AssetRole.MANAGER)) {
+      LibraryScheduleCodec.Schedule schedule =
+          LibraryScheduleCodec.parse(library.getScheduleCron());
+      Instant nextRunAt =
+          LibraryScheduleCodec.nextRunAt(
+              library.getScheduleCron(), schedulingClock.instant(), schedulingClock.getZone());
+      var scheduleResponse =
+          new LibrarySchedule(schedule.frequency())
+              .hour(schedule.hour())
+              .minute(schedule.minute())
+              .weekday(schedule.weekday())
+              .nextRunAt(nextRunAt);
+      response
+          .schedule(scheduleResponse)
+          .lastScheduledRunsFailed(
+              indexingJobService.lastScheduledRunsFailed(
+                  library.getId(), library.getOrganizationId()));
     }
     return response;
   }

@@ -60,6 +60,16 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
       UUID libraryId, UUID organizationId);
 
   /**
+   * The last two {@link JobTriggerSource#SCHEDULED} runs for {@code libraryId} within {@code
+   * organizationId}, newest first (#485) - {@code KnowledgeLibraryService} uses this to compute
+   * {@code LibraryResponse.lastScheduledRunsFailed} without loading every run. Two, not one: a
+   * single failed scheduled run is not "wiederholtes Scheitern" (#485 Zuschnitt); it only becomes
+   * visible once the schedule has failed twice in a row.
+   */
+  List<IndexingJob> findTop2ByLibraryIdAndOrganizationIdAndTriggeredByOrderByStartedAtDesc(
+      UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy);
+
+  /**
    * Fails every currently {@link JobStatus#RUNNING} row, unconditionally (#501). Called once, right
    * after application startup: a fresh JVM cannot possibly still be running the {@code @Async} task
    * a {@code RUNNING} row refers to - that task lived in the previous process, which either

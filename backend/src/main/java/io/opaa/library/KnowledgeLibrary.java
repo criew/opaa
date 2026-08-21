@@ -112,6 +112,25 @@ public class KnowledgeLibrary {
   @Column(name = "source_insecure_ssl", nullable = false)
   private boolean sourceInsecureSsl;
 
+  /**
+   * Whether this library's indexing runs are triggered automatically on a schedule (#485) - always
+   * {@code false} for {@code UPLOAD} (no run exists for it at all, {@link
+   * DocumentSourceType#UPLOAD}) and enforced by {@code chk_knowledge_libraries_schedule} (migration
+   * 051) alongside {@link #scheduleCron}. See {@link #updateSchedule} for how the pair changes
+   * together.
+   */
+  @Column(name = "schedule_enabled", nullable = false)
+  private boolean scheduleEnabled;
+
+  /**
+   * The schedule as a cron expression, non-null exactly when {@link #scheduleEnabled} is {@code
+   * true} (migration 051's check constraint) - never a raw value a client sends: {@code
+   * io.opaa.indexing.LibraryScheduleCodec} is the only place that turns the four UI intervalstufen
+   * (#485, Zuschnitt 21.08.2026) into this string and back.
+   */
+  @Column(name = "schedule_cron", length = 100)
+  private String scheduleCron;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -308,6 +327,18 @@ public class KnowledgeLibrary {
     this.sourceInsecureSsl = sourceInsecureSsl;
   }
 
+  /**
+   * Replaces the schedule in place (#485) - {@code scheduleCron} must already be {@code null} when
+   * {@code enabled} is {@code false} and non-null otherwise, matching {@code
+   * chk_knowledge_libraries_schedule}; {@code io.opaa.library.KnowledgeLibraryService} is
+   * responsible for that validation before calling this, the same division of labour {@link
+   * #updateSourceConfiguration} already has with its own caller.
+   */
+  public void updateSchedule(boolean enabled, String scheduleCron) {
+    this.scheduleEnabled = enabled;
+    this.scheduleCron = scheduleCron;
+  }
+
   public boolean isOwnedByUser(UUID userId) {
     return ownerType == LibraryOwnerType.USER && ownerUserId.equals(userId);
   }
@@ -382,6 +413,14 @@ public class KnowledgeLibrary {
 
   public boolean isSourceInsecureSsl() {
     return sourceInsecureSsl;
+  }
+
+  public boolean isScheduleEnabled() {
+    return scheduleEnabled;
+  }
+
+  public String getScheduleCron() {
+    return scheduleCron;
   }
 
   public Instant getCreatedAt() {

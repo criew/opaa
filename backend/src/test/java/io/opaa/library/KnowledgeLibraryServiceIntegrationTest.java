@@ -9,7 +9,9 @@ import io.opaa.api.dto.AssetGrantResponse;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
+import io.opaa.api.dto.LibraryScheduleRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
+import io.opaa.api.dto.ScheduleFrequency;
 import io.opaa.api.dto.SpaceRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -716,6 +718,124 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     KnowledgeLibrary stored = libraryRepository.findById(library.getId()).orElseThrow();
     assertThat(stored.getSourceCredentials()).isEqualTo("admin:new-secret");
+  }
+
+  @Test
+  void updateLibrarySavesADailyScheduleAndComputesTheNextRunAt() {
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://example.com/documents/")),
+            owner);
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .schedule(new LibraryScheduleRequest(ScheduleFrequency.DAILY).hour(3).minute(30));
+
+    LibraryResponse updated = libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    assertThat(updated.getSchedule()).isNotNull();
+    assertThat(updated.getSchedule().getFrequency()).isEqualTo(ScheduleFrequency.DAILY);
+    assertThat(updated.getSchedule().getHour()).isEqualTo(3);
+    assertThat(updated.getSchedule().getMinute()).isEqualTo(30);
+    assertThat(updated.getSchedule().getNextRunAt()).isNotNull();
+
+    KnowledgeLibrary stored = libraryRepository.findById(library.getId()).orElseThrow();
+    assertThat(stored.isScheduleEnabled()).isTrue();
+    assertThat(stored.getScheduleCron()).isEqualTo("0 30 3 * * *");
+  }
+
+  @Test
+  void updateLibraryDisablingAnExistingScheduleClearsTheStoredCron() {
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://example.com/documents/")),
+            owner);
+    libraryService.updateLibrary(
+        library.getId(),
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .schedule(new LibraryScheduleRequest(ScheduleFrequency.HOURLY)),
+        owner,
+        false);
+
+    libraryService.updateLibrary(
+        library.getId(),
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .schedule(new LibraryScheduleRequest(ScheduleFrequency.DISABLED)),
+        owner,
+        false);
+
+    KnowledgeLibrary stored = libraryRepository.findById(library.getId()).orElseThrow();
+    assertThat(stored.isScheduleEnabled()).isFalse();
+    assertThat(stored.getScheduleCron()).isNull();
+  }
+
+  @Test
+  void updateLibraryRejectsAScheduleOnAnUploadLibrary() {
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Upload", DocumentSourceType.UPLOAD), owner);
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Upload")
+            .schedule(new LibraryScheduleRequest(ScheduleFrequency.HOURLY));
+
+    assertThatThrownBy(() -> libraryService.updateLibrary(library.getId(), request, owner, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void updateLibraryRejectsAWeeklyScheduleWithoutAWeekday() {
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://example.com/documents/")),
+            owner);
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .schedule(new LibraryScheduleRequest(ScheduleFrequency.WEEKLY).hour(9).minute(0));
+
+    assertThatThrownBy(() -> libraryService.updateLibrary(library.getId(), request, owner, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void updateLibraryLeavesAnUntouchedScheduleWhenTheRequestOmitsIt() {
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://example.com/documents/")),
+            owner);
+    libraryService.updateLibrary(
+        library.getId(),
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .schedule(new LibraryScheduleRequest(ScheduleFrequency.HOURLY)),
+        owner,
+        false);
+
+    // A request that only renames the library (no schedule field at all) must leave the stored
+    // schedule untouched, mirroring the source configuration's own replace-as-a-whole rule.
+    libraryService.updateLibrary(
+        library.getId(), new LibraryUpdateRequest("Umbenannt"), owner, false);
+
+    KnowledgeLibrary stored = libraryRepository.findById(library.getId()).orElseThrow();
+    assertThat(stored.isScheduleEnabled()).isTrue();
+    assertThat(stored.getScheduleCron()).isEqualTo("0 0 * * * *");
   }
 
   @Test

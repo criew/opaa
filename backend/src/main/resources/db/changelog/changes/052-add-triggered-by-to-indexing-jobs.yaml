@@ -1,0 +1,35 @@
+databaseChangeLog:
+  # #485: distinguishes a manually triggered run ("Jetzt indizieren") from one the new
+  # LibraryIndexingScheduler started, so KnowledgeLibraryService can compute
+  # LibraryResponse.lastScheduledRunsFailed without conflating the two (a person retrying by hand
+  # right after a scheduled failure must not itself count towards, or reset, that streak).
+  # Defaults every existing row to MANUAL - every run before this issue was in fact user-triggered,
+  # since the scheduler did not exist yet.
+  - changeSet:
+      id: 052-add-triggered-by-to-indexing-jobs
+      author: opaa
+      comment: "Adds triggered_by to indexing_jobs (#485), defaulting existing rows to MANUAL"
+      changes:
+        - addColumn:
+            tableName: indexing_jobs
+            columns:
+              - column:
+                  name: triggered_by
+                  type: varchar(20)
+                  defaultValue: MANUAL
+                  constraints:
+                    nullable: false
+        - sql:
+            comment: "Add check constraint for indexing_jobs.triggered_by values"
+            sql: >
+              ALTER TABLE indexing_jobs
+              ADD CONSTRAINT chk_indexing_jobs_triggered_by
+              CHECK (triggered_by IN ('MANUAL', 'SCHEDULED'));
+      rollback:
+        - sql:
+            sql: >
+              ALTER TABLE indexing_jobs
+              DROP CONSTRAINT IF EXISTS chk_indexing_jobs_triggered_by;
+        - dropColumn:
+            tableName: indexing_jobs
+            columnName: triggered_by

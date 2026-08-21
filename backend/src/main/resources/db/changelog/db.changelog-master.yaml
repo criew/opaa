@@ -99,3 +99,9 @@ databaseChangeLog:
       file: db/changelog/changes/049-bind-indexing-jobs-to-organization.yaml
   - include:
       file: db/changelog/changes/050-drop-redundant-space-memberships-space-fk.yaml
+  - include:
+      file: db/changelog/changes/051-add-schedule-to-knowledge-libraries.yaml
+  - include:
+      file: db/changelog/changes/052-add-triggered-by-to-indexing-jobs.yaml
+  - include:
+      file: db/changelog/changes/053-widen-indexing-run-event-category-schedule-skipped.yaml
