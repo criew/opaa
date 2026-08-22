@@ -33,4 +33,19 @@ class EmbeddingInfoServiceTest {
     assertThat(info.provider()).isEqualTo("openai");
     assertThat(info.model()).isEqualTo("text-embedding-3-small");
   }
+
+  /**
+   * #759 review: an unsupported value must not fall back to reporting the Ollama model as if it
+   * were configured - that would show an admin a model the deployment never actually set up.
+   */
+  @Test
+  void reportsAnUnknownModelForAnUnsupportedProvider() {
+    EmbeddingInfoService service =
+        new EmbeddingInfoService("none", "text-embedding-3-small", "nomic-embed-text", 1536);
+
+    EmbeddingInfo info = service.getEmbeddingInfo();
+
+    assertThat(info.provider()).isEqualTo("none");
+    assertThat(info.model()).contains("unbekannt");
+  }
 }

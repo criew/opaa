@@ -19,7 +19,7 @@ interface LlmModelState {
   loadModels: () => Promise<void>
   loadEmbeddingInfo: () => Promise<void>
   createNewModel: (request: LlmModelRequest) => Promise<void>
-  updateExistingModel: (modelId: string, request: LlmModelRequest) => Promise<void>
+  updateExistingModel: (modelId: string, request: LlmModelRequest) => Promise<LlmModelResponse>
   deleteExistingModel: (modelId: string) => Promise<void>
   activateExistingModel: (modelId: string) => Promise<void>
 }
@@ -29,9 +29,16 @@ function sortModels(list: LlmModelResponse[]): LlmModelResponse[] {
 }
 
 /**
- * Managed chat models (#759, admin API from #757) - list, create, edit, delete, activate. Modelled
- * after groupStore: session-epoch-guarded loads, actions that reload the list rather than
- * hand-patching it locally, so the list always reflects exactly what the server has.
+ * Managed chat models (#759, admin API from #757) - list, create, edit, delete, activate.
+ *
+ * **Mutations patch `models` locally from the server's own response, they never call {@link
+ * loadModels} again (#759 review).** `loadModels` sets `isLoading: true` while it runs, and
+ * `LlmModelManagementPage` swaps the whole list for a "wird geladen" message whenever that flag is
+ * set - so a full reload after every save/activate/delete briefly unmounted every
+ * `LlmModelCard`, silently collapsing whichever panel the person was just looking at (and, for
+ * save, dropping the confirmation it had just produced) a moment after the action that caused it.
+ * Each mutation below already gets back everything it needs from its own response (or, for
+ * delete, needs nothing back at all) to keep `models` correct without paying that price.
  */
 export const useLlmModelStore = create<LlmModelState>((set, get) => ({
   models: [],
@@ -70,22 +77,32 @@ export const useLlmModelStore = create<LlmModelState>((set, get) => ({
   },
 
   createNewModel: async (request) => {
-    await createLlmModel(request)
-    await get().loadModels()
+    const created = await createLlmModel(request)
+    set({ models: sortModels([...get().models, created]) })
   },
 
   updateExistingModel: async (modelId, request) => {
-    await updateLlmModel(modelId, request)
-    await get().loadModels()
+    // Returned directly to the caller, which re-seeds its draft from it (#759 review) - the panel
+    // stays open and any visible test result or save confirmation survives the round trip.
+    const updated = await updateLlmModel(modelId, request)
+    set({
+      models: sortModels(get().models.map((m) => (m.id === modelId ? updated : m))),
+    })
+    return updated
   },
 
   deleteExistingModel: async (modelId) => {
     await deleteLlmModel(modelId)
-    await get().loadModels()
+    set({ models: get().models.filter((m) => m.id !== modelId) })
   },
 
   activateExistingModel: async (modelId) => {
-    await activateLlmModel(modelId)
-    await get().loadModels()
+    // The response only carries the newly activated model; every other model is deactivated in
+    // the same backend transaction (see LlmModelService#activateModel's Javadoc), so the local
+    // update mirrors that by turning every other entry's `active` off in the same step.
+    const activated = await activateLlmModel(modelId)
+    set({
+      models: get().models.map((m) => (m.id === modelId ? activated : { ...m, active: false })),
+    })
   },
 }))

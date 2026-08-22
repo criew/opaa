@@ -7,12 +7,19 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
 import { testLlmModel } from '../../services/api'
 import { useLlmModelStore } from '../../stores/llmModelStore'
 
 const BASE_URL_HELP_TEXT =
   'Der OpenAI-kompatible Endpunkt der Modellschnittstelle. Auch lokal betriebene Modellserver ' +
   'bedienen diese Schnittstelle – etwa Ollama, mit angehängtem „/v1“.'
+
+const REQUIRED_FIELDS_HINT =
+  'Anzeigename, Basis-Adresse, Modell-Kennung, Temperatur und maximale Antwortlänge sind ' +
+  'erforderlich.'
+
+const REQUIRED_FIELDS_HINT_ID = 'create-llm-model-required-hint'
 
 interface CreateLlmModelDialogProps {
   open: boolean
@@ -88,9 +95,7 @@ export default function CreateLlmModelDialog({
 
   async function handleCreate() {
     if (!isValid()) {
-      setError(
-        'Anzeigename, Basis-Adresse, Modell-Kennung, Temperatur und maximale Antwortlänge sind erforderlich.',
-      )
+      setError(REQUIRED_FIELDS_HINT)
       return
     }
     setError(null)
@@ -132,6 +137,7 @@ export default function CreateLlmModelDialog({
             // eslint-disable-next-line jsx-a11y-x/no-autofocus
             autoFocus
             label="Anzeigename"
+            required
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             slotProps={{ htmlInput: { maxLength: 120 } }}
@@ -140,6 +146,7 @@ export default function CreateLlmModelDialog({
           />
           <TextField
             label="Basis-Adresse"
+            required
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
             helperText={BASE_URL_HELP_TEXT}
@@ -149,6 +156,7 @@ export default function CreateLlmModelDialog({
           />
           <TextField
             label="Modell-Kennung"
+            required
             value={modelIdentifier}
             onChange={(e) => setModelIdentifier(e.target.value)}
             placeholder="phi3:mini"
@@ -158,6 +166,7 @@ export default function CreateLlmModelDialog({
           <Stack direction="row" spacing={2}>
             <TextField
               label="Temperatur"
+              required
               type="number"
               value={temperature}
               onChange={(e) => setTemperature(e.target.value)}
@@ -167,6 +176,7 @@ export default function CreateLlmModelDialog({
             />
             <TextField
               label="Maximale Antwortlänge (Token)"
+              required
               type="number"
               value={maxTokens}
               onChange={(e) => setMaxTokens(e.target.value)}
@@ -175,6 +185,11 @@ export default function CreateLlmModelDialog({
               sx={{ flex: 1 }}
             />
           </Stack>
+          {!isValid() && (
+            <Typography id={REQUIRED_FIELDS_HINT_ID} variant="caption" color="text.secondary">
+              {REQUIRED_FIELDS_HINT}
+            </Typography>
+          )}
           <TextField
             label="API-Schlüssel (optional)"
             type="password"
@@ -201,6 +216,7 @@ export default function CreateLlmModelDialog({
           onClick={() => void handleCreate()}
           variant="contained"
           disabled={submitting || !isValid()}
+          aria-describedby={!isValid() ? REQUIRED_FIELDS_HINT_ID : undefined}
         >
           {submitting ? 'Wird angelegt …' : 'Anlegen'}
         </Button>

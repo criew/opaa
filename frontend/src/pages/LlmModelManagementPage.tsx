@@ -10,7 +10,6 @@ import Divider from '@mui/material/Divider'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { LlmModelResponse } from '../types/api'
@@ -23,6 +22,10 @@ import CreateLlmModelDialog from '../components/admin/CreateLlmModelDialog'
 const BASE_URL_HELP_TEXT =
   'Der OpenAI-kompatible Endpunkt der Modellschnittstelle. Auch lokal betriebene Modellserver ' +
   'bedienen diese Schnittstelle – etwa Ollama, mit angehängtem „/v1“.'
+
+const REQUIRED_FIELDS_HINT =
+  'Anzeigename, Basis-Adresse, Modell-Kennung, Temperatur und maximale Antwortlänge sind ' +
+  'erforderlich.'
 
 interface LlmModelDraft {
   displayName: string
@@ -51,11 +54,19 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
   const [draft, setDraft] = useState<LlmModelDraft>(() => draftFromModel(model))
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [apiKeyTouched, setApiKeyTouched] = useState(false)
+  // #759 review: a separate, explicit request rather than inferring "remove" from an untouched
+  // empty field - the field starts empty for every model (the key is never read back), so an
+  // untouched field and "please clear it" were indistinguishable before this flag existed.
+  const [apiKeyClearRequested, setApiKeyClearRequested] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
+  const [savedMessage, setSavedMessage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [activating, setActivating] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  const deleteHintId = `llm-model-${model.id}-delete-hint`
+  const requiredHintId = `llm-model-${model.id}-required-hint`
 
   function isValid() {
     return (
@@ -67,26 +78,50 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
     )
   }
 
+  /**
+   * Resolves what to send for `apiKey` following LlmModelRequest's three-way convention (omitted
+   * = unchanged, empty string = clear, anything else = set) - shared by save and by the
+   * connection test below, even though the empty string means something different for each: on
+   * save it clears the stored key, while the connection test never stores anything and an
+   * omitted key there instead falls back to reusing the *currently stored* key for this modelId
+   * (see LlmModelController#testModel's Javadoc). Passing the resolved value straight through to
+   * both keeps that reuse-on-test behaviour working even mid-edit, before anything is saved.
+   */
+  function resolveApiKeyForRequest(): string | undefined {
+    if (apiKeyClearRequested) return ''
+    if (apiKeyTouched) return apiKeyInput.trim()
+    return undefined
+  }
+
+  function resetApiKeyDraft() {
+    setApiKeyInput('')
+    setApiKeyTouched(false)
+    setApiKeyClearRequested(false)
+  }
+
   async function handleSave() {
     if (!isValid()) {
-      setLocalError(
-        'Anzeigename, Basis-Adresse, Modell-Kennung, Temperatur und maximale Antwortlänge sind erforderlich.',
-      )
+      setLocalError(REQUIRED_FIELDS_HINT)
       return
     }
     setLocalError(null)
+    setSavedMessage(null)
     setSaving(true)
     try {
-      await updateExistingModel(model.id, {
+      const updated = await updateExistingModel(model.id, {
         displayName: draft.displayName.trim(),
         baseUrl: draft.baseUrl.trim(),
         modelIdentifier: draft.modelIdentifier.trim(),
         temperature: Number(draft.temperature),
         maxTokens: Number(draft.maxTokens),
-        apiKey: apiKeyTouched ? apiKeyInput.trim() : undefined,
+        apiKey: resolveApiKeyForRequest(),
       })
-      setApiKeyInput('')
-      setApiKeyTouched(false)
+      // #759 review: re-seeded from the server's response, not from a remount - the panel stays
+      // open, any visible test result is not thrown away, and the confirmation below is the only
+      // thing that changes, so focus never leaves the button the person just activated.
+      setDraft(draftFromModel(updated))
+      resetApiKeyDraft()
+      setSavedMessage(`"${updated.displayName}" wurde gespeichert.`)
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Aktualisierung fehlgeschlagen')
     } finally {
@@ -95,6 +130,7 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
   }
 
   async function handleDelete() {
+    if (model.active) return
     if (
       !window.confirm(
         `Modell "${model.displayName}" löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
@@ -103,6 +139,7 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
       return
     }
     setLocalError(null)
+    setSavedMessage(null)
     try {
       await deleteExistingModel(model.id)
     } catch (err) {
@@ -112,6 +149,7 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
 
   async function handleActivate() {
     setLocalError(null)
+    setSavedMessage(null)
     setActivating(true)
     try {
       await activateExistingModel(model.id)
@@ -124,12 +162,13 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
 
   async function handleTest() {
     setTestResult(null)
+    setSavedMessage(null)
     setTesting(true)
     try {
       const result = await testLlmModel({
         baseUrl: draft.baseUrl.trim(),
         modelIdentifier: draft.modelIdentifier.trim(),
-        apiKey: apiKeyTouched ? apiKeyInput.trim() : undefined,
+        apiKey: resolveApiKeyForRequest(),
         modelId: model.id,
       })
       setTestResult(result)
@@ -176,10 +215,19 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
             {testResult.message}
           </Alert>
         )}
+        {/* #759 review, 2.8: Speichern-Bestätigung ohne Fokuswechsel läuft über eine Live-Region. */}
+        <Box role="status" aria-live="polite">
+          {savedMessage && (
+            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSavedMessage(null)}>
+              {savedMessage}
+            </Alert>
+          )}
+        </Box>
 
         <Stack spacing={2} sx={{ mb: 2 }}>
           <TextField
             label="Anzeigename"
+            required
             value={draft.displayName}
             onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
             size="small"
@@ -187,6 +235,7 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
           />
           <TextField
             label="Basis-Adresse"
+            required
             value={draft.baseUrl}
             onChange={(e) => setDraft({ ...draft, baseUrl: e.target.value })}
             helperText={BASE_URL_HELP_TEXT}
@@ -195,6 +244,7 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
           />
           <TextField
             label="Modell-Kennung"
+            required
             value={draft.modelIdentifier}
             onChange={(e) => setDraft({ ...draft, modelIdentifier: e.target.value })}
             size="small"
@@ -203,6 +253,7 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
           <Stack direction="row" spacing={2}>
             <TextField
               label="Temperatur"
+              required
               type="number"
               value={draft.temperature}
               onChange={(e) => setDraft({ ...draft, temperature: e.target.value })}
@@ -212,6 +263,7 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
             />
             <TextField
               label="Maximale Antwortlänge (Token)"
+              required
               type="number"
               value={draft.maxTokens}
               onChange={(e) => setDraft({ ...draft, maxTokens: e.target.value })}
@@ -224,21 +276,49 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
             label="API-Schlüssel (optional)"
             type="password"
             value={apiKeyInput}
+            disabled={apiKeyClearRequested}
             onChange={(e) => {
               setApiKeyTouched(true)
+              setApiKeyClearRequested(false)
               setApiKeyInput(e.target.value)
             }}
             helperText={
-              model.apiKeySet
-                ? 'Ein Schlüssel ist hinterlegt. Leer lassen, um ihn unverändert zu lassen; ' +
-                  'zum Entfernen leer speichern.'
-                : 'Kein Schlüssel hinterlegt. Lokale Endpunkte laufen häufig ohne ' +
-                  'Authentifizierung - leer lassen, wenn kein Schlüssel benötigt wird.'
+              apiKeyClearRequested
+                ? 'Der gespeicherte Schlüssel wird beim Speichern entfernt.'
+                : 'Leer lassen, um den gespeicherten Schlüssel unverändert zu lassen.'
             }
             size="small"
             fullWidth
             autoComplete="new-password"
           />
+          {model.apiKeySet && (
+            <Box>
+              {apiKeyClearRequested ? (
+                <Button size="small" onClick={() => setApiKeyClearRequested(false)}>
+                  Entfernen rückgängig machen
+                </Button>
+              ) : (
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={() => {
+                    setApiKeyClearRequested(true)
+                    setApiKeyTouched(false)
+                    setApiKeyInput('')
+                  }}
+                  aria-label={`Gespeicherten Schlüssel von "${model.displayName}" entfernen`}
+                >
+                  Gespeicherten Schlüssel entfernen
+                </Button>
+              )}
+            </Box>
+          )}
+
+          {!isValid() && (
+            <Typography id={requiredHintId} variant="caption" color="text.secondary">
+              {REQUIRED_FIELDS_HINT}
+            </Typography>
+          )}
 
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
             <Button
@@ -246,6 +326,8 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
               size="small"
               onClick={() => void handleSave()}
               disabled={saving || !isValid()}
+              aria-describedby={!isValid() ? requiredHintId : undefined}
+              aria-label={`"${model.displayName}" speichern`}
             >
               Speichern
             </Button>
@@ -255,6 +337,7 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
               disabled={
                 testing || draft.baseUrl.trim() === '' || draft.modelIdentifier.trim() === ''
               }
+              aria-label={`Verbindung zu "${model.displayName}" testen`}
             >
               {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
             </Button>
@@ -268,25 +351,29 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
                 {activating ? 'Wird aktiviert …' : 'Aktiv setzen'}
               </Button>
             )}
-            <Tooltip
-              title={
-                model.active
-                  ? 'Das aktive Modell kann nicht gelöscht werden - zuerst ein anderes Modell aktivieren.'
-                  : ''
-              }
+            <Button
+              color="error"
+              size="small"
+              onClick={() => void handleDelete()}
+              // Not the native `disabled` attribute (#759 review): a disabled button is pulled out
+              // of the tab order in every browser, so a keyboard/screen-reader user could never
+              // reach the reason at all - only a mouse hover on a Tooltip would show it.
+              // aria-disabled keeps it focusable and announced as disabled; the guard in
+              // handleDelete above makes activation a no-op, and the caption below states the
+              // reason as visible, programmatically associated text rather than a hover-only one.
+              aria-disabled={model.active}
+              aria-describedby={model.active ? deleteHintId : undefined}
+              sx={model.active ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+              aria-label={`"${model.displayName}" löschen`}
             >
-              <span>
-                <Button
-                  color="error"
-                  size="small"
-                  onClick={() => void handleDelete()}
-                  disabled={model.active}
-                >
-                  Modell löschen
-                </Button>
-              </span>
-            </Tooltip>
+              Modell löschen
+            </Button>
           </Stack>
+          {model.active && (
+            <Typography id={deleteHintId} variant="caption" color="text.secondary">
+              Das aktive Modell kann nicht gelöscht werden - zuerst ein anderes Modell aktivieren.
+            </Typography>
+          )}
         </Stack>
       </AccordionDetails>
     </Accordion>
@@ -394,11 +481,11 @@ export default function LlmModelManagementPage() {
       ) : (
         <Stack spacing={1}>
           {models.map((model) => (
-            // Keyed on updatedAt, not just id (#759 lint fix): the store always reloads the full
-            // list after save/activate rather than patching one entry in place, so a fresh
-            // updatedAt is the signal that the card should remount with the server's latest
-            // values instead of syncing its draft state from a prop change inside an effect.
-            <LlmModelCard key={`${model.id}-${model.updatedAt}`} model={model} />
+            // Keyed on id alone (#759 review): a remount on every save/activate/delete reload
+            // dropped the open panel, the just-shown test result and the save confirmation right
+            // after the action that produced them - see updateExistingModel's own comment for how
+            // the card now re-seeds its draft from the server response instead.
+            <LlmModelCard key={model.id} model={model} />
           ))}
         </Stack>
       )}

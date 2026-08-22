@@ -1,5 +1,6 @@
 package io.opaa.llm;
 
+import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -34,8 +35,19 @@ public class EmbeddingInfoService {
     this.dimensions = dimensions;
   }
 
+  /**
+   * Explicit switch rather than "anything not openai is ollama" (#759 review): {@code
+   * spring.ai.model.embedding} only ever has two supported values in {@code application.yml}, but a
+   * typo or an unsupported third value must not silently report the Ollama model as if it were
+   * running - that would show an admin a model the deployment never actually configured.
+   */
   public EmbeddingInfo getEmbeddingInfo() {
-    String model = "openai".equalsIgnoreCase(provider) ? openAiModel : ollamaModel;
+    String model =
+        switch (provider.toLowerCase(Locale.ROOT)) {
+          case "openai" -> openAiModel;
+          case "ollama" -> ollamaModel;
+          default -> "unbekannt (" + provider + ")";
+        };
     return new EmbeddingInfo(provider, model, dimensions);
   }
 }
