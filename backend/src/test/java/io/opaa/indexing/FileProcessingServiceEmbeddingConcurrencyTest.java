@@ -22,9 +22,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,11 +42,20 @@ import org.springframework.ai.vectorstore.filter.Filter;
 
 /**
  * Unit tests for the concurrent embedding path #734 adds to {@link FileProcessingService} (private
- * {@code addToVectorStore}, exercised only via {@link FileProcessingService#processFile}) -
- * deterministic, no real Ollama, a fake {@link VectorStore} standing in for the
- * embedding-triggering call. {@link FileProcessingServiceTest} already covers {@code
+ * {@code addToVectorStore}/{@code subBatchSize}, exercised only via {@link
+ * FileProcessingService#processFile}) - no real Ollama, a fake {@link VectorStore} standing in for
+ * the embedding-triggering call. {@link FileProcessingServiceTest} already covers {@code
  * embeddingConcurrency == 1} exhaustively (its {@code defaultIndexingProperties()} always uses 1);
  * this class covers only what changes above 1.
+ *
+ * <p><b>Deterministic where it matters, not everywhere (#735 review, nit 8).</b> {@link
+ * #embeddingConcurrencyAboveOneSplitsIntoBatchSizedSubBatchesOnTheExecutor} proves actual overlap
+ * with a {@link CyclicBarrier} every {@code add} call must reach within a timeout - if the executor
+ * ran calls one at a time instead of concurrently, the barrier would time out and fail the test
+ * loudly, rather than the test merely observing whatever concurrency scheduling luck happened to
+ * produce. The remaining tests (sub-batch count, chunk order, direct-path threading, failure
+ * propagation) were always deterministic - only that one "did this actually run concurrently"
+ * assertion previously relied on a sleep-widened race window, which this replaces.
  */
 @ExtendWith(MockitoExtension.class)
 class FileProcessingServiceEmbeddingConcurrencyTest {
@@ -134,7 +147,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     Files.writeString(file, "irrelevant");
     stubParseAndChunk(file, "many-chunks.txt", chunksOf(9));
 
-    RecordingVectorStore vectorStore = new RecordingVectorStore();
+    RecordingVectorStore vectorStore = new RecordingVectorStore(null);
     FileProcessingService service = service(vectorStore, 1, 2);
 
     FileProcessingResult result = service.processFile(file, targetLibrary);
@@ -148,47 +161,52 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
   @Test
   void embeddingConcurrencyAboveOneSplitsIntoBatchSizedSubBatchesOnTheExecutor()
       throws IOException {
-    // 9 chunks, batchSize=2 -> 5 sub-batches (2,2,2,2,1), embeddingConcurrency=3 -> at most 3
-    // vectorStore.add calls run at once, all on the shared executor's threads, never on the
-    // calling (test) thread.
+    // 6 chunks, batchSize=2, embeddingConcurrency=3 -> subBatchSize = min(2, ceil(6/3)=2) = 2 ->
+    // exactly 3 sub-batches (2,2,2), matching both the 3-thread pool (see #service) and the
+    // barrier's 3 parties in a single round - every add() call must reach the barrier within a
+    // timeout, deterministically proving all 3 genuinely overlap rather than merely being
+    // observed to (#735 review, nit 8). A CyclicBarrier is cyclic - it resets after every trip -
+    // so the sub-batch count is chosen to be an exact multiple of the pool size, or a second,
+    // smaller round left over from an uneven split would time out waiting for parties that will
+    // never arrive.
     Path file = tempDir.resolve("many-chunks.txt");
     Files.writeString(file, "irrelevant");
-    stubParseAndChunk(file, "many-chunks.txt", chunksOf(9));
+    stubParseAndChunk(file, "many-chunks.txt", chunksOf(6));
 
-    RecordingVectorStore vectorStore = new RecordingVectorStore();
+    CyclicBarrier concurrencyProof = new CyclicBarrier(3);
+    RecordingVectorStore vectorStore = new RecordingVectorStore(concurrencyProof);
     FileProcessingService service = service(vectorStore, 3, 2);
 
     FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    assertThat(vectorStore.addCalls).hasSize(5);
-    assertThat(vectorStore.addCalls.stream().mapToInt(List::size).sum()).isEqualTo(9);
+    assertThat(vectorStore.addCalls).hasSize(3);
+    assertThat(vectorStore.addCalls.stream().mapToInt(List::size).sum()).isEqualTo(6);
     assertThat(vectorStore.threadNames).doesNotContain(Thread.currentThread().getName());
-    assertThat(vectorStore.maxConcurrentAddCalls.get()).isGreaterThan(1);
-    assertThat(vectorStore.maxConcurrentAddCalls.get()).isLessThanOrEqualTo(3);
+    // The barrier itself already proved 3 calls overlapped (see RecordingVectorStore) - this is
+    // an additional, redundant cross-check against the same evidence.
+    assertThat(vectorStore.maxConcurrentAddCalls.get()).isEqualTo(3);
 
     // Chunk order/metadata (#chunk_index) must survive being split into concurrent sub-batches -
-    // sorting the union of every add() call's chunks by chunk_index must reproduce 0..8 in order.
+    // sorting the union of every add() call's chunks by chunk_index must reproduce 0..5 in order.
     List<Integer> chunkIndices =
         vectorStore.addCalls.stream()
             .flatMap(List::stream)
             .map(doc -> (Integer) doc.getMetadata().get("chunk_index"))
             .sorted()
             .toList();
-    assertThat(chunkIndices).containsExactlyElementsOf(IntStream.range(0, 9).boxed().toList());
+    assertThat(chunkIndices).containsExactlyElementsOf(IntStream.range(0, 6).boxed().toList());
   }
 
   @Test
-  void documentWithFewerChunksThanBatchSizeTakesTheDirectPathEvenAtHighConcurrency()
-      throws IOException {
-    // #734: the common case (a document's own chunk count never exceeds batchSize, e.g. the
-    // default batchSize=50) must not pay for a round trip through the executor at all - see
-    // FileProcessingService#addToVectorStore's own Javadoc.
-    Path file = tempDir.resolve("few-chunks.txt");
+  void singleChunkDocumentTakesTheDirectPathEvenAtHighConcurrency() throws IOException {
+    // A single chunk can never be split into more than one sub-batch, regardless of concurrency
+    // or batchSize - the direct path is the only path a one-chunk document can take.
+    Path file = tempDir.resolve("one-chunk.txt");
     Files.writeString(file, "irrelevant");
-    stubParseAndChunk(file, "few-chunks.txt", chunksOf(3));
+    stubParseAndChunk(file, "one-chunk.txt", chunksOf(1));
 
-    RecordingVectorStore vectorStore = new RecordingVectorStore();
+    RecordingVectorStore vectorStore = new RecordingVectorStore(null);
     FileProcessingService service = service(vectorStore, 8, 50);
 
     FileProcessingResult result = service.processFile(file, targetLibrary);
@@ -196,6 +214,28 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     assertThat(vectorStore.addCalls).hasSize(1);
     assertThat(vectorStore.threadNames).containsExactly(Thread.currentThread().getName());
+  }
+
+  @Test
+  void aFewChunksEngageConcurrencyRegardlessOfBatchSize() throws IOException {
+    // #735 review, finding 1: before this fix, the sub-batch size was batchSize itself, so with
+    // the production default (batchSize=50) essentially no real document (city-landmarks' own
+    // median is 8, max 13 chunks) ever exceeded it - the concurrent path was dead code. Now the
+    // sub-batch size is chunkCount spread across embeddingConcurrency workers, capped by
+    // batchSize only as an upper bound - so 3 chunks at concurrency=3 must engage 3 sub-batches
+    // even though 3 is nowhere near batchSize=50.
+    Path file = tempDir.resolve("few-chunks-high-batch-size.txt");
+    Files.writeString(file, "irrelevant");
+    stubParseAndChunk(file, "few-chunks-high-batch-size.txt", chunksOf(3));
+
+    RecordingVectorStore vectorStore = new RecordingVectorStore(null);
+    FileProcessingService service = service(vectorStore, 3, 50);
+
+    FileProcessingResult result = service.processFile(file, targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(vectorStore.addCalls).hasSize(3);
+    assertThat(vectorStore.threadNames).doesNotContain(Thread.currentThread().getName());
   }
 
   @Test
@@ -219,6 +259,14 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
 
   /**
    * Records every {@code add} call's chunks, its thread name, and the observed peak concurrency.
+   *
+   * <p>{@code concurrencyProof}, when given (#735 review, nit 8), makes "these calls actually
+   * overlapped" a deterministic fact rather than an observation that depends on scheduling luck:
+   * every {@code add} call blocks on the same {@link CyclicBarrier} until as many parties as the
+   * barrier was built for have all arrived, within a bounded timeout. If the executor ran calls one
+   * at a time instead of concurrently, the first call would still be waiting when the timeout
+   * expires and the test fails loudly with a clear cause, instead of silently passing on a {@code
+   * maxConcurrentAddCalls} value a sleep window merely made likely.
    */
   private static final class RecordingVectorStore implements VectorStore {
     final List<List<org.springframework.ai.document.Document>> addCalls =
@@ -228,19 +276,29 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         new java.util.concurrent.atomic.AtomicInteger();
     final java.util.concurrent.atomic.AtomicInteger maxConcurrentAddCalls =
         new java.util.concurrent.atomic.AtomicInteger();
+    private final CyclicBarrier concurrencyProof;
+
+    RecordingVectorStore(CyclicBarrier concurrencyProof) {
+      this.concurrencyProof = concurrencyProof;
+    }
 
     @Override
     public void add(List<org.springframework.ai.document.Document> documents) {
       int current = concurrentAddCalls.incrementAndGet();
       maxConcurrentAddCalls.updateAndGet(max -> Math.max(max, current));
       threadNames.add(Thread.currentThread().getName());
-      // A tiny sleep widens the window in which a second concurrent add() call can overlap this
-      // one, so maxConcurrentAddCalls reliably observes >1 for the concurrency>1 test instead of
-      // depending on scheduling luck.
-      try {
-        Thread.sleep(20);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+      if (concurrencyProof != null) {
+        try {
+          concurrencyProof.await(2, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new IllegalStateException("interrupted while proving concurrency", e);
+        } catch (BrokenBarrierException | TimeoutException e) {
+          throw new IllegalStateException(
+              "add() calls did not overlap within the timeout - concurrency was not actually"
+                  + " exercised",
+              e);
+        }
       }
       addCalls.add(new ArrayList<>(documents));
       concurrentAddCalls.decrementAndGet();

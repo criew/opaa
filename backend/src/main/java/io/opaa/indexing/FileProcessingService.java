@@ -585,42 +585,84 @@ public class FileProcessingService {
    * {@code VectorStore}'s own default {@code TokenCountBatchingStrategy} needs) covering every
    * chunk of this one document, on the calling thread, in document order.
    *
-   * <p><b>At {@code embeddingConcurrency > 1}</b>, {@code enriched} is sliced into fixed-size
-   * sub-batches of {@code opaa.indexing.batchSize} chunks each and every sub-batch is embedded and
-   * persisted via its own {@code vectorStore.add} call, submitted to the shared, bounded {@code
-   * embeddingExecutor} (see {@link IndexingConfiguration#embeddingTaskExecutor}) and awaited before
-   * this method returns - so from every caller's perspective {@link #storeChunks} is still fully
-   * synchronous, only the embedding calls themselves now overlap. A document with only a single
-   * sub-batch (its own chunk count does not exceed {@code batchSize}) takes the same direct,
-   * un-pooled path as {@code embeddingConcurrency == 1} - nothing is gained by round-tripping
-   * through the executor for a single call, and it keeps that common case's behaviour identical to
-   * before #734.
+   * <p><b>At {@code embeddingConcurrency > 1}</b>, {@code enriched} is sliced into sub-batches
+   * sized by {@link #subBatchSize} - deliberately <em>not</em> {@code opaa.indexing.batchSize}
+   * directly (#735 review, finding 1): with the defaults (batchSize 50), almost no real document
+   * carries more chunks than that, so a fixed batchSize-sized slice would leave this whole
+   * concurrent path dead code for every ordinary document - exactly the gap #735's review caught.
+   * {@link #subBatchSize} instead spreads a document's chunks evenly across up to {@code
+   * embeddingConcurrency} workers (capped by {@code batchSize} as the per-call upper bound the
+   * property was always documented as), so any document with more than one chunk actually exercises
+   * concurrency the moment {@code embeddingConcurrency > 1} - {@code batchSize} only still matters
+   * for a document large enough that even chunkCount / embeddingConcurrency chunks would exceed it.
    *
-   * <p>Chunk order and {@code chunk_index} metadata are unaffected: every sub-batch is a contiguous
-   * slice of the already-enriched, already-indexed list built in {@link #storeChunks} above, so
-   * concurrent embedding never changes which {@code chunk_index} a chunk's text carries - only the
-   * wall-clock order in which sub-batches reach the vector store, which nothing downstream (search
-   * is per-{@code document_id}/{@code chunk_index}, never insertion order) depends on.
+   * <p>Every sub-batch is embedded and persisted via its own {@code vectorStore.add} call,
+   * submitted to the shared, bounded {@code embeddingExecutor} (see {@link
+   * IndexingConfiguration#embeddingTaskExecutor}) and awaited before this method returns - so from
+   * every caller's perspective {@link #storeChunks} is still fully synchronous, only the embedding
+   * calls themselves now overlap. A document with only a single sub-batch (fewer than two chunks,
+   * or {@code embeddingConcurrency <= 1}) takes the same direct, un-pooled path - nothing is gained
+   * by round-tripping through the executor for a single call, and it keeps that common case's
+   * behaviour identical to before #734.
+   *
+   * <p><b>Chunk order and {@code chunk_index} metadata are unaffected</b> by which sub-batch a
+   * chunk ends up in: every sub-batch is a contiguous slice of the already-enriched,
+   * already-indexed list built in {@link #storeChunks} above, so concurrent embedding never changes
+   * which {@code chunk_index} a chunk's text carries. <b>The order in which sub-batches themselves
+   * reach the vector store is a different matter and does matter</b> (#735 review, finding 3,
+   * correcting an earlier, wrong claim here that nothing downstream depends on insertion order):
+   * pgvector's HNSW index build is itself insertion-order-sensitive, which is exactly why {@code
+   * RetrievalEvaluationHarnessTest}/{@code CityLandmarksRetrievalEvaluationHarnessTest} pin {@code
+   * embedding-concurrency} to {@code 1} via a {@code @DynamicPropertySource} override (see that
+   * override's own Javadoc) - a baseline whose HNSW graph depends on non-deterministic sub-batch
+   * completion order would never reproduce the same retrieval metrics twice. Production ranking
+   * itself does not depend on insertion order (similarity search, not insertion-order iteration),
+   * but the *baseline comparison* this evaluation harness performs does, at the HNSW-graph-shape
+   * level - so the harness cannot use concurrency and the CI runtime this issue was originally
+   * reported against remains, deliberately, unaffected by this change (see the PR description's
+   * "Zuschnitt" section).
    *
    * <p><b>Failure propagation</b> mirrors the single-call path: {@link CompletableFuture#allOf} on
    * every sub-batch's future, unwrapped from {@link CompletionException} to the same {@link
    * RuntimeException} {@code vectorStore.add} itself would have thrown, so every existing catch
    * block in {@code processFile}/{@code processUrlFile}/{@code processRssEntry}/{@code
    * processUploadedFileAsync} - all of which already assume {@code storeChunks} may throw and clean
-   * up written chunks by {@code document_id} - needs no change. A failing sub-batch does not cancel
-   * sibling sub-batches already in flight; whatever they already wrote is cleaned up the same way a
-   * partially-written single {@code vectorStore.add} call already could leave chunks behind before
-   * #734 (see e.g. {@link #markConnectorFailedAfterException}).
+   * up written chunks by {@code document_id} - needs no change. An {@link Error} (not a {@link
+   * RuntimeException}) from a sub-batch is rethrown as-is rather than wrapped, matching what a
+   * direct {@code vectorStore.add} call would have let propagate unwrapped. {@link
+   * CompletableFuture#join} (not {@code get}) is used deliberately: {@code join} throws unchecked,
+   * matching {@code vectorStore.add}'s own unchecked-only contract, but does not clear this
+   * thread's interrupt status on cancellation the way {@code get} would surface via {@link
+   * InterruptedException} - not a concern here in practice (nothing external ever interrupts an
+   * indexing worker thread mid-{@code storeChunks}), but worth naming rather than leaving implicit.
+   * A failing sub-batch does not cancel sibling sub-batches already in flight; whatever they
+   * already wrote is cleaned up the same way a partially-written single {@code vectorStore.add}
+   * call already could leave chunks behind before #734 (see e.g. {@link
+   * #markConnectorFailedAfterException}).
+   *
+   * <p><b>Fairness (#735 review, nit 5).</b> {@code embeddingTaskExecutor} is one pool shared by
+   * every document currently splitting its chunks across sub-batches, process-wide. A document with
+   * many sub-batches can occupy every pool thread for the duration of its own embedding calls,
+   * head-of-line-blocking a smaller document's sub-batches queued behind it - there is no
+   * per-document fairness or priority scheme. Acceptable for the moderate concurrency levels this
+   * property targets (1-32, see its own Javadoc) - a starved document still completes once the pool
+   * drains, it is only delayed, never starved indefinitely (the queue is FIFO, not
+   * priority-inverted).
    */
   private void addToVectorStore(List<org.springframework.ai.document.Document> enriched) {
-    if (embeddingConcurrency <= 1 || enriched.size() <= embeddingBatchSize) {
+    if (embeddingConcurrency <= 1) {
       vectorStore.add(enriched);
       return;
     }
 
+    int subBatchSize = subBatchSize(enriched.size());
     List<List<org.springframework.ai.document.Document>> subBatches = new ArrayList<>();
-    for (int i = 0; i < enriched.size(); i += embeddingBatchSize) {
-      subBatches.add(enriched.subList(i, Math.min(i + embeddingBatchSize, enriched.size())));
+    for (int i = 0; i < enriched.size(); i += subBatchSize) {
+      subBatches.add(enriched.subList(i, Math.min(i + subBatchSize, enriched.size())));
+    }
+    if (subBatches.size() <= 1) {
+      vectorStore.add(enriched);
+      return;
     }
 
     List<CompletableFuture<Void>> futures =
@@ -632,10 +674,31 @@ public class FileProcessingService {
     try {
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
     } catch (CompletionException e) {
-      if (e.getCause() instanceof RuntimeException runtimeException) {
-        throw runtimeException;
+      switch (e.getCause()) {
+        case RuntimeException runtimeException -> throw runtimeException;
+        case Error error -> throw error;
+        case null, default -> throw e;
       }
-      throw e;
     }
+  }
+
+  /**
+   * The size of each sub-batch {@link #addToVectorStore} splits a document's {@code chunkCount}
+   * chunks into (#735 review, finding 1): {@code chunkCount} spread as evenly as possible across up
+   * to {@code embeddingConcurrency} workers, capped at {@code opaa.indexing.batchSize} as the upper
+   * bound on chunks per {@code vectorStore.add}/embedding call the property was always documented
+   * as. Deliberately decoupled from using {@code batchSize} directly as the slice size - see {@link
+   * #addToVectorStore}'s own Javadoc for why that would have left the concurrent path dead for
+   * ordinary documents under the defaults.
+   *
+   * <p>{@code Math.max(1, ...)} guards the degenerate {@code chunkCount == 0} case (never actually
+   * reached - {@link #storeChunks}'s only caller already returns before this when parsing produced
+   * no content - but division by a positive {@code embeddingConcurrency} of a count of 0 would
+   * otherwise yield a sub-batch size of 0, an infinite loop in {@link #addToVectorStore}'s slicing
+   * loop).
+   */
+  private int subBatchSize(int chunkCount) {
+    int perWorker = (int) Math.ceil((double) chunkCount / embeddingConcurrency);
+    return Math.max(1, Math.min(embeddingBatchSize, perWorker));
   }
 }

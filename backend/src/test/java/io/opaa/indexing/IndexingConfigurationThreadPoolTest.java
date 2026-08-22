@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.library.UploadProperties;
 import org.junit.jupiter.api.Test;
@@ -52,5 +53,43 @@ class IndexingConfigurationThreadPoolTest {
     assertThat(upload.getCorePoolSize()).isEqualTo(1);
     assertThat(upload.getMaxPoolSize()).isEqualTo(2);
     assertThat(upload.getQueueCapacity()).isEqualTo(3);
+  }
+
+  // #735 review, nit 7: embeddingTaskExecutor's own wiring (core == max == embeddingConcurrency,
+  // an effectively unbounded queue) never had a direct test - IndexingConfigurationThreadPoolTest
+  // is the established home for exactly this kind of bean-wiring assertion.
+  @Test
+  void embeddingTaskExecutorIsFixedSizeAtTheConfiguredConcurrency() {
+    IndexingProperties indexingProperties =
+        new IndexingProperties(null, 0, 0, 0, 0, null, null, null, null, null, 7);
+
+    TaskExecutor embeddingExecutor = configuration.embeddingTaskExecutor(indexingProperties);
+
+    assertThat(embeddingExecutor).isInstanceOf(ThreadPoolTaskExecutor.class);
+    ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) embeddingExecutor;
+    assertThat(executor.getCorePoolSize()).isEqualTo(7);
+    assertThat(executor.getMaxPoolSize()).isEqualTo(7);
+  }
+
+  @Test
+  void embeddingConcurrencyDefaultsWhenNotConfigured() {
+    // IndexingProperties' own compact constructor normalises <= 0 to the documented default (3),
+    // exactly like chunkSize/batchSize already do - embeddingTaskExecutor simply reads whatever
+    // the property already normalised, so this pins the two together.
+    IndexingProperties indexingProperties =
+        new IndexingProperties(null, 0, 0, 0, 0, null, null, null, null, null, 0);
+
+    assertThat(indexingProperties.embeddingConcurrency()).isEqualTo(3);
+    ThreadPoolTaskExecutor executor =
+        (ThreadPoolTaskExecutor) configuration.embeddingTaskExecutor(indexingProperties);
+    assertThat(executor.getCorePoolSize()).isEqualTo(3);
+  }
+
+  @Test
+  void embeddingConcurrencyAboveTheUpperBoundIsRejected() {
+    assertThatThrownBy(
+            () -> new IndexingProperties(null, 0, 0, 0, 0, null, null, null, null, null, 33))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("embeddingConcurrency");
   }
 }
