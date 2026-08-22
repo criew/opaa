@@ -3,6 +3,7 @@ package io.opaa.library;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.indexing.AutoindexCrawlerService;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
@@ -10,10 +11,14 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.DocumentStatus;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.FilesystemPathAllowlist;
+import io.opaa.indexing.ProxyAndCredentials;
 import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.TargetAddressValidator;
+import io.opaa.indexing.UrlFileDownloader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -106,6 +111,7 @@ public class LibraryDocumentService {
   private final UploadProperties uploadProperties;
   private final LibraryStorageQuotaService storageQuotaService;
   private final FilesystemPathAllowlist filesystemAllowlist;
+  private final UrlFileDownloader urlFileDownloader;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -117,7 +123,8 @@ public class LibraryDocumentService {
       VectorStore vectorStore,
       UploadProperties uploadProperties,
       LibraryStorageQuotaService storageQuotaService,
-      FilesystemPathAllowlist filesystemAllowlist) {
+      FilesystemPathAllowlist filesystemAllowlist,
+      UrlFileDownloader urlFileDownloader) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.accessService = accessService;
@@ -128,6 +135,7 @@ public class LibraryDocumentService {
     this.uploadProperties = uploadProperties;
     this.storageQuotaService = storageQuotaService;
     this.filesystemAllowlist = filesystemAllowlist;
+    this.urlFileDownloader = urlFileDownloader;
   }
 
   public LibraryDocumentResponse uploadDocument(
@@ -331,6 +339,11 @@ public class LibraryDocumentService {
    * one directory this {@code sourceType} is allowed to serve from - this library's own upload
    * subdirectory for {@code UPLOAD}, this library's own configured {@code sourcePath} for {@code
    * FILESYSTEM} - rather than trusting the stored {@code file_path} column on its own.
+   *
+   * <p>{@code HTTP_DIRECTORY}/{@code RSS_FEED} (#747): neither sourceType names a local file at all
+   * - {@link #loadRemoteContent} proxies the original from the source URL stored at indexing time
+   * instead, applying the library's own quellkonfiguration (proxy, credentials, insecure TLS) the
+   * same way {@code UrlIndexingExecutor}/{@code RssFeedIndexingExecutor} already do.
    */
   public DocumentContent loadContent(UUID documentId, UUID currentUserId, boolean systemAdmin) {
     User currentUser = requireUser(currentUserId);
@@ -348,11 +361,16 @@ public class LibraryDocumentService {
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dokument nicht gefunden"));
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
 
+    if (document.getSourceType() == DocumentSourceType.HTTP_DIRECTORY
+        || document.getSourceType() == DocumentSourceType.RSS_FEED) {
+      return loadRemoteContent(document, library);
+    }
+
     Path resolvedFile =
         switch (document.getSourceType()) {
           case UPLOAD -> uploadedFileIfManagedByThisService(document, library.getId());
           case FILESYSTEM -> filesystemFileIfWithinConfiguredDirectory(document, library);
-          case HTTP_DIRECTORY, RSS_FEED -> null;
+          case HTTP_DIRECTORY, RSS_FEED -> null; // unreachable, handled above
         };
     if (resolvedFile == null || !Files.isRegularFile(resolvedFile)) {
       throw new ResponseStatusException(
@@ -378,6 +396,94 @@ public class LibraryDocumentService {
       contentType = "application/octet-stream";
     }
     return new DocumentContent(resolvedFile, document.getFileName(), contentType);
+  }
+
+  /**
+   * Streams a {@code HTTP_DIRECTORY}/{@code RSS_FEED} document's original from its source URL
+   * (#747) - {@link Document#getFilePath()}, the same identity {@code
+   * FileProcessingService#processUrlFile}/{@code #processRssEntry} dedup by and {@link
+   * Document#getDeepLinkSourceUrl()} already names as this document's own origin. No part of the
+   * request ever influences which URL is fetched - only the value stored on this row at indexing
+   * time, already validated against the target allowlist then (#267).
+   *
+   * <p><b>SSRF: the allowlist is checked again here, not just at indexing time (#747 acceptance
+   * criteria).</b> {@link UrlFileDownloader#downloadBounded} re-validates {@link
+   * TargetAddressValidator} on every hop before a single further byte is requested - the same
+   * "Doppelprüfung" {@link #filesystemFileIfWithinConfiguredDirectory} already applies to {@link
+   * FilesystemPathAllowlist}: an allowlist narrowed after this document was indexed must not let a
+   * read against it silently keep succeeding. A redirect is only ever followed within the same
+   * origin - {@code downloadBounded} throws {@link UrlFileDownloader.ForeignHostRedirectException}
+   * outright for anything else, including a protocol downgrade - and {@code Authorization} is
+   * therefore never built for, or sent to, anything but the document's own stored URL and
+   * same-origin redirect hops from it.
+   *
+   * <p><b>Credentials (#747 acceptance criteria).</b> The library's own {@code sourceCredentials}/
+   * {@code sourceProxy}/{@code sourceInsecureSsl} - already offered to every {@code
+   * HTTP_DIRECTORY}/{@code RSS_FEED} indexing run (ADR-0018, #505) - are applied to this fetch too,
+   * mirroring {@code UrlIndexingExecutor#toUrlIndexingRequest}/{@code
+   * RssFeedIndexingExecutor#execute}. They reach only the {@code Authorization} header built for
+   * the outbound request; {@link DocumentContent} and the controller that serves it never see them.
+   *
+   * <p><b>Bounded by {@link UploadProperties#maxFileSize()} (#747), not left unbounded like {@code
+   * UrlIndexingExecutor#execute}'s own full download.</b> That bound exists for the same reason
+   * this endpoint's caller-facing surface should not let a single request buffer an unbounded
+   * remote response into memory/disk - this method reuses the limit this class already enforces on
+   * every locally-stored document instead of introducing a second, independent one.
+   *
+   * <p>Every failure - the source offline, rejected by the allowlist, an invalid stored
+   * configuration - answers the same German, user-facing 404 {@link #loadContent} already uses for
+   * "no original available" locally (#747 acceptance criteria: "Quelle offline ≠ Serverfehler"),
+   * never a 5xx that would suggest an OPAA-side error.
+   */
+  private DocumentContent loadRemoteContent(Document document, KnowledgeLibrary library) {
+    String sourceUrl = document.getFilePath();
+    if (sourceUrl == null || sourceUrl.isBlank()) {
+      throw new ResponseStatusException(
+          HttpStatus.NOT_FOUND, "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+    }
+
+    try {
+      ProxyAndCredentials config =
+          ProxyAndCredentials.parse(library.getSourceProxy(), library.getSourceCredentials());
+      HttpClient httpClient =
+          AutoindexCrawlerService.buildHttpClient(
+              config.proxyHost(), config.proxyPort(), library.isSourceInsecureSsl());
+      String authHeader =
+          AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
+
+      UrlFileDownloader.DownloadedFile downloaded =
+          urlFileDownloader.downloadBounded(
+              httpClient,
+              sourceUrl,
+              document.getFileName(),
+              uploadProperties.maxFileSize(),
+              null,
+              authHeader);
+
+      String contentType = downloaded.contentType();
+      if (contentType == null || contentType.isBlank()) {
+        contentType = document.getContentType();
+      }
+      if (contentType == null || contentType.isBlank()) {
+        contentType = "application/octet-stream";
+      }
+      return new DocumentContent(downloaded.path(), document.getFileName(), contentType, true);
+    } catch (UrlFileDownloader.ForeignHostRedirectException
+        | UrlFileDownloader.AttachmentTooLargeException
+        | ProxyAndCredentials.InvalidProxyConfigurationException
+        | IOException e) {
+      // #267/#747: every one of these is the source declining or being unreachable, never an
+      // OPAA-side failure - logged with the technical detail, answered with the same generic
+      // German 404 loadContent already uses so a caller cannot distinguish "offline" from any
+      // other reason no original is available.
+      log.warn("Remote document content unavailable: {} ({})", sourceUrl, e.getMessage());
+      throw new ResponseStatusException(
+          HttpStatus.NOT_FOUND, "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ResponseStatusException(
+          HttpStatus.NOT_FOUND, "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+    }
   }
 
   /**

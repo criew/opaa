@@ -1004,7 +1004,10 @@ describe('LibraryDetailPage', () => {
       expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
     })
 
-    it('opens the source URL in a new tab for an HTTP_DIRECTORY document', async () => {
+    it('fetches and opens the file as a Blob for an HTTP_DIRECTORY document too (#747)', async () => {
+      // #747: the content endpoint now proxies HTTP_DIRECTORY/RSS_FEED server-side from their own
+      // stored source URL instead of the client navigating there directly - the Demo-Instanz's
+      // corpus containers are only reachable from OPAA's own Docker network, never the browser.
       mockGetLibraryDocuments.mockResolvedValueOnce(
         pageOf([
           {
@@ -1033,13 +1036,21 @@ describe('LibraryDetailPage', () => {
       })
       await user.click(button)
 
-      expect(mockOpenExternalSourceUrl).toHaveBeenCalledWith(
+      expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
+      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
+
+      // #747: the source URL stays visible as secondary information (a "Quelle:" link) even
+      // though "Original öffnen" no longer navigates there directly.
+      const sourceLink = screen.getByRole('link', {
+        name: 'https://example.gov/verzeichnis/dienstanweisung.pdf',
+      })
+      expect(sourceLink).toHaveAttribute(
+        'href',
         'https://example.gov/verzeichnis/dienstanweisung.pdf',
       )
-      expect(mockOpenDocumentContent).not.toHaveBeenCalled()
     })
 
-    it('prefers sourceEntryUrl over sourceUrl for an RSS attachment', async () => {
+    it('opens an RSS attachment through the content endpoint, keeping sourceEntryUrl as secondary information', async () => {
       mockGetLibraryDocuments.mockResolvedValueOnce(
         pageOf([
           {
@@ -1067,12 +1078,17 @@ describe('LibraryDetailPage', () => {
       const button = await screen.findByRole('button', { name: 'Original von anlage.pdf öffnen' })
       await user.click(button)
 
-      expect(mockOpenExternalSourceUrl).toHaveBeenCalledWith(
-        'https://example.gov/aktuelles/dienstanweisung-2024',
-      )
+      expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'anlage.pdf')
+      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
+      expect(
+        screen.getByRole('link', { name: 'https://example.gov/aktuelles/dienstanweisung-2024' }),
+      ).toBeInTheDocument()
     })
 
-    it('hides the action for a remote document with no source URL at all', async () => {
+    it('still offers the action for a remote document with no other source information', async () => {
+      // #747: every sourceType opens through the content endpoint now - a document that turns out
+      // unreachable answers a German 404 shown via openOriginalError, not a reason to hide the
+      // button up front the way the pre-#747 sourceUrl-based gating did.
       mockGetLibraryDocuments.mockResolvedValueOnce(
         pageOf([
           {
@@ -1092,10 +1108,9 @@ describe('LibraryDetailPage', () => {
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      expect(await screen.findByText('eintrag.html')).toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: /original von eintrag\.html öffnen/i }),
-      ).not.toBeInTheDocument()
+        await screen.findByRole('button', { name: /original von eintrag\.html öffnen/i }),
+      ).toBeInTheDocument()
     })
 
     it('shows a German error message when opening the original fails (e.g. 404)', async () => {

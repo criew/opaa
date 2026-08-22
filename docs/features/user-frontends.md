@@ -64,14 +64,18 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 Drei Bereiche, die der frühere Stand dieses Dokuments beschrieben hat und die hier mit dem
 tatsächlichen Stand abgeglichen sind. Die Dokumentenübersicht ist inzwischen gebaut — die
 Bibliotheksdetailseite (`LibraryDetailPage.tsx`) zeigt den Bestand einer Wissensbibliothek mit
-Indizierungsstand je Dokument. Seit #738 bietet jede Dokumentzeile die Aktion „Original öffnen": Für
-die Quellentypen UPLOAD und FILESYSTEM lädt das Frontend die Datei über `GET
-/api/v1/documents/{documentId}/content` (#736) als Blob und öffnet sie per Objekt-URL in einem neuen
-Tab (PDF/Bilder als Browser-Vorschau, sonst Download unter dem ursprünglichen Dateinamen) — die
-gemeinsame Logik dafür liegt in `frontend/src/utils/documentContent.ts` und wird vom Zitat-Deeplink
-(#739) mitverwendet. Für HTTP_DIRECTORY und RSS_FEED öffnet dieselbe Aktion stattdessen die
-Quell-URL (`sourceEntryUrl` bzw. das neue Feld `sourceUrl` auf `LibraryDocumentResponse`) in einem
-neuen Tab.
+Indizierungsstand je Dokument. Seit #738 bietet jede Dokumentzeile die Aktion „Original öffnen": das
+Frontend lädt die Datei über `GET /api/v1/documents/{documentId}/content` (#736) als Blob und öffnet
+sie per Objekt-URL in einem neuen Tab (PDF/Bilder als Browser-Vorschau, sonst Download unter dem
+ursprünglichen Dateinamen) — die gemeinsame Logik dafür liegt in
+`frontend/src/utils/documentContent.ts` und wird vom Zitat-Deeplink (#739) mitverwendet. Seit #747
+gilt das für **jeden** Quellentyp: der Endpunkt streamt für HTTP_DIRECTORY/RSS_FEED das Original
+serverseitig von der beim Indizieren gespeicherten Quell-URL durch, statt den Client dorthin
+weiterzuleiten — auf der Demo-Instanz sind die Quellhosts (`http://demo-corpus/...`) nur im
+Docker-Netz erreichbar, ein direkter Browserlink lief zuvor ins Leere. `sourceEntryUrl`/`sourceUrl`
+(HTTP_DIRECTORY/RSS_FEED) bleiben als sekundäre Information neben der Aktion sichtbar — auf der
+Dokumentenübersicht als eigene Zeile („Herkunft:"/„Quelle:"), in den Fundstellen und im Belegfenster
+als kleiner „Quelle"-Link mit der rohen URL als `title`-Tooltip.
 
 `LibraryDocumentResponse.sourceUrl` ist bewusst für jede VIEWER-Berechtigung sichtbar — anders als
 `LibraryResponse.sourceUrl`, das #507 unterhalb von MANAGER maskiert. Maskiert bleibt dort die
@@ -83,14 +87,14 @@ Maintainer-Entscheidung auf PR #743 (Epic #740).
 Seit #739 gilt derselbe Deeplink auch für die Fundstellen unter einer Antwort und für das
 Belegfenster („Belege dieser Antwort"): `SourceReference` (OpenAPI) trägt jetzt `documentId` und
 `sourceType`, dazu ein eigenes `sourceUrl` mit derselben Bedeutung wie auf
-`LibraryDocumentResponse`. Ein Klick auf „Im Dokument öffnen" lädt für UPLOAD/FILESYSTEM das Original
-über `GET /api/v1/documents/{documentId}/content` (dasselbe Hilfsmodul `documentContent.ts`), für
-HTTP_DIRECTORY/RSS_FEED öffnet er stattdessen `sourceEntryUrl` bzw. `sourceUrl` in einem neuen Tab —
-genau die Fallunterscheidung, die die Dokumentenübersicht oben bereits trifft. Backendseitig
-schlüsselt die Zusammenführung mehrfach zitierter Fundstellen (`QueryService#mergeSourceReferences`)
-seither auf `documentId` statt auf den Dateinamen: zwei unterschiedliche Dokumente mit identischem
-Dateinamen (etwa zwei RSS-Anlagen) erscheinen dadurch als zwei getrennte Fundstellen mit je eigenem
-Deeplink, statt zu einer zusammenzufallen.
+`LibraryDocumentResponse`. Ein Klick auf „Im Dokument öffnen" lädt seit #747 für **jeden**
+Quellentyp das Original über `GET /api/v1/documents/{documentId}/content` (dasselbe Hilfsmodul
+`documentContent.ts`) — vor #747 öffnete diese Aktion für HTTP_DIRECTORY/RSS_FEED stattdessen
+`sourceEntryUrl`/`sourceUrl` direkt in einem neuen Tab, was bei einer nur intern erreichbaren Quelle
+im Browser ins Leere lief. Backendseitig schlüsselt die Zusammenführung mehrfach zitierter
+Fundstellen (`QueryService#mergeSourceReferences`) auf `documentId` statt auf den Dateinamen: zwei
+unterschiedliche Dokumente mit identischem Dateinamen (etwa zwei RSS-Anlagen) erscheinen dadurch als
+zwei getrennte Fundstellen mit je eigenem Deeplink, statt zu einer zusammenzufallen.
 
 **Gesprächsverwaltung.** Ein Gespräch ist ein persistentes Objekt, das **von Anfang an in genau einem
 Arbeitsraum** liegt — dort erstellt (`POST /api/v1/spaces/{spaceId}/chats`), dort unter

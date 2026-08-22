@@ -25,26 +25,21 @@ function formatIndexedAt(indexedAt: string | null | undefined): string | null {
   return `indiziert ${new Date(indexedAt).toLocaleDateString('de-DE', { dateStyle: 'medium' })}`
 }
 
-/** #739: whether a source carries anything at all to open - a local original (UPLOAD/FILESYSTEM,
- *  opened via the download endpoint) or a remote deep link (sourceEntryUrl/sourceUrl). False for a
- *  synthetic entry (#386) with neither. */
+/** #739/#747: whether a source carries anything at all to open - every sourceType with a
+ *  documentId now opens through the content endpoint (#747: it proxies HTTP_DIRECTORY/RSS_FEED
+ *  server-side instead of answering 404). False for a synthetic entry (#386), whose citation
+ *  named a document id that matched no retrieved chunk at all. */
 function canOpenOriginal(source: SourceReference | undefined): boolean {
-  if (!source) return false
-  return (
-    source.sourceType === 'UPLOAD' ||
-    source.sourceType === 'FILESYSTEM' ||
-    Boolean(source.sourceEntryUrl) ||
-    Boolean(source.sourceUrl)
-  )
+  return Boolean(source?.documentId)
 }
 
 /**
- * #739: opens a citation's local original document, mirroring LibraryDetailPage#handleOpenOriginal
- * (#738) - a local original (UPLOAD/FILESYSTEM) goes through the Bearer-authenticated download
- * endpoint (a plain <a href> cannot carry the token, ADR-0005). A remote source
- * (HTTP_DIRECTORY/RSS_FEED) is rendered as a real `<a href>` instead (PR #745 review, nit 3) - it
- * needs no token, so it keeps the browser's native link semantics (middle-click, "open in new
- * tab", "copy link address") that a `component="button"` Link loses.
+ * #739/#747: opens a citation's original document through the Bearer-authenticated content
+ * endpoint, mirroring LibraryDetailPage#handleOpenOriginal (#738) - a plain `<a href>` cannot
+ * carry the token (ADR-0005), and since #747 this now covers every sourceType: the endpoint
+ * proxies HTTP_DIRECTORY/RSS_FEED server-side from their own stored source URL instead of
+ * answering 404, so a source only reachable from OPAA's own network (the demo's
+ * `http://demo-corpus/...`) still opens for the caller's browser.
  */
 async function openLocalOriginal(
   source: SourceReference,
@@ -59,15 +54,23 @@ async function openLocalOriginal(
   }
 }
 
-/** #739/#745: a local original opens via the Bearer-authenticated download endpoint and must stay
- *  a button; a remote source is a real link to its own URL (see {@link openLocalOriginal}). */
+/**
+ * #747: the primary action is always the content-endpoint button now (see
+ * {@link openLocalOriginal}) - `sourceEntryUrl`/`sourceUrl` (HTTP_DIRECTORY/RSS_FEED only) are
+ * shown alongside it as secondary information, a small "Quelle" link carrying the raw URL as its
+ * native `title` tooltip, since that address may only be reachable from OPAA's own network, not
+ * the caller's browser (#747, Klick-Test finding on the Demo-Instanz). A plain `title` attribute
+ * rather than MUI's `Tooltip` (which clones the child and sets `aria-label` to the tooltip text,
+ * overriding "Quelle" as the link's accessible name with the raw URL instead).
+ */
 function renderOpenOriginalLink(
   source: SourceReference,
   fileName: string,
   onOpenLocalOriginal: (source: SourceReference, fileName: string) => void,
 ) {
-  if (source.sourceType === 'UPLOAD' || source.sourceType === 'FILESYSTEM') {
-    return (
+  const secondaryUrl = source.sourceEntryUrl ?? source.sourceUrl
+  return (
+    <>
       <Link
         component="button"
         type="button"
@@ -77,20 +80,19 @@ function renderOpenOriginalLink(
       >
         Im Dokument öffnen
       </Link>
-    )
-  }
-  const externalUrl = source.sourceEntryUrl ?? source.sourceUrl
-  if (!externalUrl) return null
-  return (
-    <Link
-      href={externalUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      underline="hover"
-      sx={{ fontSize: 11 }}
-    >
-      Im Dokument öffnen
-    </Link>
+      {secondaryUrl && (
+        <Link
+          href={secondaryUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          underline="hover"
+          title={secondaryUrl}
+          sx={{ fontSize: 11, color: 'text.disabled' }}
+        >
+          Quelle
+        </Link>
+      )}
+    </>
   )
 }
 

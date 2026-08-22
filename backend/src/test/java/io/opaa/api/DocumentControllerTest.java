@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -121,6 +122,27 @@ class DocumentControllerTest {
                     "Content-Disposition",
                     "inline; filename=\"Pr_fbericht *2026*.txt\";"
                         + " filename*=UTF-8''Pr%C3%BCfbericht%20%2A2026%2A.txt"));
+  }
+
+  @Test
+  void aTemporaryRemoteContentFileIsDeletedOnceItHasBeenStreamed(@TempDir Path tempDir)
+      throws Exception {
+    // #747: HTTP_DIRECTORY/RSS_FEED content is proxied into a temp file this controller does not
+    // otherwise own - it must be removed once the response has been written, unlike a local
+    // UPLOAD/FILESYSTEM original (the previous test), which must survive untouched.
+    UUID documentId = UUID.randomUUID();
+    Path tempFile = tempDir.resolve("downloaded.pdf");
+    Files.writeString(
+        tempFile, "Originalinhalt vom entfernten Quellsystem", StandardCharsets.UTF_8);
+    when(documentService.loadContent(eq(documentId), eq(currentUserId), eq(false)))
+        .thenReturn(new DocumentContent(tempFile, "original.pdf", "application/pdf", true));
+
+    mockMvc
+        .perform(get("/api/v1/documents/" + documentId + "/content").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(content().string("Originalinhalt vom entfernten Quellsystem"));
+
+    assertThat(Files.exists(tempFile)).isFalse();
   }
 
   @Test

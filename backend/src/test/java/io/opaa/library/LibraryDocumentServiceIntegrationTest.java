@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
+import com.sun.net.httpserver.HttpServer;
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.LibraryDocumentResponse;
@@ -17,8 +18,11 @@ import io.opaa.indexing.DocumentStatus;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,6 +32,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -98,6 +103,12 @@ class LibraryDocumentServiceIntegrationTest {
     registry.add(
         "opaa.indexing.filesystem-allowlist",
         () -> "/data,/tmp," + filesystemAllowlistDir.toAbsolutePath());
+    // #747: target validation stays enabled (application.yml's own default) - only 127.0.0.1 is
+    // allowlisted, so this suite's own local HttpServer instances are reachable for the remote
+    // content proxy tests without weakening the check for anything else (mirrors
+    // UrlFileDownloaderTest#downloadRejectsARedirectToABlockedTargetWhenValidationIsEnabled's
+    // identical, narrowly scoped allowlist).
+    registry.add("opaa.indexing.target-validation.allowlist", () -> "127.0.0.1");
   }
 
   @TestConfiguration
@@ -596,16 +607,13 @@ class LibraryDocumentServiceIntegrationTest {
   }
 
   @Test
-  void loadContentAnswers404WithAGermanMessageForARemoteSourcedDocument() {
-    // HTTP_DIRECTORY/RSS_FEED documents keep no local original at all (#736 acceptance criteria) -
-    // clients use the document's own source URL for those instead.
+  void loadContentAnswers404WithAGermanMessageWhenARemoteSourcedDocumentHasNoStoredSourceUrl() {
+    // #747: HTTP_DIRECTORY/RSS_FEED content is now proxied from the document's own stored source
+    // URL (see the proxy tests further down) - a document somehow persisted without one (file_path
+    // blank rather than a real URL) has nothing to fetch, the one case loadRemoteContent itself
+    // still answers 404 for directly, before ever attempting a network call.
     Document remoteDoc =
-        new Document(
-            "extern.pdf",
-            "https://example.org/extern.pdf",
-            "application/pdf",
-            10L,
-            DocumentSourceType.HTTP_DIRECTORY);
+        new Document("extern.pdf", "", "application/pdf", 10L, DocumentSourceType.HTTP_DIRECTORY);
     remoteDoc.setLibraryId(libraryId);
     remoteDoc.setOrganizationId(organizationId);
     remoteDoc = documentRepository.save(remoteDoc);
@@ -620,6 +628,237 @@ class LibraryDocumentServiceIntegrationTest {
               assertThat(responseStatusException.getReason())
                   .isEqualTo("Für dieses Dokument steht kein Originaldokument zur Verfügung");
             });
+  }
+
+  // #747: GET /api/v1/documents/{documentId}/content for HTTP_DIRECTORY/RSS_FEED - proxied from
+  // the document's stored source URL through the real, Spring-wired TargetAddressValidator/
+  // UrlFileDownloader beans rather than mocks, so the SSRF re-check and credential handling are
+  // exercised end to end. 127.0.0.1 is allowlisted via configureProperties (target validation is
+  // enabled by default, see application.yml) so this suite's own local HttpServer instances are
+  // reachable without weakening the check for anything else.
+
+  private HttpServer remoteServer;
+  private String remoteBaseUrl;
+
+  @AfterEach
+  void tearDownRemoteServer() {
+    if (remoteServer != null) {
+      remoteServer.stop(0);
+      remoteServer = null;
+    }
+  }
+
+  private void startRemoteServer() throws IOException {
+    remoteServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    remoteServer.start();
+    remoteBaseUrl = "http://127.0.0.1:" + remoteServer.getAddress().getPort();
+  }
+
+  private KnowledgeLibrary saveRemoteLibrary(
+      DocumentSourceType sourceType, String sourceCredentials) {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Remote-Quelle",
+            null,
+            editor.getId(),
+            LibraryVisibility.PRIVATE,
+            true,
+            sourceType,
+            null,
+            remoteBaseUrl + "/",
+            null,
+            sourceCredentials,
+            false);
+    library = libraryRepository.save(library);
+    assetGrantRepository.save(
+        AssetGrant.forUser(
+            library.getId(),
+            organizationId,
+            editor.getId(),
+            AssetRole.OWNER,
+            null,
+            editor.getId()));
+    return library;
+  }
+
+  @Test
+  void loadContentProxiesTheOriginalFromTheRemoteHttpDirectorySource() throws IOException {
+    startRemoteServer();
+    remoteServer.createContext(
+        "/original.pdf",
+        exchange -> {
+          byte[] bytes =
+              "Originalinhalt vom entfernten Quellsystem".getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "application/pdf");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    KnowledgeLibrary remoteLibrary = saveRemoteLibrary(DocumentSourceType.HTTP_DIRECTORY, null);
+    try {
+      Document remoteDoc =
+          new Document(
+              "original.pdf",
+              remoteBaseUrl + "/original.pdf",
+              null,
+              null,
+              DocumentSourceType.HTTP_DIRECTORY);
+      remoteDoc.setLibraryId(remoteLibrary.getId());
+      remoteDoc.setOrganizationId(organizationId);
+      remoteDoc = documentRepository.save(remoteDoc);
+
+      DocumentContent content =
+          documentService.loadContent(remoteDoc.getId(), editor.getId(), false);
+      try {
+        assertThat(content.temporary()).isTrue();
+        assertThat(content.contentType()).isEqualTo("application/pdf");
+        assertThat(Files.readString(content.path()))
+            .isEqualTo("Originalinhalt vom entfernten Quellsystem");
+      } finally {
+        Files.deleteIfExists(content.path());
+      }
+    } finally {
+      documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
+      libraryRepository.deleteById(remoteLibrary.getId());
+    }
+  }
+
+  @Test
+  void loadContentSendsTheLibrarysStoredCredentialsToTheRssFeedSourceButNeverToTheCaller()
+      throws IOException {
+    startRemoteServer();
+    AtomicReference<String> receivedAuthorization = new AtomicReference<>();
+    remoteServer.createContext(
+        "/original.pdf",
+        exchange -> {
+          receivedAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    KnowledgeLibrary remoteLibrary =
+        saveRemoteLibrary(DocumentSourceType.RSS_FEED, "libuser:libpass");
+    try {
+      Document remoteDoc =
+          new Document(
+              "original.pdf",
+              remoteBaseUrl + "/original.pdf",
+              null,
+              null,
+              DocumentSourceType.RSS_FEED);
+      remoteDoc.setLibraryId(remoteLibrary.getId());
+      remoteDoc.setOrganizationId(organizationId);
+      remoteDoc = documentRepository.save(remoteDoc);
+
+      DocumentContent content =
+          documentService.loadContent(remoteDoc.getId(), editor.getId(), false);
+      try {
+        String expected =
+            "Basic "
+                + Base64.getEncoder()
+                    .encodeToString("libuser:libpass".getBytes(StandardCharsets.UTF_8));
+        assertThat(receivedAuthorization.get()).isEqualTo(expected);
+        assertThat(content.toString()).doesNotContain("libpass");
+      } finally {
+        Files.deleteIfExists(content.path());
+      }
+    } finally {
+      documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
+      libraryRepository.deleteById(remoteLibrary.getId());
+    }
+  }
+
+  @Test
+  void loadContentAnswers404WithAGermanMessageWhenTheRemoteSourceIsOffline() throws IOException {
+    startRemoteServer();
+    remoteServer.stop(0);
+    // The server has already stopped - its own baseUrl is now a closed local port nothing
+    // answers on, standing in for "the source is offline" without any real internet access.
+    KnowledgeLibrary remoteLibrary = saveRemoteLibrary(DocumentSourceType.HTTP_DIRECTORY, null);
+    try {
+      Document remoteDoc =
+          new Document(
+              "original.pdf",
+              remoteBaseUrl + "/original.pdf",
+              null,
+              null,
+              DocumentSourceType.HTTP_DIRECTORY);
+      remoteDoc.setLibraryId(remoteLibrary.getId());
+      remoteDoc.setOrganizationId(organizationId);
+      var documentId = documentRepository.save(remoteDoc).getId();
+
+      assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+          .isInstanceOf(ResponseStatusException.class)
+          .satisfies(
+              ex -> {
+                var responseStatusException = (ResponseStatusException) ex;
+                assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(responseStatusException.getReason())
+                    .isEqualTo("Für dieses Dokument steht kein Originaldokument zur Verfügung");
+              });
+    } finally {
+      documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
+      libraryRepository.deleteById(remoteLibrary.getId());
+    }
+    remoteServer = null;
+  }
+
+  @Test
+  void loadContentAnswers404WhenTheStoredSourceUrlIsBlockedByTheTargetAllowlist() {
+    // #747 acceptance criteria: the allowlist is re-checked at serve time, not only at indexing
+    // time - a link-local address is always blocked once target validation is enabled (see
+    // TargetAddressValidator), regardless of the 127.0.0.1 allowlist entry this suite adds for its
+    // own local test servers.
+    KnowledgeLibrary remoteLibrary =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Blockierte Quelle",
+            null,
+            editor.getId(),
+            LibraryVisibility.PRIVATE,
+            true,
+            DocumentSourceType.HTTP_DIRECTORY,
+            null,
+            "http://169.254.169.254/",
+            null,
+            null,
+            false);
+    remoteLibrary = libraryRepository.save(remoteLibrary);
+    assetGrantRepository.save(
+        AssetGrant.forUser(
+            remoteLibrary.getId(),
+            organizationId,
+            editor.getId(),
+            AssetRole.OWNER,
+            null,
+            editor.getId()));
+    try {
+      Document remoteDoc =
+          new Document(
+              "original.pdf",
+              "http://169.254.169.254/original.pdf",
+              null,
+              null,
+              DocumentSourceType.HTTP_DIRECTORY);
+      remoteDoc.setLibraryId(remoteLibrary.getId());
+      remoteDoc.setOrganizationId(organizationId);
+      var documentId = documentRepository.save(remoteDoc).getId();
+
+      assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+          .isInstanceOf(ResponseStatusException.class)
+          .satisfies(
+              ex -> {
+                var responseStatusException = (ResponseStatusException) ex;
+                assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(responseStatusException.getReason())
+                    .isEqualTo("Für dieses Dokument steht kein Originaldokument zur Verfügung");
+              });
+    } finally {
+      documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
+      libraryRepository.deleteById(remoteLibrary.getId());
+    }
   }
 
   @Test

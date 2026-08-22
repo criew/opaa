@@ -191,8 +191,8 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
       expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
     })
 
-    it('renders a real link (not a button) to sourceUrl for an HTTP_DIRECTORY document (#745 review)', async () => {
-      const { drawer } = await openDrawerWith(
+    it('opens an HTTP_DIRECTORY document through the content endpoint too, keeping sourceUrl as a secondary "Quelle" link (#747)', async () => {
+      const { user, drawer } = await openDrawerWith(
         source('doc.pdf', true, 0.9, 'Engineering', true, {
           documentId: 'doc-1',
           sourceType: 'HTTP_DIRECTORY',
@@ -200,22 +200,24 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }),
       )
 
-      // A real <a href> instead of component="button" - middle-click, "open in new tab" and
-      // "copy link address" only work on an actual link.
-      const link = within(drawer).getByRole('link', { name: 'Im Dokument öffnen' })
-      expect(link).toHaveAttribute('href', 'https://example.gov/verzeichnis/doc.pdf')
-      expect(link).toHaveAttribute('target', '_blank')
-      expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+      await user.click(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' }))
+
+      expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'doc.pdf')
       expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
-      expect(mockOpenDocumentContent).not.toHaveBeenCalled()
+
+      const sourceLink = within(drawer).getByRole('link', { name: 'Quelle' })
+      expect(sourceLink).toHaveAttribute('href', 'https://example.gov/verzeichnis/doc.pdf')
+      expect(sourceLink).toHaveAttribute('target', '_blank')
+      expect(sourceLink).toHaveAttribute('rel', expect.stringContaining('noopener'))
     })
 
-    it('hides the action for a synthetic entry with neither a documentId nor a source URL', async () => {
+    it('hides the action for a synthetic entry with no documentId at all', async () => {
       const { drawer } = await openDrawerWith(source('doc.pdf', true, 0.9))
 
       expect(
         within(drawer).queryByRole('button', { name: 'Im Dokument öffnen' }),
       ).not.toBeInTheDocument()
+      expect(within(drawer).queryByRole('link', { name: 'Quelle' })).not.toBeInTheDocument()
     })
 
     it('shows a German error message when opening the original fails (e.g. 404)', async () => {
