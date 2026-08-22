@@ -605,6 +605,91 @@ export async function uploadDocument(
   }
 }
 
+// #738/#739: extracts the RFC 6266/5987 filename from a Content-Disposition header value, e.g.
+// `inline; filename="a.pdf"; filename*=UTF-8''a.pdf`. Prefers the filename* (percent-encoded,
+// UTF-8) parameter when present, since that is the one DocumentController escapes correctly for
+// non-ASCII names - falling back to the plain filename parameter otherwise.
+//
+// Exported so api.test.ts can exercise the parsing directly against header strings (including the
+// RFC 5987/Umlaut case) instead of through getDocumentContent() end-to-end: a Blob response body
+// hangs against msw/node in this project's jsdom test environment, the same limitation documented
+// on normalizeError above for a Blob *request* body (#743 review).
+export function parseContentDispositionFileName(headerValue: string | undefined): string | null {
+  if (!headerValue) return null
+  const extended = /filename\*=UTF-8''([^;]+)/i.exec(headerValue)
+  if (extended) {
+    try {
+      return decodeURIComponent(extended[1].trim())
+    } catch {
+      // Falls through to the plain filename parameter below.
+    }
+  }
+  // (?!\*) keeps this from matching the filename* parameter's own "filename" prefix when there is
+  // no ASCII filename to fall back to (e.g. decodeURIComponent above threw) - without it, a header
+  // with only `filename*=UTF-8''...` would match here with `*=UTF-8''...` as the "file name" (#743
+  // review).
+  const plain = /filename(?!\*)="?([^";]+)"?/i.exec(headerValue)
+  return plain ? plain[1].trim() : null
+}
+
+export interface DocumentContent {
+  blob: Blob
+  fileName: string | null
+}
+
+// #743 (review): a Blob response body (success or error) hangs against msw/node in this project's
+// jsdom test environment (same undici/XHR-interceptor limitation documented on normalizeError above
+// for a Blob *request* body) - so this cannot be exercised end-to-end through getDocumentContent()
+// in tests. Exported and kept independent of any HTTP call so api.test.ts can construct an
+// AxiosError with a plain Blob (which itself works fine in jsdom, no MSW involved) and exercise the
+// mapping directly.
+//
+// 404 covers both "no local file for this source type" (HTTP_DIRECTORY/RSS_FEED) and "file missing
+// on disk" alike, by design (see the endpoint's own OpenAPI description) - both surface as the same
+// German message. Any other failure arrives with responseType 'blob' applied to its body too, so a
+// non-404 ErrorResponse is a Blob rather than parsed JSON - isErrorResponse never matches a Blob,
+// which would otherwise fall through to normalizeError's generic, English "HTTP <status>: ..."
+// fallback. Read the blob as text and parse it the same way the JSON-response endpoints get it for
+// free from axios.
+export async function mapDocumentContentError(err: unknown): Promise<never> {
+  if (err instanceof AxiosError && err.response?.status === 404) {
+    throw new Error(
+      'Das Originaldokument wurde nicht gefunden. Es wurde möglicherweise verschoben oder gelöscht.',
+      { cause: err },
+    )
+  }
+  if (err instanceof AxiosError && err.response?.data instanceof Blob) {
+    let parsedBody: unknown
+    try {
+      parsedBody = JSON.parse(await err.response.data.text())
+    } catch {
+      parsedBody = undefined
+    }
+    if (isErrorResponse(parsedBody)) {
+      throw new Error(parsedBody.error, { cause: err })
+    }
+    throw new Error('Das Originaldokument konnte nicht geladen werden.', { cause: err })
+  }
+  normalizeError(err)
+}
+
+// #736/#738: streams the original file behind an indexed document. Bearer-authenticated like every
+// other endpoint here, so a plain <a href> deep link cannot reach it - see
+// utils/documentContent.ts for the client-side blob-URL piece this feeds.
+export async function getDocumentContent(documentId: string): Promise<DocumentContent> {
+  try {
+    const response = await client.get<Blob>(`/v1/documents/${documentId}/content`, {
+      responseType: 'blob',
+    })
+    return {
+      blob: response.data,
+      fileName: parseContentDispositionFileName(response.headers['content-disposition']),
+    }
+  } catch (err) {
+    return await mapDocumentContentError(err)
+  }
+}
+
 export async function deleteLibraryDocument(libraryId: string, documentId: string): Promise<void> {
   try {
     await client.delete(`/v1/libraries/${libraryId}/documents/${documentId}`)

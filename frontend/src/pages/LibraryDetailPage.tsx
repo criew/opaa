@@ -25,6 +25,7 @@ import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteIcon from '@mui/icons-material/Delete'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import type {
@@ -51,6 +52,7 @@ import {
   libraryVisibilityLabel,
   scheduleFrequencyLabel,
 } from '../utils/labels'
+import { openDocumentContent, openExternalSourceUrl } from '../utils/documentContent'
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
@@ -449,6 +451,10 @@ function LibraryDocumentsSection({
   const [searchInput, setSearchInput] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  // #738: distinct from documentStore's error/uploadErrors/deleteError - opening the original is a
+  // read-only, per-click action that never touches the store, so its failure (404, file missing)
+  // gets its own local, dismissible message here.
+  const [openOriginalError, setOpenOriginalError] = useState<string | null>(null)
 
   const isUploadLibrary = sourceType === 'UPLOAD'
   // ADR-0018/#443: a FILESYSTEM or HTTP_DIRECTORY document only ever leaves the index because its
@@ -518,6 +524,29 @@ function LibraryDocumentsSection({
       onDocumentsChanged()
     } catch {
       // Fehlermeldung wird bereits über documentStore.deleteError angezeigt.
+    }
+  }
+
+  // #738: UPLOAD/FILESYSTEM have a local file behind GET .../content (fetched as a Blob and opened/
+  // downloaded client-side, since the endpoint is Bearer-authenticated and a plain <a href> cannot
+  // carry that token) - HTTP_DIRECTORY/RSS_FEED instead open their own remote location directly.
+  // sourceEntryUrl (the RSS entry page an attachment was found on) takes priority over sourceUrl
+  // (the document's own remote file) when both are present, matching DocumentContent's own Javadoc.
+  async function handleOpenOriginal(document: LibraryDocumentResponse) {
+    setOpenOriginalError(null)
+    const externalUrl = document.sourceEntryUrl ?? document.sourceUrl
+    if (document.sourceType === 'UPLOAD' || document.sourceType === 'FILESYSTEM') {
+      try {
+        await openDocumentContent(document.id, document.fileName)
+      } catch (err) {
+        setOpenOriginalError(
+          err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.',
+        )
+      }
+      return
+    }
+    if (externalUrl) {
+      openExternalSourceUrl(externalUrl)
     }
   }
 
@@ -630,6 +659,11 @@ function LibraryDocumentsSection({
           {deleteError}
         </Alert>
       )}
+      {openOriginalError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setOpenOriginalError(null)}>
+          {openOriginalError}
+        </Alert>
+      )}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -710,6 +744,21 @@ function LibraryDocumentsSection({
                     variant="outlined"
                   />
                 </Tooltip>
+                {/* #738: local sourceTypes always offer the action (a missing file on disk is a
+                    404 handled via openOriginalError above, not a reason to hide the button) -
+                    remote sourceTypes only when there is actually a URL to open. */}
+                {(document.sourceType === 'UPLOAD' ||
+                  document.sourceType === 'FILESYSTEM' ||
+                  document.sourceEntryUrl ||
+                  document.sourceUrl) && (
+                  <IconButton
+                    aria-label={`Original von ${document.fileName} öffnen`}
+                    size="small"
+                    onClick={() => void handleOpenOriginal(document)}
+                  >
+                    <OpenInNewIcon fontSize="small" />
+                  </IconButton>
+                )}
                 {canDelete && (
                   <IconButton
                     aria-label={`Dokument ${document.fileName} löschen`}

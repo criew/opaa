@@ -694,6 +694,21 @@ const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {
       indexedAt: '2026-03-01T12:00:00Z',
       uploadedByUserId: null,
     },
+    // #743 (review, nit 5): exercises the remote-source branch of the "Original öffnen" action
+    // (openExternalSourceUrl) - there was previously no HTTP_DIRECTORY/RSS_FEED document anywhere
+    // in the fixtures, so that branch was untestable/unclickable in mock/dev mode.
+    {
+      id: 'document-intranet-richtlinie',
+      fileName: 'richtlinie-datenschutz.pdf',
+      contentType: 'application/pdf',
+      fileSize: 302145,
+      status: 'INDEXED',
+      sourceType: 'HTTP_DIRECTORY',
+      sourceUrl: 'https://intranet.example.gov/richtlinien/richtlinie-datenschutz.pdf',
+      chunkCount: 18,
+      indexedAt: '2026-03-01T12:05:00Z',
+      uploadedByUserId: null,
+    },
   ],
   'library-dienstanweisungen': [],
 }

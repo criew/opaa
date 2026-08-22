@@ -47,4 +47,57 @@ class LibraryDocumentResponsesTest {
 
     assertThat(response.getSourceEntryUrl()).isNull();
   }
+
+  // #738: HTTP_DIRECTORY carries no local file behind GET .../content (that endpoint answers 404
+  // for it) - the frontend needs the document's own remote location instead to open it.
+  @Test
+  void carriesFilePathAsSourceUrlForAnHttpDirectoryDocument() {
+    Document document =
+        new Document(
+            "dienstanweisung-2024.pdf",
+            "https://example.gov/verzeichnis/dienstanweisung-2024.pdf",
+            "application/pdf",
+            2048L,
+            DocumentSourceType.HTTP_DIRECTORY);
+
+    LibraryDocumentResponse response = LibraryDocumentResponses.from(document);
+
+    assertThat(response.getSourceUrl())
+        .isEqualTo("https://example.gov/verzeichnis/dienstanweisung-2024.pdf");
+  }
+
+  // #738: an RSS attachment's filePath is its own remote file (not the entry page) - it is still
+  // exposed as sourceUrl for completeness, but a frontend caller prefers sourceEntryUrl (asserted
+  // separately above) since the entry page is more useful for tracing an attachment back to its
+  // origin than the raw attachment URL.
+  @Test
+  void carriesFilePathAsSourceUrlForAnRssFeedDocument() {
+    Document document =
+        new Document(
+            "rundschreiben.pdf",
+            "https://example.gov/feed/rundschreiben.pdf",
+            "application/pdf",
+            2048L,
+            DocumentSourceType.RSS_FEED);
+
+    LibraryDocumentResponse response = LibraryDocumentResponses.from(document);
+
+    assertThat(response.getSourceUrl()).isEqualTo("https://example.gov/feed/rundschreiben.pdf");
+  }
+
+  // #738: the server-local storage path must never leak through this field for UPLOAD/FILESYSTEM.
+  @Test
+  void leavesSourceUrlNullForAnUploadedDocument() {
+    Document document =
+        new Document(
+            "dienstanweisung-2024.pdf",
+            "/data/dienstanweisung-2024.pdf",
+            "application/pdf",
+            2048L,
+            DocumentSourceType.UPLOAD);
+
+    LibraryDocumentResponse response = LibraryDocumentResponses.from(document);
+
+    assertThat(response.getSourceUrl()).isNull();
+  }
 }
