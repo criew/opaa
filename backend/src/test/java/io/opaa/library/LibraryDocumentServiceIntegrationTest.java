@@ -534,6 +534,127 @@ class LibraryDocumentServiceIntegrationTest {
     assertThat(saved.getFileName()).isEqualTo("evil.txt");
   }
 
+  // #736: GET /api/v1/documents/{documentId}/content, backed by LibraryDocumentService#loadContent.
+
+  @Test
+  void loadContentReturnsTheStoredFileForAnUploadedDocumentToAnyoneWithAtLeastViewer() {
+    LibraryDocumentResponse uploaded =
+        documentService.uploadDocument(
+            libraryId,
+            textFile("bescheid.txt", "Originaltext des Bescheids."),
+            editor.getId(),
+            false);
+    Document saved = awaitDocumentStatus(uploaded.getId(), DocumentStatus.INDEXED);
+
+    DocumentContent contentForEditor =
+        documentService.loadContent(uploaded.getId(), editor.getId(), false);
+    assertThat(contentForEditor.path()).isEqualTo(Path.of(saved.getFilePath()));
+    assertThat(contentForEditor.fileName()).isEqualTo("bescheid.txt");
+
+    // VIEWER is the acceptance criteria's floor - the same role listing/reading the library
+    // configuration already requires, one below the EDITOR upload/delete needs.
+    DocumentContent contentForViewer =
+        documentService.loadContent(uploaded.getId(), viewer.getId(), false);
+    assertThat(contentForViewer.path()).isEqualTo(Path.of(saved.getFilePath()));
+  }
+
+  @Test
+  void loadContentRefusesAUserWithNoGrantAtAllWith404NotForbidden() {
+    LibraryDocumentResponse uploaded =
+        documentService.uploadDocument(
+            libraryId, textFile("geheim.txt", "content"), editor.getId(), false);
+    awaitDocumentStatus(uploaded.getId(), DocumentStatus.INDEXED);
+
+    User stranger = new User("content-stranger-subject", "issuer", "stranger2@example.com", "S");
+    stranger.setOrganizationId(organizationId);
+    stranger = userRepository.save(stranger);
+
+    try {
+      var strangerId = stranger.getId();
+      var documentId = uploaded.getId();
+      assertThatThrownBy(() -> documentService.loadContent(documentId, strangerId, false))
+          .isInstanceOf(ResponseStatusException.class)
+          .satisfies(
+              ex ->
+                  assertThat(((ResponseStatusException) ex).getStatusCode())
+                      .isEqualTo(HttpStatus.NOT_FOUND));
+    } finally {
+      userRepository.deleteById(stranger.getId());
+    }
+  }
+
+  @Test
+  void loadContentAnswers404WithAGermanMessageForARemoteSourcedDocument() {
+    // HTTP_DIRECTORY/RSS_FEED documents keep no local original at all (#736 acceptance criteria) -
+    // clients use the document's own source URL for those instead.
+    Document remoteDoc =
+        new Document(
+            "extern.pdf",
+            "https://example.org/extern.pdf",
+            "application/pdf",
+            10L,
+            DocumentSourceType.HTTP_DIRECTORY);
+    remoteDoc.setLibraryId(libraryId);
+    remoteDoc.setOrganizationId(organizationId);
+    remoteDoc = documentRepository.save(remoteDoc);
+    var documentId = remoteDoc.getId();
+
+    assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex -> {
+              var responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+              assertThat(responseStatusException.getReason())
+                  .isEqualTo("Für dieses Dokument steht kein Originaldokument zur Verfügung");
+            });
+  }
+
+  @Test
+  void loadContentAnswers404WhenTheFileHasBeenRemovedFromDisk() throws IOException {
+    LibraryDocumentResponse uploaded =
+        documentService.uploadDocument(
+            libraryId, textFile("verschwunden.txt", "content"), editor.getId(), false);
+    Document saved = awaitDocumentStatus(uploaded.getId(), DocumentStatus.INDEXED);
+    Files.delete(Path.of(saved.getFilePath()));
+
+    var documentId = uploaded.getId();
+    assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
+  @Test
+  void loadContentRefusesAFilePathThatEscapesTheLibraryUploadDirectory(@TempDir Path outsideDir)
+      throws IOException {
+    // A corrupted or foreign file_path column must not be trusted on its own (mirrors
+    // uploadedFileIfManagedByThisService's own reasoning for deleteDocument).
+    Path outsideFile = outsideDir.resolve("nicht-verwaltet.txt");
+    Files.writeString(outsideFile, "Datei außerhalb des Upload-Verzeichnisses.");
+
+    Document escapee =
+        new Document(
+            "nicht-verwaltet.txt",
+            outsideFile.toString(),
+            "text/plain",
+            Files.size(outsideFile),
+            DocumentSourceType.UPLOAD);
+    escapee.setLibraryId(libraryId);
+    escapee.setOrganizationId(organizationId);
+    escapee = documentRepository.save(escapee);
+    var documentId = escapee.getId();
+
+    assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
   // #517: page/size/q on GET /libraries/{id}/documents, backed by
   // KnowledgeLibraryService#listDocuments / DocumentRepository's paged finder methods. Seeded
   // directly via documentRepository rather than through uploadDocument/the indexing pipeline - the

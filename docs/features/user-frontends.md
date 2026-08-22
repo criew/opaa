@@ -64,7 +64,11 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 Drei Bereiche, die der frühere Stand dieses Dokuments beschrieben hat und die hier mit dem
 tatsächlichen Stand abgeglichen sind. Die Dokumentenübersicht ist inzwischen gebaut — die
 Bibliotheksdetailseite (`LibraryDetailPage.tsx`) zeigt den Bestand einer Wissensbibliothek mit
-Indizierungsstand je Dokument; das Öffnen eines Dokuments im Original bleibt Zielbild.
+Indizierungsstand je Dokument. Das Original eines Dokuments lässt sich seit #736 über
+`GET /api/v1/documents/{documentId}/content` abrufen (nur für die Quellentypen UPLOAD und
+FILESYSTEM, mit mindestens VIEWER-Rolle auf der Bibliothek); das Öffnen eines Dokuments im Original
+in der Oberfläche selbst bleibt Zielbild — Folge-Issues des Epics „Deeplinks auf Originaldokumente &
+stabile Anmeldung" bauen die Frontend-Verwendung darauf auf.
 
 **Gesprächsverwaltung.** Ein Gespräch ist ein persistentes Objekt, das **von Anfang an in genau einem
 Arbeitsraum** liegt — dort erstellt (`POST /api/v1/spaces/{spaceId}/chats`), dort unter

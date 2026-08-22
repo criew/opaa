@@ -1101,6 +1101,42 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/documents/{documentId}/content:
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getDocumentContent
+      tags: [library]
+      summary: >
+        Stream the original file behind an indexed document (#736), so a search result or library
+        listing can link straight to the source it was built from. The library owning the document
+        is resolved from Document.libraryId; VIEWER role or above on that library is required, the
+        same floor GET /api/v1/libraries/{libraryId} itself uses. Only sourceType UPLOAD and
+        FILESYSTEM carry a local file - HTTP_DIRECTORY and RSS_FEED documents answer 404, clients
+        use the document's own source URL for those instead. Answered with Content-Disposition:
+        inline and the file's original name/content type, so a browser previews a PDF instead of
+        forcing a download. A document from another organization, without a library grant, of an
+        unsupported sourceType, or whose file has since been moved or deleted on disk are all
+        answered with the same 404 - no response here reveals whether a given documentId exists.
+      responses:
+        "200":
+          description: The original file's bytes
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}/grants:
     parameters:
       - name: libraryId
