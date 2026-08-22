@@ -654,8 +654,11 @@ Ollama gibt es deshalb nicht mehr.
 > das Chat-Modell — zur Laufzeit gelesen von `io.opaa.llm.ActiveChatModelResolver`, der Basis-Adresse,
 > Modell-Kennung, Temperatur, maximale Antwortlänge und (falls hinterlegt) den entschlüsselten
 > Zugangsschlüssel des jeweils **aktiven** Eintrags zu einem `ChatClient` zusammenbaut, zwischenspeichert
-> und bei jeder Aktivierung/Änderung/Löschung über die Administrationsoberfläche neu auflöst — ohne
-> Neustart. Ein Ändern von `OPAA_OPENAI_CHAT_*` **nach** diesem ersten Start hat keine Wirkung mehr;
+> und bei jeder Aktivierung oder Änderung des jeweils aktiven Eintrags über die
+> Administrationsoberfläche neu auflöst — ohne Neustart. Löschen ist dabei kein eigener Auslöser:
+> Das aktive Modell kann nicht gelöscht werden (409), und das Löschen eines inaktiven Eintrags
+> berührt die Auflösung nicht. Ein Ändern von `OPAA_OPENAI_CHAT_*` **nach** diesem ersten Start hat
+> keine Wirkung mehr;
 > die Modellauswahl läuft über die Administrationsoberfläche (`SYSTEM_ADMIN`, Modellverwaltung), nicht
 > mehr über Umgebungsvariablen. Die Umgebungsvariablen bleiben unten dokumentiert, weil sie beim
 > Erststart nach wie vor gelesen werden und weil ihre Werte den anfänglichen aktiven Eintrag bilden.
