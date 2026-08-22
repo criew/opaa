@@ -32,6 +32,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -711,12 +712,12 @@ class LibraryDocumentServiceIntegrationTest {
       DocumentContent content =
           documentService.loadContent(remoteDoc.getId(), editor.getId(), false);
       try {
-        assertThat(content.temporary()).isTrue();
+        assertThat(content.isStreamed()).isTrue();
         assertThat(content.contentType()).isEqualTo("application/pdf");
-        assertThat(Files.readString(content.path()))
+        assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
             .isEqualTo("Originalinhalt vom entfernten Quellsystem");
       } finally {
-        Files.deleteIfExists(content.path());
+        content.stream().close();
       }
     } finally {
       documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
@@ -760,9 +761,13 @@ class LibraryDocumentServiceIntegrationTest {
                 + Base64.getEncoder()
                     .encodeToString("libuser:libpass".getBytes(StandardCharsets.UTF_8));
         assertThat(receivedAuthorization.get()).isEqualTo(expected);
-        assertThat(content.toString()).doesNotContain("libpass");
+        // #748 review, nit 1: reads the actual bytes the caller would receive rather than
+        // asserting a tautology against a record with no credentials field to begin with.
+        assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+            .isEqualTo("content")
+            .doesNotContain("libpass");
       } finally {
-        Files.deleteIfExists(content.path());
+        content.stream().close();
       }
     } finally {
       documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
@@ -806,11 +811,31 @@ class LibraryDocumentServiceIntegrationTest {
   }
 
   @Test
-  void loadContentAnswers404WhenTheStoredSourceUrlIsBlockedByTheTargetAllowlist() {
-    // #747 acceptance criteria: the allowlist is re-checked at serve time, not only at indexing
-    // time - a link-local address is always blocked once target validation is enabled (see
-    // TargetAddressValidator), regardless of the 127.0.0.1 allowlist entry this suite adds for its
-    // own local test servers.
+  void loadContentAnswers404WhenTheStoredSourceUrlIsBlockedByTheTargetAllowlist()
+      throws IOException {
+    // #748 review, finding 4: the previous version of this test pointed at
+    // "http://169.254.169.254/original.pdf" - never reachable in CI either, so it stayed green
+    // even with the allowlist re-check removed entirely (the request would simply time out/refuse
+    // the connection either way, producing the identical 404). This version instead binds a real,
+    // listening HttpServer on 127.0.0.2 - loopback (always blocked once target validation is
+    // enabled), but a different literal host string than the "127.0.0.1" this suite's own
+    // configureProperties allowlists for its other local test servers, so it is neither allowlisted
+    // nor unreachable. requestsReceived proves the request never left this process when the
+    // re-check is in place; with it removed, the request would succeed and both assertions below
+    // would fail.
+    HttpServer blockedServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    blockedServer.start();
+    AtomicInteger requestsReceived = new AtomicInteger();
+    blockedServer.createContext(
+        "/original.pdf",
+        exchange -> {
+          requestsReceived.incrementAndGet();
+          byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    String blockedBaseUrl = "http://127.0.0.2:" + blockedServer.getAddress().getPort();
     KnowledgeLibrary remoteLibrary =
         KnowledgeLibrary.ownedByUser(
             organizationId,
@@ -821,7 +846,7 @@ class LibraryDocumentServiceIntegrationTest {
             true,
             DocumentSourceType.HTTP_DIRECTORY,
             null,
-            "http://169.254.169.254/",
+            blockedBaseUrl + "/",
             null,
             null,
             false);
@@ -838,7 +863,7 @@ class LibraryDocumentServiceIntegrationTest {
       Document remoteDoc =
           new Document(
               "original.pdf",
-              "http://169.254.169.254/original.pdf",
+              blockedBaseUrl + "/original.pdf",
               null,
               null,
               DocumentSourceType.HTTP_DIRECTORY);
@@ -855,9 +880,11 @@ class LibraryDocumentServiceIntegrationTest {
                 assertThat(responseStatusException.getReason())
                     .isEqualTo("Für dieses Dokument steht kein Originaldokument zur Verfügung");
               });
+      assertThat(requestsReceived.get()).isZero();
     } finally {
       documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
       libraryRepository.deleteById(remoteLibrary.getId());
+      blockedServer.stop(0);
     }
   }
 

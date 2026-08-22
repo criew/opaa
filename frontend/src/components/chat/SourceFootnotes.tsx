@@ -57,11 +57,16 @@ async function openLocalOriginal(
 /**
  * #747: the primary action is always the content-endpoint button now (see
  * {@link openLocalOriginal}) - `sourceEntryUrl`/`sourceUrl` (HTTP_DIRECTORY/RSS_FEED only) are
- * shown alongside it as secondary information, a small "Quelle" link carrying the raw URL as its
- * native `title` tooltip, since that address may only be reachable from OPAA's own network, not
- * the caller's browser (#747, Klick-Test finding on the Demo-Instanz). A plain `title` attribute
- * rather than MUI's `Tooltip` (which clones the child and sets `aria-label` to the tooltip text,
- * overriding "Quelle" as the link's accessible name with the raw URL instead).
+ * shown alongside it as secondary information, a small "Quelle" link carrying the raw URL, since
+ * that address may only be reachable from OPAA's own network, not the caller's browser (#747,
+ * Klick-Test finding on the Demo-Instanz).
+ *
+ * <p>#748 review, nit 5: the URL is carried both as the native `title` tooltip (for a sighted
+ * mouse user hovering the link) and as `aria-label="Quelle: <url>"` (for a screen reader, which
+ * generally does not announce `title` on an element that already has visible text) - not MUI's
+ * `Tooltip`, which would instead replace the whole accessible name with the raw URL. `aria-label`
+ * starting with "Quelle" keeps the visible label a substring of the accessible name (WCAG 2.5.3
+ * Label in Name), rather than silently dropping the link's own visible text for assistive tech.
  */
 function renderOpenOriginalLink(
   source: SourceReference,
@@ -87,6 +92,7 @@ function renderOpenOriginalLink(
           rel="noopener noreferrer"
           underline="hover"
           title={secondaryUrl}
+          aria-label={`Quelle: ${secondaryUrl}`}
           sx={{ fontSize: 11, color: 'text.disabled' }}
         >
           Quelle
@@ -162,8 +168,10 @@ function renderDocRow(
           {sourceMeta(doc)}
         </Typography>
       )}
-      {/* #739/#745: a button for a local original (download endpoint), a real link for a remote
-          sourceEntryUrl/sourceUrl deep link (see renderOpenOriginalLink/canOpenOriginal). */}
+      {/* #739/#747: a button that opens through the content endpoint for every sourceType, plus a
+          secondary "Quelle" link for a remote sourceEntryUrl/sourceUrl where one exists (see
+          renderOpenOriginalLink/canOpenOriginal) - the distinction this comment used to describe
+          (button vs. link per sourceType) no longer exists since #747. */}
       {canOpenOriginal(doc.source) &&
         renderOpenOriginalLink(doc.source!, doc.fileName, onOpenLocalOriginal)}
     </Box>

@@ -9,13 +9,11 @@ import type { SourceReference } from '../../types/api'
 // #739: the "Im Dokument öffnen" action delegates to this shared module (see its own tests for
 // the Blob-fetch/preview-vs-download behaviour, and LibraryDetailPage.test.tsx for #738's original
 // wiring of this mock pattern).
-const { mockOpenDocumentContent, mockOpenExternalSourceUrl } = vi.hoisted(() => ({
+const { mockOpenDocumentContent } = vi.hoisted(() => ({
   mockOpenDocumentContent: vi.fn(async () => undefined),
-  mockOpenExternalSourceUrl: vi.fn(),
 }))
 vi.mock('../../utils/documentContent', () => ({
   openDocumentContent: mockOpenDocumentContent,
-  openExternalSourceUrl: mockOpenExternalSourceUrl,
 }))
 
 function source(
@@ -103,7 +101,6 @@ describe('SourceFootnotes', () => {
       await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
 
       expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
-      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
     })
 
     it('opens an HTTP_DIRECTORY document through the content endpoint too, keeping sourceUrl as a secondary "Quelle" link (#747)', async () => {
@@ -123,9 +120,10 @@ describe('SourceFootnotes', () => {
       await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
 
       expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
-      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
 
-      const sourceLink = screen.getByRole('link', { name: 'Quelle' })
+      const sourceLink = screen.getByRole('link', {
+        name: 'Quelle: https://example.gov/verzeichnis/dienstanweisung.pdf',
+      })
       expect(sourceLink).toHaveAttribute(
         'href',
         'https://example.gov/verzeichnis/dienstanweisung.pdf',

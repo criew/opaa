@@ -15,6 +15,7 @@ import io.opaa.indexing.ProxyAndCredentials;
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.TargetAddressValidator;
 import io.opaa.indexing.UrlFileDownloader;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -23,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -31,6 +33,8 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.InvalidMediaTypeException;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -112,6 +116,8 @@ public class LibraryDocumentService {
   private final LibraryStorageQuotaService storageQuotaService;
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final UrlFileDownloader urlFileDownloader;
+  private final TargetAddressValidator targetAddressValidator;
+  private final RemoteContentProperties remoteContentProperties;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -124,7 +130,9 @@ public class LibraryDocumentService {
       UploadProperties uploadProperties,
       LibraryStorageQuotaService storageQuotaService,
       FilesystemPathAllowlist filesystemAllowlist,
-      UrlFileDownloader urlFileDownloader) {
+      UrlFileDownloader urlFileDownloader,
+      TargetAddressValidator targetAddressValidator,
+      RemoteContentProperties remoteContentProperties) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.accessService = accessService;
@@ -136,6 +144,8 @@ public class LibraryDocumentService {
     this.storageQuotaService = storageQuotaService;
     this.filesystemAllowlist = filesystemAllowlist;
     this.urlFileDownloader = urlFileDownloader;
+    this.targetAddressValidator = targetAddressValidator;
+    this.remoteContentProperties = remoteContentProperties;
   }
 
   public LibraryDocumentResponse uploadDocument(
@@ -407,15 +417,26 @@ public class LibraryDocumentService {
    * time, already validated against the target allowlist then (#267).
    *
    * <p><b>SSRF: the allowlist is checked again here, not just at indexing time (#747 acceptance
-   * criteria).</b> {@link UrlFileDownloader#downloadBounded} re-validates {@link
+   * criteria).</b> {@link UrlFileDownloader#downloadStreaming} re-validates {@link
    * TargetAddressValidator} on every hop before a single further byte is requested - the same
    * "Doppelprüfung" {@link #filesystemFileIfWithinConfiguredDirectory} already applies to {@link
    * FilesystemPathAllowlist}: an allowlist narrowed after this document was indexed must not let a
    * read against it silently keep succeeding. A redirect is only ever followed within the same
-   * origin - {@code downloadBounded} throws {@link UrlFileDownloader.ForeignHostRedirectException}
-   * outright for anything else, including a protocol downgrade - and {@code Authorization} is
-   * therefore never built for, or sent to, anything but the document's own stored URL and
-   * same-origin redirect hops from it.
+   * origin - {@code downloadStreaming} throws {@link
+   * UrlFileDownloader.ForeignHostRedirectException} outright for anything else, including a
+   * protocol downgrade - and {@code Authorization} is therefore never built for, or sent to,
+   * anything but the document's own stored URL and same-origin redirect hops from it. The
+   * configured {@code sourceProxy} host is validated too (#748 review, nit 2) - it determines where
+   * the TCP connection (and the credentials below) actually go, exactly as {@code
+   * SourceConnectionTestService} already validates it before its own otherwise-identical probe.
+   *
+   * <p><b>DNS-Rebinding (#267, #748 review, "vorbestehend").</b> Like every other caller of {@link
+   * TargetAddressValidator}, the address validated here and the address the JDK's {@code
+   * HttpClient} eventually connects to both come from resolving the same hostname, but not
+   * atomically - see {@link TargetAddressValidator}'s own Javadoc for why closing that gap
+   * completely is not achievable on this HTTP client. Unlike an indexing run, this endpoint is
+   * reachable by any caller with {@code VIEWER} on the library, repeatedly and on demand, which
+   * narrows - without eliminating - the window a rebinding attack would need.
    *
    * <p><b>Credentials (#747 acceptance criteria).</b> The library's own {@code sourceCredentials}/
    * {@code sourceProxy}/{@code sourceInsecureSsl} - already offered to every {@code
@@ -424,11 +445,13 @@ public class LibraryDocumentService {
    * RssFeedIndexingExecutor#execute}. They reach only the {@code Authorization} header built for
    * the outbound request; {@link DocumentContent} and the controller that serves it never see them.
    *
-   * <p><b>Bounded by {@link UploadProperties#maxFileSize()} (#747), not left unbounded like {@code
-   * UrlIndexingExecutor#execute}'s own full download.</b> That bound exists for the same reason
-   * this endpoint's caller-facing surface should not let a single request buffer an unbounded
-   * remote response into memory/disk - this method reuses the limit this class already enforces on
-   * every locally-stored document instead of introducing a second, independent one.
+   * <p><b>Bounded by {@link RemoteContentProperties#maxBytes()} while streaming (#747, #748 review,
+   * finding 1/3)</b> - deliberately not {@link UploadProperties#maxFileSize()}, and deliberately
+   * not buffered into a {@code byte[]} or temp file first: the previous, buffering implementation
+   * let a VIEWER clicking this endpoint repeatedly hold up to {@code maxFileSize} of heap per
+   * in-flight request. {@link RemoteContentProperties#timeoutSeconds()} is likewise its own, short
+   * timeout per hop - {@link UrlFileDownloader#downloadBounded}'s 120s is sized for an unattended
+   * background indexing run, not a human waiting on this click.
    *
    * <p>Every failure - the source offline, rejected by the allowlist, an invalid stored
    * configuration - answers the same German, user-facing 404 {@link #loadContent} already uses for
@@ -442,32 +465,60 @@ public class LibraryDocumentService {
           HttpStatus.NOT_FOUND, "Für dieses Dokument steht kein Originaldokument zur Verfügung");
     }
 
+    HttpClient httpClient = null;
     try {
       ProxyAndCredentials config =
           ProxyAndCredentials.parse(library.getSourceProxy(), library.getSourceCredentials());
-      HttpClient httpClient =
+      httpClient =
           AutoindexCrawlerService.buildHttpClient(
               config.proxyHost(), config.proxyPort(), library.isSourceInsecureSsl());
+      // #748 review, nit 2: the proxy is exactly as caller-controlled as the target URL and
+      // determines where the TCP connection (and Authorization below) actually goes - mirrors
+      // SourceConnectionTestService's identical call before its own otherwise-analogous probe.
+      targetAddressValidator.validateHost(config.proxyHost());
       String authHeader =
           AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
 
-      UrlFileDownloader.DownloadedFile downloaded =
-          urlFileDownloader.downloadBounded(
+      UrlFileDownloader.DownloadedStream downloaded =
+          urlFileDownloader.downloadStreaming(
               httpClient,
               sourceUrl,
-              document.getFileName(),
-              uploadProperties.maxFileSize(),
+              remoteContentProperties.maxBytes(),
               null,
-              authHeader);
+              authHeader,
+              Duration.ofSeconds(remoteContentProperties.timeoutSeconds()));
 
-      String contentType = downloaded.contentType();
+      // #742 review, finding 1/#748 review, finding 2: document.getContentType() - itself set from
+      // Files.probeContentType/the RSS feed's own declared type at index time - is the primary
+      // source here too, mirroring the local-file branch of loadContent above; the remote-declared
+      // Content-Type is only a fallback, normalized to type/subtype (no parameters) so a stray
+      // parameter cannot smuggle a value past a caller comparing it verbatim (frontend #743 SVG
+      // sperre) and a malformed header cannot turn into a 500 (see normalizeContentType).
+      String contentType = document.getContentType();
       if (contentType == null || contentType.isBlank()) {
-        contentType = document.getContentType();
+        contentType = normalizeContentType(downloaded.contentType());
       }
       if (contentType == null || contentType.isBlank()) {
         contentType = "application/octet-stream";
       }
-      return new DocumentContent(downloaded.path(), document.getFileName(), contentType, true);
+      // #748 review, nit 3: closes the per-request HttpClient once the response stream (or the
+      // failure path below) is done with it, instead of leaking its connection pool/selector
+      // thread until the next GC - ResourceHttpMessageConverter closes this stream in a finally
+      // block once the response body has been written or the request aborted, so this always runs
+      // exactly once.
+      HttpClient clientToClose = httpClient;
+      InputStream closingStream =
+          new FilterInputStream(downloaded.stream()) {
+            @Override
+            public void close() throws IOException {
+              try {
+                super.close();
+              } finally {
+                clientToClose.close();
+              }
+            }
+          };
+      return DocumentContent.ofStream(closingStream, document.getFileName(), contentType);
     } catch (UrlFileDownloader.ForeignHostRedirectException
         | UrlFileDownloader.AttachmentTooLargeException
         | ProxyAndCredentials.InvalidProxyConfigurationException
@@ -477,12 +528,43 @@ public class LibraryDocumentService {
       // German 404 loadContent already uses so a caller cannot distinguish "offline" from any
       // other reason no original is available.
       log.warn("Remote document content unavailable: {} ({})", sourceUrl, e.getMessage());
+      closeQuietly(httpClient);
       throw new ResponseStatusException(
           HttpStatus.NOT_FOUND, "Für dieses Dokument steht kein Originaldokument zur Verfügung");
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      closeQuietly(httpClient);
       throw new ResponseStatusException(
           HttpStatus.NOT_FOUND, "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+    }
+  }
+
+  /**
+   * Normalizes a remote-declared {@code Content-Type} header to its bare {@code type/subtype}
+   * essence, dropping every parameter (e.g. {@code charset}) - both so a caller comparing the value
+   * verbatim (the frontend's #743 SVG sperre, see {@code documentContent.ts}) cannot be bypassed by
+   * a harmless-looking parameter, and so a header the source sends that is not a valid media type
+   * at all (garbage, a bare {@code "pdf"}) never reaches {@link
+   * org.springframework.http.MediaType#parseMediaType} a second time downstream and turns into a
+   * 500 there (#748 review, finding 2a) - {@code null} here simply falls through to {@link
+   * #loadRemoteContent}'s own {@code "application/octet-stream"} fallback instead.
+   */
+  private String normalizeContentType(String rawContentType) {
+    if (rawContentType == null || rawContentType.isBlank()) {
+      return null;
+    }
+    try {
+      MediaType parsed = MediaType.parseMediaType(rawContentType);
+      return new MediaType(parsed.getType(), parsed.getSubtype()).toString();
+    } catch (InvalidMediaTypeException e) {
+      log.debug("Remote source declared an invalid Content-Type: {}", rawContentType, e);
+      return null;
+    }
+  }
+
+  private void closeQuietly(HttpClient httpClient) {
+    if (httpClient != null) {
+      httpClient.close();
     }
   }
 

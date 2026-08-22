@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -80,6 +81,8 @@ class LibraryDocumentServiceTest {
   // choice for the same reason. loadContentAnswers404WhenTheAllowlistRejectsTheStoredSourceUrl
   // below builds its own, deliberately enabled validator instead.
   private UrlFileDownloader urlFileDownloader;
+  private TargetAddressValidator disabledTargetAddressValidator;
+  private RemoteContentProperties remoteContentProperties;
   private LibraryDocumentService service;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -108,7 +111,9 @@ class LibraryDocumentServiceTest {
     // Default: every FILESYSTEM sourcePath used below is treated as allowed unless a test
     // explicitly narrows this - see the allowlist-specific tests further down, which override it.
     when(filesystemAllowlist.isAllowed(any())).thenReturn(true);
-    urlFileDownloader = new UrlFileDownloader(TargetAddressValidator.disabled());
+    disabledTargetAddressValidator = TargetAddressValidator.disabled();
+    urlFileDownloader = new UrlFileDownloader(disabledTargetAddressValidator);
+    remoteContentProperties = new RemoteContentProperties(10L * 1024 * 1024, 5);
 
     service =
         new LibraryDocumentService(
@@ -122,7 +127,9 @@ class LibraryDocumentServiceTest {
             uploadProperties,
             storageQuotaService,
             filesystemAllowlist,
-            urlFileDownloader);
+            urlFileDownloader,
+            disabledTargetAddressValidator,
+            remoteContentProperties);
 
     User user = new User("subject", "issuer", "user@example.com", "Test User");
     user.setOrganizationId(organizationId);
@@ -941,13 +948,13 @@ class LibraryDocumentServiceTest {
     DocumentContent content = service.loadContent(documentId, currentUserId, false);
 
     try {
-      assertThat(content.temporary()).isTrue();
+      assertThat(content.isStreamed()).isTrue();
       assertThat(content.contentType()).isEqualTo("application/pdf");
       assertThat(content.fileName()).isEqualTo("original.pdf");
-      assertThat(Files.readString(content.path()))
+      assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
           .isEqualTo("Originalinhalt vom entfernten Quellsystem");
     } finally {
-      Files.deleteIfExists(content.path());
+      content.stream().close();
     }
   }
 
@@ -982,11 +989,15 @@ class LibraryDocumentServiceTest {
               + java.util.Base64.getEncoder()
                   .encodeToString("libuser:libpass".getBytes(StandardCharsets.UTF_8));
       assertThat(receivedAuthorization.get()).isEqualTo(expected);
-      // #747 acceptance criteria: the credentials themselves never reach the response the
-      // controller streams back - DocumentContent only ever carries path/fileName/contentType.
-      assertThat(content.toString()).doesNotContain("libpass");
+      // #748 review, nit 1: the previous assertion here (content.toString() lacking "libpass")
+      // could never fail - DocumentContent never had a credentials field to begin with. This reads
+      // the actual bytes the caller would receive and checks the credentials never leaked into
+      // them, the thing this test is meant to guard against.
+      assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+          .isEqualTo("content")
+          .doesNotContain("libpass");
     } finally {
-      Files.deleteIfExists(content.path());
+      content.stream().close();
     }
   }
 
@@ -1014,10 +1025,29 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
-  void loadContentAnswers404WhenTheAllowlistRejectsTheStoredSourceUrl() {
-    // #747 acceptance criteria: the target allowlist is checked again at serve time, not only at
-    // indexing time - a dedicated enabled validator with an empty allowlist stands in for an
-    // allowlist that has since been narrowed (or was never configured to include this host).
+  void loadContentAnswers404WhenTheAllowlistRejectsTheStoredSourceUrl() throws IOException {
+    // #748 review, finding 4: the previous version of this test pointed at
+    // "http://127.0.0.1:1/original.pdf" - the exact same unreachable address
+    // loadContentAnswers404WithAGermanMessageWhenTheRemoteSourceIsUnreachable above uses to stand
+    // in for "the source is offline". Both produced the identical generic 404, so this test stayed
+    // green even with the allowlist re-check removed entirely - "blocked" and "unreachable" were
+    // indistinguishable. This version instead points at a real, listening local server: with the
+    // re-check in place, the request must never even reach it (asserted via requestsReceived
+    // below); with it removed, the request would succeed and both assertions would fail.
+    startRemoteServer();
+    AtomicInteger requestsReceived = new AtomicInteger();
+    remoteServer.createContext(
+        "/original.pdf",
+        exchange -> {
+          requestsReceived.incrementAndGet();
+          byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    // A dedicated, enabled validator with an empty allowlist stands in for an allowlist that has
+    // since been narrowed (or was never configured to include this host) - loopback is always
+    // blocked once validation is enabled, regardless of the allowlist.
     TargetAddressValidator enabledValidator =
         new TargetAddressValidator(new IndexingProperties.TargetValidation(true, List.of()));
     LibraryDocumentService serviceWithValidation =
@@ -1032,14 +1062,15 @@ class LibraryDocumentServiceTest {
             new UploadProperties(storageDir.toString(), 10L * 1024, null, 0, 0),
             storageQuotaService,
             filesystemAllowlist,
-            new UrlFileDownloader(enabledValidator));
+            new UrlFileDownloader(enabledValidator),
+            enabledValidator,
+            remoteContentProperties);
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenReturn(AssetRole.VIEWER);
     KnowledgeLibrary library = remoteLibrary(null);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
-    // Loopback is always blocked once validation is enabled, regardless of the allowlist.
     Document document =
-        remoteDocument(DocumentSourceType.HTTP_DIRECTORY, "http://127.0.0.1:1/original.pdf");
+        remoteDocument(DocumentSourceType.HTTP_DIRECTORY, remoteBaseUrl + "/original.pdf");
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
 
@@ -1048,5 +1079,6 @@ class LibraryDocumentServiceTest {
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND)
         .hasFieldOrPropertyWithValue(
             "reason", "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+    assertThat(requestsReceived.get()).isZero();
   }
 }

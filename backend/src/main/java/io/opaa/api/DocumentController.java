@@ -5,19 +5,16 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.library.DocumentContent;
 import io.opaa.library.LibraryDocumentService;
-import java.io.FilterInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -82,11 +79,11 @@ public class DocumentController {
             currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
 
     Resource resource =
-        content.temporary()
-            ? new DeleteAfterServeResource(content.path())
+        content.isStreamed()
+            ? new InputStreamResource(content.stream())
             : new FileSystemResource(content.path());
     return ResponseEntity.ok()
-        .contentType(MediaType.parseMediaType(content.contentType()))
+        .contentType(parseMediaTypeOrOctetStream(content.contentType()))
         .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(content.fileName()))
         .header("X-Content-Type-Options", "nosniff")
         .header("Content-Security-Policy", "default-src 'none'; sandbox")
@@ -94,40 +91,20 @@ public class DocumentController {
   }
 
   /**
-   * A {@link FileSystemResource} whose backing file is deleted once it has been streamed to the
-   * caller (#747) - used only for {@link DocumentContent#temporary()} content, the downloaded
-   * original of a remote {@code HTTP_DIRECTORY}/{@code RSS_FEED} document that this class itself
-   * fetched into a temp file for exactly this one response and does not otherwise own. {@code
-   * ResourceHttpMessageConverter} closes the stream {@link #getInputStream()} returns in a {@code
-   * finally} block once the response body has been written - the wrapped stream's own {@code
-   * close()} override piggybacks on that same guarantee to remove the temp file, so cleanup runs
-   * exactly once per request regardless of whether the write succeeded or the client disconnected
-   * mid-transfer.
+   * {@link MediaType#parseMediaType} falls back to {@code application/octet-stream} instead of
+   * propagating {@link InvalidMediaTypeException} (#748 review, finding 2a) - that exception is an
+   * {@link IllegalArgumentException}, uncaught here would surface as a 500 for a stored or
+   * remote-declared {@code Content-Type} this class does not control the syntax of (a malformed
+   * value from a remote source proxied by {@link LibraryDocumentService#loadContent}), turning
+   * "source sent something odd" into an OPAA-side server error instead of a merely generic
+   * download.
    */
-  private static final class DeleteAfterServeResource extends FileSystemResource {
-
-    DeleteAfterServeResource(Path path) {
-      super(path);
-    }
-
-    @Override
-    public InputStream getInputStream() throws IOException {
-      InputStream delegate = super.getInputStream();
-      Path path = getFile().toPath();
-      return new FilterInputStream(delegate) {
-        @Override
-        public void close() throws IOException {
-          try {
-            super.close();
-          } finally {
-            try {
-              Files.deleteIfExists(path);
-            } catch (IOException e) {
-              log.warn("Could not delete temporary remote document content file {}", path, e);
-            }
-          }
-        }
-      };
+  private MediaType parseMediaTypeOrOctetStream(String contentType) {
+    try {
+      return MediaType.parseMediaType(contentType);
+    } catch (InvalidMediaTypeException e) {
+      log.warn("Document content carried an unparsable Content-Type: {}", contentType, e);
+      return MediaType.APPLICATION_OCTET_STREAM;
     }
   }
 

@@ -1127,11 +1127,14 @@ paths:
         from OPAA's own network (an internal fileserver/intranet site, the common case in a Behörde),
         never from the caller's browser. The proxy re-validates the target address against the same
         allowlist (#267) applied at indexing time, follows a redirect only within the same origin,
-        applies the library's own stored proxy/credentials to the outbound request without ever
-        exposing them in the response, and bounds both the transfer size and the request timeout.
-        Answered with Content-Disposition: inline and the file's original name/content type (the
-        proxied response's own declared type where the source provides one), so a client can render
-        it inline instead of forcing a download. A document from another organization, without a
+        validates the configured proxy host the same way, applies the library's own stored
+        proxy/credentials to the outbound request without ever exposing them in the response, and
+        streams the response directly to the caller (no temp file) bounded by its own, smaller size
+        limit and request timeout than a background indexing run uses. Answered with
+        Content-Disposition: inline and the file's original name/content type (the document's own
+        stored content type first, the proxied response's own declared type - normalized, no
+        parameters - only as a fallback), so a client can render it inline instead of forcing a
+        download. A document from another organization, without a
         library grant, of an unsupported sourceType, whose local file has since been moved or deleted
         on disk, or whose remote source is unreachable/rejected are all answered with the same 404 -
         no response here reveals whether a given documentId exists, nor whether "not found" means

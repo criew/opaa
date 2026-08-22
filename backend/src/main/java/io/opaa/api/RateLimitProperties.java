@@ -11,10 +11,19 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param sourceTest per-endpoint limits for the source connection test endpoint (#514, PR #537
  *     review finding 3) - a synchronous probe with its own outbound connections and timeouts, the
  *     same reason the indexing trigger above is limited.
+ * @param documentContent per-endpoint limits for the document content endpoint (#748 review,
+ *     finding 1) - {@code GET /api/v1/documents/{documentId}/content} proxies a {@code
+ *     HTTP_DIRECTORY}/{@code RSS_FEED} document's original from its remote source (#747), the same
+ *     kind of synchronous, outbound-connection-holding request {@code sourceTest} above is already
+ *     limited for, except this one is VIEWER-reachable rather than gated by library creation.
  */
 @ConfigurationProperties(prefix = "opaa.rate-limit")
 public record RateLimitProperties(
-    boolean enabled, EndpointLimit query, EndpointLimit indexing, EndpointLimit sourceTest) {
+    boolean enabled,
+    EndpointLimit query,
+    EndpointLimit indexing,
+    EndpointLimit sourceTest,
+    EndpointLimit documentContent) {
 
   /**
    * Rate limit settings for a single endpoint.

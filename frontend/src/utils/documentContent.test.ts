@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getDocumentContent } from '../services/api'
-import { openDocumentContent, openExternalSourceUrl } from './documentContent'
+import { openDocumentContent } from './documentContent'
 
 vi.mock('../services/api', () => ({
   getDocumentContent: vi.fn(),
@@ -82,6 +82,18 @@ describe('documentContent', () => {
       expect(clickSpy).toHaveBeenCalledTimes(1)
     })
 
+    it('downloads an SVG with a charset parameter too (#748 review, finding 2b: the essence, not the full Content-Type line, must be compared)', async () => {
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: new Blob(['<svg/>'], { type: 'image/svg+xml; charset=utf-8' }),
+        fileName: 'original.svg',
+      })
+
+      await openDocumentContent('doc-1', 'fallback.svg')
+
+      expect(windowOpenSpy).not.toHaveBeenCalled()
+      expect(clickSpy).toHaveBeenCalledTimes(1)
+    })
+
     it('downloads a non-previewable file under its original name instead of opening a tab', async () => {
       mockGetDocumentContent.mockResolvedValueOnce({
         blob: new Blob(['x'], { type: 'application/vnd.ms-word' }),
@@ -132,18 +144,6 @@ describe('documentContent', () => {
         'Das Originaldokument wurde nicht gefunden.',
       )
       expect(createObjectURLSpy).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('openExternalSourceUrl', () => {
-    it('opens the given URL in a new tab without exposing window.opener', () => {
-      openExternalSourceUrl('https://example.gov/aktuelles/dienstanweisung-2024')
-
-      expect(windowOpenSpy).toHaveBeenCalledWith(
-        'https://example.gov/aktuelles/dienstanweisung-2024',
-        '_blank',
-        'noopener,noreferrer',
-      )
     })
   })
 })

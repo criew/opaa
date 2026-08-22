@@ -33,6 +33,12 @@ public class RateLimitConfiguration {
     // indexing trigger above - source-test carries no library (there is none yet), so there is
     // nothing to key a per-library limiter by.
     String sourceTestPattern = "^/api/v1/libraries/source-test$";
+    // #748 review, finding 1: a flat pattern, mirroring source-test above rather than the
+    // per-library indexing trigger's capture group - unlike triggering an indexing run, "Im
+    // Dokument öffnen" is a routine per-document click any VIEWER can make on any document, so
+    // keying the limiter by document id would let the same caller bypass the limit simply by
+    // clicking a different document each time.
+    String documentContentPattern = "^/api/v1/documents/[^/]+/content$";
 
     Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
     perIpLimiters.put(
@@ -46,6 +52,11 @@ public class RateLimitConfiguration {
         sourceTestPattern,
         new RateLimitService(
             properties.sourceTest().maxRequests(), properties.sourceTest().windowSeconds()));
+    perIpLimiters.put(
+        documentContentPattern,
+        new RateLimitService(
+            properties.documentContent().maxRequests(),
+            properties.documentContent().windowSeconds()));
 
     Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
     globalLimiters.put(
@@ -60,6 +71,11 @@ public class RateLimitConfiguration {
         sourceTestPattern,
         new RateLimitService(
             properties.sourceTest().globalMaxRequests(), properties.sourceTest().windowSeconds()));
+    globalLimiters.put(
+        documentContentPattern,
+        new RateLimitService(
+            properties.documentContent().globalMaxRequests(),
+            properties.documentContent().windowSeconds()));
 
     var registration =
         new FilterRegistrationBean<>(

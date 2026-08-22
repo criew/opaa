@@ -99,14 +99,12 @@ vi.mock('../services/api', async () => {
 // #738: the "Original öffnen" action delegates to this shared module (see its own tests for the
 // blob-fetch/preview/download behaviour) - mocked here so this file only has to verify which
 // target LibraryDetailPage picks per document, not how opening/downloading itself works.
-const { mockOpenDocumentContent, mockOpenExternalSourceUrl } = vi.hoisted(() => ({
+const { mockOpenDocumentContent } = vi.hoisted(() => ({
   mockOpenDocumentContent: vi.fn(async () => undefined),
-  mockOpenExternalSourceUrl: vi.fn(),
 }))
 
 vi.mock('../utils/documentContent', () => ({
   openDocumentContent: mockOpenDocumentContent,
-  openExternalSourceUrl: mockOpenExternalSourceUrl,
 }))
 
 const managerLibrary: LibraryListResponse = {
@@ -1001,7 +999,6 @@ describe('LibraryDetailPage', () => {
       await user.click(button)
 
       expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
-      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
     })
 
     it('fetches and opens the file as a Blob for an HTTP_DIRECTORY document too (#747)', async () => {
@@ -1037,7 +1034,6 @@ describe('LibraryDetailPage', () => {
       await user.click(button)
 
       expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
-      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
 
       // #747: the source URL stays visible as secondary information (a "Quelle:" link) even
       // though "Original öffnen" no longer navigates there directly.
@@ -1079,7 +1075,6 @@ describe('LibraryDetailPage', () => {
       await user.click(button)
 
       expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'anlage.pdf')
-      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
       expect(
         screen.getByRole('link', { name: 'https://example.gov/aktuelles/dienstanweisung-2024' }),
       ).toBeInTheDocument()

@@ -295,7 +295,9 @@ export default function SourceEvidenceDrawer({
                 {/* #747: every sourceType with a documentId opens via the content endpoint
                     (LibraryDetailPage#handleOpenOriginal, #738); sourceEntryUrl/sourceUrl is
                     shown alongside it as secondary information (a small "Quelle" link carrying
-                    the raw URL as its tooltip), since that address may only be reachable from
+                    the raw URL as its title tooltip and aria-label - #748 review, nit 5: a plain
+                    title alone is generally not announced by a screen reader once the element
+                    already has visible text), since that address may only be reachable from
                     OPAA's own network, not the caller's browser. */}
                 {doc.documentId && (
                   <Link
@@ -315,6 +317,7 @@ export default function SourceEvidenceDrawer({
                     rel="noopener noreferrer"
                     underline="hover"
                     title={doc.sourceEntryUrl ?? doc.sourceUrl ?? undefined}
+                    aria-label={`Quelle: ${doc.sourceEntryUrl ?? doc.sourceUrl ?? ''}`}
                     sx={{ fontSize: 11.5, color: 'text.disabled' }}
                   >
                     Quelle

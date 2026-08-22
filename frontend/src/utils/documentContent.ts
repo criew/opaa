@@ -13,11 +13,22 @@ import { getDocumentContent } from '../services/api'
 const PREVIEWABLE_CONTENT_TYPE_PREFIXES = ['application/pdf', 'image/']
 const NEVER_PREVIEWABLE_CONTENT_TYPES = ['image/svg+xml']
 
+// #748 review, finding 2b: `blob.type` carries the full Content-Type line, parameters included
+// (e.g. `image/svg+xml; charset=utf-8`) - comparing that verbatim against
+// NEVER_PREVIEWABLE_CONTENT_TYPES let a source that adds a harmless-looking parameter slip past the
+// exact-match sperre while still satisfying the `startsWith('image/')` prefix check below, exactly
+// the SVG-in-this-origin scenario #743 exists to close. The essence (type/subtype, no parameters) is
+// what both checks below actually mean to compare.
+function contentTypeEssence(contentType: string): string {
+  return contentType.split(';')[0].trim().toLowerCase()
+}
+
 function isPreviewable(contentType: string): boolean {
-  if (NEVER_PREVIEWABLE_CONTENT_TYPES.includes(contentType)) {
+  const essence = contentTypeEssence(contentType)
+  if (NEVER_PREVIEWABLE_CONTENT_TYPES.includes(essence)) {
     return false
   }
-  return PREVIEWABLE_CONTENT_TYPE_PREFIXES.some((prefix) => contentType.startsWith(prefix))
+  return PREVIEWABLE_CONTENT_TYPE_PREFIXES.some((prefix) => essence.startsWith(prefix))
 }
 
 // Exported so tests can advance fake timers by exactly this amount instead of a magic number, and
@@ -72,14 +83,4 @@ export async function openDocumentContent(
   }
 
   setTimeout(() => URL.revokeObjectURL(objectUrl), OBJECT_URL_REVOKE_DELAY_MS)
-}
-
-/**
- * Opens an external source URL (HTTP_DIRECTORY's own location, or the RSS entry page an
- * attachment was found on) in a new tab - the remote-source counterpart to
- * {@link openDocumentContent} for a document with no local file, sharing the same
- * noopener/noreferrer new-tab behaviour.
- */
-export function openExternalSourceUrl(url: string): void {
-  window.open(url, '_blank', 'noopener,noreferrer')
 }

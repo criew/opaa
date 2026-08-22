@@ -146,6 +146,15 @@ opaa:
     # HTTP_DIRECTORY/RSS_FEED connectors), not only this REST endpoint. Default 10 GiB. 0 or
     # negative disables the quota entirely - see UploadProperties#libraryQuotaBytes.
     library-quota-bytes: ${OPAA_UPLOAD_LIBRARY_QUOTA_BYTES:10737418240}
+  documents:
+    # #748 review, finding 1: the synchronous remote-content proxy path (GET
+    # /api/v1/documents/{documentId}/content for a HTTP_DIRECTORY/RSS_FEED document, #747) gets its
+    # own, smaller bound and shorter per-hop timeout instead of reusing opaa.upload.max-file-size
+    # and UrlFileDownloader#downloadBounded's 120s background-indexing timeout - see
+    # RemoteContentProperties.
+    remote-content:
+      max-bytes: ${OPAA_DOCUMENTS_REMOTE_CONTENT_MAX_BYTES:20971520}
+      timeout-seconds: ${OPAA_DOCUMENTS_REMOTE_CONTENT_TIMEOUT_SECONDS:20}
   rate-limit:
     enabled: ${OPAA_RATE_LIMIT_ENABLED:true}
     query:
@@ -164,6 +173,15 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_SOURCE_TEST_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_SOURCE_TEST_GLOBAL_MAX_REQUESTS:30}
+    # #748 review, finding 1: GET /api/v1/documents/{documentId}/content is, for a HTTP_DIRECTORY/
+    # RSS_FEED document, a synchronous proxy fetch with its own outbound connection (#747) - the
+    # same reason source-test above is limited, except this one is reachable by any VIEWER on
+    # routine "Im Dokument öffnen" clicks rather than gated behind library creation, so its limit is
+    # looser than source-test's but still capped.
+    document-content:
+      max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS:20}
+      window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_GLOBAL_MAX_REQUESTS:100}
   cors:
     allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}
   directory-sync:
