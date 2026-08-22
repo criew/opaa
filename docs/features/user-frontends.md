@@ -80,6 +80,18 @@ nur die eigene Herkunfts-URL **eines einzelnen Dokuments** — der Dokument-Deep
 #738/#740, analog zu `sourceEntryUrl`, das seit #493 ebenfalls ungefiltert an Leseberechtigte geht.
 Maintainer-Entscheidung auf PR #743 (Epic #740).
 
+Seit #739 gilt derselbe Deeplink auch für die Fundstellen unter einer Antwort und für das
+Belegfenster („Belege dieser Antwort"): `SourceReference` (OpenAPI) trägt jetzt `documentId` und
+`sourceType`, dazu ein eigenes `sourceUrl` mit derselben Bedeutung wie auf
+`LibraryDocumentResponse`. Ein Klick auf „Im Dokument öffnen" lädt für UPLOAD/FILESYSTEM das Original
+über `GET /api/v1/documents/{documentId}/content` (dasselbe Hilfsmodul `documentContent.ts`), für
+HTTP_DIRECTORY/RSS_FEED öffnet er stattdessen `sourceEntryUrl` bzw. `sourceUrl` in einem neuen Tab —
+genau die Fallunterscheidung, die die Dokumentenübersicht oben bereits trifft. Backendseitig
+schlüsselt die Zusammenführung mehrfach zitierter Fundstellen (`QueryService#mergeSourceReferences`)
+seither auf `documentId` statt auf den Dateinamen: zwei unterschiedliche Dokumente mit identischem
+Dateinamen (etwa zwei RSS-Anlagen) erscheinen dadurch als zwei getrennte Fundstellen mit je eigenem
+Deeplink, statt zu einer zusammenzufallen.
+
 **Gesprächsverwaltung.** Ein Gespräch ist ein persistentes Objekt, das **von Anfang an in genau einem
 Arbeitsraum** liegt — dort erstellt (`POST /api/v1/spaces/{spaceId}/chats`), dort unter
 `/spaces/:spaceId/chats/:chatId` gelistet und geöffnet, nicht verschiebbar (siehe

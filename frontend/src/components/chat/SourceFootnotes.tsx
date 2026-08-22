@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Collapse from '@mui/material/Collapse'
 import Link from '@mui/material/Link'
@@ -6,7 +7,9 @@ import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import type { CitationIndex } from './citations'
 import { citationRowId } from './citations'
+import type { SourceReference } from '../../types/api'
 import { fontFamily } from '../../theme/tokens'
+import { openDocumentContent, openExternalSourceUrl } from '../../utils/documentContent'
 
 interface SourceFootnotesProps {
   messageId: string
@@ -20,6 +23,46 @@ interface SourceFootnotesProps {
 function formatIndexedAt(indexedAt: string | null | undefined): string | null {
   if (!indexedAt) return null
   return `indiziert ${new Date(indexedAt).toLocaleDateString('de-DE', { dateStyle: 'medium' })}`
+}
+
+/** #739: whether a source carries anything at all to open - a local original (UPLOAD/FILESYSTEM,
+ *  opened via the download endpoint) or a remote deep link (sourceEntryUrl/sourceUrl). False for a
+ *  synthetic entry (#386) with neither. */
+function canOpenOriginal(source: SourceReference | undefined): boolean {
+  if (!source) return false
+  return (
+    source.sourceType === 'UPLOAD' ||
+    source.sourceType === 'FILESYSTEM' ||
+    Boolean(source.sourceEntryUrl) ||
+    Boolean(source.sourceUrl)
+  )
+}
+
+/**
+ * #739: opens a citation's original document, mirroring LibraryDetailPage#handleOpenOriginal
+ * (#738) - a local original (UPLOAD/FILESYSTEM) goes through the Bearer-authenticated download
+ * endpoint (a plain <a href> cannot carry the token, ADR-0005), a remote source
+ * (HTTP_DIRECTORY/RSS_FEED) opens sourceEntryUrl/sourceUrl directly instead, the former preferred
+ * when both are set.
+ */
+async function openOriginal(
+  source: SourceReference,
+  fileName: string,
+  onError: (message: string) => void,
+) {
+  const externalUrl = source.sourceEntryUrl ?? source.sourceUrl
+  if (source.sourceType === 'UPLOAD' || source.sourceType === 'FILESYSTEM') {
+    if (!source.documentId) return
+    try {
+      await openDocumentContent(source.documentId, fileName)
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.')
+    }
+    return
+  }
+  if (externalUrl) {
+    openExternalSourceUrl(externalUrl)
+  }
 }
 
 /** The metadata the API can already vouch for - the mockup's Abschnitt/Paragraf follow with the
@@ -40,6 +83,7 @@ function renderDocRow(
   docIndex: number,
   messageId: string,
   highlighted: boolean,
+  onOpenOriginal: (source: SourceReference, fileName: string) => void,
 ) {
   return (
     <Box
@@ -87,14 +131,14 @@ function renderDocRow(
           {sourceMeta(doc)}
         </Typography>
       )}
-      {/* #666/#639: sourceEntryUrl carries an RSS-entry attachment's origin - the mockup's
-          "Im Dokument öffnen" affordance, pointing at the entry itself (#493). */}
-      {doc.source?.sourceEntryUrl && (
+      {/* #739: opens the original via the download endpoint for a local original, or its
+          sourceEntryUrl/sourceUrl deep link for a remote one (see canOpenOriginal). */}
+      {canOpenOriginal(doc.source) && (
         <Link
-          href={doc.source.sourceEntryUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+          component="button"
+          type="button"
           underline="hover"
+          onClick={() => onOpenOriginal(doc.source!, doc.fileName)}
           sx={{ fontSize: 11 }}
         >
           Im Dokument öffnen
@@ -117,6 +161,13 @@ export default function SourceFootnotes({
 }: SourceFootnotesProps) {
   const [uncitedOpen, setUncitedOpen] = useState(false)
   const [foldedOpen, setFoldedOpen] = useState(false)
+  // #739: mirrors LibraryDetailPage's openOriginalError (#738) - opening the original is a
+  // read-only, per-click action, so its failure (404, file missing) gets its own local message.
+  const [openOriginalError, setOpenOriginalError] = useState<string | null>(null)
+  const handleOpenOriginal = (source: SourceReference, fileName: string) => {
+    setOpenOriginalError(null)
+    void openOriginal(source, fileName, setOpenOriginalError)
+  }
   const { docs, uncited, markerCount } = citations
 
   const visibleDocs = docs.slice(0, VISIBLE_DOCS)
@@ -197,14 +248,32 @@ export default function SourceFootnotes({
         )}
       </Box>
 
+      {openOriginalError && (
+        <Alert severity="error" sx={{ mb: 0.75 }} onClose={() => setOpenOriginalError(null)}>
+          {openOriginalError}
+        </Alert>
+      )}
+
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
         {visibleDocs.map((doc, docIndex) =>
-          renderDocRow(doc, docIndex, messageId, highlightedDocIndexes.includes(docIndex)),
+          renderDocRow(
+            doc,
+            docIndex,
+            messageId,
+            highlightedDocIndexes.includes(docIndex),
+            handleOpenOriginal,
+          ),
         )}
         {foldedOpen &&
           foldedDocs.map((doc, i) => {
             const docIndex = i + VISIBLE_DOCS
-            return renderDocRow(doc, docIndex, messageId, highlightedDocIndexes.includes(docIndex))
+            return renderDocRow(
+              doc,
+              docIndex,
+              messageId,
+              highlightedDocIndexes.includes(docIndex),
+              handleOpenOriginal,
+            )
           })}
       </Box>
 
@@ -276,12 +345,12 @@ export default function SourceFootnotes({
                       {source.spaceName}
                     </Typography>
                   )}
-                  {source.sourceEntryUrl && (
+                  {canOpenOriginal(source) && (
                     <Link
-                      href={source.sourceEntryUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      component="button"
+                      type="button"
                       underline="hover"
+                      onClick={() => handleOpenOriginal(source, source.fileName)}
                       sx={{ fontSize: 11 }}
                     >
                       Im Dokument öffnen

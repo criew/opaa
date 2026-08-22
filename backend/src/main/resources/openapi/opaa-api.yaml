@@ -2236,6 +2236,35 @@ components:
           type: string
           format: date-time
           nullable: true
+        documentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The document id chunks were retrieved from (#739) - lets a client open the original via
+            GET /api/v1/documents/{documentId}/content (local sourceTypes only, see sourceType/
+            sourceUrl below). Null for a synthetic entry (#386) whose citation named a document id
+            that matched no retrieved chunk at all - there is nothing real to link to.
+          example: 3f9a6b2e-1c4d-4e8a-9f0b-2d6c8e1a5b7d
+        sourceType:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DocumentSourceType"
+          description: >
+            The retrieved document's own source type (#739), deciding which deep link the client
+            follows: GET /api/v1/documents/{documentId}/content for UPLOAD/FILESYSTEM (a local
+            original), sourceUrl below for HTTP_DIRECTORY/RSS_FEED (no local file - that endpoint
+            answers 404 for both). Null exactly when documentId is null.
+          example: FILESYSTEM
+        sourceUrl:
+          type: string
+          nullable: true
+          description: >
+            The document's own remote location for sourceType HTTP_DIRECTORY/RSS_FEED (#739),
+            mirroring LibraryDocumentResponse.sourceUrl - the deep link a client opens for these
+            source types in place of the download endpoint, which has no local file to stream for
+            them. Null for UPLOAD/FILESYSTEM (use documentId instead) and for a synthetic entry.
+          example: https://example.gov/verzeichnis/dienstanweisung-2024.pdf
         sourceEntryUrl:
           type: string
           nullable: true

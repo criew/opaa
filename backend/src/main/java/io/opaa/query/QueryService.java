@@ -266,7 +266,7 @@ public class QueryService {
                     citationValidator.validate(
                         citationParser.extractCitations(answer), relevantChunks);
                 logInvalidCitations(validatedCitations);
-                Map<String, Integer> matchCounts = countMatchesPerFile(relevantChunks);
+                Map<String, Integer> matchCounts = countMatchesPerDocument(relevantChunks);
                 Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId =
                     lookupSourceDocuments(relevantChunks);
                 List<SourceReference> sources =
@@ -392,11 +392,16 @@ public class QueryService {
     return new FilterExpressionBuilder().in(LIBRARY_ID_METADATA_KEY, libraryIdValues).build();
   }
 
-  private Map<String, Integer> countMatchesPerFile(List<Document> chunks) {
+  /**
+   * Groups by {@code document_id}, not {@code file_name} (#739): two distinct documents that happen
+   * to share a file name must each get their own match count, the same collision {@link
+   * #mapSources} now avoids by keying its merge on {@code document_id} too.
+   */
+  private Map<String, Integer> countMatchesPerDocument(List<Document> chunks) {
     return chunks.stream()
         .collect(
             Collectors.groupingBy(
-                chunk -> chunk.getMetadata().getOrDefault("file_name", "unknown").toString(),
+                chunk -> chunk.getMetadata().getOrDefault("document_id", "unknown").toString(),
                 Collectors.summingInt(e -> 1)));
   }
 
@@ -473,6 +478,15 @@ public class QueryService {
    * false} on the real entry; its {@code cited}, relevance score, match count and document link are
    * left exactly as the real, retrieved chunk(s) determined them. A synthetic entry is only ever
    * appended as an extra row when no real entry shares its file name.
+   *
+   * <p>#739: the real entries below are deduped by {@code document_id}, not {@code fileName} - two
+   * distinct documents that happen to share a file name (e.g. two RSS entries both attaching a
+   * same-named PDF) now each keep their own {@link SourceReference} row instead of collapsing into
+   * one, since {@code fileName} is no longer a reliable proxy for document identity now that every
+   * entry also carries its own {@code documentId} deep link. The orphan-collision check below still
+   * matches by {@code fileName} deliberately - a fabricated citation naming the right file name but
+   * the wrong document id must still flag every real entry sharing that file name, since there is
+   * no other signal to tell which one the model meant.
    */
   private List<SourceReference> mapSources(
       List<Document> chunks,
@@ -494,7 +508,11 @@ public class QueryService {
             .map(CitationValidator.ValidatedCitation::documentId)
             .collect(Collectors.toSet());
 
-    Map<String, SourceReference> fromChunksByFileName =
+    // Keyed on the chunk's raw document_id metadata string, not the parsed SourceReference#
+    // getDocumentId() (which is null for a malformed/missing value, #739's parseDocumentId) - two
+    // chunks with the same unparseable id must still merge into one entry rather than every one of
+    // them colliding on a shared null key.
+    Map<String, SourceReference> fromChunksByDocumentId =
         chunks.stream()
             .map(
                 chunk -> {
@@ -505,20 +523,27 @@ public class QueryService {
                   double score = chunk.getScore() != null ? chunk.getScore() : 0.0;
                   boolean cited = validCitedDocumentIds.contains(documentId);
                   boolean citationValid = !documentIdsWithInvalidCitation.contains(documentId);
-                  int matches = matchCounts.getOrDefault(fileName, 1);
+                  int matches = matchCounts.getOrDefault(documentId, 1);
                   io.opaa.indexing.Document sourceDocument = sourceDocumentsByDocId.get(documentId);
                   Instant indexedAt = sourceDocument != null ? sourceDocument.getIndexedAt() : null;
                   String sourceEntryUrl =
                       sourceDocument != null ? sourceDocument.getSourceEntryUrl() : null;
-                  return new SourceReference(fileName, score, matches, cited)
-                      .indexedAt(indexedAt)
-                      .sourceEntryUrl(sourceEntryUrl)
-                      .citationValid(citationValid);
+                  SourceReference reference =
+                      new SourceReference(fileName, score, matches, cited)
+                          .indexedAt(indexedAt)
+                          .documentId(parseDocumentId(documentId))
+                          .sourceType(
+                              sourceDocument != null ? sourceDocument.getSourceType() : null)
+                          .sourceUrl(
+                              sourceDocument != null ? sourceDocument.getDeepLinkSourceUrl() : null)
+                          .sourceEntryUrl(sourceEntryUrl)
+                          .citationValid(citationValid);
+                  return Map.entry(documentId, reference);
                 })
             .collect(
                 toMap(
-                    SourceReference::getFileName,
-                    source -> source,
+                    Map.Entry::getKey,
+                    Map.Entry::getValue,
                     QueryService::mergeSourceReferences,
                     LinkedHashMap::new));
 
@@ -526,16 +551,38 @@ public class QueryService {
         buildOrphanSourceReferences(validatedCitations, retrievedDocumentIds);
     List<SourceReference> unmatchedOrphanEntries = new ArrayList<>();
     for (SourceReference orphan : orphanEntries) {
-      SourceReference collidingRealEntry = fromChunksByFileName.get(orphan.getFileName());
-      if (collidingRealEntry != null) {
-        collidingRealEntry.setCitationValid(false);
+      List<SourceReference> collidingRealEntries =
+          fromChunksByDocumentId.values().stream()
+              .filter(entry -> entry.getFileName().equals(orphan.getFileName()))
+              .toList();
+      if (!collidingRealEntries.isEmpty()) {
+        collidingRealEntries.forEach(entry -> entry.setCitationValid(false));
       } else {
         unmatchedOrphanEntries.add(orphan);
       }
     }
 
-    return Stream.concat(fromChunksByFileName.values().stream(), unmatchedOrphanEntries.stream())
+    return Stream.concat(fromChunksByDocumentId.values().stream(), unmatchedOrphanEntries.stream())
         .toList();
+  }
+
+  /**
+   * Parses a chunk's {@code document_id} metadata value into a {@link UUID} for {@link
+   * SourceReference#getDocumentId()} (#739), returning {@code null} for an empty or malformed value
+   * rather than throwing - the same defensive handling {@link #lookupSourceDocuments} already
+   * applies to the identical metadata field, since a chunk with missing/corrupt metadata must not
+   * fail the whole answer.
+   */
+  private static UUID parseDocumentId(String documentId) {
+    if (documentId.isEmpty()) {
+      return null;
+    }
+    try {
+      return UUID.fromString(documentId);
+    } catch (IllegalArgumentException e) {
+      log.debug("Invalid document ID format: {}", documentId);
+      return null;
+    }
   }
 
   /**
@@ -566,19 +613,25 @@ public class QueryService {
   }
 
   /**
-   * Merges duplicate source references for the same file, keeping the one with the highest
-   * relevance score while preserving citation status. If either reference was cited in the answer,
-   * the merged result is marked as cited — because any chunk from that document being cited means
-   * the document as a whole contributed to the answer.
+   * Merges duplicate source references for the same <b>document</b> (#739, previously the same file
+   * name - see below), keeping the one with the highest relevance score while preserving citation
+   * status. If either reference was cited in the answer, the merged result is marked as cited —
+   * because any chunk from that document being cited means the document as a whole contributed to
+   * the answer.
    *
-   * <p>#639 review: the dedupe key is {@code fileName}, not {@code document_id} - two distinct
-   * documents can share a file name (e.g. two RSS entries both attaching a same-named PDF), each
-   * with its own, different {@code sourceEntryUrl}. Asserting the preferred chunk's URL as the
-   * merged citation's origin would then be an unverifiable, potentially wrong claim about where the
-   * other, merged-away chunk actually came from - a checkable falsehood in the citation. A merge
-   * where {@code a} and {@code b} disagree on {@code sourceEntryUrl} therefore drops the field to
-   * {@code null} rather than picking either side; only an unambiguous agreement (both null, or both
-   * the same URL) survives the merge.
+   * <p>#739: the dedupe key is now {@code document_id}, not {@code fileName} (#639's original
+   * reasoning for the opposite choice, below, is why this needed to change deliberately rather than
+   * incidentally). Two distinct documents that happen to share a file name (e.g. two RSS entries
+   * both attaching a same-named PDF) no longer collapse into one {@link SourceReference} row at all
+   * - each keeps its own entry, since #739 needs every entry's own {@code documentId} for its deep
+   * link and folding two different documents together would have to pick (or drop) one arbitrarily.
+   * {@code a} and {@code b} passed to this method therefore always share the same {@code
+   * document_id}, hence the same underlying {@link io.opaa.indexing.Document} row - {@code
+   * documentId}, {@code sourceType}, {@code sourceUrl} and {@code sourceEntryUrl} are consequently
+   * always equal between them (unlike under the old fileName key, where two genuinely different
+   * documents could disagree on {@code sourceEntryUrl} - the reason #639 originally dropped it to
+   * {@code null} on any disagreement rather than picking either side). The merge below still reads
+   * whichever side happens to be {@code preferred}, since both sides agree anyway.
    */
   static SourceReference mergeSourceReferences(SourceReference a, SourceReference b) {
     SourceReference preferred = a.getRelevanceScore() >= b.getRelevanceScore() ? a : b;
@@ -599,6 +652,9 @@ public class QueryService {
               preferred.getMatchCount(),
               true)
           .indexedAt(preferred.getIndexedAt())
+          .documentId(preferred.getDocumentId())
+          .sourceType(preferred.getSourceType())
+          .sourceUrl(preferred.getSourceUrl())
           .sourceEntryUrl(mergedSourceEntryUrl)
           .citationValid(mergedCitationValid);
     }

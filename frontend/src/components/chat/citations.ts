@@ -14,6 +14,10 @@ export interface CitationDoc {
   numbers: number[]
   /** The matching source metadata, when the backend listed one for this file name. */
   source: SourceReference | undefined
+  /** #739: the document id the backend's citation deep link opens - undefined for a synthetic
+   *  entry (#386) with no matching retrieved document, same as {@link SourceReference.documentId}
+   *  it is carried straight through from. */
+  documentId: string | null | undefined
 }
 
 export interface CitationIndex {
@@ -56,7 +60,12 @@ export function buildCitationIndex(
       if (docIndex === undefined) {
         docIndex = docs.length
         docIndexByFileName.set(fileName, docIndex)
-        docs.push({ fileName, numbers: [], source: sourceByFileName.get(fileName) })
+        docs.push({
+          fileName,
+          numbers: [],
+          source: sourceByFileName.get(fileName),
+          documentId: sourceByFileName.get(fileName)?.documentId,
+        })
       }
       docs[docIndex].numbers.push(number)
       docIndexByNumber.set(number, docIndex)
@@ -66,7 +75,12 @@ export function buildCitationIndex(
   for (const source of citedSources) {
     if (!docIndexByFileName.has(source.fileName)) {
       docIndexByFileName.set(source.fileName, docs.length)
-      docs.push({ fileName: source.fileName, numbers: [], source })
+      docs.push({
+        fileName: source.fileName,
+        numbers: [],
+        source,
+        documentId: source.documentId,
+      })
     }
   }
 

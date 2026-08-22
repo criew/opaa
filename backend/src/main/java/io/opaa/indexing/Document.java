@@ -244,4 +244,21 @@ public class Document {
   public Instant getCreatedAt() {
     return createdAt;
   }
+
+  /**
+   * The deep link target for a document with no local file (#738/#739): {@link #getFilePath()}
+   * holds the remote URL itself for {@code HTTP_DIRECTORY} and {@code RSS_FEED} - the same identity
+   * {@code FileProcessingService#processUrlFile} deduplicates by - but the server-local storage
+   * path for {@code UPLOAD}/{@code FILESYSTEM}, which must stay internal (the same floor #507
+   * already draws for a library's own configured sourcePath). Shared between {@code
+   * LibraryDocumentResponses} (library listing, #738) and {@code QueryService} (citation deep
+   * links, #739) so both compute the identical value from a single place.
+   */
+  public String getDeepLinkSourceUrl() {
+    if (sourceType == DocumentSourceType.HTTP_DIRECTORY
+        || sourceType == DocumentSourceType.RSS_FEED) {
+      return filePath;
+    }
+    return null;
+  }
 }
