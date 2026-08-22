@@ -8,49 +8,49 @@
     "chunkSizeMatchesApplicationDefault": true,
     "chunkOverlap": 100,
     "documentTopK": 10,
-    "chunkTopK": 150,
-    "searchTopK": 150,
+    "chunkTopK": 130,
+    "searchTopK": 130,
     "productionSimilarityThreshold": 0.3,
     "pgvectorIndexType": "hnsw",
-    "corpusManifestSha256": "3b89ee5badaedf9572764b91cd82a83a41eaa54d20211023e21ab0f5578a49f5",
+    "corpusManifestSha256": "4a3dd8772ec08ffe57e48c991f705e80d3ff3e4482e3221ffd123353e3362f24",
     "corpusDocumentCount": 200,
     "goldenDatasetFile": "eval/golden/city-landmarks.json",
-    "goldenDatasetSha256": "d8316a068ad48b9485c9fa69382a4351b4164eb682ec65a70ecc7ba7db4eba21",
-    "goldenCaseCount": 87
+    "goldenDatasetSha256": "04b906d0349d630c3fe95884dc7f043ec820c50609dee0596b3c90cefd593d9a",
+    "goldenCaseCount": 88
   },
   "groups": {
     "overall": {
-      "n": 87,
-      "hitRateAt5": 0.989,
-      "mrr": 0.939,
-      "ndcgAt10": 0.941,
-      "recallAt10": 0.977,
+      "n": 88,
+      "hitRateAt5": 0.966,
+      "mrr": 0.925,
+      "ndcgAt10": 0.937,
+      "recallAt10": 0.989,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 44,
-      "hitCountAt5": 86,
-      "hitCountAt10": 86
+      "distinctExpectedDocumentSets": 33,
+      "hitCountAt5": 85,
+      "hitCountAt10": 88
     },
     "category:boundary_span": {
       "n": 20,
       "hitRateAt5": 1.0,
-      "mrr": 1.0,
-      "ndcgAt10": 1.0,
+      "mrr": 0.967,
+      "ndcgAt10": 0.975,
       "recallAt10": 1.0,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 14,
+      "distinctExpectedDocumentSets": 10,
       "hitCountAt5": 20,
       "hitCountAt10": 20
     },
     "category:city_overview": {
-      "n": 19,
-      "hitRateAt5": 0.947,
-      "mrr": 0.860,
-      "ndcgAt10": 0.882,
-      "recallAt10": 0.947,
+      "n": 20,
+      "hitRateAt5": 0.900,
+      "mrr": 0.845,
+      "ndcgAt10": 0.881,
+      "recallAt10": 1.0,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 11,
       "hitCountAt5": 18,
-      "hitCountAt10": 18
+      "hitCountAt10": 20
     },
     "category:cross_chunk": {
       "n": 15,
@@ -66,63 +66,63 @@
     "category:landmark_detail": {
       "n": 25,
       "hitRateAt5": 1.0,
-      "mrr": 0.960,
-      "ndcgAt10": 0.970,
+      "mrr": 0.973,
+      "ndcgAt10": 0.980,
       "recallAt10": 1.0,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 5,
+      "distinctExpectedDocumentSets": 3,
       "hitCountAt5": 25,
       "hitCountAt10": 25
     },
     "category:multi_city": {
       "n": 8,
-      "hitRateAt5": 1.0,
-      "mrr": 0.854,
-      "ndcgAt10": 0.782,
+      "hitRateAt5": 0.875,
+      "mrr": 0.794,
+      "ndcgAt10": 0.772,
       "recallAt10": 0.875,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 8,
-      "hitCountAt5": 8,
+      "hitCountAt5": 7,
       "hitCountAt10": 8
     },
     "difficulty:easy": {
-      "n": 27,
-      "hitRateAt5": 0.963,
-      "mrr": 0.858,
-      "ndcgAt10": 0.852,
-      "recallAt10": 0.926,
+      "n": 28,
+      "hitRateAt5": 0.893,
+      "mrr": 0.830,
+      "ndcgAt10": 0.850,
+      "recallAt10": 0.964,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 19,
-      "hitCountAt5": 26,
-      "hitCountAt10": 26
+      "hitCountAt5": 25,
+      "hitCountAt10": 28
     },
     "difficulty:medium": {
       "n": 60,
       "hitRateAt5": 1.0,
-      "mrr": 0.975,
-      "ndcgAt10": 0.982,
+      "mrr": 0.969,
+      "ndcgAt10": 0.977,
       "recallAt10": 1.0,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 27,
+      "distinctExpectedDocumentSets": 16,
       "hitCountAt5": 60,
       "hitCountAt10": 60
     },
     "language:de": {
-      "n": 87,
-      "hitRateAt5": 0.989,
-      "mrr": 0.939,
-      "ndcgAt10": 0.941,
-      "recallAt10": 0.977,
+      "n": 88,
+      "hitRateAt5": 0.966,
+      "mrr": 0.925,
+      "ndcgAt10": 0.937,
+      "recallAt10": 0.989,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 44,
-      "hitCountAt5": 86,
-      "hitCountAt10": 86
+      "distinctExpectedDocumentSets": 33,
+      "hitCountAt5": 85,
+      "hitCountAt10": 88
     }
   },
-  "measuredAt": "2026-08-21",
+  "measuredAt": "2026-08-22",
   "provenance": {
-    "sourceReportRunStartedAt": "2026-08-21T17:27:39.020430800Z",
+    "sourceReportRunStartedAt": "2026-08-22T02:42:25.816110Z",
     "sourcePullRequest": "#730"
   },
-  "notes": "Zweite Neuziehung (PR #730, zweite Review-Runde): Staedteliste auf GeoNames cities15000 + Wikidata-P1566-Bruecke umgestellt, Sehenswuerdigkeiten-Abfrage verbreitert, RANK_NEIGHBOR_RADIUS=40, Golden Dataset auf 87 Faelle erweitert (generate_city_landmarks_golden.py neu), Pflicht-Aufnahme aller 27 EU-Hauptstaedte, strikte Feature-Code-Whitelist gegen Stadtteile (PPLX-Ausschluss) und 10km-Duplikatpruefung. Ausserdem EvalDomainConfig.CITY_LANDMARKS.maxChunksPerDocument von 12 auf 15 erhoeht (gemessenes Maximum ist jetzt 13 Chunks, siehe eval/corpus/city-landmarks/SOURCE.md) - ohne diese Korrektur schlug der Lauf an der Nit-4-Pruefung aus Issue #721 fehl, bevor golden cases ueberhaupt ausgewertet wurden. Laufzeit 2176.7s (~36.3 Minuten, chunkTopK/searchTopK jetzt 150 wegen maxChunksPerDocument=15). Werte woertlich aus der %.3f-ReportWriter-Konsolenausgabe uebernommen (eval/baseline/README.md, verbindliche Rundungsregel). answerSpanHitRate@5=0.850 (60 anwendbare Faelle, mittlerer Rang des ersten Treffer-Chunks 7.15) - nicht Teil dieser Baseline-Datei, im Report unter answerSpanOverall dokumentiert (siehe auch Nit 8 der PR-Review: kein eigenes Baseline-Feld, Begruendung in der PR-Beschreibung). Vorherige Baseline (83 Faelle, alte Wikidata-P30-Staedteliste, Radius 4) ist hinfaellig, siehe fruehere Version dieser Datei in der Git-Historie. Bekannte, dokumentierte Einschraenkung (WICHTIG 2 der PR-Review): die drei Pflicht-Hauptstaedte ohne dokumentierte Sehenswuerdigkeiten (Kopenhagen, Amsterdam, Valletta) tauchen wegen ihres rein rang-vergleichenden Fliesstexts in mehreren schwachen Ergebnissen unter den 'Schlechteste 10 Anfragen' als Fehltreffer auf (z. B. city-city_overview-011 'Stettin', city-multi_city-008 'Rom oder Witebsk') - das senkt overall/ndcgAt10 gegenueber einem hypothetischen Korpus ohne diese drei Ausnahmefaelle, ist aber die dokumentierte Konsequenz der Radius=40-Entscheidung fuer diese drei Staedte (siehe eval/corpus/city-landmarks/SOURCE.md, Abschnitt RANK_NEIGHBOR_RADIUS) und kein Bug im Retrieval-Code. Korrektur nach dem CI-Verifikationslauf (PR #730): goldenDatasetSha256 zunaechst faelschlich gegen den lokalen Windows-Arbeitskopie-Stand (CRLF-Zeilenenden, 5893fd1e...) statt gegen den tatsaechlich committeten, kanonischen Git-Blob-Inhalt (LF, d8316a06...) berechnet - beide Inhalte sind byte-fuer-byte identisch bis auf die Zeilenenden, die eigentlichen Retrieval-Metriken sind auf einem echten GitHub-Actions-Lauf reproduziert und bitgleich (HitRate@5=0.989, MRR=0.939, nDCG@10=0.941, Recall@10=0.977, n=87). Auf ein frisches Checkout (jede Linux-CI, jeder Klon ohne stehengebliebene Arbeitskopie) hat die Datei wegen des .gitattributes-Eintrags 'eol=lf' ohnehin LF-Zeilenenden; das war ein Artefakt dieser einen, schon laenger bestehenden Windows-Arbeitskopie."
+  "notes": "Dritte Neuziehung (PR #730, Verifikationsrunde nach Review-Feststellung, dass RANK_NEIGHBOR_RADIUS faelschlich bei 40 belassen worden war): RANK_NEIGHBOR_RADIUS auf 2 korrigiert, Sehenswuerdigkeiten-Abfrage generalisiert verbreitert (zweistufiger P131-Bezug + P276, neun statt fuenf Klassen, Deckelung 15/Stadt nach Sitelink-Zahl absteigend), drei P1566-Stadt-vs-Verwaltungseinheit-Dubletten behoben (Kopenhagen, Tallinn, Valletta), Reading durch Brighton ersetzt, country_de deterministisch aus country_code repariert (31 Eintraege), Graz-P1566-Fehlbindung behoben, P1376-Hauptstadt-Aussage auf Landesuebereinstimmung eingeschraenkt, Slug-Transliteration, Landmark-Dedup je Stadt, multi_city-Paare gegen tatsaechliche rank_neighbors-Saetze verifiziert, CRLF-Ursache im Golden-Generator behoben. Golden Dataset jetzt 88 statt 87 Faelle (ein zusaetzlicher city_overview-Fall durch die Sampling-Logik). Boilerplate-Anteil (feste Vorlagensaetze inkl. Rang-Nachbarn-Vergleich) sank von einem deutlich zweistelligen Anteil bei Radius 40 auf rund 9% der Korpusgroesse. Hub-Check der zehn schlechtesten Anfragen: keine dominant wiederkehrenden Fehltreffer-Dokumente mehr (vorher Kopenhagen/Valletta in 8 von 10); vereinzelte Wiederholungen (z. B. city-0002_moskau.md, city-0037_donezk.md, city-0086_tula.md je 2-3x) sind grosse, sehenswuerdigkeitenreiche Staedte mit generisch aehnlich beginnenden city_overview-Antworten, kein struktureller Hub-Befund wie zuvor. Laufzeit 2322.5s (~38.7 Minuten). Werte woertlich aus der %.3f-ReportWriter-Konsolenausgabe uebernommen (eval/baseline/README.md, verbindliche Rundungsregel). answerSpanHitRate@5=0.800 (60 anwendbare Faelle, mittlerer Rang des ersten Treffer-Chunks 5.93) - nicht Teil dieser Baseline-Datei, im Report unter answerSpanOverall dokumentiert. Vorherige Baseline (87 Faelle, RANK_NEIGHBOR_RADIUS=40, drei Hauptstaedte ohne Sehenswuerdigkeiten) ist hinfaellig, siehe Git-Historie dieser Datei."
 }
