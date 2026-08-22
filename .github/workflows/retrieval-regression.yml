@@ -374,10 +374,17 @@ jobs:
     # 2026-08-21) — grün, inklusive Checkout/Setup/Docker-Pulls/Indexierung/Auswertung/
     # Baseline-Vergleich. Das 170-Minuten-Job-Timeout bleibt trotz dieser Messung bestehen (nicht auf
     # z. B. 140 abgesenkt), weil ein einzelner grüner Lauf keine belastbare Streuungsangabe ist. Die
-    # eigentliche Ursachenbehebung — eine parallelisierte oder gebündelte Ollama-Embedding-Anbindung
-    # in der Indexierungs-Pipeline (io.opaa.indexing, nicht nur dieser Eval-Job) — ist als Issue #734
-    # dokumentiert und liegt außerhalb des Zuschnitts von Issue #234; dieses Zeitbudget ist bewusst
-    # nur ein Stopgap, keine Lösung.
+    # eigentliche Ursachenbehebung war als Issue #734 dokumentiert (parallelisierte/gebündelte
+    # Ollama-Embedding-Anbindung in io.opaa.indexing) und ist inzwischen in #735 umgesetzt und auf
+    # main gemergt — dieser Feature-Branch enthält sie seit dem Merge von main. **Erneut gemessen
+    # danach** (PR #730, Verifikationsrunde, GitHub-Actions-Run 32550844537, 2026-08-22, mit dem
+    # Verifikationsrunden-Korpus RANK_NEIGHBOR_RADIUS=2/generalisierte Sehenswürdigkeiten-Abfrage):
+    # Job-Gesamtlaufzeit 2h11m45s (131,75 Minuten) — grün, aber langsamer als der Wert oben von vor
+    # der Parallelisierung erwarten ließ; die Parallelisierung reduziert primär die
+    # Embedding-Latenz pro Dokument, nicht notwendigerweise die Gesamtlaufzeit auf einem ohnehin
+    # I/O-gebundenen, geteilten GitHub-Actions-Runner. Timeout bleibt bei 170 Minuten (ein einzelner
+    # grüner Lauf ist weiterhin keine belastbare Streuungsangabe); dieser Wert ist jetzt zweimal
+    # unabhängig gemessen worden (123,7 und 131,75 Minuten), beide deutlich unter dem Budget.
     timeout-minutes: 170
     steps:
       - uses: actions/checkout@v7
