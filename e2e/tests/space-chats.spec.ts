@@ -151,6 +151,14 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // title, never the message history).
     await expect(page.getByTestId('message-list').getByText(question)).toBeVisible()
     await expectAnyCitedSource(page)
+    // #749: the chat page must fill exactly the viewport - the message list scrolls internally,
+    // the page itself must not. A stray outer scrollbar (root cause was an absolutely positioned
+    // live region without a positioning context, see MessageList.tsx) would make
+    // document.documentElement taller than the viewport it actually renders in.
+    const hasOuterScrollbar = await page.evaluate(
+      () => document.documentElement.scrollHeight > document.documentElement.clientHeight + 1,
+    )
+    expect(hasOuterScrollbar).toBe(false)
     // The chat list (sidebar) reloads from the backend on a fresh page load - its entry is what
     // proves the chat itself, not just this one still-open tab, was actually persisted. #557
     // review follow-up: no longer asserted via the question text (see the module doc comment on
