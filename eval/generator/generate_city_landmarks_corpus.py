@@ -412,7 +412,7 @@ def build_cities() -> list[City]:
         )
     cities.sort(key=lambda c: c.rank)
     for index, city in enumerate(cities):
-        # PR #730 review (Wichtig 2): a large radius (previously 36) turned every document's
+        # PR #730 review (Wichtig 2): a large radius (previously 40) turned every document's
         # rank-neighbor section into 60+ repetitive, near-identical comparison sentences —
         # inflating byte size to reach the mehr-Chunk floor at the cost of text quality (a
         # potential distractor for real similarity search, not just padding). RANK_NEIGHBOR_RADIUS
