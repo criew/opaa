@@ -478,8 +478,11 @@ export function resetMockLlmModels() {
   ]
 }
 
+// "openai" names the wire protocol, not a vendor - since backend#762 it is the only connection
+// path (Ollama included, via its own /v1 endpoint), so the backend never reports "ollama" here
+// anymore.
 export const mockEmbeddingInfo: EmbeddingInfoResponse = {
-  provider: 'ollama',
+  provider: 'openai',
   model: 'nomic-embed-text',
   dimensions: 1536,
 }

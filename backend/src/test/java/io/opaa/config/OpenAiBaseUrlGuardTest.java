@@ -101,9 +101,9 @@ class OpenAiBaseUrlGuardTest {
    * Unlike the tests above - which stand up {@link OpenAiBaseUrlGuard} against property values
    * fabricated by the test itself, never against {@code application.yml} - these two actually
    * process {@code backend/src/main/resources/application.yml} as real Spring Boot config data (PR
-   * #766 review, Befund 7a): a real {@link SpringApplicationBuilder} run (not
-   * {@link ApplicationContextRunner}, which never touches config data files at all) resolves
-   * {@code ${VAR:default}} placeholders and multi-document profile sections exactly like a real
+   * #766 review, Befund 7a): a real {@link SpringApplicationBuilder} run (not {@link
+   * ApplicationContextRunner}, which never touches config data files at all) resolves {@code
+   * ${VAR:default}} placeholders and multi-document profile sections exactly like a real
    * application startup does. {@code web(WebApplicationType.NONE)} and registering only {@link
    * OpenAiBaseUrlGuard} itself as a source keep this cheap enough to run without Docker or a
    * database - no other bean in the application ever gets created.
