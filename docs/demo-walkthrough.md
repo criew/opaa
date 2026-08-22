@@ -49,8 +49,9 @@ zwei mit „Die Verarbeitung ist derzeit ausgelastet - bitte später erneut vers
 Umgang, falls das trotzdem passiert).
 
 `OPAA_PGVECTOR_DIMENSIONS=768` ist mit den unveränderten Vorlagenwerten **zwingend**: Voreingestellt
-bleiben lokal betriebene Modelle über Ollama (`OPAA_AI_CHAT_PROVIDER=ollama`,
-`OPAA_AI_EMBEDDING_PROVIDER=ollama`) mit dem Embedding-Modell `nomic-embed-text`, das 768
+bleiben lokal betriebene Modelle über die openai-kompatible Schicht, ohne dass dafür eine Variable
+gesetzt werden muss (seit #762 der einzige Anbindungsweg — `application.yml` zeigt bereits auf einen
+lokal betriebenen Ollama-Server) mit dem Embedding-Modell `nomic-embed-text`, das 768
 Dimensionen liefert — `.env.docker.example` setzt `OPAA_PGVECTOR_DIMENSIONS` dagegen auf den
 Stack-Default 1536 (siehe [`deployment.md`, Zeile zu `OPAA_PGVECTOR_DIMENSIONS`](./deployment.md#alle-umgebungsvariablen)
 für dieselbe Kopplung auf der öffentlichen Instanz). Ohne die Anpassung schlägt der letzte

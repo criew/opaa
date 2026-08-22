@@ -7,6 +7,7 @@ import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -26,22 +27,29 @@ import org.springframework.util.StringUtils;
  * written in the same transaction as the seeded model (or alone, if there was nothing to seed), so
  * "attempted" and "succeeded in creating a model" are recorded atomically together.
  *
- * <p>{@code spring.ai.model.chat} decides which of the two existing configuration blocks the
- * takeover reads from - it no longer decides a stored provider type (there is none, see {@link
- * LlmModel}'s own Javadoc), only where the one-time seed's values come from:
+ * <p><b>Two takeover paths, not one</b> - {@code spring.ai.model.chat} alone no longer decides
+ * which, because #762 removed the native Ollama starter and fixed that property to {@code openai}
+ * unconditionally. Instead:
  *
  * <ul>
- *   <li>{@code ollama}: the Ollama base URL with a {@code /v1} suffix appended (unless already
- *       present) and no access key - Ollama's own OpenAI-compatible endpoint requires none.
- *   <li>{@code openai}: base URL, model and access key are taken over unchanged - except the
- *       bundled {@code sk-placeholder} default (no real key configured at all), which is treated as
- *       no key rather than encrypted and stored as if it were a real secret.
+ *   <li><b>Legacy {@code OPAA_AI_CHAT_PROVIDER=ollama}</b> (read directly as a raw environment
+ *       variable, not through any {@code application.yml} property - the {@code ollama} blocks that
+ *       variable used to select are gone): the takeover of a Bestandsinstallation upgrading past
+ *       #762 in one step, before the operator has removed the now-obsolete variable. Reads {@code
+ *       OPAA_OLLAMA_BASE_URL}/{@code OPAA_OLLAMA_CHAT_MODEL} the same way it always has, with a
+ *       {@code /v1} suffix appended to the base URL (unless already present) and no access key -
+ *       Ollama's own OpenAI-compatible endpoint requires none. Falls back to the same
+ *       profile-dependent default address the removed {@code ollama} configuration block used to
+ *       carry (docker: the {@code ollama} service name; otherwise: {@code localhost}) if the
+ *       variable itself was never set - see {@link #legacyOllamaBaseUrlDefault()}.
+ *   <li><b>Everything else</b> (including a fresh installation that never knew {@code
+ *       OPAA_AI_CHAT_PROVIDER} at all): takes over {@code spring.ai.openai.chat.*} unchanged - base
+ *       URL, model and access key - except the bundled {@code sk-placeholder} default (no real key
+ *       configured at all), which is treated as no key rather than encrypted and stored as if it
+ *       were a real secret. Since #762 this path's own defaults already point at a locally operated
+ *       Ollama server, so a fresh installation seeds the same values the legacy path above would
+ *       have produced for an equivalent Bestandsinstallation.
  * </ul>
- *
- * <p>Anything else (including a blank/unset value, which should not occur since {@code
- * application.yml} defaults {@code spring.ai.model.chat} to {@code ollama}) seeds no model but
- * still writes the marker - a takeover that found nothing to seed has still been attempted, and
- * must not be retried on the next start either.
  *
  * <p>{@link #seedIfNeeded()} is called from {@link LlmModelSeedRunner}, a separate bean, rather
  * than being an {@code ApplicationRunner} itself: {@code @Transactional} only takes effect on a
@@ -65,8 +73,25 @@ class LlmModelSeeder {
    */
   static final String OPENAI_API_KEY_PLACEHOLDER = "sk-placeholder";
 
-  private static final String OLLAMA_PROVIDER = "ollama";
-  private static final String OPENAI_PROVIDER = "openai";
+  /**
+   * {@code application.yml}'s own default chat model since #762 - kept here too as the fallback for
+   * the legacy takeover path, so a Bestandsinstallation that never overrode {@code
+   * OPAA_OLLAMA_CHAT_MODEL} still seeds the same value it always effectively ran with.
+   */
+  static final String LEGACY_OLLAMA_CHAT_MODEL_DEFAULT = "phi3:mini";
+
+  /**
+   * Raw environment variable name (not a {@code spring.ai.*} property - #762 removed the {@code
+   * application.yml} blocks that used to expose it as one) that selected the now-removed native
+   * Ollama takeover path. Read directly via {@link Environment#getProperty(String)}, which resolves
+   * both real OS environment variables and {@code -D} system properties by their exact name.
+   */
+  private static final String LEGACY_CHAT_PROVIDER_ENV = "OPAA_AI_CHAT_PROVIDER";
+
+  private static final String LEGACY_OLLAMA_PROVIDER_VALUE = "ollama";
+  private static final String LEGACY_OLLAMA_BASE_URL_ENV = "OPAA_OLLAMA_BASE_URL";
+  private static final String LEGACY_OLLAMA_CHAT_MODEL_ENV = "OPAA_OLLAMA_CHAT_MODEL";
+  private static final String DOCKER_PROFILE = "docker";
 
   private final LlmModelRepository repository;
   private final LlmModelSeedMarkerRepository markerRepository;
@@ -89,19 +114,11 @@ class LlmModelSeeder {
     if (markerRepository.seedAlreadyAttempted()) {
       return;
     }
-    String provider = environment.getProperty("spring.ai.model.chat", "");
-    LlmModel seeded;
-    if (OLLAMA_PROVIDER.equalsIgnoreCase(provider)) {
-      seeded = seedFromOllama();
-    } else if (OPENAI_PROVIDER.equalsIgnoreCase(provider)) {
-      seeded = seedFromOpenAi();
-    } else {
-      log.warn(
-          "Kein Chat-Modell hinterlegt: weder ein bestehendes Modell in llm_models noch eine"
-              + " bekannte spring.ai.model.chat-Konfiguration (\"{}\") gefunden",
-          provider);
-      seeded = null;
-    }
+    String legacyChatProvider = environment.getProperty(LEGACY_CHAT_PROVIDER_ENV, "");
+    LlmModel seeded =
+        LEGACY_OLLAMA_PROVIDER_VALUE.equalsIgnoreCase(legacyChatProvider)
+            ? seedFromLegacyOllamaEnv()
+            : seedFromOpenAi();
     if (seeded != null) {
       seeded.activate();
       repository.save(seeded);
@@ -112,13 +129,20 @@ class LlmModelSeeder {
     markerRepository.save(new LlmModelSeedMarker(Instant.now()));
   }
 
-  private LlmModel seedFromOllama() {
-    String baseUrl = environment.getProperty("spring.ai.ollama.base-url");
+  /**
+   * Legacy takeover path for a Bestandsinstallation still carrying {@code
+   * OPAA_AI_CHAT_PROVIDER=ollama} (#762 removed the {@code application.yml} blocks that variable
+   * used to select, but not the variable's meaning for a deployment upgrading straight past it).
+   * Reads the same two raw environment variables the removed {@code ollama} configuration block
+   * used to expose as {@code spring.ai.ollama.*} properties.
+   */
+  private LlmModel seedFromLegacyOllamaEnv() {
+    String baseUrl = environment.getProperty(LEGACY_OLLAMA_BASE_URL_ENV);
     if (!StringUtils.hasText(baseUrl)) {
-      log.warn("Kein Chat-Modell hinterlegt: spring.ai.ollama.base-url ist nicht gesetzt");
-      return null;
+      baseUrl = legacyOllamaBaseUrlDefault();
     }
-    String model = environment.getProperty("spring.ai.ollama.chat.model", "");
+    String model =
+        environment.getProperty(LEGACY_OLLAMA_CHAT_MODEL_ENV, LEGACY_OLLAMA_CHAT_MODEL_DEFAULT);
     return new LlmModel(
         DEFAULT_DISPLAY_NAME,
         ensureV1Suffix(baseUrl),
@@ -126,6 +150,18 @@ class LlmModelSeeder {
         DEFAULT_TEMPERATURE,
         DEFAULT_MAX_TOKENS,
         null);
+  }
+
+  /**
+   * The profile-dependent default the removed {@code ollama.base-url} configuration block used to
+   * carry, reproduced here for the legacy takeover path so a Bestandsinstallation that never
+   * overrode {@code OPAA_OLLAMA_BASE_URL} still seeds the same address it always effectively ran
+   * with.
+   */
+  private String legacyOllamaBaseUrlDefault() {
+    return environment.acceptsProfiles(Profiles.of(DOCKER_PROFILE))
+        ? "http://ollama:11434"
+        : "http://localhost:11434";
   }
 
   private LlmModel seedFromOpenAi() {

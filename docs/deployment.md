@@ -48,12 +48,12 @@ Hier ist eine Verwechslung angelegt, die bereits mehrfach zu falschen Aussagen g
 
 | | Anbieter | Modell | Anmerkung |
 |---|---|---|---|
-| **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht**. `OPAA_AI_CHAT_PROVIDER` steht deshalb formal auf `openai`; nur `OPAA_OPENAI_BASE_URL`, der API-Schlüssel und `OPAA_OPENAI_CHAT_MODEL` zeigen auf Anthropic. |
-| **Embedding** | Ollama, lokal | `nomic-embed-text` | 768 Dimensionen, entsprechend `OPAA_PGVECTOR_DIMENSIONS=768` statt des Stack-Defaults 1536. |
+| **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht** — seit #762 ohnehin der einzige Anbindungsweg für beide Funktionen. `OPAA_OPENAI_CHAT_BASE_URL`, der API-Schlüssel und `OPAA_OPENAI_CHAT_MODEL` zeigen auf Anthropic; die Basis-Adresse hat keinen Anwendungs-Default, der versehentlich hierher zeigen könnte. |
+| **Embedding** | Ollama, lokal | `nomic-embed-text` | Läuft über denselben Anbindungsweg gegen einen lokal betriebenen Ollama-Server — genau das ist seit #762 der Anwendungs-Default, `OPAA_OPENAI_EMBEDDING_BASE_URL` und `OPAA_OPENAI_EMBEDDING_MODEL` weichen auf dieser Instanz deshalb nicht vom Default ab. 768 Dimensionen, entsprechend `OPAA_PGVECTOR_DIMENSIONS=768` statt des Stack-Defaults 1536. |
 
-Drei Punkte dazu:
+Zwei Punkte dazu:
 
-- **Der Wert `openai` in `OPAA_AI_CHAT_PROVIDER` bezeichnet hier das Protokoll, nicht den Anbieter.** Wer ihn als Anbieterangabe liest, kommt zu einem falschen Ergebnis — genau das ist in der Vergangenheit passiert.
+- **`openai` bezeichnet hier das Protokoll, nicht den Anbieter.** Wer die Basis-Adresse als Anbieterangabe liest, kommt zu einem falschen Ergebnis — genau das ist in der Vergangenheit passiert. Bis #762 trug dazu bei, dass eine eigene Variable `OPAA_AI_CHAT_PROVIDER` formal auf `openai` stand; diese Variable ist inzwischen entfallen (siehe [„LLM-Anbieter"](#llm-anbieter) unten), die Verwechslungsgefahr bleibt aber an der Basis-Adresse selbst bestehen.
 - **Die Aufteilung Chat bei Anthropic, Embedding lokal ist dauerhaft, nicht provisorisch.** Anthropic bietet keine Embeddings-API an; ein einheitlicher Anbieter für beides ist mit dieser Wahl gar nicht möglich.
 - Anthropic bezeichnet die OpenAI-kompatible Schicht ausdrücklich als Werkzeug zum Testen und Vergleichen, nicht als produktionsreifen Zugang. Für eine Testinstanz ist das angemessen; für einen Dauerbetrieb wäre die native Anbindung zu wählen.
 
@@ -294,14 +294,15 @@ Hintergrund und die drei Schichten, in denen die Grenze gehalten wird: [features
 # 1. Umgebung konfigurieren
 cp .env.docker.example .env.docker
 # .env.docker bearbeiten. Voreingestellt sind lokal betriebene Modelle über
-# Ollama — dafür ist keine weitere Angabe in .env.docker selbst nötig. Der
-# Compose-Stack enthält aber KEINEN ollama-Service: Ein erreichbarer Ollama-
-# Server wird vorausgesetzt (OPAA_OLLAMA_BASE_URL=http://ollama:11434 ist
-# nur ein Platzhalter-Hostname). Ohne einen solchen startet der Stack zwar,
-# aber Indizierung und Fragen schlagen fehl. Läuft Ollama auf dem Host,
-# OPAA_OLLAMA_BASE_URL auf http://host.docker.internal:11434 setzen. Wer
-# stattdessen einen openai-kompatiblen Anbieter wählt, muss
-# OPAA_OPENAI_BASE_URL setzen (siehe „LLM-Anbieter").
+# die openai-kompatible Schicht (seit #762 der einzige Anbindungsweg) — dafür
+# ist keine weitere Angabe in .env.docker selbst nötig. Der Compose-Stack
+# enthält aber KEINEN ollama-Service: Ein erreichbarer Ollama-Server wird
+# vorausgesetzt (OPAA_OPENAI_BASE_URL=http://ollama:11434/v1 ist nur ein
+# Platzhalter-Hostname). Ohne einen solchen startet der Stack zwar, aber
+# Indizierung und Fragen schlagen fehl. Läuft Ollama auf dem Host,
+# OPAA_OPENAI_BASE_URL auf http://host.docker.internal:11434/v1 setzen. Wer
+# stattdessen einen anderen openai-kompatiblen Anbieter wählt, muss
+# OPAA_OPENAI_BASE_URL entsprechend setzen (siehe „LLM-Anbieter").
 
 # 2. Alle Services starten
 docker compose up --build
@@ -330,22 +331,26 @@ Alle Konfigurationen erfolgen über Umgebungsvariablen in `.env.docker`. Docker 
 
 ### Erforderliche Variablen
 
-Im Standardfall — lokal betriebene Modelle über Ollama für Chat und Einbettung — ist **keine**
-Modellvariable erforderlich. Der Stack startet ohne zusätzliche Angabe.
+Im Standardfall — lokal betriebene Modelle über die openai-kompatible Schicht für Chat und
+Einbettung (seit #762 der einzige Anbindungsweg) — ist **keine** Modellvariable erforderlich. Der
+Stack startet ohne zusätzliche Angabe; die Basis-Adresse zeigt bereits auf einen lokal betriebenen
+Ollama-Server (`http://localhost:11434/v1` bzw., im Profil `docker`, `http://ollama:11434/v1`).
 
-Wer für Chat oder Einbettung den openai-kompatiblen Anbieter wählt (`OPAA_AI_CHAT_PROVIDER=openai`
-bzw. `OPAA_AI_EMBEDDING_PROVIDER=openai`), muss die **Zieladresse angeben**:
+Wer stattdessen einen anderen Anbieter für Chat oder Einbettung verwenden will, muss die
+**Zieladresse überschreiben**:
 
 ```env
 OPAA_OPENAI_BASE_URL=https://modellserver.example.internal/v1
 OPAA_OPENAI_API_KEY=sk-your-key-here
 ```
 
-Es gibt für die Adresse **keine Voreinstellung**. Fehlt sie bei gewähltem openai-kompatiblen
-Anbieter, bricht das Backend den Start mit einer Meldung ab, die die fehlende Variable benennt
-(`io.opaa.config.OpenAiBaseUrlGuard`). Der Grund: `openai` bezeichnet das Protokoll, nicht das Ziel
-— lokal betriebene Modellserver sprechen dasselbe Protokoll. Eine Voreinstellung würde eine
-Installation, die im Haus bleiben soll, stillschweigend nach außen richten.
+Anders als vor #762 hat die Adresse eine Voreinstellung — sie zeigt aber auf einen lokalen
+Endpunkt, nicht nach außen; eine Installation, die im Haus bleiben soll, wird dadurch nicht
+stillschweigend nach außen gerichtet. Ein **explizit leer gesetzter** Wert (etwa
+`OPAA_OPENAI_BASE_URL=` in einer `.env`-Datei) überschreibt diese Voreinstellung dagegen mit einer
+leeren Zeichenkette und lässt das Backend mit einer Meldung abbrechen, die die betroffene Variable
+benennt (`io.opaa.config.OpenAiBaseUrlGuard`) — das ist der einzige verbleibende Fall, den dieser
+Guard noch abfängt.
 
 > **Update-Hinweis für Bestandsinstallationen (#756).** Seit Stufe 1 der Modellverwaltung
 > übernimmt das Backend beim ersten Start nach dem Update die obige Konfiguration einmalig als
@@ -356,13 +361,53 @@ Installation, die im Haus bleiben soll, stillschweigend nach außen richten.
 > (siehe [„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle-756))
 > — ohne ihn scheitert nur diese einmalige Übernahme, der Start selbst nicht.
 
+> **Update-Hinweis für Bestandsinstallationen (#762): der native Ollama-Anbindungsweg entfällt.**
+> Bis einschließlich der vorigen Version gab es zwei Anbindungswege — einen nativen für Ollama
+> (`OPAA_AI_CHAT_PROVIDER`/`OPAA_AI_EMBEDDING_PROVIDER=ollama`, mit eigenen `OPAA_OLLAMA_*`-Variablen)
+> und den openai-kompatiblen für alles andere. Seit #762 gibt es nur noch den zweiten — Ollama wird
+> darüber angesprochen wie jeder andere openai-kompatible Endpunkt, über seinen eigenen `/v1`-Pfad.
+> Folgende Variablen sind **ersatzlos entfallen**:
+>
+> | Entfallene Variable | Ersatz |
+> |---|---|
+> | `OPAA_AI_CHAT_PROVIDER` | keiner nötig — der Anbindungsweg ist jetzt fest `openai` |
+> | `OPAA_AI_EMBEDDING_PROVIDER` | keiner nötig — der Anbindungsweg ist jetzt fest `openai` |
+> | `OPAA_OLLAMA_BASE_URL` | `OPAA_OPENAI_BASE_URL` (bzw. `OPAA_OPENAI_CHAT_BASE_URL`/`OPAA_OPENAI_EMBEDDING_BASE_URL` je Funktion) — **mit `/v1`-Suffix**, den die Ollama-Variable nicht brauchte |
+> | `OPAA_OLLAMA_CHAT_MODEL` | `OPAA_OPENAI_CHAT_MODEL` |
+> | `OPAA_OLLAMA_EMBEDDING_MODEL` | `OPAA_OPENAI_EMBEDDING_MODEL` |
+>
+> **Wer nur die Anwendungs-Defaults genutzt hat** (kein `OPAA_AI_*_PROVIDER` und kein
+> `OPAA_OLLAMA_*` selbst gesetzt — der übliche Fall für einen lokalen Ollama-Betrieb), **muss nichts
+> ändern**: `OPAA_OPENAI_BASE_URL` hat seit #762 denselben Default, den vorher `OPAA_OLLAMA_BASE_URL`
+> trug (`http://localhost:11434/v1` bzw., im Profil `docker`, `http://ollama:11434/v1`), ebenso die
+> Modell-Defaults (`phi3:mini`/`nomic-embed-text`). Übrig gelassene, jetzt unbekannte Variablen
+> (`OPAA_AI_CHAT_PROVIDER=ollama` etwa) werden von Spring stillschweigend ignoriert — kein Fehler,
+> aber auch keine Wirkung mehr; sie sollten bei Gelegenheit aus der eigenen `.env`/`.env.docker`
+> entfernt werden.
+>
+> **Wer eigene `OPAA_OLLAMA_*`-Werte gesetzt hatte** (etwa eine abweichende Adresse oder ein anderes
+> Modell), muss diese vor dem Update auf die neuen Variablennamen übertragen — siehe Tabelle oben.
+> Die einmalige Übernahme in `llm_models` (siehe Absatz zu #756 oben) liest dafür ohnehin **weiterhin**
+> die alten `OPAA_OLLAMA_*`/`OPAA_AI_CHAT_PROVIDER`-Variablen, falls sie beim ersten Start nach dem
+> Update noch gesetzt sind (`io.opaa.llm.LlmModelSeeder`) — ein Update in einem Schritt, ohne die
+> `.env`-Datei vorher anzupassen, übernimmt die bisherige Chat-Konfiguration also trotzdem korrekt.
+> Für den **laufenden Betrieb** (jeder Aufruf nach dem ersten Start) zählt aber nur noch
+> `OPAA_OPENAI_*` — die alten Variablen danach zu entfernen und durch die neuen zu ersetzen bleibt
+> deshalb nötig, auch wenn die einmalige Übernahme sie noch berücksichtigt.
+>
+> **Betroffen ist insbesondere die öffentliche Demo-Instanz** (siehe [„Modellkonfiguration der
+> Instanz"](#modellkonfiguration-der-instanz) oben): Sie lief mit `OPAA_AI_EMBEDDING_PROVIDER=ollama`
+> produktiv. Nach dem Update entfällt diese Variable; die tatsächlich verwendete Ollama-Adresse und
+> das Embedding-Modell müssen als `OPAA_OPENAI_EMBEDDING_BASE_URL` (mit `/v1`-Suffix) und
+> `OPAA_OPENAI_EMBEDDING_MODEL` weitergeführt werden, falls sie von den neuen Defaults abweichen.
+
 ### Docker-spezifische Variablen
 
 Diese Variablen sind wichtig, wenn mit Docker Compose ausgeführt wird, und sollten in `.env.docker` gesetzt werden:
 
 | Variable | Erforderlicher Wert | Warum |
 |----------|---------------------|-------|
-| `SPRING_PROFILES_ACTIVE` | `docker,oidc` (Betrieb) oder `docker,dev` (Entwicklung) | Aktiviert Docker-spezifische Konfiguration (DB-URL, Ollama-URL) und den Auth-Modus; ohne `oidc` oder `dev` startet das Backend nicht |
+| `SPRING_PROFILES_ACTIVE` | `docker,oidc` (Betrieb) oder `docker,dev` (Entwicklung) | Aktiviert Docker-spezifische Konfiguration (DB-URL, openai-kompatible Basis-Adresse) und den Auth-Modus; ohne `oidc` oder `dev` startet das Backend nicht |
 | `OPAA_SERVER_ADDRESS` | `0.0.0.0` | Backend muss an alle Schnittstellen binden, um von anderen Containern erreichbar zu sein |
 | `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Muss mit dem Host-Port des Frontends übereinstimmen |
 | `OPAA_DB_USERNAME` | `opaa` | Muss zwischen Backend- und postgres-Services übereinstimmen |
@@ -378,10 +423,10 @@ OPAA_DB_USERNAME=opaa
 OPAA_DB_PASSWORD=opaa
 ```
 
-Chat und Einbettung laufen damit über Ollama (`OPAA_OLLAMA_BASE_URL` ist im Profil `docker` auf
-`http://ollama:11434` vorbelegt). Für einen openai-kompatiblen Anbieter kommen
-`OPAA_AI_CHAT_PROVIDER` bzw. `OPAA_AI_EMBEDDING_PROVIDER`, `OPAA_OPENAI_BASE_URL` und
-`OPAA_OPENAI_API_KEY` hinzu.
+Chat und Einbettung laufen damit über die openai-kompatible Schicht gegen einen lokal betriebenen
+Ollama-Server (`OPAA_OPENAI_BASE_URL` ist im Profil `docker` auf `http://ollama:11434/v1`
+vorbelegt). Für einen anderen Anbieter kommen `OPAA_OPENAI_BASE_URL` und `OPAA_OPENAI_API_KEY`
+hinzu (überschreiben die Voreinstellung).
 
 ### Alle Umgebungsvariablen
 
@@ -418,10 +463,12 @@ beschreiben zwei verschiedene Ebenen. Eine leere Compose-Belegung („nicht gese
 
 Ist eine Variable nirgends gesetzt, gilt in beiden Fällen der jeweilige Default.
 
-**Anbieterbedingte Variablen:** `OPAA_OPENAI_*` wirkt nur, solange der jeweilige Anbieter
-(`OPAA_AI_CHAT_PROVIDER` bzw. `OPAA_AI_EMBEDDING_PROVIDER`) auf `openai` steht; `OPAA_OLLAMA_*`
-entsprechend nur bei `ollama`. Ein gesetzter, aber wegen des falschen Anbieters wirkungsloser Wert wird
-nicht gemeldet — er bleibt einfach ungenutzt liegen.
+**`OPAA_OPENAI_*` gilt seit #762 uneingeschränkt** — es gibt keine Anbieter-Variable mehr, die ihre
+Wirkung an- oder abschaltet: Chat und Einbettung laufen immer über diese eine, openai-kompatible
+Konfiguration. (Bis einschließlich der vorigen Version schalteten `OPAA_AI_CHAT_PROVIDER`/
+`OPAA_AI_EMBEDDING_PROVIDER` zwischen dieser Konfiguration und eigenen `OPAA_OLLAMA_*`-Variablen um
+— siehe [„Update-Hinweis für Bestandsinstallationen (#762)"](#erforderliche-variablen) oben für die
+Migration.)
 
 Manche Variablen dieser Tabelle sind kein Spring-Property, sondern werden ausschließlich von Docker
 Compose selbst ausgewertet (Bind-Mounts, Host-Ports, die `env_file`-Auswahl) oder vom
@@ -445,22 +492,17 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_DB_USERNAME` | `opaa` | `opaa` | PostgreSQL-Benutzername |
 | `OPAA_DB_PASSWORD` | `opaa` | `opaa` | PostgreSQL-Passwort |
 | `OPAA_DB_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `5432`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `5432` | Host-Port, auf den `docker-compose.yml` den PostgreSQL-Container bindet (nur `127.0.0.1`) |
-| **LLM / Embedding** | | | |
-| `OPAA_AI_CHAT_PROVIDER` | `ollama` | `ollama` | Chat-Modell-Anbieter (`ollama` oder `openai`) |
-| `OPAA_AI_EMBEDDING_PROVIDER` | `ollama` | `ollama` | Embedding-Modell-Anbieter (`ollama` oder `openai`) |
-| `OPAA_OPENAI_API_KEY` | `sk-placeholder` (Platzhalter, kein gültiger Schlüssel — greift nur, falls ein Anbieter auf `openai` steht und kein spezifischerer Schlüssel gesetzt ist) | nicht gesetzt (auskommentiert) — der Anwendungs-Default (Platzhalter) gilt | Zugangsschlüssel der openai-kompatiblen Schnittstelle. Wirkt nur bei mindestens einem Anbieter `openai` |
-| `OPAA_OPENAI_BASE_URL` | — (kein Default) | nicht gesetzt (auskommentiert) | Basis-Adresse der openai-kompatiblen Schnittstelle. **Ohne Voreinstellung; erforderlich, sobald ein Anbieter auf `openai` steht** — sonst bricht der Start ab (siehe [„Erforderliche Variablen"](#erforderliche-variablen) oben) |
-| `OPAA_OPENAI_CHAT_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | Eigener Zugangsschlüssel nur für den Chat-Aufruf, falls Chat- und Embedding-API unterschiedliche Schlüssel brauchen. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
-| `OPAA_OPENAI_CHAT_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:}}`) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Chat-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten) |
-| `OPAA_OPENAI_CHAT_MODEL` | `gpt-4o` | `gpt-4o` | OpenAI-Chat-Modellname. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
-| `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | `0.7` | Chat-Antwort-Temperatur (0,0–2,0). Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
-| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | `2000` | Maximale Tokens in Chat-Antwort. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
-| `OPAA_OPENAI_EMBEDDING_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | Eigener Zugangsschlüssel nur für den Embedding-Aufruf. Wirkt nur bei `OPAA_AI_EMBEDDING_PROVIDER=openai` |
-| `OPAA_OPENAI_EMBEDDING_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:}}`) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Embedding-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten) |
-| `OPAA_OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | `text-embedding-3-small` | OpenAI-Embedding-Modellname. Wirkt nur bei `OPAA_AI_EMBEDDING_PROVIDER=openai` |
-| `OPAA_OLLAMA_BASE_URL` | Profil `local`: `http://localhost:11434`; Profil `docker`: `http://ollama:11434` — kein profilunabhängiger Default | `http://ollama:11434` | Ollama-API-Basis-URL. Wirkt nur, solange mindestens ein Anbieter auf `ollama` steht. **Der Compose-Stack enthält keinen `ollama`-Service** — der Hostname `ollama` ist nur ein Platzhalter; ein erreichbarer Ollama-Server wird vorausgesetzt, sonst schlagen Indizierung und Abfragen fehl (der Start selbst bricht nicht ab). Läuft Ollama auf dem Host, stattdessen `http://host.docker.internal:11434` setzen (`extra_hosts` im `backend`-Service ist dafür bereits konfiguriert) |
-| `OPAA_OLLAMA_CHAT_MODEL` | `phi3:mini` | `phi3:mini` | Ollama-Chat-Modellname. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=ollama` |
-| `OPAA_OLLAMA_EMBEDDING_MODEL` | `nomic-embed-text` | `nomic-embed-text` | Ollama-Embedding-Modellname. Wirkt nur bei `OPAA_AI_EMBEDDING_PROVIDER=ollama` |
+| **LLM / Embedding** (seit #762 ein einziger, openai-kompatibler Anbindungsweg — siehe [„LLM-Anbieter"](#llm-anbieter) unten) | | | |
+| `OPAA_OPENAI_API_KEY` | `sk-placeholder` (Platzhalter, kein gültiger Schlüssel — greift nur, falls kein spezifischerer Schlüssel gesetzt ist; ein lokal betriebener Ollama-Server braucht keinen echten) | nicht gesetzt (auskommentiert) — der Anwendungs-Default (Platzhalter) gilt | Zugangsschlüssel der openai-kompatiblen Schnittstelle |
+| `OPAA_OPENAI_BASE_URL` | `http://localhost:11434/v1`; im Spring-Profil `docker` stattdessen `http://ollama:11434/v1` | nicht gesetzt (auskommentiert) — der `docker`-Profil-Default gilt | Basis-Adresse der openai-kompatiblen Schnittstelle, gemeinsam für Chat und Einbettung. Zeigt ohne weitere Angabe auf einen lokal betriebenen Ollama-Server; ein **explizit leer gesetzter** Wert überschreibt diesen Default mit einer leeren Zeichenkette und lässt den Start abbrechen (siehe [„Erforderliche Variablen"](#erforderliche-variablen) oben) |
+| `OPAA_OPENAI_CHAT_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | Eigener Zugangsschlüssel nur für den Chat-Aufruf, falls Chat- und Embedding-API unterschiedliche Schlüssel brauchen |
+| `OPAA_OPENAI_CHAT_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Chat-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten) |
+| `OPAA_OPENAI_CHAT_MODEL` | `phi3:mini` | `phi3:mini` | Chat-Modellname |
+| `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | `0.7` | Chat-Antwort-Temperatur (0,0–2,0) |
+| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | `2000` | Maximale Tokens in Chat-Antwort |
+| `OPAA_OPENAI_EMBEDDING_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | Eigener Zugangsschlüssel nur für den Embedding-Aufruf |
+| `OPAA_OPENAI_EMBEDDING_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Embedding-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten). **Der Compose-Stack enthält keinen `ollama`-Service** — der Hostname `ollama` im Default ist nur ein Platzhalter; ein erreichbarer Ollama-Server wird vorausgesetzt, sonst schlagen Indizierung und Abfragen fehl (der Start selbst bricht nicht ab). Läuft Ollama auf dem Host, stattdessen `http://host.docker.internal:11434/v1` setzen (`extra_hosts` im `backend`-Service ist dafür bereits konfiguriert) |
+| `OPAA_OPENAI_EMBEDDING_MODEL` | `nomic-embed-text` | `nomic-embed-text` | Embedding-Modellname |
 | **Abfrage (RAG-Retrieval)** | | | |
 | `OPAA_QUERY_TOP_K` | `5` | `5` | Anzahl der pro Abfrage abgerufenen Dokument-Chunks (1–100) |
 | `OPAA_QUERY_SIMILARITY_THRESHOLD` | `0.3` | `0.3` | Minimale Kosinus-Ähnlichkeit für Chunk-Aufnahme (0,0–1,0) |
@@ -570,22 +612,29 @@ OPAA_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://your-hostname:5173
 
 ### LLM-Anbieter
 
-**Voreingestellt sind lokal betriebene Modelle** über Ollama, für Chat und für Einbettung. Eine
-Installation, an der niemand etwas konfiguriert, ruft kein Modell außerhalb des Hauses auf. Diese
-Voreinstellung ist so gewollt und bleibt (siehe
+Seit [#762](https://github.com/criew/opaa/issues/762) gibt es einen einzigen Anbindungsweg für Chat
+und Einbettung: die **openai-kompatible Schnittstelle**. Das ist eine Protokollangabe, keine
+Anbieterangabe — Ollama bedient dieselbe Schnittstelle unter ihrem eigenen `/v1`-Pfad, ebenso vLLM,
+LiteLLM, Azure und die üblichen Zwischenschichten. Einen zweiten, nativen Anbindungsweg speziell für
+Ollama gibt es deshalb nicht mehr.
+
+**Voreingestellt sind lokal betriebene Modelle** über genau diesen Weg, für Chat und für Einbettung.
+Eine Installation, an der niemand etwas konfiguriert, ruft kein Modell außerhalb des Hauses auf —
+`OPAA_OPENAI_BASE_URL` zeigt ohne weitere Angabe auf `http://localhost:11434/v1` (im Spring-Profil
+`docker`: `http://ollama:11434/v1`), `OPAA_OPENAI_CHAT_MODEL`/`OPAA_OPENAI_EMBEDDING_MODEL` auf
+`phi3:mini`/`nomic-embed-text`, und Ollama braucht keinen Zugangsschlüssel (der voreingestellte
+`OPAA_OPENAI_API_KEY`-Platzhalter wird nie geprüft). Diese Voreinstellung ist so gewollt und bleibt
+(siehe
 [ADR-0014, Nachtrag vom 14.08.2026](decisions/0014-produktausrichtung-oeffentliche-verwaltung.md#nachträge-entschiedene-punkte)).
 
 ```env
-OPAA_AI_CHAT_PROVIDER=ollama
-OPAA_AI_EMBEDDING_PROVIDER=ollama
-OPAA_OLLAMA_BASE_URL=http://localhost:11434
+# Kein Eintrag nötig - dies ist bereits der Anwendungs-Default.
 ```
 
-Um stattdessen einen openai-kompatiblen Anbieter zu verwenden, sind Anbieter **und Zieladresse**
-anzugeben:
+Um stattdessen einen anderen openai-kompatiblen Anbieter zu verwenden, ist die **Zieladresse**
+anzugeben — sie überschreibt die lokale Voreinstellung:
 
 ```env
-OPAA_AI_CHAT_PROVIDER=openai
 OPAA_OPENAI_BASE_URL=https://modellserver.example.internal/v1
 OPAA_OPENAI_API_KEY=sk-your-key-here
 ```
@@ -700,7 +749,7 @@ fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel vore
 > **Update-Hinweis für Bestandsinstallationen (#756).** Eine Installation, die heute ausschließlich
 > Ollama oder einen `openai`-kompatiblen Endpunkt ohne Zugangsschlüssel nutzt, läuft nach dem Update
 > auf diese Version unverändert weiter, **ohne** `OPAA_SETTINGS_ENCRYPTION_KEY` gesetzt haben zu
-> müssen. Nur wer bereits `OPAA_AI_CHAT_PROVIDER=openai` **mit** gesetztem Zugangsschlüssel
+> müssen. Nur wer die openai-kompatible Anbindung bereits **mit** gesetztem Zugangsschlüssel
 > betreibt, sollte den Schlüssel **vor** dem Update setzen — sonst schlägt die einmalige
 > Übernahme dieser Konfiguration als initiales Modell fehl (Start selbst bricht nicht ab, das
 > Modell bleibt dann aber unangelegt und ist über die künftige Verwaltungsoberfläche (#757) neu

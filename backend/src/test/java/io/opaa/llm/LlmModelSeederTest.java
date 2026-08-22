@@ -14,10 +14,11 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.mock.env.MockEnvironment;
 
 /**
- * Unit tests for {@link LlmModelSeeder} (#756,
+ * Unit tests for {@link LlmModelSeeder} (#756/#762,
  * docs/features/llm-integration.md#übergang-aus-der-heutigen-konfiguration) - repository mocks let
- * these run without a database, covering the branching logic ({@code ollama} vs. {@code openai} vs.
- * neither), the {@code /v1} suffix handling and the seed marker directly.
+ * these run without a database, covering the branching logic (legacy {@code
+ * OPAA_AI_CHAT_PROVIDER=ollama} vs. the regular {@code spring.ai.openai.chat.*} takeover), the
+ * {@code /v1} suffix handling and the seed marker directly.
  */
 class LlmModelSeederTest {
 
@@ -34,7 +35,7 @@ class LlmModelSeederTest {
   void doesNothingWhenTheTakeoverWasAlreadyAttempted() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(true);
     MockEnvironment environment =
-        new MockEnvironment().withProperty("spring.ai.model.chat", "ollama");
+        new MockEnvironment().withProperty("OPAA_AI_CHAT_PROVIDER", "ollama");
 
     seederWith(environment).seedIfNeeded();
 
@@ -43,13 +44,13 @@ class LlmModelSeederTest {
   }
 
   @Test
-  void seedsAnActiveModelWithoutAKeyFromTheOllamaConfigurationAndWritesTheMarker() {
+  void seedsAnActiveModelWithoutAKeyFromTheLegacyOllamaEnvironmentVariables() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
     MockEnvironment environment =
         new MockEnvironment()
-            .withProperty("spring.ai.model.chat", "ollama")
-            .withProperty("spring.ai.ollama.base-url", "http://ollama:11434")
-            .withProperty("spring.ai.ollama.chat.model", "phi3:mini");
+            .withProperty("OPAA_AI_CHAT_PROVIDER", "ollama")
+            .withProperty("OPAA_OLLAMA_BASE_URL", "http://ollama:11434")
+            .withProperty("OPAA_OLLAMA_CHAT_MODEL", "phi3:mini");
 
     seederWith(environment).seedIfNeeded();
 
@@ -64,13 +65,63 @@ class LlmModelSeederTest {
   }
 
   @Test
+  void fallsBackToTheLocalhostAddressWhenTheLegacyBaseUrlWasNeverSet() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    // No "docker" profile active on this MockEnvironment - mirrors a bootRun/host deployment,
+    // which never set the now-removed OPAA_OLLAMA_BASE_URL because it always relied on the
+    // "local" profile's own default.
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty("OPAA_AI_CHAT_PROVIDER", "ollama")
+            .withProperty("OPAA_OLLAMA_CHAT_MODEL", "phi3:mini");
+
+    seederWith(environment).seedIfNeeded();
+
+    ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
+    verify(repository, times(1)).save(captor.capture());
+    assertThat(captor.getValue().getBaseUrl()).isEqualTo("http://localhost:11434/v1");
+  }
+
+  @Test
+  void fallsBackToTheOllamaServiceNameOnTheDockerProfileWhenTheLegacyBaseUrlWasNeverSet() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty("OPAA_AI_CHAT_PROVIDER", "ollama")
+            .withProperty("OPAA_OLLAMA_CHAT_MODEL", "phi3:mini");
+    environment.setActiveProfiles("docker");
+
+    seederWith(environment).seedIfNeeded();
+
+    ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
+    verify(repository, times(1)).save(captor.capture());
+    assertThat(captor.getValue().getBaseUrl()).isEqualTo("http://ollama:11434/v1");
+  }
+
+  @Test
+  void fallsBackToTheApplicationDefaultChatModelWhenTheLegacyModelWasNeverSet() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty("OPAA_AI_CHAT_PROVIDER", "ollama")
+            .withProperty("OPAA_OLLAMA_BASE_URL", "http://ollama:11434");
+
+    seederWith(environment).seedIfNeeded();
+
+    ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
+    verify(repository, times(1)).save(captor.capture());
+    assertThat(captor.getValue().getModelIdentifier())
+        .isEqualTo(LlmModelSeeder.LEGACY_OLLAMA_CHAT_MODEL_DEFAULT);
+  }
+
+  @Test
   void doesNotDoubleAnAlreadyPresentV1Suffix() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
     MockEnvironment environment =
         new MockEnvironment()
-            .withProperty("spring.ai.model.chat", "ollama")
-            .withProperty("spring.ai.ollama.base-url", "http://ollama:11434/v1")
-            .withProperty("spring.ai.ollama.chat.model", "phi3:mini");
+            .withProperty("OPAA_AI_CHAT_PROVIDER", "ollama")
+            .withProperty("OPAA_OLLAMA_BASE_URL", "http://ollama:11434/v1")
+            .withProperty("OPAA_OLLAMA_CHAT_MODEL", "phi3:mini");
 
     seederWith(environment).seedIfNeeded();
 
@@ -80,12 +131,11 @@ class LlmModelSeederTest {
   }
 
   @Test
-  void seedsFromTheOpenAiConfigurationIncludingTheEncryptedApiKey() {
+  void seedsFromTheOpenAiConfigurationIncludingTheEncryptedApiKeyWhenNoLegacyProviderIsSet() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
     when(settingsEncryptor.encrypt("sk-configured-key")).thenReturn("enc:v1:ciphertext");
     MockEnvironment environment =
         new MockEnvironment()
-            .withProperty("spring.ai.model.chat", "openai")
             .withProperty(
                 "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
             .withProperty("spring.ai.openai.chat.model", "gpt-4o")
@@ -108,11 +158,31 @@ class LlmModelSeederTest {
   }
 
   @Test
+  void ignoresALeftoverOpaaAiChatProviderSetToOpenaiExplicitly() {
+    // A Bestandsinstallation that already ran OPAA_AI_CHAT_PROVIDER=openai before #762 - the
+    // variable is obsolete now, but leaving it set (harmlessly ignored) must not divert the
+    // takeover onto the legacy Ollama path.
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty("OPAA_AI_CHAT_PROVIDER", "openai")
+            .withProperty(
+                "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
+            .withProperty("spring.ai.openai.chat.model", "gpt-4o");
+
+    seederWith(environment).seedIfNeeded();
+
+    ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
+    verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getBaseUrl())
+        .isEqualTo("https://modellserver.example.internal/v1");
+  }
+
+  @Test
   void treatsTheBundledOpenAiPlaceholderKeyAsNoKeyAtAll() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
     MockEnvironment environment =
         new MockEnvironment()
-            .withProperty("spring.ai.model.chat", "openai")
             .withProperty(
                 "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
             .withProperty("spring.ai.openai.chat.model", "gpt-4o")
@@ -128,10 +198,9 @@ class LlmModelSeederTest {
   }
 
   @Test
-  void seedsNoModelButStillWritesTheMarkerWhenNeitherOllamaNorOpenAiIsConfigured() {
+  void seedsNoModelButStillWritesTheMarkerWhenTheOpenAiConfigurationHasNoBaseUrl() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
-    MockEnvironment environment =
-        new MockEnvironment().withProperty("spring.ai.model.chat", "something-else");
+    MockEnvironment environment = new MockEnvironment();
 
     seederWith(environment).seedIfNeeded();
 

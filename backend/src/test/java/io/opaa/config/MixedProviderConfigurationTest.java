@@ -22,19 +22,17 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Verifies that the application context loads when chat and embedding providers are set to
- * different values, confirming independent configurability.
+ * Verifies that the application context loads when chat and embedding point at different
+ * openai-compatible base URLs - since #762 there is only one provider ({@code openai}), but chat
+ * and embedding remain independently configurable functions (different endpoints, different
+ * models).
  *
- * <p>The embedding base URL is stated explicitly because there is no default one: selecting the
- * "openai" provider without an address is rejected by {@link OpenAiBaseUrlGuard}. The address below
- * is never called — the embedding model is replaced by {@link FakeEmbeddingModel}.
+ * <p>The embedding base URL is stated explicitly here even though {@code application.yml} already
+ * defaults it to a local Ollama endpoint, to prove the override actually takes effect. The address
+ * below is never called — the embedding model is replaced by {@link FakeEmbeddingModel}.
  */
 @SpringBootTest(
-    properties = {
-      "spring.ai.model.chat=ollama",
-      "spring.ai.model.embedding=openai",
-      "spring.ai.openai.embedding.base-url=http://model-server.invalid:8000/v1"
-    })
+    properties = {"spring.ai.openai.embedding.base-url=http://model-server.invalid:8000/v1"})
 @ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
 class MixedProviderConfigurationTest {
@@ -65,9 +63,11 @@ class MixedProviderConfigurationTest {
   @Autowired private Environment environment;
 
   @Test
-  void contextLoadsWithDifferentChatAndEmbeddingProviders() {
-    assertThat(environment.getProperty("spring.ai.model.chat")).isEqualTo("ollama");
+  void contextLoadsWithDifferentChatAndEmbeddingBaseUrls() {
+    assertThat(environment.getProperty("spring.ai.model.chat")).isEqualTo("openai");
     assertThat(environment.getProperty("spring.ai.model.embedding")).isEqualTo("openai");
+    assertThat(environment.getProperty("spring.ai.openai.chat.base-url"))
+        .isEqualTo("http://localhost:11434/v1");
     assertThat(environment.getProperty("spring.ai.openai.embedding.base-url"))
         .isEqualTo("http://model-server.invalid:8000/v1");
   }

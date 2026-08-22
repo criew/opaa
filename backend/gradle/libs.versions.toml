@@ -39,8 +39,13 @@ spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-te
 
 # Spring AI (versions managed by Spring AI BOM)
 spring-ai-vector-store-advisor = { module = "org.springframework.ai:spring-ai-vector-store-advisor" }
-spring-ai-starter-model-ollama = { module = "org.springframework.ai:spring-ai-starter-model-ollama" }
 spring-ai-starter-model-openai = { module = "org.springframework.ai:spring-ai-starter-model-openai" }
+# #762: io.opaa.api.GlobalExceptionHandler catches org.springframework.ai.retry.{Transient,NonTransient}AiException
+# directly. spring-ai-starter-model-openai only pulls in spring-ai-autoconfigure-retry (the
+# autoconfiguration, not the exception classes themselves) - the now-removed
+# spring-ai-starter-model-ollama used to bring this module in transitively, so it must be declared
+# explicitly now.
+spring-ai-retry = { module = "org.springframework.ai:spring-ai-retry" }
 spring-ai-starter-vector-store-pgvector = { module = "org.springframework.ai:spring-ai-starter-vector-store-pgvector" }
 spring-ai-tika-document-reader = { module = "org.springframework.ai:spring-ai-tika-document-reader" }
 spring-ai-spring-boot-testcontainers = { module = "org.springframework.ai:spring-ai-spring-boot-testcontainers" }
@@ -81,10 +86,10 @@ spring-boot = [
 ]
 spring-ai = [
     "spring-ai-vector-store-advisor",
-    "spring-ai-starter-model-ollama",
     "spring-ai-starter-model-openai",
     "spring-ai-starter-vector-store-pgvector",
     "spring-ai-tika-document-reader",
+    "spring-ai-retry",
 ]
 jjwt-runtime = ["jjwt-impl", "jjwt-jackson"]
 runtime = ["micrometer-registry-prometheus", "postgresql"]

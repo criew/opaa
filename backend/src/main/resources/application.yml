@@ -57,31 +57,36 @@ spring:
       # not the cause - PR #305 already rejected it once for the same reason.
       maximum-pool-size: 10
   ai:
+    # #762: a single anbindungsweg for both functions - the OpenAI-compatible protocol. Ollama
+    # speaks it too (under its own /v1 endpoint), which is why there is no separate "ollama"
+    # provider anymore - see docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei. The
+    # value is fixed, not driven by an environment variable: with the native Ollama starter gone,
+    # "openai" is the only autoconfiguration Spring AI can wire here.
     model:
-      chat: ${OPAA_AI_CHAT_PROVIDER:ollama}
-      embedding: ${OPAA_AI_EMBEDDING_PROVIDER:ollama}
-    # "openai" names the wire protocol, not a vendor: locally operated model
-    # servers speak the same API. There is deliberately no default base URL —
-    # whoever selects this provider must state the target address, otherwise
-    # OpenAiBaseUrlGuard refuses to start. See docs/features/llm-integration.md.
+      chat: openai
+      embedding: openai
+    # Unlike before #762, the base URL DOES have a default: locally operated models are the
+    # voreinstellung (docs/features/llm-integration.md#eigene-modelle-zuerst), and that default is
+    # now expressed here directly rather than through a second, native configuration block. The
+    # profile-specific overrides below point at the same Ollama server the removed "ollama" blocks
+    # used to (docker: the "ollama" service name; local/default: localhost) - only the property
+    # holding the address changed, not the target. A real vendor's endpoint still has to be stated
+    # explicitly by overriding the variables below; nothing here silently reaches outside the
+    # organisation, because the default itself stays local. Ollama needs no access key at all, so
+    # the placeholder default below is never sent anywhere that checks it.
     openai:
       api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
-      base-url: ${OPAA_OPENAI_BASE_URL:}
+      base-url: ${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}
       chat:
         api-key: ${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
-        base-url: ${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:}}
-        model: ${OPAA_OPENAI_CHAT_MODEL:gpt-4o}
+        base-url: ${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}
+        model: ${OPAA_OPENAI_CHAT_MODEL:phi3:mini}
         temperature: ${OPAA_OPENAI_CHAT_TEMPERATURE:0.7}
         max-tokens: ${OPAA_OPENAI_CHAT_MAX_TOKENS:2000}
       embedding:
         api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
-        base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:}}
-        model: ${OPAA_OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
-    ollama:
-      chat:
-        model: ${OPAA_OLLAMA_CHAT_MODEL:phi3:mini}
-      embedding:
-        model: ${OPAA_OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+        base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}
+        model: ${OPAA_OPENAI_EMBEDDING_MODEL:nomic-embed-text}
     vectorstore:
       pgvector:
         initialize-schema: true
@@ -224,9 +229,9 @@ spring:
   config:
     activate:
       on-profile: local
-  ai:
-    ollama:
-      base-url: ${OPAA_OLLAMA_BASE_URL:http://localhost:11434}
+  # No override needed: the top-level defaults above already point at localhost, the correct
+  # target for this profile. This section exists only so the "local" profile documents the same
+  # explicit choice the "docker" profile below makes for its own target.
 
 ---
 spring:
@@ -236,8 +241,12 @@ spring:
   datasource:
     url: ${OPAA_DB_URL:jdbc:postgresql://postgres:5432/opaa?prepareThreshold=0}
   ai:
-    ollama:
-      base-url: ${OPAA_OLLAMA_BASE_URL:http://ollama:11434}
+    openai:
+      base-url: ${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}
+      chat:
+        base-url: ${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}}
+      embedding:
+        base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}}
 
 ---
 spring:
