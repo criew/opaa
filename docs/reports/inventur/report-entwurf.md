@@ -74,16 +74,16 @@ asynchrone Verarbeitung. Die Quellenzugriffe sind gegen SSRF, Redirect-Tricks un
 Zugangsdaten-Exfiltration gehärtet (#267, #538, #617, #651, #693).
 
 ### Spaces, Bibliotheken & Rechte (C/F)
-Vollständige Ablösung des frühen Workspace-Modells durch Spaces und **Wissensbibliotheken als
-eigenständige Rechteobjekte** mit Grants an Personen und Gruppen (#199–#202). Die Rechteprüfung
+Spaces mit Mitgliedschaften und Rollen, persönlicher Space je Nutzer, und **Wissensbibliotheken
+als eigenständige Rechteobjekte** mit Grants an Personen und Gruppen (#199–#202). Die Rechteprüfung
 sitzt in der Vektorsuche selbst. Gruppen aus dem Verzeichnisabgleich als Rechtesubjekt (#200,
 #237), **lückenlose Historisierung von Rechten und Mitgliedschaften** mit Stichtags-Rekonstruktion
 (#238), Organisationsgrenze auf Datenbankebene mit strukturellem Prüflauf (#289, #390, #400, #401).
 
 ### Identität & Anmeldung (F)
-OIDC/Keycloak-Anbindung mit automatischer Nutzerprovisionierung (#108–#110), konsolidierte
-Auth-Modi (nur noch oidc + dev, erzwungen per Startguard), Robustheit gegen parallele
-Erstanmeldungen (#293, #307), Silent-Token-Renew statt Sofort-Logout (#737).
+OIDC/Keycloak-Anbindung mit automatischer Nutzerprovisionierung (#108–#110), daneben ein
+abgetrennter dev-Modus für die Entwicklung, per Startguard erzwungen. Robustheit gegen
+parallele Erstanmeldungen (#293, #307), Silent-Token-Renew statt Sofort-Logout (#737).
 
 ### Chat & Oberfläche (I)
 **Persistente Chats in Spaces** mit serverseitigem Verlauf, LLM-generierten Titeln und
@@ -120,8 +120,10 @@ Nichts davon ist verschwiegen — alles ist als Entscheidung oder offenes Issue 
   sind noch nicht begonnen — Phase-2- bzw. spätere Phase-1-Arbeit.
 - **DSGVO-Vollständigkeit** (Löschrecht, Export), Schadsoftwareprüfung des Uploads und
   Streaming-Antworten stehen aus.
-- Die frühe Projektphase hat Gebautes wieder verworfen (Workspace-Modell, basic/mock-Auth,
-  MVP-Oberflächen) — dokumentierter Lernweg, in den Bausteinen nachvollziehbar.
+
+Der Report nennt durchgängig nur den Endzustand. Zwischenstände, die gebaut und wieder
+zurückgebaut wurden, sind keine Leistungsposten; sie bleiben ausschließlich in den
+[Bausteinen](./bausteine/) dokumentiert.
 
 ## 6 · Zahlen zum Inventurstand
 

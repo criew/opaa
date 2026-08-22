@@ -8,6 +8,11 @@ Jeder Baustein ist genau **einem** Bereich zugeordnet (Querbezüge stehen im Bau
 Die Zuordnung ist ein Arbeitsstand und darf bis zum fertigen Report umgruppiert werden — die
 Bausteine selbst bleiben dabei unverändert. `#N` = Issue, `PR#N` = PR ohne Issue-Verknüpfung.
 
+**Regel für den Report:** Der Report zeigt nur den **Endzustand**. Gebautes, das später wieder
+zurückgebaut oder ersetzt wurde (basic-/mock-Auth, Workspace-Modell, MVP-Admin-Oberfläche,
+System-Bibliothek, Ollama-Compose-Konfiguration), taucht dort nicht als Leistung auf — es waren
+Versuche auf dem Weg. Die Bausteine dokumentieren sie weiterhin vollständig.
+
 ---
 
 ## A · Wissensschicht & Retrieval
@@ -96,8 +101,7 @@ Weboberfläche & Design: #14, #40, #70, #75, #148, #193, #221, #272, #440, #572,
 Docker Compose, Konfiguration, öffentliche Testinstanz, Demo-Instanz „Stadt Rheinfurt"
 (Korpus, Seed, Rollout).
 
-#16, #50, #98, #157, #196, #229, #230, #235, #244, #252, #519, #553, #708, #709, #711, #712,
-#713, #716,
+#16, #50, #98, #157, #196, #229, #230, #235, #244, #252, #519, #553, #708, #712, #716,
 PR#269, PR#728, PR#732
 
 ## K · Verwaltungs-Spezifika
@@ -114,19 +118,18 @@ Prüfungen. Leichte Sprache und Amtssprache: keine Bausteine.
 Scaffolding von Backend/Frontend, CI-Pipeline, Branch-Schutz, CLA & Lizenz (AGPL-3.0),
 Versionskatalog, OpenAPI-DTO-Generierung, Dependency-Upgrades, Build-Performance.
 
-#4, #6, #7, #8, #9, #17, #18, #19, #23, #58, #67, #72, #74, #86, #102, #133, #152, #162,
+#4, #6, #7, #8, #9, #17, #18, #19, #23, #67, #72, #74, #86, #102, #133, #152, #162,
 #188, #189, #310, #324, #625, #644,
-PR#104, PR#105, PR#403
+PR#403
 
 ## T2 · Agenten-Organisation & Projektsteuerung
 
 Rollenmodell der KI-Agenten, Arbeitsregeln (AGENTS.md), Projektsprache Deutsch,
 Stakeholder-Agenten, Tagesreport, Epic-/Sub-Issue-Prozess, Review-Prozess.
 
-#172, #174, #176, #178, #180, #182, #184, #186, #194, #218, #219, #245, #248, #261, #263,
-#268, #276, #279, #285, #290, #295, #302, #312, #319, #321, #335, #346, #373, #383, #459,
-#495, #566, #661,
-PR#1, PR#92, PR#385
+#172, #174, #176, #178, #180, #182, #184, #186, #194, #218, #219, #263, #268, #276,
+#279, #295, #302, #319, #335, #346, #459, #495, #566, #661,
+PR#1, PR#92
 
 ## T3 · Testinfrastruktur & E2E
 
@@ -142,6 +145,18 @@ PR#499, PR#648, PR#695, PR#698
 Vision, Neuausrichtung auf die öffentliche Verwaltung, Feature-Spezifikationen, Roadmap,
 Marketing.
 
-#2, #29, #317, #326, #338, #339, #340, #341, #342, #343, #344, #348, #350, #351, #352, #354,
-#356, #357, #360, #361, #362, #363, #367, #410, #461, #470, #533, #569,
-PR#32, PR#91, PR#97, PR#217, PR#399
+#2, #29, #317, #326, #338, #339, #340, #341, #343, #344, #348, #350, #351, #352, #354,
+#356, #357, #360, #361, #362, #363, #410, #461, #470, #533, #569,
+PR#91, PR#97, PR#217
+
+## P · Projekt als Produkt: Öffentlichkeit, Demo & Governance
+
+Gebaute Artefakte, die weder Produktfeld noch reine Technik sind: der Tagesreport als
+generierte GitHub-Pages-Seite mit Management-Summary und Atom-Feed, Projektwebsite und
+Marketing-Assets, der CLA-Prozess mit Lizenzrahmen (AGPL-3.0) sowie Demonstrations-Assets
+der Demo-Instanz (Verwaltungskorpus-Generator, Vorführ-Drehbuch).
+
+Tagesreport: #248, #261, #285, #290, #312, #321, #373, #383, PR#385
+Website & Marketing: #58, #342, #367, PR#32, PR#399
+Lizenz & CLA: #245, PR#104, PR#105
+Demo-Assets: #709, #711, #713
