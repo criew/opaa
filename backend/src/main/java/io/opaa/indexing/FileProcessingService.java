@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -564,14 +565,18 @@ public class FileProcessingService {
             .map(
                 chunk -> {
                   int index = chunks.indexOf(chunk);
-                  return new org.springframework.ai.document.Document(
-                      chunk.getText(),
-                      Map.of(
-                          "document_id", document.getId().toString(),
-                          "chunk_index", index,
-                          "file_name", document.getFileName(),
-                          "library_id", document.getLibraryId().toString(),
-                          "organization_id", document.getOrganizationId().toString()));
+                  Map<String, Object> metadata = new HashMap<>();
+                  metadata.put("document_id", document.getId().toString());
+                  metadata.put("chunk_index", index);
+                  metadata.put("file_name", document.getFileName());
+                  metadata.put("library_id", document.getLibraryId().toString());
+                  metadata.put("organization_id", document.getOrganizationId().toString());
+                  // #667: the chunk's Fundort, when ChunkingService could derive one.
+                  Object location = chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
+                  if (location != null) {
+                    metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+                  }
+                  return new org.springframework.ai.document.Document(chunk.getText(), metadata);
                 })
             .toList();
 

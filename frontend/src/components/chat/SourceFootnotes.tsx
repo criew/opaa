@@ -102,8 +102,7 @@ function renderOpenOriginalLink(
   )
 }
 
-/** The metadata the API can already vouch for - the mockup's Abschnitt/Paragraf follow with the
- *  backend's location metadata (#590 follow-up). */
+/** Space and indexing date - the Fundort itself (#667) is rendered separately per row. */
 function sourceMeta(doc: CitationIndex['docs'][number]): string | null {
   if (!doc.source) return null
   const parts = [doc.source.spaceName, formatIndexedAt(doc.source.indexedAt)].filter(Boolean)
@@ -163,6 +162,17 @@ function renderDocRow(
       <Typography component="span" sx={{ fontSize: 12, fontWeight: 500 }}>
         {doc.fileName}
       </Typography>
+      {/* #667: the Fundort per cited passage (mockup 1a: "Abschn. 4.2 ‚Fristsetzung'", "S. 2–4"),
+          resolved from the marker's chunk index - only where the pipeline could derive one. */}
+      {doc.locations.length > 0 && (
+        <Typography
+          component="span"
+          data-testid="source-location"
+          sx={{ fontSize: 12, color: 'text.secondary' }}
+        >
+          {doc.locations.join(' · ')}
+        </Typography>
+      )}
       {sourceMeta(doc) && (
         <Typography component="span" sx={{ fontSize: 12, color: 'text.disabled' }}>
           {sourceMeta(doc)}
