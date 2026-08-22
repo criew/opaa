@@ -48,6 +48,15 @@ JJJJMMTT/
    wieder zurückgebaut oder ersetzt wurde, ist kein Leistungsposten — es bleibt in den Bausteinen
    dokumentiert. Lücken werden als dokumentierte Entscheidungen mit Issue-Nummern benannt, nicht
    verschwiegen.
+
+   Jeder Zeitraumsbericht hat einen festen Rahmen:
+   - **Oben eine Management Summary:** geschätzter Umsetzungsgrad der aktuellen Produktphase
+     (in Prozent, mit einem Satz Herleitung) und eine Liste dessen, was mit dem Produkt nach
+     diesem Zeitraum konkret möglich ist.
+   - **Unten zwei Schlusskapitel:** „Lücken und bewusste Schnitte" (was fehlt oder anders
+     geschnitten wurde als geplant, je mit Issue-Nummer) und „Offen für Phase N — priorisierte
+     Restliste" gegen die jeweils aktuelle Phasendefinition der [Vision](../VISION.md), nach
+     Gewicht sortiert.
 6. **Gesamtstand fortschreiben.** Das Delta in [gesamtstand.md](./gesamtstand.md) einarbeiten:
    Neues ergänzen, im Zeitraum Zurückgebautes dort entfernen, Formulierungen auf „ist gebaut"
    halten. Der Gesamtstand nennt je Aussage den Stichtag, mit dem sie zuletzt bestätigt wurde.
