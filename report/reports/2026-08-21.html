@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-08-21</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Freitag, 21. August 2026</h1>
+<nav class="blaettern"><a href="2026-08-20.html" rel="prev" title="Donnerstag, 20. August 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/32539652429" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">60</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+17</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">45</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">40</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/708">#708</a> feat: Demo-Instanz mit Verwaltungskorpus einer fiktiven Stadt</span>
+<span class="epic-progress">10 / 10 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/713">#713</a></span>Installationsanleitung, Nutzerkonten und Drehbuch dokumentiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/712">#712</a></span>Seed-Mechanismus mit demo- und e2e-Profilen umgesetzt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/711">#711</a></span>Korpus-Generator für Stadt Rheinfurt erzeugt 156 Dokumente</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/729">#729</a></span>Smoke-Test für Demo-Profil validiert Stack und Suche</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/729">#729</a></span>test(e2e): Smoke-Test für das Demo-Profil (+579/−24, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/727">#727</a></span>docs(demo): Installationsanleitung, Nutzerkonten und Drehbuch der Demo-Instanz (+333/−18, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/726">#726</a></span>test(e2e): E2E-Suite auf das gemeinsame e2e-Seed-Profil umstellen (+239/−45, 28 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/724">#724</a></span>feat(demo): Seed-Mechanismus mit den Datenprofilen demo und e2e (+1039/−23, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/722">#722</a></span>feat(demo): Rheinfurt-Korpus und RSS-Feed im Compose-Stack bereitstellen (+439/−29, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/717">#717</a></span>feat(demo): Korpus-Generator für die fiktive Stadt Rheinfurt (+8848/−0, 172 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/715">#715</a></span>docs: Standardwerte in deployment.md gegen application.yml abgleichen (+140/−83, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/714">#714</a></span>docs(security): Härtungsanforderungen für erreichbare Compose-Deployments dokumentieren (+68/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/710">#710</a></span>docs(demo): Konzept der Demo-Instanz „Stadt Rheinfurt&quot; (+242/−1, 3 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/600">#600</a> feat(frontend): Redesign der Weboberfläche nach dem Zielbild-Designsystem</span>
+<span class="epic-progress">17 / 20 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 85%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/597">#597</a></span>Übrige Seiten und Dialoge ans neue Design angepasst</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/596">#596</a></span>Bibliothek-Anlage als dreistufiger Assistent umgesetzt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/595">#595</a></span>Bibliotheken-Übersicht als Tabelle mit Metadaten</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/593">#593</a></span>Spaces-Übersicht als Kartenraster implementiert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/703">#703</a></span>feat(frontend): Anmeldeseite im neuen Design (+69/−25, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/701">#701</a></span>feat(frontend): übrige Seiten und Dialoge an das neue Design angleichen (+510/−341, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/696">#696</a></span>feat(frontend): Bibliothek-Anlage als Assistent mit Herkunfts-Auswahl (+1140/−1002, 17 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/687">#687</a></span>feat(frontend): Space-Anlage als mehrstufiger Assistent (+531/−274, 13 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/685">#685</a></span>feat(frontend): Wissensbibliotheken-Übersicht als Zielbild-Tabelle (+201/−10, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/683">#683</a></span>feat(frontend): Spaces-Übersicht als Kartenraster nach Zielbild (+292/−1, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/676">#676</a></span>feat(frontend): Belegfenster — seitliche Leiste mit allen Fundstellen einer Antwort (+398/−4, 7 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/224">#224</a> Epic: Suchqualität messbar machen — Eval-Korpus und Retrieval-Regression</span>
+<span class="epic-progress">8 / 9 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 89%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/721">#721</a></span>Retrieval-Harness für mehrchunkige Dokumente ertüchtigt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/723">#723</a></span>feat(eval): Retrieval-Harness für mehrchunkige Dokumente ertüchtigen (+1916/−101, 32 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/198">#198</a> Epic: Space and asset model — replace the workspace model</span>
+<span class="epic-progress">17 / 36 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 47%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/203">#203</a></span>Space-Bibliothek-Assoziation als reine Kuratierung eingeführt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/718">#718</a></span>@Space-Chip für Chip-Leiste geplant (blockiert)</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/706">#706</a></span>feat(space): Space-Bibliothek-Assoziation als reine Kuratierung (+3988/−56, 55 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/107">#107</a> feat: Introduce Workspaces &amp; Access Control</span>
+<span class="epic-progress">18 / 18 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/123">#123</a></span>Gesprächsgedächtnis je Person getrennt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/119">#119</a></span>Speicherkontingent je Bibliothek durchgesetzt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/700">#700</a></span>feat(library): Speicherkontingent je Bibliothek durchsetzen (+1000/−32, 31 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/731">#731</a></span>Rate-Limit-Meldung ins Deutsche übersetzt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/716">#716</a></span>Schnellstart-Compose-Stack mit .env.docker.example repariert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/693">#693</a></span>HTTP→HTTPS-Upgrade-Redirect auf gleichem Host akzeptiert</li><li>Organisationsgrenze auf 18 Fremdschlüsseln und AdminController durchgesetzt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/733">#733</a></span>fix(api): Rate-Limit-Meldung ist englisch statt deutsch (+9/−7, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/732">#732</a></span>docs(demo): Rollout der Demo-Instanz Stadt Rheinfurt dokumentieren (+77/−21, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/728">#728</a></span>feat(demo): Quellen- und Demo-Hinweis der Demo-Instanz (Frontend) (+261/−7, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/719">#719</a></span>fix(deployment): eigene Compose-Vorlage .env.docker.example ergänzen (+296/−32, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/705">#705</a></span>feat(indexing): Zeitplan je Bibliothek für Indizierungsläufe (+2365/−7, 36 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/704">#704</a></span>feat(indexing): Zulässige Dokumenttypen über den erkannten Inhalt statt über die Dateiendung bestimmen (+1247/−164, 25 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/702">#702</a></span>fix(auth): Verbindungsdruck bei gleichzeitigen Erstanmeldungen senken (+431/−26, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/699">#699</a></span>feat(security): ausgehende Abrufe für HTTP_DIRECTORY/RSS_FEED härten (+1521/−101, 27 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/698">#698</a></span>test(backend): letzte drei Migrationstests auf Template-DB umstellen (+40/−135, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/697">#697</a></span>feat(query): Belege deterministisch gegen abgerufene Fundstellen validieren (+989/−342, 20 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/695">#695</a></span>test(query): Zwei-Konten-Test fuer Gespraechsgedaechtnis nachreichen (+97/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/694">#694</a></span>fix(eval): Fallzahlbasierte Regressionsprüfung für zu enge Baseline-Paare (+903/−68, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/692">#692</a></span>fix(frontend): chatStore.loadChat gegen laufende Settings-PATCH-Kette absichern (+202/−7, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/691">#691</a></span>test(backend): GroupServiceIntegrationTest auf echtes Liquibase-Schema umstellen (+127/−96, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/690">#690</a></span>docs(decisions): ADR-0009 um Nachtrag zur lokalen Modellbereitstellung ergänzen (+63/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/689">#689</a></span>docs(deployment): Testkonto-Konventionen zentral dokumentieren (+44/−0, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/688">#688</a></span>test(backend): Organisationsgrenze durch strukturellen Prüflauf gegen das Schema nachweisen (+825/−2, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/681">#681</a></span>feat(db): Indizierungsläufe an die Organisation binden (+887/−85, 17 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/680">#680</a></span>fix(db): Bibliotheksreferenzen eines Chats an die Organisation binden (+646/−4, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/679">#679</a></span>fix(auth): Organisationsgrenze in AdminController durchsetzen (+404/−35, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/678">#678</a></span>feat(db): Nutzerseitige Organisationsgrenze auf 18 Fremdschlüsseln durchsetzen (+1553/−36, 12 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-08-22 um 03:57 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-08-21T00:00:00 bis 2026-08-21T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>

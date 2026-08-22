@@ -5,8 +5,37 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-21T02:07:38Z</updated>
+  <updated>2026-08-22T01:57:20Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Freitag, 21. August 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-21.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-21.html</id>
+    <updated>2026-08-22T01:57:20Z</updated>
+    <summary type="text">feat: Demo-Instanz mit Verwaltungskorpus einer fiktiven Stadt:
+— Installationsanleitung, Nutzerkonten und Drehbuch dokumentiert
+— Seed-Mechanismus mit demo- und e2e-Profilen umgesetzt
+— Korpus-Generator für Stadt Rheinfurt erzeugt 156 Dokumente
+— Smoke-Test für Demo-Profil validiert Stack und Suche
+feat(frontend): Redesign der Weboberfläche nach dem Zielbild-Designsystem:
+— Übrige Seiten und Dialoge ans neue Design angepasst
+— Bibliothek-Anlage als dreistufiger Assistent umgesetzt
+— Bibliotheken-Übersicht als Tabelle mit Metadaten
+— Spaces-Übersicht als Kartenraster implementiert
+Epic: Suchqualität messbar machen — Eval-Korpus und Retrieval-Regression:
+— Retrieval-Harness für mehrchunkige Dokumente ertüchtigt
+Epic: Space and asset model — replace the workspace model:
+— Space-Bibliothek-Assoziation als reine Kuratierung eingeführt
+— @Space-Chip für Chip-Leiste geplant (blockiert)
+feat: Introduce Workspaces &amp; Access Control:
+— Gesprächsgedächtnis je Person getrennt
+— Speicherkontingent je Bibliothek durchgesetzt
+Sonstiges:
+— Rate-Limit-Meldung ins Deutsche übersetzt
+— Schnellstart-Compose-Stack mit .env.docker.example repariert
+— HTTP→HTTPS-Upgrade-Redirect auf gleichem Host akzeptiert
+— Organisationsgrenze auf 18 Fremdschlüsseln und AdminController durchgesetzt</summary>
+  </entry>
   <entry>
     <title>Tagesreport Donnerstag, 20. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-20.html"/>
