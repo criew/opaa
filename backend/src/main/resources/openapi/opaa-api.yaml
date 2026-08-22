@@ -4515,8 +4515,10 @@ components:
       type: object
       description: >
         Tests a connection without requiring the entry to be saved first. When modelId is set and
-        apiKey is omitted, the stored, decrypted key of that model is used for the probe instead of
-        requiring the caller to re-enter a key they can never read back.
+        apiKey is omitted or empty, the stored, decrypted key of that model is used for the probe
+        instead of requiring the caller to re-enter a key they can never read back - but only when
+        baseUrl is same-origin with modelId's own stored baseUrl; otherwise the request is rejected
+        with 400 rather than sending the stored key to a different address.
       required: [baseUrl, modelIdentifier]
       properties:
         baseUrl:
@@ -4536,8 +4538,9 @@ components:
           format: uuid
           nullable: true
           description: >
-            When set and apiKey is omitted, reuses that model's stored, decrypted key for the
-            probe - 404 if it does not exist.
+            When set and apiKey is omitted or empty, reuses that model's stored, decrypted key for
+            the probe, provided baseUrl is same-origin with the model's own stored baseUrl - 404 if
+            modelId does not exist, 400 if baseUrl is a different origin.
 
     LlmModelTestResponse:
       type: object

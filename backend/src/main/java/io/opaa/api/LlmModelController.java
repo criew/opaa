@@ -47,9 +47,10 @@ import org.springframework.web.server.ResponseStatusException;
  * turns it into a clean 409 rather than letting it surface as an unhandled 500 - the caller is told
  * to retry, not shown a stack trace.
  *
- * <p><b>Delete guard for the active model (#757).</b> {@link LlmModelService#deleteModel}
- * deliberately does not enforce this rule itself (see that method's own Javadoc) - it belongs here,
- * at the request-facing boundary, with a German, actionable message.
+ * <p><b>Delete guard for the active model (#757, review of the first version of this PR).</b>
+ * {@link LlmModelService#deleteModel} itself rejects deleting the active model with 409 - not a
+ * separate {@code getModel}/{@code deleteModel} check-then-act pair composed here, which would
+ * reopen the exact TOCTOU window a concurrent activation could slip through between the two calls.
  */
 @RestController
 @RequestMapping("/api/v1/admin/models")
@@ -120,13 +121,6 @@ public class LlmModelController {
   public ResponseEntity<Void> deleteModel(
       @PathVariable UUID modelId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    LlmModel model = llmModelService.getModel(modelId);
-    if (model.isActive()) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
-          "Das aktive Chat-Modell kann nicht gelöscht werden. Aktivieren Sie zuerst ein anderes"
-              + " Modell.");
-    }
     llmModelService.deleteModel(currentUser.getOrganizationId(), currentUser.getId(), modelId);
     return ResponseEntity.noContent().build();
   }

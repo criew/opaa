@@ -128,14 +128,20 @@ public class LlmModelService {
   }
 
   /**
-   * Deletes a model. Whether the active model may be deleted at all is a rule for the admin API
-   * (#757) to enforce with a request-facing error - this persistence layer does not reject it, the
-   * same division of responsibility {@code BrandingSettingsService} draws between database
-   * constraints and service-level validation.
+   * Deletes a model - rejected with 409 while it is the systemwide active one (#757 review: the
+   * check and the delete must be the same transaction, not a {@code getModel}/{@code deleteModel}
+   * pair the controller composes itself, which left a TOCTOU window between "still active" and
+   * "gone" open to a concurrent {@link #activateModel}/{@link #updateModel} call).
    */
   @Transactional
   public void deleteModel(UUID organizationId, UUID actorUserId, UUID id) {
     LlmModel model = repository.findById(id).orElseThrow(() -> notFound(id));
+    if (model.isActive()) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "Das aktive Chat-Modell kann nicht gelöscht werden. Aktivieren Sie zuerst ein anderes"
+              + " Modell.");
+    }
     Map<String, Object> before = auditState(model);
     repository.delete(model);
     auditEventRecorder.recordUserAction(

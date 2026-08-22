@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -30,20 +31,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * {@link LlmModelController} in isolation, {@link LlmModelService}/{@link LlmModelConnectionTester}
  * mocked - proves the admin-only access bar per operation (#757 acceptance criterion: "Ein Nutzer
  * ohne SYSTEM_ADMIN erhält auf jeder Operation eine Ablehnung"), that no response ever carries an
- * apiKey field, and the two review findings from #763 this issue addresses: a concurrent activation
- * surfaces as 409 rather than 500, and deleting the active model is rejected with 409 before the
- * service is even asked to delete it.
+ * apiKey field, and that a concurrent activation surfaces as 409 rather than 500. The active-model
+ * delete guard itself now lives in {@code LlmModelService#deleteModel} (one transaction, not a
+ * {@code getModel}/{@code deleteModel} pair composed here) - {@link
+ * #deletingTheActiveModelReturns409} only proves the controller passes the service's 409 through
+ * unchanged; {@code LlmModelServiceIntegrationTest} proves the guard itself against a real
+ * database.
  */
 @WebMvcTest(LlmModelController.class)
 @ActiveProfiles("dev")
@@ -228,25 +234,27 @@ class LlmModelControllerTest {
             isNull());
   }
 
-  // --- Delete guard for the active model (#757) ---
+  // --- Delete guard for the active model (#757, review: the guard now lives in
+  // LlmModelService#deleteModel itself, in the same transaction as the delete - see
+  // LlmModelServiceIntegrationTest for the guard's own proof against a real database) ---
 
   @Test
-  void deletingTheActiveModelReturns409WithoutCallingDeleteModel() throws Exception {
+  void deletingTheActiveModelReturns409() throws Exception {
     UUID modelId = UUID.randomUUID();
-    when(llmModelService.getModel(modelId)).thenReturn(newModel("Aktives Modell", true));
+    doThrow(
+            new ResponseStatusException(
+                HttpStatus.CONFLICT, "Das aktive Chat-Modell kann nicht gelöscht werden."))
+        .when(llmModelService)
+        .deleteModel(actingAdminOrganizationId, actingAdminId, modelId);
 
     mockMvc
         .perform(delete("/api/v1/admin/models/" + modelId).with(asAdmin()))
         .andExpect(status().isConflict());
-
-    org.mockito.Mockito.verify(llmModelService, org.mockito.Mockito.never())
-        .deleteModel(any(), any(), any());
   }
 
   @Test
   void deletingAnInactiveModelSucceeds() throws Exception {
     UUID modelId = UUID.randomUUID();
-    when(llmModelService.getModel(modelId)).thenReturn(newModel("Inaktives Modell", false));
 
     mockMvc
         .perform(delete("/api/v1/admin/models/" + modelId).with(asAdmin()))
