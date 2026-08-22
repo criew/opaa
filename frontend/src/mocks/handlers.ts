@@ -362,6 +362,8 @@ export const handlers = [
       archived: false,
       visibility: 'PRIVATE',
       memberCount: 1,
+      libraryCount: 0,
+      chatCount: 0,
       userRole: 'ADMIN',
       createdAt: now,
       updatedAt: now,

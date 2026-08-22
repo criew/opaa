@@ -14,6 +14,8 @@ const personal = {
   archived: false,
   visibility: 'PRIVATE' as const,
   memberCount: 1,
+  libraryCount: 3,
+  chatCount: 12,
   userRole: 'ADMIN' as const,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
@@ -27,6 +29,8 @@ const team = {
   archived: true,
   visibility: 'PRIVATE' as const,
   memberCount: 9,
+  libraryCount: 1,
+  chatCount: 1,
   userRole: 'CURATOR' as const,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
@@ -52,12 +56,22 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     expect(personalCard).toHaveAttribute('href', '/spaces/space-personal')
     expect(personalCard).toHaveTextContent('Persönlich')
     expect(personalCard).toHaveTextContent('Eigener Denkraum ohne Mitleser.')
-    expect(personalCard).toHaveTextContent('nur Sie')
+    expect(personalCard).toHaveTextContent('3 Quellen · 12 Chats · nur Sie')
 
     const teamCard = screen.getByRole('link', { name: /Widerspruchsstelle/ })
     expect(teamCard).toHaveTextContent('Team')
-    expect(teamCard).toHaveTextContent('9 Mitglieder')
+    expect(teamCard).toHaveTextContent('1 Quelle · 1 Chat · 9 Mitglieder')
     expect(teamCard).toHaveTextContent('Archiviert')
+  })
+
+  it('falls back to the member count when the list API carries no source/chat figures (#682)', () => {
+    const withoutFigures = { ...team, libraryCount: undefined, chatCount: undefined }
+    useSpaceStore.setState({ spaces: [withoutFigures], isLoadingList: false, error: null })
+    renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
+
+    const teamCard = screen.getByRole('link', { name: /Widerspruchsstelle/ })
+    expect(teamCard).toHaveTextContent('9 Mitglieder')
+    expect(teamCard).not.toHaveTextContent('Quelle')
   })
 
   it('navigates to the create wizard from the trailing card', async () => {

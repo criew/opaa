@@ -13,11 +13,24 @@ import { blue, fontFamily } from '../theme/tokens'
 import { spaceRoleLabel } from '../utils/labels'
 import type { SpaceListResponse } from '../types/api'
 
-/** Mockup 1c's figures line - today the list API only counts members; the sources and chats
- *  per space follow with the backend follow-up issue. */
+function plural(count: number, singular: string, pluralForm: string): string {
+  return `${count} ${count === 1 ? singular : pluralForm}`
+}
+
+/** Mockup 1c's figures line: "n Quellen · n Chats · n Mitglieder" (or "… · nur Sie" for the
+ *  personal space). The source and chat figures arrived with #682 and are optional in the API,
+ *  so a list without them still shows the member figure alone. */
 function spaceFigures(space: SpaceListResponse): string {
-  if (space.isDefault && space.memberCount <= 1) return 'nur Sie'
-  return space.memberCount === 1 ? '1 Mitglied' : `${space.memberCount} Mitglieder`
+  const members =
+    space.isDefault && space.memberCount <= 1
+      ? 'nur Sie'
+      : plural(space.memberCount, 'Mitglied', 'Mitglieder')
+  if (space.libraryCount === undefined || space.chatCount === undefined) return members
+  return [
+    plural(space.libraryCount, 'Quelle', 'Quellen'),
+    plural(space.chatCount, 'Chat', 'Chats'),
+    members,
+  ].join(' · ')
 }
 
 /**
