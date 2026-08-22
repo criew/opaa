@@ -1121,15 +1121,26 @@ paths:
         wanting an inline preview fetches this endpoint and renders the response itself (e.g. as a
         Blob URL); see #738/#739 for that client-side piece. The library owning the document is
         resolved from Document.libraryId; VIEWER role or above on that library is required, the same
-        floor GET /api/v1/libraries/{libraryId} itself uses. Only sourceType UPLOAD and FILESYSTEM
-        carry a local file - HTTP_DIRECTORY and RSS_FEED documents answer 404, clients use the
-        document's own source URL for those instead. Answered with Content-Disposition: inline and
-        the file's original name/content type, so a client can render it inline instead of forcing a
-        download. A document from another organization, without a library grant, of an unsupported
-        sourceType, or whose file has since been moved or deleted on disk are all answered with the
-        same 404 - no response here reveals whether a given documentId exists. There is no 403: VIEWER
-        is the lowest AssetRole, so any grant at all already satisfies this floor - a caller either
-        clears it or has no grant, which is the 404 case above.
+        floor GET /api/v1/libraries/{libraryId} itself uses. sourceType UPLOAD/FILESYSTEM stream a
+        local file directly; HTTP_DIRECTORY/RSS_FEED are proxied server-side from the document's own
+        stored source URL instead (#747) - this closes the gap where that source is only reachable
+        from OPAA's own network (an internal fileserver/intranet site, the common case in a Behörde),
+        never from the caller's browser. The proxy re-validates the target address against the same
+        allowlist (#267) applied at indexing time, follows a redirect only within the same origin,
+        validates the configured proxy host the same way, applies the library's own stored
+        proxy/credentials to the outbound request without ever exposing them in the response, and
+        streams the response directly to the caller (no temp file) bounded by its own, smaller size
+        limit and request timeout than a background indexing run uses. Answered with
+        Content-Disposition: inline and the file's original name/content type (the document's own
+        stored content type first, the proxied response's own declared type - normalized, no
+        parameters - only as a fallback), so a client can render it inline instead of forcing a
+        download. A document from another organization, without a
+        library grant, of an unsupported sourceType, whose local file has since been moved or deleted
+        on disk, or whose remote source is unreachable/rejected are all answered with the same 404 -
+        no response here reveals whether a given documentId exists, nor whether "not found" means
+        "no such document" or "source currently unreachable". There is no 403: VIEWER is the lowest
+        AssetRole, so any grant at all already satisfies this floor - a caller either clears it or
+        has no grant, which is the 404 case above.
       responses:
         "200":
           description: The original file's bytes
@@ -2242,28 +2253,31 @@ components:
           nullable: true
           description: >
             The document id chunks were retrieved from (#739) - lets a client open the original via
-            GET /api/v1/documents/{documentId}/content (local sourceTypes only, see sourceType/
-            sourceUrl below). Null for a synthetic entry (#386) whose citation named a document id
-            that matched no retrieved chunk at all - there is nothing real to link to.
+            GET /api/v1/documents/{documentId}/content for every sourceType (#747: that endpoint now
+            proxies HTTP_DIRECTORY/RSS_FEED server-side from sourceUrl below instead of answering
+            404). Null for a synthetic entry (#386) whose citation named a document id that matched
+            no retrieved chunk at all - there is nothing real to link to.
           example: 3f9a6b2e-1c4d-4e8a-9f0b-2d6c8e1a5b7d
         sourceType:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/DocumentSourceType"
           description: >
-            The retrieved document's own source type (#739), deciding which deep link the client
-            follows: GET /api/v1/documents/{documentId}/content for UPLOAD/FILESYSTEM (a local
-            original), sourceUrl below for HTTP_DIRECTORY/RSS_FEED (no local file - that endpoint
-            answers 404 for both). Null exactly when documentId is null.
+            The retrieved document's own source type (#739). Every sourceType opens through GET
+            /api/v1/documents/{documentId}/content (#747); sourceUrl below is secondary information
+            for HTTP_DIRECTORY/RSS_FEED, not itself a deep link a client should navigate to directly
+            (the source may only be reachable from OPAA's own network). Null exactly when documentId
+            is null.
           example: FILESYSTEM
         sourceUrl:
           type: string
           nullable: true
           description: >
             The document's own remote location for sourceType HTTP_DIRECTORY/RSS_FEED (#739),
-            mirroring LibraryDocumentResponse.sourceUrl - the deep link a client opens for these
-            source types in place of the download endpoint, which has no local file to stream for
-            them. Null for UPLOAD/FILESYSTEM (use documentId instead) and for a synthetic entry.
+            mirroring LibraryDocumentResponse.sourceUrl - shown as secondary information alongside
+            the documentId deep link (#747), e.g. as a tooltip, since the source itself may not be
+            reachable from the caller's own network. Null for UPLOAD/FILESYSTEM (use documentId
+            instead) and for a synthetic entry.
           example: https://example.gov/verzeichnis/dienstanweisung-2024.pdf
         sourceEntryUrl:
           type: string
@@ -3598,13 +3612,15 @@ components:
           type: string
           nullable: true
           description: >
-            The document's own remote location for HTTP_DIRECTORY and RSS_FEED (#738) - the deep
-            link a client opens for these source types, since there is no local file behind GET
-            /api/v1/documents/{documentId}/content to stream for them (that endpoint answers 404
-            for both, see its own description). Null for UPLOAD/FILESYSTEM, whose local file path on
-            the server must not be exposed here. A client prefers sourceEntryUrl over this field
-            when both are set (an RSS attachment's own file location is less useful than the entry
-            page it was found on).
+            The document's own remote location for HTTP_DIRECTORY and RSS_FEED (#738). GET
+            /api/v1/documents/{documentId}/content is the actual deep link for every sourceType,
+            including these two (#747: that endpoint now proxies the original server-side from this
+            same URL instead of answering 404) - this field is shown as secondary information
+            alongside that link (e.g. a tooltip), since the source itself may only be reachable from
+            OPAA's own network, not the caller's browser. Null for UPLOAD/FILESYSTEM, whose local
+            file path on the server must not be exposed here. A client prefers sourceEntryUrl over
+            this field when both are set (an RSS attachment's own file location is less useful than
+            the entry page it was found on).
 
             Deliberately visible to every VIEWER, unlike LibraryResponse's own sourceUrl (masked
             below MANAGER, #507): this field names one document's remote origin, the document deep

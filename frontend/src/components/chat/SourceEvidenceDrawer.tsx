@@ -35,12 +35,14 @@ interface EvidenceDoc {
   relevanceScore?: number
   indexedAt?: string | null
   sourceEntryUrl?: string | null
-  /** #739: the local original's document id - openable via GET /documents/{id}/content when
-   *  {@link sourceType} is UPLOAD/FILESYSTEM. Undefined for a synthetic entry (#386). */
+  /** #739/#747: the original's document id - openable via GET /documents/{id}/content for every
+   *  sourceType (that endpoint proxies HTTP_DIRECTORY/RSS_FEED server-side since #747). Undefined
+   *  for a synthetic entry (#386). */
   documentId?: string | null
   sourceType?: DocumentSourceType | null
-  /** #739: the remote deep link for sourceType HTTP_DIRECTORY/RSS_FEED, mirroring
-   *  LibraryDocumentResponse.sourceUrl (#738). */
+  /** #739/#747: the remote source URL for sourceType HTTP_DIRECTORY/RSS_FEED, mirroring
+   *  LibraryDocumentResponse.sourceUrl (#738) - shown as secondary information alongside the
+   *  documentId deep link above, not itself the primary way to open the original any more. */
   sourceUrl?: string | null
 }
 
@@ -67,11 +69,11 @@ export default function SourceEvidenceDrawer({
   // rather than touching any store.
   const [openOriginalError, setOpenOriginalError] = useState<string | null>(null)
 
-  // #739: a local original (UPLOAD/FILESYSTEM) goes through the Bearer-authenticated download
-  // endpoint (a plain <a href> cannot carry the token, ADR-0005). A remote sourceType
-  // (HTTP_DIRECTORY/RSS_FEED) is rendered as a real `<a href>` instead (PR #745 review, nit 3) - it
-  // needs no token, so it keeps native link semantics (middle-click, "open in new tab", "copy link
-  // address") that a `component="button"` Link loses.
+  // #739/#747: every sourceType with a documentId opens through the Bearer-authenticated content
+  // endpoint (a plain <a href> cannot carry the token, ADR-0005) - since #747 that endpoint proxies
+  // HTTP_DIRECTORY/RSS_FEED server-side from their own stored source URL instead of answering 404,
+  // so this no longer branches on sourceType at all; sourceEntryUrl/sourceUrl are shown as
+  // secondary information alongside the button instead (see the render code below).
   async function handleOpenLocalOriginal(doc: EvidenceDoc) {
     setOpenOriginalError(null)
     if (!doc.documentId) return
@@ -290,33 +292,37 @@ export default function SourceEvidenceDrawer({
                     .filter(Boolean)
                     .join(' · ')}
                 </Typography>
-                {/* #739/#745: a local original (UPLOAD/FILESYSTEM) opens via the
-                    Bearer-authenticated download endpoint and stays a button; a remote source
-                    (HTTP_DIRECTORY/RSS_FEED) is a real link to sourceEntryUrl/sourceUrl instead,
-                    exactly like LibraryDetailPage#handleOpenOriginal (#738). */}
-                {doc.sourceType === 'UPLOAD' || doc.sourceType === 'FILESYSTEM' ? (
-                  doc.documentId && (
-                    <Link
-                      component="button"
-                      type="button"
-                      underline="hover"
-                      onClick={() => void handleOpenLocalOriginal(doc)}
-                      sx={{ fontSize: 11.5 }}
-                    >
-                      Im Dokument öffnen
-                    </Link>
-                  )
-                ) : (doc.sourceEntryUrl ?? doc.sourceUrl) ? (
+                {/* #747: every sourceType with a documentId opens via the content endpoint
+                    (LibraryDetailPage#handleOpenOriginal, #738); sourceEntryUrl/sourceUrl is
+                    shown alongside it as secondary information (a small "Quelle" link carrying
+                    the raw URL as its title tooltip and aria-label - #748 review, nit 5: a plain
+                    title alone is generally not announced by a screen reader once the element
+                    already has visible text), since that address may only be reachable from
+                    OPAA's own network, not the caller's browser. */}
+                {doc.documentId && (
+                  <Link
+                    component="button"
+                    type="button"
+                    underline="hover"
+                    onClick={() => void handleOpenLocalOriginal(doc)}
+                    sx={{ fontSize: 11.5 }}
+                  >
+                    Im Dokument öffnen
+                  </Link>
+                )}
+                {(doc.sourceEntryUrl ?? doc.sourceUrl) && (
                   <Link
                     href={doc.sourceEntryUrl ?? doc.sourceUrl ?? undefined}
                     target="_blank"
                     rel="noopener noreferrer"
                     underline="hover"
-                    sx={{ fontSize: 11.5 }}
+                    title={doc.sourceEntryUrl ?? doc.sourceUrl ?? undefined}
+                    aria-label={`Quelle: ${doc.sourceEntryUrl ?? doc.sourceUrl ?? ''}`}
+                    sx={{ fontSize: 11.5, color: 'text.disabled' }}
                   >
-                    Im Dokument öffnen
+                    Quelle
                   </Link>
-                ) : null}
+                )}
               </Box>
             </Box>
           ))

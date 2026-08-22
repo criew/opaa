@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -14,11 +15,15 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.library.DocumentContent;
 import io.opaa.library.LibraryDocumentService;
+import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -121,6 +126,57 @@ class DocumentControllerTest {
                     "Content-Disposition",
                     "inline; filename=\"Pr_fbericht *2026*.txt\";"
                         + " filename*=UTF-8''Pr%C3%BCfbericht%20%2A2026%2A.txt"));
+  }
+
+  @Test
+  void aStreamedRemoteContentBodyIsClosedOnceItHasBeenWritten() throws Exception {
+    // #748 review, finding 3: HTTP_DIRECTORY/RSS_FEED content is streamed straight from
+    // LibraryDocumentService's still-open remote response - there is no temp file for this
+    // controller to delete any more (see DocumentContent's Javadoc for why the previous
+    // temp-file-plus-delete-on-close approach was replaced). What this controller still owes the
+    // stream is closing it exactly once the response body has been written - asserted here via a
+    // wrapper that records whether close() was called.
+    UUID documentId = UUID.randomUUID();
+    AtomicBoolean closed = new AtomicBoolean(false);
+    InputStream remoteBody =
+        new FilterInputStream(
+            new ByteArrayInputStream(
+                "Originalinhalt vom entfernten Quellsystem".getBytes(StandardCharsets.UTF_8))) {
+          @Override
+          public void close() throws java.io.IOException {
+            closed.set(true);
+            super.close();
+          }
+        };
+    when(documentService.loadContent(eq(documentId), eq(currentUserId), eq(false)))
+        .thenReturn(DocumentContent.ofStream(remoteBody, "original.pdf", "application/pdf"));
+
+    mockMvc
+        .perform(get("/api/v1/documents/" + documentId + "/content").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(content().string("Originalinhalt vom entfernten Quellsystem"));
+
+    assertThat(closed.get()).isTrue();
+  }
+
+  @Test
+  void aContentTypeTheSourceDeclaresThatIsNotAValidMediaTypeFallsBackToOctetStream(
+      @TempDir Path tempDir) throws Exception {
+    // #748 review, finding 2a: a stored/remote-declared Content-Type this class does not control
+    // the syntax of must never turn MediaType.parseMediaType's IllegalArgumentException into a 500
+    // - "the source sent something odd" stays a generic, successfully-served download instead of
+    // an OPAA-side server error.
+    UUID documentId = UUID.randomUUID();
+    Path file = tempDir.resolve("original.bin");
+    Files.writeString(file, "Originalinhalt", StandardCharsets.UTF_8);
+    when(documentService.loadContent(eq(documentId), eq(currentUserId), eq(false)))
+        .thenReturn(new DocumentContent(file, "original.bin", "pdf"));
+
+    mockMvc
+        .perform(get("/api/v1/documents/" + documentId + "/content").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM))
+        .andExpect(content().string("Originalinhalt"));
   }
 
   @Test

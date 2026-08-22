@@ -11,6 +11,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -21,15 +22,24 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.DocumentStatus;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.FilesystemPathAllowlist;
+import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.TargetAddressValidator;
+import io.opaa.indexing.UrlFileDownloader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -65,6 +75,14 @@ class LibraryDocumentServiceTest {
   private VectorStore vectorStore;
   private LibraryStorageQuotaService storageQuotaService;
   private FilesystemPathAllowlist filesystemAllowlist;
+  // Target validation disabled here (#747): every server this class's remote-content tests talk to
+  // is deliberately loopback, and TargetAddressValidator's own SSRF logic is already covered by its
+  // dedicated TargetAddressValidatorTest/UrlFileDownloaderTest - mirrors those suites' identical
+  // choice for the same reason. loadContentAnswers404WhenTheAllowlistRejectsTheStoredSourceUrl
+  // below builds its own, deliberately enabled validator instead.
+  private UrlFileDownloader urlFileDownloader;
+  private TargetAddressValidator disabledTargetAddressValidator;
+  private RemoteContentProperties remoteContentProperties;
   private LibraryDocumentService service;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -93,6 +111,9 @@ class LibraryDocumentServiceTest {
     // Default: every FILESYSTEM sourcePath used below is treated as allowed unless a test
     // explicitly narrows this - see the allowlist-specific tests further down, which override it.
     when(filesystemAllowlist.isAllowed(any())).thenReturn(true);
+    disabledTargetAddressValidator = TargetAddressValidator.disabled();
+    urlFileDownloader = new UrlFileDownloader(disabledTargetAddressValidator);
+    remoteContentProperties = new RemoteContentProperties(10L * 1024 * 1024, 5);
 
     service =
         new LibraryDocumentService(
@@ -105,7 +126,10 @@ class LibraryDocumentServiceTest {
             vectorStore,
             uploadProperties,
             storageQuotaService,
-            filesystemAllowlist);
+            filesystemAllowlist,
+            urlFileDownloader,
+            disabledTargetAddressValidator,
+            remoteContentProperties);
 
     User user = new User("subject", "issuer", "user@example.com", "Test User");
     user.setOrganizationId(organizationId);
@@ -863,5 +887,198 @@ class LibraryDocumentServiceTest {
     try (var walk = Files.walk(storageDir)) {
       assertThat(walk.filter(Files::isRegularFile)).isEmpty();
     }
+  }
+
+  // #747: loadContent for HTTP_DIRECTORY/RSS_FEED documents proxies the original from the stored
+  // source URL instead of answering 404 outright (#736's original behaviour, now local-file-only).
+
+  private HttpServer remoteServer;
+  private String remoteBaseUrl;
+
+  @AfterEach
+  void tearDownRemoteServer() {
+    if (remoteServer != null) {
+      remoteServer.stop(0);
+      remoteServer = null;
+    }
+  }
+
+  private void startRemoteServer() throws IOException {
+    remoteServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    remoteServer.start();
+    remoteBaseUrl = "http://127.0.0.1:" + remoteServer.getAddress().getPort();
+  }
+
+  private KnowledgeLibrary remoteLibrary(String sourceCredentials) {
+    KnowledgeLibrary library = mock(KnowledgeLibrary.class);
+    when(library.getId()).thenReturn(libraryId);
+    when(library.getOrganizationId()).thenReturn(organizationId);
+    when(library.getSourceCredentials()).thenReturn(sourceCredentials);
+    return library;
+  }
+
+  private Document remoteDocument(DocumentSourceType sourceType, String url) {
+    Document document = new Document("original.pdf", url, null, null, sourceType);
+    document.setLibraryId(libraryId);
+    return document;
+  }
+
+  @Test
+  void loadContentProxiesTheOriginalFromTheDocumentsStoredSourceUrl() throws IOException {
+    startRemoteServer();
+    remoteServer.createContext(
+        "/original.pdf",
+        exchange -> {
+          byte[] bytes =
+              "Originalinhalt vom entfernten Quellsystem".getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "application/pdf");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
+        .thenReturn(AssetRole.VIEWER);
+    KnowledgeLibrary library = remoteLibrary(null);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    Document document =
+        remoteDocument(DocumentSourceType.HTTP_DIRECTORY, remoteBaseUrl + "/original.pdf");
+    UUID documentId = UUID.randomUUID();
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+
+    DocumentContent content = service.loadContent(documentId, currentUserId, false);
+
+    try {
+      assertThat(content.isStreamed()).isTrue();
+      assertThat(content.contentType()).isEqualTo("application/pdf");
+      assertThat(content.fileName()).isEqualTo("original.pdf");
+      assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+          .isEqualTo("Originalinhalt vom entfernten Quellsystem");
+    } finally {
+      content.stream().close();
+    }
+  }
+
+  @Test
+  void loadContentSendsTheLibrarysStoredCredentialsToTheSourceButNeverToTheCaller()
+      throws IOException {
+    startRemoteServer();
+    AtomicReference<String> receivedAuthorization = new AtomicReference<>();
+    remoteServer.createContext(
+        "/original.pdf",
+        exchange -> {
+          receivedAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
+        .thenReturn(AssetRole.VIEWER);
+    KnowledgeLibrary library = remoteLibrary("libuser:libpass");
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    Document document =
+        remoteDocument(DocumentSourceType.RSS_FEED, remoteBaseUrl + "/original.pdf");
+    UUID documentId = UUID.randomUUID();
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+
+    DocumentContent content = service.loadContent(documentId, currentUserId, false);
+
+    try {
+      String expected =
+          "Basic "
+              + java.util.Base64.getEncoder()
+                  .encodeToString("libuser:libpass".getBytes(StandardCharsets.UTF_8));
+      assertThat(receivedAuthorization.get()).isEqualTo(expected);
+      // #748 review, nit 1: the previous assertion here (content.toString() lacking "libpass")
+      // could never fail - DocumentContent never had a credentials field to begin with. This reads
+      // the actual bytes the caller would receive and checks the credentials never leaked into
+      // them, the thing this test is meant to guard against.
+      assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+          .isEqualTo("content")
+          .doesNotContain("libpass");
+    } finally {
+      content.stream().close();
+    }
+  }
+
+  @Test
+  void loadContentAnswers404WithAGermanMessageWhenTheRemoteSourceIsUnreachable() {
+    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
+        .thenReturn(AssetRole.VIEWER);
+    KnowledgeLibrary library = remoteLibrary(null);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    // Port 1 is a privileged port nothing in this test listens on - the connection is refused
+    // immediately, standing in for "the source is offline" without any real network access.
+    Document document =
+        remoteDocument(DocumentSourceType.HTTP_DIRECTORY, "http://127.0.0.1:1/original.pdf");
+    UUID documentId = UUID.randomUUID();
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+
+    assertThatThrownBy(() -> service.loadContent(documentId, currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND))
+        .hasFieldOrPropertyWithValue(
+            "reason", "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+  }
+
+  @Test
+  void loadContentAnswers404WhenTheAllowlistRejectsTheStoredSourceUrl() throws IOException {
+    // #748 review, finding 4: the previous version of this test pointed at
+    // "http://127.0.0.1:1/original.pdf" - the exact same unreachable address
+    // loadContentAnswers404WithAGermanMessageWhenTheRemoteSourceIsUnreachable above uses to stand
+    // in for "the source is offline". Both produced the identical generic 404, so this test stayed
+    // green even with the allowlist re-check removed entirely - "blocked" and "unreachable" were
+    // indistinguishable. This version instead points at a real, listening local server: with the
+    // re-check in place, the request must never even reach it (asserted via requestsReceived
+    // below); with it removed, the request would succeed and both assertions would fail.
+    startRemoteServer();
+    AtomicInteger requestsReceived = new AtomicInteger();
+    remoteServer.createContext(
+        "/original.pdf",
+        exchange -> {
+          requestsReceived.incrementAndGet();
+          byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    // A dedicated, enabled validator with an empty allowlist stands in for an allowlist that has
+    // since been narrowed (or was never configured to include this host) - loopback is always
+    // blocked once validation is enabled, regardless of the allowlist.
+    TargetAddressValidator enabledValidator =
+        new TargetAddressValidator(new IndexingProperties.TargetValidation(true, List.of()));
+    LibraryDocumentService serviceWithValidation =
+        new LibraryDocumentService(
+            libraryRepository,
+            userRepository,
+            accessService,
+            documentRepository,
+            checksumService,
+            fileProcessingService,
+            vectorStore,
+            new UploadProperties(storageDir.toString(), 10L * 1024, null, 0, 0),
+            storageQuotaService,
+            filesystemAllowlist,
+            new UrlFileDownloader(enabledValidator),
+            enabledValidator,
+            remoteContentProperties);
+    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
+        .thenReturn(AssetRole.VIEWER);
+    KnowledgeLibrary library = remoteLibrary(null);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    Document document =
+        remoteDocument(DocumentSourceType.HTTP_DIRECTORY, remoteBaseUrl + "/original.pdf");
+    UUID documentId = UUID.randomUUID();
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+
+    assertThatThrownBy(() -> serviceWithValidation.loadContent(documentId, currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND)
+        .hasFieldOrPropertyWithValue(
+            "reason", "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+    assertThat(requestsReceived.get()).isZero();
   }
 }

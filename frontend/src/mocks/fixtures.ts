@@ -694,9 +694,10 @@ const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {
       indexedAt: '2026-03-01T12:00:00Z',
       uploadedByUserId: null,
     },
-    // #743 (review, nit 5): exercises the remote-source branch of the "Original öffnen" action
-    // (openExternalSourceUrl) - there was previously no HTTP_DIRECTORY/RSS_FEED document anywhere
-    // in the fixtures, so that branch was untestable/unclickable in mock/dev mode.
+    // #743 (review, nit 5): exercises the remote-source branch of the "Original öffnen" action,
+    // which since #747 opens through the content endpoint (openDocumentContent) for every
+    // sourceType - there was previously no HTTP_DIRECTORY/RSS_FEED document anywhere in the
+    // fixtures, so that branch was untestable/unclickable in mock/dev mode.
     {
       id: 'document-intranet-richtlinie',
       fileName: 'richtlinie-datenschutz.pdf',

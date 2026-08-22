@@ -219,6 +219,166 @@ public class UrlFileDownloader {
   }
 
   /**
+   * Streams {@code fileUrl} without ever buffering the full response body in heap or on disk (#748
+   * review, finding 1/3) - the counterpart to {@link #downloadBounded} for a caller-facing,
+   * synchronous, click-driven path ({@code LibraryDocumentService#loadRemoteContent}) rather than a
+   * background indexing run: {@code downloadBounded} reads the entire response into a {@code
+   * byte[]} up to {@code maxBytes} before returning, which - unlike a single indexing run - a
+   * VIEWER can trigger arbitrarily often and in parallel. Redirects are followed the same way
+   * {@link #downloadBounded} does (re-validated against {@link TargetAddressValidator} on every
+   * hop, refused outright for a foreign host or a protocol downgrade), and {@code
+   * perRequestTimeout} is a caller-supplied, deliberately short timeout instead of {@link
+   * #downloadBounded}'s fixed 120s background-run timeout, so a slow-drip source cannot tie up a
+   * request thread anywhere near as long.
+   *
+   * <p>The returned {@link DownloadedStream#stream()} is the live, still-open HTTP response body,
+   * wrapped so that a further read past {@code maxBytes} throws {@link IOException} instead of
+   * silently continuing - the caller is responsible for closing it once streaming to its own
+   * destination is done (or aborted). When the response declares a {@code Content-Length} larger
+   * than {@code maxBytes} up front, this method rejects the request before returning at all -
+   * {@link AttachmentTooLargeException}, mirroring {@link #downloadBounded}'s all-or-nothing
+   * behaviour for the common case where the source is honest about its size; a source that omits or
+   * understates {@code Content-Length} is instead caught by the bounded stream once the body is
+   * actually read past the limit.
+   */
+  public DownloadedStream downloadStreaming(
+      HttpClient httpClient,
+      String fileUrl,
+      long maxBytes,
+      String userAgent,
+      String authHeader,
+      Duration perRequestTimeout)
+      throws IOException, InterruptedException {
+    log.debug("Streaming (bounded to {} bytes): {}", maxBytes, fileUrl);
+
+    URI currentUri = URI.create(fileUrl);
+    for (int hop = 0; ; hop++) {
+      targetAddressValidator.validate(currentUri);
+      HttpRequest.Builder requestBuilder =
+          HttpRequest.newBuilder().uri(currentUri).timeout(perRequestTimeout).GET();
+      if (userAgent != null && !userAgent.isBlank()) {
+        requestBuilder.header("User-Agent", userAgent);
+      }
+      if (authHeader != null) {
+        requestBuilder.header("Authorization", authHeader);
+      }
+
+      HttpResponse<InputStream> response =
+          httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
+
+      if (isForeignHostRedirect(fileUrl, response.uri())) {
+        closeQuietly(response.body());
+        throw new ForeignHostRedirectException(
+            "redirected to a foreign host: " + response.uri(),
+            AutoindexCrawlerService.redirectRejectionMessage(
+                AutoindexCrawlerService.RedirectRejectionReason.FOREIGN_HOST, response.uri()));
+      }
+
+      if (AutoindexCrawlerService.isRedirectStatus(response.statusCode())) {
+        closeQuietly(response.body());
+        Optional<String> location = response.headers().firstValue("Location");
+        if (location.isEmpty() || hop >= AutoindexCrawlerService.MAX_REDIRECTS) {
+          throw new IOException("HTTP " + response.statusCode() + " downloading: " + fileUrl);
+        }
+        URI redirectUri = currentUri.resolve(location.get());
+        if (AutoindexCrawlerService.isSchemeDowngrade(currentUri, redirectUri)) {
+          throw new ForeignHostRedirectException(
+              "refusing a protocol downgrade redirect (https to http): " + redirectUri,
+              AutoindexCrawlerService.redirectRejectionMessage(
+                  AutoindexCrawlerService.RedirectRejectionReason.PROTOCOL_DOWNGRADE, redirectUri));
+        }
+        if (isForeignHostRedirect(currentUri.toString(), redirectUri)) {
+          throw new ForeignHostRedirectException(
+              "redirected to a foreign host: " + redirectUri,
+              AutoindexCrawlerService.redirectRejectionMessage(
+                  AutoindexCrawlerService.RedirectRejectionReason.FOREIGN_HOST, redirectUri));
+        }
+        currentUri = redirectUri;
+        continue;
+      }
+
+      if (response.statusCode() != 200) {
+        closeQuietly(response.body());
+        throw new IOException("HTTP " + response.statusCode() + " downloading: " + fileUrl);
+      }
+
+      Optional<String> declaredLength = response.headers().firstValue("Content-Length");
+      if (declaredLength.isPresent()) {
+        try {
+          if (Long.parseLong(declaredLength.get()) > maxBytes) {
+            closeQuietly(response.body());
+            throw new AttachmentTooLargeException();
+          }
+        } catch (NumberFormatException e) {
+          // Not a valid Content-Length - fall through to the bounded stream below, which still
+          // enforces the limit while reading regardless of what the header claimed.
+        }
+      }
+
+      String contentType = response.headers().firstValue("Content-Type").orElse(null);
+      InputStream bounded = new BoundedInputStream(response.body(), maxBytes);
+      log.debug("Streaming {} (content-type {})", fileUrl, contentType);
+      return new DownloadedStream(bounded, contentType);
+    }
+  }
+
+  private static void closeQuietly(InputStream in) {
+    try {
+      in.close();
+    } catch (IOException e) {
+      log.debug("Failed to close response body while rejecting a candidate hop", e);
+    }
+  }
+
+  /**
+   * Enforces {@code maxBytes} while the underlying stream is actually read (#748 review, finding
+   * 1/3) rather than up front - a further read past the limit throws {@link IOException}, which -
+   * once headers have already been written to the caller - simply aborts the response rather than
+   * changing its status; a source that lies about (or omits) {@code Content-Length} is therefore
+   * still bounded, just not necessarily before the client has already started receiving bytes.
+   */
+  private static final class BoundedInputStream extends java.io.FilterInputStream {
+    private final long maxBytes;
+    private long bytesRead;
+
+    BoundedInputStream(InputStream in, long maxBytes) {
+      super(in);
+      this.maxBytes = maxBytes;
+    }
+
+    @Override
+    public int read() throws IOException {
+      int b = super.read();
+      if (b != -1) {
+        bytesRead++;
+        checkLimit();
+      }
+      return b;
+    }
+
+    @Override
+    public int read(byte[] b, int off, int len) throws IOException {
+      int n = super.read(b, off, len);
+      if (n > 0) {
+        bytesRead += n;
+        checkLimit();
+      }
+      return n;
+    }
+
+    private void checkLimit() throws IOException {
+      if (bytesRead > maxBytes) {
+        throw new IOException("Remote response exceeded the configured size limit");
+      }
+    }
+  }
+
+  /**
+   * The result of {@link #downloadStreaming}: the still-open, bounded body and its declared type.
+   */
+  public record DownloadedStream(InputStream stream, String contentType) {}
+
+  /**
    * Whether {@code finalUri} is a different origin than {@code originalUrl} (scheme, host and
    * normalized port - {@link AutoindexCrawlerService#sameOrigin}, #538 follow-up review closing the
    * port gap a host-only comparison originally left open) - mirrors {@code

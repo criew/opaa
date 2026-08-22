@@ -7,10 +7,14 @@ import io.opaa.library.DocumentContent;
 import io.opaa.library.LibraryDocumentService;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -33,6 +37,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/v1/documents")
 public class DocumentController {
 
+  private static final Logger log = LoggerFactory.getLogger(DocumentController.class);
   private static final String UNKNOWN_ISSUER = "unknown";
 
   private final LibraryDocumentService documentService;
@@ -73,12 +78,34 @@ public class DocumentController {
             currentUser.getId(),
             currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
 
+    Resource resource =
+        content.isStreamed()
+            ? new InputStreamResource(content.stream())
+            : new FileSystemResource(content.path());
     return ResponseEntity.ok()
-        .contentType(MediaType.parseMediaType(content.contentType()))
+        .contentType(parseMediaTypeOrOctetStream(content.contentType()))
         .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(content.fileName()))
         .header("X-Content-Type-Options", "nosniff")
         .header("Content-Security-Policy", "default-src 'none'; sandbox")
-        .body(new FileSystemResource(content.path()));
+        .body(resource);
+  }
+
+  /**
+   * {@link MediaType#parseMediaType} falls back to {@code application/octet-stream} instead of
+   * propagating {@link InvalidMediaTypeException} (#748 review, finding 2a) - that exception is an
+   * {@link IllegalArgumentException}, uncaught here would surface as a 500 for a stored or
+   * remote-declared {@code Content-Type} this class does not control the syntax of (a malformed
+   * value from a remote source proxied by {@link LibraryDocumentService#loadContent}), turning
+   * "source sent something odd" into an OPAA-side server error instead of a merely generic
+   * download.
+   */
+  private MediaType parseMediaTypeOrOctetStream(String contentType) {
+    try {
+      return MediaType.parseMediaType(contentType);
+    } catch (InvalidMediaTypeException e) {
+      log.warn("Document content carried an unparsable Content-Type: {}", contentType, e);
+      return MediaType.APPLICATION_OCTET_STREAM;
+    }
   }
 
   /**

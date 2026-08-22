@@ -9,13 +9,11 @@ import type { SourceReference } from '../../types/api'
 // #739: the "Im Dokument öffnen" action delegates to this shared module (see its own tests for
 // the Blob-fetch/preview-vs-download behaviour, and LibraryDetailPage.test.tsx for #738's original
 // wiring of this mock pattern).
-const { mockOpenDocumentContent, mockOpenExternalSourceUrl } = vi.hoisted(() => ({
+const { mockOpenDocumentContent } = vi.hoisted(() => ({
   mockOpenDocumentContent: vi.fn(async () => undefined),
-  mockOpenExternalSourceUrl: vi.fn(),
 }))
 vi.mock('../../utils/documentContent', () => ({
   openDocumentContent: mockOpenDocumentContent,
-  openExternalSourceUrl: mockOpenExternalSourceUrl,
 }))
 
 function source(
@@ -103,10 +101,12 @@ describe('SourceFootnotes', () => {
       await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
 
       expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
-      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
     })
 
-    it('renders a real link (not a button) to sourceUrl for an HTTP_DIRECTORY document (#745 review)', () => {
+    it('opens an HTTP_DIRECTORY document through the content endpoint too, keeping sourceUrl as a secondary "Quelle" link (#747)', async () => {
+      // #747: the content endpoint now proxies HTTP_DIRECTORY/RSS_FEED server-side from their own
+      // stored source URL - the primary action is the same button as for a local original,
+      // sourceUrl stays visible as secondary information (a tooltip carrying the raw address).
       const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [
         source('dienstanweisung.pdf', true, {
           documentId: 'doc-1',
@@ -115,24 +115,31 @@ describe('SourceFootnotes', () => {
         }),
       ])
       renderWithProviders(<SourceFootnotes messageId="m6" citations={citations} />)
+      const user = userEvent.setup()
 
-      // A real <a href> instead of component="button" - middle-click, "open in new tab" and
-      // "copy link address" only work on an actual link.
-      const link = screen.getByRole('link', { name: 'Im Dokument öffnen' })
-      expect(link).toHaveAttribute('href', 'https://example.gov/verzeichnis/dienstanweisung.pdf')
-      expect(link).toHaveAttribute('target', '_blank')
-      expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
-      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
-      expect(mockOpenDocumentContent).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
+
+      expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
+
+      const sourceLink = screen.getByRole('link', {
+        name: 'Quelle: https://example.gov/verzeichnis/dienstanweisung.pdf',
+      })
+      expect(sourceLink).toHaveAttribute(
+        'href',
+        'https://example.gov/verzeichnis/dienstanweisung.pdf',
+      )
+      expect(sourceLink).toHaveAttribute('target', '_blank')
+      expect(sourceLink).toHaveAttribute('rel', expect.stringContaining('noopener'))
     })
 
-    it('hides the action for a synthetic entry with neither a documentId nor a source URL', () => {
+    it('hides the action for a synthetic entry with no documentId at all', () => {
       const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [
         source('dienstanweisung.pdf', true),
       ])
       renderWithProviders(<SourceFootnotes messageId="m7" citations={citations} />)
 
       expect(screen.queryByRole('button', { name: 'Im Dokument öffnen' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Quelle' })).not.toBeInTheDocument()
     })
 
     it('shows a German error message when opening the original fails (e.g. 404)', async () => {

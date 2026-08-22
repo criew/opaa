@@ -52,7 +52,7 @@ import {
   libraryVisibilityLabel,
   scheduleFrequencyLabel,
 } from '../utils/labels'
-import { openDocumentContent, openExternalSourceUrl } from '../utils/documentContent'
+import { openDocumentContent } from '../utils/documentContent'
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
@@ -527,26 +527,21 @@ function LibraryDocumentsSection({
     }
   }
 
-  // #738: UPLOAD/FILESYSTEM have a local file behind GET .../content (fetched as a Blob and opened/
-  // downloaded client-side, since the endpoint is Bearer-authenticated and a plain <a href> cannot
-  // carry that token) - HTTP_DIRECTORY/RSS_FEED instead open their own remote location directly.
-  // sourceEntryUrl (the RSS entry page an attachment was found on) takes priority over sourceUrl
-  // (the document's own remote file) when both are present, matching DocumentContent's own Javadoc.
+  // #738/#747: every sourceType now opens through GET .../content (fetched as a Blob and
+  // opened/downloaded client-side, since the endpoint is Bearer-authenticated and a plain
+  // <a href> cannot carry that token) - the endpoint proxies HTTP_DIRECTORY/RSS_FEED server-side
+  // from their own stored source URL since #747, instead of leaving the client to navigate there
+  // directly (broken on the Demo-Instanz, whose corpus containers are only reachable from OPAA's
+  // own Docker network, never the caller's browser). sourceEntryUrl/sourceUrl stay visible as
+  // secondary information below (see the "Herkunft"/"Quelle" captions further down).
   async function handleOpenOriginal(document: LibraryDocumentResponse) {
     setOpenOriginalError(null)
-    const externalUrl = document.sourceEntryUrl ?? document.sourceUrl
-    if (document.sourceType === 'UPLOAD' || document.sourceType === 'FILESYSTEM') {
-      try {
-        await openDocumentContent(document.id, document.fileName)
-      } catch (err) {
-        setOpenOriginalError(
-          err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.',
-        )
-      }
-      return
-    }
-    if (externalUrl) {
-      openExternalSourceUrl(externalUrl)
+    try {
+      await openDocumentContent(document.id, document.fileName)
+    } catch (err) {
+      setOpenOriginalError(
+        err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.',
+      )
     }
   }
 
@@ -728,6 +723,23 @@ function LibraryDocumentsSection({
                     </Link>
                   </Typography>
                 )}
+                {/* #747: sourceUrl (HTTP_DIRECTORY's own location, or a plain RSS entry's own
+                    page) stays visible as secondary information now that "Original öffnen"
+                    proxies through the content endpoint instead of navigating here directly -
+                    only shown when sourceEntryUrl above is absent, to avoid the same remote
+                    address appearing twice for an RSS attachment. */}
+                {!document.sourceEntryUrl && document.sourceUrl && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ wordBreak: 'break-word' }}
+                  >
+                    Quelle:{' '}
+                    <Link href={document.sourceUrl} target="_blank" rel="noopener noreferrer">
+                      {document.sourceUrl}
+                    </Link>
+                  </Typography>
+                )}
               </Stack>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
                 {/* #434: a FAILED document's asynchronous processing failure is only visible to
@@ -744,21 +756,17 @@ function LibraryDocumentsSection({
                     variant="outlined"
                   />
                 </Tooltip>
-                {/* #738: local sourceTypes always offer the action (a missing file on disk is a
-                    404 handled via openOriginalError above, not a reason to hide the button) -
-                    remote sourceTypes only when there is actually a URL to open. */}
-                {(document.sourceType === 'UPLOAD' ||
-                  document.sourceType === 'FILESYSTEM' ||
-                  document.sourceEntryUrl ||
-                  document.sourceUrl) && (
-                  <IconButton
-                    aria-label={`Original von ${document.fileName} öffnen`}
-                    size="small"
-                    onClick={() => void handleOpenOriginal(document)}
-                  >
-                    <OpenInNewIcon fontSize="small" />
-                  </IconButton>
-                )}
+                {/* #738/#747: every sourceType now offers the action - the content endpoint
+                    proxies HTTP_DIRECTORY/RSS_FEED server-side too, and a source that turns out
+                    unreachable (missing local file, offline remote source) is a 404 handled via
+                    openOriginalError above, not a reason to hide the button. */}
+                <IconButton
+                  aria-label={`Original von ${document.fileName} öffnen`}
+                  size="small"
+                  onClick={() => void handleOpenOriginal(document)}
+                >
+                  <OpenInNewIcon fontSize="small" />
+                </IconButton>
                 {canDelete && (
                   <IconButton
                     aria-label={`Dokument ${document.fileName} löschen`}
