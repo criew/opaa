@@ -6,6 +6,7 @@ import {
   resetDocumentMockState,
   resetGrantMockState,
   resetChatMockState,
+  resetLlmModelMockState,
 } from '../mocks/handlers'
 // Deliberately only the fixture module, never a store or `src/services/api` (#583): importing
 // anything that pulls in the axios instance *from this file* makes a dozen unrelated dialog tests
@@ -22,6 +23,7 @@ afterEach(() => {
   resetDocumentMockState()
   resetGrantMockState()
   resetChatMockState()
+  resetLlmModelMockState()
   // The branding fixture is mutable so a PUT is visible on the next GET (#583) - without this,
   // a test that configures a brand colour would silently set the stage for the next one.
   resetMockBranding()

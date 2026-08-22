@@ -199,7 +199,15 @@ Antwort schreibend: keine Antwort enthält ihn, auch nicht gekürzt, nur das Ken
 Löschen des aktiven Modells wird mit 409 verweigert; eine gleichzeitige Aktivierung zweier Modelle
 löst ebenfalls 409 statt eines Serverfehlers aus. Jede Änderung erzeugt ein Audit-Ereignis, und die
 Deaktivierung eines Modells beim Umschalten bekommt seit #757 ein eigenes (`LLM_MODEL_DEACTIVATED`).
-Die Administrationsoberfläche selbst ist ein eigenes, noch offenes Folgeticket (siehe Epic #755).
+`GET .../embedding-info` (#759) ergänzt den read-only Block: Anbieter, Modell und Dimensionen der
+Einbettungskonfiguration, gelesen aus derselben Betriebskonfiguration, aus der auch das aktive
+`EmbeddingModel` entsteht — nicht editierbar, siehe [Warum die Einbettung nicht
+mitkommt](#warum-die-einbettung-nicht-mitkommt).
+
+**Administrationsoberfläche (gebaut, #759).** `admin/models`, erreichbar über die Seitenleiste nur
+für `SYSTEM_ADMIN`: Liste mit deutlich erkennbarem aktivem Eintrag, Anlegen/Bearbeiten/Löschen,
+„Aktiv setzen" und Verbindungstest je Eintrag, darunter der schreibgeschützte
+Einbettungsblock aus `embedding-info`.
 
 ### Was Stufe 1 umfasst
 
