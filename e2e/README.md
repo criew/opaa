@@ -97,7 +97,7 @@ Host-Ports** (Postgres `15432`, Backend `18081`, Frontend `13000`, überschreibb
 Werte mehr — Compose präfixiert Container-, Netzwerk- und Volume-Namen automatisch mit dem
 Projektnamen. Ein parallel laufender Dev-Stack (`docker compose up`, Standardprojekt) wird von
 `pnpm test` also weder gestoppt noch entfernt, und umgekehrt. Das wurde manuell verifiziert: ein
-mit dem Namen `opaa-postgres` laufender Container bleibt während eines vollständigen `ppnpm test`-
+mit dem Namen `opaa-postgres` laufender Container bleibt während eines vollständigen `pnpm test`-
 Laufs unangetastet.
 
 ### Verifizieren, dass der Rauchtest bei nicht erreichbarem Frontend fehlschlägt

@@ -16,5 +16,5 @@ backend/.gradle
 e2e/test-results
 e2e/playwright-report
 .git
-.env*
+**/.env*
 **/*.md

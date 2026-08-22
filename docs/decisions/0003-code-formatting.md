@@ -47,3 +47,11 @@ Wesentliche Überlegungen:
 
 - **Google Java Format ist meinungsstark** — seine 2-Leerzeichen-Einrückung und Zeilenumbruch-Stil kann Entwicklern ungewohnt erscheinen, die an 4-Leerzeichen-Java-Konventionen gewöhnt sind. Dies ist beabsichtigt: ein strenger, nicht konfigurierbarer Formatierer eliminiert Bikeshedding.
 - **Initiale Reibung** — bestehender Code muss bei der Einführung neu formatiert werden (einmalige Kosten, bereits erledigt).
+
+## Nachträge
+
+### 22.08.2026 — Frontend-Aufrufe laufen über pnpm
+
+Mit der Migration des Frontend-Builds von npm auf pnpm (#653, PR #752) lauten die im Abschnitt
+„Umfang" genannten Befehle jetzt `pnpm run format:check` / `pnpm run format`. An der Entscheidung
+selbst (Prettier mit den genannten Einstellungen) ändert das nichts.

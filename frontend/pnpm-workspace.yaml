@@ -3,7 +3,9 @@
 # not a multi-package workspace.
 
 # msw's postinstall only prints a sponsorship notice; the service worker in
-# public/ is committed. No need to run it.
+# public/ is committed. No need to run it. Under npm the postinstall also kept
+# public/mockServiceWorker.js in sync on every install - that no longer
+# happens, so after upgrading msw run: pnpm exec msw init public/ --save
 allowBuilds:
   msw: false
 

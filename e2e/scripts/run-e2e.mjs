@@ -285,7 +285,7 @@ async function main() {
     playwrightArgs.push('--config', 'demo-smoke/playwright.config.ts')
   }
   playwrightArgs.push(...extraTestArgs)
-  const testStatus = run(isWindows ? 'pnpm.cmd' : 'pnpm', playwrightArgs, {
+  const testStatus = run('pnpm', playwrightArgs, {
     cwd: e2eDir,
     env: {
       ...process.env,
