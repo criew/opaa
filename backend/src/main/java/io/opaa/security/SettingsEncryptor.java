@@ -27,10 +27,14 @@ import org.springframework.util.StringUtils;
  * {@code llm_models.api_key_ciphertext} is a brand-new column that only ever holds a value this
  * class wrote, so {@link #decrypt} does not need a "value predates this class" fallback.
  *
- * <p><b>Unlike {@link CredentialsEncryptor}, a missing or invalid key is never discovered
- * lazily.</b> {@link SettingsEncryptionKeyGuard} validates the same key eagerly at application
- * startup - see its own Javadoc for why a model whose API key silently fails to encrypt only when
- * someone happens to save one is the wrong failure mode for this particular secret.
+ * <p><b>The key is validated lazily, on first use, exactly like {@link CredentialsEncryptor}</b>
+ * (PR #763 review) - not eagerly at application startup. Most deployments never store a model API
+ * key at all (a locally operated endpoint typically needs none), and an unconditional startup check
+ * would refuse to start every one of them, including existing installations upgrading in place,
+ * purely because an operator has not set an environment variable their configuration never needed.
+ * {@link #encrypt} and {@link #decrypt} both fail loudly and clearly the moment they are actually
+ * asked to do something with a missing or invalid key - that is the failure mode that matches how
+ * often the key is actually needed.
  */
 @Component
 public class SettingsEncryptor {
@@ -109,22 +113,13 @@ public class SettingsEncryptor {
     }
   }
 
-  /**
-   * Validates the configured key without encrypting or decrypting anything - the method {@link
-   * SettingsEncryptionKeyGuard} calls once at startup so a missing or malformed {@code
-   * OPAA_SETTINGS_ENCRYPTION_KEY} fails the deployment immediately rather than the next time
-   * someone happens to save an API key.
-   */
-  void validateKeyEagerly() {
-    requireKey();
-  }
-
   private SecretKeySpec requireKey() {
     String base64Key = properties.encryptionKey();
     if (!StringUtils.hasText(base64Key)) {
       throw new IllegalStateException(
-          "OPAA_SETTINGS_ENCRYPTION_KEY ist nicht gesetzt. Diese Umgebungsvariable ist für jeden"
-              + " Start erforderlich, siehe docs/deployment.md.");
+          "OPAA_SETTINGS_ENCRYPTION_KEY ist nicht gesetzt. Diese Umgebungsvariable ist"
+              + " erforderlich, sobald ein Zugangsschlüssel für ein Chat-Modell verschlüsselt oder"
+              + " entschlüsselt werden soll. Siehe docs/deployment.md.");
     }
     byte[] keyBytes;
     try {

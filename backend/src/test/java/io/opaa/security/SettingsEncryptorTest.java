@@ -1,7 +1,6 @@
 package io.opaa.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Base64;
@@ -129,14 +128,5 @@ class SettingsEncryptorTest {
     SettingsEncryptor reader = encryptorWithKey(Base64.getEncoder().encodeToString(otherKey));
 
     assertThatThrownBy(() -> reader.decrypt(encrypted)).isInstanceOf(IllegalStateException.class);
-  }
-
-  @Test
-  void validateKeyEagerlyPassesForAValidKeyAndFailsForAMissingOne() {
-    assertThatCode(() -> encryptorWithKey(validBase64Key()).validateKeyEagerly())
-        .doesNotThrowAnyException();
-    assertThatThrownBy(() -> encryptorWithKey(null).validateKeyEagerly())
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("OPAA_SETTINGS_ENCRYPTION_KEY");
   }
 }

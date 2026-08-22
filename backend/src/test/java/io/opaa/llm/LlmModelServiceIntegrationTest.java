@@ -32,11 +32,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * writes exactly one audit event of the right, distinct type.
  *
  * <p>{@code @BeforeEach}/{@code @AfterEach} clear {@code llm_models} rather than assuming it starts
- * empty: {@link LlmModelSeedRunner} seeds one row from the {@code dev} profile's Ollama
- * configuration on every fresh application context, including the one this test shares with its
- * siblings (same {@code @SpringBootTest}/{@code @Import}/{@code @ActiveProfiles} signature, see
- * {@code BrandingSettingsServiceIntegrationTest}'s own Javadoc for why that signature must not
- * change lightly - a different one gets a second ApplicationContext and Postgres container).
+ * empty: {@link LlmModelSeeder} (triggered once by {@link LlmModelSeedRunner}) seeds one row from
+ * the {@code dev} profile's Ollama configuration on every fresh application context, including the
+ * one this test shares with its siblings (same
+ * {@code @SpringBootTest}/{@code @Import}/{@code @ActiveProfiles} signature, see {@code
+ * BrandingSettingsServiceIntegrationTest}'s own Javadoc for why that signature must not change
+ * lightly - a different one gets a second ApplicationContext and Postgres container). Clearing the
+ * table this way doubles as the exact reproduction scenario {@link
+ * #seedingNeverResumesOnceAttemptedEvenAfterEveryModelIsDeleted()} needs: a Systemverwaltung
+ * deleting every managed model, followed by a restart.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
@@ -45,6 +49,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class LlmModelServiceIntegrationTest {
 
   @Autowired private LlmModelService llmModelService;
+  @Autowired private LlmModelSeeder llmModelSeeder;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -68,6 +73,21 @@ class LlmModelServiceIntegrationTest {
     jdbcTemplate.update("DELETE FROM llm_models");
     userRepository.deleteById(userId);
     organizationRepository.deleteById(organizationId);
+  }
+
+  @Test
+  void seedingNeverResumesOnceAttemptedEvenAfterEveryModelIsDeleted() {
+    // llm_models is empty here (cleared in @BeforeEach) - simulating a Systemverwaltung that
+    // deleted every managed model. The very first application startup in this shared context
+    // already attempted the takeover and wrote the permanent llm_model_seed_marker row (migration
+    // 060); re-running it explicitly - twice, to prove it is not merely "the second time is a
+    // coincidence" - must not resurrect a model from the environment configuration (PR #763
+    // review: the original, count()-based check would have re-seeded exactly this case).
+    llmModelSeeder.seedIfNeeded();
+    assertThat(llmModelService.listModels()).isEmpty();
+
+    llmModelSeeder.seedIfNeeded();
+    assertThat(llmModelService.listModels()).isEmpty();
   }
 
   @Test

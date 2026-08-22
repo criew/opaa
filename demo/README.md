@@ -71,6 +71,13 @@ Rebuild ist dafür nicht nötig, ein Neustart des `frontend`-Containers genügt.
 bleibt der Hinweis aus (Image-Default `false`) — das ist der richtige Zustand für jede
 Nicht-Demo-Installation, siehe `docs/deployment.md`, Variablentabelle.
 
+> **Update-Hinweis (#756):** Seit Stufe 1 der Modellverwaltung übernimmt das Backend beim ersten
+> Start nach einem Image-Update die bestehende `spring.ai.model.chat`-Konfiguration einmalig als
+> verwaltetes Chat-Modell (siehe `docs/deployment.md`, Abschnitt „Verschlüsselung der
+> Zugangsschlüssel verwalteter Chat-Modelle"). Die Demo setzt keinen `OPAA_AI_CHAT_PROVIDER`, läuft
+> also über den Ollama-Standard ohne Zugangsschlüssel — `OPAA_SETTINGS_ENCRYPTION_KEY` ist dafür
+> **nicht** erforderlich, und der Stack startet ohne diese Variable unverändert weiter.
+
 `OPAA_INITIAL_ADMIN_EMAIL` muss die E-Mail-Adresse des Keycloak-Nutzers `demo-admin` treffen
 (`keycloak/realm-export.json`) — sonst bekommt kein Konto der Demo `SYSTEM_ADMIN`, und Schritt 1 des
 Seeds (siehe unten) bricht mit einer klaren Fehlermeldung ab, statt eine falsche Rolle stillschweigend

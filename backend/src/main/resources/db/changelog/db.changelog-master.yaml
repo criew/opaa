@@ -117,3 +117,5 @@ databaseChangeLog:
       file: db/changelog/changes/058-create-llm-models.yaml
   - include:
       file: db/changelog/changes/059-widen-audit-event-type-llm-model-changes.yaml
+  - include:
+      file: db/changelog/changes/060-create-llm-model-seed-marker.yaml
