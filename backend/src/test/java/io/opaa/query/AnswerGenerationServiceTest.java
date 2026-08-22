@@ -6,6 +6,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.llm.ActiveChatModelResolver;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,7 @@ import org.springframework.ai.document.Document;
 class AnswerGenerationServiceTest {
 
   @Mock private ChatModel chatModel;
+  @Mock private ActiveChatModelResolver activeChatModelResolver;
 
   private ChatMemory chatMemory;
   private AnswerGenerationService answerGenerationService;
@@ -39,8 +41,10 @@ class AnswerGenerationServiceTest {
     // Spring AI 2.0 merges ChatModel.getOptions() into every request; a bare mock returns null
     lenient().when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
     chatMemory = MessageWindowChatMemory.builder().build();
-    ChatClient.Builder builder = ChatClient.builder(chatModel);
-    answerGenerationService = new AnswerGenerationService(builder, chatMemory);
+    lenient()
+        .when(activeChatModelResolver.resolveChatClient())
+        .thenReturn(ChatClient.builder(chatModel).build());
+    answerGenerationService = new AnswerGenerationService(activeChatModelResolver, chatMemory);
   }
 
   @Test

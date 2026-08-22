@@ -523,11 +523,11 @@ Sinn; das ist jeweils vermerkt.
 | **LLM / Embedding** (seit #762 ein einziger, openai-kompatibler Anbindungsweg — siehe [„LLM-Anbieter"](#llm-anbieter) unten) | | | |
 | `OPAA_OPENAI_API_KEY` | `sk-placeholder` (Platzhalter, kein gültiger Schlüssel — greift nur, falls kein spezifischerer Schlüssel gesetzt ist; ein lokal betriebener Ollama-Server braucht keinen echten) | nicht gesetzt (auskommentiert) — der Anwendungs-Default (Platzhalter) gilt | Zugangsschlüssel der openai-kompatiblen Schnittstelle |
 | `OPAA_OPENAI_BASE_URL` | `http://localhost:11434/v1`; im Spring-Profil `docker` stattdessen `http://ollama:11434/v1` | nicht gesetzt (auskommentiert) — der `docker`-Profil-Default gilt | Basis-Adresse der openai-kompatiblen Schnittstelle, gemeinsam für Chat und Einbettung. Zeigt ohne weitere Angabe auf einen lokal betriebenen Ollama-Server; ein **explizit leer gesetzter** Wert überschreibt diesen Default mit einer leeren Zeichenkette und lässt den Start abbrechen (siehe [„Erforderliche Variablen"](#erforderliche-variablen) oben) |
-| `OPAA_OPENAI_CHAT_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | Eigener Zugangsschlüssel nur für den Chat-Aufruf, falls Chat- und Embedding-API unterschiedliche Schlüssel brauchen |
-| `OPAA_OPENAI_CHAT_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Chat-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten) |
-| `OPAA_OPENAI_CHAT_MODEL` | `phi3:mini` | `phi3:mini` | Chat-Modellname |
-| `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | `0.7` | Chat-Antwort-Temperatur (0,0–2,0) |
-| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | `2000` | Maximale Tokens in Chat-Antwort |
+| `OPAA_OPENAI_CHAT_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | **Nur noch Seed-Quelle für den ersten Start (#758, siehe oben):** liefert den Zugangsschlüssel des anfänglichen `llm_models`-Eintrags; danach maßgeblich ist die Administrationsoberfläche |
+| `OPAA_OPENAI_CHAT_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | **Nur noch Seed-Quelle für den ersten Start (#758, siehe oben):** liefert die Basis-Adresse des anfänglichen `llm_models`-Eintrags; danach maßgeblich ist die Administrationsoberfläche (siehe [„LLM-Anbieter"](#llm-anbieter) unten) |
+| `OPAA_OPENAI_CHAT_MODEL` | `phi3:mini` | `phi3:mini` | **Nur noch Seed-Quelle für den ersten Start (#758, siehe oben):** liefert die Modell-Kennung des anfänglichen `llm_models`-Eintrags; danach maßgeblich ist die Administrationsoberfläche |
+| `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | `0.7` | **Nur noch Seed-Quelle für den ersten Start (#758, siehe oben)** |
+| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | `2000` | **Nur noch Seed-Quelle für den ersten Start (#758, siehe oben)** |
 | `OPAA_OPENAI_EMBEDDING_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | Eigener Zugangsschlüssel nur für den Embedding-Aufruf |
 | `OPAA_OPENAI_EMBEDDING_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Embedding-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten). **Der Compose-Stack enthält keinen `ollama`-Service** — der Hostname `ollama` im Default ist nur ein Platzhalter; ein erreichbarer Ollama-Server wird vorausgesetzt, sonst schlagen Indizierung und Abfragen fehl (der Start selbst bricht nicht ab). Läuft Ollama auf dem Host, stattdessen `http://host.docker.internal:11434/v1` setzen (`extra_hosts` im `backend`-Service ist dafür bereits konfiguriert) |
 | `OPAA_OPENAI_EMBEDDING_MODEL` | `nomic-embed-text` | `nomic-embed-text` | Embedding-Modellname |
@@ -645,6 +645,28 @@ und Einbettung: die **openai-kompatible Schnittstelle**. Das ist eine Protokolla
 Anbieterangabe — Ollama bedient dieselbe Schnittstelle unter ihrem eigenen `/v1`-Pfad, ebenso vLLM,
 LiteLLM, Azure und die üblichen Zwischenschichten. Einen zweiten, nativen Anbindungsweg speziell für
 Ollama gibt es deshalb nicht mehr.
+
+> **Seit [#758](https://github.com/criew/opaa/issues/758) gilt für den Chat-Aufruf eine wichtige
+> Einschränkung: `OPAA_OPENAI_CHAT_*`/`OPAA_OPENAI_API_KEY`/`OPAA_OPENAI_BASE_URL` steuern das
+> Chat-Modell nur noch beim allerersten Start einer Installation.** Dabei übernimmt
+> `io.opaa.llm.LlmModelSeeder` die damalige Umgebungskonfiguration einmalig als ersten Eintrag der
+> Tabelle `llm_models` und aktiviert ihn. Danach ist **ausschließlich diese Tabelle** maßgeblich für
+> das Chat-Modell — zur Laufzeit gelesen von `io.opaa.llm.ActiveChatModelResolver`, der Basis-Adresse,
+> Modell-Kennung, Temperatur, maximale Antwortlänge und (falls hinterlegt) den entschlüsselten
+> Zugangsschlüssel des jeweils **aktiven** Eintrags zu einem `ChatClient` zusammenbaut, zwischenspeichert
+> und bei jeder Aktivierung oder Änderung des jeweils aktiven Eintrags über die
+> Administrationsoberfläche neu auflöst — ohne Neustart. Löschen ist dabei kein eigener Auslöser:
+> Das aktive Modell kann nicht gelöscht werden (409), und das Löschen eines inaktiven Eintrags
+> berührt die Auflösung nicht. Ein Ändern von `OPAA_OPENAI_CHAT_*` **nach** diesem ersten Start hat
+> keine Wirkung mehr;
+> die Modellauswahl läuft über die Administrationsoberfläche (`SYSTEM_ADMIN`, Modellverwaltung), nicht
+> mehr über Umgebungsvariablen. Die Umgebungsvariablen bleiben unten dokumentiert, weil sie beim
+> Erststart nach wie vor gelesen werden und weil ihre Werte den anfänglichen aktiven Eintrag bilden.
+>
+> **Die Einbettung ist von dieser Umstellung nicht betroffen**: `OPAA_OPENAI_EMBEDDING_*`/
+> `OPAA_OPENAI_BASE_URL` steuern das Embedding-Modell weiterhin unverändert und fortlaufend über die
+> native Spring-AI-Autoconfiguration — es gibt (bewusst) keine verwaltete Einbettungsmodell-Tabelle,
+> siehe [Modelle und zentrale Steuerung](features/llm-integration.md#eigene-modelle-zuerst).
 
 **Voreingestellt sind lokal betriebene Modelle** über genau diesen Weg, für Chat und für Einbettung.
 Eine Installation, an der niemand etwas konfiguriert, ruft kein Modell außerhalb des Hauses auf —

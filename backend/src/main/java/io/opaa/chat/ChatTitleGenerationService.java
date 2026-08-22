@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import io.opaa.llm.ActiveChatModelResolver;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +44,16 @@ import org.springframework.stereotype.Service;
  * committed synchronously stands unchanged, and the answer already sent to the user is entirely
  * unaffected (#557 acceptance criterion). There is no retry; a chat that never gets an LLM title
  * keeps its prefix-derived one forever - an acceptable outcome for a purely cosmetic feature.
+ *
+ * <p><b>Uses the same systemwide active chat model as answer generation</b> (#758): {@link
+ * #chatClient()} resolves it fresh via {@link ActiveChatModelResolver} on every call rather than
+ * building a {@code ChatClient} once in the constructor, so an activation via the admin API (#764)
+ * takes effect for title generation exactly when it takes effect for {@code
+ * io.opaa.query.AnswerGenerationService} - the next request either way, never a restart. {@code
+ * io.opaa.llm.NoActiveChatModelException} thrown when no model is active is a {@link
+ * RuntimeException}, so it is caught by {@link #generateTitleAsync}'s existing catch-all exactly
+ * like any other title-generation failure - this class's whole point is that such a failure never
+ * surfaces to the user.
  */
 @Service
 public class ChatTitleGenerationService {
@@ -67,12 +78,12 @@ public class ChatTitleGenerationService {
       Antwort: %s
       """;
 
-  private final ChatClient chatClient;
+  private final ActiveChatModelResolver activeChatModelResolver;
   private final ChatRepository chatRepository;
 
   public ChatTitleGenerationService(
-      ChatClient.Builder chatClientBuilder, ChatRepository chatRepository) {
-    this.chatClient = chatClientBuilder.build();
+      ActiveChatModelResolver activeChatModelResolver, ChatRepository chatRepository) {
+    this.activeChatModelResolver = activeChatModelResolver;
     this.chatRepository = chatRepository;
   }
 
@@ -105,6 +116,7 @@ public class ChatTitleGenerationService {
 
   private String requestTitle(String question, String answer) {
     String prompt = TITLE_PROMPT_TEMPLATE.formatted(question, answer);
+    ChatClient chatClient = activeChatModelResolver.resolveChatClient();
     ChatResponse response = chatClient.prompt().user(prompt).call().chatResponse();
     if (response == null
         || response.getResult() == null

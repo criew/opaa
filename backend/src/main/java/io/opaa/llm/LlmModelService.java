@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,14 +41,17 @@ public class LlmModelService {
   private final LlmModelRepository repository;
   private final SettingsEncryptor settingsEncryptor;
   private final AuditEventRecorder auditEventRecorder;
+  private final ApplicationEventPublisher eventPublisher;
 
   public LlmModelService(
       LlmModelRepository repository,
       SettingsEncryptor settingsEncryptor,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      ApplicationEventPublisher eventPublisher) {
     this.repository = repository;
     this.settingsEncryptor = settingsEncryptor;
     this.auditEventRecorder = auditEventRecorder;
+    this.eventPublisher = eventPublisher;
   }
 
   @Transactional(readOnly = true)
@@ -98,6 +102,13 @@ public class LlmModelService {
    * Replaces every editable field. {@code apiKey} follows the same three-way convention {@code
    * BrandingSettingsService#updateBranding} uses for its own optional fields: {@code null} leaves
    * the stored key unchanged, a blank string clears it, and any other value replaces it.
+   *
+   * <p><b>Invalidates {@link ActiveChatModelResolver}'s cache when {@code id} is the active
+   * model</b> (#758): every field this method can change - base URL, model identifier, temperature,
+   * max tokens, access key - is exactly what the resolver's cached {@code ChatClient} was built
+   * from, so an edit to the active model must take effect on the next request just as an activation
+   * does. An edit to an inactive model needs no invalidation; the resolver never looked at that row
+   * anyway.
    */
   @Transactional
   public LlmModel updateModel(
@@ -124,6 +135,9 @@ public class LlmModelService {
         model,
         before,
         auditState(model));
+    if (model.isActive()) {
+      eventPublisher.publishEvent(new ActiveChatModelChangedEvent());
+    }
     return model;
   }
 
@@ -168,6 +182,12 @@ public class LlmModelService {
    * true} row before the old one's {@code active = false}, the two would collide even though the
    * end state is exactly one active row - a transient violation of an invariant that never actually
    * held.
+   *
+   * <p><b>Publishes {@link ActiveChatModelChangedEvent} whenever {@code id} was not already
+   * active</b> (#758), so {@link ActiveChatModelResolver} drops its cached client after this
+   * transaction commits - never before, since a rolled-back activation must leave a still-valid
+   * cache alone. A call that finds {@code id} already active (the early return above) publishes
+   * nothing: nothing about the active model actually changed.
    */
   @Transactional
   public LlmModel activateModel(UUID organizationId, UUID actorUserId, UUID id) {
@@ -198,6 +218,7 @@ public class LlmModelService {
         model,
         Map.of("active", false),
         Map.of("active", true));
+    eventPublisher.publishEvent(new ActiveChatModelChangedEvent());
     return model;
   }
 
