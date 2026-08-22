@@ -71,12 +71,11 @@ rund 191.000 — **Ljubljana** (272.220), **Nikosia** (200.452), **Luxemburg** (
 `final_select_v2.py`): alle 27 EU-Hauptstädte-Ländercodes sind in der finalen Liste vertreten,
 gegen eine im Code fest hinterlegte 27er-Liste geprüft.
 
-**Bekannte Konsequenz:** Drei der so erzwungenen Hauptstädte (Kopenhagen, Amsterdam, Valletta)
-haben — trotz erweiterter Sehenswürdigkeiten-Abfrage (Museum, Kirchengebäude, archäologische
-Stätte, Denkmal) — **null** über `wdt:P131` direkt zuordenbare Sehenswürdigkeiten-Objekte in
-Wikidata gefunden. Diese drei Dokumente bestehen fast ausschließlich aus dem Stadtporträt-Absatz
-und dem Rang-Nachbarn-Vergleich; siehe `eval/corpus/city-landmarks/SOURCE.md` für die daraus
-folgende Anhebung von `RANK_NEIGHBOR_RADIUS`.
+**Ursprünglicher Befund (überholt, siehe „Verifikationsrunde" unten):** Fünf der so erzwungenen
+Hauptstädte (Kopenhagen, Amsterdam, Stockholm, Tallinn, Valletta) hatten trotz erweiterter
+Sehenswürdigkeiten-Abfrage kaum oder keine über `wdt:P131` direkt zuordenbaren
+Sehenswürdigkeiten-Objekte in Wikidata. Ursache war **kein** echter Datenmangel, sondern in allen
+fünf Fällen eine Stadt-vs-Verwaltungseinheit-Dublette der `P1566`-Brücke — siehe unten.
 
 ### 4. Bevölkerungsdaten und Sortierung
 
@@ -88,11 +87,15 @@ GeoNames-ID.
 
 `?city wdt:P1566 "<geonameid>"` — ausschließlich über diese Property, kein Namens-Matching.
 Abdeckung: ca. 90 % der Top-Kandidaten. Bei mehreren zurückgegebenen QIDs für dieselbe GeoNames-ID
-gewinnt die niedrigere (ältere, etabliertere) QID. **Dokumentierte Einzelausnahme:** Madrids
-GeoNames-ID bindet an `Q116170766` („Stadt Madrid", eine neuere, sehenswürdigkeiten-leere
-Split-Entität) statt an das etablierte `Q2807` („Madrid") — von Hand auf `Q2807` korrigiert, da
-Letzteres die tatsächlichen Sehenswürdigkeiten-Daten trägt (dieselbe Art von Dubletten-Problem wie
-bei der ursprünglichen P30-basierten Auswahl).
+gewinnt die niedrigere (ältere, etabliertere) QID. **Dokumentierte QID-Ausnahmen** (dieselbe Art
+von Dubletten-Problem, das schon bei der ursprünglichen P30-basierten Auswahl auftrat — Herleitung
+und Belege siehe „Verifikationsrunde" unten):
+
+| GeoNames-Stadt | P1566-Ziel (falsch) | Korrigiert auf | Grund |
+|---|---|---|---|
+| Madrid | `Q116170766` „Stadt Madrid" | `Q2807` „Madrid" | neuere, sehenswürdigkeiten-leere Split-Entität |
+| Graz | `Q250880` „Innere Stadt" | `Q13298` „Graz" | GeoNames-ID zeigte auf einen Grazer Stadtbezirk statt auf die Stadt |
+| Valletta | `Q20924973` (Örtlichkeit, `P131`-Kind von Valletta) | `Q23800` „Valletta" (Stadt) | `P1566` band an eine Örtlichkeit *innerhalb* Vallettas statt an die Stadt selbst |
 
 ### 6. Sehenswürdigkeiten-Nebenbedingung und Mehr-Chunk-Sicherstellung
 
@@ -104,58 +107,114 @@ Einwohnerzahl sortierten Kandidatenpool von rund 480 Städten. Sehenswürdigkeit
 (Abschnitt „Sehenswürdigkeiten" unten) deckt initial die Klassen Sehenswürdigkeit/Wahrzeichen/
 Palast/Burg/Kathedrale ab; für Städte, die damit unter 3 blieben, wurde gezielt um Museum,
 Kirchengebäude, archäologische Stätte und Denkmal erweitert (`wd:Q33506 wd:Q16970 wd:Q839954
-wd:Q4989906`). Für eine einzelne Stadt (Reading, GB) blieb die Sehenswürdigkeiten-Zahl trotz
-Erweiterung bei 2 — durch die nächstplatzierte, ausreichend dokumentierte Stadt ersetzt (Syzran,
-RU, Rang nach Einwohnerzahl neu eingeordnet). **Ergebnis, mit dem echten `TokenTextSplitter`-Lauf
-verifiziert:** alle 200 Dokumente erreichen mindestens 3 Chunks (siehe
-`eval/corpus/city-landmarks/SOURCE.md`).
+wd:Q4989906`). **Ergebnis, mit dem echten `TokenTextSplitter`-Lauf verifiziert:** alle 200
+Dokumente erreichen mindestens 3 Chunks bei `RANK_NEIGHBOR_RADIUS=2` (siehe
+`eval/corpus/city-landmarks/SOURCE.md` und Abschnitt „Verifikationsrunde" unten).
 
 ### Plausibilitätsnachweis
 
-- Alle 200 Städte haben ≥ 100.000 Einwohner (kleinste: siehe `final-cities-200.json`, Rang 200).
+- Alle Städte bis auf zwei haben ≥ 100.000 Einwohner (Ausnahmen Luxemburg 76.684 und Valletta
+  6.794, beide durch die EU-Hauptstadt-Pflichtregel oben).
 - Stichprobe: London, Madrid, Kiew, Budapest, Warschau, Rom, Paris **enthalten**; Ankara,
   Jekaterinburg **nicht enthalten** — verifiziert.
-- Länderverteilung der finalen 200 (Auszug, absteigend): RU 66, UA 28, PL 19, GB 16, DE 13,
-  FR 11, BY 6, weitere 32 Länder mit 1–3 Städten. Die Dominanz Russlands und der Ukraine ist eine
-  unmittelbare Folge der population-basierten Auswahl innerhalb der festgelegten
-  Europa-Abgrenzung (viele Städte > 100.000 Einwohner im europäischen Teil Russlands/der Ukraine)
-  — kein Artefakt der Auswahlregel, sondern ihr direktes, dokumentiertes Ergebnis.
+- Alle 27 EU-Hauptstädte enthalten (Skript-Check gegen fest hinterlegte 27er-Liste).
+- Länderverteilung der finalen 200 (absteigend): RU 64, UA 27, GB 16, PL 16, DE 13, FR 11, BY 6,
+  RO 3, AT 3, BG 3, ES 2, IT 2, RS 2, CZ 2, NL 2, plus 24 weitere Länder mit 1 Stadt — 39 Länder
+  insgesamt. Die Dominanz Russlands und der Ukraine ist eine unmittelbare Folge der
+  population-basierten Auswahl innerhalb der festgelegten Europa-Abgrenzung, kein Artefakt der
+  Auswahlregel.
 
 ## Sehenswürdigkeiten
 
-Abfragemuster (Wikidata, `P131` direkt, keine Transitivität — Performance-Grund, siehe unten):
+**Zweistufige Abfrage (Verifikationsrunde, siehe unten für den Anlass):** Stufe 1 (günstig) prüft
+je Stadt nur `P131` direkt und `P276` (Lage); nur wenn das unter 5 Objekte liefert, greift Stufe 2
+(teurer) zusätzlich mit dem zweistufigen `P131`-Bezug (Objekt → Stadtbezirk/Gemeindeteil → Stadt).
+Das hält die WDQS-Last gering (die teure Zweihopf-Variante lief nur für eine Minderheit der 200
+Städte), ohne strukturell dünne Städte zu benachteiligen.
 
 ```sparql
-SELECT ?city ?item WHERE {
-  VALUES ?city { <QIDs, gebatcht> }
-  ?item wdt:P131 ?city .
-  VALUES ?class { wd:Q570116 wd:Q2319498 wd:Q16560 wd:Q23413 wd:Q2977 }
+SELECT ?item ?sl WHERE {
+  { ?item wdt:P131 wd:<Stadt-QID> . } UNION { ?item wdt:P276 wd:<Stadt-QID> . }
+  # nur falls Stufe 1 < 5 Treffer liefert, zusätzlich:
+  # UNION { ?item wdt:P131 ?district . ?district wdt:P131 wd:<Stadt-QID> . }
+  VALUES ?class { wd:Q570116 wd:Q2319498 wd:Q16560 wd:Q23413 wd:Q2977 wd:Q33506 wd:Q16970 wd:Q839954 wd:Q4989906 }
   ?item wdt:P31 ?class .
+  OPTIONAL { ?item wikibase:sitelinks ?sitelinks }
+  BIND(COALESCE(?sitelinks, 0) AS ?sl)
 }
+ORDER BY DESC(?sl) ASC(?item)
+LIMIT 15
 ```
 
-Basis-Klassen: `Q570116` Sehenswürdigkeit, `Q2319498` Wahrzeichen, `Q16560` Palast, `Q23413`
-Burg/Schloss, `Q2977` Kathedrale. Erweiterung für unterversorgte Städte: `Q33506` Museum, `Q16970`
-Kirchengebäude, `Q839954` archäologische Stätte, `Q4989906` Denkmal (nur dort verwendet, wo die
-Basis-Klassen unter 3 Objekte lieferten — Denkmal/Monument allein liefert für viele Städte
-überwiegend kleine Gedenktafeln ohne Sehenswürdigkeiten-Charakter, siehe frühere Testläufe).
-Auswahl je Stadt: aufsteigende numerische QID, gedeckelt bei 12.
+Klassen: `Q570116` Sehenswürdigkeit, `Q2319498` Wahrzeichen, `Q16560` Palast, `Q23413`
+Burg/Schloss, `Q2977` Kathedrale, `Q33506` Museum, `Q16970` Kirchengebäude, `Q839954`
+archäologische Stätte, `Q4989906` Denkmal — durchgängig alle neun Klassen, nicht mehr nur bei
+Bedarf erweitert (Verifikationsrunde: die generalisierte Verbreiterung sollte auch andere Städte
+inhaltlich reicher machen, nicht nur die zunächst betroffenen fünf Hauptstädte). **Deckelung je
+Stadt: 15 Sehenswürdigkeiten, sortiert nach Sitelink-Zahl absteigend, Tiebreak aufsteigende
+numerische QID** (Sitelink-Zahl als Proxy für Bekanntheit/Relevanz — deterministisch, weil die
+Sitelink-Zahl zusammen mit der eingefrorenen Rohdatei fixiert ist, nicht zur Laufzeit neu
+abgefragt). Bei gleichem Namen zweier ausgewählter Objekte (kommt vereinzelt vor, wenn die
+verbreiterte Abfrage zwei eng verwandte Entitäten mit identischem Label liefert): nur das erste
+(höchste Sitelink-Zahl) wird gerendert, siehe `build_cities()` in
+`generate_city_landmarks_corpus.py`.
 
 Detailfelder je Sehenswürdigkeit (Gründungsjahr, Eröffnungsjahr, Architekt/-in, Baustil, Höhe,
-Koordinaten, Besucherzahl, Denkmalschutzstatus): dieselben `OPTIONAL`-Felder wie in der
-ursprünglichen Fassung, unverändert.
+Koordinaten, Besucherzahl, Denkmalschutzstatus): unverändert dieselben `OPTIONAL`-Felder.
 
 ## Bekannte Einschränkungen
 
-- **Kein transitiver Klassenabschluss, kein zweistufiger `P131`-Bezug** — Performance-Grund
-  (öffentlicher Wikidata Query Service bricht solche Abfragen zuverlässig nach 60 Sekunden ab).
-  Die Sehenswürdigkeiten-Zahl je Stadt ist deshalb eine **Untergrenze**, nicht die
-  Gesamtzahl der in Wikidata zu dieser Stadt vorhandenen Objekte.
 - **GeoNames-Bevölkerungsdaten haben kein einheitliches Stichdatum** über alle 200 Städte hinweg
   (GeoNames pflegt je Ort das jeweils zuletzt eingetragene Datum, nicht global synchron).
 - Für Sehenswürdigkeiten ohne deutsches **oder** englisches Label: Objekt ausgelassen (nicht mit
   QID-Platzhalter aufgefüllt). Für Städte ohne deutsches Label: Rückfall auf den GeoNames-Namen
   (betrifft 2 von 200 Städten).
+- **P1376 „Hauptstadt von" ist in Wikidata sehr uneinheitlich belegt** (historische Reiche,
+  Verwaltungsuntereinheiten, teils sogar selbstreferenziell) — der Generator rendert eine
+  Hauptstadt-Aussage deshalb nur, wenn sie exakt mit dem Land der Stadt übereinstimmt (siehe
+  `build_cities()`); alle anderen `P1376`-Aussagen werden verworfen, nicht als Fließtext gerendert.
+
+## Verifikationsrunde (PR #730, dritte Review-Runde)
+
+Ein Verifikations-Review deckte auf, dass `RANK_NEIGHBOR_RADIUS` in der zweiten Runde still auf
+40 belassen worden war, obwohl der Code-Kommentar dort weiterhin „immediate neighbors only"
+(Radius klein) behauptete — eine nicht gemeldete Abweichung von der eigentlichen Anweisung
+(„radius 36→2"). Korrigiert:
+
+1. **`RANK_NEIGHBOR_RADIUS` auf 2 gesetzt.** Damit fielen zunächst 10 Dokumente unter die
+   3-Chunk-Vorgabe, darunter 5 EU-Hauptstädte (Kopenhagen, Amsterdam, Stockholm, Tallinn,
+   Valletta) — gemeldet, bevor irgendetwas an der Auswahl geändert wurde.
+2. **Ursachenanalyse statt Auswahl-Umbau:** Für Kopenhagen, Tallinn und Valletta war die dünne
+   Sehenswürdigkeiten-Zahl keine echte Datenlücke, sondern eine `P1566`-Stadt-vs-Verwaltungseinheit-
+   Dublette (siehe Tabelle oben) — bekannte Landmarken wie die Kleine Meerjungfrau (`P131` →
+   `Q504125` „Kommune Kopenhagen") oder St. John's Co-Cathedral (`P131` → `Q23800`, nicht das
+   ursprünglich gebrückte `Q20924973`) zeigen auf eine andere Entität als die von `P1566`
+   gelieferte. Für Kopenhagen/Tallinn wurde die jeweilige Verwaltungseinheit als zusätzliches
+   akzeptiertes `P131`-Ziel in die Sehenswürdigkeiten-Abfrage aufgenommen (Q1748 zusätzlich
+   Q504125; Q1770 zusätzlich Q4450503); für Valletta wurde die `P1566`-Bindung selbst auf die
+   korrekte Stadtentität `Q23800` korrigiert (siehe QID-Ausnahmetabelle oben). Amsterdam und
+   Stockholm lösten sich bereits durch die generalisierte Abfrage-Verbreiterung (Punkt „Sehens-
+   würdigkeiten" oben) ohne Sonderbehandlung. Eine handkuratierte Ausnahmeliste (Option 2 aus der
+   Entscheidung) war für keine der drei Städte nötig.
+3. **Reading (GB) fliegt raus, kein EU-Hauptstadt-Sonderfall:** blieb auch mit verbreiterter
+   Abfrage bei 3 Sehenswürdigkeiten-Kandidaten und 2 Chunks. Ersetzt durch **Brighton** (GB,
+   nächstplatzierter, ausreichend dokumentierter Kandidat unterhalb von Readings
+   Einwohnerzahl-Rang 318.014 — mehrere höher gerankte Kandidaten wie Constanța/RO, Kingston upon
+   Hull/GB, Münster/DE hatten entweder keinen `P1566`-Treffer oder zu wenige Sehenswürdigkeiten;
+   Brighton war der erste Kandidat mit deutschem Label und ≥ 5 Sehenswürdigkeiten-Kandidaten,
+   14 nach Deckelung), gleicher Rangplatz (131).
+4. **`country_de`-Reparatur:** 28 Städte hatten `country_de: null` (weitere 3 hatten durch eine
+   Encoding-Verkettung verstümmelte Werte), weil die ursprüngliche Wikidata-Länderlabel-Abfrage
+   nicht für alle 200 Städte griff — `country_code` (GeoNames, ISO) war dagegen immer vollständig.
+   `country_de` wird jetzt für alle 200 Städte deterministisch aus `country_code` über eine feste
+   ISO→deutscher-Name-Tabelle gesetzt (nicht mehr aus der Wikidata-Abfrage übernommen).
+5. **P1566-Plausibilitätsabgleich über alle 200 Städte:** GeoNames-`asciiname` gegen `name_de`
+   normalisiert verglichen (Akzente/Transliteration entfernt, `difflib.SequenceMatcher`-Ähnlichkeit).
+   Nur Graz fiel als echter Fehltreffer auf (Ähnlichkeit 0,27); alle 26 weiteren Abweichungen unter
+   0,75 sind erwartete Exonyme/Transliterationen (Moskau/Moscow, Warschau/Warsaw, Lemberg/Lviv,
+   Breslau/Wroclaw, Nizza/Nice, Krakau/Krakow, Danzig/Gdansk usw.) — keine weiteren Dubletten.
+6. **`maxChunksPerDocument`** in `EvalDomainConfig.CITY_LANDMARKS` sinkt entsprechend (siehe
+   `eval/corpus/city-landmarks/SOURCE.md` für den gemessenen Wert nach dieser Runde).
 
 ## Lizenz und Zurechenbarkeit
 

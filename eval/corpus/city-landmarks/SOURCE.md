@@ -33,41 +33,44 @@ Tatsächlich gemessen (nicht geschätzt), Stand des letzten Generator-Laufs:
 
 | | Bytes |
 |---|---|
-| Minimum | 8.368 |
-| Median | 24.383 |
-| Maximum | 37.386 |
-| Gesamtgröße | ca. 4,62 MB |
+| Minimum | 8.797 |
+| Median | 27.301 |
+| Maximum | 35.547 |
+| Gesamtgröße | ca. 4,92 MB |
 
 **Abweichung von der ursprünglichen Abschätzung (1,2–2,4 MB, Issue #234 „Prüfpunkt: Korpus-Ablage"):**
-Die tatsächliche Größe liegt darüber, aus zwei Gründen: (1) Die Zielgröße „6–12 KB je Dokument" war
-aus den verfügbaren Sehenswürdigkeiten-Fakten allein nicht durchgängig erreichbar (siehe unten) und
-wurde über zusätzlichen, weiterhin quellenbasierten Fließtext (Städtevergleich zu Rang-Nachbarn im
-Korpus, Radius 4) kompensiert; (2) die überarbeitete GeoNames-basierte Städteauswahl (PR #730 review)
-liefert für die meisten Städte deutlich mehr dokumentierte Sehenswürdigkeiten als die ursprüngliche
-Wikidata-only-Auswahl. Der Gesamtumfang bleibt mit rund 3,37 MB (zusammen mit den rund 1,9 MB von
-`comic-characters`: rund 5,3 MB) weiterhin deutlich unter der 25-MB-Prüfschwelle aus ADR-0011.
+Die tatsächliche Größe liegt darüber, weil die generalisierte Sehenswürdigkeiten-Abfrage
+(Verifikationsrunde, PR #730 dritte Review-Runde — zweistufiger `P131`-Bezug, `P276`, neun statt
+fünf Klassen, Deckelung 15 statt 12 je Stadt) für die meisten Städte deutlich mehr dokumentierte
+Sehenswürdigkeiten liefert als jede vorherige Fassung. Der Gesamtumfang bleibt mit rund 4,92 MB
+(zusammen mit den rund 1,9 MB von `comic-characters`: rund 6,8 MB) weiterhin deutlich unter der
+25-MB-Prüfschwelle aus ADR-0011.
 
 **Chunk-Zahl-Verteilung** (echter `TokenTextSplitter`-Lauf, `chunkSize=1000`, `chunkOverlap=100` —
 Docker-freier Trockenlauf über `io.opaa.eval.CityLandmarksChunkSizeDryRunTest`, siehe PR-Beschreibung
-für den vollständigen `checkRetrievalBaseline`-Nachweis): Minimum 4, Median 8, Maximum 13 Chunks je
+für den vollständigen `checkRetrievalBaseline`-Nachweis): Minimum 3, Median 8, Maximum 11 Chunks je
 Dokument — die Domänen-Vorgabe „mindestens 3 Chunks je Dokument" (#721/#234) ist für alle 200
 Dokumente erfüllt (0 Verletzungen).
 
-**`RANK_NEIGHBOR_RADIUS = 40`** (PR #730 zweite Review-Runde): deutlich höher als der vom
-Maintainer ursprünglich angestrebte Wert 2, weil drei Pflicht-Hauptstädte (Kopenhagen, Amsterdam,
-Valletta — siehe `../../generator/frozen/SOURCE.md`, Abschnitt „Pflicht-Aufnahme aller 27
-EU-Hauptstädte") null dokumentierte Sehenswürdigkeiten haben und die Mehr-Chunk-Vorgabe ohne diesen
-größeren Nachbarvergleichs-Abschnitt nicht erreichen. Für alle anderen 197 Städte ist der Radius
-großzügiger als nötig, aber notwendig, um die drei Ausnahmefälle ohne Sonderbehandlung im
-generischen Mechanismus abzudecken.
+**`RANK_NEIGHBOR_RADIUS = 2`** (korrigiert in der Verifikationsrunde, PR #730 dritte Review-Runde —
+der Wert war in der zweiten Runde fälschlich bei 40 belassen worden, obwohl der Code-Kommentar
+weiterhin „immediate neighbors only" behauptete; siehe `../../generator/frozen/SOURCE.md`,
+Abschnitt „Verifikationsrunde"). Jede Stadt vergleicht sich nur noch mit maximal vier
+Rang-Nachbarn (zwei davor, zwei danach; am Rand der Rangliste — Rang 1/2 bzw. 199/200 — auf die
+jeweils andere Seite ausgedehnt, damit auch dort ein voller Nachbar-Umfang entsteht). Die
+Mehr-Chunk-Vorgabe wird jetzt durchgängig über die reichhaltigere Sehenswürdigkeiten-Abfrage erreicht,
+nicht mehr über einen großzügigen Rang-Vergleichs-Abschnitt — der Boilerplate-Anteil (feste
+Vorlagensätze: Rang-Einordnung, Rang-Nachbarn-Vergleich, wiederkehrende Korpus-Hinweissätze) sank
+dadurch von einem deutlich zweistelligen Anteil bei Radius 40 auf **rund 9 % der Korpusgröße**
+(gemessen über alle 200 Dokumente).
 
 ## Bekannte Eigenschaften und Grenzen dieses Korpus
 
-- **Sehenswürdigkeiten-Dichte ist ungleich verteilt.** Median 3 Sehenswürdigkeiten je Stadt,
-  Maximum 12 (Deckelung im Generator), Minimum 1 — siehe `../../generator/frozen/SOURCE.md`,
-  Abschnitt „Bekannte Einschränkungen dieser eingefrorenen Abfragen" für die Gründe (Wikidata pflegt
-  Sehenswürdigkeiten mit direktem Ortsbezug für kleinere Städte deutlich lückenhafter als für
-  Großstädte).
+- **Sehenswürdigkeiten-Dichte ist ungleich verteilt, aber nach der Verifikationsrunde deutlich
+  gleichmäßiger.** Median 15 (Deckelung im Generator), Minimum 4 dokumentierte
+  Sehenswürdigkeiten-Kandidaten je Stadt — siehe `../../generator/frozen/SOURCE.md`, Abschnitt
+  „Verifikationsrunde" für die zweistufige, generalisierte Abfrage, die diese Verteilung gegenüber
+  früheren Fassungen (Minimum 0 bei mehreren EU-Hauptstädten) verbessert hat.
 - **Der Städtevergleich zu Rang-Nachbarn (Fließtext, keine Frontmatter-Angabe) ist textlich
   repetitiv** (eine Serie kurzer, strukturgleicher Vergleichssätze je Nachbarstadt). Er ist bewusst
   hinzugefügt worden, um die Domänen-Vorgabe „mindestens 3 Chunks je Dokument" auch für Städte mit

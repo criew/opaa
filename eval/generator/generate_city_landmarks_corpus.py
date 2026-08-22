@@ -36,6 +36,7 @@ import hashlib
 import json
 import re
 import sys
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -49,9 +50,10 @@ SOURCE_FIELD_VALUE = "geonames-cities15000+wikidata-sparql"
 # frozen/SOURCE.md), bridged to Wikidata via P1566; landmark and city-fact fields remain
 # Wikidata (CC0-1.0). Dual-licensed, documented once here rather than per field.
 SOURCE_LICENSE = "CC-BY-4.0 (GeoNames) + CC0-1.0 (Wikidata)"
-# PR #730 review (Wichtig 2): kept minimal on purpose — see the comment where this is used in
-# build_cities() for why a larger radius was removed rather than tuned.
-RANK_NEIGHBOR_RADIUS = 40
+# PR #730 review (Wichtig 2, corrected in the verification review round after this constant had
+# drifted to 40 without being reported back — see the comment where this is used in
+# build_cities() for why a larger radius was removed rather than tuned).
+RANK_NEIGHBOR_RADIUS = 2
 
 FROZEN_FILES = [
     "final-cities-200.json",
@@ -91,13 +93,13 @@ def verify_frozen_files(expected_hashes: dict[str, str]) -> None:
 # generator's RAW_FILES check. Filled in by scripts/freeze_wikidata_city_landmarks.py when the
 # frozen snapshot is (re-)created; see frozen/SOURCE.md for the retrieval date and query text.
 FROZEN_HASHES = {
-    "final-cities-200.json": "f4dbb755172c8603b403ca9f5a06de121e32a29b81ad3d86b9a4b4320e0c5625",
+    "final-cities-200.json": "55102797c25132fc193ee171926296f5b1d2054d0e161fb5f0d86bdab2e384cb",
     "geonames-cities15000.zip": "d5c5cdab8f5bc46cf13a93a64a92d0cdfe48235fe82fac208be8bbbf550e5185",
     "geonames-candidates-filtered.json": "f699f5079b3684e081823233744e7c38d2c1e8ab468f9dc0d0e5e8677e7030d0",
     "wikidata-geonames-bridge-raw.json": "daaf8e1f1325248ea71c730dbb46ce5397dab680534cd09bbb062107726d4b86",
     "wikidata-city-facts-raw.json": "9fa0be589174a840ee2862ae8e2ad9729894d339433dfea9f191e0678b249210",
     "wikidata-landmark-candidates-raw.json": "4f64a51ef8357e0ed231cc05eff39eeb5e41c2d495c2de1ec95bbeacf959a784",
-    "wikidata-landmark-details-raw.json": "8f64771c9a791244f2569fb2e3eabf81454bb2f095800054222b95083110240d",
+    "wikidata-landmark-details-raw.json": "e6f2368f637ce093d83d23690f2ba9504c704cf68497b32f063bdd77e9ca1958",
 }
 
 
@@ -221,6 +223,34 @@ def format_coord(lat: float, lon: float) -> str:
     return f"{abs(lat):.4f} {ns}, {abs(lon):.4f} {ew}"
 
 
+# PR #730 review (Kleinigkeit, Slug-Transliteration): unicodedata's NFKD decomposition strips
+# combining diacritics (é -> e, ł does NOT decompose this way — Polish Ł/ł has no combining-mark
+# form) and drops non-Latin scripts (Cyrillic, Greek) entirely instead of transliterating them —
+# both previously fell through the slug regex as empty and produced meaningless single-letter or
+# truncated filenames (e.g. "city-0055_d.md" for Łódź). This explicit table covers every
+# character actually occurring in this corpus's city/landmark names (checked against the
+# generated corpus, not exhaustive for all of Unicode) plus the common Cyrillic transliteration
+# already used elsewhere in this corpus's German prose (ASCII, not scientific transliteration).
+_TRANSLITERATION = {
+    "ł": "l", "Ł": "L", "ø": "o", "Ø": "O", "ß": "ss", "đ": "d", "Đ": "D",
+    "ı": "i", "ș": "s", "Ș": "S", "ț": "t", "Ț": "T", "ş": "s", "Ş": "S",
+    "ğ": "g", "Ğ": "G", "æ": "ae", "Æ": "AE", "œ": "oe", "Œ": "OE",
+    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e",
+    "ж": "zh", "з": "z", "и": "i", "й": "j", "к": "k", "л": "l", "м": "m",
+    "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u",
+    "ф": "f", "х": "h", "ц": "c", "ч": "ch", "ш": "sh", "щ": "shch",
+    "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "ju", "я": "ja",
+    "і": "i", "ї": "ji", "є": "je", "ґ": "g",
+}
+
+
+def slugify(name: str) -> str:
+    transliterated = "".join(_TRANSLITERATION.get(ch, ch) for ch in name)
+    normalized = unicodedata.normalize("NFKD", transliterated)
+    ascii_only = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]+", "-", ascii_only.lower()).strip("-")
+
+
 # --- Entity models -------------------------------------------------------------------------
 
 
@@ -239,8 +269,7 @@ class Landmark:
 
     @property
     def slug(self) -> str:
-        text = re.sub(r"[^a-z0-9]+", "-", self.name.lower()).strip("-")
-        return text or "sehenswuerdigkeit"
+        return slugify(self.name) or "sehenswuerdigkeit"
 
 
 @dataclass
@@ -266,8 +295,7 @@ class City:
 
     @property
     def slug(self) -> str:
-        text = re.sub(r"[^a-z0-9]+", "-", self.name.lower()).strip("-")
-        return text or "stadt"
+        return slugify(self.name) or "stadt"
 
     @property
     def filename(self) -> str:
@@ -314,6 +342,7 @@ def build_cities() -> list[City]:
         qid = entry["qid"]
         facts = city_facts.get(qid, {})
         landmarks: list[Landmark] = []
+        seen_names: set[str] = set()
         for item_qid in entry["landmark_item_qids"]:
             detail = landmark_details.get(item_qid)
             if detail is None:
@@ -327,6 +356,16 @@ def build_cities() -> list[City]:
                 # label is left out entirely, rather than mixing an English label or a raw QID
                 # placeholder into German prose.
                 continue
+            if name in seen_names:
+                # PR #730 review (verification round): the broadened Sehenswürdigkeiten query
+                # (P276, two-hop P131) occasionally returns two distinct Wikidata items that
+                # share the same German/English label (e.g. a monument and a closely related
+                # sub-entity) — rendering both produced two identical "## Name" sections in the
+                # same document, which the golden-dataset generator then also duplicated
+                # (identical query text, caught by its own duplicate assert). Keep only the
+                # first (highest-sitelink, since landmark_item_qids is already sitelink-sorted).
+                continue
+            seen_names.add(name)
             landmarks.append(
                 Landmark(
                     qid=item_qid,
@@ -355,7 +394,19 @@ def build_cities() -> list[City]:
                 if "elevation" in facts
                 else None,
                 founded_year=year_from_iso(facts.get("inception")),
-                capital_of=facts.get("capitalOfLabel"),
+                # PR #730 review (Kleinigkeit, P1376-Plausibilität): Wikidata's P1376 ("capital
+                # of") is far noisier than "national capital" — the raw query returns whatever
+                # entity the item happens to be a documented capital of, including historical
+                # empires ("Osmanisches Reich"), sub-national administrative units ("Landkreis
+                # Kassel", "Rajon Donezk", "Oblast Tula") and even self-referential rows (e.g.
+                # "Rotterdam ist Hauptstadt von Rotterdam"). Rendering all of that verbatim
+                # produced implausible sentences throughout the corpus, not just isolated cases.
+                # Kept only when it matches this city's own country name — the one case that is
+                # unambiguously a true, meaningful "national capital" fact; every administrative,
+                # historical or self-referential row is silently dropped rather than rendered.
+                capital_of=facts.get("capitalOfLabel")
+                if facts.get("capitalOfLabel") == entry["country_de"]
+                else None,
                 landmarks=landmarks,
             )
         )
@@ -436,7 +487,12 @@ def build_city_paragraph(city: City) -> str:
     if city.elevation_m is not None:
         geo_bits.append(f"eine Höhenlage von etwa {city.elevation_m:.0f} Metern über dem Meeresspiegel")
     if geo_bits:
-        sentences.append(f"Die Stadt umfasst {' bei '.join(geo_bits)}.")
+        # PR #730 review (Kleinigkeit): " bei ".join() produced a case error whenever both
+        # bits were present ("... bei eine Höhenlage..." — "bei" governs dative, but the
+        # elevation fragment is phrased in the accusative for its other use as a direct object
+        # of "umfasst" further below). "und" avoids the case dependency entirely instead of
+        # requiring two differently-cased variants of the same fragment.
+        sentences.append(f"Die Stadt umfasst {' und '.join(geo_bits)}.")
     if city.area_km2 is not None and city.area_km2 > 0:
         density = city.population / city.area_km2
         sentences.append(

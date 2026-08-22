@@ -29,11 +29,15 @@ CORPUS_DIR = REPO_ROOT / "eval" / "corpus" / "city-landmarks"
 CHUNK_MAP = REPO_ROOT / "backend" / "build" / "eval-reports" / "chunk-map-city-landmarks-dryrun.json"
 OUT_PATH = REPO_ROOT / "eval" / "golden" / "city-landmarks.json"
 
-# Must match RANK_NEIGHBOR_RADIUS in generate_city_landmarks_corpus.py — multi_city pairs are
-# required to be further apart in rank than this (PR #730 review, Wichtig 3): otherwise a future
-# radius change could silently turn a multi_city pair into two documents that also cross-reference
-# each other via the rank-neighbor comparison sentences, weakening what the case actually tests.
-RANK_NEIGHBOR_RADIUS = 40
+# Must match RANK_NEIGHBOR_RADIUS in generate_city_landmarks_corpus.py. PR #730 review
+# (verification round): a pure rank-distance assert (abs(rank_a - rank_b) > RANK_NEIGHBOR_RADIUS)
+# does not actually guarantee independence — the corpus generator's neighbor window is edge-aware
+# (a city near rank 1 or rank 200 extends its window further in the other direction to keep a
+# consistent neighbor count, see build_cities() there), so a fixed distance threshold can still
+# pick a pair where one city's *actual*, edge-extended neighbor list contains the other. Kept here
+# only as a second, informative check; the binding check below reads each document's own rendered
+# "in der Nähe von ..." sentence instead of recomputing the window formula a second time.
+RANK_NEIGHBOR_RADIUS = 2
 
 
 def load_doc(path: Path) -> str:
@@ -220,28 +224,52 @@ def main() -> None:
         add_case(query, [filename], "cross_chunk", answer_span=sentence)
         cross_chunk_count += 1
 
-    # ---- multi_city: rank-neighbor population comparisons, distance > RANK_NEIGHBOR_RADIUS -----
+    # ---- multi_city: rank-neighbor population comparisons, verified independent -----------------
     filename_by_rank: dict[int, str] = {}
     for path in md_files:
         rank = int(frontmatter_field(docs[path.name], "rank"))
         filename_by_rank[rank] = path.name
 
+    NEIGHBOR_SENTENCE = re.compile(
+        r"In der Rangfolge dieses Korpus liegt .+? in der Nähe von (.+?)\."
+    )
+
+    def neighbor_names(filename: str) -> set[str]:
+        """PR #730 review (verification round, Wichtig 3 corrected): reads the document's own
+        rendered "... in der Nähe von A (Rang N, ...), B (Rang M, ...)." sentence instead of
+        recomputing the generator's edge-aware window formula a second time — this is the actual
+        ground truth a retrieval system would see, including the edge-extension near rank 1/200
+        that a plain rank-distance check would miss.
+        """
+        match = NEIGHBOR_SENTENCE.search(docs[filename])
+        if not match:
+            return set()
+        # Each neighbor mention is "Name (Rang N, P Einwohner)" — strip the trailing "(...)".
+        return {re.sub(r"\s*\(Rang.*?\)$", "", part.strip()) for part in match.group(1).split(", ")}
+
+    # Spread across the ranking, well outside each other's small (radius=2, edge-extended at most
+    # to a handful more) neighbor windows — verified programmatically below, not just asserted by
+    # distance.
     multi_city_pairs = [
         (1, 45), (2, 50), (3, 60), (4, 70), (5, 80), (6, 90), (7, 100), (8, 110),
     ]
     for rank_a, rank_b in multi_city_pairs:
-        assert abs(rank_a - rank_b) > RANK_NEIGHBOR_RADIUS, (
-            f"multi_city pair (rank {rank_a}, rank {rank_b}) is within RANK_NEIGHBOR_RADIUS="
-            f"{RANK_NEIGHBOR_RADIUS} of each other — the two documents would already reference "
-            "each other via the generator's own rank-neighbor comparison sentences, so the case "
-            "would not require combining independent documents (PR #730 review, Wichtig 3)."
-        )
         file_a = filename_by_rank.get(rank_a)
         file_b = filename_by_rank.get(rank_b)
         if not file_a or not file_b:
             continue
         name_a = frontmatter_field(docs[file_a], "name")
         name_b = frontmatter_field(docs[file_b], "name")
+        assert name_b not in neighbor_names(file_a), (
+            f"multi_city pair (rank {rank_a} {name_a!r}, rank {rank_b} {name_b!r}): {name_b!r} "
+            f"appears in {file_a}'s own rendered rank-neighbor sentence — the two documents "
+            "already cross-reference each other, so the case would not require combining "
+            "independent documents (PR #730 review, Wichtig 3, verification round)."
+        )
+        assert name_a not in neighbor_names(file_b), (
+            f"multi_city pair (rank {rank_a} {name_a!r}, rank {rank_b} {name_b!r}): {name_a!r} "
+            f"appears in {file_b}'s own rendered rank-neighbor sentence (reverse direction)."
+        )
         query = f"Welche Stadt hat mehr Einwohner — {name_a} oder {name_b}?"
         add_case(query, sorted([file_a, file_b]), "multi_city")
 
@@ -268,7 +296,12 @@ def main() -> None:
     assert not missing, "unresolved answer_span(s) found — see above"
     assert not duplicates, "duplicate golden cases found — see above"
 
-    with open(OUT_PATH, "w", encoding="utf-8") as f:
+    # PR #730 review (verification round): the corpus generator already pins newline="\n"
+    # (write_manifest()); this script didn't, so the working-tree copy of this file picked up
+    # platform line endings (CRLF on Windows) that diverged from the .gitattributes-declared,
+    # actually-committed LF blob content — the exact bug that invalidated the first baseline
+    # (goldenDatasetSha256 mismatch between a local Windows run and GitHub Actions).
+    with open(OUT_PATH, "w", encoding="utf-8", newline="\n") as f:
         json.dump(cases, f, ensure_ascii=False, indent=2)
     print("written to", OUT_PATH)
 

@@ -247,7 +247,98 @@
     "answer_span": null
   },
   {
+    "id": "city-city_overview-020",
+    "domain": "city-landmarks",
+    "query": "In welchem Land liegt Weliki Nowgorod?",
+    "expected_documents": [
+      "city-0181_weliki-nowgorod.md"
+    ],
+    "category": "city_overview",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
     "id": "city-landmark_detail-001",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Hagia Sophia in Istanbul erbaut?",
+    "expected_documents": [
+      "city-0001_istanbul.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Hagia Sophia wurde 532 erbaut bzw. gegründet, im Jahr 537 eröffnet, geht auf Pläne von Isidor von Milet zurück."
+  },
+  {
+    "id": "city-landmark_detail-002",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Topkapı-Palast in Istanbul erbaut?",
+    "expected_documents": [
+      "city-0001_istanbul.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Topkapı-Palast wurde 1460 erbaut bzw. gegründet, geht auf Pläne von Mehmed II. zurück."
+  },
+  {
+    "id": "city-landmark_detail-003",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Dolmabahçe-Palast in Istanbul erbaut?",
+    "expected_documents": [
+      "city-0001_istanbul.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Dolmabahçe-Palast wurde 1823 erbaut bzw. gegründet, im Jahr 1856 eröffnet, geht auf Pläne von Nikołos Karapeti Balyan zurück."
+  },
+  {
+    "id": "city-landmark_detail-004",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Hagia Irene in Istanbul erbaut?",
+    "expected_documents": [
+      "city-0001_istanbul.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Hagia Irene wurde 501 erbaut bzw. gegründet."
+  },
+  {
+    "id": "city-landmark_detail-005",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Kleine Hagia Sophia in Istanbul erbaut?",
+    "expected_documents": [
+      "city-0001_istanbul.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Kleine Hagia Sophia wurde 526 erbaut bzw. gegründet, geht auf Pläne von Isidor von Milet zurück."
+  },
+  {
+    "id": "city-landmark_detail-006",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Rumeli Hisarı in Istanbul erbaut?",
+    "expected_documents": [
+      "city-0001_istanbul.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Rumeli Hisarı wurde 1451 erbaut bzw. gegründet."
+  },
+  {
+    "id": "city-landmark_detail-007",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Çırağan-Palast in Istanbul erbaut?",
     "expected_documents": [
@@ -257,23 +348,36 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Çırağan-Palast befindet sich in Istanbul in Türkei und ist die 3. von 12 in diesem Dokument beschriebenen Sehenswürdigkeiten Istanbuls. Çırağan-Palast wurde 1863 erbaut bzw. gegründet, geht auf Pläne von Balyan zurück."
+    "answer_span": "Çırağan-Palast befindet sich in Istanbul in Türkei und ist die 8. von 12 in diesem Dokument beschriebenen Sehenswürdigkeiten Istanbuls. Çırağan-Palast wurde 1863 erbaut bzw. gegründet, geht auf Pläne von Balyan zurück."
   },
   {
-    "id": "city-landmark_detail-002",
+    "id": "city-landmark_detail-008",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Kuskowo in Moskau erbaut?",
+    "query": "In welchem Jahr wurde Beylerbeyi-Palast in Istanbul erbaut?",
     "expected_documents": [
-      "city-0002_moskau.md"
+      "city-0001_istanbul.md"
     ],
     "category": "landmark_detail",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Kuskowo wurde 1737 erbaut bzw. gegründet."
+    "answer_span": "Beylerbeyi-Palast wurde 1865 erbaut bzw. gegründet, geht auf Pläne von Balyan zurück."
   },
   {
-    "id": "city-landmark_detail-003",
+    "id": "city-landmark_detail-009",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Apostelkirche in Istanbul erbaut?",
+    "expected_documents": [
+      "city-0001_istanbul.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Apostelkirche wurde 501 erbaut bzw. gegründet."
+  },
+  {
+    "id": "city-landmark_detail-010",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Kreml in Moskau erbaut?",
     "expected_documents": [
@@ -286,9 +390,9 @@
     "answer_span": "Kreml wurde 1420 erbaut bzw. gegründet, geht auf Pläne von Aloisio da Milano zurück."
   },
   {
-    "id": "city-landmark_detail-004",
+    "id": "city-landmark_detail-011",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Tretjakow-Galerie in Moskau erbaut?",
+    "query": "In welchem Jahr wurde Olympiastadion Luschniki in Moskau erbaut?",
     "expected_documents": [
       "city-0002_moskau.md"
     ],
@@ -296,62 +400,10 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Tretjakow-Galerie wurde 1856 erbaut bzw. gegründet, geht auf Pläne von Wiktor Michailowitsch Wasnezow zurück."
+    "answer_span": "Olympiastadion Luschniki wurde 1956 erbaut bzw. gegründet."
   },
   {
-    "id": "city-boundary_span-001",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Stanislawski- und Nemirowitsch-Dantschenko-Musiktheater in Moskau erbaut?",
-    "expected_documents": [
-      "city-0002_moskau.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Stanislawski- und Nemirowitsch-Dantschenko-Musiktheater wurde 1941 erbaut bzw. gegründet."
-  },
-  {
-    "id": "city-landmark_detail-005",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Conception Convent in Moskau erbaut?",
-    "expected_documents": [
-      "city-0002_moskau.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Conception Convent wurde 1584 erbaut bzw. gegründet."
-  },
-  {
-    "id": "city-landmark_detail-006",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Schuchow-Radioturm in Moskau erbaut?",
-    "expected_documents": [
-      "city-0002_moskau.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Schuchow-Radioturm wurde 1922 erbaut bzw. gegründet, geht auf Pläne von Wladimir Grigorjewitsch Schuchow zurück."
-  },
-  {
-    "id": "city-landmark_detail-007",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Moskau-Wolga-Kanal erbaut?",
-    "expected_documents": [
-      "city-0002_moskau.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Moskau-Wolga-Kanal wurde 1932 erbaut bzw. gegründet, im Jahr 1937 eröffnet."
-  },
-  {
-    "id": "city-landmark_detail-008",
+    "id": "city-landmark_detail-012",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Russische Staatsbibliothek in Moskau erbaut?",
     "expected_documents": [
@@ -364,7 +416,98 @@
     "answer_span": "Russische Staatsbibliothek wurde 1862 erbaut bzw. gegründet."
   },
   {
-    "id": "city-landmark_detail-009",
+    "id": "city-landmark_detail-013",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Fernsehturm Ostankino in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Fernsehturm Ostankino wurde 1960 erbaut bzw. gegründet, geht auf Pläne von Leonid Batalov zurück."
+  },
+  {
+    "id": "city-landmark_detail-014",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Tretjakow-Galerie in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Tretjakow-Galerie wurde 1856 erbaut bzw. gegründet, geht auf Pläne von Wiktor Michailowitsch Wasnezow zurück."
+  },
+  {
+    "id": "city-landmark_detail-015",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Puschkin-Museum in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Puschkin-Museum wurde 1912 erbaut bzw. gegründet, geht auf Pläne von Roman Iwanowitsch Klein zurück."
+  },
+  {
+    "id": "city-boundary_span-001",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Staatliches Historisches Museum in Moskau?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-landmark_detail-016",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Gorki-Park in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Gorki-Park wurde 1928 erbaut bzw. gegründet, im Jahr 1927 eröffnet."
+  },
+  {
+    "id": "city-landmark_detail-017",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Schuchow-Radioturm in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Schuchow-Radioturm wurde 1922 erbaut bzw. gegründet, geht auf Pläne von Wladimir Grigorjewitsch Schuchow zurück."
+  },
+  {
+    "id": "city-landmark_detail-018",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Grabmal des unbekannten Soldaten in Moskau erbaut?",
+    "expected_documents": [
+      "city-0002_moskau.md"
+    ],
+    "category": "landmark_detail",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Grabmal des unbekannten Soldaten wurde 1967 erbaut bzw. gegründet."
+  },
+  {
+    "id": "city-landmark_detail-019",
     "domain": "city-landmarks",
     "query": "In welchem Jahr wurde Kropotkinskaja in Moskau erbaut?",
     "expected_documents": [
@@ -374,12 +517,12 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Kropotkinskaja wurde 1935 erbaut bzw. gegründet, geht auf Pläne von Alexei Nikolajewitsch Duschkin zurück."
+    "answer_span": "Kropotkinskaja wurde 1935 erbaut bzw. gegründet, geht auf Pläne von Yakov Likhtenberg zurück."
   },
   {
-    "id": "city-landmark_detail-010",
+    "id": "city-landmark_detail-020",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Teatr Rossiya in Moskau erbaut?",
+    "query": "In welchem Jahr wurde Krim-Brücke in Moskau erbaut?",
     "expected_documents": [
       "city-0002_moskau.md"
     ],
@@ -387,38 +530,12 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Teatr Rossiya wurde 1961 erbaut bzw. gegründet."
+    "answer_span": "Krim-Brücke wurde 1936 erbaut bzw. gegründet, im Jahr 1938 eröffnet, geht auf Pläne von Alexander Wassiljewitsch Wlassow zurück."
   },
   {
-    "id": "city-landmark_detail-011",
+    "id": "city-landmark_detail-021",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Krutizy in Moskau erbaut?",
-    "expected_documents": [
-      "city-0002_moskau.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Krutizy wurde 1201 erbaut bzw. gegründet."
-  },
-  {
-    "id": "city-landmark_detail-012",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Sretenski-Kloster in Moskau erbaut?",
-    "expected_documents": [
-      "city-0002_moskau.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Sretenski-Kloster wurde 1301 erbaut bzw. gegründet."
-  },
-  {
-    "id": "city-landmark_detail-013",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Saint Sophia Cathedral (London) erbaut?",
+    "query": "In welchem Jahr wurde Crystal Palace in London erbaut?",
     "expected_documents": [
       "city-0003_london.md"
     ],
@@ -426,194 +543,116 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Saint Sophia Cathedral (London) wurde 1879 erbaut bzw. gegründet, geht auf Pläne von John Oldrid Scott zurück."
-  },
-  {
-    "id": "city-landmark_detail-014",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Marmorpalast in Sankt Petersburg erbaut?",
-    "expected_documents": [
-      "city-0004_sankt-petersburg.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Marmorpalast wurde 1768 erbaut bzw. gegründet, geht auf Pläne von Antonio Rinaldi zurück."
-  },
-  {
-    "id": "city-landmark_detail-015",
-    "domain": "city-landmarks",
-    "query": "Unter welchem Schutzstatus steht Admiralität in Sankt Petersburg?",
-    "expected_documents": [
-      "city-0004_sankt-petersburg.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
-  },
-  {
-    "id": "city-landmark_detail-016",
-    "domain": "city-landmarks",
-    "query": "Unter welchem Schutzstatus steht Anitschkow-Brücke in Sankt Petersburg?",
-    "expected_documents": [
-      "city-0004_sankt-petersburg.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
-  },
-  {
-    "id": "city-landmark_detail-017",
-    "domain": "city-landmarks",
-    "query": "Unter welchem Schutzstatus steht Historisches Zentrum von Sankt Petersburg und zugehörige Monumente?",
-    "expected_documents": [
-      "city-0004_sankt-petersburg.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Objekt des kulturellen Erbes Russlands', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
-  },
-  {
-    "id": "city-landmark_detail-018",
-    "domain": "city-landmarks",
-    "query": "Unter welchem Schutzstatus steht Transfiguration Cathedral in Sankt Petersburg?",
-    "expected_documents": [
-      "city-0004_sankt-petersburg.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
-  },
-  {
-    "id": "city-landmark_detail-019",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Taurisches Palais in Sankt Petersburg erbaut?",
-    "expected_documents": [
-      "city-0004_sankt-petersburg.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Taurisches Palais wurde 1783 erbaut bzw. gegründet, geht auf Pläne von Iwan Jegorowitsch Starow zurück."
-  },
-  {
-    "id": "city-landmark_detail-020",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Dreifaltigkeitskathedrale in Sankt Petersburg erbaut?",
-    "expected_documents": [
-      "city-0004_sankt-petersburg.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Dreifaltigkeitskathedrale wurde 1828 erbaut bzw. gegründet, geht auf Pläne von Wassili Petrowitsch Stassow zurück."
-  },
-  {
-    "id": "city-landmark_detail-021",
-    "domain": "city-landmarks",
-    "query": "Unter welchem Schutzstatus steht Kikin-Palast in Sankt Petersburg?",
-    "expected_documents": [
-      "city-0004_sankt-petersburg.md"
-    ],
-    "category": "landmark_detail",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Crystal Palace wurde 1851 erbaut bzw. gegründet, geht auf Pläne von Owen Jones zurück."
   },
   {
     "id": "city-landmark_detail-022",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Sankt-Petersburg-Baltijskij in Sankt Petersburg erbaut?",
+    "query": "In welchem Jahr wurde St. James’s Palace in London erbaut?",
     "expected_documents": [
-      "city-0004_sankt-petersburg.md"
+      "city-0003_london.md"
     ],
     "category": "landmark_detail",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Sankt-Petersburg-Baltijskij wurde 1857 erbaut bzw. gegründet, geht auf Pläne von Alexander Krakau zurück."
+    "answer_span": "James’s Palace wurde 1536 erbaut bzw. gegründet."
   },
   {
     "id": "city-landmark_detail-023",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Mariinski-Palast in Sankt Petersburg erbaut?",
+    "query": "In welchem Jahr wurde Old Royal Naval College in London erbaut?",
     "expected_documents": [
-      "city-0004_sankt-petersburg.md"
+      "city-0003_london.md"
     ],
     "category": "landmark_detail",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Mariinski-Palast wurde 1839 erbaut bzw. gegründet, im Jahr 1844 eröffnet, geht auf Pläne von Andrei Iwanowitsch Stackenschneider zurück."
-  },
-  {
-    "id": "city-boundary_span-002",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Staatliche Polytechnische Universität Sankt Petersburg erbaut?",
-    "expected_documents": [
-      "city-0004_sankt-petersburg.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Staatliche Polytechnische Universität Sankt Petersburg wurde 1899 erbaut bzw. gegründet."
+    "answer_span": "Old Royal Naval College wurde 1696 erbaut bzw. gegründet, geht auf Pläne von John Webb zurück."
   },
   {
     "id": "city-landmark_detail-024",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Grand Hotel Europe in Sankt Petersburg erbaut?",
+    "query": "Unter welchem Schutzstatus steht Mithras-Tempel in London?",
     "expected_documents": [
-      "city-0004_sankt-petersburg.md"
+      "city-0003_london.md"
     ],
     "category": "landmark_detail",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Grand Hotel Europe wurde 1875 erbaut bzw. gegründet."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Grade-II-Bauwerk', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
   },
   {
     "id": "city-landmark_detail-025",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Palais Hardenberg in Berlin erbaut?",
+    "query": "In welchem Jahr wurde St Paul’s Church in London erbaut?",
     "expected_documents": [
-      "city-0005_berlin.md"
+      "city-0003_london.md"
     ],
     "category": "landmark_detail",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Palais Hardenberg wurde 1774 erbaut bzw. gegründet."
+    "answer_span": "St Paul’s Church wurde 1633 erbaut bzw. gegründet, geht auf Pläne von Inigo Jones zurück."
   },
   {
-    "id": "city-boundary_span-003",
+    "id": "city-boundary_span-002",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Presidential Office Building (Kyiv) in Kiew erbaut?",
+    "query": "Unter welchem Schutzstatus steht Museo Arqueológico Nacional de España in Madrid?",
     "expected_documents": [
-      "city-0007_kiew.md"
+      "city-0006_madrid.md"
     ],
     "category": "boundary_span",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Presidential Office Building (Kyiv) wurde 1939 erbaut bzw. gegründet, geht auf Pläne von Borys Zhezherin zurück."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-003",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Tempel von Debod in Madrid?",
+    "expected_documents": [
+      "city-0006_madrid.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
   },
   {
     "id": "city-boundary_span-004",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Château du Louvre in Paris erbaut?",
+    "query": "In welchem Jahr wurde Real Academia de Bellas Artes de San Fernando in Madrid erbaut?",
+    "expected_documents": [
+      "city-0006_madrid.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Real Academia de Bellas Artes de San Fernando wurde 1752 erbaut bzw. gegründet, geht auf Pläne von José Benito de Churriguera zurück."
+  },
+  {
+    "id": "city-boundary_span-005",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Il Gesù in Rom erbaut?",
+    "expected_documents": [
+      "city-0008_rom.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Il Gesù wurde 1568 erbaut bzw. gegründet, geht auf Pläne von Giacomo Barozzi da Vignola zurück."
+  },
+  {
+    "id": "city-boundary_span-006",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde La Trinité (Paris) erbaut?",
     "expected_documents": [
       "city-0009_paris.md"
     ],
@@ -621,12 +660,129 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Château du Louvre wurde 1190 erbaut bzw. gegründet."
+    "answer_span": "La Trinité (Paris) wurde 1860 erbaut bzw. gegründet, geht auf Pläne von Théodore Ballu zurück."
   },
   {
-    "id": "city-boundary_span-005",
+    "id": "city-boundary_span-007",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Maria-Magdalena-Kathedrale in Warschau erbaut?",
+    "query": "Unter welchem Schutzstatus steht Kirche am Markt (Hamburg-Niendorf)?",
+    "expected_documents": [
+      "city-0010_hamburg.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Baudenkmal', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-008",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Cantacuzino Palast in Bukarest erbaut?",
+    "expected_documents": [
+      "city-0011_bukarest.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Cantacuzino Palast wurde 1902 erbaut bzw. gegründet, geht auf Pläne von Ion D."
+  },
+  {
+    "id": "city-boundary_span-009",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Kathedrale des Heiligen Basilius des Großen in Bukarest erbaut?",
+    "expected_documents": [
+      "city-0011_bukarest.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Kathedrale des Heiligen Basilius des Großen wurde 1909 erbaut bzw. gegründet."
+  },
+  {
+    "id": "city-boundary_span-010",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Mariä-Namen-Kathedrale in Minsk?",
+    "expected_documents": [
+      "city-0012_minsk.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Belarussische Kulturerbeliste', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-011",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Pischtschalauski samak in Minsk?",
+    "expected_documents": [
+      "city-0012_minsk.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Belarussische Kulturerbeliste', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-012",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurde Church of Holy Trinity in Minsk erbaut?",
+    "expected_documents": [
+      "city-0012_minsk.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Church of Holy Trinity wurde 1864 erbaut bzw. gegründet."
+  },
+  {
+    "id": "city-boundary_span-013",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Jama in Minsk?",
+    "expected_documents": [
+      "city-0012_minsk.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Belarussische Kulturerbeliste', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-014",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Manor of Wańkowicz family in Minsk?",
+    "expected_documents": [
+      "city-0012_minsk.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Belarussische Kulturerbeliste', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-015",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Burg Vajdahunyad in Budapest?",
+    "expected_documents": [
+      "city-0013_budapest.md"
+    ],
+    "category": "boundary_span",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Historisches Denkmal in Ungarn', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+  },
+  {
+    "id": "city-boundary_span-016",
+    "domain": "city-landmarks",
+    "query": "Unter welchem Schutzstatus steht Sigismundssäule in Warschau?",
     "expected_documents": [
       "city-0014_warschau.md"
     ],
@@ -634,207 +790,64 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Maria-Magdalena-Kathedrale wurde 1867 erbaut bzw. gegründet, geht auf Pläne von Nikolay Sychyov zurück."
-  },
-  {
-    "id": "city-boundary_span-006",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Mariä-Entschlafens-Kirche in Woronesch erbaut?",
-    "expected_documents": [
-      "city-0030_woronesch.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Mariä-Entschlafens-Kirche wurde 1847 erbaut bzw. gegründet."
-  },
-  {
-    "id": "city-boundary_span-007",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Hof von Nassau in Brüssel erbaut?",
-    "expected_documents": [
-      "city-0032_br-ssel.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Hof von Nassau wurde 1340 erbaut bzw. gegründet."
-  },
-  {
-    "id": "city-boundary_span-008",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Maximov Brothers Factory in Wolgograd erbaut?",
-    "expected_documents": [
-      "city-0033_wolgograd.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Maximov Brothers Factory wurde 1914 erbaut bzw. gegründet."
-  },
-  {
-    "id": "city-boundary_span-009",
-    "domain": "city-landmarks",
-    "query": "Unter welchem Schutzstatus steht Russov House in Odessa?",
-    "expected_documents": [
-      "city-0034_odessa.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Local cultural heritage monument of architecture of Ukraine', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
-  },
-  {
-    "id": "city-boundary_span-010",
-    "domain": "city-landmarks",
-    "query": "Unter welchem Schutzstatus steht Haus Falz-Fein in Odessa?",
-    "expected_documents": [
-      "city-0034_odessa.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Local cultural heritage monument of architecture of Ukraine', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
-  },
-  {
-    "id": "city-boundary_span-011",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Lenin Street 13A, Gribushin House in Perm erbaut?",
-    "expected_documents": [
-      "city-0035_perm.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Lenin Street 13A, Gribushin House wurde 1895 erbaut bzw. gegründet, geht auf Pläne von Alexander Bonawenturowitsch Turtschewitsch zurück."
-  },
-  {
-    "id": "city-boundary_span-012",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Smyshlyaev House in Perm erbaut?",
-    "expected_documents": [
-      "city-0035_perm.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Smyshlyaev House wurde 1799 erbaut bzw. gegründet."
-  },
-  {
-    "id": "city-boundary_span-013",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Lutheran Church, Perm erbaut?",
-    "expected_documents": [
-      "city-0035_perm.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Lutheran Church, Perm wurde 1861 erbaut bzw. gegründet."
-  },
-  {
-    "id": "city-boundary_span-014",
-    "domain": "city-landmarks",
-    "query": "Unter welchem Schutzstatus steht Astorija in Dnipro?",
-    "expected_documents": [
-      "city-0036_dnipro.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Local cultural heritage monument of architecture of Ukraine', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
-  },
-  {
-    "id": "city-boundary_span-015",
-    "domain": "city-landmarks",
-    "query": "Unter welchem Schutzstatus steht Gebäude der Internationalen Geschäftsbank Sankt-Petersburger in Dnipro?",
-    "expected_documents": [
-      "city-0036_dnipro.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Local cultural heritage monument of architecture of Ukraine', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
-  },
-  {
-    "id": "city-boundary_span-016",
-    "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Potocki-Palast in Lemberg erbaut?",
-    "expected_documents": [
-      "city-0045_lemberg.md"
-    ],
-    "category": "boundary_span",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Potocki-Palast wurde 1880 erbaut bzw. gegründet, geht auf Pläne von Louis Dauvergne zurück."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'unbewegliches Denkmal (Polen)', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
   },
   {
     "id": "city-boundary_span-017",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Sankt-Georgs-Kathedrale in Lemberg erbaut?",
+    "query": "In welchem Jahr wurde Staszic-Palast in Warschau erbaut?",
     "expected_documents": [
-      "city-0045_lemberg.md"
+      "city-0014_warschau.md"
     ],
     "category": "boundary_span",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Sankt-Georgs-Kathedrale wurde 1760 erbaut bzw. gegründet, geht auf Pläne von Bernhard Meretyn zurück."
+    "answer_span": "Staszic-Palast wurde 1820 erbaut bzw. gegründet, geht auf Pläne von Antonio Corazzi zurück."
   },
   {
     "id": "city-boundary_span-018",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Wyssokyj samok in Lemberg erbaut?",
+    "query": "Unter welchem Schutzstatus steht Grabmal des unbekannten Soldaten (Warschau)?",
     "expected_documents": [
-      "city-0045_lemberg.md"
+      "city-0014_warschau.md"
     ],
     "category": "boundary_span",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Wyssokyj samok wurde 1270 erbaut bzw. gegründet."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'unbewegliches Denkmal (Polen)', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
   },
   {
     "id": "city-boundary_span-019",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Ensemble of building of Shluzovoy in Toljatti erbaut?",
+    "query": "Unter welchem Schutzstatus steht Mariä-Geburt-Kathedrale in Nischni Nowgorod?",
     "expected_documents": [
-      "city-0047_toljatti.md"
+      "city-0020_nischni-nowgorod.md"
     ],
     "category": "boundary_span",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Ensemble of building of Shluzovoy wurde 1950 erbaut bzw. gegründet."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
   },
   {
     "id": "city-boundary_span-020",
     "domain": "city-landmarks",
-    "query": "In welchem Jahr wurde Kathedrale der Geburt der seligen Jungfrau Maria (Breslau, St. Barbara) erbaut?",
+    "query": "In welchem Jahr wurde Church of St. John the Baptist (Nizhny Novgorod) in Nischni Nowgorod erbaut?",
     "expected_documents": [
-      "city-0049_breslau.md"
+      "city-0020_nischni-nowgorod.md"
     ],
     "category": "boundary_span",
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Barbara) wurde 1440 erbaut bzw. gegründet."
+    "answer_span": "John the Baptist (Nizhny Novgorod) wurde 1683 erbaut bzw. gegründet."
   },
   {
     "id": "city-cross_chunk-001",
     "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Istanbul entstand früher — Rumeli Hisarı oder Topkapı-Palast?",
+    "query": "Welche Sehenswürdigkeit in Istanbul entstand früher — Hagia Sophia oder Topkapı-Palast?",
     "expected_documents": [
       "city-0001_istanbul.md"
     ],
@@ -842,12 +855,12 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Topkapı-Palast entstand später als Rumeli Hisarı."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Topkapı-Palast entstand später als Hagia Sophia."
   },
   {
     "id": "city-cross_chunk-002",
     "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Moskau entstand früher — Kuskowo oder Kreml?",
+    "query": "Welche Sehenswürdigkeit in Moskau entstand früher — Kreml oder Olympiastadion Luschniki?",
     "expected_documents": [
       "city-0002_moskau.md"
     ],
@@ -855,12 +868,12 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Kreml entstand früher als Kuskowo."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Olympiastadion Luschniki entstand später als Kreml."
   },
   {
     "id": "city-cross_chunk-003",
     "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in London entstand früher — Crystal Palace oder Ukrainian Catholic Cathedral of the Holy Family in Exile?",
+    "query": "Welche Sehenswürdigkeit in London entstand früher — Crystal Palace oder St. James’s Palace?",
     "expected_documents": [
       "city-0003_london.md"
     ],
@@ -868,12 +881,12 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Ukrainian Catholic Cathedral of the Holy Family in Exile entstand später als Crystal Palace."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: St. James’s Palace entstand früher als Crystal Palace."
   },
   {
     "id": "city-cross_chunk-004",
     "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Sankt Petersburg entstand früher — Taurisches Palais oder Dreifaltigkeitskathedrale?",
+    "query": "Welche Sehenswürdigkeit in Sankt Petersburg entstand früher — Eremitage oder Isaakskathedrale?",
     "expected_documents": [
       "city-0004_sankt-petersburg.md"
     ],
@@ -881,12 +894,25 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Dreifaltigkeitskathedrale entstand später als Taurisches Palais."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Isaakskathedrale entstand später als Eremitage."
   },
   {
     "id": "city-cross_chunk-005",
     "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Madrid entstand früher — Königspalast Madrid oder Moncloa-Palast?",
+    "query": "Welche Sehenswürdigkeit in Berlin entstand früher — Brandenburger Tor oder Schloss Charlottenburg?",
+    "expected_documents": [
+      "city-0005_berlin.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Schloss Charlottenburg entstand im selben Jahr wie Brandenburger Tor."
+  },
+  {
+    "id": "city-cross_chunk-006",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Madrid entstand früher — Königspalast Madrid oder Museo Reina Sofía?",
     "expected_documents": [
       "city-0006_madrid.md"
     ],
@@ -894,12 +920,25 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Moncloa-Palast entstand später als Königspalast Madrid."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Museo Reina Sofía entstand später als Königspalast Madrid."
   },
   {
-    "id": "city-cross_chunk-006",
+    "id": "city-cross_chunk-007",
     "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Rom entstand früher — Palazzo Koch oder Palazzo Braschi?",
+    "query": "Welche Sehenswürdigkeit in Kiew entstand früher — Sophienkathedrale oder Goldenes Tor (Kiew)?",
+    "expected_documents": [
+      "city-0007_kiew.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Goldenes Tor (Kiew) entstand später als Sophienkathedrale."
+  },
+  {
+    "id": "city-cross_chunk-008",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Rom entstand früher — Engelsburg oder Trajanssäule?",
     "expected_documents": [
       "city-0008_rom.md"
     ],
@@ -907,12 +946,25 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Palazzo Braschi entstand früher als Palazzo Koch."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Trajanssäule entstand früher als Engelsburg."
   },
   {
-    "id": "city-cross_chunk-007",
+    "id": "city-cross_chunk-009",
     "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Hamburg entstand früher — Dialog im Dunkeln oder Arbeitsgemeinschaft Geesthachter Eisenbahn?",
+    "query": "Welche Sehenswürdigkeit in Paris entstand früher — Bastille oder Palais du Luxembourg?",
+    "expected_documents": [
+      "city-0009_paris.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Palais du Luxembourg entstand später als Bastille."
+  },
+  {
+    "id": "city-cross_chunk-010",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Hamburg entstand früher — Dialog im Dunkeln oder Ehrenmal der Radiologie?",
     "expected_documents": [
       "city-0010_hamburg.md"
     ],
@@ -920,12 +972,12 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Arbeitsgemeinschaft Geesthachter Eisenbahn entstand früher als Dialog im Dunkeln."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Ehrenmal der Radiologie entstand früher als Dialog im Dunkeln."
   },
   {
-    "id": "city-cross_chunk-008",
+    "id": "city-cross_chunk-011",
     "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Bukarest entstand früher — Kathedrale des Heiligen Basilius des Großen oder Cantacuzino Palast?",
+    "query": "Welche Sehenswürdigkeit in Bukarest entstand früher — Parlamentspalast oder Nationalmuseum des rumänischen Bauern?",
     "expected_documents": [
       "city-0011_bukarest.md"
     ],
@@ -933,12 +985,12 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Cantacuzino Palast entstand früher als Kathedrale des Heiligen Basilius des Großen."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Nationalmuseum des rumänischen Bauern entstand früher als Parlamentspalast."
   },
   {
-    "id": "city-cross_chunk-009",
+    "id": "city-cross_chunk-012",
     "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Minsk entstand früher — Mariä-Namen-Kathedrale oder Pischtschalauski samak?",
+    "query": "Welche Sehenswürdigkeit in Minsk entstand früher — Kirche des heiligen Simon und der heiligen Helena (Minsk) oder Mariä-Namen-Kathedrale?",
     "expected_documents": [
       "city-0012_minsk.md"
     ],
@@ -946,12 +998,25 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Pischtschalauski samak entstand später als Mariä-Namen-Kathedrale."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Mariä-Namen-Kathedrale entstand früher als Kirche des heiligen Simon und der heiligen Helena (Minsk)."
   },
   {
-    "id": "city-cross_chunk-010",
+    "id": "city-cross_chunk-013",
     "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Warschau entstand früher — Staszic-Palast oder Kulturpalast?",
+    "query": "Welche Sehenswürdigkeit in Budapest entstand früher — Stalindenkmal oder Ernst Museum?",
+    "expected_documents": [
+      "city-0013_budapest.md"
+    ],
+    "category": "cross_chunk",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Ernst Museum entstand früher als Stalindenkmal."
+  },
+  {
+    "id": "city-cross_chunk-014",
+    "domain": "city-landmarks",
+    "query": "Welche Sehenswürdigkeit in Warschau entstand früher — Kulturpalast oder Königliches Schloss Warschau?",
     "expected_documents": [
       "city-0014_warschau.md"
     ],
@@ -959,12 +1024,12 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Kulturpalast entstand später als Staszic-Palast."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Königliches Schloss Warschau entstand früher als Kulturpalast."
   },
   {
-    "id": "city-cross_chunk-011",
+    "id": "city-cross_chunk-015",
     "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Wien entstand früher — Palais Coburg oder Wiener Riesenrad?",
+    "query": "Welche Sehenswürdigkeit in Wien entstand früher — Schloss Belvedere oder Österreichische Nationalbibliothek?",
     "expected_documents": [
       "city-0015_wien.md"
     ],
@@ -972,59 +1037,7 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Wiener Riesenrad entstand später als Palais Coburg."
-  },
-  {
-    "id": "city-cross_chunk-012",
-    "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Charkiw entstand früher — House with Chimeras oder Cathedral of the Assumption of the Blessed Virgin Mary, Kharkiv?",
-    "expected_documents": [
-      "city-0017_charkiw.md"
-    ],
-    "category": "cross_chunk",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Cathedral of the Assumption of the Blessed Virgin Mary, Kharkiv entstand früher als House with Chimeras."
-  },
-  {
-    "id": "city-cross_chunk-013",
-    "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Mailand entstand früher — Castello Sforzesco oder Santa Maria presso San Celso?",
-    "expected_documents": [
-      "city-0018_mailand.md"
-    ],
-    "category": "cross_chunk",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Santa Maria presso San Celso entstand später als Castello Sforzesco."
-  },
-  {
-    "id": "city-cross_chunk-014",
-    "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Belgrad entstand früher — Eisenbahnmuseum Belgrad oder Christi-Himmelfahrtskirche?",
-    "expected_documents": [
-      "city-0019_belgrad.md"
-    ],
-    "category": "cross_chunk",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Christi-Himmelfahrtskirche entstand früher als Eisenbahnmuseum Belgrad."
-  },
-  {
-    "id": "city-cross_chunk-015",
-    "domain": "city-landmarks",
-    "query": "Welche Sehenswürdigkeit in Nischni Nowgorod entstand früher — Church of Elijah the Prophet oder Church of All Saints (Nizhny Novgorod)?",
-    "expected_documents": [
-      "city-0020_nischni-nowgorod.md"
-    ],
-    "category": "cross_chunk",
-    "difficulty": "medium",
-    "language": "de",
-    "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Church of All Saints (Nizhny Novgorod) entstand später als Church of Elijah the Prophet."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Österreichische Nationalbibliothek entstand früher als Schloss Belvedere."
   },
   {
     "id": "city-multi_city-001",
