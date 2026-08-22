@@ -5,10 +5,18 @@ import { getDocumentContent } from '../services/api'
 // file, and neither can use a plain <a href> since the endpoint is Bearer-authenticated (ADR-0005).
 
 // Content types the browser renders inline when navigated to directly - everything else falls back
-// to a download instead of a probably-blank or broken preview tab.
+// to a download instead of a probably-blank or broken preview tab. image/svg+xml is deliberately
+// excluded even though it matches the image/ prefix: the object URL it would be opened from runs in
+// this app's own origin, where the endpoint's response-level protections (CSP, X-Content-Type-Options
+// - DocumentController) do not apply to a blob: URL, so an inline SVG would execute script in the
+// app's context (#743 review).
 const PREVIEWABLE_CONTENT_TYPE_PREFIXES = ['application/pdf', 'image/']
+const NEVER_PREVIEWABLE_CONTENT_TYPES = ['image/svg+xml']
 
 function isPreviewable(contentType: string): boolean {
+  if (NEVER_PREVIEWABLE_CONTENT_TYPES.includes(contentType)) {
+    return false
+  }
   return PREVIEWABLE_CONTENT_TYPE_PREFIXES.some((prefix) => contentType.startsWith(prefix))
 }
 
@@ -28,14 +36,21 @@ function triggerDownload(objectUrl: string, fileName: string) {
 }
 
 /**
- * Loads a document's original file as a Blob and either previews it in a new tab (PDF/images) or
- * downloads it under its original file name (everything else). `fallbackFileName` is used when the
- * response carries no Content-Disposition file name (should not normally happen, but the caller
- * already knows the name from its own document list).
+ * Loads a document's original file as a Blob and either previews it in a new tab (PDF/images, but
+ * never SVG - see {@link NEVER_PREVIEWABLE_CONTENT_TYPES}) or downloads it under its original file
+ * name (everything else). `fallbackFileName` is used when the response carries no
+ * Content-Disposition file name (should not normally happen, but the caller already knows the name
+ * from its own document list).
+ *
+ * Which branch runs is decided purely by content type, never by `window.open`'s return value: with
+ * `noopener` in its `windowFeatures`, `window.open` always returns `null` per spec regardless of
+ * whether a tab actually opened (#743 review) - it cannot double as a popup-blocked signal here.
  *
  * The created object URL is revoked after {@link OBJECT_URL_REVOKE_DELAY_MS} rather than
  * immediately - revoking it synchronously would race the new tab/download actually reading the
- * blob's bytes, especially for `window.open`, which only schedules navigation asynchronously.
+ * blob's bytes, especially for `window.open`, which only schedules navigation asynchronously. A
+ * failure between creating the URL and scheduling that revoke (e.g. `triggerDownload` throwing)
+ * must still revoke it - otherwise the blob leaks until the page unloads.
  */
 export async function openDocumentContent(
   documentId: string,
@@ -45,15 +60,15 @@ export async function openDocumentContent(
   const objectUrl = URL.createObjectURL(blob)
   const resolvedFileName = fileName ?? fallbackFileName
 
-  if (isPreviewable(blob.type)) {
-    const opened = window.open(objectUrl, '_blank', 'noopener,noreferrer')
-    if (!opened) {
-      // Popup blocked (or jsdom in tests, which never opens a real tab) - fall back to a download
-      // rather than silently doing nothing.
+  try {
+    if (isPreviewable(blob.type)) {
+      window.open(objectUrl, '_blank', 'noopener,noreferrer')
+    } else {
       triggerDownload(objectUrl, resolvedFileName)
     }
-  } else {
-    triggerDownload(objectUrl, resolvedFileName)
+  } catch (err) {
+    URL.revokeObjectURL(objectUrl)
+    throw err
   }
 
   setTimeout(() => URL.revokeObjectURL(objectUrl), OBJECT_URL_REVOKE_DELAY_MS)

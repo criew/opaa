@@ -73,6 +73,13 @@ gemeinsame Logik dafür liegt in `frontend/src/utils/documentContent.ts` und wir
 Quell-URL (`sourceEntryUrl` bzw. das neue Feld `sourceUrl` auf `LibraryDocumentResponse`) in einem
 neuen Tab.
 
+`LibraryDocumentResponse.sourceUrl` ist bewusst für jede VIEWER-Berechtigung sichtbar — anders als
+`LibraryResponse.sourceUrl`, das #507 unterhalb von MANAGER maskiert. Maskiert bleibt dort die
+**Quellkonfiguration** der Bibliothek (Crawl-Ziel, Proxy, Zugangsdaten); das neue Feld nennt dagegen
+nur die eigene Herkunfts-URL **eines einzelnen Dokuments** — der Dokument-Deeplink ist der Kern von
+#738/#740, analog zu `sourceEntryUrl`, das seit #493 ebenfalls ungefiltert an Leseberechtigte geht.
+Maintainer-Entscheidung auf PR #743 (Epic #740).
+
 **Gesprächsverwaltung.** Ein Gespräch ist ein persistentes Objekt, das **von Anfang an in genau einem
 Arbeitsraum** liegt — dort erstellt (`POST /api/v1/spaces/{spaceId}/chats`), dort unter
 `/spaces/:spaceId/chats/:chatId` gelistet und geöffnet, nicht verschiebbar (siehe

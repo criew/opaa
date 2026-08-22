@@ -3576,6 +3576,11 @@ components:
             the server must not be exposed here. A client prefers sourceEntryUrl over this field
             when both are set (an RSS attachment's own file location is less useful than the entry
             page it was found on).
+
+            Deliberately visible to every VIEWER, unlike LibraryResponse's own sourceUrl (masked
+            below MANAGER, #507): this field names one document's remote origin, the document deep
+            link that is the entire point of #738/#740, not the library's crawl configuration (host,
+            proxy, credentials) that #507 protects. Maintainer decision on PR #743 (Epic #740).
           example: https://example.gov/verzeichnis/dienstanweisung-2024.pdf
         errorMessage:
           type: string

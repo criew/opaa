@@ -29,7 +29,9 @@ describe('documentContent', () => {
 
   describe('openDocumentContent', () => {
     it('previews a PDF in a new tab and revokes the object URL after the delay', async () => {
-      windowOpenSpy.mockReturnValue({} as Window)
+      // window.open with 'noopener' in its features always returns null per spec, real tab opened
+      // or not (#743 review) - the mock reflects that instead of a value no real browser produces.
+      windowOpenSpy.mockReturnValue(null)
       mockGetDocumentContent.mockResolvedValueOnce({
         blob: new Blob(['x'], { type: 'application/pdf' }),
         fileName: 'original.pdf',
@@ -52,7 +54,7 @@ describe('documentContent', () => {
     })
 
     it('previews an image in a new tab', async () => {
-      windowOpenSpy.mockReturnValue({} as Window)
+      windowOpenSpy.mockReturnValue(null)
       mockGetDocumentContent.mockResolvedValueOnce({
         blob: new Blob(['x'], { type: 'image/png' }),
         fileName: 'original.png',
@@ -68,6 +70,18 @@ describe('documentContent', () => {
       expect(clickSpy).not.toHaveBeenCalled()
     })
 
+    it('downloads an SVG under its original name instead of opening it inline (#743: SVG can carry script)', async () => {
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: new Blob(['<svg/>'], { type: 'image/svg+xml' }),
+        fileName: 'original.svg',
+      })
+
+      await openDocumentContent('doc-1', 'fallback.svg')
+
+      expect(windowOpenSpy).not.toHaveBeenCalled()
+      expect(clickSpy).toHaveBeenCalledTimes(1)
+    })
+
     it('downloads a non-previewable file under its original name instead of opening a tab', async () => {
       mockGetDocumentContent.mockResolvedValueOnce({
         blob: new Blob(['x'], { type: 'application/vnd.ms-word' }),
@@ -80,17 +94,18 @@ describe('documentContent', () => {
       expect(clickSpy).toHaveBeenCalledTimes(1)
     })
 
-    it('falls back to a download when the preview tab is blocked', async () => {
-      windowOpenSpy.mockReturnValue(null)
+    it('revokes the object URL when triggering the download throws before the revoke is scheduled', async () => {
       mockGetDocumentContent.mockResolvedValueOnce({
-        blob: new Blob(['x'], { type: 'application/pdf' }),
-        fileName: 'original.pdf',
+        blob: new Blob(['x'], { type: 'application/vnd.ms-word' }),
+        fileName: 'original.docx',
+      })
+      clickSpy.mockImplementation(() => {
+        throw new Error('boom')
       })
 
-      await openDocumentContent('doc-1', 'fallback.pdf')
+      await expect(openDocumentContent('doc-1', 'fallback.docx')).rejects.toThrow('boom')
 
-      expect(windowOpenSpy).toHaveBeenCalled()
-      expect(clickSpy).toHaveBeenCalledTimes(1)
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-object-url')
     })
 
     it('uses the fallback file name when the response carries none', async () => {

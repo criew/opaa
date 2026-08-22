@@ -35,6 +35,12 @@ final class LibraryDocumentResponses {
    * FileProcessingService#processUrlFile deduplicates by - but the server-local storage path for
    * {@code UPLOAD}/{@code FILESYSTEM}, which must stay internal (the same floor #507 already draws
    * for a library's own configured sourcePath).
+   *
+   * <p>Unlike {@code LibraryResponse.sourceUrl} - masked below MANAGER by #507 because it exposes
+   * the library's crawl configuration (host, proxy, credentials) - this field is intentionally
+   * visible to every VIEWER. It names one document's own remote origin, not the library's source
+   * configuration: the document deep link is the entire point of #738/#740. Maintainer decision on
+   * PR #743 (Epic #740), see the field's own OpenAPI description for the full reasoning.
    */
   private static String sourceUrl(Document document) {
     DocumentSourceType sourceType = document.getSourceType();
