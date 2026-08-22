@@ -312,6 +312,50 @@ class QueryServiceTest {
             tuple(secondDocumentId, "https://example.com/feed/entry-2"));
   }
 
+  /**
+   * PR #745 review, nit 1: a chunk without {@code document_id} metadata (pre-#739 index entries)
+   * used to compute its match count under the literal string {@code "unknown"} in {@link
+   * #countMatchesPerDocument} but look it back up under {@code ""} in {@link #mapSources} - the
+   * lookup always missed and silently fell back to a match count of 1. It also collapsed two such
+   * chunks from <em>different</em> files into a single merged entry, since both shared the same
+   * empty key. Falling back to {@code file_name} in both places fixes both: each file gets its own
+   * entry with the correct match count.
+   */
+  @Test
+  void queryFallsBackToFileNameForMatchCountingWhenDocumentIdMetadataIsMissing() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var firstChunkOfA =
+        Document.builder()
+            .text("From legacy document A, chunk 1")
+            .metadata(Map.of("file_name", "legacy-a.pdf"))
+            .score(0.9)
+            .build();
+    var secondChunkOfA =
+        Document.builder()
+            .text("From legacy document A, chunk 2")
+            .metadata(Map.of("file_name", "legacy-a.pdf"))
+            .score(0.8)
+            .build();
+    var chunkOfB =
+        Document.builder()
+            .text("From legacy document B")
+            .metadata(Map.of("file_name", "legacy-b.pdf"))
+            .score(0.7)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+        .thenReturn(List.of(firstChunkOfA, secondChunkOfA, chunkOfB));
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources()).hasSize(2);
+    assertThat(response.getSources())
+        .extracting(SourceReference::getFileName, SourceReference::getMatchCount)
+        .containsExactlyInAnyOrder(tuple("legacy-a.pdf", 2), tuple("legacy-b.pdf", 1));
+  }
+
   @Test
   void queryMarksCitedSourcesCorrectly() {
     when(chatMemory.get(any())).thenReturn(List.of());

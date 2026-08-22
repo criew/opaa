@@ -9,7 +9,7 @@ import type { CitationIndex } from './citations'
 import { citationRowId } from './citations'
 import type { SourceReference } from '../../types/api'
 import { fontFamily } from '../../theme/tokens'
-import { openDocumentContent, openExternalSourceUrl } from '../../utils/documentContent'
+import { openDocumentContent } from '../../utils/documentContent'
 
 interface SourceFootnotesProps {
   messageId: string
@@ -39,30 +39,59 @@ function canOpenOriginal(source: SourceReference | undefined): boolean {
 }
 
 /**
- * #739: opens a citation's original document, mirroring LibraryDetailPage#handleOpenOriginal
+ * #739: opens a citation's local original document, mirroring LibraryDetailPage#handleOpenOriginal
  * (#738) - a local original (UPLOAD/FILESYSTEM) goes through the Bearer-authenticated download
- * endpoint (a plain <a href> cannot carry the token, ADR-0005), a remote source
- * (HTTP_DIRECTORY/RSS_FEED) opens sourceEntryUrl/sourceUrl directly instead, the former preferred
- * when both are set.
+ * endpoint (a plain <a href> cannot carry the token, ADR-0005). A remote source
+ * (HTTP_DIRECTORY/RSS_FEED) is rendered as a real `<a href>` instead (PR #745 review, nit 3) - it
+ * needs no token, so it keeps the browser's native link semantics (middle-click, "open in new
+ * tab", "copy link address") that a `component="button"` Link loses.
  */
-async function openOriginal(
+async function openLocalOriginal(
   source: SourceReference,
   fileName: string,
   onError: (message: string) => void,
 ) {
-  const externalUrl = source.sourceEntryUrl ?? source.sourceUrl
+  if (!source.documentId) return
+  try {
+    await openDocumentContent(source.documentId, fileName)
+  } catch (err) {
+    onError(err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.')
+  }
+}
+
+/** #739/#745: a local original opens via the Bearer-authenticated download endpoint and must stay
+ *  a button; a remote source is a real link to its own URL (see {@link openLocalOriginal}). */
+function renderOpenOriginalLink(
+  source: SourceReference,
+  fileName: string,
+  onOpenLocalOriginal: (source: SourceReference, fileName: string) => void,
+) {
   if (source.sourceType === 'UPLOAD' || source.sourceType === 'FILESYSTEM') {
-    if (!source.documentId) return
-    try {
-      await openDocumentContent(source.documentId, fileName)
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.')
-    }
-    return
+    return (
+      <Link
+        component="button"
+        type="button"
+        underline="hover"
+        onClick={() => onOpenLocalOriginal(source, fileName)}
+        sx={{ fontSize: 11 }}
+      >
+        Im Dokument öffnen
+      </Link>
+    )
   }
-  if (externalUrl) {
-    openExternalSourceUrl(externalUrl)
-  }
+  const externalUrl = source.sourceEntryUrl ?? source.sourceUrl
+  if (!externalUrl) return null
+  return (
+    <Link
+      href={externalUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      underline="hover"
+      sx={{ fontSize: 11 }}
+    >
+      Im Dokument öffnen
+    </Link>
+  )
 }
 
 /** The metadata the API can already vouch for - the mockup's Abschnitt/Paragraf follow with the
@@ -83,7 +112,7 @@ function renderDocRow(
   docIndex: number,
   messageId: string,
   highlighted: boolean,
-  onOpenOriginal: (source: SourceReference, fileName: string) => void,
+  onOpenLocalOriginal: (source: SourceReference, fileName: string) => void,
 ) {
   return (
     <Box
@@ -131,19 +160,10 @@ function renderDocRow(
           {sourceMeta(doc)}
         </Typography>
       )}
-      {/* #739: opens the original via the download endpoint for a local original, or its
-          sourceEntryUrl/sourceUrl deep link for a remote one (see canOpenOriginal). */}
-      {canOpenOriginal(doc.source) && (
-        <Link
-          component="button"
-          type="button"
-          underline="hover"
-          onClick={() => onOpenOriginal(doc.source!, doc.fileName)}
-          sx={{ fontSize: 11 }}
-        >
-          Im Dokument öffnen
-        </Link>
-      )}
+      {/* #739/#745: a button for a local original (download endpoint), a real link for a remote
+          sourceEntryUrl/sourceUrl deep link (see renderOpenOriginalLink/canOpenOriginal). */}
+      {canOpenOriginal(doc.source) &&
+        renderOpenOriginalLink(doc.source!, doc.fileName, onOpenLocalOriginal)}
     </Box>
   )
 }
@@ -164,9 +184,9 @@ export default function SourceFootnotes({
   // #739: mirrors LibraryDetailPage's openOriginalError (#738) - opening the original is a
   // read-only, per-click action, so its failure (404, file missing) gets its own local message.
   const [openOriginalError, setOpenOriginalError] = useState<string | null>(null)
-  const handleOpenOriginal = (source: SourceReference, fileName: string) => {
+  const handleOpenLocalOriginal = (source: SourceReference, fileName: string) => {
     setOpenOriginalError(null)
-    void openOriginal(source, fileName, setOpenOriginalError)
+    void openLocalOriginal(source, fileName, setOpenOriginalError)
   }
   const { docs, uncited, markerCount } = citations
 
@@ -261,7 +281,7 @@ export default function SourceFootnotes({
             docIndex,
             messageId,
             highlightedDocIndexes.includes(docIndex),
-            handleOpenOriginal,
+            handleOpenLocalOriginal,
           ),
         )}
         {foldedOpen &&
@@ -272,7 +292,7 @@ export default function SourceFootnotes({
               docIndex,
               messageId,
               highlightedDocIndexes.includes(docIndex),
-              handleOpenOriginal,
+              handleOpenLocalOriginal,
             )
           })}
       </Box>
@@ -345,17 +365,8 @@ export default function SourceFootnotes({
                       {source.spaceName}
                     </Typography>
                   )}
-                  {canOpenOriginal(source) && (
-                    <Link
-                      component="button"
-                      type="button"
-                      underline="hover"
-                      onClick={() => handleOpenOriginal(source, source.fileName)}
-                      sx={{ fontSize: 11 }}
-                    >
-                      Im Dokument öffnen
-                    </Link>
-                  )}
+                  {canOpenOriginal(source) &&
+                    renderOpenOriginalLink(source, source.fileName, handleOpenLocalOriginal)}
                 </Box>
               ))}
             </Box>

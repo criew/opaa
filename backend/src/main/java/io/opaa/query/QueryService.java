@@ -400,9 +400,26 @@ public class QueryService {
   private Map<String, Integer> countMatchesPerDocument(List<Document> chunks) {
     return chunks.stream()
         .collect(
-            Collectors.groupingBy(
-                chunk -> chunk.getMetadata().getOrDefault("document_id", "unknown").toString(),
-                Collectors.summingInt(e -> 1)));
+            Collectors.groupingBy(QueryService::chunkGroupingKey, Collectors.summingInt(e -> 1)));
+  }
+
+  /**
+   * Groups a chunk by its {@code document_id} metadata, falling back to {@code file_name} when that
+   * metadata is missing or empty (PR #745 review, nit 1) - a chunk without {@code document_id} can
+   * only occur for pre-#739 index entries, since {@code FileProcessingService#storeChunks} now
+   * writes it on every chunk. {@link #countMatchesPerDocument} previously defaulted to the literal
+   * string {@code "unknown"} while {@link #mapSources} read the count back with {@code ""}, so the
+   * lookup always missed and {@code matchCount} silently fell back to {@code 1}. Falling back to
+   * the same {@code file_name} in both places also keeps two such chunks from <em>different</em>
+   * documents from collapsing into one merged entry, which the previous shared empty-string key
+   * did.
+   */
+  private static String chunkGroupingKey(Document chunk) {
+    String documentId = chunk.getMetadata().getOrDefault("document_id", "").toString();
+    if (!documentId.isEmpty()) {
+      return documentId;
+    }
+    return "file:" + chunk.getMetadata().getOrDefault("file_name", "unknown").toString();
   }
 
   /**
@@ -508,10 +525,11 @@ public class QueryService {
             .map(CitationValidator.ValidatedCitation::documentId)
             .collect(Collectors.toSet());
 
-    // Keyed on the chunk's raw document_id metadata string, not the parsed SourceReference#
-    // getDocumentId() (which is null for a malformed/missing value, #739's parseDocumentId) - two
-    // chunks with the same unparseable id must still merge into one entry rather than every one of
-    // them colliding on a shared null key.
+    // Keyed on #chunkGroupingKey, not the parsed SourceReference#getDocumentId() (which is null for
+    // a malformed/missing value, #739's parseDocumentId) - two chunks with the same unparseable id
+    // must still merge into one entry rather than every one of them colliding on a shared null key,
+    // and the file_name fallback (PR #745 review, nit 1) keeps two document_id-less chunks from
+    // different files from merging into one either.
     Map<String, SourceReference> fromChunksByDocumentId =
         chunks.stream()
             .map(
@@ -520,10 +538,11 @@ public class QueryService {
                       chunk.getMetadata().getOrDefault("file_name", "unknown").toString();
                   String documentId =
                       chunk.getMetadata().getOrDefault("document_id", "").toString();
+                  String groupKey = chunkGroupingKey(chunk);
                   double score = chunk.getScore() != null ? chunk.getScore() : 0.0;
                   boolean cited = validCitedDocumentIds.contains(documentId);
                   boolean citationValid = !documentIdsWithInvalidCitation.contains(documentId);
-                  int matches = matchCounts.getOrDefault(documentId, 1);
+                  int matches = matchCounts.getOrDefault(groupKey, 1);
                   io.opaa.indexing.Document sourceDocument = sourceDocumentsByDocId.get(documentId);
                   Instant indexedAt = sourceDocument != null ? sourceDocument.getIndexedAt() : null;
                   String sourceEntryUrl =
@@ -538,7 +557,7 @@ public class QueryService {
                               sourceDocument != null ? sourceDocument.getDeepLinkSourceUrl() : null)
                           .sourceEntryUrl(sourceEntryUrl)
                           .citationValid(citationValid);
-                  return Map.entry(documentId, reference);
+                  return Map.entry(groupKey, reference);
                 })
             .collect(
                 toMap(

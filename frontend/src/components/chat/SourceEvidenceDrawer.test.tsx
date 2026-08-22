@@ -191,8 +191,8 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
       expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
     })
 
-    it('opens the remote sourceUrl in a new tab for an HTTP_DIRECTORY document', async () => {
-      const { user, drawer } = await openDrawerWith(
+    it('renders a real link (not a button) to sourceUrl for an HTTP_DIRECTORY document (#745 review)', async () => {
+      const { drawer } = await openDrawerWith(
         source('doc.pdf', true, 0.9, 'Engineering', true, {
           documentId: 'doc-1',
           sourceType: 'HTTP_DIRECTORY',
@@ -200,11 +200,13 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }),
       )
 
-      await user.click(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' }))
-
-      expect(mockOpenExternalSourceUrl).toHaveBeenCalledWith(
-        'https://example.gov/verzeichnis/doc.pdf',
-      )
+      // A real <a href> instead of component="button" - middle-click, "open in new tab" and
+      // "copy link address" only work on an actual link.
+      const link = within(drawer).getByRole('link', { name: 'Im Dokument öffnen' })
+      expect(link).toHaveAttribute('href', 'https://example.gov/verzeichnis/doc.pdf')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
       expect(mockOpenDocumentContent).not.toHaveBeenCalled()
     })
 

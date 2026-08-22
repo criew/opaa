@@ -2,14 +2,20 @@ import { describe, expect, test } from 'vitest'
 import { buildCitationIndex } from './citations'
 import type { SourceReference } from '../../types/api'
 
-function source(fileName: string, cited: boolean): SourceReference {
+function source(
+  fileName: string,
+  cited: boolean,
+  documentId?: string,
+  relevanceScore = 0.9,
+): SourceReference {
   return {
     fileName,
-    relevanceScore: 0.9,
+    relevanceScore,
     matchCount: 1,
     cited,
     indexedAt: null,
     citationValid: true,
+    documentId,
   }
 }
 
@@ -77,6 +83,37 @@ describe('buildCitationIndex', () => {
     expect(index.docIndexByNumber.get(1)).toBe(0)
     expect(index.docIndexByNumber.get(2)).toBe(0)
     expect(index.docIndexByNumber.get(3)).toBe(1)
+  })
+
+  test('resolves markers by documentId, not last-wins by file name, for two same-named documents (PR #745 review)', () => {
+    // Document A (higher relevance, cited) and document B (lower relevance, uncited) share a file
+    // name but have distinct document ids - the backend now keeps both as separate SourceReference
+    // rows (#739) instead of merging them into one.
+    const docA = source('anlage.pdf', true, 'doc-a', 0.9)
+    const docB = source('anlage.pdf', false, 'doc-b', 0.5)
+    const content = 'Beleg【source: doc-a#0 | anlage.pdf】.'
+
+    const index = buildCitationIndex(content, [docA, docB])
+
+    expect(index.docs).toHaveLength(1)
+    // The cited marker must resolve to document A's own metadata, not document B's (which a
+    // fileName-keyed, last-wins map would return since B appears later in the sources array).
+    expect(index.docs[0].source?.documentId).toBe('doc-a')
+    expect(index.docs[0].source?.relevanceScore).toBe(0.9)
+    expect(index.docs[0].documentId).toBe('doc-a')
+    // Document B must not disappear - it stays visible as an uncited source.
+    expect(index.uncited.map((s) => s.documentId)).toEqual(['doc-b'])
+  })
+
+  test('falls back to file name when a persisted legacy message carries no documentId', () => {
+    // chat_messages.sources is a JSON snapshot (#590) - an older, persisted message may predate
+    // #739 and carry no documentId at all. The file-name join must still work for those.
+    const index = buildCitationIndex('Beleg【source: aa#0 | legacy.pdf】', [
+      source('legacy.pdf', true, undefined),
+    ])
+
+    expect(index.docs).toHaveLength(1)
+    expect(index.docs[0].source?.fileName).toBe('legacy.pdf')
   })
 
   test('returns an empty index for content without markers and no sources', () => {

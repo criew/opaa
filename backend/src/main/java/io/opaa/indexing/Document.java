@@ -253,6 +253,12 @@ public class Document {
    * already draws for a library's own configured sourcePath). Shared between {@code
    * LibraryDocumentResponses} (library listing, #738) and {@code QueryService} (citation deep
    * links, #739) so both compute the identical value from a single place.
+   *
+   * <p>Unlike {@code LibraryResponse.sourceUrl}, which #507 masks below MANAGER, this value is
+   * deliberately visible to every VIEWER - the masked field is the library's own <em>source
+   * configuration</em> (crawl target, proxy, credentials), while this one names only a single
+   * document's own origin URL, the same visibility {@code sourceEntryUrl} has carried since #493.
+   * Maintainer decision on PR #743 (epic #740).
    */
   public String getDeepLinkSourceUrl() {
     if (sourceType == DocumentSourceType.HTTP_DIRECTORY

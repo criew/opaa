@@ -14,7 +14,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
 import type { DocumentSourceType } from '../../types/api'
 import { fontFamily } from '../../theme/tokens'
-import { openDocumentContent, openExternalSourceUrl } from '../../utils/documentContent'
+import { openDocumentContent } from '../../utils/documentContent'
 
 interface SourceEvidenceDrawerProps {
   open: boolean
@@ -67,26 +67,20 @@ export default function SourceEvidenceDrawer({
   // rather than touching any store.
   const [openOriginalError, setOpenOriginalError] = useState<string | null>(null)
 
-  // #739: local originals (UPLOAD/FILESYSTEM) go through the Bearer-authenticated download
-  // endpoint (a plain <a href> cannot carry the token, ADR-0005) - remote sourceTypes
-  // (HTTP_DIRECTORY/RSS_FEED) have no local file behind it and open their own remote location
-  // instead, sourceEntryUrl preferred over sourceUrl exactly like LibraryDetailPage#handleOpenOriginal.
-  async function handleOpenOriginal(doc: EvidenceDoc) {
+  // #739: a local original (UPLOAD/FILESYSTEM) goes through the Bearer-authenticated download
+  // endpoint (a plain <a href> cannot carry the token, ADR-0005). A remote sourceType
+  // (HTTP_DIRECTORY/RSS_FEED) is rendered as a real `<a href>` instead (PR #745 review, nit 3) - it
+  // needs no token, so it keeps native link semantics (middle-click, "open in new tab", "copy link
+  // address") that a `component="button"` Link loses.
+  async function handleOpenLocalOriginal(doc: EvidenceDoc) {
     setOpenOriginalError(null)
-    const externalUrl = doc.sourceEntryUrl ?? doc.sourceUrl
-    if (doc.sourceType === 'UPLOAD' || doc.sourceType === 'FILESYSTEM') {
-      if (!doc.documentId) return
-      try {
-        await openDocumentContent(doc.documentId, doc.fileName)
-      } catch (err) {
-        setOpenOriginalError(
-          err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.',
-        )
-      }
-      return
-    }
-    if (externalUrl) {
-      openExternalSourceUrl(externalUrl)
+    if (!doc.documentId) return
+    try {
+      await openDocumentContent(doc.documentId, doc.fileName)
+    } catch (err) {
+      setOpenOriginalError(
+        err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.',
+      )
     }
   }
 
@@ -296,24 +290,33 @@ export default function SourceEvidenceDrawer({
                     .filter(Boolean)
                     .join(' · ')}
                 </Typography>
-                {/* #739: a local original (UPLOAD/FILESYSTEM) opens via the Bearer-authenticated
-                    download endpoint - a plain <a href> cannot carry the token (ADR-0005) - a
-                    remote source (HTTP_DIRECTORY/RSS_FEED) opens sourceEntryUrl/sourceUrl
-                    directly instead, exactly like LibraryDetailPage#handleOpenOriginal (#738). */}
-                {(doc.sourceType === 'UPLOAD' ||
-                  doc.sourceType === 'FILESYSTEM' ||
-                  doc.sourceEntryUrl ||
-                  doc.sourceUrl) && (
+                {/* #739/#745: a local original (UPLOAD/FILESYSTEM) opens via the
+                    Bearer-authenticated download endpoint and stays a button; a remote source
+                    (HTTP_DIRECTORY/RSS_FEED) is a real link to sourceEntryUrl/sourceUrl instead,
+                    exactly like LibraryDetailPage#handleOpenOriginal (#738). */}
+                {doc.sourceType === 'UPLOAD' || doc.sourceType === 'FILESYSTEM' ? (
+                  doc.documentId && (
+                    <Link
+                      component="button"
+                      type="button"
+                      underline="hover"
+                      onClick={() => void handleOpenLocalOriginal(doc)}
+                      sx={{ fontSize: 11.5 }}
+                    >
+                      Im Dokument öffnen
+                    </Link>
+                  )
+                ) : (doc.sourceEntryUrl ?? doc.sourceUrl) ? (
                   <Link
-                    component="button"
-                    type="button"
+                    href={doc.sourceEntryUrl ?? doc.sourceUrl ?? undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     underline="hover"
-                    onClick={() => void handleOpenOriginal(doc)}
                     sx={{ fontSize: 11.5 }}
                   >
                     Im Dokument öffnen
                   </Link>
-                )}
+                ) : null}
               </Box>
             </Box>
           ))

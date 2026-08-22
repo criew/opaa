@@ -106,7 +106,7 @@ describe('SourceFootnotes', () => {
       expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
     })
 
-    it('opens the remote sourceUrl in a new tab for an HTTP_DIRECTORY document', async () => {
+    it('renders a real link (not a button) to sourceUrl for an HTTP_DIRECTORY document (#745 review)', () => {
       const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [
         source('dienstanweisung.pdf', true, {
           documentId: 'doc-1',
@@ -115,13 +115,14 @@ describe('SourceFootnotes', () => {
         }),
       ])
       renderWithProviders(<SourceFootnotes messageId="m6" citations={citations} />)
-      const user = userEvent.setup()
 
-      await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
-
-      expect(mockOpenExternalSourceUrl).toHaveBeenCalledWith(
-        'https://example.gov/verzeichnis/dienstanweisung.pdf',
-      )
+      // A real <a href> instead of component="button" - middle-click, "open in new tab" and
+      // "copy link address" only work on an actual link.
+      const link = screen.getByRole('link', { name: 'Im Dokument öffnen' })
+      expect(link).toHaveAttribute('href', 'https://example.gov/verzeichnis/dienstanweisung.pdf')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
       expect(mockOpenDocumentContent).not.toHaveBeenCalled()
     })
 
