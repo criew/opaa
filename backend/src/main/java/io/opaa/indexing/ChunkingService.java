@@ -10,6 +10,13 @@ public class ChunkingService {
 
   private static final Logger log = LoggerFactory.getLogger(ChunkingService.class);
 
+  /**
+   * Chunk metadata key carrying the human-readable Fundort (#667) - set by {@link
+   * OverlappingTokenTextSplitter} from {@link ChunkLocationResolver}, copied onto the stored chunk
+   * by {@code FileProcessingService#storeChunks} and read back by {@code QueryService#mapSources}.
+   */
+  public static final String LOCATION_METADATA_KEY = "location";
+
   private final IndexingProperties properties;
 
   public ChunkingService(IndexingProperties properties) {

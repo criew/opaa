@@ -72,7 +72,9 @@ describe('buildCitationIndex', () => {
   test('keeps a marker without matching source as a numbered row without metadata', () => {
     const index = buildCitationIndex('Text【source: xx#0 | verwaist.md】', [])
 
-    expect(index.docs).toEqual([{ fileName: 'verwaist.md', numbers: [1], source: undefined }])
+    expect(index.docs).toEqual([
+      { fileName: 'verwaist.md', numbers: [1], source: undefined, locations: [] },
+    ])
   })
 
   test('maps every number to its document row for the in-text anchors', () => {
@@ -122,5 +124,33 @@ describe('buildCitationIndex', () => {
     expect(index.markerCount).toBe(0)
     expect(index.docs).toEqual([])
     expect(index.uncited).toEqual([])
+  })
+
+  test('resolves a footnote to the Fundort of the chunk its marker names (#667)', () => {
+    const located: SourceReference = {
+      ...source('a.md', true, 'aa'),
+      chunkLocations: [
+        { chunkIndex: 0, location: 'Abschn. 4 Fristen › 4.2 Fristsetzung' },
+        { chunkIndex: 1, location: null },
+        { chunkIndex: 2, location: 'S. 3' },
+      ],
+    }
+    const content =
+      'Eins【source: aa#0 | a.md】zwei【source: aa#1 | a.md】drei【source: aa#2 | a.md】' +
+      'vier【source: aa#0 | a.md】'
+
+    const index = buildCitationIndex(content, [located])
+
+    expect(index.locationByNumber.get(1)).toBe('Abschn. 4 Fristen › 4.2 Fristsetzung')
+    expect(index.locationByNumber.has(2)).toBe(false)
+    expect(index.locationByNumber.get(3)).toBe('S. 3')
+    expect(index.docs[0].locations).toEqual(['Abschn. 4 Fristen › 4.2 Fristsetzung', 'S. 3'])
+  })
+
+  test('leaves locations empty for a source without chunk locations (#667)', () => {
+    const index = buildCitationIndex('Eins【source: aa#0 | a.md】', [source('a.md', true, 'aa')])
+
+    expect(index.locationByNumber.size).toBe(0)
+    expect(index.docs[0].locations).toEqual([])
   })
 })

@@ -5,7 +5,9 @@ import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingType;
 import com.knuddels.jtokkit.api.IntArrayList;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TextSplitter;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
@@ -37,9 +39,65 @@ class OverlappingTokenTextSplitter extends TextSplitter {
     this.overlapTokens = overlapTokens;
   }
 
+  /** Characters of a chunk's own (un-prefixed) text used to find it again in the source text. */
+  private static final int PROBE_LENGTH = 80;
+
+  /**
+   * Splits like {@link TextSplitter#apply}, but additionally stamps every chunk with its {@link
+   * ChunkingService#LOCATION_METADATA_KEY} (#667) - derived from where the chunk's own text (before
+   * the overlap prefix is prepended) sits in the source document, so the location describes the
+   * chunk's beginning, not the carried-over tail of its predecessor. Page-break markers (see {@link
+   * PageMarkingContentHandler}) are stripped from the stored text here, after locating; they must
+   * not reach the embedding. A chunk whose text cannot be found again in the source (the splitter
+   * normalised it beyond recognition) simply carries no location.
+   */
+  @Override
+  public List<Document> apply(List<Document> documents) {
+    List<Document> result = new ArrayList<>();
+    for (Document document : documents) {
+      String text = document.getText() == null ? "" : document.getText();
+      ChunkLocationResolver resolver = ChunkLocationResolver.forText(text);
+      List<String> originals = delegateSplit(text);
+      List<String> chunks = overlap(originals);
+      int searchFrom = 0;
+      for (int i = 0; i < chunks.size(); i++) {
+        Map<String, Object> metadata = new HashMap<>(document.getMetadata());
+        String original = originals.get(i);
+        int start = locateChunk(text, original, searchFrom);
+        if (start >= 0) {
+          searchFrom = start + 1;
+          String location = resolver.locate(start, start + original.length());
+          if (location != null) {
+            metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+          }
+        }
+        result.add(new Document(stripPageBreaks(chunks.get(i)), metadata));
+      }
+    }
+    return result;
+  }
+
+  private static int locateChunk(String text, String chunk, int searchFrom) {
+    String probe = chunk.length() > PROBE_LENGTH ? chunk.substring(0, PROBE_LENGTH) : chunk;
+    if (probe.isBlank()) {
+      return -1;
+    }
+    int found = text.indexOf(probe, searchFrom);
+    return found >= 0 ? found : text.indexOf(probe);
+  }
+
+  private static String stripPageBreaks(String chunk) {
+    return chunk.indexOf(ChunkLocationResolver.PAGE_BREAK) < 0
+        ? chunk
+        : chunk.replace(ChunkLocationResolver.PAGE_BREAK, '\n');
+  }
+
   @Override
   protected List<String> splitText(String text) {
-    List<String> chunks = delegateSplit(text);
+    return overlap(delegateSplit(text));
+  }
+
+  private List<String> overlap(List<String> chunks) {
     if (overlapTokens <= 0 || chunks.size() < 2) {
       return chunks;
     }

@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatService;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
@@ -93,7 +94,8 @@ public class QueryConfiguration {
       PermissionHistoryService permissionHistoryService,
       ChatService chatService,
       QueryMetrics queryMetrics,
-      QueryProperties queryProperties) {
+      QueryProperties queryProperties,
+      KnowledgeLibraryRepository knowledgeLibraryRepository) {
     return new QueryService(
         vectorStore,
         answerGenerationService,
@@ -106,6 +108,7 @@ public class QueryConfiguration {
         permissionHistoryService,
         chatService,
         queryMetrics,
-        queryProperties);
+        queryProperties,
+        knowledgeLibraryRepository);
   }
 }

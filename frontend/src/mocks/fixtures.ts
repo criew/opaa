@@ -94,6 +94,12 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
         citationValid: true,
+        documentId: 'doc-arch',
+        // #667: the Fundort per chunk the markers above name (#0, #3).
+        chunkLocations: [
+          { chunkIndex: 0, location: 'Abschn. Architektur › Module' },
+          { chunkIndex: 3, location: 'Abschn. Architektur › Query-Pipeline' },
+        ],
       },
       {
         fileName: 'getting-started.pdf',
@@ -102,6 +108,8 @@ export const mockQueryResponses: QueryResponse[] = [
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
+        documentId: 'doc-start',
+        chunkLocations: [{ chunkIndex: 2, location: 'S. 2–3' }],
         // #697 review, Nit 6: one mock source with an invalid citation, so the mocked frontend
         // (VITE_ENABLE_MOCKS=true) can actually show the "Beleg nicht bestätigt" state (#386).
         citationValid: false,
@@ -122,6 +130,10 @@ export const mockQueryResponses: QueryResponse[] = [
       durationMs: 1523,
       answeredWithoutKnowledge: false,
       noKnowledgeAvailableInSpace: false,
+      searchedLibraries: [
+        { id: '11111111-1111-4111-8111-111111111111', name: 'Engineering-Handbuch' },
+        { id: '22222222-2222-4222-8222-222222222222', name: 'Meine Dokumente' },
+      ],
     },
     chatId: 'mock-conv-1',
   },
@@ -149,6 +161,10 @@ export const mockQueryResponses: QueryResponse[] = [
       durationMs: 890,
       answeredWithoutKnowledge: false,
       noKnowledgeAvailableInSpace: false,
+      searchedLibraries: [
+        { id: '11111111-1111-4111-8111-111111111111', name: 'Engineering-Handbuch' },
+        { id: '22222222-2222-4222-8222-222222222222', name: 'Meine Dokumente' },
+      ],
     },
     chatId: 'mock-conv-2',
   },
@@ -259,6 +275,10 @@ export const mockQueryResponses: QueryResponse[] = [
       durationMs: 2341,
       answeredWithoutKnowledge: false,
       noKnowledgeAvailableInSpace: false,
+      searchedLibraries: [
+        { id: '11111111-1111-4111-8111-111111111111', name: 'Engineering-Handbuch' },
+        { id: '22222222-2222-4222-8222-222222222222', name: 'Meine Dokumente' },
+      ],
     },
     chatId: 'mock-conv-3',
   },

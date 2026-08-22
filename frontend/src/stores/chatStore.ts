@@ -422,6 +422,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         sources: response.sources,
         answeredWithoutKnowledge: response.metadata.answeredWithoutKnowledge ?? false,
         noKnowledgeAvailableInSpace: response.metadata.noKnowledgeAvailableInSpace ?? false,
+        searchedLibraries: response.metadata.searchedLibraries ?? [],
         timestamp: new Date(),
       }
       set((state) => ({
