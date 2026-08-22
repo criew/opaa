@@ -1,0 +1,20 @@
+# The frontend image is the only build that uses the repo root as its context
+# (docker-compose.yml, e2e.yml, demo-smoke.yml and publish-images.yml all pass
+# context "." with frontend/Dockerfile); the backend build uses backend/ as its
+# context and has its own backend/.dockerignore. A .dockerignore only applies
+# at the context root, so this file replaces the never-effective
+# frontend/.dockerignore.
+#
+# Keep host-installed/generated trees out of the context: they are recreated
+# inside the image, and since the pnpm migration (#653) frontend/node_modules
+# is a symlink tree into a user-wide hardlink store that must never be copied
+# into an image.
+**/node_modules
+frontend/dist
+backend/build
+backend/.gradle
+e2e/test-results
+e2e/playwright-report
+.git
+.env*
+**/*.md

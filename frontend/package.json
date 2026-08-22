@@ -6,11 +6,11 @@
   "scripts": {
     "generate:api-types": "openapi-typescript ../backend/src/main/resources/openapi/opaa-api.yaml -o src/types/generated/api.ts && prettier --write src/types/generated/api.ts",
     "dev": "vite",
-    "build": "npm run generate:api-types && tsc -b && vite build",
+    "build": "pnpm run generate:api-types && tsc -b && vite build",
     "lint": "eslint .",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
-    "test": "npm run generate:api-types && vitest run",
+    "test": "pnpm run generate:api-types && vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -21,6 +21,7 @@
     "@fontsource/quicksand": "^5.3.0",
     "@mui/icons-material": "^9.2.0",
     "@mui/material": "^9.2.0",
+    "@mui/utils": "^9.2.0",
     "axios": "^1.19.0",
     "highlight.js": "^11.11.1",
     "oidc-client-ts": "^3.5.0",
@@ -61,12 +62,8 @@
       "public"
     ]
   },
-  "overrides": {
-    "openapi-typescript": {
-      "typescript": "$typescript"
-    }
-  },
   "engines": {
     "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
-  }
+  },
+  "packageManager": "pnpm@11.21.0"
 }

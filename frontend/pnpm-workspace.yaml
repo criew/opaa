@@ -1,0 +1,14 @@
+# Settings for this standalone project (pnpm reads them from here, not from
+# a "pnpm" field in package.json). No "packages" list on purpose - this is
+# not a multi-package workspace.
+
+# msw's postinstall only prints a sponsorship notice; the service worker in
+# public/ is committed. No need to run it.
+allowBuilds:
+  msw: false
+
+# openapi-typescript declares a typescript@^5 peer but works with the
+# project's typescript 6 (npm formerly enforced this via "overrides").
+peerDependencyRules:
+  allowedVersions:
+    'openapi-typescript>typescript': '>=6.0.0'
