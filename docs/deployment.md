@@ -48,8 +48,8 @@ Hier ist eine Verwechslung angelegt, die bereits mehrfach zu falschen Aussagen g
 
 | | Anbieter | Modell | Anmerkung |
 |---|---|---|---|
-| **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht** — seit #762 ohnehin der einzige Anbindungsweg für beide Funktionen. `OPAA_OPENAI_CHAT_BASE_URL`, der API-Schlüssel und `OPAA_OPENAI_CHAT_MODEL` zeigen auf Anthropic; die Basis-Adresse hat keinen Anwendungs-Default, der versehentlich hierher zeigen könnte. |
-| **Embedding** | Ollama, lokal | `nomic-embed-text` | Läuft über denselben Anbindungsweg gegen einen lokal betriebenen Ollama-Server — genau das ist seit #762 der Anwendungs-Default, `OPAA_OPENAI_EMBEDDING_BASE_URL` und `OPAA_OPENAI_EMBEDDING_MODEL` weichen auf dieser Instanz deshalb nicht vom Default ab. 768 Dimensionen, entsprechend `OPAA_PGVECTOR_DIMENSIONS=768` statt des Stack-Defaults 1536. |
+| **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht** — seit #762 ohnehin der einzige Anbindungsweg für beide Funktionen. `OPAA_OPENAI_CHAT_BASE_URL=https://api.anthropic.com/v1`, ein eigener `OPAA_OPENAI_CHAT_API_KEY` und `OPAA_OPENAI_CHAT_MODEL=claude-haiku-4-5` zeigen auf Anthropic; das gemeinsame `OPAA_OPENAI_BASE_URL` ist auf dieser Instanz **nicht** gesetzt. |
+| **Embedding** | Ollama, auf dem Host der VPS (nicht im Compose-Netz) | `nomic-embed-text` | Läuft über denselben Anbindungsweg, aber **nicht** über den Anwendungs-Default: `OPAA_OPENAI_EMBEDDING_BASE_URL=http://host.docker.internal:11434/v1` (Ollama läuft auf dem Host, nicht als Compose-Service `ollama` — der `docker`-Profil-Default `http://ollama:11434/v1` liefe hier ins Leere) und `OPAA_OPENAI_EMBEDDING_MODEL=nomic-embed-text` sind explizit gesetzt. 768 Dimensionen, entsprechend `OPAA_PGVECTOR_DIMENSIONS=768` statt des Stack-Defaults 1536. |
 
 Zwei Punkte dazu:
 
@@ -376,30 +376,58 @@ Guard noch abfängt.
 > | `OPAA_OLLAMA_CHAT_MODEL` | `OPAA_OPENAI_CHAT_MODEL` |
 > | `OPAA_OLLAMA_EMBEDDING_MODEL` | `OPAA_OPENAI_EMBEDDING_MODEL` |
 >
-> **Wer nur die Anwendungs-Defaults genutzt hat** (kein `OPAA_AI_*_PROVIDER` und kein
-> `OPAA_OLLAMA_*` selbst gesetzt — der übliche Fall für einen lokalen Ollama-Betrieb), **muss nichts
-> ändern**: `OPAA_OPENAI_BASE_URL` hat seit #762 denselben Default, den vorher `OPAA_OLLAMA_BASE_URL`
-> trug (`http://localhost:11434/v1` bzw., im Profil `docker`, `http://ollama:11434/v1`), ebenso die
-> Modell-Defaults (`phi3:mini`/`nomic-embed-text`). Übrig gelassene, jetzt unbekannte Variablen
-> (`OPAA_AI_CHAT_PROVIDER=ollama` etwa) werden von Spring stillschweigend ignoriert — kein Fehler,
-> aber auch keine Wirkung mehr; sie sollten bei Gelegenheit aus der eigenen `.env`/`.env.docker`
-> entfernt werden.
+> **Verbindliche Migrationsregel, nicht nur ein Sonderfall:** War `OPAA_OLLAMA_BASE_URL` vor dem
+> Update **gesetzt** — mit einem beliebigen Wert, auch dem bloßen Platzhalter `http://ollama:11434`
+> —, **muss** dieser Wert (mit angehängtem `/v1`) vor dem Update als `OPAA_OPENAI_EMBEDDING_BASE_URL`
+> übernommen werden (und als `OPAA_OPENAI_CHAT_BASE_URL`, falls auch `OPAA_AI_CHAT_PROVIDER=ollama`
+> stand). Grund: Der neue Anwendungs-Default für `OPAA_OPENAI_BASE_URL` ist zwar ebenfalls ein lokal
+> betriebener Ollama-Server, aber nicht notwendigerweise **derselbe** — läuft Ollama etwa auf dem
+> Host statt als Compose-Service `ollama` (üblich bei `docker-compose.yml`, das keinen eigenen
+> `ollama`-Service enthält), zeigt der Default ins Leere, und Indizierung/Fragen schlagen nach dem
+> Update ohne jede Warnung fehl.
 >
-> **Wer eigene `OPAA_OLLAMA_*`-Werte gesetzt hatte** (etwa eine abweichende Adresse oder ein anderes
-> Modell), muss diese vor dem Update auf die neuen Variablennamen übertragen — siehe Tabelle oben.
-> Die einmalige Übernahme in `llm_models` (siehe Absatz zu #756 oben) liest dafür ohnehin **weiterhin**
-> die alten `OPAA_OLLAMA_*`/`OPAA_AI_CHAT_PROVIDER`-Variablen, falls sie beim ersten Start nach dem
-> Update noch gesetzt sind (`io.opaa.llm.LlmModelSeeder`) — ein Update in einem Schritt, ohne die
-> `.env`-Datei vorher anzupassen, übernimmt die bisherige Chat-Konfiguration also trotzdem korrekt.
-> Für den **laufenden Betrieb** (jeder Aufruf nach dem ersten Start) zählt aber nur noch
-> `OPAA_OPENAI_*` — die alten Variablen danach zu entfernen und durch die neuen zu ersetzen bleibt
-> deshalb nötig, auch wenn die einmalige Übernahme sie noch berücksichtigt.
+> **Ebenso verbindlich, mit einem Datenabfluss-Risiko statt nur eines Ausfalls:** War stattdessen
+> `OPAA_OPENAI_BASE_URL` bereits auf einen **anderen** Anbieter als einen lokalen Ollama-Server
+> gesetzt (etwa einen Cloud-Endpunkt für den Chat), **muss** für die Einbettung ausdrücklich
+> `OPAA_OPENAI_EMBEDDING_BASE_URL` gesetzt werden. Ohne diese Trennung erbt die Einbettung nach dem
+> Update sonst dieselbe Adresse wie der Chat — und jeder indizierte Dokumentinhalt ginge an einen
+> Anbieter außerhalb des Hauses, den die bisherige Konfiguration dafür nie vorgesehen hatte.
+>
+> **Nur wer beides nie gesetzt hatte** — weder `OPAA_OLLAMA_BASE_URL` noch ein `OPAA_OPENAI_BASE_URL`
+> auf einen Nicht-Ollama-Endpunkt, der übliche Fall für einen unveränderten lokalen Ollama-Betrieb —,
+> **muss nichts ändern**: `OPAA_OPENAI_BASE_URL` hat seit #762 denselben Default, den vorher
+> `OPAA_OLLAMA_BASE_URL` trug (`http://localhost:11434/v1` bzw., im Profil `docker`,
+> `http://ollama:11434/v1`), ebenso die Modell-Defaults (`phi3:mini`/`nomic-embed-text`). Übrig
+> gelassene, jetzt unbekannte Variablen (`OPAA_AI_CHAT_PROVIDER=ollama` allein, ohne weitere
+> `OPAA_OLLAMA_*`-Variablen) werden von Spring stillschweigend ignoriert — kein Fehler, aber auch
+> keine Wirkung mehr; sie sollten bei Gelegenheit aus der eigenen `.env`/`.env.docker` entfernt
+> werden. Beim Start protokolliert das Backend zusätzlich eine `WARN`-Zeile, falls eine der
+> entfallenen Variablen noch in der Umgebung liegt, damit ein übersehener Altwert nicht unbemerkt
+> bleibt.
+>
+> **Wer eigene `OPAA_OLLAMA_*`-Werte gesetzt hatte** (abweichende Adresse und/oder anderes Modell),
+> muss diese vor dem Update auf die neuen Variablennamen übertragen — siehe Tabelle und die beiden
+> verbindlichen Regeln oben. Die einmalige Übernahme in `llm_models` (siehe Absatz zu #756 oben)
+> liest für den **Chat** dafür ohnehin **weiterhin** `OPAA_OLLAMA_BASE_URL`/`OPAA_OLLAMA_CHAT_MODEL`,
+> falls beim ersten Start nach dem Update sowohl `OPAA_AI_CHAT_PROVIDER=ollama` **als auch** eine
+> dieser beiden Variablen noch gesetzt ist (`io.opaa.llm.LlmModelSeeder`) — ein Update in einem
+> Schritt, ohne die `.env`-Datei vorher anzupassen, übernimmt die bisherige Chat-Konfiguration also
+> trotzdem korrekt. Das gilt **nicht** für die Einbettung: Für sie gibt es keine analoge Übernahme,
+> weil Einbettungsmodelle (anders als das Chat-Modell seit Stufe 1 der Modellverwaltung) noch nicht
+> verwaltete Objekte sind — die Werte müssen für die Einbettung deshalb **vor** dem Update in die
+> `.env`/`.env.docker`-Datei übertragen werden, sonst schlägt die Einbettung ab dem ersten Start nach
+> dem Update fehl. Für den **laufenden Betrieb** (jeder Aufruf nach dem ersten Start) zählt ohnehin
+> nur noch `OPAA_OPENAI_*` — die alten Variablen zu entfernen und durch die neuen zu ersetzen bleibt
+> deshalb so oder so nötig.
 >
 > **Betroffen ist insbesondere die öffentliche Demo-Instanz** (siehe [„Modellkonfiguration der
 > Instanz"](#modellkonfiguration-der-instanz) oben): Sie lief mit `OPAA_AI_EMBEDDING_PROVIDER=ollama`
-> produktiv. Nach dem Update entfällt diese Variable; die tatsächlich verwendete Ollama-Adresse und
-> das Embedding-Modell müssen als `OPAA_OPENAI_EMBEDDING_BASE_URL` (mit `/v1`-Suffix) und
-> `OPAA_OPENAI_EMBEDDING_MODEL` weitergeführt werden, falls sie von den neuen Defaults abweichen.
+> und `OPAA_OLLAMA_BASE_URL=http://host.docker.internal:11434` produktiv — Ollama läuft dort auf dem
+> Host, nicht als Compose-Service. Nach dem Update **muss** die Instanz-Konfiguration
+> `OPAA_OPENAI_EMBEDDING_BASE_URL=http://host.docker.internal:11434/v1` und
+> `OPAA_OPENAI_EMBEDDING_MODEL=nomic-embed-text` explizit setzen — der neue Default
+> (`http://ollama:11434/v1`) trifft hier nicht zu, weil es in dieser Instanz keinen Compose-Service
+> `ollama` gibt; ohne die Übertragung bricht die Einbettung nach dem Update ab.
 
 ### Docker-spezifische Variablen
 

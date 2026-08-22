@@ -22,8 +22,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Verifies the single, OpenAI-compatible anbindungsweg application.yml wires since #762: both chat
- * and embedding are fixed to {@code openai}, with a default base URL that already points at a
+ * Verifies the single, OpenAI-compatible connection path application.yml wires since #762: both
+ * chat and embedding are fixed to {@code openai}, with a default base URL that already points at a
  * locally operated Ollama server - no separate, native provider path exists anymore (see
  * docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei).
  */

@@ -1,9 +1,13 @@
 package io.opaa.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.ConfigurableApplicationContext;
 
 class OpenAiBaseUrlGuardTest {
 
@@ -91,5 +95,42 @@ class OpenAiBaseUrlGuardTest {
             "spring.ai.model.embedding=openai",
             "spring.ai.openai.embedding.base-url=http://model-server.internal:8000/v1")
         .run(context -> assertThat(context).hasNotFailed());
+  }
+
+  /**
+   * Unlike the tests above - which stand up {@link OpenAiBaseUrlGuard} against property values
+   * fabricated by the test itself, never against {@code application.yml} - these two actually
+   * process {@code backend/src/main/resources/application.yml} as real Spring Boot config data (PR
+   * #766 review, Befund 7a): a real {@link SpringApplicationBuilder} run (not
+   * {@link ApplicationContextRunner}, which never touches config data files at all) resolves
+   * {@code ${VAR:default}} placeholders and multi-document profile sections exactly like a real
+   * application startup does. {@code web(WebApplicationType.NONE)} and registering only {@link
+   * OpenAiBaseUrlGuard} itself as a source keep this cheap enough to run without Docker or a
+   * database - no other bean in the application ever gets created.
+   */
+  private ConfigurableApplicationContext runWithRealApplicationYml(String... additionalArgs) {
+    return new SpringApplicationBuilder(OpenAiBaseUrlGuard.class)
+        .web(WebApplicationType.NONE)
+        .run(additionalArgs);
+  }
+
+  @Test
+  void startsWithTheRealApplicationYmlAndNoOverride() {
+    ConfigurableApplicationContext context = runWithRealApplicationYml();
+    try {
+      assertThat(context.isActive()).isTrue();
+    } finally {
+      context.close();
+    }
+  }
+
+  @Test
+  void refusesToStartWithTheRealApplicationYmlWhenAnOverrideIsExplicitlyBlank() {
+    // application.yml's own default base URL is never blank - only an operator-supplied, explicitly
+    // empty OPAA_OPENAI_BASE_URL (e.g. an uncommented, empty line in a real .env file) reaches this
+    // failure, since ${VAR:default} only falls back to default when VAR is entirely unset.
+    assertThatThrownBy(() -> runWithRealApplicationYml("--OPAA_OPENAI_BASE_URL="))
+        .rootCause()
+        .hasMessageContaining("No base URL is configured for the chat function");
   }
 }

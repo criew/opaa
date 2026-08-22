@@ -3,6 +3,7 @@ package io.opaa.llm;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,24 +33,37 @@ import org.springframework.util.StringUtils;
  * unconditionally. Instead:
  *
  * <ul>
- *   <li><b>Legacy {@code OPAA_AI_CHAT_PROVIDER=ollama}</b> (read directly as a raw environment
- *       variable, not through any {@code application.yml} property - the {@code ollama} blocks that
- *       variable used to select are gone): the takeover of a Bestandsinstallation upgrading past
- *       #762 in one step, before the operator has removed the now-obsolete variable. Reads {@code
+ *   <li><b>Legacy {@code OPAA_AI_CHAT_PROVIDER=ollama}, together with at least one of {@code
+ *       OPAA_OLLAMA_BASE_URL}/{@code OPAA_OLLAMA_CHAT_MODEL}</b> (all read directly as raw
+ *       environment variables, not through any {@code application.yml} property - the {@code
+ *       ollama} blocks that variable used to select are gone): the takeover of an existing
+ *       installation upgrading past #762 in one step, before the operator has removed the
+ *       now-obsolete variables. The second condition matters (PR #766 review, Befund 5): {@code
+ *       OPAA_AI_CHAT_PROVIDER=ollama} left over on its own, with neither Ollama variable still set,
+ *       must not divert a genuinely fresh/openai-configured installation onto this path and seed it
+ *       with the wrong (Ollama-shaped) defaults - see {@link #seedIfNeeded()}. Reads {@code
  *       OPAA_OLLAMA_BASE_URL}/{@code OPAA_OLLAMA_CHAT_MODEL} the same way it always has, with a
  *       {@code /v1} suffix appended to the base URL (unless already present) and no access key -
  *       Ollama's own OpenAI-compatible endpoint requires none. Falls back to the same
  *       profile-dependent default address the removed {@code ollama} configuration block used to
- *       carry (docker: the {@code ollama} service name; otherwise: {@code localhost}) if the
- *       variable itself was never set - see {@link #legacyOllamaBaseUrlDefault()}.
+ *       carry (docker: the {@code ollama} service name; otherwise: {@code localhost}) if the base
+ *       URL variable itself was never set - see {@link #legacyOllamaBaseUrlDefault()}.
  *   <li><b>Everything else</b> (including a fresh installation that never knew {@code
  *       OPAA_AI_CHAT_PROVIDER} at all): takes over {@code spring.ai.openai.chat.*} unchanged - base
  *       URL, model and access key - except the bundled {@code sk-placeholder} default (no real key
  *       configured at all), which is treated as no key rather than encrypted and stored as if it
  *       were a real secret. Since #762 this path's own defaults already point at a locally operated
  *       Ollama server, so a fresh installation seeds the same values the legacy path above would
- *       have produced for an equivalent Bestandsinstallation.
+ *       have produced for an equivalent existing installation.
  * </ul>
+ *
+ * <p><b>This class only ever seeds the chat model.</b> There is no analogous takeover for the
+ * embedding configuration - embedding models are not managed objects yet (unlike the chat model
+ * since Stufe 1 of the model management), so an existing installation upgrading past #762 with a
+ * non-default embedding address (e.g. {@code OPAA_OLLAMA_BASE_URL} pointing at a host-run Ollama
+ * server rather than the new default's {@code ollama} Compose service name) must translate that
+ * value into {@code OPAA_OPENAI_EMBEDDING_BASE_URL} itself, in the environment, before the update -
+ * see docs/deployment.md's own migration note for #762.
  *
  * <p>{@link #seedIfNeeded()} is called from {@link LlmModelSeedRunner}, a separate bean, rather
  * than being an {@code ApplicationRunner} itself: {@code @Transactional} only takes effect on a
@@ -75,7 +89,7 @@ class LlmModelSeeder {
 
   /**
    * {@code application.yml}'s own default chat model since #762 - kept here too as the fallback for
-   * the legacy takeover path, so a Bestandsinstallation that never overrode {@code
+   * the legacy takeover path, so an existing installation that never overrode {@code
    * OPAA_OLLAMA_CHAT_MODEL} still seeds the same value it always effectively ran with.
    */
   static final String LEGACY_OLLAMA_CHAT_MODEL_DEFAULT = "phi3:mini";
@@ -88,10 +102,29 @@ class LlmModelSeeder {
    */
   private static final String LEGACY_CHAT_PROVIDER_ENV = "OPAA_AI_CHAT_PROVIDER";
 
+  private static final String LEGACY_EMBEDDING_PROVIDER_ENV = "OPAA_AI_EMBEDDING_PROVIDER";
+
   private static final String LEGACY_OLLAMA_PROVIDER_VALUE = "ollama";
   private static final String LEGACY_OLLAMA_BASE_URL_ENV = "OPAA_OLLAMA_BASE_URL";
   private static final String LEGACY_OLLAMA_CHAT_MODEL_ENV = "OPAA_OLLAMA_CHAT_MODEL";
+  private static final String LEGACY_OLLAMA_EMBEDDING_MODEL_ENV = "OPAA_OLLAMA_EMBEDDING_MODEL";
   private static final String DOCKER_PROFILE = "docker";
+
+  /**
+   * Every environment variable #762 removed from {@code application.yml}. Not all of them still
+   * have a meaning to this class (only {@link #LEGACY_CHAT_PROVIDER_ENV}/{@link
+   * #LEGACY_OLLAMA_BASE_URL_ENV}/{@link #LEGACY_OLLAMA_CHAT_MODEL_ENV} do, for the chat takeover
+   * path), but a value left over in any of them is equally silent otherwise - {@link
+   * #warnAboutLeftoverLegacyVariables()} surfaces all five so an operator notices before assuming
+   * they still do something (PR #766 review, Befund 6).
+   */
+  private static final List<String> LEGACY_ENVIRONMENT_VARIABLES =
+      List.of(
+          LEGACY_CHAT_PROVIDER_ENV,
+          LEGACY_EMBEDDING_PROVIDER_ENV,
+          LEGACY_OLLAMA_BASE_URL_ENV,
+          LEGACY_OLLAMA_CHAT_MODEL_ENV,
+          LEGACY_OLLAMA_EMBEDDING_MODEL_ENV);
 
   private final LlmModelRepository repository;
   private final LlmModelSeedMarkerRepository markerRepository;
@@ -111,14 +144,11 @@ class LlmModelSeeder {
 
   @Transactional
   void seedIfNeeded() {
+    warnAboutLeftoverLegacyVariables();
     if (markerRepository.seedAlreadyAttempted()) {
       return;
     }
-    String legacyChatProvider = environment.getProperty(LEGACY_CHAT_PROVIDER_ENV, "");
-    LlmModel seeded =
-        LEGACY_OLLAMA_PROVIDER_VALUE.equalsIgnoreCase(legacyChatProvider)
-            ? seedFromLegacyOllamaEnv()
-            : seedFromOpenAi();
+    LlmModel seeded = legacyOllamaTakeoverApplies() ? seedFromLegacyOllamaEnv() : seedFromOpenAi();
     if (seeded != null) {
       seeded.activate();
       repository.save(seeded);
@@ -130,7 +160,44 @@ class LlmModelSeeder {
   }
 
   /**
-   * Legacy takeover path for a Bestandsinstallation still carrying {@code
+   * {@code OPAA_AI_CHAT_PROVIDER=ollama} alone is not enough (PR #766 review, Befund 5): left over
+   * on its own - both {@code OPAA_OLLAMA_*} variables already removed - it must not divert a
+   * takeover that should read {@code spring.ai.openai.chat.*} instead onto the Ollama-shaped
+   * defaults of {@link #seedFromLegacyOllamaEnv()}. At least one of the two Ollama variables still
+   * being set is what actually distinguishes "this is an existing installation upgrading past #762
+   * in one step" from "this leftover variable has no bearing on the current configuration anymore".
+   */
+  private boolean legacyOllamaTakeoverApplies() {
+    String legacyChatProvider = environment.getProperty(LEGACY_CHAT_PROVIDER_ENV, "");
+    if (!LEGACY_OLLAMA_PROVIDER_VALUE.equalsIgnoreCase(legacyChatProvider)) {
+      return false;
+    }
+    return StringUtils.hasText(environment.getProperty(LEGACY_OLLAMA_BASE_URL_ENV))
+        || StringUtils.hasText(environment.getProperty(LEGACY_OLLAMA_CHAT_MODEL_ENV));
+  }
+
+  /**
+   * Surfaces every environment variable #762 removed, so an operator who left one set (harmlessly
+   * ignored otherwise, see this class's own Javadoc) notices instead of assuming it still has an
+   * effect (PR #766 review, Befund 6). Runs on every start, independent of {@link
+   * LlmModelSeedMarker} - the leftover variable itself does not stop existing once the one-time
+   * takeover has happened.
+   */
+  private void warnAboutLeftoverLegacyVariables() {
+    List<String> stillSet =
+        LEGACY_ENVIRONMENT_VARIABLES.stream()
+            .filter(name -> StringUtils.hasText(environment.getProperty(name)))
+            .toList();
+    if (!stillSet.isEmpty()) {
+      log.warn(
+          "Folgende Umgebungsvariablen sind seit #762 ohne Wirkung, aber noch gesetzt: {}. Siehe"
+              + " docs/deployment.md, Abschnitt \"LLM-Anbieter\".",
+          stillSet);
+    }
+  }
+
+  /**
+   * Legacy takeover path for an existing installation still carrying {@code
    * OPAA_AI_CHAT_PROVIDER=ollama} (#762 removed the {@code application.yml} blocks that variable
    * used to select, but not the variable's meaning for a deployment upgrading straight past it).
    * Reads the same two raw environment variables the removed {@code ollama} configuration block
@@ -154,7 +221,7 @@ class LlmModelSeeder {
 
   /**
    * The profile-dependent default the removed {@code ollama.base-url} configuration block used to
-   * carry, reproduced here for the legacy takeover path so a Bestandsinstallation that never
+   * carry, reproduced here for the legacy takeover path so an existing installation that never
    * overrode {@code OPAA_OLLAMA_BASE_URL} still seeds the same address it always effectively ran
    * with.
    */

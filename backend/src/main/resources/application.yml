@@ -57,7 +57,7 @@ spring:
       # not the cause - PR #305 already rejected it once for the same reason.
       maximum-pool-size: 10
   ai:
-    # #762: a single anbindungsweg for both functions - the OpenAI-compatible protocol. Ollama
+    # #762: a single connection path for both functions - the OpenAI-compatible protocol. Ollama
     # speaks it too (under its own /v1 endpoint), which is why there is no separate "ollama"
     # provider anymore - see docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei. The
     # value is fixed, not driven by an environment variable: with the native Ollama starter gone,
@@ -66,7 +66,7 @@ spring:
       chat: openai
       embedding: openai
     # Unlike before #762, the base URL DOES have a default: locally operated models are the
-    # voreinstellung (docs/features/llm-integration.md#eigene-modelle-zuerst), and that default is
+    # default (docs/features/llm-integration.md#eigene-modelle-zuerst), and that default is
     # now expressed here directly rather than through a second, native configuration block. The
     # profile-specific overrides below point at the same Ollama server the removed "ollama" blocks
     # used to (docker: the "ollama" service name; local/default: localhost) - only the property

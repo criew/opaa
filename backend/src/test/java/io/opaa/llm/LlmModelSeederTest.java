@@ -9,8 +9,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.security.SettingsEncryptor;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.core.env.StandardEnvironment;
+import org.springframework.core.env.SystemEnvironmentPropertySource;
 import org.springframework.mock.env.MockEnvironment;
 
 /**
@@ -131,6 +134,60 @@ class LlmModelSeederTest {
   }
 
   @Test
+  void fallsThroughToTheOpenAiConfigurationWhenTheLegacyProviderIsSetButNeitherOllamaVariableIs() {
+    // PR #766 review, Befund 5: OPAA_AI_CHAT_PROVIDER=ollama left over on its own - both
+    // OPAA_OLLAMA_* variables already removed by the operator - must not seed the wrong
+    // (Ollama-shaped) defaults onto an installation that is actually configured via
+    // spring.ai.openai.chat.*.
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty("OPAA_AI_CHAT_PROVIDER", "ollama")
+            .withProperty(
+                "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
+            .withProperty("spring.ai.openai.chat.model", "gpt-4o");
+
+    seederWith(environment).seedIfNeeded();
+
+    ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
+    verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getBaseUrl())
+        .isEqualTo("https://modellserver.example.internal/v1");
+    assertThat(captor.getValue().getModelIdentifier()).isEqualTo("gpt-4o");
+  }
+
+  @Test
+  void seedsFromTheLegacyOllamaEnvironmentVariablesViaARealSystemEnvironmentPropertySource() {
+    // PR #766 review, Befund 7b: MockEnvironment.withProperty is a flat, exact-match property map
+    // and would pass even if production code accidentally relied on a lookup style real OS
+    // environment variables do not support. A SystemEnvironmentPropertySource is what an
+    // environment variable actually resolves through in production.
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    Map<String, Object> systemEnvironment =
+        Map.of(
+            "OPAA_AI_CHAT_PROVIDER", "ollama",
+            "OPAA_OLLAMA_BASE_URL", "http://ollama:11434",
+            "OPAA_OLLAMA_CHAT_MODEL", "phi3:mini");
+    StandardEnvironment environment = new StandardEnvironment();
+    environment
+        .getPropertySources()
+        .replace(
+            StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
+            new SystemEnvironmentPropertySource(
+                StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, systemEnvironment));
+
+    new LlmModelSeeder(repository, markerRepository, settingsEncryptor, environment).seedIfNeeded();
+
+    ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
+    verify(repository, times(1)).save(captor.capture());
+    LlmModel saved = captor.getValue();
+    assertThat(saved.getBaseUrl()).isEqualTo("http://ollama:11434/v1");
+    assertThat(saved.getModelIdentifier()).isEqualTo("phi3:mini");
+    assertThat(saved.getApiKeyCiphertext()).isNull();
+    verify(markerRepository, times(1)).save(any());
+  }
+
+  @Test
   void seedsFromTheOpenAiConfigurationIncludingTheEncryptedApiKeyWhenNoLegacyProviderIsSet() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
     when(settingsEncryptor.encrypt("sk-configured-key")).thenReturn("enc:v1:ciphertext");
@@ -159,7 +216,7 @@ class LlmModelSeederTest {
 
   @Test
   void ignoresALeftoverOpaaAiChatProviderSetToOpenaiExplicitly() {
-    // A Bestandsinstallation that already ran OPAA_AI_CHAT_PROVIDER=openai before #762 - the
+    // An existing installation that already ran OPAA_AI_CHAT_PROVIDER=openai before #762 - the
     // variable is obsolete now, but leaving it set (harmlessly ignored) must not divert the
     // takeover onto the legacy Ollama path.
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
