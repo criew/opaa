@@ -20,6 +20,7 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.DocumentStatus;
 import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.FilesystemPathAllowlist;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -63,6 +64,7 @@ class LibraryDocumentServiceTest {
   private FileProcessingService fileProcessingService;
   private VectorStore vectorStore;
   private LibraryStorageQuotaService storageQuotaService;
+  private FilesystemPathAllowlist filesystemAllowlist;
   private LibraryDocumentService service;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -87,6 +89,10 @@ class LibraryDocumentServiceTest {
     // quota check unless they explicitly stub it otherwise (see
     // uploadIsRejectedWithPayloadTooLargeWhenTheLibraryQuotaWouldBeExceeded below).
     when(storageQuotaService.wouldExceedQuota(any(), anyLong())).thenReturn(false);
+    filesystemAllowlist = mock(FilesystemPathAllowlist.class);
+    // Default: every FILESYSTEM sourcePath used below is treated as allowed unless a test
+    // explicitly narrows this - see the allowlist-specific tests further down, which override it.
+    when(filesystemAllowlist.isAllowed(any())).thenReturn(true);
 
     service =
         new LibraryDocumentService(
@@ -98,7 +104,8 @@ class LibraryDocumentServiceTest {
             fileProcessingService,
             vectorStore,
             uploadProperties,
-            storageQuotaService);
+            storageQuotaService,
+            filesystemAllowlist);
 
     User user = new User("subject", "issuer", "user@example.com", "Test User");
     user.setOrganizationId(organizationId);
@@ -751,6 +758,46 @@ class LibraryDocumentServiceTest {
     assertThat(Files.exists(storedFile))
         .as("The file must still be deleted even though the vector store cleanup failed")
         .isFalse();
+  }
+
+  @Test
+  void loadContentRefusesAFilesystemDocumentWhenTheAllowlistNoLongerAllowsItsSourcePath() {
+    // #742 review, finding 2: FilesystemPathAllowlist can be narrowed - or emptied entirely, which
+    // disables the FILESYSTEM sourceType altogether - after a library was created. A read against a
+    // sourcePath that has since fallen outside it must not silently keep succeeding just because
+    // the
+    // library once passed validation at creation time; both cases boil down to the same
+    // isAllowed(sourcePath) == false the FILESYSTEM branch of loadContent must re-check every time.
+    // Exercised as a unit test (mocked FilesystemPathAllowlist) rather than in
+    // LibraryDocumentServiceIntegrationTest, mirroring why
+    // KnowledgeLibraryServiceFilesystemAllowlistTest
+    // exists separately from KnowledgeLibraryServiceIntegrationTest: that suite's shared context
+    // has
+    // a fixed allowlist for the whole run.
+    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
+        .thenReturn(AssetRole.VIEWER);
+    when(filesystemAllowlist.isAllowed("/data/documents")).thenReturn(false);
+
+    KnowledgeLibrary filesystemLibrary = mock(KnowledgeLibrary.class);
+    when(filesystemLibrary.getId()).thenReturn(libraryId);
+    when(filesystemLibrary.getOrganizationId()).thenReturn(organizationId);
+    when(filesystemLibrary.getSourcePath()).thenReturn("/data/documents");
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(filesystemLibrary));
+
+    Document doc =
+        new Document(
+            "bericht.txt",
+            "/data/documents/bericht.txt",
+            "text/plain",
+            10L,
+            DocumentSourceType.FILESYSTEM);
+    doc.setLibraryId(libraryId);
+    UUID documentId = UUID.randomUUID();
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
+
+    assertThatThrownBy(() -> service.loadContent(documentId, currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
   }
 
   @Test

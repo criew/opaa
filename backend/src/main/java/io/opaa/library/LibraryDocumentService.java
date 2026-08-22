@@ -9,6 +9,7 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.DocumentStatus;
 import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.SupportedDocumentFormats;
 import java.io.IOException;
 import java.io.InputStream;
@@ -104,6 +105,7 @@ public class LibraryDocumentService {
   private final VectorStore vectorStore;
   private final UploadProperties uploadProperties;
   private final LibraryStorageQuotaService storageQuotaService;
+  private final FilesystemPathAllowlist filesystemAllowlist;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -114,7 +116,8 @@ public class LibraryDocumentService {
       FileProcessingService fileProcessingService,
       VectorStore vectorStore,
       UploadProperties uploadProperties,
-      LibraryStorageQuotaService storageQuotaService) {
+      LibraryStorageQuotaService storageQuotaService,
+      FilesystemPathAllowlist filesystemAllowlist) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.accessService = accessService;
@@ -124,6 +127,7 @@ public class LibraryDocumentService {
     this.vectorStore = vectorStore;
     this.uploadProperties = uploadProperties;
     this.storageQuotaService = storageQuotaService;
+    this.filesystemAllowlist = filesystemAllowlist;
   }
 
   public LibraryDocumentResponse uploadDocument(
@@ -306,6 +310,131 @@ public class LibraryDocumentService {
     document.setErrorMessage(errorMessage);
     deleteQuietly(storedFile);
     return LibraryDocumentResponses.from(document);
+  }
+
+  /**
+   * Resolves the on-disk original behind {@code documentId} for streaming (#736) - the read
+   * counterpart to {@link #uploadDocument}/{@link #deleteDocument}'s write-side file handling, and
+   * subject to the same "no existence leak" discipline {@link
+   * io.opaa.library.LibraryAccessService#requireRole} already applies to every other library-scoped
+   * endpoint: an unknown document, one in another organization, one the caller has no grant on, one
+   * of a sourceType with no local file, and one whose file has since disappeared from disk all
+   * answer the same {@code 404}, in that order, so a caller can never distinguish "does not exist"
+   * from any of the others.
+   *
+   * <p>Requires only {@link AssetRole#VIEWER} (#736 acceptance criteria) - the same floor {@link
+   * LibraryAccessService#canRead} already uses for a library's configuration and document list;
+   * opening a document's own content is not more sensitive than seeing it listed.
+   *
+   * <p>Path traversal is closed the same way {@link #uploadedFileIfManagedByThisService} already
+   * closes it for deletion: the resolved, normalized file path must actually resolve underneath the
+   * one directory this {@code sourceType} is allowed to serve from - this library's own upload
+   * subdirectory for {@code UPLOAD}, this library's own configured {@code sourcePath} for {@code
+   * FILESYSTEM} - rather than trusting the stored {@code file_path} column on its own.
+   */
+  public DocumentContent loadContent(UUID documentId, UUID currentUserId, boolean systemAdmin) {
+    User currentUser = requireUser(currentUserId);
+    Document document =
+        documentRepository
+            .findById(documentId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dokument nicht gefunden"));
+
+    KnowledgeLibrary library =
+        libraryRepository
+            .findById(document.getLibraryId())
+            .filter(lib -> lib.getOrganizationId().equals(currentUser.getOrganizationId()))
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dokument nicht gefunden"));
+    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
+
+    Path resolvedFile =
+        switch (document.getSourceType()) {
+          case UPLOAD -> uploadedFileIfManagedByThisService(document, library.getId());
+          case FILESYSTEM -> filesystemFileIfWithinConfiguredDirectory(document, library);
+          case HTTP_DIRECTORY, RSS_FEED -> null;
+        };
+    if (resolvedFile == null || !Files.isRegularFile(resolvedFile)) {
+      throw new ResponseStatusException(
+          HttpStatus.NOT_FOUND, "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+    }
+
+    // #742 review, finding 1: document.getContentType() is itself set from Files.probeContentType
+    // at index time (see the extension-based decision this class and FileProcessingService already
+    // make and document as intentional, #404's decideForFileName) - taking it as the primary source
+    // here keeps a single decision point instead of a second, independent guess made from the bytes
+    // at serve time, which could disagree with what was actually indexed. DocumentController's
+    // Content-Security-Policy and X-Content-Type-Options headers are what keep that extension-based
+    // guess from becoming a script execution vector, not this choice of source.
+    String contentType = document.getContentType();
+    if (contentType == null || contentType.isBlank()) {
+      try {
+        contentType = Files.probeContentType(resolvedFile);
+      } catch (IOException e) {
+        contentType = null;
+      }
+    }
+    if (contentType == null || contentType.isBlank()) {
+      contentType = "application/octet-stream";
+    }
+    return new DocumentContent(resolvedFile, document.getFileName(), contentType);
+  }
+
+  /**
+   * The {@code FILESYSTEM} counterpart to {@link #uploadedFileIfManagedByThisService} (#736): a
+   * {@code FILESYSTEM} document's {@code file_path} may only be served if it actually resolves
+   * underneath this library's own configured {@code sourcePath} - not merely inside some
+   * operator-managed directory in general, and not at all when {@code sourcePath} is unset (a
+   * {@code FILESYSTEM} library's own configuration is missing or was never set, in which case
+   * nothing can be considered "the configured index directory").
+   *
+   * <p>Also re-checks {@code sourcePath} against {@link FilesystemPathAllowlist} (#742 review,
+   * finding 2) - {@code KnowledgeLibraryService} enforces this at creation/update time, and {@link
+   * io.opaa.indexing.AsyncIndexingExecutor} enforces it again before every indexing run for exactly
+   * the reason {@link FilesystemPathAllowlist}'s own Javadoc gives: the allowlist can be narrowed
+   * (or emptied, which disables the {@code FILESYSTEM} sourceType entirely) after a library was
+   * created, and a read against a {@code sourcePath} that has since fallen outside it must not
+   * silently keep succeeding just because the library once passed validation. Without this check,
+   * an operator who disables (or narrows) {@code FILESYSTEM} would still have every previously
+   * indexed file readable through this endpoint.
+   *
+   * <p>Resolves both paths with {@link Path#toRealPath} rather than the lexical {@code
+   * toAbsolutePath().normalize()} the allowlist check itself deliberately stops short of (#742
+   * review, nit 8): a symlink inside {@code sourcePath} pointing outside it would otherwise pass
+   * the {@code startsWith} check below on its lexical path alone. Unlike the allowlist's own
+   * lexical boundary - a fast, pre-flight sanity check with no requirement that the path exist yet
+   * - this is the point where the file is actually opened and streamed back to an HTTP caller, so
+   * resolving symlinks here is required, not merely nice to have. A path that cannot be resolved
+   * (already gone from disk) yields {@code null}, which the caller already turns into the same 404
+   * it uses for every other "file not there" case.
+   */
+  private Path filesystemFileIfWithinConfiguredDirectory(
+      Document document, KnowledgeLibrary library) {
+    if (document.getFilePath() == null || library.getSourcePath() == null) {
+      return null;
+    }
+    if (!filesystemAllowlist.isAllowed(library.getSourcePath())) {
+      return null;
+    }
+    Path candidate = resolveReal(Path.of(document.getFilePath()));
+    Path configuredDirectory = resolveReal(Path.of(library.getSourcePath()));
+    if (candidate == null || configuredDirectory == null) {
+      return null;
+    }
+    return candidate.startsWith(configuredDirectory) ? candidate : null;
+  }
+
+  /**
+   * {@link Path#toRealPath()}, or {@code null} if the path does not (or no longer) exist - the
+   * exception {@code toRealPath} throws in that case is not a traversal attempt, just the ordinary
+   * "file has since disappeared" case {@link #loadContent} already answers with 404.
+   */
+  private Path resolveReal(Path path) {
+    try {
+      return path.toRealPath();
+    } catch (IOException e) {
+      return null;
+    }
   }
 
   @Transactional

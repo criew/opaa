@@ -83,10 +83,21 @@ class LibraryDocumentServiceIntegrationTest {
 
   @TempDir static Path uploadStorageDir;
 
+  // #742 review, finding 3: a base directory the FILESYSTEM loadContent tests below can use as a
+  // library's sourcePath, alongside the shared suite's fixed "/data,/tmp" default (see
+  // application.yml's comment on filesystem-allowlist) rather than replacing it - the existing
+  // FILESYSTEM-flavoured tests elsewhere in this class (e.g.
+  // uploadingIntoAConnectorLibraryIsRejectedWithConflict) still rely on "/data/documents" resolving
+  // under that default.
+  @TempDir static Path filesystemAllowlistDir;
+
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     registry.add("opaa.upload.storage-path", () -> uploadStorageDir.toAbsolutePath().toString());
     registry.add("opaa.upload.max-file-size", () -> 1024);
+    registry.add(
+        "opaa.indexing.filesystem-allowlist",
+        () -> "/data,/tmp," + filesystemAllowlistDir.toAbsolutePath());
   }
 
   @TestConfiguration
@@ -109,6 +120,7 @@ class LibraryDocumentServiceIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
+  @Autowired private AssetGrantRepository assetGrantRepository;
 
   private UUID organizationId;
   private User editor;
@@ -532,6 +544,309 @@ class LibraryDocumentServiceIntegrationTest {
     Path libraryDir = uploadStorageDir.resolve(libraryId.toString()).toAbsolutePath().normalize();
     assertThat(storedFile.startsWith(libraryDir)).isTrue();
     assertThat(saved.getFileName()).isEqualTo("evil.txt");
+  }
+
+  // #736: GET /api/v1/documents/{documentId}/content, backed by LibraryDocumentService#loadContent.
+
+  @Test
+  void loadContentReturnsTheStoredFileForAnUploadedDocumentToAnyoneWithAtLeastViewer() {
+    LibraryDocumentResponse uploaded =
+        documentService.uploadDocument(
+            libraryId,
+            textFile("bescheid.txt", "Originaltext des Bescheids."),
+            editor.getId(),
+            false);
+    Document saved = awaitDocumentStatus(uploaded.getId(), DocumentStatus.INDEXED);
+
+    DocumentContent contentForEditor =
+        documentService.loadContent(uploaded.getId(), editor.getId(), false);
+    assertThat(contentForEditor.path()).isEqualTo(Path.of(saved.getFilePath()));
+    assertThat(contentForEditor.fileName()).isEqualTo("bescheid.txt");
+
+    // VIEWER is the acceptance criteria's floor - the same role listing/reading the library
+    // configuration already requires, one below the EDITOR upload/delete needs.
+    DocumentContent contentForViewer =
+        documentService.loadContent(uploaded.getId(), viewer.getId(), false);
+    assertThat(contentForViewer.path()).isEqualTo(Path.of(saved.getFilePath()));
+  }
+
+  @Test
+  void loadContentRefusesAUserWithNoGrantAtAllWith404NotForbidden() {
+    LibraryDocumentResponse uploaded =
+        documentService.uploadDocument(
+            libraryId, textFile("geheim.txt", "content"), editor.getId(), false);
+    awaitDocumentStatus(uploaded.getId(), DocumentStatus.INDEXED);
+
+    User stranger = new User("content-stranger-subject", "issuer", "stranger2@example.com", "S");
+    stranger.setOrganizationId(organizationId);
+    stranger = userRepository.save(stranger);
+
+    try {
+      var strangerId = stranger.getId();
+      var documentId = uploaded.getId();
+      assertThatThrownBy(() -> documentService.loadContent(documentId, strangerId, false))
+          .isInstanceOf(ResponseStatusException.class)
+          .satisfies(
+              ex ->
+                  assertThat(((ResponseStatusException) ex).getStatusCode())
+                      .isEqualTo(HttpStatus.NOT_FOUND));
+    } finally {
+      userRepository.deleteById(stranger.getId());
+    }
+  }
+
+  @Test
+  void loadContentAnswers404WithAGermanMessageForARemoteSourcedDocument() {
+    // HTTP_DIRECTORY/RSS_FEED documents keep no local original at all (#736 acceptance criteria) -
+    // clients use the document's own source URL for those instead.
+    Document remoteDoc =
+        new Document(
+            "extern.pdf",
+            "https://example.org/extern.pdf",
+            "application/pdf",
+            10L,
+            DocumentSourceType.HTTP_DIRECTORY);
+    remoteDoc.setLibraryId(libraryId);
+    remoteDoc.setOrganizationId(organizationId);
+    remoteDoc = documentRepository.save(remoteDoc);
+    var documentId = remoteDoc.getId();
+
+    assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex -> {
+              var responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+              assertThat(responseStatusException.getReason())
+                  .isEqualTo("Für dieses Dokument steht kein Originaldokument zur Verfügung");
+            });
+  }
+
+  @Test
+  void loadContentAnswers404WhenTheFileHasBeenRemovedFromDisk() throws IOException {
+    LibraryDocumentResponse uploaded =
+        documentService.uploadDocument(
+            libraryId, textFile("verschwunden.txt", "content"), editor.getId(), false);
+    Document saved = awaitDocumentStatus(uploaded.getId(), DocumentStatus.INDEXED);
+    Files.delete(Path.of(saved.getFilePath()));
+
+    var documentId = uploaded.getId();
+    assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
+  @Test
+  void loadContentRefusesAFilePathThatEscapesTheLibraryUploadDirectory(@TempDir Path outsideDir)
+      throws IOException {
+    // A corrupted or foreign file_path column must not be trusted on its own (mirrors
+    // uploadedFileIfManagedByThisService's own reasoning for deleteDocument).
+    Path outsideFile = outsideDir.resolve("nicht-verwaltet.txt");
+    Files.writeString(outsideFile, "Datei außerhalb des Upload-Verzeichnisses.");
+
+    Document escapee =
+        new Document(
+            "nicht-verwaltet.txt",
+            outsideFile.toString(),
+            "text/plain",
+            Files.size(outsideFile),
+            DocumentSourceType.UPLOAD);
+    escapee.setLibraryId(libraryId);
+    escapee.setOrganizationId(organizationId);
+    escapee = documentRepository.save(escapee);
+    var documentId = escapee.getId();
+
+    assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
+  @Test
+  void loadContentTreatsADocumentInAnotherOrganizationsLibraryAsNotFound() {
+    // #742 review, finding 3: the organization boundary at LibraryDocumentService#loadContent's
+    // library lookup (mirrors KnowledgeLibraryService#loadLibrary) - unlike
+    // loadContentRefusesAUserWithNoGrantAtAllWith404NotForbidden's stranger, who is a user *within*
+    // the same organization, this one belongs to a wholly different organization and must never
+    // even
+    // reach the grant check.
+    LibraryDocumentResponse uploaded =
+        documentService.uploadDocument(
+            libraryId, textFile("nur-fuer-uns.txt", "content"), editor.getId(), false);
+    awaitDocumentStatus(uploaded.getId(), DocumentStatus.INDEXED);
+
+    UUID otherOrganizationId =
+        organizationRepository.save(new Organization(UUID.randomUUID(), "Andere Org")).getId();
+    User strangerFromAnotherOrg =
+        new User("other-org-subject", "issuer", "other-org@example.com", "Fremd");
+    strangerFromAnotherOrg.setOrganizationId(otherOrganizationId);
+    strangerFromAnotherOrg = userRepository.save(strangerFromAnotherOrg);
+
+    try {
+      var strangerId = strangerFromAnotherOrg.getId();
+      var documentId = uploaded.getId();
+      assertThatThrownBy(() -> documentService.loadContent(documentId, strangerId, false))
+          .isInstanceOf(ResponseStatusException.class)
+          .satisfies(
+              ex ->
+                  assertThat(((ResponseStatusException) ex).getStatusCode())
+                      .isEqualTo(HttpStatus.NOT_FOUND));
+    } finally {
+      userRepository.deleteById(strangerFromAnotherOrg.getId());
+      organizationRepository.deleteById(otherOrganizationId);
+    }
+  }
+
+  /**
+   * Saves a FILESYSTEM library directly through the repository rather than through {@link
+   * KnowledgeLibraryService#createLibrary} (#742 review, finding 3): that service additionally
+   * requires an operator-style absolute Unix path ({@code sourcePath.startsWith("/")}), which a
+   * JUnit {@code @TempDir} does not produce on every OS this suite runs on (Windows locally, Linux
+   * in CI) - the schema itself (migration 027's {@code
+   * chk_knowledge_libraries_source_configuration}) only requires a FILESYSTEM library's {@code
+   * source_path} to be non-null, not any particular shape, so bypassing the service here still
+   * leaves a row the database accepts.
+   */
+  private KnowledgeLibrary saveFilesystemLibrary(String sourcePath) {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Verzeichnis",
+            null,
+            editor.getId(),
+            LibraryVisibility.PRIVATE,
+            true,
+            DocumentSourceType.FILESYSTEM,
+            sourcePath,
+            null,
+            null,
+            null,
+            false);
+    library = libraryRepository.save(library);
+    // KnowledgeLibraryService#createLibrary normally grants the creator OWNER as part of creation
+    // (see its class Javadoc) - this helper otherwise skips that step entirely by saving the
+    // library row directly, which LibraryAccessService#requireRole would then refuse for editor
+    // exactly like a library nobody has any grant on at all.
+    assetGrantRepository.save(
+        AssetGrant.forUser(
+            library.getId(),
+            organizationId,
+            editor.getId(),
+            AssetRole.OWNER,
+            null,
+            editor.getId()));
+    return library;
+  }
+
+  @Test
+  void loadContentReturnsTheStoredFileForAFilesystemSourcedDocumentInsideItsConfiguredSourcePath()
+      throws IOException {
+    Path librarySourceDir =
+        Files.createDirectory(filesystemAllowlistDir.resolve(UUID.randomUUID().toString()));
+    Path sourceFile = librarySourceDir.resolve("dienstanweisung.txt");
+    Files.writeString(sourceFile, "Original vom Betrieb verwaltete Datei.");
+
+    KnowledgeLibrary connectorLibrary =
+        saveFilesystemLibrary(librarySourceDir.toAbsolutePath().toString());
+    try {
+      Document doc =
+          new Document(
+              "dienstanweisung.txt",
+              sourceFile.toString(),
+              "text/plain",
+              Files.size(sourceFile),
+              DocumentSourceType.FILESYSTEM);
+      doc.setLibraryId(connectorLibrary.getId());
+      doc.setOrganizationId(organizationId);
+      doc = documentRepository.save(doc);
+
+      DocumentContent content = documentService.loadContent(doc.getId(), editor.getId(), false);
+
+      assertThat(content.path()).isEqualTo(sourceFile.toRealPath());
+      assertThat(content.fileName()).isEqualTo("dienstanweisung.txt");
+    } finally {
+      documentRepository
+          .findByLibraryId(connectorLibrary.getId())
+          .forEach(documentRepository::delete);
+      libraryRepository.deleteById(connectorLibrary.getId());
+    }
+  }
+
+  @Test
+  void loadContentRefusesAFilesystemDocumentWhoseFilePathEscapesTheLibrarysOwnSourcePath()
+      throws IOException {
+    // A file_path that resolves somewhere else entirely within the operator-wide allowlist must
+    // still be refused - the allowlist is necessary but not sufficient, this library's own
+    // sourcePath is the actual containment boundary (mirrors
+    // loadContentRefusesAFilePathThatEscapesTheLibraryUploadDirectory's UPLOAD counterpart).
+    Path librarySourceDir =
+        Files.createDirectory(filesystemAllowlistDir.resolve(UUID.randomUUID().toString()));
+    Path outsideDir =
+        Files.createDirectory(filesystemAllowlistDir.resolve(UUID.randomUUID().toString()));
+    Path outsideFile = outsideDir.resolve("nicht-verwaltet.txt");
+    Files.writeString(outsideFile, "Datei außerhalb des Quellverzeichnisses.");
+
+    KnowledgeLibrary connectorLibrary =
+        saveFilesystemLibrary(librarySourceDir.toAbsolutePath().toString());
+    try {
+      Document escapee =
+          new Document(
+              "nicht-verwaltet.txt",
+              outsideFile.toString(),
+              "text/plain",
+              Files.size(outsideFile),
+              DocumentSourceType.FILESYSTEM);
+      escapee.setLibraryId(connectorLibrary.getId());
+      escapee.setOrganizationId(organizationId);
+      escapee = documentRepository.save(escapee);
+      var documentId = escapee.getId();
+
+      assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+          .isInstanceOf(ResponseStatusException.class)
+          .satisfies(
+              ex ->
+                  assertThat(((ResponseStatusException) ex).getStatusCode())
+                      .isEqualTo(HttpStatus.NOT_FOUND));
+    } finally {
+      documentRepository
+          .findByLibraryId(connectorLibrary.getId())
+          .forEach(documentRepository::delete);
+      libraryRepository.deleteById(connectorLibrary.getId());
+    }
+  }
+
+  @Test
+  void loadContentAnswers404ForAFilesystemDocumentWhoseLibraryHasNoConfiguredSourcePath() {
+    // A library's sourcePath can go missing without the row itself ever violating
+    // chk_knowledge_libraries_source_configuration (migration 027): a FILESYSTEM library changed to
+    // UPLOAD has its sourcePath cleared to null (KnowledgeLibraryService#updateLibrary), but a
+    // document created while it was still FILESYSTEM keeps that historical sourceType on its own
+    // row. "Nothing can be considered the configured index directory" must not be treated as
+    // "everything allowed" for that leftover document - reuses the UPLOAD library setUp already
+    // creates, whose sourcePath is null by construction.
+    Document doc =
+        new Document(
+            "dienstanweisung.txt",
+            "/does/not/matter.txt",
+            "text/plain",
+            10L,
+            DocumentSourceType.FILESYSTEM);
+    doc.setLibraryId(libraryId);
+    doc.setOrganizationId(organizationId);
+    doc = documentRepository.save(doc);
+    var documentId = doc.getId();
+
+    assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
   }
 
   // #517: page/size/q on GET /libraries/{id}/documents, backed by
