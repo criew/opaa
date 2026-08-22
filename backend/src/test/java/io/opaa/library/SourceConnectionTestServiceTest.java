@@ -76,7 +76,7 @@ class SourceConnectionTestServiceTest {
             userRepository,
             libraryRepository,
             libraryAccessService,
-            new IndexingProperties(null, 1000, 0, 50, 3, null, null, null, null, null),
+            new IndexingProperties(null, 1000, 0, 50, 3, null, null, null, null, null, 0),
             TargetAddressValidator.disabled());
   }
 
@@ -468,7 +468,8 @@ class SourceConnectionTestServiceTest {
                 new IndexingProperties.Rss(200, 10, 10, 0, null, null, null, 0, 0),
                 null,
                 null,
-                null),
+                null,
+                0),
             TargetAddressValidator.disabled());
     String html = "<table>" + "x".repeat(100) + "</table>";
     server.createContext(
@@ -611,7 +612,8 @@ class SourceConnectionTestServiceTest {
                 new IndexingProperties.Rss(1, 0, 0, 0, null, null, null, 0, 0),
                 null,
                 null,
-                null),
+                null,
+                0),
             TargetAddressValidator.disabled());
     String rss =
         """
@@ -667,7 +669,8 @@ class SourceConnectionTestServiceTest {
                 new IndexingProperties.Rss(200, 10, 10, 0, null, null, null, 0, 0),
                 null,
                 null,
-                null),
+                null,
+                0),
             TargetAddressValidator.disabled());
     String rss =
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"

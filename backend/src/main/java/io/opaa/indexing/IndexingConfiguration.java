@@ -53,7 +53,9 @@ public class IndexingConfiguration {
       VectorStore vectorStore,
       ChecksumService checksumService,
       IndexingMetrics indexingMetrics,
-      LibraryStorageQuotaService libraryStorageQuotaService) {
+      LibraryStorageQuotaService libraryStorageQuotaService,
+      IndexingProperties indexingProperties,
+      TaskExecutor embeddingTaskExecutor) {
     return new FileProcessingService(
         documentService,
         chunkingService,
@@ -61,7 +63,9 @@ public class IndexingConfiguration {
         vectorStore,
         checksumService,
         indexingMetrics,
-        libraryStorageQuotaService);
+        libraryStorageQuotaService,
+        indexingProperties,
+        embeddingTaskExecutor);
   }
 
   // Declared as SourceIndexingExecutor, not the concrete executor type: both beans carry @Async
@@ -208,6 +212,44 @@ public class IndexingConfiguration {
     executor.setMaxPoolSize(pool.maxSize());
     executor.setQueueCapacity(pool.queueCapacity());
     executor.setThreadNamePrefix("indexing-");
+    executor.initialize();
+    return executor;
+  }
+
+  /**
+   * Backs {@link FileProcessingService}'s concurrent embedding calls (#734,
+   * opaa.indexing.embedding-concurrency). A single pool shared across every concurrent indexing run
+   * in the process, not one per run or per library, sized to {@code embeddingConcurrency}.
+   *
+   * <p><b>This pool bounds only the sub-batch fan-out of a single document being split (#735
+   * review, finding 4) - it is not an upper bound on every concurrent embedding call the process
+   * makes.</b> A document whose chunks fit in one sub-batch (see {@link
+   * FileProcessingService#subBatchSize}, e.g. {@code embeddingConcurrency <= 1}, or simply too few
+   * chunks to split) never touches this pool at all - its single {@code vectorStore.add} call runs
+   * directly on whichever thread called {@link FileProcessingService#storeChunks}, which is an
+   * {@code indexing-} thread ({@link #indexingTaskExecutor}) for a connector run or an {@code
+   * upload-} thread ({@link #uploadTaskExecutor}) for an upload. The actual number of embedding
+   * calls that can be in flight across the whole process at once is therefore up to {@code
+   * indexingTaskExecutor}'s pool size, plus {@code uploadTaskExecutor}'s pool size, plus this
+   * pool's own {@code embeddingConcurrency} threads for whichever documents are currently split -
+   * not {@code embeddingConcurrency} alone. An operator sizing a downstream embedding backend's own
+   * concurrency limit needs the sum of all three, not just this property.
+   *
+   * <p>Fixed-size (core == max), mirroring {@link #uploadTaskExecutor}'s reasoning for a pool sized
+   * to its own concurrency limit rather than left to grow - the queue capacity is deliberately
+   * generous ({@link Integer#MAX_VALUE}, i.e. effectively unbounded) because the only thing ever
+   * queued here is a document's own chunk sub-batches (bounded by that one document's chunk count),
+   * never an unbounded external input - unlike {@link #indexingTaskExecutor}'s queue of whole
+   * indexing runs, there is no equivalent "someone triggered too many runs" scenario to guard
+   * against with {@code AbortPolicy} here.
+   */
+  @Bean
+  TaskExecutor embeddingTaskExecutor(IndexingProperties properties) {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(properties.embeddingConcurrency());
+    executor.setMaxPoolSize(properties.embeddingConcurrency());
+    executor.setQueueCapacity(Integer.MAX_VALUE);
+    executor.setThreadNamePrefix("embedding-");
     executor.initialize();
     return executor;
   }
