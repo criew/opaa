@@ -64,11 +64,14 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 Drei Bereiche, die der frühere Stand dieses Dokuments beschrieben hat und die hier mit dem
 tatsächlichen Stand abgeglichen sind. Die Dokumentenübersicht ist inzwischen gebaut — die
 Bibliotheksdetailseite (`LibraryDetailPage.tsx`) zeigt den Bestand einer Wissensbibliothek mit
-Indizierungsstand je Dokument. Das Original eines Dokuments lässt sich seit #736 über
-`GET /api/v1/documents/{documentId}/content` abrufen (nur für die Quellentypen UPLOAD und
-FILESYSTEM, mit mindestens VIEWER-Rolle auf der Bibliothek); das Öffnen eines Dokuments im Original
-in der Oberfläche selbst bleibt Zielbild — Folge-Issues des Epics „Deeplinks auf Originaldokumente &
-stabile Anmeldung" bauen die Frontend-Verwendung darauf auf.
+Indizierungsstand je Dokument. Seit #738 bietet jede Dokumentzeile die Aktion „Original öffnen": Für
+die Quellentypen UPLOAD und FILESYSTEM lädt das Frontend die Datei über `GET
+/api/v1/documents/{documentId}/content` (#736) als Blob und öffnet sie per Objekt-URL in einem neuen
+Tab (PDF/Bilder als Browser-Vorschau, sonst Download unter dem ursprünglichen Dateinamen) — die
+gemeinsame Logik dafür liegt in `frontend/src/utils/documentContent.ts` und wird vom Zitat-Deeplink
+(#739) mitverwendet. Für HTTP_DIRECTORY und RSS_FEED öffnet dieselbe Aktion stattdessen die
+Quell-URL (`sourceEntryUrl` bzw. das neue Feld `sourceUrl` auf `LibraryDocumentResponse`) in einem
+neuen Tab.
 
 **Gesprächsverwaltung.** Ein Gespräch ist ein persistentes Objekt, das **von Anfang an in genau einem
 Arbeitsraum** liegt — dort erstellt (`POST /api/v1/spaces/{spaceId}/chats`), dort unter

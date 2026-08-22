@@ -605,6 +605,54 @@ export async function uploadDocument(
   }
 }
 
+// #738/#739: extracts the RFC 6266/5987 filename from a Content-Disposition header value, e.g.
+// `inline; filename="a.pdf"; filename*=UTF-8''a.pdf`. Prefers the filename* (percent-encoded,
+// UTF-8) parameter when present, since that is the one DocumentController escapes correctly for
+// non-ASCII names - falling back to the plain filename parameter otherwise.
+function parseContentDispositionFileName(headerValue: string | undefined): string | null {
+  if (!headerValue) return null
+  const extended = /filename\*=UTF-8''([^;]+)/i.exec(headerValue)
+  if (extended) {
+    try {
+      return decodeURIComponent(extended[1].trim())
+    } catch {
+      // Falls through to the plain filename parameter below.
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(headerValue)
+  return plain ? plain[1].trim() : null
+}
+
+export interface DocumentContent {
+  blob: Blob
+  fileName: string | null
+}
+
+// #736/#738: streams the original file behind an indexed document. Bearer-authenticated like every
+// other endpoint here, so a plain <a href> deep link cannot reach it - see
+// utils/documentContent.ts for the client-side blob-URL piece this feeds. 404 covers both "no local
+// file for this source type" (HTTP_DIRECTORY/RSS_FEED) and "file missing on disk" alike, by design
+// (see the endpoint's own OpenAPI description) - both surface here as the same German message.
+export async function getDocumentContent(documentId: string): Promise<DocumentContent> {
+  try {
+    const response = await client.get<Blob>(`/v1/documents/${documentId}/content`, {
+      responseType: 'blob',
+    })
+    return {
+      blob: response.data,
+      fileName: parseContentDispositionFileName(response.headers['content-disposition']),
+    }
+  } catch (err) {
+    if (err instanceof AxiosError && err.response?.status === 404) {
+      throw new Error(
+        'Das Originaldokument wurde nicht gefunden. Es wurde möglicherweise verschoben oder gelöscht.',
+        { cause: err },
+      )
+    }
+    normalizeError(err)
+  }
+}
+
 export async function deleteLibraryDocument(libraryId: string, documentId: string): Promise<void> {
   try {
     await client.delete(`/v1/libraries/${libraryId}/documents/${documentId}`)

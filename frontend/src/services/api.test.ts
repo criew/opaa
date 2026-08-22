@@ -2,7 +2,14 @@ import { AxiosError } from 'axios'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { server } from '../mocks/server'
-import { createSpace, getHealth, normalizeError, sendQuery, updateSpaceDetails } from './api'
+import {
+  createSpace,
+  getDocumentContent,
+  getHealth,
+  normalizeError,
+  sendQuery,
+  updateSpaceDetails,
+} from './api'
 
 /** Minimal stand-in for the parts of AxiosResponse that normalizeError reads. */
 function axiosErrorWithResponse(status: number, data: unknown): AxiosError {
@@ -150,6 +157,85 @@ describe('api service', () => {
       await createSpace('New Space', 'A description', 'PRIVATE', ['lib-1', 'lib-2'])
 
       expect(capturedBody).toMatchObject({ libraryIds: ['lib-1', 'lib-2'] })
+    })
+  })
+
+  // #738: the blob-fetching counterpart to the Bearer-authenticated GET .../content endpoint - see
+  // utils/documentContent.ts for what a caller does with the result.
+  describe('getDocumentContent', () => {
+    it('returns the blob and the file name from Content-Disposition', async () => {
+      server.use(
+        http.get('/api/v1/documents/:documentId/content', () => {
+          return new HttpResponse(new Blob(['%PDF-1.4 …'], { type: 'application/pdf' }), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/pdf',
+              'Content-Disposition': 'inline; filename="dienstanweisung 2024.pdf"',
+            },
+          })
+        }),
+      )
+
+      const result = await getDocumentContent('doc-1')
+
+      expect(result.fileName).toBe('dienstanweisung 2024.pdf')
+      expect(result.blob.type).toBe('application/pdf')
+    })
+
+    it('prefers the RFC 5987 filename* parameter over the plain filename parameter', async () => {
+      server.use(
+        http.get('/api/v1/documents/:documentId/content', () => {
+          return new HttpResponse(new Blob(['x']), {
+            status: 200,
+            headers: {
+              'Content-Disposition':
+                'inline; filename="anlage.pdf"; filename*=UTF-8\'\'Anlage%20%C3%9C.pdf',
+            },
+          })
+        }),
+      )
+
+      const result = await getDocumentContent('doc-1')
+
+      expect(result.fileName).toBe('Anlage Ü.pdf')
+    })
+
+    it('returns a null file name when Content-Disposition is missing', async () => {
+      server.use(
+        http.get('/api/v1/documents/:documentId/content', () => {
+          return new HttpResponse(new Blob(['x']), { status: 200 })
+        }),
+      )
+
+      const result = await getDocumentContent('doc-1')
+
+      expect(result.fileName).toBeNull()
+    })
+
+    it('throws a German message for a 404 (missing/remote-only document)', async () => {
+      server.use(
+        http.get('/api/v1/documents/:documentId/content', () => {
+          return HttpResponse.json({ error: 'Dokument nicht gefunden' }, { status: 404 })
+        }),
+      )
+
+      await expect(getDocumentContent('doc-1')).rejects.toThrow(
+        'Das Originaldokument wurde nicht gefunden. Es wurde möglicherweise verschoben oder gelöscht.',
+      )
+    })
+
+    // A non-404 error body is fetched with responseType 'blob' just like a success response
+    // (axios applies responseType regardless of status) - isErrorResponse never matches a Blob,
+    // so this falls through to normalizeError's generic HTTP-status fallback rather than the
+    // (unreachable here) parsed ErrorResponse branch.
+    it('falls back to normalizeError for a non-404 failure', async () => {
+      server.use(
+        http.get('/api/v1/documents/:documentId/content', () => {
+          return HttpResponse.json({ error: 'Serverfehler' }, { status: 500 })
+        }),
+      )
+
+      await expect(getDocumentContent('doc-1')).rejects.toThrow('HTTP 500')
     })
   })
 

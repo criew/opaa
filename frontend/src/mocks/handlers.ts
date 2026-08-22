@@ -1023,6 +1023,28 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
+  // #738: streams a document's original file - mirrors DocumentController's own 404 for a document
+  // whose sourceType carries no local file (HTTP_DIRECTORY/RSS_FEED) or that cannot be found across
+  // every mocked library at all. UPLOAD/FILESYSTEM answer with a small fake payload plus the same
+  // Content-Disposition shape the real endpoint sets, so getDocumentContent's filename parsing has
+  // something realistic to exercise against.
+  http.get('/api/v1/documents/:documentId/content', ({ params }) => {
+    const documentId = String(params.documentId)
+    const document = Object.values(mockLibraryDocuments)
+      .flat()
+      .find((doc) => doc.id === documentId)
+    if (!document || (document.sourceType !== 'UPLOAD' && document.sourceType !== 'FILESYSTEM')) {
+      return HttpResponse.json({ error: 'Dokument nicht gefunden' }, { status: 404 })
+    }
+    return new HttpResponse(new Blob(['mock file content'], { type: 'application/pdf' }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `inline; filename="${document.fileName}"`,
+      },
+    })
+  }),
+
   http.get('/api/v1/libraries/:libraryId/grants', ({ params }) => {
     const libraryId = String(params.libraryId)
     if (!mockLibraryDetails[libraryId]) {

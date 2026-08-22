@@ -96,6 +96,19 @@ vi.mock('../services/api', async () => {
   }
 })
 
+// #738: the "Original öffnen" action delegates to this shared module (see its own tests for the
+// blob-fetch/preview/download behaviour) - mocked here so this file only has to verify which
+// target LibraryDetailPage picks per document, not how opening/downloading itself works.
+const { mockOpenDocumentContent, mockOpenExternalSourceUrl } = vi.hoisted(() => ({
+  mockOpenDocumentContent: vi.fn(async () => undefined),
+  mockOpenExternalSourceUrl: vi.fn(),
+}))
+
+vi.mock('../utils/documentContent', () => ({
+  openDocumentContent: mockOpenDocumentContent,
+  openExternalSourceUrl: mockOpenExternalSourceUrl,
+}))
+
 const managerLibrary: LibraryListResponse = {
   id: 'library-team',
   name: 'Rechtsquellen Soziales',
@@ -956,6 +969,167 @@ describe('LibraryDetailPage', () => {
     // Nur die Anlage trägt sourceEntryUrl - kein zweiter "Herkunft:"-Hinweis für das
     // FILESYSTEM-Dokument ohne diesen Wert.
     expect(screen.getAllByText(/herkunft:/i)).toHaveLength(1)
+  })
+
+  // #738: local sourceTypes fetch the file as a Blob and open/download it client-side, since the
+  // download endpoint is Bearer-authenticated - see utils/documentContent.test.ts for that piece's
+  // own behaviour, mocked here (see the vi.mock above) to isolate which target this page picks.
+  describe('"Original öffnen"', () => {
+    it('fetches and opens the file as a Blob for a local (UPLOAD/FILESYSTEM) document', async () => {
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: 'dienstanweisung.pdf',
+            contentType: 'application/pdf',
+            fileSize: 2048,
+            status: 'INDEXED',
+            sourceType: 'UPLOAD',
+            chunkCount: 3,
+            indexedAt: '2026-03-01T10:00:00Z',
+            uploadedByUserId: null,
+          },
+        ]),
+      )
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const button = await screen.findByRole('button', {
+        name: 'Original von dienstanweisung.pdf öffnen',
+      })
+      await user.click(button)
+
+      expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
+      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
+    })
+
+    it('opens the source URL in a new tab for an HTTP_DIRECTORY document', async () => {
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: 'dienstanweisung.pdf',
+            contentType: 'application/pdf',
+            fileSize: 2048,
+            status: 'INDEXED',
+            sourceType: 'HTTP_DIRECTORY',
+            chunkCount: 3,
+            indexedAt: '2026-03-01T10:00:00Z',
+            uploadedByUserId: null,
+            sourceUrl: 'https://example.gov/verzeichnis/dienstanweisung.pdf',
+          },
+        ]),
+      )
+      setLibraryState(
+        { ...managerLibrary, myRole: 'OWNER' },
+        detailsOf({ ...managerLibrary, myRole: 'OWNER' }, { sourceType: 'HTTP_DIRECTORY' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const button = await screen.findByRole('button', {
+        name: 'Original von dienstanweisung.pdf öffnen',
+      })
+      await user.click(button)
+
+      expect(mockOpenExternalSourceUrl).toHaveBeenCalledWith(
+        'https://example.gov/verzeichnis/dienstanweisung.pdf',
+      )
+      expect(mockOpenDocumentContent).not.toHaveBeenCalled()
+    })
+
+    it('prefers sourceEntryUrl over sourceUrl for an RSS attachment', async () => {
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: 'anlage.pdf',
+            contentType: 'application/pdf',
+            fileSize: 2048,
+            status: 'INDEXED',
+            sourceType: 'RSS_FEED',
+            chunkCount: 3,
+            indexedAt: '2026-03-01T10:00:00Z',
+            uploadedByUserId: null,
+            sourceEntryUrl: 'https://example.gov/aktuelles/dienstanweisung-2024',
+            sourceUrl: 'https://example.gov/feed/anlage.pdf',
+          },
+        ]),
+      )
+      setLibraryState(
+        { ...managerLibrary, myRole: 'OWNER' },
+        detailsOf({ ...managerLibrary, myRole: 'OWNER' }, { sourceType: 'RSS_FEED' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const button = await screen.findByRole('button', { name: 'Original von anlage.pdf öffnen' })
+      await user.click(button)
+
+      expect(mockOpenExternalSourceUrl).toHaveBeenCalledWith(
+        'https://example.gov/aktuelles/dienstanweisung-2024',
+      )
+    })
+
+    it('hides the action for a remote document with no source URL at all', async () => {
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: 'eintrag.html',
+            status: 'INDEXED',
+            sourceType: 'RSS_FEED',
+            chunkCount: 1,
+            indexedAt: '2026-03-01T10:00:00Z',
+            uploadedByUserId: null,
+          },
+        ]),
+      )
+      setLibraryState(
+        { ...managerLibrary, myRole: 'OWNER' },
+        detailsOf({ ...managerLibrary, myRole: 'OWNER' }, { sourceType: 'RSS_FEED' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findByText('eintrag.html')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /original von eintrag\.html öffnen/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('shows a German error message when opening the original fails (e.g. 404)', async () => {
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: 'dienstanweisung.pdf',
+            contentType: 'application/pdf',
+            fileSize: 2048,
+            status: 'INDEXED',
+            sourceType: 'UPLOAD',
+            chunkCount: 3,
+            indexedAt: '2026-03-01T10:00:00Z',
+            uploadedByUserId: null,
+          },
+        ]),
+      )
+      mockOpenDocumentContent.mockRejectedValueOnce(
+        new Error('Das Originaldokument wurde nicht gefunden.'),
+      )
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const button = await screen.findByRole('button', {
+        name: 'Original von dienstanweisung.pdf öffnen',
+      })
+      await user.click(button)
+
+      expect(
+        await screen.findByText('Das Originaldokument wurde nicht gefunden.'),
+      ).toBeInTheDocument()
+    })
   })
 
   it('searches documents server-side, debounced, resetting to the first page', async () => {
