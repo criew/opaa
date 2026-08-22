@@ -180,5 +180,6 @@ Was zur Phase-1-Definition der Vision („Souveräner Wissensassistent") noch fe
 
 ---
 
-*Erstellt aus der [Leistungsinventur](./README.md) (Issue #744). Fortschreibung zum Stichtag:
+*Erstellt aus der Leistungsinventur (Issue #744, Vorgehen siehe [../README.md](../README.md)).
+Fortschreibung zum Stichtag:
 Delta ab `99f61ee1` bzw. Issues geschlossen nach 2026-08-22, siehe [anker.md](./anker.md).*
