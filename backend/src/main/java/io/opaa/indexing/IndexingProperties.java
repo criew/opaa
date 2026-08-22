@@ -19,8 +19,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     a statement straddling a chunk boundary survives in at least one chunk as a whole (issue
  *     #374). Must be smaller than {@code chunkSize}; 0 disables overlap. A negative value is
  *     normalised to 0.
- * @param batchSize number of chunks sent to the embedding model in one call. Default 50: moderate
- *     batch size that avoids memory spikes during embedding generation. Valid range: 1–1 000.
+ * @param batchSize the upper bound on chunks sent to the embedding model in one call. Default 50:
+ *     moderate batch size that avoids memory spikes during embedding generation. Valid range: 1–1
+ *     000. Since #734/#735, this is also the upper bound {@link #embeddingConcurrency}'s own
+ *     sub-batch sizing respects (see that parameter's Javadoc for the actual sizing formula, which
+ *     is not simply this value) - previously dead configuration (nothing in {@code
+ *     io.opaa.indexing} read it), now load-bearing.
  * @param retryAttempts number of retry attempts for transient failures. Default 3: standard retry
  *     count used with exponential backoff. Valid range: 0–10.
  * @param threadPool thread pool settings for async indexing. Defaults (core=2, max=4, queue=20) are
@@ -46,6 +50,32 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param targetValidation the SSRF target-address check {@link TargetAddressValidator} applies to
  *     every {@code HTTP_DIRECTORY}/{@code RSS_FEED} fetch (#267) - see {@link TargetValidation}'s
  *     own Javadoc.
+ * @param embeddingConcurrency the maximum number of sub-batches a single document's chunks are
+ *     split into for concurrent embedding and persistence (#734/#735, {@code
+ *     OPAA_INDEXING_EMBEDDING_CONCURRENCY}) - see {@code
+ *     io.opaa.indexing.FileProcessingService#subBatchSize} for the exact sizing formula (a
+ *     document's chunk count spread evenly across up to this many workers, capped by {@link
+ *     #batchSize} as the per-call upper bound, deliberately <em>not</em> {@code batchSize} itself
+ *     as the slice size - see that method's own Javadoc for why the earlier, batchSize-sized-slice
+ *     design left this path dead for ordinary documents under the defaults). Concurrent sub-batches
+ *     of a splitting document share a single, fixed-size pool ({@code
+ *     IndexingConfiguration#embeddingTaskExecutor}) process-wide, not one per document or per
+ *     library - <b>but that pool bounds only the fan-out of documents that are actually being
+ *     split, not the total number of concurrent embedding calls the process makes</b>: a document
+ *     that is not split (too few chunks, or {@code embeddingConcurrency <= 1}) embeds directly on
+ *     whichever thread called {@code storeChunks} (an indexing- or upload-pool thread), entirely
+ *     outside this pool - see {@code IndexingConfiguration#embeddingTaskExecutor}'s own Javadoc for
+ *     the full accounting. Default 3: moderate concurrency chosen from #734/#735's own benchmark -
+ *     a CPU-bound local Ollama shows next to no throughput gain past concurrency 1 (its embedding
+ *     computation itself serializes), while a network-latency-bound API/GPU backend scales close to
+ *     linearly with concurrency in the same benchmark; 3 stays conservative for the former without
+ *     giving up all of the latter's headroom. An operator fronting a GPU-backed or hosted embedding
+ *     API can raise this (8-16 is a reasonable starting point per that same benchmark - see
+ *     docs/deployment.md) once they know their backend actually serves concurrent requests in
+ *     parallel. <b>A value of 1 reproduces the exact pre-#734 sequential behaviour</b> - {@code
+ *     io.opaa.indexing.FileProcessingService#storeChunks} takes an entirely different, untouched
+ *     code path in that case, not merely a pool of size one. Valid range: 1–32 - the upper bound
+ *     keeps this a moderate, bounded fan-out rather than an unbounded one.
  */
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record IndexingProperties(
@@ -58,7 +88,8 @@ public record IndexingProperties(
     Rss rss,
     List<String> filesystemAllowlist,
     Duration staleJobTimeout,
-    TargetValidation targetValidation) {
+    TargetValidation targetValidation,
+    int embeddingConcurrency) {
 
   public IndexingProperties {
     if (documentPath == null) {
@@ -113,6 +144,13 @@ public record IndexingProperties(
     }
     if (targetValidation == null) {
       targetValidation = new TargetValidation(true, List.of());
+    }
+    if (embeddingConcurrency <= 0) {
+      embeddingConcurrency = 3;
+    }
+    if (embeddingConcurrency > 32) {
+      throw new IllegalArgumentException(
+          "embeddingConcurrency must be at most 32, got " + embeddingConcurrency);
     }
   }
 

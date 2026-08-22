@@ -326,6 +326,16 @@ class RetrievalEvaluationHarnessTest {
     registry.add("opaa.indexing.thread-pool.core-size", () -> 1);
     registry.add("opaa.indexing.thread-pool.max-size", () -> 1);
     registry.add("opaa.indexing.thread-pool.queue-capacity", () -> 2000);
+    // #734/#735: embedding-concurrency > 1 lets FileProcessingService#addToVectorStore split a
+    // document's chunks into sub-batches embedded and inserted into pgvector concurrently - the
+    // same nondeterminism risk the thread-pool override above already guards against for
+    // cross-document ordering, now one level deeper (within a single document). pgvector's HNSW
+    // index build is itself insertion-order-sensitive; a baseline whose HNSW graph shape depends on
+    // which sub-batch's embedding call happens to finish first would never reproduce the same
+    // retrieval metrics twice. Pinned to 1 for exactly the reason opaa.indexing.thread-pool.*
+    // above is pinned to a single worker: determinism of the baseline outranks indexing speed for
+    // this manually-invoked, non-interactive batch tool.
+    registry.add("opaa.indexing.embedding-concurrency", () -> 1);
   }
 
   @Autowired private DocumentIndexingService documentIndexingService;

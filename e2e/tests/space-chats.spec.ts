@@ -29,10 +29,15 @@ import type { Page, TestInfo } from '@playwright/test'
 // would let #424's own assertions stay green even if its own upload/share path were broken, a
 // same-named document from one of this file's libraries silently standing in for theirs. See
 // e2e/README.md's "Szenarien" section for the full reasoning.
+// Since #233, this suite's own frozen upload fixtures live under demo/seed/e2e-data/test-documents/
+// (see knowledge-libraries.spec.ts's TEST_DOCUMENT_PATH comment) - not under e2e/fixtures/ any more.
 const DOCUMENT_A_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
-  'fixtures',
+  '..',
+  'demo',
+  'seed',
+  'e2e-data',
   'test-documents',
   'chatdokument-a.txt',
 )
@@ -41,7 +46,10 @@ const DOCUMENT_A_NAME = 'chatdokument-a.txt'
 const DOCUMENT_B_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
-  'fixtures',
+  '..',
+  'demo',
+  'seed',
+  'e2e-data',
   'test-documents',
   'chatdokument-b.txt',
 )

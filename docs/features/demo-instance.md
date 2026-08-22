@@ -9,7 +9,9 @@
 > [Identität, Rechte & Mandanten](./access-control.md). Der Eval-Korpus und die Retrieval-Regression
 > stehen in [Suchqualität messbar machen](./search-quality-evaluation.md) — dessen Abschnitt
 > „Öffentliche Demo" beschreibt den bisherigen Superhelden-Stand und wird durch dieses Konzept
-> abgelöst.
+> abgelöst. Die praktische Anwenderdokumentation — Installation mit einem Befehl, Nutzerkonten,
+> ausformuliertes Drehbuch mit acht Vorführfragen — steht in
+> [`../demo-walkthrough.md`](../demo-walkthrough.md) und wiederholt dieses Konzept nicht.
 
 ## Motivation
 
@@ -142,8 +144,8 @@ Etwa acht vorbereitete Fragen, dokumentiert mit erwartetem Antwortcharakter und 
    Belegvalidierung wird sichtbar, wenn ein Beleg tatsächlich ungültig ist — falls sich ein solches
    Szenario reproduzierbar bauen lässt, kommt es als eigene Frage dazu
 
-Das ausformulierte Drehbuch entsteht mit dem Seed und wird in `docs/` neben der Installationsanleitung
-gepflegt.
+Das ausformulierte Drehbuch mit allen acht Fragen (Konto, erwartete Antwort, Quellbibliothek) steht
+in [`../demo-walkthrough.md`](../demo-walkthrough.md), zusammen mit der Installationsanleitung.
 
 ---
 
@@ -178,8 +180,8 @@ gepflegt.
   der Demo. Das ist gelöst und nicht offen: Die E2E-Suite zeigt das Muster mit
   `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` (`e2e/docker-compose.e2e.yml`); das Demo-Profil braucht
   denselben Allowlist-Eintrag für Korpus-Webserver und Feed.
-- Dokumentation in `docs/`: Installation, Nutzerkonten mit Passwörtern (Demo-Werte, keine Secrets),
-  Korpus-Aktualisierung, Drehbuch.
+- Dokumentation: [`../demo-walkthrough.md`](../demo-walkthrough.md) — Installation, Nutzerkonten mit
+  Passwörtern (Demo-Werte, keine Secrets), Korpus-Aktualisierung, Drehbuch.
 
 ---
 
@@ -204,10 +206,13 @@ gepflegt.
   befüllt werden. Offen sind in **#207** unter anderem die Obergrenze der Freigabe für
   konnektorgespeiste Bibliotheken und der Ausschluss einzelner Konnektordokumente; für die Demo genügen
   gezielte Grants an die vier Nutzer.
-- **E2E-Suite:** Die heutige Suite unter `e2e/` bringt ihre Inhalte selbst mit — die Testdaten in
-  `e2e/fixtures/rss-feed/` und `e2e/fixtures/test-documents/`, die übrigen Dateien in `e2e/fixtures/`
-  sind Playwright-Fixtures (Anmeldung, Chat, Barrierefreiheit). Das `e2e`-Datenprofil des gemeinsamen
-  Seeds tritt an die Stelle dieser eigenen Testdatenbereitstellung.
+- **E2E-Suite:** Seit **#233** bezieht die Suite unter `e2e/` ihre Ausgangsdaten aus dem
+  `e2e`-Datenprofil des gemeinsamen Seeds (`demo/seed/seed.py --profile e2e`, von
+  `scripts/run-e2e.mjs` vor der Playwright-Suite ausgeführt) statt aus einer eigenen
+  Testdatenbereitstellung. Deren frühere Inhalte liegen jetzt unter `demo/seed/e2e-data/`
+  (`rss-feed/`, `test-documents/`), neben `demo/seed/profiles.py`s `E2E_PROFILE`, das sie
+  referenziert; `e2e/fixtures/` enthält nur noch echte Playwright-Fixtures (Anmeldung, Chat,
+  Barrierefreiheit).
 
 ---
 

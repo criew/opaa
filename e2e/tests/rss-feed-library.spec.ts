@@ -3,7 +3,7 @@ import type { Page, Response } from '@playwright/test'
 
 // Deterministic, generic, fully invented RSS-2.0 fixtures for a fictional "Beispielbehörde" -
 // served statically by the "rss-feed" service (e2e/docker-compose.e2e.yml), reachable from the
-// backend container under this stack-internal hostname (see e2e/fixtures/rss-feed/htdocs/). No
+// backend container under this stack-internal hostname (see demo/seed/e2e-data/rss-feed/htdocs/). No
 // real institution, no real domain - mirrors #229's "static content in the compose stack"
 // pattern, scoped to this suite instead of docker-compose.yml's own "demo" profile.
 const FEED_URL_OK = 'http://rss-feed/feed-ok.xml'
@@ -11,7 +11,7 @@ const FEED_URL_ERROR = 'http://rss-feed/feed-error.xml'
 
 // The two entry titles from feed-ok.xml (used verbatim as the resulting documents' fileName, see
 // FileProcessingService#processRssEntry) plus the one attachment linked from the first entry's
-// detail page (e2e/fixtures/rss-feed/htdocs/seiten/oeffnungszeiten.html) - filename resolved
+// detail page (demo/seed/e2e-data/rss-feed/htdocs/seiten/oeffnungszeiten.html) - filename resolved
 // as-is by AttachmentProfile.GENERIC since ".txt" already is a supported extension.
 const ENTRY_TITLE_OEFFNUNGSZEITEN = 'Öffnungszeiten der Bürgerauskunft angepasst'
 const ENTRY_TITLE_STATISTIK = 'Neuigkeiten aus dem Amt für Statistik'
@@ -179,7 +179,7 @@ test.describe.serial('RSS-Feed-Quelle: Positivpfad, unveränderter Feed (#471)',
     libraryIdOk = await createRssLibrary(page, LIBRARY_NAME_OK, FEED_URL_OK)
 
     // feed-ok.xml carries two entries, both resolving to a real detail page; one of them also
-    // links a small attachment (see e2e/fixtures/rss-feed/htdocs/seiten/oeffnungszeiten.html).
+    // links a small attachment (see demo/seed/e2e-data/rss-feed/htdocs/seiten/oeffnungszeiten.html).
     // The job's own progress only counts entries (RssFeedIndexingExecutor never calls
     // progress.recordProcessed/-Skipped for an attachment) - documentCount is therefore 2, not 3.
     const status = await triggerIndexingAndWaitForCompletion(page, libraryIdOk)
@@ -243,7 +243,7 @@ test.describe('RSS-Feed-Quelle: Negativpfad, ein fehlerhafter Eintrag (#471)', (
     const libraryIdError = await createRssLibrary(page, LIBRARY_NAME_ERROR, FEED_URL_ERROR)
 
     // feed-error.xml's second entry links a detail page that does not exist in
-    // e2e/fixtures/rss-feed/htdocs/ at all - a genuine 404 from the "rss-feed" service, not a
+    // demo/seed/e2e-data/rss-feed/htdocs/ at all - a genuine 404 from the "rss-feed" service, not a
     // simulated one. The first entry is unaffected and still gets processed.
     const status = await triggerIndexingAndWaitForCompletion(page, libraryIdError)
     expect(status.status).toBe('COMPLETED')

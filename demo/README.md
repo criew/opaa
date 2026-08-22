@@ -61,7 +61,15 @@ SPRING_PROFILES_ACTIVE=docker,oidc
 OPAA_INITIAL_ADMIN_EMAIL=admin@stadt-rheinfurt.example
 OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
+OPAA_DEMO_MODE=true
 ```
+
+`OPAA_DEMO_MODE=true` zeigt den Quellen- und Demo-Hinweis in der Fußzeile der Oberfläche (#230) —
+synthetischer Korpus einer fiktiven Stadt, Rohmaterial LHM-Dienstleistungen-Corpus (MIT). Der
+Frontend-Container liest die Variable beim Start (`frontend/nginx.conf`, `envsubst`-Template); ein
+Rebuild ist dafür nicht nötig, ein Neustart des `frontend`-Containers genügt. Ohne diese Zeile
+bleibt der Hinweis aus (Image-Default `false`) — das ist der richtige Zustand für jede
+Nicht-Demo-Installation, siehe `docs/deployment.md`, Variablentabelle.
 
 `OPAA_INITIAL_ADMIN_EMAIL` muss die E-Mail-Adresse des Keycloak-Nutzers `demo-admin` treffen
 (`keycloak/realm-export.json`) — sonst bekommt kein Konto der Demo `SYSTEM_ADMIN`, und Schritt 1 des
@@ -168,7 +176,17 @@ Der Lauf richtet über die API ein:
 Für das minimale, eingefrorene `e2e`-Profil (dev-Auth, keine Keycloak-Anmeldung nötig) braucht es
 den separaten E2E-Stack (`e2e/docker-compose.e2e.yml`), nicht den `demo`-Stack — nur dieser
 provisioniert `dev-outsider` und veröffentlicht das Backend auf Port `18081` statt `8081`
-(`e2e/scripts/run-e2e.mjs`). Manuell hochfahren, ohne die Playwright-Suite mitlaufen zu lassen:
+(`e2e/scripts/run-e2e.mjs`). Seine Uploads (`E2E_PROFILE`s einzige `UPLOAD`-Bibliothek) kommen aus
+`demo/seed/e2e-data/test-documents/seed/` — nicht zu verwechseln mit
+`demo/seed/e2e-data/test-documents/*.txt` (Dateien, die einzelne E2E-Spec-Dateien selbst über die
+Oberfläche hochladen) oder `demo/seed/e2e-data/rss-feed/` (statisches Compose-Docroot für die
+E2E-Suite eigene, UI-getriebene Konnektor-Tests, `e2e/docker-compose.e2e.yml`s `rss-feed`-Service —
+kein Seed-Eingang).
+
+**`e2e/scripts/run-e2e.mjs` führt diesen Seed-Lauf bereits automatisch aus** (nach dem Hochfahren
+des Stacks, vor der Playwright-Suite, Issue #233) — die folgenden Befehle sind nur für einen
+manuellen Lauf ohne die Playwright-Suite nötig, z. B. um den E2E-Stack zwischendurch von Hand zu
+inspizieren:
 
 ```bash
 COMPOSE_PROJECT_NAME=opaa-e2e OPAA_ENV_FILE=e2e/e2e.env \
@@ -186,7 +204,13 @@ python seed.py --profile e2e --base-url http://localhost:18081/api
 Bibliotheken werden vor dem Anlegen per Namenssuche geprüft (Spaces über die Session des jeweiligen
 Eigentümers, da ein Space nur für seine eigenen Mitglieder sichtbar ist), Uploads werden anhand von
 Dateiname und Status übersprungen (ein zuvor `FAILED`es Dokument wird dagegen erneut hochgeladen),
-und `upsertAssetGrant` ersetzt statt zu duplizieren.
+und `upsertAssetGrant` ersetzt statt zu duplizieren. Bricht der Seed beim `demo`-Profil mit „Die
+Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen." ab (die 26 sequentiellen
+Uploads der internen Bibliothek können `uploadTaskExecutor`s Warteschlange füllen, siehe
+[`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md), Abschnitt „Umgebung konfigurieren"),
+behebt genau diese Idempotenz das: Ein zweiter `python seed.py --profile demo`-Lauf lädt die als
+`FAILED` markierten Dokumente erneut hoch, ohne bereits erfolgreich indizierte Dokumente
+anzurühren.
 
 **Ratenbegrenzung:** `RateLimitFilter` schlüsselt die Indizierungsauslösung nach Client-IP **und**
 Bibliothek (`opaa.rate-limit.indexing`, Default 1 Anfrage/60s je IP+Bibliothek) sowie zusätzlich
@@ -206,19 +230,14 @@ Secret gegen jedes Realm-Konto und darf nicht dauerhaft scharf bleiben.
 ## Demo-Zugangsdaten
 
 Alle Konten des Realms `opaa` sind offene **Demo-Werte**, keine Secrets — vor jedem erreichbaren
-Deployment gemäß `docs/deployment.md`, Abschnitt „Härtung für erreichbare Deployments" zu ersetzen:
-
-| Konto | Rolle | Passwort |
-|---|---|---|
-| `demo-admin` (admin@stadt-rheinfurt.example) | `SYSTEM_ADMIN` | `RheinfurtDemo!2026` |
-| `maria.weber` | Sachbearbeiterin Meldewesen | `RheinfurtDemo!2026` |
-| `selin.kaya` | Sachbearbeiterin Meldewesen | `RheinfurtDemo!2026` |
-| `thomas.klein` | Sachbearbeiter Kfz-Zulassung | `RheinfurtDemo!2026` |
-| `andrea.vogt` | Amtsleitung Bürgerbüro | `RheinfurtDemo!2026` |
+Deployment gemäß `docs/deployment.md`, Abschnitt „Härtung für erreichbare Deployments" zu ersetzen.
+Die vollständige Konto-Tabelle mit Rollen, Spaces, lesbaren Bibliotheken und Passwörtern sowie das
+ausformulierte Vorführ-Drehbuch mit acht Fragen stehen an einer Stelle, nicht dupliziert:
+[`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md).
 
 ## Umfang außerhalb dieses Verzeichnisses
 
-- Demo-Drehbuch und Installationsanleitung — #713
-- Smoke-Test gegen das `demo`-Profil — #232
-- Umstellung der bestehenden E2E-Feature-Tests auf das `e2e`-Datenprofil — #233
+- Demo-Drehbuch und Installationsanleitung — [`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md) (#713)
+- Smoke-Test gegen das `demo`-Profil — #232 (`e2e/demo-smoke/`, `npm run test:demo-smoke` in
+  `e2e/`, siehe [`e2e/README.md`, „Demo-Smoke (#232)"](../e2e/README.md#demo-smoke-232))
 - Rollout auf einen erreichbaren Host — #230

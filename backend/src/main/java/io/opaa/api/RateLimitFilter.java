@@ -20,6 +20,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
   private static final String GLOBAL_KEY = "__global__";
   private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
+  static final String RATE_LIMIT_MESSAGE =
+      "Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut.";
 
   private final Map<Pattern, RateLimitService> perIpLimiters;
   private final Map<Pattern, RateLimitService> globalLimiters;
@@ -110,7 +112,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     var body =
         Map.of(
-            "error", "Rate limit exceeded. Please try again later.",
+            "error", RATE_LIMIT_MESSAGE,
             "status", HttpStatus.TOO_MANY_REQUESTS.value(),
             "timestamp", Instant.now().toString());
     jsonMapper.writeValue(response.getOutputStream(), body);

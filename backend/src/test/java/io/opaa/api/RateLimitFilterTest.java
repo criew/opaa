@@ -80,7 +80,7 @@ class RateLimitFilterTest {
 
     assertThat(response.getStatus()).isEqualTo(429);
     assertThat(response.getContentType()).isEqualTo("application/json");
-    assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+    assertThat(response.getContentAsString()).contains(RateLimitFilter.RATE_LIMIT_MESSAGE);
     assertThat(chain.getRequest()).isNull();
   }
 
@@ -97,7 +97,7 @@ class RateLimitFilterTest {
     filter.doFilter(request, response, chain);
 
     assertThat(response.getStatus()).isEqualTo(429);
-    assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+    assertThat(response.getContentAsString()).contains(RateLimitFilter.RATE_LIMIT_MESSAGE);
   }
 
   @Test
@@ -111,7 +111,7 @@ class RateLimitFilterTest {
     filter.doFilter(request, response, chain);
 
     assertThat(response.getStatus()).isEqualTo(429);
-    assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+    assertThat(response.getContentAsString()).contains(RateLimitFilter.RATE_LIMIT_MESSAGE);
     assertThat(chain.getRequest()).isNull();
   }
 
@@ -221,7 +221,7 @@ class RateLimitFilterTest {
     filter.doFilter(request, response, chain);
 
     assertThat(response.getStatus()).isEqualTo(429);
-    assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+    assertThat(response.getContentAsString()).contains(RateLimitFilter.RATE_LIMIT_MESSAGE);
     assertThat(chain.getRequest()).isNull();
   }
 

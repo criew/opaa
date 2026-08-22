@@ -22,20 +22,38 @@ festgehalten (ADR).
 
 ```
 e2e/
-  fixtures/                 Wiederverwendbare Playwright-Fixtures (z. B. Anmeldung)
+  fixtures/                 Wiederverwendbare Playwright-Fixtures (z. B. Anmeldung, Chat, a11y)
   tests/                    Testfälle (*.spec.ts)
-  scripts/run-e2e.mjs       Orchestrierung: Stack starten → Suite ausführen → Stack stoppen
+  scripts/run-e2e.mjs       Orchestrierung: Stack starten → Seed → Suite ausführen → Stack stoppen
+                             (Ziel "e2e" per Default, "demo" für den Demo-Smoke, siehe unten)
   e2e.env                   Environment für den Docker-Compose-Stack der Suite (kein Secret enthalten)
   docker-compose.e2e.yml    Compose-Overlay: Secret-Injektion + dynamische CORS-Origin
   playwright.config.ts
+  demo-smoke/                    Demo-Smoke gegen das Compose-Profil "demo" (#232, siehe unten) —
+    playwright.config.ts         eigene Konfiguration, damit dieses eine Szenario nie in `npm test` mitläuft
+    tests/demo-smoke.spec.ts
+  demo-smoke.env             Environment für den Demo-Smoke-Stack (Keycloak-Anmeldung, kein Secret enthalten)
+  docker-compose.demo-smoke.yml  Compose-Overlay: ai-stub statt echtem Anbieter
 ```
 
 Neue Szenarien kommen als weitere `*.spec.ts`-Dateien unter `tests/`; neue wiederverwendbare
-Bausteine (z. B. Seiten-Interaktionen) gehören nach `fixtures/`.
+Bausteine (z. B. Seiten-Interaktionen) gehören nach `fixtures/`. `e2e/fixtures/` enthält seit #233
+nur noch echte Playwright-Fixtures (Anmeldung, Chat-Bausteine, Barrierefreiheit) — die frühere
+eigene Testdatenbereitstellung dieser Suite (`e2e/fixtures/rss-feed/`, `e2e/fixtures/test-documents/`)
+ist abgelöst: Beide leben jetzt unter [`demo/seed/e2e-data/`](../demo/seed/), Teil des gemeinsamen
+Seed-Mechanismus (`docs/features/demo-instance.md`, „Installation und Seed") statt eines zweiten,
+unabhängigen Befüllungswegs. Siehe „Lokal ausführen" unten, Schritt 3, für Details, was der Seed
+tatsächlich anlegt und was weiterhin einzelne Szenarien selbst über die Oberfläche einrichten.
 
 ## Lokal ausführen
 
-Voraussetzung: Docker Desktop (bzw. Docker Engine + Compose) läuft.
+Voraussetzung: Docker Desktop (bzw. Docker Engine + Compose) läuft, sowie Python 3 mit dem
+`venv`-Modul (Teil der Standardbibliothek) auf dem `PATH` (`python` unter Windows, `python3`
+sonst). `scripts/run-e2e.mjs` legt daraus bei Bedarf ein eigenes, gitignortes venv unter
+`e2e/.venv` an und nutzt ausschließlich dessen Interpreter für `pip install` und
+`demo/seed/seed.py` (Issue #233, PR #726 review) — kein Schreibzugriff auf die
+Systeminstallation, funktioniert daher auch mit PEP 668 „externally-managed-environment"
+(Debian/Ubuntu ≥ 23.04, Homebrew-Python).
 
 ```bash
 cd e2e
@@ -48,10 +66,22 @@ npm test
 
 1. `docker compose down -v` für das **eigene** Compose-Projekt `opaa-e2e` (definierte Ausgangslage;
    siehe "Isolation von einem laufenden Dev-Stack" unten).
-2. `docker compose up -d --build postgres backend frontend` unter diesem Projektnamen, mit eigenen
-   Host-Ports und `e2e/e2e.env` als Environment (siehe unten), und Warten auf Erreichbarkeit.
-3. `playwright test` ausführen.
-4. Stack wieder stoppen (`down -v`) — auch bei fehlgeschlagenen Tests, Abbrüchen (`Strg+C` /
+2. `docker compose up -d --build ai-stub rss-feed postgres backend frontend` unter diesem
+   Projektnamen, mit eigenen Host-Ports und `e2e/e2e.env` als Environment (siehe unten), und Warten
+   auf Erreichbarkeit.
+3. **Seed-Lauf (#233):** `demo/seed/seed.py --profile e2e --base-url http://localhost:$OPAA_BACKEND_PORT/api`
+   — derselbe gemeinsame Seed-Mechanismus, den auch das `demo`-Compose-Profil nutzt
+   (`demo/seed/profiles.py`, `E2E_PROFILE`), hier gegen den dev-Auth-Modus dieses Stacks statt
+   gegen Keycloak. Legt den Nutzer `dev-user` (und `dev-outsider`, ohne jede Freigabe) bereit, den
+   Space „E2E Space" und die Bibliothek „E2E Wissensbibliothek" mit einem einzigen, dediziert für
+   den Seed bestimmten Dokument (`demo/seed/e2e-data/test-documents/seed/e2e-basisdokument.txt`) —
+   bewusst *nicht* eine der Dateien, die einzelne Szenarien selbst über die Oberfläche hochladen
+   (`demo/seed/e2e-data/test-documents/*.txt`), sonst würde eine dauerhaft für `dev-user` lesbare
+   Kopie z. B. von `wissensdokument.txt` die Exklusivitätsprüfung in
+   `knowledge-libraries.spec.ts` (Szenario 5, „Entzug wirkt") unterlaufen. Ein Fehlschlag hier
+   bricht den Lauf ab wie ein fehlgeschlagener Stack-Start.
+4. `playwright test` ausführen.
+5. Stack wieder stoppen (`down -v`) — auch bei fehlgeschlagenen Tests, Abbrüchen (`Strg+C` /
    `SIGINT`/`SIGTERM`) oder Fehlern beim Hochfahren.
 
 Um nur Playwright gegen einen bereits laufenden Stack auszuführen (z. B. während der Entwicklung
@@ -90,7 +120,9 @@ OPAA kennt zwei Auth-Modi (`opaa.auth.mode`: `oidc`, `dev` — siehe
 - `oidc` bräuchte zusätzlich Keycloak (siehe `docker-compose.yml`, Profil `oidc`): ein weiterer
   Container, der Realm-Import und der Weiterleitungsablauf des Autorisierungscode-Flusses im
   Prüfpfad — mehr Fehlerquellen ohne Aussagewert für die Fachszenarien. Der Anmeldeablauf selbst
-  ist bewusst nicht Teil der Suite.
+  ist bewusst nicht Teil **dieses** Laufs (Ziel `e2e`) — er ist stattdessen das eine Szenario des
+  separaten Demo-Smoke-Laufs (Ziel `demo`, siehe unten „Demo-Smoke (#232)"), der genau diesen
+  echten Keycloak-Login prüft.
 
 `e2e/fixtures/auth.ts` kapselt die Nutzerwahl als einzigen wiederverwendbaren Baustein: Der
 Query-Parameter `?devUser=<subject>` wird beim Laden der Anwendung ausgewertet, für die Dauer der
@@ -206,7 +238,7 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   Bibliothek wird über das RSS-Feed-Template angelegt (Anlage #480, Detailseite #481, ADR-0018)
   und gegen einen erfundenen, generischen RSS-2.0-Feed einer fiktiven "Beispielbehörde" indiziert -
   ausgeliefert vom eigenen `rss-feed`-Service in `docker-compose.e2e.yml`
-  (`e2e/fixtures/rss-feed/htdocs/`, dasselbe "statischer Inhalt im Compose-Stack"-Muster wie #229's
+  (`demo/seed/e2e-data/rss-feed/htdocs/`, dasselbe "statischer Inhalt im Compose-Stack"-Muster wie #229's
   Demo-Korpus). Ein Eintrag verweist auf eine nicht existierende Detailseite (404, Negativpfad) -
   der Lauf bricht deswegen nicht ab und weist den Eintrag als übersprungen aus. Ein zweiter Lauf
   über den unveränderten Feed erzeugt keine neuen Dokumente (bedingter Feed-Abruf, ADR-0017).
@@ -232,7 +264,7 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   - "Verbindung testen" im Erstellungsdialog: eine erreichbare `HTTP_DIRECTORY`-Quelle
     (`http://rss-feed/webverzeichnis/`, ein eigens für diesen Test angelegtes, statisches
     Apache-FancyIndexing-HTMLTable-Fixture im selben `rss-feed`-Dienst wie #471 - siehe
-    `e2e/fixtures/rss-feed/htdocs/webverzeichnis/index.html`) zeigt einen Zählwert; eine
+    `demo/seed/e2e-data/rss-feed/htdocs/webverzeichnis/index.html`) zeigt einen Zählwert; eine
     Verbindung, die von einem intern auflösbaren Host (`ai-stub`) auf einem geschlossenen Port
     sofort abgelehnt wird, zeigt die deutsche Fehlermeldung, und Anlegen bleibt trotzdem möglich
     (#514).
@@ -271,7 +303,7 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   kleinstmöglichen Korpus, bevor diese Datei ihn selbst weiter aufbläht.
 
   Aus demselben Grund verwendet diese Datei ausschließlich eigene, in der gesamten Suite einmalige
-  Fixture-Dateien (`fixtures/test-documents/chatdokument-a.txt`/`chatdokument-b.txt`, nicht
+  Fixture-Dateien (`demo/seed/e2e-data/test-documents/chatdokument-a.txt`/`chatdokument-b.txt`, nicht
   `wissensdokument.txt`/`eigenesdokument.txt`) — sonst könnte eine gleichnamige Datei aus einer
   ihrer eigenen, unterschiedlich freigegebenen Bibliotheken (z. B. der dauerhaft an dev-user
   freigegebenen `E2E-Chat-Freigegeben-*`) #424s eigene Upload-/Freigabe-Assertionen unbemerkt
@@ -290,6 +322,71 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   Die wiederverwendbaren Bausteine (Chat starten/fragen, zitierte Quelle prüfen, Bibliothek anlegen
   und befüllen, Bibliothek mit einer Person teilen) leben in `fixtures/chat.ts`, extrahiert aus
   `knowledge-libraries.spec.ts` (#424) und von beiden Dateien importiert, statt dupliziert.
+
+## Demo-Smoke (#232)
+
+Ein separater, eigenständig startbarer Lauf gegen das Compose-Profil `demo`
+(`docs/features/demo-instance.md`) — bewusst **kein** Teil dieser Suite oder von `npm test`: Die
+Erstindizierung des Rheinfurt-Korpus (~150–300 Dokumente über vier Bibliotheken plus 26 Uploads)
+dauert deutlich länger als der minimale `e2e`-Datenprofil-Seed oben, selbst mit `ai-stub` als
+deterministischem Modell. Zuletzt gemessene Laufzeit (Issue #232s eigenes Abnahmekriterium „Die
+Laufzeit ist dokumentiert und bleibt im Rahmen"): **3 Minuten 6 Sekunden gesamt**, davon rund 80s
+für den Seed-Lauf (5 Nutzer, 4 Spaces, 5 Bibliotheken, 26 Uploads, 129 indizierte Dokumente über
+vier Konnektor-Bibliotheken) und rund 9s für den eigentlichen Playwright-Test — Details und der
+konkrete Bild-Build-Anteil stehen im PR, der diesen Lauf eingeführt hat.
+
+```bash
+cd e2e
+npm ci
+npx playwright install --with-deps chromium   # einmalig
+npm run test:demo-smoke
+```
+
+`npm run test:demo-smoke` (→ `scripts/run-e2e.mjs --target demo`) übernimmt denselben
+Lebenszyklus wie `npm test` oben, mit denselben Bausteinen, aber anderem Ziel:
+
+- Compose-Profil `demo` (`docker compose --profile demo`) statt der festen Servicenamen der
+  `e2e`-Suite — startet zusätzlich `keycloak`, `demo-corpus` und `demo-presse`
+  ([`../demo/README.md`](../demo/README.md), „Compose-Stack starten (#229)").
+- `ai-stub` (dasselbe Skript, `ai-stub/server.mjs`) tritt über
+  [`docker-compose.demo-smoke.yml`](./docker-compose.demo-smoke.yml) und
+  [`demo-smoke.env`](./demo-smoke.env) an die Stelle des in `demo/README.md` dokumentierten
+  Standard-Anbieters (Ollama) — der Test hängt von keinem externen Dienst ab, exakt wie die
+  reguläre Suite.
+- Seed-Lauf: `demo/seed/seed.py --profile demo` (statt `--profile e2e`), mit erhöhtem
+  Indizierungs-Zeitlimit (600s statt der Standard-300s des Seed-Skripts selbst) — die Begründung
+  steht in `scripts/run-e2e.mjs`s eigenem Kommentar.
+- Playwright-Lauf mit einer eigenen Konfiguration
+  ([`demo-smoke/playwright.config.ts`](./demo-smoke/playwright.config.ts), `testDir` zeigt auf
+  `demo-smoke/tests/`), damit `npx playwright test` (ohne Pfadangabe, wie `npm test` und
+  `.github/workflows/e2e.yml` es aufrufen) das einzige Szenario dort niemals mitläuft.
+
+**Das eine Szenario** (`demo-smoke/tests/demo-smoke.spec.ts`): Maria Weber meldet sich über die
+echte Keycloak-Anmeldung an (Autorisierungscode-Flow, nicht der `dev`-Modus — genau das prüft
+dieser Test zusätzlich zur restlichen Suite, siehe „Warum der `dev`-Auth-Modus?" oben), sieht den
+Demo-Hinweis (#230, `frontend/src/layouts/DemoNotice.tsx`, aktiviert über `OPAA_DEMO_MODE=true`
+in `demo-smoke.env` — eine echte Demo-Instanz setzt dieses Flag ebenfalls), stellt die erste
+Drehbuchfrage aus `docs/demo-walkthrough.md` (Gebührenfrage, garantiert beantwortbar, #711) und
+bekommt eine belegte Antwort mit mindestens einer zitierten Quelle (`expectAnyCitedSource`,
+dieselbe Prüfung wie in `space-chats.spec.ts` oben) — Verhalten und Vorhandensein eines Belegs,
+nie ein Wortlaut oder eine Dokumentanzahl, die sich mit dem nächsten Korpuslauf verschieben
+könnte. Die konkrete Frage ist dabei mit `ai-stub` rein symbolisch: Wie in der übrigen Suite
+(„KI-Stub statt echtem Modell" oben) liefert der Stub für jeden Text denselben Vektor, sodass die
+Trefferauswahl ausschließlich über den Rechtefilter läuft, nie über inhaltliche Relevanz — dieser
+Test behauptet keine Kopplung an den tatsächlichen Korpusinhalt, das bleibt Sache des manuell
+verifizierten Drehbuchs in `docs/demo-walkthrough.md` (mit einem echten Modell) bzw. von Epic #224.
+
+**Isolation:** Die Keycloak-Realm des `demo`-Profils (`keycloak/realm-export.json`) trägt feste
+`redirectUris`/`webOrigins` für `http://localhost:3000` — anders als die `e2e`-Suite oben lässt
+sich der Frontend-Port dieses Laufs also nicht frei über `OPAA_FRONTEND_PORT` verlegen, ohne auch
+den Realm-Export anzupassen. Der Lauf bekommt trotzdem ein eigenes Compose-Projekt
+(`opaa-demo-smoke`), läuft aber nicht neben einem eigenen, auf denselben Standardports
+betriebenen Dev-Stack — für einen CI-Runner (siehe unten) ist das ohnehin der Normalfall.
+
+`.github/workflows/demo-smoke.yml` führt diesen Lauf **nicht** bei jedem Pull Request aus (siehe
+dort für die Begründung), sondern nächtlich per `schedule` und manuell per `workflow_dispatch` —
+vor Präsentationen oder nach Änderungen am Korpus/Seed lässt er sich damit gezielt auslösen, ohne
+im Required-Pfad jedes PRs zu hängen.
 
 ## CI
 

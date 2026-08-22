@@ -75,6 +75,13 @@ jobs:
           cache: npm
           cache-dependency-path: e2e/package-lock.json
 
+      # test(e2e) #233: scripts/run-e2e.mjs seeds the e2e data profile via demo/seed/seed.py
+      # between "stack ready" and "run Playwright" - needs python3 + pip on the runner (ubuntu-latest
+      # ships both, but not pinned without this step; matches ci.yml's own setup-python use).
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
       - name: Install E2E dependencies
         working-directory: e2e
         run: npm ci

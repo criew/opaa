@@ -1,0 +1,46 @@
+# Overlay applied only by scripts/run-e2e.mjs --target demo (`-f docker-compose.yml -f
+# e2e/docker-compose.demo-smoke.yml --profile demo`), never by a developer's own
+# `docker compose --profile demo up` - that one still points at whatever real chat/embedding
+# provider demo/README.md documents (Ollama by default), on purpose: the demo is meant to be
+# presentable with a real model. This overlay exists solely so the smoke test (Issue #232) can
+# assert against a deterministic, offline stand-in instead, the same reasoning
+# e2e/docker-compose.e2e.yml already applies to the "e2e" target.
+
+# Same anchor pattern as e2e/docker-compose.e2e.yml, for the same reason (PR #453 review): one
+# place to change pgvector's column width and ai-stub's own default together.
+x-embedding-dimensions: &embedding-dimensions "1536"
+
+services:
+  backend:
+    depends_on:
+      ai-stub:
+        # Not service_started: Spring AI's PgVectorStore can probe the embedding provider's
+        # dimension via a real POST /v1/embeddings call while the backend is still starting up -
+        # waiting for the stub's own /health first is what actually guarantees it can already
+        # answer that call (see e2e/docker-compose.e2e.yml's identical comment).
+        condition: service_healthy
+    environment:
+      OPAA_PGVECTOR_DIMENSIONS: *embedding-dimensions
+      # test(demo) #232: the default 1s politeness delay between RSS detail-page/attachment
+      # requests (opaa.indexing.rss.request-delay-ms) is meant for a real, foreign feed operator -
+      # against demo-presse's own ~20-30 entries it only adds dead time to the smoke run.
+      OPAA_INDEXING_RSS_REQUEST_DELAY_MS: "0"
+
+  # Stands in for a real chat/embedding provider (see e2e/demo-smoke.env's OPAA_OPENAI_BASE_URL
+  # and e2e/ai-stub/server.mjs) - reused as-is from the "e2e" target rather than duplicated; the
+  # stub has no dependency on which Compose profile or data set is running against it. No
+  # Dockerfile, no build: the script is mounted straight into the stock node image.
+  ai-stub:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/ai-stub:/app:ro
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "8089"
+      EMBEDDING_DIMENSIONS: *embedding-dimensions
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8089/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10

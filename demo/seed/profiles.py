@@ -11,9 +11,16 @@ obtained.
   via Keycloak (see keycloak/realm-export.json).
 - "e2e": the minimal, frozen profile for the E2E docker-compose stack (e2e/docker-compose.e2e.yml).
   Authenticates via the dev-auth header against the "dev-admin"/"dev-user"/"dev-outsider" accounts
-  that stack already provisions (see docker-compose.e2e.yml's OPAA_AUTH_DEV_USERS_* block).
-  Deliberately not wired into the existing e2e/fixtures/* test data yet - that migration is #233,
-  out of scope for this ticket, which only delivers the shared building block.
+  that stack already provisions (see docker-compose.e2e.yml's OPAA_AUTH_DEV_USERS_* block). Since
+  #233, its data (this file plus e2e-data/) is the E2E suite's only source of pre-existing content -
+  e2e/fixtures/rss-feed/ and e2e/fixtures/test-documents/ used to be a second, independent way to
+  fill an instance and no longer exist; their content lives under e2e-data/ instead, next to the
+  profile that governs it. The library below uploads a single dedicated file
+  (e2e-data/test-documents/seed/e2e-basisdokument.txt), not the files individual Playwright specs
+  upload themselves through the UI (e2e-data/test-documents/*.txt) - those remain each spec's own
+  upload input, and granting dev-user a *pre-existing* library containing e.g. wissensdokument.txt
+  would defeat knowledge-libraries.spec.ts's own exclusivity assertions (scenario 5 "Entzug wirkt"
+  asserts that filename is *not* readable after a share is revoked).
 """
 
 from __future__ import annotations
@@ -23,7 +30,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEMO_CORPUS_ROOT = REPO_ROOT / "demo" / "corpus"
-E2E_FIXTURES_ROOT = REPO_ROOT / "e2e" / "fixtures" / "test-documents"
+E2E_DATA_ROOT = REPO_ROOT / "demo" / "seed" / "e2e-data"
+E2E_SEED_UPLOAD_ROOT = E2E_DATA_ROOT / "test-documents" / "seed"
 
 
 @dataclass(frozen=True)
@@ -219,7 +227,7 @@ E2E_PROFILE = Profile(
             description="Minimale Upload-Bibliothek des e2e-Datenprofils.",
             source_type="UPLOAD",
             viewer_keys=("user",),
-            upload_dir=E2E_FIXTURES_ROOT,
+            upload_dir=E2E_SEED_UPLOAD_ROOT,
         ),
     ),
 )
