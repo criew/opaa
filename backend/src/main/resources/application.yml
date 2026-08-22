@@ -193,6 +193,18 @@ opaa:
       # library's credentials; see docs/deployment.md. The dev profile below (not local) sets an
       # explicitly-marked non-production default so bootRun and tests work without operator setup.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:}
+    settings:
+      # AES-256 key (Base64, 32 raw bytes) for io.opaa.security.SettingsEncryptor - encrypts
+      # llm_models.api_key_ciphertext at rest (#756, docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung).
+      # A deliberately separate key from OPAA_CREDENTIALS_ENCRYPTION_KEY above: the two protect
+      # different kinds of secret (a knowledge library's source credentials vs. a managed model's
+      # API key) with no reason to share a key or its rotation schedule. Validated lazily, on first
+      # use, exactly like OPAA_CREDENTIALS_ENCRYPTION_KEY (PR #763 review) - not eagerly at startup:
+      # most deployments never store a model API key at all, and an unconditional startup check
+      # would refuse to start every one of them, including an existing installation upgrading in
+      # place. No default here on purpose; the dev profile below sets an explicitly-marked
+      # non-production default so bootRun and tests work without operator setup.
+      encryption-key: ${OPAA_SETTINGS_ENCRYPTION_KEY:}
 
 management:
   endpoints:
@@ -286,3 +298,11 @@ opaa:
       # falls back to the (empty) base value above and must set OPAA_CREDENTIALS_ENCRYPTION_KEY
       # itself - see docs/deployment.md.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+    settings:
+      # NICHT FUER DEN PRODUKTIVBETRIEB - the same reasoning as opaa.security.credentials above, a
+      # distinct fixed key so bootRun and the backend test suite (#756) can encrypt a seeded or
+      # test-created model's API key without operator setup. Any deployment that does not activate
+      # the "dev" profile falls back to the (empty) base value above and must set
+      # OPAA_SETTINGS_ENCRYPTION_KEY itself before storing a model's API key - see
+      # docs/deployment.md.
+      encryption-key: ${OPAA_SETTINGS_ENCRYPTION_KEY:c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE=}
