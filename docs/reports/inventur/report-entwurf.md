@@ -76,8 +76,10 @@ Zugangsdaten-Exfiltration gehärtet (#267, #538, #617, #651, #693).
 ### Spaces, Bibliotheken & Rechte (C/F)
 Spaces mit Mitgliedschaften und Rollen, persönlicher Space je Nutzer, und **Wissensbibliotheken
 als eigenständige Rechteobjekte** mit Grants an Personen und Gruppen (#199–#202). Die Rechteprüfung
-sitzt in der Vektorsuche selbst. Gruppen aus dem Verzeichnisabgleich als Rechtesubjekt (#200,
-#237), **lückenlose Historisierung von Rechten und Mitgliedschaften** mit Stichtags-Rekonstruktion
+sitzt in der Vektorsuche selbst. **Space↔Wissensbibliothek-Zuordnung als Kuratierung**: Nutzer
+assoziieren die Bibliotheken, auf die sie berechtigt sind, mit ihren Spaces — wirksam in API und
+Retrieval (#203, #686). Gruppen aus dem Verzeichnisabgleich als Rechtesubjekt (#200, #237),
+**lückenlose Historisierung von Rechten und Mitgliedschaften** mit Stichtags-Rekonstruktion
 (#238), Organisationsgrenze auf Datenbankebene mit strukturellem Prüflauf (#289, #390, #400, #401).
 
 ### Identität & Anmeldung (F)
@@ -92,6 +94,12 @@ Chatliste (Epic #523, #557); umfangreiche Race-Condition-Härtung der Frontend-S
 Branding, App-Shell, Assistenten für Space- und Bibliotheksanlage, Fußnoten-Fundstellen mit
 Belegfenster, Dunkelmodus (#580–#597, #654, #658). Barrierefreiheit als Richtlinie (BITV/WCAG)
 mit automatisierten Prüfungen in Lint und E2E (#584–#586).
+
+### Modelle & zentrale Steuerung (E)
+Austauschbare, **OpenAI-kompatible Modellanbieter**, für Chat und Einbettung getrennt
+konfigurierbar — lokal betriebene Modelle (vLLM, Ollama) sind die Voreinstellung, eine
+unkonfigurierte Installation redet nicht nach außen (#47, #353). Modellverwaltung als
+verwaltbare Objekte und zentrale Vorgaben je Space/Bibliothek bleiben Phase-1-Arbeit.
 
 ### Sicherheit & Nachweis (G)
 Ratenbegrenzung, CORS-Härtung, Sicherheits-Header, Härtungsdokumentation (#61, #62, #409, #250).
