@@ -10,11 +10,42 @@ Zeitraum getan wurde; künftige Berichte enthalten nur noch das Delta zum vorige
 > Stichtag nachgezogen. Jede Aussage ist über die [Bausteine](./bausteine/) auf Issue, PR und
 > Code rückführbar.
 
+## Management Summary
+
 OPAA ist in sechs Monaten von einer leeren Projektidee zu einem lauffähigen, öffentlich
 demonstrierbaren Wissensassistenten für die öffentliche Verwaltung gewachsen — mit belegten
 Antworten, echtem Rechtemodell, eigener Demo-Instanz und einer Arbeitsweise, in der Menschen
-und KI-Agenten gemeinsam über 320 Pull Requests geliefert haben. Dieser Bericht stellt die
-erbrachten Leistungen zusammen und benennt die Lücken ebenso deutlich wie das Erreichte.
+und KI-Agenten gemeinsam über 320 Pull Requests geliefert haben.
+
+**Phase 1 der Produktvision („Souveräner Wissensassistent") ist zu geschätzt rund zwei
+Dritteln umgesetzt.** Das Fundament steht vollständig — Wissensquellen, Bibliotheken,
+Rechtemodell, belegte Antworten, Audit-Grundstufe, Oberfläche, Deployment. Offen sind vor
+allem Retrieval-Qualität (hybride Suche, Reranking, Konfidenz), Streaming-Antworten, der
+echte Verzeichnisanschluss, DSGVO-Rechte und die Betriebsreife jenseits von Docker Compose
+(Details in Abschnitt 6).
+
+**Was heute konkret möglich ist:**
+
+- **Installieren und betreiben:** kompletter Stack per Docker Compose mit Schnellstart-Konfiguration,
+  Betriebsmetriken und Gesundheitsendpunkt; eine öffentliche Testinstanz läuft.
+- **Anmelden:** über den Verzeichnisdienst des Hauses (OIDC/Keycloak), Konten entstehen
+  automatisch bei der Erstanmeldung.
+- **Wissen anbinden:** Wissensbibliotheken per Vorlage anlegen — aus Dateiverzeichnissen,
+  Webverzeichnissen und RSS-Feeds (inkl. Behörden-Websites auf GSB-Basis) oder per Upload
+  mit Drag-and-drop; mit Verbindungstest, Zeitplan und Dokumentenverwaltung in der Oberfläche.
+- **Rechtekonform suchen und fragen:** Chat mit Gesprächsverlauf in Spaces; jede Antwort mit
+  geprüften Belegen, Sprung ins Originaldokument und einstellbarem Suchbereich — wer etwas
+  nicht lesen darf, bekommt es auch über die Suche nicht zu sehen.
+- **Wissen teilen und steuern:** Spaces, Bibliotheks-Freigaben an Personen und Gruppen,
+  vollständig über die Oberfläche verwaltbar; jede Rechteänderung historisiert und im
+  Audit-Protokoll nachweisbar.
+- **Moderne, barrierefreie Oberfläche:** eigenes Designsystem mit konfigurierbarem Branding,
+  Dunkelmodus und automatisiert geprüfter Barrierefreiheit (BITV/WCAG) — durchgängig deutsch.
+- **Vorführen:** Demo-Installation „Stadt Rheinfurt" mit umfangreichem fiktivem
+  Verwaltungskorpus, mehreren Nutzerkonten und Drehbuch für verschiedene Szenarien.
+
+Dieser Bericht stellt die erbrachten Leistungen im Einzelnen zusammen und benennt die Lücken
+ebenso deutlich wie das Erreichte.
 
 ---
 
