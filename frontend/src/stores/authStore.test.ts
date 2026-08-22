@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { User } from 'oidc-client-ts'
 import { server } from '../mocks/server'
@@ -282,6 +282,177 @@ describe('authStore', () => {
       const state = useAuthStore.getState()
       expect(state.token).toBeNull()
       expect(state.isAuthenticated).toBe(false)
+    })
+
+    // #737 review, finding 1: a background renew that resolves after expireSession() reset the
+    // store must not half-reanimate the session - the UserLoaded handler used to set
+    // isAuthenticated: true unconditionally, regardless of whether a user was still known.
+    it('does not reactivate the session when UserLoaded fires after expireSession', async () => {
+      const userManager = await initializeOidcMode()
+      useAuthStore.setState({
+        token: 'valid-token',
+        user: { id: '1', email: 'test@test.com', displayName: 'Test', systemRole: 'USER' as const },
+        isAuthenticated: true,
+      })
+
+      useAuthStore.getState().expireSession()
+      expect(useAuthStore.getState().isAuthenticated).toBe(false)
+
+      const straggler = new User({
+        access_token: 'stale-renewed-token',
+        token_type: 'Bearer',
+        profile: {
+          sub: 'user-1',
+          iss: 'https://idp.example.test/realms/opaa',
+          aud: 'opaa-frontend',
+          exp: Math.floor(Date.now() / 1000) + 900,
+          iat: Math.floor(Date.now() / 1000),
+        },
+        expires_at: Math.floor(Date.now() / 1000) + 900,
+      })
+      await userManager.events.load(straggler)
+
+      expect(useAuthStore.getState().isAuthenticated).toBe(false)
+      expect(useAuthStore.getState().user).toBeNull()
+    })
+  })
+
+  // #737 review, finding 2: expireSession() used to only reset the Zustand store, leaving the
+  // UserManager's own session (and its automatic-silent-renew timer) untouched.
+  describe('expireSession (#737 review)', () => {
+    async function initializeOidcMode() {
+      server.use(
+        http.get('/api/v1/auth/config', () =>
+          HttpResponse.json({
+            mode: 'oidc',
+            authority: 'https://idp.example.test/realms/opaa',
+            clientId: 'opaa-frontend',
+          }),
+        ),
+      )
+      await useAuthStore.getState().initialize()
+      const { userManager } = useAuthStore.getState()
+      if (!userManager) throw new Error('expected a userManager in oidc mode')
+      return userManager
+    }
+
+    it('never calls signoutRedirect - only a deliberate logout() tears down the IdP session', async () => {
+      const userManager = await initializeOidcMode()
+      const signoutRedirect = vi.spyOn(userManager, 'signoutRedirect').mockResolvedValue(undefined)
+
+      useAuthStore.getState().expireSession()
+
+      expect(signoutRedirect).not.toHaveBeenCalled()
+    })
+
+    it('removes the locally stored OIDC user so a stale automatic renew cannot resurrect the session', async () => {
+      const userManager = await initializeOidcMode()
+      const removeUser = vi.spyOn(userManager, 'removeUser').mockResolvedValue(undefined)
+
+      useAuthStore.getState().expireSession()
+
+      expect(removeUser).toHaveBeenCalledTimes(1)
+    })
+
+    it('sets a German explanation instead of silently clearing the error', () => {
+      useAuthStore.setState({ error: null })
+
+      useAuthStore.getState().expireSession()
+
+      expect(useAuthStore.getState().error).toBe(
+        'Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.',
+      )
+    })
+
+    it('resets token, user and isAuthenticated', () => {
+      useAuthStore.setState({
+        token: 'some-token',
+        user: { id: '1', email: 'test@test.com', displayName: 'Test', systemRole: 'USER' as const },
+        isAuthenticated: true,
+      })
+
+      useAuthStore.getState().expireSession()
+
+      const state = useAuthStore.getState()
+      expect(state.token).toBeNull()
+      expect(state.user).toBeNull()
+      expect(state.isAuthenticated).toBe(false)
+    })
+  })
+
+  describe('renewToken (#737 review)', () => {
+    it('returns false in dev mode without attempting a renew', async () => {
+      useAuthStore.setState({ mode: 'dev', userManager: null })
+
+      await expect(useAuthStore.getState().renewToken()).resolves.toBe(false)
+    })
+
+    it('returns false when signinSilent fails', async () => {
+      server.use(
+        http.get('/api/v1/auth/config', () =>
+          HttpResponse.json({
+            mode: 'oidc',
+            authority: 'https://idp.example.test/realms/opaa',
+            clientId: 'opaa-frontend',
+          }),
+        ),
+      )
+      await useAuthStore.getState().initialize()
+      const { userManager } = useAuthStore.getState()
+      if (!userManager) throw new Error('expected a userManager in oidc mode')
+      vi.spyOn(userManager, 'signinSilent').mockRejectedValue(new Error('renew failed'))
+
+      await expect(useAuthStore.getState().renewToken()).resolves.toBe(false)
+    })
+
+    // #737 review (nit): concurrent 401s from background polls used to each start their own
+    // signinSilent() call - a refresh-token-rotating IdP would have the first grant invalidate the
+    // token for every other in-flight one. renewToken() shares one in-flight promise instead.
+    it('shares one in-flight signinSilent call across concurrent callers', async () => {
+      server.use(
+        http.get('/api/v1/auth/config', () =>
+          HttpResponse.json({
+            mode: 'oidc',
+            authority: 'https://idp.example.test/realms/opaa',
+            clientId: 'opaa-frontend',
+          }),
+        ),
+      )
+      await useAuthStore.getState().initialize()
+      const { userManager } = useAuthStore.getState()
+      if (!userManager) throw new Error('expected a userManager in oidc mode')
+
+      const renewedUser = new User({
+        access_token: 'renewed-access-token',
+        token_type: 'Bearer',
+        profile: {
+          sub: 'user-1',
+          iss: 'https://idp.example.test/realms/opaa',
+          aud: 'opaa-frontend',
+          exp: Math.floor(Date.now() / 1000) + 900,
+          iat: Math.floor(Date.now() / 1000),
+        },
+        expires_at: Math.floor(Date.now() / 1000) + 900,
+      })
+      let resolveSignin: (user: User | null) => void = () => {}
+      const signinSilent = vi
+        .spyOn(userManager, 'signinSilent')
+        .mockImplementation(() => new Promise((resolve) => (resolveSignin = resolve)))
+
+      const first = useAuthStore.getState().renewToken()
+      const second = useAuthStore.getState().renewToken()
+      resolveSignin(renewedUser)
+
+      await expect(first).resolves.toBe(true)
+      await expect(second).resolves.toBe(true)
+      expect(signinSilent).toHaveBeenCalledTimes(1)
+
+      // A renew started after the in-flight one settled must trigger a fresh signinSilent call -
+      // the single-flight guard must not wedge itself permanently.
+      const third = useAuthStore.getState().renewToken()
+      expect(signinSilent).toHaveBeenCalledTimes(2)
+      resolveSignin(null)
+      await expect(third).resolves.toBe(false)
     })
   })
 })
