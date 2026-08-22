@@ -243,6 +243,11 @@ kcadm.sh update realms/opaa -s accessTokenLifespan=900 -s ssoSessionIdleTimeout=
   unten), muss ein eigener Schlüssel gesetzt sein — ohne ihn schlägt nur dieser eine Schreibvorgang fehl,
   der Start selbst nicht. Der im `dev`-Profil hinterlegte Schlüssel ist ausdrücklich nicht
   produktionstauglich und darf nicht übernommen werden.
+- `OPAA_SETTINGS_ENCRYPTION_KEY` — anders als der Schlüssel oben ist dieser für **jeden** Start
+  erforderlich, nicht erst beim ersten gespeicherten Zugangsschlüssel eines Chat-Modells (siehe
+  [„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle-756)
+  unten). Der im `dev`-Profil hinterlegte Schlüssel ist ausdrücklich nicht produktionstauglich und
+  darf nicht übernommen werden.
 
 **Was es in diesem Repository nicht mehr gibt und deshalb hier auch nicht zu ersetzen ist:** Ein
 anwendungsseitiges JWT-Secret (früher `OPAA_AUTH_BASIC_SECRET`) existiert seit dessen ersatzloser
@@ -506,6 +511,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_AUTH_DEV_DEFAULT_USER` | `dev-admin` | `dev-admin` | Nutzer, als der ohne `X-OPAA-Dev-User`-Header authentifiziert wird — `.env.docker.example` setzt diesen Block, weil `docker,dev` der Compose-Standardfall ist, und erklärt dort auch die vorkonfigurierten Nutzer |
 | **Zugangsdaten-Verschlüsselung** | | | |
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | — (leer) außerhalb des Profils `dev`; im Profil `dev` fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel (siehe [„Zugangsdaten-Verschlüsselung"](#zugangsdaten-verschlüsselung-483) unten) | nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in `.env.docker.example`) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `knowledge_libraries.source_credentials` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb des Profils `dev`; erforderlich, sobald eine Bibliothek mit Zugangsdaten gespeichert wird** |
+| `OPAA_SETTINGS_ENCRYPTION_KEY` | — (leer) außerhalb des Profils `dev`; im Profil `dev` fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel (siehe [„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle-756) unten) | nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in `.env.docker.example`) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `llm_models.api_key_ciphertext` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb des Profils `dev`; für jeden Start erforderlich, nicht erst beim ersten gespeicherten Modell-Zugangsschlüssel** |
 | **OIDC** | | | |
 | `OPAA_OIDC_JWK_SET_URI` | `http://localhost:8180/realms/opaa/protocol/openid-connect/certs` | `http://keycloak:8180/realms/opaa/protocol/openid-connect/certs` | JWK-Set-URI für Token-Verifizierung. Die Compose-Belegung weicht bewusst vom Anwendungs-Default ab: Der Backend-Container muss den Docker-internen Hostnamen `keycloak` verwenden, siehe Hinweis unter [„OIDC (Keycloak)"](#oidc-keycloak) unten |
 | `OPAA_OIDC_ISSUER_URI` | `http://localhost:8180/realms/opaa` | `http://localhost:8180/realms/opaa` | OIDC-Issuer-URI für Token-Validierung — bleibt `localhost`, weil der Browser diese URL verwendet |
@@ -647,6 +653,47 @@ der Anwendung bekannt ist. Der nächste Schreibvorgang auf dieselbe Bibliothek (
 Zugangsdaten-Rotation über die bestehende Update-API) verschlüsselt den Wert. Ein Wert mit `enc:`-
 Präfix, aber unbekannter Version (nicht `enc:v1:`), wird dagegen nie als Klartext behandelt — Lesen
 scheitert weich (siehe oben), Schreiben hart.
+
+### Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle (#756)
+
+Seit Stufe 1 der Modellverwaltung ([Modelle und zentrale Steuerung](features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung))
+liegen Chat-Modelle in der Tabelle `llm_models`, nicht mehr ausschließlich in
+Umgebungsvariablen. Ein hinterlegter Zugangsschlüssel (optional — ein lokal betriebener Endpunkt
+läuft regelmäßig ohne Authentifizierung) liegt **verschlüsselt** in der Datenbank (AES-256-GCM,
+zufälliger Initialisierungsvektor je Wert, `io.opaa.security.SettingsEncryptor`) und erscheint in
+keiner API-Antwort und keinem Log — die Verwaltung behandelt das Feld als Nur-Schreiben-Feld.
+
+**Ein eigener Schlüssel, getrennt von `OPAA_CREDENTIALS_ENCRYPTION_KEY`:**
+
+```bash
+openssl rand -base64 32
+```
+
+Das Ergebnis (ein Base64-kodierter 256-Bit-Schlüssel) als `OPAA_SETTINGS_ENCRYPTION_KEY` setzen —
+**nicht** ins Repository committen, wie jede andere Zugangsinformation außerhalb von
+Umgebungsvariablen behandeln. Ein eigener Schlüssel statt Wiederverwendung von
+`OPAA_CREDENTIALS_ENCRYPTION_KEY`, weil beide unterschiedliche Geheimnisse schützen (Zugangsdaten
+einer Wissensquelle vs. der Zugangsschlüssel eines Chat-Modells) und keinen Grund haben, dieselbe
+Rotation zu teilen.
+
+**Anders als bei der Zugangsdaten-Verschlüsselung: dieser Schlüssel ist für jeden Start
+erforderlich, unabhängig davon, ob je ein Modell mit Zugangsschlüssel angelegt wird.** Ein Start
+ohne gesetzten oder mit ungültigem `OPAA_SETTINGS_ENCRYPTION_KEY` bricht sofort mit einer
+deutschsprachigen Meldung ab, die die Variable benennt (`io.opaa.security.SettingsEncryptionKeyGuard`).
+Der Grund: Die Seed-Migration, die beim ersten Start eine bestehende `openai`-Konfiguration samt
+Zugangsschlüssel als initiales Modell übernimmt, kann selbst genau diesen Schlüssel brauchen — ein
+Start, der heute meldet "erfolgreich", aber genau an dieser Migration scheitert, wäre schlechter als
+ein Start, der von vornherein gar nicht erst anläuft. Für lokale Entwicklung und Tests (nur Profil
+`dev`, das jede Testsuite und `bootRun` aktivieren — nicht `local`) ist ein fest hinterlegter,
+**ausdrücklich nicht produktionstauglicher** Schlüssel voreingestellt
+(`backend/src/main/resources/application.yml`), damit beide ohne Betreiber-Eingriff laufen.
+
+**Bei Schlüsselverlust:** Bereits verschlüsselte Zugangsschlüssel sind ohne den ursprünglichen
+Schlüssel nicht wiederherstellbar — es gibt keinen Wiederherstellungsweg außerhalb des Schlüssels
+selbst. Betroffen ist ausschließlich der Zugangsschlüssel des jeweiligen Modells, nicht der übrige
+Modelleintrag (Basis-Adresse, Modell-Kennung, Parameter) oder andere verschlüsselte Werte. Abhilfe:
+den Zugangsschlüssel für das betroffene Modell neu eintragen, sobald die Verwaltungsoberfläche dafür
+verfügbar ist (#757).
 
 ## Authentifizierung
 

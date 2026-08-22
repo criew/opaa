@@ -193,6 +193,17 @@ opaa:
       # library's credentials; see docs/deployment.md. The dev profile below (not local) sets an
       # explicitly-marked non-production default so bootRun and tests work without operator setup.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:}
+    settings:
+      # AES-256 key (Base64, 32 raw bytes) for io.opaa.security.SettingsEncryptor - encrypts
+      # llm_models.api_key_ciphertext at rest (#756, docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung).
+      # A deliberately separate key from OPAA_CREDENTIALS_ENCRYPTION_KEY above: the two protect
+      # different kinds of secret (a knowledge library's source credentials vs. a managed model's
+      # API key) with no reason to share a key or its rotation schedule. Unlike the credentials key,
+      # this one is validated eagerly at startup (io.opaa.security.SettingsEncryptionKeyGuard) - see
+      # that class's Javadoc for why a lazily-discovered missing key is the wrong failure mode here.
+      # No default here on purpose; the dev profile below sets an explicitly-marked non-production
+      # default so bootRun and tests work without operator setup.
+      encryption-key: ${OPAA_SETTINGS_ENCRYPTION_KEY:}
 
 management:
   endpoints:
@@ -286,3 +297,10 @@ opaa:
       # falls back to the (empty) base value above and must set OPAA_CREDENTIALS_ENCRYPTION_KEY
       # itself - see docs/deployment.md.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+    settings:
+      # NICHT FUER DEN PRODUKTIVBETRIEB - the same reasoning as opaa.security.credentials above, a
+      # distinct fixed key so io.opaa.security.SettingsEncryptionKeyGuard does not block bootRun or
+      # the backend test suite (#756). Any deployment that does not activate the "dev" profile
+      # falls back to the (empty) base value above and must set OPAA_SETTINGS_ENCRYPTION_KEY itself
+      # - see docs/deployment.md.
+      encryption-key: ${OPAA_SETTINGS_ENCRYPTION_KEY:c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE=}
