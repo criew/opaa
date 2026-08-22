@@ -20,8 +20,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
@@ -264,6 +266,41 @@ class LlmModelServiceIntegrationTest {
   }
 
   @Test
+  void activatingASecondModelRecordsALlmModelDeactivatedEventForTheFirst() {
+    // #757 review of #763: the model that stops being active must be traceable on its own, not
+    // only indirectly via whichever model replaced it.
+    LlmModel first =
+        llmModelService.createModel(
+            organizationId,
+            userId,
+            "Erstes Modell",
+            "http://ollama:11434/v1",
+            "phi3:mini",
+            new BigDecimal("0.70"),
+            2000,
+            null);
+    LlmModel second =
+        llmModelService.createModel(
+            organizationId,
+            userId,
+            "Zweites Modell",
+            "http://ollama:11434/v1",
+            "llama3",
+            new BigDecimal("0.70"),
+            2000,
+            null);
+
+    llmModelService.activateModel(organizationId, userId, first.getId());
+    assertThat(auditEntries(AuditEventType.LLM_MODEL_DEACTIVATED)).isEmpty();
+
+    llmModelService.activateModel(organizationId, userId, second.getId());
+
+    List<Map<String, Object>> deactivations = auditEntries(AuditEventType.LLM_MODEL_DEACTIVATED);
+    assertThat(deactivations).hasSize(1);
+    assertThat(deactivations.getFirst().get("object_label").toString()).contains("Erstes Modell");
+  }
+
+  @Test
   void theDatabaseRejectsASecondActiveRowEvenWhenTheServiceIsBypassed() {
     // The service is the primary defense; this proves the backstop from migration 058 is real, so
     // a future write path that forgets to deactivate the previous model cannot quietly create two
@@ -317,6 +354,30 @@ class LlmModelServiceIntegrationTest {
         .extracting(LlmModel::getId)
         .doesNotContain(model.getId());
     assertThat(auditEntries(AuditEventType.LLM_MODEL_DELETED)).hasSize(1);
+  }
+
+  @Test
+  void deletingTheActiveModelIsRejectedWithConflict() {
+    // #757 review: the check and the delete are one service call/one transaction now, not a
+    // getModel/deleteModel pair the controller composes itself.
+    LlmModel model =
+        llmModelService.createModel(
+            organizationId,
+            userId,
+            "Aktives Modell",
+            "http://ollama:11434/v1",
+            "phi3:mini",
+            new BigDecimal("0.70"),
+            2000,
+            null);
+    llmModelService.activateModel(organizationId, userId, model.getId());
+
+    assertThatThrownBy(() -> llmModelService.deleteModel(organizationId, userId, model.getId()))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT);
+
+    assertThat(llmModelService.listModels()).extracting(LlmModel::getId).contains(model.getId());
+    assertThat(auditEntries(AuditEventType.LLM_MODEL_DELETED)).isEmpty();
   }
 
   private List<Map<String, Object>> auditEntries(AuditEventType eventType) {

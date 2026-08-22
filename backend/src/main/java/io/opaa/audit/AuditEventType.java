@@ -134,6 +134,13 @@ public enum AuditEventType {
    * have to inspect before/after payloads to tell activation apart from an ordinary field edit.
    */
   LLM_MODEL_ACTIVATED,
+  /**
+   * A managed chat model stopped being the systemwide active one because a different model was
+   * activated in its place (#757 review of #763) - without this, "wann hörte Modell X auf, aktiv zu
+   * sein" was only indirectly readable from the {@link #LLM_MODEL_ACTIVATED} event of whatever
+   * model replaced it. Migration 061 widens {@code chk_audit_log_event_type} to include this value.
+   */
+  LLM_MODEL_DEACTIVATED,
 
   // Zugriff auf die Protokolldaten selbst
   /** Any read, evaluation or export of audit data, including rejected attempts (see outcome). */

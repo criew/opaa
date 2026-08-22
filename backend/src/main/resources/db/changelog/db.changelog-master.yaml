@@ -119,3 +119,5 @@ databaseChangeLog:
       file: db/changelog/changes/059-widen-audit-event-type-llm-model-changes.yaml
   - include:
       file: db/changelog/changes/060-create-llm-model-seed-marker.yaml
+  - include:
+      file: db/changelog/changes/061-widen-audit-event-type-llm-model-deactivated.yaml
