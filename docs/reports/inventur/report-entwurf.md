@@ -53,7 +53,8 @@ Das Projekt hat nicht nur Software geliefert, sondern eine funktionierende Organ
   (#340, #360–#363); Use Cases, Konzeptglossar und bewusste Abgrenzungen („Bewusst nicht").
 - **Konzeptionelle Grundsatzentscheidungen** wurden aktiv getroffen statt vertagt: Zielbild der
   Chat-Kanäle (#352), lokal-first als Modell-Voreinstellung (#353), Zuschnitt des Zitierzwangs
-  (#354/#386), Umfang des Audit-Protokolls (#355), Storage-Zielbild (#351), Mandantengrenze (#356).
+  (#354/#386), Umfang des Audit-Protokolls (#355), Storage-Zielbild (#351), Mandantengrenze (#356);
+  dazu eine dokumentierte GraphRAG-Recherche als Entscheidungsgrundlage für den Wissensgraphen (#317).
 - **Roadmap mit datiertem Meilenstein** und Arbeitsteilung (#461).
 
 ## 4 · Implementierte Features (gegen Phase 1 der Vision)
@@ -61,7 +62,9 @@ Das Projekt hat nicht nur Software geliefert, sondern eine funktionierende Organ
 ### Wissensschicht & Retrieval (A)
 Vektorsuche mit pgvector, Antwortgenerierung mit Quellenangaben, überlappendes Chunking (#374),
 deterministische **Belegvalidierung**: jeder Beleg wird gegen die tatsächlich abgerufenen
-Fundstellen geprüft und ungültige Belege sichtbar gekennzeichnet (#386). Suchbereichssteuerung
+Fundstellen geprüft und ungültige Belege sichtbar gekennzeichnet (#386). Belege führen bis zum
+Original: Download-Endpunkt und Deeplink aus dem Beleg in die Wissensbibliothek (#736, #738),
+bei Feed-Anlagen samt Herkunfts-Link auf den Feed-Eintrag (#493). Suchbereichssteuerung
 per @-Bibliotheksreferenzen im Chat (#526, #560). Offen für Phase 1: hybride Suche und Reranking.
 
 ### Wissensquellen & Indizierung (B)
@@ -70,8 +73,10 @@ erster Konnektor-Quellentyp** samt Anlagenübernahme und Government-Site-Builder
 (#463–#468). **Bibliothekstypen mit gespeicherter Quellkonfiguration** (ADR-0018, Epic #486):
 Anlage per Template, Verbindungstest, Zeitplan je Bibliothek, sichere Zugangsdatenverwahrung,
 Pfad-Allowlist. Formaterkennung anhand des Inhalts statt der Endung (#404), Prüfsummen-Skip,
-asynchrone Verarbeitung. Die Quellenzugriffe sind gegen SSRF, Redirect-Tricks und
-Zugangsdaten-Exfiltration gehärtet (#267, #538, #617, #651, #693).
+asynchrone Verarbeitung, **Speicherkontingent je Bibliothek** (#119). **Dokumentenverwaltung in
+der Oberfläche**: Dokumentliste mit Paging und Stichwortsuche, Upload per Drag-and-drop, Löschen,
+Statusanzeige, übersprungene Dokumente mit Grund (#422, #513, #517). Die Quellenzugriffe sind
+gegen SSRF, Redirect-Tricks und Zugangsdaten-Exfiltration gehärtet (#267, #538, #617, #651, #693).
 
 ### Spaces, Bibliotheken & Rechte (C/F)
 Spaces mit Mitgliedschaften und Rollen, persönlicher Space je Nutzer, und **Wissensbibliotheken
@@ -81,6 +86,8 @@ assoziieren die Bibliotheken, auf die sie berechtigt sind, mit ihren Spaces — 
 Retrieval (#203, #686). Gruppen aus dem Verzeichnisabgleich als Rechtesubjekt (#200, #237),
 **lückenlose Historisierung von Rechten und Mitgliedschaften** mit Stichtags-Rekonstruktion
 (#238), Organisationsgrenze auf Datenbankebene mit strukturellem Prüflauf (#289, #390, #400, #401).
+**Rechteverwaltung vollständig über die Oberfläche**: Freigaben an Personen und Gruppen erteilen,
+Rollen ändern und entziehen, dazu Space- und Gruppenverwaltung (#421, #423).
 
 ### Identität & Anmeldung (F)
 OIDC/Keycloak-Anbindung mit automatischer Nutzerprovisionierung (#108–#110), daneben ein
@@ -107,7 +114,8 @@ Der **Audit-Trail ist geschnitten und in Umsetzung**: Ablage nur-anfügend, Erfa
 Verwaltungs- und Rechteereignisse, Revisionszugriff ohne Personenbezug, Selbstprotokollierung,
 Aufbewahrung mit automatischer Löschung (#355, #391–#395 — Stand zum Stichtag nachtragen).
 
-### Betrieb & Demo (J)
+### Betrieb & Demo (J/H)
+**Betriebsmetriken und Gesundheitsendpunkt** für die Überwachung (#65).
 Docker Compose für den Gesamtstack inkl. Keycloak, .env-Schnellstart (#16, #157, #716),
 öffentliche Testinstanz, und die **Demo-Instanz „Stadt Rheinfurt“**: generierter
 Verwaltungskorpus einer fiktiven Stadt, Seed-Profile für Demo und E2E, Installationsanleitung
