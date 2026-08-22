@@ -153,20 +153,33 @@ einer Person zurechenbar — das ist gegenüber heute ein Gewinn an Nachweisbark
 selbst ändert sich nichts: Wer in der Oberfläche eine Adresse außerhalb des Hauses einträgt, kann das,
 und OPAA hält ihn weiterhin nicht auf. Die Absicherung des Netzwegs bleibt außerhalb von OPAA.
 
-### Anbietername und Zieladresse sind zwei verschiedene Dinge **(gebaut)**
+### Ein einziger Anbindungsweg **(gebaut, #762)**
 
-Die Anbieterangabe (`ollama` oder `openai`) benennt das Protokoll, über das OPAA das Modell anspricht
-— nicht das Ziel, an das die Daten gehen. Dieselbe openai-kompatible Schnittstelle bedienen auch
-lokal betriebene Modellserver.
+Es gibt **keine Anbieterangabe mehr, die zwischen zwei Konfigurationswegen umschaltet.** Bis
+einschließlich der vorigen Version wählte eine eigene Variable zwischen einem nativen Weg für
+Ollama und der openai-kompatiblen Schnittstelle für alles andere; dieser native Weg entfiel mit
+#762 vollständig (siehe [„Ein Anbindungsweg, nicht zwei"](#ein-anbindungsweg-nicht-zwei) — was dort
+bereits für den Modelleintrag der Modellverwaltung galt, gilt seither auch für die
+Betriebskonfiguration, aus der er hervorgeht). Ollama wird seitdem wie jeder andere
+openai-kompatible Endpunkt über seinen eigenen `/v1`-Pfad angesprochen.
 
-Deshalb hat die Basis-Adresse **keine Voreinstellung**. Wer für Chat oder Einbettung den
-openai-kompatiblen Anbieter wählt, muss die Adresse angeben; fehlt sie, bricht der Start mit einer
-Meldung ab, die die fehlende Variable benennt.
+Die Basis-Adresse hat deshalb wieder eine **Voreinstellung** — anders als in einer früheren Fassung
+dieses Abschnitts, die bewusst keine vorsah: Ein lautes Scheitern beim Start ohne gesetzte Adresse
+war die richtige Entscheidung, solange die openai-kompatible Schnittstelle die Ausnahme war und ein
+nativer, lokal voreingestellter Ollama-Weg daneben bestand — eine geerbte Voreinstellung hätte dort
+eine Installation, die im Haus bleiben sollte, stillschweigend nach außen gerichtet. Seit die
+openai-kompatible Schnittstelle der **einzige** Weg ist, trifft dieses Risiko nicht mehr zu: Die
+Voreinstellung selbst zeigt auf einen lokal betriebenen Ollama-Server, nicht nach außen. Ein lautes
+Scheitern bliebe hier ein Fehlschlag ohne Gegenwert — jede Installation, an der niemand etwas
+konfiguriert, bräuchte sonst eine Adresse, nur um überhaupt zu starten, obwohl die richtige Adresse
+längst feststeht.
 
-Der Grund liegt im Fehlerfall: Wer im Haus einen Modellserver mit openai-kompatibler Schnittstelle
-einbindet und dabei nur den Anbieter setzt, erbte mit einer Voreinstellung stillschweigend ein Ziel
-außerhalb des Hauses — die Installation liefe, die Daten gingen an die falsche Stelle, und niemand
-würde es an einer Fehlermeldung bemerken. Ein lautes Scheitern beim Start ist dem vorzuziehen.
+Wer stattdessen einen anderen Anbieter verwenden will — für Chat, für Einbettung, oder für beides —,
+überschreibt diese Voreinstellung mit der jeweiligen Zieladresse. Ein **explizit leer gesetzter**
+Wert (eine Umgebungsvariable, die zwar gesetzt, aber ohne Inhalt ist) überschreibt die Voreinstellung
+ebenfalls — mit einer leeren Zeichenkette statt eines gültigen Ziels — und führt weiterhin zum
+lauten Scheitern beim Start: Das ist der eine Fall, in dem die ursprüngliche Begründung unverändert
+gilt, weil hier eine bewusste Angabe vorliegt, die nur zufällig leer ist.
 
 Die Ableitung je Funktion bleibt erhalten: Eine Adresse für Chat und eine für Einbettung sind
 getrennt setzbar; ohne sie gilt die gemeinsame Adresse für beide. Die Betriebssicht dazu steht in
@@ -273,9 +286,17 @@ Bestehende Installationen — einschließlich der Demo-Instanz — sind heute ü
 konfiguriert. Sie dürfen durch die Umstellung nicht stehenbleiben.
 
 Deshalb gilt: **Beim ersten Start nach der Umstellung wird die vorhandene Konfiguration als initiales,
-aktives Modell übernommen**, sofern noch kein Modell hinterlegt ist. Ist die bisherige Anbieterangabe
-`ollama`, entsteht daraus ein Eintrag mit der Ollama-Adresse samt `/v1`-Suffix und ohne Schlüssel; ist sie
-`openai`, werden Adresse, Modell und Schlüssel unverändert übernommen.
+aktives Modell übernommen**, sofern noch kein Modell hinterlegt ist. Zwei Fälle, weil #762 den
+Anbindungsweg der Betriebskonfiguration selbst verändert hat, bevor Stufe 1 sie ganz ablöst:
+
+- Eine Bestandsinstallation, die beim Update noch die inzwischen entfallene Anbieterangabe
+  `OPAA_AI_CHAT_PROVIDER=ollama` **und** eine der ebenfalls entfallenen `OPAA_OLLAMA_*`-Variablen
+  gesetzt hat, wird daraus übernommen — Adresse samt `/v1`-Suffix, Modell, ohne Schlüssel (Ollamas
+  eigener openai-kompatibler Endpunkt verlangt keinen).
+- Jede andere Installation — einschließlich einer, die `OPAA_AI_CHAT_PROVIDER=openai` gesetzt hatte,
+  oder einer frischen, die nie eine dieser Variablen kannte — übernimmt Adresse, Modell und
+  Schlüssel unverändert aus der openai-kompatiblen Konfiguration, die seit #762 der einzige
+  laufende Anbindungsweg ist.
 
 Danach ist die Datenbank für das Chat-Modell **führend**. Die Umgebungsvariablen werden nicht mehr
 ausgewertet — ein zweiter Ort für dieselbe Entscheidung wäre schlimmer als beide einzeln, weil bei

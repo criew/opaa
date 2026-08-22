@@ -64,7 +64,7 @@ describe('LlmModelManagementPage', () => {
     await waitFor(() => {
       expect(screen.getByText('nomic-embed-text')).toBeInTheDocument()
     })
-    expect(screen.getByText('ollama')).toBeInTheDocument()
+    expect(screen.getByText('openai')).toBeInTheDocument()
     expect(screen.getByText('1536')).toBeInTheDocument()
     expect(screen.getByText(/vollständige Neuindizierung/i)).toBeInTheDocument()
   })

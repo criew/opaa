@@ -137,7 +137,7 @@ describe('llmModelStore', () => {
     await useLlmModelStore.getState().loadEmbeddingInfo()
 
     const { embeddingInfo } = useLlmModelStore.getState()
-    expect(embeddingInfo?.provider).toBe('ollama')
+    expect(embeddingInfo?.provider).toBe('openai')
     expect(embeddingInfo?.model).toBe('nomic-embed-text')
     expect(embeddingInfo?.dimensions).toBe(1536)
   })

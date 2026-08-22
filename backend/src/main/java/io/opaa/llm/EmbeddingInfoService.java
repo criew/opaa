@@ -1,6 +1,5 @@
 package io.opaa.llm;
 
-import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -11,43 +10,32 @@ import org.springframework.stereotype.Service;
  * become incomparable, so it stays a configuration value picked at startup, not something the admin
  * API lets anyone edit.
  *
- * <p>Reads the same {@code spring.ai.model.embedding} switch and per-provider {@code model}
+ * <p>Reads the same {@code spring.ai.model.embedding}/{@code spring.ai.openai.embedding.model}
  * properties that {@code application.yml} already resolves the actual {@code EmbeddingModel} bean
- * from - not the bean itself, since neither Spring AI's OpenAI nor Ollama embedding client exposes
- * its configured model identifier back out again.
+ * from - not the bean itself, since Spring AI's OpenAI embedding client does not expose its
+ * configured model identifier back out again. Since #762 removed the native Ollama starter and
+ * fixed {@code spring.ai.model.embedding} to {@code openai} unconditionally, there is only ever one
+ * connection path to read from - the per-provider switch this class carried before #762 (choosing
+ * between an {@code openai} and an {@code ollama} model property) is gone along with the second
+ * property it used to read.
  */
 @Service
 public class EmbeddingInfoService {
 
   private final String provider;
-  private final String openAiModel;
-  private final String ollamaModel;
+  private final String model;
   private final int dimensions;
 
   public EmbeddingInfoService(
       @Value("${spring.ai.model.embedding}") String provider,
-      @Value("${spring.ai.openai.embedding.model}") String openAiModel,
-      @Value("${spring.ai.ollama.embedding.model}") String ollamaModel,
+      @Value("${spring.ai.openai.embedding.model}") String model,
       @Value("${spring.ai.vectorstore.pgvector.dimensions}") int dimensions) {
     this.provider = provider;
-    this.openAiModel = openAiModel;
-    this.ollamaModel = ollamaModel;
+    this.model = model;
     this.dimensions = dimensions;
   }
 
-  /**
-   * Explicit switch rather than "anything not openai is ollama" (#759 review): {@code
-   * spring.ai.model.embedding} only ever has two supported values in {@code application.yml}, but a
-   * typo or an unsupported third value must not silently report the Ollama model as if it were
-   * running - that would show an admin a model the deployment never actually configured.
-   */
   public EmbeddingInfo getEmbeddingInfo() {
-    String model =
-        switch (provider.toLowerCase(Locale.ROOT)) {
-          case "openai" -> openAiModel;
-          case "ollama" -> ollamaModel;
-          default -> "unbekannt (" + provider + ")";
-        };
     return new EmbeddingInfo(provider, model, dimensions);
   }
 }

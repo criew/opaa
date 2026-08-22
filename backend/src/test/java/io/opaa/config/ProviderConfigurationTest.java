@@ -21,6 +21,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+/**
+ * Verifies the single, OpenAI-compatible connection path application.yml wires since #762: both
+ * chat and embedding are fixed to {@code openai}, with a default base URL that already points at a
+ * locally operated Ollama server - no separate, native provider path exists anymore (see
+ * docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei).
+ */
 @SpringBootTest
 @ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
@@ -52,46 +58,27 @@ class ProviderConfigurationTest {
   @Autowired private Environment environment;
 
   @Test
-  void chatProviderDefaultsToOllama() {
-    assertThat(environment.getProperty("spring.ai.model.chat")).isEqualTo("ollama");
-    assertThat(environment.getProperty("spring.ai.ollama.chat.model")).isNotBlank();
+  void chatAndEmbeddingAreFixedToTheOpenAiCompatibleProtocol() {
+    assertThat(environment.getProperty("spring.ai.model.chat")).isEqualTo("openai");
+    assertThat(environment.getProperty("spring.ai.model.embedding")).isEqualTo("openai");
   }
 
   @Test
-  void embeddingProviderDefaultsToOllama() {
-    assertThat(environment.getProperty("spring.ai.model.embedding")).isEqualTo("ollama");
-    assertThat(environment.getProperty("spring.ai.ollama.embedding.model")).isNotBlank();
-  }
-
-  @Test
-  void chatAndEmbeddingProvidersAreIndependent() {
-    // Chat and embedding providers are separate configuration keys
-    String chatProvider = environment.getProperty("spring.ai.model.chat");
-    String embeddingProvider = environment.getProperty("spring.ai.model.embedding");
-    assertThat(chatProvider).isNotNull();
-    assertThat(embeddingProvider).isNotNull();
-
-    // Both OpenAI and Ollama model configs coexist — switching is config-only
-    assertThat(environment.getProperty("spring.ai.openai.chat.model")).isNotBlank();
-    assertThat(environment.getProperty("spring.ai.ollama.chat.model")).isNotBlank();
-    assertThat(environment.getProperty("spring.ai.openai.embedding.model")).isNotBlank();
-    assertThat(environment.getProperty("spring.ai.ollama.embedding.model")).isNotBlank();
-  }
-
-  @Test
-  void openAiBaseUrlHasNoDefault() {
-    // "openai" names the protocol, not a vendor. An address outside the organisation must never be
-    // inherited by an installation that did not ask for it, so the base URL stays empty until it is
-    // configured — see OpenAiBaseUrlGuard.
-    assertThat(environment.getProperty("spring.ai.openai.base-url")).isEmpty();
-    assertThat(environment.getProperty("spring.ai.openai.chat.base-url")).isEmpty();
-    assertThat(environment.getProperty("spring.ai.openai.embedding.base-url")).isEmpty();
-  }
-
-  @Test
-  void ollamaConfigurationIsAvailableForSwitching() {
-    assertThat(environment.getProperty("spring.ai.ollama.chat.model")).isEqualTo("phi3:mini");
-    assertThat(environment.getProperty("spring.ai.ollama.embedding.model"))
+  void chatAndEmbeddingModelsHaveIndependentDefaults() {
+    assertThat(environment.getProperty("spring.ai.openai.chat.model")).isEqualTo("phi3:mini");
+    assertThat(environment.getProperty("spring.ai.openai.embedding.model"))
         .isEqualTo("nomic-embed-text");
+  }
+
+  @Test
+  void baseUrlDefaultsToALocallyOperatedOllamaServer() {
+    // No profile activates "local"/"docker" here (only "dev"), so this is the top-level default -
+    // the same address the "local" profile documents explicitly for a bootRun/host setup.
+    assertThat(environment.getProperty("spring.ai.openai.base-url"))
+        .isEqualTo("http://localhost:11434/v1");
+    assertThat(environment.getProperty("spring.ai.openai.chat.base-url"))
+        .isEqualTo("http://localhost:11434/v1");
+    assertThat(environment.getProperty("spring.ai.openai.embedding.base-url"))
+        .isEqualTo("http://localhost:11434/v1");
   }
 }
