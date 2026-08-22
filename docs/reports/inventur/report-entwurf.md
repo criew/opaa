@@ -110,9 +110,11 @@ verwaltbare Objekte und zentrale Vorgaben je Space/Bibliothek bleiben Phase-1-Ar
 
 ### Sicherheit & Nachweis (G)
 Ratenbegrenzung, CORS-Härtung, Sicherheits-Header, Härtungsdokumentation (#61, #62, #409, #250).
-Der **Audit-Trail ist geschnitten und in Umsetzung**: Ablage nur-anfügend, Erfassung der
-Verwaltungs- und Rechteereignisse, Revisionszugriff ohne Personenbezug, Selbstprotokollierung,
-Aufbewahrung mit automatischer Löschung (#355, #391–#395 — Stand zum Stichtag nachtragen).
+Die **erste Stufe des revisionssicheren Audit-Trails ist geliefert** (#355, #391–#395):
+nur-anfügende Ablage mit entzogenen Änderungsrechten, Erfassung aller Rechte- und
+Verwaltungsereignisse, Revisionszugriff ohne personenbezogene Auswertung, Selbstprotokollierung
+jedes Protokollzugriffs, Aufbewahrung mit automatischer Löschung. Benannte Grenze: keine
+Prüfsummenverkettung — Manipulation mit direktem Datenbankzugang liegt beim Betreiber.
 
 ### Betrieb & Demo (J/H)
 **Betriebsmetriken und Gesundheitsendpunkt** für die Überwachung (#65).
@@ -127,8 +129,6 @@ Nichts davon ist verschwiegen — alles ist als Entscheidung oder offenes Issue 
 
 - **Hybride Suche und Reranking fehlen** — reine Vektorsuche ist für attributreiche Fachdaten
   eine bekannte Schwäche (Phase-1-Ziel, offen).
-- **Audit-Trail** war zum Inventurstand in Umsetzung, nicht fertig; ohne ihn besteht kein
-  Betreiber eine Prüfung mit OPAA im Prüfumfang (#391–#395).
 - **Zitierzwang wurde bewusst verkleinert:** statt Verweigerungsmodus und Space-Schalter gibt es
   die deterministische Belegvalidierung — eine dokumentierte Maintainer-Entscheidung, kein
   stilles Scheitern (#354, #387–#389 „not planned").
@@ -141,7 +141,34 @@ Der Report nennt durchgängig nur den Endzustand. Zwischenstände, die gebaut un
 zurückgebaut wurden, sind keine Leistungsposten; sie bleiben ausschließlich in den
 [Bausteinen](./bausteine/) dokumentiert.
 
-## 6 · Zahlen zum Inventurstand
+## 6 · Offen für Phase 1 — priorisierte Restliste
+
+Was zur Phase-1-Definition der Vision („Souveräner Wissensassistent") noch fehlt, nach Gewicht:
+
+**Kern des Wissensassistenten**
+1. **Hybride Suche mit Reranking** — wichtigste Retrieval-Lücke für Fachdaten
+2. **Ausgabe im Fluss (Streaming)** — größter Einzelfaktor der gefühlten Antwortzeit
+3. **Konfidenz als erklärte Größe** und **erklärbares Chunking**
+4. **Textwerkzeuge einschließlich Leichter Sprache** — Bereich K, bisher ohne einen einzigen Vorgang
+
+**Identität & Modelle**
+5. **Echter Verzeichnisanschluss** — hinter dem Abgleich steht bislang nur ein No-Op-Client;
+   LDAP-/SCIM-Client und Kontenlebenszyklus fehlen
+6. **Modellverwaltung und zentrale Vorgaben als Obergrenze** je Space/Bibliothek
+7. Sitzungsverwaltung mit erzwungener Neuanmeldung, Einschränkung auf Netzbereiche
+
+**Nachweis & Compliance**
+8. **DSGVO-Vollständigkeit** — Löschrecht und Datenexport (#143)
+9. **Schadsoftwareprüfung des Uploads** — Voraussetzung für den Produktivbetrieb
+10. Software-Stückliste, signierte Builds, Sicherheits-Scans in der CI, unabhängige Prüfung
+11. Audit-Governance-Reste: Fristwarnung (abhängig von #216), Auswertungs-Governance (#239)
+
+**Betrieb & Oberfläche**
+12. **Kubernetes mit Hochverfügbarkeit** und die **air-gapped-Lieferung** (Abbilder,
+    Modellgewichte, Stückliste als übertragbares Paket)
+13. Antwort-Bewertung mit Speicherung, API-Token-Verwaltung, vollständige Mehrsprachigkeit (#145)
+
+## 7 · Zahlen zum Inventurstand
 
 | | |
 |---|---|
