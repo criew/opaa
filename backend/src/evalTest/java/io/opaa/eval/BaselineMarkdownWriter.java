@@ -28,15 +28,22 @@ public final class BaselineMarkdownWriter {
 
   private BaselineMarkdownWriter() {}
 
-  public static void write(BaselineComparator.ComparisonResult result, Path target)
+  public static void write(
+      BaselineComparator.ComparisonResult result, Path target, String baselineFileName)
       throws IOException {
     Files.createDirectories(target.getParent());
-    Files.writeString(target, render(result), StandardCharsets.UTF_8);
+    Files.writeString(target, render(result, baselineFileName), StandardCharsets.UTF_8);
   }
 
-  public static String render(BaselineComparator.ComparisonResult result) {
+  public static String render(BaselineComparator.ComparisonResult result, String baselineFileName) {
     StringBuilder sb = new StringBuilder();
-    sb.append("## Retrieval-Regression gegen Baseline (`eval/baseline/comic-characters.json`)\n\n");
+    // Issue #234: parameterized, not hardcoded to "comic-characters.json" — this class is shared
+    // between both domains' *BaselineRegressionTest callers, and a hardcoded title here would
+    // mislabel every city-landmarks delta table (PR comment, CI job summary) as belonging to the
+    // comic-characters baseline while actually showing city-landmarks data.
+    sb.append("## Retrieval-Regression gegen Baseline (`eval/baseline/")
+        .append(baselineFileName)
+        .append("`)\n\n");
 
     if (!result.baselineValid()) {
       sb.append(

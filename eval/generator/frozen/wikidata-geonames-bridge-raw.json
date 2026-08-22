@@ -1,0 +1,4512 @@
+{
+ "head": {
+  "vars": [
+   "geonameid",
+   "city"
+  ]
+ },
+ "results": {
+  "bindings": [
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3711"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "792680"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q220"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3169070"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q19660"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "683506"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1754"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2673730"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1874"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "698740"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q894"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "499099"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q911"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "479561"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q914"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "472757"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q472"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "727011"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q908"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "501175"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2280"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "625144"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q48256"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "709930"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q900"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "551487"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1781"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3054643"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q656"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "498817"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q891"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "520555"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1748"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2618425"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q90"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2988507"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1899"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "703448"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q42308"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "706483"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q915"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "511196"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q270"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "756135"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1055"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2911298"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q406"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "745044"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3426"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "472045"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q649"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "524901"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1085"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3067696"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1741"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2761369"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q116170766"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3117735"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q32664319"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2867714"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q210205"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3046446"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1761"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2964574"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q490"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3173435"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49295412"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3173435"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q64"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2950159"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q585"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3143244"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q21711493"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3143244"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2256"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2655603"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q239"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2800866"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q84"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2643743"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1799"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3081368"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1524"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "264371"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2423"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "468902"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q36036"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "702550"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31487"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3094802"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1341"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "482283"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q21197"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "618426"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5426"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "554840"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5168"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "532096"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q157835"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "687700"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q580"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3093133"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q32749678"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2825297"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31926034"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3104324"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q116450968"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2514256"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q157137"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "703845"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5332"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "498677"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q43070"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "709717"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q18125"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2643123"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1773"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "456172"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q727"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2759794"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q34370"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2747891"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3646"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "542420"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5627"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "479123"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1794"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2925533"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q11194"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3191281"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q25287"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2711537"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49295418"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3172394"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q33721642"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3165524"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1435"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3186886"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q33675638"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3176219"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1718"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2934246"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1731"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2935022"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1757"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "658225"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q55893348"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2510911"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q23482"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2995469"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49295409"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2995469"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24017120"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2509954"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31971850"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2935517"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q4093"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2648579"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q216"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "593116"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3159"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "538560"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2079"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2879139"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5206"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "487846"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5470"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "569696"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q268"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3088171"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1829"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "554234"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q4120832"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "554234"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q157144"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "689558"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5540"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "511565"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2678"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "627907"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q36600"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2747373"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3927"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "580497"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q95041"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "523750"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q42448"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2638077"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q7525"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "694423"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q41572"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "700569"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2746"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "500096"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2770"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "480562"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5337"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "515003"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q23154"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2654675"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3490"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "535121"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24826"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2644210"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24019772"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2513416"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5384"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "548408"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31467408"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2803138"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1792"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3099434"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q7880"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2972315"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q116874675"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2861650"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q384"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "785842"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q456"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2996944"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q23436"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2650225"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24879"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2944388"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q597"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2267057"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q193478"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3054667"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q25270"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "786714"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31976906"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2934691"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q39121"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2644688"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q46852"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "675810"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q16898350"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "675810"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2211"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2692969"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2684"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "473247"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2801"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "571476"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q393"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3083829"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49279731"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3083829"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1851"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "581049"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1770"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "588409"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q181376"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "627904"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2630"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "555312"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q102217"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "620127"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q167280"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "11048323"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2455368"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "11048319"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31913753"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3128026"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q39297398"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2745912"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q134279"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "702658"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q10690"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2653822"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2288"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "480060"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q95449"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "532288"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q10686"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2655984"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q140147"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "629634"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q154835"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "625665"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q98967"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "520494"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49295398"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3181928"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1780"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3060972"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q14960"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3078610"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1833"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2911285"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q19689"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3183875"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q22905"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2654993"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q23984578"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2515270"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31916839"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2947416"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3555926"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2521978"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q6225"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2652221"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q83065"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2644668"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q41262"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2641170"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q19566"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "693805"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q39420"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "491422"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3323"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "578072"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q16898202"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "680963"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q98995"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "472231"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2337"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "491687"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q459"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "728193"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q101948176"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2519240"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2837"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "553915"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q17151"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "734077"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q157134"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "702320"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3118"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "515012"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5343"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "498698"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q207201"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2654789"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q161491"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2639577"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1627"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "8354626"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5239"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "473249"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q107642877"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "473249"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2144"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "569223"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q33158887"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2867543"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2119"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2873891"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1957"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "472459"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q6506"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "726050"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1142579"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "8504952"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q12191"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2990969"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q125163"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2646003"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q128147"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2645425"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q37333"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "765876"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31917795"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2946447"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31912389"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2949186"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q184090"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2639912"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q211489"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "660158"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q250880"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2778067"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q33959"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2990440"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q41252"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3102014"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q746718"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2655613"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q100188"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "681290"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q16898189"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "681290"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3544"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "484646"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1895"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "509820"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q131491"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2654710"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q157055"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "710791"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q170513"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "484907"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q156747"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "696643"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1632"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2911293"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q588"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3096472"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2592"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "543878"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q761"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "776069"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q43475"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2651347"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q687235"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "11048320"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q167630"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "11048322"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1721"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2809346"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2728790"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "11048318"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1816"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2911287"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1626"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2911288"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q4115712"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "598316"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1040"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2892794"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1763"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "524305"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q156717"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "706369"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q25319"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2624652"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q80349557"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3121424"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q6602"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2973783"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q157053"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "710735"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5196"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "558418"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31925679"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3106672"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q26793"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3161732"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1425428"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2641673"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q8385"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3068799"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q203995"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2637433"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q23051"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2636432"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q23990454"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3105976"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q437"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3196359"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q79848"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2637487"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q126269"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2633691"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1630"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2911296"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2143"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "485239"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q192240"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2641430"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q47166"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "514734"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5449"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "466806"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q16898582"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "665087"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q196489"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "487495"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q156713"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "686967"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q11896301"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "634963"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1001991"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "6544493"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q16898139"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "683844"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q103217"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3100946"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31590146"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2797656"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q6063659"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3119841"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1479"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3031582"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q129259"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "787657"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q127623"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "632453"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q385"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3099424"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q134902"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2636841"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q32067886"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2945024"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q157725"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "710719"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q156752"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "692194"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24008392"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3104499"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q749"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2755251"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2003054"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3112737"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q189960"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2634341"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q204234"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2642465"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q23999262"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3120619"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q6441"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2992166"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2795"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2940132"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q33707919"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2735943"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q43382"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2640194"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q64124"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "6544100"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q794954"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "6544489"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q156743"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "691650"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q105060"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3085128"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q76493"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "563708"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q36647"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2965140"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q172657"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "521118"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q62226"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "688758"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q156726"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "707471"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q156739"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "695594"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q16898248"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "680332"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1979660"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2864072"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2162427"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "11048317"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31916107"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2518559"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q25409"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "724443"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q104740"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "760778"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q5265"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "523523"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q156719"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "709932"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q191066"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2970479"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q37133"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "701822"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q197582"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "550280"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1958176"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "529237"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q647"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2983990"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q156724"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "704147"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q157260"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "707753"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q23564"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3193044"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q196486"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "487928"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q15760"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "518255"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q146416"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2655775"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1720"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2874225"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2833"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2925177"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q648"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2998324"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1763694"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3124964"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q202628"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2641022"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q203889"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2643339"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q445500"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2911522"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q250935"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "6544105"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31916723"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2517117"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q9832"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2756253"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q193413"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "500004"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q207695"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "463829"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q55630"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3194360"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q18661110"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "643492"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q533860"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "470451"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q198206"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "496015"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q16898261"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "677697"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2235"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "519336"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q377720"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2656333"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q158292"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "705812"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1634585"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "764484"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q25804"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3133880"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31997476"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2929670"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q7550"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "702569"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q23992105"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3108286"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q123369"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "11777624"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q131127"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3204541"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q14207874"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "8504960"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31914790"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2520058"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q21414421"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3114711"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q9871"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2746301"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q656196"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "8285534"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3856"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "146268"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q21644349"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "496348"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q104560"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "579492"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2214"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "504341"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q186349"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "665004"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q16898414"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "665004"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49280812"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "665004"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49295431"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3165185"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24014650"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2511174"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q79880"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "721472"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q6509"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "732770"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q18510063"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3171728"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q33705528"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3171728"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24012719"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3116025"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q252098"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "787607"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q33342"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "712165"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q30343751"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2660646"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q11898800"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "633679"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q207294"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "630468"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24012386"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3114472"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24011941"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2516326"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1398933"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "8063098"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49280505"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3181554"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q23993166"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3111199"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q18290864"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2800481"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q200942"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2636389"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q41329"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2772400"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q32094429"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2772400"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q4104856"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "8504949"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q72259"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2639996"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q15767"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "580922"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49280737"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3169921"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q47554"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3083271"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q33507186"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3083271"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q140087"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "462444"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2219"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "484972"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q190499"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "496285"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q102317"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "769250"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q198748"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "563464"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q598"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "759734"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49279729"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "759734"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q102350"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3101950"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q103892"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3080985"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q112795541"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2521886"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q105084"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3099230"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q32265522"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2844588"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31917677"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3118594"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q41876"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2984114"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49280792"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3165926"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3344946"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2742032"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49280715"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3171457"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q83285"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3185728"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q21765571"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2792413"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2865"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2892518"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q213832"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2650839"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q36405"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2657832"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24012786"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3130616"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2701404"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2994540"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49280742"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2523630"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q25331"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2615876"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q944963"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3169694"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49280734"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "670474"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q20968662"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "468809"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1724"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2842647"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q186115"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3029374"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24013530"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3110044"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q42810"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3003796"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q16898113"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "671768"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49280707"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "671768"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24012739"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3121437"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q40844"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2758401"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q153647"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2638785"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q175129"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3015772"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1711"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2852458"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q32233930"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2852458"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q961964"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "8555643"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q18681428"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "8555643"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2107492"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "6545348"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49280683"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3173331"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3139238"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2636503"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q753075"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "6544104"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49280743"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3169522"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2511595"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2759879"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q25286"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2666199"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q19520"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "508101"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q23992498"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3109718"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2551405"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "532535"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q13188714"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2750053"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24008386"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2522258"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q106583"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3103402"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q16456513"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "598098"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q31910385"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3130564"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q43167665"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3127461"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2213391"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2651817"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q32057176"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2905891"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q208143"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2633948"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q42716"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2980291"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q33465180"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2867838"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q16489411"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2271772"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q184775"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2646057"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q204622"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3029372"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q56447734"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2661604"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q215733"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2634739"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q32051612"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2911240"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q504530"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2634853"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q841979"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2643097"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q33158934"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2856883"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q237655"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "630429"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q175452"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "518970"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q169492"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2864695"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q16898082"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "686254"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2297044"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2646277"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q133123"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "255683"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q25413"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2694762"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q105002"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "577206"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q82765"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "763166"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q133175"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "472761"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q24011898"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2519752"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q43453"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3068160"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1635"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2910685"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q44160"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2972328"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1641049"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "6252065"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q1771488"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "6544103"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q188304"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2636531"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q200061"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "786712"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q38380"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3037656"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q49277095"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "3037656"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q211907"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2637627"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q32067893"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "2938913"
+    }
+   },
+   {
+    "city": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q3784748"
+    },
+    "geonameid": {
+     "type": "literal",
+     "value": "12747032"
+    }
+   }
+  ]
+ }
+}

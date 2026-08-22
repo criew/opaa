@@ -81,6 +81,36 @@ tasks.register<Test>("evaluateRetrieval") {
     useJUnitPlatform()
     filter {
         excludeTestsMatching("*BaselineRegressionTest")
+        // Issue #234: the evalTest source set now also holds the city-landmarks domain's own
+        // Testcontainers harness and dry-run test. Both are excluded here so this task keeps
+        // running only the comic-characters harness — "*RetrievalEvaluationHarnessTest" alone
+        // would also match "CityLandmarksRetrievalEvaluationHarnessTest" (it ends with that
+        // suffix), silently doubling the runtime and coupling both domains' runs together.
+        excludeTestsMatching("*CityLandmarksRetrievalEvaluationHarnessTest")
+        excludeTestsMatching("*CityLandmarksChunkSizeDryRunTest")
+    }
+    outputs.upToDateWhen { false }
+    jvmArgs("-XX:+EnableDynamicAgentLoading")
+    systemProperty("file.encoding", "UTF-8")
+    testLogging {
+        events("passed", "skipped", "failed", "standard_out")
+        showStandardStreams = true
+    }
+}
+
+// city-landmarks counterpart of evaluateRetrieval (issue #234): same mechanism, second domain,
+// second test class (CityLandmarksRetrievalEvaluationHarnessTest) — see that class' Javadoc for
+// why it is a near-duplicate rather than a parameterization of RetrievalEvaluationHarnessTest.
+tasks.register<Test>("evaluateCityLandmarksRetrieval") {
+    description = "Runs the retrieval-quality evaluation harness for the city-landmarks domain " +
+        "against eval/corpus/city-landmarks using Testcontainers (pgvector + Ollama). Not part " +
+        "of build/check."
+    group = "verification"
+    testClassesDirs = sourceSets["evalTest"].output.classesDirs
+    classpath = sourceSets["evalTest"].runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("*CityLandmarksRetrievalEvaluationHarnessTest")
     }
     outputs.upToDateWhen { false }
     jvmArgs("-XX:+EnableDynamicAgentLoading")
@@ -163,7 +193,33 @@ tasks.register<Test>("checkRetrievalBaseline") {
     useJUnitPlatform()
     outputs.upToDateWhen { false }
     filter {
-        includeTestsMatching("*BaselineRegressionTest")
+        // Exact class name, not "*BaselineRegressionTest": that wildcard would also match
+        // "CityLandmarksBaselineRegressionTest" (issue #234) and run the wrong domain's baseline
+        // check inside this comic-characters-only task.
+        includeTestsMatching("io.opaa.eval.BaselineRegressionTest")
+    }
+    testLogging {
+        events("passed", "skipped", "failed", "standard_out")
+        showStandardStreams = true
+    }
+}
+
+// city-landmarks counterpart of checkRetrievalBaseline (issue #234): compares the report
+// produced by evaluateCityLandmarksRetrieval against eval/baseline/city-landmarks.json. Entirely
+// separate from checkRetrievalBaseline/comic-characters — no shared report file, no shared
+// baseline, no shared group (issue #234 acceptance criterion "keine gemeinsame overall-Gruppe mit
+// Comichelden").
+tasks.register<Test>("checkCityLandmarksRetrievalBaseline") {
+    description = "Runs evaluateCityLandmarksRetrieval, then fails if the result regresses " +
+        "beyond tolerance against eval/baseline/city-landmarks.json (issue #234). Needs Docker."
+    group = "verification"
+    dependsOn("evaluateCityLandmarksRetrieval")
+    testClassesDirs = sourceSets["evalTest"].output.classesDirs
+    classpath = sourceSets["evalTest"].runtimeClasspath
+    useJUnitPlatform()
+    outputs.upToDateWhen { false }
+    filter {
+        includeTestsMatching("*CityLandmarksBaselineRegressionTest")
     }
     testLogging {
         events("passed", "skipped", "failed", "standard_out")

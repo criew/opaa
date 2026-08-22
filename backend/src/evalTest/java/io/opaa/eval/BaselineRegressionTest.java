@@ -54,8 +54,10 @@ class BaselineRegressionTest {
 
     BaselineComparator.ComparisonResult result = BaselineComparator.compare(baseline, report);
 
-    String markdown = BaselineMarkdownWriter.render(result);
-    BaselineMarkdownWriter.write(result, MARKDOWN_FILE);
+    String markdown =
+        BaselineMarkdownWriter.render(result, EvalDomainConfig.COMIC_CHARACTERS.baselineFileName());
+    BaselineMarkdownWriter.write(
+        result, MARKDOWN_FILE, EvalDomainConfig.COMIC_CHARACTERS.baselineFileName());
     log.info(markdown);
     System.out.println(markdown);
     System.out.println("Delta-Tabelle geschrieben nach " + MARKDOWN_FILE.toAbsolutePath());

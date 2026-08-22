@@ -1,3 +1,49 @@
+# Golden Dataset: Domänen Comichelden und Sehenswürdigkeiten in europäischen Großstädten
+
+## Domäne `city-landmarks` (Issue #234)
+
+`city-landmarks.json` — 83 kuratierte Fälle, fünf Kategorien, alle Fragen auf Deutsch (siehe
+`eval/corpus/city-landmarks/`):
+
+| Kategorie | Anzahl | Ground Truth |
+|---|---|---|
+| `city_overview` | 15 | Dokument (Stadtfakt aus dem Dokumentkopf) |
+| `landmark_detail` | 25 | Dokument + `answer_span` (Detail zu einer Sehenswürdigkeit) |
+| `boundary_span` | 20 | Dokument + `answer_span`, gezielt nahe einer Chunk-Grenze ausgewählt |
+| `cross_chunk` | 15 | Dokument + `answer_span` (Vergleichssatz zwischen zwei Sehenswürdigkeiten desselben Dokuments — siehe unten zur Schema-Einschränkung) |
+| `multi_city` | 8 | mehrere Dokumente (Einwohnervergleich zwischen zwei Städten) |
+
+**Erzeugung:** Nicht über `generate_golden_dataset.py` (das Skript ist an das Frontmatter-Schema
+von `comic-characters` gebunden), sondern über ein eigenständiges, ebenfalls deterministisches
+Skript, das die generierten `.md`-Dateien direkt parst (reguläre Ausdrücke auf bekannte
+Satzschablonen des Generators) und die Chunk-Map aus einem Docker-freien Trockenlauf
+(`io.opaa.eval.CityLandmarksChunkSizeDryRunTest`, schreibt
+`backend/build/eval-reports/chunk-map-city-landmarks-dryrun.json`) für die `boundary_span`-Auswahl
+liest — siehe PR-Beschreibung von #234 für den vollständigen Skriptinhalt. Jeder `answer_span` ist
+vor dem Schreiben der Datei gegen den Volltext des jeweiligen Dokuments geprüft (`in`-Test in
+Python) — kein Fall mit einem nicht auffindbaren Ausschnitt wurde geschrieben. Die endgültige
+Auflösung auf den tatsächlichen Chunk-Index erfolgt weiterhin durch den echten Harness-Lauf
+(`evaluateCityLandmarksRetrieval`), der die Chunk-Map aus den tatsächlich indexierten Dokumenten neu
+berechnet — der Trockenlauf ist eine Kuratierungshilfe, kein Ersatz für diese Verifikation (siehe
+`io.opaa.eval.EvaluationReport.AnswerSpanResolutionResult`, ADR-0012 §9).
+
+**Schema-Einschränkung bei `cross_chunk`:** Das von #721 gebaute Golden-Case-Schema (`GoldenCase`)
+führt genau **ein** `answer_span`-Feld, keine Liste — die Issue-#234-Beschreibung skizziert
+`cross_chunk` mit zwei Spans in verschiedenen Chunks, das tatsächlich implementierte Schema aus #721
+unterstützt das nicht. Die hier gewählte, mit diesem Schema kompatible Auslegung: `answer_span` zeigt
+auf den generatoreigenen Vergleichssatz („X entstand früher als Y" o. Ä.), der beide Sehenswürdigkeiten
+nennt und die Antwort auf die Vergleichsfrage bereits enthält. Die Frage selbst bleibt trotzdem nur
+aus dem Dokumentkontext (nicht aus dem Vergleichssatz-Chunk allein, falls dieser Satz durch
+Chunk-Overlap in einen anderen Chunk als die Einzel-Fakten fällt) zuverlässig beantwortbar — eine
+Erweiterung auf echte Mehr-Span-Fälle ist ein Folge-Issue, kein Teil dieses Umfangs.
+
+**Bekannte Einschränkung:** Die `landmark_detail`/`boundary_span`-Fragen sind text-strukturell an
+den Fakten-Satzschablonen des Generators orientiert (Baujahr, Höhe, Schutzstatus, Besucherzahl) —
+sie prüfen damit eher gezielten Faktenabruf als freie Formulierungsvarianz. Das ist eine bewusste,
+zeitbedingte Vereinfachung dieser ersten Fassung, keine grundsätzliche Schema-Entscheidung.
+
+---
+
 # Golden Dataset: Domäne Comichelden
 
 Das Golden Dataset für die Domäne `comic-characters` (Issue #226, gemergt in PR #273; erste Runde

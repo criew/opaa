@@ -1,3 +1,33 @@
+# Korpus-Generator: Sehenswürdigkeiten in europäischen Großstädten (Issue #234)
+
+Erzeugt den Evaluierungskorpus unter `eval/corpus/city-landmarks/` ausschließlich aus den
+eingefrorenen Wikidata-SPARQL-Rohdaten unter [`frozen/`](frozen/) (CC0-1.0, siehe
+[`frozen/SOURCE.md`](frozen/SOURCE.md) für die vollständigen Abfragen, Auswahlregeln und
+dokumentierten Fallstrick-Entscheidungen).
+
+```bash
+cd eval/generator
+python generate_city_landmarks_corpus.py
+```
+
+Kein Netzzugriff: Das Skript liest ausschließlich `frozen/*.json`, prüft deren SHA-256 gegen die in
+`generate_city_landmarks_corpus.py` (`FROZEN_HASHES`) hinterlegten Werte und bricht ab, falls eine
+der Dateien nachträglich verändert wurde. Reproduktion eines Frischlaufs erfordert daher **keinen**
+Wikidata-Zugriff — nur bei einer bewussten Neueinfrierung der Rohdaten (neue Abfrage, neues
+Abrufdatum) wird der Live-Endpunkt erneut kontaktiert (nicht Teil dieses Skripts, siehe
+`frozen/SOURCE.md`).
+
+Determinismus: Zwei Läufe erzeugen byte-identische Ausgabe (per `diff -rq` zweier aufeinander
+folgender Läufe belegt, siehe PR-Beschreibung von #234) — Städte sind bereits nach Rang sortiert in
+`frozen/wikidata-cities-200.json` gelistet, Sehenswürdigkeiten je Stadt nach aufsteigender QID.
+
+Chunk-Zahl-Verifikation ohne Docker: `io.opaa.eval.CityLandmarksChunkSizeDryRunTest`
+(`backend/src/evalTest/java/io/opaa/eval/`) chunked den generierten Korpus mit der echten,
+produktiven `ChunkingService` (kein Testcontainers nötig) und meldet die Chunk-Zahl-Verteilung —
+siehe `eval/corpus/city-landmarks/SOURCE.md` für die zuletzt gemessenen Werte.
+
+---
+
 # Korpus-Generator: Comichelden
 
 Erzeugt den Evaluierungskorpus unter `eval/corpus/comic-characters/` aus dem

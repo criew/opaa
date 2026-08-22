@@ -59,4 +59,24 @@ public record EvalDomainConfig(
           ChunkCountExpectation.exactlyOneChunk(),
           10,
           1);
+
+  /**
+   * The city-landmarks domain (issue #234): deliberately multi-chunk documents (200 European
+   * cities, minimum 3 chunks each at the application's default {@code chunk-size=1000} — see {@code
+   * eval/corpus/city-landmarks/SOURCE.md} for the measured chunk-count distribution: minimum 3,
+   * median 8, maximum 11, after the PR #730 third review round ("Verifikationsrunde") restored
+   * {@code RANK_NEIGHBOR_RADIUS} to 2 and instead generalized/broadened the landmark query so the
+   * mehr-Chunk floor is met through richer landmark content rather than a large rank-neighbor
+   * comparison section). {@code maxChunksPerDocument=13} is a deliberately conservative upper bound
+   * above the measured maximum (11), consistent with {@link RetrievalEvaluationHarnessTest}'s own
+   * runtime check that this value is never undersized (issue #721 review, Nit 4).
+   */
+  public static final EvalDomainConfig CITY_LANDMARKS =
+      new EvalDomainConfig(
+          "city-landmarks",
+          "city-landmarks.json",
+          "city-landmarks.json",
+          ChunkCountExpectation.atLeast(3),
+          10,
+          13);
 }
