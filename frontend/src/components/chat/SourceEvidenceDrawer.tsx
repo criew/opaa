@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
@@ -11,7 +12,9 @@ import CloseIcon from '@mui/icons-material/Close'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
+import type { DocumentSourceType } from '../../types/api'
 import { fontFamily } from '../../theme/tokens'
+import { openDocumentContent } from '../../utils/documentContent'
 
 interface SourceEvidenceDrawerProps {
   open: boolean
@@ -32,6 +35,13 @@ interface EvidenceDoc {
   relevanceScore?: number
   indexedAt?: string | null
   sourceEntryUrl?: string | null
+  /** #739: the local original's document id - openable via GET /documents/{id}/content when
+   *  {@link sourceType} is UPLOAD/FILESYSTEM. Undefined for a synthetic entry (#386). */
+  documentId?: string | null
+  sourceType?: DocumentSourceType | null
+  /** #739: the remote deep link for sourceType HTTP_DIRECTORY/RSS_FEED, mirroring
+   *  LibraryDocumentResponse.sourceUrl (#738). */
+  sourceUrl?: string | null
 }
 
 function formatAnsweredAt(answeredAt: Date): string {
@@ -52,6 +62,27 @@ export default function SourceEvidenceDrawer({
 }: SourceEvidenceDrawerProps) {
   const [query, setQuery] = useState('')
   const [citedOnly, setCitedOnly] = useState(false)
+  // #739: mirrors LibraryDetailPage's openOriginalError (#738) - opening the original is a
+  // read-only, per-click action, so its failure (404, file missing) gets its own local message
+  // rather than touching any store.
+  const [openOriginalError, setOpenOriginalError] = useState<string | null>(null)
+
+  // #739: a local original (UPLOAD/FILESYSTEM) goes through the Bearer-authenticated download
+  // endpoint (a plain <a href> cannot carry the token, ADR-0005). A remote sourceType
+  // (HTTP_DIRECTORY/RSS_FEED) is rendered as a real `<a href>` instead (PR #745 review, nit 3) - it
+  // needs no token, so it keeps native link semantics (middle-click, "open in new tab", "copy link
+  // address") that a `component="button"` Link loses.
+  async function handleOpenLocalOriginal(doc: EvidenceDoc) {
+    setOpenOriginalError(null)
+    if (!doc.documentId) return
+    try {
+      await openDocumentContent(doc.documentId, doc.fileName)
+    } catch (err) {
+      setOpenOriginalError(
+        err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.',
+      )
+    }
+  }
 
   const docs = useMemo((): EvidenceDoc[] => {
     const cited: EvidenceDoc[] = citations.docs.map((doc) => ({
@@ -63,6 +94,9 @@ export default function SourceEvidenceDrawer({
       relevanceScore: doc.source?.relevanceScore,
       indexedAt: doc.source?.indexedAt,
       sourceEntryUrl: doc.source?.sourceEntryUrl,
+      documentId: doc.source?.documentId,
+      sourceType: doc.source?.sourceType,
+      sourceUrl: doc.source?.sourceUrl,
     }))
     const uncited: EvidenceDoc[] = citations.uncited.map((source) => ({
       fileName: source.fileName,
@@ -73,6 +107,9 @@ export default function SourceEvidenceDrawer({
       relevanceScore: source.relevanceScore,
       indexedAt: source.indexedAt,
       sourceEntryUrl: source.sourceEntryUrl,
+      documentId: source.documentId,
+      sourceType: source.sourceType,
+      sourceUrl: source.sourceUrl,
     }))
     // Mockup 1i: "nach Gewicht sortiert" - by relevance within each group, cited before checked.
     const byWeight = (a: EvidenceDoc, b: EvidenceDoc) =>
@@ -131,6 +168,16 @@ export default function SourceEvidenceDrawer({
           <CloseIcon sx={{ fontSize: 18 }} />
         </IconButton>
       </Box>
+
+      {openOriginalError && (
+        <Alert
+          severity="error"
+          sx={{ mx: 2.5, mt: 1.5 }}
+          onClose={() => setOpenOriginalError(null)}
+        >
+          {openOriginalError}
+        </Alert>
+      )}
 
       <Box sx={{ display: 'flex', gap: 1, px: 2.5, py: 1.5 }}>
         <TextField
@@ -243,9 +290,25 @@ export default function SourceEvidenceDrawer({
                     .filter(Boolean)
                     .join(' · ')}
                 </Typography>
-                {doc.sourceEntryUrl && (
+                {/* #739/#745: a local original (UPLOAD/FILESYSTEM) opens via the
+                    Bearer-authenticated download endpoint and stays a button; a remote source
+                    (HTTP_DIRECTORY/RSS_FEED) is a real link to sourceEntryUrl/sourceUrl instead,
+                    exactly like LibraryDetailPage#handleOpenOriginal (#738). */}
+                {doc.sourceType === 'UPLOAD' || doc.sourceType === 'FILESYSTEM' ? (
+                  doc.documentId && (
+                    <Link
+                      component="button"
+                      type="button"
+                      underline="hover"
+                      onClick={() => void handleOpenLocalOriginal(doc)}
+                      sx={{ fontSize: 11.5 }}
+                    >
+                      Im Dokument öffnen
+                    </Link>
+                  )
+                ) : (doc.sourceEntryUrl ?? doc.sourceUrl) ? (
                   <Link
-                    href={doc.sourceEntryUrl}
+                    href={doc.sourceEntryUrl ?? doc.sourceUrl ?? undefined}
                     target="_blank"
                     rel="noopener noreferrer"
                     underline="hover"
@@ -253,7 +316,7 @@ export default function SourceEvidenceDrawer({
                   >
                     Im Dokument öffnen
                   </Link>
-                )}
+                ) : null}
               </Box>
             </Box>
           ))

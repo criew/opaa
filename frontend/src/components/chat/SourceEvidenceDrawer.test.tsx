@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../test/test-utils'
@@ -6,12 +6,25 @@ import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../../types/chat'
 import type { SourceReference } from '../../types/api'
 
+// #739: the "Im Dokument öffnen" action delegates to this shared module (see its own tests for
+// the Blob-fetch/preview-vs-download behaviour, and LibraryDetailPage.test.tsx for #738's original
+// wiring of this mock pattern).
+const { mockOpenDocumentContent, mockOpenExternalSourceUrl } = vi.hoisted(() => ({
+  mockOpenDocumentContent: vi.fn(async () => undefined),
+  mockOpenExternalSourceUrl: vi.fn(),
+}))
+vi.mock('../../utils/documentContent', () => ({
+  openDocumentContent: mockOpenDocumentContent,
+  openExternalSourceUrl: mockOpenExternalSourceUrl,
+}))
+
 function source(
   fileName: string,
   cited: boolean,
   relevanceScore: number,
   spaceName = 'Engineering',
   citationValid: boolean | null = true,
+  extra: Partial<SourceReference> = {},
 ): SourceReference {
   return {
     fileName,
@@ -21,6 +34,7 @@ function source(
     cited,
     indexedAt: null,
     citationValid,
+    ...extra,
   }
 }
 
@@ -50,6 +64,10 @@ async function openDrawer() {
 }
 
 describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('opens from the Fundstellen block with header, count line and answer timestamp', async () => {
     const { drawer } = await openDrawer()
 
@@ -136,5 +154,86 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(
       screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }),
     ).toHaveFocus()
+  })
+
+  describe('"Im Dokument öffnen" (#739)', () => {
+    async function openDrawerWith(source: SourceReference) {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <MessageBubble
+          message={{
+            id: 'ev-open',
+            role: 'assistant',
+            content: 'Beleg【source: a#0 | doc.pdf】.',
+            sources: [source],
+            timestamp: new Date('2026-08-21T09:00:00'),
+          }}
+        />,
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }),
+      )
+      const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+      return { user, drawer }
+    }
+
+    it('fetches and opens a local original (UPLOAD/FILESYSTEM) via the download endpoint', async () => {
+      const { user, drawer } = await openDrawerWith(
+        source('doc.pdf', true, 0.9, 'Engineering', true, {
+          documentId: 'doc-1',
+          sourceType: 'UPLOAD',
+        }),
+      )
+
+      await user.click(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' }))
+
+      expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'doc.pdf')
+      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
+    })
+
+    it('renders a real link (not a button) to sourceUrl for an HTTP_DIRECTORY document (#745 review)', async () => {
+      const { drawer } = await openDrawerWith(
+        source('doc.pdf', true, 0.9, 'Engineering', true, {
+          documentId: 'doc-1',
+          sourceType: 'HTTP_DIRECTORY',
+          sourceUrl: 'https://example.gov/verzeichnis/doc.pdf',
+        }),
+      )
+
+      // A real <a href> instead of component="button" - middle-click, "open in new tab" and
+      // "copy link address" only work on an actual link.
+      const link = within(drawer).getByRole('link', { name: 'Im Dokument öffnen' })
+      expect(link).toHaveAttribute('href', 'https://example.gov/verzeichnis/doc.pdf')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+      expect(mockOpenExternalSourceUrl).not.toHaveBeenCalled()
+      expect(mockOpenDocumentContent).not.toHaveBeenCalled()
+    })
+
+    it('hides the action for a synthetic entry with neither a documentId nor a source URL', async () => {
+      const { drawer } = await openDrawerWith(source('doc.pdf', true, 0.9))
+
+      expect(
+        within(drawer).queryByRole('button', { name: 'Im Dokument öffnen' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('shows a German error message when opening the original fails (e.g. 404)', async () => {
+      mockOpenDocumentContent.mockRejectedValueOnce(
+        new Error('Das Originaldokument wurde nicht gefunden.'),
+      )
+      const { user, drawer } = await openDrawerWith(
+        source('doc.pdf', true, 0.9, 'Engineering', true, {
+          documentId: 'doc-1',
+          sourceType: 'UPLOAD',
+        }),
+      )
+
+      await user.click(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' }))
+
+      expect(
+        await within(drawer).findByText('Das Originaldokument wurde nicht gefunden.'),
+      ).toBeInTheDocument()
+    })
   })
 })

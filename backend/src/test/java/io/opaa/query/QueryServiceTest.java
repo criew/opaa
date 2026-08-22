@@ -1,6 +1,7 @@
 package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -160,14 +161,115 @@ class QueryServiceTest {
   }
 
   /**
-   * #666 review: {@code mapSources}/{@code mergeSourceReferences} dedupe by {@code fileName}, not
-   * {@code document_id} - two distinct RSS-sourced documents can share a file name while carrying
-   * different {@code sourceEntryUrl} values. Asserting either one for the merged citation would be
-   * a checkable falsehood about where the other, merged-away chunk came from, so the merged source
-   * carries no origin link at all rather than an arbitrarily-picked, possibly wrong one.
+   * #739: a citation of a local original (FILESYSTEM/UPLOAD) carries {@code documentId} and {@code
+   * sourceType} so the client can open GET /api/v1/documents/{documentId}/content, but {@code
+   * sourceUrl} stays null - there is no remote deep link, the download endpoint is the only way in.
    */
   @Test
-  void queryDropsSourceEntryUrlWhenTwoDocumentsShareAFileNameWithDifferentUrls() {
+  void queryPopulatesDocumentIdAndSourceTypeForALocalOriginal() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    UUID documentId = UUID.randomUUID();
+    var chunk =
+        Document.builder()
+            .text("Uploaded content")
+            .metadata(Map.of("file_name", "upload.pdf", "document_id", documentId.toString()))
+            .score(0.8)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var indexedDocument =
+        new io.opaa.indexing.Document(
+            "upload.pdf",
+            "/data/upload.pdf",
+            "application/pdf",
+            100L,
+            io.opaa.indexing.DocumentSourceType.UPLOAD);
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    SourceReference source = response.getSources().getFirst();
+    assertThat(source.getDocumentId()).isEqualTo(documentId);
+    assertThat(source.getSourceType()).isEqualTo(io.opaa.indexing.DocumentSourceType.UPLOAD);
+    assertThat(source.getSourceUrl()).isNull();
+  }
+
+  /**
+   * #739: a citation of a remote-only document (HTTP_DIRECTORY/RSS_FEED, no local file behind the
+   * download endpoint) carries {@code sourceUrl} - the document's own remote location, mirroring
+   * {@code LibraryDocumentResponse.sourceUrl} (#738).
+   */
+  @Test
+  void queryPopulatesSourceUrlForARemoteOnlyDocument() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    UUID documentId = UUID.randomUUID();
+    var chunk =
+        Document.builder()
+            .text("Crawled content")
+            .metadata(
+                Map.of("file_name", "dienstanweisung.pdf", "document_id", documentId.toString()))
+            .score(0.8)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var indexedDocument =
+        new io.opaa.indexing.Document(
+            "dienstanweisung.pdf",
+            "https://example.gov/verzeichnis/dienstanweisung.pdf",
+            "application/pdf",
+            100L,
+            io.opaa.indexing.DocumentSourceType.HTTP_DIRECTORY);
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    SourceReference source = response.getSources().getFirst();
+    assertThat(source.getDocumentId()).isEqualTo(documentId);
+    assertThat(source.getSourceType())
+        .isEqualTo(io.opaa.indexing.DocumentSourceType.HTTP_DIRECTORY);
+    assertThat(source.getSourceUrl())
+        .isEqualTo("https://example.gov/verzeichnis/dienstanweisung.pdf");
+  }
+
+  /**
+   * #739: a synthetic entry (#386, invalid citation matching no retrieved chunk) has no underlying
+   * document to resolve - {@code documentId}, {@code sourceType} and {@code sourceUrl} must all
+   * stay null, there is nothing real to link to.
+   */
+  @Test
+  void querySynthesizesNoDocumentLinkForAFabricatedCitation() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+    var answer = "Info 【source: nonexistent-doc#0 | fabricated.pdf】.";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    SourceReference source = response.getSources().getFirst();
+    assertThat(source.getFileName()).isEqualTo("fabricated.pdf");
+    assertThat(source.getDocumentId()).isNull();
+    assertThat(source.getSourceType()).isNull();
+    assertThat(source.getSourceUrl()).isNull();
+  }
+
+  /**
+   * #739: {@code mapSources}/{@code mergeSourceReferences} now dedupe by {@code document_id}, not
+   * {@code fileName} (previously the opposite, see the #666 review this test used to document below
+   * - superseded here) - two distinct documents that happen to share a file name (e.g. two RSS
+   * entries both attaching a same-named PDF) no longer collapse into one {@link SourceReference}
+   * row with the origin link dropped; each keeps its own row with its own {@code documentId} and
+   * {@code sourceEntryUrl}, since #739 needs every entry's own document id for its deep link.
+   */
+  @Test
+  void queryKeepsTwoDocumentsThatShareAFileNameAsSeparateSources() {
     when(chatMemory.get(any())).thenReturn(List.of());
     UUID firstDocumentId = UUID.randomUUID();
     UUID secondDocumentId = UUID.randomUUID();
@@ -202,8 +304,56 @@ class QueryServiceTest {
 
     QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
 
-    assertThat(response.getSources()).hasSize(1);
-    assertThat(response.getSources().getFirst().getSourceEntryUrl()).isNull();
+    assertThat(response.getSources()).hasSize(2);
+    assertThat(response.getSources())
+        .extracting(SourceReference::getDocumentId, SourceReference::getSourceEntryUrl)
+        .containsExactlyInAnyOrder(
+            tuple(firstDocumentId, "https://example.com/feed/entry-1"),
+            tuple(secondDocumentId, "https://example.com/feed/entry-2"));
+  }
+
+  /**
+   * PR #745 review, nit 1: a chunk without {@code document_id} metadata (pre-#739 index entries)
+   * used to compute its match count under the literal string {@code "unknown"} in {@link
+   * #countMatchesPerDocument} but look it back up under {@code ""} in {@link #mapSources} - the
+   * lookup always missed and silently fell back to a match count of 1. It also collapsed two such
+   * chunks from <em>different</em> files into a single merged entry, since both shared the same
+   * empty key. Falling back to {@code file_name} in both places fixes both: each file gets its own
+   * entry with the correct match count.
+   */
+  @Test
+  void queryFallsBackToFileNameForMatchCountingWhenDocumentIdMetadataIsMissing() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var firstChunkOfA =
+        Document.builder()
+            .text("From legacy document A, chunk 1")
+            .metadata(Map.of("file_name", "legacy-a.pdf"))
+            .score(0.9)
+            .build();
+    var secondChunkOfA =
+        Document.builder()
+            .text("From legacy document A, chunk 2")
+            .metadata(Map.of("file_name", "legacy-a.pdf"))
+            .score(0.8)
+            .build();
+    var chunkOfB =
+        Document.builder()
+            .text("From legacy document B")
+            .metadata(Map.of("file_name", "legacy-b.pdf"))
+            .score(0.7)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+        .thenReturn(List.of(firstChunkOfA, secondChunkOfA, chunkOfB));
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources()).hasSize(2);
+    assertThat(response.getSources())
+        .extracting(SourceReference::getFileName, SourceReference::getMatchCount)
+        .containsExactlyInAnyOrder(tuple("legacy-a.pdf", 2), tuple("legacy-b.pdf", 1));
   }
 
   @Test
@@ -997,8 +1147,46 @@ class QueryServiceTest {
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
   }
 
+  // #739: two chunks sharing the same document_id (multiple chunks retrieved from one document) -
+  // the merge that still applies since the dedupe key changed from fileName to document_id.
   @Test
   void queryPreservesCitedFlagWhenDeduplicatingChunksFromSameFile() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var citedChunk =
+        Document.builder()
+            .text("Cited chunk")
+            .metadata(Map.of("file_name", "report.pdf", "document_id", "doc-1"))
+            .score(0.7)
+            .build();
+    var higherScoreUncitedChunk =
+        Document.builder()
+            .text("Higher score uncited")
+            .metadata(Map.of("file_name", "report.pdf", "document_id", "doc-1"))
+            .score(0.95)
+            .build();
+
+    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+        .thenReturn(List.of(citedChunk, higherScoreUncitedChunk));
+
+    var answer = "Info 【source: doc-1#0 | report.pdf】.";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources()).hasSize(1);
+    assertThat(response.getSources().getFirst().getCited()).isTrue();
+    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(0.95);
+  }
+
+  /**
+   * #739: the collision the previous test used to exercise (two <b>different</b> document ids
+   * sharing one file name) is now covered by {@link
+   * #queryKeepsTwoDocumentsThatShareAFileNameAsSeparateSources} instead - each keeps its own row,
+   * so neither collapses into the other and {@code cited} is per-document, not per-file-name.
+   */
+  @Test
+  void queryDoesNotMergeCitedFlagAcrossTwoDifferentDocumentsSharingAFileName() {
     when(chatMemory.get(any())).thenReturn(List.of());
     var citedChunk =
         Document.builder()
@@ -1022,9 +1210,10 @@ class QueryServiceTest {
 
     QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
 
-    assertThat(response.getSources()).hasSize(1);
-    assertThat(response.getSources().getFirst().getCited()).isTrue();
-    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(0.95);
+    assertThat(response.getSources()).hasSize(2);
+    assertThat(response.getSources())
+        .extracting(SourceReference::getFileName, SourceReference::getCited)
+        .containsExactlyInAnyOrder(tuple("report.pdf", true), tuple("report.pdf", false));
   }
 
   @Test

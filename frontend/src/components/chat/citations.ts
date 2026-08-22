@@ -2,8 +2,8 @@ import type { SourceReference } from '../../types/api'
 
 /**
  * The backend's citation marker (QueryService): `【source: <documentId>#<chunk> | <fileName>】`.
- * `SourceReference` carries no document id, so the file name inside the marker is the join key
- * between the answer text and the source list (#590).
+ * `SourceReference.documentId` (#739) is the join key between the answer text and the source list;
+ * the file name is only a fallback for persisted legacy messages predating #739 (#590).
  */
 export const CITATION_MARKER_RE = /【source:\s*([a-zA-Z0-9-]+#\d+)\s*\|\s*(.+?)\s*】/g
 
@@ -14,6 +14,10 @@ export interface CitationDoc {
   numbers: number[]
   /** The matching source metadata, when the backend listed one for this file name. */
   source: SourceReference | undefined
+  /** #739: the document id the backend's citation deep link opens - undefined for a synthetic
+   *  entry (#386) with no matching retrieved document, same as {@link SourceReference.documentId}
+   *  it is carried straight through from. */
+  documentId: string | null | undefined
 }
 
 export interface CitationIndex {
@@ -37,11 +41,40 @@ export function buildCitationIndex(
   const numberByKey = new Map<string, number>()
   const docIndexByNumber = new Map<number, number>()
   const docs: CitationDoc[] = []
-  const docIndexByFileName = new Map<string, number>()
+  // Rows are identified by documentId when available, falling back to fileName (see below) - the
+  // same fallback key is used both to find a marker's source and to decide whether a cited/uncited
+  // source already has a row.
+  const docIndexByRowKey = new Map<string, number>()
   const citedSources = (sources ?? []).filter((s) => s.cited)
   // The text is the truth (#592): a marker's file counts as cited even when the source list
   // still flags it uncited, so one document never shows up in both groups.
+  //
+  // PR #745 review: two distinct documents can share a fileName (#739 stopped merging those on the
+  // backend), so a fileName-keyed map resolves "last wins" to the wrong SourceReference. The marker
+  // itself already carries the documentId (`CITATION_MARKER_RE` group 1, `<documentId>#<chunk>`), so
+  // resolve by documentId first and only fall back to fileName for persisted legacy messages
+  // (`chat_messages.sources` is a JSON snapshot and may predate #739, carrying no documentId at all).
+  const sourceByDocumentId = new Map(
+    (sources ?? []).filter((s) => s.documentId != null).map((s) => [s.documentId as string, s]),
+  )
   const sourceByFileName = new Map((sources ?? []).map((s) => [s.fileName, s]))
+
+  function resolveSource(
+    documentId: string | undefined,
+    fileName: string,
+  ): SourceReference | undefined {
+    if (documentId !== undefined) {
+      const byId = sourceByDocumentId.get(documentId)
+      if (byId !== undefined) {
+        return byId
+      }
+    }
+    return sourceByFileName.get(fileName)
+  }
+
+  function rowKey(source: SourceReference | undefined, fileName: string): string {
+    return source?.documentId ?? fileName
+  }
 
   const regex = new RegExp(CITATION_MARKER_RE.source, 'g')
   let match: RegExpExecArray | null
@@ -52,11 +85,19 @@ export function buildCitationIndex(
     if (number === undefined) {
       number = numberByKey.size + 1
       numberByKey.set(key, number)
-      let docIndex = docIndexByFileName.get(fileName)
+      const markerDocumentId = key.split('#')[0]
+      const source = resolveSource(markerDocumentId, fileName)
+      const docKey = rowKey(source, fileName)
+      let docIndex = docIndexByRowKey.get(docKey)
       if (docIndex === undefined) {
         docIndex = docs.length
-        docIndexByFileName.set(fileName, docIndex)
-        docs.push({ fileName, numbers: [], source: sourceByFileName.get(fileName) })
+        docIndexByRowKey.set(docKey, docIndex)
+        docs.push({
+          fileName,
+          numbers: [],
+          source,
+          documentId: source?.documentId,
+        })
       }
       docs[docIndex].numbers.push(number)
       docIndexByNumber.set(number, docIndex)
@@ -64,9 +105,15 @@ export function buildCitationIndex(
   }
 
   for (const source of citedSources) {
-    if (!docIndexByFileName.has(source.fileName)) {
-      docIndexByFileName.set(source.fileName, docs.length)
-      docs.push({ fileName: source.fileName, numbers: [], source })
+    const docKey = rowKey(source, source.fileName)
+    if (!docIndexByRowKey.has(docKey)) {
+      docIndexByRowKey.set(docKey, docs.length)
+      docs.push({
+        fileName: source.fileName,
+        numbers: [],
+        source,
+        documentId: source.documentId,
+      })
     }
   }
 
@@ -74,7 +121,9 @@ export function buildCitationIndex(
     numberByKey,
     docIndexByNumber,
     docs,
-    uncited: (sources ?? []).filter((s) => !s.cited && !docIndexByFileName.has(s.fileName)),
+    uncited: (sources ?? []).filter(
+      (s) => !s.cited && !docIndexByRowKey.has(rowKey(s, s.fileName)),
+    ),
     markerCount: numberByKey.size,
   }
 }
