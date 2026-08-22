@@ -69,11 +69,17 @@ jobs:
           cache-from: type=gha,scope=e2e-frontend
           cache-to: type=gha,mode=max,scope=e2e-frontend
 
+      # Installs the pnpm version pinned in the "packageManager" field of
+      # e2e/package.json.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: e2e/package.json
+
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: e2e/package-lock.json
+          cache: pnpm
+          cache-dependency-path: e2e/pnpm-lock.yaml
 
       # test(e2e) #233: scripts/run-e2e.mjs seeds the e2e data profile via demo/seed/seed.py
       # between "stack ready" and "run Playwright" - needs python3 + pip on the runner (ubuntu-latest
@@ -84,11 +90,11 @@ jobs:
 
       - name: Install E2E dependencies
         working-directory: e2e
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Type-check E2E suite
         working-directory: e2e
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       # The browser download and especially the apt-get run behind
       # --with-deps have repeatedly hung on slow runner mirrors and eaten
@@ -112,14 +118,14 @@ jobs:
         timeout-minutes: 6
         run: |
           if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
-            npx playwright install chromium
+            pnpm exec playwright install chromium
           else
-            npx playwright install --with-deps chromium
+            pnpm exec playwright install --with-deps chromium
           fi
 
       - name: Run E2E suite
         working-directory: e2e
-        run: npm test
+        run: pnpm test
         env:
           E2E_SKIP_BUILD: 'true'
 
