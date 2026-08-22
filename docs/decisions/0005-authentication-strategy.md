@@ -72,6 +72,32 @@ Das Frontend handhabt den Autorisierungscode-Fluss direkt mit `oidc-client-ts`:
 
 Es gibt **keinen** passwortbasierten Anmeldeweg und kein Anmeldeformular.
 
+#### Stille Erneuerung und 401-Behandlung (#737)
+
+Der `UserManager` erneuert das Access-Token über das Refresh-Token still im Hintergrund
+(`automaticSilentRenew: true`, `accessTokenExpiringNotificationTimeInSeconds: 60`) — **ohne**
+Silent-Renew-Iframe, der an `frame-ancestors 'none'` (`frontend/nginx.conf`) scheitern würde.
+`authStore` abonniert `UserLoaded`/`UserUnloaded`/`SilentRenewError` und hält das im Store
+gehaltene Token dadurch aktuell, statt es nur einmalig beim Login/Callback als Schnappschuss zu
+setzen.
+
+Der Axios-Response-Interceptor (`apiInterceptors.ts`) behandelt einen `401` zweistufig: ein
+einmaliger `signinSilent()`-Versuch (`authStore.renewToken`) mit anschließender Wiederholung der
+ursprünglichen Anfrage (`_retry`-Guard verhindert eine Endlosschleife, falls auch die
+wiederholte Anfrage erneut `401` liefert). Nur wenn dieser Versuch scheitert — abgelaufenes
+Refresh-Token oder ein zweiter `401` trotz erneuertem Token — setzt `authStore.expireSession`
+den lokalen Sitzungszustand zurück (`resetAllStores()`, `isAuthenticated: false`), **ohne**
+`signoutRedirect()` aufzurufen: Das würde auch die Sitzung beim Identity-Provider beenden, für
+einen Vorgang, der nur ein abgelaufenes Access-Token war. Ein bewusster Klick auf „Abmelden“
+bleibt bei `logout()` mit vollem `signoutRedirect()`.
+
+Ohne diese Behandlung führte jeder Access-Token-Ablauf (Keycloak-Standard: 5 Minuten) sofort zu
+`signoutRedirect()` — auch ausgelöst durch Hintergrund-Polls (`indexingStore`, `documentStore`)
+ohne Nutzeraktion, was sich als scheinbar zufälliger Logout zeigte. `keycloak/realm-export.json`
+setzt die Lebensdauern seither explizit (`accessTokenLifespan` 900 s,
+`ssoSessionIdleTimeout` 3600 s, `ssoSessionMaxLifespan` 36000 s) statt sich auf Keycloaks
+Standardwerte zu verlassen.
+
 Schlägt `GET /api/v1/auth/config` fehl, bleibt das Frontend unauthentifiziert und zeigt einen
 Fehler an. Ein Rückfall auf einen angemeldet wirkenden Zustand ist ausgeschlossen: Das Backend
 würde weiterhin jede Anfrage abweisen, der Nutzer säße vor einer funktionslosen Oberfläche.
@@ -114,8 +140,10 @@ OIDC-Konfiguration zurück. Das Frontend bestimmt daraus, welchen Anmeldeweg es 
   ausdrücklich zu setzendes Spring-Profil gebunden, wird beim Start laut protokolliert und über
   `GET /api/v1/auth/config` nach außen als `dev` gemeldet. Wer ihn produktiv setzt, tut es sehenden
   Auges.
-- **Token im Speicher**: Ein Seitenwechsel verliert den Auth-Status; der OIDC-Fluss kann still
-  erneuern.
+- **Token im Speicher**: Ein Seitenwechsel verliert den Auth-Status. Der OIDC-Fluss erneuert das
+  Access-Token still über das Refresh-Token und hält den Store aktuell (#737) — ein
+  Browser-Neustart verliert die Sitzung trotzdem, da `WebStorageStateStore` auf
+  `sessionStorage` zeigt.
 
 ### Neutral
 

@@ -217,6 +217,19 @@ begründet werden sollte, kein hartes Muss.
 | 5 | `docker-compose.yml:19-20`, `35`, `51`, `63` | Nur `postgres` bindet auf `127.0.0.1`; `backend` (8081), `frontend` (3000) und `keycloak` (8180) veröffentlichen ihre Ports ohne Adressangabe und binden damit auf allen Schnittstellen | `postgres` auf `127.0.0.1` gebunden schützt vor Zugriff aus dem Netz, aber nicht vor jedem anderen Prozess und Nutzerkonto auf demselben Host. Die übrigen drei Ports sind dagegen aus dem Netz erreichbar, sobald keine Firewall davorsteht — bei `keycloak` ist das der konkrete Ausnutzungsweg zu Punkt 3: Die Admin-Konsole wäre netzweit ansprechbar, unabhängig davon, ob ein vorgelagerter Reverse-Proxy nur bestimmte Pfade durchreicht | Hinter einem Reverse-Proxy alle vier Ports auf `127.0.0.1:` binden, so wie es `postgres` bereits vormacht — für `keycloak` **zwingend** (sonst bleibt die Admin-Konsole trotz Proxy direkt aus dem Netz erreichbar), für `backend`/`frontend` **empfohlen** (der Reverse-Proxy ist dann der einzige Weg zu beiden). Für `postgres` **empfohlen**, die `ports:`-Zuordnung für den erreichbaren Betrieb ganz zu entfernen statt sie nur auf Loopback zu binden — Backend und `postgres` erreichen sich ohnehin über das interne Compose-Netz (Servicename `postgres`), ein Host-Port wird dafür nicht gebraucht. Für lokale Entwicklung (Anschluss mit einem Datenbank-Client vom Host aus, direkter Aufruf der Admin-Konsole) bleiben die bisherigen Bindungen dagegen sinnvoll — deshalb sind sie dort nicht als Fehler markiert |
 | 6 | `keycloak/realm-export.json` (Client `opaa-seed`, seit #712) | Öffentlicher Client mit `directAccessGrantsEnabled: true` (Resource-Owner-Password-Grant) und ohne Client-Secret, ausschließlich für `demo/seed/seed.py` gedacht | Erlaubt einen passwortbasierten Tokenweg **ohne Secret** gegen jedes Realm-Konto — auf einer erreichbaren Instanz ein zusätzlicher, von der eigentlichen Anmeldung (`opaa-frontend`, `directAccessGrantsEnabled: false`, Authorization-Code + PKCE) unabhängiger Angriffsweg, unabhängig davon, wessen Passwort betroffen ist | **Zwingend.** Client `opaa-seed` aus dem Realm-Export entfernen oder auf `enabled: false` setzen, bevor der Realm auf einer erreichbaren Instanz importiert wird. Wer die Demo dort dennoch erneut seeden will, aktiviert den Client nur für die Dauer des Laufs wieder oder legt die Rechte direkt über die Keycloak-Admin-Konsole/API an, statt den Client dauerhaft scharf zu lassen. Siehe `demo/README.md`, Abschnitt „Seed ausführen". **Ist-Zustand auf opaa.ewerlin.com** (seit dem Rheinfurt-Rollout #230): umgesetzt — der Client ist im importierten Realm deaktiviert und wird für einen Seed-Lauf nur vorübergehend aktiviert, siehe [„Seed- und `opaa-seed`-Verfahren"](#seed--und-opaa-seed-verfahren) oben |
 
+**Realm-Lebensdauern auf einer bereits laufenden Instanz (#737):** `keycloak/realm-export.json`
+setzt `accessTokenLifespan`, `ssoSessionIdleTimeout` und `ssoSessionMaxLifespan` explizit. Wie
+bei Punkt 4 oben importiert `--import-realm` einen Realm dabei nur, wenn er noch nicht existiert
+— auf einer Instanz mit bereits importiertem Realm (etwa opaa.ewerlin.com) wirkt eine spätere
+Änderung dieser Werte im Repository also **nicht von selbst**. Ein erneuter, vollständiger Import
+würde außerdem die dokumentierte Härtung der Konten aus Punkt 1 zurückdrehen. Die Lebensdauern
+müssen stattdessen gezielt über `kcadm` (oder die Admin-Konsole) nachgezogen werden:
+
+```bash
+kcadm.sh config credentials --server http://localhost:8180 --realm master --user admin
+kcadm.sh update realms/opaa -s accessTokenLifespan=900 -s ssoSessionIdleTimeout=3600 -s ssoSessionMaxLifespan=36000
+```
+
 **Zugangsdaten, die zusätzlich zu ersetzen sind (empfohlen, unabhängig von den sechs Fundstellen oben):**
 
 - `OPAA_DB_USERNAME`/`OPAA_DB_PASSWORD` — die Vorgabewerte `opaa`/`opaa` sind für die Entwicklung gewählt,

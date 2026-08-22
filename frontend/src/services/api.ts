@@ -48,7 +48,8 @@ const client = axios.create({
 setupAuthInterceptors(
   client,
   () => useAuthStore.getState().getAccessToken(),
-  () => useAuthStore.getState().logout(),
+  () => useAuthStore.getState().renewToken(),
+  () => useAuthStore.getState().expireSession(),
 )
 
 // #519 (review): a bare 413 alone doesn't tell us the oversized body was a file - normalizeError is
