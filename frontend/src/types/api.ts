@@ -91,6 +91,12 @@ export type ColorScheme = components['schemas']['ColorScheme']
 export type BrandingResponse = components['schemas']['BrandingResponse']
 export type BrandingUpdateRequest = components['schemas']['BrandingUpdateRequest']
 
+export type LlmModelResponse = components['schemas']['LlmModelResponse']
+export type LlmModelRequest = components['schemas']['LlmModelRequest']
+export type LlmModelTestRequest = components['schemas']['LlmModelTestRequest']
+export type LlmModelTestResponse = components['schemas']['LlmModelTestResponse']
+export type EmbeddingInfoResponse = components['schemas']['EmbeddingInfoResponse']
+
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
     typeof data === 'object' &&
