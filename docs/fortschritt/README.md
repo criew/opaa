@@ -1,9 +1,18 @@
 # Fortschrittsberichte
 
-Dieses Verzeichnis führt die datierten Leistungsberichte des Projekts — je Stichtag ein
-Unterverzeichnis (`JJJJMMTT/`), das den Bericht **und** seine vollständige Beleg-Grundlage
-enthält. Erster Stichtag: [20260831](./20260831/) (Meilenstein 1, siehe
-[VISION.md](../VISION.md), Roadmap).
+Dieses Verzeichnis führt die Leistungsberichte des Projekts auf **zwei Ebenen**:
+
+- **Zeitraumsberichte** (`JJJJMMTT/report.md`): je Stichtag ein Unterverzeichnis mit Bericht
+  **und** vollständiger Beleg-Grundlage. Ein Zeitraumsbericht enthält ausschließlich das
+  **Delta zum vorigen Stichtag** — was in diesem Zeitraum getan wurde („Audit fertig gebaut"),
+  nicht den Gesamtzustand. Er ist der belegbare Tätigkeitsnachweis für den Zeitraum.
+- **[gesamtstand.md](./gesamtstand.md)**: der **konsolidierte Produktstand**, der bei jedem
+  Stichtag aus dem Delta fortgeschrieben wird. Er beschreibt, was heute gebaut ist; jede
+  Aussage ist über die Zeitraumsberichte auf Bausteine rückführbar.
+
+Erster Stichtag: [20260831](./20260831/) (Meilenstein 1, siehe [VISION.md](../VISION.md),
+Roadmap). Sonderfall: Sein Zeitraum reicht vom Projektstart bis zum Stichtag — Delta und
+Gesamtstand sind dort einmalig deckungsgleich.
 
 ## Aufbau je Stichtag
 
@@ -33,10 +42,15 @@ JJJJMMTT/
    Vision, ergänzt um T1–T3 (Projektsetup, Agenten-Organisation, Testinfrastruktur), V
    (Produktvision) und P (Projekt als Produkt). Umgruppieren ist erlaubt, solange der Report
    Entwurf ist; die Bausteine bleiben unverändert.
-5. **Report schreiben.** Nur aus den gruppierten Bausteinen, mit Issue-/PR-Nummern als Beleg.
-   **Regel: Der Report zeigt nur den Endzustand.** Gebautes, das wieder zurückgebaut oder ersetzt
-   wurde, ist kein Leistungsposten — es bleibt in den Bausteinen dokumentiert. Lücken werden als
-   dokumentierte Entscheidungen mit Issue-Nummern benannt, nicht verschwiegen.
+5. **Zeitraumsbericht schreiben.** Nur aus den gruppierten Bausteinen des Zeitraums, mit
+   Issue-/PR-Nummern als Beleg — als Delta formuliert („wurde gebaut"), nie als Zustand.
+   **Regel: Der Report zeigt nur den Endzustand des Zeitraums.** Gebautes, das im selben Zeitraum
+   wieder zurückgebaut oder ersetzt wurde, ist kein Leistungsposten — es bleibt in den Bausteinen
+   dokumentiert. Lücken werden als dokumentierte Entscheidungen mit Issue-Nummern benannt, nicht
+   verschwiegen.
+6. **Gesamtstand fortschreiben.** Das Delta in [gesamtstand.md](./gesamtstand.md) einarbeiten:
+   Neues ergänzen, im Zeitraum Zurückgebautes dort entfernen, Formulierungen auf „ist gebaut"
+   halten. Der Gesamtstand nennt je Aussage den Stichtag, mit dem sie zuletzt bestätigt wurde.
 
 ## Fortschreibung zum nächsten Stichtag
 

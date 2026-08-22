@@ -1,4 +1,8 @@
-# Meilenstein 1 — Leistungsbericht (ENTWURF)
+# Meilenstein 1 — Zeitraumsbericht (ENTWURF)
+
+**Zeitraum: Projektstart (Februar 2026) bis 31.08.2026.** Dieser Bericht belegt, was in diesem
+Zeitraum getan wurde; künftige Berichte enthalten nur noch das Delta zum vorigen Stichtag
+(siehe [../README.md](../README.md)).
 
 > **Arbeitsstand, nicht veröffentlicht.** Stichtag des Meilensteins ist der 31.08.2026; dieser
 > Entwurf basiert auf dem Inventurstand vom 22.08.2026 (`main@99f61ee1`, 351 geschlossene Issues,
