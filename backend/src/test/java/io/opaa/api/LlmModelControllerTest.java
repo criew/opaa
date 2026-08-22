@@ -18,6 +18,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.llm.EmbeddingInfo;
+import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.LlmModel;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.LlmModelService;
@@ -63,6 +65,7 @@ class LlmModelControllerTest {
   @MockitoBean private LlmModelService llmModelService;
   @MockitoBean private LlmModelConnectionTester connectionTester;
   @MockitoBean private UserService userService;
+  @MockitoBean private EmbeddingInfoService embeddingInfoService;
 
   private final UUID actingAdminId = UUID.randomUUID();
   private final UUID actingAdminOrganizationId = UUID.randomUUID();
@@ -176,6 +179,28 @@ class LlmModelControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"baseUrl\":\"http://ollama:11434/v1\",\"modelIdentifier\":\"phi3\"}"))
         .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void getEmbeddingInfoAsRegularUserReturns403() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/admin/models/embedding-info").with(asRegularUser()))
+        .andExpect(status().isForbidden());
+  }
+
+  // --- Embedding info (#759) ---
+
+  @Test
+  void getEmbeddingInfoReturnsTheConfiguredEmbeddingModel() throws Exception {
+    when(embeddingInfoService.getEmbeddingInfo())
+        .thenReturn(new EmbeddingInfo("ollama", "nomic-embed-text", 1536));
+
+    mockMvc
+        .perform(get("/api/v1/admin/models/embedding-info").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.provider").value("ollama"))
+        .andExpect(jsonPath("$.model").value("nomic-embed-text"))
+        .andExpect(jsonPath("$.dimensions").value(1536));
   }
 
   // --- Key never returned ---

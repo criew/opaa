@@ -505,6 +505,26 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/admin/models/embedding-info:
+    get:
+      operationId: getEmbeddingInfo
+      tags: [admin]
+      summary: Get the current embedding model configuration (system admin only)
+      description: >
+        Read-only (#759). Unlike chat models, the embedding model is not managed through this API -
+        a change requires a full re-index because existing vectors become incomparable
+        (docs/features/llm-integration.md#sofortige-wirkung), so it stays a configuration value,
+        not a writable admin resource.
+      responses:
+        "200":
+          description: Current embedding configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbeddingInfoResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/admin/directory-sync/dry-run:
     post:
       operationId: runDirectorySyncDryRun
@@ -4552,6 +4572,25 @@ components:
           type: string
           description: German, user-facing outcome - a distinguishable message for unreachable, unauthenticated and unknown-model failures.
           example: Verbindung erfolgreich, Modell hat geantwortet.
+
+    EmbeddingInfoResponse:
+      type: object
+      description: >
+        The embedding model actually configured (#759), read-only - see
+        docs/features/llm-integration.md#sofortige-wirkung for why it is not editable here.
+      required: [provider, model, dimensions]
+      properties:
+        provider:
+          type: string
+          description: Configured embedding provider ("openai" or "ollama").
+          example: ollama
+        model:
+          type: string
+          example: nomic-embed-text
+        dimensions:
+          type: integer
+          description: Vector dimensionality of the configured pgvector store.
+          example: 1536
 
   parameters:
     AuditFrom:

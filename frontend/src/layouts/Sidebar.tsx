@@ -283,6 +283,7 @@ export default function Sidebar() {
               ? [
                   { label: 'Gruppen', to: '/admin/groups' },
                   { label: 'Branding', to: '/admin/branding' },
+                  { label: 'Modelle', to: '/admin/models' },
                 ]
               : []),
           ].map((item) => (

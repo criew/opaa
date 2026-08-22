@@ -3,10 +3,12 @@ import type {
   BrandingResponse,
   ChatDetail,
   ChatSummary,
+  EmbeddingInfoResponse,
   HealthResponse,
   IndexingRunListResponse,
   IndexingStatusResponse,
   LibraryListResponse,
+  LlmModelResponse,
   QueryResponse,
   UserInfo,
   SpaceListResponse,
@@ -438,6 +440,48 @@ export const mockSpaceMembers: Record<string, SpaceMemberResponse[]> = {
       createdAt: '2026-03-01T10:00:00Z',
     },
   ],
+}
+
+/**
+ * Mutable so create/update/delete/activate handlers can reflect their effect on the next list GET
+ * (#759), same reasoning as mockBranding above.
+ */
+export let mockLlmModels: LlmModelResponse[] = [
+  {
+    id: 'llm-model-ollama-lokal',
+    displayName: 'Ollama lokal',
+    baseUrl: 'http://ollama:11434/v1',
+    modelIdentifier: 'phi3:mini',
+    temperature: 0.7,
+    maxTokens: 2000,
+    apiKeySet: false,
+    active: true,
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+]
+
+export function resetMockLlmModels() {
+  mockLlmModels = [
+    {
+      id: 'llm-model-ollama-lokal',
+      displayName: 'Ollama lokal',
+      baseUrl: 'http://ollama:11434/v1',
+      modelIdentifier: 'phi3:mini',
+      temperature: 0.7,
+      maxTokens: 2000,
+      apiKeySet: false,
+      active: true,
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    },
+  ]
+}
+
+export const mockEmbeddingInfo: EmbeddingInfoResponse = {
+  provider: 'ollama',
+  model: 'nomic-embed-text',
+  dimensions: 1536,
 }
 
 export const mockGroups: GroupListResponse[] = [

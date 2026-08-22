@@ -1,11 +1,14 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.EmbeddingInfoResponse;
 import io.opaa.api.dto.LlmModelRequest;
 import io.opaa.api.dto.LlmModelResponse;
 import io.opaa.api.dto.LlmModelTestRequest;
 import io.opaa.api.dto.LlmModelTestResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.llm.EmbeddingInfo;
+import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.LlmModel;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.LlmModelService;
@@ -61,14 +64,17 @@ public class LlmModelController {
   private final LlmModelService llmModelService;
   private final LlmModelConnectionTester connectionTester;
   private final UserService userService;
+  private final EmbeddingInfoService embeddingInfoService;
 
   public LlmModelController(
       LlmModelService llmModelService,
       LlmModelConnectionTester connectionTester,
-      UserService userService) {
+      UserService userService,
+      EmbeddingInfoService embeddingInfoService) {
     this.llmModelService = llmModelService;
     this.connectionTester = connectionTester;
     this.userService = userService;
+    this.embeddingInfoService = embeddingInfoService;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -146,6 +152,13 @@ public class LlmModelController {
           "Ein anderes Chat-Modell wurde gleichzeitig aktiviert. Bitte erneut versuchen.",
           e);
     }
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @GetMapping("/embedding-info")
+  public EmbeddingInfoResponse getEmbeddingInfo() {
+    EmbeddingInfo info = embeddingInfoService.getEmbeddingInfo();
+    return new EmbeddingInfoResponse(info.provider(), info.model(), info.dimensions());
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

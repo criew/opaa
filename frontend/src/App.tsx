@@ -23,6 +23,7 @@ import { useBrandingStore } from './stores/brandingStore'
 import { useUiStore } from './stores/uiStore'
 import { resolveThemeMode } from './theme/colorScheme'
 import BrandingSettingsPage from './pages/BrandingSettingsPage'
+import LlmModelManagementPage from './pages/LlmModelManagementPage'
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize)
@@ -77,6 +78,7 @@ export default function App() {
               <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
               <Route path="admin/groups" element={<GroupManagementPage />} />
               <Route path="admin/branding" element={<BrandingSettingsPage />} />
+              <Route path="admin/models" element={<LlmModelManagementPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/chat" replace />} />
             </Route>
