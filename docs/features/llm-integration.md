@@ -192,6 +192,15 @@ Zugriff auf die Container hat — und das ist regelmäßig jemand anderes.
 
 Die Umsetzung wird in Epic [#755](https://github.com/criew/opaa/issues/755) geführt.
 
+**Admin-API (gebaut, #757).** `/api/v1/admin/models` bietet Auflisten, Anlegen, Ändern, Löschen,
+Aktivieren (`POST .../{modelId}/activate`) und Verbindungstest (`POST .../test`, auch für einen noch
+nicht gespeicherten Entwurf) — ausschließlich für `SYSTEM_ADMIN`. Der Zugangsschlüssel ist in jeder
+Antwort schreibend: keine Antwort enthält ihn, auch nicht gekürzt, nur das Kennzeichen `apiKeySet`.
+Löschen des aktiven Modells wird mit 409 verweigert; eine gleichzeitige Aktivierung zweier Modelle
+löst ebenfalls 409 statt eines Serverfehlers aus. Jede Änderung erzeugt ein Audit-Ereignis, und die
+Deaktivierung eines Modells beim Umschalten bekommt seit #757 ein eigenes (`LLM_MODEL_DEACTIVATED`).
+Die Administrationsoberfläche selbst ist ein eigenes, noch offenes Folgeticket (siehe Epic #755).
+
 ### Was Stufe 1 umfasst
 
 1. **Eine Liste hinterlegter Chat-Modelle**, nicht eine einzelne Einstellung. Mehrere Einträge

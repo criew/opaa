@@ -28,9 +28,9 @@ import org.springframework.web.server.ResponseStatusException;
  *
  * <p>Every change records an audit event ({@link AuditEventType#LLM_MODEL_CREATED}/{@link
  * AuditEventType#LLM_MODEL_CHANGED}/{@link AuditEventType#LLM_MODEL_DELETED}/{@link
- * AuditEventType#LLM_MODEL_ACTIVATED}) with {@code before}/{@code after} maps that never carry the
- * key itself - only whether one is set, the same convention {@code BrandingSettingsService} uses
- * for the logo's bytes.
+ * AuditEventType#LLM_MODEL_ACTIVATED}/{@link AuditEventType#LLM_MODEL_DEACTIVATED}) with {@code
+ * before}/{@code after} maps that never carry the key itself - only whether one is set, the same
+ * convention {@code BrandingSettingsService} uses for the logo's bytes.
  */
 @Service
 public class LlmModelService {
@@ -172,6 +172,16 @@ public class LlmModelService {
     for (LlmModel currentlyActive : repository.findAllByActiveTrue()) {
       currentlyActive.deactivate();
       repository.saveAndFlush(currentlyActive);
+      // #757 review of #763: the model that stops being active gets its own audit event, distinct
+      // from the LLM_MODEL_ACTIVATED event of whatever model replaces it - otherwise "wann hörte
+      // Modell X auf, aktiv zu sein" was only indirectly readable.
+      recordChange(
+          organizationId,
+          actorUserId,
+          AuditEventType.LLM_MODEL_DEACTIVATED,
+          currentlyActive,
+          Map.of("active", true),
+          Map.of("active", false));
     }
     model.activate();
     repository.save(model);

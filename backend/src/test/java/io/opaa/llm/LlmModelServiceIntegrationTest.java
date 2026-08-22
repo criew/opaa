@@ -264,6 +264,41 @@ class LlmModelServiceIntegrationTest {
   }
 
   @Test
+  void activatingASecondModelRecordsALlmModelDeactivatedEventForTheFirst() {
+    // #757 review of #763: the model that stops being active must be traceable on its own, not
+    // only indirectly via whichever model replaced it.
+    LlmModel first =
+        llmModelService.createModel(
+            organizationId,
+            userId,
+            "Erstes Modell",
+            "http://ollama:11434/v1",
+            "phi3:mini",
+            new BigDecimal("0.70"),
+            2000,
+            null);
+    LlmModel second =
+        llmModelService.createModel(
+            organizationId,
+            userId,
+            "Zweites Modell",
+            "http://ollama:11434/v1",
+            "llama3",
+            new BigDecimal("0.70"),
+            2000,
+            null);
+
+    llmModelService.activateModel(organizationId, userId, first.getId());
+    assertThat(auditEntries(AuditEventType.LLM_MODEL_DEACTIVATED)).isEmpty();
+
+    llmModelService.activateModel(organizationId, userId, second.getId());
+
+    List<Map<String, Object>> deactivations = auditEntries(AuditEventType.LLM_MODEL_DEACTIVATED);
+    assertThat(deactivations).hasSize(1);
+    assertThat(deactivations.getFirst().get("object_label").toString()).contains("Erstes Modell");
+  }
+
+  @Test
   void theDatabaseRejectsASecondActiveRowEvenWhenTheServiceIsBypassed() {
     // The service is the primary defense; this proves the backstop from migration 058 is real, so
     // a future write path that forgets to deactivate the previous model cannot quietly create two
