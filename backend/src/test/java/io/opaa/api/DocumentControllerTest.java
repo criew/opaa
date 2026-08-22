@@ -92,8 +92,35 @@ class DocumentControllerTest {
         .andExpect(content().contentType(MediaType.parseMediaType("text/plain")))
         .andExpect(content().string("Originalinhalt"))
         .andExpect(
-            header().string("Content-Disposition", "inline; filename*=UTF-8''bericht%202026.txt"))
-        .andExpect(header().string("X-Content-Type-Options", "nosniff"));
+            header()
+                .string(
+                    "Content-Disposition",
+                    "inline; filename=\"bericht 2026.txt\"; filename*=UTF-8''bericht%202026.txt"))
+        .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+        .andExpect(header().string("Content-Security-Policy", "default-src 'none'; sandbox"));
+  }
+
+  @Test
+  void encodesAnUmlautFileNameAsAnRfc5987ExtValueWithAnAsciiFallback(@TempDir Path tempDir)
+      throws Exception {
+    // #742 review, nit 4: filename* (RFC 5987/8187) is the whole point for a name outside ASCII -
+    // the earlier test's "bericht 2026.txt" only exercises the space-encoding case, never a
+    // genuinely non-ASCII byte.
+    UUID documentId = UUID.randomUUID();
+    Path file = tempDir.resolve("original.txt");
+    Files.writeString(file, "Originalinhalt", StandardCharsets.UTF_8);
+    when(documentService.loadContent(eq(documentId), eq(currentUserId), eq(false)))
+        .thenReturn(new DocumentContent(file, "Prüfbericht *2026*.txt", "text/plain"));
+
+    mockMvc
+        .perform(get("/api/v1/documents/" + documentId + "/content").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(
+            header()
+                .string(
+                    "Content-Disposition",
+                    "inline; filename=\"Pr_fbericht *2026*.txt\";"
+                        + " filename*=UTF-8''Pr%C3%BCfbericht%20%2A2026%2A.txt"));
   }
 
   @Test
