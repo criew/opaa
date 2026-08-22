@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { http, HttpResponse } from 'msw'
+import { User } from 'oidc-client-ts'
 import { server } from '../mocks/server'
 import { useAuthStore } from './authStore'
 import { useSpaceStore } from './spaceStore'
@@ -204,9 +205,9 @@ describe('authStore', () => {
     expect(useIndexingStore.getState().runsByLibrary).toEqual({})
   })
 
-  it('returns access token via getAccessToken', () => {
+  it('returns access token via getAccessToken', async () => {
     useAuthStore.setState({ token: 'test-token' })
-    expect(useAuthStore.getState().getAccessToken()).toBe('test-token')
+    await expect(useAuthStore.getState().getAccessToken()).resolves.toBe('test-token')
   })
 
   it('stays unauthenticated in oidc mode without a stored session', async () => {
@@ -226,5 +227,61 @@ describe('authStore', () => {
     expect(state.mode).toBe('oidc')
     expect(state.isAuthenticated).toBe(false)
     expect(state.isLoading).toBe(false)
+  })
+
+  // #737: oidc-client-ts renews the access token in the background via the refresh token
+  // (automaticSilentRenew), but the store used to capture the token only once, as a snapshot, at
+  // login/callback time (see the two `set({ token: ... })` calls above) - a UserManager that had
+  // silently renewed never fed the new token back into the store, so the next request kept
+  // sending the now-expired one until the response interceptor's immediate signoutRedirect() ended
+  // the whole session.
+  describe('silent token renewal (#737)', () => {
+    async function initializeOidcMode() {
+      server.use(
+        http.get('/api/v1/auth/config', () =>
+          HttpResponse.json({
+            mode: 'oidc',
+            authority: 'https://idp.example.test/realms/opaa',
+            clientId: 'opaa-frontend',
+          }),
+        ),
+      )
+      await useAuthStore.getState().initialize()
+      const { userManager } = useAuthStore.getState()
+      if (!userManager) throw new Error('expected a userManager in oidc mode')
+      return userManager
+    }
+
+    it('updates the token when the UserManager fires UserLoaded (silent renew)', async () => {
+      const userManager = await initializeOidcMode()
+
+      const renewedUser = new User({
+        access_token: 'renewed-access-token',
+        token_type: 'Bearer',
+        profile: {
+          sub: 'user-1',
+          iss: 'https://idp.example.test/realms/opaa',
+          aud: 'opaa-frontend',
+          exp: Math.floor(Date.now() / 1000) + 900,
+          iat: Math.floor(Date.now() / 1000),
+        },
+        expires_at: Math.floor(Date.now() / 1000) + 900,
+      })
+
+      await userManager.events.load(renewedUser)
+
+      await expect(useAuthStore.getState().getAccessToken()).resolves.toBe('renewed-access-token')
+    })
+
+    it('clears the token when the UserManager fires UserUnloaded', async () => {
+      const userManager = await initializeOidcMode()
+      useAuthStore.setState({ token: 'some-token', isAuthenticated: true })
+
+      await userManager.events.unload()
+
+      const state = useAuthStore.getState()
+      expect(state.token).toBeNull()
+      expect(state.isAuthenticated).toBe(false)
+    })
   })
 })

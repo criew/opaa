@@ -18,7 +18,15 @@ interface AuthState {
   loginOidc: () => Promise<void>
   handleOidcCallback: () => Promise<void>
   logout: () => Promise<void>
-  getAccessToken: () => string | null
+  getAccessToken: () => Promise<string | null>
+  // #737: a single silent-renew attempt via the refresh token, used by the response interceptor
+  // (apiInterceptors.ts) on a 401 before it retries the original request. Returns whether the
+  // renew succeeded - no iframe involved, see the UserManager comment below.
+  renewToken: () => Promise<boolean>
+  // #737: the "second failure" branch of the 401 handling - resets local session state without
+  // signoutRedirect(), which would also destroy the IdP session. Left for the OIDC case; a
+  // deliberate logout button click still calls logout() above and its full signoutRedirect().
+  expireSession: () => void
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -53,8 +61,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           response_type: 'code',
           scope: 'openid profile email',
           userStore: new WebStorageStateStore({ store: sessionStorage }),
+          // #737: oidc-client-ts renews the access token in the background via the refresh
+          // token once it is close to expiring - explicit here rather than relying on the
+          // library default, and *not* an iframe-based silent renew (automaticSilentRenew alone
+          // never opens one; that only happens if code elsewhere calls signinSilent with an
+          // iframe request type). An iframe renew would fail regardless: frontend/nginx.conf sets
+          // `frame-ancestors 'none'`.
+          automaticSilentRenew: true,
+          accessTokenExpiringNotificationTimeInSeconds: 60,
         })
         set({ userManager })
+
+        // #737: keep the store's token current for the lifetime of the session - the previous
+        // code only ever captured it once, as a snapshot, at login/callback time (the two other
+        // `set({ token: ... })` calls in this file). UserLoaded also fires after every
+        // automatic silent renew, which is exactly the event that used to go unnoticed.
+        userManager.events.addUserLoaded((user) => {
+          set({ token: user.access_token, isAuthenticated: true })
+        })
+        userManager.events.addUserUnloaded(() => {
+          set({ token: null, isAuthenticated: false })
+        })
+        userManager.events.addSilentRenewError((err) => {
+          // Deliberately not resetting to a logged-out state here: the response interceptor
+          // already retries the renew synchronously with the failing request. Logging keeps a
+          // background failure (no request in flight yet) visible for troubleshooting.
+          console.error('Silent token renew failed', err)
+        })
 
         const oidcUser = await userManager.getUser()
         if (oidcUser && !oidcUser.expired) {
@@ -134,5 +167,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     })
   },
 
-  getAccessToken: () => get().token,
+  getAccessToken: async () => get().token,
+
+  renewToken: async () => {
+    const { userManager, mode } = get()
+    if (mode !== 'oidc' || !userManager) return false
+    try {
+      const user = await userManager.signinSilent()
+      if (!user) return false
+      set({ token: user.access_token, isAuthenticated: true })
+      return true
+    } catch {
+      return false
+    }
+  },
+
+  expireSession: () => {
+    // Same store reset as logout() (#440), but deliberately without signoutRedirect(): the IdP
+    // session must survive so a fresh signinRedirect() (or a manual reload) does not force the
+    // user to re-enter credentials for what was just an access-token hiccup.
+    resetAllStores()
+    clearDevUser()
+    set({
+      token: null,
+      user: null,
+      isAuthenticated: false,
+      error: null,
+    })
+  },
 }))
