@@ -17,12 +17,12 @@ demonstrierbaren Wissensassistenten für die öffentliche Verwaltung gewachsen �
 Antworten, echtem Rechtemodell, eigener Demo-Instanz und einer Arbeitsweise, in der Menschen
 und KI-Agenten gemeinsam über 320 Pull Requests geliefert haben.
 
-**Phase 1 der Produktvision („Souveräner Wissensassistent") ist zu geschätzt rund zwei
-Dritteln umgesetzt.** Das Fundament steht vollständig — Wissensquellen, Bibliotheken,
-Rechtemodell, belegte Antworten, Audit-Grundstufe, Oberfläche, Deployment. Offen sind vor
-allem Retrieval-Qualität (hybride Suche, Reranking, Konfidenz), Streaming-Antworten, der
-echte Verzeichnisanschluss, DSGVO-Rechte und die Betriebsreife jenseits von Docker Compose
-(Details in Abschnitt 6).
+**Phase 1 der Produktvision („Souveräner Wissensassistent") ist zu geschätzt rund 80 %
+umgesetzt.** Das Fundament — Wissensquellen, Bibliotheken, Rechtemodell, belegte Antworten,
+Audit-Grundstufe, Oberfläche, Deployment — steht vollständig und trägt das Hauptgewicht der
+Phase. Offen sind vor allem Retrieval-Qualität (hybride Suche, Reranking, Konfidenz),
+Streaming-Antworten, der echte Verzeichnisanschluss, DSGVO-Rechte und die Betriebsreife
+jenseits von Docker Compose (Details in Abschnitt 6).
 
 **Was heute konkret möglich ist:**
 
