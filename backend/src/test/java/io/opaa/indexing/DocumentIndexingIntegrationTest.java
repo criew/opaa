@@ -12,6 +12,7 @@ import io.opaa.auth.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
+import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryService;
 import java.io.IOException;
@@ -25,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.Usage;
@@ -101,6 +103,11 @@ class DocumentIndexingIntegrationTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private QueryService queryService;
   @MockitoBean private ChatModel chatModel;
+
+  // #758: AnswerGenerationService now resolves its ChatClient via ActiveChatModelResolver on every
+  // call rather than holding one built once at startup - stubbed below to always hand back a
+  // ChatClient wrapping the chatModel mock above.
+  @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
 
   private UUID userId;
   private UUID targetLibraryId;
@@ -480,6 +487,8 @@ class DocumentIndexingIntegrationTest {
     // exercises FileProcessingService at all, so this is the only test proving the two are
     // actually connected for a document that carries a caller-chosen library (#419).
     when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
+    when(activeChatModelResolver.resolveChatClient())
+        .thenReturn(ChatClient.builder(chatModel).build());
     var usage =
         new Usage() {
           @Override

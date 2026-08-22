@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.dto.QueryResponse;
+import io.opaa.llm.ActiveChatModelResolver;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
@@ -81,6 +83,12 @@ class QueryIntegrationTest {
 
   @MockitoBean private ChatModel chatModel;
 
+  // #758: AnswerGenerationService/ChatTitleGenerationService now resolve their ChatClient via
+  // ActiveChatModelResolver on every call instead of holding one built once at startup - stubbed
+  // once in setUp() below to always hand back a ChatClient wrapping the class-wide chatModel mock
+  // above, so every existing when(chatModel...) stub in this class keeps working unchanged.
+  @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
+
   /**
    * #616: replaces {@code ChatConfiguration#chatTitleTaskExecutor} with a same-name, fully
    * synchronous executor for this test class only - the real one runs #557's chat-title LLM call on
@@ -126,6 +134,8 @@ class QueryIntegrationTest {
     jdbcTemplate.execute("TRUNCATE TABLE vector_store");
     // Spring AI 2.0 merges ChatModel.getOptions() into every request; a bare mock returns null
     when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
+    when(activeChatModelResolver.resolveChatClient())
+        .thenReturn(ChatClient.builder(chatModel).build());
 
     userId = UUID.randomUUID();
     libraryId = UUID.randomUUID();

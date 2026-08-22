@@ -192,7 +192,7 @@ bleibt dann nur noch die Quelle, aus der beim ersten Start der initiale Eintrag 
 
 ---
 
-## Stufe 1: Verwaltete Chat-Modelle **(in Umsetzung)**
+## Stufe 1: Verwaltete Chat-Modelle **(gebaut)**
 
 Das Zielbild oben ist vollständig, aber nicht in einem Zug baubar. Stufe 1 schneidet daraus den Teil
 heraus, der für sich genommen einen Nutzen hat und alles Weitere trägt: **Chat-Modelle werden in der
@@ -222,13 +222,28 @@ für `SYSTEM_ADMIN`: Liste mit deutlich erkennbarem aktivem Eintrag, Anlegen/Bea
 „Aktiv setzen" und Verbindungstest je Eintrag, darunter der schreibgeschützte
 Einbettungsblock aus `embedding-info`.
 
+**Laufzeitauflösung (gebaut, #758).** Antwortgenerierung (`io.opaa.query.AnswerGenerationService`)
+und Titelgenerierung (`io.opaa.chat.ChatTitleGenerationService`) lösen den `ChatClient` bei jedem
+Aufruf über `io.opaa.llm.ActiveChatModelResolver` aus dem systemweit aktiven `llm_models`-Eintrag
+auf — programmatisch über die OpenAI-kompatible Anbindung (Basis-Adresse, Modell-Kennung, Temperatur,
+maximale Antwortlänge, entschlüsselter Zugangsschlüssel), nicht mehr aus der beim Start einmalig
+gebauten Spring-AI-Autoconfiguration. Der gebaute Client wird zwischengespeichert und erst
+invalidiert, wenn `io.opaa.llm.LlmModelService` das aktive Modell tatsächlich ändert (Aktivierung,
+Änderung des aktiven Eintrags) — und zwar erst nach dem Commit der auslösenden Transaktion, damit eine
+zurückgerollte Änderung den Zwischenspeicher nicht fälschlich verwirft. Ohne aktives Modell erhält die
+fragende Person eine verständliche deutsche Fehlermeldung (503) statt eines technischen Fehlers; die
+Health-Anzeige (`io.opaa.observability.ChatHealthIndicator`) benennt Basis-Adresse und Modell-Kennung
+des aktiven Modells und steht auf „down", solange keines aktiv ist. Ein nicht erreichbares aktives
+Modell führt zu einer Fehlermeldung, nie zu einem stillschweigenden Ausweichen auf ein anderes
+Modell. Die Einbettung ist davon unberührt und läuft unverändert über die native Autoconfiguration.
+
 ### Was Stufe 1 umfasst
 
 1. **Eine Liste hinterlegter Chat-Modelle**, nicht eine einzelne Einstellung. Mehrere Einträge
    nebeneinander sind der Normalfall — ein lokales Modell und ein zweites zum Vergleich, oder ein
    Nachfolger, der schon eingetragen, aber noch nicht aktiv ist.
 2. **Genau ein Modell ist systemweit aktiv.** Die Systemverwaltung schaltet um; die Umschaltung wirkt
-   beim nächsten Vorgang, ohne Neustart.
+   beim nächsten Vorgang, ohne Neustart (Laufzeitauflösung, #758, siehe oben).
 3. **Verbindungstest je Eintrag.** Eine falsch eingetragene Adresse fällt sonst erst dem nächsten
    fragenden Menschen auf — als leere Antwort, nicht als Konfigurationsfehler.
 4. **Zugangsdaten verschlüsselt und nicht rücklesbar.** Ein hinterlegter Schlüssel verlässt die Datenbank

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.llm.ActiveChatModelResolver;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,6 +50,7 @@ class ChatTitleGenerationServiceTest {
 
   @Mock private ChatModel chatModel;
   @Mock private ChatRepository chatRepository;
+  @Mock private ActiveChatModelResolver activeChatModelResolver;
 
   private ChatTitleGenerationService service;
 
@@ -56,8 +58,10 @@ class ChatTitleGenerationServiceTest {
   void setUp() {
     // Spring AI 2.0 merges ChatModel.getOptions() into every request; a bare mock returns null.
     lenient().when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
-    ChatClient.Builder builder = ChatClient.builder(chatModel);
-    service = new ChatTitleGenerationService(builder, chatRepository);
+    lenient()
+        .when(activeChatModelResolver.resolveChatClient())
+        .thenReturn(ChatClient.builder(chatModel).build());
+    service = new ChatTitleGenerationService(activeChatModelResolver, chatRepository);
   }
 
   private static ChatResponse chatResponseWith(String assistantText) {

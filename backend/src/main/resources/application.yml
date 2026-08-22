@@ -22,6 +22,14 @@ spring:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+      # #758: chat is now resolved at runtime from the active io.opaa.llm.LlmModel row via
+      # io.opaa.llm.ActiveChatModelResolver, built programmatically per request rather than once at
+      # startup from this static autoconfiguration - so the ChatModel/ChatClient.Builder beans it
+      # would otherwise register are unused dead weight. spring.ai.openai.chat.* below is untouched
+      # by this exclusion: io.opaa.llm.LlmModelSeeder reads those properties directly via
+      # Environment#getProperty, not through this autoconfiguration's beans, so the one-time
+      # takeover into llm_models on first startup keeps working exactly as before.
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
   jpa:
     hibernate:
       ddl-auto: none

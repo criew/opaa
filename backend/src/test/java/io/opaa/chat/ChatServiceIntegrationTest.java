@@ -20,6 +20,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.Space;
@@ -36,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -103,6 +105,13 @@ class ChatServiceIntegrationTest {
   // landing exactly while a later when(...) call is mid-setup throws a MockitoException).
   @MockitoBean private ChatModel chatModel;
 
+  // #758: ChatTitleGenerationService now resolves its ChatClient via ActiveChatModelResolver on
+  // every call instead of holding one built once at startup - stubbed once in setUp() below to
+  // always hand back a ChatClient wrapping the class-wide chatModel mock above, so every existing
+  // doReturn/doAnswer/doThrow stub on chatModel itself (see its own Javadoc for why those, not
+  // when(...).thenReturn(...)) keeps working unchanged.
+  @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
+
   private UUID organizationA;
 
   @BeforeEach
@@ -112,6 +121,9 @@ class ChatServiceIntegrationTest {
     // still be in flight on chatTitleTaskExecutor when the next test's @BeforeEach runs and calls
     // this getOptions() as well - see the chatModel field's Javadoc.
     doReturn(ChatOptions.builder().build()).when(chatModel).getOptions();
+    doReturn(ChatClient.builder(chatModel).build())
+        .when(activeChatModelResolver)
+        .resolveChatClient();
     chatMessageRepository.deleteAll();
     chatRepository.deleteAll();
     spaceMembershipRepository.deleteAll();
