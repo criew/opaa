@@ -1,0 +1,12 @@
+# Issue #267 — feat(security): Zielprüfung für URL-Indizierung ergänzen (private Adressbereiche, Schema)
+- Geschlossen: 2026-08-21 (completed)
+- Labels: enhancement, backend, size:M, security
+- PRs: #699 (2026-08-21, gemeinsam mit #617 und #693)
+
+**Laut Issue:** `POST /api/v1/indexing/trigger` nahm eine beliebige URL entgegen, die der Server rekursiv abrief, ohne Prüfung gegen private/lokale/Link-Local-Adressbereiche (SSRF-Härtung, nicht Behebung einer akuten Lücke — der Endpunkt ist auf `SYSTEM_ADMIN` beschränkt). Gefordert: konfigurierbare Zielprüfung vor dem ersten Abruf und nach jeder Weiterleitung (aufgelöste IP, IPv4+IPv6), explizite Schema-Prüfung auf `http`/`https` im OPAA-Code, Abschaltbarkeit/Positivliste per Umgebungsvariable (Standard: aktiv), deutsche Fehlermeldung, Tests, Doku in `.env.example`/`docs/deployment.md`.
+
+**Geliefert:** Neue Klasse `TargetAddressValidator` prüft Schema explizit sowie die aufgelöste IP gegen Loopback, Link-Local (inkl. `169.254.169.254`), private IPv4-Bereiche, IPv6 Unique-Local und IPv4-in-IPv6-eingebettete Adressen. Konfigurierbar über `opaa.indexing.target-validation` (`OPAA_INDEXING_TARGET_VALIDATION_ENABLED`, Standard `true`, plus `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` für benannte interne Hosts — Allowlist-Format ist exakter Hostname, keine CIDR-Notation, eine explizite Vereinfachung gegenüber dem im Issue offengelassenen Format). Eingebunden in `AutoindexCrawlerService`, `UrlFileDownloader`, `RssFeedIndexingExecutor` und `SourceConnectionTestService`. Der PR bündelt #267 bewusst mit zwei weiteren, zusammenhängenden Härtungen: #693 (Fix eines http→https-Upgrade-Redirect-Bugs, der praktisch jede `http://`-Quelle in Produktion lahmlegte — Voraussetzung, damit die Redirect-Zielprüfung aus #267 überhaupt sinnvoll greift) und #617 (Zugangsdaten-Fallback im Verbindungstest gehärtet). Ehrlich benannte Grenze: Da Prüfung und tatsächlicher Verbindungsaufbau zwei getrennte DNS-Auflösungen sind, ist DNS-Rebinding zwischen beiden nicht erkennbar — der JDK-`HttpClient` bietet dafür keinen Haken.
+
+**Verifikation:** `backend/src/main/java/io/opaa/indexing/TargetAddressValidator.java` existiert im aktuellen Stand, ebenso `TargetAddressValidatorTest.java`, `UrlIndexingExecutorTest.java` und `RssFeedIndexingExecutorTargetValidationTest.java`. `docs/deployment.md` und `.env.example` wurden laut Dateiliste mitgeändert.
+
+**Themen:** security, indexing, backend, retrieval

@@ -1,0 +1,12 @@
+# Issue #333 — Space-Arten durch Attribute ersetzen, Sichtbarkeit von Inhalten umbenennen
+- Geschlossen: 2026-08-14 (completed)
+- Labels: enhancement, backend, frontend, size:M
+- PRs: #337 (2026-08-14, gemergt in toten Branch), #345 (2026-08-14, tatsächlich in main)
+
+**Laut Issue:** Zwei Vereinfachungen am Space-Modell: (1) `SpaceKind` (`PERSONAL`/`PROJECT`/`TEAM`) entfällt zugunsten zweier Attribute — `isDefault` (genau ein Space je Nutzer, nicht löschbar) und `memberSource` (`MANUAL`/`GROUP`, `GROUP` nur in der Spezifikation beschrieben, nicht implementiert, hängt an #237). Nutzer sollen mehrere private Spaces anlegen können. (2) Statuswerte `DRAFT`/`PLACED` werden zu `PRIVATE`/`SHARED` umbenannt (nur Spezifikation, da Chats/Artefakte noch nicht implementiert). Verlangt: Backend-Enum-Entfernung, Migration, OpenAPI-Anpassung, Frontend-Typen/Komponenten, Spezifikationsänderungen inkl. verworfener Alternativen.
+
+**Geliefert:** Ungewöhnlicher Verlauf: PR #337 wurde gegen den Feature-Branch von #331 (`feature/330_rechtemodell-verschlanken`) gerichtet und dorthin gemergt — zu diesem Zeitpunkt war #331 aber bereits in main gemergt, wodurch #337 in einem toten Branch hängen blieb und nie in main ankam. PR #345 ist laut eigener Beschreibung eine inhaltlich identische Neuauflage („exakt dieselben zwei Commits") direkt gegen main und wurde tatsächlich gemergt. Inhaltlich: `SpaceKind` entfernt, `isDefault`/`memberSource` eingeführt, Migration `015-replace-space-kind-with-is-default.yaml` mit vier geordneten changeSets (Index vor Spaltenlöschung angelegt, um die Eindeutigkeitszusage nicht auszusetzen), `Migration015ReplaceSpaceKindTest`, Spezifikation und Frontend nachgezogen (Sidebar, SpaceManagementPage, Stores, Typen). Zusätzlich wurde `docs/discussions/discussion-workspace-concept.md` entfernt, nachdem sein Inhalt geprüft in die Fach-Specs überführt wurde. Deckt sich mit dem Issue; `memberSource=GROUP` bewusst nicht implementiert, wie im Issue vorgesehen.
+
+**Verifikation:** `backend/src/main/java/io/opaa/space/SpaceKind.java` existiert im Worktree nicht mehr; `Space.java` enthält `isDefault` als Feld (bestätigt). Die auffällige PR-Kette (#337 tot, #345 als Neuauflage) ist im Code-Endzustand ohne Konsequenz, aber bemerkenswert für die Prozessqualität — ein PR wurde versehentlich gegen einen bereits gemergten Branch statt main gerichtet.
+
+**Themen:** spaces, backend, frontend, rechtemodell, migration, doku
