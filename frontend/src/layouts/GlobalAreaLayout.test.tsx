@@ -104,7 +104,11 @@ describe('isGlobalAreaPath', () => {
     expect(isGlobalAreaPath('/admin/groups')).toBe(true)
     expect(isGlobalAreaPath('/admin')).toBe(true)
     expect(isGlobalAreaPath('/administrator')).toBe(false)
+    // #809: overview and create wizard are global views; a chosen space is not.
+    expect(isGlobalAreaPath('/spaces')).toBe(true)
+    expect(isGlobalAreaPath('/spaces/new')).toBe(true)
     expect(isGlobalAreaPath('/spaces/space-1')).toBe(false)
+    expect(isGlobalAreaPath('/spaces/space-1/chats/chat-1')).toBe(false)
     // Since #788 the user settings are a global area as well (mockup 2c).
     expect(isGlobalAreaPath('/settings')).toBe(true)
     // Since #789 the library catalog is a global area as well (Schlussnotiz Abschnitt 2).

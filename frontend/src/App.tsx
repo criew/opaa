@@ -89,11 +89,16 @@ export default function App() {
             >
               <Route index element={<Navigate to="/chat" replace />} />
               <Route path="chat" element={<ChatRedirect />} />
-              <Route path="spaces/new" element={<SpaceCreatePage />} />
+
               <Route path="spaces/:spaceId/chats/:chatId" element={<ChatPage />} />
               <Route path="spaces/:spaceId" element={<SpacePage />} />
               <Route path="spaces/:spaceId/manage" element={<SpaceManagementPage />} />
-              <Route path="spaces" element={<SpacesOverviewPage />} />
+              {/* No space selected yet (#809): overview and create wizard render in the
+                  bare global frame; the navy column appears only inside a chosen space. */}
+              <Route element={<GlobalAreaLayout />}>
+                <Route path="spaces" element={<SpacesOverviewPage />} />
+                <Route path="spaces/new" element={<SpaceCreatePage />} />
+              </Route>
               {/* The library catalog is a global area too (#789, Schlussnotiz von
                   Mockup-Abschnitt 2): bare global frame, no secondary column. */}
               <Route element={<GlobalAreaLayout />}>

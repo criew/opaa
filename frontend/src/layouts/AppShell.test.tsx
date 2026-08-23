@@ -19,6 +19,7 @@ function renderShell(initialRoute = '/chat') {
         <Route path="/settings" element={<PageHeading title="Einstellungen" />} />
         <Route element={<GlobalAreaLayout />}>
           <Route path="/libraries" element={<div>Ohne Überschrift</div>} />
+          <Route path="/spaces" element={<div>Spaces-Karten</div>} />
         </Route>
         <Route element={<GlobalAreaLayout title="Administration" sections={ADMIN_SECTIONS} />}>
           <Route path="/admin/groups" element={<div>Gruppen-Inhalt</div>} />
@@ -131,6 +132,13 @@ describe('AppShell', () => {
     renderShell('/settings')
 
     expect(screen.getByRole('navigation', { name: 'Globale Navigation' })).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
+  })
+
+  it('drops the space column on the spaces overview - it appears only inside a space (#809)', () => {
+    renderShell('/spaces')
+
+    expect(screen.getByText('Spaces-Karten')).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
   })
 
