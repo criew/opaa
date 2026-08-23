@@ -14,7 +14,7 @@ festgehalten (ADR).
 - Ein Test-Runner für mehrere Browser-Engines (Chromium, Firefox, WebKit); die Suite startet
   hier bewusst nur mit Chromium — ausreichend für ein Grundgerüst, weitere Projekte lassen sich
   in `playwright.config.ts` jederzeit ergänzen.
-- Eingebauter Trace-Viewer (`npx playwright show-trace`) und automatische Trace-/Screenshot-Erfassung
+- Eingebauter Trace-Viewer (`pnpm exec playwright show-trace`) und automatische Trace-/Screenshot-Erfassung
   bei Fehlschlägen, ohne zusätzliche Tooling-Integration.
 - Gute CI-Unterstützung (offizielles `playwright install --with-deps`, Artefakt-Upload).
 
@@ -30,7 +30,7 @@ e2e/
   docker-compose.e2e.yml    Compose-Overlay: Secret-Injektion + dynamische CORS-Origin
   playwright.config.ts
   demo-smoke/                    Demo-Smoke gegen das Compose-Profil "demo" (#232, siehe unten) —
-    playwright.config.ts         eigene Konfiguration, damit dieses eine Szenario nie in `npm test` mitläuft
+    playwright.config.ts         eigene Konfiguration, damit dieses eine Szenario nie in `pnpm test` mitläuft
     tests/demo-smoke.spec.ts
   demo-smoke.env             Environment für den Demo-Smoke-Stack (Keycloak-Anmeldung, kein Secret enthalten)
   docker-compose.demo-smoke.yml  Compose-Overlay: ai-stub statt echtem Anbieter
@@ -57,12 +57,12 @@ Systeminstallation, funktioniert daher auch mit PEP 668 „externally-managed-en
 
 ```bash
 cd e2e
-npm ci
-npx playwright install --with-deps chromium   # einmalig
-npm test
+pnpm install
+pnpm exec playwright install --with-deps chromium   # einmalig
+pnpm test
 ```
 
-`npm test` (→ `scripts/run-e2e.mjs`) übernimmt den gesamten Lebenszyklus:
+`pnpm test` (→ `scripts/run-e2e.mjs`) übernimmt den gesamten Lebenszyklus:
 
 1. `docker compose down -v` für das **eigene** Compose-Projekt `opaa-e2e` (definierte Ausgangslage;
    siehe "Isolation von einem laufenden Dev-Stack" unten).
@@ -85,7 +85,7 @@ npm test
    `SIGINT`/`SIGTERM`) oder Fehlern beim Hochfahren.
 
 Um nur Playwright gegen einen bereits laufenden Stack auszuführen (z. B. während der Entwicklung
-eines neuen Tests): `npm run test:playwright` (kein Docker-Lifecycle, erwartet den Stack unter
+eines neuen Tests): `pnpm run test:playwright` (kein Docker-Lifecycle, erwartet den Stack unter
 `http://localhost:3000`, überschreibbar via `E2E_BASE_URL`).
 
 ### Isolation von einem laufenden Dev-Stack
@@ -96,15 +96,15 @@ Host-Ports** (Postgres `15432`, Backend `18081`, Frontend `13000`, überschreibb
 (`e2e/e2e.env`, nie `.env.docker`). `docker-compose.yml` selbst hat keine festen `container_name`-
 Werte mehr — Compose präfixiert Container-, Netzwerk- und Volume-Namen automatisch mit dem
 Projektnamen. Ein parallel laufender Dev-Stack (`docker compose up`, Standardprojekt) wird von
-`npm test` also weder gestoppt noch entfernt, und umgekehrt. Das wurde manuell verifiziert: ein
-mit dem Namen `opaa-postgres` laufender Container bleibt während eines vollständigen `npm test`-
+`pnpm test` also weder gestoppt noch entfernt, und umgekehrt. Das wurde manuell verifiziert: ein
+mit dem Namen `opaa-postgres` laufender Container bleibt während eines vollständigen `pnpm test`-
 Laufs unangetastet.
 
 ### Verifizieren, dass der Rauchtest bei nicht erreichbarem Frontend fehlschlägt
 
 ```bash
 cd e2e
-npx playwright test   # ohne laufenden Stack
+pnpm exec playwright test   # ohne laufenden Stack
 ```
 
 Der Test schlägt mit `net::ERR_CONNECTION_REFUSED` fehl und legt Trace/Screenshot ab.
@@ -351,7 +351,7 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
 ## Demo-Smoke (#232)
 
 Ein separater, eigenständig startbarer Lauf gegen das Compose-Profil `demo`
-(`docs/features/demo-instance.md`) — bewusst **kein** Teil dieser Suite oder von `npm test`: Die
+(`docs/features/demo-instance.md`) — bewusst **kein** Teil dieser Suite oder von `pnpm test`: Die
 Erstindizierung des Rheinfurt-Korpus (~150–300 Dokumente über vier Bibliotheken plus 26 Uploads)
 dauert deutlich länger als der minimale `e2e`-Datenprofil-Seed oben, selbst mit `ai-stub` als
 deterministischem Modell. Zuletzt gemessene Laufzeit (Issue #232s eigenes Abnahmekriterium „Die
@@ -362,13 +362,13 @@ konkrete Bild-Build-Anteil stehen im PR, der diesen Lauf eingeführt hat.
 
 ```bash
 cd e2e
-npm ci
-npx playwright install --with-deps chromium   # einmalig
-npm run test:demo-smoke
+pnpm install
+pnpm exec playwright install --with-deps chromium   # einmalig
+pnpm run test:demo-smoke
 ```
 
-`npm run test:demo-smoke` (→ `scripts/run-e2e.mjs --target demo`) übernimmt denselben
-Lebenszyklus wie `npm test` oben, mit denselben Bausteinen, aber anderem Ziel:
+`pnpm run test:demo-smoke` (→ `scripts/run-e2e.mjs --target demo`) übernimmt denselben
+Lebenszyklus wie `pnpm test` oben, mit denselben Bausteinen, aber anderem Ziel:
 
 - Compose-Profil `demo` (`docker compose --profile demo`) statt der festen Servicenamen der
   `e2e`-Suite — startet zusätzlich `keycloak`, `demo-corpus` und `demo-presse`
@@ -383,7 +383,7 @@ Lebenszyklus wie `npm test` oben, mit denselben Bausteinen, aber anderem Ziel:
   steht in `scripts/run-e2e.mjs`s eigenem Kommentar.
 - Playwright-Lauf mit einer eigenen Konfiguration
   ([`demo-smoke/playwright.config.ts`](./demo-smoke/playwright.config.ts), `testDir` zeigt auf
-  `demo-smoke/tests/`), damit `npx playwright test` (ohne Pfadangabe, wie `npm test` und
+  `demo-smoke/tests/`), damit `pnpm exec playwright test` (ohne Pfadangabe, wie `pnpm test` und
   `.github/workflows/e2e.yml` es aufrufen) das einzige Szenario dort niemals mitläuft.
 
 **Das eine Szenario** (`demo-smoke/tests/demo-smoke.spec.ts`): Maria Weber meldet sich über die

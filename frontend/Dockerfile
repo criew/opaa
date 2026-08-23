@@ -1,10 +1,13 @@
 FROM node:22-alpine AS build
 WORKDIR /app
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+# corepack ships with node:22 and installs the pnpm version pinned in the
+# "packageManager" field of package.json on first invocation.
+RUN corepack enable
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY frontend/ .
 COPY backend/src/main/resources/openapi/opaa-api.yaml /backend/src/main/resources/openapi/opaa-api.yaml
-RUN npm run build
+RUN pnpm run build
 
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html

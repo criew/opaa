@@ -58,11 +58,17 @@ jobs:
           cache-from: type=gha,scope=demo-smoke-frontend
           cache-to: type=gha,mode=max,scope=demo-smoke-frontend
 
+      # Installs the pnpm version pinned in the "packageManager" field of
+      # e2e/package.json.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: e2e/package.json
+
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: e2e/package-lock.json
+          cache: pnpm
+          cache-dependency-path: e2e/pnpm-lock.yaml
 
       # demo/seed/seed.py needs python3 + pip on the runner, same as e2e.yml.
       - uses: actions/setup-python@v7
@@ -71,11 +77,11 @@ jobs:
 
       - name: Install E2E dependencies
         working-directory: e2e
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Type-check E2E suite
         working-directory: e2e
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Resolve Playwright version
         id: playwright-version
@@ -94,14 +100,14 @@ jobs:
         timeout-minutes: 6
         run: |
           if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
-            npx playwright install chromium
+            pnpm exec playwright install chromium
           else
-            npx playwright install --with-deps chromium
+            pnpm exec playwright install --with-deps chromium
           fi
 
       - name: Run demo smoke test
         working-directory: e2e
-        run: npm run test:demo-smoke
+        run: pnpm run test:demo-smoke
         env:
           E2E_SKIP_BUILD: 'true'
 
