@@ -7,6 +7,9 @@ import AppShell from './AppShell'
 import { useAuthStore } from '../stores/authStore'
 import { useUiStore } from '../stores/uiStore'
 import PageHeading from '../components/a11y/PageHeading'
+import GlobalAreaLayout from './GlobalAreaLayout'
+
+const ADMIN_SECTIONS = [{ label: 'Benutzer & Gruppen', to: '/admin/groups' }]
 
 function renderShell(initialRoute = '/chat') {
   return renderWithProviders(
@@ -15,6 +18,9 @@ function renderShell(initialRoute = '/chat') {
         <Route path="/chat" element={<div>Chat-Inhalt</div>} />
         <Route path="/settings" element={<PageHeading title="Einstellungen" />} />
         <Route path="/libraries" element={<div>Ohne Überschrift</div>} />
+        <Route element={<GlobalAreaLayout title="Administration" sections={ADMIN_SECTIONS} />}>
+          <Route path="/admin/groups" element={<div>Gruppen-Inhalt</div>} />
+        </Route>
       </Route>
     </Routes>,
     { withRouter: true, initialRoute },
@@ -108,6 +114,15 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toHaveFocus()
     expect(document.title).toBe('Einstellungen · OPAA')
+  })
+
+  it('drops the space column in a global area - rail and frame carry the navigation (#787)', () => {
+    renderShell('/admin/groups')
+
+    expect(screen.getByRole('navigation', { name: 'Globale Navigation' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Administration' })).toBeInTheDocument()
+    expect(screen.getByText('Gruppen-Inhalt')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
   })
 
   it('shows rail and space column in the mobile drawer and closes it after navigating', async () => {

@@ -17,7 +17,6 @@ import type { ColorScheme } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { useBrandingStore, OPAA_BRANDING } from '../stores/brandingStore'
 import PageHeading from '../components/a11y/PageHeading'
-import AdminSectionNav from '../components/admin/AdminSectionNav'
 import BrandingPreview from '../components/admin/BrandingPreview'
 import { checkAccentContrast, formatContrastRatio, parseHexColor } from '../utils/contrast'
 
@@ -168,12 +167,11 @@ export default function BrandingSettingsPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: 4, maxWidth: 960, overflowY: 'auto' }}>
-      <AdminSectionNav />
       <PageHeading title="Branding" gutterBottom />
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe Ihres Hauses. Änderungen sind
-        ohne Neuinstallation für alle Nutzenden wirksam. Ein leeres Feld bedeutet: der OPAA-Standard
-        gilt wieder.
+        Gilt für die gesamte Anwendung: Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe
+        Ihres Hauses. Änderungen sind ohne Neuinstallation für alle Nutzenden wirksam. Ein leeres
+        Feld bedeutet: der OPAA-Standard gilt wieder.
       </Typography>
 
       {storeError && (
