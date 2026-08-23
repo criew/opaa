@@ -19,7 +19,7 @@ import CreateGroupDialog from '../components/CreateGroupDialog'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
 import PageHeading from '../components/a11y/PageHeading'
-import AdminSectionNav from '../components/admin/AdminSectionNav'
+import GlobalScopeNote from '../components/GlobalScopeNote'
 
 function GroupCard({ group }: { group: GroupListResponse }) {
   const details = useGroupStore((s) => s.groupDetails[group.id])
@@ -282,7 +282,6 @@ export default function GroupManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <AdminSectionNav />
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
         <PageHeading title="Gruppen" />
         <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
@@ -296,6 +295,7 @@ export default function GroupManagementPage() {
           Neue Gruppe
         </Button>
       </Box>
+      <GlobalScopeNote />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

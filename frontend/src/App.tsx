@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
 import { createAppTheme } from './theme/theme'
+import GlobalAreaLayout from './layouts/GlobalAreaLayout'
 import AppShell from './layouts/AppShell'
 import ChatPage from './pages/ChatPage'
 import ChatRedirect from './pages/ChatRedirect'
@@ -76,9 +77,24 @@ export default function App() {
               <Route path="libraries" element={<LibraryManagementPage />} />
               <Route path="libraries/new" element={<LibraryCreatePage />} />
               <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
-              <Route path="admin/groups" element={<GroupManagementPage />} />
-              <Route path="admin/branding" element={<BrandingSettingsPage />} />
-              <Route path="admin/models" element={<LlmModelManagementPage />} />
+              {/* Global areas render inside the frame from mockup 2b (#787): no space
+                  column, a light secondary column with the area navigation instead. */}
+              <Route
+                element={
+                  <GlobalAreaLayout
+                    title="Administration"
+                    sections={[
+                      { label: 'Allgemein & Branding', to: '/admin/branding' },
+                      { label: 'Benutzer & Gruppen', to: '/admin/groups' },
+                      { label: 'Modelle', to: '/admin/models' },
+                    ]}
+                  />
+                }
+              >
+                <Route path="admin/groups" element={<GroupManagementPage />} />
+                <Route path="admin/branding" element={<BrandingSettingsPage />} />
+                <Route path="admin/models" element={<LlmModelManagementPage />} />
+              </Route>
               <Route path="settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/chat" replace />} />
             </Route>
