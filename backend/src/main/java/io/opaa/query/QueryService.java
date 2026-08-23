@@ -455,7 +455,11 @@ public class QueryService {
             .findById(UUID.fromString(docId))
             .ifPresent(doc -> result.put(docId, doc));
       } catch (IllegalArgumentException e) {
-        log.debug("Invalid document ID format: {}", docId);
+        // #78: not a transient failure - a chunk's document_id metadata never fails to parse on
+        // its own, so this signals a data problem (corrupt indexing, a botched migration, or a
+        // version mismatch between indexer and query service) that DEBUG would hide in
+        // production.
+        log.warn("Invalid document ID '{}' in chunk metadata - likely a data problem", docId);
       }
     }
     return result;
@@ -610,7 +614,9 @@ public class QueryService {
     try {
       return UUID.fromString(documentId);
     } catch (IllegalArgumentException e) {
-      log.debug("Invalid document ID format: {}", documentId);
+      // #78: same rationale as lookupSourceDocuments above - WARN, not DEBUG, since this
+      // indicates a data problem rather than a transient error.
+      log.warn("Invalid document ID '{}' in chunk metadata - likely a data problem", documentId);
       return null;
     }
   }

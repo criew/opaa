@@ -352,6 +352,49 @@ class QueryServiceTest {
   }
 
   /**
+   * #78: a chunk carrying a malformed (non-UUID) {@code document_id} in its metadata points at a
+   * data problem - corrupt indexing, a botched migration or a version mismatch between indexer and
+   * query service - not a transient failure, so both {@link QueryService#lookupSourceDocuments} and
+   * {@link QueryService#parseDocumentId} must log it at WARN, where it survives a production log
+   * level, rather than at DEBUG where it is silently dropped.
+   */
+  @Test
+  void queryLogsInvalidDocumentIdAtWarnLevel() {
+    var logger =
+        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(QueryService.class);
+    var logAppender =
+        new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+    logAppender.start();
+    logger.addAppender(logAppender);
+    try {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      var chunk =
+          Document.builder()
+              .text("Corrupted metadata content")
+              .metadata(Map.of("file_name", "broken.pdf", "document_id", "not-a-uuid"))
+              .score(0.8)
+              .build();
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      queryService.query("Question", null, currentUserId, true, List.of());
+
+      var invalidDocumentIdEvents =
+          logAppender.list.stream()
+              .filter(event -> event.getFormattedMessage().contains("not-a-uuid"))
+              .toList();
+      assertThat(invalidDocumentIdEvents).isNotEmpty();
+      assertThat(invalidDocumentIdEvents)
+          .allSatisfy(
+              event -> assertThat(event.getLevel()).isEqualTo(ch.qos.logback.classic.Level.WARN));
+    } finally {
+      logger.detachAppender(logAppender);
+    }
+  }
+
+  /**
    * #739: {@code mapSources}/{@code mergeSourceReferences} now dedupe by {@code document_id}, not
    * {@code fileName} (previously the opposite, see the #666 review this test used to document below
    * - superseded here) - two distinct documents that happen to share a file name (e.g. two RSS
