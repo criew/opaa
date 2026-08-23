@@ -91,6 +91,8 @@ describe('isGlobalAreaPath', () => {
     expect(isGlobalAreaPath('/spaces/space-1')).toBe(false)
     // Since #788 the user settings are a global area as well (mockup 2c).
     expect(isGlobalAreaPath('/settings')).toBe(true)
-    expect(isGlobalAreaPath('/libraries')).toBe(false)
+    // Since #789 the library catalog is a global area as well (Schlussnotiz Abschnitt 2).
+    expect(isGlobalAreaPath('/libraries')).toBe(true)
+    expect(isGlobalAreaPath('/libraries/lib-1')).toBe(true)
   })
 })

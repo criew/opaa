@@ -19,6 +19,7 @@ import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { fontFamily } from '../theme/tokens'
 import { assetRoleLabel, documentSourceTypeLabel, libraryVisibilityLabel } from '../utils/labels'
+import GlobalBadge from '../components/GlobalBadge'
 import PageHeading from '../components/a11y/PageHeading'
 import MetaBadge from '../components/MetaBadge'
 
@@ -199,6 +200,7 @@ export default function LibraryManagementPage() {
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
         <PageHeading title="Wissensbibliotheken" />
+        <GlobalBadge />
         <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
           {bestaende} Sie lesen dürfen
         </Typography>
