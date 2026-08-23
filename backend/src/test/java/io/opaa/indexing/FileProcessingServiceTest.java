@@ -245,7 +245,10 @@ class FileProcessingServiceTest {
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
 
-    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    var chunks =
+        List.of(
+            new org.springframework.ai.document.Document(
+                "chunk1", Map.of(ChunkingService.LOCATION_METADATA_KEY, "S. 2")));
     when(chunkingService.chunkDocuments(eq("library-metadata.txt"), eq(parsed))).thenReturn(chunks);
 
     service.processFile(file, targetLibrary);
@@ -265,6 +268,8 @@ class FileProcessingServiceTest {
     assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
     assertThat(metadata)
         .containsEntry("organization_id", targetLibrary.getOrganizationId().toString());
+    // #667: the chunk's Fundort rides along to the vector store.
+    assertThat(metadata).containsEntry(ChunkingService.LOCATION_METADATA_KEY, "S. 2");
   }
 
   @Test
@@ -361,7 +366,12 @@ class FileProcessingServiceTest {
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
 
-    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    // #667: the location key joins the bookkeeping metadata and must stay out of the embed text
+    // too.
+    var chunks =
+        List.of(
+            new org.springframework.ai.document.Document(
+                "chunk1", Map.of(ChunkingService.LOCATION_METADATA_KEY, "S. 2")));
     when(chunkingService.chunkDocuments(eq("changed.txt"), eq(parsed))).thenReturn(chunks);
 
     FileProcessingResult result = service.processFile(file, targetLibrary);

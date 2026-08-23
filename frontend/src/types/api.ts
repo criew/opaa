@@ -10,6 +10,8 @@ export type IndexingRunListResponse = components['schemas']['IndexingRunListResp
 export type IndexingTriggerSource = components['schemas']['IndexingTriggerSource']
 export type QueryRequest = components['schemas']['QueryRequest']
 export type QueryMetadata = components['schemas']['QueryMetadata']
+export type ChunkLocation = components['schemas']['ChunkLocation']
+export type SearchedLibrary = components['schemas']['SearchedLibrary']
 export type ErrorResponse = components['schemas']['ErrorResponse']
 
 export type SpaceRole = components['schemas']['SpaceRole']

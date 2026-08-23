@@ -124,6 +124,22 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             </Alert>
           )}
 
+          {/* #667, mockup 1a: an answer that substantiates nothing still says what was looked at
+              - the effective search scope by name, straight from QueryMetadata#searchedLibraries.
+              Only when the answer cites nothing; under a Fundstellen block the list is noise. */}
+          {!isUser &&
+            citations.docs.length === 0 &&
+            (message.searchedLibraries?.length ?? 0) > 0 && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 1 }}
+                data-testid="searched-libraries"
+              >
+                Durchsucht wurden: {message.searchedLibraries!.map((l) => l.name).join(', ')}
+              </Typography>
+            )}
+
           {!isUser && (
             <SourceFootnotes
               messageId={message.id}

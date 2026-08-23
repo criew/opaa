@@ -133,4 +133,74 @@ class ChunkingServiceTest {
                 .chunkOverlap())
         .isZero();
   }
+
+  /** #667: every chunk carries the Fundort derived from the headings in effect where it starts. */
+  @Test
+  void stampsChunksWithTheirHeadingPath() {
+    var service =
+        new ChunkingService(
+            new IndexingProperties("./docs", 60, 0, 50, 3, null, null, null, null, null, 0));
+    String text =
+        "# Dienstanweisung\n"
+            + "## 4 Fristen\n"
+            + distinctSentences(12)
+            + "\n## 5 Zuständigkeit\n"
+            + distinctSentences(12);
+
+    List<Document> result = service.chunkDocuments("anweisung.md", List.of(new Document(text)));
+
+    assertThat(result).hasSizeGreaterThan(2);
+    assertThat(result.getFirst().getMetadata())
+        .containsEntry(
+            ChunkingService.LOCATION_METADATA_KEY, "Abschn. Dienstanweisung › 4 Fristen");
+    assertThat(result.getLast().getMetadata())
+        .containsEntry(
+            ChunkingService.LOCATION_METADATA_KEY, "Abschn. Dienstanweisung › 5 Zuständigkeit");
+  }
+
+  /**
+   * #667: the overlap prefix carried over from the predecessor must not shift a chunk's location.
+   */
+  @Test
+  void locatesAChunkByItsOwnTextNotByTheOverlapPrefix() {
+    var service =
+        new ChunkingService(
+            new IndexingProperties("./docs", 60, 20, 50, 3, null, null, null, null, null, 0));
+    String text = "# Alpha\n" + distinctSentences(10) + "\n# Beta\n" + distinctSentences(10);
+
+    List<Document> result = service.chunkDocuments("doc.md", List.of(new Document(text)));
+
+    assertThat(result).hasSizeGreaterThan(2);
+    assertThat(result.getLast().getMetadata())
+        .containsEntry(ChunkingService.LOCATION_METADATA_KEY, "Abschn. Beta");
+  }
+
+  /** #667: page-break markers become "S. n" locations and never reach the stored chunk text. */
+  @Test
+  void turnsPageBreaksIntoPageLocationsAndStripsThem() {
+    var service =
+        new ChunkingService(
+            new IndexingProperties("./docs", 1000, 100, 50, 3, null, null, null, null, null, 0));
+    String text = "Erste Seite mit etwas Text.\fZweite Seite mit mehr Text.";
+
+    List<Document> result = service.chunkDocuments("scan.pdf", List.of(new Document(text)));
+
+    assertThat(result).hasSize(1);
+    assertThat(result.getFirst().getMetadata())
+        .containsEntry(ChunkingService.LOCATION_METADATA_KEY, "S. 1–2");
+    assertThat(result.getFirst().getText()).doesNotContain("\f").contains("Zweite Seite");
+  }
+
+  @Test
+  void leavesFlatTextWithoutALocation() {
+    var service =
+        new ChunkingService(
+            new IndexingProperties("./docs", 1000, 100, 50, 3, null, null, null, null, null, 0));
+
+    List<Document> result =
+        service.chunkDocuments("notes.txt", List.of(new Document("Nur ein flacher Text.")));
+
+    assertThat(result.getFirst().getMetadata())
+        .doesNotContainKey(ChunkingService.LOCATION_METADATA_KEY);
+  }
 }
