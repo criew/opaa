@@ -12,11 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 class GlobalExceptionHandlerTest {
 
@@ -63,6 +66,33 @@ class GlobalExceptionHandlerTest {
     ErrorResponse body = response.getBody();
     assertNotNull(body);
     assertEquals("Fehler im KI-Dienst", body.getError());
+  }
+
+  @Test
+  void handleNoResourceFoundExceptionReturnsNotFound() {
+    // #456: an unmapped path fell through to handleGenericException and answered 500 instead of
+    // the expected 404 - see GlobalExceptionHandlerUnmappedPathTest for the full-stack
+    // reproduction against an actual unmapped route.
+    var response =
+        handler.handleNoResourceFoundException(
+            new NoResourceFoundException(
+                HttpMethod.GET, "gibtesnicht", "No static resource gibtesnicht."));
+    assertEquals(404, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(404, body.getStatus());
+    assertEquals("Die angeforderte Ressource wurde nicht gefunden", body.getError());
+  }
+
+  @Test
+  void handleNoResourceFoundExceptionAlsoHandlesNoHandlerFoundException() {
+    var response =
+        handler.handleNoResourceFoundException(
+            new NoHandlerFoundException("GET", "/gibtesnicht", null));
+    assertEquals(404, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("Die angeforderte Ressource wurde nicht gefunden", body.getError());
   }
 
   @Test

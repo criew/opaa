@@ -24,6 +24,8 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -130,6 +132,27 @@ public class GlobalExceptionHandler {
         .body(
             new ErrorResponse(
                 "Fehler im KI-Dienst", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
+  }
+
+  /**
+   * #456: a request to a path no controller serves reaches Spring's static resource handling as the
+   * last resort, which throws {@link NoResourceFoundException} (or, with a differently configured
+   * resource handler, {@link NoHandlerFoundException}) - a caller error, not a server error.
+   * Without this handler, it fell through to {@link #handleGenericException}'s {@code 500} and
+   * logged a full stacktrace on {@code ERROR}, which both hid the actual cause from API callers (an
+   * unmapped path looks identical to a real server error) and drowned the log in noise from
+   * scanners probing paths like {@code /wp-admin} or {@code /.env}. Logged at {@code DEBUG} without
+   * a stacktrace, since the request path itself is all there is to know.
+   */
+  @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+  public ResponseEntity<ErrorResponse> handleNoResourceFoundException(Exception ex) {
+    log.debug("No handler found for request: {}", errorSanitizer.sanitize(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(
+            new ErrorResponse(
+                "Die angeforderte Ressource wurde nicht gefunden",
+                HttpStatus.NOT_FOUND.value(),
+                Instant.now()));
   }
 
   @ExceptionHandler(AccessDeniedException.class)
