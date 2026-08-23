@@ -59,11 +59,11 @@ import org.springframework.util.StringUtils;
  *
  * <p><b>This class only ever seeds the chat model.</b> There is no analogous takeover for the
  * embedding configuration - embedding models are not managed objects yet (unlike the chat model
- * since Stufe 1 of the model management), so an existing installation upgrading past #762 with a
- * non-default embedding address (e.g. {@code OPAA_OLLAMA_BASE_URL} pointing at a host-run Ollama
- * server rather than the new default's {@code ollama} Compose service name) must translate that
- * value into {@code OPAA_OPENAI_EMBEDDING_BASE_URL} itself, in the environment, before the update -
- * see docs/deployment.md's own migration note for #762.
+ * since Stufe 1 of the model management). Since #773 reverted embedding to Ollama's native API (see
+ * issue #773), a non-default embedding address is configured directly via {@code
+ * OPAA_OLLAMA_EMBEDDING_BASE_URL} - no migration/translation step is needed for an installation
+ * upgrading past #773, since that variable is new and does not collide with anything #762 read; see
+ * docs/deployment.md's own migration note for #773.
  *
  * <p>{@link #seedIfNeeded()} is called from {@link LlmModelSeedRunner}, a separate bean, rather
  * than being an {@code ApplicationRunner} itself: {@code @Transactional} only takes effect on a
@@ -107,24 +107,27 @@ class LlmModelSeeder {
   private static final String LEGACY_OLLAMA_PROVIDER_VALUE = "ollama";
   private static final String LEGACY_OLLAMA_BASE_URL_ENV = "OPAA_OLLAMA_BASE_URL";
   private static final String LEGACY_OLLAMA_CHAT_MODEL_ENV = "OPAA_OLLAMA_CHAT_MODEL";
-  private static final String LEGACY_OLLAMA_EMBEDDING_MODEL_ENV = "OPAA_OLLAMA_EMBEDDING_MODEL";
   private static final String DOCKER_PROFILE = "docker";
 
   /**
-   * Every environment variable #762 removed from {@code application.yml}. Not all of them still
-   * have a meaning to this class (only {@link #LEGACY_CHAT_PROVIDER_ENV}/{@link
-   * #LEGACY_OLLAMA_BASE_URL_ENV}/{@link #LEGACY_OLLAMA_CHAT_MODEL_ENV} do, for the chat takeover
-   * path), but a value left over in any of them is equally silent otherwise - {@link
-   * #warnAboutLeftoverLegacyVariables()} surfaces all five so an operator notices before assuming
-   * they still do something (PR #766 review, Befund 6).
+   * Environment variables #762 removed from {@code application.yml} that still have no effect on
+   * it. Not all of them have a meaning to this class either (only {@link
+   * #LEGACY_CHAT_PROVIDER_ENV}/{@link #LEGACY_OLLAMA_BASE_URL_ENV}/{@link
+   * #LEGACY_OLLAMA_CHAT_MODEL_ENV} do, for the chat takeover path), but a value left over in any of
+   * them is equally silent otherwise - {@link #warnAboutLeftoverLegacyVariables()} surfaces them so
+   * an operator notices before assuming they still do something (PR #766 review, Befund 6).
+   *
+   * <p><b>{@code OPAA_OLLAMA_EMBEDDING_MODEL} used to be in this list and no longer is</b> - #773
+   * reverted embedding to Ollama's native API and gave that variable a real effect again (see
+   * {@code application.yml}'s {@code spring.ai.ollama.embedding.model}); warning that it is
+   * "without effect" would now be actively wrong, not just harmlessly cautious.
    */
   private static final List<String> LEGACY_ENVIRONMENT_VARIABLES =
       List.of(
           LEGACY_CHAT_PROVIDER_ENV,
           LEGACY_EMBEDDING_PROVIDER_ENV,
           LEGACY_OLLAMA_BASE_URL_ENV,
-          LEGACY_OLLAMA_CHAT_MODEL_ENV,
-          LEGACY_OLLAMA_EMBEDDING_MODEL_ENV);
+          LEGACY_OLLAMA_CHAT_MODEL_ENV);
 
   private final LlmModelRepository repository;
   private final LlmModelSeedMarkerRepository markerRepository;

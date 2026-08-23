@@ -22,10 +22,12 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Verifies the single, OpenAI-compatible connection path application.yml wires since #762: both
- * chat and embedding are fixed to {@code openai}, with a default base URL that already points at a
- * locally operated Ollama server - no separate, native provider path exists anymore (see
- * docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei).
+ * Verifies the connection paths application.yml wires: chat is fixed to {@code openai} since #762
+ * (Ollama's OpenAI-compatible protocol, with a default base URL that already points at a locally
+ * operated Ollama server - see docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei);
+ * embedding is fixed to {@code ollama} since #773, reverted from that same {@code /v1/embeddings}
+ * endpoint after it caused a measurable retrieval-quality regression against the eval baseline
+ * (issue #773).
  *
  * <p><b>Since #758, {@code spring.ai.model.chat} no longer selects a Spring Boot autoconfiguration
  * for the chat {@code ChatModel} bean</b> - {@code application.yml} excludes {@code
@@ -71,15 +73,15 @@ class ProviderConfigurationTest {
   @Autowired private Environment environment;
 
   @Test
-  void chatAndEmbeddingAreFixedToTheOpenAiCompatibleProtocol() {
+  void chatIsFixedToOpenAiAndEmbeddingIsFixedToOllama() {
     assertThat(environment.getProperty("spring.ai.model.chat")).isEqualTo("openai");
-    assertThat(environment.getProperty("spring.ai.model.embedding")).isEqualTo("openai");
+    assertThat(environment.getProperty("spring.ai.model.embedding")).isEqualTo("ollama");
   }
 
   @Test
   void chatAndEmbeddingModelsHaveIndependentDefaults() {
     assertThat(environment.getProperty("spring.ai.openai.chat.model")).isEqualTo("phi3:mini");
-    assertThat(environment.getProperty("spring.ai.openai.embedding.model"))
+    assertThat(environment.getProperty("spring.ai.ollama.embedding.model"))
         .isEqualTo("nomic-embed-text");
   }
 
@@ -91,7 +93,7 @@ class ProviderConfigurationTest {
         .isEqualTo("http://localhost:11434/v1");
     assertThat(environment.getProperty("spring.ai.openai.chat.base-url"))
         .isEqualTo("http://localhost:11434/v1");
-    assertThat(environment.getProperty("spring.ai.openai.embedding.base-url"))
-        .isEqualTo("http://localhost:11434/v1");
+    assertThat(environment.getProperty("spring.ai.ollama.base-url"))
+        .isEqualTo("http://localhost:11434");
   }
 }

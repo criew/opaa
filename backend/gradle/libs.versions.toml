@@ -40,11 +40,16 @@ spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-te
 # Spring AI (versions managed by Spring AI BOM)
 spring-ai-vector-store-advisor = { module = "org.springframework.ai:spring-ai-vector-store-advisor" }
 spring-ai-starter-model-openai = { module = "org.springframework.ai:spring-ai-starter-model-openai" }
+# #773: reintroduced (removed by #762/#766) - the embedding function was reverted from Ollama's
+# /v1/embeddings endpoint back to its native API after that endpoint caused a measurable
+# retrieval-quality regression (issue #773). Chat stays on spring-ai-starter-model-openai above,
+# unaffected.
+spring-ai-starter-model-ollama = { module = "org.springframework.ai:spring-ai-starter-model-ollama" }
 # #762: io.opaa.api.GlobalExceptionHandler catches org.springframework.ai.retry.{Transient,NonTransient}AiException
-# directly. spring-ai-starter-model-openai only pulls in spring-ai-autoconfigure-retry (the
-# autoconfiguration, not the exception classes themselves) - the now-removed
-# spring-ai-starter-model-ollama used to bring this module in transitively, so it must be declared
-# explicitly now.
+# directly. spring-ai-starter-model-openai alone only pulls in spring-ai-autoconfigure-retry (the
+# autoconfiguration, not the exception classes themselves); spring-ai-starter-model-ollama (back
+# since #773) brings this module in transitively again, but it stays declared explicitly so this
+# dependency does not silently become implicit again.
 spring-ai-retry = { module = "org.springframework.ai:spring-ai-retry" }
 spring-ai-starter-vector-store-pgvector = { module = "org.springframework.ai:spring-ai-starter-vector-store-pgvector" }
 spring-ai-tika-document-reader = { module = "org.springframework.ai:spring-ai-tika-document-reader" }
@@ -87,6 +92,7 @@ spring-boot = [
 spring-ai = [
     "spring-ai-vector-store-advisor",
     "spring-ai-starter-model-openai",
+    "spring-ai-starter-model-ollama",
     "spring-ai-starter-vector-store-pgvector",
     "spring-ai-tika-document-reader",
     "spring-ai-retry",

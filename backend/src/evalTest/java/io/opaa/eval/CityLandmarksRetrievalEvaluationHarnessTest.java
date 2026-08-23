@@ -310,10 +310,11 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     registry.add("spring.datasource.url", postgres::getJdbcUrl);
     registry.add("spring.datasource.username", postgres::getUsername);
     registry.add("spring.datasource.password", postgres::getPassword);
-    // #762: no native Ollama provider anymore - reach the same container through its
-    // OpenAI-compatible /v1 endpoint instead (application.yml's own default path since #762).
-    registry.add("spring.ai.openai.embedding.base-url", () -> ollama.getEndpoint() + "/v1");
-    registry.add("spring.ai.openai.embedding.model", () -> EMBEDDING_MODEL);
+    // #773: back to the native Ollama connection - #762/#766 had moved this onto the container's
+    // OpenAI-compatible /v1 endpoint, which then turned out to cause the retrieval-quality
+    // regression issue #773 fixes (application.yml's own default path since #773).
+    registry.add("spring.ai.ollama.base-url", ollama::getEndpoint);
+    registry.add("spring.ai.ollama.embedding.model", () -> EMBEDDING_MODEL);
     registry.add("spring.ai.vectorstore.pgvector.dimensions", () -> EMBEDDING_DIMENSIONS);
     registry.add("opaa.indexing.document-path", () -> corpusWorkingDir.toAbsolutePath().toString());
     // #478/ADR-0018: a FILESYSTEM library now reads its own sourcePath instead of the

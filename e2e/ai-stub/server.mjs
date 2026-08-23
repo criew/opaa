@@ -1,4 +1,4 @@
-// Minimal OpenAI-compatible stub for the E2E stack's chat/embedding calls.
+// Minimal OpenAI/Ollama-compatible stub for the E2E stack's chat/embedding calls.
 //
 // The E2E suite must never reach a real model (cost, non-determinism, network dependency in CI -
 // see docs/decisions/0009-e2e-teststrategie.md, point 4, which deliberately left "local model
@@ -7,6 +7,12 @@
 // follow-up: it speaks just enough of the OpenAI wire protocol for Spring AI's OpenAiApi client
 // (POST /v1/embeddings, POST /v1/chat/completions) to work end-to-end against a fully offline,
 // deterministic backend.
+//
+// #773 reverted the backend's embedding function to Ollama's native API - this stub therefore also
+// answers POST /api/embed (Ollama's own wire shape, {model, input: [...]} in, {model, embeddings:
+// [[...], ...]} out) with the same fixed vector logic as the OpenAI-compatible /v1/embeddings
+// handler below. Chat is unaffected (still POST /v1/chat/completions, spring.ai.model.chat stays
+// "openai").
 //
 // Embeddings: every input gets the exact same fixed-dimension vector, mirroring
 // backend/src/test/java/io/opaa/FakeEmbeddingModel.java (used for the same purpose in backend
@@ -116,6 +122,17 @@ const server = createServer(async (req, res) => {
         data,
         model: body.model ?? 'stub-embedding',
         usage: { prompt_tokens: 0, total_tokens: 0 },
+      })
+      return
+    }
+
+    // #773: Ollama's native embedding endpoint - see this file's own header comment.
+    if (req.method === 'POST' && matchesEndpoint(req.url, '/api/embed')) {
+      const body = JSON.parse(await readBody(req))
+      const inputs = Array.isArray(body.input) ? body.input : [body.input]
+      sendJson(res, 200, {
+        model: body.model ?? 'stub-embedding',
+        embeddings: inputs.map(() => fakeEmbedding()),
       })
       return
     }

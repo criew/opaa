@@ -65,20 +65,27 @@ spring:
       # not the cause - PR #305 already rejected it once for the same reason.
       maximum-pool-size: 10
   ai:
-    # #762: a single connection path for both functions - the OpenAI-compatible protocol. Ollama
-    # speaks it too (under its own /v1 endpoint), which is why there is no separate "ollama"
-    # provider anymore - see docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei. The
-    # value is fixed, not driven by an environment variable: with the native Ollama starter gone,
-    # "openai" is the only autoconfiguration Spring AI can wire here.
+    # #762: chat stays on a single connection path - the OpenAI-compatible protocol. Ollama speaks
+    # it too (under its own /v1 endpoint), which is why there is no separate "ollama" chat provider
+    # - see docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei. Not driven by an
+    # environment variable: spring.ai.model.chat is fixed to "openai", the only autoconfiguration
+    # Spring AI wires here for chat (io.opaa.llm.ActiveChatModelResolver builds the actual
+    # ChatClient at runtime from the active llm_models row - this property only decides which
+    # autoconfiguration OpenAiBaseUrlGuard/LlmModelSeeder read past, see their own Javadoc).
+    #
+    # #773: embedding was reverted back to Ollama's native API - #762/#766 had moved it onto the
+    # same /v1/embeddings endpoint as chat, which then turned out to cause a measurable
+    # retrieval-quality regression against the eval baseline (checkRetrievalBaseline, issue #773).
+    # Fixed to "ollama", not driven by an environment variable either - there is deliberately no
+    # OPAA_AI_EMBEDDING_PROVIDER switch to bring back (that select-your-own-provider design is what
+    # #762 removed in the first place); a future, genuinely configurable embedding model is a later
+    # milestone (docs/features/llm-integration.md), not this fix.
     model:
       chat: openai
-      embedding: openai
-    # Unlike before #762, the base URL DOES have a default: locally operated models are the
-    # default (docs/features/llm-integration.md#eigene-modelle-zuerst), and that default is
-    # now expressed here directly rather than through a second, native configuration block. The
-    # profile-specific overrides below point at the same Ollama server the removed "ollama" blocks
-    # used to (docker: the "ollama" service name; local/default: localhost) - only the property
-    # holding the address changed, not the target. A real vendor's endpoint still has to be stated
+      embedding: ollama
+    # Locally operated models are the default (docs/features/llm-integration.md#eigene-modelle-zuerst).
+    # The profile-specific overrides below point at the same Ollama server (docker: the "ollama"
+    # service name; local/default: localhost). A real vendor's chat endpoint still has to be stated
     # explicitly by overriding the variables below; nothing here silently reaches outside the
     # organisation, because the default itself stays local. Ollama needs no access key at all, so
     # the placeholder default below is never sent anywhere that checks it.
@@ -91,10 +98,14 @@ spring:
         model: ${OPAA_OPENAI_CHAT_MODEL:phi3:mini}
         temperature: ${OPAA_OPENAI_CHAT_TEMPERATURE:0.7}
         max-tokens: ${OPAA_OPENAI_CHAT_MAX_TOKENS:2000}
+    # Native Ollama connection, embedding-only since #773 (see the comment on spring.ai.model
+    # above) - independent of spring.ai.openai.chat.* above even when both point at the same
+    # physical Ollama server, which is the common case (docker/local defaults below do exactly
+    # that).
+    ollama:
+      base-url: ${OPAA_OLLAMA_EMBEDDING_BASE_URL:http://localhost:11434}
       embedding:
-        api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
-        base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}
-        model: ${OPAA_OPENAI_EMBEDDING_MODEL:nomic-embed-text}
+        model: ${OPAA_OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
     vectorstore:
       pgvector:
         initialize-schema: true
@@ -253,8 +264,8 @@ spring:
       base-url: ${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}
       chat:
         base-url: ${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}}
-      embedding:
-        base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}}
+    ollama:
+      base-url: ${OPAA_OLLAMA_EMBEDDING_BASE_URL:http://ollama:11434}
 
 ---
 spring:

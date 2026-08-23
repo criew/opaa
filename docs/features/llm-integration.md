@@ -129,7 +129,9 @@ Voreinstellung umgesetzt, und zwar in der Konfiguration:
 
 **Lokal betriebene Modelle sind die Voreinstellung, für Chat und für Einbettung.** Eine Installation,
 an der niemand etwas konfiguriert, ruft kein Modell außerhalb des Hauses auf. Das ist entschieden und
-bleibt so; es ist keine Zwischenlösung.
+bleibt so; es ist keine Zwischenlösung. Chat und Einbettung liefen dafür zwischen #762 und #773 über
+denselben Anbindungsweg — seit #773 sind es wieder zwei getrennte (siehe den nächsten Abschnitt),
+was an dieser Grundaussage nichts ändert.
 
 **Eine technische Durchsetzung gibt es nicht.** Es existiert kein Mechanismus, der einen Modellaufruf
 an ein Ziel außerhalb festgelegter Netzbereiche verweigert. Wer die Voreinstellung ändert, kann jedes
@@ -153,37 +155,55 @@ einer Person zurechenbar — das ist gegenüber heute ein Gewinn an Nachweisbark
 selbst ändert sich nichts: Wer in der Oberfläche eine Adresse außerhalb des Hauses einträgt, kann das,
 und OPAA hält ihn weiterhin nicht auf. Die Absicherung des Netzwegs bleibt außerhalb von OPAA.
 
-### Ein einziger Anbindungsweg **(gebaut, #762)**
+### Ein einziger Anbindungsweg für den Chat **(gebaut, #762; für die Einbettung revidiert, #773)**
 
-Es gibt **keine Anbieterangabe mehr, die zwischen zwei Konfigurationswegen umschaltet.** Bis
-einschließlich der vorigen Version wählte eine eigene Variable zwischen einem nativen Weg für
-Ollama und der openai-kompatiblen Schnittstelle für alles andere; dieser native Weg entfiel mit
-#762 vollständig (siehe [„Ein Anbindungsweg, nicht zwei"](#ein-anbindungsweg-nicht-zwei) — was dort
-bereits für den Modelleintrag der Modellverwaltung galt, gilt seither auch für die
-Betriebskonfiguration, aus der er hervorgeht). Ollama wird seitdem wie jeder andere
+Für den **Chat** gibt es **keine Anbieterangabe mehr, die zwischen zwei Konfigurationswegen
+umschaltet.** Bis einschließlich der vorigen Version wählte eine eigene Variable zwischen einem
+nativen Weg für Ollama und der openai-kompatiblen Schnittstelle für alles andere; dieser native Weg
+entfiel mit #762 vollständig (siehe [„Ein Anbindungsweg, nicht zwei"](#ein-anbindungsweg-nicht-zwei)
+— was dort bereits für den Modelleintrag der Modellverwaltung galt, gilt seither auch für die
+Betriebskonfiguration, aus der er hervorgeht). Ollama wird seitdem für den Chat wie jeder andere
 openai-kompatible Endpunkt über seinen eigenen `/v1`-Pfad angesprochen.
 
-Die Basis-Adresse hat deshalb wieder eine **Voreinstellung** — anders als in einer früheren Fassung
-dieses Abschnitts, die bewusst keine vorsah: Ein lautes Scheitern beim Start ohne gesetzte Adresse
-war die richtige Entscheidung, solange die openai-kompatible Schnittstelle die Ausnahme war und ein
-nativer, lokal voreingestellter Ollama-Weg daneben bestand — eine geerbte Voreinstellung hätte dort
-eine Installation, die im Haus bleiben sollte, stillschweigend nach außen gerichtet. Seit die
-openai-kompatible Schnittstelle der **einzige** Weg ist, trifft dieses Risiko nicht mehr zu: Die
-Voreinstellung selbst zeigt auf einen lokal betriebenen Ollama-Server, nicht nach außen. Ein lautes
-Scheitern bliebe hier ein Fehlschlag ohne Gegenwert — jede Installation, an der niemand etwas
-konfiguriert, bräuchte sonst eine Adresse, nur um überhaupt zu starten, obwohl die richtige Adresse
-längst feststeht.
+**Für die Einbettung gilt das seit [#773](https://github.com/criew/opaa/issues/773) nicht mehr.**
+#762 hatte den nativen Weg auch für die Einbettung entfernt und sie testweise auf denselben
+openai-kompatiblen Pfad umgestellt. Der `/v1/embeddings`-Endpunkt erwies sich dabei als messbar
+schlechter für die Suchqualität — belegt durch den Eval-Harness (`checkRetrievalBaseline`) gegen die
+gepinnte Baseline, siehe Issue #773 für die Messwerte. Der Effekt ließ sich nicht auf einen
+einzelnen, korrigierbaren Anfrageparameter zurückführen (identische Texte ergaben in isolierten
+Stichproben bitidentische Vektoren auf beiden Endpunkten, der Qualitätsunterschied trat erst im
+vollständigen, produktionsnahen Lauf zutage), weshalb die Einbettung stattdessen auf Ollamas
+**native API** zurückgebaut wurde — fest auf den Anbindungsweg `ollama`, ohne die vorherige
+Anbieter-Umschaltvariable (`OPAA_AI_EMBEDDING_PROVIDER`) wiederzubeleben. Eine wählbare
+Einbettungskonfiguration bliebe eine spätere Ausbaustufe, siehe [„Warum die Einbettung nicht
+mitkommt"](#warum-die-einbettung-nicht-mitkommt).
 
-Wer stattdessen einen anderen Anbieter verwenden will — für Chat, für Einbettung, oder für beides —,
+Die Chat-Basis-Adresse hat deshalb wieder eine **Voreinstellung** — anders als in einer früheren
+Fassung dieses Abschnitts, die bewusst keine vorsah: Ein lautes Scheitern beim Start ohne gesetzte
+Adresse war die richtige Entscheidung, solange die openai-kompatible Schnittstelle die Ausnahme war
+und ein nativer, lokal voreingestellter Ollama-Weg daneben bestand — eine geerbte Voreinstellung
+hätte dort eine Installation, die im Haus bleiben sollte, stillschweigend nach außen gerichtet. Seit
+die openai-kompatible Schnittstelle der **einzige** Weg für den Chat ist, trifft dieses Risiko nicht
+mehr zu: Die Voreinstellung selbst zeigt auf einen lokal betriebenen Ollama-Server, nicht nach
+außen. Ein lautes Scheitern bliebe hier ein Fehlschlag ohne Gegenwert — jede Installation, an der
+niemand etwas konfiguriert, bräuchte sonst eine Adresse, nur um überhaupt zu starten, obwohl die
+richtige Adresse längst feststeht. Dieselbe Begründung gilt seit #773 unverändert für die
+Einbettung, nur über eine eigene Voreinstellung auf Ollamas nativer API statt der gemeinsamen
+openai-kompatiblen Adresse.
+
+Wer für den **Chat** stattdessen einen anderen openai-kompatiblen Anbieter verwenden will,
 überschreibt diese Voreinstellung mit der jeweiligen Zieladresse. Ein **explizit leer gesetzter**
 Wert (eine Umgebungsvariable, die zwar gesetzt, aber ohne Inhalt ist) überschreibt die Voreinstellung
 ebenfalls — mit einer leeren Zeichenkette statt eines gültigen Ziels — und führt weiterhin zum
 lauten Scheitern beim Start: Das ist der eine Fall, in dem die ursprüngliche Begründung unverändert
-gilt, weil hier eine bewusste Angabe vorliegt, die nur zufällig leer ist.
+gilt, weil hier eine bewusste Angabe vorliegt, die nur zufällig leer ist. Für die **Einbettung** gilt
+dieselbe Mechanik auf ihrer eigenen, seit #773 wieder getrennten Adresse — sie lässt sich aber nur
+auf einen anderen Ollama-Server richten, nicht auf einen beliebigen openai-kompatiblen Anbieter,
+weil sie über Ollamas native API läuft.
 
 Die Ableitung je Funktion bleibt erhalten: Eine Adresse für Chat und eine für Einbettung sind
-getrennt setzbar; ohne sie gilt die gemeinsame Adresse für beide. Die Betriebssicht dazu steht in
-[deployment.md](../deployment.md#llm-anbieter).
+getrennt setzbar, seit #773 mit eigenen Variablenpräfixen statt eines gemeinsamen Fallbacks. Die
+Betriebssicht dazu steht in [deployment.md](../deployment.md#llm-anbieter).
 
 Für das **Chat-Modell** wird diese Konfiguration mit
 [Stufe 1](#stufe-1-verwaltete-chat-modelle-in-umsetzung) von der Verwaltung in der Anwendung abgelöst; sie

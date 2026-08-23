@@ -10,15 +10,21 @@ import org.springframework.util.StringUtils;
  *
  * <p>{@code openai} is a protocol name, not a vendor name: locally operated model servers (Ollama
  * included, via its own {@code /v1} endpoint) expose the same API, and since #762 it is the only
- * connection path Spring AI wires here - {@code spring.ai.model.chat}/{@code embedding} are fixed
- * to {@code openai}, not a choice anymore. {@code application.yml} therefore does carry a default
- * base URL (the local Ollama endpoint), unlike before #762: the default itself already stays inside
- * the organisation, so inheriting it is safe. This guard now protects a narrower, still-real
- * failure mode instead: an operator who sets {@code OPAA_OPENAI_BASE_URL} (or one of the
- * per-function variables) to an explicitly blank value overrides that default with an empty string
- * - {@code ${VAR:default}} only falls back to {@code default} when {@code VAR} is entirely unset,
- * not when it is set and empty - and a blank base URL would otherwise fail deep inside the OpenAI
- * client with a far less obvious error.
+ * connection path Spring AI wires for chat - {@code spring.ai.model.chat} is fixed to {@code
+ * openai}, not a choice anymore. {@code application.yml} therefore does carry a default base URL
+ * (the local Ollama endpoint), unlike before #762: the default itself already stays inside the
+ * organisation, so inheriting it is safe. This guard now protects a narrower, still-real failure
+ * mode instead: an operator who sets {@code OPAA_OPENAI_BASE_URL} (or one of the per-function
+ * variables) to an explicitly blank value overrides that default with an empty string - {@code
+ * ${VAR:default}} only falls back to {@code default} when {@code VAR} is entirely unset, not when
+ * it is set and empty - and a blank base URL would otherwise fail deep inside the OpenAI client
+ * with a far less obvious error.
+ *
+ * <p>{@code check("embedding", ...)} below is effectively dormant since #773 reverted embedding to
+ * Ollama's native API ({@code spring.ai.model.embedding} is fixed to {@code ollama}, never {@code
+ * openai}, in {@code application.yml}) - kept rather than removed because the check itself stays
+ * generic (any function whose provider happens to be {@code openai} is guarded, embedding included
+ * if a future configuration ever set it that way again).
  */
 @Configuration
 public class OpenAiBaseUrlGuard {
