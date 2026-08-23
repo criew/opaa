@@ -58,6 +58,7 @@ class SpaceServiceIntegrationTest {
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private ChatRepository chatRepository;
+  @Autowired private SpaceAssetAssociationRepository associationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationA;
@@ -74,6 +75,7 @@ class SpaceServiceIntegrationTest {
     // migration 032), so a leftover chat from this class's own previous test would otherwise block
     // spaceRepository.deleteAll() below.
     chatRepository.deleteAll();
+    associationRepository.deleteAll();
     membershipRepository.deleteAll();
     spaceRepository.deleteAll();
     // #201: fk_knowledge_libraries_owner_user also references users now, not just fk_spaces_owner
@@ -100,6 +102,7 @@ class SpaceServiceIntegrationTest {
     // test created (by id), never Organization.DEFAULT_ID or organizations created by other tests
     // sharing this context.
     chatRepository.deleteAll();
+    associationRepository.deleteAll();
     membershipRepository.deleteAll();
     spaceRepository.deleteAll();
     libraryRepository.deleteAll();
@@ -228,6 +231,62 @@ class SpaceServiceIntegrationTest {
     assertThat(userASpaces).hasSize(1);
     assertThat(userASpaces.getFirst().getName()).isEqualTo("Engineering");
     assertThat(userASpaces.getFirst().getUserRole()).isEqualTo(SpaceRole.ADMIN);
+  }
+
+  @Test
+  void listCountsAssignedLibrariesAndOnlyTheCallersOwnChats() {
+    // #682: the overview card's figures line. Chats count only the caller's own (#525: chats are
+    // private to their author, so another member's chats must neither show up in the figure nor
+    // leak through it). Libraries follow listForSpace's rule: the ADMIN sees every association,
+    // the plain MEMBER only the libraries they may read - the figure must not give away how many
+    // are withheld (spaces-and-assets.md: "darf keine Anzahlen nennen").
+    UUID userA = createUser(organizationA);
+    UUID userB = createUser(organizationA);
+    Space eng =
+        new Space(
+            "Engineering",
+            "Engineering docs",
+            false,
+            SpaceVisibility.PRIVATE,
+            userA,
+            organizationA);
+    eng.addMembership(new SpaceMembership(userA, SpaceRole.ADMIN, organizationA));
+    eng.addMembership(new SpaceMembership(userB, SpaceRole.MEMBER, organizationA));
+    Space empty =
+        new Space(
+            "Leer", "Noch ohne Inhalte", false, SpaceVisibility.PRIVATE, userA, organizationA);
+    empty.addMembership(new SpaceMembership(userA, SpaceRole.ADMIN, organizationA));
+    spaceRepository.saveAll(List.of(eng, empty));
+    UUID libraryOne = createReadableLibrary(organizationA, userA);
+    UUID libraryTwo = createReadableLibrary(organizationA, userB);
+    associationRepository.saveAll(
+        List.of(
+            new SpaceAssetAssociation(eng.getId(), libraryOne, organizationA, userA),
+            new SpaceAssetAssociation(eng.getId(), libraryTwo, organizationA, userA)));
+    chatRepository.saveAll(
+        List.of(
+            new Chat(eng.getId(), userA, organizationA, "Erste Frage", true, Set.of()),
+            new Chat(eng.getId(), userA, organizationA, "Zweite Frage", true, Set.of()),
+            new Chat(eng.getId(), userA, organizationA, "Dritte Frage", true, Set.of()),
+            new Chat(eng.getId(), userB, organizationA, "Fremde Frage", true, Set.of())));
+
+    List<SpaceListResponse> spaces = spaceService.listSpaces(userA, false);
+
+    SpaceListResponse engineering =
+        spaces.stream().filter(s -> s.getName().equals("Engineering")).findFirst().orElseThrow();
+    assertThat(engineering.getLibraryCount()).isEqualTo(2);
+    assertThat(engineering.getChatCount()).isEqualTo(3);
+    SpaceListResponse leer =
+        spaces.stream().filter(s -> s.getName().equals("Leer")).findFirst().orElseThrow();
+    assertThat(leer.getLibraryCount()).isZero();
+    assertThat(leer.getChatCount()).isZero();
+
+    List<SpaceListResponse> userBSpaces = spaceService.listSpaces(userB, false);
+    assertThat(userBSpaces).hasSize(1);
+    assertThat(userBSpaces.getFirst().getLibraryCount())
+        .as("MEMBER userB may read only the library they own")
+        .isEqualTo(1);
+    assertThat(userBSpaces.getFirst().getChatCount()).isEqualTo(1);
   }
 
   @Test

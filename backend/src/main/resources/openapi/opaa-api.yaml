@@ -2726,6 +2726,21 @@ components:
         memberCount:
           type: integer
           example: 5
+        libraryCount:
+          type: integer
+          description: >
+            #682: number of knowledge libraries assigned to the space - the "Quellen" figure of
+            the overview card. Follows the same rule as the space's association list: CURATOR,
+            ADMIN, the owner and system admins count every association, a plain MEMBER only the
+            libraries they may read. Optional so older clients keep working.
+          example: 3
+        chatCount:
+          type: integer
+          description: >
+            #682: number of chats the caller owns in this space. Chats are private to their
+            author (#525), so this is the caller's view, not a space-wide total. Optional so
+            older clients keep working.
+          example: 12
         userRole:
           $ref: "#/components/schemas/SpaceRole"
         createdAt:
