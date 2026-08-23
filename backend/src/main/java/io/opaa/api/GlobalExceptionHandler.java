@@ -1,15 +1,22 @@
 package io.opaa.api;
 
+import com.openai.errors.OpenAIException;
+import com.openai.errors.OpenAIIoException;
+import com.openai.errors.OpenAIRetryableException;
+import com.openai.errors.OpenAIServiceException;
+import com.openai.errors.RateLimitException;
 import io.opaa.api.dto.ErrorResponse;
 import io.opaa.library.UploadProperties;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -128,6 +135,105 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NonTransientAiException.class)
   public ResponseEntity<ErrorResponse> handleNonTransientAiException(NonTransientAiException ex) {
     log.error("Non-transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+        .body(
+            new ErrorResponse(
+                "Fehler im KI-Dienst", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
+  }
+
+  /**
+   * #768: since #766 moved chat/query calls onto {@code OpenAiChatModel}'s OpenAI-Java-SDK-based
+   * implementation (Spring AI 2.0), a connection failure (host unreachable, DNS failure, timeout)
+   * no longer throws {@link TransientAiException} - it throws {@link OpenAIIoException}, a plain
+   * {@code RuntimeException} neither {@link TransientAiException} nor {@link
+   * NonTransientAiException} extends (see {@code ActiveChatModelResolverIntegrationTest}, which
+   * documented this as a follow-up rather than fixing it as part of #758). {@link
+   * OpenAIRetryableException} is the SDK's own explicit "this is safe to retry" signal (its
+   * Javadoc: thrown for an error the SDK's built-in retry already exhausted) - both are as
+   * transient as the connection-level failures {@link #handleTransientAiException} already covers,
+   * and get the exact same {@code 503} and message rather than a second, differently worded one for
+   * what is the same situation from a caller's point of view.
+   */
+  @ExceptionHandler({OpenAIIoException.class, OpenAIRetryableException.class})
+  public ResponseEntity<ErrorResponse> handleOpenAiTransientException(RuntimeException ex) {
+    log.warn("Transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .body(
+            new ErrorResponse(
+                "KI-Dienst vorübergehend nicht verfügbar",
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                Instant.now()));
+  }
+
+  /**
+   * #768: the SDK's own {@link OpenAIServiceException} hierarchy (thrown once the provider actually
+   * answered with a non-2xx status - {@code BadRequestException}, {@code UnauthorizedException},
+   * {@code NotFoundException}, {@code InternalServerException}, {@code RateLimitException}, etc.)
+   * carries {@link OpenAIServiceException#statusCode()}, which is what distinguishes a transient
+   * provider-side problem from a permanent one: {@code 429} (rate limited) and {@code 5xx} (the
+   * provider's own server error) are retryable in the same sense {@link
+   * #handleTransientAiException} already is, while every other status - most notably {@code
+   * 401}/{@code 403} (misconfigured credentials) and {@code 404} (unknown model identifier) -
+   * reflects a request that will keep failing the same way until an operator fixes the
+   * configuration, mapped like {@link #handleNonTransientAiException} already maps Spring AI's own
+   * {@link NonTransientAiException}. The distinct branches intentionally reuse those two handlers'
+   * exact status codes and messages rather than introducing new ones for what are, from a caller's
+   * perspective, the same two situations.
+   */
+  @ExceptionHandler(OpenAIServiceException.class)
+  public ResponseEntity<ErrorResponse> handleOpenAiServiceException(OpenAIServiceException ex) {
+    int statusCode = ex.statusCode();
+    if (statusCode == HttpStatus.TOO_MANY_REQUESTS.value() || statusCode >= 500) {
+      log.warn(
+          "Transient AI service error ({}): {}",
+          statusCode,
+          errorSanitizer.sanitize(ex.getMessage()));
+      ResponseEntity.BodyBuilder responseBuilder =
+          ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE);
+      // #768 review, should-finding 5: RateLimitException (429) is the one OpenAIServiceException
+      // subtype whose headers() routinely carries a Retry-After the provider actually computed -
+      // worth passing through to the caller rather than leaving them to guess a backoff.
+      if (ex instanceof RateLimitException rateLimitException) {
+        List<String> retryAfter = rateLimitException.headers().values(HttpHeaders.RETRY_AFTER);
+        if (!retryAfter.isEmpty()) {
+          responseBuilder =
+              responseBuilder.header(HttpHeaders.RETRY_AFTER, retryAfter.toArray(new String[0]));
+        }
+      }
+      return responseBuilder.body(
+          new ErrorResponse(
+              "KI-Dienst vorübergehend nicht verfügbar",
+              HttpStatus.SERVICE_UNAVAILABLE.value(),
+              Instant.now()));
+    }
+    log.error(
+        "Non-transient AI service error ({}): {}",
+        statusCode,
+        errorSanitizer.sanitize(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+        .body(
+            new ErrorResponse(
+                "Fehler im KI-Dienst", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
+  }
+
+  /**
+   * #768 review, should-finding 1: the remaining direct {@link OpenAIException} subtypes - {@code
+   * OpenAIInvalidDataException} chief among them - are neither a connection-level failure ({@link
+   * #handleOpenAiTransientException}) nor a genuine HTTP error response from the provider ({@link
+   * #handleOpenAiServiceException}); the SDK throws this one when a response it received does not
+   * match the shape it expects, which is exactly what an only OpenAI-*compatible* server (Ollama,
+   * this project's own docker-compose default) can produce for a request its more limited
+   * implementation does not fully support. Without this handler, that fell through to {@link
+   * #handleGenericException}'s generic {@code 500}. Mapped to the same {@code 502} {@link
+   * #handleNonTransientAiException} and {@link #handleOpenAiServiceException}'s non-transient
+   * branch already use for "the provider answered, but not usefully" - Spring dispatches to the
+   * most specific matching {@code @ExceptionHandler} by exception-hierarchy distance regardless of
+   * declaration order, so {@link #handleOpenAiTransientException} and {@link
+   * #handleOpenAiServiceException} remain authoritative for their own, more specific types.
+   */
+  @ExceptionHandler(OpenAIException.class)
+  public ResponseEntity<ErrorResponse> handleOpenAiException(OpenAIException ex) {
+    log.error("Unexpected AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
     return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
         .body(
             new ErrorResponse(
@@ -309,6 +415,21 @@ public class GlobalExceptionHandler {
         findCause(ex, CredentialsEncryptionKeyMissingException.class);
     if (credentialsCause != null) {
       return handleCredentialsEncryptionKeyMissingException(credentialsCause);
+    }
+    // #768 review, optional finding 4: a com.openai.errors.* exception wrapped by something else
+    // (e.g. Spring AI's own retry/advisor machinery) would otherwise still land here uncaught by
+    // any of the dedicated handlers above, which only match against the exception actually thrown
+    // to this method - not its cause chain.
+    OpenAIException openAiCause = findCause(ex, OpenAIException.class);
+    if (openAiCause != null) {
+      if (openAiCause instanceof OpenAIServiceException serviceException) {
+        return handleOpenAiServiceException(serviceException);
+      }
+      if (openAiCause instanceof OpenAIIoException
+          || openAiCause instanceof OpenAIRetryableException) {
+        return handleOpenAiTransientException(openAiCause);
+      }
+      return handleOpenAiException(openAiCause);
     }
     log.error("Unexpected error", ex);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
