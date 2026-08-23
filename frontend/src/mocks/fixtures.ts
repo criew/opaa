@@ -18,6 +18,7 @@ import type {
   GroupResponse,
   LibraryDocumentResponse,
   LibraryResponse,
+  SpaceLibraryAssociationListResponse,
 } from '../types/api'
 import type { AuthConfig, AuthUser } from '../types/auth'
 
@@ -617,6 +618,25 @@ export const mockLibraries: LibraryListResponse[] = [
     updatedAt: '2026-03-01T10:00:00Z',
   },
 ]
+
+// #782/#783: GET /api/v1/spaces/{spaceId}/libraries fixture. 'space-phoenix' is curated (#203/#706)
+// with exactly one association, readable by the mock user - the "Gewerbeamt" scenario from #782's
+// bug report (one associated, several more readable overall via mockLibraries). Every other space id
+// falls back to hasAssociations: false in the handler below, i.e. uncurated.
+export const mockSpaceLibraryAssociations: Record<string, SpaceLibraryAssociationListResponse> = {
+  'space-phoenix': {
+    hasAssociations: true,
+    items: [
+      {
+        libraryId: 'library-referat-50',
+        libraryName: 'Rechtsquellen Soziales',
+        readableByCaller: true,
+        createdByUserId: 'owner-2',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+    ],
+  },
+}
 
 export const mockLibraryDetails: Record<string, LibraryResponse> = {
   'library-mine': {

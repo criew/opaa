@@ -125,7 +125,9 @@ die **Chip-Leiste** am Eingabefeld, die einzige Suchbereichssteuerung — kein s
   zugeordneten Wissensbibliotheken, eingeschränkt auf die, die der Nutzer selbst lesen darf
   (#203/#706); hat der Arbeitsraum keine Zuordnungen, bleibt es bei allen lesbaren Bibliotheken
   (Übergangsregel, siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)).
-  Die Fußzeile unter dem Eingabefeld nennt die tatsächliche Trefferzahl dieser Schnittmenge (#782),
+  Die Fußzeile unter dem Eingabefeld nennt die tatsächliche Anzahl dieser Schnittmenge, nicht die
+  Zahl aller lesbaren Bibliotheken (#782); ist die Schnittmenge leer, erscheint statt einer Zahl die
+  aus der Antwort bekannte Formulierung „In diesem Space ist für Sie derzeit kein Wissen verfügbar.",
 - **konkrete Bibliotheks-Chips** — durchsucht ausschließlich die referenzierten. Tippen von `@` im
   Eingabefeld schlägt alle Bibliotheken vor, die der Nutzer lesen darf, unabhängig vom Arbeitsraum,
   dazu als erster Eintrag (bei leerer Eingabe) @Alles-Wissen selbst, per Tastatur oder Maus auswählbar. Der erste

@@ -1,11 +1,35 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import ChatInput from './ChatInput'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 import { useSpaceStore } from '../../stores/spaceStore'
-import type { LibraryListResponse } from '../../types/api'
+import { server } from '../../mocks/server'
+import type { LibraryListResponse, SpaceLibraryAssociationResponse } from '../../types/api'
+
+/**
+ * #783 review: the earlier version of these tests spied on useSpaceStore.getState() and swapped in
+ * a mocked loadLibraryAssociations - but zustand's set() shallow-merges by spreading the *current*
+ * state object into a new one (Object.assign({}, state, partial)), so a spied property value, once
+ * set, gets copied forward into every subsequent state object regardless of vi.restoreAllMocks() -
+ * that call only restores the descriptor on the specific (by then stale) object it was originally
+ * spied on, not the copy the store has moved on to. The mock silently outlived its own test and
+ * broke an unrelated, later one that never touched the spy. Overriding the MSW handler per test
+ * instead exercises the real api -> spaceStore -> ChatInput chain (also covers #783 review nit 2)
+ * and cannot leak this way, since server.resetHandlers() (frontend/src/test/setup.ts) already runs
+ * after every test.
+ */
+function mockAssociations(
+  spaceId: string,
+  response: {
+    hasAssociations: boolean
+    items: SpaceLibraryAssociationResponse[]
+  },
+) {
+  server.use(http.get(`/api/v1/spaces/${spaceId}/libraries`, () => HttpResponse.json(response)))
+}
 
 const rechtsquellen: LibraryListResponse = {
   id: 'library-referat-50',
@@ -48,6 +72,7 @@ describe('ChatInput', () => {
       libraryAssociations: [],
       hasLibraryAssociations: false,
       isLoadingLibraryAssociations: false,
+      libraryAssociationsSpaceId: null,
     })
   })
 
@@ -55,95 +80,139 @@ describe('ChatInput', () => {
   // scope line to the intersection of associated and readable libraries, not show every readable
   // library the user happens to have - the backend (ChatService#effectiveLibraryScope) already
   // narrows the actual search, so a wider count here is a pure display lie about what gets
-  // searched.
+  // searched. Each test below drives the real spaceStore#loadLibraryAssociations action through an
+  // MSW override for its own space id (see mockAssociations above).
   describe('scope line for a space with library associations (#782)', () => {
     it('counts only the associated-and-readable intersection, not every readable library', async () => {
-      const loadLibraryAssociations = vi
-        .spyOn(useSpaceStore.getState(), 'loadLibraryAssociations')
-        .mockImplementation(async () => {
-          useSpaceStore.setState({
-            hasLibraryAssociations: true,
-            libraryAssociations: [
-              {
-                libraryId: rechtsquellen.id,
-                libraryName: rechtsquellen.name,
-                readableByCaller: true,
-                createdByUserId: 'user-1',
-                createdAt: '2026-03-01T10:00:00Z',
-              },
-            ],
-            isLoadingLibraryAssociations: false,
-          })
-        })
+      mockAssociations('space-gewerbeamt', {
+        hasAssociations: true,
+        items: [
+          {
+            libraryId: rechtsquellen.id,
+            libraryName: rechtsquellen.name,
+            readableByCaller: true,
+            createdByUserId: 'user-1',
+            createdAt: '2026-03-01T10:00:00Z',
+          },
+        ],
+      })
       useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
 
       render(<ChatInput onSend={vi.fn()} />)
 
-      expect(loadLibraryAssociations).toHaveBeenCalledWith('space-gewerbeamt')
-      expect(await screen.findByText(/1 zugeordneter Bestand/)).toBeInTheDocument()
-      // The old, wrong wording named all six readable libraries here - it must be gone.
+      expect(await screen.findByText(/1 zugeordneter lesbarer Bestand/)).toBeInTheDocument()
+      // The old, wrong wording named both readable libraries here - it must be gone.
       expect(screen.queryByText(/2 lesbare Bestände/)).not.toBeInTheDocument()
     })
 
     it('shows the plural form for more than one associated-and-readable library', async () => {
-      vi.spyOn(useSpaceStore.getState(), 'loadLibraryAssociations').mockImplementation(async () => {
-        useSpaceStore.setState({
-          hasLibraryAssociations: true,
-          libraryAssociations: [
-            {
-              libraryId: rechtsquellen.id,
-              libraryName: rechtsquellen.name,
-              readableByCaller: true,
-              createdByUserId: 'user-1',
-              createdAt: '2026-03-01T10:00:00Z',
-            },
-            {
-              libraryId: dienstanweisungen.id,
-              libraryName: dienstanweisungen.name,
-              readableByCaller: true,
-              createdByUserId: 'user-1',
-              createdAt: '2026-03-01T10:00:00Z',
-            },
-          ],
-          isLoadingLibraryAssociations: false,
-        })
+      mockAssociations('space-gewerbeamt', {
+        hasAssociations: true,
+        items: [
+          {
+            libraryId: rechtsquellen.id,
+            libraryName: rechtsquellen.name,
+            readableByCaller: true,
+            createdByUserId: 'user-1',
+            createdAt: '2026-03-01T10:00:00Z',
+          },
+          {
+            libraryId: dienstanweisungen.id,
+            libraryName: dienstanweisungen.name,
+            readableByCaller: true,
+            createdByUserId: 'user-1',
+            createdAt: '2026-03-01T10:00:00Z',
+          },
+        ],
       })
       useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
 
       render(<ChatInput onSend={vi.fn()} />)
 
-      expect(await screen.findByText(/2 zugeordnete Bestände/)).toBeInTheDocument()
+      expect(await screen.findByText(/2 zugeordnete lesbare Bestände/)).toBeInTheDocument()
     })
 
-    it('narrows to zero when none of the associated libraries are readable by the caller', async () => {
-      vi.spyOn(useSpaceStore.getState(), 'loadLibraryAssociations').mockImplementation(async () => {
-        useSpaceStore.setState({
-          hasLibraryAssociations: true,
-          libraryAssociations: [],
-          isLoadingLibraryAssociations: false,
-        })
-      })
+    // #783 review nit 3: "curated, but nothing the caller may read" must read like MessageBubble's
+    // and SpacePage's own wording for the identical state, not a bare "0 zugeordnete Bestände".
+    it('shows the established "kein Wissen verfügbar" notice when nothing associated is readable', async () => {
+      mockAssociations('space-gewerbeamt', { hasAssociations: true, items: [] })
       useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
 
       render(<ChatInput onSend={vi.fn()} />)
 
-      expect(await screen.findByText(/0 zugeordnete Bestände/)).toBeInTheDocument()
+      expect(
+        await screen.findByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/zugeordnete/)).not.toBeInTheDocument()
     })
 
     it('keeps the previous "all readable" wording for a space without any association', async () => {
-      vi.spyOn(useSpaceStore.getState(), 'loadLibraryAssociations').mockImplementation(async () => {
-        useSpaceStore.setState({
-          hasLibraryAssociations: false,
-          libraryAssociations: [],
-          isLoadingLibraryAssociations: false,
-        })
-      })
+      mockAssociations('space-gewerbeamt', { hasAssociations: false, items: [] })
       useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
 
       render(<ChatInput onSend={vi.fn()} />)
 
       expect(await screen.findByText(/2 lesbare Bestände/)).toBeInTheDocument()
     })
+  })
+
+  // #783 review, finding 1 (🔴): a chat/space switch must not render the *previous* space's
+  // association count for the new one, even for one render - neither while the new space's own
+  // load is still in flight nor if it fails outright.
+  describe("the scope line never shows another space's association data (#783)", () => {
+    it("shows a neutral notice, not the previous space's number, right after switching spaceId", async () => {
+      // Space A's associations already resolved and are sitting in the store - exactly the state
+      // ChatInput would be in right after chatting in a curated space A.
+      useSpaceStore.setState({
+        hasLibraryAssociations: true,
+        libraryAssociations: [
+          {
+            libraryId: rechtsquellen.id,
+            libraryName: rechtsquellen.name,
+            readableByCaller: true,
+            createdByUserId: 'user-1',
+            createdAt: '2026-03-01T10:00:00Z',
+          },
+        ],
+        libraryAssociationsSpaceId: 'space-a',
+      })
+      // Space B's own load never resolves within this test.
+      server.use(http.get('/api/v1/spaces/space-b/libraries', () => new Promise(() => {})))
+      useChatStore.setState({ scope: 'all', spaceId: 'space-b' })
+
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(await screen.findByText('Suchbereich wird ermittelt …')).toBeInTheDocument()
+      expect(screen.queryByText(/1 zugeordneter/)).not.toBeInTheDocument()
+    })
+
+    // #783 review nit 1: a failed load must not silently read as "this space has no associations"
+    // - that renders as "every readable library", the exact false claim #782 fixed.
+    it('does not fall back to "every readable library" when the association load fails', async () => {
+      server.use(
+        http.get('/api/v1/spaces/space-gewerbeamt/libraries', () =>
+          HttpResponse.json({ error: 'Netzwerkfehler' }, { status: 500 }),
+        ),
+      )
+      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
+
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(await screen.findByText('Suchbereich wird ermittelt …')).toBeInTheDocument()
+      expect(screen.queryByText(/lesbare Bestände/)).not.toBeInTheDocument()
+    })
+  })
+
+  // #782/#783: exercises the real api -> spaceStore -> ChatInput chain through the MSW handler
+  // (mocks/handlers.ts) and its curated fixture (mockSpaceLibraryAssociations['space-phoenix']),
+  // rather than mocking the store action away - the earlier mocked tests above cover the display
+  // logic in isolation, this one covers that readableByCaller actually survives the wire.
+  it('resolves the associated-and-readable count through the real api/store chain (#783 review nit 2)', async () => {
+    useChatStore.setState({ scope: 'all', spaceId: 'space-phoenix' })
+
+    render(<ChatInput onSend={vi.fn()} />)
+
+    expect(await screen.findByText(/1 zugeordneter lesbarer Bestand/)).toBeInTheDocument()
   })
 
   it('shows the search-scope line for the default scope (#591, mockup 1a)', async () => {
@@ -153,9 +222,24 @@ describe('ChatInput', () => {
   })
 
   it('reflects chosen references in the scope line (#591)', async () => {
-    useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['lib-1', 'lib-2'] })
+    useChatStore.setState({
+      scope: 'libraries',
+      referencedLibraryIds: ['library-referat-50', 'library-dienstanweisungen'],
+    })
     render(<ChatInput onSend={vi.fn()} />)
     expect(await screen.findByText(/2 gewählte Bestände/)).toBeInTheDocument()
+  })
+
+  // #783 review, "vorbestehend" finding: ChatService#effectiveLibraryScope intersects even the
+  // concrete-chip scope with the readable libraries (ChatService.java:249-251) - a reference the
+  // caller can no longer read must not inflate the count the footer shows.
+  it('counts only the readable references in the "libraries" scope line, not every referenced id', async () => {
+    useChatStore.setState({
+      scope: 'libraries',
+      referencedLibraryIds: ['library-referat-50', 'library-removed'],
+    })
+    render(<ChatInput onSend={vi.fn()} />)
+    expect(await screen.findByText(/1 gewählter Bestand/)).toBeInTheDocument()
   })
 
   it('names the empty scope honestly (#591)', () => {
