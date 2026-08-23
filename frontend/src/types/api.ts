@@ -47,6 +47,8 @@ export type QueryResponse = Omit<GeneratedQueryResponse, 'sources'> & {
 
 export type UserInfoResponse = components['schemas']['UserInfoResponse']
 export type UserInfo = UserInfoResponse
+export type UserSummaryResponse = components['schemas']['UserSummaryResponse']
+export type UserSummary = UserSummaryResponse
 export type RoleChangeRequest = components['schemas']['RoleChangeRequest']
 export type SystemRole = components['schemas']['SystemRole']
 
@@ -92,6 +94,12 @@ export type ChatUpdateRequest = components['schemas']['ChatUpdateRequest']
 export type ColorScheme = components['schemas']['ColorScheme']
 export type BrandingResponse = components['schemas']['BrandingResponse']
 export type BrandingUpdateRequest = components['schemas']['BrandingUpdateRequest']
+
+export type LlmModelResponse = components['schemas']['LlmModelResponse']
+export type LlmModelRequest = components['schemas']['LlmModelRequest']
+export type LlmModelTestRequest = components['schemas']['LlmModelTestRequest']
+export type LlmModelTestResponse = components['schemas']['LlmModelTestResponse']
+export type EmbeddingInfoResponse = components['schemas']['EmbeddingInfoResponse']
 
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (

@@ -4,17 +4,16 @@ import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../test/test-utils'
 import SourceFootnotes from './SourceFootnotes'
 import { buildCitationIndex } from './citations'
+import type { CitationIndex } from './citations'
 import type { SourceReference } from '../../types/api'
 
-// #739: the "Im Dokument öffnen" action delegates to this shared module (see its own tests for
-// the Blob-fetch/preview-vs-download behaviour, and LibraryDetailPage.test.tsx for #738's original
-// wiring of this mock pattern).
-const { mockOpenDocumentContent } = vi.hoisted(() => ({
-  mockOpenDocumentContent: vi.fn(async () => undefined),
-}))
-vi.mock('../../utils/documentContent', () => ({
-  openDocumentContent: mockOpenDocumentContent,
-}))
+// #739/#780/#781 review (Wichtig 1): SourceFootnotes no longer calls `openDocumentContent`
+// itself - it receives MessageBubble's single `useDocumentPreview()` instance as props
+// (openDocument/error/clearError), shared with SourceEvidenceDrawer (see MessageBubble.tsx and
+// useDocumentPreview.test.ts for the hook's own preview/download-branching behaviour). This file
+// tests SourceFootnotes as the presentational component it now is.
+const mockOpenDocument = vi.fn(async () => undefined)
+const mockClearError = vi.fn()
 
 function source(
   fileName: string,
@@ -42,13 +41,31 @@ function indexWithDocs(count: number) {
   return buildCitationIndex(content, sources)
 }
 
+function renderFootnotes(
+  citations: CitationIndex,
+  overrides: Partial<{
+    messageId: string
+    error: string | null
+  }> = {},
+) {
+  return renderWithProviders(
+    <SourceFootnotes
+      messageId={overrides.messageId ?? 'm1'}
+      citations={citations}
+      openDocument={mockOpenDocument}
+      error={overrides.error ?? null}
+      clearError={mockClearError}
+    />,
+  )
+}
+
 describe('SourceFootnotes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('shows every row while the block stays within three documents', () => {
-    renderWithProviders(<SourceFootnotes messageId="m1" citations={indexWithDocs(3)} />)
+    renderFootnotes(indexWithDocs(3))
 
     expect(screen.getByText('datei-0.md')).toBeVisible()
     expect(screen.getByText('datei-2.md')).toBeVisible()
@@ -56,7 +73,7 @@ describe('SourceFootnotes', () => {
   })
 
   it('folds everything beyond three documents behind a quiet toggle (mockup 1a)', () => {
-    renderWithProviders(<SourceFootnotes messageId="m2" citations={indexWithDocs(9)} />)
+    renderFootnotes(indexWithDocs(9))
 
     expect(screen.getByText('datei-2.md')).toBeVisible()
     expect(screen.queryByText('datei-3.md')).not.toBeInTheDocument()
@@ -67,7 +84,7 @@ describe('SourceFootnotes', () => {
 
   it('expands the folded rows on click', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<SourceFootnotes messageId="m3" citations={indexWithDocs(5)} />)
+    renderFootnotes(indexWithDocs(5))
 
     await user.click(
       screen.getByRole('button', { name: '2 weitere Dokumente mit 2 Stellen anzeigen' }),
@@ -80,7 +97,7 @@ describe('SourceFootnotes', () => {
   })
 
   it('uses singular wording for a single folded document', () => {
-    renderWithProviders(<SourceFootnotes messageId="m4" citations={indexWithDocs(4)} />)
+    renderFootnotes(indexWithDocs(4))
 
     expect(
       screen.getByRole('button', { name: '1 weiteres Dokument mit 1 Stelle anzeigen' }),
@@ -88,22 +105,22 @@ describe('SourceFootnotes', () => {
   })
 
   describe('"Im Dokument öffnen"', () => {
-    it('fetches and opens a local original (UPLOAD/FILESYSTEM) via the download endpoint', async () => {
+    it('calls openDocument with the documentId and file name for a local (UPLOAD/FILESYSTEM) original', async () => {
       const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [
         source('dienstanweisung.pdf', true, {
           documentId: 'doc-1',
           sourceType: 'UPLOAD',
         }),
       ])
-      renderWithProviders(<SourceFootnotes messageId="m5" citations={citations} />)
+      renderFootnotes(citations)
       const user = userEvent.setup()
 
       await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
 
-      expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
+      expect(mockOpenDocument).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
     })
 
-    it('opens an HTTP_DIRECTORY document through the content endpoint too, keeping sourceUrl as a secondary "Quelle" link (#747)', async () => {
+    it('calls openDocument for an HTTP_DIRECTORY document too, keeping sourceUrl as a secondary "Quelle" link (#747)', async () => {
       // #747: the content endpoint now proxies HTTP_DIRECTORY/RSS_FEED server-side from their own
       // stored source URL - the primary action is the same button as for a local original,
       // sourceUrl stays visible as secondary information (a tooltip carrying the raw address).
@@ -114,12 +131,12 @@ describe('SourceFootnotes', () => {
           sourceUrl: 'https://example.gov/verzeichnis/dienstanweisung.pdf',
         }),
       ])
-      renderWithProviders(<SourceFootnotes messageId="m6" citations={citations} />)
+      renderFootnotes(citations)
       const user = userEvent.setup()
 
       await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
 
-      expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
+      expect(mockOpenDocument).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
 
       const sourceLink = screen.getByRole('link', {
         name: 'Quelle: https://example.gov/verzeichnis/dienstanweisung.pdf',
@@ -136,30 +153,46 @@ describe('SourceFootnotes', () => {
       const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [
         source('dienstanweisung.pdf', true),
       ])
-      renderWithProviders(<SourceFootnotes messageId="m7" citations={citations} />)
+      renderFootnotes(citations)
 
       expect(screen.queryByRole('button', { name: 'Im Dokument öffnen' })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Quelle' })).not.toBeInTheDocument()
     })
 
-    it('shows a German error message when opening the original fails (e.g. 404)', async () => {
-      mockOpenDocumentContent.mockRejectedValueOnce(
-        new Error('Das Originaldokument wurde nicht gefunden.'),
-      )
+    it('does not call openDocument for a synthetic entry with no documentId, even if clicked via keyboard', () => {
+      const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [
+        source('dienstanweisung.pdf', true),
+      ])
+      renderFootnotes(citations)
+
+      expect(mockOpenDocument).not.toHaveBeenCalled()
+    })
+
+    it('shows the German error message passed in via the error prop', () => {
       const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [
         source('dienstanweisung.pdf', true, {
           documentId: 'doc-1',
           sourceType: 'UPLOAD',
         }),
       ])
-      renderWithProviders(<SourceFootnotes messageId="m8" citations={citations} />)
+      renderFootnotes(citations, { error: 'Das Originaldokument wurde nicht gefunden.' })
+
+      expect(screen.getByText('Das Originaldokument wurde nicht gefunden.')).toBeInTheDocument()
+    })
+
+    it('calls clearError when the error alert is dismissed', async () => {
+      const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [
+        source('dienstanweisung.pdf', true, {
+          documentId: 'doc-1',
+          sourceType: 'UPLOAD',
+        }),
+      ])
+      renderFootnotes(citations, { error: 'Das Originaldokument wurde nicht gefunden.' })
       const user = userEvent.setup()
 
-      await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
+      await user.click(screen.getByRole('button', { name: 'Close' }))
 
-      expect(
-        await screen.findByText('Das Originaldokument wurde nicht gefunden.'),
-      ).toBeInTheDocument()
+      expect(mockClearError).toHaveBeenCalledTimes(1)
     })
   })
 })

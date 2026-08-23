@@ -71,6 +71,15 @@ Rebuild ist dafür nicht nötig, ein Neustart des `frontend`-Containers genügt.
 bleibt der Hinweis aus (Image-Default `false`) — das ist der richtige Zustand für jede
 Nicht-Demo-Installation, siehe `docs/deployment.md`, Variablentabelle.
 
+> **Update-Hinweis (#756/#762):** Seit Stufe 1 der Modellverwaltung übernimmt das Backend beim
+> ersten Start nach einem Image-Update die bestehende `spring.ai.openai.chat.*`-Konfiguration
+> einmalig als verwaltetes Chat-Modell (siehe `docs/deployment.md`, Abschnitt „Verschlüsselung der
+> Zugangsschlüssel verwalteter Chat-Modelle"). Diese Demo setzt keine der inzwischen entfallenen
+> `OPAA_AI_CHAT_PROVIDER`/`OPAA_AI_EMBEDDING_PROVIDER`-Variablen, läuft also über den
+> Anwendungs-Default der openai-kompatiblen Schicht ohne Zugangsschlüssel (Ollama-Server ohne
+> Authentifizierung) — `OPAA_SETTINGS_ENCRYPTION_KEY` ist dafür **nicht** erforderlich, und der
+> Stack startet ohne diese Variable unverändert weiter.
+
 `OPAA_INITIAL_ADMIN_EMAIL` muss die E-Mail-Adresse des Keycloak-Nutzers `demo-admin` treffen
 (`keycloak/realm-export.json`) — sonst bekommt kein Konto der Demo `SYSTEM_ADMIN`, und Schritt 1 des
 Seeds (siehe unten) bricht mit einer klaren Fehlermeldung ab, statt eine falsche Rolle stillschweigend
@@ -169,7 +178,14 @@ Der Lauf richtet über die API ein:
    Upload-Dokumente aus `demo/corpus/interne-dienstanweisungen-meldewesen/` — der Seed wartet nach
    dem Hochladen, bis kein Dokument mehr `PENDING` ist (Tika-Parsing und Embedding laufen
    asynchron, #434), und bricht bei `FAILED` mit der jeweiligen `errorMessage` ab.
-5. **Indizierung je Bibliothek** über deren eigene Quellkonfiguration (nicht für die `UPLOAD`-Bibliothek
+5. **Space↔Bibliothek-Zuordnungen** (Assoziation als reine Kuratierung, #706) gemäß den
+   `library_names` der Space-Definitionen in `profiles.py`: „Meldewesen & Ausweise" bekommt die vier
+   für das Sachgebiet lesbaren Bibliotheken zugeordnet, „Kfz-Zulassung" drei, „Amtsleitung
+   Bürgerbüro" alle fünf; Marias persönlicher Space bleibt bewusst ohne Zuordnung (@Alles-Wissen
+   greift dort weiter auf alle lesbaren Bibliotheken zurück). Die Zuordnung legt die Session des
+   jeweiligen Space-Eigentümers an, denn `associateSpaceLibrary` verlangt CURATOR oder höher im
+   Space plus mindestens VIEWER auf der Bibliothek — beides hat der Eigentümer nach Schritt 4.
+6. **Indizierung je Bibliothek** über deren eigene Quellkonfiguration (nicht für die `UPLOAD`-Bibliothek
    — die hat keinen eigenen Lauf, ADR-0018, siehe Schritt 4) — der Seed wartet auf `COMPLETED` und
    bricht bei `documentsFailed > 0` ab.
 
@@ -204,7 +220,8 @@ python seed.py --profile e2e --base-url http://localhost:18081/api
 Bibliotheken werden vor dem Anlegen per Namenssuche geprüft (Spaces über die Session des jeweiligen
 Eigentümers, da ein Space nur für seine eigenen Mitglieder sichtbar ist), Uploads werden anhand von
 Dateiname und Status übersprungen (ein zuvor `FAILED`es Dokument wird dagegen erneut hochgeladen),
-und `upsertAssetGrant` ersetzt statt zu duplizieren. Bricht der Seed beim `demo`-Profil mit „Die
+`upsertAssetGrant` ersetzt statt zu duplizieren, und `associateSpaceLibrary` liefert bei bereits
+bestehender Zuordnung die vorhandene Assoziation unverändert zurück. Bricht der Seed beim `demo`-Profil mit „Die
 Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen." ab (die 26 sequentiellen
 Uploads der internen Bibliothek können `uploadTaskExecutor`s Warteschlange füllen, siehe
 [`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md), Abschnitt „Umgebung konfigurieren"),
@@ -238,6 +255,6 @@ ausformulierte Vorführ-Drehbuch mit acht Fragen stehen an einer Stelle, nicht d
 ## Umfang außerhalb dieses Verzeichnisses
 
 - Demo-Drehbuch und Installationsanleitung — [`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md) (#713)
-- Smoke-Test gegen das `demo`-Profil — #232 (`e2e/demo-smoke/`, `npm run test:demo-smoke` in
+- Smoke-Test gegen das `demo`-Profil — #232 (`e2e/demo-smoke/`, `pnpm run test:demo-smoke` in
   `e2e/`, siehe [`e2e/README.md`, „Demo-Smoke (#232)"](../e2e/README.md#demo-smoke-232))
 - Rollout auf einen erreichbaren Host — #230

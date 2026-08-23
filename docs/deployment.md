@@ -48,12 +48,12 @@ Hier ist eine Verwechslung angelegt, die bereits mehrfach zu falschen Aussagen g
 
 | | Anbieter | Modell | Anmerkung |
 |---|---|---|---|
-| **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht**. `OPAA_AI_CHAT_PROVIDER` steht deshalb formal auf `openai`; nur `OPAA_OPENAI_BASE_URL`, der API-Schlüssel und `OPAA_OPENAI_CHAT_MODEL` zeigen auf Anthropic. |
-| **Embedding** | Ollama, lokal | `nomic-embed-text` | 768 Dimensionen, entsprechend `OPAA_PGVECTOR_DIMENSIONS=768` statt des Stack-Defaults 1536. |
+| **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht** — seit #762 ohnehin der einzige Anbindungsweg für beide Funktionen. `OPAA_OPENAI_CHAT_BASE_URL=https://api.anthropic.com/v1`, ein eigener `OPAA_OPENAI_CHAT_API_KEY` und `OPAA_OPENAI_CHAT_MODEL=claude-haiku-4-5` zeigen auf Anthropic; das gemeinsame `OPAA_OPENAI_BASE_URL` ist auf dieser Instanz **nicht** gesetzt. |
+| **Embedding** | Ollama, auf dem Host der VPS (nicht im Compose-Netz) | `nomic-embed-text` | Läuft über denselben Anbindungsweg, aber **nicht** über den Anwendungs-Default: `OPAA_OPENAI_EMBEDDING_BASE_URL=http://host.docker.internal:11434/v1` (Ollama läuft auf dem Host, nicht als Compose-Service `ollama` — der `docker`-Profil-Default `http://ollama:11434/v1` liefe hier ins Leere) und `OPAA_OPENAI_EMBEDDING_MODEL=nomic-embed-text` sind explizit gesetzt. 768 Dimensionen, entsprechend `OPAA_PGVECTOR_DIMENSIONS=768` statt des Stack-Defaults 1536. |
 
-Drei Punkte dazu:
+Zwei Punkte dazu:
 
-- **Der Wert `openai` in `OPAA_AI_CHAT_PROVIDER` bezeichnet hier das Protokoll, nicht den Anbieter.** Wer ihn als Anbieterangabe liest, kommt zu einem falschen Ergebnis — genau das ist in der Vergangenheit passiert.
+- **`openai` bezeichnet hier das Protokoll, nicht den Anbieter.** Wer die Basis-Adresse als Anbieterangabe liest, kommt zu einem falschen Ergebnis — genau das ist in der Vergangenheit passiert. Bis #762 trug dazu bei, dass eine eigene Variable `OPAA_AI_CHAT_PROVIDER` formal auf `openai` stand; diese Variable ist inzwischen entfallen (siehe [„LLM-Anbieter"](#llm-anbieter) unten), die Verwechslungsgefahr bleibt aber an der Basis-Adresse selbst bestehen.
 - **Die Aufteilung Chat bei Anthropic, Embedding lokal ist dauerhaft, nicht provisorisch.** Anthropic bietet keine Embeddings-API an; ein einheitlicher Anbieter für beides ist mit dieser Wahl gar nicht möglich.
 - Anthropic bezeichnet die OpenAI-kompatible Schicht ausdrücklich als Werkzeug zum Testen und Vergleichen, nicht als produktionsreifen Zugang. Für eine Testinstanz ist das angemessen; für einen Dauerbetrieb wäre die native Anbindung zu wählen.
 
@@ -166,10 +166,26 @@ Eine Neuindizierung wird erst durch Änderungen nötig, die nichts mit dem Image
 | `OPAA_PGVECTOR_DIMENSIONS` geändert | Passt nicht mehr zur bestehenden Vektortabelle — die Datenbank muss zurückgesetzt und der Korpus neu indiziert werden |
 | `docker compose down -v` bzw. das Deployment-Skript mit zurücksetzendem Schalter ausgeführt | Datenbank inklusive Index ist weg — vollständige Neuindizierung nötig |
 | PostgreSQL-Hauptversion gewechselt (Image-Tag von `pg18` auf eine höhere Version) | Das Datenverzeichnis im Volume ist nicht aufwärtskompatibel; ein solcher Wechsel ist ein eigener Migrationsvorgang, kein `docker compose pull` |
+| Update von einer Version **zwischen #766 und #773** (jede Version, die Vektoren über die OpenAI-kompatible Schicht indiziert hat, bevor #773 die Metadaten-Kontamination der Einbettung behoben hat) | In dieser Zeitspanne indizierte Vektoren tragen fünf Zeilen Metadaten-Rauschen (`document_id`/`chunk_index`/`file_name`/`library_id`/`organization_id`) vor dem eigentlichen Text mit eingebettet (Kosinus-Ähnlichkeit zum sauberen Vektor: rund 0.42) — **betroffene Bibliotheken müssen neu indiziert werden**, sonst liegen kontaminierte und saubere Vektoren nebeneinander im selben Suchraum. Siehe die eigene Anleitung dazu direkt unten |
 
 Auf der Testinstanz sind `nomic-embed-text` und `OPAA_PGVECTOR_DIMENSIONS=768` fest aneinander gekoppelt: Wer das Embedding-Modell wechselt, muss beide Werte gemeinsam ändern und die Datenbank zurücksetzen. Ein Wechsel des **Chat**-Modells berührt den Index dagegen nicht — Chat und Einbettung sind auf der Instanz ohnehin getrennte Anbieter.
 
 > **Falle bei einer Neuindizierung:** OPAA überspringt Dateien, deren SHA-256-Prüfsumme unverändert ist **und** deren Datensatz in der Tabelle `documents` den Status `INDEXED` trägt. Wird die Vektortabelle geleert, ohne auch `documents` zu bereinigen, meldet ein neuer Lauf lauter übersprungene Dateien und der Index bleibt leer. Beide Tabellen liegen in derselben Datenbank — wer den Index verwirft, muss `documents` mitverwerfen.
+
+> **Neuindizierung nach #773 (Metadaten-Kontamination der Einbettung):** Der Fix wirkt nur vorwärts — er ändert, was ab dem Update neu eingebettet wird, nicht die bereits gespeicherten Vektoren. Zwischen #766 (Umstellung auf die OpenAI-kompatible Einbettung) und #773 (dieser Fix) indizierte Chunks bleiben kontaminiert, bis sie explizit neu indiziert werden, und liegen bis dahin unbemerkt neben sauberen Vektoren im selben Suchraum — eine gemischte Suchqualität, kein Fehlschlag, der auffällt. Betroffen ist jede Bibliothek, die in diesem Zeitfenster (mindestens einmal) indiziert wurde, unabhängig vom Quellentyp. Eine reine `docker compose pull`/`up -d`-Aktualisierung erkennt das nicht automatisch — wer aus dieser Zeitspanne aktualisiert, muss selbst neu indizieren. Zwei bekannte Fallen dabei, zusätzlich zur SHA-256-/`INDEXED`-Falle oben:
+>
+> - **`FILESYSTEM`/`HTTP_DIRECTORY`:** Die SHA-256-Falle oben gilt unverändert — unveränderte Dateien mit Status `INDEXED` werden übersprungen, auch wenn ihr gespeicherter Vektor kontaminiert ist. Ohne einen Rücksetzschritt merkt ein neuer Lauf gar nichts an.
+> - **`RSS_FEED`:** Zusätzlich zur SHA-256-Falle greift hier der `rss_feed_state`-ETag/`Last-Modified` (siehe [„Feeds als Quelle"](features/knowledge-sources.md#feeds-als-quelle-gebaut), Abschnitt „Änderungserkennung"): Meldet der Feed „unverändert" (HTTP 304), endet der Lauf nach der ersten Anfrage, ohne dass auch nur ein Eintrag erneut betrachtet wird — unabhängig vom Zustand der bereits gespeicherten Vektoren.
+>
+> Für einen echten Neuaufbau einer betroffenen Bibliothek müssen **`documents`, die zugehörigen `vector_store`-Zeilen und (nur bei `RSS_FEED`) `rss_feed_state`** gemeinsam zurückgesetzt werden, gezielt für die betroffene `library_id` — nicht die ganze Datenbank:
+>
+> ```sql
+> DELETE FROM vector_store WHERE metadata->>'library_id' = '<library-id>';
+> DELETE FROM documents WHERE library_id = '<library-id>';
+> DELETE FROM rss_feed_state WHERE library_id = '<library-id>';  -- nur bei RSS_FEED-Bibliotheken
+> ```
+>
+> Anschließend die Bibliothek regulär neu indizieren (`POST /api/v1/libraries/{libraryId}/indexing` bzw. der entsprechende Button in der Oberfläche). Es gibt keinen dedizierten „Nur-neu-einbetten"-Schalter, der die drei Tabellen automatisch zurücksetzt — dieser manuelle Weg ist der einzige. Auf der öffentlichen Testinstanz betrifft das jede Bibliothek, die zwischen dem #766- und dem #773-Deploy mindestens einmal indiziert wurde; siehe [„Korpus einspielen und indizieren"](#korpus-einspielen-und-indizieren) für den regulären Seed-Weg, der sich für einen kompletten Neuaufbau ebenfalls eignet.
 
 ### Sicherheitshinweis: `POST /api/v1/libraries/{libraryId}/indexing` ist von außen erreichbar
 
@@ -243,6 +259,11 @@ kcadm.sh update realms/opaa -s accessTokenLifespan=900 -s ssoSessionIdleTimeout=
   unten), muss ein eigener Schlüssel gesetzt sein — ohne ihn schlägt nur dieser eine Schreibvorgang fehl,
   der Start selbst nicht. Der im `dev`-Profil hinterlegte Schlüssel ist ausdrücklich nicht
   produktionstauglich und darf nicht übernommen werden.
+- `OPAA_SETTINGS_ENCRYPTION_KEY` — sobald ein Chat-Modell mit Zugangsschlüssel angelegt oder
+  geändert wird (siehe [„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle-756)
+  unten), muss ein eigener Schlüssel gesetzt sein — ohne ihn schlägt nur dieser eine Vorgang fehl,
+  der Start selbst nicht. Der im `dev`-Profil hinterlegte Schlüssel ist ausdrücklich nicht
+  produktionstauglich und darf nicht übernommen werden.
 
 **Was es in diesem Repository nicht mehr gibt und deshalb hier auch nicht zu ersetzen ist:** Ein
 anwendungsseitiges JWT-Secret (früher `OPAA_AUTH_BASIC_SECRET`) existiert seit dessen ersatzloser
@@ -289,14 +310,15 @@ Hintergrund und die drei Schichten, in denen die Grenze gehalten wird: [features
 # 1. Umgebung konfigurieren
 cp .env.docker.example .env.docker
 # .env.docker bearbeiten. Voreingestellt sind lokal betriebene Modelle über
-# Ollama — dafür ist keine weitere Angabe in .env.docker selbst nötig. Der
-# Compose-Stack enthält aber KEINEN ollama-Service: Ein erreichbarer Ollama-
-# Server wird vorausgesetzt (OPAA_OLLAMA_BASE_URL=http://ollama:11434 ist
-# nur ein Platzhalter-Hostname). Ohne einen solchen startet der Stack zwar,
-# aber Indizierung und Fragen schlagen fehl. Läuft Ollama auf dem Host,
-# OPAA_OLLAMA_BASE_URL auf http://host.docker.internal:11434 setzen. Wer
-# stattdessen einen openai-kompatiblen Anbieter wählt, muss
-# OPAA_OPENAI_BASE_URL setzen (siehe „LLM-Anbieter").
+# die openai-kompatible Schicht (seit #762 der einzige Anbindungsweg) — dafür
+# ist keine weitere Angabe in .env.docker selbst nötig. Der Compose-Stack
+# enthält aber KEINEN ollama-Service: Ein erreichbarer Ollama-Server wird
+# vorausgesetzt (OPAA_OPENAI_BASE_URL=http://ollama:11434/v1 ist nur ein
+# Platzhalter-Hostname). Ohne einen solchen startet der Stack zwar, aber
+# Indizierung und Fragen schlagen fehl. Läuft Ollama auf dem Host,
+# OPAA_OPENAI_BASE_URL auf http://host.docker.internal:11434/v1 setzen. Wer
+# stattdessen einen anderen openai-kompatiblen Anbieter wählt, muss
+# OPAA_OPENAI_BASE_URL entsprechend setzen (siehe „LLM-Anbieter").
 
 # 2. Alle Services starten
 docker compose up --build
@@ -325,22 +347,103 @@ Alle Konfigurationen erfolgen über Umgebungsvariablen in `.env.docker`. Docker 
 
 ### Erforderliche Variablen
 
-Im Standardfall — lokal betriebene Modelle über Ollama für Chat und Einbettung — ist **keine**
-Modellvariable erforderlich. Der Stack startet ohne zusätzliche Angabe.
+Im Standardfall — lokal betriebene Modelle über die openai-kompatible Schicht für Chat und
+Einbettung (seit #762 der einzige Anbindungsweg) — ist **keine** Modellvariable erforderlich. Der
+Stack startet ohne zusätzliche Angabe; die Basis-Adresse zeigt bereits auf einen lokal betriebenen
+Ollama-Server (`http://localhost:11434/v1` bzw., im Profil `docker`, `http://ollama:11434/v1`).
 
-Wer für Chat oder Einbettung den openai-kompatiblen Anbieter wählt (`OPAA_AI_CHAT_PROVIDER=openai`
-bzw. `OPAA_AI_EMBEDDING_PROVIDER=openai`), muss die **Zieladresse angeben**:
+Wer stattdessen einen anderen Anbieter für Chat oder Einbettung verwenden will, muss die
+**Zieladresse überschreiben**:
 
 ```env
 OPAA_OPENAI_BASE_URL=https://modellserver.example.internal/v1
 OPAA_OPENAI_API_KEY=sk-your-key-here
 ```
 
-Es gibt für die Adresse **keine Voreinstellung**. Fehlt sie bei gewähltem openai-kompatiblen
-Anbieter, bricht das Backend den Start mit einer Meldung ab, die die fehlende Variable benennt
-(`io.opaa.config.OpenAiBaseUrlGuard`). Der Grund: `openai` bezeichnet das Protokoll, nicht das Ziel
-— lokal betriebene Modellserver sprechen dasselbe Protokoll. Eine Voreinstellung würde eine
-Installation, die im Haus bleiben soll, stillschweigend nach außen richten.
+Anders als vor #762 hat die Adresse eine Voreinstellung — sie zeigt aber auf einen lokalen
+Endpunkt, nicht nach außen; eine Installation, die im Haus bleiben soll, wird dadurch nicht
+stillschweigend nach außen gerichtet. Ein **explizit leer gesetzter** Wert (etwa
+`OPAA_OPENAI_BASE_URL=` in einer `.env`-Datei) überschreibt diese Voreinstellung dagegen mit einer
+leeren Zeichenkette und lässt das Backend mit einer Meldung abbrechen, die die betroffene Variable
+benennt (`io.opaa.config.OpenAiBaseUrlGuard`) — das ist der einzige verbleibende Fall, den dieser
+Guard noch abfängt.
+
+> **Update-Hinweis für Bestandsinstallationen (#756).** Seit Stufe 1 der Modellverwaltung
+> übernimmt das Backend beim ersten Start nach dem Update die obige Konfiguration einmalig als
+> verwaltetes Chat-Modell (siehe [„Übergang aus der heutigen Konfiguration"](features/llm-integration.md#übergang-aus-der-heutigen-konfiguration)).
+> Das erfordert **keine** neue Variable für den Normalfall — auch nicht für `docker,oidc` oder eine
+> reine Ollama-Installation ohne jeden Zugangsschlüssel. Nur wer bereits mit gesetztem
+> `OPAA_OPENAI_API_KEY` betrieben wird, sollte vor dem Update `OPAA_SETTINGS_ENCRYPTION_KEY` setzen
+> (siehe [„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle-756))
+> — ohne ihn scheitert nur diese einmalige Übernahme, der Start selbst nicht.
+
+> **Update-Hinweis für Bestandsinstallationen (#762): der native Ollama-Anbindungsweg entfällt.**
+> Bis einschließlich der vorigen Version gab es zwei Anbindungswege — einen nativen für Ollama
+> (`OPAA_AI_CHAT_PROVIDER`/`OPAA_AI_EMBEDDING_PROVIDER=ollama`, mit eigenen `OPAA_OLLAMA_*`-Variablen)
+> und den openai-kompatiblen für alles andere. Seit #762 gibt es nur noch den zweiten — Ollama wird
+> darüber angesprochen wie jeder andere openai-kompatible Endpunkt, über seinen eigenen `/v1`-Pfad.
+> Folgende Variablen sind **ersatzlos entfallen**:
+>
+> | Entfallene Variable | Ersatz |
+> |---|---|
+> | `OPAA_AI_CHAT_PROVIDER` | keiner nötig — der Anbindungsweg ist jetzt fest `openai` |
+> | `OPAA_AI_EMBEDDING_PROVIDER` | keiner nötig — der Anbindungsweg ist jetzt fest `openai` |
+> | `OPAA_OLLAMA_BASE_URL` | `OPAA_OPENAI_BASE_URL` (bzw. `OPAA_OPENAI_CHAT_BASE_URL`/`OPAA_OPENAI_EMBEDDING_BASE_URL` je Funktion) — **mit `/v1`-Suffix**, den die Ollama-Variable nicht brauchte |
+> | `OPAA_OLLAMA_CHAT_MODEL` | `OPAA_OPENAI_CHAT_MODEL` |
+> | `OPAA_OLLAMA_EMBEDDING_MODEL` | `OPAA_OPENAI_EMBEDDING_MODEL` |
+>
+> **Verbindliche Migrationsregel, nicht nur ein Sonderfall:** War `OPAA_OLLAMA_BASE_URL` vor dem
+> Update **gesetzt** — mit einem beliebigen Wert, auch dem bloßen Platzhalter `http://ollama:11434`
+> —, **muss** dieser Wert (mit angehängtem `/v1`) vor dem Update als `OPAA_OPENAI_EMBEDDING_BASE_URL`
+> übernommen werden (und als `OPAA_OPENAI_CHAT_BASE_URL`, falls auch `OPAA_AI_CHAT_PROVIDER=ollama`
+> stand). Grund: Der neue Anwendungs-Default für `OPAA_OPENAI_BASE_URL` ist zwar ebenfalls ein lokal
+> betriebener Ollama-Server, aber nicht notwendigerweise **derselbe** — läuft Ollama etwa auf dem
+> Host statt als Compose-Service `ollama` (üblich bei `docker-compose.yml`, das keinen eigenen
+> `ollama`-Service enthält), zeigt der Default ins Leere, und Indizierung/Fragen schlagen nach dem
+> Update ohne jede Warnung fehl.
+>
+> **Ebenso verbindlich, mit einem Datenabfluss-Risiko statt nur eines Ausfalls:** War stattdessen
+> `OPAA_OPENAI_BASE_URL` bereits auf einen **anderen** Anbieter als einen lokalen Ollama-Server
+> gesetzt (etwa einen Cloud-Endpunkt für den Chat), **muss** für die Einbettung ausdrücklich
+> `OPAA_OPENAI_EMBEDDING_BASE_URL` gesetzt werden. Ohne diese Trennung erbt die Einbettung nach dem
+> Update sonst dieselbe Adresse wie der Chat — und jeder indizierte Dokumentinhalt ginge an einen
+> Anbieter außerhalb des Hauses, den die bisherige Konfiguration dafür nie vorgesehen hatte.
+>
+> **Nur wer beides nie gesetzt hatte** — weder `OPAA_OLLAMA_BASE_URL` noch ein `OPAA_OPENAI_BASE_URL`
+> auf einen Nicht-Ollama-Endpunkt, der übliche Fall für einen unveränderten lokalen Ollama-Betrieb —,
+> **muss nichts ändern**: `OPAA_OPENAI_BASE_URL` hat seit #762 denselben Default, den vorher
+> `OPAA_OLLAMA_BASE_URL` trug (`http://localhost:11434/v1` bzw., im Profil `docker`,
+> `http://ollama:11434/v1`), ebenso die Modell-Defaults (`phi3:mini`/`nomic-embed-text`). Übrig
+> gelassene, jetzt unbekannte Variablen (`OPAA_AI_CHAT_PROVIDER=ollama` allein, ohne weitere
+> `OPAA_OLLAMA_*`-Variablen) werden von Spring stillschweigend ignoriert — kein Fehler, aber auch
+> keine Wirkung mehr; sie sollten bei Gelegenheit aus der eigenen `.env`/`.env.docker` entfernt
+> werden. Beim Start protokolliert das Backend zusätzlich eine `WARN`-Zeile, falls eine der
+> entfallenen Variablen noch in der Umgebung liegt, damit ein übersehener Altwert nicht unbemerkt
+> bleibt.
+>
+> **Wer eigene `OPAA_OLLAMA_*`-Werte gesetzt hatte** (abweichende Adresse und/oder anderes Modell),
+> muss diese vor dem Update auf die neuen Variablennamen übertragen — siehe Tabelle und die beiden
+> verbindlichen Regeln oben. Die einmalige Übernahme in `llm_models` (siehe Absatz zu #756 oben)
+> liest für den **Chat** dafür ohnehin **weiterhin** `OPAA_OLLAMA_BASE_URL`/`OPAA_OLLAMA_CHAT_MODEL`,
+> falls beim ersten Start nach dem Update sowohl `OPAA_AI_CHAT_PROVIDER=ollama` **als auch** eine
+> dieser beiden Variablen noch gesetzt ist (`io.opaa.llm.LlmModelSeeder`) — ein Update in einem
+> Schritt, ohne die `.env`-Datei vorher anzupassen, übernimmt die bisherige Chat-Konfiguration also
+> trotzdem korrekt. Das gilt **nicht** für die Einbettung: Für sie gibt es keine analoge Übernahme,
+> weil Einbettungsmodelle (anders als das Chat-Modell seit Stufe 1 der Modellverwaltung) noch nicht
+> verwaltete Objekte sind — die Werte müssen für die Einbettung deshalb **vor** dem Update in die
+> `.env`/`.env.docker`-Datei übertragen werden, sonst schlägt die Einbettung ab dem ersten Start nach
+> dem Update fehl. Für den **laufenden Betrieb** (jeder Aufruf nach dem ersten Start) zählt ohnehin
+> nur noch `OPAA_OPENAI_*` — die alten Variablen zu entfernen und durch die neuen zu ersetzen bleibt
+> deshalb so oder so nötig.
+>
+> **Betroffen ist insbesondere die öffentliche Demo-Instanz** (siehe [„Modellkonfiguration der
+> Instanz"](#modellkonfiguration-der-instanz) oben): Sie lief mit `OPAA_AI_EMBEDDING_PROVIDER=ollama`
+> und `OPAA_OLLAMA_BASE_URL=http://host.docker.internal:11434` produktiv — Ollama läuft dort auf dem
+> Host, nicht als Compose-Service. Nach dem Update **muss** die Instanz-Konfiguration
+> `OPAA_OPENAI_EMBEDDING_BASE_URL=http://host.docker.internal:11434/v1` und
+> `OPAA_OPENAI_EMBEDDING_MODEL=nomic-embed-text` explizit setzen — der neue Default
+> (`http://ollama:11434/v1`) trifft hier nicht zu, weil es in dieser Instanz keinen Compose-Service
+> `ollama` gibt; ohne die Übertragung bricht die Einbettung nach dem Update ab.
 
 ### Docker-spezifische Variablen
 
@@ -348,7 +451,7 @@ Diese Variablen sind wichtig, wenn mit Docker Compose ausgeführt wird, und soll
 
 | Variable | Erforderlicher Wert | Warum |
 |----------|---------------------|-------|
-| `SPRING_PROFILES_ACTIVE` | `docker,oidc` (Betrieb) oder `docker,dev` (Entwicklung) | Aktiviert Docker-spezifische Konfiguration (DB-URL, Ollama-URL) und den Auth-Modus; ohne `oidc` oder `dev` startet das Backend nicht |
+| `SPRING_PROFILES_ACTIVE` | `docker,oidc` (Betrieb) oder `docker,dev` (Entwicklung) | Aktiviert Docker-spezifische Konfiguration (DB-URL, openai-kompatible Basis-Adresse) und den Auth-Modus; ohne `oidc` oder `dev` startet das Backend nicht |
 | `OPAA_SERVER_ADDRESS` | `0.0.0.0` | Backend muss an alle Schnittstellen binden, um von anderen Containern erreichbar zu sein |
 | `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Muss mit dem Host-Port des Frontends übereinstimmen |
 | `OPAA_DB_USERNAME` | `opaa` | Muss zwischen Backend- und postgres-Services übereinstimmen |
@@ -364,10 +467,10 @@ OPAA_DB_USERNAME=opaa
 OPAA_DB_PASSWORD=opaa
 ```
 
-Chat und Einbettung laufen damit über Ollama (`OPAA_OLLAMA_BASE_URL` ist im Profil `docker` auf
-`http://ollama:11434` vorbelegt). Für einen openai-kompatiblen Anbieter kommen
-`OPAA_AI_CHAT_PROVIDER` bzw. `OPAA_AI_EMBEDDING_PROVIDER`, `OPAA_OPENAI_BASE_URL` und
-`OPAA_OPENAI_API_KEY` hinzu.
+Chat und Einbettung laufen damit über die openai-kompatible Schicht gegen einen lokal betriebenen
+Ollama-Server (`OPAA_OPENAI_BASE_URL` ist im Profil `docker` auf `http://ollama:11434/v1`
+vorbelegt). Für einen anderen Anbieter kommen `OPAA_OPENAI_BASE_URL` und `OPAA_OPENAI_API_KEY`
+hinzu (überschreiben die Voreinstellung).
 
 ### Alle Umgebungsvariablen
 
@@ -404,10 +507,12 @@ beschreiben zwei verschiedene Ebenen. Eine leere Compose-Belegung („nicht gese
 
 Ist eine Variable nirgends gesetzt, gilt in beiden Fällen der jeweilige Default.
 
-**Anbieterbedingte Variablen:** `OPAA_OPENAI_*` wirkt nur, solange der jeweilige Anbieter
-(`OPAA_AI_CHAT_PROVIDER` bzw. `OPAA_AI_EMBEDDING_PROVIDER`) auf `openai` steht; `OPAA_OLLAMA_*`
-entsprechend nur bei `ollama`. Ein gesetzter, aber wegen des falschen Anbieters wirkungsloser Wert wird
-nicht gemeldet — er bleibt einfach ungenutzt liegen.
+**`OPAA_OPENAI_*` gilt seit #762 uneingeschränkt** — es gibt keine Anbieter-Variable mehr, die ihre
+Wirkung an- oder abschaltet: Chat und Einbettung laufen immer über diese eine, openai-kompatible
+Konfiguration. (Bis einschließlich der vorigen Version schalteten `OPAA_AI_CHAT_PROVIDER`/
+`OPAA_AI_EMBEDDING_PROVIDER` zwischen dieser Konfiguration und eigenen `OPAA_OLLAMA_*`-Variablen um
+— siehe [„Update-Hinweis für Bestandsinstallationen (#762)"](#erforderliche-variablen) oben für die
+Migration.)
 
 Manche Variablen dieser Tabelle sind kein Spring-Property, sondern werden ausschließlich von Docker
 Compose selbst ausgewertet (Bind-Mounts, Host-Ports, die `env_file`-Auswahl) oder vom
@@ -431,22 +536,17 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_DB_USERNAME` | `opaa` | `opaa` | PostgreSQL-Benutzername |
 | `OPAA_DB_PASSWORD` | `opaa` | `opaa` | PostgreSQL-Passwort |
 | `OPAA_DB_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `5432`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `5432` | Host-Port, auf den `docker-compose.yml` den PostgreSQL-Container bindet (nur `127.0.0.1`) |
-| **LLM / Embedding** | | | |
-| `OPAA_AI_CHAT_PROVIDER` | `ollama` | `ollama` | Chat-Modell-Anbieter (`ollama` oder `openai`) |
-| `OPAA_AI_EMBEDDING_PROVIDER` | `ollama` | `ollama` | Embedding-Modell-Anbieter (`ollama` oder `openai`) |
-| `OPAA_OPENAI_API_KEY` | `sk-placeholder` (Platzhalter, kein gültiger Schlüssel — greift nur, falls ein Anbieter auf `openai` steht und kein spezifischerer Schlüssel gesetzt ist) | nicht gesetzt (auskommentiert) — der Anwendungs-Default (Platzhalter) gilt | Zugangsschlüssel der openai-kompatiblen Schnittstelle. Wirkt nur bei mindestens einem Anbieter `openai` |
-| `OPAA_OPENAI_BASE_URL` | — (kein Default) | nicht gesetzt (auskommentiert) | Basis-Adresse der openai-kompatiblen Schnittstelle. **Ohne Voreinstellung; erforderlich, sobald ein Anbieter auf `openai` steht** — sonst bricht der Start ab (siehe [„Erforderliche Variablen"](#erforderliche-variablen) oben) |
-| `OPAA_OPENAI_CHAT_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | Eigener Zugangsschlüssel nur für den Chat-Aufruf, falls Chat- und Embedding-API unterschiedliche Schlüssel brauchen. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
-| `OPAA_OPENAI_CHAT_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:}}`) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Chat-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten) |
-| `OPAA_OPENAI_CHAT_MODEL` | `gpt-4o` | `gpt-4o` | OpenAI-Chat-Modellname. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
-| `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | `0.7` | Chat-Antwort-Temperatur (0,0–2,0). Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
-| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | `2000` | Maximale Tokens in Chat-Antwort. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=openai` |
-| `OPAA_OPENAI_EMBEDDING_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | Eigener Zugangsschlüssel nur für den Embedding-Aufruf. Wirkt nur bei `OPAA_AI_EMBEDDING_PROVIDER=openai` |
-| `OPAA_OPENAI_EMBEDDING_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:}}`) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Embedding-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten) |
-| `OPAA_OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | `text-embedding-3-small` | OpenAI-Embedding-Modellname. Wirkt nur bei `OPAA_AI_EMBEDDING_PROVIDER=openai` |
-| `OPAA_OLLAMA_BASE_URL` | Profil `local`: `http://localhost:11434`; Profil `docker`: `http://ollama:11434` — kein profilunabhängiger Default | `http://ollama:11434` | Ollama-API-Basis-URL. Wirkt nur, solange mindestens ein Anbieter auf `ollama` steht. **Der Compose-Stack enthält keinen `ollama`-Service** — der Hostname `ollama` ist nur ein Platzhalter; ein erreichbarer Ollama-Server wird vorausgesetzt, sonst schlagen Indizierung und Abfragen fehl (der Start selbst bricht nicht ab). Läuft Ollama auf dem Host, stattdessen `http://host.docker.internal:11434` setzen (`extra_hosts` im `backend`-Service ist dafür bereits konfiguriert) |
-| `OPAA_OLLAMA_CHAT_MODEL` | `phi3:mini` | `phi3:mini` | Ollama-Chat-Modellname. Wirkt nur bei `OPAA_AI_CHAT_PROVIDER=ollama` |
-| `OPAA_OLLAMA_EMBEDDING_MODEL` | `nomic-embed-text` | `nomic-embed-text` | Ollama-Embedding-Modellname. Wirkt nur bei `OPAA_AI_EMBEDDING_PROVIDER=ollama` |
+| **LLM / Embedding** (seit #762 ein einziger, openai-kompatibler Anbindungsweg — siehe [„LLM-Anbieter"](#llm-anbieter) unten) | | | |
+| `OPAA_OPENAI_API_KEY` | `sk-placeholder` (Platzhalter, kein gültiger Schlüssel — greift nur, falls kein spezifischerer Schlüssel gesetzt ist; ein lokal betriebener Ollama-Server braucht keinen echten) | nicht gesetzt (auskommentiert) — der Anwendungs-Default (Platzhalter) gilt | Zugangsschlüssel der openai-kompatiblen Schnittstelle |
+| `OPAA_OPENAI_BASE_URL` | `http://localhost:11434/v1`; im Spring-Profil `docker` stattdessen `http://ollama:11434/v1` | nicht gesetzt (auskommentiert) — der `docker`-Profil-Default gilt | Basis-Adresse der openai-kompatiblen Schnittstelle, gemeinsam für Chat und Einbettung. Zeigt ohne weitere Angabe auf einen lokal betriebenen Ollama-Server; ein **explizit leer gesetzter** Wert überschreibt diesen Default mit einer leeren Zeichenkette und lässt den Start abbrechen (siehe [„Erforderliche Variablen"](#erforderliche-variablen) oben) |
+| `OPAA_OPENAI_CHAT_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | **Nur noch Seed-Quelle für den ersten Start (#758, siehe oben):** liefert den Zugangsschlüssel des anfänglichen `llm_models`-Eintrags; danach maßgeblich ist die Administrationsoberfläche |
+| `OPAA_OPENAI_CHAT_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | **Nur noch Seed-Quelle für den ersten Start (#758, siehe oben):** liefert die Basis-Adresse des anfänglichen `llm_models`-Eintrags; danach maßgeblich ist die Administrationsoberfläche (siehe [„LLM-Anbieter"](#llm-anbieter) unten) |
+| `OPAA_OPENAI_CHAT_MODEL` | `phi3:mini` | `phi3:mini` | **Nur noch Seed-Quelle für den ersten Start (#758, siehe oben):** liefert die Modell-Kennung des anfänglichen `llm_models`-Eintrags; danach maßgeblich ist die Administrationsoberfläche |
+| `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | `0.7` | **Nur noch Seed-Quelle für den ersten Start (#758, siehe oben)** |
+| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | `2000` | **Nur noch Seed-Quelle für den ersten Start (#758, siehe oben)** |
+| `OPAA_OPENAI_EMBEDDING_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | Eigener Zugangsschlüssel nur für den Embedding-Aufruf |
+| `OPAA_OPENAI_EMBEDDING_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Embedding-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten). **Der Compose-Stack enthält keinen `ollama`-Service** — der Hostname `ollama` im Default ist nur ein Platzhalter; ein erreichbarer Ollama-Server wird vorausgesetzt, sonst schlagen Indizierung und Abfragen fehl (der Start selbst bricht nicht ab). Läuft Ollama auf dem Host, stattdessen `http://host.docker.internal:11434/v1` setzen (`extra_hosts` im `backend`-Service ist dafür bereits konfiguriert) |
+| `OPAA_OPENAI_EMBEDDING_MODEL` | `nomic-embed-text` | `nomic-embed-text` | Embedding-Modellname |
 | **Abfrage (RAG-Retrieval)** | | | |
 | `OPAA_QUERY_TOP_K` | `5` | `5` | Anzahl der pro Abfrage abgerufenen Dokument-Chunks (1–100) |
 | `OPAA_QUERY_SIMILARITY_THRESHOLD` | `0.3` | `0.3` | Minimale Kosinus-Ähnlichkeit für Chunk-Aufnahme (0,0–1,0) |
@@ -506,6 +606,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_AUTH_DEV_DEFAULT_USER` | `dev-admin` | `dev-admin` | Nutzer, als der ohne `X-OPAA-Dev-User`-Header authentifiziert wird — `.env.docker.example` setzt diesen Block, weil `docker,dev` der Compose-Standardfall ist, und erklärt dort auch die vorkonfigurierten Nutzer |
 | **Zugangsdaten-Verschlüsselung** | | | |
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | — (leer) außerhalb des Profils `dev`; im Profil `dev` fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel (siehe [„Zugangsdaten-Verschlüsselung"](#zugangsdaten-verschlüsselung-483) unten) | nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in `.env.docker.example`) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `knowledge_libraries.source_credentials` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb des Profils `dev`; erforderlich, sobald eine Bibliothek mit Zugangsdaten gespeichert wird** |
+| `OPAA_SETTINGS_ENCRYPTION_KEY` | — (leer) außerhalb des Profils `dev`; im Profil `dev` fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel (siehe [„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle-756) unten) | nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in `.env.docker.example`) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `llm_models.api_key_ciphertext` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb des Profils `dev`; erforderlich, sobald ein Chat-Modell mit Zugangsschlüssel gespeichert wird — der Start selbst bricht ohne ihn nicht ab** |
 | **OIDC** | | | |
 | `OPAA_OIDC_JWK_SET_URI` | `http://localhost:8180/realms/opaa/protocol/openid-connect/certs` | `http://keycloak:8180/realms/opaa/protocol/openid-connect/certs` | JWK-Set-URI für Token-Verifizierung. Die Compose-Belegung weicht bewusst vom Anwendungs-Default ab: Der Backend-Container muss den Docker-internen Hostnamen `keycloak` verwenden, siehe Hinweis unter [„OIDC (Keycloak)"](#oidc-keycloak) unten |
 | `OPAA_OIDC_ISSUER_URI` | `http://localhost:8180/realms/opaa` | `http://localhost:8180/realms/opaa` | OIDC-Issuer-URI für Token-Validierung — bleibt `localhost`, weil der Browser diese URL verwendet |
@@ -545,9 +646,9 @@ Auf `/api/`-Antworten setzt zusätzlich Spring Security eigene `X-Content-Type-O
 
 **`connect-src` und ein OIDC-Anbieter auf fremdem Origin.** `oidc-client-ts` holt die OIDC-Discovery-Metadaten und tauscht später den Auth-Code gegen Tokens jeweils per `fetch` direkt aus dem Browser gegen die Authority — liegt die Authority nicht auf demselben Origin wie das Frontend, blockiert eine reine `connect-src 'self'`-Richtlinie diese Aufrufe **stillschweigend** (kein Fehler in der Oberfläche, die Anmeldung tut einfach nichts). `frontend/nginx.conf` ist deshalb kein fest gebackenes Ergebnis mehr, sondern ein `envsubst`-Template (`/etc/nginx/templates/default.conf.template`, siehe `frontend/Dockerfile`): Die Umgebungsvariable `OPAA_CSP_CONNECT_SRC_EXTRA` wird beim Containerstart in `connect-src 'self' ${OPAA_CSP_CONNECT_SRC_EXTRA}` eingesetzt (leer per Voreinstellung im Image, in `.env.docker.example`/`.env.docker` mit dem Origin des mitgelieferten Keycloak vorbelegt). `NGINX_ENVSUBST_FILTER=^OPAA_(CSP|DEMO)_` im Dockerfile begrenzt die Ersetzung auf `OPAA_CSP_*`- und `OPAA_DEMO_*`-Variablen (Letztere für den Demo-Hinweis, siehe `OPAA_DEMO_MODE` oben), damit `envsubst` nicht versehentlich echte nginx-Variablen (`$scheme`, `$host`, `$remote_addr`, …) in derselben Datei anfasst. Details zum Betrieb mit einem eigenen Behörden-Identitätsanbieter: Abschnitt „OIDC (Keycloak)" unten.
 
-Die genannten Header sind gegen den Produktions-Build (`npm run build`) und das gebaute Docker-Image verprobt: `dist/index.html` referenziert ausschließlich selbst gehostete, gehashte `<script>`- und `<link>`-Dateien (keine Inline-Skripte), und ein Abruf des laufenden Containers zeigt alle Header sowohl auf `/` als auch auf `/api/`-Antworten (Vererbung über den `server`-Block, siehe Kommentare in `frontend/nginx.conf`).
+Die genannten Header sind gegen den Produktions-Build (`pnpm run build`) und das gebaute Docker-Image verprobt: `dist/index.html` referenziert ausschließlich selbst gehostete, gehashte `<script>`- und `<link>`-Dateien (keine Inline-Skripte), und ein Abruf des laufenden Containers zeigt alle Header sowohl auf `/` als auch auf `/api/`-Antworten (Vererbung über den `server`-Block, siehe Kommentare in `frontend/nginx.conf`).
 
-Für die lokale Entwicklung auch das Frontend mit `npm run dev -- --host` starten und den Zugriffsursprung zu CORS hinzufügen:
+Für die lokale Entwicklung auch das Frontend mit `pnpm run dev --host` starten und den Zugriffsursprung zu CORS hinzufügen:
 
 ```env
 OPAA_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://your-hostname:5173
@@ -555,22 +656,51 @@ OPAA_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://your-hostname:5173
 
 ### LLM-Anbieter
 
-**Voreingestellt sind lokal betriebene Modelle** über Ollama, für Chat und für Einbettung. Eine
-Installation, an der niemand etwas konfiguriert, ruft kein Modell außerhalb des Hauses auf. Diese
-Voreinstellung ist so gewollt und bleibt (siehe
+Seit [#762](https://github.com/criew/opaa/issues/762) gibt es einen einzigen Anbindungsweg für Chat
+und Einbettung: die **openai-kompatible Schnittstelle**. Das ist eine Protokollangabe, keine
+Anbieterangabe — Ollama bedient dieselbe Schnittstelle unter ihrem eigenen `/v1`-Pfad, ebenso vLLM,
+LiteLLM, Azure und die üblichen Zwischenschichten. Einen zweiten, nativen Anbindungsweg speziell für
+Ollama gibt es deshalb nicht mehr.
+
+> **Seit [#758](https://github.com/criew/opaa/issues/758) gilt für den Chat-Aufruf eine wichtige
+> Einschränkung: `OPAA_OPENAI_CHAT_*`/`OPAA_OPENAI_API_KEY`/`OPAA_OPENAI_BASE_URL` steuern das
+> Chat-Modell nur noch beim allerersten Start einer Installation.** Dabei übernimmt
+> `io.opaa.llm.LlmModelSeeder` die damalige Umgebungskonfiguration einmalig als ersten Eintrag der
+> Tabelle `llm_models` und aktiviert ihn. Danach ist **ausschließlich diese Tabelle** maßgeblich für
+> das Chat-Modell — zur Laufzeit gelesen von `io.opaa.llm.ActiveChatModelResolver`, der Basis-Adresse,
+> Modell-Kennung, Temperatur, maximale Antwortlänge und (falls hinterlegt) den entschlüsselten
+> Zugangsschlüssel des jeweils **aktiven** Eintrags zu einem `ChatClient` zusammenbaut, zwischenspeichert
+> und bei jeder Aktivierung oder Änderung des jeweils aktiven Eintrags über die
+> Administrationsoberfläche neu auflöst — ohne Neustart. Löschen ist dabei kein eigener Auslöser:
+> Das aktive Modell kann nicht gelöscht werden (409), und das Löschen eines inaktiven Eintrags
+> berührt die Auflösung nicht. Ein Ändern von `OPAA_OPENAI_CHAT_*` **nach** diesem ersten Start hat
+> keine Wirkung mehr;
+> die Modellauswahl läuft über die Administrationsoberfläche (`SYSTEM_ADMIN`, Modellverwaltung), nicht
+> mehr über Umgebungsvariablen. Die Umgebungsvariablen bleiben unten dokumentiert, weil sie beim
+> Erststart nach wie vor gelesen werden und weil ihre Werte den anfänglichen aktiven Eintrag bilden.
+>
+> **Die Einbettung ist von dieser Umstellung nicht betroffen**: `OPAA_OPENAI_EMBEDDING_*`/
+> `OPAA_OPENAI_BASE_URL` steuern das Embedding-Modell weiterhin unverändert und fortlaufend über die
+> native Spring-AI-Autoconfiguration — es gibt (bewusst) keine verwaltete Einbettungsmodell-Tabelle,
+> siehe [Modelle und zentrale Steuerung](features/llm-integration.md#eigene-modelle-zuerst).
+
+**Voreingestellt sind lokal betriebene Modelle** über genau diesen Weg, für Chat und für Einbettung.
+Eine Installation, an der niemand etwas konfiguriert, ruft kein Modell außerhalb des Hauses auf —
+`OPAA_OPENAI_BASE_URL` zeigt ohne weitere Angabe auf `http://localhost:11434/v1` (im Spring-Profil
+`docker`: `http://ollama:11434/v1`), `OPAA_OPENAI_CHAT_MODEL`/`OPAA_OPENAI_EMBEDDING_MODEL` auf
+`phi3:mini`/`nomic-embed-text`, und Ollama braucht keinen Zugangsschlüssel (der voreingestellte
+`OPAA_OPENAI_API_KEY`-Platzhalter wird nie geprüft). Diese Voreinstellung ist so gewollt und bleibt
+(siehe
 [ADR-0014, Nachtrag vom 14.08.2026](decisions/0014-produktausrichtung-oeffentliche-verwaltung.md#nachträge-entschiedene-punkte)).
 
 ```env
-OPAA_AI_CHAT_PROVIDER=ollama
-OPAA_AI_EMBEDDING_PROVIDER=ollama
-OPAA_OLLAMA_BASE_URL=http://localhost:11434
+# Kein Eintrag nötig - dies ist bereits der Anwendungs-Default.
 ```
 
-Um stattdessen einen openai-kompatiblen Anbieter zu verwenden, sind Anbieter **und Zieladresse**
-anzugeben:
+Um stattdessen einen anderen openai-kompatiblen Anbieter zu verwenden, ist die **Zieladresse**
+anzugeben — sie überschreibt die lokale Voreinstellung:
 
 ```env
-OPAA_AI_CHAT_PROVIDER=openai
 OPAA_OPENAI_BASE_URL=https://modellserver.example.internal/v1
 OPAA_OPENAI_API_KEY=sk-your-key-here
 ```
@@ -647,6 +777,63 @@ der Anwendung bekannt ist. Der nächste Schreibvorgang auf dieselbe Bibliothek (
 Zugangsdaten-Rotation über die bestehende Update-API) verschlüsselt den Wert. Ein Wert mit `enc:`-
 Präfix, aber unbekannter Version (nicht `enc:v1:`), wird dagegen nie als Klartext behandelt — Lesen
 scheitert weich (siehe oben), Schreiben hart.
+
+### Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle (#756)
+
+Seit Stufe 1 der Modellverwaltung ([Modelle und zentrale Steuerung](features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung))
+liegen Chat-Modelle in der Tabelle `llm_models`, nicht mehr ausschließlich in
+Umgebungsvariablen. Ein hinterlegter Zugangsschlüssel (optional — ein lokal betriebener Endpunkt
+läuft regelmäßig ohne Authentifizierung) liegt **verschlüsselt** in der Datenbank (AES-256-GCM,
+zufälliger Initialisierungsvektor je Wert, `io.opaa.security.SettingsEncryptor`) und erscheint in
+keiner API-Antwort und keinem Log — die Verwaltung behandelt das Feld als Nur-Schreiben-Feld.
+
+**Ein eigener Schlüssel, getrennt von `OPAA_CREDENTIALS_ENCRYPTION_KEY`:**
+
+```bash
+openssl rand -base64 32
+```
+
+Das Ergebnis (ein Base64-kodierter 256-Bit-Schlüssel) als `OPAA_SETTINGS_ENCRYPTION_KEY` setzen —
+**nicht** ins Repository committen, wie jede andere Zugangsinformation außerhalb von
+Umgebungsvariablen behandeln. Ein eigener Schlüssel statt Wiederverwendung von
+`OPAA_CREDENTIALS_ENCRYPTION_KEY`, weil beide unterschiedliche Geheimnisse schützen (Zugangsdaten
+einer Wissensquelle vs. der Zugangsschlüssel eines Chat-Modells) und keinen Grund haben, dieselbe
+Rotation zu teilen.
+
+**Kein Zwang, keinen zu haben:** Ohne gesetzten Schlüssel startet das Backend normal — eine
+Installation, die ausschließlich lokale Modelle ohne Zugangsschlüssel führt (der Normalfall, siehe
+[„Eigene Modelle zuerst"](features/llm-integration.md#eigene-modelle-zuerst)), braucht ihn nie.
+Erst der Versuch, ein Chat-Modell **mit** Zugangsschlüssel anzulegen oder zu ändern, schlägt ohne
+gültigen Schlüssel mit einer klaren deutschen Meldung fehl (`io.opaa.security.SettingsEncryptor`),
+die die fehlende oder ungültige Variable benennt. Für die Seed-Migration, die beim ersten Start eine
+bestehende `openai`-Konfiguration samt Zugangsschlüssel übernimmt (siehe [„Übergang aus der heutigen
+Konfiguration"](features/llm-integration.md#übergang-aus-der-heutigen-konfiguration) oben), gilt das
+mit einer Einschränkung (#771): Dort führt derselbe fehlende oder ungültige Schlüssel **nicht** zum
+Startabbruch, sondern nur zu einer ERROR-Log-Zeile — siehe den Update-Hinweis unten. Für lokale
+Entwicklung und Tests (nur Profil `dev`, das jede Testsuite und `bootRun` aktivieren — nicht
+`local`) ist ein
+fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel voreingestellt
+(`backend/src/main/resources/application.yml`), damit beide ohne Betreiber-Eingriff laufen.
+
+> **Update-Hinweis für Bestandsinstallationen (#756, #771).** Eine Installation, die heute
+> ausschließlich Ollama oder einen `openai`-kompatiblen Endpunkt ohne Zugangsschlüssel nutzt, läuft
+> nach dem Update auf diese Version unverändert weiter, **ohne** `OPAA_SETTINGS_ENCRYPTION_KEY`
+> gesetzt haben zu müssen. Nur wer die openai-kompatible Anbindung bereits **mit** gesetztem
+> Zugangsschlüssel betreibt, sollte den Schlüssel **vor** dem Update setzen — sonst schlägt die
+> einmalige Übernahme dieser Konfiguration als initiales Modell fehl: Der Start selbst bricht nicht
+> ab, aber das Modell bleibt unangelegt und es erscheint eine ERROR-Meldung im Log. Kein
+> Seed-Marker wird dabei geschrieben — sobald der Schlüssel gesetzt ist, holt der **nächste Neustart**
+> die Übernahme automatisch nach, ohne dass etwas anderes zu tun wäre. Wer nicht neu starten will
+> oder kann, legt das Modell in der Zwischenzeit **ohne** Zugangsschlüssel über die
+> Verwaltungsoberfläche an (`OPAA_SETTINGS_ENCRYPTION_KEY` bleibt auch dafür Voraussetzung, sobald
+> tatsächlich ein Zugangsschlüssel eingetragen werden soll — die Oberfläche ruft dafür dieselbe
+> `SettingsEncryptor#encrypt`-Prüfung auf wie die Seed-Migration).
+
+**Bei Schlüsselverlust:** Bereits verschlüsselte Zugangsschlüssel sind ohne den ursprünglichen
+Schlüssel nicht wiederherstellbar — es gibt keinen Wiederherstellungsweg außerhalb des Schlüssels
+selbst. Betroffen ist ausschließlich der Zugangsschlüssel des jeweiligen Modells, nicht der übrige
+Modelleintrag (Basis-Adresse, Modell-Kennung, Parameter) oder andere verschlüsselte Werte. Abhilfe:
+den Zugangsschlüssel für das betroffene Modell über die Verwaltungsoberfläche neu eintragen.
 
 ## Authentifizierung
 

@@ -17,6 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -27,6 +29,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class UserService {
 
   private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
+  // #778 review, finding 4: bounds for searchInOrganization below - see its Javadoc.
+  private static final int SEARCH_RESULT_LIMIT = 20;
+  private static final int SEARCH_MIN_QUERY_LENGTH = 2;
 
   private final UserRepository userRepository;
   private final SpaceService spaceService;
@@ -262,6 +268,23 @@ public class UserService {
    */
   public List<User> findAllInOrganization(UUID organizationId) {
     return userRepository.findByOrganizationId(organizationId);
+  }
+
+  /**
+   * Backs {@code UserSearchController#listUsers} (#777, gated after #778 review finding 4). A
+   * missing or too-short (below {@link #SEARCH_MIN_QUERY_LENGTH}) query returns an empty list
+   * rather than falling back to the unbounded {@link #findAllInOrganization} - the caller is
+   * expected to be a type-ahead picker that never even issues a request before the caller has typed
+   * enough to narrow the result, not a page-load preload. Matches are capped at {@link
+   * #SEARCH_RESULT_LIMIT} rows via {@link UserRepository#searchByOrganizationId}.
+   */
+  public List<User> searchInOrganization(UUID organizationId, String query) {
+    String trimmed = query == null ? "" : query.trim();
+    if (trimmed.length() < SEARCH_MIN_QUERY_LENGTH) {
+      return List.of();
+    }
+    Pageable limit = PageRequest.of(0, SEARCH_RESULT_LIMIT);
+    return userRepository.searchByOrganizationId(organizationId, trimmed, limit);
   }
 
   /**

@@ -8,6 +8,7 @@ import type {
   ChatDetail,
   ChatSummary,
   ChatUpdateRequest,
+  EmbeddingInfoResponse,
   GroupListResponse,
   GroupMemberResponse,
   GroupResponse,
@@ -21,6 +22,10 @@ import type {
   LibraryResponse,
   LibrarySpaceAssociationResponse,
   LibraryUpdateRequest,
+  LlmModelRequest,
+  LlmModelResponse,
+  LlmModelTestRequest,
+  LlmModelTestResponse,
   NotificationResponse,
   QueryRequest,
   QueryResponse,
@@ -36,6 +41,7 @@ import type {
   SpaceUpdateRequest,
   SpaceVisibility,
   UserInfo,
+  UserSummary,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
 import { setupAuthInterceptors } from './apiInterceptors'
@@ -419,6 +425,24 @@ export async function getUsers(): Promise<UserInfo[]> {
   }
 }
 
+// #777: unlike getUsers() above (GET /v1/admin/users, SYSTEM_ADMIN only), this is reachable for
+// any authenticated organization member - the member/grant pickers on SpaceManagementPage,
+// SpaceCreatePage, LibraryCreatePage and LibraryGrantsDialog need to search for a user to add,
+// and the caller reaching those pages is not necessarily a system admin.
+//
+// #778 review, finding 4: the backend requires `query` (min. 2 characters) and caps the result at
+// 20 rows - it no longer answers an unqualified "list everyone" call. A missing/blank query is
+// passed straight through and yields an empty result (UserService#searchInOrganization), never a
+// fallback list, so a caller must always supply the person's typed input here.
+export async function getUserSummaries(query: string): Promise<UserSummary[]> {
+  try {
+    const { data } = await client.get<UserSummary[]>('/v1/users', { params: { query } })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function getMyGroups(): Promise<GroupListResponse[]> {
   try {
     const { data } = await client.get<GroupListResponse[]>('/v1/me/groups')
@@ -769,6 +793,74 @@ export async function uploadBrandingLogo(file: File): Promise<BrandingResponse> 
 export async function deleteBrandingLogo(): Promise<BrandingResponse> {
   try {
     const { data } = await client.delete<BrandingResponse>('/v1/system/branding/logo')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+// #759: managed chat models (#757's admin API) - SYSTEM_ADMIN only, same as the group/branding
+// admin endpoints above. The API key is write-only: LlmModelResponse never carries it, only
+// apiKeySet (see LlmModelController's Javadoc).
+export async function getLlmModels(): Promise<LlmModelResponse[]> {
+  try {
+    const { data } = await client.get<LlmModelResponse[]>('/v1/admin/models')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function createLlmModel(request: LlmModelRequest): Promise<LlmModelResponse> {
+  try {
+    const { data } = await client.post<LlmModelResponse>('/v1/admin/models', request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateLlmModel(
+  modelId: string,
+  request: LlmModelRequest,
+): Promise<LlmModelResponse> {
+  try {
+    const { data } = await client.put<LlmModelResponse>(`/v1/admin/models/${modelId}`, request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteLlmModel(modelId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/admin/models/${modelId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function activateLlmModel(modelId: string): Promise<LlmModelResponse> {
+  try {
+    const { data } = await client.post<LlmModelResponse>(`/v1/admin/models/${modelId}/activate`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function testLlmModel(request: LlmModelTestRequest): Promise<LlmModelTestResponse> {
+  try {
+    const { data } = await client.post<LlmModelTestResponse>('/v1/admin/models/test', request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getEmbeddingInfo(): Promise<EmbeddingInfoResponse> {
+  try {
+    const { data } = await client.get<EmbeddingInfoResponse>('/v1/admin/models/embedding-info')
     return data
   } catch (err) {
     normalizeError(err)

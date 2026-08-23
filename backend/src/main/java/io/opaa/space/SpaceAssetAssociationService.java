@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,6 +71,44 @@ public class SpaceAssetAssociationService {
     this.groupMembershipResolver = groupMembershipResolver;
     this.auditEventRecorder = auditEventRecorder;
     this.notificationService = notificationService;
+  }
+
+  /**
+   * Number of libraries each of the given spaces shows the caller (#682) - the overview card's
+   * "Quellen" figure. Mirrors {@link #listForSpace}'s rule: CURATOR/ADMIN, the owner and a system
+   * admin count every association, a plain MEMBER only the libraries they may read - otherwise the
+   * figure next to a filtered list would give away how many libraries are withheld, which
+   * docs/features/spaces-and-assets.md forbids ("darf keine Anzahlen nennen"). One query for all
+   * associations plus one readable-set lookup, never a query per space; spaces without associations
+   * map to zero. Expects all spaces to belong to one organization, as {@code
+   * SpaceService#listSpaces} guarantees (the readable set is resolved once for that organization).
+   */
+  public Map<UUID, Long> countVisibleBySpace(
+      List<Space> spaces, UUID currentUserId, boolean systemAdmin) {
+    if (spaces.isEmpty()) {
+      return Map.of();
+    }
+    List<SpaceAssetAssociation> associations =
+        associationRepository.findBySpaceIdIn(spaces.stream().map(Space::getId).toList());
+    if (associations.isEmpty()) {
+      return Map.of();
+    }
+    Map<UUID, Space> spacesById =
+        spaces.stream().collect(Collectors.toMap(Space::getId, Function.identity()));
+    Set<UUID> readable =
+        systemAdmin
+            ? Set.of()
+            : libraryAccessService.readableLibraryIds(
+                currentUserId, spaces.getFirst().getOrganizationId());
+    return associations.stream()
+        .filter(
+            association -> {
+              Space space = spacesById.get(association.getSpaceId());
+              return systemAdmin
+                  || hasCuratorRole(space, currentUserId)
+                  || readable.contains(association.getLibraryId());
+            })
+        .collect(Collectors.groupingBy(SpaceAssetAssociation::getSpaceId, Collectors.counting()));
   }
 
   /**

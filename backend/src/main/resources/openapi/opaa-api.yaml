@@ -104,6 +104,52 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /api/v1/users:
+    get:
+      operationId: listUsersForSelection
+      tags: [auth]
+      summary: >
+        List users in the caller's own organization for member/grant selection - deliberately not
+        admin-restricted, unlike GET /api/v1/admin/users (#777). The member/grant pickers on
+        SpaceManagementPage, SpaceCreatePage, LibraryCreatePage and LibraryGrantsDialog need to
+        search for a user to add, but GET /api/v1/admin/users requires SYSTEM_ADMIN (#199) - a
+        403 that the frontend silently swallowed into an empty, dead-looking search field for
+        every non-admin, making "Mitglied hinzufügen" unusable for anyone but a system admin.
+        Same precedent as GET /api/v1/me/groups (any authenticated user needs their own group
+        memberships) and AssetGrantService#toResponses's server-side name resolution (#423): the
+        threshold this endpoint needs is "authenticated member of the organization", not
+        SYSTEM_ADMIN. Returns UserSummaryResponse (id/email/displayName only, no systemRole) -
+        narrower than UserInfoResponse, matching KnowledgeLibraryService#resolveOwnerNames's
+        reasoning that an organization-wide audience should see less than the SYSTEM_ADMIN-only
+        admin list does.
+
+        Requires `query` (min. 2 characters, matched case-insensitively against displayName and
+        email) and caps the result at 20 rows (#778 review) - the endpoint used to return every
+        user of the organization unconditionally on each picker mount, unbounded by input or size,
+        which is both a data-minimisation concern and unnecessary load on a large organization. A
+        missing or too-short query returns an empty list rather than falling back to the old
+        unbounded list.
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Case-insensitive substring match against displayName or email. Fewer than 2 characters
+            (after trimming) yields an empty result instead of the full organization list.
+      responses:
+        "200":
+          description: Users in the caller's organization matching the query, capped at 20 rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSummaryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /api/v1/admin/users:
     get:
       operationId: listUsers
@@ -338,6 +384,192 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/models:
+    get:
+      operationId: listLlmModels
+      tags: [admin]
+      summary: List managed chat models (system admin only)
+      description: >
+        Stufe 1 (#757, docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung).
+        Never carries an apiKey value - only apiKeySet, whether one is stored.
+      responses:
+        "200":
+          description: List of managed chat models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LlmModelResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    post:
+      operationId: createLlmModel
+      tags: [admin]
+      summary: Create a managed chat model (system admin only)
+      description: >
+        Created inactive; activateLlmModel is the only way a model becomes the systemwide active
+        one, so creating and activating are always two distinguishable audit events even in the
+        same request sequence.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LlmModelRequest"
+      responses:
+        "201":
+          description: Chat model created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/models/{modelId}:
+    parameters:
+      - name: modelId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: updateLlmModel
+      tags: [admin]
+      summary: Update a managed chat model's editable fields (system admin only)
+      description: >
+        A full replacement of every editable field except active, which only activateLlmModel
+        changes. apiKey follows the three-way convention BrandingUpdateRequest already uses for
+        its own optional fields: omitted (null) leaves the stored key unchanged, an empty string
+        clears it, and any other value replaces it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LlmModelRequest"
+      responses:
+        "200":
+          description: Chat model updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteLlmModel
+      tags: [admin]
+      summary: Delete a managed chat model (system admin only)
+      description: >
+        Rejected with 409 while the model is the systemwide active one - a chat cannot be left
+        without any model to answer with. Deactivate it via another model's activateLlmModel
+        first.
+      responses:
+        "204":
+          description: Chat model deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/models/{modelId}/activate:
+    post:
+      operationId: activateLlmModel
+      tags: [admin]
+      summary: Make a chat model the systemwide active one (system admin only)
+      description: >
+        Deactivates whichever model was active before, in the same transaction; wirkt beim
+        nächsten Vorgang, ohne Neustart. A concurrent activation of a different model is rejected
+        with 409 rather than surfacing as a server error.
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Chat model activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/models/test:
+    post:
+      operationId: testLlmModel
+      tags: [admin]
+      summary: Probe a chat model connection, saved or not yet saved (system admin only)
+      description: >
+        A short probe call against the given baseUrl/modelIdentifier with a tight timeout, so a
+        misconfigured address is caught here rather than by the next person asking a question. Also
+        works for a draft that has not been saved yet, so the entry is checkable before it is
+        stored. When modelId is given and apiKey is omitted, the stored, decrypted key of that
+        model is used for the probe instead - the key itself is never accepted back from a client
+        that never had it to begin with.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LlmModelTestRequest"
+      responses:
+        "200":
+          description: >
+            Test result - a 200 either way; the boolean success field carries the outcome, not the
+            HTTP status, the same convention SourceConnectionTestResponse already uses.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelTestResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/models/embedding-info:
+    get:
+      operationId: getEmbeddingInfo
+      tags: [admin]
+      summary: Get the current embedding model configuration (system admin only)
+      description: >
+        Read-only (#759). Unlike chat models, the embedding model is not managed through this API -
+        a change requires a full re-index because existing vectors become incomparable
+        (docs/features/llm-integration.md#sofortige-wirkung), so it stays a configuration value,
+        not a writable admin resource.
+      responses:
+        "200":
+          description: Current embedding configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbeddingInfoResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /api/v1/admin/directory-sync/dry-run:
     post:
@@ -1916,6 +2148,24 @@ components:
           type: string
           example: USER
 
+    UserSummaryResponse:
+      type: object
+      description: >
+        Deliberately narrower than UserInfoResponse (no systemRole) - GET /v1/users (#777) reaches
+        every authenticated user in the organization, not just SYSTEM_ADMIN, so it exposes only
+        what a member/grant picker needs to let a caller find someone by name or email.
+      required: [id, email, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+          nullable: true
+
     RoleChangeRequest:
       type: object
       required: [role]
@@ -2531,6 +2781,21 @@ components:
         memberCount:
           type: integer
           example: 5
+        libraryCount:
+          type: integer
+          description: >
+            #682: number of knowledge libraries assigned to the space - the "Quellen" figure of
+            the overview card. Follows the same rule as the space's association list: CURATOR,
+            ADMIN, the owner and system admins count every association, a plain MEMBER only the
+            libraries they may read. Optional so older clients keep working.
+          example: 3
+        chatCount:
+          type: integer
+          description: >
+            #682: number of chats the caller owns in this space. Chats are private to their
+            author (#525), so this is the caller's view, not a space-wide total. Optional so
+            older clients keep working.
+          example: 12
         userRole:
           $ref: "#/components/schemas/SpaceRole"
         createdAt:
@@ -4001,6 +4266,7 @@ components:
           SPACE_CREATED,
           SPACE_CHANGED,
           SPACE_DELETED,
+          SPACE_ARCHIVED,
           LIBRARY_CREATED,
           LIBRARY_CHANGED,
           LIBRARY_DELETED,
@@ -4014,6 +4280,7 @@ components:
           GROUP_MEMBER_ADDED,
           GROUP_MEMBER_REMOVED,
           LIBRARY_SHARED_TO_SPACE,
+          LIBRARY_DETACHED_FROM_SPACE,
           ASSET_OWNER_CHANGED,
           ASSET_OWNERSHIP_CLAIMED,
           ASSET_SUCCESSION_OPENED,
@@ -4031,6 +4298,12 @@ components:
           AUDIT_LOG_CONFIGURATION_CHANGED,
           MODEL_POLICY_CHANGED,
           CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
+          BRANDING_SETTINGS_CHANGED,
+          LLM_MODEL_CREATED,
+          LLM_MODEL_CHANGED,
+          LLM_MODEL_DELETED,
+          LLM_MODEL_ACTIVATED,
+          LLM_MODEL_DEACTIVATED,
           AUDIT_LOG_ACCESSED,
         ]
       example: ASSET_GRANT_REVOKED
@@ -4297,6 +4570,161 @@ components:
           example: "#1292EE"
         defaultColorScheme:
           $ref: "#/components/schemas/ColorScheme"
+
+    LlmModelResponse:
+      type: object
+      description: >
+        A managed chat model (Stufe 1, #757). Never carries the API key itself, even redacted -
+        only apiKeySet, whether one is stored (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung).
+      required:
+        [
+          id,
+          displayName,
+          baseUrl,
+          modelIdentifier,
+          temperature,
+          maxTokens,
+          apiKeySet,
+          active,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          example: Ollama lokal
+        baseUrl:
+          type: string
+          example: http://ollama:11434/v1
+        modelIdentifier:
+          type: string
+          example: phi3:mini
+        temperature:
+          type: number
+          format: double
+          example: 0.7
+        maxTokens:
+          type: integer
+          example: 2000
+        apiKeySet:
+          type: boolean
+          description: Whether an access key is stored - never the key itself.
+        active:
+          type: boolean
+          description: Whether this is the one systemwide active chat model.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    LlmModelRequest:
+      type: object
+      description: >
+        Used for both create and update. On update, apiKey follows the same three-way convention
+        BrandingUpdateRequest already uses: omitted (null) leaves the stored key unchanged, an
+        empty string clears it, any other value replaces it. On create, an omitted or empty apiKey
+        simply means no key is stored - the key is optional (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei),
+        since a locally operated endpoint regularly requires no authentication at all.
+      required: [displayName, baseUrl, modelIdentifier, temperature, maxTokens]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: Ollama lokal
+        baseUrl:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: The OpenAI-compatible endpoint, including any provider-specific path suffix.
+          example: http://ollama:11434/v1
+        modelIdentifier:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: phi3:mini
+        temperature:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 2
+          example: 0.7
+        maxTokens:
+          type: integer
+          minimum: 1
+          example: 2000
+        apiKey:
+          type: string
+          nullable: true
+          description: >
+            Write-only. Omitted (null) on update leaves the stored key unchanged; an empty string
+            clears it; any other value replaces it. On create, omitted or empty means no key.
+
+    LlmModelTestRequest:
+      type: object
+      description: >
+        Tests a connection without requiring the entry to be saved first. When modelId is set and
+        apiKey is omitted or empty, the stored, decrypted key of that model is used for the probe
+        instead of requiring the caller to re-enter a key they can never read back - but only when
+        baseUrl is same-origin with modelId's own stored baseUrl; otherwise the request is rejected
+        with 400 rather than sending the stored key to a different address.
+      required: [baseUrl, modelIdentifier]
+      properties:
+        baseUrl:
+          type: string
+          minLength: 1
+          example: http://ollama:11434/v1
+        modelIdentifier:
+          type: string
+          minLength: 1
+          example: phi3:mini
+        apiKey:
+          type: string
+          nullable: true
+          description: Plaintext key for this test only, never stored.
+        modelId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            When set and apiKey is omitted or empty, reuses that model's stored, decrypted key for
+            the probe, provided baseUrl is same-origin with the model's own stored baseUrl - 404 if
+            modelId does not exist, 400 if baseUrl is a different origin.
+
+    LlmModelTestResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          description: German, user-facing outcome - a distinguishable message for unreachable, unauthenticated and unknown-model failures.
+          example: Verbindung erfolgreich, Modell hat geantwortet.
+
+    EmbeddingInfoResponse:
+      type: object
+      description: >
+        The embedding model actually configured (#759), read-only - see
+        docs/features/llm-integration.md#sofortige-wirkung for why it is not editable here.
+      required: [provider, model, dimensions]
+      properties:
+        provider:
+          type: string
+          description: Configured embedding provider ("openai" or "ollama").
+          example: ollama
+        model:
+          type: string
+          example: nomic-embed-text
+        dimensions:
+          type: integer
+          description: Vector dimensionality of the configured pgvector store.
+          example: 1536
 
   parameters:
     AuditFrom:

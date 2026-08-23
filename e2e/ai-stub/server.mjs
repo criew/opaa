@@ -29,7 +29,9 @@
 import { createServer } from 'node:http'
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8089
-const DIMENSIONS = process.env.EMBEDDING_DIMENSIONS ? Number(process.env.EMBEDDING_DIMENSIONS) : 1536
+const DIMENSIONS = process.env.EMBEDDING_DIMENSIONS
+  ? Number(process.env.EMBEDDING_DIMENSIONS)
+  : 1536
 
 const CITATION_PATTERN = /【source:\s*([a-zA-Z0-9-]+)#(\d+)\s*\|\s*(.+?)】/g
 
@@ -42,6 +44,15 @@ const CITATION_PATTERN = /【source:\s*([a-zA-Z0-9-]+)#(\d+)\s*\|\s*(.+?)】/g
 const EXAMPLE_CITATION_DOCUMENT_ID = '3fa85f64-5717-4562-b3fc-2c963f66afa6'
 
 const NO_CONTEXT_ANSWER = 'Dazu liegen mir keine Informationen in den zugänglichen Dokumenten vor.'
+
+// test(e2e) #760, PR review finding 2: every managed chat model in this suite points at this same
+// stub, so a scenario that activates a *different* model and then asks a chat question cannot
+// otherwise tell whether the answer actually came from the newly activated model or from a stale,
+// cached client for the previously active one (io.opaa.llm.ActiveChatModelResolver's whole point,
+// #758) - both would produce an identical-looking answer. Remembering the last request's own
+// "model" field (the modelIdentifier OpenAiApi sends verbatim) and exposing it here lets that
+// scenario assert on it directly instead of only on the answer's mere presence.
+let lastChatModel = null
 
 function fakeEmbedding() {
   const vector = new Array(DIMENSIONS)
@@ -87,6 +98,11 @@ const server = createServer(async (req, res) => {
       return
     }
 
+    if (req.method === 'GET' && matchesEndpoint(req.url, '/last-chat-model')) {
+      sendJson(res, 200, { model: lastChatModel })
+      return
+    }
+
     if (req.method === 'POST' && matchesEndpoint(req.url, '/embeddings')) {
       const body = JSON.parse(await readBody(req))
       const inputs = Array.isArray(body.input) ? body.input : [body.input]
@@ -106,6 +122,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'POST' && matchesEndpoint(req.url, '/chat/completions')) {
       const body = JSON.parse(await readBody(req))
+      lastChatModel = typeof body.model === 'string' ? body.model : null
       const messages = Array.isArray(body.messages) ? body.messages : []
       const combinedText = messages
         .map((message) => (typeof message.content === 'string' ? message.content : ''))

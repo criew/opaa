@@ -21,7 +21,7 @@ vi.mock('../services/api', async () => {
   return {
     ...actual,
     getMyGroups: mockGetMyGroups,
-    getUsers: vi.fn().mockResolvedValue([]),
+    getUserSummaries: vi.fn().mockResolvedValue([]),
     testLibrarySource: vi.fn(),
   }
 })

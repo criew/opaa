@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getDocumentContent } from '../services/api'
-import { openDocumentContent } from './documentContent'
+import { openDocumentContent, TEXT_PREVIEW_MAX_BYTES } from './documentContent'
 
 vi.mock('../services/api', () => ({
   getDocumentContent: vi.fn(),
@@ -37,8 +37,9 @@ describe('documentContent', () => {
         fileName: 'original.pdf',
       })
 
-      await openDocumentContent('doc-1', 'fallback.pdf')
+      const result = await openDocumentContent('doc-1', 'fallback.pdf')
 
+      expect(result).toEqual({ kind: 'blob-preview' })
       expect(createObjectURLSpy).toHaveBeenCalledTimes(1)
       expect(windowOpenSpy).toHaveBeenCalledWith(
         'blob:mock-object-url',
@@ -100,10 +101,104 @@ describe('documentContent', () => {
         fileName: 'original.docx',
       })
 
-      await openDocumentContent('doc-1', 'fallback.docx')
+      const result = await openDocumentContent('doc-1', 'fallback.docx')
 
       expect(windowOpenSpy).not.toHaveBeenCalled()
       expect(clickSpy).toHaveBeenCalledTimes(1)
+      expect(result).toEqual({ kind: 'download', fileName: 'original.docx' })
+    })
+
+    // #780: DOCX (and every other format without its own preview) stays a download - the caller
+    // uses the 'download' result kind to show visible feedback ("<Dateiname> wird heruntergeladen"),
+    // since the acceptance criteria require a click to never appear to do nothing.
+    it('reports a DOCX download by its result kind so the caller can show feedback (#780)', async () => {
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: new Blob(['x'], {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        }),
+        fileName: 'bescheid.docx',
+      })
+
+      const result = await openDocumentContent('doc-1', 'fallback.docx')
+
+      expect(result).toEqual({ kind: 'download', fileName: 'bescheid.docx' })
+      expect(clickSpy).toHaveBeenCalledTimes(1)
+    })
+
+    // #780: Markdown/plain text never navigate to a blob: URL (the browser would show it raw or
+    // download it, depending on browser) - the caller renders `content` in its own preview dialog.
+    it('returns Markdown content for a text preview instead of opening a tab or downloading (#780)', async () => {
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: new Blob(['# Titel\n\nInhalt'], { type: 'text/markdown; charset=utf-8' }),
+        fileName: '001_personalausweis.md',
+      })
+
+      const result = await openDocumentContent('doc-1', 'fallback.md')
+
+      expect(windowOpenSpy).not.toHaveBeenCalled()
+      expect(clickSpy).not.toHaveBeenCalled()
+      expect(createObjectURLSpy).not.toHaveBeenCalled()
+      expect(result).toEqual({
+        kind: 'text-preview',
+        fileName: '001_personalausweis.md',
+        contentType: 'text/markdown',
+        content: '# Titel\n\nInhalt',
+      })
+    })
+
+    it('returns plain text content for a text preview (#780)', async () => {
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: new Blob(['Reiner Text ohne Markup.'], { type: 'text/plain' }),
+        fileName: 'notiz.txt',
+      })
+
+      const result = await openDocumentContent('doc-1', 'fallback.txt')
+
+      expect(windowOpenSpy).not.toHaveBeenCalled()
+      expect(clickSpy).not.toHaveBeenCalled()
+      expect(result).toEqual({
+        kind: 'text-preview',
+        fileName: 'notiz.txt',
+        contentType: 'text/plain',
+        content: 'Reiner Text ohne Markup.',
+      })
+    })
+
+    // #781 review, Nit 3: reading an unbounded Markdown/plain text original into a string via
+    // `blob.text()` could freeze the tab - above TEXT_PREVIEW_MAX_BYTES it falls back to a
+    // download instead, tagged with `reason` so the caller can explain why.
+    it('falls back to a download for a Markdown original larger than TEXT_PREVIEW_MAX_BYTES (#781 review, Nit 3)', async () => {
+      const oversized = new Blob([new Uint8Array(TEXT_PREVIEW_MAX_BYTES + 1)], {
+        type: 'text/markdown',
+      })
+      const textSpy = vi.spyOn(oversized, 'text')
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: oversized,
+        fileName: 'riesiges-dokument.md',
+      })
+
+      const result = await openDocumentContent('doc-1', 'fallback.md')
+
+      expect(textSpy).not.toHaveBeenCalled()
+      expect(windowOpenSpy).not.toHaveBeenCalled()
+      expect(clickSpy).toHaveBeenCalledTimes(1)
+      expect(result).toEqual({
+        kind: 'download',
+        fileName: 'riesiges-dokument.md',
+        reason: 'too-large-for-preview',
+      })
+    })
+
+    it('still previews a Markdown original at exactly TEXT_PREVIEW_MAX_BYTES (#781 review, Nit 3)', async () => {
+      const atLimit = new Blob([new Uint8Array(TEXT_PREVIEW_MAX_BYTES)], { type: 'text/markdown' })
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: atLimit,
+        fileName: 'genau-am-limit.md',
+      })
+
+      const result = await openDocumentContent('doc-1', 'fallback.md')
+
+      expect(result.kind).toBe('text-preview')
     })
 
     it('revokes the object URL when triggering the download throws before the revoke is scheduled', async () => {

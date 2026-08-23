@@ -1,0 +1,110 @@
+databaseChangeLog:
+  # #756: a managed chat model (io.opaa.llm.LlmModel, created by 058-create-llm-models) is
+  # administrative configuration that decides which model answers every chat in the deployment -
+  # exactly the kind of change docs/features/llm-integration.md#was-stufe-1-umfasst point 5 requires
+  # to be traceable ("Jede Änderung ist protokolliert - Anlegen, Ändern, Löschen, Aktivieren").
+  # LLM_MODEL_CREATED/_CHANGED/_DELETED/_ACTIVATED are four separate values, not one generic
+  # LLM_MODEL_CHANGED, for the same reason ASSET_GRANT_GRANTED/_CHANGED/_REVOKED and
+  # SPACE_MEMBER_ADDED/_ROLE_CHANGED/_REMOVED already are: an auditor asking "when was this model
+  # activated" should not have to inspect before/after payloads to distinguish activation from an
+  # ordinary field edit.
+  #
+  # Same widen-only shape as 053-widen-audit-event-type-library-detached-from-space (itself
+  # following 022/035/040/042): drop and recreate chk_audit_log_event_type with the four new values
+  # added, nothing removed, via the same temporary opaa_audit_owner SET ROLE dance 022's changeSet
+  # comment explains in full (audit_log is owned by opaa_audit_owner after 017, not by the
+  # migration/application account).
+  #
+  # The value list below is 053's complete list plus the four LLM_MODEL_* values, and the rollback
+  # restores exactly 053's - every one of these migrations rewrites the whole list, so a branch that
+  # derives its list from an older state silently drops whatever was added in between (042's own
+  # header comment documents exactly this happening once already, with SPACE_ARCHIVED).
+
+  - changeSet:
+      id: 059-widen-audit-event-type-llm-model-changes
+      author: opaa
+      comment: >
+        Widens chk_audit_log_event_type to also accept LLM_MODEL_CREATED, LLM_MODEL_CHANGED,
+        LLM_MODEL_DELETED and LLM_MODEL_ACTIVATED (io.opaa.audit.AuditEventType) - the events
+        io.opaa.llm.LlmModelService writes for every managed chat model change. Runs as
+        opaa_audit_owner via a temporary SET TRUE membership grant plus SET ROLE (see the changelog
+        header comment above) since audit_log's DDL is otherwise unreachable from the migration
+        account after 017's ownership transfer.
+      changes:
+        - sql:
+            comment: >
+              Drop and recreate chk_audit_log_event_type to include the four LLM_MODEL_* values,
+              bracketed by the temporary membership grant/revoke this requires.
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+              SET ROLE opaa_audit_owner;
+              ALTER TABLE audit_log DROP CONSTRAINT chk_audit_log_event_type;
+              ALTER TABLE audit_log
+              ADD CONSTRAINT chk_audit_log_event_type
+              CHECK (event_type IN (
+                'ASSET_GRANT_GRANTED', 'ASSET_GRANT_CHANGED', 'ASSET_GRANT_REVOKED',
+                'ASSET_GRANT_EXPIRED', 'ASSET_VISIBILITY_CHANGED', 'ASSET_GRANT_SUSPENDED',
+                'SPACE_CREATED', 'SPACE_CHANGED', 'SPACE_DELETED', 'SPACE_ARCHIVED',
+                'LIBRARY_CREATED', 'LIBRARY_CHANGED', 'LIBRARY_DELETED', 'LIBRARY_SOURCE_UPDATED',
+                'GROUP_CREATED', 'GROUP_CHANGED', 'GROUP_DELETED',
+                'SPACE_MEMBER_ADDED', 'SPACE_MEMBER_ROLE_CHANGED', 'SPACE_MEMBER_REMOVED',
+                'GROUP_MEMBER_ADDED', 'GROUP_MEMBER_REMOVED',
+                'LIBRARY_SHARED_TO_SPACE', 'LIBRARY_DETACHED_FROM_SPACE',
+                'ASSET_OWNER_CHANGED', 'ASSET_OWNERSHIP_CLAIMED', 'ASSET_SUCCESSION_OPENED',
+                'SYSTEM_ADMIN_ROLE_GRANTED', 'SYSTEM_ADMIN_ROLE_REVOKED',
+                'AUDITOR_ROLE_GRANTED', 'AUDITOR_ROLE_REVOKED',
+                'ACCOUNT_DEACTIVATED', 'ACCOUNT_REAUTHENTICATION_FORCED',
+                'API_TOKEN_ISSUED', 'API_TOKEN_REVOKED',
+                'DIRECTORY_SYNC_CHANGE_APPLIED', 'DIRECTORY_SYNC_RUN_COMPLETED',
+                'GOVERNANCE_SETTINGS_CHANGED', 'AUDIT_LOG_CONFIGURATION_CHANGED',
+                'MODEL_POLICY_CHANGED', 'CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED',
+                'BRANDING_SETTINGS_CHANGED',
+                'LLM_MODEL_CREATED', 'LLM_MODEL_CHANGED', 'LLM_MODEL_DELETED', 'LLM_MODEL_ACTIVATED',
+                'AUDIT_LOG_ACCESSED'
+              ));
+              RESET ROLE;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+              SET ROLE opaa_audit_owner;
+              ALTER TABLE audit_log DROP CONSTRAINT chk_audit_log_event_type;
+              ALTER TABLE audit_log
+              ADD CONSTRAINT chk_audit_log_event_type
+              CHECK (event_type IN (
+                'ASSET_GRANT_GRANTED', 'ASSET_GRANT_CHANGED', 'ASSET_GRANT_REVOKED',
+                'ASSET_GRANT_EXPIRED', 'ASSET_VISIBILITY_CHANGED', 'ASSET_GRANT_SUSPENDED',
+                'SPACE_CREATED', 'SPACE_CHANGED', 'SPACE_DELETED', 'SPACE_ARCHIVED',
+                'LIBRARY_CREATED', 'LIBRARY_CHANGED', 'LIBRARY_DELETED', 'LIBRARY_SOURCE_UPDATED',
+                'GROUP_CREATED', 'GROUP_CHANGED', 'GROUP_DELETED',
+                'SPACE_MEMBER_ADDED', 'SPACE_MEMBER_ROLE_CHANGED', 'SPACE_MEMBER_REMOVED',
+                'GROUP_MEMBER_ADDED', 'GROUP_MEMBER_REMOVED',
+                'LIBRARY_SHARED_TO_SPACE', 'LIBRARY_DETACHED_FROM_SPACE',
+                'ASSET_OWNER_CHANGED', 'ASSET_OWNERSHIP_CLAIMED', 'ASSET_SUCCESSION_OPENED',
+                'SYSTEM_ADMIN_ROLE_GRANTED', 'SYSTEM_ADMIN_ROLE_REVOKED',
+                'AUDITOR_ROLE_GRANTED', 'AUDITOR_ROLE_REVOKED',
+                'ACCOUNT_DEACTIVATED', 'ACCOUNT_REAUTHENTICATION_FORCED',
+                'API_TOKEN_ISSUED', 'API_TOKEN_REVOKED',
+                'DIRECTORY_SYNC_CHANGE_APPLIED', 'DIRECTORY_SYNC_RUN_COMPLETED',
+                'GOVERNANCE_SETTINGS_CHANGED', 'AUDIT_LOG_CONFIGURATION_CHANGED',
+                'MODEL_POLICY_CHANGED', 'CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED',
+                'BRANDING_SETTINGS_CHANGED',
+                'AUDIT_LOG_ACCESSED'
+              ));
+              RESET ROLE;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;

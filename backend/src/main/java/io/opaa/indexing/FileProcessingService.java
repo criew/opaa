@@ -18,12 +18,72 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.document.ContentFormatter;
+import org.springframework.ai.document.DefaultContentFormatter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.scheduling.annotation.Async;
 
 public class FileProcessingService {
 
   private static final Logger log = LoggerFactory.getLogger(FileProcessingService.class);
+
+  /**
+   * Excludes every bookkeeping key {@link #storeChunks} attaches to a chunk's {@code metadata}
+   * (permission-filter/citation plumbing, never semantic content - see {@link #storeChunks}'s own
+   * Javadoc) from {@link org.springframework.ai.document.MetadataMode#EMBED} formatting (issue
+   * #773).
+   *
+   * <p><b>Why this matters:</b> {@link
+   * org.springframework.ai.document.Document#getFormattedContent(
+   * org.springframework.ai.document.MetadataMode)} is exactly what {@code
+   * EmbeddingModel#getEmbeddingContent(Document)} feeds to the embedding call for every document in
+   * a {@code VectorStore#add} batch (see {@code EmbeddingModel}'s own default {@code embed(List,
+   * EmbeddingOptions, BatchingStrategy)}) - and {@link
+   * org.springframework.ai.openai.OpenAiEmbeddingModel} defaults its {@code metadataMode} to {@code
+   * EMBED}, unlike {@link org.springframework.ai.ollama.OllamaEmbeddingModel} (whose {@code
+   * embed(Document)} always uses {@code getText()} outright, metadata or not - and whose {@code
+   * getEmbeddingContent(Document)} was never overridden, so it inherits that same {@code getText()}
+   * default from the {@code EmbeddingModel} interface). {@link Document}'s own {@code
+   * DEFAULT_CONTENT_FORMATTER} excludes nothing by default, so without this override every chunk
+   * indexed through the OpenAI-compatible embedding path (the only path since #762) embedded {@code
+   * "chunk_index: 0\nlibrary_id: <uuid>\nfile_name: ...\norganization_id: <uuid>\n document_id:
+   * <uuid>\n\n<actual chunk text>"} instead of the chunk text alone - five lines of
+   * random-UUID/index noise ahead of the real content. Query-time embedding
+   * (VectorStore#similaritySearch -&gt; EmbeddingModel#embed(String)) never goes through {@code
+   * Document}/{@code MetadataMode} at all, so queries stayed clean while indexed vectors did not -
+   * an index-vs-query vector space mismatch, not a difference in what Ollama computes for identical
+   * text (verified directly: a query against the corrupted vector for "Altaïr Ibn-La'Ahad" scored
+   * 0.357 cosine against its own document, vs. 0.698 for the same pair embedded cleanly - see issue
+   * #773 for the full diagnostic and PR #774 for the abandoned alternative of reverting to the
+   * native Ollama API instead of fixing this).
+   *
+   * <p>Every value in {@code storeChunks}'s metadata map is one of these five keys - excluding them
+   * all is equivalent to feeding {@link org.springframework.ai.document.MetadataMode#NONE} to
+   * indexing specifically (queries and, if a future embedding call ever legitimately wants richer
+   * metadata mixed in, other {@code Document} instances are unaffected: this formatter is scoped to
+   * the chunks {@link #storeChunks} itself constructs, not applied globally).
+   *
+   * <p><b>{@code withTextTemplate("{content}")} matters too</b> (PR #779 review): {@link
+   * DefaultContentFormatter}'s own default text template is {@code
+   * "{metadata_string}\n\n{content}"} - with every metadata key excluded, {@code metadata_string}
+   * is empty, but the template still leaves two leading newlines ahead of the actual chunk text.
+   * Overriding the template avoids embedding {@code "\n\n" + text} instead of {@code text} itself,
+   * restoring exactly the pre-#766 (native {@code OllamaEmbeddingModel}) behaviour rather than a
+   * close approximation of it - and turns the exclusion list above into a true whitelist of what
+   * this formatter ever embeds (nothing but the chunk text, regardless of which or how many keys a
+   * future change adds to the metadata map).
+   */
+  private static final ContentFormatter CHUNK_EMBED_CONTENT_FORMATTER =
+      DefaultContentFormatter.builder()
+          .withExcludedEmbedMetadataKeys(
+              "document_id",
+              "chunk_index",
+              "file_name",
+              "library_id",
+              "organization_id",
+              ChunkingService.LOCATION_METADATA_KEY)
+          .withTextTemplate("{content}")
+          .build();
 
   private final DocumentService documentService;
   private final ChunkingService chunkingService;
@@ -576,7 +636,12 @@ public class FileProcessingService {
                   if (location != null) {
                     metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
                   }
-                  return new org.springframework.ai.document.Document(chunk.getText(), metadata);
+                  org.springframework.ai.document.Document enrichedChunk =
+                      new org.springframework.ai.document.Document(chunk.getText(), metadata);
+                  // #773: keep this bookkeeping metadata (the #667 location included) out of what
+                  // actually gets embedded - see CHUNK_EMBED_CONTENT_FORMATTER's own Javadoc.
+                  enrichedChunk.setContentFormatter(CHUNK_EMBED_CONTENT_FORMATTER);
+                  return enrichedChunk;
                 })
             .toList();
 

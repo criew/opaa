@@ -3,10 +3,12 @@ import type {
   BrandingResponse,
   ChatDetail,
   ChatSummary,
+  EmbeddingInfoResponse,
   HealthResponse,
   IndexingRunListResponse,
   IndexingStatusResponse,
   LibraryListResponse,
+  LlmModelResponse,
   QueryResponse,
   UserInfo,
   SpaceListResponse,
@@ -16,6 +18,7 @@ import type {
   GroupResponse,
   LibraryDocumentResponse,
   LibraryResponse,
+  SpaceLibraryAssociationListResponse,
 } from '../types/api'
 import type { AuthConfig, AuthUser } from '../types/auth'
 
@@ -337,6 +340,8 @@ export const mockSpaces: SpaceListResponse[] = [
     archived: false,
     visibility: 'PRIVATE',
     memberCount: 1,
+    libraryCount: 3,
+    chatCount: 12,
     userRole: 'ADMIN',
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
@@ -349,6 +354,8 @@ export const mockSpaces: SpaceListResponse[] = [
     archived: false,
     visibility: 'PRIVATE',
     memberCount: 3,
+    libraryCount: 2,
+    chatCount: 7,
     userRole: 'ADMIN',
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
@@ -361,6 +368,8 @@ export const mockSpaces: SpaceListResponse[] = [
     archived: false,
     visibility: 'PRIVATE',
     memberCount: 2,
+    libraryCount: 4,
+    chatCount: 28,
     userRole: 'CURATOR',
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
@@ -458,6 +467,51 @@ export const mockSpaceMembers: Record<string, SpaceMemberResponse[]> = {
       createdAt: '2026-03-01T10:00:00Z',
     },
   ],
+}
+
+/**
+ * Mutable so create/update/delete/activate handlers can reflect their effect on the next list GET
+ * (#759), same reasoning as mockBranding above.
+ */
+export let mockLlmModels: LlmModelResponse[] = [
+  {
+    id: 'llm-model-ollama-lokal',
+    displayName: 'Ollama lokal',
+    baseUrl: 'http://ollama:11434/v1',
+    modelIdentifier: 'phi3:mini',
+    temperature: 0.7,
+    maxTokens: 2000,
+    apiKeySet: false,
+    active: true,
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+]
+
+export function resetMockLlmModels() {
+  mockLlmModels = [
+    {
+      id: 'llm-model-ollama-lokal',
+      displayName: 'Ollama lokal',
+      baseUrl: 'http://ollama:11434/v1',
+      modelIdentifier: 'phi3:mini',
+      temperature: 0.7,
+      maxTokens: 2000,
+      apiKeySet: false,
+      active: true,
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    },
+  ]
+}
+
+// "openai" names the wire protocol, not a vendor - since backend#762 it is the only connection
+// path (Ollama included, via its own /v1 endpoint), so the backend never reports "ollama" here
+// anymore.
+export const mockEmbeddingInfo: EmbeddingInfoResponse = {
+  provider: 'openai',
+  model: 'nomic-embed-text',
+  dimensions: 1536,
 }
 
 export const mockGroups: GroupListResponse[] = [
@@ -590,6 +644,25 @@ export const mockLibraries: LibraryListResponse[] = [
     updatedAt: '2026-03-01T10:00:00Z',
   },
 ]
+
+// #782/#783: GET /api/v1/spaces/{spaceId}/libraries fixture. 'space-phoenix' is curated (#203/#706)
+// with exactly one association, readable by the mock user - the "Gewerbeamt" scenario from #782's
+// bug report (one associated, several more readable overall via mockLibraries). Every other space id
+// falls back to hasAssociations: false in the handler below, i.e. uncurated.
+export const mockSpaceLibraryAssociations: Record<string, SpaceLibraryAssociationListResponse> = {
+  'space-phoenix': {
+    hasAssociations: true,
+    items: [
+      {
+        libraryId: 'library-referat-50',
+        libraryName: 'Rechtsquellen Soziales',
+        readableByCaller: true,
+        createdByUserId: 'owner-2',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+    ],
+  },
+}
 
 export const mockLibraryDetails: Record<string, LibraryResponse> = {
   'library-mine': {

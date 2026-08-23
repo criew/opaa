@@ -14,7 +14,6 @@ import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
 import type { DocumentSourceType } from '../../types/api'
 import { fontFamily } from '../../theme/tokens'
-import { openDocumentContent } from '../../utils/documentContent'
 
 interface SourceEvidenceDrawerProps {
   open: boolean
@@ -22,6 +21,13 @@ interface SourceEvidenceDrawerProps {
   citations: CitationIndex
   /** When the answer arrived - mockup 1i's footer line. */
   answeredAt: Date
+  /** #739/#747/#780: MessageBubble's single `useDocumentPreview()` instance (../../hooks/
+   *  useDocumentPreview), shared with SourceFootnotes - the preview dialog/download snackbar it
+   *  drives are rendered by MessageBubble as siblings of this Drawer, not inside it, so they
+   *  survive the Drawer unmounting its children on close (#781 review, Nit 5; Wichtig 1). */
+  openDocument: (documentId: string, fallbackFileName: string) => Promise<void>
+  error: string | null
+  clearError: () => void
 }
 
 interface EvidenceDoc {
@@ -61,13 +67,12 @@ export default function SourceEvidenceDrawer({
   onClose,
   citations,
   answeredAt,
+  openDocument,
+  error: openOriginalError,
+  clearError: clearOpenOriginalError,
 }: SourceEvidenceDrawerProps) {
   const [query, setQuery] = useState('')
   const [citedOnly, setCitedOnly] = useState(false)
-  // #739: mirrors LibraryDetailPage's openOriginalError (#738) - opening the original is a
-  // read-only, per-click action, so its failure (404, file missing) gets its own local message
-  // rather than touching any store.
-  const [openOriginalError, setOpenOriginalError] = useState<string | null>(null)
 
   // #739/#747: every sourceType with a documentId opens through the Bearer-authenticated content
   // endpoint (a plain <a href> cannot carry the token, ADR-0005) - since #747 that endpoint proxies
@@ -75,15 +80,8 @@ export default function SourceEvidenceDrawer({
   // so this no longer branches on sourceType at all; sourceEntryUrl/sourceUrl are shown as
   // secondary information alongside the button instead (see the render code below).
   async function handleOpenLocalOriginal(doc: EvidenceDoc) {
-    setOpenOriginalError(null)
     if (!doc.documentId) return
-    try {
-      await openDocumentContent(doc.documentId, doc.fileName)
-    } catch (err) {
-      setOpenOriginalError(
-        err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.',
-      )
-    }
+    await openDocument(doc.documentId, doc.fileName)
   }
 
   const docs = useMemo((): EvidenceDoc[] => {
@@ -172,11 +170,7 @@ export default function SourceEvidenceDrawer({
       </Box>
 
       {openOriginalError && (
-        <Alert
-          severity="error"
-          sx={{ mx: 2.5, mt: 1.5 }}
-          onClose={() => setOpenOriginalError(null)}
-        >
+        <Alert severity="error" sx={{ mx: 2.5, mt: 1.5 }} onClose={clearOpenOriginalError}>
           {openOriginalError}
         </Alert>
       )}

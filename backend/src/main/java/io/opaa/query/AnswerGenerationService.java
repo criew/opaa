@@ -1,5 +1,6 @@
 package io.opaa.query;
 
+import io.opaa.llm.ActiveChatModelResolver;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -13,6 +14,17 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
 
+/**
+ * Generates the RAG answer against the systemwide active chat model (#758,
+ * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), resolved fresh on
+ * every call via {@link ActiveChatModelResolver} rather than built once in the constructor from the
+ * static Spring AI OpenAI autoconfiguration - the only way an activation via the admin API (#764)
+ * takes effect without a restart. {@link ActiveChatModelResolver#resolveChatClient()} throws {@code
+ * io.opaa.llm.NoActiveChatModelException} (a {@code ResponseStatusException}) when no model is
+ * active, which propagates through {@code io.opaa.query.QueryService#query} exactly like any other
+ * domain error already does - {@code io.opaa.api.GlobalExceptionHandler} turns it into a German,
+ * user-facing error response rather than an NPE or an opaque 500.
+ */
 public class AnswerGenerationService {
 
   private static final Logger log = LoggerFactory.getLogger(AnswerGenerationService.class);
@@ -37,12 +49,13 @@ public class AnswerGenerationService {
       Context documents:
       {context}""";
 
-  private final ChatClient chatClient;
+  private final ActiveChatModelResolver activeChatModelResolver;
   private final ChatMemory chatMemory;
 
-  public AnswerGenerationService(ChatClient.Builder chatClientBuilder, ChatMemory chatMemory) {
+  public AnswerGenerationService(
+      ActiveChatModelResolver activeChatModelResolver, ChatMemory chatMemory) {
+    this.activeChatModelResolver = activeChatModelResolver;
     this.chatMemory = chatMemory;
-    this.chatClient = chatClientBuilder.build();
   }
 
   public ChatResponse generateAnswer(
@@ -56,6 +69,7 @@ public class AnswerGenerationService {
     List<Message> messages = new ArrayList<>(history);
     messages.add(new UserMessage(question));
 
+    ChatClient chatClient = activeChatModelResolver.resolveChatClient();
     ChatResponse response =
         chatClient.prompt().system(systemText).messages(messages).call().chatResponse();
 

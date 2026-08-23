@@ -33,12 +33,19 @@ irgendein Team seine Agenten anfassen muss.
 bereits ausgelieferte Funktionalität beschreibt, ist das ausdrücklich mit **(gebaut)** gekennzeichnet.
 Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 
+Der nächste Umsetzungsschritt ist gesondert gekennzeichnet: Der Abschnitt
+[Stufe 1: Verwaltete Chat-Modelle](#stufe-1-verwaltete-chat-modelle-in-umsetzung) trägt **(in Umsetzung)**
+und beschreibt, was aus diesem Zielbild als Erstes entsteht. Alles Übrige bleibt als spätere Ausbaustufe
+bestehen und ist nicht gestrichen.
+
 ---
 
 ## Überblick
 
 1. **Modelle sind verwaltete Objekte**, keine Konfigurationszeilen. Sie werden hinterlegt, beschrieben,
-   freigegeben, ersetzt und abgeschaltet.
+   freigegeben, ersetzt und abgeschaltet. Der erste Schritt dorthin — verwaltete Chat-Modelle mit genau
+   einem aktiven Eintrag — ist als
+   [Stufe 1](#stufe-1-verwaltete-chat-modelle-in-umsetzung) beschrieben und in Umsetzung.
 2. **Lokal betriebene Modelle sind die Voreinstellung** — das ist umgesetzt und entschieden. Im Zielbild
    ist ohne ausdrückliche Freigabe der Behörde kein Aufruf außerhalb des Hauses möglich; heute trägt
    diese Zusicherung die Konfiguration, nicht eine technische Durchsetzung (siehe
@@ -140,24 +147,208 @@ Das ist eine Festlegung für den heutigen Stand, kein Verzicht auf Dauer. Die
 Ort, an dem eine Durchsetzung später sinnvoll einhängt, weil dort ohnehin entschieden wird, welche
 Modelle für einen Vorgang zulässig sind.
 
-### Anbietername und Zieladresse sind zwei verschiedene Dinge **(gebaut)**
+**Was sich mit Stufe 1 daran ändert und was nicht.** Der Ort der Entscheidung wandert von der
+Betriebskonfiguration in die Administrationsoberfläche, und damit wird jede Änderung protokolliert und
+einer Person zurechenbar — das ist gegenüber heute ein Gewinn an Nachweisbarkeit. An der Zusicherung
+selbst ändert sich nichts: Wer in der Oberfläche eine Adresse außerhalb des Hauses einträgt, kann das,
+und OPAA hält ihn weiterhin nicht auf. Die Absicherung des Netzwegs bleibt außerhalb von OPAA.
 
-Die Anbieterangabe (`ollama` oder `openai`) benennt das Protokoll, über das OPAA das Modell anspricht
-— nicht das Ziel, an das die Daten gehen. Dieselbe openai-kompatible Schnittstelle bedienen auch
-lokal betriebene Modellserver.
+### Ein einziger Anbindungsweg **(gebaut, #762)**
 
-Deshalb hat die Basis-Adresse **keine Voreinstellung**. Wer für Chat oder Einbettung den
-openai-kompatiblen Anbieter wählt, muss die Adresse angeben; fehlt sie, bricht der Start mit einer
-Meldung ab, die die fehlende Variable benennt.
+Es gibt **keine Anbieterangabe mehr, die zwischen zwei Konfigurationswegen umschaltet.** Bis
+einschließlich der vorigen Version wählte eine eigene Variable zwischen einem nativen Weg für
+Ollama und der openai-kompatiblen Schnittstelle für alles andere; dieser native Weg entfiel mit
+#762 vollständig (siehe [„Ein Anbindungsweg, nicht zwei"](#ein-anbindungsweg-nicht-zwei) — was dort
+bereits für den Modelleintrag der Modellverwaltung galt, gilt seither auch für die
+Betriebskonfiguration, aus der er hervorgeht). Ollama wird seitdem wie jeder andere
+openai-kompatible Endpunkt über seinen eigenen `/v1`-Pfad angesprochen.
 
-Der Grund liegt im Fehlerfall: Wer im Haus einen Modellserver mit openai-kompatibler Schnittstelle
-einbindet und dabei nur den Anbieter setzt, erbte mit einer Voreinstellung stillschweigend ein Ziel
-außerhalb des Hauses — die Installation liefe, die Daten gingen an die falsche Stelle, und niemand
-würde es an einer Fehlermeldung bemerken. Ein lautes Scheitern beim Start ist dem vorzuziehen.
+Die Basis-Adresse hat deshalb wieder eine **Voreinstellung** — anders als in einer früheren Fassung
+dieses Abschnitts, die bewusst keine vorsah: Ein lautes Scheitern beim Start ohne gesetzte Adresse
+war die richtige Entscheidung, solange die openai-kompatible Schnittstelle die Ausnahme war und ein
+nativer, lokal voreingestellter Ollama-Weg daneben bestand — eine geerbte Voreinstellung hätte dort
+eine Installation, die im Haus bleiben sollte, stillschweigend nach außen gerichtet. Seit die
+openai-kompatible Schnittstelle der **einzige** Weg ist, trifft dieses Risiko nicht mehr zu: Die
+Voreinstellung selbst zeigt auf einen lokal betriebenen Ollama-Server, nicht nach außen. Ein lautes
+Scheitern bliebe hier ein Fehlschlag ohne Gegenwert — jede Installation, an der niemand etwas
+konfiguriert, bräuchte sonst eine Adresse, nur um überhaupt zu starten, obwohl die richtige Adresse
+längst feststeht.
+
+Wer stattdessen einen anderen Anbieter verwenden will — für Chat, für Einbettung, oder für beides —,
+überschreibt diese Voreinstellung mit der jeweiligen Zieladresse. Ein **explizit leer gesetzter**
+Wert (eine Umgebungsvariable, die zwar gesetzt, aber ohne Inhalt ist) überschreibt die Voreinstellung
+ebenfalls — mit einer leeren Zeichenkette statt eines gültigen Ziels — und führt weiterhin zum
+lauten Scheitern beim Start: Das ist der eine Fall, in dem die ursprüngliche Begründung unverändert
+gilt, weil hier eine bewusste Angabe vorliegt, die nur zufällig leer ist.
 
 Die Ableitung je Funktion bleibt erhalten: Eine Adresse für Chat und eine für Einbettung sind
 getrennt setzbar; ohne sie gilt die gemeinsame Adresse für beide. Die Betriebssicht dazu steht in
 [deployment.md](../deployment.md#llm-anbieter).
+
+Für das **Chat-Modell** wird diese Konfiguration mit
+[Stufe 1](#stufe-1-verwaltete-chat-modelle-in-umsetzung) von der Verwaltung in der Anwendung abgelöst; sie
+bleibt dann nur noch die Quelle, aus der beim ersten Start der initiale Eintrag entsteht. Für die
+**Einbettung** gilt sie unverändert weiter.
+
+---
+
+## Stufe 1: Verwaltete Chat-Modelle **(gebaut)**
+
+Das Zielbild oben ist vollständig, aber nicht in einem Zug baubar. Stufe 1 schneidet daraus den Teil
+heraus, der für sich genommen einen Nutzen hat und alles Weitere trägt: **Chat-Modelle werden in der
+Administrationsoberfläche verwaltet, statt in Umgebungsvariablen zu stehen.**
+
+Der Grund für diesen Zuschnitt ist nicht Bequemlichkeit, sondern Zuständigkeit. Wer in einer Behörde für
+das Modell einsteht, ist die Systemverwaltung. Solange ein Modellwechsel eine Änderung an der
+Betriebskonfiguration und einen Neustart verlangt, liegt die Entscheidung faktisch bei demjenigen, der
+Zugriff auf die Container hat — und das ist regelmäßig jemand anderes.
+
+Die Umsetzung wird in Epic [#755](https://github.com/criew/opaa/issues/755) geführt.
+
+**Admin-API (gebaut, #757).** `/api/v1/admin/models` bietet Auflisten, Anlegen, Ändern, Löschen,
+Aktivieren (`POST .../{modelId}/activate`) und Verbindungstest (`POST .../test`, auch für einen noch
+nicht gespeicherten Entwurf) — ausschließlich für `SYSTEM_ADMIN`. Der Zugangsschlüssel ist in jeder
+Antwort schreibend: keine Antwort enthält ihn, auch nicht gekürzt, nur das Kennzeichen `apiKeySet`.
+Löschen des aktiven Modells wird mit 409 verweigert; eine gleichzeitige Aktivierung zweier Modelle
+löst ebenfalls 409 statt eines Serverfehlers aus. Jede Änderung erzeugt ein Audit-Ereignis, und die
+Deaktivierung eines Modells beim Umschalten bekommt seit #757 ein eigenes (`LLM_MODEL_DEACTIVATED`).
+`GET .../embedding-info` (#759) ergänzt den read-only Block: Anbieter, Modell und Dimensionen der
+Einbettungskonfiguration, gelesen aus derselben Betriebskonfiguration, aus der auch das aktive
+`EmbeddingModel` entsteht — nicht editierbar, siehe [Warum die Einbettung nicht
+mitkommt](#warum-die-einbettung-nicht-mitkommt).
+
+**Administrationsoberfläche (gebaut, #759).** `admin/models`, erreichbar über die Seitenleiste nur
+für `SYSTEM_ADMIN`: Liste mit deutlich erkennbarem aktivem Eintrag, Anlegen/Bearbeiten/Löschen,
+„Aktiv setzen" und Verbindungstest je Eintrag, darunter der schreibgeschützte
+Einbettungsblock aus `embedding-info`.
+
+**Laufzeitauflösung (gebaut, #758).** Antwortgenerierung (`io.opaa.query.AnswerGenerationService`)
+und Titelgenerierung (`io.opaa.chat.ChatTitleGenerationService`) lösen den `ChatClient` bei jedem
+Aufruf über `io.opaa.llm.ActiveChatModelResolver` aus dem systemweit aktiven `llm_models`-Eintrag
+auf — programmatisch über die OpenAI-kompatible Anbindung (Basis-Adresse, Modell-Kennung, Temperatur,
+maximale Antwortlänge, entschlüsselter Zugangsschlüssel), nicht mehr aus der beim Start einmalig
+gebauten Spring-AI-Autoconfiguration. Der gebaute Client wird zwischengespeichert und erst
+invalidiert, wenn `io.opaa.llm.LlmModelService` das aktive Modell tatsächlich ändert (Aktivierung,
+Änderung des aktiven Eintrags) — und zwar erst nach dem Commit der auslösenden Transaktion, damit eine
+zurückgerollte Änderung den Zwischenspeicher nicht fälschlich verwirft. Ohne aktives Modell erhält die
+fragende Person eine verständliche deutsche Fehlermeldung (503) statt eines technischen Fehlers; die
+Health-Anzeige (`io.opaa.observability.ChatHealthIndicator`) benennt Basis-Adresse und Modell-Kennung
+des aktiven Modells und steht auf „down", solange keines aktiv ist. Ein nicht erreichbares aktives
+Modell führt zu einer Fehlermeldung, nie zu einem stillschweigenden Ausweichen auf ein anderes
+Modell. Die Einbettung ist davon unberührt und läuft unverändert über die native Autoconfiguration.
+
+### Was Stufe 1 umfasst
+
+1. **Eine Liste hinterlegter Chat-Modelle**, nicht eine einzelne Einstellung. Mehrere Einträge
+   nebeneinander sind der Normalfall — ein lokales Modell und ein zweites zum Vergleich, oder ein
+   Nachfolger, der schon eingetragen, aber noch nicht aktiv ist.
+2. **Genau ein Modell ist systemweit aktiv.** Die Systemverwaltung schaltet um; die Umschaltung wirkt
+   beim nächsten Vorgang, ohne Neustart (Laufzeitauflösung, #758, siehe oben).
+3. **Verbindungstest je Eintrag.** Eine falsch eingetragene Adresse fällt sonst erst dem nächsten
+   fragenden Menschen auf — als leere Antwort, nicht als Konfigurationsfehler.
+4. **Zugangsdaten verschlüsselt und nicht rücklesbar.** Ein hinterlegter Schlüssel verlässt die Datenbank
+   nicht wieder; die Oberfläche zeigt „gesetzt" oder „nicht gesetzt".
+5. **Jede Änderung ist protokolliert** — Anlegen, Ändern, Löschen, Aktivieren.
+6. **Die Einbettungskonfiguration ist sichtbar, aber nicht änderbar**, mit Begründung.
+
+### Der Eintrag in Stufe 1
+
+Der Zielbild-Modelleintrag oben führt Freigabestatus, Datenklassen, Zuständigkeit, Fähigkeiten und
+Nachfolge. Stufe 1 nimmt davon nur, was für den Aufruf gebraucht wird — die übrigen Felder bekommen erst
+mit den Vorgaben-Ebenen eine Wirkung und wären vorher ein Formular ohne Folge.
+
+| Angabe | Bedeutung |
+|---|---|
+| Anzeigename | wie das Modell in der Verwaltung heißt, in Fachsprache |
+| Basis-Adresse | der Endpunkt der OpenAI-kompatiblen Schnittstelle |
+| Modell-Kennung | welches Modell an diesem Endpunkt angesprochen wird |
+| Zugangsschlüssel | optional; verschlüsselt abgelegt, nie zurückgegeben |
+| Streuung der Erzeugung | Temperatur |
+| Längenbegrenzung | maximale Antwortlänge |
+| Aktiv | ob dieses Modell derzeit antwortet |
+
+### Ein Anbindungsweg, nicht zwei
+
+Angebunden wird **ausschließlich über die OpenAI-kompatible Schnittstelle**. Das ist, wie oben bereits
+festgehalten, eine Protokollangabe und keine Aussage über einen Anbieter.
+
+Insbesondere gibt es **keinen gesonderten Anbieter-Typ für Ollama**. Ollama stellt dieselbe Schnittstelle
+unter dem Pfad `/v1` bereit; ein lokal betriebenes Modell wird deshalb mit einer Basis-Adresse der Form
+`http://ollama:11434/v1` eingetragen wie jeder andere Endpunkt auch. Dasselbe gilt für vLLM, LiteLLM,
+Azure und die üblichen Zwischenschichten.
+
+Der Verzicht auf einen zweiten, nativen Weg ist eine bewusste Entscheidung mit einem benennbaren Preis:
+
+- **Dafür spricht**, dass jede Fallunterscheidung nach Anbieter sich durch das gesamte System zieht — in
+  das Formular, in die Schnittstelle, in den Aufbau des Aufrufs, in die Tests. Ein Weg heißt: ein
+  Codepfad, ein Verbindungstest, ein Fehlerbild.
+- **Dagegen spricht**, dass Ollama-eigene Optionen wie die Kontextgröße (`num_ctx`) oder die Haltedauer
+  eines geladenen Modells (`keep_alive`) über die kompatible Schnittstelle nicht setzbar sind. Sie
+  bleiben **Betriebskonfiguration am Ollama-Server** und sind dort auch besser aufgehoben: Sie betreffen
+  die Ressourcen der Maschine, nicht die fachliche Verwendung des Modells.
+
+Sollte sich diese Grenze im Betrieb als hinderlich erweisen, ist ein nativer Weg als spätere Ausbaustufe
+nachrüstbar — der Eintrag müsste dann um eine Angabe zum Anbindungsweg ergänzt werden. Vorher wird er
+nicht gebaut.
+
+Aus derselben Entscheidung folgt, dass der **Zugangsschlüssel optional** ist. Ein lokal betriebener
+Endpunkt verlangt regelmäßig keine Authentifizierung; ein Pflichtfeld würde dort zu einem erfundenen Wert
+führen, und ein erfundener Wert ist schlechter als kein Wert, weil er einen Schutz vortäuscht.
+
+### Übergang aus der heutigen Konfiguration
+
+Bestehende Installationen — einschließlich der Demo-Instanz — sind heute über Umgebungsvariablen
+konfiguriert. Sie dürfen durch die Umstellung nicht stehenbleiben.
+
+Deshalb gilt: **Beim ersten Start nach der Umstellung wird die vorhandene Konfiguration als initiales,
+aktives Modell übernommen**, sofern noch kein Modell hinterlegt ist. Zwei Fälle, weil #762 den
+Anbindungsweg der Betriebskonfiguration selbst verändert hat, bevor Stufe 1 sie ganz ablöst:
+
+- Eine Bestandsinstallation, die beim Update noch die inzwischen entfallene Anbieterangabe
+  `OPAA_AI_CHAT_PROVIDER=ollama` **und** eine der ebenfalls entfallenen `OPAA_OLLAMA_*`-Variablen
+  gesetzt hat, wird daraus übernommen — Adresse samt `/v1`-Suffix, Modell, ohne Schlüssel (Ollamas
+  eigener openai-kompatibler Endpunkt verlangt keinen).
+- Jede andere Installation — einschließlich einer, die `OPAA_AI_CHAT_PROVIDER=openai` gesetzt hatte,
+  oder einer frischen, die nie eine dieser Variablen kannte — übernimmt Adresse, Modell und
+  Schlüssel unverändert aus der openai-kompatiblen Konfiguration, die seit #762 der einzige
+  laufende Anbindungsweg ist.
+
+Danach ist die Datenbank für das Chat-Modell **führend**. Die Umgebungsvariablen werden nicht mehr
+ausgewertet — ein zweiter Ort für dieselbe Entscheidung wäre schlimmer als beide einzeln, weil bei
+abweichenden Werten niemand mehr sagen kann, welcher gilt.
+
+### Warum die Einbettung nicht mitkommt
+
+Die Einbettungskonfiguration bleibt in Stufe 1 in der Betriebskonfiguration und wird in der Oberfläche nur
+**angezeigt** — Anbieter, Modell, Dimensionen — mit dem Hinweis, warum sie dort nicht änderbar ist.
+
+Der Grund steht bereits unter [Sofortige Wirkung](#sofortige-wirkung): Ein Wechsel des
+Einbettungsmodells macht alle vorhandenen Vektoren unvergleichbar und erzwingt eine vollständige
+Neuindizierung. Eine Auswahlliste, die eine Wissensbasis unbrauchbar macht, sobald jemand sie versehentlich
+verstellt, ist keine Erleichterung, sondern eine Falle. Der Wechsel bleibt deshalb ein geplanter Vorgang
+und bekommt eine eigene Behandlung, wenn er ansteht.
+
+Die Anzeige entfällt trotzdem nicht. Ohne sie entstünde der Eindruck, OPAA arbeite mit genau einem Modell,
+und die naheliegende Frage „warum kann ich das Einbettungsmodell nicht wechseln?" bliebe unbeantwortet.
+
+### Was Stufe 1 ausdrücklich nicht enthält
+
+Die folgenden Teile des Zielbilds bleiben unverändert bestehen und sind **spätere Ausbaustufen**, keine
+gestrichenen Ideen:
+
+| Später | Warum nicht jetzt |
+|---|---|
+| [Vorgaben als Obergrenze](#vorgaben-als-obergrenze) aus System, Space, Bibliothek und Agent | Setzt Modellvorgaben an Spaces und Bibliotheken voraus, die es noch nicht gibt; die Schnittmengenregel hängt am Modelleintrag, der hier erst entsteht |
+| Auswahl eines Modells durch Nutzende im Chat | Ohne Obergrenze wäre eine freie Auswahl die Umgehung jeder späteren Beschränkung — die falsche Reihenfolge |
+| Freigabestatus, Datenklassen, Zuständigkeit, Nachfolge, Fähigkeiten am Eintrag | Felder ohne wirksame Verwendung; sie bekommen ihre Bedeutung erst mit den Vorgaben-Ebenen |
+| Voreinstellungen je Aufgabe — Reranking, Zusammenfassung, Klassifizierung, Bildverständnis | Diese Aufgaben sind im Produkt noch nicht als eigene Modellaufrufe vorhanden |
+| Verwaltbare Einbettungsmodelle | Erzwingt eine Neuindizierung, siehe oben |
+| Technische Durchsetzung, dass kein Aufruf das Haus verlässt | Hängt sinnvoll an den Vorgaben-Ebenen, nicht an einer einzelnen Modellliste |
+| [Grenzen und Kontingente](#grenzen-und-kontingente) | Eigener Themenbereich |
+| Native Ollama-Optionen (`num_ctx`, `keep_alive`) | Betriebskonfiguration am Modellserver, siehe oben |
+
+Stufe 1 ist damit ausdrücklich **kein Ersatz** für die zentrale Steuerung, sondern deren Fundament: Sie
+schafft den Modelleintrag, gegen den die Vorgaben später schneiden.
 
 ---
 
@@ -263,6 +454,11 @@ bekommen. Die Zuordnung von Aufgabe zu Modell und Parametern trifft die Systemve
 | **Zusammenfassung** | Treue zum Ausgangstext | geringe Streuung, längenbegrenzt |
 | **Klassifizierung und Erkennung** | Verlässlichkeit, Geschwindigkeit | kleines Modell, feste Ausgabestruktur |
 | **Bildverständnis** | Fähigkeit des Modells | nur, wenn ein Modell mit dieser Fähigkeit freigegeben ist |
+
+Von dieser Tabelle betrifft [Stufe 1](#stufe-1-verwaltete-chat-modelle-in-umsetzung) nur die Zeile
+**Antwort im Chat**, und dort auch nur Streuung und Längenbegrenzung. Die Einbettung bleibt in der
+Betriebskonfiguration; die übrigen Aufgaben sind im Produkt noch nicht als eigene Modellaufrufe
+vorhanden und bekommen ihre Zuordnung, sobald sie es sind.
 
 Zu jeder Aufgabe gehören **Parameter** — Streuung der Erzeugung, Längenbegrenzung der Antwort,
 Kontextgrenze — und ein **Systemvorspann**, der Verhalten und Ton festlegt. Beides ist Teil der zentralen
@@ -554,6 +750,16 @@ dort beschrieben.
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
+- Wie werden die **verschlüsselten Zugangsdaten** aus Stufe 1 umgeschlüsselt, wenn der Hauptschlüssel der
+  Installation gewechselt werden muss? Ohne einen Weg dafür bleibt als Antwort nur, jeden Schlüssel neu
+  einzutragen — bei wenigen Modellen vertretbar, als Dauerzustand nicht.
+- Braucht Stufe 1 bereits eine **Vorschau der Auswirkung** vor dem Umschalten des aktiven Modells, oder
+  genügt es, dass die Umschaltung protokolliert und jederzeit zurücknehmbar ist? Das Zielbild sieht die
+  Vorschau unter [Sofortige Wirkung](#sofortige-wirkung) vor; bei genau einem aktiven Modell ist die
+  betroffene Menge allerdings immer „alles".
+- Erweist sich die Beschränkung auf die **OpenAI-kompatible Schnittstelle** im Betrieb als hinderlich —
+  insbesondere dort, wo die Kontextgröße eines Ollama-Modells fachlich relevant wird und nicht am Server
+  gesetzt werden kann?
 - Wie werden **Schutzstufen von Daten** benannt und gepflegt, damit die Zuordnung „welches Modell darf
   diese Klasse verarbeiten" mehr ist als ein Freitextfeld? Ohne ein knappes, verbindliches Schema wird
   die Zuordnung uneinheitlich gesetzt.

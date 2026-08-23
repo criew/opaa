@@ -51,7 +51,7 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 |---|---|---|
 | **Fragen und Antworten** | Frage stellen, Antwort mit Fundstellen erhalten, Relevanz und Trefferzahl je Quelle sehen, erkennen, welche Quelle tatsächlich zitiert wurde | ja |
 | **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | ja — Gespräche liegen persistent in genau einem Arbeitsraum und überleben ein Neuladen der Seite (#525/#527) |
-| **Suchfilter** | den Suchbereich einer Anfrage ausschließlich über die Chip-Leiste am Eingabefeld steuern (Spezial-Chip @Alles-Wissen, konkrete @-Bibliotheksreferenzen, oder eine geleerte Leiste), nicht mehr über eine Space-Auswahl oder einen separaten Schalter | ja — die Space-Auswahl ist entfernt; Chip-Leiste, @-Autocomplete und sticky Chips sind gebaut und werden am persistierten Gespräch gespeichert (siehe unten). Die Space↔Bibliothek-Assoziation (#203) ist weiterhin Zielbild |
+| **Suchfilter** | den Suchbereich einer Anfrage ausschließlich über die Chip-Leiste am Eingabefeld steuern (Spezial-Chip @Alles-Wissen, konkrete @-Bibliotheksreferenzen, oder eine geleerte Leiste), nicht mehr über eine Space-Auswahl oder einen separaten Schalter | ja — die Space-Auswahl ist entfernt; Chip-Leiste, @-Autocomplete und sticky Chips sind gebaut und werden am persistierten Gespräch gespeichert (siehe unten). Die Space↔Bibliothek-Assoziation (#203/#706) ist umgesetzt; die Fußzeile unter dem Eingabefeld zeigt bei @Alles-Wissen in einem kuratierten Space die Schnittmenge aus zugeordneten und lesbaren Bibliotheken, nicht mehr alle lesbaren (#782) |
 | **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen, Eigentumsübergabe und die Gesprächsliste je Arbeitsraum (anlegen, umbenennen, löschen) sind vorhanden |
 | **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | ja — Bibliotheksdetailseite mit Bestandsdarstellung, Upload/Löschen für Upload-Bibliotheken und Indizierungsstand für Konnektor-Bibliotheken |
 | **Assets** | Agenten, Prompt-Bibliotheken und Wissensbibliotheken anlegen, beschreiben, freigeben, finden | nein — Zielbild |
@@ -66,9 +66,19 @@ tatsächlichen Stand abgeglichen sind. Die Dokumentenübersicht ist inzwischen g
 Bibliotheksdetailseite (`LibraryDetailPage.tsx`) zeigt den Bestand einer Wissensbibliothek mit
 Indizierungsstand je Dokument. Seit #738 bietet jede Dokumentzeile die Aktion „Original öffnen": das
 Frontend lädt die Datei über `GET /api/v1/documents/{documentId}/content` (#736) als Blob und öffnet
-sie per Objekt-URL in einem neuen Tab (PDF/Bilder als Browser-Vorschau, sonst Download unter dem
-ursprünglichen Dateinamen) — die gemeinsame Logik dafür liegt in
-`frontend/src/utils/documentContent.ts` und wird vom Zitat-Deeplink (#739) mitverwendet. Seit #747
+sie per Objekt-URL in einem neuen Tab (PDF/Bilder als Browser-Vorschau). Seit #780 gilt das auch für
+Markdown und Klartext: Statt eines stillen Downloads (der Browser zeigt einen `text/markdown`- oder
+`text/plain`-Blob sonst nur als Rohtext an oder lädt ihn herunter) rendert `DocumentTextPreviewDialog`
+den Inhalt clientseitig in einem eigenen Dialog — Markdown über dieselbe, bereits gehärtete
+`MarkdownRenderer`-Komponente wie die Chat-Antworten (kein `rehype-raw`, react-markdowns
+Standard-`urlTransform` entfernt `javascript:`-URLs, siehe #743 Sperre für SVG). Ein Original über 2
+MiB fällt zurück auf den Download, mit demselben sichtbaren Hinweis wie unten beschrieben. Jedes
+andere Format (insbesondere DOCX — eine serverseitige Konvertierung ist bewusst außerhalb dieses
+Zuschnitts) bleibt beim Download unter dem ursprünglichen Dateinamen, jetzt aber mit einer sichtbaren
+Snackbar „‹Dateiname› wird heruntergeladen" statt eines Klicks ohne erkennbare Wirkung. Die gemeinsame
+Logik dafür liegt in `frontend/src/utils/documentContent.ts` (Entscheidung Vorschau/Download/
+Text-Vorschau) und `frontend/src/hooks/useDocumentPreview.ts` (Dialog-/Snackbar-/Fehlerzustand); sie
+wird vom Zitat-Deeplink (#739) und den Fundstellen unter einer Chat-Antwort mitverwendet. Seit #747
 gilt das für **jeden** Quellentyp: der Endpunkt streamt für HTTP_DIRECTORY/RSS_FEED das Original
 serverseitig von der beim Indizieren gespeicherten Quell-URL durch, statt den Client dorthin
 weiterzuleiten — auf der Demo-Instanz sind die Quellhosts (`http://demo-corpus/...`) nur im
@@ -91,7 +101,15 @@ Belegfenster („Belege dieser Antwort"): `SourceReference` (OpenAPI) trägt jet
 Quellentyp das Original über `GET /api/v1/documents/{documentId}/content` (dasselbe Hilfsmodul
 `documentContent.ts`) — vor #747 öffnete diese Aktion für HTTP_DIRECTORY/RSS_FEED stattdessen
 `sourceEntryUrl`/`sourceUrl` direkt in einem neuen Tab, was bei einer nur intern erreichbaren Quelle
-im Browser ins Leere lief. Backendseitig schlüsselt die Zusammenführung mehrfach zitierter
+im Browser ins Leere lief. Seit #780 verhält sich „Im Dokument öffnen" an den Fundstellen und im
+Belegfenster wie auf der Dokumentenübersicht: Markdown/Klartext rendern in `DocumentTextPreviewDialog`
+statt still herunterzuladen, jedes andere Format zeigt beim Download eine Snackbar. Beide
+Oberflächen teilen sich dafür in `MessageBubble.tsx` eine einzige `useDocumentPreview()`-Instanz —
+die Fundstellen (`SourceFootnotes.tsx`) und das Belegfenster (`SourceEvidenceDrawer.tsx`) bieten
+dieselbe Aktion für dieselbe Antwort und erhalten `openDocument`/Fehler-/Vorschau-/Download-Zustand
+als Props, statt je einen eigenen Aufruf zu verwalten; Dialog und Snackbar hängen dadurch auch nicht
+am Lebenszyklus des Belegfensters, das seine Kindelemente beim Schließen abbaut. Backendseitig
+schlüsselt die Zusammenführung mehrfach zitierter
 Fundstellen (`QueryService#mergeSourceReferences`) auf `documentId` statt auf den Dateinamen: zwei
 unterschiedliche Dokumente mit identischem Dateinamen (etwa zwei RSS-Anlagen) erscheinen dadurch als
 zwei getrennte Fundstellen mit je eigenem Deeplink, statt zu einer zusammenzufallen.
@@ -121,8 +139,13 @@ anfragebezogene Steuerung (siehe [Suchbereich je Chatart](./spaces-and-assets.md
 die **Chip-Leiste** am Eingabefeld, die einzige Suchbereichssteuerung — kein separater Schalter daneben.
 „Durchsucht wird, was in der Leiste steht" — die Leiste kennt drei Zustände:
 
-- **@Alles-Wissen** (Standard, vorbelegter Spezial-Chip) — durchsucht heute alle Wissensbibliotheken,
-  die der Nutzer lesen darf (Übergangsregel bis #203; im Zielbild die dem Arbeitsraum assoziierten),
+- **@Alles-Wissen** (Standard, vorbelegter Spezial-Chip) — durchsucht die dem Arbeitsraum
+  zugeordneten Wissensbibliotheken, eingeschränkt auf die, die der Nutzer selbst lesen darf
+  (#203/#706); hat der Arbeitsraum keine Zuordnungen, bleibt es bei allen lesbaren Bibliotheken
+  (Übergangsregel, siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)).
+  Die Fußzeile unter dem Eingabefeld nennt die tatsächliche Anzahl dieser Schnittmenge, nicht die
+  Zahl aller lesbaren Bibliotheken (#782); ist die Schnittmenge leer, erscheint statt einer Zahl die
+  aus der Antwort bekannte Formulierung „In diesem Space ist für Sie derzeit kein Wissen verfügbar.",
 - **konkrete Bibliotheks-Chips** — durchsucht ausschließlich die referenzierten. Tippen von `@` im
   Eingabefeld schlägt alle Bibliotheken vor, die der Nutzer lesen darf, unabhängig vom Arbeitsraum,
   dazu als erster Eintrag (bei leerer Eingabe) @Alles-Wissen selbst, per Tastatur oder Maus auswählbar. Der erste
@@ -228,7 +251,7 @@ Zweck, nicht nach Pfad.
 
 | Zweck | Endpunkt | Heute gebaut |
 |---|---|---|
-| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über die Chip-Leiste des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage | `POST /api/v1/query` | ja — Frage, Antwort, Fundstellen und die Chip-Leiste (@Alles-Wissen, @-Referenzen, leere Leiste) sind gebaut; die Space↔Bibliothek-Assoziation (#203) bleibt Zielbild |
+| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über die Chip-Leiste des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage | `POST /api/v1/query` | ja — Frage, Antwort, Fundstellen und die Chip-Leiste (@Alles-Wissen, @-Referenzen, leere Leiste) sind gebaut; die Space↔Bibliothek-Assoziation (#203/#706) ist umgesetzt |
 | Antwort auf eine Antwort geben (Bewertung, Fehltreffer melden) | — | nein — Zielbild, siehe [Rückmeldung](#rückmeldung-zur-antwortqualität) |
 
 **Wissensbestände verwalten**
@@ -248,6 +271,7 @@ Zweck, nicht nach Pfad.
 |---|---|---|
 | Arbeitsräume anlegen, ändern, auflisten, löschen | `/api/v1/spaces` und `/api/v1/spaces/{id}` | ja |
 | Mitglieder eines Arbeitsraums führen, Rolle ändern, Eigentum übergeben — damit ein Arbeitsraum beim Ausscheiden einer Person nicht verwaist | `/api/v1/spaces/{id}/members`, `/api/v1/spaces/{id}/transfer-ownership` | ja |
+| Nutzende der eigenen Organisation für die Mitglieder-/Rechteauswahl suchen (id, Name, E-Mail — ohne Systemrolle); anders als `/api/v1/admin/users` für jede angemeldete Person erreichbar, nicht nur Systemadministration (#777). `query` (min. 2 Zeichen, Treffer gegen Name/E-Mail) ist Pflicht für ein nicht-leeres Ergebnis, das Ergebnis ist serverseitig auf 20 Zeilen gedeckelt (#778) | `GET /api/v1/users?query=…` | ja |
 | Gruppen als Rechtesubjekt führen und ihre Mitglieder verwalten | `/api/v1/admin/groups` | ja |
 
 **Systemverwaltung**

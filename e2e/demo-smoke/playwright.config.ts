@@ -5,9 +5,9 @@ import { defineConfig, devices } from '@playwright/test'
  *
  * Deliberately its own config with its own testDir, not a project added to
  * e2e/playwright.config.ts: that keeps this spec out of a bare
- * `npx playwright test` (no path argument), which both `npm test` and CI's
+ * `pnpm exec playwright test` (no path argument), which both `pnpm test` and CI's
  * e2e.yml run against the "e2e" target's testDir './tests'. Only
- * `npm run test:demo-smoke` (-> scripts/run-e2e.mjs --target demo) ever
+ * `pnpm run test:demo-smoke` (-> scripts/run-e2e.mjs --target demo) ever
  * points at this config.
  *
  * Same reasoning as e2e/playwright.config.ts for the rest: no `webServer`

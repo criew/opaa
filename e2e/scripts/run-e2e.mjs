@@ -2,7 +2,7 @@
 // Orchestrates a full E2E run: bring the stack up from a clean slate via
 // Docker Compose, wait until it answers, run Playwright, then always tear
 // the stack back down (`down -v`) so the next run starts from the same
-// defined baseline. Used both locally (`npm test` in e2e/) and in CI
+// defined baseline. Used both locally (`pnpm test` in e2e/) and in CI
 // (.github/workflows/e2e.yml), so both environments behave identically.
 //
 // The stack runs as its own Compose project (COMPOSE_PROJECT_NAME below),
@@ -14,14 +14,14 @@
 //
 // Two targets, one script (Issue #232 - reuse this infrastructure instead
 // of copying it):
-//   node scripts/run-e2e.mjs                  # default target "e2e" (npm test)
-//   node scripts/run-e2e.mjs --target demo     # demo-profile smoke test (npm run test:demo-smoke)
+//   node scripts/run-e2e.mjs                  # default target "e2e" (pnpm test)
+//   node scripts/run-e2e.mjs --target demo     # demo-profile smoke test (pnpm run test:demo-smoke)
 // The "demo" target starts the Compose "demo" profile (Rheinfurt corpus,
 // Keycloak login, docs/features/demo-instance.md) with ai-stub standing in
 // for the chat/embedding provider, seeds it with `demo/seed/seed.py
 // --profile demo`, and runs the single Playwright spec under
 // e2e/demo-smoke/tests/ - never the regular suite under e2e/tests/. It is
-// deliberately not part of `npm test`: indexing the ~150-300 real
+// deliberately not part of `pnpm test`: indexing the ~150-300 real
 // documents of the Rheinfurt corpus takes far longer than the minimal e2e
 // seed profile.
 
@@ -35,11 +35,13 @@ const repoRoot = resolve(e2eDir, '..')
 const isWindows = process.platform === 'win32'
 
 // "--target demo" / "--target=demo" picked out of argv before the rest is forwarded to
-// Playwright as-is (extraTestArgs below) - a bare "npx playwright test --target demo" would
+// Playwright as-is (extraTestArgs below) - a bare "pnpm exec playwright test --target demo" would
 // otherwise fail with an unknown-option error.
 const rawArgs = process.argv.slice(2)
 let target = process.env.E2E_TARGET ?? 'e2e'
-const targetFlagIndex = rawArgs.findIndex((arg) => arg === '--target' || arg.startsWith('--target='))
+const targetFlagIndex = rawArgs.findIndex(
+  (arg) => arg === '--target' || arg.startsWith('--target='),
+)
 if (targetFlagIndex !== -1) {
   const flag = rawArgs[targetFlagIndex]
   if (flag.includes('=')) {
@@ -74,6 +76,11 @@ const composeProjectName =
 const backendPort = process.env.OPAA_BACKEND_PORT ?? '18081'
 const frontendPort = process.env.OPAA_FRONTEND_PORT ?? (isDemo ? '3000' : '13000')
 const dbPort = process.env.OPAA_DB_PORT ?? '15432'
+// test(e2e) #760: ai-stub's own host-published port (docker-compose.e2e.yml), so a scenario can
+// call its GET /last-chat-model directly from the Node/Playwright process - see that file's own
+// comment. Only relevant for the "e2e" target; the "demo" target's ai-stub stand-in
+// (docker-compose.demo-smoke.yml) does not publish one, and no demo-smoke scenario needs it.
+const aiStubPort = process.env.OPAA_AI_STUB_PORT ?? '18089'
 const keycloakPort = '8180'
 const baseUrl = process.env.E2E_BASE_URL ?? `http://localhost:${frontendPort}`
 const readyUrl = `${baseUrl}/api/v1/auth/config`
@@ -103,6 +110,7 @@ const composeEnv = {
   OPAA_FRONTEND_PORT: frontendPort,
   OPAA_DB_PORT: dbPort,
   OPAA_KEYCLOAK_PORT: keycloakPort,
+  ...(isDemo ? {} : { OPAA_AI_STUB_PORT: aiStubPort }),
 }
 
 let tornDown = false
@@ -165,7 +173,7 @@ const venvDir = join(e2eDir, '.venv')
 // resolves to system-wide (PR #726 review, finding 1) - on PEP-668-managed systems (Debian/Ubuntu
 // >=23.04, Homebrew's own Python) that fails outright with "externally-managed-environment", and
 // even where it does not fail it writes into a shared environment no other part of this repo
-// touches. A dedicated venv under e2e/.venv (gitignored, reused across runs so a repeated `npm
+// touches. A dedicated venv under e2e/.venv (gitignored, reused across runs so a repeated `pnpm
 // test` does not reinstall every time) sidesteps both: its own interpreter is never
 // "externally managed", regardless of the host's system Python.
 const venvPython = isWindows
@@ -205,7 +213,12 @@ function runSeed() {
     // even with ai-stub's deterministic, near-instant embeddings - most of the time goes into
     // Tika parsing the PDF/DOCX/PPTX uploads and the HTTP_DIRECTORY/RSS_FEED crawls themselves.
     // Well above the seed's own 300s default (demo/seed/seed.py, parse_args).
-    seedArgs.push('--keycloak-url', `http://localhost:${keycloakPort}`, '--indexing-timeout-seconds', '600')
+    seedArgs.push(
+      '--keycloak-url',
+      `http://localhost:${keycloakPort}`,
+      '--indexing-timeout-seconds',
+      '600',
+    )
   }
   return run(venvPython, seedArgs)
 }
@@ -276,20 +289,21 @@ async function main() {
   }
 
   console.log('> Running Playwright tests')
-  const playwrightArgs = ['playwright', 'test']
+  const playwrightArgs = ['exec', 'playwright', 'test']
   if (isDemo) {
     // A dedicated config (testDir e2e/demo-smoke/tests) instead of testMatch on the default
-    // e2e/playwright.config.ts - that keeps the demo smoke spec out of `npx playwright test`
+    // e2e/playwright.config.ts - that keeps the demo smoke spec out of `pnpm exec playwright test`
     // (no path argument) as run by the "e2e" target and CI's e2e.yml, without either file needing
     // to know the other exists.
     playwrightArgs.push('--config', 'demo-smoke/playwright.config.ts')
   }
   playwrightArgs.push(...extraTestArgs)
-  const testStatus = run(isWindows ? 'npx.cmd' : 'npx', playwrightArgs, {
+  const testStatus = run('pnpm', playwrightArgs, {
     cwd: e2eDir,
     env: {
       ...process.env,
       E2E_BASE_URL: baseUrl,
+      ...(isDemo ? {} : { E2E_AI_STUB_BASE_URL: `http://localhost:${aiStubPort}` }),
     },
   })
 

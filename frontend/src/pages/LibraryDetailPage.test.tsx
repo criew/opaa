@@ -18,6 +18,7 @@ import type {
   LibraryResponse,
   LibraryUpdateRequest,
 } from '../types/api'
+import type { OpenDocumentContentResult } from '../utils/documentContent'
 
 function pageOf(
   items: LibraryDocumentResponse[],
@@ -96,11 +97,14 @@ vi.mock('../services/api', async () => {
   }
 })
 
-// #738: the "Original öffnen" action delegates to this shared module (see its own tests for the
-// blob-fetch/preview/download behaviour) - mocked here so this file only has to verify which
-// target LibraryDetailPage picks per document, not how opening/downloading itself works.
+// #738/#780: the "Original öffnen" action delegates to this shared module (see its own tests for
+// the blob-fetch/preview/download behaviour) - mocked here so this file only has to verify which
+// target LibraryDetailPage picks per document, and which UI reacts to a text-preview/download
+// result, not how opening/downloading itself works.
 const { mockOpenDocumentContent } = vi.hoisted(() => ({
-  mockOpenDocumentContent: vi.fn(async () => undefined),
+  mockOpenDocumentContent: vi.fn<() => Promise<OpenDocumentContentResult>>(async () => ({
+    kind: 'blob-preview',
+  })),
 }))
 
 vi.mock('../utils/documentContent', () => ({
@@ -1139,6 +1143,74 @@ describe('LibraryDetailPage', () => {
       expect(
         await screen.findByText('Das Originaldokument wurde nicht gefunden.'),
       ).toBeInTheDocument()
+    })
+
+    // #780: Markdown/plain text render in a client-side dialog instead of a silent download.
+    it('opens a Markdown text preview dialog instead of a silent download (#780)', async () => {
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: '001_personalausweis.md',
+            contentType: 'text/markdown',
+            fileSize: 512,
+            status: 'INDEXED',
+            sourceType: 'UPLOAD',
+            chunkCount: 1,
+            indexedAt: '2026-03-01T10:00:00Z',
+            uploadedByUserId: null,
+          },
+        ]),
+      )
+      mockOpenDocumentContent.mockResolvedValueOnce({
+        kind: 'text-preview',
+        fileName: '001_personalausweis.md',
+        contentType: 'text/markdown',
+        content: '# Personalausweis\n\nAusgestellt am 1. März.',
+      })
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const button = await screen.findByRole('button', {
+        name: 'Original von 001_personalausweis.md öffnen',
+      })
+      await user.click(button)
+
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByText('Personalausweis').closest('h5')).toBeInTheDocument()
+      expect(screen.getByText(/Ausgestellt am 1\. März\./)).toBeInTheDocument()
+    })
+
+    // #780 acceptance criteria: every format without a preview (DOCX among them) must give visible
+    // download feedback so the click never appears to do nothing.
+    it('shows a snackbar with the file name when a DOCX download starts (#780)', async () => {
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: 'bescheid.docx',
+            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            fileSize: 4096,
+            status: 'INDEXED',
+            sourceType: 'UPLOAD',
+            chunkCount: 2,
+            indexedAt: '2026-03-01T10:00:00Z',
+            uploadedByUserId: null,
+          },
+        ]),
+      )
+      mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'bescheid.docx' })
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const button = await screen.findByRole('button', {
+        name: 'Original von bescheid.docx öffnen',
+      })
+      await user.click(button)
+
+      expect(await screen.findByText('bescheid.docx wird heruntergeladen')).toBeInTheDocument()
     })
   })
 

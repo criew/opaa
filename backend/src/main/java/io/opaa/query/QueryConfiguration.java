@@ -8,8 +8,8 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
+import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
@@ -62,8 +62,8 @@ public class QueryConfiguration {
 
   @Bean
   AnswerGenerationService answerGenerationService(
-      ChatClient.Builder chatClientBuilder, ChatMemory chatMemory) {
-    return new AnswerGenerationService(chatClientBuilder, chatMemory);
+      ActiveChatModelResolver activeChatModelResolver, ChatMemory chatMemory) {
+    return new AnswerGenerationService(activeChatModelResolver, chatMemory);
   }
 
   @Bean

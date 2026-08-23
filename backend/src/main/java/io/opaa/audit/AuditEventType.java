@@ -118,6 +118,29 @@ public enum AuditEventType {
    * it.
    */
   BRANDING_SETTINGS_CHANGED,
+  /**
+   * A managed chat model (Stufe 1, #756, {@code io.opaa.llm.LlmModel}) was created. Migration 059
+   * widens {@code chk_audit_log_event_type} to include this and the three sibling values below.
+   */
+  LLM_MODEL_CREATED,
+  /** A managed chat model's editable fields (display name, base URL, model id, ...) changed. */
+  LLM_MODEL_CHANGED,
+  /** A managed chat model was deleted. */
+  LLM_MODEL_DELETED,
+  /**
+   * A managed chat model became the one systemwide active model - distinct from {@link
+   * #LLM_MODEL_CHANGED} for the same reason {@link #SPACE_MEMBER_ROLE_CHANGED} is distinct from
+   * {@link #SPACE_MEMBER_ADDED}: an auditor asking "when did the active model change" should not
+   * have to inspect before/after payloads to tell activation apart from an ordinary field edit.
+   */
+  LLM_MODEL_ACTIVATED,
+  /**
+   * A managed chat model stopped being the systemwide active one because a different model was
+   * activated in its place (#757 review of #763) - without this, "wann hörte Modell X auf, aktiv zu
+   * sein" was only indirectly readable from the {@link #LLM_MODEL_ACTIVATED} event of whatever
+   * model replaced it. Migration 061 widens {@code chk_audit_log_event_type} to include this value.
+   */
+  LLM_MODEL_DEACTIVATED,
 
   // Zugriff auf die Protokolldaten selbst
   /** Any read, evaluation or export of audit data, including rejected attempts (see outcome). */
