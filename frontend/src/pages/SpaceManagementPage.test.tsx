@@ -364,7 +364,7 @@ describe('SpaceManagementPage', () => {
     const field = await screen.findByPlaceholderText('Bibliothek suchen …')
     await user.click(field)
 
-    expect(await screen.findByText('Keine zuordenbaren Bibliotheken')).toBeInTheDocument()
+    expect(await screen.findByText('Keine Treffer')).toBeInTheDocument()
     expect(screen.queryByText('No options')).not.toBeInTheDocument()
   })
 })

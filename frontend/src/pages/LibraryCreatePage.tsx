@@ -354,7 +354,7 @@ export default function LibraryCreatePage() {
                   options={groups}
                   size="small"
                   getOptionLabel={(option) => option.name}
-                  noOptionsText="Keine Gruppen verfügbar"
+                  noOptionsText="Keine Treffer"
                   value={selectedGroup}
                   onChange={(_e, value) => setSelectedGroup(value)}
                   disabled={groups.length === 0}
@@ -662,7 +662,7 @@ export default function LibraryCreatePage() {
                     options={availableGrantGroups}
                     size="small"
                     getOptionLabel={(option) => option.name}
-                    noOptionsText="Keine Gruppen verfügbar"
+                    noOptionsText="Keine Treffer"
                     value={selectedGrantGroup}
                     onChange={(_e, value) => setSelectedGrantGroup(value)}
                     renderInput={(params) => (

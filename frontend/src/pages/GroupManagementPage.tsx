@@ -222,7 +222,7 @@ function GroupCard({ group }: { group: GroupListResponse }) {
                     ? `${option.displayName} (${option.email ?? option.id})`
                     : (option.email ?? option.id)
                 }
-                noOptionsText="Keine weiteren Nutzer verfügbar"
+                noOptionsText="Keine Treffer"
                 value={selectedUser}
                 onChange={(_event, value) => setSelectedUser(value)}
                 renderInput={(params) => (
