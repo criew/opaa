@@ -787,30 +787,33 @@ Rotation zu teilen.
 **Kein Zwang, keinen zu haben:** Ohne gesetzten Schlüssel startet das Backend normal — eine
 Installation, die ausschließlich lokale Modelle ohne Zugangsschlüssel führt (der Normalfall, siehe
 [„Eigene Modelle zuerst"](features/llm-integration.md#eigene-modelle-zuerst)), braucht ihn nie.
-Erst der Versuch, ein Chat-Modell **mit** Zugangsschlüssel anzulegen oder zu ändern — einschließlich
-der Seed-Migration, die beim ersten Start eine bestehende `openai`-Konfiguration samt
-Zugangsschlüssel übernimmt (siehe [„Übergang aus der heutigen Konfiguration"](features/llm-integration.md#übergang-aus-der-heutigen-konfiguration)
-oben) —, schlägt ohne gültigen Schlüssel mit einer klaren deutschen Meldung fehl
-(`io.opaa.security.SettingsEncryptor`), die die fehlende Variable benennt. Für lokale Entwicklung
+Erst der Versuch, ein Chat-Modell **mit** Zugangsschlüssel anzulegen oder zu ändern schlägt ohne
+gültigen Schlüssel mit einer klaren deutschen Meldung fehl (`io.opaa.security.SettingsEncryptor`),
+die die fehlende Variable benennt. Für die Seed-Migration, die beim ersten Start eine bestehende
+`openai`-Konfiguration samt Zugangsschlüssel übernimmt (siehe [„Übergang aus der heutigen
+Konfiguration"](features/llm-integration.md#übergang-aus-der-heutigen-konfiguration) oben), gilt das
+mit einer Einschränkung (#771): Dort führt derselbe fehlende Schlüssel **nicht** zum Startabbruch,
+sondern nur zu einer ERROR-Log-Zeile — siehe den Update-Hinweis oben. Für lokale Entwicklung
 und Tests (nur Profil `dev`, das jede Testsuite und `bootRun` aktivieren — nicht `local`) ist ein
 fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel voreingestellt
 (`backend/src/main/resources/application.yml`), damit beide ohne Betreiber-Eingriff laufen.
 
-> **Update-Hinweis für Bestandsinstallationen (#756).** Eine Installation, die heute ausschließlich
-> Ollama oder einen `openai`-kompatiblen Endpunkt ohne Zugangsschlüssel nutzt, läuft nach dem Update
-> auf diese Version unverändert weiter, **ohne** `OPAA_SETTINGS_ENCRYPTION_KEY` gesetzt haben zu
-> müssen. Nur wer die openai-kompatible Anbindung bereits **mit** gesetztem Zugangsschlüssel
-> betreibt, sollte den Schlüssel **vor** dem Update setzen — sonst schlägt die einmalige
-> Übernahme dieser Konfiguration als initiales Modell fehl (Start selbst bricht nicht ab, das
-> Modell bleibt dann aber unangelegt und ist über die künftige Verwaltungsoberfläche (#757) neu
-> einzutragen, sobald der Schlüssel gesetzt ist).
+> **Update-Hinweis für Bestandsinstallationen (#756, #771).** Eine Installation, die heute
+> ausschließlich Ollama oder einen `openai`-kompatiblen Endpunkt ohne Zugangsschlüssel nutzt, läuft
+> nach dem Update auf diese Version unverändert weiter, **ohne** `OPAA_SETTINGS_ENCRYPTION_KEY`
+> gesetzt haben zu müssen. Nur wer die openai-kompatible Anbindung bereits **mit** gesetztem
+> Zugangsschlüssel betreibt, sollte den Schlüssel **vor** dem Update setzen — sonst schlägt die
+> einmalige Übernahme dieser Konfiguration als initiales Modell fehl: Der Start selbst bricht nicht
+> ab, aber das Modell bleibt unangelegt und es erscheint eine ERROR-Meldung im Log. Kein
+> Seed-Marker wird dabei geschrieben — sobald der Schlüssel gesetzt ist, holt der **nächste Neustart**
+> die Übernahme automatisch nach, ohne dass etwas anderes zu tun wäre. Wer nicht neu starten will
+> oder kann, trägt den Zugangsschlüssel stattdessen direkt über die Verwaltungsoberfläche ein.
 
 **Bei Schlüsselverlust:** Bereits verschlüsselte Zugangsschlüssel sind ohne den ursprünglichen
 Schlüssel nicht wiederherstellbar — es gibt keinen Wiederherstellungsweg außerhalb des Schlüssels
 selbst. Betroffen ist ausschließlich der Zugangsschlüssel des jeweiligen Modells, nicht der übrige
 Modelleintrag (Basis-Adresse, Modell-Kennung, Parameter) oder andere verschlüsselte Werte. Abhilfe:
-den Zugangsschlüssel für das betroffene Modell neu eintragen, sobald die Verwaltungsoberfläche dafür
-verfügbar ist (#757).
+den Zugangsschlüssel für das betroffene Modell über die Verwaltungsoberfläche neu eintragen.
 
 ## Authentifizierung
 

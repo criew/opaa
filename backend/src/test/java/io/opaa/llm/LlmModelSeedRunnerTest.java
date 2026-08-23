@@ -35,12 +35,16 @@ class LlmModelSeedRunnerTest {
 
   @Test
   void letsEveryOtherExceptionPropagateAsARealFailure() {
-    doThrow(new IllegalStateException("OPAA_SETTINGS_ENCRYPTION_KEY ist nicht gesetzt"))
+    // #771: a missing OPAA_SETTINGS_ENCRYPTION_KEY while taking over a configured API key is
+    // deliberately no longer among the exceptions reaching this class at all - LlmModelSeeder
+    // catches that specific case itself (see LlmModelSeederTest). This test stands for every
+    // other, genuinely unexpected failure, which must still abort startup.
+    doThrow(new IllegalStateException("Gespeicherter Zugangsschlüssel ist beschädigt"))
         .when(seeder)
         .seedIfNeeded();
 
     assertThatThrownBy(() -> runner.run(null))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("OPAA_SETTINGS_ENCRYPTION_KEY");
+        .hasMessageContaining("beschädigt");
   }
 }

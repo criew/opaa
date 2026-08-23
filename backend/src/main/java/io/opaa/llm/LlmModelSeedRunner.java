@@ -22,10 +22,15 @@ import org.springframework.stereotype.Component;
  * ux_llm_models_single_active} (migration 058) and {@code chk_llm_model_seed_marker_singleton}
  * (migration 060) let only one of them win, and the losing replica logs a warning and starts
  * normally rather than failing over a seed another instance already performed. Every other
- * exception (a missing/invalid {@code OPAA_SETTINGS_ENCRYPTION_KEY} while taking over a configured
- * {@code openai} API key, for instance) is a real, actionable failure and is left to propagate -
- * swallowing it here would turn a configuration problem an operator needs to see into a silent
- * no-op.
+ * exception is a real, actionable failure and is left to propagate.
+ *
+ * <p>A missing {@code OPAA_SETTINGS_ENCRYPTION_KEY} while taking over a configured {@code openai}
+ * API key is deliberately <em>not</em> among those (#771, PR #763 review's own scope was narrower
+ * than the deployment docs it referenced): {@link LlmModelSeeder#seedIfNeeded()} catches that case
+ * itself and logs an operator-facing error instead of throwing, so the application still starts -
+ * see that method's own Javadoc. Only this class ever needs to distinguish "startup may proceed"
+ * from "startup must abort"; {@link LlmModelSeeder} never decides that for itself beyond this one
+ * case.
  */
 @Component
 public class LlmModelSeedRunner implements ApplicationRunner {

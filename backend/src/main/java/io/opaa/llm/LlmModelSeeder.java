@@ -148,7 +148,18 @@ class LlmModelSeeder {
     if (markerRepository.seedAlreadyAttempted()) {
       return;
     }
-    LlmModel seeded = legacyOllamaTakeoverApplies() ? seedFromLegacyOllamaEnv() : seedFromOpenAi();
+    LlmModel seeded;
+    try {
+      seeded = legacyOllamaTakeoverApplies() ? seedFromLegacyOllamaEnv() : seedFromOpenAi();
+    } catch (MissingEncryptionKeyException e) {
+      log.error(
+          "Initiales Chat-Modell konnte nicht aus der Umgebungskonfiguration übernommen werden:"
+              + " OPAA_SETTINGS_ENCRYPTION_KEY ist nicht gesetzt, ein Zugangsschlüssel ist aber"
+              + " konfiguriert. Variable setzen und neu starten, damit die Übernahme nachgeholt"
+              + " wird - alternativ das Modell über die Verwaltungsoberfläche anlegen. Siehe"
+              + " docs/deployment.md. Es wurde kein Seed-Marker geschrieben.");
+      return;
+    }
     if (seeded != null) {
       seeded.activate();
       repository.save(seeded);
@@ -244,7 +255,13 @@ class LlmModelSeeder {
     String apiKey = environment.getProperty("spring.ai.openai.chat.api-key");
     boolean noRealKeyConfigured =
         !StringUtils.hasText(apiKey) || OPENAI_API_KEY_PLACEHOLDER.equals(apiKey);
-    String apiKeyCiphertext = noRealKeyConfigured ? null : settingsEncryptor.encrypt(apiKey);
+    String apiKeyCiphertext = null;
+    if (!noRealKeyConfigured) {
+      if (!settingsEncryptor.isKeyConfigured()) {
+        throw new MissingEncryptionKeyException();
+      }
+      apiKeyCiphertext = settingsEncryptor.encrypt(apiKey);
+    }
     return new LlmModel(
         DEFAULT_DISPLAY_NAME, baseUrl, model, temperature, maxTokens, apiKeyCiphertext);
   }
@@ -286,4 +303,15 @@ class LlmModelSeeder {
     }
     return withoutTrailingSlash + "/v1";
   }
+
+  /**
+   * Thrown by {@link #seedFromOpenAi()} when a configured API key would need to be encrypted but
+   * {@code OPAA_SETTINGS_ENCRYPTION_KEY} is missing (#771). A configuration problem, not a fatal
+   * one: caught within {@link #seedIfNeeded()} itself, before it ever reaches {@link
+   * LlmModelSeedRunner}, so this one-time takeover is simply skipped for this start - no {@link
+   * LlmModelSeedMarker} is written, so it is retried automatically on every subsequent start until
+   * the operator sets the key (or the model is added by hand through the Verwaltungsoberfläche in
+   * the meantime, at which point the takeover has nothing left to do).
+   */
+  private static final class MissingEncryptionKeyException extends RuntimeException {}
 }

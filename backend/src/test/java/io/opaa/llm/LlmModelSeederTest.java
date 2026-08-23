@@ -1,6 +1,7 @@
 package io.opaa.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -8,6 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -190,6 +192,7 @@ class LlmModelSeederTest {
   @Test
   void seedsFromTheOpenAiConfigurationIncludingTheEncryptedApiKeyWhenNoLegacyProviderIsSet() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    when(settingsEncryptor.isKeyConfigured()).thenReturn(true);
     when(settingsEncryptor.encrypt("sk-configured-key")).thenReturn("enc:v1:ciphertext");
     MockEnvironment environment =
         new MockEnvironment()
@@ -252,6 +255,33 @@ class LlmModelSeederTest {
     ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
     verify(repository).save(captor.capture());
     assertThat(captor.getValue().getApiKeyCiphertext()).isNull();
+  }
+
+  @Test
+  void skipsTheTakeoverWithoutWritingAMarkerWhenTheApiKeyIsConfiguredButTheEncryptionKeyIsNot() {
+    // #771: OPAA_SETTINGS_ENCRYPTION_KEY missing must not abort application startup - only skip
+    // this one-time takeover, without writing LlmModelSeedMarker, so it is retried automatically
+    // on the next start once the operator sets the key. Deliberately a *real* SettingsEncryptor
+    // here (not the mock used by the other tests in this class) with no key configured - a mocked
+    // encrypt() call would never exercise SettingsEncryptor#requireKey() and would not have
+    // reproduced the original bug (the IllegalStateException propagating out of seedIfNeeded()
+    // and aborting Application.run()).
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    SettingsEncryptor realEncryptorWithoutAKey =
+        new SettingsEncryptor(new SettingsEncryptionProperties(null));
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty(
+                "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
+            .withProperty("spring.ai.openai.chat.model", "gpt-4o")
+            .withProperty("spring.ai.openai.chat.api-key", "sk-configured-key");
+    LlmModelSeeder seeder =
+        new LlmModelSeeder(repository, markerRepository, realEncryptorWithoutAKey, environment);
+
+    assertThatCode(seeder::seedIfNeeded).doesNotThrowAnyException();
+
+    verify(repository, never()).save(any());
+    verify(markerRepository, never()).save(any());
   }
 
   @Test
