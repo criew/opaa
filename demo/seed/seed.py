@@ -3,8 +3,9 @@
 
 Sets up a ready-to-use OPAA installation through the public API only (no direct database access,
 per the issue's "Technische Hinweise"): users (provisioned by their first authenticated request),
-spaces, knowledge libraries with their own source configuration (ADR-0018), VIEWER grants, upload
-documents and the indexing run per library.
+spaces, knowledge libraries with their own source configuration (ADR-0018), VIEWER grants,
+space<->library associations (#706, pure curation), upload documents and the indexing run per
+library.
 
 Two data profiles (profiles.py), one mechanism:
 
@@ -166,6 +167,16 @@ def ensure_library(admin_client: Client, library_def: LibraryDef) -> str:
     return created["id"]
 
 
+def ensure_association(owner_client: Client, space_id: str, library_id: str) -> None:
+    # associateSpaceLibrary is idempotent by design (see opaa-api.yaml): an already-associated
+    # library returns its existing association unchanged, also with 201.
+    owner_client.post_ok(
+        f"/v1/spaces/{space_id}/libraries",
+        json={"libraryId": library_id},
+        expected=(201,),
+    )
+
+
 def ensure_grant(admin_client: Client, library_id: str, user_id: str, role: str = "VIEWER") -> None:
     # upsertAssetGrant is idempotent per subject by design (see opaa-api.yaml) - always safe to call.
     admin_client.post_ok(
@@ -300,19 +311,20 @@ def run(args: argparse.Namespace) -> None:
     print("Warte auf Backend/Keycloak …")
     wait_until_ready(admin_client)
 
-    print("1/5 Nutzer bereitstellen (erste authentifizierte Anfrage je Nutzer) …")
+    print("1/6 Nutzer bereitstellen (erste authentifizierte Anfrage je Nutzer) …")
     user_ids = provision_users(clients, profile)
 
-    print("2/5 Spaces einrichten …")
+    print("2/6 Spaces einrichten …")
+    space_ids: dict[str, str] = {}
     for space_def in profile.spaces:
-        ensure_space(admin_client, clients, user_ids, space_def)
+        space_ids[space_def.name] = ensure_space(admin_client, clients, user_ids, space_def)
 
-    print("3/5 Wissensbibliotheken einrichten …")
+    print("3/6 Wissensbibliotheken einrichten …")
     library_ids: dict[str, str] = {}
     for library_def in profile.libraries:
         library_ids[library_def.name] = ensure_library(admin_client, library_def)
 
-    print("4/5 Leserechte (VIEWER) und Upload-Dokumente …")
+    print("4/6 Leserechte (VIEWER) und Upload-Dokumente …")
     for library_def in profile.libraries:
         library_id = library_ids[library_def.name]
         for viewer_key in library_def.viewer_keys:
@@ -331,7 +343,19 @@ def run(args: argparse.Namespace) -> None:
                 timeout_seconds=args.indexing_timeout_seconds,
             )
 
-    print("5/5 Indizierung je Bibliothek auslösen (ADR-0018) …")
+    print("5/6 Space↔Bibliothek-Zuordnungen (Assoziation als Kuratierung, #706) …")
+    for space_def in profile.spaces:
+        for library_name in space_def.library_names:
+            # After step 4 the owner holds VIEWER on the library (grants) and is CURATOR or above
+            # on their own space - exactly what associateSpaceLibrary requires.
+            ensure_association(
+                clients[space_def.owner_key],
+                space_ids[space_def.name],
+                library_ids[library_name],
+            )
+            print(f"  zugeordnet: {space_def.name} ← {library_name}")
+
+    print("6/6 Indizierung je Bibliothek auslösen (ADR-0018) …")
     for library_def in profile.libraries:
         if library_def.source_type == "UPLOAD":
             # UPLOAD has no run of its own (ADR-0018) - indexing happens per document on upload.

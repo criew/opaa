@@ -57,6 +57,12 @@ class SpaceDef:
     description: str
     owner_key: str
     members: tuple[SpaceMemberDef, ...] = field(default_factory=tuple)
+    # Libraries (by LibraryDef.name) to associate with this space (#706, pure curation). The
+    # association is created through the owner's own session: associateSpaceLibrary requires
+    # CURATOR or above on the space plus at least VIEWER on the library, both of which the owner
+    # has once the grants of step 4 exist. An empty tuple deliberately leaves the space
+    # unassociated - @Alles-Wissen then falls back to every readable library.
+    library_names: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -131,6 +137,12 @@ DEMO_PROFILE = Profile(
             description="Gemeinsamer Space des Sachgebiets Meldewesen & Ausweise.",
             owner_key="maria",
             members=(SpaceMemberDef("selin", "MEMBER"),),
+            library_names=(
+                "Leistungen Meldewesen & Ausweise",
+                "Satzungen & Gebührenordnungen",
+                "Pressemitteilungen Stadt Rheinfurt",
+                "Interne Dienstanweisungen Meldewesen",
+            ),
         ),
         SpaceDef(
             name="Maria Weber – persönlich",
@@ -141,11 +153,23 @@ DEMO_PROFILE = Profile(
             name="Kfz-Zulassung",
             description="Space des Sachgebiets Kfz-Zulassung.",
             owner_key="thomas",
+            library_names=(
+                "Leistungen Kfz-Zulassung",
+                "Satzungen & Gebührenordnungen",
+                "Pressemitteilungen Stadt Rheinfurt",
+            ),
         ),
         SpaceDef(
             name="Amtsleitung Bürgerbüro",
             description="Space der Amtsleitung des Bürgerbüros Rheinfurt.",
             owner_key="andrea",
+            library_names=(
+                "Leistungen Meldewesen & Ausweise",
+                "Leistungen Kfz-Zulassung",
+                "Satzungen & Gebührenordnungen",
+                "Pressemitteilungen Stadt Rheinfurt",
+                "Interne Dienstanweisungen Meldewesen",
+            ),
         ),
     ),
     libraries=(
