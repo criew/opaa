@@ -36,7 +36,8 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => {
       expect(screen.getByText('Chats')).toBeInTheDocument()
-      expect(screen.getByText('Wissensbibliotheken')).toBeInTheDocument()
+      // The catalog moved from the space column onto the global rail (#786).
+      expect(screen.getByText('Katalog')).toBeInTheDocument()
     })
   })
 })

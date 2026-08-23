@@ -49,7 +49,7 @@ describe('BrandingSettingsPage', () => {
   it('shows no form to a user who is not a system administrator', () => {
     signInAs('USER')
 
-    renderWithProviders(<BrandingSettingsPage />)
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
 
     expect(screen.queryByLabelText('Produktname')).not.toBeInTheDocument()
     expect(screen.getByText(/nicht freigegeben/i)).toBeInTheDocument()
@@ -58,7 +58,7 @@ describe('BrandingSettingsPage', () => {
   it('offers the form to a system administrator, filled with what is in effect', () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<BrandingSettingsPage />)
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
 
     expect(screen.getByLabelText('Produktname')).toHaveValue(OPAA_BRANDING.productName)
     expect(screen.getByLabelText('Claim')).toHaveValue(OPAA_BRANDING.claim)
@@ -69,7 +69,7 @@ describe('BrandingSettingsPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<BrandingSettingsPage />)
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
 
     const nameField = screen.getByLabelText('Produktname')
     await user.clear(nameField)
@@ -86,7 +86,7 @@ describe('BrandingSettingsPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<BrandingSettingsPage />)
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
 
     const colorField = screen.getByLabelText('Primärfarbe')
     await user.clear(colorField)
@@ -106,7 +106,7 @@ describe('BrandingSettingsPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<BrandingSettingsPage />)
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
 
     const colorField = screen.getByLabelText('Primärfarbe')
     await user.clear(colorField)
@@ -126,7 +126,7 @@ describe('BrandingSettingsPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<BrandingSettingsPage />)
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
 
     const colorField = screen.getByLabelText('Primärfarbe')
     await user.clear(colorField)
@@ -142,7 +142,7 @@ describe('BrandingSettingsPage', () => {
     // anyway (a drag-and-drop, a renamed file, a browser that ignores the hint).
     const user = userEvent.setup({ applyAccept: false })
 
-    const { container } = renderWithProviders(<BrandingSettingsPage />)
+    const { container } = renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
     const svg = new File(['<svg><script>alert(1)</script></svg>'], 'logo.svg', {
       type: 'image/svg+xml',
@@ -158,7 +158,7 @@ describe('BrandingSettingsPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    const { container } = renderWithProviders(<BrandingSettingsPage />)
+    const { container } = renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
     const tooLarge = new File([new Uint8Array(512 * 1024 + 1)], 'logo.png', { type: 'image/png' })
 
@@ -183,7 +183,7 @@ describe('BrandingSettingsPage', () => {
       isLoaded: true,
     })
 
-    renderWithProviders(<BrandingSettingsPage />)
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
     await user.click(screen.getByRole('button', { name: /OPAA-Standard/i }))
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 

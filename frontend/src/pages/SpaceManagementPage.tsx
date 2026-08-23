@@ -160,7 +160,10 @@ export default function SpaceManagementPage() {
           flexWrap: 'wrap',
         }}
       >
-        <PageHeading title="Space einrichten" documentTitle={`${space.name} einrichten`} />
+        <PageHeading
+          title="Space-Einstellungen"
+          documentTitle={`Space-Einstellungen – ${space.name}`}
+        />
         <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
           {space.name}
         </Typography>

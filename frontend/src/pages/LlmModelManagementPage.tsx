@@ -17,6 +17,7 @@ import { testLlmModel } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import PageHeading from '../components/a11y/PageHeading'
+import AdminSectionNav from '../components/admin/AdminSectionNav'
 import CreateLlmModelDialog from '../components/admin/CreateLlmModelDialog'
 
 const BASE_URL_HELP_TEXT =
@@ -459,6 +460,7 @@ export default function LlmModelManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
+      <AdminSectionNav />
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
         <PageHeading title="Modelle" />
         <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>

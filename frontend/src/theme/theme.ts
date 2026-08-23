@@ -20,6 +20,7 @@ import {
   navy,
   navyRoles,
   radius,
+  railRoles,
   semanticColors,
   shadow,
   white,
@@ -68,6 +69,15 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
  */
 export function createSidebarTheme(appMode: PaletteMode, branding?: BrandingOverrides): Theme {
   return buildTheme('dark', appMode === 'light' ? navyRoles : darkRoles, branding)
+}
+
+/**
+ * The global rail's theme (#786, mockup 2a): a step darker than the navy sidebar while the app
+ * is light ({@link railRoles}), the carbon dark scheme while it is dark - same rule as the
+ * sidebar, one surface further left.
+ */
+export function createRailTheme(appMode: PaletteMode, branding?: BrandingOverrides): Theme {
+  return buildTheme('dark', appMode === 'light' ? railRoles : darkRoles, branding)
 }
 
 function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOverrides): Theme {
