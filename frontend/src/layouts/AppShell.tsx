@@ -4,7 +4,8 @@ import Drawer from '@mui/material/Drawer'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import { Outlet, useLocation } from 'react-router'
-import Sidebar from './Sidebar'
+import GlobalRail, { RAIL_WIDTH } from './GlobalRail'
+import Sidebar, { SIDEBAR_WIDTH } from './Sidebar'
 import MobileHeader from './MobileHeader'
 import AppFooter from './AppFooter'
 import SkipLink from '../components/a11y/SkipLink'
@@ -35,14 +36,25 @@ export default function AppShell() {
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <SkipLink />
       {isDesktop ? (
-        <Sidebar />
+        <>
+          <GlobalRail />
+          <Sidebar />
+        </>
       ) : (
         <Drawer
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           ModalProps={{ keepMounted: true }}
+          // Rail and space column together; on very narrow screens the column gives way
+          // (its flexShrink) rather than the drawer covering the whole viewport.
+          slotProps={{
+            paper: { sx: { width: RAIL_WIDTH + SIDEBAR_WIDTH, maxWidth: '92vw' } },
+          }}
         >
-          <Sidebar />
+          <Box sx={{ display: 'flex', height: '100%', minWidth: 0 }}>
+            <GlobalRail />
+            <Sidebar />
+          </Box>
         </Drawer>
       )}
 

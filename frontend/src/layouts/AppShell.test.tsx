@@ -46,10 +46,11 @@ describe('AppShell', () => {
     window.matchMedia = originalMatchMedia
   })
 
-  it('renders sidebar navigation links', () => {
+  it('renders the rail destinations and the space column side by side (#786)', () => {
     renderShell()
     expect(screen.getByText('Chats')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Wissensbibliotheken' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Spaces' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Katalog' })).toBeInTheDocument()
   })
 
   it('renders OPAA branding', () => {
@@ -57,9 +58,11 @@ describe('AppShell', () => {
     expect(screen.getAllByText('OPAA').length).toBeGreaterThan(0)
   })
 
-  it('exposes the landmarks navigation, main and contentinfo', () => {
+  it('exposes the landmarks: global rail, chats navigation, main and contentinfo', () => {
     renderShell()
-    expect(screen.getByRole('navigation', { name: 'Hauptnavigation' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Globale Navigation' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Chats' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Space-Bereich' })).toBeInTheDocument()
     expect(screen.getByRole('main')).toBeInTheDocument()
     expect(screen.getByRole('contentinfo')).toHaveTextContent('OPAA v0.1.0')
   })
@@ -80,11 +83,11 @@ describe('AppShell', () => {
     renderShell()
     expect(document.body).toHaveFocus()
 
-    // Einstellungen lives in the user menu since #587 - open it via the user badge.
+    // Einstellungen lives behind the rail's avatar since #786 (previously the user badge, #587).
     useAuthStore.setState({
       user: { id: 'u1', email: 'a@b.example', displayName: 'A. Tester', systemRole: 'USER' },
     })
-    await user.click(await screen.findByRole('button', { name: 'Benutzermenü' }))
+    await user.click(await screen.findByRole('button', { name: 'Profil und Einstellungen' }))
     await user.click(screen.getByRole('menuitem', { name: 'Einstellungen' }))
 
     expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toHaveFocus()
@@ -95,7 +98,9 @@ describe('AppShell', () => {
     const user = userEvent.setup()
     renderShell()
 
-    await user.click(within(screen.getByRole('navigation')).getByText('Wissensbibliotheken'))
+    await user.click(
+      within(screen.getByRole('navigation', { name: 'Globale Navigation' })).getByText('Katalog'),
+    )
 
     expect(screen.getByRole('main')).toHaveFocus()
   })

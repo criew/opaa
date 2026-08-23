@@ -11,6 +11,11 @@ interface BrandMarkProps {
   variant?: 'h6' | 'h5'
   /** 'vertical' stacks logo, name and claim centered - the sign-in card's block (mockup 1f). */
   orientation?: 'horizontal' | 'vertical'
+  /**
+   * Logo emblem alone, no product name - the 64px global rail (#786, mockup 2a) has no room
+   * for text, and its `nav` landmark already names the region for assistive tech.
+   */
+  logoOnly?: boolean
 }
 
 /**
@@ -29,6 +34,7 @@ export default function BrandMark({
   showClaim = false,
   variant = 'h6',
   orientation = 'horizontal',
+  logoOnly = false,
 }: BrandMarkProps) {
   const branding = useBrandingStore((s) => s.branding)
   const vertical = orientation === 'vertical'
@@ -92,15 +98,17 @@ export default function BrandMark({
             />
           </Box>
         )}
-        <Typography
-          variant={variant}
-          component="span"
-          sx={{ fontWeight: 700, ...(vertical && { fontSize: 24 }) }}
-        >
-          {branding.productName}
-        </Typography>
+        {!logoOnly && (
+          <Typography
+            variant={variant}
+            component="span"
+            sx={{ fontWeight: 700, ...(vertical && { fontSize: 24 }) }}
+          >
+            {branding.productName}
+          </Typography>
+        )}
       </Box>
-      {showClaim && branding.claim && (
+      {!logoOnly && showClaim && branding.claim && (
         <Typography
           variant="caption"
           color="text.secondary"
