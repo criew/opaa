@@ -259,29 +259,33 @@ export default function Sidebar() {
             {/* Mockup 2a: the foot of the column stays space-scoped - quiet text-only links,
                 12.5px on muted white (#658); everything global moved onto the rail (#786). Its
                 own nav landmark, so landmark navigation still reaches these links (review
-                #791, finding 5). */}
-            <List component="nav" aria-label="Space-Navigation" sx={{ px: '14px', py: '10px' }}>
-              {[
-                { label: 'Space-Einstellungen', to: `/spaces/${activeChatSpaceId}/manage` },
-                { label: 'Datenquellen dieses Space', to: `/spaces/${activeChatSpaceId}` },
-              ].map((item) => (
-                <ListItem key={item.to} disablePadding>
-                  <ListItemButton
-                    component={NavLink}
-                    to={item.to}
-                    selected={location.pathname === item.to}
-                    sx={{ borderRadius: '6px', px: '10px', py: '5px' }}
-                  >
-                    <ListItemText
-                      primary={item.label}
-                      slotProps={{
-                        primary: { sx: { fontSize: 12.5, color: 'rgba(255, 255, 255, 0.72)' } },
-                      }}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
+                #791, finding 5) - as a container AROUND the list, not instead of its <ul>:
+                List component="nav" replaced the <ul> and left the <li>s without a list
+                parent, an axe "serious" violation (#792). */}
+            <Box component="nav" aria-label="Space-Navigation">
+              <List sx={{ px: '14px', py: '10px' }}>
+                {[
+                  { label: 'Space-Einstellungen', to: `/spaces/${activeChatSpaceId}/manage` },
+                  { label: 'Datenquellen dieses Space', to: `/spaces/${activeChatSpaceId}` },
+                ].map((item) => (
+                  <ListItem key={item.to} disablePadding>
+                    <ListItemButton
+                      component={NavLink}
+                      to={item.to}
+                      selected={location.pathname === item.to}
+                      sx={{ borderRadius: '6px', px: '10px', py: '5px' }}
+                    >
+                      <ListItemText
+                        primary={item.label}
+                        slotProps={{
+                          primary: { sx: { fontSize: 12.5, color: 'rgba(255, 255, 255, 0.72)' } },
+                        }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
           </>
         )}
       </Box>

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router'
@@ -211,6 +211,11 @@ describe('Sidebar', () => {
 
   it('links the column foot to the active space: settings and data sources (mockup 2a)', () => {
     renderSidebarAtRoute('/spaces/space-engineering')
+
+    // #792: the landmark must wrap a real list - List component="nav" once replaced the <ul>
+    // and left the <li>s parentless, an axe "serious" violation.
+    const footNav = screen.getByRole('navigation', { name: 'Space-Navigation' })
+    expect(within(footNav).getByRole('list')).toBeInTheDocument()
 
     expect(screen.getByRole('link', { name: 'Space-Einstellungen' })).toHaveAttribute(
       'href',

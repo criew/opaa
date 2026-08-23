@@ -31,7 +31,9 @@ export default function AdminSectionNav() {
             sx={{
               fontSize: 13,
               fontWeight: active ? 600 : 400,
-              color: active ? 'primary.main' : 'text.secondary',
+              // text.primary, not the accent: blue-500 on white is 3.29:1 (#634) and fails
+              // WCAG AA at this size (#792); underline and weight already carry the state.
+              color: active ? 'text.primary' : 'text.secondary',
             }}
           >
             {section.label}
