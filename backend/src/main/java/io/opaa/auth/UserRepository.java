@@ -4,7 +4,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
   Optional<User> findBySubjectAndIssuer(String subject, String issuer);
@@ -35,4 +38,23 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    * role (#199).
    */
   List<User> findByOrganizationId(UUID organizationId);
+
+  /**
+   * Used by {@code UserSearchController#listUsers} (#777, capped and query-gated after #778 review
+   * finding 4) - unlike {@link #findByOrganizationId(UUID)} above (still unbounded, but only ever
+   * reached by the {@code SYSTEM_ADMIN}-only admin list), this backs an endpoint every
+   * authenticated organization member can call, so it is deliberately never allowed to return the
+   * whole organization: {@code pageable} caps the row count and the caller (see {@link
+   * UserService#searchInOrganization}) never invokes this without a query that already passed the
+   * minimum-length check. Matches case-insensitively against both displayName and email so a caller
+   * can find someone by either.
+   */
+  @Query(
+      "SELECT u FROM User u WHERE u.organizationId = :organizationId AND "
+          + "(LOWER(u.displayName) LIKE LOWER(CONCAT('%', :query, '%')) "
+          + "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%')))")
+  List<User> searchByOrganizationId(
+      @Param("organizationId") UUID organizationId,
+      @Param("query") String query,
+      Pageable pageable);
 }

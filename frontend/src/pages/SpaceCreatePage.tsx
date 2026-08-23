@@ -21,22 +21,23 @@ import ListItemText from '@mui/material/ListItemText'
 import PageHeading from '../components/a11y/PageHeading'
 import FieldLabel from '../components/wizard/FieldLabel'
 import WizardStepBar from '../components/wizard/WizardStepBar'
-import { getLibraries, getUsers } from '../services/api'
+import { getLibraries } from '../services/api'
 import { useSpaceStore } from '../stores/spaceStore'
+import { useUserSearch } from '../hooks/useUserSearch'
 import {
   spaceRoleLabel,
   spaceVisibilities,
   spaceVisibilityDescription,
   spaceVisibilityLabel,
 } from '../utils/labels'
-import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserInfo } from '../types/api'
+import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserSummary } from '../types/api'
 
 const STEPS = ['Grunddaten', 'Mitglieder', 'Datenquellen', 'Zusammenfassung'] as const
 
 const MEMBER_ROLES: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
 interface PendingMember {
-  user: UserInfo
+  user: UserSummary
   role: SpaceRole
 }
 
@@ -54,9 +55,15 @@ export default function SpaceCreatePage() {
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<SpaceVisibility>('PRIVATE')
   const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([])
-  const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
   const [selectedRole, setSelectedRole] = useState<SpaceRole>('MEMBER')
-  const [allUsers, setAllUsers] = useState<UserInfo[]>([])
+  const {
+    query: userQuery,
+    setQuery: setUserQuery,
+    users: userResults,
+    isLoading: isSearchingUsers,
+    error: userSearchError,
+  } = useUserSearch()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // #686: only libraries the creator may themselves read are offered - GET /v1/libraries already
@@ -69,11 +76,6 @@ export default function SpaceCreatePage() {
   const [libraryLoadError, setLibraryLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Same source as the space management page: admin-only - a regular user simply gets an
-    // empty picker and skips the step.
-    void getUsers()
-      .then(setAllUsers)
-      .catch(() => setAllUsers([]))
     void getLibraries()
       .then(setAvailableLibraries)
       .catch((err) => {
@@ -92,8 +94,8 @@ export default function SpaceCreatePage() {
 
   const availableUsers = useMemo(() => {
     const pendingIds = new Set(pendingMembers.map((m) => m.user.id))
-    return allUsers.filter((u) => !pendingIds.has(u.id))
-  }, [allUsers, pendingMembers])
+    return userResults.filter((u) => !pendingIds.has(u.id))
+  }, [userResults, pendingMembers])
 
   const isDirty = name.trim() !== '' || description.trim() !== '' || pendingMembers.length > 0
 
@@ -207,10 +209,27 @@ export default function SpaceCreatePage() {
               Mitglieder lassen sich auch später jederzeit in der Space-Verwaltung ergänzen — dieser
               Schritt ist optional.
             </Typography>
+            {userSearchError && (
+              // #778 review, finding 3: a failed search must not just read as "no matches" - the
+              // field looks identically empty either way otherwise.
+              <Alert severity="error">{userSearchError}</Alert>
+            )}
             <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
               <Autocomplete
                 options={availableUsers}
                 size="small"
+                loading={isSearchingUsers}
+                filterOptions={(x) => x}
+                inputValue={userQuery}
+                onInputChange={(_e, value, reason) => {
+                  // 'reset' fires when the input text is set to match a just-selected option's
+                  // label (or reverted on blur) - propagating that as a fresh query would re-fire
+                  // a search for text the caller never typed.
+                  if (reason !== 'reset') setUserQuery(value)
+                }}
+                noOptionsText={
+                  userQuery.trim().length < 2 ? 'Mindestens 2 Zeichen eingeben' : 'Keine Treffer'
+                }
                 getOptionLabel={(option) =>
                   option.displayName
                     ? `${option.displayName} (${option.email ?? option.id})`
@@ -251,6 +270,7 @@ export default function SpaceCreatePage() {
                   if (!selectedUser) return
                   setPendingMembers((prev) => [...prev, { user: selectedUser, role: selectedRole }])
                   setSelectedUser(null)
+                  setUserQuery('')
                 }}
               >
                 Vormerken

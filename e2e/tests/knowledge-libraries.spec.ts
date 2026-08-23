@@ -127,7 +127,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     // dev-user is already provisioned by now regardless of this test's own regularUserPage fixture
     // - the #233 seed run (scripts/run-e2e.mjs, before Playwright starts) already logs it in once
     // as part of provision_users (demo/seed/seed.py). That authenticated request is what GET
-    // /v1/admin/users below actually needs to find the account; without either the seed or
+    // /v1/users (#777) below actually needs to find the account; without either the seed or
     // regularUserPage having done it, the admin's picker would never list dev-user at all.
     await shareLibraryWithPerson(adminPage, LIBRARY_NAME, 'Dev User', /Dev User/)
 

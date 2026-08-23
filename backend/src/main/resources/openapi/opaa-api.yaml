@@ -104,6 +104,52 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /api/v1/users:
+    get:
+      operationId: listUsersForSelection
+      tags: [auth]
+      summary: >
+        List users in the caller's own organization for member/grant selection - deliberately not
+        admin-restricted, unlike GET /api/v1/admin/users (#777). The member/grant pickers on
+        SpaceManagementPage, SpaceCreatePage, LibraryCreatePage and LibraryGrantsDialog need to
+        search for a user to add, but GET /api/v1/admin/users requires SYSTEM_ADMIN (#199) - a
+        403 that the frontend silently swallowed into an empty, dead-looking search field for
+        every non-admin, making "Mitglied hinzufügen" unusable for anyone but a system admin.
+        Same precedent as GET /api/v1/me/groups (any authenticated user needs their own group
+        memberships) and AssetGrantService#toResponses's server-side name resolution (#423): the
+        threshold this endpoint needs is "authenticated member of the organization", not
+        SYSTEM_ADMIN. Returns UserSummaryResponse (id/email/displayName only, no systemRole) -
+        narrower than UserInfoResponse, matching KnowledgeLibraryService#resolveOwnerNames's
+        reasoning that an organization-wide audience should see less than the SYSTEM_ADMIN-only
+        admin list does.
+
+        Requires `query` (min. 2 characters, matched case-insensitively against displayName and
+        email) and caps the result at 20 rows (#778 review) - the endpoint used to return every
+        user of the organization unconditionally on each picker mount, unbounded by input or size,
+        which is both a data-minimisation concern and unnecessary load on a large organization. A
+        missing or too-short query returns an empty list rather than falling back to the old
+        unbounded list.
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Case-insensitive substring match against displayName or email. Fewer than 2 characters
+            (after trimming) yields an empty result instead of the full organization list.
+      responses:
+        "200":
+          description: Users in the caller's organization matching the query, capped at 20 rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSummaryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /api/v1/admin/users:
     get:
       operationId: listUsers
@@ -2101,6 +2147,24 @@ components:
         systemRole:
           type: string
           example: USER
+
+    UserSummaryResponse:
+      type: object
+      description: >
+        Deliberately narrower than UserInfoResponse (no systemRole) - GET /v1/users (#777) reaches
+        every authenticated user in the organization, not just SYSTEM_ADMIN, so it exposes only
+        what a member/grant picker needs to let a caller find someone by name or email.
+      required: [id, email, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+          nullable: true
 
     RoleChangeRequest:
       type: object

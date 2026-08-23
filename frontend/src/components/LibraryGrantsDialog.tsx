@@ -30,11 +30,12 @@ import type {
   AssetRole,
   GroupListResponse,
   PermissionSubjectType,
-  UserInfo,
+  UserSummary,
 } from '../types/api'
-import { getGroups, getMyGroups, getUsers } from '../services/api'
+import { getGroups, getMyGroups } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useGrantStore } from '../stores/grantStore'
+import { useUserSearch } from '../hooks/useUserSearch'
 import { assetRoleDescription, assetRoleLabel, permissionSubjectTypeLabel } from '../utils/labels'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
@@ -100,17 +101,26 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
 
   const [groups, setGroups] = useState<GroupListResponse[]>([])
   const [groupsError, setGroupsError] = useState<string | null>(null)
-  const [users, setUsers] = useState<UserInfo[]>([])
-  // GET /v1/admin/users is SYSTEM_ADMIN-only, so it is only ever attempted as a convenience for an
-  // admin picking a person - never as the source of the names shown on existing grants (see
+  // #777: GET /v1/users is reachable for any authenticated organization member (unlike GET
+  // /v1/admin/users, which never fed this picker's names either - see
   // subjectDisplayName/grantedByDisplayName above, which read the backend-resolved fields
-  // instead). A MANAGER without a system role goes straight to the free-text id field below; #445
-  // tracks a proper permission-independent user search to replace it.
-  const usersUnavailable = !isSystemAdmin || users.length === 0
+  // instead).
+  const {
+    query: userQuery,
+    setQuery: setUserQuery,
+    users,
+    isLoading: isSearchingUsers,
+    error: userSearchError,
+  } = useUserSearch()
+  // #778 review, finding 1: gated on the search having actually failed, not on "no results yet" -
+  // an empty `users` array is the ordinary state before typing 2 characters or while a search is
+  // still in flight, neither of which is "unavailable". The free-text id fallback below is only
+  // for the case a caller could never resolve any name in the first place.
+  const usersUnavailable = Boolean(userSearchError)
 
   const [showForm, setShowForm] = useState(false)
   const [subjectType, setSubjectType] = useState<PermissionSubjectType>('USER')
-  const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
   const [manualUserId, setManualUserId] = useState('')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
   // #423 code review, finding 3: GET /v1/me/groups only ever returns the caller's own memberships,
@@ -137,20 +147,13 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
         setGroups([])
         setGroupsError(err instanceof Error ? err.message : 'Gruppen konnten nicht geladen werden')
       })
-    // No else branch resetting `users` for a non-admin: usersUnavailable below already forces the
-    // free-text fallback via `!isSystemAdmin` alone, so a stale `users` array from an earlier
-    // admin session (if any) is never rendered regardless of its contents.
-    if (isSystemAdmin) {
-      void getUsers()
-        .then((result) => setUsers(result))
-        .catch(() => setUsers([]))
-    }
   }, [open, library.id, isSystemAdmin, loadGrants])
 
   function resetForm() {
     setShowForm(false)
     setSubjectType('USER')
     setSelectedUser(null)
+    setUserQuery('')
     setManualUserId('')
     setSelectedGroup(null)
     setManualGroupEntry(false)
@@ -375,14 +378,24 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                     size="small"
                   />
                   <Typography variant="caption" color="text.secondary">
-                    Eine Nutzerauswahl steht ohne Systemrolle nicht zur Verfügung; die Nutzer-ID
-                    muss bekannt sein. Nachgemeldet als Folge-Issue für eine
-                    berechtigungsunabhängige Nutzersuche.
+                    Die Nutzerauswahl konnte nicht geladen werden; die Nutzer-ID muss bekannt sein.
                   </Typography>
                 </Stack>
               ) : (
                 <Autocomplete
                   options={users}
+                  loading={isSearchingUsers}
+                  filterOptions={(x) => x}
+                  inputValue={userQuery}
+                  onInputChange={(_event, value, reason) => {
+                    // 'reset' fires when the input text is set to match a just-selected option's
+                    // label (or reverted on blur) - propagating that as a fresh query would
+                    // re-fire a search for text the caller never typed.
+                    if (reason !== 'reset') setUserQuery(value)
+                  }}
+                  noOptionsText={
+                    userQuery.trim().length < 2 ? 'Mindestens 2 Zeichen eingeben' : 'Keine Treffer'
+                  }
                   getOptionLabel={(option) =>
                     option.displayName
                       ? `${option.displayName} (${option.email ?? option.id})`

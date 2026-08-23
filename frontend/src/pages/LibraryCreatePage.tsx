@@ -21,8 +21,9 @@ import PageHeading from '../components/a11y/PageHeading'
 import { blue } from '../theme/tokens'
 import FieldLabel from '../components/wizard/FieldLabel'
 import WizardStepBar from '../components/wizard/WizardStepBar'
-import { getMyGroups, getUsers, testLibrarySource, upsertLibraryGrant } from '../services/api'
+import { getMyGroups, testLibrarySource, upsertLibraryGrant } from '../services/api'
 import { useLibraryStore } from '../stores/libraryStore'
+import { useUserSearch } from '../hooks/useUserSearch'
 import {
   allDocumentSourceTypes,
   assetRoleLabel,
@@ -46,7 +47,7 @@ import type {
   LibraryVisibility,
   PermissionSubjectType,
   SourceConnectionTestResponse,
-  UserInfo,
+  UserSummary,
 } from '../types/api'
 
 const STEPS = ['Stammdaten', 'Herkunft', 'Rechte'] as const
@@ -96,9 +97,15 @@ export default function LibraryCreatePage() {
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
   const [grantSubjectType, setGrantSubjectType] = useState<PermissionSubjectType>('USER')
   const [grantRole, setGrantRole] = useState<AssetRole>('VIEWER')
-  const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
   const [selectedGrantGroup, setSelectedGrantGroup] = useState<GroupListResponse | null>(null)
-  const [users, setUsers] = useState<UserInfo[]>([])
+  const {
+    query: userQuery,
+    setQuery: setUserQuery,
+    users,
+    isLoading: isSearchingUsers,
+    error: userSearchError,
+  } = useUserSearch()
 
   useEffect(() => {
     let cancelled = false
@@ -114,15 +121,6 @@ export default function LibraryCreatePage() {
         setGroups([])
         setGroupsLoaded(true)
         setGroupsError(err instanceof Error ? err.message : 'Gruppen konnten nicht geladen werden')
-      })
-    // Admin-only user directory - a regular user simply gets an empty picker (same fallback as
-    // the space wizard and LibraryGrantsDialog).
-    void getUsers()
-      .then((result) => {
-        if (!cancelled) setUsers(result)
-      })
-      .catch(() => {
-        if (!cancelled) setUsers([])
       })
     return () => {
       cancelled = true
@@ -225,6 +223,7 @@ export default function LibraryCreatePage() {
         },
       ])
       setSelectedUser(null)
+      setUserQuery('')
     }
     if (grantSubjectType === 'GROUP' && selectedGrantGroup) {
       setPendingGrants((prev) => [
@@ -598,6 +597,13 @@ export default function LibraryCreatePage() {
                 Freigaben lassen sich auch später jederzeit auf der Detailseite ergänzen — dieser
                 Schritt ist optional.
               </Typography>
+              {userSearchError && (
+                // #778 review, finding 3: a failed search must not just read as "no matches" - the
+                // field looks identically empty either way otherwise.
+                <Alert severity="error" sx={{ mb: 1.5 }}>
+                  {userSearchError}
+                </Alert>
+              )}
               <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
                 <Select
                   size="small"
@@ -616,6 +622,20 @@ export default function LibraryCreatePage() {
                   <Autocomplete
                     options={availableUsers}
                     size="small"
+                    loading={isSearchingUsers}
+                    filterOptions={(x) => x}
+                    inputValue={userQuery}
+                    onInputChange={(_e, value, reason) => {
+                      // 'reset' fires when the input text is set to match a just-selected
+                      // option's label (or reverted on blur) - propagating that as a fresh query
+                      // would re-fire a search for text the caller never typed.
+                      if (reason !== 'reset') setUserQuery(value)
+                    }}
+                    noOptionsText={
+                      userQuery.trim().length < 2
+                        ? 'Mindestens 2 Zeichen eingeben'
+                        : 'Keine Treffer'
+                    }
                     getOptionLabel={(option) =>
                       option.displayName
                         ? `${option.displayName} (${option.email ?? option.id})`
