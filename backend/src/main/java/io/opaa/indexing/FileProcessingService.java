@@ -61,11 +61,22 @@ public class FileProcessingService {
    * indexing specifically (queries and, if a future embedding call ever legitimately wants richer
    * metadata mixed in, other {@code Document} instances are unaffected: this formatter is scoped to
    * the chunks {@link #storeChunks} itself constructs, not applied globally).
+   *
+   * <p><b>{@code withTextTemplate("{content}")} matters too</b> (PR #779 review): {@link
+   * DefaultContentFormatter}'s own default text template is {@code
+   * "{metadata_string}\n\n{content}"} - with every metadata key excluded, {@code metadata_string}
+   * is empty, but the template still leaves two leading newlines ahead of the actual chunk text.
+   * Overriding the template avoids embedding {@code "\n\n" + text} instead of {@code text} itself,
+   * restoring exactly the pre-#766 (native {@code OllamaEmbeddingModel}) behaviour rather than a
+   * close approximation of it - and turns the exclusion list above into a true whitelist of what
+   * this formatter ever embeds (nothing but the chunk text, regardless of which or how many keys a
+   * future change adds to the metadata map).
    */
   private static final ContentFormatter CHUNK_EMBED_CONTENT_FORMATTER =
       DefaultContentFormatter.builder()
           .withExcludedEmbedMetadataKeys(
               "document_id", "chunk_index", "file_name", "library_id", "organization_id")
+          .withTextTemplate("{content}")
           .build();
 
   private final DocumentService documentService;

@@ -308,15 +308,15 @@ class FileProcessingServiceTest {
     // The metadata is still there for filtering/citation...
     assertThat(storedChunk.getMetadata()).containsKey("library_id");
     // ...but MetadataMode.EMBED - what an OpenAiEmbeddingModel actually sends to be embedded -
-    // must carry none of it: with every metadata key excluded, Spring AI's DefaultContentFormatter
-    // still applies its "{metadata_string}\n\n{content}" text template (an empty metadata_string
-    // leaves a harmless leading blank line, unlike five lines of key: value noise), so this
-    // asserts on the trimmed content rather than exact equality.
-    assertThat(
-            storedChunk
-                .getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED)
-                .trim())
-        .isEqualTo("the real chunk text to embed");
+    // must be exactly the chunk text, byte for byte: CHUNK_EMBED_CONTENT_FORMATTER overrides both
+    // the excluded metadata keys AND the text template (see its own Javadoc for why the template
+    // override matters even with every key excluded), so this is a real whitelist - not just "no
+    // metadata key substrings present" - and stays a guard against a sixth bookkeeping key ever
+    // being added to storeChunks's metadata map without also being added to the exclusion list
+    // above: an unlisted key would show up here as a formatted string that no longer equals
+    // getText(), not as a silent, easy-to-miss near-miss.
+    assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
+        .isEqualTo(storedChunk.getText());
   }
 
   @Test
