@@ -39,7 +39,9 @@ const isWindows = process.platform === 'win32'
 // otherwise fail with an unknown-option error.
 const rawArgs = process.argv.slice(2)
 let target = process.env.E2E_TARGET ?? 'e2e'
-const targetFlagIndex = rawArgs.findIndex((arg) => arg === '--target' || arg.startsWith('--target='))
+const targetFlagIndex = rawArgs.findIndex(
+  (arg) => arg === '--target' || arg.startsWith('--target='),
+)
 if (targetFlagIndex !== -1) {
   const flag = rawArgs[targetFlagIndex]
   if (flag.includes('=')) {
@@ -74,6 +76,11 @@ const composeProjectName =
 const backendPort = process.env.OPAA_BACKEND_PORT ?? '18081'
 const frontendPort = process.env.OPAA_FRONTEND_PORT ?? (isDemo ? '3000' : '13000')
 const dbPort = process.env.OPAA_DB_PORT ?? '15432'
+// test(e2e) #760: ai-stub's own host-published port (docker-compose.e2e.yml), so a scenario can
+// call its GET /last-chat-model directly from the Node/Playwright process - see that file's own
+// comment. Only relevant for the "e2e" target; the "demo" target's ai-stub stand-in
+// (docker-compose.demo-smoke.yml) does not publish one, and no demo-smoke scenario needs it.
+const aiStubPort = process.env.OPAA_AI_STUB_PORT ?? '18089'
 const keycloakPort = '8180'
 const baseUrl = process.env.E2E_BASE_URL ?? `http://localhost:${frontendPort}`
 const readyUrl = `${baseUrl}/api/v1/auth/config`
@@ -103,6 +110,7 @@ const composeEnv = {
   OPAA_FRONTEND_PORT: frontendPort,
   OPAA_DB_PORT: dbPort,
   OPAA_KEYCLOAK_PORT: keycloakPort,
+  ...(isDemo ? {} : { OPAA_AI_STUB_PORT: aiStubPort }),
 }
 
 let tornDown = false
@@ -205,7 +213,12 @@ function runSeed() {
     // even with ai-stub's deterministic, near-instant embeddings - most of the time goes into
     // Tika parsing the PDF/DOCX/PPTX uploads and the HTTP_DIRECTORY/RSS_FEED crawls themselves.
     // Well above the seed's own 300s default (demo/seed/seed.py, parse_args).
-    seedArgs.push('--keycloak-url', `http://localhost:${keycloakPort}`, '--indexing-timeout-seconds', '600')
+    seedArgs.push(
+      '--keycloak-url',
+      `http://localhost:${keycloakPort}`,
+      '--indexing-timeout-seconds',
+      '600',
+    )
   }
   return run(venvPython, seedArgs)
 }
@@ -290,6 +303,7 @@ async function main() {
     env: {
       ...process.env,
       E2E_BASE_URL: baseUrl,
+      ...(isDemo ? {} : { E2E_AI_STUB_BASE_URL: `http://localhost:${aiStubPort}` }),
     },
   })
 

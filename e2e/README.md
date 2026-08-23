@@ -196,9 +196,13 @@ Für neue Assertions bevorzugt in dieser Reihenfolge:
 `getByPlaceholder`/`getByText` auf sichtbaren, für Menschen formulierten Text (wie im aktuellen
 Rauchtest) sind **zu vermeiden**, sobald sich das vermeiden lässt: Sie brechen bei jeder
 Textänderung (inkl. Sonderzeichen wie `…`) und sind kein stabiler Vertrag zwischen Frontend und
-Suite. Das Frontend trägt bislang genau ein `data-testid` (`source-card` auf `SourceCard.tsx`,
-ergänzt für #424 — eine Quellenkarte im Chat hat keine für Rolle/Label geeignete feste Beschriftung,
-weil sie einen zur Laufzeit ermittelten Dateinamen zeigt); wer für eine künftige Assertion eines
+Suite. Das Frontend trägt bislang zwei `data-testid`s: `source-card` auf `SourceCard.tsx` (ergänzt für
+#424 — eine Quellenkarte im Chat hat keine für Rolle/Label geeignete feste Beschriftung, weil sie
+einen zur Laufzeit ermittelten Dateinamen zeigt) und `llm-model-card-<id>` auf `LlmModelCard`s
+Accordion-Wurzel in `LlmModelManagementPage.tsx` (ergänzt für #760 — `AccordionDetails` bleibt beim
+Einklappen gemountet, sodass jedes Modell seine eigene, gleichzeitig im DOM vorhandene Kopie
+gleichnamiger Felder wie „API-Schlüssel" hat; ein rollen-/label-basierter Selektor ohne dieses
+Scoping trifft mehrdeutig auf mehrere Modellkarten zugleich). Wer für eine künftige Assertion eines
 braucht, das sich nicht über Rolle/Label ausdrücken lässt, ergänzt das nötige `data-testid` im
 selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen zu lassen.
 
