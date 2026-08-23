@@ -107,6 +107,11 @@ describe('isGlobalAreaPath', () => {
     // #809: overview and create wizard are global views; a chosen space is not.
     expect(isGlobalAreaPath('/spaces')).toBe(true)
     expect(isGlobalAreaPath('/spaces/new')).toBe(true)
+    // #814: React Router rendert "/spaces/" ebenfalls als Übersicht - der Vergleich muss
+    // Trailing Slashes genauso tolerieren.
+    expect(isGlobalAreaPath('/spaces/')).toBe(true)
+    expect(isGlobalAreaPath('/spaces/new/')).toBe(true)
+    expect(isGlobalAreaPath('/libraries/')).toBe(true)
     expect(isGlobalAreaPath('/spaces/space-1')).toBe(false)
     expect(isGlobalAreaPath('/spaces/space-1/chats/chat-1')).toBe(false)
     // Since #788 the user settings are a global area as well (mockup 2c).

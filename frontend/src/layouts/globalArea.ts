@@ -15,8 +15,12 @@ const GLOBAL_AREA_PREFIXES = ['/admin', '/settings', '/libraries']
 const GLOBAL_AREA_EXACT_PATHS = ['/spaces', '/spaces/new']
 
 export function isGlobalAreaPath(pathname: string): boolean {
+  // React Router matches routes tolerant of trailing slashes ("/spaces/" renders the
+  // overview), so the comparison must be equally tolerant - otherwise a typed "/spaces/"
+  // brings the navy column back next to the overview (#814, review #811).
+  const path = pathname.replace(/\/+$/, '') || '/'
   return (
-    GLOBAL_AREA_EXACT_PATHS.includes(pathname) ||
-    GLOBAL_AREA_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+    GLOBAL_AREA_EXACT_PATHS.includes(path) ||
+    GLOBAL_AREA_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
   )
 }
