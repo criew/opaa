@@ -148,16 +148,34 @@ class LlmModelSeeder {
     if (markerRepository.seedAlreadyAttempted()) {
       return;
     }
+    if (repository.count() > 0) {
+      // #771 review, Befund 1: a marker-less skip (below, on a missing/invalid encryption key)
+      // is retried on every subsequent start until it either succeeds or the operator adds a
+      // model by hand in the meantime - the very fallback this class's own ERROR log recommends.
+      // Without this check, that hand-added model would collide with the retried takeover the
+      // next time it runs: ux_llm_models_single_active (migration 058) if the seeded model were
+      // activated too, or a silent second row - either way, a taken-over environment
+      // configuration the operator never asked for once the key finally is set. The marker
+      // still is the primary guard (PR #763 review) for the ordinary case; this is only reached
+      // when it was never written in the first place.
+      log.info(
+          "Übernahme aus der Umgebungskonfiguration entfällt: Es sind bereits Chat-Modelle"
+              + " hinterlegt (vermutlich manuell angelegt, nachdem eine frühere Übernahme mangels"
+              + " OPAA_SETTINGS_ENCRYPTION_KEY übersprungen wurde). Seed-Marker wird nachträglich"
+              + " gesetzt.");
+      markerRepository.save(new LlmModelSeedMarker(Instant.now()));
+      return;
+    }
     LlmModel seeded;
     try {
       seeded = legacyOllamaTakeoverApplies() ? seedFromLegacyOllamaEnv() : seedFromOpenAi();
     } catch (MissingEncryptionKeyException e) {
       log.error(
           "Initiales Chat-Modell konnte nicht aus der Umgebungskonfiguration übernommen werden:"
-              + " OPAA_SETTINGS_ENCRYPTION_KEY ist nicht gesetzt, ein Zugangsschlüssel ist aber"
-              + " konfiguriert. Variable setzen und neu starten, damit die Übernahme nachgeholt"
-              + " wird - alternativ das Modell über die Verwaltungsoberfläche anlegen. Siehe"
-              + " docs/deployment.md. Es wurde kein Seed-Marker geschrieben.");
+              + " {} Variable setzen und neu starten, damit die Übernahme nachgeholt wird -"
+              + " alternativ das Modell ohne Zugangsschlüssel über die Verwaltungsoberfläche"
+              + " anlegen. Siehe docs/deployment.md. Es wurde kein Seed-Marker geschrieben.",
+          e.getCause().getMessage());
       return;
     }
     if (seeded != null) {
@@ -257,10 +275,15 @@ class LlmModelSeeder {
         !StringUtils.hasText(apiKey) || OPENAI_API_KEY_PLACEHOLDER.equals(apiKey);
     String apiKeyCiphertext = null;
     if (!noRealKeyConfigured) {
-      if (!settingsEncryptor.isKeyConfigured()) {
-        throw new MissingEncryptionKeyException();
+      try {
+        apiKeyCiphertext = settingsEncryptor.encrypt(apiKey);
+      } catch (IllegalStateException e) {
+        // #771 review, Befund "Sollte" 1: not just a missing key (SettingsEncryptor#requireKey()
+        // throws the same IllegalStateException for a set-but-malformed one - wrong Base64,
+        // wrong length) - both are the same "Übernahme scheitert kontrolliert" category the
+        // deployment docs promise, not a reason to abort startup.
+        throw new MissingEncryptionKeyException(e);
       }
-      apiKeyCiphertext = settingsEncryptor.encrypt(apiKey);
     }
     return new LlmModel(
         DEFAULT_DISPLAY_NAME, baseUrl, model, temperature, maxTokens, apiKeyCiphertext);
@@ -306,12 +329,18 @@ class LlmModelSeeder {
 
   /**
    * Thrown by {@link #seedFromOpenAi()} when a configured API key would need to be encrypted but
-   * {@code OPAA_SETTINGS_ENCRYPTION_KEY} is missing (#771). A configuration problem, not a fatal
-   * one: caught within {@link #seedIfNeeded()} itself, before it ever reaches {@link
-   * LlmModelSeedRunner}, so this one-time takeover is simply skipped for this start - no {@link
-   * LlmModelSeedMarker} is written, so it is retried automatically on every subsequent start until
-   * the operator sets the key (or the model is added by hand through the Verwaltungsoberfläche in
-   * the meantime, at which point the takeover has nothing left to do).
+   * {@code OPAA_SETTINGS_ENCRYPTION_KEY} is missing, invalid Base64 or the wrong length (#771,
+   * every case {@link io.opaa.security.SettingsEncryptor#encrypt} itself reports as an {@link
+   * IllegalStateException}). A configuration problem, not a fatal one: caught within {@link
+   * #seedIfNeeded()} itself, before it ever reaches {@link LlmModelSeedRunner}, so this one-time
+   * takeover is simply skipped for this start - no {@link LlmModelSeedMarker} is written, so it is
+   * retried automatically on every subsequent start until the operator fixes the key (or the model
+   * is added by hand through the Verwaltungsoberfläche in the meantime, at which point {@link
+   * #seedIfNeeded()}'s own {@code repository.count() > 0} check takes over instead).
    */
-  private static final class MissingEncryptionKeyException extends RuntimeException {}
+  private static final class MissingEncryptionKeyException extends RuntimeException {
+    MissingEncryptionKeyException(IllegalStateException cause) {
+      super(cause);
+    }
+  }
 }

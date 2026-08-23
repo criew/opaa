@@ -113,20 +113,6 @@ public class SettingsEncryptor {
     }
   }
 
-  /**
-   * Whether {@code OPAA_SETTINGS_ENCRYPTION_KEY} is set at all - a cheap, non-throwing check for
-   * callers that need to decide *before* calling {@link #encrypt}/{@link #decrypt} whether to
-   * attempt the operation or skip it with their own handling (#771: {@link
-   * io.opaa.llm.LlmModelSeeder} skips the one-time takeover of a configured API key, rather than
-   * letting the {@link IllegalStateException} from {@link #requireKey()} abort application startup,
-   * when the key is missing). Deliberately only checks presence, not validity (Base64-ness, length)
-   * - a malformed key is a different, rarer failure mode that {@link #requireKey()} still reports
-   * the usual way.
-   */
-  public boolean isKeyConfigured() {
-    return StringUtils.hasText(properties.encryptionKey());
-  }
-
   private SecretKeySpec requireKey() {
     String base64Key = properties.encryptionKey();
     if (!StringUtils.hasText(base64Key)) {
