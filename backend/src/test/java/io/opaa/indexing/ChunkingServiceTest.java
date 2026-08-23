@@ -138,7 +138,7 @@ class ChunkingServiceTest {
   void stampsChunksWithTheirHeadingPath() {
     var service =
         new ChunkingService(
-            new IndexingProperties("./docs", 60, 0, 50, 3, null, null, null, null, null, 0));
+            new IndexingProperties("./docs", 60, 0, 50, null, null, null, null, null, 0));
     String text =
         "# Dienstanweisung\n"
             + "## 4 Fristen\n"
@@ -164,7 +164,7 @@ class ChunkingServiceTest {
   void locatesAChunkByItsOwnTextNotByTheOverlapPrefix() {
     var service =
         new ChunkingService(
-            new IndexingProperties("./docs", 60, 20, 50, 3, null, null, null, null, null, 0));
+            new IndexingProperties("./docs", 60, 20, 50, null, null, null, null, null, 0));
     String text = "# Alpha\n" + distinctSentences(10) + "\n# Beta\n" + distinctSentences(10);
 
     List<Document> result = service.chunkDocuments("doc.md", List.of(new Document(text)));
@@ -179,7 +179,7 @@ class ChunkingServiceTest {
   void turnsPageBreaksIntoPageLocationsAndStripsThem() {
     var service =
         new ChunkingService(
-            new IndexingProperties("./docs", 1000, 100, 50, 3, null, null, null, null, null, 0));
+            new IndexingProperties("./docs", 1000, 100, 50, null, null, null, null, null, 0));
     String text = "Erste Seite mit etwas Text.\fZweite Seite mit mehr Text.";
 
     List<Document> result = service.chunkDocuments("scan.pdf", List.of(new Document(text)));
@@ -194,7 +194,7 @@ class ChunkingServiceTest {
   void leavesFlatTextWithoutALocation() {
     var service =
         new ChunkingService(
-            new IndexingProperties("./docs", 1000, 100, 50, 3, null, null, null, null, null, 0));
+            new IndexingProperties("./docs", 1000, 100, 50, null, null, null, null, null, 0));
 
     List<Document> result =
         service.chunkDocuments("notes.txt", List.of(new Document("Nur ein flacher Text.")));
