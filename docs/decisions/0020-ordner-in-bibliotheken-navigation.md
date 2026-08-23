@@ -4,6 +4,8 @@
 
 Akzeptiert
 
+Die Entscheidung wurde am 23.08.2026 vom Maintainer getroffen, festgehalten in Epic #520.
+
 ## Kontext
 
 Epic #520 sieht Ordner für Wissensbibliotheken vor: In einer `UPLOAD`-Bibliothek soll sich der Bestand
@@ -24,8 +26,7 @@ würden:
 
 ## Entscheidung
 
-### 1. Abgrenzung: „kein Ordner in einem Raum" betrifft Bibliothek ↔ Space, nicht die Struktur innerhalb
-   einer Bibliothek
+### 1. Abgrenzung: „kein Ordner in einem Raum" betrifft Bibliothek ↔ Space, nicht die Struktur innerhalb einer Bibliothek
 
 Die Aussage in `docs/CONCEPTS.md` („Die Wissensbibliothek ist ein KI-Asset und kein Ordner in einem
 Raum") und in `docs/VISION.md` (Wissensbibliotheken sind „eigene Objekte mit eigenen Rechten … nicht bloß
@@ -34,8 +35,8 @@ Bibliothek trägt ihre Rechte selbst und lässt sich nicht durch einen Space-Wec
 Unterverzeichnis eines Space, dessen Rechte sie erbt.
 
 Ordner **innerhalb** einer Bibliothek sind davon unberührt. Sie strukturieren den Bestand einer einzelnen
-Bibliothek, deren Rechteanker unverändert die Bibliothek selbst bleibt (siehe Entscheidung 3). `docs/
-VISION.md` nennt „Upload von Dateien und Ordnern" sogar ausdrücklich als Ziel für Meilenstein 1. Es gibt
+Bibliothek, deren Rechteanker unverändert die Bibliothek selbst bleibt (siehe Entscheidung 3). `docs/VISION.md`
+nennt „Upload von Dateien und Ordnern" sogar ausdrücklich als Ziel für Meilenstein 1. Es gibt
 also keinen Konzeptkonflikt — nur zwei verschiedene Bedeutungsebenen von „Ordner", die dieser ADR
 auseinanderhält.
 
@@ -92,14 +93,20 @@ in diesem Unterordner suchen"). Bis dahin liefert die Suche innerhalb einer Bibl
 den gesamten Bestand, unabhängig von der Ordnerstruktur; die Trefferanzeige zeigt den Ordnerpfad zur
 Einordnung an (siehe [`knowledge-sources.md`](../features/knowledge-sources.md)).
 
-### 5. Löschen eines Ordners mit Inhalt löscht die enthaltenen Dokumente — nach Bestätigung, durch den
-   Service
+### 5. Löschen eines Ordners mit Inhalt löscht die enthaltenen Dokumente — nach Bestätigung, durch den Service
 
 Löscht eine Person einen Ordner, der Dokumente (oder Unterordner mit Dokumenten) enthält, werden diese
 Dokumente mitgelöscht — nicht in einen Wurzel- oder Papierkorbzustand verschoben. Die Oberfläche zeigt vor
-der Löschung die Anzahl betroffener Dokumente und verlangt eine ausdrückliche Bestätigung, analog zum
-bestehenden Muster beim Löschen einer ganzen Bibliothek ([ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md),
-Entscheidung 5).
+der Löschung die Anzahl betroffener Dokumente und verlangt eine ausdrückliche Bestätigung.
+
+**Kein Widerspruch zur Löschsperre auf Bibliotheksebene.** Für `UPLOAD`-Bibliotheken bleibt das Löschen
+der gesamten Bibliothek blockiert, solange sie Dokumente enthält ([ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md),
+Entscheidung 5) — diese Sperre schützt vor dem versehentlichen Wegwerfen eines ganzen kuratierten
+Bestands in einer einzigen, schwer rückgängig zu machenden Aktion. Das Löschen eines einzelnen Ordners
+mit Bestand ist demgegenüber ein gezielter Eingriff in einen klar umrissenen Teilbestand: Die Anzahl
+betroffener Dokumente ist vor der Bestätigung sichtbar, die übrige Bibliothek bleibt unberührt, und die
+Person hat den Ordnerinhalt beim Navigieren dorthin bereits gesehen. Diese geringere Schwelle ist deshalb
+bewusst gesetzt, nicht ein Widerspruch zur strengeren Regel auf Bibliotheksebene.
 
 **Der Löschvorgang läuft durch den Anwendungs-Service, nicht durch eine DB-Kaskade
 (`ON DELETE CASCADE`).** Das Entfernen eines Dokuments ist mehr als eine Zeile: Es räumt Chunks im
@@ -109,12 +116,22 @@ Vektorspeicher und die abgelegte Datei im Dokumentenspeicher auf — dieselbe Au
 Aufräumschritte überspringen und verwaiste Chunks bzw. Dateien hinterlassen. Unterordner löscht der
 Service dagegen rekursiv mit derselben Logik.
 
-### 6. Dedup-Index bleibt bibliotheksweit
+### 6. Dedup bleibt bibliotheksweit für UPLOAD, pfadbasiert für lauf-basierte Typen — Ordner ändern daran nichts
 
-Der bestehende Unique-Index `uk_documents_library_checksum` (Prüfsummengleichheit) gilt weiterhin über die
-gesamte Bibliothek, nicht je Ordner. Zwei identische Dateien in verschiedenen Ordnern derselben Bibliothek
-bleiben ein Duplikat und werden abgewiesen — Ordner sind Navigation, keine Kopienverwaltung, und ändern
-nichts an der fachlichen Frage „liegt dieser Inhalt schon in dieser Bibliothek".
+Der bestehende Unique-Index `uk_documents_library_checksum` (Prüfsummengleichheit) ist partiell auf
+`source_type = 'UPLOAD'` beschränkt (`WHERE checksum IS NOT NULL AND source_type = 'UPLOAD'`, siehe
+`020-add-upload-metadata-to-documents.yaml`). Für `UPLOAD`-Bibliotheken gilt er weiterhin über die gesamte
+Bibliothek, nicht je Ordner: Zwei identische Dateien in verschiedenen Ordnern derselben Bibliothek bleiben
+ein Duplikat und werden abgewiesen — Ordner sind Navigation, keine Kopienverwaltung, und ändern nichts an
+der fachlichen Frage „liegt dieser Inhalt schon in dieser Bibliothek".
+
+Lauf-basierte Typen (`FILESYSTEM`, `HTTP_DIRECTORY`) fallen nicht unter diesen Index. Sie führen ihre
+Dedup pfadbasiert über `file_path` (siehe `FileProcessingService#processFile`/`#processUrlFile`): Dieselbe
+Datei in zwei Unterverzeichnissen einer `FILESYSTEM`-Quelle hat zwei unterschiedliche Pfade und ist damit
+fachlich zwei legitime, unabhängige Dokumente — auch wenn ihr Inhalt und damit ihre Prüfsumme identisch
+sind. Die Verzeichnisabbildung für `FILESYSTEM`-Bibliotheken (siehe Epic #520 Phase 4, [#824](https://github.com/criew/opaa/issues/824))
+darf solche Dateien deshalb nicht als Duplikat zurückweisen; jede landet unverändert in ihrem jeweiligen
+Ordner.
 
 ## Konsequenzen
 

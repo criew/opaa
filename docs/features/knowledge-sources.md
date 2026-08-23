@@ -688,8 +688,9 @@ Bibliothek und **keine eigene Rechtegrenze** — Grants bleiben ausschließlich 
 Eine `FILESYSTEM`-Bibliothek bildet die tatsächliche Verzeichnisstruktur der Quelle als **read-only
 Ordner** ab — angelegt und nachgeführt bei jedem Indizierungslauf, nicht manuell editierbar. **Die
 Quelle ist führend:** Verzeichnisse, die im Dateisystem verschwinden, verschwinden auch aus der
-Ordneransicht der Bibliothek (analog zur bestehenden Löschung durch Abwesenheit vollständig
-auflistender Quellentypen, siehe [Selbst aktualisierende
+Ordneransicht der Bibliothek — sobald die für diesen Quellentyp entschiedene, aber noch nicht gebaute
+Löschung durch Abwesenheit umgesetzt ist ([ADR-0017](../decisions/0017-quellentypmodell-indizierung.md),
+Entscheidung 5, siehe auch [Selbst aktualisierende
 Wissensblöcke](#selbst-aktualisierende-wissensblöcke)); ein neu angelegtes Unterverzeichnis erscheint
 mit dem nächsten Lauf als neuer Ordner. Das behebt nebenbei, dass gleichnamige Dateien aus
 verschiedenen Unterverzeichnissen heute in einer flachen Liste ununterscheidbar sind — jede Datei
