@@ -72,7 +72,6 @@ class FileProcessingServiceIntegrationTest {
     registry.add("opaa.indexing.chunk-size", () -> 100);
     registry.add("opaa.indexing.chunk-overlap", () -> 10);
     registry.add("opaa.indexing.batch-size", () -> 10);
-    registry.add("opaa.indexing.retry-attempts", () -> 1);
   }
 
   @TestConfiguration

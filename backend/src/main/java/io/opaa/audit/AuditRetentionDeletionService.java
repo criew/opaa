@@ -41,7 +41,7 @@ public class AuditRetentionDeletionService {
   public List<String> runOnce() {
     List<String> droppedPartitions = repository.deleteExpiredPartitions();
     if (!droppedPartitions.isEmpty()) {
-      log.info("Audit-Aufbewahrung: Partitionen entfernt: {}", droppedPartitions);
+      log.info("Audit retention: dropped partitions: {}", droppedPartitions);
     }
     logForwardOnlyCapGapIfAny();
     return droppedPartitions;
@@ -70,10 +70,9 @@ public class AuditRetentionDeletionService {
               YearMonth reachedMonth = YearMonth.from(lastCutoff.atZone(ZoneOffset.UTC));
               if (reachedMonth.isBefore(targetMonth)) {
                 log.info(
-                    "Audit-Aufbewahrung: konfigurierte Frist ({} Monate, Ziel-Stichtag {}) ist"
-                        + " noch nicht vollstaendig wirksam - der Loeschfortschritt (\"wirkt nur"
-                        + " nach vorn\") steht aktuell bei {} und rueckt hoechstens einen"
-                        + " Kalendermonat je Lauf weiter vor",
+                    "Audit retention: configured window ({} months, target cutoff {}) is not"
+                        + " fully effective yet - the forward-only deletion progress currently"
+                        + " stands at {} and advances at most one calendar month per run",
                     settings.getRetentionMonths(),
                     targetMonth,
                     reachedMonth);

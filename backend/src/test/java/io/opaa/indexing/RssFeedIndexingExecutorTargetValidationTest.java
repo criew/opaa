@@ -84,7 +84,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
     IndexingProperties.Rss rss =
         new IndexingProperties.Rss(200, 10_000, 10_000, 0, "OPAA-Indexer/test", null, null, 0, 0);
     IndexingProperties properties =
-        new IndexingProperties(null, 0, 0, 0, 0, null, rss, null, null, null, 0);
+        new IndexingProperties(null, 0, 0, 0, null, rss, null, null, null, 0);
     executor =
         new RssFeedIndexingExecutor(
             new RssFeedParser(),

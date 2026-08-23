@@ -23,17 +23,7 @@ class IndexingConfigurationThreadPoolTest {
   void uploadPoolSizeIsUnaffectedByRaisingTheIndexingPoolSize() {
     IndexingProperties indexingProperties =
         new IndexingProperties(
-            null,
-            0,
-            0,
-            0,
-            0,
-            new IndexingProperties.ThreadPool(9, 20, 99),
-            null,
-            null,
-            null,
-            null,
-            0);
+            null, 0, 0, 0, new IndexingProperties.ThreadPool(9, 20, 99), null, null, null, null, 0);
     UploadProperties uploadProperties =
         new UploadProperties(null, 0, new UploadProperties.ThreadPool(1, 2, 3), 0, 0);
 
@@ -61,7 +51,7 @@ class IndexingConfigurationThreadPoolTest {
   @Test
   void embeddingTaskExecutorIsFixedSizeAtTheConfiguredConcurrency() {
     IndexingProperties indexingProperties =
-        new IndexingProperties(null, 0, 0, 0, 0, null, null, null, null, null, 7);
+        new IndexingProperties(null, 0, 0, 0, null, null, null, null, null, 7);
 
     TaskExecutor embeddingExecutor = configuration.embeddingTaskExecutor(indexingProperties);
 
@@ -77,7 +67,7 @@ class IndexingConfigurationThreadPoolTest {
     // exactly like chunkSize/batchSize already do - embeddingTaskExecutor simply reads whatever
     // the property already normalised, so this pins the two together.
     IndexingProperties indexingProperties =
-        new IndexingProperties(null, 0, 0, 0, 0, null, null, null, null, null, 0);
+        new IndexingProperties(null, 0, 0, 0, null, null, null, null, null, 0);
 
     assertThat(indexingProperties.embeddingConcurrency()).isEqualTo(3);
     ThreadPoolTaskExecutor executor =
@@ -88,7 +78,7 @@ class IndexingConfigurationThreadPoolTest {
   @Test
   void embeddingConcurrencyAboveTheUpperBoundIsRejected() {
     assertThatThrownBy(
-            () -> new IndexingProperties(null, 0, 0, 0, 0, null, null, null, null, null, 33))
+            () -> new IndexingProperties(null, 0, 0, 0, null, null, null, null, null, 33))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("embeddingConcurrency");
   }

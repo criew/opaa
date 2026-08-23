@@ -38,7 +38,7 @@ class CityLandmarksChunkSizeDryRunTest {
   void reportsChunkCountsForTheGeneratedCorpus() throws IOException {
     Path corpusDir = RepoPaths.evalDir().resolve("corpus").resolve("city-landmarks");
     IndexingProperties properties =
-        new IndexingProperties("./x", 1000, 100, 50, 1, null, null, List.of(), null, null, 0);
+        new IndexingProperties("./x", 1000, 100, 50, null, null, List.of(), null, null, 0);
     DocumentService documentService = new DocumentService();
     ChunkingService chunkingService = new ChunkingService(properties);
 
