@@ -122,9 +122,25 @@ paths:
         narrower than UserInfoResponse, matching KnowledgeLibraryService#resolveOwnerNames's
         reasoning that an organization-wide audience should see less than the SYSTEM_ADMIN-only
         admin list does.
+
+        Requires `query` (min. 2 characters, matched case-insensitively against displayName and
+        email) and caps the result at 20 rows (#778 review) - the endpoint used to return every
+        user of the organization unconditionally on each picker mount, unbounded by input or size,
+        which is both a data-minimisation concern and unnecessary load on a large organization. A
+        missing or too-short query returns an empty list rather than falling back to the old
+        unbounded list.
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Case-insensitive substring match against displayName or email. Fewer than 2 characters
+            (after trimming) yields an empty result instead of the full organization list.
       responses:
         "200":
-          description: Users in the caller's organization
+          description: Users in the caller's organization matching the query, capped at 20 rows
           content:
             application/json:
               schema:

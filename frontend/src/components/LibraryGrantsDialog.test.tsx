@@ -208,7 +208,9 @@ describe('LibraryGrantsDialog', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(await screen.findByLabelText(/^person auswählen$/i))
+    // #778 review, finding 4: the picker no longer preloads the whole organization - a query
+    // (min. 2 characters) has to be typed before GET /v1/users is even attempted.
+    await userEventInstance.type(await screen.findByLabelText(/^person auswählen$/i), 'al')
     await userEventInstance.click(await screen.findByRole('option', { name: /Alice/ }))
     await userEventInstance.click(
       screen.getAllByRole('button', { name: /^freigeben$/i })[
@@ -265,7 +267,7 @@ describe('LibraryGrantsDialog', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(await screen.findByLabelText(/^person auswählen$/i))
+    await userEventInstance.type(await screen.findByLabelText(/^person auswählen$/i), 'al')
     await userEventInstance.click(await screen.findByRole('option', { name: /Alice/ }))
     const dateField = screen.getByLabelText(/befristung/i)
     fireEvent.change(dateField, { target: { value: '2020-01-01' } })
@@ -360,7 +362,7 @@ describe('LibraryGrantsDialog', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(await screen.findByLabelText(/^person auswählen$/i))
+    await userEventInstance.type(await screen.findByLabelText(/^person auswählen$/i), 'al')
     await userEventInstance.click(await screen.findByRole('option', { name: /Alice/ }))
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
@@ -368,21 +370,23 @@ describe('LibraryGrantsDialog', () => {
     expect(await screen.findByText('Kein Zugriff auf diese Bibliothek')).toBeInTheDocument()
   })
 
-  it('falls back to a free-text user id field when the user list fails to load', async () => {
-    // #777: GET /v1/users is reachable for every authenticated caller now, not just SYSTEM_ADMIN
-    // - the free-text fallback only remains for the load itself failing, not for the caller's role.
+  it('falls back to a free-text user id field when the user search fails', async () => {
+    // #777: GET /v1/users is reachable for every authenticated caller now, not just SYSTEM_ADMIN.
+    // #778 review, finding 1/4: the fallback only appears once a search has actually failed - it
+    // no longer preloads on mount, so a query has to be typed first to even attempt one.
     setManager()
     mockGetUserSummaries.mockRejectedValueOnce(new Error('Netzwerkfehler'))
     renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+    await userEventInstance.type(await screen.findByLabelText(/^person auswählen$/i), 'al')
 
     expect(await screen.findByLabelText(/nutzer-id/i)).toBeInTheDocument()
-    expect(mockGetUserSummaries).toHaveBeenCalled()
+    expect(mockGetUserSummaries).toHaveBeenCalledWith('al')
   })
 
-  it('submits a manually entered, valid user id when the user list is unavailable', async () => {
+  it('submits a manually entered, valid user id when the user search fails', async () => {
     setManager()
     mockGetUserSummaries.mockRejectedValueOnce(new Error('Netzwerkfehler'))
     mockUpsertLibraryGrant.mockResolvedValueOnce({
@@ -401,6 +405,7 @@ describe('LibraryGrantsDialog', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+    await userEventInstance.type(await screen.findByLabelText(/^person auswählen$/i), 'al')
     await userEventInstance.type(
       await screen.findByLabelText(/nutzer-id/i),
       '11111111-2222-4333-8444-555555555555',
@@ -425,6 +430,7 @@ describe('LibraryGrantsDialog', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+    await userEventInstance.type(await screen.findByLabelText(/^person auswählen$/i), 'al')
     await userEventInstance.type(await screen.findByLabelText(/nutzer-id/i), 'anna.beispiel')
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
@@ -481,9 +487,13 @@ describe('LibraryGrantsDialog', () => {
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
 
-    expect(await screen.findByLabelText(/^person auswählen$/i)).toBeInTheDocument()
+    const personField = await screen.findByLabelText(/^person auswählen$/i)
     expect(screen.queryByLabelText(/nutzer-id/i)).not.toBeInTheDocument()
-    expect(mockGetUserSummaries).toHaveBeenCalled()
+
+    // #778 review, finding 4: no preload on mount - the search only runs once queried.
+    await userEventInstance.type(personField, 'al')
+    await waitFor(() => expect(mockGetUserSummaries).toHaveBeenCalledWith('al'))
+    expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument()
   })
 
   it('offers a manual group id as an alternative to the member-only group list', async () => {

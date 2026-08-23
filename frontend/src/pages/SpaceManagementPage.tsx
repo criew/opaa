@@ -12,9 +12,10 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useNavigate, useParams } from 'react-router'
 import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserSummary } from '../types/api'
-import { getLibraries, getUserSummaries } from '../services/api'
+import { getLibraries } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
+import { useUserSearch } from '../hooks/useUserSearch'
 import {
   spaceRoleLabel,
   spaceVisibilities,
@@ -81,7 +82,13 @@ export default function SpaceManagementPage() {
   // showing the message.
   const [deleteBlockedByChats, setDeleteBlockedByChats] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [allUsers, setAllUsers] = useState<UserSummary[]>([])
+  const {
+    query: userQuery,
+    setQuery: setUserQuery,
+    users: userResults,
+    isLoading: isSearchingUsers,
+    error: userSearchError,
+  } = useUserSearch()
   const [readableLibraries, setReadableLibraries] = useState<LibraryListResponse[]>([])
   const [selectedLibrary, setSelectedLibrary] = useState<LibraryListResponse | null>(null)
 
@@ -108,9 +115,6 @@ export default function SpaceManagementPage() {
   }, [loadLibraryAssociations, spaceId])
 
   useEffect(() => {
-    void getUserSummaries()
-      .then(setAllUsers)
-      .catch(() => setAllUsers([]))
     // #203: a CURATOR may only associate a library they themselves can read - GET /v1/libraries
     // already returns exactly that set, and the backend re-checks the same rule.
     void getLibraries()
@@ -121,8 +125,8 @@ export default function SpaceManagementPage() {
   const canManage = useMemo(() => canManageMembers(space?.userRole), [space?.userRole])
   const availableUsers = useMemo(() => {
     const memberIds = new Set(members.map((m) => m.userId))
-    return allUsers.filter((u) => !memberIds.has(u.id))
-  }, [allUsers, members])
+    return userResults.filter((u) => !memberIds.has(u.id))
+  }, [userResults, members])
   const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
   const canManageAssociations = canManageLibraries(space?.userRole, isOwner)
   const associableLibraries = useMemo(() => {
@@ -493,64 +497,89 @@ export default function SpaceManagementPage() {
               })}
 
               {canManage && (
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ pt: 2 }}>
-                  <Autocomplete
-                    options={availableUsers}
-                    size="small"
-                    getOptionLabel={(option) =>
-                      option.displayName
-                        ? `${option.displayName} (${option.email ?? option.id})`
-                        : (option.email ?? option.id)
-                    }
-                    value={selectedUser}
-                    onChange={(_event, value) => setSelectedUser(value)}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        placeholder="Benutzer suchen …"
-                        slotProps={{
-                          ...params.slotProps,
-                          htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Benutzer' },
-                        }}
-                      />
-                    )}
-                    isOptionEqualToValue={(option, value) => option.id === value.id}
-                    sx={{ minWidth: 280, flex: 1 }}
-                  />
-                  <Select
-                    size="small"
-                    value={newMemberRole}
-                    onChange={(event) => setNewMemberRole(event.target.value as SpaceRole)}
-                    aria-label="Rolle des neuen Mitglieds"
-                    sx={{ width: 180 }}
-                  >
-                    {editableRoles.map((role) => (
-                      <MenuItem key={role} value={role}>
-                        {spaceRoleLabel(role)}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  <Button
-                    variant="contained"
-                    disabled={!selectedUser}
-                    onClick={async () => {
-                      if (!selectedUser) return
-                      setLocalError(null)
-                      try {
-                        await addMember(spaceId, selectedUser.id, newMemberRole)
-                        setSelectedUser(null)
-                        setSuccessMessage('Mitglied hinzugefügt')
-                      } catch (err) {
-                        setLocalError(
-                          err instanceof Error
-                            ? err.message
-                            : 'Mitglied konnte nicht hinzugefügt werden',
-                        )
+                <Stack spacing={1} sx={{ pt: 2 }}>
+                  {userSearchError && (
+                    // #778 review, finding 3: a failed search must not just read as "no matches" -
+                    // the field looks identically empty either way otherwise, and the person typing
+                    // has no way to tell "nobody found" from "the request failed".
+                    <Alert severity="error" sx={{ mb: 0.5 }}>
+                      {userSearchError}
+                    </Alert>
+                  )}
+                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
+                    <Autocomplete
+                      options={availableUsers}
+                      size="small"
+                      loading={isSearchingUsers}
+                      filterOptions={(x) => x}
+                      inputValue={userQuery}
+                      onInputChange={(_event, value, reason) => {
+                        // 'reset' fires when the input text is set to match a just-selected
+                        // option's label (or reverted on blur) - propagating that as a fresh
+                        // query would re-fire a search for text the caller never typed.
+                        if (reason !== 'reset') setUserQuery(value)
+                      }}
+                      noOptionsText={
+                        userQuery.trim().length < 2
+                          ? 'Mindestens 2 Zeichen eingeben'
+                          : 'Keine Treffer'
                       }
-                    }}
-                  >
-                    Mitglied hinzufügen
-                  </Button>
+                      getOptionLabel={(option) =>
+                        option.displayName
+                          ? `${option.displayName} (${option.email ?? option.id})`
+                          : (option.email ?? option.id)
+                      }
+                      value={selectedUser}
+                      onChange={(_event, value) => setSelectedUser(value)}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder="Benutzer suchen …"
+                          slotProps={{
+                            ...params.slotProps,
+                            htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Benutzer' },
+                          }}
+                        />
+                      )}
+                      isOptionEqualToValue={(option, value) => option.id === value.id}
+                      sx={{ minWidth: 280, flex: 1 }}
+                    />
+                    <Select
+                      size="small"
+                      value={newMemberRole}
+                      onChange={(event) => setNewMemberRole(event.target.value as SpaceRole)}
+                      aria-label="Rolle des neuen Mitglieds"
+                      sx={{ width: 180 }}
+                    >
+                      {editableRoles.map((role) => (
+                        <MenuItem key={role} value={role}>
+                          {spaceRoleLabel(role)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    <Button
+                      variant="contained"
+                      disabled={!selectedUser}
+                      onClick={async () => {
+                        if (!selectedUser) return
+                        setLocalError(null)
+                        try {
+                          await addMember(spaceId, selectedUser.id, newMemberRole)
+                          setSelectedUser(null)
+                          setUserQuery('')
+                          setSuccessMessage('Mitglied hinzugefügt')
+                        } catch (err) {
+                          setLocalError(
+                            err instanceof Error
+                              ? err.message
+                              : 'Mitglied konnte nicht hinzugefügt werden',
+                          )
+                        }
+                      }}
+                    >
+                      Mitglied hinzufügen
+                    </Button>
+                  </Stack>
                 </Stack>
               )}
             </Stack>

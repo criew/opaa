@@ -75,10 +75,11 @@ class UserSearchControllerTest {
   @Test
   void listUsersSucceedsForARegularUserWithoutTheSystemAdminRole() throws Exception {
     User other = new User("sub1", "issuer1", "colleague@example.com", "Colleague");
-    when(userService.findAllInOrganization(actingUserOrganizationId)).thenReturn(List.of(other));
+    when(userService.searchInOrganization(actingUserOrganizationId, "Coll"))
+        .thenReturn(List.of(other));
 
     mockMvc
-        .perform(get("/api/v1/users").with(asRegularUser()))
+        .perform(get("/api/v1/users").param("query", "Coll").with(asRegularUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].email").value("colleague@example.com"))
         .andExpect(jsonPath("$[0].displayName").value("Colleague"));
@@ -88,11 +89,26 @@ class UserSearchControllerTest {
   void listUsersResponseCarriesNoSystemRoleField() throws Exception {
     User other = new User("sub1", "issuer1", "colleague@example.com", "Colleague");
     other.setSystemRole(SystemRole.SYSTEM_ADMIN);
-    when(userService.findAllInOrganization(actingUserOrganizationId)).thenReturn(List.of(other));
+    when(userService.searchInOrganization(actingUserOrganizationId, "Coll"))
+        .thenReturn(List.of(other));
+
+    mockMvc
+        .perform(get("/api/v1/users").param("query", "Coll").with(asRegularUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].systemRole").doesNotExist());
+  }
+
+  // #778 review, finding 4: the controller passes the raw query parameter straight through to
+  // UserService#searchInOrganization, which owns the minimum-length/empty-query behaviour - this
+  // just proves the controller does not short-circuit or default it itself.
+  @Test
+  void listUsersPassesAMissingQueryThroughToTheService() throws Exception {
+    when(userService.searchInOrganization(actingUserOrganizationId, null)).thenReturn(List.of());
 
     mockMvc
         .perform(get("/api/v1/users").with(asRegularUser()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].systemRole").doesNotExist());
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$").isEmpty());
   }
 }

@@ -7,6 +7,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -41,10 +42,13 @@ public class UserSearchController {
     this.userService = userService;
   }
 
+  // #778 review, finding 4: query is required in practice - see UserService#searchInOrganization,
+  // which returns an empty list rather than the whole organization for a missing or too-short one.
   @GetMapping
-  public List<UserSummaryResponse> listUsers(@AuthenticationPrincipal Jwt jwt) {
+  public List<UserSummaryResponse> listUsers(
+      @AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String query) {
     User currentUser = currentUser(jwt);
-    return userService.findAllInOrganization(currentUser.getOrganizationId()).stream()
+    return userService.searchInOrganization(currentUser.getOrganizationId(), query).stream()
         .map(this::toResponse)
         .toList();
   }

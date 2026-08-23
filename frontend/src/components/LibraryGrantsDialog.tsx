@@ -32,9 +32,10 @@ import type {
   PermissionSubjectType,
   UserSummary,
 } from '../types/api'
-import { getGroups, getMyGroups, getUserSummaries } from '../services/api'
+import { getGroups, getMyGroups } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useGrantStore } from '../stores/grantStore'
+import { useUserSearch } from '../hooks/useUserSearch'
 import { assetRoleDescription, assetRoleLabel, permissionSubjectTypeLabel } from '../utils/labels'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
@@ -100,12 +101,22 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
 
   const [groups, setGroups] = useState<GroupListResponse[]>([])
   const [groupsError, setGroupsError] = useState<string | null>(null)
-  const [users, setUsers] = useState<UserSummary[]>([])
   // #777: GET /v1/users is reachable for any authenticated organization member (unlike GET
   // /v1/admin/users, which never fed this picker's names either - see
   // subjectDisplayName/grantedByDisplayName above, which read the backend-resolved fields
-  // instead). The free-text id fallback below now only covers the load failing outright.
-  const usersUnavailable = users.length === 0
+  // instead).
+  const {
+    query: userQuery,
+    setQuery: setUserQuery,
+    users,
+    isLoading: isSearchingUsers,
+    error: userSearchError,
+  } = useUserSearch()
+  // #778 review, finding 1: gated on the search having actually failed, not on "no results yet" -
+  // an empty `users` array is the ordinary state before typing 2 characters or while a search is
+  // still in flight, neither of which is "unavailable". The free-text id fallback below is only
+  // for the case a caller could never resolve any name in the first place.
+  const usersUnavailable = Boolean(userSearchError)
 
   const [showForm, setShowForm] = useState(false)
   const [subjectType, setSubjectType] = useState<PermissionSubjectType>('USER')
@@ -136,15 +147,13 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
         setGroups([])
         setGroupsError(err instanceof Error ? err.message : 'Gruppen konnten nicht geladen werden')
       })
-    void getUserSummaries()
-      .then((result) => setUsers(result))
-      .catch(() => setUsers([]))
   }, [open, library.id, isSystemAdmin, loadGrants])
 
   function resetForm() {
     setShowForm(false)
     setSubjectType('USER')
     setSelectedUser(null)
+    setUserQuery('')
     setManualUserId('')
     setSelectedGroup(null)
     setManualGroupEntry(false)
@@ -375,6 +384,18 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
               ) : (
                 <Autocomplete
                   options={users}
+                  loading={isSearchingUsers}
+                  filterOptions={(x) => x}
+                  inputValue={userQuery}
+                  onInputChange={(_event, value, reason) => {
+                    // 'reset' fires when the input text is set to match a just-selected option's
+                    // label (or reverted on blur) - propagating that as a fresh query would
+                    // re-fire a search for text the caller never typed.
+                    if (reason !== 'reset') setUserQuery(value)
+                  }}
+                  noOptionsText={
+                    userQuery.trim().length < 2 ? 'Mindestens 2 Zeichen eingeben' : 'Keine Treffer'
+                  }
                   getOptionLabel={(option) =>
                     option.displayName
                       ? `${option.displayName} (${option.email ?? option.id})`

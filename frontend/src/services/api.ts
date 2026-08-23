@@ -429,9 +429,14 @@ export async function getUsers(): Promise<UserInfo[]> {
 // any authenticated organization member - the member/grant pickers on SpaceManagementPage,
 // SpaceCreatePage, LibraryCreatePage and LibraryGrantsDialog need to search for a user to add,
 // and the caller reaching those pages is not necessarily a system admin.
-export async function getUserSummaries(): Promise<UserSummary[]> {
+//
+// #778 review, finding 4: the backend requires `query` (min. 2 characters) and caps the result at
+// 20 rows - it no longer answers an unqualified "list everyone" call. A missing/blank query is
+// passed straight through and yields an empty result (UserService#searchInOrganization), never a
+// fallback list, so a caller must always supply the person's typed input here.
+export async function getUserSummaries(query: string): Promise<UserSummary[]> {
   try {
-    const { data } = await client.get<UserSummary[]>('/v1/users')
+    const { data } = await client.get<UserSummary[]>('/v1/users', { params: { query } })
     return data
   } catch (err) {
     normalizeError(err)

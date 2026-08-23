@@ -3,11 +3,13 @@ package io.opaa.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -16,12 +18,15 @@ import io.opaa.audit.AuditEventType;
 import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 /**
  * The race-related tests here follow the same simulation approach as {@code SpaceServiceTest}:
@@ -108,6 +113,45 @@ class UserServiceTest {
     User user = userService.findOrCreateUser("sub1", "issuer1", "other@example.com", "Other");
 
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
+  }
+
+  // #778 review, finding 4: reproduces the "unbounded full list on every picker mount" behaviour
+  // this method replaces - reverting to `return findAllInOrganization(organizationId)` here
+  // (ignoring the query) would make searchInOrganizationRejectsAQueryBelowTheMinimumLength and
+  // searchInOrganizationCapsTheResultAtTheConfiguredLimit fail: the first because
+  // userRepository.searchByOrganizationId would never even be consulted (verifyNoInteractions),
+  // the second because the unbounded findByOrganizationId path carries no Pageable to cap with.
+  @Test
+  void searchInOrganizationRejectsAQueryBelowTheMinimumLength() {
+    UUID organizationId = UUID.randomUUID();
+
+    assertThat(userService.searchInOrganization(organizationId, "a")).isEmpty();
+    assertThat(userService.searchInOrganization(organizationId, "  ")).isEmpty();
+    assertThat(userService.searchInOrganization(organizationId, null)).isEmpty();
+    verifyNoInteractions(userRepository);
+  }
+
+  @Test
+  void searchInOrganizationTrimsAndForwardsAQueryAtTheMinimumLength() {
+    UUID organizationId = UUID.randomUUID();
+    User match = new User("sub1", "issuer1", "colleague@example.com", "Colleague");
+    when(userRepository.searchByOrganizationId(eq(organizationId), eq("co"), any(Pageable.class)))
+        .thenReturn(List.of(match));
+
+    assertThat(userService.searchInOrganization(organizationId, "  co  ")).containsExactly(match);
+  }
+
+  @Test
+  void searchInOrganizationCapsTheResultAtTheConfiguredLimit() {
+    UUID organizationId = UUID.randomUUID();
+    when(userRepository.searchByOrganizationId(
+            eq(organizationId), anyString(), any(Pageable.class)))
+        .thenAnswer(inv -> List.of());
+
+    userService.searchInOrganization(organizationId, "colleague");
+
+    verify(userRepository)
+        .searchByOrganizationId(eq(organizationId), eq("colleague"), eq(PageRequest.of(0, 20)));
   }
 
   private User actorInOrganization(UUID organizationId) {
