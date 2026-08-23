@@ -4,6 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import com.openai.core.http.Headers;
+import com.openai.errors.InternalServerException;
+import com.openai.errors.NotFoundException;
+import com.openai.errors.OpenAIIoException;
+import com.openai.errors.OpenAIRetryableException;
+import com.openai.errors.RateLimitException;
+import com.openai.errors.UnauthorizedException;
 import io.opaa.api.dto.ErrorResponse;
 import io.opaa.library.UploadProperties;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
@@ -93,6 +100,78 @@ class GlobalExceptionHandlerTest {
     ErrorResponse body = response.getBody();
     assertNotNull(body);
     assertEquals("Die angeforderte Ressource wurde nicht gefunden", body.getError());
+  }
+
+  @Test
+  void handleOpenAiTransientExceptionMapsOpenAiIoExceptionToServiceUnavailable() {
+    // #768: since #766, a connection failure against the SDK-based OpenAiChatModel throws
+    // com.openai.errors.OpenAIIoException, not TransientAiException - previously uncaught here, it
+    // fell through to handleGenericException's 500 (see
+    // ActiveChatModelResolverIntegrationTest#anUnreachableActiveModelFailsWithoutFallingBackToAnotherModel,
+    // which documented this as a follow-up when #758 introduced ActiveChatModelResolver).
+    var response =
+        handler.handleOpenAiTransientException(new OpenAIIoException("connection refused"));
+    assertEquals(503, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("KI-Dienst vorübergehend nicht verfügbar", body.getError());
+  }
+
+  @Test
+  void handleOpenAiTransientExceptionMapsOpenAiRetryableExceptionToServiceUnavailable() {
+    var response =
+        handler.handleOpenAiTransientException(new OpenAIRetryableException("retries exhausted"));
+    assertEquals(503, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("KI-Dienst vorübergehend nicht verfügbar", body.getError());
+  }
+
+  @Test
+  void handleOpenAiServiceExceptionMapsRateLimitToServiceUnavailable() {
+    var response =
+        handler.handleOpenAiServiceException(
+            RateLimitException.builder().headers(Headers.builder().build()).build());
+    assertEquals(503, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("KI-Dienst vorübergehend nicht verfügbar", body.getError());
+  }
+
+  @Test
+  void handleOpenAiServiceExceptionMapsProviderServerErrorToServiceUnavailable() {
+    var response =
+        handler.handleOpenAiServiceException(
+            InternalServerException.builder()
+                .statusCode(500)
+                .headers(Headers.builder().build())
+                .build());
+    assertEquals(503, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("KI-Dienst vorübergehend nicht verfügbar", body.getError());
+  }
+
+  @Test
+  void handleOpenAiServiceExceptionMapsUnauthorizedToBadGateway() {
+    var response =
+        handler.handleOpenAiServiceException(
+            UnauthorizedException.builder().headers(Headers.builder().build()).build());
+    assertEquals(502, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("Fehler im KI-Dienst", body.getError());
+  }
+
+  @Test
+  void handleOpenAiServiceExceptionMapsNotFoundToBadGateway() {
+    var response =
+        handler.handleOpenAiServiceException(
+            NotFoundException.builder().headers(Headers.builder().build()).build());
+    assertEquals(502, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("Fehler im KI-Dienst", body.getError());
   }
 
   @Test

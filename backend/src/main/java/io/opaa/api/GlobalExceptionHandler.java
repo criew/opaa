@@ -1,5 +1,8 @@
 package io.opaa.api;
 
+import com.openai.errors.OpenAIIoException;
+import com.openai.errors.OpenAIRetryableException;
+import com.openai.errors.OpenAIServiceException;
 import io.opaa.api.dto.ErrorResponse;
 import io.opaa.library.UploadProperties;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
@@ -128,6 +131,70 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NonTransientAiException.class)
   public ResponseEntity<ErrorResponse> handleNonTransientAiException(NonTransientAiException ex) {
     log.error("Non-transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+        .body(
+            new ErrorResponse(
+                "Fehler im KI-Dienst", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
+  }
+
+  /**
+   * #768: since #766 moved chat/query calls onto {@code OpenAiChatModel}'s OpenAI-Java-SDK-based
+   * implementation (Spring AI 2.0), a connection failure (host unreachable, DNS failure, timeout)
+   * no longer throws {@link TransientAiException} - it throws {@link OpenAIIoException}, a plain
+   * {@code RuntimeException} neither {@link TransientAiException} nor {@link
+   * NonTransientAiException} extends (see {@code ActiveChatModelResolverIntegrationTest}, which
+   * documented this as a follow-up rather than fixing it as part of #758). {@link
+   * OpenAIRetryableException} is the SDK's own explicit "this is safe to retry" signal (its
+   * Javadoc: thrown for an error the SDK's built-in retry already exhausted) - both are as
+   * transient as the connection-level failures {@link #handleTransientAiException} already covers,
+   * and get the exact same {@code 503} and message rather than a second, differently worded one for
+   * what is the same situation from a caller's point of view.
+   */
+  @ExceptionHandler({OpenAIIoException.class, OpenAIRetryableException.class})
+  public ResponseEntity<ErrorResponse> handleOpenAiTransientException(RuntimeException ex) {
+    log.warn("Transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .body(
+            new ErrorResponse(
+                "KI-Dienst vorübergehend nicht verfügbar",
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                Instant.now()));
+  }
+
+  /**
+   * #768: the SDK's own {@link OpenAIServiceException} hierarchy (thrown once the provider actually
+   * answered with a non-2xx status - {@code BadRequestException}, {@code UnauthorizedException},
+   * {@code NotFoundException}, {@code InternalServerException}, {@code RateLimitException}, etc.)
+   * carries {@link OpenAIServiceException#statusCode()}, which is what distinguishes a transient
+   * provider-side problem from a permanent one: {@code 429} (rate limited) and {@code 5xx} (the
+   * provider's own server error) are retryable in the same sense {@link
+   * #handleTransientAiException} already is, while every other status - most notably {@code
+   * 401}/{@code 403} (misconfigured credentials) and {@code 404} (unknown model identifier) -
+   * reflects a request that will keep failing the same way until an operator fixes the
+   * configuration, mapped like {@link #handleNonTransientAiException} already maps Spring AI's own
+   * {@link NonTransientAiException}. The distinct branches intentionally reuse those two handlers'
+   * exact status codes and messages rather than introducing new ones for what are, from a caller's
+   * perspective, the same two situations.
+   */
+  @ExceptionHandler(OpenAIServiceException.class)
+  public ResponseEntity<ErrorResponse> handleOpenAiServiceException(OpenAIServiceException ex) {
+    int statusCode = ex.statusCode();
+    if (statusCode == HttpStatus.TOO_MANY_REQUESTS.value() || statusCode >= 500) {
+      log.warn(
+          "Transient AI service error ({}): {}",
+          statusCode,
+          errorSanitizer.sanitize(ex.getMessage()));
+      return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+          .body(
+              new ErrorResponse(
+                  "KI-Dienst vorübergehend nicht verfügbar",
+                  HttpStatus.SERVICE_UNAVAILABLE.value(),
+                  Instant.now()));
+    }
+    log.error(
+        "Non-transient AI service error ({}): {}",
+        statusCode,
+        errorSanitizer.sanitize(ex.getMessage()));
     return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
         .body(
             new ErrorResponse(
