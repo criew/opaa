@@ -52,8 +52,6 @@ dependencies {
     implementation(libs.jtokkit)
     implementation(libs.jsoup)
     implementation(libs.tika.core)
-    implementation(libs.jjwt.api)
-    runtimeOnly(libs.bundles.jjwt.runtime)
     runtimeOnly(libs.bundles.runtime)
     testImplementation(libs.bundles.test.deps)
     testRuntimeOnly(libs.bundles.test.runtime.deps)

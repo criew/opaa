@@ -97,7 +97,7 @@ class FileProcessingServiceTest {
   // storeChunks path (a single vectorStore.add call) unless it opts into concurrency itself (see
   // EmbeddingConcurrencyTest) - Runnable::run above is therefore never actually invoked here.
   private static IndexingProperties defaultIndexingProperties() {
-    return new IndexingProperties(null, 1000, 0, 50, 3, null, null, null, null, null, 1);
+    return new IndexingProperties(null, 1000, 0, 50, null, null, null, null, null, 1);
   }
 
   @Test

@@ -56,7 +56,6 @@ class OpenAiIntegrationTest {
     registry.add("opaa.indexing.filesystem-allowlist", () -> tempDir.toAbsolutePath().toString());
     registry.add("opaa.indexing.chunk-size", () -> 200);
     registry.add("opaa.indexing.batch-size", () -> 10);
-    registry.add("opaa.indexing.retry-attempts", () -> 1);
   }
 
   // The real seeded organization id (Organization.DEFAULT_ID), not a locally duplicated string

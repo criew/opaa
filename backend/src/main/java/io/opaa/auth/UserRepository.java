@@ -12,8 +12,6 @@ import org.springframework.data.repository.query.Param;
 public interface UserRepository extends JpaRepository<User, UUID> {
   Optional<User> findBySubjectAndIssuer(String subject, String issuer);
 
-  Optional<User> findByEmail(String email);
-
   /**
    * Used by {@code AuditIncidentScopeService#request} (#393 code review, finding 8) to reject an
    * anlassbezogene Klärung named against a person outside the requester's own organization before a

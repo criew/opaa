@@ -263,7 +263,7 @@ class LlmModelSeeder {
   private LlmModel seedFromOpenAi() {
     String baseUrl = environment.getProperty("spring.ai.openai.chat.base-url");
     if (!StringUtils.hasText(baseUrl)) {
-      log.warn("Kein Chat-Modell hinterlegt: spring.ai.openai.chat.base-url ist nicht gesetzt");
+      log.warn("No chat model configured: spring.ai.openai.chat.base-url is not set");
       return null;
     }
     String model = environment.getProperty("spring.ai.openai.chat.model", "");

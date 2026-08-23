@@ -317,7 +317,6 @@ class RetrievalEvaluationHarnessTest {
     // EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE javadoc and ADR-0010: the harness measures whatever
     // chunk-size production is actually configured with (application.yml's own default).
     registry.add("opaa.indexing.batch-size", () -> 50);
-    registry.add("opaa.indexing.retry-attempts", () -> 1);
     // Single-threaded on purpose (unlike the production default of core=2/max=4): with more than
     // one worker thread, the order in which chunks are inserted into pgvector — and therefore the
     // shape of the HNSW graph the approximate search walks — becomes nondeterministic across runs.

@@ -25,8 +25,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     sub-batch sizing respects (see that parameter's Javadoc for the actual sizing formula, which
  *     is not simply this value) - previously dead configuration (nothing in {@code
  *     io.opaa.indexing} read it), now load-bearing.
- * @param retryAttempts number of retry attempts for transient failures. Default 3: standard retry
- *     count used with exponential backoff. Valid range: 0–10.
  * @param threadPool thread pool settings for async indexing. Defaults (core=2, max=4, queue=20) are
  *     conservative values suitable for typical single-server deployments.
  * @param rss settings governing {@link IndexingSourceType#RSS_FEED} runs (#467) - obergrenzen and
@@ -83,7 +81,6 @@ public record IndexingProperties(
     int chunkSize,
     int chunkOverlap,
     int batchSize,
-    int retryAttempts,
     ThreadPool threadPool,
     Rss rss,
     List<String> filesystemAllowlist,
@@ -119,12 +116,6 @@ public record IndexingProperties(
     }
     if (batchSize > 1000) {
       throw new IllegalArgumentException("batchSize must be at most 1000, got " + batchSize);
-    }
-    if (retryAttempts < 0) {
-      retryAttempts = 3;
-    }
-    if (retryAttempts > 10) {
-      throw new IllegalArgumentException("retryAttempts must be at most 10, got " + retryAttempts);
     }
     if (threadPool == null) {
       threadPool = new ThreadPool(2, 4, 20);

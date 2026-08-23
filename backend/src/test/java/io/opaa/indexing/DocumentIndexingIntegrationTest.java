@@ -81,7 +81,6 @@ class DocumentIndexingIntegrationTest {
     // IndexingProperties rejects that combination outright instead of clamping it silently.
     registry.add("opaa.indexing.chunk-overlap", () -> 10);
     registry.add("opaa.indexing.batch-size", () -> 10);
-    registry.add("opaa.indexing.retry-attempts", () -> 1);
   }
 
   @TestConfiguration

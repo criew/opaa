@@ -119,7 +119,6 @@ opaa:
     chunk-overlap: ${OPAA_INDEXING_CHUNK_OVERLAP:100}
     batch-size: ${OPAA_INDEXING_BATCH_SIZE:50}
     embedding-concurrency: ${OPAA_INDEXING_EMBEDDING_CONCURRENCY:3}
-    retry-attempts: ${OPAA_INDEXING_RETRY_ATTEMPTS:3}
     thread-pool:
       core-size: ${OPAA_INDEXING_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_INDEXING_THREAD_POOL_MAX_SIZE:4}
