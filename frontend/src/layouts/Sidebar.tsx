@@ -72,7 +72,7 @@ export default function Sidebar() {
   // The chats section follows the space currently shown by the route (space overview, space
   // detail, or an open chat - all of which carry :spaceId), so switching spaces in the overview
   // updates the list immediately instead of waiting for a chat to be opened (#556). On routes
-  // without a :spaceId (e.g. /settings), it falls back to the space of the still-open chat rather
+  // without a :spaceId (e.g. /spaces), it falls back to the space of the still-open chat rather
   // than jumping to the default space, and only then to the default (or first) space if neither is
   // known yet.
   const defaultSpace = spaces.find((space) => space.isDefault) ?? spaces[0]

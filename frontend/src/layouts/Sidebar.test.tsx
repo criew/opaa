@@ -105,7 +105,7 @@ describe('Sidebar', () => {
   })
 
   it('renders the target-design structure: space switcher and chats, nothing global (#786)', () => {
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/spaces')
     // The switcher carries the active (here: default) space's name.
     expect(screen.getByRole('button', { name: /Meine Dokumente/ })).toBeInTheDocument()
     expect(screen.getByText('Chats')).toBeInTheDocument()
@@ -118,7 +118,7 @@ describe('Sidebar', () => {
   })
 
   it('renders New Chat button for the default space', async () => {
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/spaces')
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /neuer chat/i })).toBeInTheDocument()
     })
@@ -126,7 +126,7 @@ describe('Sidebar', () => {
 
   it('creates a new chat in the default space and navigates to it when clicked', async () => {
     const user = userEvent.setup()
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/spaces')
 
     await user.click(await screen.findByRole('button', { name: /neuer chat/i }))
 
@@ -138,7 +138,7 @@ describe('Sidebar', () => {
   })
 
   it('lists the active space chats loaded from the API', async () => {
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/spaces')
     expect(await screen.findByText('Architektur des Projekts')).toBeInTheDocument()
     expect(await screen.findByText('Deployment-Fragen')).toBeInTheDocument()
   })
@@ -156,11 +156,11 @@ describe('Sidebar', () => {
   })
 
   it('falls back to the space of the still-open chat on routes without a :spaceId (#556 review, nit 2)', async () => {
-    // No :spaceId on /settings - the chat still open in the engineering space should keep
+    // No :spaceId on /spaces - the chat still open in the engineering space should keep
     // determining the list, not the default (personal) space.
     useChatStore.setState({ spaceId: 'space-engineering' })
 
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/spaces')
 
     expect(await screen.findByText('Unbenannter Chat')).toBeInTheDocument()
     expect(screen.queryByText('Architektur des Projekts')).not.toBeInTheDocument()
@@ -169,7 +169,7 @@ describe('Sidebar', () => {
 
   it('opens the space switcher listing every space with kind and member count', async () => {
     const user = userEvent.setup()
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/spaces')
 
     await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
 
@@ -181,7 +181,7 @@ describe('Sidebar', () => {
 
   it('navigates to a space chosen in the switcher', async () => {
     const user = userEvent.setup()
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/spaces')
 
     await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
     await user.click(screen.getByRole('menuitem', { name: /Engineering/ }))
@@ -191,7 +191,7 @@ describe('Sidebar', () => {
 
   it('navigates to the spaces overview via the switcher', async () => {
     const user = userEvent.setup()
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/spaces')
 
     await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
     await user.click(screen.getByRole('menuitem', { name: 'Alle Spaces anzeigen' }))
@@ -201,7 +201,7 @@ describe('Sidebar', () => {
 
   it('navigates to the create wizard via the switcher', async () => {
     const user = userEvent.setup()
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/spaces')
 
     await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
     await user.click(screen.getByRole('menuitem', { name: 'Neuen Space anlegen' }))

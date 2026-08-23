@@ -121,6 +121,13 @@ Carbon hat keine dunklere Stufe, die Trennung übernimmt der Standardrahmen.
   unter 3:1 — zulässig, weil der Zustand nicht allein über die Fläche getragen wird: die
   Textfarbe wechselt auf Weiß und `aria-current` zeichnet den Eintrag programmatisch aus
   (siehe 2.4).
+- **Der globale Verwaltungsrahmen** (#787, Mockup 2b) nutzt ausschließlich die Rollen aus 2.2:
+  Sekundärspalte auf `bg-2`, Aktivkarte auf `bg-1` mit `border-strong`-Rahmen. Auch hier liegt
+  die Zustandsfläche unter 3:1 — getragen wird der Zustand wie bei der Rail über Textfarbe,
+  Schriftgewicht und `aria-current`. Das **„Global"-Badge** leitet sich mit 10 % (Fläche) und
+  40 % (Rahmen) aus dem Akzent ab — analog zum 32-%-Fokusring aus 4.4 — und folgt damit einem
+  Branding-Override; der Geltungsbereich steht immer als sichtbarer Text im Chip, nie nur als
+  Farbe.
 - **Akzent ist austauschbar.** Die Branding-Konfiguration (Issues #582/#583) darf `accent`
   ersetzen. Deshalb darf keine Komponente sich auf „Blau" verlassen (z. B. Blau hart mit einem
   Icon mischen) — sie verlässt sich auf die Rolle.
