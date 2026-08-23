@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import com.openai.core.http.Headers;
 import com.openai.errors.InternalServerException;
 import com.openai.errors.NotFoundException;
+import com.openai.errors.OpenAIException;
+import com.openai.errors.OpenAIInvalidDataException;
 import com.openai.errors.OpenAIIoException;
 import com.openai.errors.OpenAIRetryableException;
 import com.openai.errors.RateLimitException;
@@ -15,10 +17,12 @@ import io.opaa.api.dto.ErrorResponse;
 import io.opaa.library.UploadProperties;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import java.sql.SQLException;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -168,6 +172,77 @@ class GlobalExceptionHandlerTest {
     var response =
         handler.handleOpenAiServiceException(
             NotFoundException.builder().headers(Headers.builder().build()).build());
+    assertEquals(502, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("Fehler im KI-Dienst", body.getError());
+  }
+
+  @Test
+  void handleOpenAiServiceExceptionMapsRateLimitAndForwardsRetryAfterHeader() {
+    // #768 review, should-finding 5: RateLimitException's headers() routinely carries a
+    // Retry-After the provider actually computed - worth passing through rather than leaving the
+    // caller to guess a backoff.
+    var response =
+        handler.handleOpenAiServiceException(
+            RateLimitException.builder()
+                .headers(Headers.builder().put(HttpHeaders.RETRY_AFTER, "30").build())
+                .build());
+    assertEquals(503, response.getStatusCode().value());
+    assertEquals(List.of("30"), response.getHeaders().get(HttpHeaders.RETRY_AFTER));
+  }
+
+  @Test
+  void handleOpenAiServiceExceptionWithoutRetryAfterHeaderOmitsIt() {
+    var response =
+        handler.handleOpenAiServiceException(
+            RateLimitException.builder().headers(Headers.builder().build()).build());
+    assertEquals(503, response.getStatusCode().value());
+    assertEquals(null, response.getHeaders().get(HttpHeaders.RETRY_AFTER));
+  }
+
+  @Test
+  void handleOpenAiExceptionMapsRemainingSubtypesToBadGateway() {
+    // #768 review, should-finding 1: OpenAIInvalidDataException is neither a connection-level
+    // failure (handleOpenAiTransientException) nor a genuine HTTP error response
+    // (handleOpenAiServiceException) - it is thrown when an only OpenAI-*compatible* server
+    // (Ollama, this project's own docker-compose default) answers in a shape the SDK does not
+    // expect. Without this handler it fell through to handleGenericException's 500.
+    var response =
+        handler.handleOpenAiException(new OpenAIInvalidDataException("unexpected response shape"));
+    assertEquals(502, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("Fehler im KI-Dienst", body.getError());
+  }
+
+  @Test
+  void handleGenericExceptionUnwrapsAWrappedOpenAiServiceException() {
+    // #768 review, optional finding 4: a com.openai.errors.* exception wrapped by something else
+    // (e.g. Spring AI's own retry/advisor machinery) must still be recognized via the cause chain,
+    // exactly like the pre-existing CredentialsEncryptionKeyMissingException unwrapping below.
+    var cause = UnauthorizedException.builder().headers(Headers.builder().build()).build();
+    var response = handler.handleGenericException(new RuntimeException("wrapped", cause));
+    assertEquals(502, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("Fehler im KI-Dienst", body.getError());
+  }
+
+  @Test
+  void handleGenericExceptionUnwrapsAWrappedOpenAiTransientException() {
+    var cause = new OpenAIIoException("connection refused");
+    var response = handler.handleGenericException(new RuntimeException("wrapped", cause));
+    assertEquals(503, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("KI-Dienst vorübergehend nicht verfügbar", body.getError());
+  }
+
+  @Test
+  void handleGenericExceptionUnwrapsAWrappedPlainOpenAiException() {
+    OpenAIException cause = new OpenAIInvalidDataException("unexpected response shape");
+    var response = handler.handleGenericException(new RuntimeException("wrapped", cause));
     assertEquals(502, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);
