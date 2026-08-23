@@ -75,7 +75,7 @@ npm test
    gegen Keycloak. Legt den Nutzer `dev-user` (und `dev-outsider`, ohne jede Freigabe) bereit, den
    Space „E2E Space" und die Bibliothek „E2E Wissensbibliothek" mit einem einzigen, dediziert für
    den Seed bestimmten Dokument (`demo/seed/e2e-data/test-documents/seed/e2e-basisdokument.txt`) —
-   bewusst *nicht* eine der Dateien, die einzelne Szenarien selbst über die Oberfläche hochladen
+   bewusst _nicht_ eine der Dateien, die einzelne Szenarien selbst über die Oberfläche hochladen
    (`demo/seed/e2e-data/test-documents/*.txt`), sonst würde eine dauerhaft für `dev-user` lesbare
    Kopie z. B. von `wissensdokument.txt` die Exklusivitätsprüfung in
    `knowledge-libraries.spec.ts` (Szenario 5, „Entzug wirkt") unterlaufen. Ein Fehlschlag hier
@@ -140,10 +140,10 @@ reicht nichts Vertrauliches mehr durch.
 Der `dev`-Modus bringt standardmäßig zwei Nutzer mit (`backend/src/main/resources/application.yml`,
 `opaa.auth.dev.users`):
 
-| Subject | E-Mail | Rolle |
-|---------|--------|-------|
-| `dev-admin` | `admin@opaa.local` | `SYSTEM_ADMIN` (entspricht dem Standardwert von `opaa.auth.initial-admin-email`) |
-| `dev-user` | `dev-user@opaa.local` | regulärer Nutzer |
+| Subject     | E-Mail                | Rolle                                                                            |
+| ----------- | --------------------- | -------------------------------------------------------------------------------- |
+| `dev-admin` | `admin@opaa.local`    | `SYSTEM_ADMIN` (entspricht dem Standardwert von `opaa.auth.initial-admin-email`) |
+| `dev-user`  | `dev-user@opaa.local` | regulärer Nutzer                                                                 |
 
 Szenarien, die Berechtigungsgrenzen prüfen, verwenden dafür die Fixture `regularUserPage`. Die
 frühere Einschränkung auf einen einzigen Testnutzer (#260) besteht nicht mehr.
@@ -255,7 +255,7 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
 - `tests/knowledge-library-nacharbeiten.spec.ts` (#547) — vier zuvor nicht abgedeckte
   Verhaltensweisen aus der Nacharbeiten-Serie #514/#516/#517/#519, jede in eigener,
   wegwerfbarer Bibliothek. Dateiname bewusst Singular ("library", nicht "libraries") und damit
-  alphabetisch *nach* `knowledge-libraries.spec.ts` sortiert - siehe die Spec-Datei für die
+  alphabetisch _nach_ `knowledge-libraries.spec.ts` sortiert - siehe die Spec-Datei für die
   Begründung (Reihenfolge schützt #424s Szenario 2 vor einem durch diese Datei aufgeblähten,
   admin-lesbaren Bestand mit identischem ai-stub-Embedding-Vektor):
   - Ein ~2-MB-PDF (zur Laufzeit mit `pdf-lib` erzeugt, nicht eingecheckt) wird durch den echten,
@@ -278,6 +278,27 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   Bewusst nicht abgedeckt (siehe Issue #547): der Negativtest zur Erstanmeldung (#522) und die
   RSS-Lauf-Abschlussmeldung (#518, bräuchte einen eigenen Feed-Fixture-Container).
 
+- `tests/llm-model-management.spec.ts` (#760, Teil von Epic #755) — die Modellverwaltung über den
+  vollen Stack: ein Systemadministrator legt ein Chat-Modell ohne API-Schlüssel an, testet die
+  Verbindung gegen `ai-stub` erfolgreich und aktiviert es; die Liste zeigt danach genau diesen
+  Eintrag als aktiv. Eine anschließende Chat-Anfrage ohne Wissensbasis wird beantwortet, ohne dass
+  die Anwendung neu gestartet wird — der eigentliche Zweck von #758s Laufzeitauflösung. Ein Nutzer
+  ohne `SYSTEM_ADMIN` sieht weder den Sidebar-Eintrag noch erreicht er die Route per Direkt-URL. Der
+  Versuch, das aktive Modell zu löschen, wird sowohl clientseitig (`aria-disabled`, sichtbarer
+  Hinweistext) als auch serverseitig (409) abgelehnt. Ein Verbindungstest gegen eine erfundene,
+  nach RFC 2606 nie auflösende `.invalid`-Adresse zeigt eine deutsche Fehlermeldung. Nach dem
+  erneuten Öffnen eines mit Schlüssel angelegten Modells ist das Schlüsselfeld leer und als
+  "gesetzt" markiert (der Schlüssel selbst kommt nie zurück).
+
+  `test.describe.serial`, weil alle Szenarien das eine seit dem Seed-Lauf aktive Chat-Modell
+  bewusst umschalten - `test.afterAll` aktiviert danach exakt das ursprünglich aktive Modell wieder
+  und löscht die selbst angelegten, damit kein späterer Chat-Test in dieser Suite (insbesondere
+  `space-chats.spec.ts`) auf einem hier hinterlassenen Zwischenstand sitzt. Anders als das Issue
+  ursprünglich annahm, läuft im Compose-Stack dieser Suite **kein** eigener `ollama`-Dienst (siehe
+  `docs/deployment.md`, `OPAA_OLLAMA_BASE_URL` - auch der reguläre `docker-compose.yml`-Stack
+  enthält keinen); der positive Verbindungstest zielt deshalb auf `ai-stub`, denselben
+  OpenAI-kompatiblen Ersatz, den auch das vom Seed übernommene Modell schon verwendet.
+
 - `tests/space-chats.spec.ts` (#529, Teil von Epic #523) — Chats als space-eigene, persistente
   Objekte samt der neuen Suchbereichssteuerung im Eingabefeld: ein Chat wird im Space erstellt,
   eine Frage liefert eine Antwort mit Quellenangabe, und ein Neuladen der Seite stellt sowohl den
@@ -292,12 +313,12 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   getrennten Verlauf und seine eigene, sticky `@`-Referenz.
 
   Dateiname bewusst nicht `chats-in-spaces.spec.ts` (die ursprüngliche Wahl): der sortiert
-  alphabetisch *vor* `knowledge-libraries.spec.ts`, und diese Datei legt selbst mehrere,
+  alphabetisch _vor_ `knowledge-libraries.spec.ts`, und diese Datei legt selbst mehrere,
   admin-lesbare Bibliotheken an. #424s Szenarien 1/2/5 laufen dann gegen einen bereits
   aufgeblähten, unscoped-topK-durchsuchten Korpus — das ist exakt in CI aufgefallen (PR #554):
   `wissensdokument.txt` fiel aus den Top-5-Treffern, weil identische ai-stub-Embeddings (siehe "KI-
   Stub statt echtem Modell" oben) jeden zusätzlichen Chunk gleich relevant erscheinen lassen wie
-  den eigentlich gesuchten. `space-chats.spec.ts` sortiert dagegen *nach* sowohl
+  den eigentlich gesuchten. `space-chats.spec.ts` sortiert dagegen _nach_ sowohl
   `knowledge-libraries.spec.ts` als auch `knowledge-library-nacharbeiten.spec.ts` (`s` > `k`,
   dasselbe Muster wie beim Nacharbeiten-Dateinamen oben) — #424s Szenarien laufen also gegen den
   kleinstmöglichen Korpus, bevor diese Datei ihn selbst weiter aufbläht.
@@ -315,7 +336,7 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   über ein Neuladen) prüft nur "irgendeine Quelle wurde zitiert" (`expectAnyCitedSource`), nicht
   einen bestimmten Dateinamen - bei unverändertem @Alles-Wissen-Chip sucht es unscoped über den
   gesamten lesbaren Korpus, und welches Dokument dabei in die Top-Treffer fällt, ist nicht das, was
-  dieses Szenario zeigen soll. Szenarien 2 und 5, die tatsächlich zeigen sollen, *welche* Bibliothek
+  dieses Szenario zeigen soll. Szenarien 2 und 5, die tatsächlich zeigen sollen, _welche_ Bibliothek
   durchsucht wurde, referenzieren stattdessen explizit per `@` - das ersetzt den @Alles-Wissen-Chip
   und bleibt unabhängig von der Korpusgröße deterministisch.
 

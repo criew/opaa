@@ -188,6 +188,11 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
       onChange={(_event, isExpanded) => setExpanded(isExpanded)}
       variant="outlined"
       disableGutters
+      // e2e/README.md, "Selektor-Konvention" (#760): AccordionDetails stays mounted while
+      // collapsed (only its height animates), so every card's own "API-Schlüssel" field etc. is
+      // simultaneously present in the DOM - a page-wide role/label query cannot tell one model's
+      // card apart from another's without this.
+      data-testid={`llm-model-card-${model.id}`}
     >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
