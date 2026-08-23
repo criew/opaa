@@ -66,9 +66,19 @@ tatsächlichen Stand abgeglichen sind. Die Dokumentenübersicht ist inzwischen g
 Bibliotheksdetailseite (`LibraryDetailPage.tsx`) zeigt den Bestand einer Wissensbibliothek mit
 Indizierungsstand je Dokument. Seit #738 bietet jede Dokumentzeile die Aktion „Original öffnen": das
 Frontend lädt die Datei über `GET /api/v1/documents/{documentId}/content` (#736) als Blob und öffnet
-sie per Objekt-URL in einem neuen Tab (PDF/Bilder als Browser-Vorschau, sonst Download unter dem
-ursprünglichen Dateinamen) — die gemeinsame Logik dafür liegt in
-`frontend/src/utils/documentContent.ts` und wird vom Zitat-Deeplink (#739) mitverwendet. Seit #747
+sie per Objekt-URL in einem neuen Tab (PDF/Bilder als Browser-Vorschau). Seit #780 gilt das auch für
+Markdown und Klartext: Statt eines stillen Downloads (der Browser zeigt einen `text/markdown`- oder
+`text/plain`-Blob sonst nur als Rohtext an oder lädt ihn herunter) rendert `DocumentTextPreviewDialog`
+den Inhalt clientseitig in einem eigenen Dialog — Markdown über dieselbe, bereits gehärtete
+`MarkdownRenderer`-Komponente wie die Chat-Antworten (kein `rehype-raw`, react-markdowns
+Standard-`urlTransform` entfernt `javascript:`-URLs, siehe #743 Sperre für SVG). Ein Original über 2
+MiB fällt zurück auf den Download, mit demselben sichtbaren Hinweis wie unten beschrieben. Jedes
+andere Format (insbesondere DOCX — eine serverseitige Konvertierung ist bewusst außerhalb dieses
+Zuschnitts) bleibt beim Download unter dem ursprünglichen Dateinamen, jetzt aber mit einer sichtbaren
+Snackbar „‹Dateiname› wird heruntergeladen" statt eines Klicks ohne erkennbare Wirkung. Die gemeinsame
+Logik dafür liegt in `frontend/src/utils/documentContent.ts` (Entscheidung Vorschau/Download/
+Text-Vorschau) und `frontend/src/hooks/useDocumentPreview.ts` (Dialog-/Snackbar-/Fehlerzustand); sie
+wird vom Zitat-Deeplink (#739) und den Fundstellen unter einer Chat-Antwort mitverwendet. Seit #747
 gilt das für **jeden** Quellentyp: der Endpunkt streamt für HTTP_DIRECTORY/RSS_FEED das Original
 serverseitig von der beim Indizieren gespeicherten Quell-URL durch, statt den Client dorthin
 weiterzuleiten — auf der Demo-Instanz sind die Quellhosts (`http://demo-corpus/...`) nur im
@@ -91,7 +101,15 @@ Belegfenster („Belege dieser Antwort"): `SourceReference` (OpenAPI) trägt jet
 Quellentyp das Original über `GET /api/v1/documents/{documentId}/content` (dasselbe Hilfsmodul
 `documentContent.ts`) — vor #747 öffnete diese Aktion für HTTP_DIRECTORY/RSS_FEED stattdessen
 `sourceEntryUrl`/`sourceUrl` direkt in einem neuen Tab, was bei einer nur intern erreichbaren Quelle
-im Browser ins Leere lief. Backendseitig schlüsselt die Zusammenführung mehrfach zitierter
+im Browser ins Leere lief. Seit #780 verhält sich „Im Dokument öffnen" an den Fundstellen und im
+Belegfenster wie auf der Dokumentenübersicht: Markdown/Klartext rendern in `DocumentTextPreviewDialog`
+statt still herunterzuladen, jedes andere Format zeigt beim Download eine Snackbar. Beide
+Oberflächen teilen sich dafür in `MessageBubble.tsx` eine einzige `useDocumentPreview()`-Instanz —
+die Fundstellen (`SourceFootnotes.tsx`) und das Belegfenster (`SourceEvidenceDrawer.tsx`) bieten
+dieselbe Aktion für dieselbe Antwort und erhalten `openDocument`/Fehler-/Vorschau-/Download-Zustand
+als Props, statt je einen eigenen Aufruf zu verwalten; Dialog und Snackbar hängen dadurch auch nicht
+am Lebenszyklus des Belegfensters, das seine Kindelemente beim Schließen abbaut. Backendseitig
+schlüsselt die Zusammenführung mehrfach zitierter
 Fundstellen (`QueryService#mergeSourceReferences`) auf `documentId` statt auf den Dateinamen: zwei
 unterschiedliche Dokumente mit identischem Dateinamen (etwa zwei RSS-Anlagen) erscheinen dadurch als
 zwei getrennte Fundstellen mit je eigenem Deeplink, statt zu einer zusammenzufallen.

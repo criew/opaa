@@ -9,7 +9,6 @@ import type { CitationIndex } from './citations'
 import { citationRowId } from './citations'
 import type { SourceReference } from '../../types/api'
 import { fontFamily } from '../../theme/tokens'
-import { openDocumentContent } from '../../utils/documentContent'
 
 interface SourceFootnotesProps {
   messageId: string
@@ -18,6 +17,14 @@ interface SourceFootnotesProps {
   highlightedDocIndexes?: number[]
   /** Opens the Belegfenster with every source of this answer (#592, mockup 1i). */
   onOpenEvidence?: () => void
+  /** #739/#747/#780: MessageBubble's single `useDocumentPreview()` instance (../../hooks/
+   *  useDocumentPreview) - shared with SourceEvidenceDrawer so the preview dialog/download
+   *  snackbar it also renders survive this component or the Belegfenster unmounting (#781
+   *  review, Nit 5), rather than each row wiring its own call to `openDocumentContent` and
+   *  discarding the result (#781 review, Wichtig 1). */
+  openDocument: (documentId: string, fileName: string) => Promise<void>
+  error: string | null
+  clearError: () => void
 }
 
 function formatIndexedAt(indexedAt: string | null | undefined): string | null {
@@ -34,29 +41,9 @@ function canOpenOriginal(source: SourceReference | undefined): boolean {
 }
 
 /**
- * #739/#747: opens a citation's original document through the Bearer-authenticated content
- * endpoint, mirroring LibraryDetailPage#handleOpenOriginal (#738) - a plain `<a href>` cannot
- * carry the token (ADR-0005), and since #747 this now covers every sourceType: the endpoint
- * proxies HTTP_DIRECTORY/RSS_FEED server-side from their own stored source URL instead of
- * answering 404, so a source only reachable from OPAA's own network (the demo's
- * `http://demo-corpus/...`) still opens for the caller's browser.
- */
-async function openLocalOriginal(
-  source: SourceReference,
-  fileName: string,
-  onError: (message: string) => void,
-) {
-  if (!source.documentId) return
-  try {
-    await openDocumentContent(source.documentId, fileName)
-  } catch (err) {
-    onError(err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.')
-  }
-}
-
-/**
- * #747: the primary action is always the content-endpoint button now (see
- * {@link openLocalOriginal}) - `sourceEntryUrl`/`sourceUrl` (HTTP_DIRECTORY/RSS_FEED only) are
+ * #747: the primary action is always the content-endpoint button now (see MessageBubble's
+ * `useDocumentPreview()` instance, passed down as the `openDocument` prop) -
+ * `sourceEntryUrl`/`sourceUrl` (HTTP_DIRECTORY/RSS_FEED only) are
  * shown alongside it as secondary information, a small "Quelle" link carrying the raw URL, since
  * that address may only be reachable from OPAA's own network, not the caller's browser (#747,
  * Klick-Test finding on the Demo-Instanz).
@@ -188,15 +175,18 @@ export default function SourceFootnotes({
   citations,
   highlightedDocIndexes = [],
   onOpenEvidence,
+  openDocument,
+  error: openOriginalError,
+  clearError: clearOpenOriginalError,
 }: SourceFootnotesProps) {
   const [uncitedOpen, setUncitedOpen] = useState(false)
   const [foldedOpen, setFoldedOpen] = useState(false)
-  // #739: mirrors LibraryDetailPage's openOriginalError (#738) - opening the original is a
-  // read-only, per-click action, so its failure (404, file missing) gets its own local message.
-  const [openOriginalError, setOpenOriginalError] = useState<string | null>(null)
+  // #739/#780: openDocument is MessageBubble's single `useDocumentPreview()` instance (#781
+  // review, Wichtig 1/Nit 5) - it already catches its own failure into `error`, so this only has
+  // to guard against a synthetic entry with no documentId (see canOpenOriginal) before firing it.
   const handleOpenLocalOriginal = (source: SourceReference, fileName: string) => {
-    setOpenOriginalError(null)
-    void openLocalOriginal(source, fileName, setOpenOriginalError)
+    if (!source.documentId) return
+    void openDocument(source.documentId, fileName)
   }
   const { docs, uncited, markerCount } = citations
 
@@ -279,7 +269,7 @@ export default function SourceFootnotes({
       </Box>
 
       {openOriginalError && (
-        <Alert severity="error" sx={{ mb: 0.75 }} onClose={() => setOpenOriginalError(null)}>
+        <Alert severity="error" sx={{ mb: 0.75 }} onClose={clearOpenOriginalError}>
           {openOriginalError}
         </Alert>
       )}

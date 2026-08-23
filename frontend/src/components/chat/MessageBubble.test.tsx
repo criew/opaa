@@ -3,6 +3,21 @@ import userEvent from '@testing-library/user-event'
 import { vi, describe, expect, it } from 'vitest'
 import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../../types/chat'
+import type { OpenDocumentContentResult } from '../../utils/documentContent'
+
+// #781 review, Wichtig 1: "Im Dokument öffnen" in the Fundstellen block (SourceFootnotes) shares
+// MessageBubble's single `useDocumentPreview()` instance with the Belegfenster
+// (SourceEvidenceDrawer) - these tests exercise that wiring end-to-end (text-preview dialog,
+// download snackbar) at the level where the hook actually lives, mirroring
+// SourceEvidenceDrawer.test.tsx's own mock of this module.
+const { mockOpenDocumentContent } = vi.hoisted(() => ({
+  mockOpenDocumentContent: vi.fn<() => Promise<OpenDocumentContentResult>>(async () => ({
+    kind: 'blob-preview',
+  })),
+}))
+vi.mock('../../utils/documentContent', () => ({
+  openDocumentContent: mockOpenDocumentContent,
+}))
 
 const citedSource = {
   fileName: 'test.md',
@@ -253,5 +268,75 @@ describe('MessageBubble', () => {
     render(<MessageBubble message={msg} />)
     await user.click(screen.getByText(/Weitere geprüfte, nicht zitierte Treffer \(1\) anzeigen/))
     expect(await screen.findByText('other.pdf')).toBeVisible()
+  })
+
+  // #781 review, Wichtig 1: before this fix, clicking "Im Dokument öffnen" in the Fundstellen
+  // block called openDocumentContent and discarded the result - a text-preview outcome produced
+  // neither a dialog nor a download, worse than main's silent download.
+  describe('"Im Dokument öffnen" in the Fundstellen block (#781 review, Wichtig 1)', () => {
+    const mdSource = {
+      fileName: '001_personalausweis.md',
+      relevanceScore: 0.9,
+      matchCount: 1,
+      indexedAt: null,
+      cited: true,
+      citationValid: true,
+      documentId: 'doc-1',
+      sourceType: 'UPLOAD' as const,
+    }
+
+    function messageWithMdSource(): ChatMessage {
+      return {
+        id: 'md-1',
+        role: 'assistant',
+        content: 'Beleg【source: doc-1#0 | 001_personalausweis.md】.',
+        sources: [mdSource],
+        timestamp: new Date(),
+      }
+    }
+
+    it('opens a Markdown text preview dialog instead of silently discarding the result', async () => {
+      mockOpenDocumentContent.mockResolvedValueOnce({
+        kind: 'text-preview',
+        fileName: '001_personalausweis.md',
+        contentType: 'text/markdown',
+        content: '# Personalausweis\n\nAusgestellt am 1. März.',
+      })
+      const user = userEvent.setup()
+      render(<MessageBubble message={messageWithMdSource()} />)
+
+      await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
+
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByText('Personalausweis').closest('h5')).toBeInTheDocument()
+      expect(screen.getByText(/Ausgestellt am 1\. März\./)).toBeInTheDocument()
+    })
+
+    it('shows a snackbar with the file name when a DOCX download starts', async () => {
+      mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'bescheid.docx' })
+      const user = userEvent.setup()
+      const msg = messageWithMdSource()
+      msg.sources = [{ ...mdSource, fileName: 'bescheid.docx' }]
+      msg.content = 'Beleg【source: doc-1#0 | bescheid.docx】.'
+      render(<MessageBubble message={msg} />)
+
+      await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
+
+      expect(await screen.findByText('bescheid.docx wird heruntergeladen')).toBeInTheDocument()
+    })
+
+    it('shows a German error message when opening the original fails (e.g. 404)', async () => {
+      mockOpenDocumentContent.mockRejectedValueOnce(
+        new Error('Das Originaldokument wurde nicht gefunden.'),
+      )
+      const user = userEvent.setup()
+      render(<MessageBubble message={messageWithMdSource()} />)
+
+      await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
+
+      expect(
+        await screen.findByText('Das Originaldokument wurde nicht gefunden.'),
+      ).toBeInTheDocument()
+    })
   })
 })
