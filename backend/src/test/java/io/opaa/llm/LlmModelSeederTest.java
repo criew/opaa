@@ -1,6 +1,7 @@
 package io.opaa.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -8,7 +9,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
+import java.util.Base64;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -252,6 +255,112 @@ class LlmModelSeederTest {
     ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
     verify(repository).save(captor.capture());
     assertThat(captor.getValue().getApiKeyCiphertext()).isNull();
+  }
+
+  @Test
+  void skipsTheTakeoverWithoutWritingAMarkerWhenTheApiKeyIsConfiguredButTheEncryptionKeyIsNot() {
+    // #771: OPAA_SETTINGS_ENCRYPTION_KEY missing must not abort application startup - only skip
+    // this one-time takeover, without writing LlmModelSeedMarker, so it is retried automatically
+    // on the next start once the operator sets the key. Deliberately a *real* SettingsEncryptor
+    // here (not the mock used by the other tests in this class) with no key configured - a mocked
+    // encrypt() call would never exercise SettingsEncryptor#requireKey() and would not have
+    // reproduced the original bug (the IllegalStateException propagating out of seedIfNeeded()
+    // and aborting Application.run()).
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    SettingsEncryptor realEncryptorWithoutAKey =
+        new SettingsEncryptor(new SettingsEncryptionProperties(null));
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty(
+                "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
+            .withProperty("spring.ai.openai.chat.model", "gpt-4o")
+            .withProperty("spring.ai.openai.chat.api-key", "sk-configured-key");
+    LlmModelSeeder seeder =
+        new LlmModelSeeder(repository, markerRepository, realEncryptorWithoutAKey, environment);
+
+    assertThatCode(seeder::seedIfNeeded).doesNotThrowAnyException();
+
+    verify(repository, never()).save(any());
+    verify(markerRepository, never()).save(any());
+  }
+
+  @Test
+  void skipsTheTakeoverWithoutWritingAMarkerWhenTheConfiguredEncryptionKeyIsInvalid() {
+    // #771 review, Befund "Sollte" 1: not just a missing key - a *set but malformed* one (bad
+    // Base64 here; SettingsEncryptor#requireKey() reports a wrong byte length the same way) is
+    // the same "Übernahme scheitert kontrolliert, Start nicht" category, not a reason to abort
+    // startup. A real SettingsEncryptor again, for the same reason as the test above.
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    SettingsEncryptor encryptorWithAnInvalidKey =
+        new SettingsEncryptor(new SettingsEncryptionProperties("not-valid-base64!!"));
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty(
+                "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
+            .withProperty("spring.ai.openai.chat.model", "gpt-4o")
+            .withProperty("spring.ai.openai.chat.api-key", "sk-configured-key");
+    LlmModelSeeder seeder =
+        new LlmModelSeeder(repository, markerRepository, encryptorWithAnInvalidKey, environment);
+
+    assertThatCode(seeder::seedIfNeeded).doesNotThrowAnyException();
+
+    verify(repository, never()).save(any());
+    verify(markerRepository, never()).save(any());
+  }
+
+  @Test
+  void retriesAndCompletesTheTakeoverOnceTheEncryptionKeyIsSetOnANextStart() {
+    // #771 review, Befund "Optional" 3: the actual "Nachholfall" end to end, not just that the
+    // first, marker-less start does not throw (covered above) - a second seedIfNeeded() call
+    // (standing in for the next application start) with the key now set must complete the
+    // takeover and finally write the marker.
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty(
+                "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
+            .withProperty("spring.ai.openai.chat.model", "gpt-4o")
+            .withProperty("spring.ai.openai.chat.api-key", "sk-configured-key");
+
+    SettingsEncryptor encryptorWithoutAKey =
+        new SettingsEncryptor(new SettingsEncryptionProperties(null));
+    new LlmModelSeeder(repository, markerRepository, encryptorWithoutAKey, environment)
+        .seedIfNeeded();
+    verify(repository, never()).save(any());
+    verify(markerRepository, never()).save(any());
+
+    String base64Key = Base64.getEncoder().encodeToString(new byte[32]);
+    SettingsEncryptor encryptorWithAKey =
+        new SettingsEncryptor(new SettingsEncryptionProperties(base64Key));
+    new LlmModelSeeder(repository, markerRepository, encryptorWithAKey, environment).seedIfNeeded();
+
+    ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
+    verify(repository, times(1)).save(captor.capture());
+    assertThat(captor.getValue().getApiKeyCiphertext()).isNotNull();
+    verify(markerRepository, times(1)).save(any());
+  }
+
+  @Test
+  void writesTheMarkerWithoutReSeedingWhenAModelWasAlreadyAddedByHandAfterAMarkerLessSkip() {
+    // #771 review, Befund "Blockierend": a marker-less skip (missing/invalid encryption key,
+    // above) is retried on every subsequent start until either it succeeds or the operator adds
+    // a model by hand in the meantime - the very fallback this class's own ERROR log
+    // recommends. Without this repository.count() guard, that hand-added model would collide
+    // with the retried takeover on the next start: ux_llm_models_single_active (migration 058)
+    // if the seeded model were activated too, or a silent second, env-sourced model otherwise -
+    // either way something the operator never asked for once the key is finally set.
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    when(repository.count()).thenReturn(1L);
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty(
+                "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
+            .withProperty("spring.ai.openai.chat.model", "gpt-4o");
+
+    seederWith(environment).seedIfNeeded();
+
+    verify(repository, never()).save(any());
+    verify(markerRepository, times(1)).save(any());
   }
 
   @Test
