@@ -85,7 +85,9 @@ python seed.py --profile demo
 ```
 
 Der Seed richtet über die öffentliche API alle vier Demo-Nutzer plus das Admin-Konto ein, legt die
-vier Spaces und fünf Wissensbibliotheken an, vergibt die Leserechte, lädt die 26 Dokumente der
+vier Spaces und fünf Wissensbibliotheken an, vergibt die Leserechte, ordnet den drei Sachgebiets-
+und Amtsleitungs-Spaces ihre Bibliotheken als Datenquellen zu (Assoziation als reine Kuratierung,
+#706 — Marias persönlicher Space bleibt bewusst ohne Zuordnung), lädt die 26 Dokumente der
 internen Upload-Bibliothek hoch und stößt die Indizierung der vier konnektorgespeisten Bibliotheken
 an. Vollständiger Ablauf, Idempotenz und Fehlerfälle:
 [`../demo/README.md`, „Seed ausführen (#712)"](../demo/README.md#seed-ausführen-712).
@@ -124,7 +126,11 @@ Punkt 1.
 
 Die Spalte „Lesbare Bibliotheken" zählt nur explizit vergebene `VIEWER`-Rechte; jeder Nutzer bekommt
 beim ersten Login zusätzlich automatisch seinen eigenen Default-Space, der oben nicht eigens
-aufgeführt ist. Begründung der Matrix: [`features/demo-instance.md`, „Nutzer, Spaces und
+aufgeführt ist. Die drei Sachgebiets- und Amtsleitungs-Spaces tragen ihre lesbaren Bibliotheken
+zusätzlich als zugeordnete Datenquellen (Space↔Bibliothek-Assoziation, #706): `@Alles-Wissen`
+durchsucht in diesen Spaces genau die zugeordneten Bibliotheken, geschnitten mit den Leserechten
+der fragenden Person. „Maria Weber – persönlich" bleibt bewusst ohne Zuordnung — dort greift
+`@Alles-Wissen` weiterhin auf alle für Maria lesbaren Bibliotheken zurück. Begründung der Matrix: [`features/demo-instance.md`, „Nutzer, Spaces und
 Berechtigungen"](./features/demo-instance.md#nutzer-spaces-und-berechtigungen).
 
 **Der Vorführ-Kern:** Weil die Berechtigungsprüfung Teil der Vektorsuche ist und nicht ein
