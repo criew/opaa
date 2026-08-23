@@ -58,7 +58,7 @@ export default function GlobalRail() {
   const roles = appMode === 'light' ? railRoles : darkRoles
 
   const destinations: RailDestination[] = [
-    // "/" and "/chat" both land in a space chat, so the space scope owns them.
+    // "/chat" lands in a space chat, so the Spaces scope owns it ("/" redirects there).
     {
       label: 'Spaces',
       to: '/spaces',
@@ -121,7 +121,9 @@ export default function GlobalRail() {
               key={destination.to}
               component={RouterLink}
               to={destination.to}
-              aria-current={active ? 'page' : undefined}
+              aria-current={
+                active ? (location.pathname === destination.to ? 'page' : 'true') : undefined
+              }
               sx={{
                 width: 52,
                 py: 1,

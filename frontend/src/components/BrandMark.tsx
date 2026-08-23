@@ -57,7 +57,12 @@ export default function BrandMark({
             // marked decorative instead of read out twice (WCAG 1.1.1).
             alt=""
             height={logoHeight}
-            sx={{ height: logoHeight, width: 'auto', maxWidth: 160, objectFit: 'contain' }}
+            sx={{
+              height: logoHeight,
+              width: 'auto',
+              maxWidth: logoOnly ? 40 : 160,
+              objectFit: 'contain',
+            }}
           />
         ) : (
           // The OPAA standard mark from mockup 1a: accent-stroked squircle, document lines in

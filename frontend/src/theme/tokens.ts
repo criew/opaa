@@ -161,7 +161,9 @@ export const railRoles: SchemeRoles = {
   bg2: navy[800],
   bg3: navy[700],
   fg1: white,
-  fg2: 'rgba(255, 255, 255, 0.6)',
+  // Mockup 2a paints the muted labels as 60% white; roles are opaque values, so this is that
+  // tone composited over bg1 (review #791, finding 8).
+  fg2: '#99A1AB',
   fg3: '#7A8BA0',
   accent: blue[500],
   accentFg: white,

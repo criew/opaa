@@ -1,10 +1,11 @@
-import { screen, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import AppShell from './AppShell'
 import { useAuthStore } from '../stores/authStore'
+import { useUiStore } from '../stores/uiStore'
 import PageHeading from '../components/a11y/PageHeading'
 
 function renderShell(initialRoute = '/chat') {
@@ -22,6 +23,21 @@ function renderShell(initialRoute = '/chat') {
 
 // jsdom has no matchMedia, so MUI would render the mobile drawer (closed, aria-hidden) and hide
 // the navigation from role queries. Pretend to be a desktop viewport for these tests.
+function matchMediaWith(matcher: (query: string) => boolean) {
+  return (query: string): MediaQueryList => ({
+    matches: matcher(query),
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })
+}
+
+const mobileMatchMedia = matchMediaWith(() => false)
+
 function desktopMatchMedia(query: string): MediaQueryList {
   return {
     matches: query.includes('min-width'),
@@ -92,6 +108,28 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toHaveFocus()
     expect(document.title).toBe('Einstellungen · OPAA')
+  })
+
+  it('shows rail and space column in the mobile drawer and closes it after navigating', async () => {
+    // The drawer must carry both navigation levels (#786) and dismiss itself once a link
+    // inside it navigates - it used to stay on top of the new page (review #791, finding 9).
+    window.matchMedia = mobileMatchMedia
+    try {
+      const user = userEvent.setup()
+      renderShell()
+
+      act(() => useUiStore.setState({ sidebarOpen: true }))
+
+      const rail = await screen.findByRole('navigation', { name: 'Globale Navigation' })
+      expect(rail).toBeVisible()
+      expect(screen.getByRole('complementary', { name: 'Space-Bereich' })).toBeVisible()
+
+      await user.click(within(rail).getByText('Katalog'))
+
+      await waitFor(() => expect(useUiStore.getState().sidebarOpen).toBe(false))
+    } finally {
+      window.matchMedia = desktopMatchMedia
+    }
   })
 
   it('falls back to focusing main when the new page has no heading yet', async () => {

@@ -47,6 +47,23 @@ describe('BrandMark', () => {
     )
   })
 
+  it('caps a configured logo to the rail tile width in logoOnly mode (review #791)', () => {
+    useBrandingStore.setState({
+      branding: {
+        productName: 'Landesamt-Assistent',
+        claim: 'Kurz und klar',
+        primaryColor: '#7A1FA2',
+        defaultColorScheme: 'LIGHT',
+        logoUrl: '/api/v1/branding/logo?v=abc',
+      },
+    })
+
+    renderMark(<BrandMark logoOnly />)
+
+    // A wide wordmark logo must not bleed out of the 64px rail (sidebar context allows 160px).
+    expect(document.querySelector('img[alt=""]')).toHaveStyle({ maxWidth: '40px' })
+  })
+
   it('renders the emblem alone in logoOnly mode - the rail tile (#786)', () => {
     renderMark(<BrandMark logoOnly />)
 

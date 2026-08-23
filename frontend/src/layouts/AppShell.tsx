@@ -32,6 +32,13 @@ export default function AppShell() {
     ;(heading ?? main)?.focus()
   }, [pathname])
 
+  // Navigating from inside the drawer must also dismiss it - otherwise it stays on top of the
+  // page just navigated to. Pre-existing since #587, taken along with review #791 (finding 9)
+  // because the rail put far more destinations into the drawer.
+  useEffect(() => {
+    if (!isDesktop) setSidebarOpen(false)
+  }, [pathname, isDesktop, setSidebarOpen])
+
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <SkipLink />

@@ -257,8 +257,10 @@ export default function Sidebar() {
           <>
             <Divider />
             {/* Mockup 2a: the foot of the column stays space-scoped - quiet text-only links,
-                12.5px on muted white (#658); everything global moved onto the rail (#786). */}
-            <List sx={{ px: '14px', py: '10px' }}>
+                12.5px on muted white (#658); everything global moved onto the rail (#786). Its
+                own nav landmark, so landmark navigation still reaches these links (review
+                #791, finding 5). */}
+            <List component="nav" aria-label="Space-Navigation" sx={{ px: '14px', py: '10px' }}>
               {[
                 { label: 'Space-Einstellungen', to: `/spaces/${activeChatSpaceId}/manage` },
                 { label: 'Datenquellen dieses Space', to: `/spaces/${activeChatSpaceId}` },

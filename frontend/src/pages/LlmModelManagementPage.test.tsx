@@ -39,7 +39,7 @@ describe('LlmModelManagementPage', () => {
   it('shows no model management to a user who is not a system administrator', () => {
     signInAs('USER')
 
-    renderWithProviders(<LlmModelManagementPage />)
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
 
     expect(screen.queryByRole('button', { name: 'Neues Modell' })).not.toBeInTheDocument()
     expect(screen.getByText(/nicht freigegeben/i)).toBeInTheDocument()
@@ -48,7 +48,7 @@ describe('LlmModelManagementPage', () => {
   it('lists the configured models with the active one clearly marked', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<LlmModelManagementPage />)
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
 
     await waitFor(() => {
       expect(screen.getByText('Ollama lokal')).toBeInTheDocument()
@@ -59,7 +59,7 @@ describe('LlmModelManagementPage', () => {
   it('shows the read-only embedding block with provider, model and dimensions', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<LlmModelManagementPage />)
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
 
     await waitFor(() => {
       expect(screen.getByText('nomic-embed-text')).toBeInTheDocument()
@@ -73,7 +73,7 @@ describe('LlmModelManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />)
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
     await user.click(screen.getByRole('button', { name: 'Neues Modell' }))
     const dialog = within(screen.getByRole('dialog'))
 
@@ -107,7 +107,7 @@ describe('LlmModelManagementPage', () => {
     })
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />)
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
     await waitFor(() => screen.getByText('Modell B'))
     await user.click(screen.getByText('Modell B'))
     await user.click(screen.getByRole('button', { name: '"Modell B" als aktives Modell setzen' }))
@@ -127,7 +127,7 @@ describe('LlmModelManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />)
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
     await waitFor(() => screen.getByText('Ollama lokal'))
     await user.click(screen.getByText('Ollama lokal'))
 
@@ -159,7 +159,7 @@ describe('LlmModelManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />)
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
     await waitFor(() => screen.getByText('Ollama lokal'))
     await user.click(screen.getByText('Ollama lokal'))
     await user.click(screen.getByRole('button', { name: '"Ollama lokal" speichern' }))
@@ -188,7 +188,7 @@ describe('LlmModelManagementPage', () => {
     })
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />)
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
     await waitFor(() => screen.getByText('Modell mit Schlüssel'))
     await user.click(screen.getByText('Modell mit Schlüssel'))
     await user.click(
@@ -210,7 +210,7 @@ describe('LlmModelManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />)
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
     await waitFor(() => screen.getByText('Ollama lokal'))
     await user.click(screen.getByText('Ollama lokal'))
     await user.click(screen.getByRole('button', { name: 'Verbindung zu "Ollama lokal" testen' }))
@@ -229,7 +229,7 @@ describe('LlmModelManagementPage', () => {
     )
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />)
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
     await waitFor(() => screen.getByText('Ollama lokal'))
     await user.click(screen.getByText('Ollama lokal'))
     await user.click(screen.getByRole('button', { name: 'Verbindung zu "Ollama lokal" testen' }))
@@ -244,7 +244,7 @@ describe('LlmModelManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />)
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
     await waitFor(() => screen.getByText('Ollama lokal'))
     await user.click(screen.getByText('Ollama lokal'))
 
@@ -290,7 +290,7 @@ describe('LlmModelManagementPage', () => {
     const user = userEvent.setup()
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
-    renderWithProviders(<LlmModelManagementPage />)
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
     await waitFor(() => screen.getByText('Modell A'))
     await user.click(screen.getByText('Modell A'))
     await user.click(screen.getByRole('button', { name: '"Modell A" löschen' }))

@@ -62,17 +62,25 @@ describe('GlobalRail', () => {
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
   })
 
-  it('marks the destination of the current scope with aria-current', () => {
-    renderRailAt('/libraries/lib-1')
+  it('marks the exact destination with aria-current="page"', () => {
+    renderRailAt('/libraries')
 
     expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Spaces' })).not.toHaveAttribute('aria-current')
   })
 
+  it('marks a scope hit below the destination with aria-current="true"', () => {
+    // /libraries/lib-1 is in the catalog scope but is not the link's own target - "true" is
+    // the accurate token there, "page" would claim the link points at the current page.
+    renderRailAt('/libraries/lib-1')
+
+    expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'true')
+  })
+
   it('counts an open chat as the Spaces scope', () => {
     renderRailAt('/spaces/space-1/chats/chat-1')
 
-    expect(screen.getByRole('link', { name: 'Spaces' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Spaces' })).toHaveAttribute('aria-current', 'true')
   })
 
   it('hides the admin destination from regular users and shows it to system admins', () => {
@@ -93,7 +101,7 @@ describe('GlobalRail', () => {
     const adminLink = screen.getByRole('link', { name: 'Admin' })
     expect(adminLink).toHaveAttribute('href', '/admin/groups')
     // Any /admin page counts as the admin scope, not only the link's own target.
-    expect(adminLink).toHaveAttribute('aria-current', 'page')
+    expect(adminLink).toHaveAttribute('aria-current', 'true')
   })
 
   it('offers Einstellungen and Abmelden behind the avatar (mockup 2a/2c)', async () => {
@@ -107,6 +115,23 @@ describe('GlobalRail', () => {
 
     await user.click(screen.getByRole('menuitem', { name: 'Einstellungen' }))
     expect(mockNavigate).toHaveBeenCalledWith('/settings')
+  })
+
+  it('renders in the light scheme as well - the navy-900 rail surface', () => {
+    // All other tests run the dark app theme; this keeps the light-scheme branch
+    // (railRoles) from regressing unseen (review #791).
+    render(
+      <ThemeProvider theme={createAppTheme('light')}>
+        <CssBaseline />
+        <MemoryRouter initialEntries={['/spaces']}>
+          <GlobalRail />
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+
+    const rail = screen.getByRole('navigation', { name: 'Globale Navigation' })
+    expect(rail).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Spaces' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('shows the user initial in the avatar', () => {
