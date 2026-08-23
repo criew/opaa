@@ -268,6 +268,58 @@ class FileProcessingServiceTest {
   }
 
   @Test
+  void chunkMetadataIsCarriedForFilteringButExcludedFromWhatGetsEmbedded() throws IOException {
+    // Issue #773: EmbeddingModel#getEmbeddingContent(Document) - what actually gets sent to the
+    // embedding call for every document VectorStore#add batches - defaults to
+    // Document#getFormattedContent(MetadataMode), and org.springframework.ai.openai.
+    // OpenAiEmbeddingModel (the only embedding path since #762) defaults its own metadataMode to
+    // MetadataMode.EMBED. Without CHUNK_EMBED_CONTENT_FORMATTER excluding this chunk's five
+    // bookkeeping keys, MetadataMode.EMBED would prepend all of them - two random UUIDs, an
+    // index, a filename, a second random UUID - ahead of the real chunk text, degrading retrieval
+    // quality (see FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER's own Javadoc for the
+    // measured effect: cosine similarity between a query and its correct document dropped from
+    // 0.698 to 0.357 with this contamination). The metadata itself must still reach the vector
+    // store row - the permission-aware query filter (#202) and citations depend on it - so this
+    // is about what MetadataMode.EMBED formats into embeddable text, not about removing the
+    // metadata map itself (covered by the test directly above).
+    Path file = tempDir.resolve("embed-content.txt");
+    Files.writeString(file, "some content");
+
+    when(checksumService.computeSha256(file)).thenReturn("abc123");
+    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks =
+        List.of(new org.springframework.ai.document.Document("the real chunk text to embed"));
+    when(chunkingService.chunkDocuments(eq("embed-content.txt"), eq(parsed))).thenReturn(chunks);
+
+    service.processFile(file, targetLibrary);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStore).add(chunkCaptor.capture());
+    org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
+
+    // The metadata is still there for filtering/citation...
+    assertThat(storedChunk.getMetadata()).containsKey("library_id");
+    // ...but MetadataMode.EMBED - what an OpenAiEmbeddingModel actually sends to be embedded -
+    // must carry none of it: with every metadata key excluded, Spring AI's DefaultContentFormatter
+    // still applies its "{metadata_string}\n\n{content}" text template (an empty metadata_string
+    // leaves a harmless leading blank line, unlike five lines of key: value noise), so this
+    // asserts on the trimmed content rather than exact equality.
+    assertThat(
+            storedChunk
+                .getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED)
+                .trim())
+        .isEqualTo("the real chunk text to embed");
+  }
+
+  @Test
   void skipsUnchangedDocumentWithSameChecksumSameLibraryAndIndexedStatus() throws IOException {
     Path file = tempDir.resolve("unchanged.txt");
     Files.writeString(file, "same content");
