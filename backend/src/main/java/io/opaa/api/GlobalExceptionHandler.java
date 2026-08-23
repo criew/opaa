@@ -146,7 +146,7 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
   public ResponseEntity<ErrorResponse> handleNoResourceFoundException(Exception ex) {
-    log.debug("No handler found for request: {}", ex.getMessage());
+    log.debug("No handler found for request: {}", errorSanitizer.sanitize(ex.getMessage()));
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .body(
             new ErrorResponse(

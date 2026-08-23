@@ -32,6 +32,7 @@ class GlobalExceptionHandlerUnmappedPathTest {
     mockMvc
         .perform(get("/api/v1/gibtesnicht"))
         .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.status").value(404));
+        .andExpect(jsonPath("$.status").value(404))
+        .andExpect(jsonPath("$.error").value("Die angeforderte Ressource wurde nicht gefunden"));
   }
 }
