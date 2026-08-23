@@ -37,8 +37,9 @@ describe('documentContent', () => {
         fileName: 'original.pdf',
       })
 
-      await openDocumentContent('doc-1', 'fallback.pdf')
+      const result = await openDocumentContent('doc-1', 'fallback.pdf')
 
+      expect(result).toEqual({ kind: 'blob-preview' })
       expect(createObjectURLSpy).toHaveBeenCalledTimes(1)
       expect(windowOpenSpy).toHaveBeenCalledWith(
         'blob:mock-object-url',
@@ -100,10 +101,67 @@ describe('documentContent', () => {
         fileName: 'original.docx',
       })
 
-      await openDocumentContent('doc-1', 'fallback.docx')
+      const result = await openDocumentContent('doc-1', 'fallback.docx')
 
       expect(windowOpenSpy).not.toHaveBeenCalled()
       expect(clickSpy).toHaveBeenCalledTimes(1)
+      expect(result).toEqual({ kind: 'download', fileName: 'original.docx' })
+    })
+
+    // #780: DOCX (and every other format without its own preview) stays a download - the caller
+    // uses the 'download' result kind to show visible feedback ("<Dateiname> wird heruntergeladen"),
+    // since the acceptance criteria require a click to never appear to do nothing.
+    it('reports a DOCX download by its result kind so the caller can show feedback (#780)', async () => {
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: new Blob(['x'], {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        }),
+        fileName: 'bescheid.docx',
+      })
+
+      const result = await openDocumentContent('doc-1', 'fallback.docx')
+
+      expect(result).toEqual({ kind: 'download', fileName: 'bescheid.docx' })
+      expect(clickSpy).toHaveBeenCalledTimes(1)
+    })
+
+    // #780: Markdown/plain text never navigate to a blob: URL (the browser would show it raw or
+    // download it, depending on browser) - the caller renders `content` in its own preview dialog.
+    it('returns Markdown content for a text preview instead of opening a tab or downloading (#780)', async () => {
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: new Blob(['# Titel\n\nInhalt'], { type: 'text/markdown; charset=utf-8' }),
+        fileName: '001_personalausweis.md',
+      })
+
+      const result = await openDocumentContent('doc-1', 'fallback.md')
+
+      expect(windowOpenSpy).not.toHaveBeenCalled()
+      expect(clickSpy).not.toHaveBeenCalled()
+      expect(createObjectURLSpy).not.toHaveBeenCalled()
+      expect(result).toEqual({
+        kind: 'text-preview',
+        fileName: '001_personalausweis.md',
+        contentType: 'text/markdown',
+        content: '# Titel\n\nInhalt',
+      })
+    })
+
+    it('returns plain text content for a text preview (#780)', async () => {
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: new Blob(['Reiner Text ohne Markup.'], { type: 'text/plain' }),
+        fileName: 'notiz.txt',
+      })
+
+      const result = await openDocumentContent('doc-1', 'fallback.txt')
+
+      expect(windowOpenSpy).not.toHaveBeenCalled()
+      expect(clickSpy).not.toHaveBeenCalled()
+      expect(result).toEqual({
+        kind: 'text-preview',
+        fileName: 'notiz.txt',
+        contentType: 'text/plain',
+        content: 'Reiner Text ohne Markup.',
+      })
     })
 
     it('revokes the object URL when triggering the download throws before the revoke is scheduled', async () => {

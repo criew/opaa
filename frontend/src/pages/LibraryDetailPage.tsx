@@ -18,6 +18,7 @@ import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
 import Pagination from '@mui/material/Pagination'
 import Select from '@mui/material/Select'
+import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
@@ -52,10 +53,11 @@ import {
   libraryVisibilityLabel,
   scheduleFrequencyLabel,
 } from '../utils/labels'
-import { openDocumentContent } from '../utils/documentContent'
+import { useDocumentPreview } from '../hooks/useDocumentPreview'
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
+import DocumentTextPreviewDialog from '../components/DocumentTextPreviewDialog'
 import PageHeading from '../components/a11y/PageHeading'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
@@ -451,10 +453,19 @@ function LibraryDocumentsSection({
   const [searchInput, setSearchInput] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
-  // #738: distinct from documentStore's error/uploadErrors/deleteError - opening the original is a
-  // read-only, per-click action that never touches the store, so its failure (404, file missing)
-  // gets its own local, dismissible message here.
-  const [openOriginalError, setOpenOriginalError] = useState<string | null>(null)
+  // #738/#780: distinct from documentStore's error/uploadErrors/deleteError - opening the original
+  // is a read-only, per-click action that never touches the store, so its failure (404, file
+  // missing), Markdown/Text preview and download feedback all get their own local, dismissible
+  // state here.
+  const {
+    error: openOriginalError,
+    clearError: clearOpenOriginalError,
+    previewDocument,
+    closePreview,
+    downloadMessage,
+    clearDownloadMessage,
+    openDocument,
+  } = useDocumentPreview()
 
   const isUploadLibrary = sourceType === 'UPLOAD'
   // ADR-0018/#443: a FILESYSTEM or HTTP_DIRECTORY document only ever leaves the index because its
@@ -535,14 +546,7 @@ function LibraryDocumentsSection({
   // own Docker network, never the caller's browser). sourceEntryUrl/sourceUrl stay visible as
   // secondary information below (see the "Herkunft"/"Quelle" captions further down).
   async function handleOpenOriginal(document: LibraryDocumentResponse) {
-    setOpenOriginalError(null)
-    try {
-      await openDocumentContent(document.id, document.fileName)
-    } catch (err) {
-      setOpenOriginalError(
-        err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.',
-      )
-    }
+    await openDocument(document.id, document.fileName)
   }
 
   function handleSearchChange(value: string) {
@@ -655,7 +659,7 @@ function LibraryDocumentsSection({
         </Alert>
       )}
       {openOriginalError && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setOpenOriginalError(null)}>
+        <Alert severity="error" sx={{ mb: 2 }} onClose={clearOpenOriginalError}>
           {openOriginalError}
         </Alert>
       )}
@@ -796,6 +800,15 @@ function LibraryDocumentsSection({
           />
         </Stack>
       )}
+
+      <DocumentTextPreviewDialog document={previewDocument} onClose={closePreview} />
+      <Snackbar
+        open={downloadMessage != null}
+        autoHideDuration={6000}
+        onClose={clearDownloadMessage}
+        message={downloadMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Box>
   )
 }

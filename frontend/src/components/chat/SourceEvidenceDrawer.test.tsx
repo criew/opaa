@@ -5,12 +5,15 @@ import { renderWithProviders } from '../../test/test-utils'
 import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../../types/chat'
 import type { SourceReference } from '../../types/api'
+import type { OpenDocumentContentResult } from '../../utils/documentContent'
 
-// #739: the "Im Dokument öffnen" action delegates to this shared module (see its own tests for
+// #739/#780: the "Im Dokument öffnen" action delegates to this shared module (see its own tests for
 // the Blob-fetch/preview-vs-download behaviour, and LibraryDetailPage.test.tsx for #738's original
 // wiring of this mock pattern).
 const { mockOpenDocumentContent } = vi.hoisted(() => ({
-  mockOpenDocumentContent: vi.fn(async () => undefined),
+  mockOpenDocumentContent: vi.fn<() => Promise<OpenDocumentContentResult>>(async () => ({
+    kind: 'blob-preview',
+  })),
 }))
 vi.mock('../../utils/documentContent', () => ({
   openDocumentContent: mockOpenDocumentContent,
@@ -234,6 +237,46 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
       expect(
         await within(drawer).findByText('Das Originaldokument wurde nicht gefunden.'),
       ).toBeInTheDocument()
+    })
+
+    // #780: Markdown/plain text render in a client-side dialog instead of a silent download.
+    it('opens a Markdown text preview dialog instead of a silent download (#780)', async () => {
+      mockOpenDocumentContent.mockResolvedValueOnce({
+        kind: 'text-preview',
+        fileName: '001_personalausweis.md',
+        contentType: 'text/markdown',
+        content: '# Personalausweis\n\nAusgestellt am 1. März.',
+      })
+      const { user, drawer } = await openDrawerWith(
+        source('001_personalausweis.md', true, 0.9, 'Engineering', true, {
+          documentId: 'doc-1',
+          sourceType: 'UPLOAD',
+        }),
+      )
+
+      await user.click(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' }))
+
+      // The preview dialog portals to document.body, outside the Belegfenster drawer, so it is
+      // queried at the document level rather than scoped to `drawer`.
+      expect(await screen.findByText('Personalausweis')).toBeInTheDocument()
+      expect(screen.getByText('Personalausweis').closest('h5')).toBeInTheDocument()
+      expect(screen.getByText(/Ausgestellt am 1\. März\./)).toBeInTheDocument()
+    })
+
+    // #780 acceptance criteria: every format without a preview (DOCX among them) must give visible
+    // download feedback so the click never appears to do nothing.
+    it('shows a snackbar with the file name when a DOCX download starts (#780)', async () => {
+      mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'bescheid.docx' })
+      const { user, drawer } = await openDrawerWith(
+        source('bescheid.docx', true, 0.9, 'Engineering', true, {
+          documentId: 'doc-1',
+          sourceType: 'UPLOAD',
+        }),
+      )
+
+      await user.click(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' }))
+
+      expect(await screen.findByText('bescheid.docx wird heruntergeladen')).toBeInTheDocument()
     })
   })
 })
