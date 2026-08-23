@@ -95,7 +95,11 @@ export default function App() {
                 <Route path="admin/branding" element={<BrandingSettingsPage />} />
                 <Route path="admin/models" element={<LlmModelManagementPage />} />
               </Route>
-              <Route path="settings" element={<SettingsPage />} />
+              {/* Mockup 2c (#788): the user settings render in the bare global frame -
+                  no space column, no secondary column. */}
+              <Route element={<GlobalAreaLayout />}>
+                <Route path="settings" element={<SettingsPage />} />
+              </Route>
               <Route path="*" element={<Navigate to="/chat" replace />} />
             </Route>
           </Routes>
