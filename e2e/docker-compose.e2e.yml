@@ -94,6 +94,15 @@ services:
     environment:
       PORT: "8089"
       EMBEDDING_DIMENSIONS: *embedding-dimensions
+    # test(e2e) #760, PR review finding 2: GET /last-chat-model (ai-stub/server.mjs) has to be
+    # reachable from the Playwright/Node test process directly, not just from the backend
+    # container over the Compose network - that is the only way a scenario can assert *which*
+    # managed chat model actually answered. Every other service in this stack that Playwright
+    # itself talks to directly (postgres, backend, frontend) already publishes a host port the
+    # same way (see run-e2e.mjs); this mirrors that, on its own 127.0.0.1-only port so it never
+    # collides with a developer's own stack.
+    ports:
+      - "127.0.0.1:${OPAA_AI_STUB_PORT:-18089}:8089"
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8089/health"]
       interval: 2s
