@@ -117,6 +117,29 @@ describe('createAppTheme', () => {
     expect(ring.outlineOffset).toBe('2px')
   })
 
+  test('the deDE MUI locale replaces English component defaults (#784)', () => {
+    const theme = createAppTheme('light')
+    const autocompleteDefaults = theme.components?.MuiAutocomplete?.defaultProps as Record<
+      string,
+      string
+    >
+
+    // Without the locale, MUI falls back to English ("No options", "Loading…", …); every
+    // Autocomplete in the app that doesn't set its own noOptionsText would show that default.
+    // The exact German wording isn't pinned here (it's MUI's, not ours, and could rephrase
+    // without a real defect) - the DOM-level tests are the actual guard for user-facing text.
+    expect(autocompleteDefaults.noOptionsText).toBeDefined()
+    expect(autocompleteDefaults.noOptionsText).not.toBe('No options')
+    expect(autocompleteDefaults.loadingText).toBeDefined()
+    expect(autocompleteDefaults.loadingText).not.toBe('Loading…')
+    expect(autocompleteDefaults.clearText).toBeDefined()
+    expect(autocompleteDefaults.clearText).not.toBe('Clear')
+    expect(autocompleteDefaults.openText).toBeDefined()
+    expect(autocompleteDefaults.openText).not.toBe('Open')
+    expect(autocompleteDefaults.closeText).toBeDefined()
+    expect(autocompleteDefaults.closeText).not.toBe('Close')
+  })
+
   test('reduced motion also disables smooth scrolling', () => {
     const theme = createAppTheme('dark')
     const baseline = theme.components?.MuiCssBaseline?.styleOverrides as Record<string, unknown>

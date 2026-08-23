@@ -160,7 +160,9 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     // outlives every other grant, so the list is never actually empty here - only "Dev User"'s row
     // is gone.
     await expect(adminPage.getByText('Dev User')).toHaveCount(0)
-    await adminPage.getByRole('button', { name: 'Schließen' }).click()
+    // Scoped to the dialog: the deDE MUI locale also names an error Alert's own close button
+    // "Schließen" (#784), so an unscoped lookup could resolve to two elements on the error path.
+    await adminPage.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click()
 
     await uploadOwnDocument(bPage, OWN_LIBRARY_NAME_REGULAR)
 
@@ -215,7 +217,9 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await adminPage.getByRole('option', { name: GROUP_NAME }).click()
     await adminPage.getByRole('button', { name: 'Freigeben' }).last().click()
     await expect(adminPage.getByText(GROUP_NAME)).toBeVisible()
-    await adminPage.getByRole('button', { name: 'Schließen' }).click()
+    // Scoped to the dialog: the deDE MUI locale also names an error Alert's own close button
+    // "Schließen" (#784), so an unscoped lookup could resolve to two elements on the error path.
+    await adminPage.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click()
 
     await gotoLibraries(cPage)
     await expect(cPage.getByText(LIBRARY_NAME, { exact: true })).toBeVisible()

@@ -376,8 +376,11 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     // ambiguous.
     const pagination = page.getByRole('navigation', { name: 'Dokumentenliste blättern' })
     await expect(pagination).toBeVisible()
-    const page1Item = pagination.getByRole('button', { name: 'page 1' })
-    const page2Item = pagination.getByRole('button', { name: 'page 2' })
+    // #784: the deDE MUI locale drops the "Gehe zu " prefix for the currently selected page
+    // (MuiPagination.getItemAriaLabel), so the still-active page 1 is just "Seite 1" while the
+    // not-yet-selected page 2 is "Gehe zu Seite 2".
+    const page1Item = pagination.getByRole('button', { name: 'Seite 1' })
+    const page2Item = pagination.getByRole('button', { name: 'Gehe zu Seite 2' })
     await expect(page1Item).toBeVisible()
     await expect(page2Item).toBeVisible()
 

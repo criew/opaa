@@ -71,6 +71,7 @@ vi.mock('../services/api', async () => {
     getUsers: vi.fn(async () => []),
     getUserSummaries: vi.fn(async () => []),
     getSpaces: vi.fn(async () => []),
+    getLibraries: vi.fn(async () => []),
     getSpace: vi.fn(
       async (spaceId: string) => useSpaceStore.getState().selectedSpace ?? { id: spaceId },
     ),
@@ -351,5 +352,19 @@ describe('SpaceManagementPage', () => {
 
     expect(await screen.findByText('Bibliothek ohne eigenen Zugriff')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^lösen$/i })).toBeInTheDocument()
+  })
+
+  // #784: without an explicit noOptionsText, MUI's Autocomplete falls back to the English
+  // default "No options" - the project language requires German for every visible UI text.
+  it('shows a German text when the library autocomplete has no options to offer', async () => {
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const field = await screen.findByPlaceholderText('Bibliothek suchen …')
+    await user.click(field)
+
+    expect(await screen.findByText('Keine Treffer')).toBeInTheDocument()
+    expect(screen.queryByText('No options')).not.toBeInTheDocument()
   })
 })
