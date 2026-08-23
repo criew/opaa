@@ -261,6 +261,13 @@ Die Wissensbibliothek ist ein [KI-Asset](#ki-asset) und kein Ordner in einem Rau
 eine Beschränkung an den **Daten** hängt und nicht am Arbeitsraum: Eine Bibliothek führt ihre Vorgabe „nur
 lokale Modelle" selbst mit sich, und ein Wechsel des Space umgeht sie nicht.
 
+**Ordner innerhalb einer Bibliothek** strukturieren ihren Bestand — anlegen, umbenennen, löschen, wie in
+einer Dateiablage. Das ist nicht dasselbe wie die Aussage oben: „kein Ordner in einem Raum" betrifft das
+Verhältnis Bibliothek ↔ Space, nicht die Struktur *innerhalb* einer Bibliothek. Ein Ordner ist reine
+Navigation und **keine Rechtegrenze** — der Rechteanker bleibt ausnahmslos die Bibliothek selbst, jeder
+Chunk trägt weiterhin nur ihre Kennung als Filterachse, nicht zusätzlich eine Ordner-Kennung. Näheres in
+[ADR-0020](decisions/0020-ordner-in-bibliotheken-navigation.md).
+
 **Persönliche Ablage:**
 - Jede Person hat einen Standard-Space; eine eigene Wissensbibliothek legt sie bei Bedarf selbst
   an — es gibt keine automatisch angelegte, nicht löschbare Vorgabebibliothek mehr

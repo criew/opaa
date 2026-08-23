@@ -651,6 +651,53 @@ anhält.
 
 ---
 
+## Ordner in Bibliotheken
+
+**Zielbild, noch nicht gebaut.** Konzept und Datenmodell sind entschieden — siehe
+[ADR-0020](../decisions/0020-ordner-in-bibliotheken-navigation.md): eine eigene Tabelle
+`library_folders` (statt virtueller Pfad-Präfixe), Ordner sind reine Navigation innerhalb einer
+Bibliothek und **keine eigene Rechtegrenze** — Grants bleiben ausschließlich auf Bibliotheksebene
+(`asset_grants.library_id`). Details zur Rechte-Abgrenzung stehen in
+[Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md).
+
+### Ordner in UPLOAD-Bibliotheken
+
+- **Anlegen, auch leer.** Eine Bibliothek lässt sich vorab strukturieren — Ordner wie „Protokolle" oder
+  „Archiv/2025" entstehen, bevor überhaupt ein Dokument darin liegt. Der typische Ablauf ist erst
+  Struktur, dann Inhalt.
+- **Umbenennen.** Ändert nur `library_folders.name`; Dokumente im Ordner und seinen Unterordnern sind
+  davon unberührt, ihr Anzeigepfad wird aus der aktuellen Ordnerkette abgeleitet.
+- **Löschen mit Bestätigungsdialog samt Dokumentanzahl.** Enthält der Ordner (oder ein Unterordner)
+  Dokumente, zeigt die Oberfläche vor dem Löschen deren Anzahl an und verlangt eine ausdrückliche
+  Bestätigung. Bestätigt, löscht der Vorgang die enthaltenen Dokumente inklusive ihrer Chunks und der
+  abgelegten Datei — durch denselben Service, der auch die Einzellöschung eines Dokuments durchführt,
+  nicht durch eine Datenbank-Kaskade (ADR-0020, Entscheidung 5).
+- **Upload in den geöffneten Ordner.** Die Bibliotheksdetailseite lädt Dateien standardmäßig in den
+  Ordner, der gerade in der Navigation geöffnet ist; auf der Wurzelebene entsprechend dorthin.
+- **Ordner-Upload per Drag & Drop mit Strukturübernahme.** Wird ein ganzer Ordner aus dem
+  Dateisystem in die Bibliothek gezogen, übernimmt OPAA seine Unterstruktur: Zwischenordner werden bei
+  Bedarf angelegt (idempotent — ein bereits vorhandener gleichnamiger Ordner auf derselben Ebene wird
+  wiederverwendet, nicht dupliziert), und jede Datei landet im ihr entsprechenden Ordner.
+- **Bibliotheksweite Suche mit Ordnerpfad-Anzeige.** Die Suche innerhalb einer Bibliothek durchsucht
+  weiterhin den gesamten Bestand unabhängig von der Ordnerstruktur (siehe ADR-0020, Entscheidung 4 —
+  kein Ordner-Filter im Retrieval); ein Treffer zeigt zusätzlich den Ordnerpfad seines Dokuments an, damit
+  erkennbar bleibt, wo es in der Struktur liegt.
+
+### Ordner in FILESYSTEM-Bibliotheken
+
+Eine `FILESYSTEM`-Bibliothek bildet die tatsächliche Verzeichnisstruktur der Quelle als **read-only
+Ordner** ab — angelegt und nachgeführt bei jedem Indizierungslauf, nicht manuell editierbar. **Die
+Quelle ist führend:** Verzeichnisse, die im Dateisystem verschwinden, verschwinden auch aus der
+Ordneransicht der Bibliothek — sobald die für diesen Quellentyp entschiedene, aber noch nicht gebaute
+Löschung durch Abwesenheit umgesetzt ist ([ADR-0017](../decisions/0017-quellentypmodell-indizierung.md),
+Entscheidung 5, siehe auch [Selbst aktualisierende
+Wissensblöcke](#selbst-aktualisierende-wissensblöcke)); ein neu angelegtes Unterverzeichnis erscheint
+mit dem nächsten Lauf als neuer Ordner. Das behebt nebenbei, dass gleichnamige Dateien aus
+verschiedenen Unterverzeichnissen heute in einer flachen Liste ununterscheidbar sind — jede Datei
+bekommt über ihren Ordner einen eindeutigen Platz.
+
+---
+
 ## Zeitpläne, Vorrang und Betrieb
 
 ### Auslöser
