@@ -55,11 +55,15 @@ jobs:
         run: |
           # --delete räumt entfernte Dateien der Landing Page mit weg, lässt
           # aber alles außerhalb von page/ unangetastet: report/ gehört dem
-          # Tagesreport, .git dem Branch selbst.
+          # Tagesreport, .git dem Branch selbst. Videodateien (*.mp4) werden
+          # wegen ihrer Größe nicht im Quell-Repository geführt, sondern direkt
+          # auf gh-pages gepusht (#807) — der Ausschluss bewahrt sie vor dem
+          # --delete dieses Laufs.
           rsync -a --delete \
             --exclude '.git/' \
             --exclude 'report/' \
             --exclude '.nojekyll' \
+            --exclude '*.mp4' \
             source/page/ site/
           # Ohne diese Datei schickt Pages die Seite durch Jekyll und
           # unterschlägt dabei Verzeichnisse mit führendem Unterstrich.
