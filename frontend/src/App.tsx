@@ -74,9 +74,13 @@ export default function App() {
               <Route path="spaces/:spaceId" element={<SpacePage />} />
               <Route path="spaces/:spaceId/manage" element={<SpaceManagementPage />} />
               <Route path="spaces" element={<SpacesOverviewPage />} />
-              <Route path="libraries" element={<LibraryManagementPage />} />
-              <Route path="libraries/new" element={<LibraryCreatePage />} />
-              <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
+              {/* The library catalog is a global area too (#789, Schlussnotiz von
+                  Mockup-Abschnitt 2): bare global frame, no secondary column. */}
+              <Route element={<GlobalAreaLayout />}>
+                <Route path="libraries" element={<LibraryManagementPage />} />
+                <Route path="libraries/new" element={<LibraryCreatePage />} />
+                <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
+              </Route>
               {/* Global areas render inside the frame from mockup 2b (#787): no space
                   column, a light secondary column with the area navigation instead. */}
               <Route
