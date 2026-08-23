@@ -21,7 +21,12 @@ import PageHeading from '../components/a11y/PageHeading'
 import { blue } from '../theme/tokens'
 import FieldLabel from '../components/wizard/FieldLabel'
 import WizardStepBar from '../components/wizard/WizardStepBar'
-import { getMyGroups, getUsers, testLibrarySource, upsertLibraryGrant } from '../services/api'
+import {
+  getMyGroups,
+  getUserSummaries,
+  testLibrarySource,
+  upsertLibraryGrant,
+} from '../services/api'
 import { useLibraryStore } from '../stores/libraryStore'
 import {
   allDocumentSourceTypes,
@@ -46,7 +51,7 @@ import type {
   LibraryVisibility,
   PermissionSubjectType,
   SourceConnectionTestResponse,
-  UserInfo,
+  UserSummary,
 } from '../types/api'
 
 const STEPS = ['Stammdaten', 'Herkunft', 'Rechte'] as const
@@ -96,9 +101,9 @@ export default function LibraryCreatePage() {
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
   const [grantSubjectType, setGrantSubjectType] = useState<PermissionSubjectType>('USER')
   const [grantRole, setGrantRole] = useState<AssetRole>('VIEWER')
-  const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
   const [selectedGrantGroup, setSelectedGrantGroup] = useState<GroupListResponse | null>(null)
-  const [users, setUsers] = useState<UserInfo[]>([])
+  const [users, setUsers] = useState<UserSummary[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -115,9 +120,9 @@ export default function LibraryCreatePage() {
         setGroupsLoaded(true)
         setGroupsError(err instanceof Error ? err.message : 'Gruppen konnten nicht geladen werden')
       })
-    // Admin-only user directory - a regular user simply gets an empty picker (same fallback as
-    // the space wizard and LibraryGrantsDialog).
-    void getUsers()
+    // #777: any authenticated user can reach this endpoint, unlike the admin-only user list -
+    // see getUserSummaries's Javadoc counterpart, UserSearchController.
+    void getUserSummaries()
       .then((result) => {
         if (!cancelled) setUsers(result)
       })

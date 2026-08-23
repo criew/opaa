@@ -30,9 +30,9 @@ import type {
   AssetRole,
   GroupListResponse,
   PermissionSubjectType,
-  UserInfo,
+  UserSummary,
 } from '../types/api'
-import { getGroups, getMyGroups, getUsers } from '../services/api'
+import { getGroups, getMyGroups, getUserSummaries } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useGrantStore } from '../stores/grantStore'
 import { assetRoleDescription, assetRoleLabel, permissionSubjectTypeLabel } from '../utils/labels'
@@ -100,17 +100,16 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
 
   const [groups, setGroups] = useState<GroupListResponse[]>([])
   const [groupsError, setGroupsError] = useState<string | null>(null)
-  const [users, setUsers] = useState<UserInfo[]>([])
-  // GET /v1/admin/users is SYSTEM_ADMIN-only, so it is only ever attempted as a convenience for an
-  // admin picking a person - never as the source of the names shown on existing grants (see
+  const [users, setUsers] = useState<UserSummary[]>([])
+  // #777: GET /v1/users is reachable for any authenticated organization member (unlike GET
+  // /v1/admin/users, which never fed this picker's names either - see
   // subjectDisplayName/grantedByDisplayName above, which read the backend-resolved fields
-  // instead). A MANAGER without a system role goes straight to the free-text id field below; #445
-  // tracks a proper permission-independent user search to replace it.
-  const usersUnavailable = !isSystemAdmin || users.length === 0
+  // instead). The free-text id fallback below now only covers the load failing outright.
+  const usersUnavailable = users.length === 0
 
   const [showForm, setShowForm] = useState(false)
   const [subjectType, setSubjectType] = useState<PermissionSubjectType>('USER')
-  const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
   const [manualUserId, setManualUserId] = useState('')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
   // #423 code review, finding 3: GET /v1/me/groups only ever returns the caller's own memberships,
@@ -137,14 +136,9 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
         setGroups([])
         setGroupsError(err instanceof Error ? err.message : 'Gruppen konnten nicht geladen werden')
       })
-    // No else branch resetting `users` for a non-admin: usersUnavailable below already forces the
-    // free-text fallback via `!isSystemAdmin` alone, so a stale `users` array from an earlier
-    // admin session (if any) is never rendered regardless of its contents.
-    if (isSystemAdmin) {
-      void getUsers()
-        .then((result) => setUsers(result))
-        .catch(() => setUsers([]))
-    }
+    void getUserSummaries()
+      .then((result) => setUsers(result))
+      .catch(() => setUsers([]))
   }, [open, library.id, isSystemAdmin, loadGrants])
 
   function resetForm() {
@@ -375,9 +369,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                     size="small"
                   />
                   <Typography variant="caption" color="text.secondary">
-                    Eine Nutzerauswahl steht ohne Systemrolle nicht zur Verfügung; die Nutzer-ID
-                    muss bekannt sein. Nachgemeldet als Folge-Issue für eine
-                    berechtigungsunabhängige Nutzersuche.
+                    Die Nutzerauswahl konnte nicht geladen werden; die Nutzer-ID muss bekannt sein.
                   </Typography>
                 </Stack>
               ) : (

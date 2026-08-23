@@ -77,6 +77,19 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-neu')
   })
 
+  it('#777: offers the user picker on the Mitglieder step, powered by GET /v1/users', async () => {
+    // Before this fix, the picker called GET /v1/admin/users (SYSTEM_ADMIN-only via
+    // handlers.ts's own mock) - a regular caller got an empty picker, no matter the MSW fixture
+    // content. This asserts against the fixture served on /v1/users specifically.
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByLabelText('Benutzer'))
+    expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument()
+  })
+
   it('asks before cancelling once something was entered', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     const user = userEvent.setup()

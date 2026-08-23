@@ -9,7 +9,7 @@ import type {
   AssetGrantRequest,
   AssetGrantResponse,
   GroupListResponse,
-  UserInfo,
+  UserSummary,
 } from '../types/api'
 
 const {
@@ -18,7 +18,7 @@ const {
   mockRevokeLibraryGrant,
   mockGetGroups,
   mockGetMyGroups,
-  mockGetUsers,
+  mockGetUserSummaries,
 } = vi.hoisted(() => ({
   mockGetLibraryGrants: vi.fn(async (libraryId: string) => {
     return useGrantStore.getState().grantsByLibrary[libraryId] ?? []
@@ -27,7 +27,7 @@ const {
   mockRevokeLibraryGrant: vi.fn(async () => undefined),
   mockGetGroups: vi.fn(async () => [] as GroupListResponse[]),
   mockGetMyGroups: vi.fn(async () => [] as GroupListResponse[]),
-  mockGetUsers: vi.fn(async () => [] as UserInfo[]),
+  mockGetUserSummaries: vi.fn(async () => [] as UserSummary[]),
 }))
 
 vi.mock('../services/api', async () => {
@@ -39,7 +39,7 @@ vi.mock('../services/api', async () => {
     revokeLibraryGrant: mockRevokeLibraryGrant,
     getGroups: mockGetGroups,
     getMyGroups: mockGetMyGroups,
-    getUsers: mockGetUsers,
+    getUserSummaries: mockGetUserSummaries,
   }
 })
 
@@ -57,11 +57,10 @@ const group: GroupListResponse = {
   updatedAt: '2026-03-01T10:00:00Z',
 }
 
-const user: UserInfo = {
+const user: UserSummary = {
   id: 'user-alice',
   email: 'alice@opaa.local',
   displayName: 'Alice',
-  systemRole: 'USER',
 }
 
 function setGrants(libraryId: string, grants: AssetGrantResponse[]) {
@@ -111,7 +110,7 @@ describe('LibraryGrantsDialog', () => {
     vi.clearAllMocks()
     mockGetGroups.mockResolvedValue([group])
     mockGetMyGroups.mockResolvedValue([group])
-    mockGetUsers.mockResolvedValue([user])
+    mockGetUserSummaries.mockResolvedValue([user])
     useGrantStore.setState({ grantsByLibrary: {}, isLoading: false, error: null })
   })
 
@@ -369,21 +368,23 @@ describe('LibraryGrantsDialog', () => {
     expect(await screen.findByText('Kein Zugriff auf diese Bibliothek')).toBeInTheDocument()
   })
 
-  it('falls back to a free-text user id field when the user list is not available', async () => {
+  it('falls back to a free-text user id field when the user list fails to load', async () => {
+    // #777: GET /v1/users is reachable for every authenticated caller now, not just SYSTEM_ADMIN
+    // - the free-text fallback only remains for the load itself failing, not for the caller's role.
     setManager()
+    mockGetUserSummaries.mockRejectedValueOnce(new Error('Netzwerkfehler'))
     renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
 
     expect(await screen.findByLabelText(/nutzer-id/i)).toBeInTheDocument()
-    // #423 code review, finding 1: GET /v1/admin/users is never even attempted for a non-admin -
-    // the fallback is not "the request failed", it is "this caller could never succeed".
-    expect(mockGetUsers).not.toHaveBeenCalled()
+    expect(mockGetUserSummaries).toHaveBeenCalled()
   })
 
-  it('submits a manually entered, valid user id for a MANAGER without a system role', async () => {
+  it('submits a manually entered, valid user id when the user list is unavailable', async () => {
     setManager()
+    mockGetUserSummaries.mockRejectedValueOnce(new Error('Netzwerkfehler'))
     mockUpsertLibraryGrant.mockResolvedValueOnce({
       id: 'grant-manual',
       subjectType: 'USER',
@@ -419,6 +420,7 @@ describe('LibraryGrantsDialog', () => {
 
   it('rejects a manually entered user id that is not a valid UUID before calling the API', async () => {
     setManager()
+    mockGetUserSummaries.mockRejectedValueOnce(new Error('Netzwerkfehler'))
     renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
     const userEventInstance = userEvent.setup()
 
@@ -433,8 +435,7 @@ describe('LibraryGrantsDialog', () => {
 
   it('shows resolved subject and granter names for a MANAGER without a system role', async () => {
     // #423 code review, finding 1 (confirmed): the fix is that these names come from the grant
-    // response itself (subjectDisplayName/grantedByDisplayName), not from GET /v1/admin/users -
-    // this test proves the display path works with no admin lookup ever attempted.
+    // response itself (subjectDisplayName/grantedByDisplayName), never looked up client-side.
     setManager()
     setGrants(library.id, [
       {
@@ -468,7 +469,21 @@ describe('LibraryGrantsDialog', () => {
     expect(screen.getByText('Referat 50')).toBeInTheDocument()
     expect(screen.getAllByText(/erteilt von manager am/i)).toHaveLength(2)
     expect(screen.queryByText('user-alice')).not.toBeInTheDocument()
-    expect(mockGetUsers).not.toHaveBeenCalled()
+  })
+
+  it('#777: offers the searchable user picker for a MANAGER without a system role', async () => {
+    // Before this fix, the user picker was only ever attempted for SYSTEM_ADMIN callers (GET
+    // /v1/admin/users) - every other MANAGER went straight to the free-text UUID field, even
+    // though the user list loaded successfully via GET /v1/users.
+    setManager()
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+
+    expect(await screen.findByLabelText(/^person auswählen$/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/nutzer-id/i)).not.toBeInTheDocument()
+    expect(mockGetUserSummaries).toHaveBeenCalled()
   })
 
   it('offers a manual group id as an alternative to the member-only group list', async () => {

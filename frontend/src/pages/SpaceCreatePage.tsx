@@ -21,7 +21,7 @@ import ListItemText from '@mui/material/ListItemText'
 import PageHeading from '../components/a11y/PageHeading'
 import FieldLabel from '../components/wizard/FieldLabel'
 import WizardStepBar from '../components/wizard/WizardStepBar'
-import { getLibraries, getUsers } from '../services/api'
+import { getLibraries, getUserSummaries } from '../services/api'
 import { useSpaceStore } from '../stores/spaceStore'
 import {
   spaceRoleLabel,
@@ -29,14 +29,14 @@ import {
   spaceVisibilityDescription,
   spaceVisibilityLabel,
 } from '../utils/labels'
-import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserInfo } from '../types/api'
+import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserSummary } from '../types/api'
 
 const STEPS = ['Grunddaten', 'Mitglieder', 'Datenquellen', 'Zusammenfassung'] as const
 
 const MEMBER_ROLES: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
 interface PendingMember {
-  user: UserInfo
+  user: UserSummary
   role: SpaceRole
 }
 
@@ -54,9 +54,9 @@ export default function SpaceCreatePage() {
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<SpaceVisibility>('PRIVATE')
   const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([])
-  const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
   const [selectedRole, setSelectedRole] = useState<SpaceRole>('MEMBER')
-  const [allUsers, setAllUsers] = useState<UserInfo[]>([])
+  const [allUsers, setAllUsers] = useState<UserSummary[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // #686: only libraries the creator may themselves read are offered - GET /v1/libraries already
@@ -69,9 +69,9 @@ export default function SpaceCreatePage() {
   const [libraryLoadError, setLibraryLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Same source as the space management page: admin-only - a regular user simply gets an
-    // empty picker and skips the step.
-    void getUsers()
+    // #777: any authenticated user can reach this endpoint, unlike the admin-only user list -
+    // see getUserSummaries's Javadoc counterpart, UserSearchController.
+    void getUserSummaries()
       .then(setAllUsers)
       .catch(() => setAllUsers([]))
     void getLibraries()

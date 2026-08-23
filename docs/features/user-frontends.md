@@ -248,6 +248,7 @@ Zweck, nicht nach Pfad.
 |---|---|---|
 | Arbeitsräume anlegen, ändern, auflisten, löschen | `/api/v1/spaces` und `/api/v1/spaces/{id}` | ja |
 | Mitglieder eines Arbeitsraums führen, Rolle ändern, Eigentum übergeben — damit ein Arbeitsraum beim Ausscheiden einer Person nicht verwaist | `/api/v1/spaces/{id}/members`, `/api/v1/spaces/{id}/transfer-ownership` | ja |
+| Nutzende der eigenen Organisation für die Mitglieder-/Rechteauswahl suchen (id, Name, E-Mail — ohne Systemrolle); anders als `/api/v1/admin/users` für jede angemeldete Person erreichbar, nicht nur Systemadministration (#777) | `GET /api/v1/users` | ja |
 | Gruppen als Rechtesubjekt führen und ihre Mitglieder verwalten | `/api/v1/admin/groups` | ja |
 
 **Systemverwaltung**

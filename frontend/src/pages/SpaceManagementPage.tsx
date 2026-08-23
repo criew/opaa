@@ -11,8 +11,8 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useNavigate, useParams } from 'react-router'
-import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserInfo } from '../types/api'
-import { getLibraries, getUsers } from '../services/api'
+import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserSummary } from '../types/api'
+import { getLibraries, getUserSummaries } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import {
@@ -73,7 +73,7 @@ export default function SpaceManagementPage() {
     description: '',
     visibility: 'PRIVATE',
   })
-  const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
   const [newMemberRole, setNewMemberRole] = useState<SpaceRole>('MEMBER')
   const [localError, setLocalError] = useState<string | null>(null)
   // #543: deleteSpace's 409 - "Der Space enthält noch Chats ... Archivieren Sie den Space
@@ -81,7 +81,7 @@ export default function SpaceManagementPage() {
   // showing the message.
   const [deleteBlockedByChats, setDeleteBlockedByChats] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [allUsers, setAllUsers] = useState<UserInfo[]>([])
+  const [allUsers, setAllUsers] = useState<UserSummary[]>([])
   const [readableLibraries, setReadableLibraries] = useState<LibraryListResponse[]>([])
   const [selectedLibrary, setSelectedLibrary] = useState<LibraryListResponse | null>(null)
 
@@ -108,7 +108,7 @@ export default function SpaceManagementPage() {
   }, [loadLibraryAssociations, spaceId])
 
   useEffect(() => {
-    void getUsers()
+    void getUserSummaries()
       .then(setAllUsers)
       .catch(() => setAllUsers([]))
     // #203: a CURATOR may only associate a library they themselves can read - GET /v1/libraries
@@ -351,12 +351,17 @@ export default function SpaceManagementPage() {
 
         <Box>
           <SectionHead>Mitglieder</SectionHead>
-          {space.isDefault && space.memberCount === 1 ? (
-            <Alert severity="info">
+          {space.isDefault && space.memberCount === 1 && (
+            // #777: this hint used to replace the whole members section, including the
+            // "Mitglied hinzufügen"-Formular it explicitly promises - the default space is "ein
+            // Space wie jeder andere" (docs/features/spaces-and-assets.md), so members can be
+            // added here just like on any other space.
+            <Alert severity="info" sx={{ mb: 2 }}>
               Dies ist Ihr Standard-Space. Sie arbeiten hier allein — Sie können jederzeit
               Mitglieder hinzufügen.
             </Alert>
-          ) : isLoadingMembers ? (
+          )}
+          {isLoadingMembers ? (
             <Typography color="text.secondary">Mitgliederliste wird geladen …</Typography>
           ) : members.length === 0 && !canManage && !isOwner ? (
             // #674 review, nit c: a MEMBER or CURATOR reaching this page directly by URL gets a
@@ -394,7 +399,14 @@ export default function SpaceManagementPage() {
                       {memberIsOwner ? ' · Eigentümer' : ''}
                     </Typography>
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                      {canManage ? (
+                      {memberIsOwner ? (
+                        // #777: the owner's role can only change via "Zum Eigentümer machen" on
+                        // another member's row (transferOwnership) - an editable dropdown here
+                        // let an ADMIN pick a different role for the owner, which the backend
+                        // always rejected with "Die Rolle des Eigentümers kann nicht geändert
+                        // werden; übertragen Sie zuerst die Verantwortung".
+                        <MetaBadge>{spaceRoleLabel(member.role)}</MetaBadge>
+                      ) : canManage ? (
                         <Select
                           size="small"
                           value={member.role}

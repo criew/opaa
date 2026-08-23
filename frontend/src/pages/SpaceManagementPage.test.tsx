@@ -69,6 +69,7 @@ vi.mock('../services/api', async () => {
   return {
     ...actual,
     getUsers: vi.fn(async () => []),
+    getUserSummaries: vi.fn(async () => []),
     getSpaces: vi.fn(async () => []),
     getSpace: vi.fn(
       async (spaceId: string) => useSpaceStore.getState().selectedSpace ?? { id: spaceId },
@@ -171,6 +172,17 @@ describe('SpaceManagementPage', () => {
     expect(screen.getByText(/standard-space/i)).toBeInTheDocument()
   })
 
+  it('#777: keeps the add-member form visible next to the default-space hint instead of hiding it', async () => {
+    // The hint used to replace the whole members section, including "Mitglied hinzufügen" - the
+    // default space is "ein Space wie jeder andere", so adding members must still work here.
+    setSpaceState(personalSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+
+    expect(screen.getByText(/standard-space/i)).toBeInTheDocument()
+    expect(await screen.findByPlaceholderText('Benutzer suchen …')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /mitglied hinzufügen/i })).toBeInTheDocument()
+  })
+
   it('marks the owner and hides remove/transfer actions for their own row', async () => {
     // #144: the page's own selectSpace effect clears the store's members synchronously before
     // the mocked listSpaceMembers response repopulates it - findByText waits for that repopulation
@@ -183,6 +195,26 @@ describe('SpaceManagementPage', () => {
     expect(screen.getByText('Colleague')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /entfernen/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /zum eigentümer machen/i })).toBeInTheDocument()
+  })
+
+  it('#777: renders the owner role as a static badge instead of an editable dropdown', async () => {
+    // Before this fix, the owner's row rendered the same editable role Select as any other
+    // member - changing it always failed against the backend's "Die Rolle des Eigentümers kann
+    // nicht geändert werden" rejection.
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+
+    const ownerName = await screen.findByText(/Owner · Eigentümer/)
+    const ownerRow = ownerName.closest('div')
+    expect(ownerRow).not.toBeNull()
+    expect(within(ownerRow as HTMLElement).queryByRole('combobox')).not.toBeInTheDocument()
+    expect(within(ownerRow as HTMLElement).getByText('Administrator')).toBeInTheDocument()
+
+    // The (non-owner) colleague's row keeps its editable role Select.
+    const colleagueName = screen.getByText('Colleague')
+    const colleagueRow = colleagueName.closest('div')
+    expect(colleagueRow).not.toBeNull()
+    expect(within(colleagueRow as HTMLElement).getByRole('combobox')).toBeInTheDocument()
   })
 
   it('explains the empty member list instead of showing nothing for a non-admin, non-owner viewer', async () => {

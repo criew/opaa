@@ -45,6 +45,8 @@ export type QueryResponse = Omit<GeneratedQueryResponse, 'sources'> & {
 
 export type UserInfoResponse = components['schemas']['UserInfoResponse']
 export type UserInfo = UserInfoResponse
+export type UserSummaryResponse = components['schemas']['UserSummaryResponse']
+export type UserSummary = UserSummaryResponse
 export type RoleChangeRequest = components['schemas']['RoleChangeRequest']
 export type SystemRole = components['schemas']['SystemRole']
 
