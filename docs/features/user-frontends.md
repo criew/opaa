@@ -51,7 +51,7 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 |---|---|---|
 | **Fragen und Antworten** | Frage stellen, Antwort mit Fundstellen erhalten, Relevanz und Trefferzahl je Quelle sehen, erkennen, welche Quelle tatsächlich zitiert wurde | ja |
 | **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | ja — Gespräche liegen persistent in genau einem Arbeitsraum und überleben ein Neuladen der Seite (#525/#527) |
-| **Suchfilter** | den Suchbereich einer Anfrage ausschließlich über die Chip-Leiste am Eingabefeld steuern (Spezial-Chip @Alles-Wissen, konkrete @-Bibliotheksreferenzen, oder eine geleerte Leiste), nicht mehr über eine Space-Auswahl oder einen separaten Schalter | ja — die Space-Auswahl ist entfernt; Chip-Leiste, @-Autocomplete und sticky Chips sind gebaut und werden am persistierten Gespräch gespeichert (siehe unten). Die Space↔Bibliothek-Assoziation (#203) ist weiterhin Zielbild |
+| **Suchfilter** | den Suchbereich einer Anfrage ausschließlich über die Chip-Leiste am Eingabefeld steuern (Spezial-Chip @Alles-Wissen, konkrete @-Bibliotheksreferenzen, oder eine geleerte Leiste), nicht mehr über eine Space-Auswahl oder einen separaten Schalter | ja — die Space-Auswahl ist entfernt; Chip-Leiste, @-Autocomplete und sticky Chips sind gebaut und werden am persistierten Gespräch gespeichert (siehe unten). Die Space↔Bibliothek-Assoziation (#203/#706) ist umgesetzt; die Fußzeile unter dem Eingabefeld zeigt bei @Alles-Wissen in einem kuratierten Space die Schnittmenge aus zugeordneten und lesbaren Bibliotheken, nicht mehr alle lesbaren (#782) |
 | **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen, Eigentumsübergabe und die Gesprächsliste je Arbeitsraum (anlegen, umbenennen, löschen) sind vorhanden |
 | **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | ja — Bibliotheksdetailseite mit Bestandsdarstellung, Upload/Löschen für Upload-Bibliotheken und Indizierungsstand für Konnektor-Bibliotheken |
 | **Assets** | Agenten, Prompt-Bibliotheken und Wissensbibliotheken anlegen, beschreiben, freigeben, finden | nein — Zielbild |
@@ -121,8 +121,11 @@ anfragebezogene Steuerung (siehe [Suchbereich je Chatart](./spaces-and-assets.md
 die **Chip-Leiste** am Eingabefeld, die einzige Suchbereichssteuerung — kein separater Schalter daneben.
 „Durchsucht wird, was in der Leiste steht" — die Leiste kennt drei Zustände:
 
-- **@Alles-Wissen** (Standard, vorbelegter Spezial-Chip) — durchsucht heute alle Wissensbibliotheken,
-  die der Nutzer lesen darf (Übergangsregel bis #203; im Zielbild die dem Arbeitsraum assoziierten),
+- **@Alles-Wissen** (Standard, vorbelegter Spezial-Chip) — durchsucht die dem Arbeitsraum
+  zugeordneten Wissensbibliotheken, eingeschränkt auf die, die der Nutzer selbst lesen darf
+  (#203/#706); hat der Arbeitsraum keine Zuordnungen, bleibt es bei allen lesbaren Bibliotheken
+  (Übergangsregel, siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)).
+  Die Fußzeile unter dem Eingabefeld nennt die tatsächliche Trefferzahl dieser Schnittmenge (#782),
 - **konkrete Bibliotheks-Chips** — durchsucht ausschließlich die referenzierten. Tippen von `@` im
   Eingabefeld schlägt alle Bibliotheken vor, die der Nutzer lesen darf, unabhängig vom Arbeitsraum,
   dazu als erster Eintrag (bei leerer Eingabe) @Alles-Wissen selbst, per Tastatur oder Maus auswählbar. Der erste
@@ -228,7 +231,7 @@ Zweck, nicht nach Pfad.
 
 | Zweck | Endpunkt | Heute gebaut |
 |---|---|---|
-| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über die Chip-Leiste des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage | `POST /api/v1/query` | ja — Frage, Antwort, Fundstellen und die Chip-Leiste (@Alles-Wissen, @-Referenzen, leere Leiste) sind gebaut; die Space↔Bibliothek-Assoziation (#203) bleibt Zielbild |
+| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über die Chip-Leiste des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage | `POST /api/v1/query` | ja — Frage, Antwort, Fundstellen und die Chip-Leiste (@Alles-Wissen, @-Referenzen, leere Leiste) sind gebaut; die Space↔Bibliothek-Assoziation (#203/#706) ist umgesetzt |
 | Antwort auf eine Antwort geben (Bewertung, Fehltreffer melden) | — | nein — Zielbild, siehe [Rückmeldung](#rückmeldung-zur-antwortqualität) |
 
 **Wissensbestände verwalten**

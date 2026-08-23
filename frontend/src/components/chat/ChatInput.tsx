@@ -17,6 +17,7 @@ import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
+import { useSpaceStore } from '../../stores/spaceStore'
 import type { LibraryListResponse } from '../../types/api'
 
 interface ChatInputProps {
@@ -88,6 +89,22 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     }
   }, [libraries.length, loadLibraries])
 
+  // #782: @Alles-Wissen's scope line must mirror ChatService#effectiveLibraryScope, not just
+  // "every readable library" - a space curated via space<->library associations (#706) narrows
+  // the actual search to associated ∩ readable, and the line has to say so, not the wider number
+  // the user never gets to search. Loaded per current chat's space, independently of whichever
+  // space SpaceManagementPage/SpacePage last selected (routes never overlap - see #782 PR).
+  const chatSpaceId = useChatStore((s) => s.spaceId)
+  const hasLibraryAssociations = useSpaceStore((s) => s.hasLibraryAssociations)
+  const libraryAssociations = useSpaceStore((s) => s.libraryAssociations)
+  const loadLibraryAssociations = useSpaceStore((s) => s.loadLibraryAssociations)
+
+  useEffect(() => {
+    if (chatSpaceId) {
+      void loadLibraryAssociations(chatSpaceId)
+    }
+  }, [chatSpaceId, loadLibraryAssociations])
+
   useEffect(() => {
     if (wasDisabled.current && !disabled) {
       inputRef.current?.focus()
@@ -111,19 +128,33 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     })
   }, [libraries, librariesLoading, referencedLibraryIds, scope])
 
-  // Mockup 1a's quiet scope line (#591): says what the next question will search. The counts
-  // stay honest to today's model - @Alles-Wissen means every readable library, not yet the
-  // space's Datenquellen (#203).
+  // Mockup 1a's quiet scope line (#591), narrowed for #782: says what the next question will
+  // actually search - ChatService#effectiveLibraryScope's own rule (docs/features/spaces-and-
+  // assets.md#suchbereich-je-chatart). A space *with* library associations narrows @Alles-Wissen
+  // to associated ∩ readable, so the line counts that intersection (readableByCaller on each
+  // association) and names it "zugeordnet" rather than "lesbar" - the two words are not
+  // interchangeable once a space curates. A space *without* any association still falls back to
+  // every readable library, unchanged from before #782.
   const scopeSummary = useMemo(() => {
     if (scope === 'none') return 'nichts — antwortet ohne Wissensbasis'
     if (scope === 'libraries') {
       const count = referencedLibraryIds.length
       return count === 1 ? '1 gewählter Bestand' : `${count} gewählte Bestände`
     }
+    if (hasLibraryAssociations) {
+      const count = libraryAssociations.filter((a) => a.readableByCaller).length
+      return count === 1 ? '1 zugeordneter Bestand' : `${count} zugeordnete Bestände`
+    }
     if (libraries.length === 1) return '1 lesbarer Bestand'
     if (libraries.length > 1) return `${libraries.length} lesbare Bestände`
     return 'alle lesbaren Bestände'
-  }, [libraries.length, referencedLibraryIds.length, scope])
+  }, [
+    hasLibraryAssociations,
+    libraries.length,
+    libraryAssociations,
+    referencedLibraryIds.length,
+    scope,
+  ])
 
   const suggestions = useMemo((): MentionSuggestion[] => {
     if (mention === null) return []

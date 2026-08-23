@@ -4,6 +4,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import ChatInput from './ChatInput'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
+import { useSpaceStore } from '../../stores/spaceStore'
 import type { LibraryListResponse } from '../../types/api'
 
 const rechtsquellen: LibraryListResponse = {
@@ -36,12 +37,112 @@ const dienstanweisungen: LibraryListResponse = {
 
 describe('ChatInput', () => {
   beforeEach(() => {
-    useChatStore.setState({ scope: 'all', referencedLibraryIds: [] })
+    useChatStore.setState({ scope: 'all', referencedLibraryIds: [], spaceId: null })
     useLibraryStore.setState({
       libraries: [rechtsquellen, dienstanweisungen],
       libraryDetails: {},
       isLoading: false,
       error: null,
+    })
+    useSpaceStore.setState({
+      libraryAssociations: [],
+      hasLibraryAssociations: false,
+      isLoadingLibraryAssociations: false,
+    })
+  })
+
+  // #782: a space curated via space<->library associations (#706) must narrow the @Alles-Wissen
+  // scope line to the intersection of associated and readable libraries, not show every readable
+  // library the user happens to have - the backend (ChatService#effectiveLibraryScope) already
+  // narrows the actual search, so a wider count here is a pure display lie about what gets
+  // searched.
+  describe('scope line for a space with library associations (#782)', () => {
+    it('counts only the associated-and-readable intersection, not every readable library', async () => {
+      const loadLibraryAssociations = vi
+        .spyOn(useSpaceStore.getState(), 'loadLibraryAssociations')
+        .mockImplementation(async () => {
+          useSpaceStore.setState({
+            hasLibraryAssociations: true,
+            libraryAssociations: [
+              {
+                libraryId: rechtsquellen.id,
+                libraryName: rechtsquellen.name,
+                readableByCaller: true,
+                createdByUserId: 'user-1',
+                createdAt: '2026-03-01T10:00:00Z',
+              },
+            ],
+            isLoadingLibraryAssociations: false,
+          })
+        })
+      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
+
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(loadLibraryAssociations).toHaveBeenCalledWith('space-gewerbeamt')
+      expect(await screen.findByText(/1 zugeordneter Bestand/)).toBeInTheDocument()
+      // The old, wrong wording named all six readable libraries here - it must be gone.
+      expect(screen.queryByText(/2 lesbare Bestände/)).not.toBeInTheDocument()
+    })
+
+    it('shows the plural form for more than one associated-and-readable library', async () => {
+      vi.spyOn(useSpaceStore.getState(), 'loadLibraryAssociations').mockImplementation(async () => {
+        useSpaceStore.setState({
+          hasLibraryAssociations: true,
+          libraryAssociations: [
+            {
+              libraryId: rechtsquellen.id,
+              libraryName: rechtsquellen.name,
+              readableByCaller: true,
+              createdByUserId: 'user-1',
+              createdAt: '2026-03-01T10:00:00Z',
+            },
+            {
+              libraryId: dienstanweisungen.id,
+              libraryName: dienstanweisungen.name,
+              readableByCaller: true,
+              createdByUserId: 'user-1',
+              createdAt: '2026-03-01T10:00:00Z',
+            },
+          ],
+          isLoadingLibraryAssociations: false,
+        })
+      })
+      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
+
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(await screen.findByText(/2 zugeordnete Bestände/)).toBeInTheDocument()
+    })
+
+    it('narrows to zero when none of the associated libraries are readable by the caller', async () => {
+      vi.spyOn(useSpaceStore.getState(), 'loadLibraryAssociations').mockImplementation(async () => {
+        useSpaceStore.setState({
+          hasLibraryAssociations: true,
+          libraryAssociations: [],
+          isLoadingLibraryAssociations: false,
+        })
+      })
+      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
+
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(await screen.findByText(/0 zugeordnete Bestände/)).toBeInTheDocument()
+    })
+
+    it('keeps the previous "all readable" wording for a space without any association', async () => {
+      vi.spyOn(useSpaceStore.getState(), 'loadLibraryAssociations').mockImplementation(async () => {
+        useSpaceStore.setState({
+          hasLibraryAssociations: false,
+          libraryAssociations: [],
+          isLoadingLibraryAssociations: false,
+        })
+      })
+      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
+
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(await screen.findByText(/2 lesbare Bestände/)).toBeInTheDocument()
     })
   })
 
