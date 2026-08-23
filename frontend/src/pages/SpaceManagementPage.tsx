@@ -650,6 +650,7 @@ export default function SpaceManagementPage() {
               <Autocomplete
                 options={associableLibraries}
                 getOptionLabel={(option) => option.name}
+                noOptionsText="Keine zuordenbaren Bibliotheken"
                 value={selectedLibrary}
                 onChange={(_event, value) => setSelectedLibrary(value)}
                 renderInput={(params) => (

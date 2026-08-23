@@ -431,6 +431,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                   <Autocomplete
                     options={groups}
                     getOptionLabel={(option) => option.name}
+                    noOptionsText="Keine Gruppen verfügbar"
                     value={selectedGroup}
                     onChange={(_event, value) => setSelectedGroup(value)}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
