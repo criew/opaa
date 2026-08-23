@@ -119,6 +119,14 @@ Admin-Konto:
 | Pressemitteilungen | ✔ | ✔ | ✔ |
 | Interne Dienstanweisungen Meldewesen | ✔ | — | ✔ |
 
+Dieselben Bibliotheken sind den fachlichen Spaces zusätzlich als **Datenquellen zugeordnet**
+(Space↔Bibliothek-Assoziation als reine Kuratierung, #706): „Meldewesen & Ausweise" trägt die vier
+für das Sachgebiet lesbaren Bibliotheken, „Kfz-Zulassung" seine drei, „Amtsleitung Bürgerbüro" alle
+fünf. `@Alles-Wissen` durchsucht in diesen Spaces genau die zugeordneten Bibliotheken, geschnitten
+mit den Leserechten der fragenden Person. Marias persönlicher Space bleibt bewusst ohne Zuordnung —
+dort greift `@Alles-Wissen` auf alle für sie lesbaren Bibliotheken zurück. Die Zuordnung gewährt
+keinerlei Zugriff; die Matrix oben bleibt die alleinige Rechtequelle.
+
 Damit sind die Vorführmomente konstruierbar: Maria und Thomas stellen dieselbe Frage zu einer internen
 Dienstanweisung — Maria erhält die belegte Antwort, Thomas die Auskunft, dass dazu nichts vorliegt. Die
 Amtsleitung sieht amtsweit alles. Weil die Berechtigungsprüfung Teil der Vektorsuche ist und nicht ein
@@ -163,8 +171,9 @@ in [`../demo-walkthrough.md`](../demo-walkthrough.md), zusammen mit der Installa
   mit `IndexOptions FancyIndexing HTMLTable` eine naheliegende, gut erprobte Wahl, aber **keine
   Notwendigkeit mehr**: Seit #550 versteht der `AutoindexCrawlerService` auch `<pre>`-Listings (nginx
   `autoindex on`, Apache ohne `HTMLTable`) und `<ul>`-Layouts (`-FancyIndexing`, Python `http.server`).
-- Ein Seed-Skript legt Nutzer (Keycloak-Realm-Import), Spaces, Bibliotheken und Berechtigungen an, lädt
-  die Upload-Dokumente hoch und stößt die Indizierung je Bibliothek an. Seit
+- Ein Seed-Skript legt Nutzer (Keycloak-Realm-Import), Spaces, Bibliotheken, Berechtigungen und die
+  Space↔Bibliothek-Zuordnungen an, lädt die Upload-Dokumente hoch und stößt die Indizierung je
+  Bibliothek an. Seit
   [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) trägt die Bibliothek Quellentyp
   und Quellkonfiguration selbst; der Seed legt also je Bibliothek einmalig die Quelle an und löst
   anschließend deren Lauf aus.

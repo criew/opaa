@@ -346,6 +346,11 @@ def run(args: argparse.Namespace) -> None:
     print("5/6 Space↔Bibliothek-Zuordnungen (Assoziation als Kuratierung, #706) …")
     for space_def in profile.spaces:
         for library_name in space_def.library_names:
+            if library_name not in library_ids:
+                raise SystemExit(
+                    f"Space '{space_def.name}' referenziert eine unbekannte Bibliothek "
+                    f"'{library_name}' - library_names muss auf eine LibraryDef des Profils zeigen."
+                )
             # After step 4 the owner holds VIEWER on the library (grants) and is CURATOR or above
             # on their own space - exactly what associateSpaceLibrary requires.
             ensure_association(
