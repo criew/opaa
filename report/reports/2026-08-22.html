@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-08-22</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Samstag, 22. August 2026</h1>
+<nav class="blaettern"><a href="2026-08-21.html" rel="prev" title="Freitag, 21. August 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/32603684430" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">63</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+16</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">17</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">13</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/755">#755</a> feat(models): Verwaltete Chat-Modelle in der Administrationsoberfläche (Stufe 1)</span>
+<span class="epic-progress">5 / 6 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 83%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/762">#762</a></span>Nativen Ollama-Starter entfernt, Embedding über OpenAI-kompatible Schicht</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/759">#759</a></span>Administrationsseite Modellverwaltung mit Einbettungsübersicht umgesetzt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/757">#757</a></span>Admin-API für Chat-Modelle mit CRUD, Aktivierung und Verbindungstest</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/756">#756</a></span>Datenmodell für verwaltete Chat-Modelle mit verschlüsselten Zugangsdaten</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/766">#766</a></span>refactor(ai): Nativen Ollama-Starter entfernen — Embedding über OpenAI-kompatible Schicht (+709/−359, 25 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/765">#765</a></span>feat(models): Administrationsseite Modellverwaltung mit schreibgeschützter Einbettungsübersicht (+1746/−2, 20 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/764">#764</a></span>feat(models): Admin-API für Chat-Modelle (CRUD, Aktivierung, Verbindungstest) (+1711/−19, 14 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/763">#763</a></span>feat(models): Datenmodell für verwaltete Chat-Modelle, verschlüsselte Zugangsdaten und Seed-Migration (+2388/−12, 31 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/740">#740</a> feat: Deeplinks auf Originaldokumente &amp; stabile Anmeldung</span>
+<span class="epic-progress">4 / 4 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/745">#745</a></span>Deeplinks auf Originaldokumente in Fundstellen und Belegfenster</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/743">#743</a></span>Deeplink auf Originaldokument in der Wissensbibliothek</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/742">#742</a></span>Download-Endpunkt für Originaldokumente implementiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/741">#741</a></span>Silent-Token-Renew und 401-Retry statt Sofort-Logout</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/745">#745</a></span>feat(search): Deeplinks auf Originaldokumente in Fundstellen und Belegfenster (+827/−106, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/743">#743</a></span>feat(library): Deeplink auf das Originaldokument in der Wissensbibliothek (+792/−6, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/742">#742</a></span>feat(api): Download-Endpunkt für Originaldokumente (+835/−3, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/741">#741</a></span>fix(auth): Silent-Token-Renew und 401-Retry statt Sofort-Logout (+512/−16, 8 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/224">#224</a> Epic: Suchqualität messbar machen — Eval-Korpus und Retrieval-Regression</span>
+<span class="epic-progress">9 / 9 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/730">#730</a></span>Eval-Domäne Sehenswürdigkeiten mit erweiterten Metriken</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/730">#730</a></span>feat(eval): Eval-Domäne Sehenswürdigkeiten in 200 europäischen Großstädten (+181695/−35, 227 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/708">#708</a> feat: Demo-Instanz mit Verwaltungskorpus einer fiktiven Stadt</span>
+<span class="epic-progress">10 / 10 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/230">#230</a></span>Demo-Instanz Rheinfurt ausgerollt</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/761">#761</a></span>Stufe 1 der Modellverwaltung in LLM-Spezifikation dokumentiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/750">#750</a></span>Chat-Seite: Positionierungskontext gegen äußere Scrollbar behoben</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/748">#748</a></span>Content-Endpunkt streamt Remote-Originale serverseitig durch</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/735">#735</a></span>Ollama-Embedding-Aufrufe je Dokument moderat parallelisiert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/761">#761</a></span>docs(features): Stufe 1 der Modellverwaltung in der LLM-Spezifikation (+154/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/750">#750</a></span>fix(chat): Positionierungskontext der Nachrichtenliste gegen äußere Scrollbar (+41/−1, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/748">#748</a></span>feat(api): Content-Endpunkt streamt Remote-Originale serverseitig durch (Proxy) (+1340/−233, 24 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/735">#735</a></span>feat(indexing): Ollama-Embedding-Aufrufe je Dokument moderat parallelisieren (+665/−27, 17 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-08-23 um 04:08 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-08-22T00:00:00 bis 2026-08-22T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>

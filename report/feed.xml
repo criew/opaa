@@ -5,8 +5,33 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-22T01:57:20Z</updated>
+  <updated>2026-08-23T02:08:52Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Samstag, 22. August 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-22.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-22.html</id>
+    <updated>2026-08-23T02:08:52Z</updated>
+    <summary type="text">feat(models): Verwaltete Chat-Modelle in der Administrationsoberfläche (Stufe 1):
+— Nativen Ollama-Starter entfernt, Embedding über OpenAI-kompatible Schicht
+— Administrationsseite Modellverwaltung mit Einbettungsübersicht umgesetzt
+— Admin-API für Chat-Modelle mit CRUD, Aktivierung und Verbindungstest
+— Datenmodell für verwaltete Chat-Modelle mit verschlüsselten Zugangsdaten
+feat: Deeplinks auf Originaldokumente &amp; stabile Anmeldung:
+— Deeplinks auf Originaldokumente in Fundstellen und Belegfenster
+— Deeplink auf Originaldokument in der Wissensbibliothek
+— Download-Endpunkt für Originaldokumente implementiert
+— Silent-Token-Renew und 401-Retry statt Sofort-Logout
+Epic: Suchqualität messbar machen — Eval-Korpus und Retrieval-Regression:
+— Eval-Domäne Sehenswürdigkeiten mit erweiterten Metriken
+feat: Demo-Instanz mit Verwaltungskorpus einer fiktiven Stadt:
+— Demo-Instanz Rheinfurt ausgerollt
+Sonstiges:
+— Stufe 1 der Modellverwaltung in LLM-Spezifikation dokumentiert
+— Chat-Seite: Positionierungskontext gegen äußere Scrollbar behoben
+— Content-Endpunkt streamt Remote-Originale serverseitig durch
+— Ollama-Embedding-Aufrufe je Dokument moderat parallelisiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Freitag, 21. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-21.html"/>
