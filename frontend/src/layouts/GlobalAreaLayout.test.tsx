@@ -58,6 +58,22 @@ describe('GlobalAreaLayout', () => {
     expect(screen.getByText('Modelle-Inhalt')).toBeInTheDocument()
   })
 
+  it('keeps a section marked on its subroutes with aria-current="true" (#800)', () => {
+    render(
+      <ThemeProvider theme={createAppTheme('light')}>
+        <MemoryRouter initialEntries={['/admin/models/model-1']}>
+          <Routes>
+            <Route element={<GlobalAreaLayout title="Administration" sections={SECTIONS} />}>
+              <Route path="/admin/models/:id" element={<div>Detail</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Modelle' })).toHaveAttribute('aria-current', 'true')
+  })
+
   it('renders in the dark scheme as well', () => {
     renderArea('/admin/groups', 'dark')
 
@@ -84,7 +100,7 @@ describe('GlobalAreaLayout', () => {
 })
 
 describe('isGlobalAreaPath', () => {
-  it('matches the admin scope and nothing that merely shares the prefix string', () => {
+  it('matches every global scope and nothing that merely shares a prefix string', () => {
     expect(isGlobalAreaPath('/admin/groups')).toBe(true)
     expect(isGlobalAreaPath('/admin')).toBe(true)
     expect(isGlobalAreaPath('/administrator')).toBe(false)

@@ -67,9 +67,40 @@ describe('SettingsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Dunkles Farbschema' }))
 
     expect(useUiStore.getState().themeMode).toBe('dark')
+
+    // #800 (review #795, finding 2): actually walk the way back - a broken onClick wiring
+    // stayed green while only the button's presence was asserted.
+    await user.click(screen.getByRole('button', { name: 'Vorgabe des Hauses übernehmen' }))
+
+    expect(useUiStore.getState().themeMode).toBeNull()
     expect(
-      screen.getByRole('button', { name: 'Vorgabe des Hauses übernehmen' }),
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: 'Vorgabe des Hauses übernehmen' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('survives an empty display name from the IdP instead of crashing (#800)', () => {
+    // review #795 finding 5: `('')[0].toUpperCase()` threw before userInitial guarded it -
+    // `??` only skips null/undefined, an empty string walked straight into the indexing.
+    useAuthStore.setState({
+      user: { id: 'user-4', email: 'x@y.example', displayName: '', systemRole: 'USER' },
+      mode: 'oidc',
+    })
+    renderPage()
+
+    expect(screen.getAllByText(/x@y\.example/)).toHaveLength(1)
+  })
+
+  it('does not repeat the e-mail when it already serves as the name line', () => {
+    // #800 (review #795, finding 1): without a displayName the name line falls back to the
+    // address - the meta line must then carry only the sign-in method.
+    useAuthStore.setState({
+      user: { id: 'user-3', email: 'x@y.example', displayName: null, systemRole: 'USER' },
+      mode: 'oidc',
+    })
+    renderPage()
+
+    expect(screen.getAllByText(/x@y\.example/)).toHaveLength(1)
+    expect(screen.getByText('über Verzeichnisdienst angemeldet')).toBeInTheDocument()
   })
 
   it('points system administrators at the branding page and everyone else at their admin', () => {

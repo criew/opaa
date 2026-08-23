@@ -26,6 +26,26 @@ import { resolveThemeMode } from './theme/colorScheme'
 import BrandingSettingsPage from './pages/BrandingSettingsPage'
 import LlmModelManagementPage from './pages/LlmModelManagementPage'
 
+const ADMIN_SECTIONS = [
+  { label: 'Allgemein & Branding', to: '/admin/branding' },
+  { label: 'Benutzer & Gruppen', to: '/admin/groups' },
+  { label: 'Modelle', to: '/admin/models' },
+]
+
+/**
+ * A regular user deep-linking into /admin/* gets the bare frame: showing them the full
+ * administration navigation with three "nicht freigegeben" destinations helps no one
+ * (#800, review #794 finding 3). The pages keep their own role gates.
+ */
+function AdminAreaLayout() {
+  const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
+  return isSystemAdmin ? (
+    <GlobalAreaLayout title="Administration" sections={ADMIN_SECTIONS} />
+  ) : (
+    <GlobalAreaLayout />
+  )
+}
+
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize)
   const themeMode = useUiStore((s) => s.themeMode)
@@ -83,18 +103,7 @@ export default function App() {
               </Route>
               {/* Global areas render inside the frame from mockup 2b (#787): no space
                   column, a light secondary column with the area navigation instead. */}
-              <Route
-                element={
-                  <GlobalAreaLayout
-                    title="Administration"
-                    sections={[
-                      { label: 'Allgemein & Branding', to: '/admin/branding' },
-                      { label: 'Benutzer & Gruppen', to: '/admin/groups' },
-                      { label: 'Modelle', to: '/admin/models' },
-                    ]}
-                  />
-                }
-              >
+              <Route element={<AdminAreaLayout />}>
                 <Route path="admin/groups" element={<GroupManagementPage />} />
                 <Route path="admin/branding" element={<BrandingSettingsPage />} />
                 <Route path="admin/models" element={<LlmModelManagementPage />} />

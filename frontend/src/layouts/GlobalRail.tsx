@@ -16,6 +16,7 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
 import BrandMark from '../components/BrandMark'
 import NotificationBell from '../components/notifications/NotificationBell'
 import { useAuthStore } from '../stores/authStore'
+import { userInitial } from '../utils/userInitial'
 import { useBrandingStore } from '../stores/brandingStore'
 import { createRailTheme } from '../theme/theme'
 import { darkRoles, railRoles, shadow } from '../theme/tokens'
@@ -89,7 +90,7 @@ export default function GlobalRail() {
     )
 
   const closeUserMenu = () => setUserMenuAnchor(null)
-  const initial = (user?.displayName ?? user?.email ?? '?')[0].toUpperCase()
+  const initial = userInitial(user)
 
   return (
     <ThemeProvider theme={railTheme}>

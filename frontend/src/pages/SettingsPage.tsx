@@ -16,7 +16,9 @@ import type { ThemeMode } from '../stores/uiStore'
 import { useBrandingStore } from '../stores/brandingStore'
 import { resolveThemeMode } from '../theme/colorScheme'
 import GlobalBadge from '../components/GlobalBadge'
+import GlobalScopeNote from '../components/GlobalScopeNote'
 import PageHeading from '../components/a11y/PageHeading'
+import { userInitial } from '../utils/userInitial'
 import SectionHead from '../components/SectionHead'
 
 /** Mockup 2c: how the account signed in, next to the address - never a technical mode name. */
@@ -41,7 +43,11 @@ export default function SettingsPage() {
   const effectiveMode = resolveThemeMode(themeMode, operatorDefault)
 
   const signInMethod = signInMethodLabel(authMode)
-  const accountMeta = [user?.email, signInMethod].filter(Boolean).join(' · ')
+  // A missing or blank displayName makes the e-mail the name line - repeating it in the
+  // meta line would show it twice (#800, review #795 finding 1).
+  const displayName = user?.displayName?.trim() || null
+  const accountName = displayName ?? user?.email ?? 'Benutzer'
+  const accountMeta = [displayName ? user?.email : null, signInMethod].filter(Boolean).join(' · ')
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
@@ -50,22 +56,24 @@ export default function SettingsPage() {
           <PageHeading title="Ihre Einstellungen" />
           <GlobalBadge />
         </Box>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5, mb: 3 }}>
+        <GlobalScopeNote sx={{ mt: 0.5, mb: 3 }}>
           Gelten für Sie persönlich in allen Spaces.
-        </Typography>
+        </GlobalScopeNote>
 
         {/* Mockup 2c: the profile block - display only; editing name, language or picture
             needs backend support that does not exist yet (#788, Abgrenzung). */}
         {user && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
+            {/* Decorative: the name stands right next to it (WCAG 1.1.1). */}
             <Avatar
+              aria-hidden="true"
               sx={{ width: 56, height: 56, bgcolor: 'primary.main', fontSize: 20, fontWeight: 600 }}
             >
-              {(user.displayName ?? user.email ?? '?')[0].toUpperCase()}
+              {userInitial(user)}
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
               <Typography noWrap sx={{ fontSize: 15, fontWeight: 600 }}>
-                {user.displayName ?? user.email ?? 'Benutzer'}
+                {accountName}
               </Typography>
               {accountMeta && (
                 <Typography noWrap sx={{ fontSize: 12.5, color: 'text.secondary' }}>

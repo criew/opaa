@@ -17,7 +17,9 @@ function renderShell(initialRoute = '/chat') {
       <Route element={<AppShell />}>
         <Route path="/chat" element={<div>Chat-Inhalt</div>} />
         <Route path="/settings" element={<PageHeading title="Einstellungen" />} />
-        <Route path="/libraries" element={<div>Ohne Überschrift</div>} />
+        <Route element={<GlobalAreaLayout />}>
+          <Route path="/libraries" element={<div>Ohne Überschrift</div>} />
+        </Route>
         <Route element={<GlobalAreaLayout title="Administration" sections={ADMIN_SECTIONS} />}>
           <Route path="/admin/groups" element={<div>Gruppen-Inhalt</div>} />
         </Route>
@@ -123,6 +125,34 @@ describe('AppShell', () => {
     expect(screen.getByRole('navigation', { name: 'Administration' })).toBeInTheDocument()
     expect(screen.getByText('Gruppen-Inhalt')).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
+  })
+
+  it('drops the space column on the settings page as well (#788)', () => {
+    renderShell('/settings')
+
+    expect(screen.getByRole('navigation', { name: 'Globale Navigation' })).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
+  })
+
+  it('drops the space column in the library catalog as well (#789)', () => {
+    renderShell('/libraries')
+
+    expect(screen.getByText('Ohne Überschrift')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
+  })
+
+  it('narrows the mobile drawer to the rail in a global area (#787)', async () => {
+    window.matchMedia = mobileMatchMedia
+    try {
+      renderShell('/admin/groups')
+
+      act(() => useUiStore.setState({ sidebarOpen: true }))
+
+      expect(await screen.findByRole('navigation', { name: 'Globale Navigation' })).toBeVisible()
+      expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
+    } finally {
+      window.matchMedia = desktopMatchMedia
+    }
   })
 
   it('shows rail and space column in the mobile drawer and closes it after navigating', async () => {
