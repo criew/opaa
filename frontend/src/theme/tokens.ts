@@ -150,6 +150,30 @@ export const navyRoles: SchemeRoles = {
 }
 
 /**
+ * The global rail left of the space column (#786, mockup 2a): one shade darker than the navy
+ * block so the two navigation levels read apart at a glance. bg2 is the hover fill, bg3 the
+ * active tile (mockup: navy-800 hover, navy-700 active with a navy-600 border). In the dark
+ * scheme the rail follows {@link darkRoles} like the sidebar - carbon has no darker step, so
+ * the separation comes from the border instead (#654's flattening applies here too).
+ */
+export const railRoles: SchemeRoles = {
+  bg1: navy[900],
+  bg2: navy[800],
+  bg3: navy[700],
+  fg1: white,
+  // Mockup 2a paints the muted labels as 60% white; roles are opaque values, so this is that
+  // tone composited over bg1 (review #791, finding 8).
+  fg2: '#99A1AB',
+  fg3: '#7A8BA0',
+  accent: blue[500],
+  accentFg: white,
+  accentHover: blue[600],
+  accentPress: blue[700],
+  border: navy[800],
+  borderStrong: navy[600],
+}
+
+/**
  * Font stacks (guidelines 3.1). Quicksand is the free relative of the Sklow brand face the
  * mockups use (round-geometric, single-story g, SIL OFL, #658); Inter stays in the stack as
  * fallback. Both and JetBrains Mono ship with the repo (SIL OFL); the

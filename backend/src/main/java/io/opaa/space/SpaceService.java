@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -150,8 +151,19 @@ public class SpaceService {
 
   public List<SpaceListResponse> listSpaces(UUID currentUserId, boolean systemAdmin) {
     User currentUser = requireUser(currentUserId);
-    return spaceRepository.findDistinctByMembershipsUserIdWithMemberships(currentUserId).stream()
-        .filter(space -> space.getOrganizationId().equals(currentUser.getOrganizationId()))
+    List<Space> memberSpaces =
+        spaceRepository.findDistinctByMembershipsUserIdWithMemberships(currentUserId).stream()
+            .filter(space -> space.getOrganizationId().equals(currentUser.getOrganizationId()))
+            .toList();
+    List<UUID> spaceIds = memberSpaces.stream().map(Space::getId).toList();
+    // #682: the overview card's figures ("n Quellen · n Chats · n Mitglieder") come from two
+    // grouped queries for the whole list, never one lookup per space. The chat figure counts the
+    // caller's own chats only (#525) - which is exactly the "has a chat of their own" question
+    // the #543 archived-space rule below asks, so it answers that too.
+    Map<UUID, Long> chatCounts = ownChatCounts(spaceIds, currentUserId);
+    Map<UUID, Long> libraryCounts =
+        associationService.countVisibleBySpace(memberSpaces, currentUserId, systemAdmin);
+    return memberSpaces.stream()
         // #543: an archived space is left out of this list unless the caller has a chat of their
         // own in it, is the space's owner, or is a system admin - otherwise, in the typical #543
         // case where the owner has no chat of their own in the space they archived, the space
@@ -162,9 +174,24 @@ public class SpaceService {
                 !space.isArchived()
                     || systemAdmin
                     || space.getOwnerId().equals(currentUserId)
-                    || chatRepository.existsBySpaceIdAndAuthorId(space.getId(), currentUserId))
-        .map(space -> toSpaceListResponse(space, currentUserId))
+                    || chatCounts.getOrDefault(space.getId(), 0L) > 0)
+        .map(
+            space ->
+                toSpaceListResponse(space, currentUserId)
+                    .libraryCount(libraryCounts.getOrDefault(space.getId(), 0L).intValue())
+                    .chatCount(chatCounts.getOrDefault(space.getId(), 0L).intValue()))
         .toList();
+  }
+
+  private Map<UUID, Long> ownChatCounts(List<UUID> spaceIds, UUID authorId) {
+    if (spaceIds.isEmpty()) {
+      return Map.of();
+    }
+    return chatRepository.countBySpaceIdInAndAuthorId(spaceIds, authorId).stream()
+        .collect(
+            Collectors.toMap(
+                ChatRepository.SpaceChatCount::getSpaceId,
+                ChatRepository.SpaceChatCount::getChatCount));
   }
 
   public SpaceResponse getSpace(UUID spaceId, UUID currentUserId, boolean systemAdmin) {

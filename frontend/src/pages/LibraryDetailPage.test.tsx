@@ -1262,6 +1262,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     await screen.findByText('a.pdf')
-    expect(screen.getByRole('button', { name: 'Go to page 2' })).toBeInTheDocument()
+    // #784: the deDE MUI locale translates Pagination's default item aria-labels.
+    expect(screen.getByRole('button', { name: 'Gehe zu Seite 2' })).toBeInTheDocument()
   })
 })

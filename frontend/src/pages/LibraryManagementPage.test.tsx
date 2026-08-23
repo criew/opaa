@@ -104,6 +104,8 @@ describe('LibraryManagementPage', () => {
       expect(screen.getByRole('columnheader', { name: head })).toBeInTheDocument()
     }
     expect(screen.getByText(/Bestände ohne Leserecht erscheinen hier nicht/)).toBeInTheDocument()
+    // #800 (Review zu #799): das Badge am Titel ist die einzige neue Ausgabe von #789.
+    expect(screen.getByText('Global')).toBeInTheDocument()
   })
 
   it('shows a running indexing state with progress in the Stand column (#595)', async () => {

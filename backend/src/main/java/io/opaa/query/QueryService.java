@@ -2,19 +2,24 @@ package io.opaa.query;
 
 import static java.util.stream.Collectors.toMap;
 
+import io.opaa.api.dto.ChunkLocation;
 import io.opaa.api.dto.QueryMetadata;
 import io.opaa.api.dto.QueryResponse;
+import io.opaa.api.dto.SearchedLibrary;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
+import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -23,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -58,6 +64,7 @@ public class QueryService {
   private final ChatService chatService;
   private final QueryMetrics metrics;
   private final QueryProperties queryProperties;
+  private final KnowledgeLibraryRepository knowledgeLibraryRepository;
 
   public QueryService(
       VectorStore vectorStore,
@@ -71,7 +78,8 @@ public class QueryService {
       PermissionHistoryService permissionHistoryService,
       ChatService chatService,
       QueryMetrics metrics,
-      QueryProperties queryProperties) {
+      QueryProperties queryProperties,
+      KnowledgeLibraryRepository knowledgeLibraryRepository) {
     this.vectorStore = vectorStore;
     this.answerGenerationService = answerGenerationService;
     this.chatMemory = chatMemory;
@@ -84,6 +92,7 @@ public class QueryService {
     this.chatService = chatService;
     this.metrics = metrics;
     this.queryProperties = queryProperties;
+    this.knowledgeLibraryRepository = knowledgeLibraryRepository;
   }
 
   /**
@@ -298,7 +307,8 @@ public class QueryService {
                 QueryMetadata metadata =
                     new QueryMetadata(model, tokenCount, durationMs)
                         .answeredWithoutKnowledge(answeredWithoutKnowledge)
-                        .noKnowledgeAvailableInSpace(noKnowledgeAvailableInSpace);
+                        .noKnowledgeAvailableInSpace(noKnowledgeAvailableInSpace)
+                        .searchedLibraries(searchedLibraries(searchScope));
                 return new QueryResponse(answer, sources, metadata, effectiveChatId)
                     .chatTitle(chatTitle);
               } catch (RuntimeException e) {
@@ -445,7 +455,11 @@ public class QueryService {
             .findById(UUID.fromString(docId))
             .ifPresent(doc -> result.put(docId, doc));
       } catch (IllegalArgumentException e) {
-        log.debug("Invalid document ID format: {}", docId);
+        // #78: not a transient failure - a chunk's document_id metadata never fails to parse on
+        // its own, so this signals a data problem (corrupt indexing, a botched migration, or a
+        // version mismatch between indexer and query service) that DEBUG would hide in
+        // production.
+        log.warn("Invalid document ID '{}' in chunk metadata - likely a data problem", docId);
       }
     }
     return result;
@@ -556,7 +570,8 @@ public class QueryService {
                           .sourceUrl(
                               sourceDocument != null ? sourceDocument.getDeepLinkSourceUrl() : null)
                           .sourceEntryUrl(sourceEntryUrl)
-                          .citationValid(citationValid);
+                          .citationValid(citationValid)
+                          .chunkLocations(chunkLocationOf(chunk));
                   return Map.entry(groupKey, reference);
                 })
             .collect(
@@ -599,7 +614,9 @@ public class QueryService {
     try {
       return UUID.fromString(documentId);
     } catch (IllegalArgumentException e) {
-      log.debug("Invalid document ID format: {}", documentId);
+      // #78: same rationale as lookupSourceDocuments above - WARN, not DEBUG, since this
+      // indicates a data problem rather than a transient error.
+      log.warn("Invalid document ID '{}' in chunk metadata - likely a data problem", documentId);
       return null;
     }
   }
@@ -663,6 +680,9 @@ public class QueryService {
         Objects.equals(a.getSourceEntryUrl(), b.getSourceEntryUrl())
             ? preferred.getSourceEntryUrl()
             : null;
+    // #667: every retrieved chunk keeps its own location entry, ordered by chunk index, so the
+    // frontend can resolve any footnote of this document - not only the best-scoring chunk's.
+    List<ChunkLocation> mergedChunkLocations = mergeChunkLocations(a, b);
 
     if (shouldBeCited && !preferred.getCited()) {
       return new SourceReference(
@@ -675,12 +695,63 @@ public class QueryService {
           .sourceType(preferred.getSourceType())
           .sourceUrl(preferred.getSourceUrl())
           .sourceEntryUrl(mergedSourceEntryUrl)
-          .citationValid(mergedCitationValid);
+          .citationValid(mergedCitationValid)
+          .chunkLocations(mergedChunkLocations);
     }
 
     preferred.setSourceEntryUrl(mergedSourceEntryUrl);
     preferred.setCitationValid(mergedCitationValid);
+    preferred.setChunkLocations(mergedChunkLocations);
     return preferred;
+  }
+
+  private static List<ChunkLocation> mergeChunkLocations(SourceReference a, SourceReference b) {
+    Map<Integer, ChunkLocation> byIndex = new TreeMap<>();
+    Stream.of(a.getChunkLocations(), b.getChunkLocations())
+        .filter(Objects::nonNull)
+        .flatMap(List::stream)
+        .forEach(location -> byIndex.putIfAbsent(location.getChunkIndex(), location));
+    return new ArrayList<>(byIndex.values());
+  }
+
+  /**
+   * The #667 location entry of one retrieved chunk: its {@code chunk_index} (the number the
+   * citation marker names) and the {@code location} the indexing pipeline stored, null when it
+   * stored none. A chunk without a usable {@code chunk_index} (legacy data predating the metadata)
+   * yields no entry at all - there is no number a footnote could be resolved by.
+   */
+  private static List<ChunkLocation> chunkLocationOf(Document chunk) {
+    Object rawIndex = chunk.getMetadata().get("chunk_index");
+    if (rawIndex == null) {
+      return new ArrayList<>();
+    }
+    int chunkIndex;
+    try {
+      chunkIndex = Integer.parseInt(rawIndex.toString().trim());
+    } catch (NumberFormatException e) {
+      return new ArrayList<>();
+    }
+    Object location = chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
+    List<ChunkLocation> result = new ArrayList<>(1);
+    result.add(
+        new ChunkLocation(chunkIndex).location(location != null ? location.toString() : null));
+    return result;
+  }
+
+  /**
+   * The libraries the vector search actually ran against (#667), by name - what mockup 1a's
+   * "Durchsucht wurden: …" line under an unsubstantiated answer names. Resolved from the effective
+   * {@code searchScope}, never from the request, so it reflects permissions and the chat's own
+   * settings exactly as the search did. Empty when no search ran.
+   */
+  private List<SearchedLibrary> searchedLibraries(Set<UUID> searchScope) {
+    if (searchScope.isEmpty()) {
+      return new ArrayList<>();
+    }
+    return knowledgeLibraryRepository.findAllById(searchScope).stream()
+        .map(library -> new SearchedLibrary(library.getId(), library.getName()))
+        .sorted(Comparator.comparing(SearchedLibrary::getName, String.CASE_INSENSITIVE_ORDER))
+        .collect(Collectors.toCollection(ArrayList::new));
   }
 
   /** {@code citationValid} defaults to {@code true} (absent = never flagged invalid) - #386. */

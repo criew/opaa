@@ -309,20 +309,48 @@ Hintergrund und die drei Schichten, in denen die Grenze gehalten wird: [features
 ```bash
 # 1. Umgebung konfigurieren
 cp .env.docker.example .env.docker
-# .env.docker bearbeiten. Voreingestellt sind lokal betriebene Modelle über
-# die openai-kompatible Schicht (seit #762 der einzige Anbindungsweg) — dafür
-# ist keine weitere Angabe in .env.docker selbst nötig. Der Compose-Stack
-# enthält aber KEINEN ollama-Service: Ein erreichbarer Ollama-Server wird
-# vorausgesetzt (OPAA_OPENAI_BASE_URL=http://ollama:11434/v1 ist nur ein
-# Platzhalter-Hostname). Ohne einen solchen startet der Stack zwar, aber
-# Indizierung und Fragen schlagen fehl. Läuft Ollama auf dem Host,
-# OPAA_OPENAI_BASE_URL auf http://host.docker.internal:11434/v1 setzen. Wer
-# stattdessen einen anderen openai-kompatiblen Anbieter wählt, muss
-# OPAA_OPENAI_BASE_URL entsprechend setzen (siehe „LLM-Anbieter").
+```
 
-# 2. Alle Services starten
+`.env.docker` bearbeiten. Voreingestellt sind lokal betriebene Modelle über die openai-kompatible
+Schicht (seit #762 der einzige Anbindungsweg) — dafür ist keine weitere Angabe in `.env.docker`
+selbst nötig. Zwei sich gegenseitig ausschließende Wege stehen für den lokal betriebenen
+Ollama-Server zur Wahl, den `OPAA_OPENAI_BASE_URL` standardmäßig voraussetzt (siehe
+[„LLM-Anbieter"](#llm-anbieter) und [„Lokal betriebenes Ollama im Compose-Stack
+(#720)"](#lokal-betriebenes-ollama-im-compose-stack-720) unten für Details zu beiden):
+
+**Weg A — Ollama als Teil dieses Stacks (Compose-Profil `ollama`).** Keine weitere Konfiguration
+nötig — `OPAA_OPENAI_BASE_URL` zeigt bereits auf `http://ollama:11434/v1`. Empfohlen für den
+allerersten Start: zunächst nur den Init-Schritt abwarten (er lädt mehrere GiB Modelldaten herunter,
+siehe „Ressourcen- und Downloadhinweis" unten), bevor der restliche Stack hochfährt — ein Dokument,
+das währenddessen bereits hochgeladen wird, würde sonst mit Status `FAILED` enden, weil das
+Chat-/Embedding-Modell noch fehlt:
+
+```bash
+docker compose --profile ollama up ollama-pull   # wartet, bis beide Modelle vorliegen
+docker compose --profile ollama up --build       # danach den vollständigen Stack starten
+```
+
+Wer dieses Warten nicht braucht (z. B. weil ohnehin erst später indiziert wird), startet stattdessen
+direkt mit `docker compose --profile ollama up --build` — der Stack läuft dann bereits, während
+`ollama-pull` im Hintergrund noch lädt.
+
+**Weg B — externer Ollama-Server** (auf dem Host oder in einem anderen Netz), ohne das
+Compose-Profil. Läuft Ollama auf dem Host, in `.env.docker` setzen:
+
+```env
+OPAA_OPENAI_BASE_URL=http://host.docker.internal:11434/v1
+```
+
+und danach starten:
+
+```bash
 docker compose up --build
+```
 
+Ohne einen erreichbaren externen Server unter der konfigurierten Adresse startet der Stack zwar,
+aber Indizierung und Fragen schlagen fehl.
+
+```bash
 # 3. Anwendung öffnen
 # Frontend: http://localhost:3000
 # Backend-API: http://localhost:8081/api
@@ -330,12 +358,14 @@ docker compose up --build
 
 ## Services
 
-| Service    | Host-Port | Container-Port | Beschreibung                          |
-|------------|-----------|----------------|---------------------------------------|
-| frontend   | 3000      | 80             | React-App über Nginx bereitgestellt   |
-| backend    | 8081      | 8080           | Spring Boot API                       |
-| postgres   | 5432      | 5432           | PostgreSQL 18 mit pgvector            |
-| keycloak   | 8180      | 8180           | Keycloak (nur OIDC-Profil)            |
+| Service     | Host-Port | Container-Port | Beschreibung                                          |
+|-------------|-----------|-----------------|--------------------------------------------------------|
+| frontend    | 3000      | 80              | React-App über Nginx bereitgestellt                    |
+| backend     | 8081      | 8080            | Spring Boot API                                         |
+| postgres    | 5432      | 5432            | PostgreSQL 18 mit pgvector                              |
+| keycloak    | 8180      | 8180            | Keycloak (nur `oidc`-/`demo`-Profil)                    |
+| ollama      | —         | 11434           | Lokal betriebener Ollama-Server (nur `ollama`-Profil, #720; kein Host-Port, siehe unten) |
+| ollama-pull | —         | —               | Einmaliger Init-Schritt, zieht `nomic-embed-text`/`phi3:mini` (nur `ollama`-Profil, #720) |
 
 ## Konfiguration
 
@@ -398,9 +428,10 @@ Guard noch abfängt.
 > übernommen werden (und als `OPAA_OPENAI_CHAT_BASE_URL`, falls auch `OPAA_AI_CHAT_PROVIDER=ollama`
 > stand). Grund: Der neue Anwendungs-Default für `OPAA_OPENAI_BASE_URL` ist zwar ebenfalls ein lokal
 > betriebener Ollama-Server, aber nicht notwendigerweise **derselbe** — läuft Ollama etwa auf dem
-> Host statt als Compose-Service `ollama` (üblich bei `docker-compose.yml`, das keinen eigenen
-> `ollama`-Service enthält), zeigt der Default ins Leere, und Indizierung/Fragen schlagen nach dem
-> Update ohne jede Warnung fehl.
+> Host statt als Compose-Service `ollama` (der Regelfall ohne das Compose-Profil `ollama`, #720 -
+> siehe [„Lokal betriebenes Ollama im Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack-720)
+> unten), zeigt der Default ins Leere, und Indizierung/Fragen schlagen nach dem Update ohne jede
+> Warnung fehl.
 >
 > **Ebenso verbindlich, mit einem Datenabfluss-Risiko statt nur eines Ausfalls:** War stattdessen
 > `OPAA_OPENAI_BASE_URL` bereits auf einen **anderen** Anbieter als einen lokalen Ollama-Server
@@ -465,12 +496,17 @@ OPAA_SERVER_ADDRESS=0.0.0.0
 OPAA_CORS_ALLOWED_ORIGINS=http://localhost:3000
 OPAA_DB_USERNAME=opaa
 OPAA_DB_PASSWORD=opaa
+OPAA_PGVECTOR_DIMENSIONS=768
 ```
 
 Chat und Einbettung laufen damit über die openai-kompatible Schicht gegen einen lokal betriebenen
 Ollama-Server (`OPAA_OPENAI_BASE_URL` ist im Profil `docker` auf `http://ollama:11434/v1`
-vorbelegt). Für einen anderen Anbieter kommen `OPAA_OPENAI_BASE_URL` und `OPAA_OPENAI_API_KEY`
-hinzu (überschreiben die Voreinstellung).
+vorbelegt). `OPAA_PGVECTOR_DIMENSIONS=768` gehört zwingend dazu (siehe die Zeile zu dieser Variable
+in [„Alle Umgebungsvariablen"](#alle-umgebungsvariablen) unten, #720) - ohne sie bricht die erste
+Einbettung mit einem Dimensionsfehler ab, weil der Embedding-Default `nomic-embed-text` mit 768
+Dimensionen einbettet, nicht mit dem Anwendungs-Default 1536. Für einen anderen Anbieter kommen
+`OPAA_OPENAI_BASE_URL` und `OPAA_OPENAI_API_KEY` hinzu (überschreiben die Voreinstellung) - dann
+richtet sich `OPAA_PGVECTOR_DIMENSIONS` nach dessen Embedding-Modell statt nach `nomic-embed-text`.
 
 ### Alle Umgebungsvariablen
 
@@ -545,7 +581,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | `0.7` | **Nur noch Seed-Quelle für den ersten Start (#758, siehe oben)** |
 | `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | `2000` | **Nur noch Seed-Quelle für den ersten Start (#758, siehe oben)** |
 | `OPAA_OPENAI_EMBEDDING_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | Eigener Zugangsschlüssel nur für den Embedding-Aufruf |
-| `OPAA_OPENAI_EMBEDDING_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Embedding-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten). **Der Compose-Stack enthält keinen `ollama`-Service** — der Hostname `ollama` im Default ist nur ein Platzhalter; ein erreichbarer Ollama-Server wird vorausgesetzt, sonst schlagen Indizierung und Abfragen fehl (der Start selbst bricht nicht ab). Läuft Ollama auf dem Host, stattdessen `http://host.docker.internal:11434/v1` setzen (`extra_hosts` im `backend`-Service ist dafür bereits konfiguriert) |
+| `OPAA_OPENAI_EMBEDDING_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Embedding-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten). Der Hostname `ollama` im Default löst auf, sobald der Compose-Stack mit dem Profil `ollama` gestartet wird (`docker compose --profile ollama up`, #720, siehe [„Lokal betriebenes Ollama im Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack-720) unten) — ohne dieses Profil und ohne anderweitig erreichbaren Ollama-Server schlagen Indizierung und Abfragen fehl (der Start selbst bricht nicht ab). Läuft Ollama stattdessen auf dem Host, `http://host.docker.internal:11434/v1` setzen (`extra_hosts` im `backend`-Service ist dafür bereits konfiguriert) |
 | `OPAA_OPENAI_EMBEDDING_MODEL` | `nomic-embed-text` | `nomic-embed-text` | Embedding-Modellname |
 | **Abfrage (RAG-Retrieval)** | | | |
 | `OPAA_QUERY_TOP_K` | `5` | `5` | Anzahl der pro Abfrage abgerufenen Dokument-Chunks (1–100) |
@@ -579,7 +615,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_UPLOAD_PENDING_RECOVERY_THRESHOLD_MINUTES` | `30` | `30` | Minuten, nach denen ein noch `PENDING` hängender Upload beim nächsten Anwendungsstart als durch einen Neustart abgebrochen auf `FAILED` gesetzt wird (#614) |
 | `OPAA_UPLOAD_LIBRARY_QUOTA_BYTES` | `10737418240` (10 GiB, Byte) | `10737418240` | Speicherkontingent je Wissensbibliothek (#119) — Summe der `file_size`-Spalte aller Dokumente einer Bibliothek, durchgesetzt am Upload-Endpunkt (413) **und** an allen drei Konnektorpfaden (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED, dort als übersprungenes Dokument mit `REJECTED`-Ereignis im Laufprotokoll). Zählt den *Bibliotheksinhalt* (die Größe der Quelldateien), nicht den von OPAA tatsächlich belegten Plattenplatz — bei HTTP_DIRECTORY/RSS_FEED liegen die Dateien nur temporär auf der Platte, OPAA behält dauerhaft nur die Chunks im Vektorspeicher; ein Betreiber sieht deshalb ggf. „10 GiB belegt", obwohl der eigene Plattenverbrauch deutlich kleiner ist. **`0` oder ein negativer Wert deaktiviert das Kontingent vollständig** (kein Rückfall auf den Default) — wichtig für Bestandsinstallationen mit Bibliotheken über 10 GiB: das Kontingent wirkt rückwirkend auf bereits gewachsene Bibliotheken, ein Update auf diese Version würde dort sonst jeden weiteren Upload und jedes weitere Konnektordokument ablehnen, bis die Bibliothek unter das Kontingent geschrumpft ist. |
 | **pgvector** | | | |
-| `OPAA_PGVECTOR_DIMENSIONS` | `1536` | `1536` | Vektor-Dimensionen (muss mit Embedding-Modell übereinstimmen) |
+| `OPAA_PGVECTOR_DIMENSIONS` | `1536` | `768` | Vektor-Dimensionen (muss mit Embedding-Modell übereinstimmen). **Abweichend vom Anwendungs-Default gesetzt (#720):** Dieser Compose-Stack setzt `OPAA_OPENAI_EMBEDDING_MODEL` standardmäßig auf `nomic-embed-text` (768 Dimensionen) — beim Anwendungs-Default `1536` bricht die erste Einbettung mit einem Dimensionsfehler ab. Wer das Embedding-Modell wechselt, muss diesen Wert mitziehen |
 | `OPAA_PGVECTOR_DISTANCE_TYPE` | `cosine_distance` | `cosine_distance` | Distanzfunktion für Ähnlichkeitssuche |
 | **Rate Limiting** | | | |
 | `OPAA_RATE_LIMIT_ENABLED` | `true` | `true` | Rate Limiting aktivieren/deaktivieren |
@@ -645,9 +681,9 @@ Auf `/api/`-Antworten setzt zusätzlich Spring Security eigene `X-Content-Type-O
 
 **`connect-src` und ein OIDC-Anbieter auf fremdem Origin.** `oidc-client-ts` holt die OIDC-Discovery-Metadaten und tauscht später den Auth-Code gegen Tokens jeweils per `fetch` direkt aus dem Browser gegen die Authority — liegt die Authority nicht auf demselben Origin wie das Frontend, blockiert eine reine `connect-src 'self'`-Richtlinie diese Aufrufe **stillschweigend** (kein Fehler in der Oberfläche, die Anmeldung tut einfach nichts). `frontend/nginx.conf` ist deshalb kein fest gebackenes Ergebnis mehr, sondern ein `envsubst`-Template (`/etc/nginx/templates/default.conf.template`, siehe `frontend/Dockerfile`): Die Umgebungsvariable `OPAA_CSP_CONNECT_SRC_EXTRA` wird beim Containerstart in `connect-src 'self' ${OPAA_CSP_CONNECT_SRC_EXTRA}` eingesetzt (leer per Voreinstellung im Image, in `.env.docker.example`/`.env.docker` mit dem Origin des mitgelieferten Keycloak vorbelegt). `NGINX_ENVSUBST_FILTER=^OPAA_(CSP|DEMO)_` im Dockerfile begrenzt die Ersetzung auf `OPAA_CSP_*`- und `OPAA_DEMO_*`-Variablen (Letztere für den Demo-Hinweis, siehe `OPAA_DEMO_MODE` oben), damit `envsubst` nicht versehentlich echte nginx-Variablen (`$scheme`, `$host`, `$remote_addr`, …) in derselben Datei anfasst. Details zum Betrieb mit einem eigenen Behörden-Identitätsanbieter: Abschnitt „OIDC (Keycloak)" unten.
 
-Die genannten Header sind gegen den Produktions-Build (`npm run build`) und das gebaute Docker-Image verprobt: `dist/index.html` referenziert ausschließlich selbst gehostete, gehashte `<script>`- und `<link>`-Dateien (keine Inline-Skripte), und ein Abruf des laufenden Containers zeigt alle Header sowohl auf `/` als auch auf `/api/`-Antworten (Vererbung über den `server`-Block, siehe Kommentare in `frontend/nginx.conf`).
+Die genannten Header sind gegen den Produktions-Build (`pnpm run build`) und das gebaute Docker-Image verprobt: `dist/index.html` referenziert ausschließlich selbst gehostete, gehashte `<script>`- und `<link>`-Dateien (keine Inline-Skripte), und ein Abruf des laufenden Containers zeigt alle Header sowohl auf `/` als auch auf `/api/`-Antworten (Vererbung über den `server`-Block, siehe Kommentare in `frontend/nginx.conf`).
 
-Für die lokale Entwicklung auch das Frontend mit `npm run dev -- --host` starten und den Zugriffsursprung zu CORS hinzufügen:
+Für die lokale Entwicklung auch das Frontend mit `pnpm run dev --host` starten und den Zugriffsursprung zu CORS hinzufügen:
 
 ```env
 OPAA_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://your-hostname:5173
@@ -711,6 +747,93 @@ Funktion; ohne sie gilt `OPAA_OPENAI_BASE_URL` für beide.
 > verhindert. Wer zusichern muss, dass keine Daten das Haus verlassen, weist die Konfiguration nach
 > und sichert den Netzweg außerhalb von OPAA ab — siehe
 > [Modelle und zentrale Steuerung](features/llm-integration.md#was-heute-gilt-und-was-nicht-gebaut).
+
+### Lokal betriebenes Ollama im Compose-Stack (#720)
+
+Der Compose-Stack (`docker-compose.yml`) enthält einen optionalen `ollama`-Service unter dem
+eigenen Compose-Profil **`ollama`** — er startet nur, wenn er ausdrücklich angefordert wird, damit
+der unveränderte Stack (kein Profil oder nur `oidc`/`demo`) keinen zusätzlichen Download und keinen
+zusätzlichen, ressourcenhungrigen Container voraussetzt:
+
+```bash
+docker compose --profile ollama up --build
+```
+
+Das startet zusätzlich zu den üblichen Services zwei weitere:
+
+- **`ollama`** — der eigentliche Ollama-Server, mit einem benannten Volume (`opaa-ollama-data`) für
+  die heruntergeladenen Modelle. Nicht auf einen Host-Port veröffentlicht: Backend und der
+  Init-Schritt unten erreichen ihn ausschließlich über das Compose-Netz unter seinem Servicenamen
+  (`ollama`) — genau der Hostname, auf den `OPAA_OPENAI_BASE_URL` im Spring-Profil `docker` bereits
+  standardmäßig zeigt (siehe oben). Es sind deshalb **keine** Umgebungsvariablen-Änderungen nötig,
+  um dieses Profil zu nutzen.
+- **`ollama-pull`** — ein einmaliger Init-Schritt, der `nomic-embed-text` (Embedding-Default,
+  `OPAA_OPENAI_EMBEDDING_MODEL`) und `phi3:mini` (Chat-Default, `OPAA_OPENAI_CHAT_MODEL`) zieht,
+  sobald `ollama` bereit ist, und danach beendet wird. Beide Modelle sind nötig, nicht nur das
+  Embedding-Modell: `io.opaa.llm.LlmModelSeeder` übernimmt `phi3:mini` beim allerersten
+  Backend-Start als aktives, verwaltetes Chat-Modell (siehe [„LLM-Anbieter"](#llm-anbieter) oben) —
+  ohne es schlägt die erste Chat-Anfrage fehl, obwohl `ollama` selbst bereits läuft. Der Pull-Schritt
+  ist **idempotent**: `ollama pull` vergleicht gegen das, was `ollama` bereits im Volume
+  `opaa-ollama-data` gespeichert hat, und lädt bei einem erneuten Start desselben Stacks nichts noch
+  einmal herunter.
+
+**Ressourcen- und Downloadhinweis:** Beide Modelle zusammen laden beim allerersten Start mehrere
+Gigabyte herunter (`phi3:mini` rund 2,2 GiB, `nomic-embed-text` rund 274 MiB, jeweils komprimiert)
+und benötigen anschließend entsprechend Plattenplatz im Volume sowie Arbeitsspeicher/CPU (oder GPU)
+für den laufenden Ollama-Server. Mit `docker compose logs -f ollama-pull` lässt sich der
+Download-Fortschritt verfolgen; der Stack selbst ist bereits nutzbar, sobald `ollama` gesund ist
+(`ollama` beantwortet dann `ollama list`), auch während `ollama-pull` noch lädt — die erste
+Indizierung/Chat-Anfrage kann in diesem Fenster aber noch fehlschlagen, bis beide Modelle vorliegen.
+
+**Nur mit Registry-Zugriff, auch bei bereits vorhandenen Modellen:** `ollama pull` prüft bei jedem
+Aufruf gegen die Ollama-Registry im Internet, ob die lokal gespeicherten Layer noch aktuell sind —
+das macht den Schritt idempotent (siehe oben), setzt aber Netzzugang zu dieser Registry voraus. In
+einem abgeschotteten Netz ohne diesen Zugang **exitet `ollama-pull` mit einem Fehler, obwohl beide
+Modelle bereits im Volume liegen**. Betroffen ist jeder erneute Start, nicht nur der erste. Für einen
+solchen Betrieb entweder das `command` in `docker-compose.yml` um einen vorangestellten
+`ollama list | grep -q ... ||`-Kurzschluss ergänzen (überspringt den Netzzugriff, wenn beide Modelle
+bereits vorhanden sind) oder `ollama-pull` bei einem erneuten Start ganz weglassen
+(`docker compose --profile ollama up ollama backend frontend postgres`, ohne `ollama-pull` in der
+Serviceliste).
+
+**Ein fehlgeschlagener `ollama-pull` bleibt sonst unauffällig:** Exitet der Init-Schritt mit einem
+Fehler (Registry nicht erreichbar wie oben, Plattenplatz erschöpft, o. ä.), laufen `backend` und
+`frontend` trotzdem unbeeindruckt weiter — der Stack wirkt oberflächlich normal gestartet, nur
+Indizierung/Chat schlagen dann fehl, weil ein oder beide Modelle fehlen. Ursache und Fehlermeldung
+stehen in `docker compose logs ollama-pull`; das ist der erste Blick bei einer sonst unerklärten
+`FAILED`-Indizierung direkt nach `docker compose --profile ollama up`.
+
+**GPU-Nutzung:** Ohne eigene Ergänzung nutzt `ollama` ausschließlich die CPU — `docker-compose.yml`
+enthält keinen `deploy.resources.reservations.devices`-Eintrag für eine GPU. Wer eine NVIDIA-GPU
+mit installiertem Container-Toolkit durchreichen will, ergänzt einen solchen Eintrag am
+`ollama`-Service selbst (analog zum auskommentierten `ports`-Eintrag dort) - nicht Teil dieser
+Voreinstellung, weil sie ein GPU-fähiges Docker-Setup auf dem Host voraussetzt, das nicht jede
+Installation hat.
+
+**Abwägung Imagegröße/Ressourcen vs. „ein Befehl, alles läuft":** Das `ollama`-Image selbst ist mit
+rund 3,4 GB (amd64) bereits größer als beide Modelle zusammen (rund 2,5 GB, siehe oben) — Image und
+Modelle zusammen machen den gesamten zusätzlichen Umfang dieses Profils aus, nicht nur Letztere. Wer
+keinen lokal betriebenen Ollama-Server braucht oder bereits einen extern betreibt, bleibt beim
+unveränderten Standard (kein Profil) und spart sich Download und laufenden Container vollständig —
+deshalb ist `ollama` ein eigenes, nicht standardmäßig aktives Profil und keine Voreinstellung.
+
+**Alternative: externer Ollama-Server statt des Compose-Profils.** Läuft Ollama bereits auf dem
+Host oder in einem anderen Netz, ist das Profil `ollama` nicht nötig — stattdessen die Zieladresse
+auf den externen Server umbiegen, z. B. bei einer Installation auf dem Host selbst:
+
+```env
+OPAA_OPENAI_BASE_URL=http://host.docker.internal:11434/v1
+```
+
+(`docker-compose.yml` setzt den dafür nötigen `extra_hosts`-Eintrag für den `backend`-Service
+bereits.) Beide Wege sind gleichwertig — das Compose-Profil ist der bequemere Einstieg ohne
+Ersteinrichtung außerhalb des Stacks, ein externer Ollama-Server eignet sich besser, wenn er von
+mehreren Stacks/Installationen gemeinsam genutzt werden soll oder bereits vorhanden ist.
+
+Kein Port-Expose über `127.0.0.1` hinaus: `ollama` veröffentlicht standardmäßig **keinen** Port; der
+in `docker-compose.yml` auskommentierte `ports`-Eintrag für den direkten Host-Zugriff bindet, falls
+aktiviert, ebenfalls nur auf `127.0.0.1` (siehe die dortigen Kommentare und [„Härtung für erreichbare
+Deployments"](#härtung-für-erreichbare-deployments), Punkt 5).
 
 ### vLLM / OpenAI-kompatible Server
 
@@ -940,6 +1063,11 @@ docker compose down -v
 ```
 
 > **Hinweis:** `docker compose down -v` muss ausgeführt werden, wenn `OPAA_DB_USERNAME` oder `OPAA_DB_PASSWORD` geändert wird, weil PostgreSQL den initialen Benutzer nur beim ersten Start erstellt. Ohne Volume-Entfernung werden Anmeldeinformationsänderungen ignoriert.
+
+> **Mit aktivem Compose-Profil `ollama` (#720) löscht `docker compose down -v` zusätzlich das
+> benannte Volume `opaa-ollama-data`** — die dort gespeicherten Modelle (`nomic-embed-text`,
+> `phi3:mini`, zusammen rund 2,5 GB). Ein danach erneut gestarteter Stack lädt beide Modelle über
+> `ollama-pull` vollständig neu herunter, siehe [„Lokal betriebenes Ollama im Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack-720).
 
 ## Fehlerbehebung
 

@@ -52,7 +52,7 @@ Vor dem ersten Push eines PRs müssen alle Prüfungen bestehen; nur bei reinen D
 ./gradlew spotlessApply && ./gradlew build
 
 # frontend/
-npm run format && npm run lint && npm run test && npm run build
+pnpm run format && pnpm run lint && pnpm run test && pnpm run build
 ```
 
 **Nachbesserungsrunden** (Folge-Pushes auf einen bestehenden PR, etwa nach Review-Befunden): verkürzte
@@ -67,11 +67,11 @@ Integrationstests mit `@Testcontainers(disabledWithoutDocker = true)` werden ohn
 
 ## Repository-Praxis
 
-- **Reihenfolge für neue Endpunkte:** OpenAPI-Spezifikation; generierte Backend-DTOs; Domain-Enum-Mappings und Cleanup in `backend/build.gradle.kts`; `npm run generate:api-types`; API-Funktion und Store-Aktion; und ein MSW-Handler in `frontend/src/mocks/handlers.ts`.
+- **Reihenfolge für neue Endpunkte:** OpenAPI-Spezifikation; generierte Backend-DTOs; Domain-Enum-Mappings und Cleanup in `backend/build.gradle.kts`; `pnpm run generate:api-types`; API-Funktion und Store-Aktion; und ein MSW-Handler in `frontend/src/mocks/handlers.ts`.
 - **Generierter Code wird niemals committet:** `build/generated/` und `frontend/src/types/generated/`.
 - **Abhängigkeitsversionen** leben nur in `backend/gradle/libs.versions.toml` und werden über `libs.*` referenziert.
 - **Liquibase:** Eine sequenziell nummerierte Change-Datei hinzufügen und in das Master-Changelog aufnehmen. Niemals ein ausgeführtes changeSet bearbeiten; `ddl-auto` ist `none`.
 - **Jackson:** Immer `tools.jackson.*` importieren. Jackson 2 liegt unvermeidbar transitiv mit auf dem Classpath (über `spring-ai-openai` → `openai-java-core` und `spring-ai-tika-document-reader` → Tika); ein versehentlicher `com.fasterxml.jackson.databind.ObjectMapper`-Import kompiliert, findet zur Laufzeit aber keine Bean. Ausnahme: Die Annotationen bleiben `com.fasterxml.jackson.annotation.*` — die nutzt Jackson 3 weiterhin.
 - **Frontend-Tests** verwenden `frontend/src/test/test-utils.tsx`-Helfer wie `renderWithProviders` und `setMockAuthState`.
-- **Lokaler Betrieb:** Backend mit `./gradlew bootRun` (standardmäßig Mock-Auth; PostgreSQL über `docker-compose up postgres`); Frontend mit `npm run dev` oder Backend-los mit `VITE_ENABLE_MOCKS=true`.
-- **Frischer Worktree:** `npm ci --prefer-offline` in `frontend/` einmal vor Frontend-Arbeit ausführen; Abhängigkeiten werden nicht in einen frischen Worktree übertragen, der npm-Cache der Maschine enthält sie aber in aller Regel schon — `--prefer-offline` spart die Registry-Abfragen.
+- **Lokaler Betrieb:** Backend mit `./gradlew bootRun` (standardmäßig Mock-Auth; PostgreSQL über `docker-compose up postgres`); Frontend mit `pnpm run dev` oder Backend-los mit `VITE_ENABLE_MOCKS=true`.
+- **Frischer Worktree:** `pnpm install` in `frontend/` einmal vor Frontend-Arbeit ausführen; pnpm speist `node_modules` aus dem benutzerweiten Store (Hardlinks, auf macOS/APFS Copy-on-Write-Klone), ein frischer Worktree ist damit in Sekunden installiert.

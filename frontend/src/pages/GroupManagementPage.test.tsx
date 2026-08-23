@@ -85,7 +85,7 @@ describe('GroupManagementPage', () => {
 
   it('lists groups with their kind', async () => {
     setGroupState([adHocGroup, orgUnitGroup], {})
-    renderWithProviders(<GroupManagementPage />)
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
 
     expect(await screen.findByText('Projektbeteiligte Phoenix')).toBeInTheDocument()
     expect(screen.getByText('Referat 50')).toBeInTheDocument()
@@ -95,14 +95,14 @@ describe('GroupManagementPage', () => {
 
   it('shows an empty state when there are no groups', async () => {
     setGroupState([], {})
-    renderWithProviders(<GroupManagementPage />)
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
 
     expect(await screen.findByText(/noch keine gruppen/i)).toBeInTheDocument()
   })
 
   it('expands an ad-hoc group and allows renaming and deleting', async () => {
     setGroupState([adHocGroup], { 'group-phoenix': adHocDetails })
-    renderWithProviders(<GroupManagementPage />)
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
@@ -124,7 +124,7 @@ describe('GroupManagementPage', () => {
 
   it('disables editing and member management for an org-unit group', async () => {
     setGroupState([orgUnitGroup], { 'group-referat-50': orgUnitDetails })
-    renderWithProviders(<GroupManagementPage />)
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(await screen.findByText('Referat 50'))
@@ -137,7 +137,7 @@ describe('GroupManagementPage', () => {
 
   it('creates a new group through the dialog', async () => {
     setGroupState([], {})
-    renderWithProviders(<GroupManagementPage />)
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /neue gruppe/i }))

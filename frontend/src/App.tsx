@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
 import { createAppTheme } from './theme/theme'
+import GlobalAreaLayout from './layouts/GlobalAreaLayout'
 import AppShell from './layouts/AppShell'
 import ChatPage from './pages/ChatPage'
 import ChatRedirect from './pages/ChatRedirect'
@@ -24,6 +25,26 @@ import { useUiStore } from './stores/uiStore'
 import { resolveThemeMode } from './theme/colorScheme'
 import BrandingSettingsPage from './pages/BrandingSettingsPage'
 import LlmModelManagementPage from './pages/LlmModelManagementPage'
+
+const ADMIN_SECTIONS = [
+  { label: 'Allgemein & Branding', to: '/admin/branding' },
+  { label: 'Benutzer & Gruppen', to: '/admin/groups' },
+  { label: 'Modelle', to: '/admin/models' },
+]
+
+/**
+ * A regular user deep-linking into /admin/* gets the bare frame: showing them the full
+ * administration navigation with three "nicht freigegeben" destinations helps no one
+ * (#800, review #794 finding 3). The pages keep their own role gates.
+ */
+function AdminAreaLayout() {
+  const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
+  return isSystemAdmin ? (
+    <GlobalAreaLayout title="Administration" sections={ADMIN_SECTIONS} />
+  ) : (
+    <GlobalAreaLayout />
+  )
+}
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize)
@@ -68,18 +89,35 @@ export default function App() {
             >
               <Route index element={<Navigate to="/chat" replace />} />
               <Route path="chat" element={<ChatRedirect />} />
-              <Route path="spaces/new" element={<SpaceCreatePage />} />
+
               <Route path="spaces/:spaceId/chats/:chatId" element={<ChatPage />} />
               <Route path="spaces/:spaceId" element={<SpacePage />} />
               <Route path="spaces/:spaceId/manage" element={<SpaceManagementPage />} />
-              <Route path="spaces" element={<SpacesOverviewPage />} />
-              <Route path="libraries" element={<LibraryManagementPage />} />
-              <Route path="libraries/new" element={<LibraryCreatePage />} />
-              <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
-              <Route path="admin/groups" element={<GroupManagementPage />} />
-              <Route path="admin/branding" element={<BrandingSettingsPage />} />
-              <Route path="admin/models" element={<LlmModelManagementPage />} />
-              <Route path="settings" element={<SettingsPage />} />
+              {/* No space selected yet (#809): overview and create wizard render in the
+                  bare global frame; the navy column appears only inside a chosen space. */}
+              <Route element={<GlobalAreaLayout />}>
+                <Route path="spaces" element={<SpacesOverviewPage />} />
+                <Route path="spaces/new" element={<SpaceCreatePage />} />
+              </Route>
+              {/* The library catalog is a global area too (#789, Schlussnotiz von
+                  Mockup-Abschnitt 2): bare global frame, no secondary column. */}
+              <Route element={<GlobalAreaLayout />}>
+                <Route path="libraries" element={<LibraryManagementPage />} />
+                <Route path="libraries/new" element={<LibraryCreatePage />} />
+                <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
+              </Route>
+              {/* Global areas render inside the frame from mockup 2b (#787): no space
+                  column, a light secondary column with the area navigation instead. */}
+              <Route element={<AdminAreaLayout />}>
+                <Route path="admin/groups" element={<GroupManagementPage />} />
+                <Route path="admin/branding" element={<BrandingSettingsPage />} />
+                <Route path="admin/models" element={<LlmModelManagementPage />} />
+              </Route>
+              {/* Mockup 2c (#788): the user settings render in the bare global frame -
+                  no space column, no secondary column. */}
+              <Route element={<GlobalAreaLayout />}>
+                <Route path="settings" element={<SettingsPage />} />
+              </Route>
               <Route path="*" element={<Navigate to="/chat" replace />} />
             </Route>
           </Routes>

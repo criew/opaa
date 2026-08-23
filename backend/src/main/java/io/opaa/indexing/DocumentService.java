@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.reader.ExtractedTextFormatter;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.core.io.FileSystemResource;
 
@@ -73,7 +74,10 @@ public class DocumentService {
   public List<org.springframework.ai.document.Document> parseDocument(Path file) {
     log.debug("Parsing document: {}", file);
     var resource = new FileSystemResource(file);
-    var reader = new TikaDocumentReader(resource);
+    // #667: keep page boundaries as form feeds so chunks can carry a "S. n" location.
+    var reader =
+        new TikaDocumentReader(
+            resource, new PageMarkingContentHandler(), ExtractedTextFormatter.defaults());
     return reader.read();
   }
 

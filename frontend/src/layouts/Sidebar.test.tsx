@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router'
@@ -104,43 +104,21 @@ describe('Sidebar', () => {
     })
   })
 
-  it('renders the target-design structure: space switcher, chats, section navigation', () => {
-    renderSidebarAtRoute('/settings')
+  it('renders the target-design structure: space switcher and chats, nothing global (#786)', () => {
+    renderSidebarAtRoute('/chat')
     // The switcher carries the active (here: default) space's name.
     expect(screen.getByRole('button', { name: /Meine Dokumente/ })).toBeInTheDocument()
     expect(screen.getByText('Chats')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Wissensbibliotheken' })).toBeInTheDocument()
-    // Einstellungen moved into the user menu - not a top-level item anymore.
+    // Since #786 (mockup 2a) the column is purely space-scoped: brand mark, catalog,
+    // admin destinations and the user badge all live on the global rail instead.
+    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Wissensbibliotheken' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Benutzermenü' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Einstellungen' })).not.toBeInTheDocument()
   })
 
-  it('renders the configured product name without the claim (mockup 1a shows the mark only)', () => {
-    // #583: the sidebar head comes from the branding store, which starts on the OPAA standard.
-    // #658: the claim moved out of the sidebar - mockup 1a reserves it for the sign-in page.
-    renderSidebarAtRoute('/settings')
-    expect(screen.getByText('OPAA')).toBeInTheDocument()
-    expect(screen.queryByText('Fragen. Belegen. Entscheiden.')).not.toBeInTheDocument()
-  })
-
-  it('follows a configured branding', () => {
-    useBrandingStore.setState({
-      branding: {
-        productName: 'Landesamt-Assistent',
-        claim: 'Kurz und klar',
-        primaryColor: '#7A1FA2',
-        defaultColorScheme: 'LIGHT',
-        logoUrl: '/api/v1/branding/logo?v=abc',
-      },
-    })
-
-    renderSidebarAtRoute('/settings')
-
-    expect(screen.getByText('Landesamt-Assistent')).toBeInTheDocument()
-    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
-  })
-
   it('renders New Chat button for the default space', async () => {
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/chat')
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /neuer chat/i })).toBeInTheDocument()
     })
@@ -148,7 +126,7 @@ describe('Sidebar', () => {
 
   it('creates a new chat in the default space and navigates to it when clicked', async () => {
     const user = userEvent.setup()
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/chat')
 
     await user.click(await screen.findByRole('button', { name: /neuer chat/i }))
 
@@ -160,7 +138,7 @@ describe('Sidebar', () => {
   })
 
   it('lists the active space chats loaded from the API', async () => {
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/chat')
     expect(await screen.findByText('Architektur des Projekts')).toBeInTheDocument()
     expect(await screen.findByText('Deployment-Fragen')).toBeInTheDocument()
   })
@@ -178,11 +156,11 @@ describe('Sidebar', () => {
   })
 
   it('falls back to the space of the still-open chat on routes without a :spaceId (#556 review, nit 2)', async () => {
-    // No :spaceId on /settings - the chat still open in the engineering space should keep
+    // No :spaceId on /chat - the chat still open in the engineering space should keep
     // determining the list, not the default (personal) space.
     useChatStore.setState({ spaceId: 'space-engineering' })
 
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/chat')
 
     expect(await screen.findByText('Unbenannter Chat')).toBeInTheDocument()
     expect(screen.queryByText('Architektur des Projekts')).not.toBeInTheDocument()
@@ -191,7 +169,7 @@ describe('Sidebar', () => {
 
   it('opens the space switcher listing every space with kind and member count', async () => {
     const user = userEvent.setup()
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/chat')
 
     await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
 
@@ -203,7 +181,7 @@ describe('Sidebar', () => {
 
   it('navigates to a space chosen in the switcher', async () => {
     const user = userEvent.setup()
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/chat')
 
     await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
     await user.click(screen.getByRole('menuitem', { name: /Engineering/ }))
@@ -213,7 +191,7 @@ describe('Sidebar', () => {
 
   it('navigates to the spaces overview via the switcher', async () => {
     const user = userEvent.setup()
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/chat')
 
     await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
     await user.click(screen.getByRole('menuitem', { name: 'Alle Spaces anzeigen' }))
@@ -223,7 +201,7 @@ describe('Sidebar', () => {
 
   it('navigates to the create wizard via the switcher', async () => {
     const user = userEvent.setup()
-    renderSidebarAtRoute('/settings')
+    renderSidebarAtRoute('/chat')
 
     await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
     await user.click(screen.getByRole('menuitem', { name: 'Neuen Space anlegen' }))
@@ -231,45 +209,21 @@ describe('Sidebar', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/new')
   })
 
-  it('links "Space einrichten" to the active space management page', () => {
+  it('links the column foot to the active space: settings and data sources (mockup 2a)', () => {
     renderSidebarAtRoute('/spaces/space-engineering')
 
-    expect(screen.getByRole('link', { name: 'Space einrichten' })).toHaveAttribute(
+    // #792: the landmark must wrap a real list - List component="nav" once replaced the <ul>
+    // and left the <li>s parentless, an axe "serious" violation.
+    const footNav = screen.getByRole('navigation', { name: 'Space-Navigation' })
+    expect(within(footNav).getByRole('list')).toBeInTheDocument()
+
+    expect(screen.getByRole('link', { name: 'Space-Einstellungen' })).toHaveAttribute(
       'href',
       '/spaces/space-engineering/manage',
     )
-  })
-
-  it('offers Einstellungen and Abmelden in the user menu', async () => {
-    const user = userEvent.setup()
-    renderSidebarAtRoute('/settings')
-
-    await user.click(screen.getByRole('button', { name: 'Benutzermenü' }))
-
-    expect(screen.getByRole('menuitem', { name: 'Einstellungen' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'Abmelden' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('menuitem', { name: 'Einstellungen' }))
-    expect(mockNavigate).toHaveBeenCalledWith('/settings')
-  })
-
-  it('hides admin destinations from regular users and shows them to system admins', () => {
-    const { unmount } = renderSidebarAtRoute('/settings')
-    expect(screen.queryByRole('link', { name: 'Gruppen' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Branding' })).not.toBeInTheDocument()
-    unmount()
-
-    useAuthStore.setState({
-      user: {
-        id: 'user-2',
-        email: 'admin@example.de',
-        displayName: 'Admin',
-        systemRole: 'SYSTEM_ADMIN',
-      },
-      isAuthenticated: true,
-    })
-    renderSidebarAtRoute('/settings')
-    expect(screen.getByRole('link', { name: 'Gruppen' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Branding' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Datenquellen dieses Space' })).toHaveAttribute(
+      'href',
+      '/spaces/space-engineering',
+    )
   })
 })

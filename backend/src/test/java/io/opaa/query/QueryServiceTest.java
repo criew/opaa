@@ -5,18 +5,24 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.api.dto.ChunkLocation;
 import io.opaa.api.dto.QueryResponse;
+import io.opaa.api.dto.SearchedLibrary;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
+import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
@@ -61,6 +67,7 @@ class QueryServiceTest {
   @Mock private LibraryAccessService libraryAccessService;
   @Mock private PermissionHistoryService permissionHistoryService;
   @Mock private ChatService chatService;
+  @Mock private KnowledgeLibraryRepository knowledgeLibraryRepository;
   private QueryService queryService;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -82,7 +89,8 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(5, 0.3));
+            new QueryProperties(5, 0.3),
+            knowledgeLibraryRepository);
 
     User user = new User("subject", "issuer", "user@example.com", "User");
     user.setOrganizationId(organizationId);
@@ -131,6 +139,89 @@ class QueryServiceTest {
 
     assertThat(response.getSources().getFirst().getSourceEntryUrl())
         .isEqualTo("https://example.com/feed/entry-123");
+  }
+
+  /**
+   * #667: every retrieved chunk's location rides along on its SourceReference, keyed by the chunk
+   * index the citation marker names - including a chunk the pipeline stored no location for, which
+   * still needs its entry (location null) so the frontend knows the number is real.
+   */
+  @Test
+  void queryCarriesTheLocationOfEveryRetrievedChunk() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    UUID documentId = UUID.randomUUID();
+    var located =
+        Document.builder()
+            .text("Frist")
+            .metadata(
+                Map.of(
+                    "file_name",
+                    "anweisung.md",
+                    "document_id",
+                    documentId.toString(),
+                    "chunk_index",
+                    3,
+                    ChunkingService.LOCATION_METADATA_KEY,
+                    "Abschn. 4.2 Fristsetzung"))
+            .score(0.9)
+            .build();
+    var unlocated =
+        Document.builder()
+            .text("Einleitung")
+            .metadata(
+                Map.of(
+                    "file_name", "anweisung.md",
+                    "document_id", documentId.toString(),
+                    "chunk_index", "0"))
+            .score(0.5)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+        .thenReturn(List.of(located, unlocated));
+    when(documentRepository.findById(documentId)).thenReturn(Optional.empty());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources()).hasSize(1);
+    List<ChunkLocation> locations = response.getSources().getFirst().getChunkLocations();
+    assertThat(locations).extracting(ChunkLocation::getChunkIndex).containsExactly(0, 3);
+    assertThat(locations)
+        .extracting(ChunkLocation::getLocation)
+        .containsExactly(null, "Abschn. 4.2 Fristsetzung");
+  }
+
+  /** #667: the "Durchsucht wurden" line names the effective scope, by library name, sorted. */
+  @Test
+  void queryNamesTheLibrariesActuallySearched() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Nichts"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+    var library = mock(KnowledgeLibrary.class);
+    when(library.getId()).thenReturn(readableLibraryId);
+    when(library.getName()).thenReturn("Dienstanweisungen");
+    when(knowledgeLibraryRepository.findAllById(Set.of(readableLibraryId)))
+        .thenReturn(List.of(library));
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    assertThat(response.getMetadata().getSearchedLibraries())
+        .extracting(SearchedLibrary::getId, SearchedLibrary::getName)
+        .containsExactly(tuple(readableLibraryId, "Dienstanweisungen"));
+  }
+
+  /** #667: when no search ran, nothing was searched - the list is empty, not a guess. */
+  @Test
+  void queryListsNoSearchedLibrariesWhenNoSearchRan() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, false, List.of());
+
+    assertThat(response.getMetadata().getSearchedLibraries()).isEmpty();
+    verify(knowledgeLibraryRepository, never()).findAllById(any());
   }
 
   /**
@@ -258,6 +349,49 @@ class QueryServiceTest {
     assertThat(source.getDocumentId()).isNull();
     assertThat(source.getSourceType()).isNull();
     assertThat(source.getSourceUrl()).isNull();
+  }
+
+  /**
+   * #78: a chunk carrying a malformed (non-UUID) {@code document_id} in its metadata points at a
+   * data problem - corrupt indexing, a botched migration or a version mismatch between indexer and
+   * query service - not a transient failure, so both {@link QueryService#lookupSourceDocuments} and
+   * {@link QueryService#parseDocumentId} must log it at WARN, where it survives a production log
+   * level, rather than at DEBUG where it is silently dropped.
+   */
+  @Test
+  void queryLogsInvalidDocumentIdAtWarnLevel() {
+    var logger =
+        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(QueryService.class);
+    var logAppender =
+        new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+    logAppender.start();
+    logger.addAppender(logAppender);
+    try {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      var chunk =
+          Document.builder()
+              .text("Corrupted metadata content")
+              .metadata(Map.of("file_name", "broken.pdf", "document_id", "not-a-uuid"))
+              .score(0.8)
+              .build();
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      queryService.query("Question", null, currentUserId, true, List.of());
+
+      var invalidDocumentIdEvents =
+          logAppender.list.stream()
+              .filter(event -> event.getFormattedMessage().contains("not-a-uuid"))
+              .toList();
+      assertThat(invalidDocumentIdEvents).isNotEmpty();
+      assertThat(invalidDocumentIdEvents)
+          .allSatisfy(
+              event -> assertThat(event.getLevel()).isEqualTo(ch.qos.logback.classic.Level.WARN));
+    } finally {
+      logger.detachAppender(logAppender);
+    }
   }
 
   /**
@@ -615,7 +749,8 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(5, 0.3));
+            new QueryProperties(5, 0.3),
+            knowledgeLibraryRepository);
 
     UUID otherUserId = UUID.randomUUID();
     User otherUser = new User("other-subject", "issuer", "other@example.com", "Other User");
@@ -1308,6 +1443,21 @@ class QueryServiceTest {
       var result = QueryService.mergeSourceReferences(high, low);
 
       assertThat(result.getRelevanceScore()).isEqualTo(0.9);
+    }
+
+    /** #667: the merged entry knows every retrieved chunk's location, in chunk order. */
+    @Test
+    void unionsChunkLocationsInChunkOrder() {
+      var high = sourceReference("file.pdf", 0.9, 1, INDEXED_AT, false);
+      high.setChunkLocations(List.of(new ChunkLocation(5).location("S. 3")));
+      var low = sourceReference("file.pdf", 0.5, 1, INDEXED_AT, true);
+      low.setChunkLocations(List.of(new ChunkLocation(2).location("S. 1")));
+
+      var result = QueryService.mergeSourceReferences(high, low);
+
+      assertThat(result.getChunkLocations())
+          .extracting(ChunkLocation::getChunkIndex, ChunkLocation::getLocation)
+          .containsExactly(tuple(2, "S. 1"), tuple(5, "S. 3"));
     }
 
     @Test

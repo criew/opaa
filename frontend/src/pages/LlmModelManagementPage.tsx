@@ -17,6 +17,7 @@ import { testLlmModel } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import PageHeading from '../components/a11y/PageHeading'
+import GlobalScopeNote from '../components/GlobalScopeNote'
 import CreateLlmModelDialog from '../components/admin/CreateLlmModelDialog'
 
 const BASE_URL_HELP_TEXT =
@@ -472,6 +473,7 @@ export default function LlmModelManagementPage() {
           Neues Modell
         </Button>
       </Box>
+      <GlobalScopeNote />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

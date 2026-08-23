@@ -212,6 +212,55 @@ describe('MessageBubble', () => {
     expect(screen.getByText('test.md')).toBeInTheDocument()
   })
 
+  it('shows the Fundort next to a cited document (#667)', () => {
+    const msg: ChatMessage = {
+      id: '30',
+      role: 'assistant',
+      content: 'Answer【source: aa#2 | test.md】',
+      sources: [
+        {
+          ...citedSource,
+          documentId: 'aa',
+          chunkLocations: [{ chunkIndex: 2, location: 'S. 2–4 · Abschn. Fristsetzung' }],
+        },
+      ],
+      timestamp: new Date(),
+    }
+    render(<MessageBubble message={msg} />)
+    expect(screen.getByTestId('source-location')).toHaveTextContent('S. 2–4 · Abschn. Fristsetzung')
+  })
+
+  it('names the searched libraries under an answer that cites nothing (#667)', () => {
+    const msg: ChatMessage = {
+      id: '31',
+      role: 'assistant',
+      content: 'Dazu lässt sich in den Beständen dieses Space nichts belegen.',
+      sources: [],
+      searchedLibraries: [
+        { id: '1', name: 'Dienstanweisungen' },
+        { id: '2', name: 'Formulare' },
+      ],
+      timestamp: new Date(),
+    }
+    render(<MessageBubble message={msg} />)
+    expect(screen.getByTestId('searched-libraries')).toHaveTextContent(
+      'Durchsucht wurden: Dienstanweisungen, Formulare',
+    )
+  })
+
+  it('omits the searched libraries once the answer carries Fundstellen (#667)', () => {
+    const msg: ChatMessage = {
+      id: '32',
+      role: 'assistant',
+      content: 'Answer【source: aa#0 | test.md】',
+      sources: [citedSource],
+      searchedLibraries: [{ id: '1', name: 'Dienstanweisungen' }],
+      timestamp: new Date(),
+    }
+    render(<MessageBubble message={msg} />)
+    expect(screen.queryByTestId('searched-libraries')).not.toBeInTheDocument()
+  })
+
   it('hides uncited sources behind collapsible section', () => {
     const msg: ChatMessage = {
       id: '6',

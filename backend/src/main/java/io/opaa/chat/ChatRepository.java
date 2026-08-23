@@ -1,6 +1,7 @@
 package io.opaa.chat;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,13 +33,23 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
   boolean existsBySpaceId(UUID spaceId);
 
   /**
-   * Used by {@code SpaceService#listSpaces} (#543): an archived space is left out of the list for
-   * members without a chat of their own in it, but a member who authored at least one chat there -
-   * including one nobody but they can ever remove, the exact situation archiving exists for - must
-   * keep seeing the space, or their own chat would become unreachable through the normal listing
-   * path.
+   * Backs the overview card's "Chats" figure (#682) and the archived-space visibility rule of
+   * {@code SpaceService#listSpaces} (#543) with one grouped query for the whole list instead of a
+   * lookup per space. Counts only the author's own chats: chats are private to their author (#525),
+   * so no figure over another member's chats exists. Spaces without a chat of the author's have no
+   * row here - the caller defaults those to zero.
    */
-  boolean existsBySpaceIdAndAuthorId(UUID spaceId, UUID authorId);
+  @Query(
+      "select c.spaceId as spaceId, count(c) as chatCount from Chat c"
+          + " where c.spaceId in :spaceIds and c.authorId = :authorId group by c.spaceId")
+  List<SpaceChatCount> countBySpaceIdInAndAuthorId(
+      @Param("spaceIds") Collection<UUID> spaceIds, @Param("authorId") UUID authorId);
+
+  interface SpaceChatCount {
+    UUID getSpaceId();
+
+    long getChatCount();
+  }
 
   /**
    * #561 review, finding 2: an atomic, DB-decided {@code UPDATE} instead of the load-mutate-{@code

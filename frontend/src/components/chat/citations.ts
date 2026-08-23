@@ -18,6 +18,10 @@ export interface CitationDoc {
    *  entry (#386) with no matching retrieved document, same as {@link SourceReference.documentId}
    *  it is carried straight through from. */
   documentId: string | null | undefined
+  /** #667: the distinct Fundorte of this row's footnotes, in footnote order - "S. 2–4",
+   *  "Abschn. 4.2 Fristsetzung" - resolved from the marker's chunk index via
+   *  {@link SourceReference.chunkLocations}. Empty when the pipeline knew none. */
+  locations: string[]
 }
 
 export interface CitationIndex {
@@ -31,6 +35,8 @@ export interface CitationIndex {
   uncited: SourceReference[]
   /** Distinct cited passages ("n Stellen"). */
   markerCount: number
+  /** #667: Fundort per footnote number, for the numbers the backend could locate. */
+  locationByNumber: Map<number, string>
 }
 
 /** Resolves an answer's citation markers into footnote numbers and the Fundstellen rows (#590). */
@@ -40,6 +46,7 @@ export function buildCitationIndex(
 ): CitationIndex {
   const numberByKey = new Map<string, number>()
   const docIndexByNumber = new Map<number, number>()
+  const locationByNumber = new Map<number, string>()
   const docs: CitationDoc[] = []
   // Rows are identified by documentId when available, falling back to fileName (see below) - the
   // same fallback key is used both to find a marker's source and to decide whether a cited/uncited
@@ -76,6 +83,14 @@ export function buildCitationIndex(
     return source?.documentId ?? fileName
   }
 
+  // #667: the marker's chunk index (`<documentId>#<chunk>`) picks the location the backend
+  // stored for exactly that chunk - the only join there is between a footnote and a Fundort.
+  function resolveLocation(source: SourceReference | undefined, key: string): string | undefined {
+    const chunkIndex = Number(key.split('#')[1])
+    const match = source?.chunkLocations?.find((entry) => entry.chunkIndex === chunkIndex)
+    return match?.location ?? undefined
+  }
+
   const regex = new RegExp(CITATION_MARKER_RE.source, 'g')
   let match: RegExpExecArray | null
   while ((match = regex.exec(content)) !== null) {
@@ -97,10 +112,18 @@ export function buildCitationIndex(
           numbers: [],
           source,
           documentId: source?.documentId,
+          locations: [],
         })
       }
       docs[docIndex].numbers.push(number)
       docIndexByNumber.set(number, docIndex)
+      const location = resolveLocation(source, key)
+      if (location !== undefined) {
+        locationByNumber.set(number, location)
+        if (!docs[docIndex].locations.includes(location)) {
+          docs[docIndex].locations.push(location)
+        }
+      }
     }
   }
 
@@ -113,6 +136,7 @@ export function buildCitationIndex(
         numbers: [],
         source,
         documentId: source.documentId,
+        locations: [],
       })
     }
   }
@@ -125,6 +149,7 @@ export function buildCitationIndex(
       (s) => !s.cited && !docIndexByRowKey.has(rowKey(s, s.fileName)),
     ),
     markerCount: numberByKey.size,
+    locationByNumber,
   }
 }
 

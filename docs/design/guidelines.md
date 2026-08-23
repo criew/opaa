@@ -100,16 +100,34 @@ Die Seitenleiste im hellen Schema verwendet ein eigenes Rollenset auf Navy-Basis
 `rgba(255,255,255,0.08/0.14)`) — die Werte des früheren dunklen Schemas, jetzt auf diese eine
 Fläche begrenzt (#654).
 
+Die globale Leiste (Rail, #786, Mockup 2a) verwendet im hellen Schema das Rollenset `railRoles`,
+eine Stufe dunkler als die Seitenleiste (Grund Navy-900, Hover Navy-800, Aktivkachel Navy-700
+mit Navy-600-Rahmen, Text Weiß/`#99A1AB`/`#7A8BA0`) — so lesen sich globale und Space-Ebene auf
+einen Blick auseinander. Im dunklen Schema folgt die Rail wie die Seitenleiste dem Carbon-Schema;
+Carbon hat keine dunklere Stufe, die Trennung übernimmt der Standardrahmen.
+
 ### 2.3 Regeln
 
 - **Nur Rollen in Komponenten.** Kein Hex-Wert und kein Skalenwert in Komponenten-Code; alles
-  läuft über die Rollen aus 2.2. Zulässige Ausnahmen: der Markenblock der Anmeldeseite und die
-  Seitenleiste (siehe nächster Punkt), Diagramm-Farbreihen, Hover-/Aktiv-Stufen von Blau in
-  Schaltflächen-Definitionen.
+  läuft über die Rollen aus 2.2. Zulässige Ausnahmen: der Markenblock der Anmeldeseite, die
+  Seitenleiste und die globale Leiste (siehe nächste Punkte), Diagramm-Farbreihen,
+  Hover-/Aktiv-Stufen von Blau in Schaltflächen-Definitionen.
 - **Die Seitenleiste ist im hellen Schema Navy, im dunklen folgt sie dem dunklen Schema**
   (#654). Hell ist sie der bewusste Kontrastblock der App (Rollenset `navyRoles`); dunkel
   verschmilzt sie wie bei den Claude-Docs mit der Carbon-Grundfläche, getrennt durch den
   Standardrahmen.
+- **Die globale Leiste folgt derselben Regel eine Stufe dunkler** (Rollenset `railRoles`,
+  #786). Ihre Aktivkachel (Navy-700 auf Navy-900, Rahmen Navy-600) liegt als Flächenkontrast
+  unter 3:1 — zulässig, weil der Zustand nicht allein über die Fläche getragen wird: die
+  Textfarbe wechselt auf Weiß und `aria-current` zeichnet den Eintrag programmatisch aus
+  (siehe 2.4).
+- **Der globale Verwaltungsrahmen** (#787, Mockup 2b) nutzt ausschließlich die Rollen aus 2.2:
+  Sekundärspalte auf `bg-2`, Aktivkarte auf `bg-1` mit `border-strong`-Rahmen. Auch hier liegt
+  die Zustandsfläche unter 3:1 — getragen wird der Zustand wie bei der Rail über Textfarbe,
+  Schriftgewicht und `aria-current`. Das **„Global"-Badge** leitet sich mit 10 % (Fläche) und
+  40 % (Rahmen) aus dem Akzent ab — analog zum 32-%-Fokusring aus 4.4 — und folgt damit einem
+  Branding-Override; der Geltungsbereich steht immer als sichtbarer Text im Chip, nie nur als
+  Farbe.
 - **Akzent ist austauschbar.** Die Branding-Konfiguration (Issues #582/#583) darf `accent`
   ersetzen. Deshalb darf keine Komponente sich auf „Blau" verlassen (z. B. Blau hart mit einem
   Icon mischen) — sie verlässt sich auf die Rolle.

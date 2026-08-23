@@ -55,11 +55,15 @@ jobs:
         run: |
           # --delete räumt entfernte Dateien der Landing Page mit weg, lässt
           # aber alles außerhalb von page/ unangetastet: report/ gehört dem
-          # Tagesreport, .git dem Branch selbst.
+          # Tagesreport, .git dem Branch selbst. fortschritt/ trägt manuell
+          # direkt auf gh-pages gepushte Meilenstein-Artefakte (Demo-Video,
+          # Berichts-PDFs, #807) — zu groß fürs Quell-Repository; der
+          # Ausschluss bewahrt den Ordner vor dem --delete dieses Laufs.
           rsync -a --delete \
             --exclude '.git/' \
             --exclude 'report/' \
             --exclude '.nojekyll' \
+            --exclude 'fortschritt/' \
             source/page/ site/
           # Ohne diese Datei schickt Pages die Seite durch Jekyll und
           # unterschlägt dabei Verzeichnisse mit führendem Unterstrich.

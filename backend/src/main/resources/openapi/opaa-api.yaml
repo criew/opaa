@@ -2559,6 +2559,38 @@ components:
             source that was never cited in the first place.
           example: true
 
+        chunkLocations:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ChunkLocation"
+          description: >
+            Where each retrieved chunk of this document sits in the original (#667) - the Fundort
+            mockup 1a prints next to a footnote ("Abschn. 4.2 ‚Fristsetzung'", "S. 2–4"). One entry
+            per retrieved chunk, keyed by the chunk index the citation marker carries
+            (【source: <documentId>#<chunkIndex> | …】), so a client resolves footnote number → chunk
+            index → location without a second request. The location itself is null where the
+            indexing pipeline could not determine one (plain text without headings, a format without
+            page breaks). Absent for a synthetic entry (#386).
+
+    ChunkLocation:
+      type: object
+      required: [chunkIndex]
+      properties:
+        chunkIndex:
+          type: integer
+          description: The chunk_index the citation marker names.
+          example: 3
+        location:
+          type: string
+          nullable: true
+          description: >
+            Human-readable location of the chunk in its document (#667), German, as the indexing
+            pipeline derived it from the document's own structure: the page range for formats with
+            page breaks (PDF, Office documents), the heading path for Markdown-style headings, both
+            when both are known. Null when nothing could be derived.
+          example: S. 2–4 · Abschn. 4.2 ‚Fristsetzung'
+
     QueryMetadata:
       type: object
       required: [model, tokenCount, durationMs]
@@ -2598,6 +2630,29 @@ components:
             deliberately false. Never true for an ephemeral query without a persisted chat, and
             never true for a space without any association (that case falls back to every readable
             library instead, per the permanent transition rule).
+
+        searchedLibraries:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SearchedLibrary"
+          description: >
+            The libraries the vector search actually ran against for this turn (#667) - the
+            effective search scope after permissions and the chat's own settings were applied,
+            sorted by name. Lets a client print mockup 1a's "Durchsucht wurden: …" line under an
+            answer that could not be substantiated, naming exactly what was looked at. Empty when no
+            search ran (answeredWithoutKnowledge / noKnowledgeAvailableInSpace).
+
+    SearchedLibrary:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Dienstanweisungen
 
     ErrorResponse:
       type: object
@@ -2726,6 +2781,21 @@ components:
         memberCount:
           type: integer
           example: 5
+        libraryCount:
+          type: integer
+          description: >
+            #682: number of knowledge libraries assigned to the space - the "Quellen" figure of
+            the overview card. Follows the same rule as the space's association list: CURATOR,
+            ADMIN, the owner and system admins count every association, a plain MEMBER only the
+            libraries they may read. Optional so older clients keep working.
+          example: 3
+        chatCount:
+          type: integer
+          description: >
+            #682: number of chats the caller owns in this space. Chats are private to their
+            author (#525), so this is the caller's view, not a space-wide total. Optional so
+            older clients keep working.
+          example: 12
         userRole:
           $ref: "#/components/schemas/SpaceRole"
         createdAt:

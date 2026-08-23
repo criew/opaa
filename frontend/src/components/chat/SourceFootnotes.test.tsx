@@ -190,7 +190,8 @@ describe('SourceFootnotes', () => {
       renderFootnotes(citations, { error: 'Das Originaldokument wurde nicht gefunden.' })
       const user = userEvent.setup()
 
-      await user.click(screen.getByRole('button', { name: 'Close' }))
+      // #784: the deDE MUI locale translates Alert's default close button label.
+      await user.click(screen.getByRole('button', { name: 'Schließen' }))
 
       expect(mockClearError).toHaveBeenCalledTimes(1)
     })

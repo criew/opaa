@@ -341,9 +341,11 @@ test.describe('Modellverwaltung (#760) - unabhängige Szenarien', () => {
     regularUserPage: page,
   }) => {
     // Positiver Anker zuerst (PR #770 review, Befund 4a): ohne ihn wäre `toHaveCount(0)` auf den
-    // "Modelle"-Link auch dann grün, wenn die Sidebar selbst noch gar nicht gerendert hätte.
-    await expect(page.getByRole('link', { name: 'Wissensbibliotheken' })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Modelle' })).toHaveCount(0)
+    // "Admin"-Link auch dann grün, wenn die globale Leiste selbst noch gar nicht gerendert hätte.
+    // Seit #786 führen die Admin-Seiten über den "Admin"-Eintrag der globalen Leiste; die
+    // einzelnen Links (Modelle, Gruppen, Branding) stehen nicht mehr in der Seitenleiste.
+    await expect(page.getByRole('link', { name: 'Katalog' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0)
 
     await page.goto('/admin/models')
     await expect(page.getByText(/nicht freigegeben/i)).toBeVisible()

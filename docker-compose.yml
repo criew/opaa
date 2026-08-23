@@ -155,5 +155,57 @@ services:
     profiles:
       - demo
 
+  # Optional locally-run Ollama service (#720): entirely opt-in via the "ollama" Compose profile,
+  # started with `docker compose --profile ollama up`. Without the profile, this service does not
+  # exist and the stack behaves exactly as before - the backend's own defaults still assume a
+  # reachable Ollama server (application.yml, "docker" profile: OPAA_OPENAI_BASE_URL defaults to
+  # http://ollama:11434/v1), see docs/deployment.md, section "LLM-Anbieter", for the alternatives
+  # (an external Ollama, host.docker.internal, or a different openai-compatible provider).
+  #
+  # Serves both chat and embedding through Ollama's own OpenAI-compatible /v1 endpoint - no
+  # provider-specific configuration exists anymore since #762, so activating this profile needs no
+  # environment variable changes at all: the application defaults already point here.
+  ollama:
+    image: ollama/ollama:0.32.15
+    volumes:
+      - opaa-ollama-data:/root/.ollama
+    # Not published to the host: the backend and the ollama-pull init step below reach this
+    # service over the Compose network under its service name ("ollama"), never through a host
+    # port. Uncomment to additionally reach it directly from the host (e.g. to run `ollama` CLI
+    # commands against it) - bind to 127.0.0.1 only, per the port-exposure rule this repository
+    # otherwise follows (see docs/deployment.md, "Härtung für erreichbare Deployments", Punkt 5).
+    # ports:
+    #   - "127.0.0.1:11434:11434"
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    profiles:
+      - ollama
+
+  # One-shot init step (#720): pulls both models this stack's own defaults need on first start -
+  # nomic-embed-text (OPAA_OPENAI_EMBEDDING_MODEL default) and phi3:mini (OPAA_OPENAI_CHAT_MODEL
+  # default - also the model io.opaa.llm.LlmModelSeeder takes over as the initial active chat
+  # model on first backend start). Without both pulled, the first chat/indexing request fails even
+  # though the "ollama" service itself is running and healthy. Idempotent: `ollama pull` compares
+  # against what "ollama" already has stored in opaa-ollama-data and skips anything already
+  # present, so restarting this stack never re-downloads either model. Runs to completion and
+  # exits (no restart) - `docker compose --profile ollama up` therefore only finishes downloading
+  # once per fresh volume; watch `docker compose logs -f ollama-pull` for progress.
+  ollama-pull:
+    image: ollama/ollama:0.32.15
+    environment:
+      OLLAMA_HOST: "ollama:11434"
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      "ollama pull nomic-embed-text && ollama pull phi3:mini"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    profiles:
+      - ollama
+
 volumes:
   opaa-postgres-data:
+  opaa-ollama-data:

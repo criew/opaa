@@ -52,22 +52,24 @@ Die Projektsprache ist **Deutsch**. Englisch bleibt ausschließlich dem Quellcod
 # mit einer Meldung von AuthProfileGuard ab (siehe ADR-0005).
 SPRING_PROFILES_ACTIVE=local,dev ./gradlew bootRun
 
-# Frontend (aus frontend/)
-npm ci                                  # Abhängigkeiten installieren
-VITE_ENABLE_MOCKS=true npm run dev      # Dev-Server mit MSW-Mocks
-npm run dev                             # Dev-Server (benötigt Backend auf :8080)
+# Frontend (aus frontend/) — Paketmanager ist pnpm (siehe Issue #653); die
+# Version ist im "packageManager"-Feld der package.json gepinnt, pnpm wechselt
+# selbstständig auf diese Version
+pnpm install                            # Abhängigkeiten installieren
+VITE_ENABLE_MOCKS=true pnpm run dev     # Dev-Server mit MSW-Mocks
+pnpm run dev                            # Dev-Server (benötigt Backend auf :8080)
 # Im dev-Auth-Modus laufen Anfragen als "dev-admin"; auf einen regulären Nutzer
 # wechseln mit http://localhost:5173/?devUser=dev-user
-npm run build                           # Production-Build
-npm run lint                            # Lint (ESLint)
-npm run test                            # Tests (Vitest)
-npm run format:check                    # Prettier-Formatierung prüfen
-npm run format                          # Automatisch mit Prettier formatieren
+pnpm run build                          # Production-Build
+pnpm run lint                           # Lint (ESLint)
+pnpm run test                           # Tests (Vitest)
+pnpm run format:check                   # Prettier-Formatierung prüfen
+pnpm run format                         # Automatisch mit Prettier formatieren
 
 # E2E-Suite (aus e2e/, siehe e2e/README.md)
-npm ci                                  # Abhängigkeiten installieren
-npx playwright install --with-deps chromium   # Browser installieren (einmalig)
-npm test                                # Stack via Docker Compose starten, Suite ausführen, Stack wieder stoppen
+pnpm install                            # Abhängigkeiten installieren
+pnpm exec playwright install --with-deps chromium   # Browser installieren (einmalig)
+pnpm test                               # Stack via Docker Compose starten, Suite ausführen, Stack wieder stoppen
 ```
 
 ## Abhängigkeitsverwaltung
@@ -117,9 +119,9 @@ KI-Agenten müssen einen `Co-Authored-By`-Trailer in Commits einfügen.
 Wenn mehrere Agent-Sessions gleichzeitig in diesem Verzeichnis arbeiten (z. B. mehrere Features parallel), für jede neue Aufgabe einen eigenen Git Worktree nutzen, statt im Hauptverzeichnis zu branchen. So blockieren sich parallele Sessions nicht gegenseitig durch Branch-Wechsel im selben Arbeitsverzeichnis.
 
 - Neue Aufgabe → eigenen Worktree anlegen (eigener Branch, eigenes Arbeitsverzeichnis)
-- Aufgabe fertig & gemerged → Worktree **sofort entfernen**. Ein bebauter Worktree belegt durch `backend/build`, `.gradle` und `frontend/node_modules` schnell ~15 GB — liegengebliebene Worktrees füllen die Platte.
+- Aufgabe fertig & gemerged → Worktree **sofort entfernen**. Ein bebauter Worktree belegt durch `backend/build` und `.gradle` schnell viele GB — liegengebliebene Worktrees füllen die Platte. (`frontend/node_modules` ist seit der pnpm-Migration nur noch ein Link-Baum in den benutzerweiten Store und fällt kaum noch ins Gewicht.)
 - Aufgabe unterbrochen, später weiterführen → Worktree behalten
-- `npm ci` in einem Worktree erst ausführen, wenn tatsächlich am Frontend gearbeitet wird
+- `pnpm install` in einem Worktree erst ausführen, wenn tatsächlich am Frontend gearbeitet wird
 
 ### Branch-Benennung
 

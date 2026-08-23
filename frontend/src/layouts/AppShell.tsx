@@ -4,7 +4,9 @@ import Drawer from '@mui/material/Drawer'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import { Outlet, useLocation } from 'react-router'
-import Sidebar from './Sidebar'
+import GlobalRail, { RAIL_WIDTH } from './GlobalRail'
+import { isGlobalAreaPath } from './globalArea'
+import Sidebar, { SIDEBAR_WIDTH } from './Sidebar'
 import MobileHeader from './MobileHeader'
 import AppFooter from './AppFooter'
 import SkipLink from '../components/a11y/SkipLink'
@@ -19,6 +21,9 @@ export default function AppShell() {
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
   const { pathname } = useLocation()
   const previousPathname = useRef(pathname)
+  // Mockup 2b (#787): global areas drop the space column; the rail and the area's own light
+  // frame carry the navigation there.
+  const isGlobalArea = isGlobalAreaPath(pathname)
 
   // On every route change, move focus to the new page's heading so screen readers announce it;
   // if the heading is not rendered yet (data still loading), park focus on <main> and let
@@ -31,18 +36,42 @@ export default function AppShell() {
     ;(heading ?? main)?.focus()
   }, [pathname])
 
+  // Navigating from inside the drawer must also dismiss it - otherwise it stays on top of the
+  // page just navigated to. Pre-existing since #587, taken along with review #791 (finding 9)
+  // because the rail put far more destinations into the drawer.
+  useEffect(() => {
+    if (!isDesktop) setSidebarOpen(false)
+  }, [pathname, isDesktop, setSidebarOpen])
+
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <SkipLink />
       {isDesktop ? (
-        <Sidebar />
+        <>
+          <GlobalRail />
+          {!isGlobalArea && <Sidebar />}
+        </>
       ) : (
         <Drawer
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           ModalProps={{ keepMounted: true }}
+          // Rail and space column together; on very narrow screens the column gives way
+          // (its flexShrink) rather than the drawer covering the whole viewport. In global
+          // areas only the rail remains, so the drawer narrows to it.
+          slotProps={{
+            paper: {
+              sx: {
+                width: isGlobalArea ? RAIL_WIDTH : RAIL_WIDTH + SIDEBAR_WIDTH,
+                maxWidth: '92vw',
+              },
+            },
+          }}
         >
-          <Sidebar />
+          <Box sx={{ display: 'flex', height: '100%', minWidth: 0 }}>
+            <GlobalRail />
+            {!isGlobalArea && <Sidebar />}
+          </Box>
         </Drawer>
       )}
 

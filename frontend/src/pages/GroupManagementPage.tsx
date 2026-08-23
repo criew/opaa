@@ -19,6 +19,7 @@ import CreateGroupDialog from '../components/CreateGroupDialog'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
 import PageHeading from '../components/a11y/PageHeading'
+import GlobalScopeNote from '../components/GlobalScopeNote'
 
 function GroupCard({ group }: { group: GroupListResponse }) {
   const details = useGroupStore((s) => s.groupDetails[group.id])
@@ -222,6 +223,7 @@ function GroupCard({ group }: { group: GroupListResponse }) {
                     ? `${option.displayName} (${option.email ?? option.id})`
                     : (option.email ?? option.id)
                 }
+                noOptionsText="Keine Treffer"
                 value={selectedUser}
                 onChange={(_event, value) => setSelectedUser(value)}
                 renderInput={(params) => (
@@ -293,6 +295,7 @@ export default function GroupManagementPage() {
           Neue Gruppe
         </Button>
       </Box>
+      <GlobalScopeNote />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

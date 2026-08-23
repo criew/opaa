@@ -177,3 +177,12 @@ bleibt unverändert, damit erkennbar bleibt, was wann galt.
   Nicht-E2E-Gebrauch des Stacks aus Versehen darauf zeigen kann. Eine Overlay-Datei trägt genau
   diese Trennung, ohne Postgres/Backend/Frontend selbst zu duplizieren.
 - **Verweis:** `e2e/scripts/run-e2e.mjs` · `e2e/docker-compose.e2e.yml`
+
+### 22.08.2026 — Paketmanager der Suite ist pnpm
+
+- **Punkt:** Punkt 1 nennt `e2e/` ein eigenständiges npm-Projekt mit eigenem `package-lock.json`.
+- **Entscheidung:** Mit der Migration des Frontend-Builds auf pnpm (#653) wurde auch `e2e/`
+  umgestellt: Das Lockfile heißt jetzt `pnpm-lock.yaml`, Installation und Aufrufe laufen über
+  `pnpm install` / `pnpm test` / `pnpm exec playwright …`. Die tragende Aussage von Punkt 1 —
+  eigenständiges Node-Projekt mit eigenem Lockfile, nicht Teil von `frontend/` — bleibt unverändert.
+- **Verweis:** PR #752 · `e2e/README.md`

@@ -48,26 +48,38 @@ zwei mit „Die Verarbeitung ist derzeit ausgelastet - bitte später erneut vers
 (siehe [`../demo/README.md`, „Seed ausführen"](../demo/README.md#seed-ausführen-712) für den
 Umgang, falls das trotzdem passiert).
 
-`OPAA_PGVECTOR_DIMENSIONS=768` ist mit den unveränderten Vorlagenwerten **zwingend**: Voreingestellt
-bleiben lokal betriebene Modelle über die openai-kompatible Schicht, ohne dass dafür eine Variable
-gesetzt werden muss (seit #762 der einzige Anbindungsweg — `application.yml` zeigt bereits auf einen
-lokal betriebenen Ollama-Server) mit dem Embedding-Modell `nomic-embed-text`, das 768
-Dimensionen liefert — `.env.docker.example` setzt `OPAA_PGVECTOR_DIMENSIONS` dagegen auf den
-Stack-Default 1536 (siehe [`deployment.md`, Zeile zu `OPAA_PGVECTOR_DIMENSIONS`](./deployment.md#alle-umgebungsvariablen)
-für dieselbe Kopplung auf der öffentlichen Instanz). Ohne die Anpassung schlägt der letzte
-Seed-Schritt fehl, weil die Vektorbreite nicht zum Modell passt. Der Wert muss zum jeweils
-verwendeten Embedding-Modell passen; eine nachträgliche Änderung an einer bereits laufenden Instanz
-erfordert `docker compose down -v` und eine vollständige Neuindizierung (siehe
-[`deployment.md`, „Was ein Update mit dem Index macht"](./deployment.md#was-ein-update-mit-dem-index-macht)).
-Wer stattdessen einen openai-kompatiblen Anbieter nutzt, setzt `OPAA_OPENAI_BASE_URL` zusätzlich
-und passt `OPAA_PGVECTOR_DIMENSIONS` auf dessen Embedding-Dimension an (siehe
-[`deployment.md`, „Erforderliche Variablen"](./deployment.md#erforderliche-variablen)).
+`OPAA_PGVECTOR_DIMENSIONS=768` steht seit #720 bereits so in `.env.docker.example` (nicht mehr auf
+dem Anwendungs-Default 1536) — die Zeile oben ist deshalb kein Abweichen mehr von der Vorlage,
+sondern nur zur Klarheit wiederholt: Voreingestellt bleiben lokal betriebene Modelle über die
+openai-kompatible Schicht, ohne dass dafür eine Variable gesetzt werden muss (seit #762 der einzige
+Anbindungsweg — `application.yml` zeigt bereits auf einen lokal betriebenen Ollama-Server), mit dem
+Embedding-Modell `nomic-embed-text`, das 768 Dimensionen liefert (siehe [`deployment.md`, Zeile zu
+`OPAA_PGVECTOR_DIMENSIONS`](./deployment.md#alle-umgebungsvariablen) für dieselbe Kopplung auf der
+öffentlichen Instanz). Der Wert muss zum jeweils verwendeten Embedding-Modell passen; eine
+nachträgliche Änderung an einer bereits laufenden Instanz erfordert `docker compose down -v` und
+eine vollständige Neuindizierung (siehe [`deployment.md`, „Was ein Update mit dem Index
+macht"](./deployment.md#was-ein-update-mit-dem-index-macht)). Wer stattdessen einen
+openai-kompatiblen Anbieter nutzt, setzt `OPAA_OPENAI_BASE_URL` zusätzlich und passt
+`OPAA_PGVECTOR_DIMENSIONS` auf dessen Embedding-Dimension an (siehe [`deployment.md`, „Erforderliche
+Variablen"](./deployment.md#erforderliche-variablen)).
 
 ### 2. Stack starten
 
 ```bash
 docker compose --profile demo up
 ```
+
+Ohne einen extern erreichbaren Ollama-Server (weder auf dem Host noch im eigenen Netz) zusätzlich
+das Compose-Profil `ollama` aktivieren (#720, siehe [`deployment.md`, „Lokal betriebenes Ollama im
+Compose-Stack"](./deployment.md#lokal-betriebenes-ollama-im-compose-stack-720)):
+
+```bash
+docker compose --profile demo --profile ollama up
+```
+
+Das startet zusätzlich einen lokal betriebenen `ollama`-Service samt Init-Schritt, der
+`nomic-embed-text` und `phi3:mini` zieht — die Demo läuft damit vollständig ohne externe Dienste,
+auf Kosten eines mehrere Gigabyte großen Downloads beim allerersten Start.
 
 Startet zusätzlich zu `postgres`/`backend`/`frontend`: `keycloak` (Anmeldung, seit #712 auch ohne
 separates `--profile oidc`), `demo-corpus` (drei `HTTP_DIRECTORY`-Bibliotheken) und `demo-presse`

@@ -169,9 +169,9 @@ export default function BrandingSettingsPage() {
     <Box sx={{ flexGrow: 1, p: 4, maxWidth: 960, overflowY: 'auto' }}>
       <PageHeading title="Branding" gutterBottom />
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe Ihres Hauses. Änderungen sind
-        ohne Neuinstallation für alle Nutzenden wirksam. Ein leeres Feld bedeutet: der OPAA-Standard
-        gilt wieder.
+        Gilt für die gesamte Anwendung: Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe
+        Ihres Hauses. Änderungen sind ohne Neuinstallation für alle Nutzenden wirksam. Ein leeres
+        Feld bedeutet: der OPAA-Standard gilt wieder.
       </Typography>
 
       {storeError && (
