@@ -24,8 +24,13 @@ export function useDocumentPreview() {
       } else if (result.kind === 'download') {
         // #780 acceptance criteria: every format without a preview (DOCX among them) must give
         // visible feedback - a click that only starts a silent download otherwise looks like it did
-        // nothing.
-        setDownloadMessage(`${result.fileName} wird heruntergeladen`)
+        // nothing. #781 review, Nit 3: a Markdown/plain text original that only fell back to a
+        // download because it exceeded the size cap gets its own, more informative message.
+        setDownloadMessage(
+          result.reason === 'too-large-for-preview'
+            ? `${result.fileName} ist zu groß für die Vorschau – wird heruntergeladen`
+            : `${result.fileName} wird heruntergeladen`,
+        )
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Das Original konnte nicht geöffnet werden.')

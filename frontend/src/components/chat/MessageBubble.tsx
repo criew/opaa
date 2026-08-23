@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
+import Snackbar from '@mui/material/Snackbar'
 import Typography from '@mui/material/Typography'
 import type { ChatMessage } from '../../types/chat'
 import { blue } from '../../theme/tokens'
@@ -10,6 +11,8 @@ import MarkdownRenderer from './MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
 import SourceFootnotes from './SourceFootnotes'
 import FeedbackButtons from './FeedbackButtons'
+import DocumentTextPreviewDialog from '../DocumentTextPreviewDialog'
+import { useDocumentPreview } from '../../hooks/useDocumentPreview'
 
 interface MessageBubbleProps {
   message: ChatMessage
@@ -31,6 +34,14 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
   const [highlightedDocIndexes, setHighlightedDocIndexes] = useState<number[]>([])
   const [evidenceOpen, setEvidenceOpen] = useState(false)
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // #739/#780: a single instance shared by SourceFootnotes (the Fundstellen block under the
+  // answer) and SourceEvidenceDrawer (the Belegfenster) - both offer the same "Im Dokument
+  // öffnen" action for the same message's sources, so one preview dialog/download snackbar
+  // suffices; rendered here, as a sibling of both, so neither unmounting (in particular the
+  // Belegfenster closing, which unmounts its children) closes it prematurely (#781 review,
+  // Wichtig 1/Nit 5).
+  const documentPreview = useDocumentPreview()
   const handleCitationClick = useCallback(
     (numbers: number[]) => {
       const docIndexes = [
@@ -123,6 +134,9 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                   ? () => setEvidenceOpen(true)
                   : undefined
               }
+              openDocument={documentPreview.openDocument}
+              error={documentPreview.error}
+              clearError={documentPreview.clearError}
             />
           )}
           {!isUser && (
@@ -131,6 +145,9 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               onClose={() => setEvidenceOpen(false)}
               citations={citations}
               answeredAt={message.timestamp}
+              openDocument={documentPreview.openDocument}
+              error={documentPreview.error}
+              clearError={documentPreview.clearError}
             />
           )}
 
@@ -138,6 +155,22 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             <Box sx={{ mt: 0.5 }}>
               <FeedbackButtons />
             </Box>
+          )}
+
+          {!isUser && (
+            <>
+              <DocumentTextPreviewDialog
+                previewDocument={documentPreview.previewDocument}
+                onClose={documentPreview.closePreview}
+              />
+              <Snackbar
+                open={documentPreview.downloadMessage != null}
+                autoHideDuration={6000}
+                onClose={documentPreview.clearDownloadMessage}
+                message={documentPreview.downloadMessage}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+              />
+            </>
           )}
         </Box>
       </Box>

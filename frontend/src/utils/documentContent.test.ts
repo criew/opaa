@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getDocumentContent } from '../services/api'
-import { openDocumentContent } from './documentContent'
+import { openDocumentContent, TEXT_PREVIEW_MAX_BYTES } from './documentContent'
 
 vi.mock('../services/api', () => ({
   getDocumentContent: vi.fn(),
@@ -162,6 +162,43 @@ describe('documentContent', () => {
         contentType: 'text/plain',
         content: 'Reiner Text ohne Markup.',
       })
+    })
+
+    // #781 review, Nit 3: reading an unbounded Markdown/plain text original into a string via
+    // `blob.text()` could freeze the tab - above TEXT_PREVIEW_MAX_BYTES it falls back to a
+    // download instead, tagged with `reason` so the caller can explain why.
+    it('falls back to a download for a Markdown original larger than TEXT_PREVIEW_MAX_BYTES (#781 review, Nit 3)', async () => {
+      const oversized = new Blob([new Uint8Array(TEXT_PREVIEW_MAX_BYTES + 1)], {
+        type: 'text/markdown',
+      })
+      const textSpy = vi.spyOn(oversized, 'text')
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: oversized,
+        fileName: 'riesiges-dokument.md',
+      })
+
+      const result = await openDocumentContent('doc-1', 'fallback.md')
+
+      expect(textSpy).not.toHaveBeenCalled()
+      expect(windowOpenSpy).not.toHaveBeenCalled()
+      expect(clickSpy).toHaveBeenCalledTimes(1)
+      expect(result).toEqual({
+        kind: 'download',
+        fileName: 'riesiges-dokument.md',
+        reason: 'too-large-for-preview',
+      })
+    })
+
+    it('still previews a Markdown original at exactly TEXT_PREVIEW_MAX_BYTES (#781 review, Nit 3)', async () => {
+      const atLimit = new Blob([new Uint8Array(TEXT_PREVIEW_MAX_BYTES)], { type: 'text/markdown' })
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: atLimit,
+        fileName: 'genau-am-limit.md',
+      })
+
+      const result = await openDocumentContent('doc-1', 'fallback.md')
+
+      expect(result.kind).toBe('text-preview')
     })
 
     it('revokes the object URL when triggering the download throws before the revoke is scheduled', async () => {

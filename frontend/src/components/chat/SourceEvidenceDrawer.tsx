@@ -6,7 +6,6 @@ import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import Link from '@mui/material/Link'
-import Snackbar from '@mui/material/Snackbar'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import CloseIcon from '@mui/icons-material/Close'
@@ -15,8 +14,6 @@ import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
 import type { DocumentSourceType } from '../../types/api'
 import { fontFamily } from '../../theme/tokens'
-import DocumentTextPreviewDialog from '../DocumentTextPreviewDialog'
-import { useDocumentPreview } from '../../hooks/useDocumentPreview'
 
 interface SourceEvidenceDrawerProps {
   open: boolean
@@ -24,6 +21,13 @@ interface SourceEvidenceDrawerProps {
   citations: CitationIndex
   /** When the answer arrived - mockup 1i's footer line. */
   answeredAt: Date
+  /** #739/#747/#780: MessageBubble's single `useDocumentPreview()` instance (../../hooks/
+   *  useDocumentPreview), shared with SourceFootnotes - the preview dialog/download snackbar it
+   *  drives are rendered by MessageBubble as siblings of this Drawer, not inside it, so they
+   *  survive the Drawer unmounting its children on close (#781 review, Nit 5; Wichtig 1). */
+  openDocument: (documentId: string, fallbackFileName: string) => Promise<void>
+  error: string | null
+  clearError: () => void
 }
 
 interface EvidenceDoc {
@@ -63,21 +67,12 @@ export default function SourceEvidenceDrawer({
   onClose,
   citations,
   answeredAt,
+  openDocument,
+  error: openOriginalError,
+  clearError: clearOpenOriginalError,
 }: SourceEvidenceDrawerProps) {
   const [query, setQuery] = useState('')
   const [citedOnly, setCitedOnly] = useState(false)
-  // #739/#780: mirrors LibraryDetailPage's own use of this hook (#738) - opening the original is a
-  // read-only, per-click action, so its failure (404, file missing), Markdown/Text preview and
-  // download feedback all get their own local state here rather than touching any store.
-  const {
-    error: openOriginalError,
-    clearError: clearOpenOriginalError,
-    previewDocument,
-    closePreview,
-    downloadMessage,
-    clearDownloadMessage,
-    openDocument,
-  } = useDocumentPreview()
 
   // #739/#747: every sourceType with a documentId opens through the Bearer-authenticated content
   // endpoint (a plain <a href> cannot carry the token, ADR-0005) - since #747 that endpoint proxies
@@ -333,15 +328,6 @@ export default function SourceEvidenceDrawer({
           Stand der Antwort: {formatAnsweredAt(answeredAt)}
         </Typography>
       </Box>
-
-      <DocumentTextPreviewDialog document={previewDocument} onClose={closePreview} />
-      <Snackbar
-        open={downloadMessage != null}
-        autoHideDuration={6000}
-        onClose={clearDownloadMessage}
-        message={downloadMessage}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
     </Drawer>
   )
 }

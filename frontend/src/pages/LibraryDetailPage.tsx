@@ -801,7 +801,7 @@ function LibraryDocumentsSection({
         </Stack>
       )}
 
-      <DocumentTextPreviewDialog document={previewDocument} onClose={closePreview} />
+      <DocumentTextPreviewDialog previewDocument={previewDocument} onClose={closePreview} />
       <Snackbar
         open={downloadMessage != null}
         autoHideDuration={6000}

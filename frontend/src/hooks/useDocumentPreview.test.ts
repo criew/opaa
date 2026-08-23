@@ -65,6 +65,25 @@ describe('useDocumentPreview', () => {
     expect(result.current.previewDocument).toBeNull()
   })
 
+  // #781 review, Nit 3: a Markdown/plain text original that fell back to a download purely
+  // because it exceeded the size cap gets a more informative message than the generic one above.
+  it('shows a "zu groß für die Vorschau" message for a too-large-for-preview download', async () => {
+    mockOpenDocumentContent.mockResolvedValueOnce({
+      kind: 'download',
+      fileName: 'riesiges-dokument.md',
+      reason: 'too-large-for-preview',
+    })
+    const { result } = renderHook(() => useDocumentPreview())
+
+    await act(async () => {
+      await result.current.openDocument('doc-1', 'fallback.md')
+    })
+
+    expect(result.current.downloadMessage).toBe(
+      'riesiges-dokument.md ist zu groß für die Vorschau – wird heruntergeladen',
+    )
+  })
+
   it('clears the download message via clearDownloadMessage', async () => {
     mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'a.docx' })
     const { result } = renderHook(() => useDocumentPreview())

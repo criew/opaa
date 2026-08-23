@@ -25,6 +25,14 @@ const NEVER_PREVIEWABLE_CONTENT_TYPES = ['image/svg+xml']
 // #743 SVG Sperre above for a different attack surface).
 const TEXT_PREVIEWABLE_CONTENT_TYPES = ['text/markdown', 'text/plain']
 
+// #781 review, Nit 3: `blob.text()` below reads the entire file into a JS string - the upload
+// limit is 50 MB (LibraryDocumentService), so an unbounded read of a large plain-text/Markdown
+// original could freeze the tab. 2 MiB comfortably covers the indexed documents this feature was
+// built for (the Klick-Test's `001_personalausweis.md` and the like are a few KB) while staying
+// well short of anything that would visibly stall parsing/rendering; a file above it falls back
+// to the download branch instead; see {@link isTooLargeForTextPreview}.
+export const TEXT_PREVIEW_MAX_BYTES = 2 * 1024 * 1024
+
 // #748 review, finding 2b: `blob.type` carries the full Content-Type line, parameters included
 // (e.g. `image/svg+xml; charset=utf-8`) - comparing that verbatim against
 // NEVER_PREVIEWABLE_CONTENT_TYPES let a source that adds a harmless-looking parameter slip past the
@@ -45,6 +53,10 @@ function isPreviewable(contentType: string): boolean {
 
 function isTextPreviewable(contentType: string): boolean {
   return TEXT_PREVIEWABLE_CONTENT_TYPES.includes(contentTypeEssence(contentType))
+}
+
+function isTooLargeForTextPreview(sizeBytes: number): boolean {
+  return sizeBytes > TEXT_PREVIEW_MAX_BYTES
 }
 
 // Exported so tests can advance fake timers by exactly this amount instead of a magic number, and
@@ -86,6 +98,10 @@ export interface TextPreviewResult {
 export interface DownloadResult {
   kind: 'download'
   fileName: string
+  /** #781 review, Nit 3: set when a Markdown/plain text original fell back to a download purely
+   *  because it exceeded {@link TEXT_PREVIEW_MAX_BYTES} - the caller uses this to show "zu groß
+   *  für die Vorschau" instead of the generic download message (see useDocumentPreview). */
+  reason?: 'too-large-for-preview'
 }
 
 /**
@@ -116,7 +132,10 @@ export async function openDocumentContent(
   const { blob, fileName } = await getDocumentContent(documentId)
   const resolvedFileName = fileName ?? fallbackFileName
 
-  if (isTextPreviewable(blob.type)) {
+  // #781 review, Nit 3: a Markdown/plain text file above TEXT_PREVIEW_MAX_BYTES falls back to the
+  // ordinary download branch below (with `reason: 'too-large-for-preview'`) rather than reading it
+  // in full via `blob.text()`, which could freeze the tab on a large original.
+  if (isTextPreviewable(blob.type) && !isTooLargeForTextPreview(blob.size)) {
     return {
       kind: 'text-preview',
       fileName: resolvedFileName,
@@ -126,8 +145,9 @@ export async function openDocumentContent(
   }
 
   const objectUrl = URL.createObjectURL(blob)
+  const previewable = isPreviewable(blob.type)
   try {
-    if (isPreviewable(blob.type)) {
+    if (previewable) {
       window.open(objectUrl, '_blank', 'noopener,noreferrer')
     } else {
       triggerDownload(objectUrl, resolvedFileName)
@@ -138,7 +158,12 @@ export async function openDocumentContent(
   }
 
   setTimeout(() => URL.revokeObjectURL(objectUrl), OBJECT_URL_REVOKE_DELAY_MS)
-  return isPreviewable(blob.type)
-    ? { kind: 'blob-preview' }
-    : { kind: 'download', fileName: resolvedFileName }
+  if (previewable) {
+    return { kind: 'blob-preview' }
+  }
+  return {
+    kind: 'download',
+    fileName: resolvedFileName,
+    reason: isTextPreviewable(blob.type) ? 'too-large-for-preview' : undefined,
+  }
 }

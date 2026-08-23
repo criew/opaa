@@ -17,13 +17,21 @@ import 'highlight.js/styles/github-dark.css'
 
 interface MarkdownRendererProps {
   content: string
-  /** Footnote resolution for the answer's citation markers (#590); absent markers are stripped. */
+  /** Footnote resolution for the answer's citation markers (#590); absent markers are stripped
+   *  unless {@link preserveCitationMarkers} is set. */
   citations?: CitationIndex
   /** Needed for the footnote anchors' target ids; only used together with `citations`. */
   messageId?: string
   /** Fires with every footnote number a clicked anchor covers - a range like "3–4" covers two
    *  rows, which the URL hash alone cannot highlight (#590 Nachbesserung). */
   onCitationClick?: (numbers: number[]) => void
+  /** #780/#781 review, Nit 6: `content` here is a chat answer the backend generated with its own
+   *  `【source: …】` marker syntax baked in, which the default behaviour above resolves into
+   *  footnotes (or silently strips when no `citations` index matches). A document's own original
+   *  content is neither - a coincidental `【…】` run in the source text is part of what was
+   *  indexed, not a citation marker, so silently mutating it in DocumentTextPreviewDialog would be
+   *  wrong. Set to render `content` completely unprocessed by the citation-marker logic. */
+  preserveCitationMarkers?: boolean
 }
 
 const CITATION_RE = new RegExp(CITATION_MARKER_RE.source)
@@ -144,8 +152,15 @@ function makeProcessChildren(
   citations: CitationIndex | undefined,
   messageId: string | undefined,
   onCitationClick: ((numbers: number[]) => void) | undefined,
+  preserveCitationMarkers: boolean,
 ) {
   return function processChildren(children: React.ReactNode): React.ReactNode {
+    // #780/#781 review, Nit 6: a document preview's own content is not a chat answer - a
+    // coincidental `【…】` run is part of what was indexed, not a citation marker to resolve or
+    // strip.
+    if (preserveCitationMarkers) {
+      return children
+    }
     if (typeof children === 'string') {
       if (CITATION_RE.test(children)) {
         return renderWithCitations(children, citations, messageId, onCitationClick)
@@ -269,10 +284,14 @@ export default function MarkdownRenderer({
   citations,
   messageId,
   onCitationClick,
+  preserveCitationMarkers = false,
 }: MarkdownRendererProps) {
   const components = useMemo(
-    () => makeComponents(makeProcessChildren(citations, messageId, onCitationClick)),
-    [citations, messageId, onCitationClick],
+    () =>
+      makeComponents(
+        makeProcessChildren(citations, messageId, onCitationClick, preserveCitationMarkers),
+      ),
+    [citations, messageId, onCitationClick, preserveCitationMarkers],
   )
   return (
     <ReactMarkdown

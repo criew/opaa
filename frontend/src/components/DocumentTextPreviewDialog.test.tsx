@@ -15,14 +15,14 @@ function plainTextDoc(content: string, fileName = 'notiz.txt'): TextPreviewResul
 
 describe('DocumentTextPreviewDialog', () => {
   it('stays closed when no document is given', () => {
-    renderWithProviders(<DocumentTextPreviewDialog document={null} onClose={vi.fn()} />)
+    renderWithProviders(<DocumentTextPreviewDialog previewDocument={null} onClose={vi.fn()} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('shows the file name and renders Markdown content readable in the browser', () => {
     renderWithProviders(
       <DocumentTextPreviewDialog
-        document={markdownDoc('# Titel\n\nEin Absatz.')}
+        previewDocument={markdownDoc('# Titel\n\nEin Absatz.')}
         onClose={vi.fn()}
       />,
     )
@@ -32,9 +32,23 @@ describe('DocumentTextPreviewDialog', () => {
     expect(screen.getByText('Ein Absatz.')).toBeInTheDocument()
   })
 
+  // #781 review, Nit 4: MUI does not wire aria-labelledby to DialogTitle automatically.
+  it('labels the dialog with the file name via aria-labelledby', () => {
+    renderWithProviders(
+      <DocumentTextPreviewDialog previewDocument={markdownDoc('Inhalt')} onClose={vi.fn()} />,
+    )
+    const dialog = screen.getByRole('dialog')
+    const labelledBy = dialog.getAttribute('aria-labelledby')
+    expect(labelledBy).toBeTruthy()
+    expect(document.getElementById(labelledBy!)).toHaveTextContent('001_personalausweis.md')
+  })
+
   it('renders plain text as-is, preserving line breaks', () => {
     renderWithProviders(
-      <DocumentTextPreviewDialog document={plainTextDoc('Zeile 1\nZeile 2')} onClose={vi.fn()} />,
+      <DocumentTextPreviewDialog
+        previewDocument={plainTextDoc('Zeile 1\nZeile 2')}
+        onClose={vi.fn()}
+      />,
     )
     const pre = document.querySelector('pre')
     expect(pre).toBeInTheDocument()
@@ -45,10 +59,25 @@ describe('DocumentTextPreviewDialog', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     renderWithProviders(
-      <DocumentTextPreviewDialog document={markdownDoc('Inhalt')} onClose={onClose} />,
+      <DocumentTextPreviewDialog previewDocument={markdownDoc('Inhalt')} onClose={onClose} />,
     )
     await user.click(screen.getByRole('button', { name: 'Vorschau schließen' }))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  // #781 review, Nit 6: a document preview's content is not a chat answer - MarkdownRenderer's
+  // default citation-marker stripping must not silently mutate a coincidental 【…】 run that is
+  // part of the original text.
+  it('shows a raw 【source: …】-shaped run in the original instead of silently stripping it', () => {
+    renderWithProviders(
+      <DocumentTextPreviewDialog
+        previewDocument={markdownDoc('Vorher 【source: doc-1#0 | irrelevant.md】 nachher.')}
+        onClose={vi.fn()}
+      />,
+    )
+    expect(
+      screen.getByText('Vorher 【source: doc-1#0 | irrelevant.md】 nachher.'),
+    ).toBeInTheDocument()
   })
 
   // #780 acceptance criteria: no gerendertes Markdown may execute script in the app's origin - a
@@ -59,7 +88,7 @@ describe('DocumentTextPreviewDialog', () => {
     it('renders a literal <script> tag as inert text, not a script element', () => {
       renderWithProviders(
         <DocumentTextPreviewDialog
-          document={markdownDoc(
+          previewDocument={markdownDoc(
             'Vor dem Angriff.\n\n<script>window.__pwned = true</script>\n\nNach dem Angriff.',
           )}
           onClose={vi.fn()}
@@ -72,7 +101,7 @@ describe('DocumentTextPreviewDialog', () => {
     it('renders a literal <img onerror=...> as inert text, not an executable element', () => {
       renderWithProviders(
         <DocumentTextPreviewDialog
-          document={markdownDoc('<img src=x onerror="window.__pwned = true">')}
+          previewDocument={markdownDoc('<img src=x onerror="window.__pwned = true">')}
           onClose={vi.fn()}
         />,
       )
@@ -84,7 +113,7 @@ describe('DocumentTextPreviewDialog', () => {
     it('strips a javascript: URL from a Markdown link instead of rendering it as href', () => {
       renderWithProviders(
         <DocumentTextPreviewDialog
-          document={markdownDoc("[Klick mich](javascript:alert('x'))")}
+          previewDocument={markdownDoc("[Klick mich](javascript:alert('x'))")}
           onClose={vi.fn()}
         />,
       )
@@ -96,7 +125,7 @@ describe('DocumentTextPreviewDialog', () => {
     it('strips a javascript: URL from a Markdown image src', () => {
       renderWithProviders(
         <DocumentTextPreviewDialog
-          document={markdownDoc("![Bild](javascript:alert('x'))")}
+          previewDocument={markdownDoc("![Bild](javascript:alert('x'))")}
           onClose={vi.fn()}
         />,
       )
