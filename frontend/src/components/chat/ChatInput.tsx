@@ -17,6 +17,7 @@ import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
+import { useSpaceStore } from '../../stores/spaceStore'
 import type { LibraryListResponse } from '../../types/api'
 
 interface ChatInputProps {
@@ -35,6 +36,11 @@ interface ActiveMention {
 const ALL_KNOWLEDGE_LABEL = 'Alles-Wissen'
 
 type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: LibraryListResponse }
+
+// #782/#783: the scope line under the input either renders as "Durchsucht: <text>" ('summary') or
+// replaces that whole line with a standalone sentence ('notice') - see the scopeLine memo below for
+// which case is which.
+type ScopeLine = { kind: 'summary'; text: string } | { kind: 'notice'; text: string }
 
 /**
  * Finds an in-progress '@' mention ending at the cursor, or null if none is active. Only
@@ -88,6 +94,31 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     }
   }, [libraries.length, loadLibraries])
 
+  // #782: @Alles-Wissen's scope line must mirror ChatService#effectiveLibraryScope, not just
+  // "every readable library" - a space curated via space<->library associations (#706) narrows
+  // the actual search to associated ∩ readable, and the line has to say so, not the wider number
+  // the user never gets to search. Loaded per current chat's space via the same spaceStore
+  // SpaceManagementPage/SpacePage use (their routes never render at the same time as this one, so
+  // there is no simultaneous-consumer conflict) - but #783 review finding 1: that store write-back
+  // is asynchronous and per-space, so this component must not simply trust whatever is currently in
+  // libraryAssociations/hasLibraryAssociations. libraryAssociationsSpaceId names which space that
+  // data actually describes; isLibraryAssociationsCurrent below is false while it does not match
+  // chatSpaceId - covering the load still being in flight, a load that failed (spaceStore leaves it
+  // null rather than defaulting to "no associations", #783 review nit 1), and the moment right after
+  // switching to a chat in a different space, before its own load has even started.
+  const chatSpaceId = useChatStore((s) => s.spaceId)
+  const hasLibraryAssociations = useSpaceStore((s) => s.hasLibraryAssociations)
+  const libraryAssociations = useSpaceStore((s) => s.libraryAssociations)
+  const libraryAssociationsSpaceId = useSpaceStore((s) => s.libraryAssociationsSpaceId)
+  const loadLibraryAssociations = useSpaceStore((s) => s.loadLibraryAssociations)
+  const isLibraryAssociationsCurrent = libraryAssociationsSpaceId === chatSpaceId
+
+  useEffect(() => {
+    if (chatSpaceId) {
+      void loadLibraryAssociations(chatSpaceId)
+    }
+  }, [chatSpaceId, loadLibraryAssociations])
+
   useEffect(() => {
     if (wasDisabled.current && !disabled) {
       inputRef.current?.focus()
@@ -111,19 +142,67 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     })
   }, [libraries, librariesLoading, referencedLibraryIds, scope])
 
-  // Mockup 1a's quiet scope line (#591): says what the next question will search. The counts
-  // stay honest to today's model - @Alles-Wissen means every readable library, not yet the
-  // space's Datenquellen (#203).
-  const scopeSummary = useMemo(() => {
-    if (scope === 'none') return 'nichts — antwortet ohne Wissensbasis'
-    if (scope === 'libraries') {
-      const count = referencedLibraryIds.length
-      return count === 1 ? '1 gewählter Bestand' : `${count} gewählte Bestände`
+  // Mockup 1a's quiet scope line (#591), narrowed for #782: says what the next question will
+  // actually search - ChatService#effectiveLibraryScope's own rule (docs/features/spaces-and-
+  // assets.md#suchbereich-je-chatart). A space *with* library associations narrows @Alles-Wissen to
+  // associated ∩ readable, so the line counts that intersection (readableByCaller on each
+  // association) and calls it "zugeordnet [...] lesbar", not just "zugeordnet" - a CURATOR/ADMIN can
+  // see associations they cannot themselves read (#706), so "zugeordnet" alone would silently omit
+  // the readability narrowing and look inconsistent with SpacePage's own count for the same space
+  // (#783 review nit 4). A space *without* any association still falls back to every readable
+  // library, unchanged from before #782.
+  //
+  // 'summary' renders as "Durchsucht: <text>"; 'notice' replaces that whole line with a standalone
+  // sentence - used for the two cases a bare number cannot honestly represent: the associated∩
+  // readable scope being empty (#783 review nit 3, matching the wording MessageBubble/SpacePage
+  // already use for the same state) and the associations for the current space not being known yet
+  // (still loading, or the load failed - #783 review nit 1: must never default to "every readable
+  // library", which is exactly the false claim #782 fixed).
+  const scopeLine = useMemo((): ScopeLine => {
+    if (scope === 'none') {
+      return { kind: 'summary', text: 'nichts — antwortet ohne Wissensbasis' }
     }
-    if (libraries.length === 1) return '1 lesbarer Bestand'
-    if (libraries.length > 1) return `${libraries.length} lesbare Bestände`
-    return 'alle lesbaren Bestände'
-  }, [libraries.length, referencedLibraryIds.length, scope])
+    if (scope === 'libraries') {
+      // #783 review, "vorbestehend": ChatService#effectiveLibraryScope intersects referenced ids
+      // with the readable libraries too (ChatService.java:249-251) - only the 'known' chips (found
+      // in the readable `libraries` list) survive that intersection, exactly like 'missing' chips
+      // already mark an id that is not (or no longer) readable.
+      const count = referencedLibraryIds.filter((id) => libraries.some((l) => l.id === id)).length
+      return {
+        kind: 'summary',
+        text: count === 1 ? '1 gewählter Bestand' : `${count} gewählte Bestände`,
+      }
+    }
+    if (!isLibraryAssociationsCurrent) {
+      return { kind: 'notice', text: 'Suchbereich wird ermittelt …' }
+    }
+    if (hasLibraryAssociations) {
+      const count = libraryAssociations.filter((a) => a.readableByCaller).length
+      if (count === 0) {
+        return {
+          kind: 'notice',
+          text: 'In diesem Space ist für Sie derzeit kein Wissen verfügbar.',
+        }
+      }
+      return {
+        kind: 'summary',
+        text:
+          count === 1 ? '1 zugeordneter lesbarer Bestand' : `${count} zugeordnete lesbare Bestände`,
+      }
+    }
+    if (libraries.length === 1) return { kind: 'summary', text: '1 lesbarer Bestand' }
+    if (libraries.length > 1) {
+      return { kind: 'summary', text: `${libraries.length} lesbare Bestände` }
+    }
+    return { kind: 'summary', text: 'alle lesbaren Bestände' }
+  }, [
+    hasLibraryAssociations,
+    isLibraryAssociationsCurrent,
+    libraries,
+    libraryAssociations,
+    referencedLibraryIds,
+    scope,
+  ])
 
   const suggestions = useMemo((): MentionSuggestion[] => {
     if (mention === null) return []
@@ -502,11 +581,17 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
       {/* Mockup 1a (#591): the quiet scope line under the input. */}
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.875 }}>
         <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
-          Durchsucht:{' '}
-          <Box component="span" sx={{ fontWeight: 500 }}>
-            {scopeSummary}
-          </Box>
-          {scope === 'all' && ' · mit @ auf eine Quelle eingrenzen'}
+          {scopeLine.kind === 'summary' ? (
+            <>
+              Durchsucht:{' '}
+              <Box component="span" sx={{ fontWeight: 500 }}>
+                {scopeLine.text}
+              </Box>
+              {scope === 'all' && ' · mit @ auf eine Quelle eingrenzen'}
+            </>
+          ) : (
+            scopeLine.text
+          )}
         </Typography>
       </Box>
     </Box>

@@ -198,6 +198,74 @@ describe('spaceStore', () => {
       },
     ])
     expect(useSpaceStore.getState().hasLibraryAssociations).toBe(true)
+    // #783 review finding 1: callers must be able to tell which space this data actually
+    // describes before trusting it.
+    expect(useSpaceStore.getState().libraryAssociationsSpaceId).toBe('space-project')
+  })
+
+  // #783 review finding 1 (🔴): a response for a space call already superseded by a newer one
+  // must not win the race and overwrite the newer call's state - reproduces the bug report's "two
+  // quick switches, the stale response arrives last" scenario at the store level.
+  it('ignores a stale response for a space no longer being loaded', async () => {
+    const first = deferred<{
+      hasAssociations: boolean
+      items: {
+        libraryId: string
+        libraryName: string
+        readableByCaller: boolean
+        createdByUserId: string
+        createdAt: string
+      }[]
+    }>()
+    mockGetSpaceLibraryAssociations.mockImplementationOnce(() => first.promise)
+
+    // Started first (space left behind), but resolves last - the real-world case a plain
+    // .mockResolvedValueOnce ordering can't reproduce, since here the *second* call's own request
+    // settles before the *first* call's deferred response ever arrives.
+    const firstCall = useSpaceStore.getState().loadLibraryAssociations('space-a')
+    const secondCall = useSpaceStore.getState().loadLibraryAssociations('space-project')
+    await secondCall
+
+    expect(useSpaceStore.getState().libraryAssociationsSpaceId).toBe('space-project')
+
+    first.resolve({
+      hasAssociations: true,
+      items: [
+        {
+          libraryId: 'lib-a',
+          libraryName: 'A',
+          readableByCaller: true,
+          createdByUserId: 'u1',
+          createdAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+    })
+    await firstCall
+
+    // The now-stale space-a response must not have overwritten space-project's already-current
+    // state.
+    expect(useSpaceStore.getState().libraryAssociationsSpaceId).toBe('space-project')
+    expect(useSpaceStore.getState().libraryAssociations).toEqual([
+      {
+        libraryId: 'lib-1',
+        libraryName: 'Rechtsquellen',
+        readableByCaller: true,
+        createdByUserId: 'u1',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+    ])
+  })
+
+  // #783 review nit 1: a failed load must leave libraryAssociationsSpaceId null, not silently
+  // read as "this space has no associations" (which callers would otherwise render as "every
+  // readable library" - the exact false claim #782 fixed).
+  it('leaves libraryAssociationsSpaceId null when the load fails', async () => {
+    mockGetSpaceLibraryAssociations.mockRejectedValueOnce(new Error('Netzwerkfehler'))
+
+    await useSpaceStore.getState().loadLibraryAssociations('space-project')
+
+    expect(useSpaceStore.getState().libraryAssociationsSpaceId).toBeNull()
+    expect(useSpaceStore.getState().hasLibraryAssociations).toBe(false)
   })
 
   it('associates a library and reloads the association list', async () => {

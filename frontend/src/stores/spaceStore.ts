@@ -25,6 +25,13 @@ import {
 } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
+// #783 review: module-level, mirroring chatStore's chatLoadSequence - guards loadLibraryAssociations
+// against a *newer* call for a different space, not just against a session reset. Without it, a
+// quick space switch (e.g. ChatInput reacting to the chat's spaceId) could let an in-flight
+// response for the space just left overwrite state a later call already started clearing, so the
+// wrong space's association count would render (#783 review finding 1).
+let libraryAssociationsRequestSeq = 0
+
 interface SpaceState {
   spaces: SpaceListResponse[]
   selectedSpaceId: string | null
@@ -45,6 +52,12 @@ interface SpaceState {
   libraryAssociations: SpaceLibraryAssociationResponse[]
   hasLibraryAssociations: boolean
   isLoadingLibraryAssociations: boolean
+  // #783 review: the space id that libraryAssociations/hasLibraryAssociations actually describe -
+  // null while nothing has successfully loaded yet, or after a failed load. A caller reading
+  // libraryAssociations/hasLibraryAssociations must compare this against the space it cares about
+  // before trusting the count for anything - otherwise a stale value from a previously loaded
+  // space (or a failed load silently read as "no associations") renders as if it were current.
+  libraryAssociationsSpaceId: string | null
   reset: () => void
   loadSpaces: () => Promise<void>
   selectSpace: (spaceId: string) => Promise<void>
@@ -92,6 +105,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   libraryAssociations: [],
   hasLibraryAssociations: false,
   isLoadingLibraryAssociations: false,
+  libraryAssociationsSpaceId: null,
 
   reset: () =>
     set({
@@ -106,6 +120,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       libraryAssociations: [],
       hasLibraryAssociations: false,
       isLoadingLibraryAssociations: false,
+      libraryAssociationsSpaceId: null,
     }),
 
   loadSpaces: async () => {
@@ -146,6 +161,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       members: [],
       libraryAssociations: [],
       hasLibraryAssociations: false,
+      libraryAssociationsSpaceId: null,
     })
     try {
       const space = await getSpace(spaceId)
@@ -241,25 +257,42 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     return space.id
   },
 
+  // #783 review finding 1: clears the previous space's data at the start (not just on success), and
+  // only writes a response back if this is still the most recently requested call - otherwise a
+  // quick space switch (e.g. ChatInput reacting to the chat's spaceId) could let an in-flight
+  // response for the space just left land after a later call already started for the next space,
+  // making the wrong space's association count render. On failure, libraryAssociationsSpaceId stays
+  // null rather than becoming "this space has no associations" - #783 review nit 1: an unresolved
+  // load must render as unknown, not silently as the exact false claim #782 fixed (every readable
+  // library treated as searched).
   loadLibraryAssociations: async (spaceId) => {
     const sessionEpoch = currentSessionEpoch()
-    set({ isLoadingLibraryAssociations: true, error: null })
+    const requestId = ++libraryAssociationsRequestSeq
+    set({
+      isLoadingLibraryAssociations: true,
+      error: null,
+      libraryAssociations: [],
+      hasLibraryAssociations: false,
+      libraryAssociationsSpaceId: null,
+    })
     try {
       const response = await getSpaceLibraryAssociations(spaceId)
-      if (isStaleSessionEpoch(sessionEpoch)) return
+      if (isStaleSessionEpoch(sessionEpoch) || requestId !== libraryAssociationsRequestSeq) return
       set({
         libraryAssociations: response.items,
         hasLibraryAssociations: response.hasAssociations,
+        libraryAssociationsSpaceId: spaceId,
         isLoadingLibraryAssociations: false,
       })
     } catch (err) {
-      if (isStaleSessionEpoch(sessionEpoch)) return
+      if (isStaleSessionEpoch(sessionEpoch) || requestId !== libraryAssociationsRequestSeq) return
       const message =
         err instanceof Error ? err.message : 'Zugeordnete Bibliotheken konnten nicht geladen werden'
       set({
         error: message,
         libraryAssociations: [],
         hasLibraryAssociations: false,
+        libraryAssociationsSpaceId: null,
         isLoadingLibraryAssociations: false,
       })
     }

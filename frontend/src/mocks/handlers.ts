@@ -22,6 +22,7 @@ import {
   mockGroupDetails,
   mockLibraries,
   mockLibraryDetails,
+  mockSpaceLibraryAssociations,
   mockLibraryDocuments,
   mockLibraryGrants,
   mockMyGroups,
@@ -416,6 +417,22 @@ export const handlers = [
       )
     }
     return HttpResponse.json(members)
+  }),
+
+  // #782/#783: mockSpaceLibraryAssociations has an entry only for curated spaces - every other
+  // space id (uncurated, per the #706 "no association at all" transition rule) falls back to an
+  // empty, hasAssociations: false response rather than a 404, mirroring the real endpoint's
+  // behaviour for any space the caller may see (it never 404s just for lacking curation).
+  http.get('/api/v1/spaces/:spaceId/libraries', ({ params }) => {
+    const spaceId = String(params.spaceId)
+    if (!mockSpaceDetails[spaceId]) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
+    }
+    const associations = mockSpaceLibraryAssociations[spaceId] ?? {
+      hasAssociations: false,
+      items: [],
+    }
+    return HttpResponse.json(associations)
   }),
 
   http.post('/api/v1/spaces/:spaceId/members', async ({ params, request }) => {
