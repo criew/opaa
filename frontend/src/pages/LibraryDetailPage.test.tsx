@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -33,6 +34,21 @@ function pageOf(
     breadcrumb: [],
     ...overrides,
   }
+}
+
+// #822 review, finding 2: mirrors documentStore.test.ts's own notFoundError - normalizeError
+// (services/api.ts) attaches the original AxiosError as `cause`, and only an actual 404 status may
+// trigger the "unknown folder" root fallback, not merely an Error whose message happens to read
+// "nicht gefunden".
+function notFoundError(message = 'Ordner nicht gefunden'): Error {
+  const axiosError = new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
+    status: 404,
+    statusText: '',
+    headers: {},
+    config: {} as never,
+    data: { error: message },
+  })
+  return new Error(message, { cause: axiosError })
 }
 
 let currentLibraryId = 'library-team'
@@ -1346,7 +1362,7 @@ describe('LibraryDetailPage', () => {
 
     it('falls back to the root and shows a hint when the URL names an unknown folder (404)', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
-      mockGetLibraryDocuments.mockRejectedValueOnce(new Error('Ordner nicht gefunden'))
+      mockGetLibraryDocuments.mockRejectedValueOnce(notFoundError())
       mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
 
       renderWithProviders(<LibraryDetailPage />, {
@@ -1356,6 +1372,20 @@ describe('LibraryDetailPage', () => {
 
       expect(await screen.findByText(/der ordner wurde nicht gefunden/i)).toBeInTheDocument()
       expect(screen.queryByRole('navigation', { name: /ordnerpfad/i })).not.toBeInTheDocument()
+    })
+
+    it('does not fall back to the root on a non-404 failure (e.g. a 500)', async () => {
+      setLibraryState(personalLibrary, detailsOf(personalLibrary))
+      mockGetLibraryDocuments.mockRejectedValueOnce(new Error('Interner Serverfehler'))
+
+      renderWithProviders(<LibraryDetailPage />, {
+        withRouter: true,
+        initialRoute: '/?folder=folder-protokolle',
+      })
+
+      expect(await screen.findByText('Interner Serverfehler')).toBeInTheDocument()
+      expect(mockGetLibraryDocuments).toHaveBeenCalledTimes(1)
+      expect(screen.queryByText(/der ordner wurde nicht gefunden/i)).not.toBeInTheDocument()
     })
 
     it('creates a new folder via the dialog and reloads the current view', async () => {
@@ -1448,12 +1478,31 @@ describe('LibraryDetailPage', () => {
       })
     })
 
-    it('deletes a folder after a confirmation naming its recursive document count', async () => {
+    it('deletes a folder after a confirmation naming its live (re-fetched) document count', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
       mockGetLibraryDocuments.mockResolvedValueOnce(
+        // #822 review, finding 4: the row's own count (5, from the last-loaded list) is
+        // deliberately stale here - GET .../folders/{id} below answers with a different number
+        // (7) that the caller cannot know without a live re-fetch, proving the confirmation names
+        // that fresh count rather than reusing whatever the list happened to show.
         pageOf([], {
           folders: [{ id: 'folder-protokolle', name: 'Protokolle', documentCount: 5 }],
         }),
+      )
+      // getLibraryFolder is not mocked in this file's services/api override (see the vi.mock
+      // above) - it goes through the real implementation, intercepted by MSW's `server`
+      // (mocks/handlers.ts), so this overrides just that one response for the test.
+      server.use(
+        http.get('/api/v1/libraries/library-mine/folders/folder-protokolle', () =>
+          HttpResponse.json({
+            id: 'folder-protokolle',
+            libraryId: 'library-mine',
+            parentFolderId: null,
+            name: 'Protokolle',
+            documentCount: 7,
+            createdAt: '2026-03-01T10:00:00Z',
+          }),
+        ),
       )
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
       mockDeleteLibraryFolder.mockResolvedValueOnce(undefined)
@@ -1467,15 +1516,47 @@ describe('LibraryDetailPage', () => {
       )
       await user.click(await screen.findByRole('menuitem', { name: /löschen/i }))
 
-      expect(confirmSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Ordner "Protokolle" und 5 Dokumente löschen?'),
-      )
+      await waitFor(() => {
+        expect(confirmSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Ordner "Protokolle" und 7 Dokumente löschen?'),
+        )
+      })
       expect(mockDeleteLibraryFolder).toHaveBeenCalledWith('library-mine', 'folder-protokolle')
       await waitFor(() => {
         expect(
           screen.queryByRole('button', { name: /ordner protokolle öffnen/i }),
         ).not.toBeInTheDocument()
       })
+    })
+
+    it('falls back to the list count when the live re-fetch itself fails', async () => {
+      setLibraryState(personalLibrary, detailsOf(personalLibrary))
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([], {
+          folders: [{ id: 'folder-protokolle', name: 'Protokolle', documentCount: 3 }],
+        }),
+      )
+      server.use(
+        http.get('/api/v1/libraries/library-mine/folders/folder-protokolle', () =>
+          HttpResponse.json({ error: 'Interner Serverfehler' }, { status: 500 }),
+        ),
+      )
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(
+        await screen.findByRole('button', { name: /optionen für ordner protokolle/i }),
+      )
+      await user.click(await screen.findByRole('menuitem', { name: /löschen/i }))
+
+      await waitFor(() => {
+        expect(confirmSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Ordner "Protokolle" und 3 Dokumente löschen?'),
+        )
+      })
+      expect(mockDeleteLibraryFolder).not.toHaveBeenCalled()
     })
 
     it('loads a new file into the currently open folder', async () => {
@@ -1578,6 +1659,181 @@ describe('LibraryDetailPage', () => {
       const breadcrumbNav = await screen.findByRole('navigation', { name: /ordnerpfad/i })
       expect(within(breadcrumbNav).getByText('Protokolle')).toBeInTheDocument()
       expect(screen.getByLabelText(/dokumente durchsuchen/i)).toHaveValue('')
+    })
+
+    // #822 review, finding 1: navigateToFolder only reacted to a change of the URL's own folder
+    // param - a search hit's folderPath link pointing at the folder already open left the URL (and
+    // therefore the load effect) untouched, so the stale bibliotheksweit search results kept
+    // showing despite the now-empty search field.
+    it('reloads when a search hit points at the folder that is already open', async () => {
+      setLibraryState(personalLibrary, detailsOf(personalLibrary))
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([], {
+          folderId: 'folder-protokolle',
+          breadcrumb: [{ id: 'folder-protokolle', name: 'Protokolle' }],
+        }),
+      )
+      renderWithProviders(<LibraryDetailPage />, {
+        withRouter: true,
+        initialRoute: '/?folder=folder-protokolle',
+      })
+      const user = userEvent.setup()
+
+      await screen.findByRole('navigation', { name: /ordnerpfad/i })
+
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'document-hit',
+            fileName: 'protokoll-2026-01.pdf',
+            contentType: 'application/pdf',
+            fileSize: 1000,
+            status: 'INDEXED',
+            sourceType: 'UPLOAD',
+            chunkCount: 3,
+            indexedAt: '2026-03-01T10:00:00Z',
+            uploadedByUserId: 'mock-user-id',
+            folderId: 'folder-protokolle',
+            folderPath: 'Protokolle',
+          },
+        ]),
+      )
+      await user.type(screen.getByLabelText(/dokumente durchsuchen/i), 'protokoll')
+      expect(await screen.findByText('protokoll-2026-01.pdf')).toBeInTheDocument()
+
+      const folderLink = screen.getByRole('button', { name: 'Protokolle' })
+      mockGetLibraryDocuments.mockClear()
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([], {
+          folderId: 'folder-protokolle',
+          breadcrumb: [{ id: 'folder-protokolle', name: 'Protokolle' }],
+        }),
+      )
+      await user.click(folderLink)
+
+      await waitFor(() => {
+        expect(mockGetLibraryDocuments).toHaveBeenCalledWith('library-mine', {
+          page: 0,
+          size: 20,
+          q: '',
+          folderId: 'folder-protokolle',
+        })
+      })
+      expect(screen.queryByText('protokoll-2026-01.pdf')).not.toBeInTheDocument()
+    })
+
+    // #822 review, finding 3: cancelling a dialog that just showed a 409 conflict left
+    // documentStore.folderError set - the page-level Alert (hidden while a folder dialog is open)
+    // would then flash that same message once the dialog was gone.
+    it('clears the page-level folderError alert when a dialog with a 409 is cancelled', async () => {
+      setLibraryState(personalLibrary, detailsOf(personalLibrary))
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+      mockCreateLibraryFolder.mockRejectedValueOnce(
+        new Error('Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene'),
+      )
+
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('button', { name: /neuer ordner/i }))
+      await user.type(await screen.findByLabelText(/ordnername/i), 'Protokolle')
+      await user.click(screen.getByRole('button', { name: /^anlegen$/i }))
+      expect(await screen.findByText(/existiert bereits auf dieser ebene/i)).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /abbrechen/i }))
+
+      expect(screen.queryByText(/existiert bereits auf dieser ebene/i)).not.toBeInTheDocument()
+    })
+
+    // #822 review, finding 6a: folders/breadcrumb are not paged - the backend returns the same
+    // full set of direct subfolders on every page of a folder-scoped GET .../documents response,
+    // so rendering them again on page 2+ would just repeat the same rows pointlessly.
+    it('hides folder rows on pages beyond the first', async () => {
+      setLibraryState(personalLibrary, detailsOf(personalLibrary))
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf(
+          [
+            {
+              id: 'doc-1',
+              fileName: 'a.pdf',
+              contentType: 'application/pdf',
+              fileSize: 100,
+              status: 'INDEXED',
+              sourceType: 'UPLOAD',
+              chunkCount: 1,
+              indexedAt: '2026-03-01T10:00:00Z',
+              uploadedByUserId: 'u1',
+            },
+          ],
+          {
+            page: 1,
+            size: 1,
+            totalElements: 3,
+            folders: [{ id: 'folder-protokolle', name: 'Protokolle', documentCount: 0 }],
+          },
+        ),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      await screen.findByText('a.pdf')
+      expect(
+        screen.queryByRole('button', { name: /ordner protokolle öffnen/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    // #822 review, finding 6c: handleCreateFolder used to derive the new folder's parent from
+    // documentStore's pageStateByLibrary, which a deep link's own first load has not necessarily
+    // populated yet - clicking "Neuer Ordner" in that window created the folder at the library's
+    // root instead of the folder actually named in the URL.
+    it("derives the new folder's parent from the URL, even before the deep-linked folder's first load resolves", async () => {
+      setLibraryState(personalLibrary, detailsOf(personalLibrary))
+      let resolveInitialLoad!: (value: LibraryDocumentPageResponse) => void
+      const initialLoad = new Promise<LibraryDocumentPageResponse>((resolve) => {
+        resolveInitialLoad = resolve
+      })
+      mockGetLibraryDocuments.mockReturnValueOnce(initialLoad)
+      mockCreateLibraryFolder.mockResolvedValueOnce({
+        id: 'folder-new',
+        libraryId: 'library-mine',
+        parentFolderId: 'folder-protokolle',
+        name: 'Archiv',
+        documentCount: 0,
+        createdAt: '2026-03-01T10:00:00Z',
+      })
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([], {
+          folderId: 'folder-protokolle',
+          breadcrumb: [{ id: 'folder-protokolle', name: 'Protokolle' }],
+        }),
+      )
+
+      renderWithProviders(<LibraryDetailPage />, {
+        withRouter: true,
+        initialRoute: '/?folder=folder-protokolle',
+      })
+      const user = userEvent.setup()
+
+      // "Neuer Ordner" is already available - canManageFolders only depends on the library's own
+      // role/sourceType, not on the document list having loaded - while the deep-linked folder's
+      // first GET .../documents is still pending.
+      await user.click(await screen.findByRole('button', { name: /neuer ordner/i }))
+      await user.type(await screen.findByLabelText(/ordnername/i), 'Archiv')
+      await user.click(screen.getByRole('button', { name: /^anlegen$/i }))
+
+      await waitFor(() => {
+        expect(mockCreateLibraryFolder).toHaveBeenCalledWith('library-mine', {
+          name: 'Archiv',
+          parentFolderId: 'folder-protokolle',
+        })
+      })
+
+      resolveInitialLoad(
+        pageOf([], {
+          folderId: 'folder-protokolle',
+          breadcrumb: [{ id: 'folder-protokolle', name: 'Protokolle' }],
+        }),
+      )
+      await initialLoad
     })
   })
 })

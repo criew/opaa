@@ -48,7 +48,7 @@ import type {
   LibrarySpaceAssociationResponse,
   LibraryVisibility,
 } from '../types/api'
-import { detachSpaceLibrary, getLibrarySpaceAssociations } from '../services/api'
+import { detachSpaceLibrary, getLibraryFolder, getLibrarySpaceAssociations } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { DEFAULT_PAGE_SIZE, useDocumentStore } from '../stores/documentStore'
@@ -552,9 +552,14 @@ function LibraryDocumentsSection({
   }, [folderNotFoundMessage, folderIdParam, searchParams, setSearchParams])
 
   const documents = documentsByLibrary[libraryId] ?? []
-  const folders = foldersByLibrary[libraryId] ?? []
-  const breadcrumb = breadcrumbByLibrary[libraryId] ?? []
   const pageState = pageStateByLibrary[libraryId]
+  // #822 review, finding 6a: folders/breadcrumb are not paged - the backend returns the requested
+  // folder's *entire* set of direct subfolders on every page (pageCount below only counts
+  // documents), so rendering them on every page would repeat the same rows pointlessly. They
+  // belong on the first page only, alongside the folder's own breadcrumb.
+  const isFirstPage = (pageState?.page ?? 0) === 0
+  const folders = isFirstPage ? (foldersByLibrary[libraryId] ?? []) : []
+  const breadcrumb = breadcrumbByLibrary[libraryId] ?? []
   const pageCount = pageState ? Math.max(1, Math.ceil(pageState.totalElements / pageState.size)) : 1
 
   // #822: navigates into a folder (or back to the root with null) by changing the URL's folder
@@ -564,6 +569,15 @@ function LibraryDocumentsSection({
   function navigateToFolder(folderId: string | null) {
     setSearchInput('')
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    // #822 review, finding 1: a search hit's folderPath link (or, in principle, a breadcrumb/folder
+    // row for the folder already open) can name the very folder already loaded - the URL then does
+    // not change, so the load effect above never fires and the stale, still-bibliotheksweit search
+    // results would keep showing despite the now-empty search field. Reloading explicitly in that
+    // case is the only way to still land on that folder's contents.
+    if (folderId === folderIdParam) {
+      void loadDocuments(libraryId, { page: 0, size: DEFAULT_PAGE_SIZE, q: '', folderId })
+      return
+    }
     const next = new URLSearchParams(searchParams)
     if (folderId) {
       next.set('folder', folderId)
@@ -574,7 +588,11 @@ function LibraryDocumentsSection({
   }
 
   async function handleCreateFolder(name: string) {
-    await createFolder(libraryId, name)
+    // #822 review, finding 6c: derives the parent explicitly from the URL's own folder param
+    // rather than leaving it to documentStore's pageStateByLibrary fallback - a "Neuer Ordner"
+    // click before the deep-linked folder's first load has resolved would otherwise still see the
+    // page state's stale (root) folderId and create the new folder in the wrong place.
+    await createFolder(libraryId, name, folderIdParam)
   }
 
   async function handleRenameFolder(folder: LibraryFolderListItem, name: string) {
@@ -582,10 +600,22 @@ function LibraryDocumentsSection({
   }
 
   async function handleDeleteFolder(folder: LibraryFolderListItem) {
+    // #822 review, finding 4: re-fetches the folder right before confirming, so the confirmation
+    // names the current recursive document count (per the feature spec) rather than whatever the
+    // list happened to show last - it may be stale if another tab/session changed the folder's
+    // contents in the meantime. Falls back to the list's own count if the re-fetch itself fails,
+    // rather than blocking the deletion on a read that is not strictly required to proceed.
+    let documentCount = folder.documentCount
+    try {
+      const current = await getLibraryFolder(libraryId, folder.id)
+      documentCount = current.documentCount
+    } catch {
+      // Falls back to the (possibly stale) count already shown in the row above.
+    }
     const confirmMessage =
-      folder.documentCount > 0
-        ? `Ordner "${folder.name}" und ${folder.documentCount} ${
-            folder.documentCount === 1 ? 'Dokument' : 'Dokumente'
+      documentCount > 0
+        ? `Ordner "${folder.name}" und ${documentCount} ${
+            documentCount === 1 ? 'Dokument' : 'Dokumente'
           } löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
         : `Ordner "${folder.name}" löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
     if (!window.confirm(confirmMessage)) return
@@ -1062,7 +1092,13 @@ function LibraryDocumentsSection({
           // below) - the dialog's internal field state always starts fresh when reopened.
           key={newFolderDialogOpen ? 'new-folder-open' : 'new-folder-closed'}
           open={newFolderDialogOpen}
-          onClose={() => setNewFolderDialogOpen(false)}
+          onClose={() => {
+            setNewFolderDialogOpen(false)
+            // #822 review, finding 3: without this, cancelling out of a dialog that just showed a
+            // 409 conflict left documentStore.folderError set - the page-level Alert above (see
+            // its own guard) would then flash that same message once the dialog was gone.
+            clearFolderError()
+          }}
           onCreate={handleCreateFolder}
         />
       )}
@@ -1072,7 +1108,10 @@ function LibraryDocumentsSection({
           key={renameFolderTarget ? `rename-${renameFolderTarget.id}-open` : 'rename-closed'}
           open={renameFolderTarget != null}
           folder={renameFolderTarget}
-          onClose={() => setRenameFolderTarget(null)}
+          onClose={() => {
+            setRenameFolderTarget(null)
+            clearFolderError()
+          }}
           onRename={(name) =>
             renameFolderTarget ? handleRenameFolder(renameFolderTarget, name) : Promise.resolve()
           }
@@ -1088,9 +1127,9 @@ interface NewFolderDialogProps {
   onCreate: (name: string) => Promise<void>
 }
 
-// #822: creates a folder directly under the folder currently being browsed (documentStore's
-// createFolder derives the parent from the loaded page state) - kept local to this file since it
-// is only ever used from LibraryDocumentsSection above.
+// #822: creates a folder directly under the folder currently being browsed (the caller,
+// handleCreateFolder above, passes the URL's own folder param as the explicit parent) - kept
+// local to this file since it is only ever used from LibraryDocumentsSection above.
 function NewFolderDialog({ open, onClose, onCreate }: NewFolderDialogProps) {
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
