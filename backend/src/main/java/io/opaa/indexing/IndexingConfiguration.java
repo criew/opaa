@@ -69,12 +69,6 @@ public class IndexingConfiguration {
         embeddingTaskExecutor);
   }
 
-  // Declared as SourceIndexingExecutor, not the concrete executor type: both beans carry @Async
-  // and are therefore wrapped in a JDK dynamic proxy at runtime, which only implements the
-  // interfaces the target class declares - Spring could not inject the concrete type here even if
-  // this method promised it. Nothing in this application injects AsyncIndexingExecutor or
-  // UrlIndexingExecutor directly; every consumer (IndexingSourceExecutorRegistry) depends on
-  // SourceIndexingExecutor already.
   @Bean
   FilesystemPathAllowlist filesystemPathAllowlist(IndexingProperties properties) {
     return new FilesystemPathAllowlist(properties);
@@ -90,6 +84,12 @@ public class IndexingConfiguration {
     return new TargetAddressValidator(properties.targetValidation());
   }
 
+  // Declared as SourceIndexingExecutor, not the concrete executor type: both beans carry @Async
+  // and are therefore wrapped in a JDK dynamic proxy at runtime, which only implements the
+  // interfaces the target class declares - Spring could not inject the concrete type here even if
+  // this method promised it. Nothing in this application injects AsyncIndexingExecutor or
+  // UrlIndexingExecutor directly; every consumer (IndexingSourceExecutorRegistry) depends on
+  // SourceIndexingExecutor already.
   @Bean
   SourceIndexingExecutor asyncIndexingExecutor(
       DocumentService documentService,
