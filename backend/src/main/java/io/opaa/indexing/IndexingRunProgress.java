@@ -45,9 +45,8 @@ final class IndexingRunProgress {
 
   /**
    * Records an additional document indexed beyond the current entry itself - an RSS attachment. A
-   * failed attachment must never call this: {@link RssFeedIndexingExecutor#processAttachment} only
-   * reaches this method once the attachment download and format checks it guards have all
-   * succeeded.
+   * failed attachment must never call this: {@code AttachmentIndexer#indexOne} only reaches this
+   * method once the attachment download and format checks it guards have all succeeded.
    */
   void recordDocumentIndexed() {
     documentsIndexedTotal++;

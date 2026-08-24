@@ -29,19 +29,18 @@ import org.junit.jupiter.api.Test;
  * TargetAddressValidator} entirely - every stub server it talks to is loopback by construction
  * (#467's own acceptance criteria) - so that suite would stay green even if the per-hop {@code
  * validate} call inside {@link RedirectFollowingFetcher#sendFollowingRedirects} (used by {@code
- * RssFeedIndexingExecutor#fetchFeed}) were accidentally removed or hoisted out of the redirect
- * loop. This class exercises the check with an actually enabled validator instead.
+ * FeedFetcher#fetchAndParse}) were accidentally removed or hoisted out of the redirect loop. This
+ * class exercises the check with an actually enabled validator instead.
  *
  * <p><b>Why the feed's own redirect, not the detail page's (PR #699 review, finding 2 follow-up).
  * </b> A detail-page redirect to a different host is already rejected outright by {@code
- * RssFeedIndexingExecutor#sendDetailPageRequest}'s own foreign-host check, before its per-hop
- * {@code validate} call is ever reached for that hop - a cross-origin redirect there would make a
- * naive test pass for the wrong reason (the origin check, not the target-address check) even if the
- * SSRF validation were removed. {@code fetchFeed} goes through {@link
- * RedirectFollowingFetcher#sendFollowingRedirects} with {@code DROP_AUTHORIZATION_OFF_ORIGIN}
- * instead, which has no such origin restriction (it only conditionally drops {@code Authorization}
- * - see that method's own Javadoc) and therefore relies on the per-hop {@code validate} call alone
- * to reject this redirect.
+ * DetailPageExtractor}'s own foreign-host check, before its per-hop {@code validate} call is ever
+ * reached for that hop - a cross-origin redirect there would make a naive test pass for the wrong
+ * reason (the origin check, not the target-address check) even if the SSRF validation were removed.
+ * {@code fetchFeed} goes through {@link RedirectFollowingFetcher#sendFollowingRedirects} with
+ * {@code DROP_AUTHORIZATION_OFF_ORIGIN} instead, which has no such origin restriction (it only
+ * conditionally drops {@code Authorization} - see that method's own Javadoc) and therefore relies
+ * on the per-hop {@code validate} call alone to reject this redirect.
  */
 class RssFeedIndexingExecutorTargetValidationTest {
 

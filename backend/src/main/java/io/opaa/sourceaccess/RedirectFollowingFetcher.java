@@ -17,8 +17,7 @@ import org.slf4j.LoggerFactory;
  * Sends a GET request and manually follows up to {@link #MAX_REDIRECTS} redirects - the single
  * redirect implementation every source-access caller uses, since {@code httpClient} is always built
  * with {@code Redirect.NEVER} ({@link SourceHttpClientFactory#buildHttpClient}) and never follows
- * one on its own (#876, Epic #826 finding B7: four hand-rolled, subtly divergent redirect loops
- * before this).
+ * one on its own.
  *
  * <p>A protocol downgrade (https to http) is never followed at all. What happens to a redirect that
  * changes origin (scheme, host or port) instead is governed by {@link RedirectPolicy}, since
@@ -33,12 +32,21 @@ import org.slf4j.LoggerFactory;
  * <p>{@code targetAddressValidator} is validated against the current URI at the top of every
  * iteration - the initial request and every redirect hop alike - before a single further byte is
  * requested, so an SSRF target-address check applies identically whether the blocked address was
- * the configured start URL or only reached via a redirect. Under {@link
- * RedirectPolicy#REJECT_OFF_ORIGIN}, the response actually received is additionally checked against
- * the original URL on every iteration (not only the explicit {@code Location}-based hops this loop
- * itself walks) - closing the gap a caller-supplied {@link HttpClient} configured to auto-follow
- * redirects on its own would otherwise leave, since its returned {@link HttpResponse#uri()} then
- * already reflects a followed target this loop never decided to walk to.
+ * the configured start URL or only reached via a redirect.
+ *
+ * <p><b>Post-hoc check asymmetry.</b> Only under {@link RedirectPolicy#REJECT_OFF_ORIGIN} is the
+ * response actually received additionally checked against the original URL on every iteration (not
+ * only the explicit {@code Location}-based hops this loop itself walks) - closing the gap a
+ * caller-supplied {@link HttpClient} configured to auto-follow redirects on its own would otherwise
+ * leave, since its returned {@link HttpResponse#uri()} then already reflects a followed target this
+ * loop never decided to walk to. {@link RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN} carries no
+ * equivalent check - safe only because every production {@link HttpClient} this package builds
+ * ({@link SourceHttpClientFactory#buildHttpClient}) uses {@code Redirect.NEVER}; an auto-following
+ * client is never part of a production code path here, only of a test deliberately exercising this
+ * gap. This class does not otherwise rely on what such a client would have done with {@code
+ * Authorization} on the auto-followed hop - whether the header still reaches the foreign host in
+ * that scenario is the auto-following client's own redirect implementation's call, not this one's
+ * (see {@code RedirectFollowingFetcherTest} for the JDK's own client's behaviour here).
  */
 public final class RedirectFollowingFetcher {
 
