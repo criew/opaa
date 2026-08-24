@@ -269,27 +269,38 @@ class FilesystemFolderMappingIntegrationTest {
   }
 
   @Test
-  void removesAnOrphanedEmptyFolderOnceItsDirectoryAndDocumentAreBothGone() throws IOException {
-    Files.createDirectories(sharedTempDir.resolve("Temp"));
-    Files.writeString(sharedTempDir.resolve("Temp/wird-geloescht.txt"), "Wird bald geloescht.");
+  void removesAnOrphanedEmptyFolderChainOnceItsDirectoriesAndDocumentAreAllGone()
+      throws IOException {
+    // #824 review, Befund 3: a two-level chain (Temp/2025/datei.txt), not a single folder - the
+    // mock-only unit coverage (LibraryFolderServiceTest#
+    // pruneOrphanedFoldersRemovesAnOrphanedParentOnlyAfterItsOwnEmptyOrphanedChild) proves the
+    // leaf-first *order* pruneRecursive walks in, but only the real Liquibase schema can prove
+    // Hibernate actually flushes those deletes in that order within one transaction - a
+    // parent-before-child flush would trip fk_library_folders_parent's RESTRICT (migration 062)
+    // and fail the whole pruneOrphanedFolders call.
+    Files.createDirectories(sharedTempDir.resolve("Temp/2025"));
+    Files.writeString(sharedTempDir.resolve("Temp/2025/datei.txt"), "Wird bald geloescht.");
 
     awaitJobCompletion(triggerIndexing());
-    assertThat(findFolder(null, "Temp")).isPresent();
+    LibraryFolder temp = findFolder(null, "Temp").orElseThrow();
+    LibraryFolder temp2025 = findFolder(temp.getId(), "2025").orElseThrow();
 
     // #824's own scope: a FILESYSTEM run does not yet delete a document whose file disappeared
     // (documented gap, see LibraryFolderService#pruneOrphanedFolders's own Javadoc) - the document
     // row is removed here directly to isolate and exercise the folder-pruning behaviour on its
     // own, independent of that still-open deletion-by-absence work.
-    Files.delete(sharedTempDir.resolve("Temp/wird-geloescht.txt"));
+    Files.delete(sharedTempDir.resolve("Temp/2025/datei.txt"));
+    Files.delete(sharedTempDir.resolve("Temp/2025"));
     Files.delete(sharedTempDir.resolve("Temp"));
     documentRepository.deleteAll(
         documentRepository.findAll().stream()
-            .filter(d -> d.getFileName().equals("wird-geloescht.txt"))
+            .filter(d -> d.getFileName().equals("datei.txt"))
             .toList());
 
     awaitJobCompletion(triggerIndexing());
 
-    assertThat(findFolder(null, "Temp")).isEmpty();
+    assertThat(folderRepository.findById(temp2025.getId())).isEmpty();
+    assertThat(folderRepository.findById(temp.getId())).isEmpty();
   }
 
   @Test
