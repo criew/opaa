@@ -27,12 +27,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit coverage of {@link RedirectFollowingFetcher} (#876, Epic #826 finding B7 PR 1 review, nit
- * 4): one case per {@link RedirectFollowingFetcher.RedirectPolicy} branch (off-origin handling,
- * protocol-downgrade refusal under both policies), the {@link
- * RedirectFollowingFetcher#MAX_REDIRECTS} hop limit, and the post-hoc check the {@code
- * REJECT_OFF_ORIGIN} policy alone applies against a caller-supplied client that already
- * auto-follows redirects on its own (see this class's own asymmetry note).
+ * Unit coverage of {@link RedirectFollowingFetcher}: one case per {@link
+ * RedirectFollowingFetcher.RedirectPolicy} branch (off-origin handling, protocol-downgrade refusal
+ * under both policies), the {@link RedirectFollowingFetcher#MAX_REDIRECTS} hop limit, and the
+ * post-hoc check the {@code REJECT_OFF_ORIGIN} policy alone applies against a caller-supplied
+ * client that already auto-follows redirects on its own (see this class's own asymmetry note).
  *
  * <p>Target validation is exercised on its own dedicated stand ({@code TargetAddressValidatorTest})
  * - disabled here since every server this class talks to is deliberately loopback.
@@ -225,10 +224,10 @@ class RedirectFollowingFetcherTest {
   @Test
   void rejectOffOrigin_postHocChecksAnAlreadyFollowedResponseAgainstARedirectNormalClient()
       throws IOException, InterruptedException {
-    // #876 PR 1 review: this post-hoc check only exists for REJECT_OFF_ORIGIN (see this class's
-    // own Javadoc) - a caller-supplied HttpClient built with Redirect.NORMAL (not the production
-    // Redirect.NEVER) auto-follows the redirect itself, so this loop's own hop-by-hop Location
-    // handling never sees it; without the check, a foreign-host redirect would silently succeed.
+    // This post-hoc check only exists for REJECT_OFF_ORIGIN (see this class's own Javadoc) - a
+    // caller-supplied HttpClient built with Redirect.NORMAL (not the production Redirect.NEVER)
+    // auto-follows the redirect itself, so this loop's own hop-by-hop Location handling never
+    // sees it; without the check, a foreign-host redirect would silently succeed.
     foreign.createContext("/target", exchange -> respond(exchange, 200, "content"));
     origin.createContext("/start", exchange -> redirectTo(exchange, foreignUrl + "/target"));
 
@@ -255,15 +254,26 @@ class RedirectFollowingFetcherTest {
   void dropAuthorizationOffOrigin_isNotAffectedByAnAlreadyFollowedRedirectNormalClient()
       throws IOException, InterruptedException {
     // Mirrors the previous test but for the other policy: the post-hoc check is REJECT_OFF_ORIGIN
-    // only (documented asymmetry) - an already-auto-followed off-origin redirect under
-    // DROP_AUTHORIZATION_OFF_ORIGIN is simply accepted, exactly as it would be if this loop had
-    // followed it hop by hop itself.
-    foreign.createContext("/target", exchange -> respond(exchange, 200, "content"));
+    // only (documented asymmetry in this class's own Javadoc) - an already-auto-followed
+    // off-origin redirect under DROP_AUTHORIZATION_OFF_ORIGIN is simply accepted, not rejected.
+    // Pinning the real, verified outcome rather than an assumed one: the JDK's own Redirect.NORMAL
+    // implementation already strips Authorization once the redirect target's host differs, so the
+    // foreign host below never receives it - this class does not depend on that JDK behaviour (see
+    // its own Javadoc), it only happens to hold here too. Safe in production regardless, since
+    // every client this package builds uses Redirect.NEVER and never auto-follows at all.
+    AtomicReference<String> receivedAuthorization = new AtomicReference<>("(never contacted)");
+    foreign.createContext(
+        "/target",
+        exchange -> {
+          receivedAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          respond(exchange, 200, "content");
+        });
     origin.createContext("/start", exchange -> redirectTo(exchange, foreignUrl + "/target"));
 
     HttpClient autoFollowingClient =
         HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
     Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("Authorization", "Basic dGVzdDp0ZXN0");
     HttpResponse<InputStream> response =
         RedirectFollowingFetcher.sendFollowingRedirects(
             autoFollowingClient,
@@ -274,6 +284,7 @@ class RedirectFollowingFetcherTest {
             RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN);
 
     assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(receivedAuthorization.get()).isNull();
   }
 
   private static HttpClient productionClient() {

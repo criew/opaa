@@ -19,8 +19,8 @@ import org.jsoup.nodes.Element;
 
 /**
  * Fetches a single RSS entry's detail page and reduces it to its main content's text plus
- * attachment candidates, split out of {@link RssFeedIndexingExecutor} (#876, Epic #826 finding B7).
- * Package-private - an implementation detail of the executor, not a new public API.
+ * attachment candidates, split out of {@link RssFeedIndexingExecutor}. Package-private - an
+ * implementation detail of the executor, not a new public API.
  *
  * <p>{@code nav}/{@code header}/{@code footer}/menu-ish elements are stripped before the configured
  * {@link IndexingProperties.Rss#mainContentSelector()} is applied, so boilerplate inside the

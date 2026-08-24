@@ -16,8 +16,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Downloads and indexes the attachment candidates {@link DetailPageExtractor} finds on an RSS
- * entry's detail page, split out of {@link RssFeedIndexingExecutor} (#876, Epic #826 finding B7).
- * Package-private - an implementation detail of the executor, not a new public API.
+ * entry's detail page, split out of {@link RssFeedIndexingExecutor}. Package-private - an
+ * implementation detail of the executor, not a new public API.
  *
  * <p>Never lets an attachment failure propagate to the caller: a lost attachment (too large,
  * unreachable, rejected, unsupported format, or cut off by the per-entry limit) is logged and
@@ -63,7 +63,7 @@ class AttachmentIndexer {
       ctx.anyEntryDeferred().set(true);
     }
     for (AttachmentCandidate candidate : candidates.subList(0, limit)) {
-      delayBeforeRequest();
+      RssPoliteness.delayBeforeRequest(properties.requestDelayMs());
       indexOne(ctx, candidate, entryUrl);
     }
   }
@@ -315,16 +315,5 @@ class AttachmentIndexer {
     }
     String mediaType = contentType.split(";", 2)[0].strip().toLowerCase(Locale.ROOT);
     return mediaType.equals("text/html") || mediaType.equals("application/xhtml+xml");
-  }
-
-  private void delayBeforeRequest() {
-    if (properties.requestDelayMs() <= 0) {
-      return;
-    }
-    try {
-      Thread.sleep(properties.requestDelayMs());
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
   }
 }

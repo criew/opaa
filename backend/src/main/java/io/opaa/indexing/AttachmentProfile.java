@@ -29,13 +29,13 @@ public enum AttachmentProfile {
    * SupportedDocumentFormats#isSupported}.
    *
    * <p>Deliberately not filtered down to {@link SupportedDocumentFormats}'s own six extensions
-   * here: this method only ever sees a URL, never the bytes behind it - {@link
-   * RssFeedIndexingExecutor#processAttachment} is the one place that actually downloads a candidate
-   * and decides acceptance from its content via {@link SupportedDocumentFormats#decideForFileName}.
-   * Filtering candidates down to the six recognized extensions here would have silently excluded a
-   * document linked under the wrong extension (a PDF published as {@code bescheid.csv}). "Carries
-   * some extension" still excludes ordinary navigation links that a CMS routinely renders without
-   * one - the structural signal "this looks like a file, not a page", not a content-type whitelist.
+   * here: this method only ever sees a URL, never the bytes behind it - {@code
+   * AttachmentIndexer#indexOne} is the one place that actually downloads a candidate and decides
+   * acceptance from its content via {@link SupportedDocumentFormats#decideForFileName}. Filtering
+   * candidates down to the six recognized extensions here would have silently excluded a document
+   * linked under the wrong extension (a PDF published as {@code bescheid.csv}). "Carries some
+   * extension" still excludes ordinary navigation links that a CMS routinely renders without one -
+   * the structural signal "this looks like a file, not a page", not a content-type whitelist.
    */
   GENERIC {
     @Override
@@ -162,10 +162,10 @@ public enum AttachmentProfile {
    * Whether {@code fileName}'s last path segment carries a file extension at all - a dot that is
    * neither the first nor the last character. Used by {@link #GENERIC} as the structural "this
    * looks like a file" signal instead of {@link SupportedDocumentFormats#isSupported}.
-   * Package-visible so {@link RssFeedIndexingExecutor#resolveFileName} can apply the identical rule
-   * when deciding whether a GENERIC candidate's name already carries a real extension that must be
-   * kept verbatim, rather than one only {@link AttachmentProfile#GSB}'s extension-less candidates
-   * need synthesized.
+   * Package-visible so {@code AttachmentIndexer#resolveFileName} can apply the identical rule when
+   * deciding whether a GENERIC candidate's name already carries a real extension that must be kept
+   * verbatim, rather than one only {@link AttachmentProfile#GSB}'s extension-less candidates need
+   * synthesized.
    */
   static boolean fileHasSomeExtension(String fileName) {
     if (fileName == null || fileName.isBlank()) {

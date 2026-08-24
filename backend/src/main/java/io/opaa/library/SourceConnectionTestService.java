@@ -53,7 +53,7 @@ import org.springframework.stereotype.Service;
  * <p><b>Same building blocks as the real runs, deliberately</b> (issue #514): {@link
  * SourceHttpClientFactory#buildHttpClient} and {@link SourceHttpClientFactory#buildAuthHeader} are
  * the exact methods {@code UrlIndexingExecutor} and {@code RssFeedIndexingExecutor} use, and the
- * response body is bounded exactly the way {@code RssFeedIndexingExecutor#readBounded} and {@code
+ * response body is bounded exactly the way {@code FeedFetcher#readFeedBody} and {@code
  * BoundedDownloader#readBounded} bound theirs - {@link IndexingProperties.Rss#maxPageSizeBytes()}
  * for the HTTP_DIRECTORY listing page, {@link IndexingProperties.Rss#maxFeedSizeBytes()} for the
  * RSS feed (PR #537 review, finding 2: an unbounded read here let an authenticated caller crash the
@@ -603,8 +603,7 @@ public class SourceConnectionTestService {
   /**
    * Reads at most {@code maxBytes} from {@code in}, throwing {@link ResponseTooLargeException} the
    * moment a further byte would exceed the limit - enforced while streaming, mirroring {@code
-   * RssFeedIndexingExecutor#readBounded}/{@code BoundedDownloader#readBounded} (PR #537 review,
-   * finding 2).
+   * FeedFetcher#readFeedBody}/{@code BoundedDownloader#readBounded} (PR #537 review, finding 2).
    */
   private static byte[] readBounded(InputStream in, long maxBytes) throws IOException {
     byte[] probe = in.readNBytes(Math.toIntExact(Math.min(maxBytes + 1, Integer.MAX_VALUE)));

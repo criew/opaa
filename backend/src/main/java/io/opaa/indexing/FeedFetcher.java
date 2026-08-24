@@ -18,12 +18,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The RSS feed's own transport concerns, split out of {@link RssFeedIndexingExecutor} (#876, Epic
- * #826 finding B7): the conditional {@code GET} against the feed URL itself (ETag/{@code
- * If-Modified-Since}, tracked per library and feed URL in {@link RssFeedState} - see that class's
- * own Javadoc for why it is keyed by both), the bounded read of the feed body, and persisting the
- * feed's own conditional-GET state once a run has accounted for every entry it saw. Package-private
- * - an implementation detail of the executor, not a new public API.
+ * The RSS feed's own transport concerns, split out of {@link RssFeedIndexingExecutor}: the
+ * conditional {@code GET} against the feed URL itself (ETag/{@code If-Modified-Since}, tracked per
+ * library and feed URL in {@link RssFeedState} - see that class's own Javadoc for why it is keyed
+ * by both), the bounded read of the feed body, and persisting the feed's own conditional-GET state
+ * once a run has accounted for every entry it saw. Package-private - an implementation detail of
+ * the executor, not a new public API.
  */
 class FeedFetcher {
 

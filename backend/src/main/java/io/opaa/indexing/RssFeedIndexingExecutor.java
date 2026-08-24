@@ -25,13 +25,13 @@ import org.springframework.scheduling.annotation.Async;
  * feed, resolves every entry's detail page and hands the page's main text - not the whole page -
  * into the shared processing chain via {@link FileProcessingService#processRssEntry}.
  *
- * <p><b>Split into collaborators</b> (#876, Epic #826 finding B7): {@link FeedFetcher} owns the
- * feed's own transport, {@link DetailPageExtractor} owns fetching and reducing a single entry's
- * detail page, {@link AttachmentIndexer} owns downloading and indexing its attachments. This class
- * is left with the run's own orchestration: change detection, ordering, error-to-event translation
- * and the per-run state ({@link RssFeedRunContext}) shared across all three - see each
- * collaborator's own Javadoc for the invariants it enforces (bounded reads, SSRF/redirect policy,
- * credential/certificate scoping to the feed's own origin).
+ * <p><b>Split into collaborators.</b> {@link FeedFetcher} owns the feed's own transport, {@link
+ * DetailPageExtractor} owns fetching and reducing a single entry's detail page, {@link
+ * AttachmentIndexer} owns downloading and indexing its attachments. This class is left with the
+ * run's own orchestration: change detection, ordering, error-to-event translation and the per-run
+ * state ({@link RssFeedRunContext}) shared across all three - see each collaborator's own Javadoc
+ * for the invariants it enforces (bounded reads, SSRF/redirect policy, credential/certificate
+ * scoping to the feed's own origin).
  *
  * <p><b>Two-stage change detection.</b> The feed itself is fetched with a conditional {@code GET}
  * (ETag/{@code If-Modified-Since}, tracked per library and feed URL in {@link RssFeedState}) - an
@@ -224,7 +224,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
 
-    delayBeforeRequest();
+    RssPoliteness.delayBeforeRequest(properties.requestDelayMs());
 
     Optional<DetailPageExtractor.DetailPage> fetched =
         fetchDetailPageForEntry(ctx, entryUrl, false);
@@ -293,7 +293,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         "RSS entry unchanged but has no attachment documents yet, fetching its detail page to"
             + " backfill attachments only: {}",
         entryUrl);
-    delayBeforeRequest();
+    RssPoliteness.delayBeforeRequest(properties.requestDelayMs());
     Optional<DetailPageExtractor.DetailPage> fetched = fetchDetailPageForEntry(ctx, entryUrl, true);
     fetched.ifPresent(
         detailPage -> attachmentIndexer.indexAll(ctx, detailPage.attachments(), entryUrl));
@@ -405,17 +405,6 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       ctx.progress().recordSkipped();
     }
     ctx.anyEntryDeferred().set(true);
-  }
-
-  private void delayBeforeRequest() {
-    if (properties.requestDelayMs() <= 0) {
-      return;
-    }
-    try {
-      Thread.sleep(properties.requestDelayMs());
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
   }
 
   private static boolean isHttpOrHttps(String url) {
