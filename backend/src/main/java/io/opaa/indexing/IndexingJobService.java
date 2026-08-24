@@ -302,13 +302,8 @@ public class IndexingJobService {
    * definition, not merely suspected of it - unlike {@link #recoverStaleJobs}, no age threshold
    * applies here.
    *
-   * <p><b>Single-instance assumption (ADR-0021).</b> "A fresh JVM cannot be running the task" only
-   * holds because OPAA runs as exactly one backend process. Under genuine multi-instance operation,
-   * this method's blanket {@code failAllRunningJobs} would abort another, still-running instance's
-   * legitimate jobs the moment any one instance restarts - {@code uk_indexing_jobs_library_running}
-   * (migration 028), which {@link LibraryIndexingScheduler}'s own Javadoc leans on, only guards
-   * against two instances starting the *same* run concurrently, not against this. See ADR-0021 for
-   * what a multi-instance-safe version of this recovery would need.
+   * <p>Assumes exactly one backend process; under genuine multi-instance operation this would abort
+   * another, still-running instance's legitimate jobs on restart. See ADR-0021.
    *
    * @return the number of rows recovered
    */

@@ -2,7 +2,7 @@
 
 ## Status
 
-Vorgeschlagen
+Akzeptiert (Maintainer-Entscheidung vom 24.08.2026)
 
 ## Kontext
 
@@ -18,8 +18,8 @@ Schäden:
 - Neue Stellen wiederholen dieselbe Annahme, ohne dass sie geprüft oder auch nur bewusst getroffen
   wird — sie entsteht als Nebenwirkung der einfachsten Implementierung, nicht als Entscheidung.
 - Javadoc an verschiedenen Stellen widerspricht sich in der Frage, ob Multi-Instanz-Betrieb bereits
-  teilweise berücksichtigt ist oder nicht (siehe `IndexingJobService.recoverJobsOrphanedByRestart`
-  unten).
+  teilweise berücksichtigt ist oder nicht (siehe `IndexingJobService.recoverJobsOrphanedByRestart`,
+  Abschnitt „Widerspruch zwischen Scheduler-Javadoc und Recovery-Verhalten" unten).
 
 Dieses ADR macht die Annahme explizit, listet die bekannten Fundstellen und legt fest, wie mit neuen
 Stellen dieser Art umzugehen ist. Es trifft **keine** Entscheidung, Multi-Instanz-Betrieb zu bauen —
@@ -34,8 +34,9 @@ ist unter dieser Annahme korrekt und braucht keine verteilte Koordination.
 
 ### Bekannte Fundstellen
 
-**Prozesslokale Caches ohne verteilte Invalidierung** (alle Caffeine-basiert, invalidiert nur im
-eigenen Prozess — bei mehreren Instanzen sieht jede Instanz ihre eigene, potenziell veraltete Kopie):
+**Prozesslokale Caches ohne verteilte Invalidierung** (prozesslokal, meist Caffeine-basiert,
+invalidiert nur im eigenen Prozess — bei mehreren Instanzen sieht jede Instanz ihre eigene,
+potenziell veraltete Kopie):
 
 | Fundstelle | Zustand | Invalidierung |
 | --- | --- | --- |
@@ -52,34 +53,51 @@ zum TTL-Ablauf den alten Stand. Für `personalSpaceProvisioned` ist das harmlos 
 fälschlich fehlen, nie fälschlich vorhanden sein), für die anderen wäre es eine echte
 Rechte-/Konsistenzlücke.
 
-**`@Scheduled` ohne Leader-Election** (bei mehreren Instanzen feuert jede ihre eigene Kopie des
-Schedulers, unkoordiniert):
+**`@Scheduled` ohne Leader-Election, und eine vergleichbare Start-Aktion** (bei mehreren Instanzen
+feuert jede ihre eigene Kopie, unkoordiniert):
 
-| Fundstelle | Intervall | Bemerkung |
+| Fundstelle | Auslöser | Bemerkung |
 | --- | --- | --- |
-| `AuditRetentionScheduler.deleteExpiredAuditLogPartitions` | monatlich | Löschung ist idempotent — eine doppelte Ausführung löscht nichts, was nicht schon weg ist |
+| `AuditRetentionScheduler.deleteExpiredAuditLogPartitions` | monatlich | Kein reiner No-Op bei doppeltem Aufruf: der DB-seitige Forward-only-Cap (`last_cutoff`/`last_run_month`, Migration 023) begrenzt den Fortschritt auf die seit dem letzten Lauf tatsächlich vergangenen Kalendermonate, nicht auf "einmal pro Aufruf" - `SELECT ... FOR UPDATE` serialisiert zwei gleichzeitige Aufrufe, sodass der zweite im selben Monat `last_run_month` bereits aktualisiert vorfindet und nichts zusätzlich löscht. Die Sicherheit steckt also in dieser Sperre und Kalenderlogik, nicht in der Löschung selbst |
 | `LibraryIndexingScheduler.triggerDueLibraries` | jede Minute | Doppelte Trigger derselben fälligen Bibliothek werden durch `uk_indexing_jobs_library_running` (Migration 028) auf Datenbankebene abgefangen — die Instanz, die den Unique-Constraint verletzt, bucht das als Skip. `lastTickAt` (Rückschaufenster gegen Jitter zwischen zwei Ticks) ist zusätzlich rein prozesslokaler Zustand, der bei mehreren Instanzen pro Prozess getrennt geführt wird |
-| `IndexingJobRecoveryScheduler.recoverStaleRunningJobs` | alle 15 Minuten | Fails jeden Job, dessen `lastProgressAt`-Heartbeat zu alt ist — siehe Widerspruch unten |
+| `IndexingJobRecoveryScheduler.recoverStaleRunningJobs` | alle 15 Minuten | Fails jeden Job, dessen `lastProgressAt`-Heartbeat zu alt ist |
+| `IndexingJobRecoveryScheduler.recoverOnStartup` | Prozessstart (`ApplicationReadyEvent`, kein `@Scheduled`) | Ruft `IndexingJobService.recoverJobsOrphanedByRestart` auf — siehe Widerspruch unten |
 
 **Widerspruch zwischen Scheduler-Javadoc und Recovery-Verhalten:**
 `LibraryIndexingScheduler`s Javadoc beschreibt explizit ein Szenario mit mehreren Instanzen ("Multiple
 backend instances ticking the same due library at the same minute...") und erklärt, warum der
 Unique-Index diesen einen Fall absichert. Das erweckt den Eindruck, Multi-Instanz-Betrieb sei für die
-Indizierung bereits teilweise tragfähig. `IndexingJobService.recoverJobsOrphanedByRestart` — aufgerufen
-von `IndexingJobRecoveryScheduler.recoverOnStartup` bei jedem Prozessstart — widerlegt das: die Methode
-failt **jede** noch `RUNNING` markierte Job-Zeile, mit der Begründung, "a fresh JVM cannot possibly
-still be running the task any such row refers to". Diese Prämisse gilt nur, wenn genau eine Instanz
-existiert. Bei mehreren Instanzen würde der Neustart einer Instanz A die noch laufenden, legitimen Jobs
-einer Instanz B als verwaist abbrechen — der Unique-Index schützt vor doppelten Läufen, nicht vor
-diesem Fall. Die beiden Javadoc-Stellen sind im Zuge dieses ADR korrigiert (siehe unten): Der
-Unique-Index macht ausschließlich das gleichzeitige Anstoßen desselben fälligen Laufs sicher, nicht
-Multi-Instanz-Betrieb im Allgemeinen.
+Indizierung bereits teilweise tragfähig. `IndexingJobRecoveryScheduler.recoverOnStartup` widerlegt das:
+bei jedem Prozessstart ruft es `IndexingJobService.recoverJobsOrphanedByRestart` auf, das **jede** noch
+`RUNNING` markierte Job-Zeile failt, mit der Begründung, "a fresh JVM cannot possibly still be running
+the task any such row refers to". Diese Prämisse gilt nur, wenn genau eine Instanz existiert. Bei
+mehreren Instanzen würde der Neustart einer Instanz A die noch laufenden, legitimen Jobs einer Instanz
+B als verwaist abbrechen — der Unique-Index schützt vor doppelten Läufen, nicht vor diesem Fall. Die
+Javadoc von `LibraryIndexingScheduler`, `IndexingJobService.recoverJobsOrphanedByRestart` und
+`IndexingJobRecoveryScheduler` sind im Zuge dieses ADR korrigiert: Der Unique-Index macht
+ausschließlich das gleichzeitige Anstoßen desselben fälligen Laufs sicher, nicht Multi-Instanz-Betrieb
+im Allgemeinen.
 
 **Fehlende Serialisierung konkurrierender Läufe:**
 
 | Fundstelle | Zustand |
 | --- | --- |
 | `DirectorySyncService.run` | Zwei gleichzeitige Synchronisationsläufe derselben Organisation überlappen unkontrolliert — im Javadoc bereits als "Known gap" benannt, mit zwei genannten Lösungsrichtungen (Serialisierung per Advisory-Lock, oder Last-Writer-Wins als dokumentierte Betriebsvoraussetzung) |
+
+**Prozesslokale Task-Executor-Warteschlangen** (Grund, warum eine `RUNNING`-Zeile implizit "läuft auf
+mir" statt "läuft auf irgendeiner Instanz" bedeutet - der `@Async`-Task, der sie abarbeitet, ist immer
+an den JVM-Prozess gebunden, der ihn eingereiht hat):
+
+| Fundstelle | Zustand |
+| --- | --- |
+| `IndexingConfiguration.indexingTaskExecutor`, `.embeddingTaskExecutor`, `.uploadTaskExecutor` | Drei `ThreadPoolTaskExecutor`-Bohnen mit eigener, rein prozessinterner Warteschlange - eine Zeile, die auf Instanz A als `RUNNING` eingereiht wurde, hat auf Instanz B keinen wartenden Task, den ein Neustart von B jemals hätte abbrechen können |
+
+**Prozesslokale/knotenlokale Dateiablage:**
+
+| Fundstelle | Zustand |
+| --- | --- |
+| `LibraryDocumentService` (Upload-Pfad, `opaa.upload.storage-path`, Default `./uploads`) | Speichert hochgeladene Dokumente unter `<storagePath>/<libraryId>/<random-uuid><extension>` auf dem lokalen Dateisystem des Prozesses. Bei zwei Instanzen ohne geteiltes Volume: ein Upload, der auf Instanz A ankommt, ist über Instanz B nicht lesbar - 404/`FileNotFoundException`, sobald eine spätere Anfrage (Download, Re-Indizierung) zufällig auf B landet. Härteste Annahme dieser Liste: kein Cache-Verfall oder Retry hilft hier, die Datei existiert auf B schlicht nicht |
+| `FilesystemPathAllowlist` (`FILESYSTEM`-Quellentyp, #484, ADR-0018) | Vom Betreiber gemounteter Nachbarfall, keine eigene Annahme dieser Anwendung: das Backend liest von per `opaa.indexing.filesystem-allowlist` konfigurierten Basisverzeichnissen. Ob mehrere Instanzen dasselbe Verzeichnis sehen, hängt vollständig davon ab, ob der Betreiber es auf jeder Instanz gleich mountet - anders als beim Upload-Pfad gibt es hier keinen anwendungsseitigen Schreibpfad, der bei fehlendem geteiltem Mount silently divergieren könnte |
 
 ### Regel für neue Stellen
 
@@ -106,9 +124,12 @@ Diese Skizze ist keine Umsetzungsplanung, nur eine Einordnung der Größenordnun
   N-fache Kontingent.
 - **`@Scheduled`-Jobs ohne Leader-Election** (`AuditRetentionScheduler`,
   `LibraryIndexingScheduler.triggerDueLibraries`, `IndexingJobRecoveryScheduler`): Leader-Election oder
-  ein verteilter Scheduler-Lock (z. B. ShedLock), sodass nur eine Instanz pro Tick tatsächlich feuert.
-  Für `LibraryIndexingScheduler` ist das die sauberere Alternative zum heutigen Unique-Index-Workaround,
-  der Doppelläufe erst nach dem Versuch abfängt statt sie von vornherein zu vermeiden.
+  ein verteilter Scheduler-Lock (z. B. ShedLock), sodass nur eine Instanz pro Tick tatsächlich feuert -
+  vermeidet unnötige doppelte Arbeit und Skip-Events, die sonst bei jedem gleichzeitigen Tick anfallen.
+  Für `LibraryIndexingScheduler` ist ein Lock eine **Ergänzung**, kein Ersatz für
+  `uk_indexing_jobs_library_running`: der Unique-Index schließt zusätzlich die In-Prozess-TOCTOU-Lücke
+  zwischen dem eigenen Pre-Check und dem Insert (siehe `IndexingJobService#startJob`s Javadoc) - die
+  bliebe auch mit einem Lock bestehen, der nur zwischen Instanzen koordiniert, nicht innerhalb einer.
 - **`recoverJobsOrphanedByRestart`**: Darf bei Multi-Instanz-Betrieb nicht mehr pauschal jede
   `RUNNING`-Zeile failen. Braucht entweder eine Instanz-Kennung pro Job (nur Zeilen der eigenen Instanz
   beim eigenen Neustart failen) oder eine Umstellung auf ausschließlich heartbeat-basierte Erkennung
@@ -116,6 +137,15 @@ Diese Skizze ist keine Umsetzungsplanung, nur eine Einordnung der Größenordnun
   Instanzen nicht mehr anfasst.
 - **`DirectorySyncService`**: Ein Postgres Advisory-Lock, keyed auf `organizationId`, gehalten für die
   Dauer eines Laufs — im Javadoc bereits als eine der beiden möglichen Lösungsrichtungen benannt.
+- **Task-Executor-Warteschlangen** (`IndexingConfiguration`): Folgt aus dem `LibraryDocumentService`-
+  bzw. `recoverJobsOrphanedByRestart`-Umbau, kein eigenständiges Problem - sobald eine `RUNNING`-Zeile
+  eine Instanz-Kennung trägt, kann jede Instanz an ihrer eigenen Warteschlange festhalten und muss nur
+  noch die Zeilen der *eigenen* Instanz beim eigenen Neustart als verwaist behandeln.
+- **`LibraryDocumentService`s Upload-Ablage**: Härteste Fundstelle dieser Liste - ein geteiltes Volume
+  (NFS/EFS o. ä., über alle Instanzen gleich gemountet) oder ein S3-kompatibler Objektspeicher statt
+  des lokalen Dateisystems. `FilesystemPathAllowlist`s Nachbarfall braucht keinen Anwendungs-Umbau,
+  nur eine Betriebsvoraussetzung: dieselben Basisverzeichnisse müssen auf jeder Instanz identisch
+  gemountet sein.
 
 ## Konsequenzen
 
