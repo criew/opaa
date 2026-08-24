@@ -13,6 +13,17 @@ databaseChangeLog:
   # SET ROLE / RESET ROLE / REVOKE" bracket migration 022 already established for DDL against
   # audit_log (see that changeSet's own comment and #426 for why this is not specific to one
   # migration - every future audit_log DDL migration needs the same dance).
+  #
+  # Locking (#846 code review): CREATE INDEX on a partitioned parent table takes ACCESS EXCLUSIVE on
+  # the parent and on every one of its partitions for the duration of the build, and cannot run
+  # CONCURRENTLY (Postgres does not support CREATE INDEX CONCURRENTLY on a partitioned table as a
+  # single statement). That is acceptable here because Liquibase runs this at application startup,
+  # before the instance accepts traffic (see AuthProfileGuard/ADR-0005's own startup-gate
+  # precedent) - nothing is blocked that is already serving requests. On a large existing audit_log
+  # (many partitions, each already holding years of rows), this does lengthen that startup step;
+  # IF NOT EXISTS below at least makes a second, redundant run of this changeSet (or an index an
+  # operator already created by hand with the same name) a no-op instead of a startup-blocking
+  # error.
   - changeSet:
       id: 063-create-audit-log-time-range-index
       author: opaa
@@ -33,7 +44,7 @@ databaseChangeLog:
                 EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
               END $$;
               SET ROLE opaa_audit_owner;
-              CREATE INDEX idx_audit_log_time_range
+              CREATE INDEX IF NOT EXISTS idx_audit_log_time_range
               ON audit_log (organization_id, recorded_at);
               RESET ROLE;
               DO $$
@@ -75,7 +86,7 @@ databaseChangeLog:
                 EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
               END $$;
               SET ROLE opaa_audit_owner;
-              CREATE INDEX idx_audit_log_incident_scope
+              CREATE INDEX IF NOT EXISTS idx_audit_log_incident_scope
               ON audit_log (organization_id, actor_ref, recorded_at);
               RESET ROLE;
               DO $$
