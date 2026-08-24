@@ -2,15 +2,12 @@ package io.opaa.query;
 
 import static java.util.stream.Collectors.toMap;
 
-import io.opaa.api.dto.ChunkLocation;
-import io.opaa.api.dto.QueryMetadata;
-import io.opaa.api.dto.QueryResponse;
-import io.opaa.api.dto.SearchedLibrary;
-import io.opaa.api.dto.SourceReference;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
+import io.opaa.chat.ChatSource;
+import io.opaa.chat.ChatSourceLocation;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.VectorChunkStore;
@@ -141,7 +138,7 @@ public class QueryService {
    * requestedLibraryIds} intersected with the readable set - never widened beyond it, matching
    * #526's acceptance criteria that a referenced but unreadable library yields no hits rather than
    * being silently granted. An empty intersection in that mode also takes the empty-scope
-   * short-circuit above and additionally marks {@link QueryMetadata#getAnsweredWithoutKnowledge()}
+   * short-circuit above and additionally marks {@link QueryOutcome#getAnsweredWithoutKnowledge()}
    * so the caller can distinguish "no knowledge base searched" from "searched but found nothing" -
    * the same distinction applies to a persisted chat whose own {@code useKnowledge} is off with no
    * (readable) sticky reference.
@@ -162,7 +159,7 @@ public class QueryService {
    * independently connection-scoped call that releases its connection immediately, exactly like
    * {@code UserService.findOrCreateUser}.
    */
-  public QueryResponse query(
+  public QueryResult query(
       String question,
       UUID chatId,
       UUID currentUserId,
@@ -284,7 +281,7 @@ public class QueryService {
                 Map<String, Integer> matchCounts = countMatchesPerDocument(relevantChunks);
                 Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId =
                     lookupSourceDocuments(relevantChunks);
-                List<SourceReference> sources =
+                List<ChatSource> sources =
                     mapSources(
                         relevantChunks, validatedCitations, matchCounts, sourceDocumentsByDocId);
 
@@ -310,12 +307,12 @@ public class QueryService {
                     chat.map(c -> chatService.appendTurn(c, question, answer, sources))
                         .orElse(null);
 
-                QueryMetadata metadata =
-                    new QueryMetadata(model, tokenCount, durationMs)
+                QueryOutcome metadata =
+                    new QueryOutcome(model, tokenCount, durationMs)
                         .answeredWithoutKnowledge(answeredWithoutKnowledge)
                         .noKnowledgeAvailableInSpace(noKnowledgeAvailableInSpace)
                         .searchedLibraries(searchedLibraries(searchScope));
-                return new QueryResponse(answer, sources, metadata, effectiveChatId)
+                return new QueryResult(answer, sources, metadata, effectiveChatId)
                     .chatTitle(chatTitle);
               } catch (RuntimeException e) {
                 metrics.recordError();
@@ -491,7 +488,7 @@ public class QueryService {
   }
 
   /**
-   * Builds one {@link SourceReference} per retrieved file, plus a synthetic entry for every invalid
+   * Builds one {@link ChatSource} per retrieved file, plus a synthetic entry for every invalid
    * citation whose document id matches none of the retrieved chunks at all (#386) - the only case
    * where an invalid citation cannot attach to a real retrieved chunk's source entry, since it
    * points at a document this answer never actually searched. {@code cited} now only reflects
@@ -507,9 +504,9 @@ public class QueryService {
    * actually named in.
    *
    * <p>#697 second review round: dropping the synthetic entry silently on a collision (rather than
-   * merging it) traded that problem for another - two {@link SourceReference} rows sharing one
-   * {@code fileName} in the response, which {@code frontend/src/components/chat/citations.ts} joins
-   * to the answer text purely by file name and resolves last-wins, i.e. always to the synthetic,
+   * merging it) traded that problem for another - two {@link ChatSource} rows sharing one {@code
+   * fileName} in the response, which {@code frontend/src/components/chat/citations.ts} joins to the
+   * answer text purely by file name and resolves last-wins, i.e. always to the synthetic,
    * zero-relevance row. A genuinely, validly cited real source would then have displayed with "0%"
    * relevance and no document link - the exact opposite failure from finding 4, now hitting a
    * <em>valid</em> citation instead of an invalid one. The fix folds a colliding synthetic entry
@@ -520,14 +517,14 @@ public class QueryService {
    *
    * <p>#739: the real entries below are deduped by {@code document_id}, not {@code fileName} - two
    * distinct documents that happen to share a file name (e.g. two RSS entries both attaching a
-   * same-named PDF) now each keep their own {@link SourceReference} row instead of collapsing into
-   * one, since {@code fileName} is no longer a reliable proxy for document identity now that every
-   * entry also carries its own {@code documentId} deep link. The orphan-collision check below still
+   * same-named PDF) now each keep their own {@link ChatSource} row instead of collapsing into one,
+   * since {@code fileName} is no longer a reliable proxy for document identity now that every entry
+   * also carries its own {@code documentId} deep link. The orphan-collision check below still
    * matches by {@code fileName} deliberately - a fabricated citation naming the right file name but
    * the wrong document id must still flag every real entry sharing that file name, since there is
    * no other signal to tell which one the model meant.
    */
-  private List<SourceReference> mapSources(
+  private List<ChatSource> mapSources(
       List<Document> chunks,
       List<CitationValidator.ValidatedCitation> validatedCitations,
       Map<String, Integer> matchCounts,
@@ -547,12 +544,12 @@ public class QueryService {
             .map(CitationValidator.ValidatedCitation::documentId)
             .collect(Collectors.toSet());
 
-    // Keyed on #chunkGroupingKey, not the parsed SourceReference#getDocumentId() (which is null for
+    // Keyed on #chunkGroupingKey, not the parsed ChatSource#getDocumentId() (which is null for
     // a malformed/missing value, #739's parseDocumentId) - two chunks with the same unparseable id
     // must still merge into one entry rather than every one of them colliding on a shared null key,
     // and the file_name fallback (PR #745 review, nit 1) keeps two document_id-less chunks from
     // different files from merging into one either.
-    Map<String, SourceReference> fromChunksByDocumentId =
+    Map<String, ChatSource> fromChunksByDocumentId =
         chunks.stream()
             .map(
                 chunk -> {
@@ -569,8 +566,8 @@ public class QueryService {
                   Instant indexedAt = sourceDocument != null ? sourceDocument.getIndexedAt() : null;
                   String sourceEntryUrl =
                       sourceDocument != null ? sourceDocument.getSourceEntryUrl() : null;
-                  SourceReference reference =
-                      new SourceReference(fileName, score, matches, cited)
+                  ChatSource reference =
+                      new ChatSource(fileName, score, matches, cited)
                           .indexedAt(indexedAt)
                           .documentId(parseDocumentId(documentId))
                           .sourceType(
@@ -589,11 +586,11 @@ public class QueryService {
                     QueryService::mergeSourceReferences,
                     LinkedHashMap::new));
 
-    List<SourceReference> orphanEntries =
+    List<ChatSource> orphanEntries =
         buildOrphanSourceReferences(validatedCitations, retrievedDocumentIds);
-    List<SourceReference> unmatchedOrphanEntries = new ArrayList<>();
-    for (SourceReference orphan : orphanEntries) {
-      List<SourceReference> collidingRealEntries =
+    List<ChatSource> unmatchedOrphanEntries = new ArrayList<>();
+    for (ChatSource orphan : orphanEntries) {
+      List<ChatSource> collidingRealEntries =
           fromChunksByDocumentId.values().stream()
               .filter(entry -> entry.getFileName().equals(orphan.getFileName()))
               .toList();
@@ -610,7 +607,7 @@ public class QueryService {
 
   /**
    * Parses a chunk's {@code document_id} metadata value into a {@link UUID} for {@link
-   * SourceReference#getDocumentId()} (#739), returning {@code null} for an empty or malformed value
+   * ChatSource#getDocumentId()} (#739), returning {@code null} for an empty or malformed value
    * rather than throwing - the same defensive handling {@link #lookupSourceDocuments} already
    * applies to the identical metadata field, since a chunk with missing/corrupt metadata must not
    * fail the whole answer.
@@ -630,8 +627,8 @@ public class QueryService {
   }
 
   /**
-   * Builds one synthetic {@link SourceReference} per distinct file name an invalid citation claimed
-   * for a document id that matches no retrieved chunk at all (#386) - this is the only way such a
+   * Builds one synthetic {@link ChatSource} per distinct file name an invalid citation claimed for
+   * a document id that matches no retrieved chunk at all (#386) - this is the only way such a
    * citation can be flagged at all, since it does not correspond to any real retrieved chunk that
    * would otherwise carry the flag. {@code relevanceScore} and {@code matchCount} are both {@code
    * 0} - the honest signal that there is no real retrieved passage behind this entry, not merely a
@@ -642,7 +639,7 @@ public class QueryService {
    * #mapSources}'s uncited group), which would misrepresent a fabricated reference as a real
    * document that was merely retrieved and not used.
    */
-  private List<SourceReference> buildOrphanSourceReferences(
+  private List<ChatSource> buildOrphanSourceReferences(
       List<CitationValidator.ValidatedCitation> validatedCitations,
       Set<String> retrievedDocumentIds) {
     Set<String> orphanFileNames =
@@ -652,7 +649,7 @@ public class QueryService {
             .map(CitationValidator.ValidatedCitation::fileName)
             .collect(Collectors.toCollection(LinkedHashSet::new));
     return orphanFileNames.stream()
-        .map(fileName -> new SourceReference(fileName, 0.0, 0, true).citationValid(false))
+        .map(fileName -> new ChatSource(fileName, 0.0, 0, true).citationValid(false))
         .toList();
   }
 
@@ -666,8 +663,8 @@ public class QueryService {
    * <p>#739: the dedupe key is now {@code document_id}, not {@code fileName} (#639's original
    * reasoning for the opposite choice, below, is why this needed to change deliberately rather than
    * incidentally). Two distinct documents that happen to share a file name (e.g. two RSS entries
-   * both attaching a same-named PDF) no longer collapse into one {@link SourceReference} row at all
-   * - each keeps its own entry, since #739 needs every entry's own {@code documentId} for its deep
+   * both attaching a same-named PDF) no longer collapse into one {@link ChatSource} row at all -
+   * each keeps its own entry, since #739 needs every entry's own {@code documentId} for its deep
    * link and folding two different documents together would have to pick (or drop) one arbitrarily.
    * {@code a} and {@code b} passed to this method therefore always share the same {@code
    * document_id}, hence the same underlying {@link io.opaa.indexing.Document} row - {@code
@@ -677,8 +674,8 @@ public class QueryService {
    * {@code null} on any disagreement rather than picking either side). The merge below still reads
    * whichever side happens to be {@code preferred}, since both sides agree anyway.
    */
-  static SourceReference mergeSourceReferences(SourceReference a, SourceReference b) {
-    SourceReference preferred = a.getRelevanceScore() >= b.getRelevanceScore() ? a : b;
+  static ChatSource mergeSourceReferences(ChatSource a, ChatSource b) {
+    ChatSource preferred = a.getRelevanceScore() >= b.getRelevanceScore() ? a : b;
     boolean shouldBeCited = a.getCited() || b.getCited();
     // #386: valid only if neither side carries an invalid citation - one invalid citation for
     // this file is enough to flag the merged entry, mirroring shouldBeCited's OR but inverted,
@@ -690,10 +687,10 @@ public class QueryService {
             : null;
     // #667: every retrieved chunk keeps its own location entry, ordered by chunk index, so the
     // frontend can resolve any footnote of this document - not only the best-scoring chunk's.
-    List<ChunkLocation> mergedChunkLocations = mergeChunkLocations(a, b);
+    List<ChatSourceLocation> mergedChunkLocations = mergeChunkLocations(a, b);
 
     if (shouldBeCited && !preferred.getCited()) {
-      return new SourceReference(
+      return new ChatSource(
               preferred.getFileName(),
               preferred.getRelevanceScore(),
               preferred.getMatchCount(),
@@ -713,8 +710,8 @@ public class QueryService {
     return preferred;
   }
 
-  private static List<ChunkLocation> mergeChunkLocations(SourceReference a, SourceReference b) {
-    Map<Integer, ChunkLocation> byIndex = new TreeMap<>();
+  private static List<ChatSourceLocation> mergeChunkLocations(ChatSource a, ChatSource b) {
+    Map<Integer, ChatSourceLocation> byIndex = new TreeMap<>();
     Stream.of(a.getChunkLocations(), b.getChunkLocations())
         .filter(Objects::nonNull)
         .flatMap(List::stream)
@@ -728,7 +725,7 @@ public class QueryService {
    * stored none. A chunk without a usable {@code chunk_index} (legacy data predating the metadata)
    * yields no entry at all - there is no number a footnote could be resolved by.
    */
-  private static List<ChunkLocation> chunkLocationOf(Document chunk) {
+  private static List<ChatSourceLocation> chunkLocationOf(Document chunk) {
     Object rawIndex = chunk.getMetadata().get("chunk_index");
     if (rawIndex == null) {
       return new ArrayList<>();
@@ -740,9 +737,9 @@ public class QueryService {
       return new ArrayList<>();
     }
     Object location = chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
-    List<ChunkLocation> result = new ArrayList<>(1);
+    List<ChatSourceLocation> result = new ArrayList<>(1);
     result.add(
-        new ChunkLocation(chunkIndex).location(location != null ? location.toString() : null));
+        new ChatSourceLocation(chunkIndex).location(location != null ? location.toString() : null));
     return result;
   }
 
@@ -752,18 +749,18 @@ public class QueryService {
    * {@code searchScope}, never from the request, so it reflects permissions and the chat's own
    * settings exactly as the search did. Empty when no search ran.
    */
-  private List<SearchedLibrary> searchedLibraries(Set<UUID> searchScope) {
+  private List<SearchedLibraryRef> searchedLibraries(Set<UUID> searchScope) {
     if (searchScope.isEmpty()) {
       return new ArrayList<>();
     }
     return knowledgeLibraryRepository.findAllById(searchScope).stream()
-        .map(library -> new SearchedLibrary(library.getId(), library.getName()))
-        .sorted(Comparator.comparing(SearchedLibrary::getName, String.CASE_INSENSITIVE_ORDER))
+        .map(library -> new SearchedLibraryRef(library.getId(), library.getName()))
+        .sorted(Comparator.comparing(SearchedLibraryRef::getName, String.CASE_INSENSITIVE_ORDER))
         .collect(Collectors.toCollection(ArrayList::new));
   }
 
   /** {@code citationValid} defaults to {@code true} (absent = never flagged invalid) - #386. */
-  private static boolean isCitationValid(SourceReference source) {
+  private static boolean isCitationValid(ChatSource source) {
     Boolean citationValid = source.getCitationValid();
     return citationValid == null || citationValid;
   }

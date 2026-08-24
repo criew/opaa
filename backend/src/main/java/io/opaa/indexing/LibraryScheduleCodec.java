@@ -24,6 +24,14 @@ import org.springframework.scheduling.support.CronExpression;
  * io.opaa.audit.AuditRetentionScheduler}'s own {@code @Scheduled(cron = ...)} usage) - the second
  * field is always {@code "0"} here, since none of the four intervalstufen need sub-minute
  * precision.
+ *
+ * <p><b>#860 Teil 4 decision:</b> {@code ScheduleFrequency}/{@code ScheduleWeekday} stay generated
+ * DTO types here rather than gaining a separate domain enum with an API-layer mapping. Unlike
+ * {@code SourceReference} or {@code ChatSummary}, both enums carry no behaviour beyond their four
+ * literal values, are identical in both layers by construction (the four intervalstufen this class
+ * documents above), and Epic #826 Phase 4 already plans to move exactly this kind of small, shared,
+ * behaviour-free enum into a future {@code opaa-api} module both the domain and the API layer
+ * depend on - a domain-local duplicate today would just be undone there.
  */
 public final class LibraryScheduleCodec {
 

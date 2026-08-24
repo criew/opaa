@@ -14,14 +14,12 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opaa.api.dto.ChunkLocation;
-import io.opaa.api.dto.QueryResponse;
-import io.opaa.api.dto.SearchedLibrary;
-import io.opaa.api.dto.SourceReference;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
+import io.opaa.chat.ChatSource;
+import io.opaa.chat.ChatSourceLocation;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.KnowledgeLibrary;
@@ -140,16 +138,16 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources().getFirst().getSourceEntryUrl())
         .isEqualTo("https://example.com/feed/entry-123");
   }
 
   /**
-   * #667: every retrieved chunk's location rides along on its SourceReference, keyed by the chunk
-   * index the citation marker names - including a chunk the pipeline stored no location for, which
-   * still needs its entry (location null) so the frontend knows the number is real.
+   * #667: every retrieved chunk's location rides along on its ChatSource, keyed by the chunk index
+   * the citation marker names - including a chunk the pipeline stored no location for, which still
+   * needs its entry (location null) so the frontend knows the number is real.
    */
   @Test
   void queryCarriesTheLocationOfEveryRetrievedChunk() {
@@ -186,13 +184,13 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(1);
-    List<ChunkLocation> locations = response.getSources().getFirst().getChunkLocations();
-    assertThat(locations).extracting(ChunkLocation::getChunkIndex).containsExactly(0, 3);
+    List<ChatSourceLocation> locations = response.getSources().getFirst().getChunkLocations();
+    assertThat(locations).extracting(ChatSourceLocation::getChunkIndex).containsExactly(0, 3);
     assertThat(locations)
-        .extracting(ChunkLocation::getLocation)
+        .extracting(ChatSourceLocation::getLocation)
         .containsExactly(null, "Abschn. 4.2 Fristsetzung");
   }
 
@@ -209,10 +207,10 @@ class QueryServiceTest {
     when(knowledgeLibraryRepository.findAllById(Set.of(readableLibraryId)))
         .thenReturn(List.of(library));
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getMetadata().getSearchedLibraries())
-        .extracting(SearchedLibrary::getId, SearchedLibrary::getName)
+        .extracting(SearchedLibraryRef::getId, SearchedLibraryRef::getName)
         .containsExactly(tuple(readableLibraryId, "Dienstanweisungen"));
   }
 
@@ -223,7 +221,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, false, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, false, List.of());
 
     assertThat(response.getMetadata().getSearchedLibraries()).isEmpty();
     verify(knowledgeLibraryRepository, never()).findAllById(any());
@@ -251,7 +249,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources().getFirst().getSourceEntryUrl()).isNull();
   }
@@ -285,9 +283,9 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
-    SourceReference source = response.getSources().getFirst();
+    ChatSource source = response.getSources().getFirst();
     assertThat(source.getDocumentId()).isEqualTo(documentId);
     assertThat(source.getSourceType()).isEqualTo(io.opaa.indexing.DocumentSourceType.UPLOAD);
     assertThat(source.getSourceUrl()).isNull();
@@ -323,9 +321,9 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
-    SourceReference source = response.getSources().getFirst();
+    ChatSource source = response.getSources().getFirst();
     assertThat(source.getDocumentId()).isEqualTo(documentId);
     assertThat(source.getSourceType())
         .isEqualTo(io.opaa.indexing.DocumentSourceType.HTTP_DIRECTORY);
@@ -347,9 +345,9 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
-    SourceReference source = response.getSources().getFirst();
+    ChatSource source = response.getSources().getFirst();
     assertThat(source.getFileName()).isEqualTo("fabricated.pdf");
     assertThat(source.getDocumentId()).isNull();
     assertThat(source.getSourceType()).isNull();
@@ -403,9 +401,9 @@ class QueryServiceTest {
    * #739: {@code mapSources}/{@code mergeSourceReferences} now dedupe by {@code document_id}, not
    * {@code fileName} (previously the opposite, see the #666 review this test used to document below
    * - superseded here) - two distinct documents that happen to share a file name (e.g. two RSS
-   * entries both attaching a same-named PDF) no longer collapse into one {@link SourceReference}
-   * row with the origin link dropped; each keeps its own row with its own {@code documentId} and
-   * {@code sourceEntryUrl}, since #739 needs every entry's own document id for its deep link.
+   * entries both attaching a same-named PDF) no longer collapse into one {@link ChatSource} row
+   * with the origin link dropped; each keeps its own row with its own {@code documentId} and {@code
+   * sourceEntryUrl}, since #739 needs every entry's own document id for its deep link.
    */
   @Test
   void queryKeepsTwoDocumentsThatShareAFileNameAsSeparateSources() {
@@ -441,11 +439,11 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(2);
     assertThat(response.getSources())
-        .extracting(SourceReference::getDocumentId, SourceReference::getSourceEntryUrl)
+        .extracting(ChatSource::getDocumentId, ChatSource::getSourceEntryUrl)
         .containsExactlyInAnyOrder(
             tuple(firstDocumentId, "https://example.com/feed/entry-1"),
             tuple(secondDocumentId, "https://example.com/feed/entry-2"));
@@ -487,11 +485,11 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(2);
     assertThat(response.getSources())
-        .extracting(SourceReference::getFileName, SourceReference::getMatchCount)
+        .extracting(ChatSource::getFileName, ChatSource::getMatchCount)
         .containsExactlyInAnyOrder(tuple("legacy-a.pdf", 2), tuple("legacy-b.pdf", 1));
   }
 
@@ -515,7 +513,7 @@ class QueryServiceTest {
     when(answerGenerationService.generateAnswer(eq("What?"), any(), any()))
         .thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("What?", null, currentUserId, true, List.of());
 
     assertThat(response.getAnswer()).contains("【source:");
     assertThat(response.getSources()).hasSize(1);
@@ -536,7 +534,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getChatId()).isNotNull();
   }
@@ -557,7 +555,7 @@ class QueryServiceTest {
     when(answerGenerationService.generateAnswer(any(), any(), eq(conversationKey)))
         .thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", chatId, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", chatId, currentUserId, true, List.of());
 
     assertThat(response.getChatId()).isEqualTo(chatId);
     verify(chatService).appendTurn(eq(chat), eq("Question"), eq("Answer"), any());
@@ -585,7 +583,7 @@ class QueryServiceTest {
         .thenReturn(chatResponse);
     when(chatService.appendTurn(eq(chat), any(), any(), any())).thenReturn("Frage zur Frist");
 
-    QueryResponse response =
+    QueryResult response =
         queryService.query("Frage zur Frist", chatId, currentUserId, true, List.of());
 
     assertThat(response.getChatTitle()).isEqualTo("Frage zur Frist");
@@ -598,7 +596,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getChatTitle()).isNull();
   }
@@ -655,7 +653,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", chatId, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", chatId, currentUserId, true, List.of());
 
     assertThat(response.getMetadata().getNoKnowledgeAvailableInSpace()).isTrue();
     assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isFalse();
@@ -678,7 +676,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", chatId, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", chatId, currentUserId, true, List.of());
 
     assertThat(response.getMetadata().getNoKnowledgeAvailableInSpace()).isFalse();
   }
@@ -691,7 +689,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, false, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, false, List.of());
 
     assertThat(response.getMetadata().getNoKnowledgeAvailableInSpace()).isFalse();
   }
@@ -709,7 +707,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response =
+    QueryResult response =
         queryService.query("Question", foreignChatId, currentUserId, true, List.of());
 
     assertThat(response.getChatId()).isEqualTo(foreignChatId);
@@ -901,7 +899,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(2);
     assertThat(response.getSources().get(0).getCited()).isTrue();
@@ -935,7 +933,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("What?", null, currentUserId, true, List.of());
 
     assertThat(response.getSources())
         .anySatisfy(
@@ -965,7 +963,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("What?", null, currentUserId, true, List.of());
 
     assertThat(response.getSources().getFirst().getFileName()).isEqualTo("readme.md");
     assertThat(response.getSources().getFirst().getCitationValid()).isFalse();
@@ -990,7 +988,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("What?", null, currentUserId, true, List.of());
 
     assertThat(response.getSources().getFirst().getFileName()).isEqualTo("readme.md");
     assertThat(response.getSources().getFirst().getCitationValid()).isFalse();
@@ -1012,7 +1010,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("What?", null, currentUserId, true, List.of());
 
     assertThat(response.getSources().getFirst().getCitationValid()).isTrue();
   }
@@ -1023,12 +1021,12 @@ class QueryServiceTest {
    * dedupe-by-filename merge - that would have made the real document appear falsely cited, with
    * its real relevance score and its real "open in document" link, for a citation it was never
    * actually named in. The second review round found that the first fix (never merging the two
-   * groups at all) traded that failure for another: two {@code SourceReference} rows sharing one
-   * file name, which the frontend's marker-to-source join resolves last-wins - always to the
-   * synthetic, zero-relevance row, corrupting even a source that {@code was} genuinely, validly
-   * cited (see the next test). The fix folds a colliding synthetic entry into the real one instead
-   * of adding a second row: only {@code citationValid} moves to {@code false}, nothing else about
-   * the real entry changes.
+   * groups at all) traded that failure for another: two {@code ChatSource} rows sharing one file
+   * name, which the frontend's marker-to-source join resolves last-wins - always to the synthetic,
+   * zero-relevance row, corrupting even a source that {@code was} genuinely, validly cited (see the
+   * next test). The fix folds a colliding synthetic entry into the real one instead of adding a
+   * second row: only {@code citationValid} moves to {@code false}, nothing else about the real
+   * entry changes.
    */
   @Test
   void queryFoldsACollidingSyntheticEntryIntoTheRealUncitedSourceInsteadOfAddingARow() {
@@ -1047,10 +1045,10 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("What?", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(1);
-    SourceReference source = response.getSources().getFirst();
+    ChatSource source = response.getSources().getFirst();
     assertThat(source.getFileName()).isEqualTo("readme.md");
     assertThat(source.getRelevanceScore()).isEqualTo(0.85);
     assertThat(source.getMatchCount()).isEqualTo(1);
@@ -1083,10 +1081,10 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("What?", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(1);
-    SourceReference source = response.getSources().getFirst();
+    ChatSource source = response.getSources().getFirst();
     assertThat(source.getFileName()).isEqualTo("readme.md");
     assertThat(source.getRelevanceScore()).isEqualTo(0.85);
     assertThat(source.getCited()).isTrue();
@@ -1121,7 +1119,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(2);
     assertThat(response.getSources().get(0).getFileName()).isEqualTo("report.pdf");
@@ -1146,7 +1144,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getAnswer()).isEqualTo(answer);
   }
@@ -1173,7 +1171,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(1);
     assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(0.9);
@@ -1222,7 +1220,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).isEmpty();
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
@@ -1254,7 +1252,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response =
+    QueryResult response =
         queryService.query("Question", null, currentUserId, false, List.of(unreadableLibraryId));
 
     assertThat(response.getSources()).isEmpty();
@@ -1268,7 +1266,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, false, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, false, List.of());
 
     assertThat(response.getSources()).isEmpty();
     assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isTrue();
@@ -1282,7 +1280,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isFalse();
   }
@@ -1317,7 +1315,7 @@ class QueryServiceTest {
 
     // null requestedLibraryIds must behave exactly like an empty list, not throw or search
     // everything readable.
-    QueryResponse response = queryService.query("Question", null, currentUserId, false, null);
+    QueryResult response = queryService.query("Question", null, currentUserId, false, null);
 
     assertThat(response.getSources()).isEmpty();
     assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isTrue();
@@ -1349,7 +1347,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(1);
     assertThat(response.getSources().getFirst().getCited()).isTrue();
@@ -1385,11 +1383,11 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+    QueryResult response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(2);
     assertThat(response.getSources())
-        .extracting(SourceReference::getFileName, SourceReference::getCited)
+        .extracting(ChatSource::getFileName, ChatSource::getCited)
         .containsExactlyInAnyOrder(tuple("report.pdf", true), tuple("report.pdf", false));
   }
 
@@ -1491,14 +1489,14 @@ class QueryServiceTest {
     @Test
     void unionsChunkLocationsInChunkOrder() {
       var high = sourceReference("file.pdf", 0.9, 1, INDEXED_AT, false);
-      high.setChunkLocations(List.of(new ChunkLocation(5).location("S. 3")));
+      high.setChunkLocations(List.of(new ChatSourceLocation(5).location("S. 3")));
       var low = sourceReference("file.pdf", 0.5, 1, INDEXED_AT, true);
-      low.setChunkLocations(List.of(new ChunkLocation(2).location("S. 1")));
+      low.setChunkLocations(List.of(new ChatSourceLocation(2).location("S. 1")));
 
       var result = QueryService.mergeSourceReferences(high, low);
 
       assertThat(result.getChunkLocations())
-          .extracting(ChunkLocation::getChunkIndex, ChunkLocation::getLocation)
+          .extracting(ChatSourceLocation::getChunkIndex, ChatSourceLocation::getLocation)
           .containsExactly(tuple(2, "S. 1"), tuple(5, "S. 3"));
     }
 
@@ -1570,7 +1568,7 @@ class QueryServiceTest {
     }
 
     /**
-     * #639: the branch that builds a fresh {@code SourceReference} to force {@code cited = true}
+     * #639: the branch that builds a fresh {@code ChatSource} to force {@code cited = true}
      * (because a lower-scoring duplicate was cited but the higher-scoring one is preferred) carries
      * {@code sourceEntryUrl} over from the preferred source, same as {@code indexedAt}.
      */
@@ -1621,20 +1619,19 @@ class QueryServiceTest {
     }
   }
 
-  private static SourceReference sourceReference(
+  private static ChatSource sourceReference(
       String fileName, double relevanceScore, int matchCount, Instant indexedAt, boolean cited) {
     return sourceReference(fileName, relevanceScore, matchCount, indexedAt, cited, null);
   }
 
-  private static SourceReference sourceReference(
+  private static ChatSource sourceReference(
       String fileName,
       double relevanceScore,
       int matchCount,
       Instant indexedAt,
       boolean cited,
       String sourceEntryUrl) {
-    SourceReference sourceReference =
-        new SourceReference(fileName, relevanceScore, matchCount, cited);
+    ChatSource sourceReference = new ChatSource(fileName, relevanceScore, matchCount, cited);
     sourceReference.setIndexedAt(indexedAt);
     sourceReference.setSourceEntryUrl(sourceEntryUrl);
     return sourceReference;

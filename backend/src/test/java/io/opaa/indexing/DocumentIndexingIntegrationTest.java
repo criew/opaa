@@ -7,13 +7,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
-import io.opaa.api.dto.QueryResponse;
 import io.opaa.auth.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
+import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
 import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
@@ -509,7 +509,7 @@ class DocumentIndexingIntegrationTest {
         .isEqualTo(JobStatus.COMPLETED);
 
     // userId holds OWNER on targetLibraryId (granted in setUp) - the reader path.
-    QueryResponse withGrant =
+    QueryResult withGrant =
         queryService.query(
             "uniquely identifiable sentence", null, userId, true, java.util.List.of());
     assertThat(withGrant.getSources())
@@ -542,7 +542,7 @@ class DocumentIndexingIntegrationTest {
                 false));
     grantOwner(strangerLibrary.getId(), strangerId);
 
-    QueryResponse withoutGrant =
+    QueryResult withoutGrant =
         queryService.query(
             "uniquely identifiable sentence", null, strangerId, true, java.util.List.of());
     assertThat(withoutGrant.getSources())

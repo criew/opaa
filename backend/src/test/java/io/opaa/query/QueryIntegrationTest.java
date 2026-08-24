@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
-import io.opaa.api.dto.QueryResponse;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
@@ -219,7 +218,7 @@ class QueryIntegrationTest {
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
     // Execute the query
-    QueryResponse response =
+    QueryResult response =
         queryService.query("What is OPAA?", null, userId, true, java.util.List.of());
 
     // Verify the response
@@ -239,7 +238,7 @@ class QueryIntegrationTest {
     var chatResponse = new ChatResponse(List.of(new Generation(assistantMessage)));
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
-    QueryResponse response =
+    QueryResult response =
         queryService.query(
             "Something completely unrelated", null, userId, true, java.util.List.of());
 
@@ -283,7 +282,7 @@ class QueryIntegrationTest {
         "Stranger",
         DEFAULT_ORGANIZATION_ID);
     try {
-      QueryResponse response =
+      QueryResult response =
           queryService.query("What is the secret?", null, strangerId, true, java.util.List.of());
 
       assertThat(response.getAnswer()).contains("don't have enough context");
@@ -342,7 +341,7 @@ class QueryIntegrationTest {
         .thenReturn(new ChatResponse(List.of(new Generation(assistantMessage))));
 
     try {
-      QueryResponse closed =
+      QueryResult closed =
           queryService.query("Wie gross ist Batman?", null, userId, true, java.util.List.of());
       assertThat(closed.getSources()).isEmpty();
 
@@ -355,7 +354,7 @@ class QueryIntegrationTest {
       when(chatModel.call(any(Prompt.class)))
           .thenReturn(new ChatResponse(List.of(new Generation(answer))));
 
-      QueryResponse opened =
+      QueryResult opened =
           queryService.query("Wie gross ist Batman?", null, userId, true, java.util.List.of());
 
       assertThat(opened.getSources()).hasSize(1);
@@ -427,7 +426,7 @@ class QueryIntegrationTest {
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
     try {
-      QueryResponse response =
+      QueryResult response =
           queryService.query("Beliebige Frage", null, userId, true, java.util.List.of());
 
       // Exactly topK (5, application.yml default) results, every one of them from the granted
@@ -527,7 +526,7 @@ class QueryIntegrationTest {
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
     try {
-      QueryResponse response =
+      QueryResult response =
           queryService.query("Fremde Frage", chatId, strangerId, true, List.of());
 
       // Falls back to an ephemeral conversation, not the owner's chat - the returned id is the
@@ -666,7 +665,7 @@ class QueryIntegrationTest {
         .thenReturn(answerResponse)
         .thenThrow(new RuntimeException("Titelmodell nicht erreichbar"));
 
-    QueryResponse response =
+    QueryResult response =
         queryService.query("Erste Frage", chatId, userId, true, java.util.List.of());
 
     assertThat(response.getAnswer()).isEqualTo("Antwort trotz Fehler");

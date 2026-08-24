@@ -9,11 +9,6 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
-import io.opaa.api.dto.ChatCreateRequest;
-import io.opaa.api.dto.ChatDetail;
-import io.opaa.api.dto.ChatSummary;
-import io.opaa.api.dto.ChatUpdateRequest;
-import io.opaa.api.dto.SourceReference;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipHistoryRepository;
@@ -187,8 +182,8 @@ class ChatServiceIntegrationTest {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
 
-    ChatDetail created =
-        chatService.createChat(spaceId, author, new ChatCreateRequest().title("Frage zur Frist"));
+    ChatConversation created =
+        chatService.createChat(spaceId, author, new ChatCreation().title("Frage zur Frist"));
 
     assertThat(created.getSpaceId()).isEqualTo(spaceId);
     assertThat(created.getAuthorId()).isEqualTo(author);
@@ -196,7 +191,7 @@ class ChatServiceIntegrationTest {
     assertThat(created.getUseKnowledge()).isTrue();
     assertThat(created.getMessages()).isEmpty();
 
-    ChatDetail fetched = chatService.getChat(created.getId(), author);
+    ChatConversation fetched = chatService.getChat(created.getId(), author);
     assertThat(fetched.getId()).isEqualTo(created.getId());
   }
 
@@ -206,7 +201,7 @@ class ChatServiceIntegrationTest {
     UUID member = createUser();
     UUID spaceId = createSpaceWithMember(member);
 
-    assertThatThrownBy(() -> chatService.createChat(spaceId, outsider, new ChatCreateRequest()))
+    assertThatThrownBy(() -> chatService.createChat(spaceId, outsider, new ChatCreation()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -224,7 +219,7 @@ class ChatServiceIntegrationTest {
     space.archive();
     spaceRepository.save(space);
 
-    assertThatThrownBy(() -> chatService.createChat(spaceId, author, new ChatCreateRequest()))
+    assertThatThrownBy(() -> chatService.createChat(spaceId, author, new ChatCreation()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -238,8 +233,8 @@ class ChatServiceIntegrationTest {
     // but also no changes to an existing one.
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
-    ChatDetail created =
-        chatService.createChat(spaceId, author, new ChatCreateRequest().title("Vor Archivierung"));
+    ChatConversation created =
+        chatService.createChat(spaceId, author, new ChatCreation().title("Vor Archivierung"));
     Space space = spaceRepository.findById(spaceId).orElseThrow();
     space.archive();
     spaceRepository.save(space);
@@ -247,7 +242,7 @@ class ChatServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 chatService.updateChat(
-                    created.getId(), author, new ChatUpdateRequest().title("Neuer Titel")))
+                    created.getId(), author, new ChatPatch().title("Neuer Titel")))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -280,8 +275,7 @@ class ChatServiceIntegrationTest {
   void creatingAChatInANonExistentSpaceReturnsNotFound() {
     UUID author = createUser();
 
-    assertThatThrownBy(
-            () -> chatService.createChat(UUID.randomUUID(), author, new ChatCreateRequest()))
+    assertThatThrownBy(() -> chatService.createChat(UUID.randomUUID(), author, new ChatCreation()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -298,7 +292,7 @@ class ChatServiceIntegrationTest {
     space.addMembership(new SpaceMembership(otherMember, SpaceRole.ADMIN, organizationA));
     spaceRepository.save(space);
 
-    ChatDetail chat = chatService.createChat(spaceId, author, new ChatCreateRequest());
+    ChatConversation chat = chatService.createChat(spaceId, author, new ChatCreation());
 
     // #525 acceptance criterion: a foreign user - even a fellow space admin - gets 404, not 403,
     // which would confirm the chat's existence.
@@ -319,10 +313,10 @@ class ChatServiceIntegrationTest {
     space.addMembership(new SpaceMembership(otherMember, SpaceRole.MEMBER, organizationA));
     spaceRepository.save(space);
 
-    chatService.createChat(spaceId, author, new ChatCreateRequest().title("Meine Frage"));
-    chatService.createChat(spaceId, otherMember, new ChatCreateRequest().title("Fremde Frage"));
+    chatService.createChat(spaceId, author, new ChatCreation().title("Meine Frage"));
+    chatService.createChat(spaceId, otherMember, new ChatCreation().title("Fremde Frage"));
 
-    List<ChatSummary> authorsChats = chatService.listChats(spaceId, author);
+    List<Chat> authorsChats = chatService.listChats(spaceId, author);
 
     assertThat(authorsChats).hasSize(1);
     assertThat(authorsChats.getFirst().getTitle()).isEqualTo("Meine Frage");
@@ -333,15 +327,13 @@ class ChatServiceIntegrationTest {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     UUID libraryId = createLibrary(author);
-    ChatDetail created =
+    ChatConversation created =
         chatService.createChat(
-            spaceId, author, new ChatCreateRequest().title("Ursprünglich").useKnowledge(false));
+            spaceId, author, new ChatCreation().title("Ursprünglich").useKnowledge(false));
 
-    ChatDetail updated =
+    ChatConversation updated =
         chatService.updateChat(
-            created.getId(),
-            author,
-            new ChatUpdateRequest().referencedLibraryIds(List.of(libraryId)));
+            created.getId(), author, new ChatPatch().referencedLibraryIds(List.of(libraryId)));
 
     assertThat(updated.getTitle()).isEqualTo("Ursprünglich");
     assertThat(updated.getUseKnowledge()).isFalse();
@@ -359,7 +351,7 @@ class ChatServiceIntegrationTest {
                 chatService.createChat(
                     spaceId,
                     author,
-                    new ChatCreateRequest().referencedLibraryIds(List.of(unreadableLibrary))))
+                    new ChatCreation().referencedLibraryIds(List.of(unreadableLibrary))))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex -> {
@@ -385,7 +377,7 @@ class ChatServiceIntegrationTest {
                 chatService.createChat(
                     spaceId,
                     author,
-                    new ChatCreateRequest().referencedLibraryIds(List.of(unreadableLibrary))))
+                    new ChatCreation().referencedLibraryIds(List.of(unreadableLibrary))))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex -> {
@@ -400,7 +392,7 @@ class ChatServiceIntegrationTest {
   void updateChatRejectsAnUnreadableReferencedLibrary() {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
-    ChatDetail created = chatService.createChat(spaceId, author, new ChatCreateRequest());
+    ChatConversation created = chatService.createChat(spaceId, author, new ChatCreation());
     UUID unreadableLibrary = UUID.randomUUID();
 
     assertThatThrownBy(
@@ -408,7 +400,7 @@ class ChatServiceIntegrationTest {
                 chatService.updateChat(
                     created.getId(),
                     author,
-                    new ChatUpdateRequest().referencedLibraryIds(List.of(unreadableLibrary))))
+                    new ChatPatch().referencedLibraryIds(List.of(unreadableLibrary))))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -420,7 +412,7 @@ class ChatServiceIntegrationTest {
   void deleteChatRemovesItForItsAuthor() {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
-    ChatDetail created = chatService.createChat(spaceId, author, new ChatCreateRequest());
+    ChatConversation created = chatService.createChat(spaceId, author, new ChatCreation());
 
     chatService.deleteChat(created.getId(), author);
 
@@ -438,9 +430,9 @@ class ChatServiceIntegrationTest {
         chat,
         "Wie hoch ist die Rückstellung für Altlastensanierung?",
         "Die Rückstellung beträgt 42.000 EUR.",
-        List.of(new SourceReference("bericht.pdf", 0.9, 1, true)));
+        List.of(new ChatSource("bericht.pdf", 0.9, 1, true)));
 
-    ChatDetail detail = chatService.getChat(chat.getId(), author);
+    ChatConversation detail = chatService.getChat(chat.getId(), author);
     assertThat(detail.getTitle())
         .isEqualTo("Wie hoch ist die Rückstellung für Altlastensanierung?");
     assertThat(detail.getMessages()).hasSize(2);
@@ -455,13 +447,13 @@ class ChatServiceIntegrationTest {
   void appendTurnDoesNotOverwriteAnExplicitlySetTitle() {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
-    ChatDetail created =
-        chatService.createChat(spaceId, author, new ChatCreateRequest().title("Mein Titel"));
+    ChatConversation created =
+        chatService.createChat(spaceId, author, new ChatCreation().title("Mein Titel"));
     Chat chat = chatRepository.findById(created.getId()).orElseThrow();
 
     chatService.appendTurn(chat, "Irgendeine Frage?", "Antwort.", List.of());
 
-    ChatDetail detail = chatService.getChat(created.getId(), author);
+    ChatConversation detail = chatService.getChat(created.getId(), author);
     assertThat(detail.getTitle()).isEqualTo("Mein Titel");
   }
 
@@ -529,8 +521,7 @@ class ChatServiceIntegrationTest {
         .as("generateTitleAsync must have called the LLM by now")
         .isTrue();
 
-    chatService.updateChat(
-        chat.getId(), author, new ChatUpdateRequest().title("Mein eigener Titel"));
+    chatService.updateChat(chat.getId(), author, new ChatPatch().title("Mein eigener Titel"));
     renameApplied.countDown();
 
     await()
@@ -553,8 +544,7 @@ class ChatServiceIntegrationTest {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
-    chatService.updateChat(
-        chat.getId(), author, new ChatUpdateRequest().title("Mein eigener Titel"));
+    chatService.updateChat(chat.getId(), author, new ChatPatch().title("Mein eigener Titel"));
 
     int updated = chatRepository.applyGeneratedTitleIfGenerated(chat.getId(), "LLM-Titel");
 
@@ -582,11 +572,11 @@ class ChatServiceIntegrationTest {
     Chat staleSnapshot =
         chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
     chatService.updateChat(
-        staleSnapshot.getId(), author, new ChatUpdateRequest().title("Mein eigener Titel"));
+        staleSnapshot.getId(), author, new ChatPatch().title("Mein eigener Titel"));
 
     chatService.appendTurn(staleSnapshot, "Frage", "Antwort", List.of());
 
-    ChatDetail detail = chatService.getChat(staleSnapshot.getId(), author);
+    ChatConversation detail = chatService.getChat(staleSnapshot.getId(), author);
     assertThat(detail.getTitle()).isEqualTo("Mein eigener Titel");
   }
 
@@ -617,7 +607,7 @@ class ChatServiceIntegrationTest {
   void appendTurnOrdersMessagesBySequenceAndTouchesUpdatedAt() {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
-    ChatDetail created = chatService.createChat(spaceId, author, new ChatCreateRequest());
+    ChatConversation created = chatService.createChat(spaceId, author, new ChatCreation());
     Chat chat = chatRepository.findById(created.getId()).orElseThrow();
 
     chatService.appendTurn(chat, "Erste Frage", "Erste Antwort", List.of());
@@ -704,7 +694,7 @@ class ChatServiceIntegrationTest {
     UUID author = createUser();
     UUID stranger = createUser();
     UUID spaceId = createSpaceWithMember(author);
-    ChatDetail created = chatService.createChat(spaceId, author, new ChatCreateRequest());
+    ChatConversation created = chatService.createChat(spaceId, author, new ChatCreation());
 
     assertThat(chatService.findOwnedChat(created.getId(), stranger)).isEmpty();
     assertThat(chatService.findOwnedChat(created.getId(), author)).isPresent();
