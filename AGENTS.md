@@ -96,20 +96,28 @@ Neue Backend-Integrationstests verwenden eine der kanonischen Meta-Annotationen 
 (`backend/src/test/java/io/opaa/test/`) statt eigener `@SpringBootTest`/`@ActiveProfiles`/`@Import`/
 `@Testcontainers`-Kombinationen:
 
-- `@OpaaIntegrationTest` — Service-/Repository-Ebene gegen echtes Postgres, kein MockMvc/Web-Layer
-  (`webEnvironment = RANDOM_PORT`, `@ActiveProfiles({"local", "dev"})`).
+- `@OpaaIntegrationTest` — Service-/Repository-Ebene gegen echtes Postgres, ohne MockMvc
+  (`webEnvironment = RANDOM_PORT`, `@ActiveProfiles({"local", "dev"})`). `RANDOM_PORT` startet einen
+  echten Servlet-Container; das ist bewusst gewählt, damit diese Signatur mit der großen
+  `@OpaaIntegrationTest`-Gruppe kontext-kompatibel bleibt, auch für Klassen, die selbst keinen HTTP-Client
+  gegen die eigene Anwendung nutzen.
 - `@OpaaMockMvcTest` — Controller-Ebene über MockMvc (`@AutoConfigureMockMvc`,
   `@ActiveProfiles("dev")`).
 
 Jede Klasse mit identischer Signatur teilt sich einen Spring-Kontext und einen Testcontainers-
 Postgres statt einen eigenen zu booten — Spring cached Kontexte anhand der exakten, zusammengeführten
-Konfiguration (issue #843). Eine eigene `@DynamicPropertySource`, ein eigenes `@Import(...TestConfig)`
+Konfiguration (Issue #843). Eine eigene `@DynamicPropertySource`, ein eigenes `@Import(...TestConfig)`
 oder ein eigener `@MockitoBean`-Satz erzwingt trotz gemeinsamer Meta-Annotation einen eigenen Kontext
 (Spring bezieht das in den Cache-Schlüssel ein) — das ist zulässig, wenn fachlich nötig, muss aber mit
-einem 1–2-zeiligen Kommentar über der Annotation begründet werden (Review-Flagge). Ein neuer
-Postgres-Container wird nie manuell deklariert; `@ServiceConnection` kommt aus der Meta-Annotation.
-Passt keine der beiden Signaturen, ist das ein Fall für eine dritte kanonische Meta-Annotation statt
-einer weiteren Ad-hoc-Kombination — im Zweifel den Code Reviewer fragen.
+einem 1–2-zeiligen Kommentar über der Annotation begründet werden (Review-Flagge). In eine
+`@DynamicPropertySource` gehört nur, was zur Laufzeit aus einer Ressource (z. B. einem Testcontainer)
+gelesen wird — ein konstanter Wert gehört stattdessen in `properties` auf der `@SpringBootTest`-Annotation
+selbst. Ein neuer Postgres-Container wird nie manuell deklariert; `@ServiceConnection` kommt aus der
+Meta-Annotation. Ausnahme: `io.opaa.migration`-Tests booten bewusst einen eigenen Container mit
+Template-Datenbank pro Klasse (siehe `AbstractMigrationTest`) — das Muster ist dort nötig und keine
+Abweichung von dieser Regel. Passt keine der beiden Signaturen, ist das ein Fall für eine dritte
+kanonische Meta-Annotation statt einer weiteren Ad-hoc-Kombination — im Zweifel im PR begründen und
+dem Review überlassen.
 
 ## Code-Konventionen
 

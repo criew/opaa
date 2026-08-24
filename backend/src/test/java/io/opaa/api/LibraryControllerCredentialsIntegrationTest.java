@@ -40,13 +40,10 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * here instead - onto the container and context this class needs regardless - removes that second
  * context entirely rather than trying to make two different classes share one.
  *
- * <p><b>Issue #497, measure 5:</b> replaced the class's own
- * {@code @Container}/{@code @DynamicPropertySource} pair with the shared {@link
- * TestcontainersConfiguration} for exactly the reason just described - this class, {@code
- * BrandingControllerIntegrationTest} and {@code AuditControllerAuthorizationIntegrationTest} now
- * carry the identical
- * {@code @SpringBootTest}/{@code @AutoConfigureMockMvc}/{@code @Import(TestcontainersConfiguration.class)}/{@code @ActiveProfiles("dev")}
- * signature and share one cached context and one container.
+ * <p>Carries the canonical {@link io.opaa.test.OpaaMockMvcTest} signature (AGENTS.md, "Spring-
+ * Testkontexte") for exactly the reason just described - this class, {@code
+ * BrandingControllerIntegrationTest} and {@code AuditControllerAuthorizationIntegrationTest} share
+ * one cached context and one container.
  *
  * <p><b>Caveat that comes with sharing that context:</b> the {@code RateLimitService} instances
  * behind {@code RateLimitFilter} are singleton beans, so their in-memory request counters are

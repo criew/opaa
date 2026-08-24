@@ -43,9 +43,7 @@ import org.springframework.context.annotation.Primary;
  * DirectoryClient}'s own javadoc.
  */
 // Own @Import (below) registers a FakeDirectoryClient not needed by the shared
-// @OpaaIntegrationTest group - documented exception per AGENTS.md. Previously also declared its
-// own duplicate Postgres container bean instead of reusing the shared TestcontainersConfiguration
-// (issue #843) - removed, ServiceConnection now comes from @OpaaIntegrationTest's import.
+// @OpaaIntegrationTest group - documented exception per AGENTS.md.
 @OpaaIntegrationTest
 @Import(DirectorySyncServiceIntegrationTest.TestConfig.class)
 class DirectorySyncServiceIntegrationTest {

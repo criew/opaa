@@ -25,14 +25,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * {@link UrlIndexingExecutor#execute} - rather than asserting against the in-memory object this
  * test itself constructed.
  *
- * <p>Deliberately carries the same {@code @SpringBootTest}/{@code @Import}/{@code @ActiveProfiles}
- * signature (issue #497, measure 5) as the shared-context integration test group (e.g. {@code
- * SpaceServiceIntegrationTest}) instead of the {@code webEnvironment = MOCK}
- * default/{@code @ActiveProfiles("dev")} pair this test used to declare: this class never uses
- * MockMvc or any web layer, so {@code webEnvironment} is a free choice here, and matching the
- * shared group's signature lets Spring's context cache reuse that context instead of building a
- * second, otherwise redundant one (and its own Testcontainers Postgres instance) just for this
- * class.
+ * <p>Carries the canonical {@link io.opaa.test.OpaaIntegrationTest} signature (AGENTS.md, "Spring-
+ * Testkontexte"): this class never uses MockMvc or any web layer, so it shares one cached context
+ * and one container with every other class on that same meta-annotation instead of building its
+ * own.
  */
 @OpaaIntegrationTest
 class UrlIndexingExecutorCredentialsTest {

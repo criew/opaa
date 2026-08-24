@@ -106,8 +106,8 @@ class KnowledgeLibraryServiceIntegrationTest {
   private UUID organizationB;
 
   // This Spring context (and its Postgres container) is shared with other integration test
-  // classes carrying the identical @SpringBootTest/@Import/@ActiveProfiles
-  // combination (Spring caches the context) - some of those classes (e.g.
+  // classes carrying the canonical @OpaaIntegrationTest signature (Spring caches the context) -
+  // some of those classes (e.g.
   // UserServicePersonalSpaceIntegrationTest) have no @AfterEach and leave Space rows behind that
   // reference their users. A blanket userRepository.deleteAll() here would then fail on
   // fk_spaces_owner for a user this test never created. Every user, group and non-system library

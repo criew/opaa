@@ -32,13 +32,10 @@ import org.springframework.web.server.ResponseStatusException;
  * <p>{@code @BeforeEach}/{@code @AfterEach} clear {@code llm_models} rather than assuming it starts
  * empty: {@link LlmModelSeeder} (triggered once by {@link LlmModelSeedRunner}) seeds one row from
  * the {@code dev} profile's Ollama configuration on every fresh application context, including the
- * one this test shares with its siblings (same
- * {@code @SpringBootTest}/{@code @Import}/{@code @ActiveProfiles} signature, see {@code
- * BrandingSettingsServiceIntegrationTest}'s own Javadoc for why that signature must not change
- * lightly - a different one gets a second ApplicationContext and Postgres container). Clearing the
- * table this way doubles as the exact reproduction scenario {@link
- * #seedingNeverResumesOnceAttemptedEvenAfterEveryModelIsDeleted()} needs: a Systemverwaltung
- * deleting every managed model, followed by a restart.
+ * one this test shares with its siblings on the canonical {@link io.opaa.test.OpaaIntegrationTest}
+ * signature (AGENTS.md, "Spring-Testkontexte"). Clearing the table this way doubles as the exact
+ * reproduction scenario {@link #seedingNeverResumesOnceAttemptedEvenAfterEveryModelIsDeleted()}
+ * needs: a Systemverwaltung deleting every managed model, followed by a restart.
  */
 @OpaaIntegrationTest
 class LlmModelServiceIntegrationTest {

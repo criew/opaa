@@ -39,18 +39,12 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * about ("PUT verweigert Nicht-Administratoren (403)").
  *
  * <p>Deliberately one class for every HTTP-level concern of this feature rather than one per
- * endpoint. Uses the shared {@link TestcontainersConfiguration} rather than declaring its own
- * {@code @Container}/{@code @DynamicPropertySource} (issue #497, measure 5): a per-class
- * {@code @DynamicPropertySource} customizer keeps Spring's context cache from recognizing two
- * otherwise identical {@code @SpringBootTest} classes as the same context, so every such class used
- * to get its own ApplicationContext and its own Postgres container - the accumulation {@code
- * build.gradle.kts}'s heap-ceiling comment describes. This class, {@link
- * AuditControllerAuthorizationIntegrationTest} and {@link
- * LibraryControllerCredentialsIntegrationTest} now carry the identical
- * {@code @SpringBootTest}/{@code @AutoConfigureMockMvc}/{@code @Import(TestcontainersConfiguration.class)}/{@code @ActiveProfiles("dev")}
- * signature and therefore share one cached context and one container. Everything that does not need
- * MockMvc lives in {@code BrandingSettingsServiceIntegrationTest}, which shares the other, {@code
- * {"local", "dev"}}-profiled context group instead.
+ * endpoint. Carries the canonical {@link io.opaa.test.OpaaMockMvcTest} signature (AGENTS.md,
+ * "Spring-Testkontexte"), so it shares one cached context and one container with every other class
+ * on that same meta-annotation, including {@link AuditControllerAuthorizationIntegrationTest} and
+ * {@link LibraryControllerCredentialsIntegrationTest}. Everything that does not need MockMvc lives
+ * in {@code BrandingSettingsServiceIntegrationTest}, which shares the other, {@link
+ * io.opaa.test.OpaaIntegrationTest} context group instead.
  */
 @OpaaMockMvcTest
 class BrandingControllerIntegrationTest {

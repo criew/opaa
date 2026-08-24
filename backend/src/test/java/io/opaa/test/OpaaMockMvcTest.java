@@ -1,6 +1,7 @@
 package io.opaa.test;
 
 import io.opaa.TestcontainersConfiguration;
+import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -8,6 +9,7 @@ import java.lang.annotation.Target;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.annotation.AliasFor;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -25,9 +27,20 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
+@Documented
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
-public @interface OpaaMockMvcTest {}
+public @interface OpaaMockMvcTest {
+
+  /**
+   * Constant `key=value` overrides for this context only - a class-specific escape hatch for the
+   * {@code properties} attribute of the meta-annotated {@link SpringBootTest}. Values read at
+   * runtime from a resource (e.g. a Testcontainers container) still belong in the test class's own
+   * {@code @DynamicPropertySource}, not here.
+   */
+  @AliasFor(annotation = SpringBootTest.class, attribute = "properties")
+  String[] properties() default {};
+}

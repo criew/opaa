@@ -34,14 +34,11 @@ import org.springframework.web.server.ResponseStatusException;
  * and that the database's own constraints reject what the service rejects (they are the backstop,
  * not the primary defense - see the service's Javadoc).
  *
- * <p>Deliberately carries the same {@code @SpringBootTest}/{@code @Import}/{@code @ActiveProfiles}
- * signature as {@code AuditRetentionSettingsServiceIntegrationTest} and its siblings, rather than
- * declaring its own {@code @Container}/{@code @DynamicPropertySource}: Spring's context-cache key
- * resolves the dynamic-property customizer per declaring method, so a class with its own would get
- * a second ApplicationContext and a second Postgres container alive at once - the failure mode
- * {@code build.gradle.kts}'s heap-ceiling comment describes. HTTP-level concerns (the 403 for a
- * non-administrator, the response headers) live in {@code BrandingControllerIntegrationTest}, which
- * needs MockMvc and therefore cannot share this context.
+ * <p>Carries the canonical {@link io.opaa.test.OpaaIntegrationTest} signature (AGENTS.md, "Spring-
+ * Testkontexte"), so it shares one cached context and one container with every other class on that
+ * same meta-annotation, including {@code AuditRetentionSettingsServiceIntegrationTest}. HTTP-level
+ * concerns (the 403 for a non-administrator, the response headers) live in {@code
+ * BrandingControllerIntegrationTest}, which needs MockMvc and therefore cannot share this context.
  */
 @OpaaIntegrationTest
 class BrandingSettingsServiceIntegrationTest {

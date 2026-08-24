@@ -52,9 +52,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 // Own @DynamicPropertySource (below, indexing-specific paths/chunk sizing) means Spring's context
 // cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
-// documented exception per AGENTS.md. Previously also declared its own duplicate Postgres
-// container and manually registered spring.datasource.* (issue #843) - removed, ServiceConnection
-// now comes from @OpaaIntegrationTest's import.
+// documented exception per AGENTS.md.
 @OpaaIntegrationTest
 class DocumentIndexingIntegrationTest {
 

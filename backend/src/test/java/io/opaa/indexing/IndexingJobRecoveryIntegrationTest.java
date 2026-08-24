@@ -40,19 +40,16 @@ import org.springframework.test.web.servlet.MockMvc;
  * IndexingJobService#recoverStaleJobs} must free it even without one - but only once its heartbeat
  * has actually gone stale, not merely because the run has been going on for a while.
  */
-// Own @DynamicPropertySource (below, rate-limit disabled + a scoped filesystem allowlist) means
+// Own filesystem allowlist @DynamicPropertySource (below, scoped to this class's @TempDir) means
 // Spring's context cache still keys this to its own context regardless of the shared
-// @OpaaMockMvcTest base - documented exception per AGENTS.md. Previously also declared its own
-// duplicate Postgres container and manually registered spring.datasource.* (issue #843) -
-// removed, ServiceConnection now comes from @OpaaMockMvcTest's import.
-@OpaaMockMvcTest
+// @OpaaMockMvcTest base - documented exception per AGENTS.md.
+@OpaaMockMvcTest(properties = "opaa.rate-limit.enabled=false")
 class IndexingJobRecoveryIntegrationTest {
 
   @TempDir static Path documentDir;
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("opaa.rate-limit.enabled", () -> false);
     registry.add(
         "opaa.indexing.filesystem-allowlist", () -> documentDir.toAbsolutePath().toString());
   }

@@ -34,11 +34,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * {@link ActiveChatModelResolver} against a real Postgres (same
- * {@code @SpringBootTest}/{@code @Import}/{@code @ActiveProfiles} signature as {@link
- * LlmModelServiceIntegrationTest} - see that class's own Javadoc for why that signature must not
- * change lightly) and two real, local {@link HttpServer} instances standing in for two managed chat
- * models (#758) - the same building block {@link LlmModelConnectionTesterTest} uses.
+ * {@link ActiveChatModelResolver} against a real Postgres (the canonical {@link
+ * io.opaa.test.OpaaIntegrationTest} signature, AGENTS.md, "Spring-Testkontexte", shared with {@link
+ * LlmModelServiceIntegrationTest}) and two real, local {@link HttpServer} instances standing in for
+ * two managed chat models (#758) - the same building block {@link LlmModelConnectionTesterTest}
+ * uses.
  *
  * <p>Proves what {@link LlmModelServiceIntegrationTest} cannot: that {@link LlmModelService} taking
  * effect at the database level actually changes which endpoint {@link

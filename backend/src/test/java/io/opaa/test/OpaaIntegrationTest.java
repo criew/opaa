@@ -1,6 +1,7 @@
 package io.opaa.test;
 
 import io.opaa.TestcontainersConfiguration;
+import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -25,6 +26,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
+@Documented
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles({"local", "dev"})

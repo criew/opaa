@@ -3,6 +3,7 @@ package io.opaa.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.TestcontainersConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -10,16 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Verifies the single, OpenAI-compatible connection path application.yml wires since #762: both
@@ -40,23 +39,16 @@ import org.testcontainers.utility.DockerImageName;
  * produced; it exists only so this test's own {@code Environment} assertions do not need a real,
  * reachable chat endpoint to load the application context.
  */
-// Issue #843 inventory: deliberately not on @OpaaIntegrationTest/@OpaaMockMvcTest - proves the
-// application's default provider wiring, so it must stay free of the shared group's test-only
-// overrides rather than sharing a context with them.
+// Own context (proves the application's default provider wiring against production-shaped
+// properties), shared TestcontainersConfiguration container config.
 @SpringBootTest
+@Import(TestcontainersConfiguration.class)
 @ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
 class ProviderConfigurationTest {
 
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
-
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("opaa.indexing.document-path", () -> "/tmp/opaa-config-test");
   }
 

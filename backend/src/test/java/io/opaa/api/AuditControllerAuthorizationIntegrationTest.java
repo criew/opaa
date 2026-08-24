@@ -30,12 +30,9 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * inside {@code AuditQueryService} itself rather than {@code @PreAuthorize}) against a real
  * Postgres, so both the 403 for a plain USER and the 200 for an AUDITOR come from production code.
  *
- * <p>Uses the shared {@link TestcontainersConfiguration} rather than its own
- * {@code @Container}/{@code @DynamicPropertySource} (issue #497, measure 5), so it shares one
- * cached context and one container with {@code BrandingControllerIntegrationTest} and {@code
- * LibraryControllerCredentialsIntegrationTest} - all three now carry the identical
- * {@code @SpringBootTest}/{@code @AutoConfigureMockMvc}/{@code @Import(TestcontainersConfiguration.class)}/{@code @ActiveProfiles("dev")}
- * signature.
+ * <p>Carries the canonical {@link io.opaa.test.OpaaMockMvcTest} signature (AGENTS.md, "Spring-
+ * Testkontexte"), so it shares one cached context and one container with every other class on that
+ * same meta-annotation.
  */
 @OpaaMockMvcTest
 class AuditControllerAuthorizationIntegrationTest {

@@ -42,22 +42,16 @@ import org.springframework.test.web.servlet.MockMvc;
  * dev} security chain ({@link DevAuthFilter}, {@code UserProvisioningFilter}) against a real
  * Postgres, mirroring {@code IndexingControllerAuthorizationIntegrationTest} this replaces.
  */
-// Own @DynamicPropertySource (below, rate-limit disabled + a scoped filesystem allowlist) means
+// Own filesystem allowlist @DynamicPropertySource (below, scoped to this class's @TempDir) means
 // Spring's context cache still keys this to its own context regardless of the shared
-// @OpaaMockMvcTest base - documented exception per AGENTS.md. Previously also declared its own
-// duplicate Postgres container and manually registered spring.datasource.* (issue #843) -
-// removed, ServiceConnection now comes from @OpaaMockMvcTest's import.
-@OpaaMockMvcTest
+// @OpaaMockMvcTest base - documented exception per AGENTS.md.
+@OpaaMockMvcTest(properties = "opaa.rate-limit.enabled=false")
 class LibraryIndexingAuthorizationIntegrationTest {
 
   @TempDir static Path documentDir;
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    // #478 code review precedent (former IndexingControllerAuthorizationIntegrationTest): the
-    // production default (opaa.rate-limit.indexing, 1 request per 60s) would otherwise turn every
-    // second trigger in this class into an unrelated 429.
-    registry.add("opaa.rate-limit.enabled", () -> false);
     // #484: overrides the dev profile's /data,/tmp default so this suite's own @TempDir stays
     // inside the allowlist.
     registry.add(

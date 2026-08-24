@@ -41,9 +41,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  */
 // Own @MockitoBean (below) and @Import registering a FakeDirectoryClient mean Spring's context
 // cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
-// documented exception per AGENTS.md. Previously also declared its own duplicate Postgres
-// container bean instead of reusing the shared TestcontainersConfiguration (issue #843) - removed,
-// ServiceConnection now comes from @OpaaIntegrationTest's import.
+// documented exception per AGENTS.md.
 @OpaaIntegrationTest
 @Import(DirectorySyncServiceStatusFailureTest.TestConfig.class)
 class DirectorySyncServiceStatusFailureTest {
