@@ -101,6 +101,7 @@ function renderDocRow(
   highlighted: boolean,
   onOpenLocalOriginal: (source: SourceReference, fileName: string) => void,
 ) {
+  const indexedAtLabel = formatIndexedAt(doc.source?.indexedAt)
   return (
     <Box
       key={doc.fileName}
@@ -153,9 +154,9 @@ function renderDocRow(
           {doc.locations.join(' · ')}
         </Typography>
       )}
-      {formatIndexedAt(doc.source?.indexedAt) && (
+      {indexedAtLabel && (
         <Typography component="span" sx={{ fontSize: 12, color: 'text.disabled' }}>
-          {formatIndexedAt(doc.source?.indexedAt)}
+          {indexedAtLabel}
         </Typography>
       )}
       {/* #739/#747: a button that opens through the content endpoint for every sourceType, plus a
