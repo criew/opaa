@@ -278,13 +278,16 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * Handles an entry whose {@code pubDate} is unchanged. Since the pubDate never changes again,
    * {@link #processEntry} would otherwise never re-fetch the detail page attachments are found on.
    * This method fetches the detail page for attachments alone (the entry's own text is not
-   * reprocessed) only when no attachment document exists yet for it ({@link
-   * DocumentRepository#existsBySourceEntryUrl}); an entry that already has its attachments stays as
-   * cheap as before.
+   * reprocessed) only when no attachment document exists yet for it in this run's own library
+   * ({@link DocumentRepository#existsBySourceEntryUrlAndLibraryId}); an entry that already has its
+   * attachments there stays as cheap as before. Scoped to {@code ctx.targetLibrary()} (#877) - a
+   * different library's attachments for the same entry URL must not suppress this library's own
+   * backfill.
    */
   private void processUnchangedEntry(RssFeedRunContext ctx, String entryUrl) {
     ctx.progress().recordSkipped();
-    if (documentRepository.existsBySourceEntryUrl(entryUrl)) {
+    if (documentRepository.existsBySourceEntryUrlAndLibraryId(
+        entryUrl, ctx.targetLibrary().getId())) {
       log.info("Skipping unchanged RSS entry (unchanged pubDate): {}", entryUrl);
       return;
     }

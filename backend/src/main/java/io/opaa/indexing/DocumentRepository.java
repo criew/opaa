@@ -26,10 +26,12 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Whether at least one attachment document for {@code sourceEntryUrl} (an RSS entry's own {@code
-   * file_path}) already exists. Backs the "an entry indexed before attachments existed must still
-   * get them backfilled" check in {@link RssFeedIndexingExecutor#isUnchanged}'s caller.
+   * file_path}) already exists in {@code libraryId}. Backs the "an entry indexed before attachments
+   * existed must still get them backfilled" check in {@link RssFeedIndexingExecutor#isUnchanged}'s
+   * caller. Scoped to {@code libraryId} (#877) - another library's attachments for the same entry
+   * URL must never suppress this library's own backfill.
    */
-  boolean existsBySourceEntryUrl(String sourceEntryUrl);
+  boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
   List<Document> findByLibraryId(UUID libraryId);
 

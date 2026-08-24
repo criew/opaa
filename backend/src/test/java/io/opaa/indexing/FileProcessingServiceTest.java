@@ -447,6 +447,24 @@ class FileProcessingServiceTest {
     Path file = tempDir.resolve("independent.txt");
     Files.writeString(file, "same path indexed into two libraries");
 
+    KnowledgeLibrary otherLibrary = library();
+    Document docInOtherLibrary =
+        new Document("independent.txt", file.toAbsolutePath().toString(), null, 10L);
+    docInOtherLibrary.setLibraryId(otherLibrary.getId());
+    docInOtherLibrary.setChecksum("same-checksum");
+    docInOtherLibrary.setStatus(DocumentStatus.INDEXED);
+    // processFile only ever looks up (targetLibrary, filePath) - this stub is never actually
+    // invoked by the SUT, it documents/verifies (via the never().delete() below) that a
+    // pre-existing document in a different library is not what "PROCESSED" here depends on.
+    lenient()
+        .when(
+            documentRepository.findByLibraryIdAndFilePath(
+                otherLibrary.getId(), file.toAbsolutePath().toString()))
+        .thenReturn(Optional.of(docInOtherLibrary));
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+
     when(checksumService.computeSha256(file)).thenReturn("same-checksum");
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -459,10 +477,8 @@ class FileProcessingServiceTest {
     FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    // Nothing existed under (targetLibrary, this path) to delete - another library's own document
-    // and
-    // chunks for the same path are never touched by this run.
-    verify(documentRepository, never()).delete(any(Document.class));
+    // otherLibrary's own document and chunks for the same path are never touched by this run.
+    verify(documentRepository, never()).delete(docInOtherLibrary);
     verify(vectorStore, never()).delete(any(Filter.Expression.class));
 
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
@@ -1190,6 +1206,23 @@ class FileProcessingServiceTest {
     // to targetLibrary and never finds it - this run creates its own, independent document.
     Path file = tempDir.resolve("independent-url.pdf");
     Files.writeString(file, "same URL indexed into two libraries");
+    String remoteUrl = "https://example.com/docs/independent-url.pdf";
+
+    KnowledgeLibrary otherLibrary = library();
+    Document docInOtherLibrary =
+        new Document(
+            "independent-url.pdf", remoteUrl, null, 1024L, DocumentSourceType.HTTP_DIRECTORY);
+    docInOtherLibrary.setLibraryId(otherLibrary.getId());
+    docInOtherLibrary.setChecksum("same-sha256");
+    docInOtherLibrary.setStatus(DocumentStatus.INDEXED);
+    // processUrlFile only ever looks up (targetLibrary, remoteUrl) - this stub is never actually
+    // invoked by the SUT, it documents/verifies (via the never().delete() below) that a
+    // pre-existing document in a different library is not what "PROCESSED" here depends on.
+    lenient()
+        .when(documentRepository.findByLibraryIdAndFilePath(otherLibrary.getId(), remoteUrl))
+        .thenReturn(Optional.of(docInOtherLibrary));
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), remoteUrl))
+        .thenReturn(Optional.empty());
 
     when(checksumService.computeSha256(file)).thenReturn("same-sha256");
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -1202,15 +1235,11 @@ class FileProcessingServiceTest {
 
     FileProcessingResult result =
         service.processUrlFile(
-            file,
-            "independent-url.pdf",
-            "https://example.com/docs/independent-url.pdf",
-            "2025-06-15 10:30",
-            1024,
-            targetLibrary);
+            file, "independent-url.pdf", remoteUrl, "2025-06-15 10:30", 1024, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    verify(documentRepository, never()).delete(any(Document.class));
+    // otherLibrary's own document and chunks for the same URL are never touched by this run.
+    verify(documentRepository, never()).delete(docInOtherLibrary);
     verify(vectorStore, never()).delete(any(Filter.Expression.class));
 
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);

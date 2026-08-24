@@ -117,6 +117,10 @@ public class FileProcessingService {
    *     also backfilled onto an already-{@code INDEXED} document whose content is unchanged (the
    *     {@code SKIPPED} branch below), so a document whose folder identity changed still picks up
    *     its folder assignment even when its content did not.
+   *     <p>Deliberately not {@code @Transactional}: {@code uk_documents_library_path} (migration
+   *     067) requires the old row's delete to be visible before the new row's insert. Hibernate
+   *     orders inserts before deletes within a flush regardless of call order, which would collide
+   *     with the constraint the moment both target the same {@code (library_id, file_path)} pair.
    */
   public FileProcessingResult processFile(Path file, KnowledgeLibrary targetLibrary, UUID folderId)
       throws IOException {

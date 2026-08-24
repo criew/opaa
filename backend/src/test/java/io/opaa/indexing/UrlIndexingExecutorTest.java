@@ -84,7 +84,15 @@ class UrlIndexingExecutorTest {
     // because its lastModified is unchanged there - findByLibraryIdAndFilePath is scoped to
     // libraryB, so libraryA's existing document is simply never found here, unlike the pre-#877
     // global findByFilePath lookup this test used to exercise a library-equality check against.
+    // libraryA's own document is rebuilt and stubbed here (not just libraryB's empty lookup) so
+    // this test would fail loudly if the executor ever queried the wrong library id.
+    KnowledgeLibrary libraryA = libraryWithId(UUID.randomUUID());
     KnowledgeLibrary libraryB = libraryWithId(UUID.randomUUID());
+    Document existingInLibraryA = mock(Document.class);
+    when(existingInLibraryA.getLastModifiedRemote()).thenReturn("2025-06-14 09:00");
+    when(existingInLibraryA.getStatus()).thenReturn(DocumentStatus.INDEXED);
+    when(documentRepository.findByLibraryIdAndFilePath(libraryA.getId(), "https://host/file.txt"))
+        .thenReturn(Optional.of(existingInLibraryA));
     when(documentRepository.findByLibraryIdAndFilePath(libraryB.getId(), "https://host/file.txt"))
         .thenReturn(Optional.empty());
 

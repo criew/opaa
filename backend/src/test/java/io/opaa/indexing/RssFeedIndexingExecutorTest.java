@@ -379,7 +379,8 @@ class RssFeedIndexingExecutorTest {
   @Test
   void unchangedEntryWithAttachmentsAlreadyIndexedSkipsTheDetailPageFetchEntirely() {
     // #492 review, finding 1: the cheap path only stays cheap once attachments already exist for
-    // this entry - existsBySourceEntryUrl(true) is exactly that case.
+    // this entry in this run's own library - existsBySourceEntryUrlAndLibraryId(true) is exactly
+    // that case.
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     AtomicInteger detailPageHits = new AtomicInteger();
     server.createContext(
@@ -395,7 +396,9 @@ class RssFeedIndexingExecutorTest {
     existing.setLibraryId(library.getId());
     when(documentRepository.findByLibraryIdAndFilePath(library.getId(), baseUrl + "/a.html"))
         .thenReturn(Optional.of(existing));
-    when(documentRepository.existsBySourceEntryUrl(baseUrl + "/a.html")).thenReturn(true);
+    when(documentRepository.existsBySourceEntryUrlAndLibraryId(
+            baseUrl + "/a.html", library.getId()))
+        .thenReturn(true);
 
     execute(baseUrl + "/feed.xml");
 
@@ -407,8 +410,9 @@ class RssFeedIndexingExecutorTest {
   void unchangedEntryWithoutAttachmentsYetFetchesTheDetailPageAndBackfillsThem()
       throws IOException {
     // #492 review, finding 1: an entry indexed before attachment support existed must still get
-    // its attachments backfilled - existsBySourceEntryUrl(false) is that case, and the entry's own
-    // pubDate stays unchanged (its main text is never reprocessed), only the attachment is new.
+    // its attachments backfilled - existsBySourceEntryUrlAndLibraryId(false) is that case, and the
+    // entry's own pubDate stays unchanged (its main text is never reprocessed), only the
+    // attachment is new.
     executor =
         newExecutor(
             new IndexingProperties.Rss(
@@ -431,7 +435,9 @@ class RssFeedIndexingExecutorTest {
     existing.setLibraryId(library.getId());
     when(documentRepository.findByLibraryIdAndFilePath(library.getId(), baseUrl + "/a.html"))
         .thenReturn(Optional.of(existing));
-    when(documentRepository.existsBySourceEntryUrl(baseUrl + "/a.html")).thenReturn(false);
+    when(documentRepository.existsBySourceEntryUrlAndLibraryId(
+            baseUrl + "/a.html", library.getId()))
+        .thenReturn(false);
     when(fileProcessingService.processUrlFile(
             any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
         .thenReturn(FileProcessingResult.PROCESSED);
@@ -454,6 +460,60 @@ class RssFeedIndexingExecutorTest {
     // #518: the backfilled attachment still adds to documentsIndexedTotal even though the entry
     // itself counts as skipped (unchanged), not processed.
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(1));
+  }
+
+  @Test
+  void anotherLibraryAlreadyHavingTheAttachmentDoesNotSuppressThisLibrarysOwnBackfill()
+      throws IOException {
+    // #877 review, finding 1: existsBySourceEntryUrlAndLibraryId is scoped to this run's own
+    // library - another library already holding an attachment document for the same entry URL
+    // must not suppress this library's own backfill. Stubbing a different library id to answer
+    // true (while this run's own library answers false, as it genuinely has none yet) makes the
+    // test fail loudly if the executor ever queries the wrong library id.
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/anlage.pdf\">Anlage</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serveBytes(
+        "/downloads/anlage.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
+    Document existing = new Document("Titel", baseUrl + "/a.html", "text/html", 10L);
+    existing.setStatus(DocumentStatus.INDEXED);
+    existing.setLastModifiedRemote(java.time.Instant.parse("2024-01-01T10:00:00Z").toString());
+    existing.setLibraryId(library.getId());
+    when(documentRepository.findByLibraryIdAndFilePath(library.getId(), baseUrl + "/a.html"))
+        .thenReturn(Optional.of(existing));
+    when(documentRepository.existsBySourceEntryUrlAndLibraryId(
+            baseUrl + "/a.html", library.getId()))
+        .thenReturn(false);
+    when(documentRepository.existsBySourceEntryUrlAndLibraryId(
+            eq(baseUrl + "/a.html"), argThat(id -> !id.equals(library.getId()))))
+        .thenReturn(true);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processUrlFile(
+            any(),
+            eq("anlage.pdf"),
+            eq(baseUrl + "/downloads/anlage.pdf"),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.RSS_FEED),
+            eq(baseUrl + "/a.html"));
   }
 
   @Test
