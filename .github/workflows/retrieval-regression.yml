@@ -92,14 +92,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: actions/cache@v6
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('backend/**/*.gradle*', 'backend/**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+      - uses: gradle/actions/setup-gradle@v4
 
       # Named Docker volume that RetrievalEvaluationHarnessTest bind-mounts into the Ollama
       # container (see its OLLAMA_MODEL_VOLUME javadoc). On a developer machine this volume
@@ -394,14 +387,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: actions/cache@v6
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('backend/**/*.gradle*', 'backend/**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+      - uses: gradle/actions/setup-gradle@v4
 
       # Derselbe Cache-Schlüssel wie im comic-characters-Job: beide Domänen pinnen dasselbe
       # Embedding-Modell (nomic-embed-text:v1.5, derselbe Digest), das Docker-Volume ist deshalb
