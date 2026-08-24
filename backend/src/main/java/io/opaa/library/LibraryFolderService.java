@@ -89,7 +89,17 @@ public class LibraryFolderService {
     LibraryFolder folder =
         new LibraryFolder(libraryId, parentFolderId, name, library.getOrganizationId());
     try {
-      folder = folderRepository.save(folder);
+      // saveAndFlush, not save (review finding #827): LibraryFolder assigns its own @Id in the
+      // constructor, so a plain save's INSERT does not have to happen before this method returns -
+      // Hibernate is free to defer it to the next flush, which could be well outside this try block
+      // (e.g. at transaction commit, or the next query). A deferred INSERT would let the unique
+      // index violation from a race ensureNameAvailable above missed surface as an unhandled
+      // DataIntegrityViolationException/ConstraintViolationException far from here, turning into a
+      // 500 instead of the 409 this catch is meant to produce - flushing here forces the INSERT
+      // (and
+      // therefore uk_library_folders_root_name/uk_library_folders_child_name, migration 062) to run
+      // and either succeed or throw inside this try.
+      folder = folderRepository.saveAndFlush(folder);
     } catch (DataIntegrityViolationException e) {
       // Race-safety net for ensureNameAvailable above (mirrors LibraryDocumentService#
       // uploadDocument's identical handling of uk_documents_library_checksum): the check and this
@@ -120,7 +130,8 @@ public class LibraryFolderService {
 
     folder.rename(name);
     try {
-      folder = folderRepository.save(folder);
+      // saveAndFlush - see createFolder's identical reasoning above.
+      folder = folderRepository.saveAndFlush(folder);
     } catch (DataIntegrityViolationException e) {
       throw conflict();
     }

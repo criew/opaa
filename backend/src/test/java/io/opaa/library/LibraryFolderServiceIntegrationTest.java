@@ -23,6 +23,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -202,6 +207,110 @@ class LibraryFolderServiceIntegrationTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.CONFLICT));
+  }
+
+  @Test
+  void concurrentCreatesOfTheSameFolderNameProduceExactlyOneFolder() throws Exception {
+    // Review finding on PR #827: the sequential ensureNameAvailable pre-check alone cannot close
+    // this race - only uk_library_folders_root_name (migration 062) can, and only a genuine
+    // concurrent attempt (real threads, real Postgres) exercises it rather than the sequential
+    // fast-path check the mocked LibraryFolderServiceTest is limited to. Also proves
+    // createFolder's saveAndFlush (not a plain save) actually surfaces the unique violation inside
+    // the try block as a 409, rather than deferring the INSERT past it.
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Callable<UUID> create =
+          () -> {
+            barrier.await(10, TimeUnit.SECONDS);
+            try {
+              LibraryFolderResponse response =
+                  folderService.createFolder(
+                      libraryId, new LibraryFolderRequest("Protokolle"), editor.getId(), false);
+              return response.getId();
+            } catch (ResponseStatusException e) {
+              assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+              return null;
+            }
+          };
+
+      Future<UUID> first = executor.submit(create);
+      Future<UUID> second = executor.submit(create);
+      UUID firstResult = first.get(20, TimeUnit.SECONDS);
+      UUID secondResult = second.get(20, TimeUnit.SECONDS);
+
+      assertThat((firstResult == null) ^ (secondResult == null))
+          .as("Exactly one of the two concurrent creates must succeed")
+          .isTrue();
+      assertThat(folderRepository.findByLibraryIdAndParentFolderId(libraryId, null)).hasSize(1);
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  void concurrentRenamesToTheSameNameProduceExactlyOneWinner() throws Exception {
+    // Same reasoning as concurrentCreatesOfTheSameFolderNameProduceExactlyOneFolder, for
+    // renameFolder's identical saveAndFlush fix: two distinct, pre-existing folders both renamed
+    // to the same target name at the same time.
+    LibraryFolderResponse folderA =
+        folderService.createFolder(
+            libraryId, new LibraryFolderRequest("Ordner A"), editor.getId(), false);
+    LibraryFolderResponse folderB =
+        folderService.createFolder(
+            libraryId, new LibraryFolderRequest("Ordner B"), editor.getId(), false);
+
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Callable<UUID> renameA =
+          () -> {
+            barrier.await(10, TimeUnit.SECONDS);
+            try {
+              LibraryFolderResponse response =
+                  folderService.renameFolder(
+                      libraryId,
+                      folderA.getId(),
+                      new LibraryFolderRenameRequest("Ziel"),
+                      editor.getId(),
+                      false);
+              return response.getId();
+            } catch (ResponseStatusException e) {
+              assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+              return null;
+            }
+          };
+      Callable<UUID> renameB =
+          () -> {
+            barrier.await(10, TimeUnit.SECONDS);
+            try {
+              LibraryFolderResponse response =
+                  folderService.renameFolder(
+                      libraryId,
+                      folderB.getId(),
+                      new LibraryFolderRenameRequest("Ziel"),
+                      editor.getId(),
+                      false);
+              return response.getId();
+            } catch (ResponseStatusException e) {
+              assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+              return null;
+            }
+          };
+
+      Future<UUID> first = executor.submit(renameA);
+      Future<UUID> second = executor.submit(renameB);
+      UUID firstResult = first.get(20, TimeUnit.SECONDS);
+      UUID secondResult = second.get(20, TimeUnit.SECONDS);
+
+      assertThat((firstResult == null) ^ (secondResult == null))
+          .as("Exactly one of the two concurrent renames must succeed")
+          .isTrue();
+      assertThat(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "Ziel"))
+          .isPresent();
+    } finally {
+      executor.shutdownNow();
+    }
   }
 
   @Test

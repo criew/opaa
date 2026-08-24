@@ -75,7 +75,8 @@ class LibraryFolderServiceTest {
     when(library.getSourceType()).thenReturn(DocumentSourceType.UPLOAD);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
 
-    when(folderRepository.save(any(LibraryFolder.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(folderRepository.saveAndFlush(any(LibraryFolder.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
     when(folderRepository.findByLibraryIdAndParentFolderId(any(), any())).thenReturn(List.of());
     when(documentRepository.countByFolderId(any())).thenReturn(0L);
     when(documentRepository.findByFolderId(any())).thenReturn(List.of());
