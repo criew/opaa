@@ -77,10 +77,10 @@ public class FileProcessingService {
   private static final ContentFormatter CHUNK_EMBED_CONTENT_FORMATTER =
       DefaultContentFormatter.builder()
           .withExcludedEmbedMetadataKeys(
-              "document_id",
+              VectorChunkStore.DOCUMENT_ID_METADATA_KEY,
               "chunk_index",
               "file_name",
-              "library_id",
+              VectorChunkStore.LIBRARY_ID_METADATA_KEY,
               "organization_id",
               ChunkingService.LOCATION_METADATA_KEY)
           .withTextTemplate("{content}")
@@ -652,10 +652,12 @@ public class FileProcessingService {
                 chunk -> {
                   int index = chunks.indexOf(chunk);
                   Map<String, Object> metadata = new HashMap<>();
-                  metadata.put("document_id", document.getId().toString());
+                  metadata.put(
+                      VectorChunkStore.DOCUMENT_ID_METADATA_KEY, document.getId().toString());
                   metadata.put("chunk_index", index);
                   metadata.put("file_name", document.getFileName());
-                  metadata.put("library_id", document.getLibraryId().toString());
+                  metadata.put(
+                      VectorChunkStore.LIBRARY_ID_METADATA_KEY, document.getLibraryId().toString());
                   metadata.put("organization_id", document.getOrganizationId().toString());
                   // #667: the chunk's Fundort, when ChunkingService could derive one.
                   Object location = chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
