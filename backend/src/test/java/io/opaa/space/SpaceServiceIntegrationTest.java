@@ -3,12 +3,6 @@ package io.opaa.space;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.dto.SpaceListResponse;
-import io.opaa.api.dto.SpaceMemberRequest;
-import io.opaa.api.dto.SpaceMemberResponse;
-import io.opaa.api.dto.SpaceRequest;
-import io.opaa.api.dto.SpaceResponse;
-import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.Chat;
@@ -20,8 +14,10 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -138,25 +134,41 @@ class SpaceServiceIntegrationTest {
     return libraryId;
   }
 
+  private Map<SpaceRole, Long> roleCounts(Space space) {
+    return space.getMemberships().stream()
+        .collect(Collectors.groupingBy(SpaceMembership::getRole, Collectors.counting()));
+  }
+
+  private SpaceRole roleOf(Space space, UUID userId) {
+    return space.getMemberships().stream()
+        .filter(m -> m.getUserId().equals(userId))
+        .findFirst()
+        .orElseThrow()
+        .getRole();
+  }
+
   @Test
   void systemAdminCanCreateTeamSpace() {
     UUID adminUserId = createUser(organizationA);
     UUID ownerId = createUser(organizationA);
     UUID curatorId = createUser(organizationA);
-    SpaceRequest request =
-        new SpaceRequest("Engineering")
-            .description("Engineering docs")
-            .ownerId(ownerId)
-            .initialMembers(List.of(new SpaceMemberRequest(curatorId, SpaceRole.CURATOR)));
+    SpaceCreation creation =
+        new SpaceCreation(
+            "Engineering",
+            "Engineering docs",
+            ownerId,
+            null,
+            List.of(new SpaceMemberSeed(curatorId, SpaceRole.CURATOR)),
+            null);
 
-    SpaceResponse created = spaceService.createSpace(request, adminUserId, true);
+    Space created = spaceService.createSpace(creation, adminUserId, true);
 
-    assertThat(created.getIsDefault()).isEqualTo(false);
+    assertThat(created.isDefault()).isFalse();
     assertThat(created.getName()).isEqualTo("Engineering");
     assertThat(created.getOwnerId()).isEqualTo(ownerId);
-    assertThat(created.getMemberCount()).isEqualTo(2);
-    assertThat(created.getRoleCounts().get("ADMIN")).isEqualTo(1);
-    assertThat(created.getRoleCounts().get("CURATOR")).isEqualTo(1);
+    assertThat(created.getMemberships()).hasSize(2);
+    assertThat(roleCounts(created).get(SpaceRole.ADMIN)).isEqualTo(1L);
+    assertThat(roleCounts(created).get(SpaceRole.CURATOR)).isEqualTo(1L);
   }
 
   @Test
@@ -165,24 +177,28 @@ class SpaceServiceIntegrationTest {
     // one-personal-space-per-user rule. Five small initiatives may have five rooms.
     UUID userId = createUser(organizationA);
 
-    SpaceResponse first = spaceService.createSpace(new SpaceRequest("Vorhaben A"), userId, false);
-    SpaceResponse second = spaceService.createSpace(new SpaceRequest("Vorhaben B"), userId, false);
+    Space first =
+        spaceService.createSpace(
+            new SpaceCreation("Vorhaben A", null, null, null, null, null), userId, false);
+    Space second =
+        spaceService.createSpace(
+            new SpaceCreation("Vorhaben B", null, null, null, null, null), userId, false);
 
-    assertThat(first.getIsDefault()).isFalse();
-    assertThat(second.getIsDefault()).isFalse();
-    assertThat(first.getMemberCount()).isEqualTo(1);
-    assertThat(second.getMemberCount()).isEqualTo(1);
+    assertThat(first.isDefault()).isFalse();
+    assertThat(second.isDefault()).isFalse();
+    assertThat(first.getMemberships()).hasSize(1);
+    assertThat(second.getMemberships()).hasSize(1);
   }
 
   @Test
   void anyUserCanCreateAProjectSpace() {
     UUID userId = createUser(organizationA);
-    SpaceRequest request =
-        new SpaceRequest("Phoenix").description("My project").initialMembers(List.of());
+    SpaceCreation creation =
+        new SpaceCreation("Phoenix", "My project", null, null, List.of(), null);
 
-    SpaceResponse created = spaceService.createSpace(request, userId, false);
+    Space created = spaceService.createSpace(creation, userId, false);
 
-    assertThat(created.getIsDefault()).isEqualTo(false);
+    assertThat(created.isDefault()).isFalse();
     assertThat(created.getOwnerId()).isEqualTo(userId);
   }
 
@@ -190,11 +206,11 @@ class SpaceServiceIntegrationTest {
   void twoUsersCanEachOwnAProjectSpaceWithTheSameName() {
     UUID userA = createUser(organizationA);
     UUID userB = createUser(organizationA);
-    SpaceRequest requestA = new SpaceRequest("Phoenix").initialMembers(List.of());
-    SpaceRequest requestB = new SpaceRequest("Phoenix").initialMembers(List.of());
+    SpaceCreation requestA = new SpaceCreation("Phoenix", null, null, null, List.of(), null);
+    SpaceCreation requestB = new SpaceCreation("Phoenix", null, null, null, List.of(), null);
 
-    SpaceResponse createdA = spaceService.createSpace(requestA, userA, false);
-    SpaceResponse createdB = spaceService.createSpace(requestB, userB, false);
+    Space createdA = spaceService.createSpace(requestA, userA, false);
+    Space createdB = spaceService.createSpace(requestB, userB, false);
 
     assertThat(createdA.getName()).isEqualTo("Phoenix");
     assertThat(createdB.getName()).isEqualTo("Phoenix");
@@ -219,11 +235,11 @@ class SpaceServiceIntegrationTest {
     hr.addMembership(new SpaceMembership(userB, SpaceRole.ADMIN, organizationA));
     spaceRepository.saveAll(List.of(eng, hr));
 
-    List<SpaceListResponse> userASpaces = spaceService.listSpaces(userA, false);
+    List<SpaceOverview> userASpaces = spaceService.listSpaces(userA, false);
 
     assertThat(userASpaces).hasSize(1);
-    assertThat(userASpaces.getFirst().getName()).isEqualTo("Engineering");
-    assertThat(userASpaces.getFirst().getUserRole()).isEqualTo(SpaceRole.ADMIN);
+    assertThat(userASpaces.getFirst().space().getName()).isEqualTo("Engineering");
+    assertThat(roleOf(userASpaces.getFirst().space(), userA)).isEqualTo(SpaceRole.ADMIN);
   }
 
   @Test
@@ -263,23 +279,26 @@ class SpaceServiceIntegrationTest {
             new Chat(eng.getId(), userA, organizationA, "Dritte Frage", true, Set.of()),
             new Chat(eng.getId(), userB, organizationA, "Fremde Frage", true, Set.of())));
 
-    List<SpaceListResponse> spaces = spaceService.listSpaces(userA, false);
+    List<SpaceOverview> spaces = spaceService.listSpaces(userA, false);
 
-    SpaceListResponse engineering =
-        spaces.stream().filter(s -> s.getName().equals("Engineering")).findFirst().orElseThrow();
-    assertThat(engineering.getLibraryCount()).isEqualTo(2);
-    assertThat(engineering.getChatCount()).isEqualTo(3);
-    SpaceListResponse leer =
-        spaces.stream().filter(s -> s.getName().equals("Leer")).findFirst().orElseThrow();
-    assertThat(leer.getLibraryCount()).isZero();
-    assertThat(leer.getChatCount()).isZero();
+    SpaceOverview engineering =
+        spaces.stream()
+            .filter(s -> s.space().getName().equals("Engineering"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(engineering.libraryCount()).isEqualTo(2);
+    assertThat(engineering.chatCount()).isEqualTo(3);
+    SpaceOverview leer =
+        spaces.stream().filter(s -> s.space().getName().equals("Leer")).findFirst().orElseThrow();
+    assertThat(leer.libraryCount()).isZero();
+    assertThat(leer.chatCount()).isZero();
 
-    List<SpaceListResponse> userBSpaces = spaceService.listSpaces(userB, false);
+    List<SpaceOverview> userBSpaces = spaceService.listSpaces(userB, false);
     assertThat(userBSpaces).hasSize(1);
-    assertThat(userBSpaces.getFirst().getLibraryCount())
+    assertThat(userBSpaces.getFirst().libraryCount())
         .as("MEMBER userB may read only the library they own")
         .isEqualTo(1);
-    assertThat(userBSpaces.getFirst().getChatCount()).isEqualTo(1);
+    assertThat(userBSpaces.getFirst().chatCount()).isEqualTo(1);
   }
 
   @Test
@@ -292,12 +311,12 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
 
-    SpaceResponse response = spaceService.getSpace(saved.getId(), member, false);
+    Space response = spaceService.getSpace(saved.getId(), member, false);
 
-    assertThat(response.getMemberCount()).isEqualTo(2);
-    assertThat(response.getUserRole()).isEqualTo(SpaceRole.MEMBER);
-    assertThat(response.getRoleCounts().get("ADMIN")).isEqualTo(1);
-    assertThat(response.getRoleCounts().get("MEMBER")).isEqualTo(1);
+    assertThat(response.getMemberships()).hasSize(2);
+    assertThat(roleOf(response, member)).isEqualTo(SpaceRole.MEMBER);
+    assertThat(roleCounts(response).get(SpaceRole.ADMIN)).isEqualTo(1L);
+    assertThat(roleCounts(response).get(SpaceRole.MEMBER)).isEqualTo(1L);
   }
 
   @Test
@@ -395,7 +414,7 @@ class SpaceServiceIntegrationTest {
 
     spaceService.addMember(saved.getId(), createUser(organizationA), SpaceRole.MEMBER, owner);
 
-    assertThat(spaceService.getSpace(saved.getId(), owner, false).getMemberCount()).isEqualTo(2);
+    assertThat(spaceService.getSpace(saved.getId(), owner, false).getMemberships()).hasSize(2);
   }
 
   @Test
@@ -479,9 +498,9 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     spaceService.updateMemberRole(saved.getId(), member, SpaceRole.CURATOR, admin);
-    SpaceResponse details = spaceService.getSpace(saved.getId(), member, false);
+    Space details = spaceService.getSpace(saved.getId(), member, false);
 
-    assertThat(details.getUserRole()).isEqualTo(SpaceRole.CURATOR);
+    assertThat(roleOf(details, member)).isEqualTo(SpaceRole.CURATOR);
   }
 
   @Test
@@ -626,8 +645,7 @@ class SpaceServiceIntegrationTest {
   void createSpaceRejectsAnOwnerFromAnotherOrganizationEvenForSystemAdmin() {
     UUID admin = createUser(organizationA);
     UUID outsider = createUser(organizationB);
-    SpaceRequest request =
-        new SpaceRequest("Engineering").ownerId(outsider).initialMembers(List.of());
+    SpaceCreation request = new SpaceCreation("Engineering", null, outsider, null, List.of(), null);
 
     assertThatThrownBy(() -> spaceService.createSpace(request, admin, true))
         .isInstanceOf(ResponseStatusException.class)
@@ -642,9 +660,14 @@ class SpaceServiceIntegrationTest {
   void createSpaceRejectsAnInitialMemberFromAnotherOrganization() {
     UUID admin = createUser(organizationA);
     UUID outsider = createUser(organizationB);
-    SpaceRequest request =
-        new SpaceRequest("Engineering")
-            .initialMembers(List.of(new SpaceMemberRequest(outsider, SpaceRole.MEMBER)));
+    SpaceCreation request =
+        new SpaceCreation(
+            "Engineering",
+            null,
+            null,
+            null,
+            List.of(new SpaceMemberSeed(outsider, SpaceRole.MEMBER)),
+            null);
 
     assertThatThrownBy(() -> spaceService.createSpace(request, admin, true))
         .isInstanceOf(ResponseStatusException.class)
@@ -724,10 +747,10 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
 
-    List<SpaceMemberResponse> members = spaceService.listMembers(saved.getId(), owner, false);
+    List<SpaceMemberView> members = spaceService.listMembers(saved.getId(), owner, false);
 
     assertThat(members).hasSize(2);
-    assertThat(members).extracting(SpaceMemberResponse::getDisplayName).containsOnly("Test User");
+    assertThat(members).extracting(SpaceMemberView::displayName).containsOnly("Test User");
   }
 
   @Test
@@ -786,9 +809,10 @@ class SpaceServiceIntegrationTest {
   }
 
   @Test
-  void getSpaceNeverIncludesTheFullMemberListRegardlessOfRole() {
-    // #144: SpaceResponse dropped the members field entirely - the aggregated roleCounts remain
-    // for every member, but identities and display names are only reachable via listMembers.
+  void getSpaceReportsAccurateRoleCountsRegardlessOfCallersRole() {
+    // #144: the aggregated roleCounts derived from the returned Space are correct for every
+    // caller - identities and display names are only reachable via listMembers, restricted to
+    // ADMIN, owner and system admins.
     UUID owner = createUser(organizationA);
     UUID member = createUser(organizationA);
     Space space =
@@ -797,13 +821,13 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
 
-    SpaceResponse asMember = spaceService.getSpace(saved.getId(), member, false);
-    SpaceResponse asOwner = spaceService.getSpace(saved.getId(), owner, false);
+    Space asMember = spaceService.getSpace(saved.getId(), member, false);
+    Space asOwner = spaceService.getSpace(saved.getId(), owner, false);
 
-    assertThat(asMember.getRoleCounts().get("ADMIN")).isEqualTo(1);
-    assertThat(asMember.getRoleCounts().get("MEMBER")).isEqualTo(1);
-    assertThat(asOwner.getRoleCounts().get("ADMIN")).isEqualTo(1);
-    assertThat(asOwner.getRoleCounts().get("MEMBER")).isEqualTo(1);
+    assertThat(roleCounts(asMember).get(SpaceRole.ADMIN)).isEqualTo(1L);
+    assertThat(roleCounts(asMember).get(SpaceRole.MEMBER)).isEqualTo(1L);
+    assertThat(roleCounts(asOwner).get(SpaceRole.ADMIN)).isEqualTo(1L);
+    assertThat(roleCounts(asOwner).get(SpaceRole.MEMBER)).isEqualTo(1L);
   }
 
   @Test
@@ -814,9 +838,8 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
-    SpaceUpdateRequest request =
-        new SpaceUpdateRequest("Team").description("Team docs").visibility(SpaceVisibility.OPEN);
-    SpaceResponse response = spaceService.updateSpace(saved.getId(), request, owner, false);
+    SpaceUpdate update = new SpaceUpdate("Team", "Team docs", SpaceVisibility.OPEN);
+    Space response = spaceService.updateSpace(saved.getId(), update, owner, false);
 
     assertThat(response.getVisibility()).isEqualTo(SpaceVisibility.OPEN);
     Space reloaded = spaceRepository.findById(saved.getId()).orElseThrow();
@@ -831,8 +854,8 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
-    SpaceUpdateRequest request = new SpaceUpdateRequest("Team").description("Team docs");
-    spaceService.updateSpace(saved.getId(), request, owner, false);
+    SpaceUpdate update = new SpaceUpdate("Team", "Team docs", null);
+    spaceService.updateSpace(saved.getId(), update, owner, false);
 
     Space reloaded = spaceRepository.findById(saved.getId()).orElseThrow();
     assertThat(reloaded.getVisibility()).isEqualTo(SpaceVisibility.DISCOVERABLE);
@@ -841,7 +864,7 @@ class SpaceServiceIntegrationTest {
   @Test
   void createSpaceRejectsNameLongerThanTheAllowedLength() {
     UUID userId = createUser(organizationA);
-    SpaceRequest request = new SpaceRequest("x".repeat(256)).initialMembers(List.of());
+    SpaceCreation request = new SpaceCreation("x".repeat(256), null, null, null, List.of(), null);
 
     assertThatThrownBy(() -> spaceService.createSpace(request, userId, false))
         .isInstanceOf(ResponseStatusException.class)
@@ -891,9 +914,9 @@ class SpaceServiceIntegrationTest {
         chatRepository.save(
             new Chat(saved.getId(), otherMember, organizationA, "Fremde Frage", true, Set.of()));
 
-    SpaceResponse archived = spaceService.archiveSpace(saved.getId(), owner, false);
+    Space archived = spaceService.archiveSpace(saved.getId(), owner, false);
 
-    assertThat(archived.getArchived()).isTrue();
+    assertThat(archived.isArchived()).isTrue();
     assertThat(spaceRepository.findById(saved.getId())).isPresent();
     // The foreign chat is untouched - archiving never deletes content.
     assertThat(chatRepository.findById(foreignChat.getId())).isPresent();
@@ -908,9 +931,9 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
     spaceService.archiveSpace(saved.getId(), owner, false);
 
-    SpaceResponse secondCall = spaceService.archiveSpace(saved.getId(), owner, false);
+    Space secondCall = spaceService.archiveSpace(saved.getId(), owner, false);
 
-    assertThat(secondCall.getArchived()).isTrue();
+    assertThat(secondCall.isArchived()).isTrue();
   }
 
   @Test
@@ -976,10 +999,10 @@ class SpaceServiceIntegrationTest {
         new Chat(saved.getId(), otherMember, organizationA, "Fremde Frage", true, Set.of()));
     spaceService.archiveSpace(saved.getId(), owner, false);
 
-    List<SpaceListResponse> visibleToAuthor = spaceService.listSpaces(otherMember, false);
+    List<SpaceOverview> visibleToAuthor = spaceService.listSpaces(otherMember, false);
 
     assertThat(visibleToAuthor).hasSize(1);
-    assertThat(visibleToAuthor.getFirst().getArchived()).isTrue();
+    assertThat(visibleToAuthor.getFirst().space().isArchived()).isTrue();
   }
 
   @Test
@@ -999,10 +1022,10 @@ class SpaceServiceIntegrationTest {
         new Chat(saved.getId(), otherMember, organizationA, "Fremde Frage", true, Set.of()));
     spaceService.archiveSpace(saved.getId(), owner, false);
 
-    List<SpaceListResponse> visibleToOwner = spaceService.listSpaces(owner, false);
+    List<SpaceOverview> visibleToOwner = spaceService.listSpaces(owner, false);
 
     assertThat(visibleToOwner).hasSize(1);
-    assertThat(visibleToOwner.getFirst().getArchived()).isTrue();
+    assertThat(visibleToOwner.getFirst().space().isArchived()).isTrue();
   }
 
   @Test
@@ -1016,10 +1039,10 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
     spaceService.archiveSpace(saved.getId(), owner, false);
 
-    List<SpaceListResponse> visibleToSystemAdmin = spaceService.listSpaces(adminMember, true);
+    List<SpaceOverview> visibleToSystemAdmin = spaceService.listSpaces(adminMember, true);
 
     assertThat(visibleToSystemAdmin).hasSize(1);
-    assertThat(visibleToSystemAdmin.getFirst().getArchived()).isTrue();
+    assertThat(visibleToSystemAdmin.getFirst().space().isArchived()).isTrue();
   }
 
   // #706 review, finding 4: libraryIds are associated in the same transaction as the space itself
@@ -1030,8 +1053,9 @@ class SpaceServiceIntegrationTest {
     UUID creator = createUser(organizationA);
     UUID readableLibrary = createReadableLibrary(organizationA, creator);
     UUID nonExistentLibrary = UUID.randomUUID();
-    SpaceRequest request =
-        new SpaceRequest("Datenraum").libraryIds(List.of(readableLibrary, nonExistentLibrary));
+    SpaceCreation request =
+        new SpaceCreation(
+            "Datenraum", null, null, null, null, List.of(readableLibrary, nonExistentLibrary));
 
     assertThatThrownBy(() -> spaceService.createSpace(request, creator, false))
         .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
@@ -1044,10 +1068,10 @@ class SpaceServiceIntegrationTest {
     UUID creator = createUser(organizationA);
     UUID libraryOne = createReadableLibrary(organizationA, creator);
     UUID libraryTwo = createReadableLibrary(organizationA, creator);
-    SpaceRequest request =
-        new SpaceRequest("Datenraum").libraryIds(List.of(libraryOne, libraryTwo));
+    SpaceCreation request =
+        new SpaceCreation("Datenraum", null, null, null, null, List.of(libraryOne, libraryTwo));
 
-    SpaceResponse created = spaceService.createSpace(request, creator, false);
+    Space created = spaceService.createSpace(request, creator, false);
 
     List<UUID> associatedLibraryIds =
         jdbcTemplate.query(

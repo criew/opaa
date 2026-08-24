@@ -3,9 +3,6 @@ package io.opaa.space;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.dto.LibrarySpaceAssociationResponse;
-import io.opaa.api.dto.SpaceLibraryAssociationListResponse;
-import io.opaa.api.dto.SpaceLibraryAssociationResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatRepository;
@@ -145,10 +142,9 @@ class SpaceAssetAssociationServiceIntegrationTest {
     grant(library, owner, AssetRole.OWNER);
     UUID space = createSpace(owner, SpaceRole.ADMIN);
 
-    SpaceLibraryAssociationResponse response =
-        associationService.associate(space, library, owner, false);
+    SpaceLibraryLink response = associationService.associate(space, library, owner, false);
 
-    assertThat(response.getLibraryId()).isEqualTo(library);
+    assertThat(response.association().getLibraryId()).isEqualTo(library);
   }
 
   // #706 review, finding 6: 404, not 403 - a plain 403 here would let a caller distinguish "this
@@ -204,19 +200,19 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID memberWithoutAccess = createUser();
     addMember(space, memberWithoutAccess, SpaceRole.MEMBER);
 
-    SpaceLibraryAssociationListResponse seenByMemberWithAccess =
+    SpaceLibraryLinks seenByMemberWithAccess =
         associationService.listForSpace(space, memberWithAccess, false);
-    SpaceLibraryAssociationListResponse seenByMemberWithoutAccess =
+    SpaceLibraryLinks seenByMemberWithoutAccess =
         associationService.listForSpace(space, memberWithoutAccess, false);
 
-    assertThat(seenByMemberWithAccess.getItems())
-        .extracting(SpaceLibraryAssociationResponse::getLibraryId)
+    assertThat(seenByMemberWithAccess.items())
+        .extracting(link -> link.association().getLibraryId())
         .containsExactly(library);
     // #706 review, finding 2: a plain MEMBER with no readable association gets an empty items
     // list, but hasAssociations still reports the true, unfiltered state of the space - the
     // frontend needs both to tell "no curation" apart from "curated, nothing readable".
-    assertThat(seenByMemberWithoutAccess.getItems()).isEmpty();
-    assertThat(seenByMemberWithoutAccess.getHasAssociations()).isTrue();
+    assertThat(seenByMemberWithoutAccess.items()).isEmpty();
+    assertThat(seenByMemberWithoutAccess.hasAssociations()).isTrue();
   }
 
   @Test
@@ -224,11 +220,10 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID member = createUser();
     UUID space = createSpace(member, SpaceRole.ADMIN);
 
-    SpaceLibraryAssociationListResponse response =
-        associationService.listForSpace(space, member, false);
+    SpaceLibraryLinks response = associationService.listForSpace(space, member, false);
 
-    assertThat(response.getItems()).isEmpty();
-    assertThat(response.getHasAssociations()).isFalse();
+    assertThat(response.items()).isEmpty();
+    assertThat(response.hasAssociations()).isFalse();
   }
 
   // #706 review, finding 5: a CURATOR/ADMIN/owner sees every association, including one they
@@ -246,14 +241,13 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID otherAdmin = createUser();
     addMember(space, otherAdmin, SpaceRole.ADMIN);
 
-    SpaceLibraryAssociationListResponse seenByOtherAdmin =
-        associationService.listForSpace(space, otherAdmin, false);
+    SpaceLibraryLinks seenByOtherAdmin = associationService.listForSpace(space, otherAdmin, false);
 
-    assertThat(seenByOtherAdmin.getItems()).hasSize(1);
-    SpaceLibraryAssociationResponse entry = seenByOtherAdmin.getItems().get(0);
-    assertThat(entry.getLibraryId()).isEqualTo(library);
-    assertThat(entry.getReadableByCaller()).isFalse();
-    assertThat(entry.getLibraryName()).isNull();
+    assertThat(seenByOtherAdmin.items()).hasSize(1);
+    SpaceLibraryLink entry = seenByOtherAdmin.items().get(0);
+    assertThat(entry.association().getLibraryId()).isEqualTo(library);
+    assertThat(entry.readableByCaller()).isFalse();
+    assertThat(entry.libraryName()).isNull();
   }
 
   @Test
@@ -376,11 +370,10 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID space = createSpace(curator, SpaceRole.ADMIN);
     associationService.associate(space, library, curator, false);
 
-    List<LibrarySpaceAssociationResponse> ownerView =
-        associationService.listForLibrary(library, owner, false);
+    List<LibrarySpaceLink> ownerView = associationService.listForLibrary(library, owner, false);
 
     assertThat(ownerView)
-        .extracting(LibrarySpaceAssociationResponse::getSpaceId)
+        .extracting(link -> link.association().getSpaceId())
         .containsExactly(space);
   }
 

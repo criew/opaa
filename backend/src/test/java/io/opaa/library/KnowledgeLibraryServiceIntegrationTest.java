@@ -11,7 +11,6 @@ import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryScheduleRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.ScheduleFrequency;
-import io.opaa.api.dto.SpaceRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -32,6 +31,7 @@ import io.opaa.indexing.RssFeedState;
 import io.opaa.indexing.RssFeedStateRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
 import io.opaa.test.OpaaIntegrationTest;
@@ -1910,7 +1910,10 @@ class KnowledgeLibraryServiceIntegrationTest {
         libraryService.createLibrary(
             new LibraryRequest("Rechtsquellen Soziales", DocumentSourceType.UPLOAD), libraryOwner);
     var space =
-        spaceService.createSpace(new SpaceRequest("Team Leistungsgewaehrung"), spaceAdmin, false);
+        spaceService.createSpace(
+            new SpaceCreation("Team Leistungsgewaehrung", null, null, null, null, null),
+            spaceAdmin,
+            false);
     createdSpaceIds.add(space.getId());
 
     // Space authority is not library authority at all here, so this answers 404 (#436), not 403.
