@@ -42,7 +42,8 @@ class UrlIndexingExecutorTest {
     Document existing = mock(Document.class);
     when(existing.getLastModifiedRemote()).thenReturn("");
     when(existing.getStatus()).thenReturn(DocumentStatus.INDEXED);
-    when(documentRepository.findByFilePath("https://host/file.txt"))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://host/file.txt"))
         .thenReturn(Optional.of(existing));
 
     assertThat(executor.isUnchanged("https://host/file.txt", "", targetLibrary)).isFalse();
@@ -54,7 +55,8 @@ class UrlIndexingExecutorTest {
     Document existing = mock(Document.class);
     when(existing.getLastModifiedRemote()).thenReturn(null);
     when(existing.getStatus()).thenReturn(DocumentStatus.INDEXED);
-    when(documentRepository.findByFilePath("https://host/file.txt"))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://host/file.txt"))
         .thenReturn(Optional.of(existing));
 
     assertThat(executor.isUnchanged("https://host/file.txt", null, targetLibrary)).isFalse();
@@ -67,30 +69,32 @@ class UrlIndexingExecutorTest {
     Document existing = mock(Document.class);
     when(existing.getLastModifiedRemote()).thenReturn("2025-06-14 09:00");
     when(existing.getStatus()).thenReturn(DocumentStatus.INDEXED);
-    when(existing.getLibraryId()).thenReturn(libraryId);
-    when(documentRepository.findByFilePath("https://host/file.txt"))
+    when(documentRepository.findByLibraryIdAndFilePath(libraryId, "https://host/file.txt"))
         .thenReturn(Optional.of(existing));
 
     assertThat(executor.isUnchanged("https://host/file.txt", "2025-06-14 09:00", targetLibrary))
         .isTrue();
   }
 
-  // --- #491: the target library must be part of the skip decision ----------------------------
+  // --- #877 (Epic #826, Befund B6): the lookup itself is scoped to the target library ---------
 
   @Test
   void isUnchanged_returnsFalseWhenTargetLibraryDiffersFromTheExistingDocuments() {
     // A run indexing the same source into a different library must not skip the document just
-    // because its lastModified is unchanged - otherwise it stays behind in the old library
-    // forever (#491), since FileProcessingService#processUrlFile's own library check never gets
-    // a chance to run for a document already skipped here.
-    UUID libraryA = UUID.randomUUID();
+    // because its lastModified is unchanged there - findByLibraryIdAndFilePath is scoped to
+    // libraryB, so libraryA's existing document is simply never found here, unlike the pre-#877
+    // global findByFilePath lookup this test used to exercise a library-equality check against.
+    // libraryA's own document is rebuilt and stubbed here (not just libraryB's empty lookup) so
+    // this test would fail loudly if the executor ever queried the wrong library id.
+    KnowledgeLibrary libraryA = libraryWithId(UUID.randomUUID());
     KnowledgeLibrary libraryB = libraryWithId(UUID.randomUUID());
-    Document existing = mock(Document.class);
-    when(existing.getLastModifiedRemote()).thenReturn("2025-06-14 09:00");
-    when(existing.getStatus()).thenReturn(DocumentStatus.INDEXED);
-    when(existing.getLibraryId()).thenReturn(libraryA);
-    when(documentRepository.findByFilePath("https://host/file.txt"))
-        .thenReturn(Optional.of(existing));
+    Document existingInLibraryA = mock(Document.class);
+    when(existingInLibraryA.getLastModifiedRemote()).thenReturn("2025-06-14 09:00");
+    when(existingInLibraryA.getStatus()).thenReturn(DocumentStatus.INDEXED);
+    when(documentRepository.findByLibraryIdAndFilePath(libraryA.getId(), "https://host/file.txt"))
+        .thenReturn(Optional.of(existingInLibraryA));
+    when(documentRepository.findByLibraryIdAndFilePath(libraryB.getId(), "https://host/file.txt"))
+        .thenReturn(Optional.empty());
 
     assertThat(executor.isUnchanged("https://host/file.txt", "2025-06-14 09:00", libraryB))
         .isFalse();

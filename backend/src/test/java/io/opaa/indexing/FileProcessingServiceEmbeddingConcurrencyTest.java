@@ -93,7 +93,9 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     lenient()
         .when(documentRepository.save(any(Document.class)))
         .thenAnswer(inv -> inv.getArgument(0));
-    lenient().when(documentRepository.findByFilePath(any())).thenReturn(Optional.empty());
+    lenient()
+        .when(documentRepository.findByLibraryIdAndFilePath(any(), any()))
+        .thenReturn(Optional.empty());
   }
 
   @AfterEach

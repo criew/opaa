@@ -117,6 +117,10 @@ public class FileProcessingService {
    *     also backfilled onto an already-{@code INDEXED} document whose content is unchanged (the
    *     {@code SKIPPED} branch below), so a document whose folder identity changed still picks up
    *     its folder assignment even when its content did not.
+   *     <p>Deliberately not {@code @Transactional}: {@code uk_documents_library_path} (migration
+   *     067) requires the old row's delete to be visible before the new row's insert. Hibernate
+   *     orders inserts before deletes within a flush regardless of call order, which would collide
+   *     with the constraint the moment both target the same {@code (library_id, file_path)} pair.
    */
   public FileProcessingResult processFile(Path file, KnowledgeLibrary targetLibrary, UUID folderId)
       throws IOException {
@@ -126,13 +130,14 @@ public class FileProcessingService {
     // Compute checksum before any processing
     String checksum = checksumService.computeSha256(file);
 
-    // Check if document already exists
-    Optional<Document> existing = documentRepository.findByFilePath(filePath);
+    // Check if document already exists in this library (#877: identity is (library_id, file_path),
+    // never file_path alone - a document with the same path in a different library is independent).
+    Optional<Document> existing =
+        documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), filePath);
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
-          && existingDoc.getStatus() == DocumentStatus.INDEXED
-          && targetLibrary.getId().equals(existingDoc.getLibraryId())) {
+          && existingDoc.getStatus() == DocumentStatus.INDEXED) {
         if (!Objects.equals(existingDoc.getFolderId(), folderId)) {
           existingDoc.setFolderId(folderId);
           documentRepository.save(existingDoc);
@@ -141,10 +146,8 @@ public class FileProcessingService {
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
-      logLibraryChange(existingDoc, targetLibrary);
-      // Document changed, its target library changed, or it was not successfully indexed - delete
-      // old data. Deleting by document_id removes every chunk regardless of which library it used
-      // to carry, so no chunk with the old library_id survives a move.
+      // Content changed, or it was not successfully indexed - delete old data. Deleting by
+      // document_id removes every chunk of this document, so no stale chunk survives a re-index.
       vectorChunkStore.deleteByDocumentId(existingDoc.getId());
       documentRepository.delete(existingDoc);
     }
@@ -251,21 +254,19 @@ public class FileProcessingService {
     // Compute SHA-256 on the downloaded file for content-based deduplication
     String checksum = checksumService.computeSha256(localFile);
 
-    // Check if document already exists by remote URL
-    Optional<Document> existing = documentRepository.findByFilePath(remoteUrl);
+    // Check if document already exists in this library by remote URL (#877, see processFile above)
+    Optional<Document> existing =
+        documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), remoteUrl);
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
-          && existingDoc.getStatus() == DocumentStatus.INDEXED
-          && targetLibrary.getId().equals(existingDoc.getLibraryId())) {
+          && existingDoc.getStatus() == DocumentStatus.INDEXED) {
         log.info("Skipping unchanged URL document (same checksum): {}", fileName);
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
-      logLibraryChange(existingDoc, targetLibrary);
-      // Document changed, its target library changed, or it was not successfully indexed - delete
-      // old data. Deleting by document_id removes every chunk regardless of which library it used
-      // to carry, so no chunk with the old library_id survives a move.
+      // Content changed, or it was not successfully indexed - delete old data. Deleting by
+      // document_id removes every chunk of this document, so no stale chunk survives a re-index.
       vectorChunkStore.deleteByDocumentId(existingDoc.getId());
       documentRepository.delete(existingDoc);
     }
@@ -338,17 +339,17 @@ public class FileProcessingService {
     byte[] contentBytes = mainText.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     String checksum = checksumService.computeSha256(contentBytes);
 
-    Optional<Document> existing = documentRepository.findByFilePath(entryUrl);
+    // #877, see processFile above.
+    Optional<Document> existing =
+        documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl);
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
-          && existingDoc.getStatus() == DocumentStatus.INDEXED
-          && targetLibrary.getId().equals(existingDoc.getLibraryId())) {
+          && existingDoc.getStatus() == DocumentStatus.INDEXED) {
         log.info("Skipping unchanged RSS entry (same checksum): {}", entryUrl);
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
-      logLibraryChange(existingDoc, targetLibrary);
       vectorChunkStore.deleteByDocumentId(existingDoc.getId());
       documentRepository.delete(existingDoc);
     }
@@ -552,21 +553,6 @@ public class FileProcessingService {
     int updated = documentRepository.markFailed(documentId, null);
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked FAILED", documentId);
-    }
-  }
-
-  /**
-   * Logs an existing document's move to a new target library, before the old row and its chunks are
-   * deleted below - the only remaining trace of the move once {@code existingDoc} is gone.
-   */
-  private void logLibraryChange(Document existingDoc, KnowledgeLibrary targetLibrary) {
-    if (existingDoc.getLibraryId() != null
-        && !existingDoc.getLibraryId().equals(targetLibrary.getId())) {
-      log.info(
-          "Moving document {} from library {} to library {}",
-          existingDoc.getFilePath(),
-          existingDoc.getLibraryId(),
-          targetLibrary.getId());
     }
   }
 

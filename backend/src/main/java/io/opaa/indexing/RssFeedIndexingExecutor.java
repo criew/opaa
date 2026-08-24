@@ -278,13 +278,16 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * Handles an entry whose {@code pubDate} is unchanged. Since the pubDate never changes again,
    * {@link #processEntry} would otherwise never re-fetch the detail page attachments are found on.
    * This method fetches the detail page for attachments alone (the entry's own text is not
-   * reprocessed) only when no attachment document exists yet for it ({@link
-   * DocumentRepository#existsBySourceEntryUrl}); an entry that already has its attachments stays as
-   * cheap as before.
+   * reprocessed) only when no attachment document exists yet for it in this run's own library
+   * ({@link DocumentRepository#existsBySourceEntryUrlAndLibraryId}); an entry that already has its
+   * attachments there stays as cheap as before. Scoped to {@code ctx.targetLibrary()} (#877) - a
+   * different library's attachments for the same entry URL must not suppress this library's own
+   * backfill.
    */
   private void processUnchangedEntry(RssFeedRunContext ctx, String entryUrl) {
     ctx.progress().recordSkipped();
-    if (documentRepository.existsBySourceEntryUrl(entryUrl)) {
+    if (documentRepository.existsBySourceEntryUrlAndLibraryId(
+        entryUrl, ctx.targetLibrary().getId())) {
       log.info("Skipping unchanged RSS entry (unchanged pubDate): {}", entryUrl);
       return;
     }
@@ -433,19 +436,19 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * Checks if an RSS entry's document is unchanged based on its {@code pubDate}, before its detail
    * page is ever requested (ADR-0017) - mirrors {@link UrlIndexingExecutor#isUnchanged}. A missing
    * {@code pubDate} is treated as "changed" - the SHA-256 checksum inside {@link
-   * FileProcessingService#processRssEntry} becomes the deciding change signal instead.
+   * FileProcessingService#processRssEntry} becomes the deciding change signal instead. The lookup
+   * is scoped to {@code targetLibrary} (#877): the same entry URL indexed into a different library
+   * is an independent document.
    */
   private boolean isUnchanged(
       String entryUrl, Optional<Instant> publishedAt, KnowledgeLibrary targetLibrary) {
     if (publishedAt.isEmpty()) {
       return false;
     }
-    Optional<Document> existing = documentRepository.findByFilePath(entryUrl);
-    // library changed -> not unchanged: moving the target library must take effect even for an
-    // entry whose pubDate is otherwise unchanged.
+    Optional<Document> existing =
+        documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl);
     return existing.isPresent()
         && publishedAt.get().toString().equals(existing.get().getLastModifiedRemote())
-        && existing.get().getStatus() == DocumentStatus.INDEXED
-        && targetLibrary.getId().equals(existing.get().getLibraryId());
+        && existing.get().getStatus() == DocumentStatus.INDEXED;
   }
 }
