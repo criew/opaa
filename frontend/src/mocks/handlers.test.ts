@@ -164,7 +164,14 @@ describe('MSW Handlers', () => {
     it('lists the documents of a library as a paged response', async () => {
       const response = await fetch(`/api/v1/libraries/${viewerLibraryId}/documents`)
       expect(response.status).toBe(200)
-      expect(await response.json()).toEqual({ items: [], page: 0, size: 20, totalElements: 0 })
+      expect(await response.json()).toEqual({
+        items: [],
+        page: 0,
+        size: 20,
+        totalElements: 0,
+        folders: [],
+        breadcrumb: [],
+      })
     })
 
     it('returns 404 for an unknown library', async () => {

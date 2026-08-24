@@ -24,7 +24,15 @@ function pageOf(
   items: LibraryDocumentResponse[],
   overrides: Partial<LibraryDocumentPageResponse> = {},
 ): LibraryDocumentPageResponse {
-  return { items, page: 0, size: 20, totalElements: items.length, ...overrides }
+  return {
+    items,
+    page: 0,
+    size: 20,
+    totalElements: items.length,
+    folders: [],
+    breadcrumb: [],
+    ...overrides,
+  }
 }
 
 let currentLibraryId = 'library-team'

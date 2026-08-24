@@ -1062,7 +1062,17 @@ export const handlers = [
       : allDocuments
     const items = filtered.slice(page * size, page * size + size)
 
-    return HttpResponse.json({ items, page, size, totalElements: filtered.length })
+    // folders/breadcrumb (#821): the mock has no folder concept yet (folder navigation UI is
+    // #822), so every request behaves as if it were scoped to the library's root - an empty
+    // subfolder/breadcrumb list, matching the real API's response shape.
+    return HttpResponse.json({
+      items,
+      page,
+      size,
+      totalElements: filtered.length,
+      folders: [],
+      breadcrumb: [],
+    })
   }),
 
   http.post('/api/v1/libraries/:libraryId/documents', async ({ params, request }) => {
