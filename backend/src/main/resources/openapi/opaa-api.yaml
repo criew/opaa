@@ -3971,7 +3971,7 @@ components:
         myRole:
           description: >
             The effective role you hold on this library. For a system admin, this is always
-            OWNER - the same administrative bypass canRead/canManage/canDelete use - regardless
+            OWNER - the same administrative bypass canRead/canManage use - regardless
             of any actual grant. Unlike myRole on the list response (GET /api/v1/libraries),
             which never bypasses for a system admin.
           allOf:

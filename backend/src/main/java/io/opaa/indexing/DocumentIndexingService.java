@@ -217,9 +217,9 @@ public class DocumentIndexingService {
    * and no grants (migration 012) - that a system admin could target without a grant; #521 deleted
    * that library outright, so the parameter had nothing left to do and is gone too.
    *
-   * <p>Uses {@link LibraryAccessService#requireRole} (#436) instead of a plain {@code canEdit}/403
-   * check for the same reason {@link #getStatus} does: "no access at all" must answer 404, not a
-   * 403 that confirms the library exists.
+   * <p>Uses {@link LibraryAccessService#requireRole} (#436) instead of a plain boolean role
+   * check/403 for the same reason {@link #getStatus} does: "no access at all" must answer 404, not
+   * a 403 that confirms the library exists.
    */
   private KnowledgeLibrary requireEditableLibrary(UUID libraryId, UUID currentUserId) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);

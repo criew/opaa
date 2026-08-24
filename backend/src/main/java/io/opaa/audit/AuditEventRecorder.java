@@ -22,9 +22,9 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>{@code before}/{@code after} are small {@link Map}s the caller builds inline (e.g. {@code
  * Map.of("role", role.name())}), serialised here with a locally-owned {@link JsonMapper} instance -
  * not the application's autoconfigured bean, so this class stays usable in the narrower Spring test
- * slices some of its callers are exercised under (e.g. {@code @WebMvcTest}) without pulling in
- * Jackson's full autoconfiguration. A {@code null} or empty map serialises to a {@code null}
- * column, matching {@link AuditLogEntry}'s own optional {@code before}/{@code after}.
+ * slices some of its callers are exercised under without pulling in Jackson's full
+ * autoconfiguration. A {@code null} or empty map serialises to a {@code null} column, matching
+ * {@link AuditLogEntry}'s own optional {@code before}/{@code after}.
  */
 @Service
 public class AuditEventRecorder {
