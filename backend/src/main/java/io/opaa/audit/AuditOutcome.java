@@ -1,8 +1,7 @@
 package io.opaa.audit;
 
 /**
- * The result of the recorded action. Mirrored by the database check constraint {@code
- * chk_audit_log_outcome} (migration 017); keep both in sync.
+ * The result of the recorded action. Mirrored by a database check constraint; keep both in sync.
  *
  * <p>The rejected action is deliberately a first-class outcome, not merely the absence of a
  * successful entry: "die abgelehnte Verwaltungsaktion ist für eine Prüfung oft die interessantere"

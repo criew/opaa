@@ -10,15 +10,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The single call site that invokes {@code opaa_audit_delete_expired_partitions()} (migration 023)
- * - #395's automatic, monthly retention deletion. {@link AuditRetentionScheduler} is this class's
- * only caller in production; both are kept separate so a test can exercise the deletion itself
- * without depending on Spring's scheduling machinery.
+ * The single call site that invokes {@code opaa_audit_delete_expired_partitions()} - the automatic,
+ * monthly retention deletion. {@link AuditRetentionScheduler} is this class's only caller in
+ * production; both are kept separate so a test can exercise the deletion itself without depending
+ * on Spring's scheduling machinery.
  *
  * <p>This class issues no {@code DROP}/{@code DELETE}/{@code TRUNCATE} of its own and never will -
- * it only calls the one, parameterless database function, which is the whole point (#395 acceptance
- * criteria: "ein Aufruf, der einzelne Sätze entfernen würde, existiert nicht", "das Anwendungskonto
- * kann die Löschung nicht auslösen" other than through this exact, narrow call).
+ * it only calls the one, parameterless database function ("ein Aufruf, der einzelne Sätze entfernen
+ * würde, existiert nicht", "das Anwendungskonto kann die Löschung nicht auslösen" other than
+ * through this exact, narrow call).
  */
 @Service
 public class AuditRetentionDeletionService {
@@ -48,13 +48,12 @@ public class AuditRetentionDeletionService {
   }
 
   /**
-   * Code review of #454, nit 2: the forward-only cap (migration 023's own comment on {@code
-   * opaa_audit_delete_expired_partitions()}) means a drastic shortening only reaches its configured
-   * target gradually, one calendar month per run - with nothing logging that gap, the configured
-   * value looks effective immediately while it is not. Compares the configured retention's target
-   * cutoff against the actually reached {@code last_cutoff} after this run and logs at INFO when
-   * they still differ, so operations can see "configured for 36 months, only effective from X for
-   * now" instead of assuming the just-changed value already applies in full.
+   * The forward-only cap on {@code opaa_audit_delete_expired_partitions()} means a drastic
+   * shortening only reaches its configured target gradually, one calendar month per run. Compares
+   * the configured retention's target cutoff against the actually reached {@code last_cutoff} after
+   * this run and logs at INFO when they still differ, so operations can see "configured for 36
+   * months, only effective from X for now" instead of assuming the just-changed value already
+   * applies in full.
    */
   private void logForwardOnlyCapGapIfAny() {
     repository

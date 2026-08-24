@@ -9,10 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Request/approve lifecycle for the one personenbezogene exception, the anlassbezogene Klärung
- * (#393, decision #355). Deliberately separate from {@link AuditQueryService}: this class owns the
- * Vier-Augen-Prinzip workflow (request, approve, look up), the query service owns turning an
- * approved grant into a bounded {@code audit_log} read.
+ * Request/approve lifecycle for the one personenbezogene exception, the anlassbezogene Klärung.
+ * Deliberately separate from {@link AuditQueryService}: this class owns the Vier-Augen-Prinzip
+ * workflow (request, approve, look up), the query service owns turning an approved grant into a
+ * bounded {@code audit_log} read.
  */
 @Service
 public class AuditIncidentScopeService {
@@ -30,9 +30,8 @@ public class AuditIncidentScopeService {
    * Creates a new {@code PENDING} incident scope grant. Not usable for querying until approved.
    *
    * @throws ResponseStatusException 404 if {@code subjectUserId} does not belong to {@code
-   *     organizationId} (#393 code review, finding 8) - a grant must never be created, and no
-   *     pseudonym ever minted at query time, against a person outside the requester's own
-   *     organization.
+   *     organizationId} - a grant must never be created, and no pseudonym ever minted at query
+   *     time, against a person outside the requester's own organization.
    */
   public AuditIncidentScopeGrant request(
       UUID organizationId,
@@ -75,8 +74,7 @@ public class AuditIncidentScopeService {
 
   /**
    * Looks up a still-usable, approved grant, or throws 404/400 depending on why it cannot be used -
-   * not yet approved, or past {@link AuditIncidentScopeGrant#getUsableUntil()} (#393 code review,
-   * finding 7).
+   * not yet approved, or past {@link AuditIncidentScopeGrant#getUsableUntil()}.
    */
   public AuditIncidentScopeGrant findApproved(UUID organizationId, UUID scopeId) {
     AuditIncidentScopeGrant grant = findOrThrow(organizationId, scopeId);
