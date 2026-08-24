@@ -5,10 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -718,15 +720,17 @@ class QueryServiceTest {
   // query before retrieval/the LLM call, not merely at appendTurn afterwards - the whole point
   // being that the ordinary case never pays for a paid LLM call whose answer would be discarded
   // anyway. ChatService#requireSpaceNotArchived is mocked here (it is chatService's own
-  // production logic, exercised for real in ChatServiceTest) purely as the trigger; this test's
-  // job is only to prove QueryService calls it before vectorStore/answerGenerationService, not to
-  // re-verify the archived-space rule itself.
+  // production logic, exercised for real in ChatServiceIntegrationTest's
+  // appendingATurnInAnArchivedSpaceIsRejected, which still covers appendTurn's own race-guard
+  // call to the same method) purely as the trigger; this test's job is only to prove QueryService
+  // calls it before any of the readable-scope/retrieval/model work below, not to re-verify the
+  // archived-space rule itself.
   @Test
   void queryRejectsArchivedSpaceBeforeCallingTheModel() {
     Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    org.mockito.Mockito.doThrow(
+    doThrow(
             new ResponseStatusException(
                 HttpStatus.CONFLICT,
                 "Der Space ist archiviert und lässt keine neuen Inhalte mehr zu"))
@@ -737,7 +741,15 @@ class QueryServiceTest {
         .isInstanceOf(ResponseStatusException.class)
         .hasMessageContaining("archiviert");
 
-    org.mockito.Mockito.verifyNoInteractions(vectorStore, answerGenerationService);
+    // Not just "before the model": nothing past the early check runs at all, including the
+    // readable-scope computation and the conversation-memory cache - proving the check's early
+    // placement, not merely that it precedes the LLM call specifically.
+    verifyNoInteractions(
+        vectorStore,
+        answerGenerationService,
+        libraryAccessService,
+        permissionHistoryService,
+        chatMemory);
     verify(chatService, never()).appendTurn(any(), any(), any(), any());
   }
 
