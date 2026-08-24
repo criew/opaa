@@ -5,8 +5,40 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-23T02:08:52Z</updated>
+  <updated>2026-08-24T02:07:05Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Sonntag, 23. August 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-23.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-23.html</id>
+    <updated>2026-08-24T02:07:05Z</updated>
+    <summary type="text">feat(frontend): Redesign der Weboberfläche nach dem Zielbild-Designsystem:
+— Spaces-Übersicht ohne Space-Spalte implementiert
+— Globale Leiste als erste Navigationsebene umgesetzt
+— Globaler Verwaltungsrahmen mit Badge für Administration
+— Benutzer-Einstellungen als globale Seite verfügbar
+feat(library): Ordner in Dokumentbibliotheken:
+— ADR und Spezifikation für Ordner in Bibliotheken festgelegt
+— Schema und CRUD-API für Bibliotheksordner angelegt
+— Dokumentliste und Upload ordner-bewusst gemacht
+— Ordner-Navigation in der Bibliotheksansicht geplant
+feat(models): Verwaltete Chat-Modelle in der Administrationsoberfläche (Stufe 1):
+— Laufzeitauflösung des aktiven Chat-Modells implementiert
+— E2E-Tests für Modellverwaltung geschrieben
+Epic: Space and asset model — replace the workspace model:
+— Connector-Quellen auf exakt eine Wissensbibliothek abgebildet
+— Audit-Governance ohne personenbezogenen Auswertungspfad
+— Obergrenze der Freigabe für Konnektor-Bibliotheken definiert
+refactor: Backend-Architekturreview 2026-08 — Befunde und Behebungsphasen:
+— Backend-Review: toter Code und veraltete Referenzen identifiziert
+Epic: Nacharbeiten Wissensbibliotheken und Upload:
+— Berechtigungsunabhängige Nutzersuche für Rechtevergabe umgesetzt
+Sonstiges:
+— Cache-Control für index.html und Assets korrigiert
+— Suchqualitäts-Regression durch Embedding-Metadaten behoben
+— Deutsche MUI-Lokalisierung global eingebunden
+— Frontend-Build und E2E-Suite auf pnpm migriert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Samstag, 22. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-22.html"/>
