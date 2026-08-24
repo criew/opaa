@@ -25,10 +25,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * test against a mocked repository could not: the database's own {@code
  * chk_audit_retention_settings_months} bound actually rejects a write outside 1-10 years (not just
  * this service's own pre-check), a retention change writes exactly one {@code
- * AUDIT_LOG_CONFIGURATION_CHANGED} audit entry (never fails silently, never writes more than one),
- * and the content-retention consistency warning fires once a {@link ContentRetentionProvider} bean
- * exists but stays quiet - not merely "returns false because nothing crashed" - while none does
- * (#216 not built yet).
+ * AUDIT_LOG_CONFIGURATION_CHANGED} audit entry (never fails silently, never writes more than one).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)

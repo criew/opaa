@@ -1,10 +1,10 @@
 package io.opaa.notification;
 
 /**
- * The closed vocabulary of {@link Notification#getType()}, mirrored by the database check
- * constraint {@code chk_notifications_type} (migration 052) - keep both in sync, the same
- * discipline {@code io.opaa.audit.AuditEventType} already applies to {@code
- * chk_audit_log_event_type}.
+ * The closed vocabulary of {@link Notification#getType()}. This enum is the sole write guard since
+ * migration 066 (#862) dropped the database check constraint {@code chk_notifications_type} that
+ * used to enforce the same closed set independently - adding a value here no longer requires a
+ * migration.
  */
 public enum NotificationType {
   /**

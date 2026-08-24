@@ -8,6 +8,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
@@ -38,12 +39,26 @@ import org.junit.jupiter.params.provider.ValueSource;
  * org.apache.poi.hwpf.HWPFDocument} only ever opens an existing one), and no test in this codebase
  * has needed one so far. {@link SupportedDocumentFormatsTest} already exercises {@code
  * application/msword} detection directly against the media type string.
+ *
+ * <p>The network path's decision is exercised through {@link UrlIndexingExecutor#decideForEntry}
+ * itself, the exact call {@link UrlIndexingExecutor#execute} makes on a byte prefix before a full
+ * download - not a reimplementation of it, so this test cannot silently drift from production.
  */
 class DocumentFormatParityTest {
 
   @TempDir Path tempDir;
 
   private static final String PDF_MAGIC_BYTES = "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection";
+
+  private static SupportedDocumentFormats.ContentDecision networkPathDecision(
+      Path file, String entryName) throws IOException {
+    byte[] fullContent = Files.readAllBytes(file);
+    byte[] prefix =
+        fullContent.length <= SupportedDocumentFormats.DETECTION_PREFIX_BYTES
+            ? fullContent
+            : Arrays.copyOf(fullContent, SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
+    return UrlIndexingExecutor.decideForEntry(prefix, entryName);
+  }
 
   @ParameterizedTest
   @ValueSource(strings = {"handbuch.md", "notiz.txt", "scan.png", "archiv.zip"})
@@ -55,8 +70,7 @@ class DocumentFormatParityTest {
     Files.writeString(file, "Ganz gewöhnlicher, lesbarer Text.", StandardCharsets.UTF_8);
 
     boolean acceptedFromFilesystem = new DocumentService().isSupportedFormat(file);
-    boolean acceptedFromNetwork =
-        UrlIndexingExecutor.classifyDownloadedFile(file, fileName).supported();
+    boolean acceptedFromNetwork = networkPathDecision(file, fileName).supported();
 
     assertThat(acceptedFromNetwork)
         .as(
@@ -73,7 +87,7 @@ class DocumentFormatParityTest {
     Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
 
     assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
-    var networkDecision = UrlIndexingExecutor.classifyDownloadedFile(file, fileName);
+    var networkDecision = networkPathDecision(file, fileName);
     assertThat(networkDecision.supported()).isTrue();
     assertThat(networkDecision.extensionMismatch()).isFalse();
   }
@@ -87,7 +101,7 @@ class DocumentFormatParityTest {
     Files.write(file, realDocxBytes());
 
     assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
-    var networkDecision = UrlIndexingExecutor.classifyDownloadedFile(file, "vermerk.docx");
+    var networkDecision = networkPathDecision(file, "vermerk.docx");
     assertThat(networkDecision.supported()).isTrue();
     assertThat(networkDecision.extensionMismatch()).isFalse();
   }
@@ -98,7 +112,7 @@ class DocumentFormatParityTest {
     Files.write(file, realPptxBytes());
 
     assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
-    var networkDecision = UrlIndexingExecutor.classifyDownloadedFile(file, "folien.pptx");
+    var networkDecision = networkPathDecision(file, "folien.pptx");
     assertThat(networkDecision.supported()).isTrue();
     assertThat(networkDecision.extensionMismatch()).isFalse();
   }
@@ -113,7 +127,7 @@ class DocumentFormatParityTest {
 
     assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
 
-    var networkDecision = UrlIndexingExecutor.classifyDownloadedFile(file, "bescheid.csv");
+    var networkDecision = networkPathDecision(file, "bescheid.csv");
     assertThat(networkDecision.supported()).isTrue();
     assertThat(networkDecision.extensionMismatch()).isTrue();
     assertThat(networkDecision.detectedExtension()).isEqualTo(".pdf");
@@ -126,7 +140,7 @@ class DocumentFormatParityTest {
     Files.write(file, new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a});
 
     assertThat(new DocumentService().isSupportedFormat(file)).isFalse();
-    assertThat(UrlIndexingExecutor.classifyDownloadedFile(file, "image.pdf").supported()).isFalse();
+    assertThat(networkPathDecision(file, "image.pdf").supported()).isFalse();
   }
 
   // --- #404 review, finding 2: the RSS attachment path decides alike too --------------------
@@ -161,7 +175,7 @@ class DocumentFormatParityTest {
         SupportedDocumentFormats.decideForFileName(
             candidate.suggestedFileName(), SupportedDocumentFormats.detectMediaType(file));
     var filesystemDecision = new DocumentService().isSupportedFormat(file);
-    var networkDecision = UrlIndexingExecutor.classifyDownloadedFile(file, "bescheid.csv");
+    var networkDecision = networkPathDecision(file, "bescheid.csv");
 
     assertThat(rssDecision.supported()).isTrue();
     assertThat(rssDecision.extensionMismatch()).isTrue();
