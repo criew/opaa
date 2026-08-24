@@ -92,6 +92,11 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # Verwaltet den Gradle-Cache selbst: PR-Laeufe restaurieren read-only,
+      # nur Laeufe auf main schreiben - behebt das Einfrieren des alten
+      # actions/cache-Musters, das bei exaktem Key-Treffer nie neu speicherte
+      # (#832). Configuration-Cache-Daten werden bewusst nicht persistiert
+      # (braeuchte cache-encryption-key + build-root-directory).
       - uses: gradle/actions/setup-gradle@v4
 
       # Named Docker volume that RetrievalEvaluationHarnessTest bind-mounts into the Ollama
@@ -387,6 +392,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # Cache-Verwaltung wie im backend-Job: read-only auf PRs, Schreiben nur auf main (#832).
       - uses: gradle/actions/setup-gradle@v4
 
       # Derselbe Cache-Schlüssel wie im comic-characters-Job: beide Domänen pinnen dasselbe
