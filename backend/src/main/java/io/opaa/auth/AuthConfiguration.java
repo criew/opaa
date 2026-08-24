@@ -5,6 +5,7 @@ import io.opaa.observability.AuthMetrics;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 /**
  * Wires {@link AuthMetrics} the same way {@code IndexingConfiguration}/{@code QueryConfiguration}
@@ -21,15 +22,13 @@ public class AuthConfiguration {
   }
 
   /**
-   * Backs {@link UserService}'s {@code lastLoginAt} write-throttling (#833) - a named bean, not
-   * {@code Clock.systemDefaultZone()} called directly there, mirroring {@code
-   * IndexingConfiguration#schedulingClock} so a test can substitute a fixed clock without needing
-   * to control wall-clock time. Named {@code clock} (matching the constructor parameter name in
-   * {@link UserService}, not {@code schedulingClock}) so Spring's by-name fallback picks this bean
-   * over that unrelated one when resolving the {@link Clock} type, which now has two candidates in
-   * the context.
+   * General-purpose wall clock, {@code @Primary} over {@code IndexingConfiguration#schedulingClock}
+   * so any future unqualified {@link Clock} injection resolves here instead of hitting a {@code
+   * NoUniqueBeanDefinitionException}. Backs {@link UserService}'s {@code lastLoginAt}
+   * write-throttling (#833).
    */
   @Bean
+  @Primary
   Clock clock() {
     return Clock.systemDefaultZone();
   }

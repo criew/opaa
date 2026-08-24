@@ -130,17 +130,16 @@ class UserServiceTest {
   }
 
   /**
-   * #833: reproduces the finding directly - two requests for the same, already-known user in quick
-   * succession must write {@code lastLoginAt} only once, not on every request. Before the fix,
-   * {@code updateExistingUser} called {@code save()} unconditionally on every call, so the second
-   * {@code findOrCreateUser} here would trigger a second {@code save()} too, failing the {@code
-   * times(1)} verification below.
+   * #833 acceptance criterion: two consecutive requests for the same, already-known user within the
+   * threshold produce exactly one UPDATE, not zero and not two. Before the fix, {@code
+   * updateExistingUser} called {@code save()} unconditionally on every call, so this would observe
+   * {@code times(2)} instead.
    */
   @Test
-  void secondRequestWithinTheThresholdDoesNotWriteLastLoginAtAgain() {
+  void twoRequestsWithinTheThresholdWriteLastLoginAtExactlyOnce() {
     User existing = new User("sub1", "issuer1", "same@example.com", "Same Name");
     existing.setOrganizationId(Organization.DEFAULT_ID);
-    existing.setLastLoginAt(clock.instant());
+    existing.setLastLoginAt(clock.instant().minus(Duration.ofMinutes(10)));
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
         .thenReturn(Optional.of(existing));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -149,7 +148,7 @@ class UserServiceTest {
     clock.instant = clock.instant.plus(Duration.ofSeconds(30));
     userService.findOrCreateUser("sub1", "issuer1", "same@example.com", "Same Name");
 
-    verify(userRepository, never()).save(any(User.class));
+    verify(userRepository, times(1)).save(any(User.class));
   }
 
   /** #833: once the threshold has elapsed, the next request must refresh lastLoginAt again. */
@@ -185,6 +184,22 @@ class UserServiceTest {
     User user = userService.findOrCreateUser("sub1", "issuer1", "new@example.com", "Same Name");
 
     assertThat(user.getEmail()).isEqualTo("new@example.com");
+    verify(userRepository, times(1)).save(any(User.class));
+  }
+
+  /** #833: same as the email case above, but for the independent displayName condition. */
+  @Test
+  void changedDisplayNameWithinTheThresholdIsStillWrittenImmediately() {
+    User existing = new User("sub1", "issuer1", "same@example.com", "Old Name");
+    existing.setOrganizationId(Organization.DEFAULT_ID);
+    existing.setLastLoginAt(clock.instant());
+    when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
+        .thenReturn(Optional.of(existing));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    User user = userService.findOrCreateUser("sub1", "issuer1", "same@example.com", "New Name");
+
+    assertThat(user.getDisplayName()).isEqualTo("New Name");
     verify(userRepository, times(1)).save(any(User.class));
   }
 

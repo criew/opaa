@@ -36,12 +36,8 @@ public class UserService {
   private static final int SEARCH_RESULT_LIMIT = 20;
   private static final int SEARCH_MIN_QUERY_LENGTH = 2;
 
-  // #833: every authenticated request ran findOrCreateUser -> updateExistingUser, which wrote
-  // lastLoginAt unconditionally - an UPDATE on `users` per API call, regardless of how recently
-  // the same user's last request already wrote it. This threshold caps that to at most one write
-  // per user per interval; a stale lastLoginAt by up to this much is an acceptable trade for
-  // dropping the per-request write. No property for this - the write-frequency/staleness
-  // trade-off is an implementation detail with no operator-facing reason to vary per deployment.
+  // Throttles lastLoginAt writes to at most once per user per interval (#833) - 5 minutes of
+  // staleness is an acceptable trade for dropping the per-request UPDATE.
   private static final Duration LAST_LOGIN_UPDATE_THRESHOLD = Duration.ofMinutes(5);
 
   private final UserRepository userRepository;
@@ -125,21 +121,10 @@ public class UserService {
   private record UserCreationResult(User user, boolean createdHere) {}
 
   /**
-   * #833: writes only what actually changed, instead of unconditionally overwriting {@code
-   * lastLoginAt}/{@code email}/{@code displayName} and calling {@code save()} on every request.
-   *
-   * <p>{@code lastLoginAt} is refreshed only once {@link #LAST_LOGIN_UPDATE_THRESHOLD} has passed
-   * since the stored value - the column exists for "is this account still active", a purpose a
-   * multi-minute staleness window does not compromise, unlike email/displayName below, which are
-   * source-of-truth claims from the identity provider and must never be allowed to lag. {@code
-   * email}/{@code displayName} are written only when the incoming claim actually differs from the
-   * stored value, not merely when it is present - the pre-fix code wrote the same value back on
-   * every request whenever the claim was non-null.
-   *
-   * <p>If none of the three actually changed, this method returns {@code existing} unmodified
-   * without calling {@link UserRepository#save}, so a burst of requests from the same, recently
-   * seen user causes no write to {@code users} at all until the threshold next elapses or a claim
-   * changes.
+   * {@code lastLoginAt} is refreshed only after {@link #LAST_LOGIN_UPDATE_THRESHOLD}; {@code
+   * email}/{@code displayName} (identity-provider claims) are written immediately whenever they
+   * differ from the stored value. No {@link UserRepository#save} call when none of the three
+   * changed (#833).
    */
   private User updateExistingUser(User existing, String email, String displayName) {
     Instant now = clock.instant();
