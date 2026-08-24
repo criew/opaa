@@ -12,27 +12,22 @@ import java.util.UUID;
 import org.springframework.data.domain.Persistable;
 
 /**
- * One entry of the append-only audit trail (#391, decision #355, see
+ * One entry of the append-only audit trail (see
  * docs/features/security-and-compliance.md#der-protokollsatz): "wer, wann, was, an welchem Objekt,
  * mit welchem Ergebnis". Immutable by design - there is no update method and no setter beyond the
- * constructor, matching {@code AssetGrant}'s pattern of a client-generated {@code id} for an
- * otherwise similarly shaped entity. That is only the application-level half of "nur anfügend"; the
- * binding half is the database privilege restriction migration 017 applies to the underlying table,
- * verified independently by {@code Migration017AuditLogTest}.
+ * constructor. That is only the application-level half of "nur anfügend"; the binding half is a
+ * database privilege restriction on the underlying table.
  *
  * <p>{@code recordedAt} is set here; {@code audit_log.recorded_at} has no database-level {@code
- * DEFAULT} (migration 017) precisely so this is the single source of the timestamp. This class
- * implements {@link Persistable} with {@link #isNew()} always {@code true}: without it, Spring Data
- * JPA treats an entity whose {@code @Id} is already assigned (as it always is here - {@code
- * eventId} is generated in the constructor, not by the database) as not-new and routes {@code save}
- * through {@code EntityManager#merge} instead of {@code #persist}. {@code merge} first issues a
- * {@code SELECT} to check whether a row with that id already exists - always a miss here, so purely
- * wasted work across every one of {@code audit_log}'s partition indexes - and, more importantly,
- * operates on a *copy* of the entity, leaving the instance the caller passed to {@link
- * AuditLogService#record} detached with {@code recordedAt} still {@code null}. {@code isNew() ==
- * true} forces {@code persist} instead, which mutates this exact instance in place - so the
- * {@code @PrePersist} callback below actually sets {@code recordedAt} on the object the caller
- * still holds, as intended.
+ * DEFAULT} precisely so this is the single source of the timestamp. This class implements {@link
+ * Persistable} with {@link #isNew()} always {@code true}: without it, Spring Data JPA treats an
+ * entity whose {@code @Id} is already assigned (as it always is here - {@code eventId} is generated
+ * in the constructor, not by the database) as not-new and routes {@code save} through {@code
+ * EntityManager#merge} instead of {@code #persist}. {@code merge} operates on a *copy* of the
+ * entity, leaving the instance the caller passed to {@link AuditLogService#record} detached with
+ * {@code recordedAt} still {@code null}; forcing {@code persist} mutates this exact instance in
+ * place instead, so the {@code @PrePersist} callback below sets {@code recordedAt} on the object
+ * the caller still holds.
  *
  * <p>{@code before}/{@code after} deliberately hold pre-serialized JSON text rather than a
  * structured type: the specification requires them "eng begrenzt auf das rechtlich Erhebliche", not

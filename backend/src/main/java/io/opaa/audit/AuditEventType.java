@@ -2,15 +2,11 @@ package io.opaa.audit;
 
 /**
  * The closed list of events the first protocol stage records
- * (docs/features/security-and-compliance.md#die-ereignisse-der-ersten-stufe, decision #355). "Was
- * hier nicht steht, wird in der ersten Stufe nicht geschrieben" - the list is deliberately closed,
- * not a category with a free-text detail: {@link AuditLogEntry#getEventType()} is this enum, not a
- * {@code String}. This enum is the sole write guard since migration 064 (#862) dropped the database
- * check constraint {@code chk_audit_log_event_type} that used to enforce the same closed set
- * independently - adding a value here no longer requires a migration.
- *
- * <p>#391 only builds the store; no service emits any of these yet. Emission is wired up service by
- * service in later issues, against this exact list.
+ * (docs/features/security-and-compliance.md#die-ereignisse-der-ersten-stufe). "Was hier nicht
+ * steht, wird in der ersten Stufe nicht geschrieben" - the list is deliberately closed, not a
+ * category with a free-text detail: {@link AuditLogEntry#getEventType()} is this enum, not a {@code
+ * String}. This enum is the sole write guard; there is no longer a matching database check
+ * constraint, so adding a value here does not require a migration.
  */
 public enum AuditEventType {
 
@@ -31,9 +27,9 @@ public enum AuditEventType {
   SPACE_CHANGED,
   SPACE_DELETED,
   /**
-   * #543: a space stopped instead of deleted, chiefly because it still contains a chat authored by
-   * someone other than the space owner - fk_chats_space_organization (ON DELETE RESTRICT, migration
-   * 032, composite as of migration 047) makes such a space permanently undeletable otherwise.
+   * A space stopped instead of deleted, chiefly because it still contains a chat authored by
+   * someone other than the space owner - an {@code ON DELETE RESTRICT} foreign key makes such a
+   * space permanently undeletable otherwise.
    */
   SPACE_ARCHIVED,
   LIBRARY_CREATED,
@@ -43,9 +39,8 @@ public enum AuditEventType {
    * A library's source configuration (sourcePath/sourceUrl/sourceProxy/sourceCredentials/
    * sourceInsecureSsl) changed - distinct from {@link #LIBRARY_CHANGED} (name/description) and
    * {@link #ASSET_VISIBILITY_CHANGED} (visibility/listed), neither of which fires for a source
-   * configuration edit alone (#545). Only which fields changed is recorded, never their values - a
-   * stricter version of the "no value, only which field" rule {@link #LIBRARY_CHANGED} already
-   * applies to description, since sourceCredentials must never appear in the log at all.
+   * configuration edit alone. Only which fields changed is recorded, never their values -
+   * sourceCredentials must never appear in the log at all.
    */
   LIBRARY_SOURCE_UPDATED,
   GROUP_CREATED,
@@ -62,18 +57,14 @@ public enum AuditEventType {
   GROUP_MEMBER_ADDED,
   GROUP_MEMBER_REMOVED,
   /**
-   * A library associated with (made available in) a space (#203/#706 review) - recorded for every
-   * association, not only the mixed-audience case the name might suggest; whether the audience was
-   * mixed is a separate fact (the owner notification, {@code
-   * SpaceAssetAssociationService#notifyOwnerIfMixedAudience}), not part of this event's own
-   * condition. See {@link #LIBRARY_DETACHED_FROM_SPACE} for the reverse operation - the two are
-   * always distinguishable by type, never inferred from before/after payload shape.
+   * A library associated with (made available in) a space - recorded for every association, not
+   * only the mixed-audience case the name might suggest; whether the audience was mixed is a
+   * separate fact (the owner notification), not part of this event's own condition. See {@link
+   * #LIBRARY_DETACHED_FROM_SPACE} for the reverse operation - the two are always distinguishable by
+   * type, never inferred from before/after payload shape.
    */
   LIBRARY_SHARED_TO_SPACE,
-  /**
-   * The reverse of {@link #LIBRARY_SHARED_TO_SPACE} - a library detached from a space (#706
-   * review).
-   */
+  /** The reverse of {@link #LIBRARY_SHARED_TO_SPACE} - a library detached from a space. */
   LIBRARY_DETACHED_FROM_SPACE,
   ASSET_OWNER_CHANGED,
   /** Taking over an asset left without a responsible owner. */
@@ -85,11 +76,8 @@ public enum AuditEventType {
   SYSTEM_ADMIN_ROLE_GRANTED,
   SYSTEM_ADMIN_ROLE_REVOKED,
   /**
-   * #393 code review, finding 1: distinct from {@link #SYSTEM_ADMIN_ROLE_GRANTED}/{@link
-   * #SYSTEM_ADMIN_ROLE_REVOKED} - granting the AUDITOR role is not an administrative privilege
-   * change and must never be recorded as one (a prior version of {@code UserService#updateRole} did
-   * exactly that, mislabelling every AUDITOR grant as a SYSTEM_ADMIN_ROLE_REVOKED). Migration 022
-   * widens {@code chk_audit_log_event_type} to include these two values.
+   * Distinct from {@link #SYSTEM_ADMIN_ROLE_GRANTED}/{@link #SYSTEM_ADMIN_ROLE_REVOKED} - granting
+   * the AUDITOR role is not an administrative privilege change and must never be recorded as one.
    */
   AUDITOR_ROLE_GRANTED,
   AUDITOR_ROLE_REVOKED,
@@ -111,17 +99,13 @@ public enum AuditEventType {
   CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
   /**
    * A change to the operator's branding - product name, claim, logo, accent colour or default
-   * colour scheme (#582, docs/design/guidelines.md#7). Deliberately not folded into {@link
+   * colour scheme (docs/design/guidelines.md#7). Deliberately not folded into {@link
    * #GOVERNANCE_SETTINGS_CHANGED}: branding decides what every user sees on every page, which is
    * exactly the kind of change an auditor wants to find by its own name rather than inside a
-   * catch-all governance bucket. Migration 042 widens {@code chk_audit_log_event_type} to include
-   * it.
+   * catch-all governance bucket.
    */
   BRANDING_SETTINGS_CHANGED,
-  /**
-   * A managed chat model (Stufe 1, #756, {@code io.opaa.llm.LlmModel}) was created. Migration 059
-   * widens {@code chk_audit_log_event_type} to include this and the three sibling values below.
-   */
+  /** A managed chat model ({@code io.opaa.llm.LlmModel}) was created. */
   LLM_MODEL_CREATED,
   /** A managed chat model's editable fields (display name, base URL, model id, ...) changed. */
   LLM_MODEL_CHANGED,
@@ -136,9 +120,8 @@ public enum AuditEventType {
   LLM_MODEL_ACTIVATED,
   /**
    * A managed chat model stopped being the systemwide active one because a different model was
-   * activated in its place (#757 review of #763) - without this, "wann hörte Modell X auf, aktiv zu
-   * sein" was only indirectly readable from the {@link #LLM_MODEL_ACTIVATED} event of whatever
-   * model replaced it. Migration 061 widens {@code chk_audit_log_event_type} to include this value.
+   * activated in its place - without this, "wann hörte Modell X auf, aktiv zu sein" was only
+   * indirectly readable from the {@link #LLM_MODEL_ACTIVATED} event of whatever model replaced it.
    */
   LLM_MODEL_DEACTIVATED,
 

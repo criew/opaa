@@ -6,11 +6,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Reads and changes the single, system-wide audit retention period (#395,
- * docs/features/security-and-compliance.md#aufbewahrung). This is the only path in this codebase
+ * Reads and changes the single, system-wide audit retention period
+ * (docs/features/security-and-compliance.md#aufbewahrung). This is the only path in this codebase
  * that writes {@link AuditRetentionSettings#getRetentionMonths()} - the database grant backs that
- * up (migration 023: the application account has no write access to {@code
- * audit_retention_settings.last_cutoff}, and this class never touches it).
+ * up: the application account has no write access to {@code audit_retention_settings.last_cutoff},
+ * and this class never touches it.
  */
 @Service
 public class AuditRetentionSettingsService {
@@ -24,7 +24,7 @@ public class AuditRetentionSettingsService {
   /** 10 years - the specification's non-negotiable ceiling. */
   public static final int MAX_RETENTION_MONTHS = 120;
 
-  /** The default new deployments start with, and migration 023 seeds. */
+  /** The default new deployments start with. */
   public static final int DEFAULT_RETENTION_MONTHS = 36;
 
   private static final String CONFIGURATION_OBJECT_ID = "audit-retention";
@@ -47,20 +47,17 @@ public class AuditRetentionSettingsService {
   /**
    * Changes the configured retention period. Rejects anything outside {@link
    * #MIN_RETENTION_MONTHS}..{@link #MAX_RETENTION_MONTHS} with a German-language message before
-   * ever writing (the database's own {@code chk_audit_retention_settings_months} is the backstop,
-   * not the primary defense) - see #395 acceptance criteria: "Eine Konfiguration unterhalb eines
-   * Jahres oder oberhalb von zehn Jahren wird abgewiesen".
+   * ever writing - the database's own check constraint is the backstop, not the primary defense
+   * ("Eine Konfiguration unterhalb eines Jahres oder oberhalb von zehn Jahren wird abgewiesen").
    *
    * <p>Records the change itself via {@link AuditEventRecorder} with {@link
-   * AuditEventType#AUDIT_LOG_CONFIGURATION_CHANGED} - #395 acceptance criteria: "Eine Friständerung
-   * erzeugt selbst einen Protokolleintrag". No new event type was needed: {@code
-   * AUDIT_LOG_CONFIGURATION_CHANGED} already exists (#391) and its own Javadoc already names "die
-   * Protokollkonfiguration selbst" as covered.
+   * AuditEventType#AUDIT_LOG_CONFIGURATION_CHANGED} ("Eine Friständerung erzeugt selbst einen
+   * Protokolleintrag").
    *
    * <p>Does not itself implement "Verkürzung wirkt nur nach vorn" - that guarantee lives entirely
-   * in the {@code opaa_audit_delete_expired_partitions()} database function (migration 023), which
-   * is the only writer of {@code last_cutoff} and the only place deletion actually happens; this
-   * method only ever changes the configured target value, never triggers deletion itself.
+   * in the {@code opaa_audit_delete_expired_partitions()} database function, which is the only
+   * writer of {@code last_cutoff} and the only place deletion actually happens; this method only
+   * ever changes the configured target value, never triggers deletion itself.
    */
   @Transactional
   public AuditRetentionUpdateResult updateRetention(
@@ -102,9 +99,8 @@ public class AuditRetentionSettingsService {
         AuditOutcome.SUCCESS,
         reason);
 
-    // #395's own cross-check against content retention (chats/artifacts/private content) has no
-    // data source: #216, which would have configured content retention, was closed as not
-    // planned. Always false until a content retention setting exists again.
+    // The cross-check against content retention (chats/artifacts/private content) has no data
+    // source: always false until a content retention setting exists.
     return new AuditRetentionUpdateResult(newRetentionMonths, false);
   }
 

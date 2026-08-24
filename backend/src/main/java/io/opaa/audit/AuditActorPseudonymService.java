@@ -51,10 +51,10 @@ public class AuditActorPseudonymService {
   }
 
   /**
-   * Looks up {@code userId}'s pseudonym without minting one (#393 code review, finding 8) - unlike
-   * {@link #pseudonymFor}, a read-only caller (e.g. {@link AuditQueryService#byIncidentScope}) must
-   * never have the side effect of creating a re-identification row for a person who never triggered
-   * a write themselves. Empty if the person has no audit activity of their own yet.
+   * Looks up {@code userId}'s pseudonym without minting one - unlike {@link #pseudonymFor}, a
+   * read-only caller (e.g. {@link AuditQueryService#byIncidentScope}) must never have the side
+   * effect of creating a re-identification row for a person who never triggered a write themselves.
+   * Empty if the person has no audit activity of their own yet.
    */
   public Optional<UUID> findExistingPseudonym(UUID userId) {
     return repository.findByUserId(userId).map(AuditActorPseudonym::getPseudonymId);
