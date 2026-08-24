@@ -61,6 +61,39 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   Page<Document> findByLibraryId(UUID libraryId, Pageable pageable);
 
   /**
+   * Backs a folder-scoped {@code GET .../documents} (#821, no {@code q}): a page of exactly the
+   * documents sitting directly in {@code folderId}, mirroring {@link #findByLibraryId(UUID,
+   * Pageable)}'s existing root/whole-library paging.
+   */
+  Page<Document> findByLibraryIdAndFolderId(UUID libraryId, UUID folderId, Pageable pageable);
+
+  /**
+   * The library root's counterpart to {@link #findByLibraryIdAndFolderId} (#821) - backs {@code GET
+   * .../documents} with no {@code folderId} and no {@code q}, ADR-0020's convention that a {@code
+   * null folder_id} means the library's root.
+   */
+  Page<Document> findByLibraryIdAndFolderIdIsNull(UUID libraryId, Pageable pageable);
+
+  /**
+   * The direct-child document counts of a set of folders, one grouped query rather than one {@link
+   * #countByFolderId} call per subfolder (#821) - backs the {@code documentCount} shown alongside
+   * each subfolder in a folder-scoped {@code GET .../documents} response, avoiding the N+1 an
+   * otherwise identical per-row query would cost for a folder with many subfolders. A folder with
+   * no documents directly inside it simply has no row here - the caller defaults those to zero, the
+   * same convention {@link #countByLibraryIdIn} already uses for libraries.
+   */
+  @Query(
+      "select d.folderId as folderId, count(d) as documentCount from Document d"
+          + " where d.folderId in :folderIds group by d.folderId")
+  List<FolderDocumentCount> countByFolderIdIn(@Param("folderIds") Collection<UUID> folderIds);
+
+  interface FolderDocumentCount {
+    UUID getFolderId();
+
+    long getDocumentCount();
+  }
+
+  /**
    * Backs {@code KnowledgeLibraryService#deleteLibrary}'s connector-library path (#479, ADR-0018
    * Entscheidung 5): deleting a lauf-basierte (connector) library takes its whole document bestand
    * with it, unlike {@code UPLOAD}, which keeps the pre-existing "blocked while non-empty" guard.

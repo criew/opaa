@@ -17,6 +17,23 @@ public interface LibraryFolderRepository extends JpaRepository<LibraryFolder, UU
   List<LibraryFolder> findByLibraryIdAndParentFolderId(UUID libraryId, UUID parentFolderId);
 
   /**
+   * The root-level counterpart to {@link #findByLibraryIdAndParentFolderId} (#821) - the direct
+   * subfolders of a library's root, used by {@code KnowledgeLibraryService#listDocuments} to build
+   * the {@code folders} array of a root-scoped listing.
+   */
+  List<LibraryFolder> findByLibraryIdAndParentFolderIdIsNull(UUID libraryId);
+
+  /**
+   * Every folder in a library, in one query (#821) - backs {@code
+   * LibraryFolderPaths#loadFoldersById}, which builds an in-memory {@code id -> folder} map so a
+   * page of documents can each derive its {@code folderPath} (and a folder-scoped listing its
+   * breadcrumb) without a per-row/per-ancestor query. A library's folder count is bounded by {@link
+   * LibraryFolderService#MAX_DEPTH}-deep, human-curated navigation trees, not an unbounded dataset,
+   * so loading it whole is cheaper than chasing each document's own parent chain individually.
+   */
+  List<LibraryFolder> findByLibraryId(UUID libraryId);
+
+  /**
    * Backs the root-level half of the create/rename conflict check (#820 acceptance criteria:
    * "Doppelte Namen im selben Parent liefern 409") - exact, case-sensitive match, mirroring the
    * case-sensitive {@code uk_library_folders_root_name} partial unique index (migration 062) this

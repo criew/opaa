@@ -169,6 +169,7 @@ public class LibraryController {
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
       @RequestParam(required = false) String q,
+      @RequestParam(required = false) UUID folderId,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     // #517 code review, finding 2: the spec promises 1..100 - silently clamping an out-of-range
@@ -193,6 +194,7 @@ public class LibraryController {
         currentUser.getId(),
         currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN,
         q,
+        folderId,
         pageable);
   }
 
@@ -200,12 +202,14 @@ public class LibraryController {
   public ResponseEntity<LibraryDocumentResponse> uploadDocument(
       @PathVariable UUID libraryId,
       @RequestParam("file") MultipartFile file,
+      @RequestParam(required = false) UUID folderId,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     LibraryDocumentResponse response =
         documentService.uploadDocument(
             libraryId,
             file,
+            folderId,
             currentUser.getId(),
             currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);

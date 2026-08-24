@@ -118,6 +118,7 @@ public class LibraryDocumentService {
   private final UrlFileDownloader urlFileDownloader;
   private final TargetAddressValidator targetAddressValidator;
   private final RemoteContentProperties remoteContentProperties;
+  private final LibraryFolderRepository folderRepository;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -132,7 +133,8 @@ public class LibraryDocumentService {
       FilesystemPathAllowlist filesystemAllowlist,
       UrlFileDownloader urlFileDownloader,
       TargetAddressValidator targetAddressValidator,
-      RemoteContentProperties remoteContentProperties) {
+      RemoteContentProperties remoteContentProperties,
+      LibraryFolderRepository folderRepository) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.accessService = accessService;
@@ -146,13 +148,21 @@ public class LibraryDocumentService {
     this.urlFileDownloader = urlFileDownloader;
     this.targetAddressValidator = targetAddressValidator;
     this.remoteContentProperties = remoteContentProperties;
+    this.folderRepository = folderRepository;
   }
 
   public LibraryDocumentResponse uploadDocument(
-      UUID libraryId, MultipartFile file, UUID currentUserId, boolean systemAdmin) {
+      UUID libraryId, MultipartFile file, UUID folderId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
     requireEditable(library, currentUserId, systemAdmin);
     requireUploadLibrary(library);
+
+    // #821: validated before any byte is written to disk, mirroring every other "reject this
+    // request outright" check below - a folderId that does not exist (or belongs to another
+    // library, treated identically per resolveFolder) must leave the bestand exactly as it was.
+    if (folderId != null) {
+      resolveFolder(libraryId, folderId);
+    }
 
     if (file == null || file.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datei ist erforderlich");
@@ -237,6 +247,7 @@ public class LibraryDocumentService {
       document.setLibraryId(libraryId);
       document.setOrganizationId(library.getOrganizationId());
       document.setUploadedByUserId(currentUserId);
+      document.setFolderId(folderId);
       // Set on this first (and only synchronous) save: this is where a concurrent duplicate
       // upload race against uk_documents_library_checksum (migration 020) is meant to be settled -
       // before any embedding work starts, not after (#420 second code review round, finding 1,
@@ -276,7 +287,8 @@ public class LibraryDocumentService {
             document, storedFile, "Die Verarbeitung konnte nicht gestartet werden");
       }
 
-      return LibraryDocumentResponses.from(document);
+      return LibraryDocumentResponses.from(
+          document, LibraryFolderPaths.pathOf(folderRepository, document.getFolderId()));
     } catch (DataIntegrityViolationException e) {
       // Race-safety net for the findByLibraryIdAndChecksum check above (#420 code review, nit 5):
       // that check and the eventual INSERT are two separate steps with no database guarantee
@@ -327,7 +339,8 @@ public class LibraryDocumentService {
     document.setStatus(DocumentStatus.FAILED);
     document.setErrorMessage(errorMessage);
     deleteQuietly(storedFile);
-    return LibraryDocumentResponses.from(document);
+    return LibraryDocumentResponses.from(
+        document, LibraryFolderPaths.pathOf(folderRepository, document.getFolderId()));
   }
 
   /**
@@ -752,6 +765,22 @@ public class LibraryDocumentService {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
           "Diese Bibliothek ist eine Konnektorbibliothek und akzeptiert keine manuellen Uploads");
+    }
+  }
+
+  /**
+   * Validates {@code folderId} references an existing folder in {@code libraryId} (#821) - mirrors
+   * {@code LibraryFolderService#resolveParent}'s identical cross-library treatment: a folder from
+   * another library answers the same 404 as one that does not exist at all.
+   */
+  private void resolveFolder(UUID libraryId, UUID folderId) {
+    LibraryFolder folder =
+        folderRepository
+            .findById(folderId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden"));
+    if (!folder.getLibraryId().equals(libraryId)) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden");
     }
   }
 

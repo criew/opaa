@@ -2,6 +2,8 @@ package io.opaa.library;
 
 import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
+import io.opaa.api.dto.LibraryFolderBreadcrumbItem;
+import io.opaa.api.dto.LibraryFolderListItem;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
@@ -31,8 +33,10 @@ import io.opaa.indexing.RssFeedStateRepository;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -112,6 +116,7 @@ public class KnowledgeLibraryService {
   private final RssFeedStateRepository rssFeedStateRepository;
   private final Clock schedulingClock;
   private final LibraryStorageQuotaService storageQuotaService;
+  private final LibraryFolderRepository folderRepository;
 
   public KnowledgeLibraryService(
       KnowledgeLibraryRepository libraryRepository,
@@ -130,7 +135,8 @@ public class KnowledgeLibraryService {
       IndexingJobService indexingJobService,
       RssFeedStateRepository rssFeedStateRepository,
       Clock schedulingClock,
-      LibraryStorageQuotaService storageQuotaService) {
+      LibraryStorageQuotaService storageQuotaService,
+      LibraryFolderRepository folderRepository) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
@@ -148,6 +154,7 @@ public class KnowledgeLibraryService {
     this.rssFeedStateRepository = rssFeedStateRepository;
     this.schedulingClock = schedulingClock;
     this.storageQuotaService = storageQuotaService;
+    this.folderRepository = folderRepository;
   }
 
   @Transactional
@@ -737,23 +744,143 @@ public class KnowledgeLibraryService {
    * Lists a library's documents, paged and optionally filtered by a case-insensitive substring of
    * the file name (#517) - available for every {@code sourceType}, not just {@code UPLOAD}, so a
    * connector library's indexed bestand is visible the same way an upload library's is.
+   *
+   * <p><b>Folder-aware since #821 (Epic #520 Phase 2, ADR-0020).</b> Without {@code q}, the
+   * response is scoped to exactly one folder level, chosen by {@code folderId} ({@code null} means
+   * the library's root, the same convention {@code documents.folder_id}/{@code
+   * library_folders.parent_folder_id} already use): {@link #foldersOf} lists that folder's direct
+   * subfolders, {@link #breadcrumbOf} its ancestor chain. With {@code q}, the search stays
+   * bibliotheksweit regardless of {@code folderId} (ADR-0020, Entscheidung 4 - no folder-scoped
+   * retrieval yet) - {@code folders}/{@code breadcrumb} are both empty, and each hit's own {@code
+   * folderId}/{@code folderPath} ({@link LibraryDocumentResponses#from(Document, String)}) show
+   * where it lives instead.
+   *
+   * <p><b>Backward compatibility (#821 acceptance criteria).</b> A caller that omits {@code
+   * folderId} - every client before this task - now lists the library's root rather than its whole
+   * bestand across every folder. This is accepted, not a regression to guard against: folders can
+   * only exist through the CRUD API #820 added, so no library had any folder before this task
+   * shipped, and the root-only response is therefore identical to the old whole-library one until a
+   * folder is actually created and something is uploaded into it - seeing that content requires
+   * navigating into the folder, which is exactly what {@code folderId} is for (frontend follows in
+   * #822).
    */
   public LibraryDocumentPageResponse listDocuments(
-      UUID libraryId, UUID currentUserId, boolean systemAdmin, String q, Pageable pageable) {
+      UUID libraryId,
+      UUID currentUserId,
+      boolean systemAdmin,
+      String q,
+      UUID folderId,
+      Pageable pageable) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
 
+    boolean searching = q != null && !q.isBlank();
+    if (searching) {
+      Page<Document> page =
+          documentRepository.findByLibraryIdAndFileNameContainingIgnoreCase(libraryId, q, pageable);
+      Map<UUID, LibraryFolder> foldersById =
+          LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
+      return new LibraryDocumentPageResponse(
+              page.getContent().stream()
+                  .map(d -> toLibraryDocumentResponse(d, foldersById))
+                  .toList(),
+              pageable.getPageNumber(),
+              pageable.getPageSize(),
+              page.getTotalElements(),
+              List.of(),
+              List.of())
+          .folderId(null);
+    }
+
+    if (folderId != null) {
+      requireFolderInLibrary(libraryId, folderId);
+    }
     Page<Document> page =
-        (q == null || q.isBlank())
-            ? documentRepository.findByLibraryId(libraryId, pageable)
-            : documentRepository.findByLibraryIdAndFileNameContainingIgnoreCase(
-                libraryId, q, pageable);
+        folderId == null
+            ? documentRepository.findByLibraryIdAndFolderIdIsNull(libraryId, pageable)
+            : documentRepository.findByLibraryIdAndFolderId(libraryId, folderId, pageable);
+    Map<UUID, LibraryFolder> foldersById =
+        LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
 
     return new LibraryDocumentPageResponse(
-        page.getContent().stream().map(this::toLibraryDocumentResponse).toList(),
-        pageable.getPageNumber(),
-        pageable.getPageSize(),
-        page.getTotalElements());
+            page.getContent().stream().map(d -> toLibraryDocumentResponse(d, foldersById)).toList(),
+            pageable.getPageNumber(),
+            pageable.getPageSize(),
+            page.getTotalElements(),
+            foldersOf(libraryId, folderId),
+            breadcrumbOf(folderId, foldersById))
+        .folderId(folderId);
+  }
+
+  /**
+   * The direct subfolders of {@code folderId} ({@code null} meaning the library's root), each with
+   * its own direct (non-recursive) document count - one grouped query for every subfolder's count
+   * (#821, {@link DocumentRepository#countByFolderIdIn}), not one {@link
+   * DocumentRepository#countByFolderId} call per subfolder.
+   */
+  private List<LibraryFolderListItem> foldersOf(UUID libraryId, UUID folderId) {
+    List<LibraryFolder> subfolders =
+        folderId == null
+            ? folderRepository.findByLibraryIdAndParentFolderIdIsNull(libraryId)
+            : folderRepository.findByLibraryIdAndParentFolderId(libraryId, folderId);
+    if (subfolders.isEmpty()) {
+      return List.of();
+    }
+    List<UUID> subfolderIds = subfolders.stream().map(LibraryFolder::getId).toList();
+    Map<UUID, Long> documentCounts =
+        documentRepository.countByFolderIdIn(subfolderIds).stream()
+            .collect(
+                Collectors.toMap(
+                    DocumentRepository.FolderDocumentCount::getFolderId,
+                    DocumentRepository.FolderDocumentCount::getDocumentCount));
+    return subfolders.stream()
+        .map(
+            folder ->
+                new LibraryFolderListItem(
+                    folder.getId(),
+                    folder.getName(),
+                    documentCounts.getOrDefault(folder.getId(), 0L)))
+        .toList();
+  }
+
+  /**
+   * The ancestor chain of {@code folderId}, root-first, ending with {@code folderId} itself - empty
+   * for the library's root (#821). Walks {@code foldersById}, an already-loaded map of the whole
+   * library's folders, so this costs no further queries beyond the one {@link
+   * LibraryFolderPaths#loadFoldersById} already ran for the page's {@code folderPath} values.
+   */
+  private List<LibraryFolderBreadcrumbItem> breadcrumbOf(
+      UUID folderId, Map<UUID, LibraryFolder> foldersById) {
+    if (folderId == null) {
+      return List.of();
+    }
+    Deque<LibraryFolderBreadcrumbItem> chain = new ArrayDeque<>();
+    UUID current = folderId;
+    while (current != null) {
+      LibraryFolder folder = foldersById.get(current);
+      if (folder == null) {
+        break;
+      }
+      chain.addFirst(new LibraryFolderBreadcrumbItem(folder.getId(), folder.getName()));
+      current = folder.getParentFolderId();
+    }
+    return new ArrayList<>(chain);
+  }
+
+  /**
+   * Validates {@code folderId} references an existing folder in {@code libraryId} - mirrors {@code
+   * LibraryFolderService#resolveParent}'s identical cross-library treatment: a folder from another
+   * library answers the same 404 as one that does not exist at all.
+   */
+  private void requireFolderInLibrary(UUID libraryId, UUID folderId) {
+    LibraryFolder folder =
+        folderRepository
+            .findById(folderId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden"));
+    if (!folder.getLibraryId().equals(libraryId)) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden");
+    }
   }
 
   private String validateName(String name) {
@@ -1167,7 +1294,9 @@ public class KnowledgeLibraryService {
     return response;
   }
 
-  private LibraryDocumentResponse toLibraryDocumentResponse(Document document) {
-    return LibraryDocumentResponses.from(document);
+  private LibraryDocumentResponse toLibraryDocumentResponse(
+      Document document, Map<UUID, LibraryFolder> foldersById) {
+    return LibraryDocumentResponses.from(
+        document, LibraryFolderPaths.pathOf(document.getFolderId(), foldersById));
   }
 }

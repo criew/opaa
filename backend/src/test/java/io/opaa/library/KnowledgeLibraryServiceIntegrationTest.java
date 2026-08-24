@@ -1332,7 +1332,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 libraryService.listDocuments(
-                    library.getId(), stranger, false, null, PageRequest.of(0, 10)))
+                    library.getId(), stranger, false, null, null, PageRequest.of(0, 10)))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -1366,7 +1366,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         .isEqualTo(library.getId());
     assertThat(
             libraryService
-                .listDocuments(library.getId(), viewer, false, null, PageRequest.of(0, 10))
+                .listDocuments(library.getId(), viewer, false, null, null, PageRequest.of(0, 10))
                 .getPage())
         .isZero();
     assertThatThrownBy(

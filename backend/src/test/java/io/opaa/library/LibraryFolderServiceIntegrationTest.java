@@ -388,7 +388,7 @@ class LibraryFolderServiceIntegrationTest {
   private Document uploadDocumentIntoFolder(UUID folderId, String fileName, String content) {
     LibraryDocumentResponse uploaded =
         documentService.uploadDocument(
-            libraryId, textFile(fileName, content), editor.getId(), false);
+            libraryId, textFile(fileName, content), null, editor.getId(), false);
     Document document = awaitDocumentStatus(uploaded.getId(), DocumentStatus.INDEXED);
     document.setFolderId(folderId);
     return documentRepository.save(document);
