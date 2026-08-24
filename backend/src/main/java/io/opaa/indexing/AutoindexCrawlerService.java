@@ -1,33 +1,24 @@
 package io.opaa.indexing;
 
+import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetSocketAddress;
-import java.net.ProxySelector;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -95,8 +86,9 @@ public class AutoindexCrawlerService {
       boolean insecureSsl)
       throws IOException, InterruptedException {
 
-    HttpClient httpClient = buildHttpClient(proxyHost, proxyPort, insecureSsl);
-    String authHeader = buildAuthHeader(username, password);
+    HttpClient httpClient =
+        SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, insecureSsl);
+    String authHeader = SourceHttpClientFactory.buildAuthHeader(username, password);
 
     List<CrawledFileEntry> results = new ArrayList<>();
     TruncationTracker truncation = new TruncationTracker();
@@ -224,8 +216,13 @@ public class AutoindexCrawlerService {
     }
 
     HttpResponse<InputStream> response =
-        sendFollowingRedirects(
-            httpClient, url, Duration.ofSeconds(60), headers, targetAddressValidator);
+        RedirectFollowingFetcher.sendFollowingRedirects(
+            httpClient,
+            url,
+            Duration.ofSeconds(60),
+            headers,
+            targetAddressValidator,
+            RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN);
 
     try (InputStream body = response.body()) {
       if (response.statusCode() == 401) {
@@ -511,12 +508,12 @@ public class AutoindexCrawlerService {
   /**
    * Whether {@code absoluteHref} (an already-absolute {@code http://}/{@code https://} link found
    * on the page fetched from {@code baseUrl}) targets the same origin as {@code baseUrl} - mirrors
-   * {@link #sameOrigin}'s own reasoning for redirect targets, applied here to links the listing
-   * page itself contains rather than a {@code 3xx} response.
+   * {@link RedirectFollowingFetcher#sameOrigin}'s own reasoning for redirect targets, applied here
+   * to links the listing page itself contains rather than a {@code 3xx} response.
    */
   private static boolean isSameOriginAsBase(String baseUrl, String absoluteHref) {
     try {
-      return sameOrigin(URI.create(baseUrl), URI.create(absoluteHref));
+      return RedirectFollowingFetcher.sameOrigin(URI.create(baseUrl), URI.create(absoluteHref));
     } catch (IllegalArgumentException e) {
       return false;
     }
@@ -585,282 +582,5 @@ public class AutoindexCrawlerService {
       baseUrl = baseUrl + "/";
     }
     return baseUrl + relative;
-  }
-
-  /**
-   * Maximum number of redirects {@link #sendFollowingRedirects} follows manually - generous enough
-   * for an ordinary same-origin redirect chain (a trailing-slash normalization, a login-portal
-   * bounce) while still bounding how many requests a misbehaving server can force per crawl step. A
-   * redirect that changes origin still gets a hop (with {@code Authorization} dropped, see {@link
-   * #sendFollowingRedirects}) - except a protocol downgrade (https to http), which is refused
-   * outright.
-   */
-  static final int MAX_REDIRECTS = 5;
-
-  /**
-   * Builds the {@link HttpClient} shared by every indexing/connection-test caller of this class.
-   * {@code Redirect.NEVER}: the JDK's built-in redirect handling resends every request header -
-   * {@code Authorization} included - to whatever host a {@code 3xx} response names, regardless of
-   * the source configuration's own credentials ever having been meant for that host. Callers that
-   * need to follow a redirect at all use {@link #sendFollowingRedirects}, which re-validates the
-   * target host/scheme on every hop and drops {@code Authorization} the moment it stops matching.
-   */
-  public static HttpClient buildHttpClient(String proxyHost, int proxyPort, boolean insecureSsl) {
-    HttpClient.Builder builder =
-        HttpClient.newBuilder()
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .connectTimeout(Duration.ofSeconds(30));
-
-    if (proxyHost != null && !proxyHost.isBlank()) {
-      builder.proxy(ProxySelector.of(new InetSocketAddress(proxyHost, proxyPort)));
-    }
-
-    if (insecureSsl) {
-      try {
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(
-            null,
-            new TrustManager[] {
-              new X509TrustManager() {
-                public X509Certificate[] getAcceptedIssuers() {
-                  return new X509Certificate[0];
-                }
-
-                public void checkClientTrusted(X509Certificate[] c, String a) {}
-
-                public void checkServerTrusted(X509Certificate[] c, String a) {}
-              }
-            },
-            new SecureRandom());
-        builder.sslContext(sslContext);
-      } catch (NoSuchAlgorithmException | KeyManagementException e) {
-        log.warn("Failed to create insecure SSL context: {}", e.getMessage());
-      }
-    }
-
-    return builder.build();
-  }
-
-  /**
-   * Sends a GET request to {@code url} and manually follows up to {@link #MAX_REDIRECTS} redirects,
-   * the way {@code httpClient} - built with {@code Redirect.NEVER} by {@link #buildHttpClient} -
-   * never does on its own. {@code headers} (most importantly {@code Authorization}, carrying a
-   * source configuration's own credentials) is sent again on the next hop only when that hop is
-   * still the same origin ({@link #sameOrigin}) as the URL it was set for; the moment a redirect
-   * points elsewhere, the header is dropped for the rest of the chain, mirroring what a browser
-   * does on a cross-origin redirect.
-   *
-   * <p>A protocol downgrade (https to http) is never followed at all, even anonymized - silently
-   * downgrading the transport a source configuration was set up to use is worse than simply failing
-   * the request.
-   *
-   * <p>A redirect chain longer than {@link #MAX_REDIRECTS}, or a redirect response without a {@code
-   * Location} header, ends the loop and returns that response as-is.
-   *
-   * <p>{@code targetAddressValidator} is validated against {@code currentUri} at the top of every
-   * iteration - the initial request and every redirect hop alike - before a single further byte is
-   * requested, so an SSRF target-address check applies identically whether the blocked address was
-   * the configured start URL or only reached via a redirect.
-   */
-  public static HttpResponse<InputStream> sendFollowingRedirects(
-      HttpClient httpClient,
-      String url,
-      Duration timeout,
-      Map<String, String> headers,
-      TargetAddressValidator targetAddressValidator)
-      throws IOException, InterruptedException {
-    URI currentUri = URI.create(url);
-    Map<String, String> currentHeaders = new LinkedHashMap<>(headers);
-
-    for (int hop = 0; ; hop++) {
-      targetAddressValidator.validate(currentUri);
-      HttpRequest.Builder reqBuilder =
-          HttpRequest.newBuilder().uri(currentUri).timeout(timeout).GET();
-      currentHeaders.forEach(reqBuilder::header);
-
-      HttpResponse<InputStream> response =
-          httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
-
-      if (!isRedirectStatus(response.statusCode()) || hop >= MAX_REDIRECTS) {
-        return response;
-      }
-      Optional<String> location = response.headers().firstValue("Location");
-      if (location.isEmpty()) {
-        return response;
-      }
-
-      closeQuietly(response.body());
-      URI redirectUri = currentUri.resolve(location.get());
-      if (isSchemeDowngrade(currentUri, redirectUri)) {
-        throw new IOException(
-            "refusing to follow a redirect from https to http (protocol downgrade): "
-                + redirectUri);
-      }
-      // A same-host http->https upgrade redirect is not a foreign origin - see
-      // isRedirectOriginTrusted's Javadoc.
-      if (!isRedirectOriginTrusted(currentUri, redirectUri)) {
-        currentHeaders.remove("Authorization");
-      }
-      currentUri = redirectUri;
-    }
-  }
-
-  /**
-   * Whether {@code statusCode} is one of the HTTP redirect statuses this class follows manually.
-   */
-  static boolean isRedirectStatus(int statusCode) {
-    return statusCode == 301
-        || statusCode == 302
-        || statusCode == 303
-        || statusCode == 307
-        || statusCode == 308;
-  }
-
-  /**
-   * Whether {@code a} and {@code b} are the same origin - scheme, host and port, with an absent
-   * port ({@code -1}) normalized to the scheme's default (80 for {@code http}, 443 for {@code
-   * https}) before comparing: {@code https://intranet} and {@code https://intranet:8443} share a
-   * host and scheme but are different services. Used consistently across {@link
-   * #sendFollowingRedirects} and the equivalent foreign-host checks in {@code UrlFileDownloader}
-   * and {@code RssFeedIndexingExecutor}.
-   *
-   * <p>Both hosts {@code null} must not compare equal: {@link URI#getHost()} returns {@code null}
-   * for a syntactically valid but non-standard authority (e.g. a hostname containing an
-   * underscore), so an implementation that only compared {@code Objects.equals(a.getHost(),
-   * b.getHost())} would treat two unrelated underscore-hostname URLs as the same origin. {@code
-   * io.opaa.library.SourceOriginMatcher} delegates here for the identical reason.
-   */
-  public static boolean sameOrigin(URI a, URI b) {
-    if (a.getHost() == null
-        || b.getHost() == null
-        || a.getScheme() == null
-        || b.getScheme() == null) {
-      return false;
-    }
-    return a.getScheme().equalsIgnoreCase(b.getScheme())
-        && a.getHost().equalsIgnoreCase(b.getHost())
-        && normalizedPort(a) == normalizedPort(b);
-  }
-
-  /**
-   * Whether following the redirect from {@code from} to {@code to} would downgrade the transport
-   * from {@code https} to plain {@code http} - refused unconditionally by every manual redirect
-   * loop in this package.
-   */
-  static boolean isSchemeDowngrade(URI from, URI to) {
-    return "https".equalsIgnoreCase(from.getScheme()) && "http".equalsIgnoreCase(to.getScheme());
-  }
-
-  /**
-   * Whether a redirect from {@code from} to {@code to} may keep being treated as its own origin -
-   * {@link #sameOrigin}'s exact rule, plus one exception: a same-host {@code http} to {@code https}
-   * upgrade at matching ports. {@code isSchemeDowngrade} already refuses the opposite direction
-   * unconditionally and independently of this method.
-   *
-   * <p>Kept as its own method rather than loosening {@link #sameOrigin} itself, since {@code
-   * sameOrigin} is also used by {@code isSameOriginAsBase}, {@code authHeaderForTarget}/{@code
-   * httpClientForTarget} ({@code RssFeedIndexingExecutor}) and {@code SourceOriginMatcher} for a
-   * different question each - whether a link a page or feed itself carries stays within a source
-   * configuration's own vetted origin, not whether a same-request redirect hop should still carry
-   * that request's own credentials.
-   */
-  static boolean isRedirectOriginTrusted(URI from, URI to) {
-    return sameOrigin(from, to) || isSameHostSchemeUpgrade(from, to);
-  }
-
-  /**
-   * Whether {@code from}/{@code to} is a same-host http-to-https upgrade at the standard ports -
-   * uses {@code normalizedPort} (already used by {@link #sameOrigin}) so that {@code
-   * http://host:80/a} -> {@code https://host/a} and {@code http://host/a} -> {@code
-   * https://host:443/a} both count, not only the case where neither side names a port at all.
-   */
-  private static boolean isSameHostSchemeUpgrade(URI from, URI to) {
-    if (!"http".equalsIgnoreCase(from.getScheme()) || !"https".equalsIgnoreCase(to.getScheme())) {
-      return false;
-    }
-    if (from.getHost() == null || to.getHost() == null) {
-      return false;
-    }
-    if (!from.getHost().equalsIgnoreCase(to.getHost())) {
-      return false;
-    }
-    boolean bothDefaultPorts = normalizedPort(from) == 80 && normalizedPort(to) == 443;
-    boolean explicitPortsMatch = from.getPort() != -1 && from.getPort() == to.getPort();
-    return bothDefaultPorts || explicitPortsMatch;
-  }
-
-  /**
-   * Renders {@code uri} as {@code scheme://host[:port]} only - never path, query or fragment, which
-   * on a redirect's own {@code Location} target can carry a token or other sensitive data a run-log
-   * message must never surface. Used to name a rejected redirect's target in the German,
-   * user-facing message every caller shows in the UI.
-   *
-   * <p>Not a general-purpose redaction: a caller's own {@code log.warn}/{@code log.debug} calls
-   * still log the unsanitized target via the underlying exception's {@code getMessage()}.
-   */
-  static String sanitizedOrigin(URI uri) {
-    String scheme = uri.getScheme() == null ? "?" : uri.getScheme();
-    String host = uri.getHost() == null ? "?" : uri.getHost();
-    String portSuffix = uri.getPort() == -1 ? "" : ":" + uri.getPort();
-    return scheme + "://" + host + portSuffix;
-  }
-
-  /**
-   * Why a redirect was rejected outright (as opposed to merely dropping {@code Authorization} - see
-   * {@link #isRedirectOriginTrusted}) - shared by {@link
-   * UrlFileDownloader.ForeignHostRedirectException} and {@code RssFeedIndexingExecutor}'s own
-   * rejection exception, so both build the identically worded, sanitized run-log message {@link
-   * #redirectRejectionMessage} produces.
-   */
-  public enum RedirectRejectionReason {
-    FOREIGN_HOST,
-    PROTOCOL_DOWNGRADE
-  }
-
-  /**
-   * Builds the German, user-facing run-log message for a rejected redirect - {@code target}'s path,
-   * query and fragment are never included (see {@link #sanitizedOrigin}), only for {@link
-   * RedirectRejectionReason#FOREIGN_HOST}, where {@code target} is even shown at all.
-   */
-  public static String redirectRejectionMessage(RedirectRejectionReason reason, URI target) {
-    return switch (reason) {
-      case FOREIGN_HOST ->
-          "Weiterleitung auf einen fremden Host abgelehnt (Ziel: " + sanitizedOrigin(target) + ")";
-      case PROTOCOL_DOWNGRADE -> "Weiterleitung von https auf http abgelehnt (Protokoll-Downgrade)";
-    };
-  }
-
-  private static int normalizedPort(URI uri) {
-    int port = uri.getPort();
-    if (port != -1) {
-      return port;
-    }
-    if ("https".equalsIgnoreCase(uri.getScheme())) {
-      return 443;
-    }
-    if ("http".equalsIgnoreCase(uri.getScheme())) {
-      return 80;
-    }
-    return -1;
-  }
-
-  private static void closeQuietly(InputStream in) {
-    if (in == null) {
-      return;
-    }
-    try {
-      in.close();
-    } catch (IOException e) {
-      log.debug("Failed to close response body while following a redirect", e);
-    }
-  }
-
-  public static String buildAuthHeader(String username, String password) {
-    if (username != null && password != null) {
-      String credentials = username + ":" + password;
-      return "Basic "
-          + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-    }
-    return null;
   }
 }

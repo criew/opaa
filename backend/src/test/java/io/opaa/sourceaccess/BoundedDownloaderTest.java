@@ -1,4 +1,4 @@
-package io.opaa.indexing;
+package io.opaa.sourceaccess;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,12 +29,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-class UrlFileDownloaderTest {
+class BoundedDownloaderTest {
 
   // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest) -
   // disabled here since every server this class talks to is deliberately loopback.
-  private final UrlFileDownloader downloader =
-      new UrlFileDownloader(TargetAddressValidator.disabled());
+  private final BoundedDownloader downloader =
+      new BoundedDownloader(TargetAddressValidator.disabled());
 
   private HttpServer server;
   private String baseUrl;
@@ -46,10 +46,10 @@ class UrlFileDownloaderTest {
     server.start();
     baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
     // NORMAL, not the JDK's own default NEVER (#492 review, finding 4's test needs an
-    // actually-followed redirect to exercise the post-hoc isForeignHostRedirect check
-    // downloadBounded
-    // still carries as a safety net). Production itself now builds its client with Redirect.NEVER
-    // (#538, AutoindexCrawlerService.buildHttpClient) and has downloadBounded follow redirects
+    // actually-followed redirect to exercise the post-hoc foreign-host check
+    // RedirectFollowingFetcher's REJECT_OFF_ORIGIN policy still carries as a safety net).
+    // Production itself now builds its client with Redirect.NEVER (#538,
+    // SourceHttpClientFactory.buildHttpClient) and has downloadBounded follow redirects
     // manually instead - downloadBoundedThrowsWhenRedirectedToAForeignHost below exercises the
     // post-hoc path with this NORMAL client on purpose, since a NEVER client never reaches it.
     httpClient = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
@@ -63,9 +63,9 @@ class UrlFileDownloaderTest {
   @Test
   void preservesFileExtension() throws IOException, InterruptedException {
     // #538: download() now streams the response body itself (via
-    // AutoindexCrawlerService.sendFollowingRedirects, HttpResponse<InputStream>) instead of handing
-    // the client a HttpResponse.BodyHandlers.ofFile(...) target directly - the mock therefore
-    // returns an InputStream, not a pre-written Path.
+    // RedirectFollowingFetcher.sendFollowingRedirects, HttpResponse<InputStream>) instead of
+    // handing the client a HttpResponse.BodyHandlers.ofFile(...) target directly - the mock
+    // therefore returns an InputStream, not a pre-written Path.
     @SuppressWarnings("unchecked")
     HttpResponse<InputStream> response = mock(HttpResponse.class);
     HttpClient httpClient = mock(HttpClient.class);
@@ -107,7 +107,7 @@ class UrlFileDownloaderTest {
   @Test
   void downloadDoesNotLeakAuthorizationToAForeignHostRedirect()
       throws IOException, InterruptedException {
-    // #538 reproduction: the production client from AutoindexCrawlerService.buildHttpClient (not
+    // #538 reproduction: the production client from SourceHttpClientFactory.buildHttpClient (not
     // this test's own NORMAL client above, which mirrors the JDK's own leaking behaviour) must not
     // replay Authorization to a redirect target on a different host than baseUrl.
     HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
@@ -134,7 +134,7 @@ class UrlFileDownloaderTest {
 
       Path result =
           downloader.download(
-              AutoindexCrawlerService.buildHttpClient(null, -1, false),
+              SourceHttpClientFactory.buildHttpClient(null, -1, false),
               "Basic dGVzdDp0ZXN0",
               baseUrl + "/report.pdf",
               "report.pdf");
@@ -172,7 +172,7 @@ class UrlFileDownloaderTest {
 
     Path result =
         downloader.download(
-            AutoindexCrawlerService.buildHttpClient(null, -1, false),
+            SourceHttpClientFactory.buildHttpClient(null, -1, false),
             "Basic dGVzdDp0ZXN0",
             baseUrl + "/report.pdf",
             "report.pdf");
@@ -187,8 +187,8 @@ class UrlFileDownloaderTest {
   void downloadBoundedThrowsWhenRedirectedToAForeignHostWithTheProductionClient()
       throws IOException {
     // #538: exercises the proactive redirect loop downloadBounded now needs of its own, since the
-    // production client (AutoindexCrawlerService.buildHttpClient) no longer auto-follows and never
-    // reaches the pre-existing post-hoc isForeignHostRedirect check the test above exercises.
+    // production client (SourceHttpClientFactory.buildHttpClient) no longer auto-follows and never
+    // reaches the pre-existing post-hoc foreign-host check the test above exercises.
     HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
     foreignServer.start();
     String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
@@ -212,13 +212,13 @@ class UrlFileDownloaderTest {
       assertThatThrownBy(
               () ->
                   downloader.downloadBounded(
-                      AutoindexCrawlerService.buildHttpClient(null, -1, false),
+                      SourceHttpClientFactory.buildHttpClient(null, -1, false),
                       baseUrl + "/anlage.pdf",
                       "anlage.pdf",
                       10_000,
                       null,
                       null))
-          .isInstanceOf(UrlFileDownloader.ForeignHostRedirectException.class);
+          .isInstanceOf(RedirectFollowingFetcher.RedirectRejectedException.class);
     } finally {
       foreignServer.stop(0);
     }
@@ -244,9 +244,9 @@ class UrlFileDownloaderTest {
           exchange.close();
         });
 
-    UrlFileDownloader.DownloadedFile result =
+    BoundedDownloader.DownloadedFile result =
         downloader.downloadBounded(
-            AutoindexCrawlerService.buildHttpClient(null, -1, false),
+            SourceHttpClientFactory.buildHttpClient(null, -1, false),
             baseUrl + "/anlage.pdf",
             "anlage.pdf",
             10_000,
@@ -271,7 +271,7 @@ class UrlFileDownloaderTest {
           exchange.close();
         });
 
-    UrlFileDownloader.DownloadedFile result =
+    BoundedDownloader.DownloadedFile result =
         downloader.downloadBounded(
             httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, "OPAA-Indexer/test", null);
 
@@ -296,7 +296,7 @@ class UrlFileDownloaderTest {
           exchange.close();
         });
 
-    UrlFileDownloader.DownloadedFile result =
+    BoundedDownloader.DownloadedFile result =
         downloader.downloadBounded(
             httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, "OPAA-Indexer/test", null);
 
@@ -319,7 +319,7 @@ class UrlFileDownloaderTest {
           exchange.close();
         });
 
-    UrlFileDownloader.DownloadedFile result =
+    BoundedDownloader.DownloadedFile result =
         downloader.downloadBounded(
             httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, null, "Basic dGVzdDp0ZXN0");
 
@@ -342,7 +342,7 @@ class UrlFileDownloaderTest {
             () ->
                 downloader.downloadBounded(
                     httpClient, baseUrl + "/big.pdf", "big.pdf", 10, null, null))
-        .isInstanceOf(UrlFileDownloader.AttachmentTooLargeException.class);
+        .isInstanceOf(BoundedDownloader.AttachmentTooLargeException.class);
   }
 
   @Test
@@ -365,11 +365,11 @@ class UrlFileDownloaderTest {
   @Test
   void downloadBoundedThrowsWhenRedirectedToAForeignHost() throws IOException {
     // Same host (127.0.0.1), two different ports - not a second host string like 127.0.0.2 (#538
-    // follow-up review, finding 1): isForeignHostRedirect originally compared hosts only, so two
+    // follow-up review, finding 1): the foreign-host check originally compared hosts only, so two
     // servers on the same host at different ports would have looked identical to it and missed
-    // the redirect entirely. isForeignHostRedirect now delegates to
-    // AutoindexCrawlerService.sameOrigin, which normalizes and compares the port too - this test
-    // exercises exactly that gap instead of sidestepping it.
+    // the redirect entirely. It now delegates to RedirectFollowingFetcher.sameOrigin, which
+    // normalizes and compares the port too - this test exercises exactly that gap instead of
+    // sidestepping it.
     HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     foreignServer.start();
     String foreignBaseUrl = "http://127.0.0.1:" + foreignServer.getAddress().getPort();
@@ -394,7 +394,7 @@ class UrlFileDownloaderTest {
               () ->
                   downloader.downloadBounded(
                       httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, null, null))
-          .isInstanceOf(UrlFileDownloader.ForeignHostRedirectException.class);
+          .isInstanceOf(RedirectFollowingFetcher.RedirectRejectedException.class);
     } finally {
       foreignServer.stop(0);
     }
@@ -404,17 +404,17 @@ class UrlFileDownloaderTest {
   void downloadBoundedThrowsWhenRedirectedToAHostUriCannotParse() throws IOException {
     // #651: a redirect target with a host java.net.URI cannot parse (e.g. one containing an
     // underscore, per RFC an illegal reg-name character) makes URI#getHost() return null on that
-    // side - isForeignHostRedirect previously special-cased "either host null" as "not foreign" and
-    // let the header-stripping/rejection logic treat this exactly like a same-origin redirect,
-    // the opposite of AutoindexCrawlerService.sameOrigin's own null-host handling (#615 review,
+    // side - the foreign-host check previously special-cased "either host null" as "not foreign"
+    // and let the header-stripping/rejection logic treat this exactly like a same-origin redirect,
+    // the opposite of RedirectFollowingFetcher.sameOrigin's own null-host handling (#615 review,
     // finding 1: "both hosts null must not compare equal"). A redirect target OPAA cannot even
     // identify the host of must never be treated as trustworthy.
     //
     // Uses the production client (Redirect.NEVER, downloadBounded's own manual redirect loop,
     // mirroring downloadBoundedThrowsWhenRedirectedToAForeignHostWithTheProductionClient above) -
     // the underscore host is never actually resolvable, so a NORMAL client auto-following the
-    // redirect at the JDK level would fail with an UnknownHostException before ever reaching
-    // isForeignHostRedirect, unlike downloadBounded's own proactive check on the raw 3xx response.
+    // redirect at the JDK level would fail with an UnknownHostException before ever reaching the
+    // foreign-host check, unlike downloadBounded's own proactive check on the raw 3xx response.
     server.createContext(
         "/anlage.pdf",
         exchange -> {
@@ -426,13 +426,13 @@ class UrlFileDownloaderTest {
     assertThatThrownBy(
             () ->
                 downloader.downloadBounded(
-                    AutoindexCrawlerService.buildHttpClient(null, -1, false),
+                    SourceHttpClientFactory.buildHttpClient(null, -1, false),
                     baseUrl + "/anlage.pdf",
                     "anlage.pdf",
                     10_000,
                     null,
                     null))
-        .isInstanceOf(UrlFileDownloader.ForeignHostRedirectException.class);
+        .isInstanceOf(RedirectFollowingFetcher.RedirectRejectedException.class);
   }
 
   @Test
@@ -441,7 +441,7 @@ class UrlFileDownloaderTest {
     // #538 follow-up review, finding 1: sendFollowingRedirects originally compared host+scheme
     // only, so a redirect to a different port of the same host would have kept Authorization
     // attached - a service on a different port is a different origin, exactly what
-    // AutoindexCrawlerService.sameOrigin (scheme+host+normalized port) now catches.
+    // RedirectFollowingFetcher.sameOrigin (scheme+host+normalized port) now catches.
     HttpServer otherPortServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     otherPortServer.start();
     String otherPortBaseUrl = "http://127.0.0.1:" + otherPortServer.getAddress().getPort();
@@ -466,7 +466,7 @@ class UrlFileDownloaderTest {
 
       Path result =
           downloader.download(
-              AutoindexCrawlerService.buildHttpClient(null, -1, false),
+              SourceHttpClientFactory.buildHttpClient(null, -1, false),
               "Basic dGVzdDp0ZXN0",
               baseUrl + "/report.pdf",
               "report.pdf");
@@ -599,7 +599,7 @@ class UrlFileDownloaderTest {
             () ->
                 downloader.downloadBounded(
                     httpClient, "https://example.com/anlage.pdf", "anlage.pdf", 10_000, null, null))
-        .isInstanceOf(UrlFileDownloader.ForeignHostRedirectException.class)
+        .isInstanceOf(RedirectFollowingFetcher.RedirectRejectedException.class)
         .hasMessageContaining("protocol downgrade");
   }
 
@@ -608,7 +608,7 @@ class UrlFileDownloaderTest {
       throws IOException, InterruptedException {
     // #693: a same-host http->https upgrade at matching (here: both default) ports is not a
     // foreign origin - before the fix, this was rejected outright with
-    // ForeignHostRedirectException, exactly like a genuine cross-origin redirect, breaking every
+    // RedirectRejectedException, exactly like a genuine cross-origin redirect, breaking every
     // Basic-Auth-protected http:// source whose server upgrades every request to https (as every
     // well-behaved one does). Mocked at the HttpClient level (mirrors the protocol-downgrade test
     // above) since neither example.com nor a real TLS listener is reachable from this test.
@@ -636,7 +636,7 @@ class UrlFileDownloaderTest {
     when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
         .thenReturn(redirectResponse, finalResponse);
 
-    UrlFileDownloader.DownloadedFile result =
+    BoundedDownloader.DownloadedFile result =
         downloader.downloadBounded(
             httpClient,
             "http://example.com/anlage.pdf",
@@ -660,22 +660,21 @@ class UrlFileDownloaderTest {
       throws IOException, InterruptedException {
     // PR #699 review, finding 2 (#267 acceptance criterion: "Die Prüfung greift auch, wenn erst
     // eine Weiterleitung auf ein solches Ziel führt"). Deliberately exercises download() (backed
-    // by AutoindexCrawlerService.sendFollowingRedirects), not downloadBounded(): the latter's own
-    // foreign-host check (isForeignHostRedirect) already rejects any cross-origin redirect outright
-    // - the very case this test needs - before the per-hop validate() call underneath it is ever
-    // reached, which would make the test pass without actually exercising the SSRF check.
-    // sendFollowingRedirects has no such origin restriction (it only conditionally drops
-    // Authorization, see its own Javadoc), so its per-hop validate() call is the only thing
-    // rejecting this redirect.
+    // by RedirectFollowingFetcher.sendFollowingRedirects's DROP_AUTHORIZATION_OFF_ORIGIN policy),
+    // not downloadBounded(): the latter's own REJECT_OFF_ORIGIN policy already rejects any
+    // cross-origin redirect outright - the very case this test needs - before the per-hop
+    // validate() call underneath it is ever reached, which would make the test pass without
+    // actually exercising the SSRF check. DROP_AUTHORIZATION_OFF_ORIGIN has no such origin
+    // restriction (it only conditionally drops Authorization, see its own Javadoc), so its per-hop
+    // validate() call is the only thing rejecting this redirect.
     //
     // The start host (127.0.0.1, itself loopback) is allowlisted so this test isolates the
     // redirect-hop check - without allowlisting it, the very first validate() call would already
     // reject the start URL, and the test would pass for the wrong reason even if the hop-level
     // check were accidentally removed.
     TargetAddressValidator enabledValidator =
-        new TargetAddressValidator(
-            new IndexingProperties.TargetValidation(true, List.of("127.0.0.1")));
-    UrlFileDownloader validatingDownloader = new UrlFileDownloader(enabledValidator);
+        new TargetAddressValidator(true, List.of("127.0.0.1"));
+    BoundedDownloader validatingDownloader = new BoundedDownloader(enabledValidator);
     server.createContext(
         "/anlage.pdf",
         exchange -> {
@@ -688,7 +687,7 @@ class UrlFileDownloaderTest {
     assertThatThrownBy(
             () ->
                 validatingDownloader.download(
-                    AutoindexCrawlerService.buildHttpClient(null, -1, false),
+                    SourceHttpClientFactory.buildHttpClient(null, -1, false),
                     null,
                     baseUrl + "/anlage.pdf",
                     "anlage.pdf"))

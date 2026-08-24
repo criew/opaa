@@ -16,6 +16,8 @@ import com.sun.net.httpserver.HttpsServer;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
+import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -226,7 +228,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
             indexingJobService,
             documentRepository,
             feedStateRepository,
-            new UrlFileDownloader(targetAddressValidator),
+            new BoundedDownloader(targetAddressValidator),
             properties,
             indexingRunEventRepository,
             targetAddressValidator,

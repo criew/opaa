@@ -15,7 +15,7 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.RssFeedParser;
-import io.opaa.indexing.TargetAddressValidator;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -351,7 +351,7 @@ class SourceConnectionTestServiceTest {
     // #538 follow-up review, finding 4: SourceConnectionTestService had no redirect test at all -
     // buildHttpClient no longer auto-follows at the JDK level (Redirect.NEVER), so a legitimate
     // same-origin redirect (e.g. a trailing slash added by the server itself) must still be chased
-    // by AutoindexCrawlerService.sendFollowingRedirects.
+    // by RedirectFollowingFetcher.sendFollowingRedirects.
     String html =
         """
         <table>
@@ -461,7 +461,7 @@ class SourceConnectionTestServiceTest {
   void httpDirectoryRejectsAnOversizedResponseWithAGermanMessage() throws IOException {
     // PR #537 review, finding 2: an unbounded read would let a single request against an
     // endless/huge response crash the whole backend - bounded exactly like
-    // RssFeedIndexingExecutor#readBounded/UrlFileDownloader#readBounded.
+    // RssFeedIndexingExecutor#readBounded/BoundedDownloader#readBounded.
     SourceConnectionTestService tightService =
         new SourceConnectionTestService(
             new DocumentService(),

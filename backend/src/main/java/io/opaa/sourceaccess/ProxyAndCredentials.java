@@ -1,19 +1,22 @@
-package io.opaa.indexing;
+package io.opaa.sourceaccess;
 
 /**
  * Parses a source configuration's {@code sourceProxy} ({@code host:port}) and {@code
  * sourceCredentials} ({@code user:password}, Basic Auth) fields - the single implementation shared
- * by {@code UrlIndexingExecutor#execute}, {@code RssFeedIndexingExecutor#execute} and {@code
- * SourceConnectionTestService}, instead of three separate copies of the same parsing.
+ * by every caller that owns a source configuration ({@code io.opaa.indexing.UrlIndexingExecutor},
+ * {@code io.opaa.indexing.RssFeedIndexingExecutor}, {@code
+ * io.opaa.library.SourceConnectionTestService}), instead of three separate copies of the same
+ * parsing.
  */
 public record ProxyAndCredentials(
     String proxyHost, int proxyPort, String username, String password) {
 
   /**
-   * Message for {@link InvalidProxyConfigurationException} (package-visible so production callers
-   * and tests reference the same constant instead of duplicating the literal).
+   * Message for {@link InvalidProxyConfigurationException} (public so production callers and tests
+   * across packages reference the same constant instead of duplicating the literal).
    */
-  static final String INVALID_PROXY_MESSAGE = "sourceProxy muss dem Format host:port entsprechen";
+  public static final String INVALID_PROXY_MESSAGE =
+      "sourceProxy muss dem Format host:port entsprechen";
 
   public static ProxyAndCredentials parse(String proxy, String credentials) {
     String proxyHost = null;

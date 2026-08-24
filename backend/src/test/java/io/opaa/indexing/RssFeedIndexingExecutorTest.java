@@ -16,6 +16,9 @@ import com.sun.net.httpserver.HttpServer;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
+import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -104,7 +107,7 @@ class RssFeedIndexingExecutorTest {
         indexingJobService,
         documentRepository,
         feedStateRepository,
-        new UrlFileDownloader(targetAddressValidator),
+        new BoundedDownloader(targetAddressValidator),
         properties,
         indexingRunEventRepository,
         targetAddressValidator,
@@ -1434,7 +1437,7 @@ class RssFeedIndexingExecutorTest {
     // #492 review, finding 4: a same-host link a profile already vetted must not silently end up
     // downloading from, and being recorded as originating from, an address the profile never
     // approved - mirrors fetchDetailPage's own isForeignHostRedirect check.
-    // 127.0.0.2, not 127.0.0.1 - see UrlFileDownloaderTest's identical comment.
+    // 127.0.0.2, not 127.0.0.1 - see BoundedDownloaderTest's identical comment.
     HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
     foreignServer.start();
     String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
@@ -1626,7 +1629,7 @@ class RssFeedIndexingExecutorTest {
   void feedRequestUsesTheConfiguredProxyConnectionRefusedFailsTheJob() throws IOException {
     // The feed server is reachable directly, but every request must still be routed through the
     // configured (here: closed, unreachable) proxy instead - proving sourceProxy is actually
-    // applied to AutoindexCrawlerService.buildHttpClient, mirroring UrlIndexingExecutor.
+    // applied to SourceHttpClientFactory.buildHttpClient, mirroring UrlIndexingExecutor.
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     int closedPort;
     try (ServerSocket socket = new ServerSocket(0)) {
@@ -1647,7 +1650,7 @@ class RssFeedIndexingExecutorTest {
   void aFeedEntryOnAForeignHostNeverReceivesTheAuthorizationHeader() throws IOException {
     // Unlike every foreign-host-redirect test above, nothing here goes through a redirect at all -
     // the feed's own <link> names a foreign address directly (127.0.0.2, not 127.0.0.1 - see
-    // UrlFileDownloaderTest's identical comment), the way a malicious or careless feed operator
+    // BoundedDownloaderTest's identical comment), the way a malicious or careless feed operator
     // could write <link>https://angreifer.example/x</link>. Credentials configured for the feed's
     // own host (baseUrl) must never reach it - the entry itself is still processed normally, only
     // the header is withheld, so an aggregator feed without its own credentials keeps working.

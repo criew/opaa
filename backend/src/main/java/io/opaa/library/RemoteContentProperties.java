@@ -16,14 +16,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * synchronous probe.
  *
  * @param maxBytes maximum number of bytes streamed from the remote source per request, enforced
- *     while streaming (see {@code UrlFileDownloader#downloadStreaming}), not by buffering the whole
- *     response first. Default 20 MiB (20 971 520) - generous for a typical Dienstanweisung PDF
- *     while bounding how long a single click can hold a connection to an unbounded remote body
- *     open.
+ *     while streaming (see {@code io.opaa.sourceaccess.BoundedDownloader#downloadStreaming}), not
+ *     by buffering the whole response first. Default 20 MiB (20 971 520) - generous for a typical
+ *     Dienstanweisung PDF while bounding how long a single click can hold a connection to an
+ *     unbounded remote body open.
  * @param timeoutSeconds per-request timeout for each hop of the proxied fetch (including
- *     redirects). Default 20s - well under {@code UrlFileDownloader#downloadBounded}'s 120s
- *     background-indexing timeout, since a caller waiting on this endpoint is a human watching a
- *     spinner, not an unattended crawl.
+ *     redirects). Default 20s - well under {@code
+ *     io.opaa.sourceaccess.BoundedDownloader#downloadBounded}'s 120s background-indexing timeout,
+ *     since a caller waiting on this endpoint is a human watching a spinner, not an unattended
+ *     crawl.
  */
 @ConfigurationProperties(prefix = "opaa.documents.remote-content")
 public record RemoteContentProperties(long maxBytes, int timeoutSeconds) {

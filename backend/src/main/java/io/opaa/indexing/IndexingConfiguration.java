@@ -8,6 +8,8 @@ import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.UploadProperties;
 import io.opaa.observability.IndexingMetrics;
+import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
 import java.util.List;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -83,7 +85,8 @@ public class IndexingConfiguration {
    */
   @Bean
   TargetAddressValidator targetAddressValidator(IndexingProperties properties) {
-    return new TargetAddressValidator(properties.targetValidation());
+    return new TargetAddressValidator(
+        properties.targetValidation().enabled(), properties.targetValidation().allowlist());
   }
 
   // Declared as SourceIndexingExecutor, not the concrete executor type: all three beans below
@@ -116,14 +119,14 @@ public class IndexingConfiguration {
   }
 
   @Bean
-  UrlFileDownloader urlFileDownloader(TargetAddressValidator targetAddressValidator) {
-    return new UrlFileDownloader(targetAddressValidator);
+  BoundedDownloader boundedDownloader(TargetAddressValidator targetAddressValidator) {
+    return new BoundedDownloader(targetAddressValidator);
   }
 
   @Bean
   SourceIndexingExecutor urlIndexingExecutor(
       AutoindexCrawlerService autoindexCrawlerService,
-      UrlFileDownloader urlFileDownloader,
+      BoundedDownloader boundedDownloader,
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
@@ -131,7 +134,7 @@ public class IndexingConfiguration {
       LibraryStorageQuotaService libraryStorageQuotaService) {
     return new UrlIndexingExecutor(
         autoindexCrawlerService,
-        urlFileDownloader,
+        boundedDownloader,
         fileProcessingService,
         indexingJobService,
         documentRepository,
@@ -151,7 +154,7 @@ public class IndexingConfiguration {
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       RssFeedStateRepository rssFeedStateRepository,
-      UrlFileDownloader urlFileDownloader,
+      BoundedDownloader boundedDownloader,
       IndexingProperties properties,
       IndexingRunEventRepository indexingRunEventRepository,
       TargetAddressValidator targetAddressValidator,
@@ -162,7 +165,7 @@ public class IndexingConfiguration {
         indexingJobService,
         documentRepository,
         rssFeedStateRepository,
-        urlFileDownloader,
+        boundedDownloader,
         properties,
         indexingRunEventRepository,
         targetAddressValidator,

@@ -11,6 +11,8 @@ import static org.mockito.Mockito.when;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
+import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,7 +24,7 @@ class UrlIndexingExecutorTest {
   private final UrlIndexingExecutor executor =
       new UrlIndexingExecutor(
           mock(AutoindexCrawlerService.class),
-          mock(UrlFileDownloader.class),
+          mock(BoundedDownloader.class),
           mock(FileProcessingService.class),
           mock(IndexingJobService.class),
           documentRepository,
@@ -141,13 +143,12 @@ class UrlIndexingExecutorTest {
 
   @Test
   void aRunAgainstALoopbackTargetFailsWithAGermanSsrfMessageWhenValidationIsEnabled() {
-    TargetAddressValidator enabledValidator =
-        new TargetAddressValidator(new IndexingProperties.TargetValidation(true, List.of()));
+    TargetAddressValidator enabledValidator = new TargetAddressValidator(true, List.of());
     IndexingJobService jobService = mock(IndexingJobService.class);
     UrlIndexingExecutor executorWithRealCrawler =
         new UrlIndexingExecutor(
             new AutoindexCrawlerService(enabledValidator),
-            new UrlFileDownloader(enabledValidator),
+            new BoundedDownloader(enabledValidator),
             mock(FileProcessingService.class),
             jobService,
             documentRepository,

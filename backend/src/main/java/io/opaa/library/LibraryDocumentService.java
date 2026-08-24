@@ -2,7 +2,6 @@ package io.opaa.library;
 
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.indexing.AutoindexCrawlerService;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
@@ -10,11 +9,13 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.DocumentStatus;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.FilesystemPathAllowlist;
-import io.opaa.indexing.ProxyAndCredentials;
 import io.opaa.indexing.SupportedDocumentFormats;
-import io.opaa.indexing.TargetAddressValidator;
-import io.opaa.indexing.UrlFileDownloader;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -117,7 +118,7 @@ public class LibraryDocumentService {
   private final UploadProperties uploadProperties;
   private final LibraryStorageQuotaService storageQuotaService;
   private final FilesystemPathAllowlist filesystemAllowlist;
-  private final UrlFileDownloader urlFileDownloader;
+  private final BoundedDownloader boundedDownloader;
   private final TargetAddressValidator targetAddressValidator;
   private final RemoteContentProperties remoteContentProperties;
   private final LibraryFolderRepository folderRepository;
@@ -134,7 +135,7 @@ public class LibraryDocumentService {
       UploadProperties uploadProperties,
       LibraryStorageQuotaService storageQuotaService,
       FilesystemPathAllowlist filesystemAllowlist,
-      UrlFileDownloader urlFileDownloader,
+      BoundedDownloader boundedDownloader,
       TargetAddressValidator targetAddressValidator,
       RemoteContentProperties remoteContentProperties,
       LibraryFolderRepository folderRepository,
@@ -149,7 +150,7 @@ public class LibraryDocumentService {
     this.uploadProperties = uploadProperties;
     this.storageQuotaService = storageQuotaService;
     this.filesystemAllowlist = filesystemAllowlist;
-    this.urlFileDownloader = urlFileDownloader;
+    this.boundedDownloader = boundedDownloader;
     this.targetAddressValidator = targetAddressValidator;
     this.remoteContentProperties = remoteContentProperties;
     this.folderRepository = folderRepository;
@@ -493,13 +494,13 @@ public class LibraryDocumentService {
    * time, already validated against the target allowlist then (#267).
    *
    * <p><b>SSRF: the allowlist is checked again here, not just at indexing time (#747 acceptance
-   * criteria).</b> {@link UrlFileDownloader#downloadStreaming} re-validates {@link
+   * criteria).</b> {@link BoundedDownloader#downloadStreaming} re-validates {@link
    * TargetAddressValidator} on every hop before a single further byte is requested - the same
    * "Doppelprüfung" {@link #filesystemFileIfWithinConfiguredDirectory} already applies to {@link
    * FilesystemPathAllowlist}: an allowlist narrowed after this document was indexed must not let a
    * read against it silently keep succeeding. A redirect is only ever followed within the same
    * origin - {@code downloadStreaming} throws {@link
-   * UrlFileDownloader.ForeignHostRedirectException} outright for anything else, including a
+   * RedirectFollowingFetcher.RedirectRejectedException} outright for anything else, including a
    * protocol downgrade - and {@code Authorization} is therefore never built for, or sent to,
    * anything but the document's own stored URL and same-origin redirect hops from it. The
    * configured {@code sourceProxy} host is validated too (#748 review, nit 2) - it determines where
@@ -526,7 +527,7 @@ public class LibraryDocumentService {
    * not buffered into a {@code byte[]} or temp file first: the previous, buffering implementation
    * let a VIEWER clicking this endpoint repeatedly hold up to {@code maxFileSize} of heap per
    * in-flight request. {@link RemoteContentProperties#timeoutSeconds()} is likewise its own, short
-   * timeout per hop - {@link UrlFileDownloader#downloadBounded}'s 120s is sized for an unattended
+   * timeout per hop - {@link BoundedDownloader#downloadBounded}'s 120s is sized for an unattended
    * background indexing run, not a human waiting on this click.
    *
    * <p>Every failure - the source offline, rejected by the allowlist, an invalid stored
@@ -546,17 +547,17 @@ public class LibraryDocumentService {
       ProxyAndCredentials config =
           ProxyAndCredentials.parse(library.getSourceProxy(), library.getSourceCredentials());
       httpClient =
-          AutoindexCrawlerService.buildHttpClient(
+          SourceHttpClientFactory.buildHttpClient(
               config.proxyHost(), config.proxyPort(), library.isSourceInsecureSsl());
       // #748 review, nit 2: the proxy is exactly as caller-controlled as the target URL and
       // determines where the TCP connection (and Authorization below) actually goes - mirrors
       // SourceConnectionTestService's identical call before its own otherwise-analogous probe.
       targetAddressValidator.validateHost(config.proxyHost());
       String authHeader =
-          AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
+          SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
 
-      UrlFileDownloader.DownloadedStream downloaded =
-          urlFileDownloader.downloadStreaming(
+      BoundedDownloader.DownloadedStream downloaded =
+          boundedDownloader.downloadStreaming(
               httpClient,
               sourceUrl,
               remoteContentProperties.maxBytes(),
@@ -595,14 +596,15 @@ public class LibraryDocumentService {
             }
           };
       return DocumentContent.ofStream(closingStream, document.getFileName(), contentType);
-    } catch (UrlFileDownloader.ForeignHostRedirectException
-        | UrlFileDownloader.AttachmentTooLargeException
+    } catch (BoundedDownloader.AttachmentTooLargeException
         | ProxyAndCredentials.InvalidProxyConfigurationException
         | IOException e) {
       // #267/#747: every one of these is the source declining or being unreachable, never an
       // OPAA-side failure - logged with the technical detail, answered with the same generic
       // German 404 loadContent already uses so a caller cannot distinguish "offline" from any
-      // other reason no original is available.
+      // other reason no original is available. RedirectFollowingFetcher.RedirectRejectedException
+      // (a foreign-host redirect or protocol downgrade) is an IOException and therefore already
+      // covered by the IOException branch here, not caught separately.
       log.warn("Remote document content unavailable: {} ({})", sourceUrl, e.getMessage());
       closeQuietly(httpClient);
       throw new ResponseStatusException(

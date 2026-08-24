@@ -1,4 +1,4 @@
-package io.opaa.indexing;
+package io.opaa.sourceaccess;
 
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -22,16 +22,18 @@ import org.slf4j.LoggerFactory;
  * (compatible) - checked against the embedded IPv4 address.
  *
  * <p>Checked before the first request of every crawl/RSS/attachment fetch and again on every
- * redirect hop ({@link AutoindexCrawlerService#sendFollowingRedirects}, {@link
- * UrlFileDownloader#downloadBounded}, {@code RssFeedIndexingExecutor#sendDetailPageRequest}), so a
- * redirect chain - or a link a crawled directory listing or RSS feed itself carries - cannot walk a
- * legitimately public start address onto an internal one. {@link SourceConnectionTestService} in
- * {@code io.opaa.library} applies the identical check to the synchronous connection test.
+ * redirect hop ({@link RedirectFollowingFetcher#sendFollowingRedirects}, {@link
+ * BoundedDownloader#downloadBounded}), so a redirect chain - or a link a crawled directory listing
+ * or RSS feed itself carries - cannot walk a legitimately public start address onto an internal
+ * one. {@code io.opaa.library.SourceConnectionTestService} applies the identical check to the
+ * synchronous connection test.
  *
- * <p>Configurable, default active: {@link IndexingProperties.TargetValidation#enabled()} is the
- * operator's off switch for a deployment with legitimate internal document sources; {@link
- * IndexingProperties.TargetValidation#allowlist()} lets specific hostnames stay reachable without
- * disabling the check for every other target.
+ * <p>Configurable, default active: {@code enabled} is the operator's off switch for a deployment
+ * with legitimate internal document sources; {@code allowlist} lets specific hostnames stay
+ * reachable without disabling the check for every other target. Both are supplied by the caller
+ * (bound from {@code opaa.indexing.target-validation} in {@code
+ * io.opaa.indexing.IndexingProperties} - this class deliberately takes primitives rather than that
+ * configuration type, so this package never depends on {@code io.opaa.indexing}).
  *
  * <p>DNS rebinding is a documented, accepted limitation: the address checked here and the address
  * {@code HttpClient} eventually connects to both come from resolving the same hostname, but not
@@ -47,9 +49,9 @@ public class TargetAddressValidator {
   private final boolean enabled;
   private final List<String> allowedHosts;
 
-  public TargetAddressValidator(IndexingProperties.TargetValidation config) {
-    this.enabled = config.enabled();
-    this.allowedHosts = config.allowlist();
+  public TargetAddressValidator(boolean enabled, List<String> allowlist) {
+    this.enabled = enabled;
+    this.allowedHosts = allowlist == null ? List.of() : allowlist;
   }
 
   /**
@@ -58,7 +60,7 @@ public class TargetAddressValidator {
    * default.
    */
   public static TargetAddressValidator disabled() {
-    return new TargetAddressValidator(new IndexingProperties.TargetValidation(false, List.of()));
+    return new TargetAddressValidator(false, List.of());
   }
 
   /**

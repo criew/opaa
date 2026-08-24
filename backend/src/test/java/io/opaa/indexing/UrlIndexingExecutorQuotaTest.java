@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
+import io.opaa.sourceaccess.BoundedDownloader;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
@@ -30,7 +31,7 @@ import org.junit.jupiter.api.io.TempDir;
  * Unit-level coverage of {@link UrlIndexingExecutor}'s {@code FileProcessingResult#QUOTA_EXCEEDED}
  * handling (#119, PR #700 review finding 4) - {@link UrlIndexingExecutorTest} already covers this
  * class's {@code isUnchanged} logic in isolation; this class instead drives the full {@code
- * execute} flow with {@link AutoindexCrawlerService} and {@link UrlFileDownloader} mocked (no live
+ * execute} flow with {@link AutoindexCrawlerService} and {@link BoundedDownloader} mocked (no live
  * HTTP server needed, unlike {@link RssFeedIndexingExecutorTest}, since both are ordinary
  * constructor dependencies here).
  */
@@ -49,7 +50,7 @@ class UrlIndexingExecutorQuotaTest {
   @BeforeEach
   void setUp() throws IOException, InterruptedException {
     AutoindexCrawlerService crawlerService = mock(AutoindexCrawlerService.class);
-    UrlFileDownloader downloader = mock(UrlFileDownloader.class);
+    BoundedDownloader downloader = mock(BoundedDownloader.class);
     fileProcessingService = mock(FileProcessingService.class);
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);

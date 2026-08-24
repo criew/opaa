@@ -11,6 +11,9 @@ import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryVisibility;
+import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -35,9 +38,10 @@ import org.junit.jupiter.api.Test;
  * {@code validate} call is ever reached for that hop - a cross-origin redirect there would make a
  * naive test pass for the wrong reason (the origin check, not the target-address check) even if the
  * SSRF validation were removed. {@code fetchFeed} goes through {@link
- * AutoindexCrawlerService#sendFollowingRedirects} instead, which has no such origin restriction (it
- * only conditionally drops {@code Authorization} - see that method's own Javadoc) and therefore
- * relies on the per-hop {@code validate} call alone to reject this redirect.
+ * RedirectFollowingFetcher#sendFollowingRedirects} with {@code DROP_AUTHORIZATION_OFF_ORIGIN}
+ * instead, which has no such origin restriction (it only conditionally drops {@code Authorization}
+ * - see that method's own Javadoc) and therefore relies on the per-hop {@code validate} call alone
+ * to reject this redirect.
  */
 class RssFeedIndexingExecutorTargetValidationTest {
 
@@ -79,8 +83,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
     // redirect-hop check - without allowlisting it, the very first validate() call inside
     // sendFollowingRedirects would already reject the start URL.
     TargetAddressValidator enabledValidator =
-        new TargetAddressValidator(
-            new IndexingProperties.TargetValidation(true, List.of("127.0.0.1")));
+        new TargetAddressValidator(true, List.of("127.0.0.1"));
     IndexingProperties.Rss rss =
         new IndexingProperties.Rss(200, 10_000, 10_000, 0, "OPAA-Indexer/test", null, null, 0, 0);
     IndexingProperties properties =
@@ -92,7 +95,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
             indexingJobService,
             documentRepository,
             feedStateRepository,
-            new UrlFileDownloader(enabledValidator),
+            new BoundedDownloader(enabledValidator),
             properties,
             indexingRunEventRepository,
             enabledValidator,

@@ -1,7 +1,7 @@
 package io.opaa.llm;
 
-import io.opaa.indexing.AutoindexCrawlerService;
 import io.opaa.security.SettingsEncryptor;
+import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
@@ -38,10 +38,10 @@ import tools.jackson.databind.ObjectMapper;
  * "unreachable", "not authenticated" and "model unknown", per the issue's technical hint.
  *
  * <p><b>No target-address blocking here, deliberately</b> - unlike {@code
- * io.opaa.indexing.TargetAddressValidator}, which exists to stop a crawl from walking a public URL
- * onto an internal address it was never told to reach. A managed chat model's baseUrl is entered
- * directly by {@code SYSTEM_ADMIN} and is expected to routinely be an address on the operator's own
- * network - {@code http://ollama:11434/v1} is the specification's own example
+ * io.opaa.sourceaccess.TargetAddressValidator}, which exists to stop a crawl from walking a public
+ * URL onto an internal address it was never told to reach. A managed chat model's baseUrl is
+ * entered directly by {@code SYSTEM_ADMIN} and is expected to routinely be an address on the
+ * operator's own network - {@code http://ollama:11434/v1} is the specification's own example
  * (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei) - so blocking private ranges here
  * would break the primary supported case rather than guard against one.
  *
@@ -52,7 +52,7 @@ import tools.jackson.databind.ObjectMapper;
  * key sent to that address in the {@code Authorization} header, which made the key not actually
  * write-only despite {@link LlmModel#getApiKeyCiphertext()} never being returned by any response.
  * {@link #test} now only ever uses the stored key when the request's {@code baseUrl} is same-origin
- * ({@link AutoindexCrawlerService#sameOrigin}) with the model's own stored {@code baseUrl}; any
+ * ({@link RedirectFollowingFetcher#sameOrigin}) with the model's own stored {@code baseUrl}; any
  * other combination is rejected with 400 before the key is even decrypted.
  */
 @Service
@@ -120,7 +120,7 @@ public class LlmModelConnectionTester {
 
   private static boolean sameOrigin(String requestBaseUrl, String storedBaseUrl) {
     try {
-      return AutoindexCrawlerService.sameOrigin(
+      return RedirectFollowingFetcher.sameOrigin(
           URI.create(requestBaseUrl), URI.create(storedBaseUrl));
     } catch (IllegalArgumentException e) {
       return false;
@@ -154,8 +154,9 @@ public class LlmModelConnectionTester {
     // per-request resource. Redirect.NEVER is explicit rather than relying on HttpClient's own
     // default (also NEVER, but not a guarantee this class should depend on staying that way): the
     // Authorization header carrying a real access key must never be replayed to a redirect target
-    // this class never validated, the same reasoning io.opaa.indexing.AutoindexCrawlerService's own
-    // manual redirect handling documents for its own Authorization header.
+    // this class never validated, the same reasoning
+    // io.opaa.sourceaccess.RedirectFollowingFetcher's own manual redirect handling documents for
+    // its own Authorization header.
     try (HttpClient httpClient =
         HttpClient.newBuilder()
             .connectTimeout(CONNECT_TIMEOUT)
