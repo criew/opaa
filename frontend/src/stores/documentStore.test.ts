@@ -1,20 +1,47 @@
+import { AxiosError } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentStore } from './documentStore'
 import { resetAllStores } from './resettableStores'
 import type { LibraryDocumentPageResponse, LibraryDocumentResponse } from '../types/api'
 
-const { mockGetLibraryDocuments, mockUploadDocument, mockDeleteLibraryDocument } = vi.hoisted(
-  () => ({
-    mockGetLibraryDocuments: vi.fn(),
-    mockUploadDocument: vi.fn(),
-    mockDeleteLibraryDocument: vi.fn(),
-  }),
-)
+// #822 review, finding 2: normalizeError (services/api.ts) attaches the original AxiosError as
+// `cause` - mirrors that shape here so isNotFoundError (documentStore.ts) has something real to
+// distinguish a 404 from any other failure, the same way api.test.ts's axiosErrorWithResponse
+// stands in for a real AxiosError elsewhere in this codebase.
+function notFoundError(message = 'Ordner nicht gefunden'): Error {
+  const axiosError = new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
+    status: 404,
+    statusText: '',
+    headers: {},
+    config: {} as never,
+    data: { error: message },
+  })
+  return new Error(message, { cause: axiosError })
+}
+
+const {
+  mockGetLibraryDocuments,
+  mockUploadDocument,
+  mockDeleteLibraryDocument,
+  mockCreateLibraryFolder,
+  mockRenameLibraryFolder,
+  mockDeleteLibraryFolder,
+} = vi.hoisted(() => ({
+  mockGetLibraryDocuments: vi.fn(),
+  mockUploadDocument: vi.fn(),
+  mockDeleteLibraryDocument: vi.fn(),
+  mockCreateLibraryFolder: vi.fn(),
+  mockRenameLibraryFolder: vi.fn(),
+  mockDeleteLibraryFolder: vi.fn(),
+}))
 
 vi.mock('../services/api', () => ({
   getLibraryDocuments: mockGetLibraryDocuments,
   uploadDocument: mockUploadDocument,
   deleteLibraryDocument: mockDeleteLibraryDocument,
+  createLibraryFolder: mockCreateLibraryFolder,
+  renameLibraryFolder: mockRenameLibraryFolder,
+  deleteLibraryFolder: mockDeleteLibraryFolder,
 }))
 
 const indexedDocument: LibraryDocumentResponse = {
@@ -74,6 +101,7 @@ describe('documentStore', () => {
       size: 20,
       q: '',
       totalElements: 1,
+      folderId: null,
     })
     expect(useDocumentStore.getState().isLoading).toBe(false)
     expect(useDocumentStore.getState().error).toBeNull()
@@ -90,13 +118,71 @@ describe('documentStore', () => {
       page: 2,
       size: 5,
       q: 'dienst',
+      folderId: null,
     })
     expect(useDocumentStore.getState().pageStateByLibrary['library-1']).toEqual({
       page: 2,
       size: 5,
       q: 'dienst',
       totalElements: 42,
+      folderId: null,
     })
+  })
+
+  it('passes folderId through to the API and stores the requested folder', async () => {
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([indexedDocument]))
+
+    await useDocumentStore.getState().loadDocuments('library-1', { folderId: 'folder-1' })
+
+    expect(mockGetLibraryDocuments).toHaveBeenCalledWith('library-1', {
+      page: 0,
+      size: 20,
+      q: '',
+      folderId: 'folder-1',
+    })
+    expect(useDocumentStore.getState().pageStateByLibrary['library-1'].folderId).toBe('folder-1')
+  })
+
+  it('falls back to the root and surfaces a hint when a folderId is unknown/foreign (404)', async () => {
+    mockGetLibraryDocuments.mockRejectedValueOnce(notFoundError())
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([indexedDocument]))
+
+    await useDocumentStore.getState().loadDocuments('library-1', { folderId: 'unknown-folder' })
+
+    expect(mockGetLibraryDocuments).toHaveBeenNthCalledWith(2, 'library-1', {
+      page: 0,
+      size: 20,
+      q: '',
+      folderId: null,
+    })
+    expect(useDocumentStore.getState().pageStateByLibrary['library-1'].folderId).toBeNull()
+    expect(useDocumentStore.getState().folderNotFoundMessage).not.toBeNull()
+    expect(useDocumentStore.getState().error).toBeNull()
+  })
+
+  // #822 review, finding 2: a bare 404 message string is not enough evidence to bounce a caller
+  // out of the folder they were looking at - only an actual AxiosError-carried 404 status may
+  // trigger the root fallback. Anything else (500, network outage, or - as here - an Error that
+  // merely happens to read "nicht gefunden" without a 404 cause) must surface as a normal error
+  // and leave the requested folder alone.
+  it('does not fall back to the root on a non-404 failure, even one that reads "nicht gefunden"', async () => {
+    mockGetLibraryDocuments.mockRejectedValueOnce(new Error('Ordner nicht gefunden'))
+
+    await useDocumentStore.getState().loadDocuments('library-1', { folderId: 'folder-1' })
+
+    expect(mockGetLibraryDocuments).toHaveBeenCalledTimes(1)
+    expect(useDocumentStore.getState().folderNotFoundMessage).toBeNull()
+    expect(useDocumentStore.getState().error).toBe('Ordner nicht gefunden')
+    expect(useDocumentStore.getState().isLoading).toBe(false)
+  })
+
+  it('resets a stale folderNotFoundMessage once a load succeeds', async () => {
+    useDocumentStore.setState({ folderNotFoundMessage: 'Der Ordner wurde nicht gefunden.' })
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([indexedDocument]))
+
+    await useDocumentStore.getState().loadDocuments('library-1')
+
+    expect(useDocumentStore.getState().folderNotFoundMessage).toBeNull()
   })
 
   it('shows a German error message when loading fails', async () => {
@@ -112,7 +198,9 @@ describe('documentStore', () => {
     // document actually belongs on the page/search the user is looking at - only the server can.
     useDocumentStore.setState({
       documentsByLibrary: { 'library-1': [indexedDocument] },
-      pageStateByLibrary: { 'library-1': { page: 1, size: 5, q: 'dienst', totalElements: 6 } },
+      pageStateByLibrary: {
+        'library-1': { page: 1, size: 5, q: 'dienst', totalElements: 6, folderId: null },
+      },
     })
     mockUploadDocument.mockResolvedValueOnce(pendingDocument)
     mockGetLibraryDocuments.mockResolvedValueOnce(
@@ -121,10 +209,12 @@ describe('documentStore', () => {
 
     await useDocumentStore.getState().uploadNewDocument('library-1', new File(['x'], 'x.pdf'))
 
+    expect(mockUploadDocument).toHaveBeenCalledWith('library-1', expect.any(File), null)
     expect(mockGetLibraryDocuments).toHaveBeenCalledWith('library-1', {
       page: 1,
       size: 5,
       q: 'dienst',
+      folderId: null,
     })
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([
       indexedDocument,
@@ -191,7 +281,9 @@ describe('documentStore', () => {
   it('reloads the current page from the server after a successful deletion', async () => {
     useDocumentStore.setState({
       documentsByLibrary: { 'library-1': [indexedDocument] },
-      pageStateByLibrary: { 'library-1': { page: 0, size: 20, q: '', totalElements: 2 } },
+      pageStateByLibrary: {
+        'library-1': { page: 0, size: 20, q: '', totalElements: 2, folderId: null },
+      },
     })
     mockDeleteLibraryDocument.mockResolvedValueOnce(undefined)
     mockGetLibraryDocuments.mockResolvedValueOnce(page([], { totalElements: 1 }))
@@ -202,6 +294,7 @@ describe('documentStore', () => {
       page: 0,
       size: 20,
       q: '',
+      folderId: null,
     })
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([])
     expect(useDocumentStore.getState().pageStateByLibrary['library-1'].totalElements).toBe(1)
@@ -211,7 +304,9 @@ describe('documentStore', () => {
   it('steps back a page when deleting empties the last page (Szenario A)', async () => {
     useDocumentStore.setState({
       documentsByLibrary: { 'library-1': [indexedDocument] },
-      pageStateByLibrary: { 'library-1': { page: 2, size: 1, q: '', totalElements: 21 } },
+      pageStateByLibrary: {
+        'library-1': { page: 2, size: 1, q: '', totalElements: 21, folderId: null },
+      },
     })
     mockDeleteLibraryDocument.mockResolvedValueOnce(undefined)
     // The reload of the now-deleted page 2 comes back empty (nothing left to show there)...
@@ -228,6 +323,7 @@ describe('documentStore', () => {
       page: 1,
       size: 1,
       q: '',
+      folderId: null,
     })
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([
       previousPageDocument,
@@ -317,5 +413,83 @@ describe('documentStore', () => {
     await vi.advanceTimersByTimeAsync(3000)
 
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toBeUndefined()
+  })
+
+  describe('folder CRUD (#822)', () => {
+    it('creates a folder under the currently open folder and reloads the current page', async () => {
+      useDocumentStore.setState({
+        pageStateByLibrary: {
+          'library-1': { page: 0, size: 20, q: '', totalElements: 0, folderId: 'folder-parent' },
+        },
+      })
+      mockCreateLibraryFolder.mockResolvedValueOnce({
+        id: 'folder-new',
+        libraryId: 'library-1',
+        parentFolderId: 'folder-parent',
+        name: 'Archiv',
+        documentCount: 0,
+        createdAt: '2026-03-01T10:00:00Z',
+      })
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([]))
+
+      await useDocumentStore.getState().createFolder('library-1', 'Archiv')
+
+      expect(mockCreateLibraryFolder).toHaveBeenCalledWith('library-1', {
+        name: 'Archiv',
+        parentFolderId: 'folder-parent',
+      })
+      expect(mockGetLibraryDocuments).toHaveBeenCalledWith('library-1', {
+        page: 0,
+        size: 20,
+        q: '',
+        folderId: 'folder-parent',
+      })
+      expect(useDocumentStore.getState().folderError).toBeNull()
+    })
+
+    it('surfaces a 409 name conflict as folderError and rethrows without reloading', async () => {
+      mockCreateLibraryFolder.mockRejectedValueOnce(
+        new Error('Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene'),
+      )
+
+      await expect(
+        useDocumentStore.getState().createFolder('library-1', 'Protokolle'),
+      ).rejects.toThrow()
+
+      expect(useDocumentStore.getState().folderError).toBe(
+        'Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene',
+      )
+      expect(mockGetLibraryDocuments).not.toHaveBeenCalled()
+    })
+
+    it('renames a folder and reloads the current page', async () => {
+      mockRenameLibraryFolder.mockResolvedValueOnce({
+        id: 'folder-1',
+        libraryId: 'library-1',
+        parentFolderId: null,
+        name: 'Protokolle 2026',
+        documentCount: 3,
+        createdAt: '2026-03-01T10:00:00Z',
+      })
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([]))
+
+      await useDocumentStore.getState().renameFolder('library-1', 'folder-1', 'Protokolle 2026')
+
+      expect(mockRenameLibraryFolder).toHaveBeenCalledWith('library-1', 'folder-1', {
+        name: 'Protokolle 2026',
+      })
+      expect(useDocumentStore.getState().folderError).toBeNull()
+    })
+
+    it('deletes a folder and reloads the current page', async () => {
+      mockDeleteLibraryFolder.mockResolvedValueOnce(undefined)
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([]))
+
+      await useDocumentStore.getState().removeFolder('library-1', 'folder-1')
+
+      expect(mockDeleteLibraryFolder).toHaveBeenCalledWith('library-1', 'folder-1')
+      expect(mockGetLibraryDocuments).toHaveBeenCalled()
+      expect(useDocumentStore.getState().folderError).toBeNull()
+    })
   })
 })

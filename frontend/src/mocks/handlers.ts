@@ -24,14 +24,17 @@ import {
   mockLibraryDetails,
   mockSpaceLibraryAssociations,
   mockLibraryDocuments,
+  mockLibraryFolders,
   mockLibraryGrants,
   mockMyGroups,
   mockChatDetails,
   mockChatsForSpace,
   resetMockLibraryDocuments,
+  resetMockLibraryFolders,
   resetMockLibraryGrants,
   resetMockChats,
 } from './fixtures'
+import type { MockLibraryFolder } from './fixtures'
 import type {
   AssetGrantRequest,
   BrandingUpdateRequest,
@@ -41,6 +44,10 @@ import type {
   DocumentSourceType,
   DocumentStatus,
   IndexingStatusResponse,
+  LibraryFolderBreadcrumbItem,
+  LibraryFolderListItem,
+  LibraryFolderRenameRequest,
+  LibraryFolderRequest,
   LibraryOwnerType,
   LibraryScheduleRequest,
   LibraryVisibility,
@@ -63,6 +70,83 @@ export function resetDocumentMockState() {
   documentPollCounts.clear()
   documentsPendingFailure.clear()
   resetMockLibraryDocuments()
+  resetMockLibraryFolders()
+}
+
+// #822: every descendant folder id of `folderId` (inclusive) - a folder's own documentCount
+// (LibraryFolderListItem/LibraryFolderResponse) counts documents recursively, and a folder delete
+// removes its whole subtree, not just its own direct children.
+function collectMockFolderSubtreeIds(libraryId: string, folderId: string): Set<string> {
+  const folders = mockLibraryFolders[libraryId] ?? []
+  const ids = new Set<string>([folderId])
+  let grew = true
+  while (grew) {
+    grew = false
+    for (const folder of folders) {
+      if (folder.parentFolderId && ids.has(folder.parentFolderId) && !ids.has(folder.id)) {
+        ids.add(folder.id)
+        grew = true
+      }
+    }
+  }
+  return ids
+}
+
+function countMockFolderDocuments(libraryId: string, folderId: string): number {
+  const ids = collectMockFolderSubtreeIds(libraryId, folderId)
+  return (mockLibraryDocuments[libraryId] ?? []).filter(
+    (doc) => doc.folderId && ids.has(doc.folderId),
+  ).length
+}
+
+function listMockSubfolders(libraryId: string, folderId: string | null): LibraryFolderListItem[] {
+  return (mockLibraryFolders[libraryId] ?? [])
+    .filter((folder) => (folder.parentFolderId ?? null) === folderId)
+    .map((folder) => ({
+      id: folder.id,
+      name: folder.name,
+      documentCount: countMockFolderDocuments(libraryId, folder.id),
+    }))
+}
+
+function buildMockBreadcrumb(
+  libraryId: string,
+  folderId: string | null,
+): LibraryFolderBreadcrumbItem[] {
+  const folders = mockLibraryFolders[libraryId] ?? []
+  const chain: LibraryFolderBreadcrumbItem[] = []
+  let current = folderId
+  while (current) {
+    const folder = folders.find((f) => f.id === current)
+    if (!folder) break
+    chain.unshift({ id: folder.id, name: folder.name })
+    current = folder.parentFolderId
+  }
+  return chain
+}
+
+// #822 review, finding 6b: the real backend derives folderPath from the full folder chain (e.g.
+// "Protokolle/2026"), not just the immediate folder's own name - reuses buildMockBreadcrumb above
+// so the two never drift apart.
+//
+// Exported so handlers.test.ts can exercise this directly rather than through a real multipart
+// upload request: a File/Blob request body hangs indefinitely against msw/node in this project's
+// jsdom test environment (see the block comment on the documents describe block in that file).
+export function buildMockFolderPath(libraryId: string, folderId: string | null): string | null {
+  if (!folderId) return null
+  const chain = buildMockBreadcrumb(libraryId, folderId)
+  return chain.length > 0 ? chain.map((item) => item.name).join('/') : null
+}
+
+function toMockFolderResponse(libraryId: string, folder: MockLibraryFolder) {
+  return {
+    id: folder.id,
+    libraryId,
+    parentFolderId: folder.parentFolderId,
+    name: folder.name,
+    documentCount: countMockFolderDocuments(libraryId, folder.id),
+    createdAt: folder.createdAt,
+  }
 }
 
 /**
@@ -1057,21 +1141,45 @@ export const handlers = [
     const q = url.searchParams.get('q')
     const page = Number(url.searchParams.get('page') ?? '0')
     const size = Number(url.searchParams.get('size') ?? '20')
-    const filtered = q
-      ? allDocuments.filter((doc) => doc.fileName.toLowerCase().includes(q.toLowerCase()))
-      : allDocuments
+    const folderIdParam = url.searchParams.get('folderId')
+
+    // #822: folderId is validated with or without q, mirroring GET .../folders/{folderId}'s own
+    // unknown/foreign-folder 404 (ADR-0020).
+    if (
+      folderIdParam &&
+      !(mockLibraryFolders[libraryId] ?? []).some((folder) => folder.id === folderIdParam)
+    ) {
+      return HttpResponse.json({ error: 'Ordner nicht gefunden' }, { status: 404 })
+    }
+
+    let filtered: typeof allDocuments
+    let folders: LibraryFolderListItem[]
+    let breadcrumb: LibraryFolderBreadcrumbItem[]
+    let responseFolderId: string | null
+
+    if (q) {
+      // Search is always bibliotheksweit, regardless of folderId (ADR-0020, Entscheidung 4) -
+      // folders/breadcrumb stay empty, folderId is echoed back as null.
+      filtered = allDocuments.filter((doc) => doc.fileName.toLowerCase().includes(q.toLowerCase()))
+      folders = []
+      breadcrumb = []
+      responseFolderId = null
+    } else {
+      responseFolderId = folderIdParam
+      filtered = allDocuments.filter((doc) => (doc.folderId ?? null) === responseFolderId)
+      folders = listMockSubfolders(libraryId, responseFolderId)
+      breadcrumb = buildMockBreadcrumb(libraryId, responseFolderId)
+    }
     const items = filtered.slice(page * size, page * size + size)
 
-    // folders/breadcrumb (#821): the mock has no folder concept yet (folder navigation UI is
-    // #822), so every request behaves as if it were scoped to the library's root - an empty
-    // subfolder/breadcrumb list, matching the real API's response shape.
     return HttpResponse.json({
       items,
       page,
       size,
       totalElements: filtered.length,
-      folders: [],
-      breadcrumb: [],
+      folderId: responseFolderId,
+      folders,
+      breadcrumb,
     })
   }),
 
@@ -1099,6 +1207,15 @@ export const handlers = [
     const file = formData.get('file')
     if (!(file instanceof File) || file.size === 0) {
       return HttpResponse.json({ error: 'Datei ist erforderlich' }, { status: 400 })
+    }
+    // #822: an omitted/empty folderId means the library's root, mirroring GET on this same path.
+    const folderIdField = formData.get('folderId')
+    const folderId = typeof folderIdField === 'string' && folderIdField ? folderIdField : null
+    if (
+      folderId &&
+      !(mockLibraryFolders[libraryId] ?? []).some((folder) => folder.id === folderId)
+    ) {
+      return HttpResponse.json({ error: 'Ordner nicht gefunden' }, { status: 404 })
     }
     if (file.size > MAX_UPLOAD_SIZE_BYTES) {
       return HttpResponse.json(
@@ -1144,6 +1261,8 @@ export const handlers = [
       chunkCount: 0,
       indexedAt: null,
       uploadedByUserId: 'mock-user-id',
+      folderId,
+      folderPath: buildMockFolderPath(libraryId, folderId),
     }
     if (isEmptyContent) {
       // Resolved to FAILED, not INDEXED, the next time this document is polled (see the
@@ -1185,6 +1304,170 @@ export const handlers = [
     const listEntry = mockLibraries.find((item) => item.id === libraryId)
     if (listEntry && (listEntry.documentCount ?? 0) > 0) {
       listEntry.documentCount = (listEntry.documentCount ?? 0) - 1
+    }
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // #822/#820: folder CRUD - EDITOR role or above required (canManageMockLibrary, the same
+  // threshold document upload/delete already use), mirroring LibraryFolderController.
+  http.post('/api/v1/libraries/:libraryId/folders', async ({ params, request }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!canManageMockLibrary(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
+    // #822 review, finding 6b: matches LibraryFolderService#requireUploadLibrary's own message and
+    // status (409, not 400 - a well-formed request that simply conflicts with the library's fixed
+    // source type), applied to create/rename/delete alike (ADR-0020: folders exist only for UPLOAD
+    // libraries).
+    if (mockLibraryDetails[libraryId]?.sourceType !== 'UPLOAD') {
+      return HttpResponse.json(
+        {
+          error:
+            'Diese Bibliothek ist eine Konnektorbibliothek und unterstützt keine manuell verwalteten Ordner',
+        },
+        { status: 409 },
+      )
+    }
+    const body = (await request.json()) as LibraryFolderRequest
+    const name = body.name?.trim()
+    if (!name) {
+      return HttpResponse.json({ error: 'Der Ordnername darf nicht leer sein' }, { status: 400 })
+    }
+    const parentFolderId = body.parentFolderId ?? null
+    const existing = mockLibraryFolders[libraryId] ?? []
+    if (parentFolderId && !existing.some((folder) => folder.id === parentFolderId)) {
+      return HttpResponse.json({ error: 'Übergeordneter Ordner nicht gefunden' }, { status: 404 })
+    }
+    if (
+      existing.some(
+        (folder) => (folder.parentFolderId ?? null) === parentFolderId && folder.name === name,
+      )
+    ) {
+      return HttpResponse.json(
+        { error: 'Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene' },
+        { status: 409 },
+      )
+    }
+    const folder: MockLibraryFolder = {
+      id: `folder-${crypto.randomUUID().slice(0, 8)}`,
+      libraryId,
+      parentFolderId,
+      name,
+      createdAt: new Date().toISOString(),
+    }
+    mockLibraryFolders[libraryId] = [...existing, folder]
+    return HttpResponse.json(toMockFolderResponse(libraryId, folder), { status: 201 })
+  }),
+
+  http.get('/api/v1/libraries/:libraryId/folders/:folderId', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const folderId = String(params.folderId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const folder = (mockLibraryFolders[libraryId] ?? []).find((f) => f.id === folderId)
+    if (!folder) {
+      return HttpResponse.json({ error: 'Ordner nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(toMockFolderResponse(libraryId, folder))
+  }),
+
+  http.patch('/api/v1/libraries/:libraryId/folders/:folderId', async ({ params, request }) => {
+    const libraryId = String(params.libraryId)
+    const folderId = String(params.folderId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!canManageMockLibrary(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
+    // #822 review, finding 6b: mirrors the same check on POST .../folders above - rename is
+    // rejected for a connector library too, not just creation.
+    if (mockLibraryDetails[libraryId]?.sourceType !== 'UPLOAD') {
+      return HttpResponse.json(
+        {
+          error:
+            'Diese Bibliothek ist eine Konnektorbibliothek und unterstützt keine manuell verwalteten Ordner',
+        },
+        { status: 409 },
+      )
+    }
+    const existing = mockLibraryFolders[libraryId] ?? []
+    const folder = existing.find((f) => f.id === folderId)
+    if (!folder) {
+      return HttpResponse.json({ error: 'Ordner nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as LibraryFolderRenameRequest
+    const name = body.name?.trim()
+    if (!name) {
+      return HttpResponse.json({ error: 'Der Ordnername darf nicht leer sein' }, { status: 400 })
+    }
+    if (
+      existing.some(
+        (f) =>
+          f.id !== folderId &&
+          (f.parentFolderId ?? null) === (folder.parentFolderId ?? null) &&
+          f.name === name,
+      )
+    ) {
+      return HttpResponse.json(
+        { error: 'Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene' },
+        { status: 409 },
+      )
+    }
+    folder.name = name
+    return HttpResponse.json(toMockFolderResponse(libraryId, folder))
+  }),
+
+  http.delete('/api/v1/libraries/:libraryId/folders/:folderId', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const folderId = String(params.folderId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!canManageMockLibrary(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
+    // #822 review, finding 6b: mirrors the same check on POST/PATCH .../folders above - deletion is
+    // rejected for a connector library too.
+    if (mockLibraryDetails[libraryId]?.sourceType !== 'UPLOAD') {
+      return HttpResponse.json(
+        {
+          error:
+            'Diese Bibliothek ist eine Konnektorbibliothek und unterstützt keine manuell verwalteten Ordner',
+        },
+        { status: 409 },
+      )
+    }
+    const existing = mockLibraryFolders[libraryId] ?? []
+    const folder = existing.find((f) => f.id === folderId)
+    if (!folder) {
+      return HttpResponse.json({ error: 'Ordner nicht gefunden' }, { status: 404 })
+    }
+    // #822/ADR-0020 Entscheidung 5: recursively removes the folder's whole subtree and every
+    // document within it (chunks/stored file cleanup is the real backend's job - the mock only
+    // needs to keep documentCount/list state consistent).
+    const subtreeIds = collectMockFolderSubtreeIds(libraryId, folderId)
+    mockLibraryFolders[libraryId] = existing.filter((f) => !subtreeIds.has(f.id))
+    const documents = mockLibraryDocuments[libraryId] ?? []
+    const removedDocumentCount = documents.filter(
+      (doc) => doc.folderId && subtreeIds.has(doc.folderId),
+    ).length
+    mockLibraryDocuments[libraryId] = documents.filter(
+      (doc) => !(doc.folderId && subtreeIds.has(doc.folderId)),
+    )
+    if (removedDocumentCount > 0) {
+      const detail = mockLibraryDetails[libraryId]
+      if (detail) {
+        detail.documentCount = Math.max(0, (detail.documentCount ?? 0) - removedDocumentCount)
+      }
+      const listEntry = mockLibraries.find((item) => item.id === libraryId)
+      if (listEntry) {
+        listEntry.documentCount = Math.max(0, (listEntry.documentCount ?? 0) - removedDocumentCount)
+      }
     }
     return new HttpResponse(null, { status: 204 })
   }),

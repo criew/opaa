@@ -17,6 +17,9 @@ import type {
   IndexingStatusResponse,
   LibraryDocumentPageResponse,
   LibraryDocumentResponse,
+  LibraryFolderRenameRequest,
+  LibraryFolderRequest,
+  LibraryFolderResponse,
   LibraryListResponse,
   LibraryRequest,
   LibraryResponse,
@@ -72,8 +75,12 @@ export function normalizeError(err: unknown, context?: 'upload'): never {
   if (err instanceof AxiosError) {
     const data = err.response?.data
 
+    // #822 review: `cause` keeps the original AxiosError (and thus its response.status) reachable
+    // for a caller that needs to distinguish e.g. 404 from any other failure - documentStore's
+    // folder-not-found fallback is the first to rely on this; every other caller keeps using the
+    // plain German message and can ignore cause entirely.
     if (isErrorResponse(data)) {
-      throw new Error(data.error)
+      throw new Error(data.error, { cause: err })
     }
 
     // #519: the compose reverse proxy (frontend/nginx.conf) answers uploads above its own
@@ -81,14 +88,16 @@ export function normalizeError(err: unknown, context?: 'upload'): never {
     // isErrorResponse above is false for that body, so this would otherwise fall through to the
     // generic "HTTP 413: ..." message below, which is neither German nor understandable to users.
     if (err.response?.status === 413 && context === 'upload') {
-      throw new Error('Die Datei ist zu groß für den Upload. Bitte eine kleinere Datei wählen.')
+      throw new Error('Die Datei ist zu groß für den Upload. Bitte eine kleinere Datei wählen.', {
+        cause: err,
+      })
     }
 
     if (err.response?.status) {
-      throw new Error(`HTTP ${err.response.status}: ${err.message}`)
+      throw new Error(`HTTP ${err.response.status}: ${err.message}`, { cause: err })
     }
 
-    throw new Error(err.message)
+    throw new Error(err.message, { cause: err })
   }
   throw err
 }
@@ -588,7 +597,7 @@ export async function deleteLibrary(libraryId: string): Promise<void> {
 
 export async function getLibraryDocuments(
   libraryId: string,
-  options?: { page?: number; size?: number; q?: string },
+  options?: { page?: number; size?: number; q?: string; folderId?: string | null },
 ): Promise<LibraryDocumentPageResponse> {
   try {
     const { data } = await client.get<LibraryDocumentPageResponse>(
@@ -602,6 +611,10 @@ export async function getLibraryDocuments(
           // (KnowledgeLibraryService#listDocuments) would treat it identically either way, but
           // omitting it keeps the request itself a plain, unfiltered "list this page" call.
           q: options?.q || undefined,
+          // #822: undefined/null both mean "the library's root" to the backend (GET .../documents,
+          // folderId param) - dropped here the same way q is above, rather than sent as the string
+          // "null".
+          folderId: options?.folderId || undefined,
         },
       },
     )
@@ -614,10 +627,17 @@ export async function getLibraryDocuments(
 export async function uploadDocument(
   libraryId: string,
   file: File,
+  folderId?: string | null,
 ): Promise<LibraryDocumentResponse> {
   try {
     const formData = new FormData()
     formData.append('file', file)
+    // #822: an empty/root folderId is simply omitted, mirroring getLibraryDocuments above - the
+    // backend's own folderId form field is optional and nullable, meaning "the library's root"
+    // either way.
+    if (folderId) {
+      formData.append('folderId', folderId)
+    }
     const { data } = await client.post<LibraryDocumentResponse>(
       `/v1/libraries/${libraryId}/documents`,
       formData,
@@ -626,6 +646,61 @@ export async function uploadDocument(
     return data
   } catch (err) {
     normalizeError(err, 'upload')
+  }
+}
+
+// #822 (Epic #520 Phase 3): folder CRUD for the UPLOAD-library navigation UI - the endpoints
+// themselves shipped with #820 (ADR-0020).
+export async function createLibraryFolder(
+  libraryId: string,
+  request: LibraryFolderRequest,
+): Promise<LibraryFolderResponse> {
+  try {
+    const { data } = await client.post<LibraryFolderResponse>(
+      `/v1/libraries/${libraryId}/folders`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getLibraryFolder(
+  libraryId: string,
+  folderId: string,
+): Promise<LibraryFolderResponse> {
+  try {
+    const { data } = await client.get<LibraryFolderResponse>(
+      `/v1/libraries/${libraryId}/folders/${folderId}`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function renameLibraryFolder(
+  libraryId: string,
+  folderId: string,
+  request: LibraryFolderRenameRequest,
+): Promise<LibraryFolderResponse> {
+  try {
+    const { data } = await client.patch<LibraryFolderResponse>(
+      `/v1/libraries/${libraryId}/folders/${folderId}`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteLibraryFolder(libraryId: string, folderId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}/folders/${folderId}`)
+  } catch (err) {
+    normalizeError(err)
   }
 }
 

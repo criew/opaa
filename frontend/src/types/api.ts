@@ -79,6 +79,12 @@ export type DocumentSourceType = components['schemas']['DocumentSourceType']
 export type LibraryDocumentResponse = components['schemas']['LibraryDocumentResponse']
 export type LibraryDocumentPageResponse = components['schemas']['LibraryDocumentPageResponse']
 
+export type LibraryFolderListItem = components['schemas']['LibraryFolderListItem']
+export type LibraryFolderBreadcrumbItem = components['schemas']['LibraryFolderBreadcrumbItem']
+export type LibraryFolderRequest = components['schemas']['LibraryFolderRequest']
+export type LibraryFolderRenameRequest = components['schemas']['LibraryFolderRenameRequest']
+export type LibraryFolderResponse = components['schemas']['LibraryFolderResponse']
+
 export type PermissionSubjectType = components['schemas']['PermissionSubjectType']
 export type AssetGrantRequest = components['schemas']['AssetGrantRequest']
 export type AssetGrantResponse = components['schemas']['AssetGrantResponse']
