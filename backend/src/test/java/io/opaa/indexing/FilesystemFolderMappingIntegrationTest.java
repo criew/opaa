@@ -1,0 +1,334 @@
+package io.opaa.indexing;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+
+import io.opaa.FakeEmbeddingModel;
+import io.opaa.auth.SystemRole;
+import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.library.LibraryFolder;
+import io.opaa.library.LibraryFolderRepository;
+import io.opaa.library.LibraryVisibility;
+import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.organization.Organization;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
+
+/**
+ * End-to-end coverage of #824 (Epic #520 Phase 4, ADR-0020): a FILESYSTEM library's real directory
+ * structure mirrored into {@code library_folders} by {@link AsyncIndexingExecutor}/{@link
+ * io.opaa.library.LibraryFolderService#materializeFolderPath}, kept in sync by {@link
+ * io.opaa.library.LibraryFolderService#pruneOrphanedFolders}. Runs against the real Liquibase
+ * schema (AGENTS.md "Reproduktionsnachweis" - {@code fk_documents_folder}/{@code
+ * fk_library_folders_parent} only exist there, not under {@code ddl-auto=create-drop}), the same
+ * Testcontainers/{@code FakeEmbeddingModel} setup {@link DocumentIndexingIntegrationTest} uses.
+ */
+@SpringBootTest
+@ActiveProfiles("dev")
+@Testcontainers(disabledWithoutDocker = true)
+class FilesystemFolderMappingIntegrationTest {
+
+  @Container
+  static PostgreSQLContainer postgres =
+      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
+
+  @TempDir static Path sharedTempDir;
+
+  @DynamicPropertySource
+  static void configureProperties(DynamicPropertyRegistry registry) {
+    registry.add("spring.datasource.url", postgres::getJdbcUrl);
+    registry.add("spring.datasource.username", postgres::getUsername);
+    registry.add("spring.datasource.password", postgres::getPassword);
+    registry.add("opaa.indexing.document-path", () -> sharedTempDir.toAbsolutePath().toString());
+    registry.add(
+        "opaa.indexing.filesystem-allowlist", () -> sharedTempDir.toAbsolutePath().toString());
+    registry.add("opaa.indexing.chunk-size", () -> 100);
+    registry.add("opaa.indexing.chunk-overlap", () -> 10);
+    registry.add("opaa.indexing.batch-size", () -> 10);
+  }
+
+  @TestConfiguration
+  static class TestConfig {
+    @Bean
+    @Primary
+    EmbeddingModel testEmbeddingModel() {
+      return new FakeEmbeddingModel();
+    }
+  }
+
+  @Autowired private DocumentIndexingService documentIndexingService;
+  @Autowired private DocumentRepository documentRepository;
+  @Autowired private LibraryFolderRepository folderRepository;
+  @Autowired private ChecksumService checksumService;
+  @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private IndexingJobRepository indexingJobRepository;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @MockitoBean private ChatModel chatModel;
+  @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
+
+  private UUID userId;
+  private UUID targetLibraryId;
+
+  @BeforeEach
+  void setUp() throws IOException {
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store");
+    documentRepository.deleteAll();
+    indexingJobRepository.deleteAll();
+    jdbcTemplate.update("DELETE FROM library_folders");
+    if (Files.exists(sharedTempDir)) {
+      try (var files = Files.walk(sharedTempDir)) {
+        files
+            .sorted((a, b) -> b.getNameCount() - a.getNameCount())
+            .filter(p -> !p.equals(sharedTempDir))
+            .forEach(
+                p -> {
+                  try {
+                    Files.deleteIfExists(p);
+                  } catch (IOException e) {
+                    // ignore cleanup failures
+                  }
+                });
+      }
+    }
+
+    jdbcTemplate.update(
+        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
+            + " email = 'folder-mapping-it@example.com')");
+    jdbcTemplate.update("DELETE FROM users WHERE email = 'folder-mapping-it@example.com'");
+    userId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, 'test-issuer', 'folder-mapping-it@example.com',"
+            + " 'Folder Mapping IT User', now(), ?, ?)",
+        userId,
+        "folder-mapping-it-" + userId,
+        SystemRole.SYSTEM_ADMIN.name(),
+        Organization.DEFAULT_ID);
+
+    KnowledgeLibrary library =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID,
+                "Zielbibliothek",
+                null,
+                userId,
+                LibraryVisibility.PRIVATE,
+                false,
+                DocumentSourceType.FILESYSTEM,
+                sharedTempDir.toAbsolutePath().toString(),
+                null,
+                null,
+                null,
+                false));
+    targetLibraryId = library.getId();
+    grantOwner(targetLibraryId, userId);
+  }
+
+  private void grantOwner(UUID libraryId, UUID granteeId) {
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?,"
+            + " 'OWNER', now(), now())",
+        UUID.randomUUID(),
+        libraryId,
+        Organization.DEFAULT_ID,
+        granteeId);
+  }
+
+  private IndexingJob triggerIndexing() {
+    return documentIndexingService.triggerIndexing(targetLibraryId, userId, true);
+  }
+
+  private void awaitJobCompletion(IndexingJob job) {
+    await()
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              var latestJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+              return latestJob.getStatus() != JobStatus.RUNNING;
+            });
+  }
+
+  private Optional<LibraryFolder> findFolder(UUID parentFolderId, String name) {
+    return folderRepository.findByLibraryId(targetLibraryId).stream()
+        .filter(f -> java.util.Objects.equals(f.getParentFolderId(), parentFolderId))
+        .filter(f -> f.getName().equals(name))
+        .findFirst();
+  }
+
+  @Test
+  void nestedDirectoryStructureIsMirroredAsFolders() throws IOException {
+    Files.createDirectories(sharedTempDir.resolve("Rechtsquellen/2026"));
+    Files.writeString(sharedTempDir.resolve("top.txt"), "Wurzeldokument.");
+    Files.writeString(
+        sharedTempDir.resolve("Rechtsquellen/2026/januar.txt"), "Rechtsquelle Januar 2026.");
+
+    awaitJobCompletion(triggerIndexing());
+
+    LibraryFolder rechtsquellen = findFolder(null, "Rechtsquellen").orElseThrow();
+    LibraryFolder jahr2026 = findFolder(rechtsquellen.getId(), "2026").orElseThrow();
+
+    Document topDoc =
+        documentRepository.findAll().stream()
+            .filter(d -> d.getFileName().equals("top.txt"))
+            .findFirst()
+            .orElseThrow();
+    Document januarDoc =
+        documentRepository.findAll().stream()
+            .filter(d -> d.getFileName().equals("januar.txt"))
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(topDoc.getFolderId()).isNull();
+    assertThat(januarDoc.getFolderId()).isEqualTo(jahr2026.getId());
+  }
+
+  @Test
+  void repeatedRunsAreIdempotentAndDoNotDuplicateFolders() throws IOException {
+    Files.createDirectories(sharedTempDir.resolve("Archiv"));
+    Files.writeString(sharedTempDir.resolve("Archiv/protokoll.txt"), "Protokoll.");
+
+    awaitJobCompletion(triggerIndexing());
+    UUID firstFolderId = findFolder(null, "Archiv").orElseThrow().getId();
+
+    awaitJobCompletion(triggerIndexing());
+
+    List<LibraryFolder> archivFolders =
+        folderRepository.findByLibraryId(targetLibraryId).stream()
+            .filter(f -> f.getName().equals("Archiv"))
+            .toList();
+    assertThat(archivFolders).hasSize(1);
+    assertThat(archivFolders.getFirst().getId()).isEqualTo(firstFolderId);
+  }
+
+  @Test
+  void backfillsFolderIdOnADocumentIndexedBeforeFolderMappingExisted() throws IOException {
+    // Simulates a document row created before #824: its file already sits under a subdirectory,
+    // but folder_id is still NULL (the state every pre-#824 document is in). The next run must
+    // not touch its content (same checksum, still INDEXED - a real re-index would be a regression
+    // here) but must backfill folder_id, per docs/features/knowledge-sources.md's "Ordner in
+    // FILESYSTEM-Bibliotheken".
+    Files.createDirectories(sharedTempDir.resolve("Archiv/2025"));
+    Path file = sharedTempDir.resolve("Archiv/2025/protokoll.txt");
+    Files.writeString(file, "Protokoll aus 2025.");
+    String checksum = checksumService.computeSha256(file);
+
+    UUID legacyDocumentId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO documents (id, file_name, file_path, content_type, file_size, chunk_count,"
+            + " indexed_at, checksum, status, source_type, library_id, organization_id,"
+            + " created_at, folder_id) VALUES (?, ?, ?, 'text/plain', ?, 1, now(), ?, 'INDEXED',"
+            + " 'FILESYSTEM', ?, ?, now(), NULL)",
+        legacyDocumentId,
+        "protokoll.txt",
+        file.toAbsolutePath().toString(),
+        Files.size(file),
+        checksum,
+        targetLibraryId,
+        Organization.DEFAULT_ID);
+
+    IndexingJob job = triggerIndexing();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getDocumentsSkipped()).isEqualTo(1);
+    assertThat(completedJob.getDocumentsProcessed()).isZero();
+
+    Document backfilled = documentRepository.findById(legacyDocumentId).orElseThrow();
+    assertThat(backfilled.getFolderId()).isNotNull();
+    LibraryFolder archiv = findFolder(null, "Archiv").orElseThrow();
+    LibraryFolder jahr2025 = findFolder(archiv.getId(), "2025").orElseThrow();
+    assertThat(backfilled.getFolderId()).isEqualTo(jahr2025.getId());
+    // The row itself was never re-indexed - same checksum, same indexed_at-independent identity.
+    assertThat(backfilled.getChecksum()).isEqualTo(checksum);
+  }
+
+  @Test
+  void removesAnOrphanedEmptyFolderChainOnceItsDirectoriesAndDocumentAreAllGone()
+      throws IOException {
+    // #824 review, Befund 3: a two-level chain (Temp/2025/datei.txt), not a single folder - the
+    // mock-only unit coverage (LibraryFolderServiceTest#
+    // pruneOrphanedFoldersRemovesAnOrphanedParentOnlyAfterItsOwnEmptyOrphanedChild) proves the
+    // leaf-first *order* pruneRecursive walks in, but only the real Liquibase schema can prove
+    // Hibernate actually flushes those deletes in that order within one transaction - a
+    // parent-before-child flush would trip fk_library_folders_parent's RESTRICT (migration 062)
+    // and fail the whole pruneOrphanedFolders call.
+    Files.createDirectories(sharedTempDir.resolve("Temp/2025"));
+    Files.writeString(sharedTempDir.resolve("Temp/2025/datei.txt"), "Wird bald geloescht.");
+
+    awaitJobCompletion(triggerIndexing());
+    LibraryFolder temp = findFolder(null, "Temp").orElseThrow();
+    LibraryFolder temp2025 = findFolder(temp.getId(), "2025").orElseThrow();
+
+    // #824's own scope: a FILESYSTEM run does not yet delete a document whose file disappeared
+    // (documented gap, see LibraryFolderService#pruneOrphanedFolders's own Javadoc) - the document
+    // row is removed here directly to isolate and exercise the folder-pruning behaviour on its
+    // own, independent of that still-open deletion-by-absence work.
+    Files.delete(sharedTempDir.resolve("Temp/2025/datei.txt"));
+    Files.delete(sharedTempDir.resolve("Temp/2025"));
+    Files.delete(sharedTempDir.resolve("Temp"));
+    documentRepository.deleteAll(
+        documentRepository.findAll().stream()
+            .filter(d -> d.getFileName().equals("datei.txt"))
+            .toList());
+
+    awaitJobCompletion(triggerIndexing());
+
+    assertThat(folderRepository.findById(temp2025.getId())).isEmpty();
+    assertThat(folderRepository.findById(temp.getId())).isEmpty();
+  }
+
+  @Test
+  void theSameContentInTwoSubdirectoriesRemainsTwoDistinctDocuments() throws IOException {
+    // ADR-0020, Entscheidung 6: FILESYSTEM dedup is path-based, not checksum-based - two
+    // identical files in different directories of the same source are two legitimate documents.
+    Files.createDirectories(sharedTempDir.resolve("A"));
+    Files.createDirectories(sharedTempDir.resolve("B"));
+    Files.writeString(sharedTempDir.resolve("A/gleich.txt"), "Identischer Inhalt.");
+    Files.writeString(sharedTempDir.resolve("B/gleich.txt"), "Identischer Inhalt.");
+
+    IndexingJob job = triggerIndexing();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getDocumentsProcessed()).isEqualTo(2);
+
+    List<Document> documents =
+        documentRepository.findAll().stream()
+            .filter(d -> d.getFileName().equals("gleich.txt"))
+            .toList();
+    assertThat(documents).hasSize(2);
+    assertThat(documents.get(0).getChecksum()).isEqualTo(documents.get(1).getChecksum());
+    assertThat(documents.stream().map(Document::getFolderId).distinct().count()).isEqualTo(2);
+
+    LibraryFolder folderA = findFolder(null, "A").orElseThrow();
+    LibraryFolder folderB = findFolder(null, "B").orElseThrow();
+    assertThat(documents.stream().map(Document::getFolderId).toList())
+        .containsExactlyInAnyOrder(folderA.getId(), folderB.getId());
+  }
+}

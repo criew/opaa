@@ -4,12 +4,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
 import java.io.IOException;
@@ -35,6 +37,7 @@ class AsyncIndexingExecutorTest {
   private IndexingJobService indexingJobService;
   private IndexingRunEventRepository indexingRunEventRepository;
   private LibraryStorageQuotaService storageQuotaService;
+  private LibraryFolderService folderService;
   private AsyncIndexingExecutor executor;
   private KnowledgeLibrary library;
 
@@ -44,6 +47,7 @@ class AsyncIndexingExecutorTest {
     indexingJobService = mock(IndexingJobService.class);
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
+    folderService = mock(LibraryFolderService.class);
     FilesystemPathAllowlist allowlist = mock(FilesystemPathAllowlist.class);
     when(allowlist.isAllowed(any())).thenReturn(true);
 
@@ -69,7 +73,8 @@ class AsyncIndexingExecutorTest {
             indexingJobService,
             allowlist,
             indexingRunEventRepository,
-            storageQuotaService);
+            storageQuotaService,
+            folderService);
   }
 
   @Test
@@ -80,7 +85,7 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("over-quota.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.processFile(eq(file), eq(library)))
+    when(fileProcessingService.processFile(eq(file), eq(library), isNull()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
     when(storageQuotaService.quotaExceededMessage(library.getId()))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
@@ -104,7 +109,7 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("ok.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.processFile(eq(file), eq(library)))
+    when(fileProcessingService.processFile(eq(file), eq(library), isNull()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     executor.execute(UUID.randomUUID(), library);

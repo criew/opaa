@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -120,6 +121,23 @@ public class FileProcessingService {
 
   public FileProcessingResult processFile(Path file, KnowledgeLibrary targetLibrary)
       throws IOException {
+    return processFile(file, targetLibrary, null);
+  }
+
+  /**
+   * The FILESYSTEM-folder-aware counterpart of {@link #processFile(Path, KnowledgeLibrary)} (#824,
+   * Epic #520 Phase 4, ADR-0020) - identical otherwise, but carries the {@code
+   * io.opaa.library.LibraryFolder} {@code AsyncIndexingExecutor} already materialized for {@code
+   * file}'s directory under the library's {@code sourcePath}.
+   *
+   * @param folderId the folder {@code file} belongs to, or {@code null} for the library's root;
+   *     also backfilled onto an already-{@code INDEXED} document whose content is unchanged (the
+   *     {@code SKIPPED} branch below) - a document indexed before #824, or whose folder identity
+   *     changed because its previous folder row was pruned and recreated, would otherwise never
+   *     pick up its folder assignment until its content itself changes.
+   */
+  public FileProcessingResult processFile(Path file, KnowledgeLibrary targetLibrary, UUID folderId)
+      throws IOException {
     String filePath = file.toAbsolutePath().toString();
     String fileName = file.getFileName().toString();
 
@@ -133,6 +151,10 @@ public class FileProcessingService {
       if (checksum.equals(existingDoc.getChecksum())
           && existingDoc.getStatus() == DocumentStatus.INDEXED
           && targetLibrary.getId().equals(existingDoc.getLibraryId())) {
+        if (!Objects.equals(existingDoc.getFolderId(), folderId)) {
+          existingDoc.setFolderId(folderId);
+          documentRepository.save(existingDoc);
+        }
         log.info("Skipping unchanged document: {}", fileName);
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
@@ -164,6 +186,7 @@ public class FileProcessingService {
     var doc = new Document(fileName, filePath, contentType, fileSize);
     doc.setLibraryId(targetLibrary.getId());
     doc.setOrganizationId(targetLibrary.getOrganizationId());
+    doc.setFolderId(folderId);
     doc = documentRepository.save(doc);
 
     try {

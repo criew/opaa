@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
+import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.UploadProperties;
 import io.opaa.observability.IndexingMetrics;
@@ -96,14 +97,16 @@ public class IndexingConfiguration {
       IndexingJobService indexingJobService,
       FilesystemPathAllowlist filesystemPathAllowlist,
       IndexingRunEventRepository indexingRunEventRepository,
-      LibraryStorageQuotaService libraryStorageQuotaService) {
+      LibraryStorageQuotaService libraryStorageQuotaService,
+      LibraryFolderService libraryFolderService) {
     return new AsyncIndexingExecutor(
         documentService,
         fileProcessingService,
         indexingJobService,
         filesystemPathAllowlist,
         indexingRunEventRepository,
-        libraryStorageQuotaService);
+        libraryStorageQuotaService,
+        libraryFolderService);
   }
 
   @Bean

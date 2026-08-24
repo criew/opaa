@@ -697,18 +697,32 @@ Navigation in der Oberfläche (Breadcrumb, Ordnerzeilen) folgt mit #822.
   Retrieval); ein Treffer trägt zusätzlich `folderId`/`folderPath` seines Dokuments, damit
   erkennbar bleibt, wo es in der Struktur liegt.
 
-### Ordner in FILESYSTEM-Bibliotheken
+### Ordner in FILESYSTEM-Bibliotheken (#824, gebaut)
 
 Eine `FILESYSTEM`-Bibliothek bildet die tatsächliche Verzeichnisstruktur der Quelle als **read-only
-Ordner** ab — angelegt und nachgeführt bei jedem Indizierungslauf, nicht manuell editierbar. **Die
-Quelle ist führend:** Verzeichnisse, die im Dateisystem verschwinden, verschwinden auch aus der
-Ordneransicht der Bibliothek — sobald die für diesen Quellentyp entschiedene, aber noch nicht gebaute
-Löschung durch Abwesenheit umgesetzt ist ([ADR-0017](../decisions/0017-quellentypmodell-indizierung.md),
-Entscheidung 5, siehe auch [Selbst aktualisierende
-Wissensblöcke](#selbst-aktualisierende-wissensblöcke)); ein neu angelegtes Unterverzeichnis erscheint
-mit dem nächsten Lauf als neuer Ordner. Das behebt nebenbei, dass gleichnamige Dateien aus
-verschiedenen Unterverzeichnissen heute in einer flachen Liste ununterscheidbar sind — jede Datei
-bekommt über ihren Ordner einen eindeutigen Platz.
+Ordner** ab — angelegt und nachgeführt bei jedem Indizierungslauf, nicht manuell editierbar (die
+Folder-CRUD-Endpoints antworten für eine `FILESYSTEM`-Bibliothek weiterhin mit `409`, wie beim Upload).
+Für jede gefundene Datei wird der zu `sourcePath` relative Verzeichnisanteil ermittelt und als
+Ordnerkette in `library_folders` materialisiert (idempotent über den Unique-Index — ein bereits
+vorhandener Ordner auf derselben Ebene wird wiederverwendet, nicht dupliziert); `documents.folder_id`
+wird entsprechend gesetzt, auch nachträglich für ein bereits vor #824 indexiertes Dokument, dessen
+Pfad sich seither nicht geändert hat. Ein Verzeichnis ohne indexierbare Datei erscheint dabei nicht als
+eigener Ordner — Ordner entstehen nur entlang tatsächlich gefundener Dateien, es gibt (anders als bei
+`UPLOAD`) keinen Weg, einen leeren Ordner vorab anzulegen.
+
+**Die Quelle ist führend, mit einer Einschränkung:** Ein Ordner, den ein Lauf nicht mehr im
+Dateisystem sieht und der (auch transitiv über seine Unterordner) kein Dokument mehr enthält, wird am
+Ende desselben Laufs entfernt — das ist bereits mit diesem Issue gebaut. Ein Ordner, dessen
+Verzeichnis verschwunden ist, dessen Dokumentzeile aber noch existiert, bleibt dagegen vorerst stehen:
+Löschung durch Abwesenheit ist für Dokumente selbst laut
+[ADR-0017](../decisions/0017-quellentypmodell-indizierung.md), Entscheidung 5, zwar entschieden, aber
+noch nicht gebaut (siehe auch [Selbst aktualisierende
+Wissensblöcke](#selbst-aktualisierende-wissensblöcke)) — sobald das nachgezogen ist, verschwindet auch
+ein solcher Ordner automatisch, ohne dass diese Aufräumlogik sich ändern muss. Ein neu angelegtes
+Unterverzeichnis mit mindestens einer indexierbaren Datei erscheint mit dem nächsten Lauf als neuer
+Ordner. Das behebt nebenbei, dass gleichnamige Dateien aus verschiedenen Unterverzeichnissen heute in
+einer flachen Liste ununterscheidbar sind — jede Datei bekommt über ihren Ordner einen eindeutigen
+Platz.
 
 ---
 
