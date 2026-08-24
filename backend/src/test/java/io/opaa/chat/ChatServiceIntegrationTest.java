@@ -24,6 +24,7 @@ import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceRole;
 import io.opaa.space.SpaceVisibility;
 import io.opaa.test.OpaaIntegrationTest;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -44,6 +45,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.server.ResponseStatusException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
@@ -74,6 +77,7 @@ class ChatServiceIntegrationTest {
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private ObjectMapper objectMapper;
 
   // #557: ChatService#appendTurn now triggers ChatTitleGenerationService's real, Spring-managed
   // LLM call on a chat's first turn - without this mock, every appendTurn test in this class would
@@ -798,6 +802,46 @@ class ChatServiceIntegrationTest {
     associateLibrary(spaceId, library, author);
 
     assertThat(chatService.spaceHasLibraryAssociations(spaceId)).isTrue();
+  }
+
+  /**
+   * #860 Teil 4: {@code chat_messages.sources} persisted the generated {@code SourceReference}
+   * DTO's JSON shape before this change (including its now-unused {@code spaceName} field and an
+   * ISO-8601 {@code Instant}) - this literal blob is exactly that shape, read here with the same,
+   * Spring-managed {@link ObjectMapper} {@code ChatService} injects. Pinned as its own test rather
+   * than trusted to {@code appendTurnPersistsBothMessagesAndDerivesTheTitleFromTheFirstQuestion}
+   * (which only ever round-trips freshly written {@link ChatSource} JSON): {@code
+   * ChatService#parseSources} silently swallows a deserialization failure (falls back to "no
+   * sources" instead of throwing, see its Javadoc), so nothing else in this suite would catch a
+   * wire-compatibility regression against data written by a pre-#860 deployment.
+   */
+  @Test
+  void legacySourceReferenceJsonStillDeserializesIntoChatSource() throws Exception {
+    UUID documentId = UUID.randomUUID();
+    String legacyJson =
+        "[{\"fileName\":\"bericht.pdf\",\"spaceName\":\"Engineering\",\"relevanceScore\":0.92,"
+            + "\"matchCount\":3,\"indexedAt\":\"2025-01-15T10:30:00Z\",\"documentId\":\""
+            + documentId
+            + "\",\"sourceType\":\"UPLOAD\",\"sourceUrl\":null,\"sourceEntryUrl\":null,"
+            + "\"cited\":true,\"citationValid\":true,\"chunkLocations\":[{\"chunkIndex\":3,"
+            + "\"location\":\"S. 2-4\"}]}]";
+
+    List<ChatSource> parsed =
+        objectMapper.readValue(legacyJson, new TypeReference<List<ChatSource>>() {});
+
+    assertThat(parsed).hasSize(1);
+    ChatSource source = parsed.getFirst();
+    assertThat(source.getFileName()).isEqualTo("bericht.pdf");
+    assertThat(source.getRelevanceScore()).isEqualTo(0.92);
+    assertThat(source.getMatchCount()).isEqualTo(3);
+    assertThat(source.getCited()).isTrue();
+    assertThat(source.getIndexedAt()).isEqualTo(Instant.parse("2025-01-15T10:30:00Z"));
+    assertThat(source.getDocumentId()).isEqualTo(documentId);
+    assertThat(source.getSourceType()).isEqualTo(io.opaa.indexing.DocumentSourceType.UPLOAD);
+    assertThat(source.getCitationValid()).isTrue();
+    assertThat(source.getChunkLocations()).hasSize(1);
+    assertThat(source.getChunkLocations().getFirst().getChunkIndex()).isEqualTo(3);
+    assertThat(source.getChunkLocations().getFirst().getLocation()).isEqualTo("S. 2-4");
   }
 
   private void associateLibrary(UUID spaceId, UUID libraryId, UUID createdByUserId) {

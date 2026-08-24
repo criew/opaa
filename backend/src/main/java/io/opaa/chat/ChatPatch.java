@@ -7,9 +7,10 @@ import java.util.UUID;
  * Domain counterpart of the generated {@code ChatUpdateRequest} at the {@link
  * ChatService#updateChat} boundary (#860 Teil 4) - mirrors its fluent {@code withX}-style setters.
  * Every field is optional and only overwrites the chat when non-null (PATCH semantics), matching
- * {@link Chat#applyUpdate}. {@link ChatController} builds one of these from the generated request
- * DTO, converting {@code referencedLibraryIds} from a {@code List} to the {@code Set} {@link
- * ChatService} works with - {@code null} means "omitted", an empty set means "clear".
+ * {@link Chat#applyUpdate}. {@code ChatController} builds one of these from the generated request
+ * DTO; {@link ChatService#updateChat} is where {@code referencedLibraryIds} actually turns from
+ * this record's {@code List} into the {@code Set} the entity works with - {@code null} means
+ * "omitted", an empty set means "clear".
  */
 public final class ChatPatch {
 

@@ -14,10 +14,12 @@ import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatTurn;
 import io.opaa.indexing.DocumentSourceType;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Pure JUnit tests (no Spring context) against directly constructed entities/domain objects - #860
@@ -53,19 +55,41 @@ class ChatResponseMapperTest {
 
   @Test
   void toDetailResponseCopiesTheConversationAndMapsEveryMessage() {
+    UUID libraryId = UUID.randomUUID();
     Chat chat =
-        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+        new Chat(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "Frage zur Frist",
+            false,
+            Set.of(libraryId));
+    // Fixed, distinct createdAt/updatedAt - Chat only assigns these via @PrePersist, which a
+    // directly constructed (never persisted) entity never runs, and equal or absent values would
+    // let a createdAt/updatedAt swap in the mapper pass unnoticed.
+    Instant createdAt = Instant.parse("2026-01-01T10:00:00Z");
+    Instant updatedAt = Instant.parse("2026-01-02T11:30:00Z");
+    ReflectionTestUtils.setField(chat, "createdAt", createdAt);
+    ReflectionTestUtils.setField(chat, "updatedAt", updatedAt);
+    UUID userTurnId = UUID.randomUUID();
+    UUID assistantTurnId = UUID.randomUUID();
     ChatSource source = new ChatSource("bericht.pdf", 0.9, 1, true);
     ChatTurn userTurn =
-        new ChatTurn(UUID.randomUUID(), chat.getId(), ChatRole.USER, "Frage?", null, Instant.now());
+        new ChatTurn(
+            userTurnId,
+            chat.getId(),
+            ChatRole.USER,
+            "Frage?",
+            null,
+            createdAt.plus(1, ChronoUnit.MINUTES));
     ChatTurn assistantTurn =
         new ChatTurn(
-            UUID.randomUUID(),
+            assistantTurnId,
             chat.getId(),
             ChatRole.ASSISTANT,
             "Antwort.",
             List.of(source),
-            Instant.now());
+            createdAt.plus(2, ChronoUnit.MINUTES));
     ChatConversation conversation = new ChatConversation(chat, List.of(userTurn, assistantTurn));
 
     ChatDetail response = ChatResponseMapper.toDetailResponse(conversation);
@@ -73,9 +97,16 @@ class ChatResponseMapperTest {
     assertThat(response.getId()).isEqualTo(chat.getId());
     assertThat(response.getSpaceId()).isEqualTo(chat.getSpaceId());
     assertThat(response.getAuthorId()).isEqualTo(chat.getAuthorId());
-    assertThat(response.getUseKnowledge()).isTrue();
+    assertThat(response.getTitle()).isEqualTo("Frage zur Frist");
+    assertThat(response.getUseKnowledge()).isFalse();
+    assertThat(response.getReferencedLibraryIds()).containsExactly(libraryId);
+    assertThat(response.getStatus()).isEqualTo(chat.getStatus());
+    assertThat(response.getCreatedAt()).isEqualTo(createdAt);
+    assertThat(response.getUpdatedAt()).isEqualTo(updatedAt);
     assertThat(response.getMessages()).hasSize(2);
     ChatMessageResponse mappedUserTurn = response.getMessages().get(0);
+    assertThat(mappedUserTurn.getId()).isEqualTo(userTurnId);
+    assertThat(mappedUserTurn.getChatId()).isEqualTo(chat.getId());
     assertThat(mappedUserTurn.getRole()).isEqualTo(ChatRole.USER);
     assertThat(mappedUserTurn.getContent()).isEqualTo("Frage?");
     // A turn with no sources maps to a null (absent), not empty, sources list - matches the
@@ -83,6 +114,8 @@ class ChatResponseMapperTest {
     // otherwise" contract.
     assertThat(mappedUserTurn.getSources()).isNull();
     ChatMessageResponse mappedAssistantTurn = response.getMessages().get(1);
+    assertThat(mappedAssistantTurn.getId()).isEqualTo(assistantTurnId);
+    assertThat(mappedAssistantTurn.getChatId()).isEqualTo(chat.getId());
     assertThat(mappedAssistantTurn.getSources()).hasSize(1);
     assertThat(mappedAssistantTurn.getSources().getFirst().getFileName()).isEqualTo("bericht.pdf");
   }

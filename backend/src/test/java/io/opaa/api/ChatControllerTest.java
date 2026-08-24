@@ -20,6 +20,8 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
+import io.opaa.chat.ChatCreation;
+import io.opaa.chat.ChatPatch;
 import io.opaa.chat.ChatService;
 import java.util.List;
 import java.util.Optional;
@@ -125,13 +127,46 @@ class ChatControllerTest {
   }
 
   @Test
-  void listSpaceChatsPassesTheSpaceIdFromThePathThrough() throws Exception {
+  void createChatWithFullBodyPassesEveryFieldToChatCreation() throws Exception {
     UUID spaceId = UUID.randomUUID();
-    when(chatService.listChats(eq(spaceId), any())).thenReturn(List.of());
+    UUID libraryId1 = UUID.randomUUID();
+    UUID libraryId2 = UUID.randomUUID();
+    when(chatService.createChat(eq(spaceId), any(), any())).thenReturn(sampleDetail(spaceId));
+
+    mockMvc
+        .perform(
+            post("/api/v1/spaces/{spaceId}/chats", spaceId)
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"title\": \"Frage zur Frist\", \"useKnowledge\": false,"
+                        + " \"referencedLibraryIds\": [\""
+                        + libraryId1
+                        + "\", \""
+                        + libraryId2
+                        + "\"]}"))
+        .andExpect(status().isCreated());
+
+    ArgumentCaptor<ChatCreation> creationCaptor = ArgumentCaptor.forClass(ChatCreation.class);
+    verify(chatService).createChat(eq(spaceId), any(), creationCaptor.capture());
+    ChatCreation creation = creationCaptor.getValue();
+    assertThat(creation.getTitle()).isEqualTo("Frage zur Frist");
+    assertThat(creation.getUseKnowledge()).isFalse();
+    assertThat(creation.getReferencedLibraryIds()).containsExactly(libraryId1, libraryId2);
+  }
+
+  @Test
+  void listSpaceChatsPassesTheSpaceIdFromThePathThroughAndMapsEveryChat() throws Exception {
+    UUID spaceId = UUID.randomUUID();
+    Chat chat =
+        new Chat(spaceId, currentUser.getId(), UUID.randomUUID(), "Meine Frage", true, Set.of());
+    when(chatService.listChats(eq(spaceId), any())).thenReturn(List.of(chat));
 
     mockMvc
         .perform(get("/api/v1/spaces/{spaceId}/chats", spaceId).with(asTestUser()))
-        .andExpect(status().isOk());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(chat.getId().toString()))
+        .andExpect(jsonPath("$[0].title").value("Meine Frage"));
 
     verify(chatService).listChats(eq(spaceId), any());
   }
@@ -191,6 +226,36 @@ class ChatControllerTest {
         .andExpect(status().isBadRequest());
 
     verify(chatService, never()).updateChat(any(), any(), any());
+  }
+
+  @Test
+  void updateChatWithFullBodyPassesEveryFieldToChatPatch() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    UUID spaceId = UUID.randomUUID();
+    UUID libraryId1 = UUID.randomUUID();
+    UUID libraryId2 = UUID.randomUUID();
+    when(chatService.updateChat(eq(chatId), any(), any())).thenReturn(sampleDetail(spaceId));
+
+    mockMvc
+        .perform(
+            patch("/api/v1/chats/{chatId}", chatId)
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"title\": \"Neuer Titel\", \"useKnowledge\": false,"
+                        + " \"referencedLibraryIds\": [\""
+                        + libraryId1
+                        + "\", \""
+                        + libraryId2
+                        + "\"]}"))
+        .andExpect(status().isOk());
+
+    ArgumentCaptor<ChatPatch> patchCaptor = ArgumentCaptor.forClass(ChatPatch.class);
+    verify(chatService).updateChat(eq(chatId), any(), patchCaptor.capture());
+    ChatPatch patch = patchCaptor.getValue();
+    assertThat(patch.getTitle()).isEqualTo("Neuer Titel");
+    assertThat(patch.getUseKnowledge()).isFalse();
+    assertThat(patch.getReferencedLibraryIds()).containsExactly(libraryId1, libraryId2);
   }
 
   @Test

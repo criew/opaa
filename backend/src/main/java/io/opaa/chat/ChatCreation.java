@@ -6,9 +6,10 @@ import java.util.UUID;
 /**
  * Domain counterpart of the generated {@code ChatCreateRequest} at the {@link
  * ChatService#createChat} boundary (#860 Teil 4) - mirrors its fluent {@code withX}-style setters
- * for a low-friction test call site. {@link ChatController} builds one of these from the (possibly
- * absent, see {@code POST /spaces/{spaceId}/chats}) generated request DTO, converting {@code
- * referencedLibraryIds} from a {@code List} to the {@code Set} {@link ChatService} works with.
+ * for a low-friction test call site. {@code ChatController} builds one of these from the (possibly
+ * absent, see {@code POST /spaces/{spaceId}/chats}) generated request DTO; {@link
+ * ChatService#createChat} is where {@code referencedLibraryIds} actually turns from this record's
+ * {@code List} into the {@code Set} the entity works with.
  */
 public final class ChatCreation {
 
