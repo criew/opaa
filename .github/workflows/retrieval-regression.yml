@@ -35,6 +35,52 @@ concurrency:
 
 jobs:
   evaluate:
+    # Eine Job-Definition, Matrix über die Eval-Domäne — eine weitere Domäne ist ein zusätzlicher
+    # matrix.include-Eintrag, keine Job-Kopie. fail-fast: false, damit eine rote Domäne die andere
+    # nicht abbricht — beide Baselines sind unabhängig voneinander aussagekräftig.
+    name: evaluate (${{ matrix.domain }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - domain: comic-characters
+            task: checkRetrievalBaseline
+            # Muss über dem Awaitility-Timeout in awaitJobCompletion (RetrievalEvaluationHarnessTest,
+            # aktuell 45 min) liegen, sonst endet eine hängende Indizierung als abgebrochener Job statt
+            # als diagnostizierbarer Testfehlschlag. Wer eines der beiden Limits anfasst, prüft das
+            # andere mit.
+            timeout_minutes: 60
+            exec_step_name: 'Retrieval-Regression ausführen'
+            report_file: baseline-comparison.md
+            artifact_name: retrieval-metrics
+            metrics_file: retrieval-metrics.json
+            chunk_map_file: chunk-map-comic-characters.json
+            marker: '<!-- retrieval-regression-alert -->'
+            pr_fallback_heading: '## Retrieval-Regression gegen Baseline'
+            invariant_hint: Ein-Chunk-Invariante-Verletzung
+            failure_prefix: 'Erneut fehlgeschlagen:'
+            issue_intro: '**Automatischer nächtlicher Retrieval-Regressionslauf fehlgeschlagen.**'
+            issue_title: 'Retrieval-Regression erkannt (automatischer Lauf)'
+            success_comment: 'Der nächtliche Retrieval-Regressionslauf ist wieder grün:'
+          - domain: city-landmarks
+            task: checkCityLandmarksRetrievalBaseline
+            # Muss über dem Awaitility-Timeout in awaitJobCompletion
+            # (CityLandmarksRetrievalEvaluationHarnessTest) liegen. Zwei unabhängig gemessene volle
+            # Läufe lagen bei ~124 bzw. ~132 Minuten (GitHub-Actions-Runs 32524864494, 32550844537),
+            # beide deutlich unter dem 170-Minuten-Budget.
+            timeout_minutes: 170
+            exec_step_name: 'Retrieval-Regression (city-landmarks) ausführen'
+            report_file: baseline-comparison-city-landmarks.md
+            artifact_name: retrieval-metrics-city-landmarks
+            metrics_file: retrieval-metrics-city-landmarks.json
+            chunk_map_file: chunk-map-city-landmarks.json
+            marker: '<!-- retrieval-regression-alert-city-landmarks -->'
+            pr_fallback_heading: '## Retrieval-Regression gegen Baseline (city-landmarks)'
+            invariant_hint: Mehr-Chunk-Invariante-Verletzung
+            failure_prefix: 'Erneut fehlgeschlagen (city-landmarks):'
+            issue_intro: '**Automatischer nächtlicher Retrieval-Regressionslauf (city-landmarks) fehlgeschlagen.**'
+            issue_title: 'Retrieval-Regression erkannt (automatischer Lauf, city-landmarks)'
+            success_comment: 'Der nächtliche Retrieval-Regressionslauf (city-landmarks) ist wieder grün:'
     # Bei PR-Auslösung nur reagieren, wenn das Label tatsächlich 'evaluation' ist (jedes andere
     # Label auf demselben PR löst sonst ebenfalls "labeled" aus und würde den teuren Job unnötig
     # starten). Läuft dank der eindeutigen Concurrency-Gruppe oben unabhängig von anderen
@@ -43,47 +89,7 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.label.name == 'evaluation'
     runs-on: ubuntu-latest
-    # PR #301 review, Befund 6: 20 Minuten gegen eine gemessene evaluateRetrieval-Laufzeit von
-    # ~1004s (~17 min) plus Checkout, Java-Setup, Gradle-Build, Image-Pulls und ggf. einen
-    # ~275-MB-Modell-Pull auf einem kalten Cache ließ praktisch keine Marge. 30 Minuten geben dem
-    # Rest realistisch Raum; das Abnahmekriterium in Issue #228 ("20 Minuten") ist dazu als
-    # bewusste, dokumentierte Abweichung im PR und als Issue-Kommentar festgehalten.
-    #
-    # Update (Issue #311): die ~1004s-Messung, auf der die 30 Minuten oben beruhten, stammte nicht
-    # von einem echten GitHub-Actions-Runner — der Workflow ist seit seiner Einführung (PR #292/#301)
-    # auf main noch nie erfolgreich durchgelaufen, jeder bisherige Lauf wurde entweder per
-    # Label-Filter übersprungen oder lief ins Zeitlimit. Der erste nächtliche Lauf
-    # (https://github.com/criew/opaa/actions/runs/30880506057) hat im Indizierungsschritt selbst
-    # 1078 von 1448 Korpus-Dokumenten in 1704s geschafft (~1,58s/Dokument, aus den
-    # AsyncIndexingExecutor-Log-Zeitstempeln), bevor er ins 30-Minuten-Limit lief — Checkout,
-    # Java-/Gradle-Setup und Image-Pulls brauchten dabei zusammen nur rund 15s, sind also nicht die
-    # Ursache. Hochgerechnet auf den vollen Korpus (1448 Dokumente) allein schon ~38 Minuten
-    # Indizierung, dazu golden-Query-Auswertung (121 Anfragen, dieselbe sequenzielle
-    # Ollama-Embedding-Latenz), Report- und Baseline-Schritte. Ursache ist die reale
-    # GitHub-Actions-Runner-CPU (2 vCPU, geteilt zwischen Postgres-, Ollama- und
-    # Anwendungs-Container) — keine Regression durch #201/#202 (deren Indizierungs-Änderungen
-    # sind zwei zusätzliche, statische Setter-Aufrufe pro Dokument, keine zusätzlichen
-    # Datenbank-Roundtrips). 60 Minuten geben dem gemessenen ~44-Minuten-Vollauf wieder eine
-    # reale Marge, statt bei jedem Lauf erneut ins Limit zu laufen.
-    #
-    # Update (Issue #414): dieses Zeitbudget hat ein Gegenstück im Test selbst — den
-    # Awaitility-Timeout in `awaitJobCompletion` (RetrievalEvaluationHarnessTest). Der blieb bei der
-    # Anhebung oben auf 30 Minuten stehen und widersprach damit derselben Messung, auf der die 60
-    # Minuten hier beruhen; PR #415 lief prompt hinein (1121 von 1448 Dokumenten). Er steht jetzt
-    # auf 45 Minuten und muss unter `timeout-minutes` bleiben, damit eine hängende Indizierung als
-    # diagnostizierbarer Testfehlschlag endet statt als abgebrochener Job. Wer eines der beiden
-    # Limits anfasst, prüft das andere mit.
-    #
-    # Update (Issue #721): der Harness unterstützt jetzt mehrchunkige Domänen (dokumentbezogenes
-    # k-Fenster, siehe ADR-0012 Nachtrag) — bewusst geprüft, ob dieses Budget dadurch schon jetzt
-    # angepasst werden muss. Für comic-characters (Ein-Chunk-Invariante, maxChunksPerDocument=1)
-    # ist chunkTopK == documentTopK == 10, also dieselbe Chunk-Zahl je Anfrage wie vor #721 — keine
-    # Laufzeitänderung. Die Chunk-Map-Erzeugung (neuer Schritt, io.opaa.eval.ChunkMap) parst und
-    # chunked den Korpus ein zweites Mal, aber ohne Embedding-Aufruf (kein Ollama-Roundtrip je
-    # Dokument) — die dominante, sequenzielle Ollama-Embedding-Latenz bleibt unverändert. Das
-    # Budget steigt erst mit der mehrchunkigen Domäne aus #234, dann anhand einer echten Messung
-    # ihres Korpus, nicht spekulativ hier.
-    timeout-minutes: 60
+    timeout-minutes: ${{ matrix.timeout_minutes }}
     steps:
       - uses: actions/checkout@v7
 
@@ -115,14 +121,16 @@ jobs:
       # The cache key is pinned to the exact expected digest
       # (RetrievalEvaluationHarnessTest.EXPECTED_EMBEDDING_MODEL_DIGEST), not just the tag: a
       # deliberate model re-pin changes the digest constant, which changes this key, which means a
-      # stale cache for the old model is never silently reused.
+      # stale cache for the old model is never silently reused. Both matrix entries pin the same
+      # embedding model (nomic-embed-text:v1.5, same digest) and therefore share this exact key —
+      # the Docker volume is reusable across domains, no per-domain cache entry needed.
       # actions/cache/restore + actions/cache/save (issue #311), not the combined actions/cache
       # action: actions/cache's own save step only runs as a *post*-job step, and GitHub Actions
       # skips post-job steps entirely when the job's own status is 'cancelled' — which is exactly
       # what timeout-minutes produces. On a cold cache the very first scheduled run always times
       # out (indexing ~1.5k documents through the real Ollama container is itself the majority of
-      # the runtime, see the timeout-minutes comment below), so the combined action's cache-key
-      # never got written, next night started cold again, timed out again, forever — a
+      # the runtime, see the timeout_minutes comment in the matrix above), so the combined action's
+      # cache-key never got written, next night started cold again, timed out again, forever — a
       # self-perpetuating failure with no way out except manual intervention. Splitting restore and
       # save lets the explicit save step below run as a normal, non-post job step with its own
       # `if:`, so it still executes even when the overall job is later marked cancelled.
@@ -142,9 +150,9 @@ jobs:
             -v "${{ github.workspace }}":/backup \
             alpine sh -c "tar xf /backup/ollama-model-cache.tar -C /root/.ollama"
 
-      - name: Retrieval-Regression ausführen
+      - name: ${{ matrix.exec_step_name }}
         working-directory: backend
-        run: ./gradlew checkRetrievalBaseline
+        run: ./gradlew ${{ matrix.task }}
 
       # PR #301 review, Befund 3 (zweite Runde: die Größenprüfung allein reicht nicht — ein Pull,
       # der z. B. bei ~60% abbricht, kann die 150-MB-Schwelle bereits überschreiten und würde
@@ -206,19 +214,19 @@ jobs:
       - name: Report der Job-Zusammenfassung hinzufügen
         if: always()
         run: |
-          if [ -f backend/build/eval-reports/baseline-comparison.md ]; then
-            cat backend/build/eval-reports/baseline-comparison.md >> "$GITHUB_STEP_SUMMARY"
+          if [ -f "backend/build/eval-reports/${{ matrix.report_file }}" ]; then
+            cat "backend/build/eval-reports/${{ matrix.report_file }}" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Report als Artefakt hochladen
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: retrieval-metrics
+          name: ${{ matrix.artifact_name }}
           path: |
-            backend/build/eval-reports/retrieval-metrics.json
-            backend/build/eval-reports/baseline-comparison.md
-            backend/build/eval-reports/chunk-map-comic-characters.json
+            backend/build/eval-reports/${{ matrix.metrics_file }}
+            backend/build/eval-reports/${{ matrix.report_file }}
+            backend/build/eval-reports/${{ matrix.chunk_map_file }}
           if-no-files-found: warn
           retention-days: 90
 
@@ -235,11 +243,11 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const comparisonPath = 'backend/build/eval-reports/baseline-comparison.md';
+            const comparisonPath = 'backend/build/eval-reports/${{ matrix.report_file }}';
 
             const body = fs.existsSync(comparisonPath)
               ? fs.readFileSync(comparisonPath, 'utf8')
-              : '## Retrieval-Regression gegen Baseline\n\nDer Lauf hat keinen Report erzeugt ' +
+              : '${{ matrix.pr_fallback_heading }}\n\nDer Lauf hat keinen Report erzeugt ' +
                 '(vermutlich vor der Baseline-Prüfung abgebrochen) — siehe die Workflow-Logs für ' +
                 'Details.';
             await github.rest.issues.createComment({
@@ -253,7 +261,9 @@ jobs:
       # Schritt wäre ein Regressionsfund für niemanden sichtbar, bis zufällig jemand in die
       # Actions-Läufe schaut. Sucht ein offenes, mit dem festen Marker versehenes Issue und
       # kommentiert es, statt bei jedem nächtlichen Fehlschlag ein weiteres Duplikat anzulegen oder
-      # (PR #301 review) eine bereits vorhandene Analyse im Body zu überschreiben.
+      # (PR #301 review) eine bereits vorhandene Analyse im Body zu überschreiben. Der Marker ist
+      # je Domäne unterschiedlich (matrix.marker), sodass beide Domänen getrennte Alarm-Issues
+      # führen statt eines gemeinsamen.
       #
       # `if: failure() || cancelled()` statt nur `failure()` (Befund 6): Ein Abbruch durch
       # `timeout-minutes` markiert den Job als cancelled, nicht als failed — `failure()` allein
@@ -265,16 +275,15 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const marker = '<!-- retrieval-regression-alert -->';
-            const path = 'backend/build/eval-reports/baseline-comparison.md';
+            const marker = '${{ matrix.marker }}';
+            const path = 'backend/build/eval-reports/${{ matrix.report_file }}';
             const details = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : '_Kein Report ' +
               'erzeugt — vermutlich vor der Baseline-Prüfung abgebrochen (z. B. Manifest- oder ' +
-              'Ein-Chunk-Invariante-Verletzung) oder durch das Zeitlimit abgebrochen. Siehe ' +
+              '${{ matrix.invariant_hint }}) oder durch das Zeitlimit abgebrochen. Siehe ' +
               'Workflow-Logs._';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const commentBody = `Erneut fehlgeschlagen: ${runUrl}\n\n${details}`;
-            const issueBody = `${marker}\n\n**Automatischer nächtlicher Retrieval-Regressionslauf ` +
-              `fehlgeschlagen.**\n\nWorkflow-Lauf: ${runUrl}\n\n${details}`;
+            const commentBody = `${{ matrix.failure_prefix }} ${runUrl}\n\n${details}`;
+            const issueBody = `${marker}\n\n${{ matrix.issue_intro }}\n\nWorkflow-Lauf: ${runUrl}\n\n${details}`;
 
             // per_page: 100 statt der 30er-Default-Seite, und ausdrücklicher Ausschluss von Pull
             // Requests (PR #301 review): listForRepo mit label 'evaluation' liefert auch offene
@@ -304,7 +313,7 @@ jobs:
               await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                title: 'Retrieval-Regression erkannt (automatischer Lauf)',
+                title: '${{ matrix.issue_title }}',
                 body: issueBody,
                 labels: ['evaluation', 'bug'],
               });
@@ -318,7 +327,7 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            const marker = '<!-- retrieval-regression-alert -->';
+            const marker = '${{ matrix.marker }}';
             const { data: issuesAndPrs } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -337,224 +346,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: existing.number,
-                body: 'Der nächtliche Retrieval-Regressionslauf ist wieder grün: ' +
-                  `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              });
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: existing.number,
-                state: 'closed',
-              });
-            }
-
-  # Issue #234: eigener Job für die city-landmarks-Domäne, nicht ein Matrix-Zweig des Jobs oben.
-  # Bewusste Entscheidung, damit die bestehenden, bereits reviewten Schritte des comic-characters-
-  # Jobs unangetastet bleiben (Abnahmekriterium: "Comichelden-Baseline bleibt unverändert gültig")
-  # und ein Fehlschlag klar einer Domäne zugeordnet ist (Issue #234, "eigene Gruppen"). Läuft
-  # parallel zum Job oben — beide teilen sich denselben Runner-Pool, nicht denselben Job, daher
-  # kein zusätzliches Zeitbudget-Risiko für comic-characters.
-  evaluate-city-landmarks:
-    if: >
-      github.event_name != 'pull_request' ||
-      github.event.label.name == 'evaluation'
-    runs-on: ubuntu-latest
-    # PR #730, zweite Review-Runde — gemessen, mit historischem Kontext, warum das Budget so hoch ist:
-    # Lokal (Entwickler-Hardware) lief checkCityLandmarksRetrievalBaseline für den vollen,
-    # GeoNames-basierten Korpus (200 Dokumente, median 8/Maximum 13 Chunks, RANK_NEIGHBOR_RADIUS=40)
-    # in ~36,3 Minuten (runDurationSeconds=2176.7, siehe eval/baseline/city-landmarks.json). Ein
-    # erster echter GitHub-Actions-Lauf erreichte im 45-Minuten-Zeitfenster des damaligen Budgets nur
-    # 78 von 200 Dokumenten (~1,7 Dokumente/Minute) und lief in den Awaitility-Timeout in
-    # CityLandmarksRetrievalEvaluationHarnessTest#awaitJobCompletion; hochgerechnet auf dieser Rate
-    # hätte der volle Korpus rund 115 Minuten gebraucht. Das Budget wurde in zwei Schritten korrigiert
-    # (zuerst zu niedrig auf 90/105 Minuten, dann auf 150/170 Minuten). **Gemessen** mit diesem
-    # 150/170-Minuten-Budget: Job-Gesamtlaufzeit 2h3m43s (123,7 Minuten, GitHub-Actions-Run 32524864494,
-    # 2026-08-21) — grün, inklusive Checkout/Setup/Docker-Pulls/Indexierung/Auswertung/
-    # Baseline-Vergleich. Das 170-Minuten-Job-Timeout bleibt trotz dieser Messung bestehen (nicht auf
-    # z. B. 140 abgesenkt), weil ein einzelner grüner Lauf keine belastbare Streuungsangabe ist. Die
-    # eigentliche Ursachenbehebung war als Issue #734 dokumentiert (parallelisierte/gebündelte
-    # Ollama-Embedding-Anbindung in io.opaa.indexing) und ist inzwischen in #735 umgesetzt und auf
-    # main gemergt — dieser Feature-Branch enthält sie seit dem Merge von main. **Erneut gemessen
-    # danach** (PR #730, Verifikationsrunde, GitHub-Actions-Run 32550844537, 2026-08-22, mit dem
-    # Verifikationsrunden-Korpus RANK_NEIGHBOR_RADIUS=2/generalisierte Sehenswürdigkeiten-Abfrage):
-    # Job-Gesamtlaufzeit 2h11m45s (131,75 Minuten) — grün, aber langsamer als der Wert oben von vor
-    # der Parallelisierung erwarten ließ; die Parallelisierung reduziert primär die
-    # Embedding-Latenz pro Dokument, nicht notwendigerweise die Gesamtlaufzeit auf einem ohnehin
-    # I/O-gebundenen, geteilten GitHub-Actions-Runner. Timeout bleibt bei 170 Minuten (ein einzelner
-    # grüner Lauf ist weiterhin keine belastbare Streuungsangabe); dieser Wert ist jetzt zweimal
-    # unabhängig gemessen worden (123,7 und 131,75 Minuten), beide deutlich unter dem Budget.
-    timeout-minutes: 170
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      # Cache-Verwaltung wie im backend-Job: read-only auf PRs, Schreiben nur auf main (#832).
-      - uses: gradle/actions/setup-gradle@v4
-
-      # Derselbe Cache-Schlüssel wie im comic-characters-Job: beide Domänen pinnen dasselbe
-      # Embedding-Modell (nomic-embed-text:v1.5, derselbe Digest), das Docker-Volume ist deshalb
-      # zwischen beiden Jobs wiederverwendbar — kein Grund für einen zweiten, redundanten
-      # Cache-Eintrag.
-      - name: Restore Ollama model cache
-        id: ollama-cache
-        uses: actions/cache/restore@v6
-        with:
-          path: ollama-model-cache.tar
-          key: ollama-model-nomic-embed-text-v1.5-0a109f42
-
-      - name: Seed Docker volume from cache
-        if: steps.ollama-cache.outputs.cache-hit == 'true'
-        run: |
-          docker volume create opaa-eval-ollama-models
-          docker run --rm \
-            -v opaa-eval-ollama-models:/root/.ollama \
-            -v "${{ github.workspace }}":/backup \
-            alpine sh -c "tar xf /backup/ollama-model-cache.tar -C /root/.ollama"
-
-      - name: Retrieval-Regression (city-landmarks) ausführen
-        working-directory: backend
-        run: ./gradlew checkCityLandmarksRetrievalBaseline
-
-      - name: Docker-Volume für den Cache exportieren
-        if: always()
-        run: |
-          if docker volume inspect opaa-eval-ollama-models >/dev/null 2>&1; then
-            size=$(docker run --rm -v opaa-eval-ollama-models:/root/.ollama alpine \
-              du -sb /root/.ollama 2>/dev/null | cut -f1 || echo 0)
-            partial=$(docker run --rm -v opaa-eval-ollama-models:/root/.ollama alpine \
-              find /root/.ollama -iname '*partial*' 2>/dev/null | head -1)
-            manifest_present=$(docker run --rm -v opaa-eval-ollama-models:/root/.ollama alpine \
-              sh -c "test -f /root/.ollama/models/manifests/registry.ollama.ai/library/nomic-embed-text/v1.5 && echo yes || echo no")
-            echo "Ollama-Volume-Größe: ${size:-0} Bytes, unvollständige Blobs: '${partial:-keine}', Manifest vorhanden: ${manifest_present}"
-            if [ "${size:-0}" -gt 150000000 ] && [ -z "$partial" ] && [ "$manifest_present" = "yes" ]; then
-              docker run --rm \
-                -v opaa-eval-ollama-models:/root/.ollama \
-                -v "${{ github.workspace }}":/backup \
-                alpine sh -c "tar cf /backup/ollama-model-cache.tar -C /root/.ollama ."
-            else
-              echo "Volume zu klein, unvollständig oder fehlend — Export übersprungen, um den Cache-Schlüssel nicht dauerhaft zu vergiften."
-            fi
-          else
-            echo "Docker-Volume opaa-eval-ollama-models existiert nicht — Export übersprungen."
-          fi
-
-      - name: Ollama model cache speichern
-        if: always() && hashFiles('ollama-model-cache.tar') != ''
-        uses: actions/cache/save@v6
-        with:
-          path: ollama-model-cache.tar
-          key: ollama-model-nomic-embed-text-v1.5-0a109f42
-
-      - name: Report der Job-Zusammenfassung hinzufügen
-        if: always()
-        run: |
-          if [ -f backend/build/eval-reports/baseline-comparison-city-landmarks.md ]; then
-            cat backend/build/eval-reports/baseline-comparison-city-landmarks.md >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Report als Artefakt hochladen
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: retrieval-metrics-city-landmarks
-          path: |
-            backend/build/eval-reports/retrieval-metrics-city-landmarks.json
-            backend/build/eval-reports/baseline-comparison-city-landmarks.md
-            backend/build/eval-reports/chunk-map-city-landmarks.json
-          if-no-files-found: warn
-          retention-days: 90
-
-      - name: Delta-Tabelle als PR-Kommentar posten
-        if: always() && github.event_name == 'pull_request'
-        continue-on-error: true
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const fs = require('fs');
-            const comparisonPath = 'backend/build/eval-reports/baseline-comparison-city-landmarks.md';
-
-            const body = fs.existsSync(comparisonPath)
-              ? fs.readFileSync(comparisonPath, 'utf8')
-              : '## Retrieval-Regression gegen Baseline (city-landmarks)\n\nDer Lauf hat keinen ' +
-                'Report erzeugt (vermutlich vor der Baseline-Prüfung abgebrochen) — siehe die ' +
-                'Workflow-Logs für Details.';
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
-
-      - name: Fehlschlag als Issue melden (nächtlicher/manueller Lauf, city-landmarks)
-        if: (failure() || cancelled()) && github.event_name != 'pull_request'
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const fs = require('fs');
-            const marker = '<!-- retrieval-regression-alert-city-landmarks -->';
-            const path = 'backend/build/eval-reports/baseline-comparison-city-landmarks.md';
-            const details = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : '_Kein Report ' +
-              'erzeugt — vermutlich vor der Baseline-Prüfung abgebrochen (z. B. Manifest- oder ' +
-              'Mehr-Chunk-Invariante-Verletzung) oder durch das Zeitlimit abgebrochen. Siehe ' +
-              'Workflow-Logs._';
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const commentBody = `Erneut fehlgeschlagen (city-landmarks): ${runUrl}\n\n${details}`;
-            const issueBody = `${marker}\n\n**Automatischer nächtlicher Retrieval-Regressionslauf ` +
-              `(city-landmarks) fehlgeschlagen.**\n\nWorkflow-Lauf: ${runUrl}\n\n${details}`;
-
-            const { data: issuesAndPrs } = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              labels: 'evaluation',
-              per_page: 100,
-            });
-            const existing = issuesAndPrs.find(
-              i => !i.pull_request && i.body && i.body.includes(marker)
-            );
-            if (existing) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: existing.number,
-                body: commentBody,
-              });
-            } else {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: 'Retrieval-Regression erkannt (automatischer Lauf, city-landmarks)',
-                body: issueBody,
-                labels: ['evaluation', 'bug'],
-              });
-            }
-
-      - name: Alarm-Issue bei erneutem Bestehen schließen (city-landmarks)
-        if: success() && github.event_name != 'pull_request'
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const marker = '<!-- retrieval-regression-alert-city-landmarks -->';
-            const { data: issuesAndPrs } = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              labels: 'evaluation',
-              per_page: 100,
-            });
-            const existing = issuesAndPrs.find(
-              i => !i.pull_request && i.body && i.body.includes(marker)
-            );
-            if (existing) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: existing.number,
-                body: 'Der nächtliche Retrieval-Regressionslauf (city-landmarks) ist wieder grün: ' +
+                body: '${{ matrix.success_comment }} ' +
                   `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               });
               await github.rest.issues.update({
