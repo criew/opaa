@@ -179,7 +179,7 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 ## Wichtige Pfade
 
 - `docs/AGENT-ORGANIZATION.md` — Agenten-Rollen, Idee-bis-Merge-Workflow und Kollaborationsregeln
-- `docs/decisions/` — Architecture Decision Records (ADRs)
+- `docs/decisions/` — Architecture Decision Records (ADRs), u. a. [ADR-0021](docs/decisions/0021-single-instance-betrieb.md) zur Single-Instance-Annahme des Backends
 - `docs/features/` — Feature-Spezifikationen
 - `.github/ISSUE_TEMPLATE/` — Issue-Templates
 - `.github/PULL_REQUEST_TEMPLATE.md` — PR-Template
