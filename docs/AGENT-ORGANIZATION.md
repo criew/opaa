@@ -126,6 +126,15 @@ Issues sind die Arbeitseinheit und müssen ausreichend in sich geschlossen sein,
 - **Feature-Dokumentation wird von demjenigen geschrieben, der das Feature baut, im selben PR.** Kein separater Dokumentationsdurchgang; dies wird durch die Abnahmekriterien durchgesetzt und vom Code Reviewer geprüft.
 - **ADRs**: Wenn der Code Reviewer oder ein Entwickler eine echte Architekturentscheidung identifiziert, schreibt er einen ADR-Entwurf in `docs/decisions/` mit dem Status `proposed` und hängt ihn an den PR. Der Maintainer entscheidet: `accepted` (gemergt) oder abgelehnt. Nichts Architektonisches wird implizit festgelegt.
 
+### Koordinator-Betrieb
+
+Betriebsregeln für den Koordinator/Orchestrator, unabhängig von der Umgebung, in der er läuft (lokaler Rechner, VPS, Cloud-Session):
+
+- **PR-Wächter melden Merge und Fehlschlag.** Nach jeder Auto-Merge-Freigabe richtet der Koordinator eine Überwachung ein, die sowohl den vollzogenen Merge als auch rote Required Checks meldet — nie nur den Erfolgsfall, denn Stille sieht aus wie „läuft noch". Ergänzend behält er alle offenen PRs im Blick, nicht nur die zuletzt freigegebenen: Entwickler-Agenten eröffnen PRs bereits vor ihrer Abschlussmeldung.
+- **Wartefallen sofort auflösen.** Meldet ein Agent, er „warte auf einen Hintergrundlauf", stupst der Koordinator ihn unmittelbar an mit der Anweisung, den Lauf im Vordergrund zu wiederholen und aktiv abzuwarten. Das ist das Koordinator-Gegenstück zur Vordergrund-Regel in der Pre-Push-Checkliste (AGENTS.md), die die Agenten selbst bindet — sie ist erfahrungsgemäß nicht selbstdurchsetzend.
+- **Vollbuilds staffeln.** Parallel arbeitende Agenten dürfen parallel editieren, aber gleichzeitige `./gradlew build`-Vollläufe sind teuer (Heap, Spring-Testkontexte, Testcontainers) und bringen eine Maschine schnell ins Speicher-Thrashing. Die Zahl paralleler Vollbuilds ist an die Ressourcen der jeweiligen Maschine anzupassen (Richtwert: 2–3); der Koordinator vergibt Build-Slots nacheinander, statt alle Agenten gleichzeitig bauen zu lassen.
+- **Security-Arbeit wird delegiert.** Der Koordinator führt Security-Analysen, -Fixes und -Issues nicht selbst aus, sondern delegiert sie an Agenten — dieselbe Rollentrennung, die auch Implementierung und Review trennt.
+
 ### Autonomie und Eskalation
 
 - Subagenten interagieren nie direkt mit dem Maintainer; Fragen werden gebündelt und vom Orchestrator weitergeleitet, vorzugsweise während des Definitionsschritts statt mitten in der Implementierung.
