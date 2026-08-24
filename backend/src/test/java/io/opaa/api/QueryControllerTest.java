@@ -191,7 +191,7 @@ class QueryControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"question\": \"What?\"}"))
         .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.error").value("Benutzer nicht gefunden"))
+        .andExpect(jsonPath("$.error").value("Nicht angemeldet"))
         .andExpect(jsonPath("$.status").value(401));
   }
 

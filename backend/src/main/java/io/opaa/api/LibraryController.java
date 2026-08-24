@@ -21,6 +21,7 @@ import io.opaa.api.dto.LibrarySpaceAssociationResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
+import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingEventCategory;
@@ -88,14 +89,14 @@ public class LibraryController {
 
   @GetMapping("/{libraryId}/spaces")
   public List<LibrarySpaceAssociationResponse> listSpaceAssociations(
-      @PathVariable UUID libraryId, CurrentUser caller) {
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
     return SpaceLibraryAssociationResponseMapper.toLibrarySpaceResponses(
         associationService.listForLibrary(libraryId, caller));
   }
 
   @PostMapping
   public ResponseEntity<LibraryResponse> createLibrary(
-      @Valid @RequestBody LibraryRequest request, CurrentUser caller) {
+      @Valid @RequestBody LibraryRequest request, @Caller CurrentUser caller) {
     LibraryResponse response =
         LibraryResponseMapper.toResponse(
             libraryService.createLibrary(LibraryResponseMapper.toCreation(request), caller));
@@ -111,19 +112,19 @@ public class LibraryController {
   // quellkonfiguration without a grant must not have "Verbindung testen" fail 404 right before it.
   @PostMapping("/source-test")
   public SourceConnectionTestResponse testLibrarySource(
-      @Valid @RequestBody SourceConnectionTestRequest request, CurrentUser caller) {
+      @Valid @RequestBody SourceConnectionTestRequest request, @Caller CurrentUser caller) {
     return SourceConnectionTestResponseMapper.toResponse(
         sourceConnectionTestService.test(
             SourceConnectionTestResponseMapper.toDomain(request), caller));
   }
 
   @GetMapping
-  public List<LibraryListResponse> listLibraries(CurrentUser caller) {
+  public List<LibraryListResponse> listLibraries(@Caller CurrentUser caller) {
     return LibraryResponseMapper.toListResponses(libraryService.listLibraries(caller));
   }
 
   @GetMapping("/{libraryId}")
-  public LibraryResponse getLibrary(@PathVariable UUID libraryId, CurrentUser caller) {
+  public LibraryResponse getLibrary(@PathVariable UUID libraryId, @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(libraryService.getLibrary(libraryId, caller));
   }
 
@@ -131,13 +132,14 @@ public class LibraryController {
   public LibraryResponse updateLibrary(
       @PathVariable UUID libraryId,
       @Valid @RequestBody LibraryUpdateRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
         libraryService.updateLibrary(libraryId, LibraryResponseMapper.toUpdate(request), caller));
   }
 
   @DeleteMapping("/{libraryId}")
-  public ResponseEntity<Void> deleteLibrary(@PathVariable UUID libraryId, CurrentUser caller) {
+  public ResponseEntity<Void> deleteLibrary(
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
     libraryService.deleteLibrary(libraryId, caller);
     return ResponseEntity.noContent().build();
   }
@@ -149,7 +151,7 @@ public class LibraryController {
       @RequestParam(defaultValue = "20") int size,
       @RequestParam(required = false) String q,
       @RequestParam(required = false) UUID folderId,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     // #517 code review, finding 2: the spec promises 1..100 - silently clamping an out-of-range
     // value would contradict that promise (size=500 quietly answering 100, size=0 quietly
     // answering 1), so both bounds and page<0 are rejected the same way bean validation would.
@@ -177,7 +179,7 @@ public class LibraryController {
       @RequestParam("file") MultipartFile file,
       @RequestParam(required = false) UUID folderId,
       @RequestParam(required = false) String folderPath,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     LibraryDocumentResponse response =
         LibraryDocumentResponseMapper.toResponse(
             documentService.uploadDocument(libraryId, file, folderId, folderPath, caller));
@@ -186,7 +188,7 @@ public class LibraryController {
 
   @DeleteMapping("/{libraryId}/documents/{documentId}")
   public ResponseEntity<Void> deleteDocument(
-      @PathVariable UUID libraryId, @PathVariable UUID documentId, CurrentUser caller) {
+      @PathVariable UUID libraryId, @PathVariable UUID documentId, @Caller CurrentUser caller) {
     documentService.deleteDocument(libraryId, documentId, caller);
     return ResponseEntity.noContent().build();
   }
@@ -195,7 +197,7 @@ public class LibraryController {
   public ResponseEntity<LibraryFolderResponse> createFolder(
       @PathVariable UUID libraryId,
       @Valid @RequestBody LibraryFolderRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     LibraryFolderResponse response =
         LibraryFolderResponseMapper.toResponse(
             folderService.createFolder(
@@ -205,7 +207,7 @@ public class LibraryController {
 
   @GetMapping("/{libraryId}/folders/{folderId}")
   public LibraryFolderResponse getFolder(
-      @PathVariable UUID libraryId, @PathVariable UUID folderId, CurrentUser caller) {
+      @PathVariable UUID libraryId, @PathVariable UUID folderId, @Caller CurrentUser caller) {
     return LibraryFolderResponseMapper.toResponse(
         folderService.getFolder(libraryId, folderId, caller));
   }
@@ -215,21 +217,21 @@ public class LibraryController {
       @PathVariable UUID libraryId,
       @PathVariable UUID folderId,
       @Valid @RequestBody LibraryFolderRenameRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     return LibraryFolderResponseMapper.toResponse(
         folderService.renameFolder(libraryId, folderId, request.getName(), caller));
   }
 
   @DeleteMapping("/{libraryId}/folders/{folderId}")
   public ResponseEntity<Void> deleteFolder(
-      @PathVariable UUID libraryId, @PathVariable UUID folderId, CurrentUser caller) {
+      @PathVariable UUID libraryId, @PathVariable UUID folderId, @Caller CurrentUser caller) {
     folderService.deleteFolder(libraryId, folderId, caller);
     return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/{libraryId}/grants")
   public List<AssetGrantResponse> listAssetGrants(
-      @PathVariable UUID libraryId, CurrentUser caller) {
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
     return AssetGrantResponseMapper.toResponses(grantService.listGrants(libraryId, caller));
   }
 
@@ -237,28 +239,28 @@ public class LibraryController {
   public AssetGrantResponse upsertAssetGrant(
       @PathVariable UUID libraryId,
       @Valid @RequestBody AssetGrantRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     return AssetGrantResponseMapper.toResponse(
         grantService.upsertGrant(libraryId, AssetGrantResponseMapper.toUpsert(request), caller));
   }
 
   @DeleteMapping("/{libraryId}/grants/{grantId}")
   public ResponseEntity<Void> revokeAssetGrant(
-      @PathVariable UUID libraryId, @PathVariable UUID grantId, CurrentUser caller) {
+      @PathVariable UUID libraryId, @PathVariable UUID grantId, @Caller CurrentUser caller) {
     grantService.revokeGrant(libraryId, grantId, caller);
     return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/{libraryId}/indexing")
   public ResponseEntity<IndexingStatusResponse> triggerIndexing(
-      @PathVariable UUID libraryId, CurrentUser caller) {
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
     IndexingJob job = indexingService.triggerIndexing(libraryId, caller);
     return ResponseEntity.status(HttpStatus.ACCEPTED).body(toIndexingStatusResponse(job));
   }
 
   @GetMapping("/{libraryId}/indexing/status")
   public IndexingStatusResponse getIndexingStatus(
-      @PathVariable UUID libraryId, CurrentUser caller) {
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
     IndexingStatusView view = indexingService.getStatus(libraryId, caller);
     return view.job()
         .map(job -> toIndexingStatusResponse(job, view.canSeeErrorDetail()))
@@ -270,7 +272,7 @@ public class LibraryController {
 
   @GetMapping("/{libraryId}/indexing/runs")
   public IndexingRunListResponse listIndexingRuns(
-      @PathVariable UUID libraryId, CurrentUser caller) {
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
     var runs = indexingService.getRecentRuns(libraryId, caller);
     return new IndexingRunListResponse(runs.stream().map(this::toIndexingRunResponse).toList());
   }

@@ -1,5 +1,6 @@
 package io.opaa.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -38,14 +39,26 @@ class UserProvisioningFilterTest {
             .claim("preferred_username", "admin")
             .build();
     SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
-    when(userService.findOrCreateUser("admin", "opaa-dev", null, "admin"))
-        .thenReturn(new User("admin", "opaa-dev", null, "admin"));
+    User provisioned = new User("admin", "opaa-dev", null, "admin");
+    when(userService.findOrCreateUser("admin", "opaa-dev", null, "admin")).thenReturn(provisioned);
 
+    MockHttpServletRequest request = new MockHttpServletRequest();
     UserProvisioningFilter filter = new UserProvisioningFilter(userService);
-    filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), filterChain);
+    filter.doFilter(request, new MockHttpServletResponse(), filterChain);
 
     verify(userService).findOrCreateUser("admin", "opaa-dev", null, "admin");
     verify(filterChain).doFilter(any(), any());
     verifyNoMoreInteractions(userService);
+
+    // The CurrentUserArgumentResolver contract (ADR-0005): the filter must set exactly the
+    // provisioned user's snapshot as the request attribute the resolver later reads.
+    Object attribute = request.getAttribute(CurrentUserArgumentResolver.REQUEST_ATTRIBUTE);
+    assertThat(attribute)
+        .isEqualTo(
+            CurrentUser.of(
+                provisioned.getId(),
+                provisioned.getOrganizationId(),
+                provisioned.getSystemRole(),
+                provisioned.getDisplayName()));
   }
 }

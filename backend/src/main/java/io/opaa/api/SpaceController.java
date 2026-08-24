@@ -11,6 +11,7 @@ import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.dto.SpaceRoleUpdateRequest;
 import io.opaa.api.dto.SpaceTransferOwnershipRequest;
 import io.opaa.api.dto.SpaceUpdateRequest;
+import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationService;
@@ -49,7 +50,7 @@ public class SpaceController {
 
   @PostMapping
   public ResponseEntity<SpaceResponse> createSpace(
-      @Valid @RequestBody SpaceRequest request, CurrentUser caller) {
+      @Valid @RequestBody SpaceRequest request, @Caller CurrentUser caller) {
     // #686/#706 review: SpaceService#createSpace associates request.getLibraryIds() itself, in
     // the same transaction as the space row - a library that cannot be associated rolls the whole
     // creation back instead of leaving a half-created space behind.
@@ -60,7 +61,7 @@ public class SpaceController {
 
   @GetMapping("/{spaceId}/libraries")
   public SpaceLibraryAssociationListResponse listLibraryAssociations(
-      @PathVariable UUID spaceId, CurrentUser caller) {
+      @PathVariable UUID spaceId, @Caller CurrentUser caller) {
     return SpaceLibraryAssociationResponseMapper.toListResponse(
         associationService.listForSpace(spaceId, caller));
   }
@@ -69,7 +70,7 @@ public class SpaceController {
   public ResponseEntity<SpaceLibraryAssociationResponse> associateLibrary(
       @PathVariable UUID spaceId,
       @Valid @RequestBody SpaceLibraryAssociationRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     SpaceLibraryAssociationResponse response =
         SpaceLibraryAssociationResponseMapper.toResponse(
             associationService.associate(spaceId, request.getLibraryId(), caller));
@@ -78,19 +79,19 @@ public class SpaceController {
 
   @DeleteMapping("/{spaceId}/libraries/{libraryId}")
   public ResponseEntity<Void> detachLibrary(
-      @PathVariable UUID spaceId, @PathVariable UUID libraryId, CurrentUser caller) {
+      @PathVariable UUID spaceId, @PathVariable UUID libraryId, @Caller CurrentUser caller) {
     associationService.detach(spaceId, libraryId, caller);
     return ResponseEntity.noContent().build();
   }
 
   @GetMapping
-  public List<SpaceListResponse> listSpaces(CurrentUser caller) {
+  public List<SpaceListResponse> listSpaces(@Caller CurrentUser caller) {
     List<SpaceOverview> overviews = spaceService.listSpaces(caller);
     return SpaceResponseMapper.toListResponses(overviews, caller.id());
   }
 
   @GetMapping("/{spaceId}")
-  public SpaceResponse getSpace(@PathVariable UUID spaceId, CurrentUser caller) {
+  public SpaceResponse getSpace(@PathVariable UUID spaceId, @Caller CurrentUser caller) {
     Space space = spaceService.getSpace(spaceId, caller);
     return SpaceResponseMapper.toResponse(space, caller.id());
   }
@@ -99,7 +100,7 @@ public class SpaceController {
   public SpaceResponse updateSpace(
       @PathVariable UUID spaceId,
       @Valid @RequestBody SpaceUpdateRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     Space updated =
         spaceService.updateSpace(
             spaceId,
@@ -109,19 +110,20 @@ public class SpaceController {
   }
 
   @DeleteMapping("/{spaceId}")
-  public ResponseEntity<Void> deleteSpace(@PathVariable UUID spaceId, CurrentUser caller) {
+  public ResponseEntity<Void> deleteSpace(@PathVariable UUID spaceId, @Caller CurrentUser caller) {
     spaceService.deleteSpace(spaceId, caller);
     return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/{spaceId}/archive")
-  public SpaceResponse archiveSpace(@PathVariable UUID spaceId, CurrentUser caller) {
+  public SpaceResponse archiveSpace(@PathVariable UUID spaceId, @Caller CurrentUser caller) {
     Space archived = spaceService.archiveSpace(spaceId, caller);
     return SpaceResponseMapper.toResponse(archived, caller.id());
   }
 
   @GetMapping("/{spaceId}/members")
-  public List<SpaceMemberResponse> listMembers(@PathVariable UUID spaceId, CurrentUser caller) {
+  public List<SpaceMemberResponse> listMembers(
+      @PathVariable UUID spaceId, @Caller CurrentUser caller) {
     List<SpaceMemberView> members = spaceService.listMembers(spaceId, caller);
     return SpaceResponseMapper.toMemberResponses(members);
   }
@@ -130,7 +132,7 @@ public class SpaceController {
   public ResponseEntity<SpaceMemberResponse> addMember(
       @PathVariable UUID spaceId,
       @Valid @RequestBody SpaceAddMemberRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     SpaceMemberResponse response =
         SpaceResponseMapper.toMemberResponse(
             spaceService.addMember(spaceId, request.getUserId(), request.getRole(), caller));
@@ -139,7 +141,7 @@ public class SpaceController {
 
   @DeleteMapping("/{spaceId}/members/{userId}")
   public ResponseEntity<Void> removeMember(
-      @PathVariable UUID spaceId, @PathVariable UUID userId, CurrentUser caller) {
+      @PathVariable UUID spaceId, @PathVariable UUID userId, @Caller CurrentUser caller) {
     spaceService.removeMember(spaceId, userId, caller);
     return ResponseEntity.noContent().build();
   }
@@ -149,7 +151,7 @@ public class SpaceController {
       @PathVariable UUID spaceId,
       @PathVariable UUID userId,
       @Valid @RequestBody SpaceRoleUpdateRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     return SpaceResponseMapper.toMemberResponse(
         spaceService.updateMemberRole(spaceId, userId, request.getRole(), caller));
   }
@@ -158,7 +160,7 @@ public class SpaceController {
   public ResponseEntity<Void> transferOwnership(
       @PathVariable UUID spaceId,
       @Valid @RequestBody SpaceTransferOwnershipRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     spaceService.transferOwnership(spaceId, request.getUserId(), caller);
     return ResponseEntity.noContent().build();
   }

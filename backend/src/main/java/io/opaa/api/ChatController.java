@@ -4,6 +4,7 @@ import io.opaa.api.dto.ChatCreateRequest;
 import io.opaa.api.dto.ChatDetail;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChatUpdateRequest;
+import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.ChatConversation;
 import io.opaa.chat.ChatCreation;
@@ -37,7 +38,7 @@ public class ChatController {
   public ResponseEntity<ChatDetail> createChat(
       @PathVariable UUID spaceId,
       @Valid @RequestBody(required = false) ChatCreateRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     ChatConversation created =
         chatService.createChat(spaceId, caller.id(), toChatCreation(request));
     return ResponseEntity.status(HttpStatus.CREATED)
@@ -45,12 +46,12 @@ public class ChatController {
   }
 
   @GetMapping("/spaces/{spaceId}/chats")
-  public List<ChatSummary> listSpaceChats(@PathVariable UUID spaceId, CurrentUser caller) {
+  public List<ChatSummary> listSpaceChats(@PathVariable UUID spaceId, @Caller CurrentUser caller) {
     return ChatResponseMapper.toSummaryResponses(chatService.listChats(spaceId, caller.id()));
   }
 
   @GetMapping("/chats/{chatId}")
-  public ChatDetail getChat(@PathVariable UUID chatId, CurrentUser caller) {
+  public ChatDetail getChat(@PathVariable UUID chatId, @Caller CurrentUser caller) {
     return ChatResponseMapper.toDetailResponse(chatService.getChat(chatId, caller.id()));
   }
 
@@ -58,13 +59,13 @@ public class ChatController {
   public ChatDetail updateChat(
       @PathVariable UUID chatId,
       @Valid @RequestBody ChatUpdateRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     ChatConversation updated = chatService.updateChat(chatId, caller.id(), toChatPatch(request));
     return ChatResponseMapper.toDetailResponse(updated);
   }
 
   @DeleteMapping("/chats/{chatId}")
-  public ResponseEntity<Void> deleteChat(@PathVariable UUID chatId, CurrentUser caller) {
+  public ResponseEntity<Void> deleteChat(@PathVariable UUID chatId, @Caller CurrentUser caller) {
     chatService.deleteChat(chatId, caller.id());
     return ResponseEntity.noContent().build();
   }

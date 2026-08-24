@@ -10,11 +10,18 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Resolves a {@link CurrentUser} controller-method parameter from the request attribute {@link
- * UserProvisioningFilter} sets for every authenticated request — the controller-side counterpart of
- * the filter's single {@code findBySubjectAndIssuer}/{@code findOrCreateUser} load. Mirrors
- * {@code @AuthenticationPrincipal Jwt}: a plain parameter, no annotation needed, since {@link
- * CurrentUser}'s type alone is unambiguous.
+ * Resolves an {@code @}{@link Caller}-annotated {@link CurrentUser} controller-method parameter
+ * from the request attribute {@link UserProvisioningFilter} sets for every authenticated request —
+ * the controller-side counterpart of the filter's single {@code findBySubjectAndIssuer}/{@code
+ * findOrCreateUser} load.
+ *
+ * <p>{@code supportsParameter} requires the {@link Caller} annotation, not merely the {@link
+ * CurrentUser} type: a bare-type check would let Spring MVC's catch-all {@code
+ * ModelAttributeMethodProcessor} claim the parameter instead whenever this resolver is missing from
+ * the chain (see {@link CurrentUser}'s Javadoc for the attacker-controlled-binding consequence that
+ * would follow). Requiring the annotation means a missing resolver leaves the parameter unclaimed
+ * by every resolver, which fails the request rather than silently binding it from request/query
+ * parameters.
  */
 public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolver {
 
@@ -22,7 +29,8 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 
   @Override
   public boolean supportsParameter(MethodParameter parameter) {
-    return CurrentUser.class.equals(parameter.getParameterType());
+    return parameter.hasParameterAnnotation(Caller.class)
+        && CurrentUser.class.equals(parameter.getParameterType());
   }
 
   @Override
@@ -34,10 +42,10 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
     HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
     Object attribute = request == null ? null : request.getAttribute(REQUEST_ATTRIBUTE);
     if (!(attribute instanceof CurrentUser currentUser)) {
-      // Same 401 the removed per-controller currentUser(Jwt) helpers returned when
-      // findBySubjectAndIssuer found nothing - unauthenticated/unprovisioned requests never
-      // reach a CurrentUser-typed controller method.
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden");
+      // Deliberately does not distinguish "no authentication at all" from "authenticated but
+      // UserProvisioningFilter never ran/provisioned" to an external caller - both mean the
+      // request carries no caller identity a controller can act on.
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Nicht angemeldet");
     }
     return currentUser;
   }

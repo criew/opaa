@@ -265,7 +265,7 @@ class UserServiceTest {
   }
 
   private CurrentUser actorInOrganization(UUID organizationId) {
-    return new CurrentUser(UUID.randomUUID(), organizationId, SystemRole.SYSTEM_ADMIN, "Admin");
+    return CurrentUser.of(UUID.randomUUID(), organizationId, SystemRole.SYSTEM_ADMIN, "Admin");
   }
 
   @Test

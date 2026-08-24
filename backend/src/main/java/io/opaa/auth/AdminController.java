@@ -33,7 +33,7 @@ public class AdminController {
   // applied yet.
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/users")
-  public List<UserInfoResponse> listUsers(CurrentUser caller) {
+  public List<UserInfoResponse> listUsers(@Caller CurrentUser caller) {
     return userService.findAllInOrganization(caller.organizationId()).stream()
         .map(this::toResponse)
         .toList();
@@ -42,7 +42,9 @@ public class AdminController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/users/{id}/role")
   public ResponseEntity<UserInfoResponse> changeRole(
-      @PathVariable UUID id, @Valid @RequestBody RoleChangeRequest request, CurrentUser caller) {
+      @PathVariable UUID id,
+      @Valid @RequestBody RoleChangeRequest request,
+      @Caller CurrentUser caller) {
     User user = userService.updateRole(id, request.getRole(), caller);
     return ResponseEntity.ok(toResponse(user));
   }

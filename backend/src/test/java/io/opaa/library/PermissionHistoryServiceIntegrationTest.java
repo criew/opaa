@@ -170,7 +170,7 @@ class PermissionHistoryServiceIntegrationTest {
    */
   private CurrentUser currentUserOf(UUID userId) {
     User user = userRepository.findById(userId).orElseThrow();
-    return new CurrentUser(
+    return CurrentUser.of(
         user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
   }
 

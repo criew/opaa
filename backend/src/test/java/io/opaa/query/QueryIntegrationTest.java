@@ -120,7 +120,7 @@ class QueryIntegrationTest {
 
   /** Every user this class creates lives in {@link #DEFAULT_ORGANIZATION_ID}. */
   private static CurrentUser asCaller(UUID userId) {
-    return new CurrentUser(userId, DEFAULT_ORGANIZATION_ID, SystemRole.USER, null);
+    return CurrentUser.of(userId, DEFAULT_ORGANIZATION_ID, SystemRole.USER, null);
   }
 
   @BeforeEach

@@ -1,6 +1,8 @@
 package io.opaa.auth;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -44,5 +46,9 @@ class UserProvisioningLoadCountIntegrationTest {
     mockMvc.perform(get("/api/v1/me/groups").with(devUser())).andExpect(status().isOk());
 
     verify(userRepository, times(1)).findBySubjectAndIssuer(anyString(), anyString());
+    // The old per-controller currentUser(Jwt) helpers this refactor removed re-derived the caller
+    // via findById on the just-loaded id, not only findBySubjectAndIssuer - both loads must be
+    // gone.
+    verify(userRepository, never()).findById(any());
   }
 }

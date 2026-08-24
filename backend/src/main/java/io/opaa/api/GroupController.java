@@ -6,6 +6,7 @@ import io.opaa.api.dto.GroupMemberResponse;
 import io.opaa.api.dto.GroupRequest;
 import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupUpdateRequest;
+import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.group.Group;
 import io.opaa.group.GroupCreation;
@@ -40,7 +41,7 @@ public class GroupController {
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping
-  public List<GroupListResponse> listGroups(CurrentUser caller) {
+  public List<GroupListResponse> listGroups(@Caller CurrentUser caller) {
     List<Group> groups = groupService.listGroups(caller);
     return GroupResponseMapper.toListResponses(groups);
   }
@@ -48,7 +49,7 @@ public class GroupController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping
   public ResponseEntity<GroupResponse> createGroup(
-      @Valid @RequestBody GroupRequest request, CurrentUser caller) {
+      @Valid @RequestBody GroupRequest request, @Caller CurrentUser caller) {
     GroupDetail created =
         groupService.createGroup(
             new GroupCreation(request.getName(), request.getDescription()), caller);
@@ -58,7 +59,7 @@ public class GroupController {
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/{groupId}")
-  public GroupResponse getGroup(@PathVariable UUID groupId, CurrentUser caller) {
+  public GroupResponse getGroup(@PathVariable UUID groupId, @Caller CurrentUser caller) {
     GroupDetail detail = groupService.getGroup(groupId, caller);
     return GroupResponseMapper.toResponse(detail);
   }
@@ -68,7 +69,7 @@ public class GroupController {
   public GroupResponse updateGroup(
       @PathVariable UUID groupId,
       @Valid @RequestBody GroupUpdateRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     GroupDetail updated =
         groupService.updateGroup(
             groupId, new GroupUpdate(request.getName(), request.getDescription()), caller);
@@ -77,14 +78,15 @@ public class GroupController {
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @DeleteMapping("/{groupId}")
-  public ResponseEntity<Void> deleteGroup(@PathVariable UUID groupId, CurrentUser caller) {
+  public ResponseEntity<Void> deleteGroup(@PathVariable UUID groupId, @Caller CurrentUser caller) {
     groupService.deleteGroup(groupId, caller);
     return ResponseEntity.noContent().build();
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/{groupId}/members")
-  public List<GroupMemberResponse> listMembers(@PathVariable UUID groupId, CurrentUser caller) {
+  public List<GroupMemberResponse> listMembers(
+      @PathVariable UUID groupId, @Caller CurrentUser caller) {
     List<GroupMemberView> members = groupService.listMembers(groupId, caller);
     return GroupResponseMapper.toMemberResponses(members);
   }
@@ -94,7 +96,7 @@ public class GroupController {
   public ResponseEntity<GroupMemberResponse> addMember(
       @PathVariable UUID groupId,
       @Valid @RequestBody GroupAddMemberRequest request,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     GroupMemberResponse response =
         GroupResponseMapper.toMemberResponse(
             groupService.addMember(groupId, request.getUserId(), caller));
@@ -104,7 +106,7 @@ public class GroupController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @DeleteMapping("/{groupId}/members/{userId}")
   public ResponseEntity<Void> removeMember(
-      @PathVariable UUID groupId, @PathVariable UUID userId, CurrentUser caller) {
+      @PathVariable UUID groupId, @PathVariable UUID userId, @Caller CurrentUser caller) {
     groupService.removeMember(groupId, userId, caller);
     return ResponseEntity.noContent().build();
   }

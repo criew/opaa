@@ -125,7 +125,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
   }
 
   private CurrentUser currentUserOf(UUID userId, boolean systemAdmin) {
-    return new CurrentUser(
+    return CurrentUser.of(
         userId, organizationA, systemAdmin ? SystemRole.SYSTEM_ADMIN : SystemRole.USER, "Caller");
   }
 

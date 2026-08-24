@@ -1,6 +1,7 @@
 package io.opaa.api;
 
 import io.opaa.api.dto.NotificationResponse;
+import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.notification.Notification;
 import io.opaa.notification.NotificationService;
@@ -31,7 +32,7 @@ public class NotificationController {
 
   @GetMapping
   public List<NotificationResponse> listNotifications(
-      @RequestParam(required = false) Integer limit, CurrentUser caller) {
+      @RequestParam(required = false) Integer limit, @Caller CurrentUser caller) {
     int resolvedLimit = limit == null ? DEFAULT_LIMIT : limit;
     if (resolvedLimit < 1 || resolvedLimit > MAX_LIMIT) {
       throw new ResponseStatusException(
@@ -43,7 +44,8 @@ public class NotificationController {
   }
 
   @PostMapping("/{notificationId}/read")
-  public ResponseEntity<Void> markRead(@PathVariable UUID notificationId, CurrentUser caller) {
+  public ResponseEntity<Void> markRead(
+      @PathVariable UUID notificationId, @Caller CurrentUser caller) {
     notificationService.markRead(notificationId, caller.id());
     return ResponseEntity.noContent().build();
   }

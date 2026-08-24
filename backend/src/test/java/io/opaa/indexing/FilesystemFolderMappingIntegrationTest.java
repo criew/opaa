@@ -153,7 +153,7 @@ class FilesystemFolderMappingIntegrationTest {
   private IndexingJob triggerIndexing() {
     return documentIndexingService.triggerIndexing(
         targetLibraryId,
-        new CurrentUser(userId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, null));
+        CurrentUser.of(userId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, null));
   }
 
   private void awaitJobCompletion(IndexingJob job) {

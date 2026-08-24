@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import io.opaa.api.dto.BrandingResponse;
 import io.opaa.api.dto.BrandingUpdateRequest;
+import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.branding.BrandingLogoValidator;
 import io.opaa.branding.BrandingSettingsService;
@@ -50,7 +51,7 @@ public class SystemBrandingController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PutMapping
   public BrandingResponse updateBranding(
-      @RequestBody BrandingUpdateRequest request, CurrentUser caller) {
+      @RequestBody BrandingUpdateRequest request, @Caller CurrentUser caller) {
     return BrandingResponseMapper.toResponse(
         brandingSettingsService.updateBranding(
             caller.organizationId(),
@@ -69,7 +70,7 @@ public class SystemBrandingController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PutMapping(path = "/logo", consumes = "multipart/form-data")
   public BrandingResponse updateBrandingLogo(
-      @RequestPart("file") MultipartFile file, CurrentUser caller) {
+      @RequestPart("file") MultipartFile file, @Caller CurrentUser caller) {
     return BrandingResponseMapper.toResponse(
         brandingSettingsService.replaceLogo(caller.organizationId(), caller.id(), bytesOf(file)));
   }
@@ -77,7 +78,7 @@ public class SystemBrandingController {
   /** Removes the configured logo; the app falls back to the bundled OPAA logo. Idempotent. */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @DeleteMapping("/logo")
-  public BrandingResponse deleteBrandingLogo(CurrentUser caller) {
+  public BrandingResponse deleteBrandingLogo(@Caller CurrentUser caller) {
     return BrandingResponseMapper.toResponse(
         brandingSettingsService.removeLogo(caller.organizationId(), caller.id()));
   }

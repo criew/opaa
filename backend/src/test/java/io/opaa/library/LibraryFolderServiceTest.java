@@ -49,7 +49,7 @@ class LibraryFolderServiceTest {
   private final UUID organizationId = UUID.randomUUID();
   private final UUID libraryId = UUID.randomUUID();
   private final CurrentUser caller =
-      new CurrentUser(currentUserId, organizationId, SystemRole.USER, "Test User");
+      CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "Test User");
 
   @BeforeEach
   void setUp() {

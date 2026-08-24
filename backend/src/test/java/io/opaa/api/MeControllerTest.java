@@ -51,6 +51,7 @@ class MeControllerTest {
   @MockitoBean private UserService userService;
 
   private User user;
+  private CurrentUser expectedCaller;
 
   @BeforeEach
   void setUp() {
@@ -58,6 +59,9 @@ class MeControllerTest {
     user.setSystemRole(SystemRole.USER);
     when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
         .thenReturn(user);
+    expectedCaller =
+        CurrentUser.of(
+            user.getId(), user.getOrganizationId(), SystemRole.USER, user.getDisplayName());
   }
 
   private RequestPostProcessor asRegularUser() {
@@ -69,7 +73,7 @@ class MeControllerTest {
   @Test
   void myGroupsSucceedsForARegularUserWithoutTheSystemAdminRole() throws Exception {
     Group group = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "Team A", null, null, null);
-    when(groupService.listMyGroups(any(CurrentUser.class))).thenReturn(List.of(group));
+    when(groupService.listMyGroups(eq(expectedCaller))).thenReturn(List.of(group));
 
     mockMvc
         .perform(get("/api/v1/me/groups").with(asRegularUser()))
@@ -80,7 +84,7 @@ class MeControllerTest {
 
   @Test
   void myGroupsReturnsAnEmptyListForARegularUserWithoutAnyMembership() throws Exception {
-    when(groupService.listMyGroups(any(CurrentUser.class))).thenReturn(List.of());
+    when(groupService.listMyGroups(eq(expectedCaller))).thenReturn(List.of());
 
     mockMvc
         .perform(get("/api/v1/me/groups").with(asRegularUser()))

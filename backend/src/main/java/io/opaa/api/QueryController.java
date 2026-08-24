@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import io.opaa.api.dto.QueryRequest;
 import io.opaa.api.dto.QueryResponse;
+import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.query.QueryService;
 import jakarta.validation.Valid;
@@ -21,7 +22,7 @@ public class QueryController {
   }
 
   @PostMapping("/query")
-  public QueryResponse query(@Valid @RequestBody QueryRequest request, CurrentUser caller) {
+  public QueryResponse query(@Valid @RequestBody QueryRequest request, @Caller CurrentUser caller) {
     boolean useKnowledge = request.getUseKnowledge() == null || request.getUseKnowledge();
     return QueryResponseMapper.toResponse(
         queryService.query(

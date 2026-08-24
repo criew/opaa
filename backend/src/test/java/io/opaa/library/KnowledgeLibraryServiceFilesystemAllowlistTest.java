@@ -91,7 +91,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");
     owner.setOrganizationId(UUID.randomUUID());
     when(userRepository.findById(ownerId)).thenReturn(Optional.of(owner));
-    ownerCaller = new CurrentUser(ownerId, owner.getOrganizationId(), SystemRole.USER, "Owner");
+    ownerCaller = CurrentUser.of(ownerId, owner.getOrganizationId(), SystemRole.USER, "Owner");
   }
 
   @Test

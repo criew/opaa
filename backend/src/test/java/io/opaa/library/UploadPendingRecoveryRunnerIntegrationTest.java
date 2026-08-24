@@ -79,7 +79,7 @@ class UploadPendingRecoveryRunnerIntegrationTest {
 
     var libraryRequest = libraryCreation("Bibliothek", DocumentSourceType.UPLOAD).build();
     CurrentUser editorCaller =
-        new CurrentUser(editor.getId(), organizationId, SystemRole.USER, editor.getDisplayName());
+        CurrentUser.of(editor.getId(), organizationId, SystemRole.USER, editor.getDisplayName());
     libraryId = libraryService.createLibrary(libraryRequest, editorCaller).library().getId();
   }
 

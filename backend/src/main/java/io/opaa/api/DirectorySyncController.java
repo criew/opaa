@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import io.opaa.api.dto.DirectorySyncReportResponse;
 import io.opaa.api.dto.DirectorySyncStatusResponse;
+import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.group.sync.DirectorySyncService;
 import io.opaa.group.sync.DirectorySyncStatus;
@@ -25,21 +26,21 @@ public class DirectorySyncController {
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/dry-run")
-  public DirectorySyncReportResponse dryRun(CurrentUser caller) {
+  public DirectorySyncReportResponse dryRun(@Caller CurrentUser caller) {
     SyncReport report = directorySyncService.dryRun(caller.organizationId());
     return DirectorySyncResponseMapper.toReportResponse(report);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/run")
-  public DirectorySyncReportResponse run(CurrentUser caller) {
+  public DirectorySyncReportResponse run(@Caller CurrentUser caller) {
     SyncReport report = directorySyncService.run(caller.organizationId());
     return DirectorySyncResponseMapper.toReportResponse(report);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/status")
-  public DirectorySyncStatusResponse status(CurrentUser caller) {
+  public DirectorySyncStatusResponse status(@Caller CurrentUser caller) {
     Optional<DirectorySyncStatus> status = directorySyncService.getStatus(caller.organizationId());
     return DirectorySyncResponseMapper.toStatusResponse(status);
   }

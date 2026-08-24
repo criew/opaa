@@ -159,7 +159,7 @@ class OpenAiIntegrationTest {
     IndexingJob job =
         documentIndexingService.triggerIndexing(
             targetLibraryId,
-            new CurrentUser(userId, SEEDED_ORGANIZATION_ID, SystemRole.SYSTEM_ADMIN, null));
+            CurrentUser.of(userId, SEEDED_ORGANIZATION_ID, SystemRole.SYSTEM_ADMIN, null));
     assumeTrue(
         job.getDocumentsProcessed() > 0,
         "Skipping: OpenAI API returned an error (quota exceeded or rate limited)."
@@ -172,7 +172,7 @@ class OpenAiIntegrationTest {
         queryService.query(
             "What does OPAA stand for?",
             null,
-            new CurrentUser(userId, SEEDED_ORGANIZATION_ID, SystemRole.SYSTEM_ADMIN, null),
+            CurrentUser.of(userId, SEEDED_ORGANIZATION_ID, SystemRole.SYSTEM_ADMIN, null),
             true,
             java.util.List.of());
 

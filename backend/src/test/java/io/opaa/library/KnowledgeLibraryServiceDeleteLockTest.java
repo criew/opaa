@@ -95,7 +95,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");
     owner.setOrganizationId(organizationId);
     when(userRepository.findById(ownerId)).thenReturn(Optional.of(owner));
-    ownerCaller = new CurrentUser(ownerId, organizationId, SystemRole.USER, "Owner");
+    ownerCaller = CurrentUser.of(ownerId, organizationId, SystemRole.USER, "Owner");
 
     library =
         KnowledgeLibrary.ownedByUser(

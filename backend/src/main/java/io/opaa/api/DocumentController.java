@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.library.DocumentContent;
 import io.opaa.library.LibraryDocumentService;
@@ -61,7 +62,7 @@ public class DocumentController {
    */
   @GetMapping("/{documentId}/content")
   public ResponseEntity<Resource> getDocumentContent(
-      @PathVariable UUID documentId, CurrentUser caller) {
+      @PathVariable UUID documentId, @Caller CurrentUser caller) {
     DocumentContent content = documentService.loadContent(documentId, caller);
 
     Resource resource =

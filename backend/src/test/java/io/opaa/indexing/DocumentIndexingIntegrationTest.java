@@ -105,7 +105,7 @@ class DocumentIndexingIntegrationTest {
    * Organization#DEFAULT_ID}.
    */
   private CurrentUser asCaller() {
-    return new CurrentUser(userId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, null);
+    return CurrentUser.of(userId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, null);
   }
 
   @BeforeEach
@@ -536,7 +536,7 @@ class DocumentIndexingIntegrationTest {
         queryService.query(
             "uniquely identifiable sentence",
             null,
-            new CurrentUser(userId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, null),
+            CurrentUser.of(userId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, null),
             true,
             java.util.List.of());
     assertThat(withGrant.getSources())
@@ -573,7 +573,7 @@ class DocumentIndexingIntegrationTest {
         queryService.query(
             "uniquely identifiable sentence",
             null,
-            new CurrentUser(strangerId, Organization.DEFAULT_ID, SystemRole.USER, null),
+            CurrentUser.of(strangerId, Organization.DEFAULT_ID, SystemRole.USER, null),
             true,
             java.util.List.of());
     assertThat(withoutGrant.getSources())
@@ -772,7 +772,7 @@ class DocumentIndexingIntegrationTest {
   }
 
   private CurrentUser asCaller(UUID userId, UUID organizationId) {
-    return new CurrentUser(userId, organizationId, SystemRole.USER, "Test-Nutzer");
+    return CurrentUser.of(userId, organizationId, SystemRole.USER, "Test-Nutzer");
   }
 
   private KnowledgeLibrary createLibraryAndGrantEditor(

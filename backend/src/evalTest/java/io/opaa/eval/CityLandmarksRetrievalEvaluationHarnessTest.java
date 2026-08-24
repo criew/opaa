@@ -454,7 +454,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
         .isEqualTo(EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE);
 
     CurrentUser evalCaller =
-        new CurrentUser(
+        CurrentUser.of(
             evalUserId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "Eval Harness User");
     IndexingJob job = documentIndexingService.triggerIndexing(evalLibraryId, evalCaller);
     awaitJobCompletion(job);

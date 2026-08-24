@@ -78,7 +78,7 @@ class LibraryControllerDocumentTest {
     user.setSystemRole(SystemRole.USER);
     setId(user, currentUserId);
     caller =
-        new CurrentUser(
+        CurrentUser.of(
             user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
     when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
         .thenReturn(user);

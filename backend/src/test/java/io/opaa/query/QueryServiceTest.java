@@ -75,7 +75,7 @@ class QueryServiceTest {
   private final UUID organizationId = UUID.randomUUID();
   private final UUID readableLibraryId = UUID.randomUUID();
   private final CurrentUser caller =
-      new CurrentUser(currentUserId, organizationId, SystemRole.USER, "User");
+      CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "User");
 
   @BeforeEach
   void setUp() {
@@ -784,7 +784,7 @@ class QueryServiceTest {
 
     UUID otherUserId = UUID.randomUUID();
     CurrentUser otherCaller =
-        new CurrentUser(otherUserId, organizationId, SystemRole.USER, "Other User");
+        CurrentUser.of(otherUserId, organizationId, SystemRole.USER, "Other User");
     // useKnowledge=false with no requested library keeps the search scope empty regardless of
     // what this account may read, so the readable-set stub's content is irrelevant here - the
     // vector store and permission-history check are simply skipped for an empty scope (see

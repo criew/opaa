@@ -45,7 +45,7 @@ class AssetGrantServiceTest {
   private final UUID organizationId = UUID.randomUUID();
   private final UUID managerId = UUID.randomUUID();
   private final CurrentUser managerCaller =
-      new CurrentUser(managerId, organizationId, SystemRole.USER, "Manager");
+      CurrentUser.of(managerId, organizationId, SystemRole.USER, "Manager");
   private UUID libraryId;
   private KnowledgeLibrary library;
 

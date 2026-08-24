@@ -170,7 +170,7 @@ class LibraryDocumentServiceIntegrationTest {
   }
 
   private CurrentUser currentUserOf(User user, boolean systemAdmin) {
-    return new CurrentUser(
+    return CurrentUser.of(
         user.getId(),
         user.getOrganizationId(),
         systemAdmin ? SystemRole.SYSTEM_ADMIN : user.getSystemRole(),

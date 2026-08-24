@@ -75,10 +75,10 @@ class DocumentIndexingServiceTest {
     currentUser = new User("subject", "issuer", "user@example.com", "Test User");
     currentUser.setOrganizationId(organizationId);
     caller =
-        new CurrentUser(
+        CurrentUser.of(
             currentUser.getId(), organizationId, io.opaa.auth.SystemRole.USER, "Test User");
     systemAdminCaller =
-        new CurrentUser(
+        CurrentUser.of(
             currentUser.getId(), organizationId, io.opaa.auth.SystemRole.SYSTEM_ADMIN, "Test User");
     library =
         KnowledgeLibrary.ownedByUser(

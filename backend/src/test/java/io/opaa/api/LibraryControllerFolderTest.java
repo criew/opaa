@@ -79,7 +79,7 @@ class LibraryControllerFolderTest {
     user.setSystemRole(SystemRole.USER);
     setId(user, currentUserId);
     caller =
-        new CurrentUser(
+        CurrentUser.of(
             user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
     when(userService.findOrCreateUser(
             org.mockito.ArgumentMatchers.eq(TEST_SUBJECT),
@@ -334,7 +334,7 @@ class LibraryControllerFolderTest {
     UUID adminId = UUID.randomUUID();
     setId(admin, adminId);
     CurrentUser adminCaller =
-        new CurrentUser(
+        CurrentUser.of(
             admin.getId(),
             admin.getOrganizationId(),
             admin.getSystemRole(),

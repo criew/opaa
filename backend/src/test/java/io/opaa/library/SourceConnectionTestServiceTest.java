@@ -64,9 +64,9 @@ class SourceConnectionTestServiceTest {
     libraryAccessService = mock(LibraryAccessService.class);
     currentUserId = UUID.randomUUID();
     organizationId = UUID.randomUUID();
-    caller = new CurrentUser(currentUserId, organizationId, SystemRole.USER, "Caller");
+    caller = CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "Caller");
     systemAdminCaller =
-        new CurrentUser(currentUserId, organizationId, SystemRole.SYSTEM_ADMIN, "Caller");
+        CurrentUser.of(currentUserId, organizationId, SystemRole.SYSTEM_ADMIN, "Caller");
     service =
         new SourceConnectionTestService(
             new DocumentService(),

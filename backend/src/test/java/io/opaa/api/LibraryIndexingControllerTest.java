@@ -79,7 +79,7 @@ class LibraryIndexingControllerTest {
     currentUser = new User(TEST_SUBJECT, TEST_ISSUER, "test@example.com", "Test User");
     currentUser.setSystemRole(SystemRole.USER);
     caller =
-        new CurrentUser(
+        CurrentUser.of(
             currentUser.getId(),
             currentUser.getOrganizationId(),
             currentUser.getSystemRole(),

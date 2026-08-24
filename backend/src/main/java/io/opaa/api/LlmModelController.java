@@ -5,6 +5,7 @@ import io.opaa.api.dto.LlmModelRequest;
 import io.opaa.api.dto.LlmModelResponse;
 import io.opaa.api.dto.LlmModelTestRequest;
 import io.opaa.api.dto.LlmModelTestResponse;
+import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
@@ -78,7 +79,7 @@ public class LlmModelController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping
   public ResponseEntity<LlmModelResponse> createModel(
-      @Valid @RequestBody LlmModelRequest request, CurrentUser caller) {
+      @Valid @RequestBody LlmModelRequest request, @Caller CurrentUser caller) {
     LlmModel model =
         llmModelService.createModel(
             caller.organizationId(),
@@ -95,7 +96,9 @@ public class LlmModelController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PutMapping("/{modelId}")
   public LlmModelResponse updateModel(
-      @PathVariable UUID modelId, @Valid @RequestBody LlmModelRequest request, CurrentUser caller) {
+      @PathVariable UUID modelId,
+      @Valid @RequestBody LlmModelRequest request,
+      @Caller CurrentUser caller) {
     LlmModel model =
         llmModelService.updateModel(
             caller.organizationId(),
@@ -112,14 +115,14 @@ public class LlmModelController {
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @DeleteMapping("/{modelId}")
-  public ResponseEntity<Void> deleteModel(@PathVariable UUID modelId, CurrentUser caller) {
+  public ResponseEntity<Void> deleteModel(@PathVariable UUID modelId, @Caller CurrentUser caller) {
     llmModelService.deleteModel(caller.organizationId(), caller.id(), modelId);
     return ResponseEntity.noContent().build();
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/{modelId}/activate")
-  public LlmModelResponse activateModel(@PathVariable UUID modelId, CurrentUser caller) {
+  public LlmModelResponse activateModel(@PathVariable UUID modelId, @Caller CurrentUser caller) {
     try {
       LlmModel model = llmModelService.activateModel(caller.organizationId(), caller.id(), modelId);
       return toResponse(model);

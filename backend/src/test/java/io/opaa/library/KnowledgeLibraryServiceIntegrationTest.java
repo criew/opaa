@@ -203,7 +203,7 @@ class KnowledgeLibraryServiceIntegrationTest {
    */
   private CurrentUser currentUserOf(UUID userId, boolean systemAdmin) {
     User user = userRepository.findById(userId).orElseThrow();
-    return new CurrentUser(
+    return CurrentUser.of(
         userId,
         user.getOrganizationId(),
         systemAdmin ? SystemRole.SYSTEM_ADMIN : SystemRole.USER,

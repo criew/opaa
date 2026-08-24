@@ -40,7 +40,7 @@ public class UserSearchController {
   // which returns an empty list rather than the whole organization for a missing or too-short one.
   @GetMapping
   public List<UserSummaryResponse> listUsers(
-      CurrentUser caller, @RequestParam(required = false) String query) {
+      @Caller CurrentUser caller, @RequestParam(required = false) String query) {
     return userService.searchInOrganization(caller.organizationId(), query).stream()
         .map(this::toResponse)
         .toList();

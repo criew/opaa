@@ -325,11 +325,12 @@ class AuditControllerTest {
                 || parameter.isAnnotationPresent(PathVariable.class)
                 || parameter.isAnnotationPresent(RequestBody.class)
                 || parameter.isAnnotationPresent(AuthenticationPrincipal.class)
-                // CurrentUser is resolved solely by CurrentUserArgumentResolver, keyed on this
-                // exact type - unlike Pageable/Sort, Spring never falls back to arbitrary
-                // query-parameter binding for it, so an unannotated parameter of this type carries
-                // the same explicit-binding guarantee the annotations above provide.
-                || type == io.opaa.auth.CurrentUser.class;
+                // CurrentUserArgumentResolver only claims @Caller-annotated parameters (fail-closed
+                // by design, see its Javadoc) - an unannotated CurrentUser parameter would be
+                // eligible for Spring MVC's catch-all ModelAttributeMethodProcessor instead,
+                // exactly
+                // like an unannotated Pageable/Sort would be.
+                || parameter.isAnnotationPresent(io.opaa.auth.Caller.class);
         failIf(
             !explicitlyBound,
             "Method "

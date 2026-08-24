@@ -213,7 +213,7 @@ class AuditEventRecordingIntegrationTest {
 
   /** {@link CurrentUser} snapshot for a {@link User} entity this test already loaded/created. */
   private CurrentUser currentUserOf(User user) {
-    return new CurrentUser(
+    return CurrentUser.of(
         user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
   }
 
@@ -229,7 +229,7 @@ class AuditEventRecordingIntegrationTest {
    */
   private CurrentUser currentUserOf(UUID userId, boolean systemAdmin) {
     User user = userRepository.findById(userId).orElseThrow();
-    return new CurrentUser(
+    return CurrentUser.of(
         user.getId(),
         user.getOrganizationId(),
         systemAdmin ? SystemRole.SYSTEM_ADMIN : SystemRole.USER,

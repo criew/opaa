@@ -10,6 +10,7 @@ import io.opaa.audit.AuditIncidentScopeService;
 import io.opaa.audit.AuditLogEntry;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditQueryService;
+import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -88,7 +89,7 @@ public class AuditController {
       // reaches AuditQueryService, which is where the mandatory-reason rejection is itself logged
       // (#394) rather than short-circuited by Spring MVC's own binding error.
       @RequestParam(name = "reason", required = false) String reason,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     Page<AuditLogEntry> result =
         queryService.byObject(
             caller.organizationId(),
@@ -110,7 +111,7 @@ public class AuditController {
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "50") int size,
       @RequestParam(name = "reason", required = false) String reason,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     Page<AuditLogEntry> result =
         queryService.byTimeRange(
             caller.organizationId(), caller.id(), reason, from, to, page, size);
@@ -125,7 +126,7 @@ public class AuditController {
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "50") int size,
       @RequestParam(name = "reason", required = false) String reason,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     Page<AuditLogEntry> result =
         queryService.byEventType(
             caller.organizationId(), caller.id(), reason, eventType, from, to, page, size);
@@ -140,7 +141,7 @@ public class AuditController {
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "50") int size,
       @RequestParam(name = "reason", required = false) String reason,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     Page<AuditLogEntry> result =
         queryService.byCorrelation(
             caller.organizationId(), caller.id(), reason, correlationRef, from, to, page, size);
@@ -150,7 +151,7 @@ public class AuditController {
   @PreAuthorize("hasRole('AUDITOR')")
   @PostMapping("/incident-scopes")
   public ResponseEntity<AuditIncidentScopeResponse> requestAuditIncidentScope(
-      @Valid @RequestBody AuditIncidentScopeRequest request, CurrentUser caller) {
+      @Valid @RequestBody AuditIncidentScopeRequest request, @Caller CurrentUser caller) {
     AuditIncidentScopeGrant grant =
         incidentScopeService.request(
             caller.organizationId(),
@@ -166,7 +167,7 @@ public class AuditController {
   @PreAuthorize("hasRole('AUDITOR')")
   @PostMapping("/incident-scopes/{scopeId}/approve")
   public AuditIncidentScopeResponse approveAuditIncidentScope(
-      @PathVariable UUID scopeId, CurrentUser caller) {
+      @PathVariable UUID scopeId, @Caller CurrentUser caller) {
     AuditIncidentScopeGrant grant =
         incidentScopeService.approve(caller.organizationId(), scopeId, caller.id());
     return toIncidentScopeResponse(grant);
@@ -180,7 +181,7 @@ public class AuditController {
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "50") int size,
       @RequestParam(name = "reason", required = false) String reason,
-      CurrentUser caller) {
+      @Caller CurrentUser caller) {
     Page<AuditLogEntry> result =
         queryService.byIncidentScope(
             caller.organizationId(), caller.id(), reason, scopeId, from, to, page, size);

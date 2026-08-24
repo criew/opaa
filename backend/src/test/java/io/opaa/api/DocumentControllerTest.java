@@ -58,6 +58,7 @@ class DocumentControllerTest {
   @MockitoBean private UserService userService;
 
   private final UUID currentUserId = UUID.randomUUID();
+  private CurrentUser expectedCaller;
 
   @BeforeEach
   void setUp() {
@@ -66,6 +67,9 @@ class DocumentControllerTest {
     setId(user, currentUserId);
     when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
         .thenReturn(user);
+    expectedCaller =
+        CurrentUser.of(
+            currentUserId, user.getOrganizationId(), SystemRole.USER, user.getDisplayName());
   }
 
   private RequestPostProcessor asTestUser() {
@@ -88,7 +92,7 @@ class DocumentControllerTest {
     UUID documentId = UUID.randomUUID();
     Path file = tempDir.resolve("original.txt");
     Files.writeString(file, "Originalinhalt", StandardCharsets.UTF_8);
-    when(documentService.loadContent(eq(documentId), any(CurrentUser.class)))
+    when(documentService.loadContent(eq(documentId), eq(expectedCaller)))
         .thenReturn(new DocumentContent(file, "bericht 2026.txt", "text/plain"));
 
     mockMvc
@@ -114,7 +118,7 @@ class DocumentControllerTest {
     UUID documentId = UUID.randomUUID();
     Path file = tempDir.resolve("original.txt");
     Files.writeString(file, "Originalinhalt", StandardCharsets.UTF_8);
-    when(documentService.loadContent(eq(documentId), any(CurrentUser.class)))
+    when(documentService.loadContent(eq(documentId), eq(expectedCaller)))
         .thenReturn(new DocumentContent(file, "Prüfbericht *2026*.txt", "text/plain"));
 
     mockMvc
@@ -148,7 +152,7 @@ class DocumentControllerTest {
             super.close();
           }
         };
-    when(documentService.loadContent(eq(documentId), any(CurrentUser.class)))
+    when(documentService.loadContent(eq(documentId), eq(expectedCaller)))
         .thenReturn(DocumentContent.ofStream(remoteBody, "original.pdf", "application/pdf"));
 
     mockMvc
@@ -169,7 +173,7 @@ class DocumentControllerTest {
     UUID documentId = UUID.randomUUID();
     Path file = tempDir.resolve("original.bin");
     Files.writeString(file, "Originalinhalt", StandardCharsets.UTF_8);
-    when(documentService.loadContent(eq(documentId), any(CurrentUser.class)))
+    when(documentService.loadContent(eq(documentId), eq(expectedCaller)))
         .thenReturn(new DocumentContent(file, "original.bin", "pdf"));
 
     mockMvc
@@ -182,7 +186,7 @@ class DocumentControllerTest {
   @Test
   void aDocumentTheServiceRefusesAnswers404() throws Exception {
     UUID documentId = UUID.randomUUID();
-    when(documentService.loadContent(eq(documentId), any(CurrentUser.class)))
+    when(documentService.loadContent(eq(documentId), eq(expectedCaller)))
         .thenThrow(new NotFoundException("Dokument nicht gefunden"));
 
     mockMvc
