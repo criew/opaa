@@ -111,6 +111,16 @@ public class Document {
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
+  /**
+   * The {@code io.opaa.library.LibraryFolder} this document sits in (#820, Epic #520 Phase 2,
+   * ADR-0020), or {@code null} for the library's root - the same convention {@code
+   * LibraryFolder#getParentFolderId()} uses one level up. Not yet set by any indexing or upload
+   * path (#821 wires folder-aware upload/listing); every document created before that lands at the
+   * root.
+   */
+  @Column(name = "folder_id")
+  private UUID folderId;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -243,6 +253,14 @@ public class Document {
 
   public Instant getCreatedAt() {
     return createdAt;
+  }
+
+  public UUID getFolderId() {
+    return folderId;
+  }
+
+  public void setFolderId(UUID folderId) {
+    this.folderId = folderId;
   }
 
   /**

@@ -1333,6 +1333,130 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/{libraryId}/folders:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: createLibraryFolder
+      tags: [library]
+      summary: >
+        Create a folder in a library (EDITOR role or above required), optionally nested under an
+        existing folder (#820, ADR-0020: library_folders is a real entity so an empty folder can
+        exist before any document is uploaded into it). Only accepted for libraries with sourceType
+        UPLOAD - a connector library (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED) rejects folder creation
+        with 409, mirroring the same restriction POST .../documents already applies (ADR-0018,
+        #479); FILESYSTEM's own read-only folder mapping is a later, separate task (#824). A name
+        that already exists on the same level (same parentFolderId, including two root-level
+        folders) is rejected with 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryFolderRequest"
+      responses:
+        "201":
+          description: Folder created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryFolderResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/libraries/{libraryId}/folders/{folderId}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: folderId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryFolder
+      tags: [library]
+      summary: >
+        Fetch a single folder (VIEWER role or above required), including the total number of
+        documents it and its subfolders contain (#820) - the count a confirmation dialog shows
+        before a recursive delete (ADR-0020, Entscheidung 5).
+      responses:
+        "200":
+          description: The folder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryFolderResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      operationId: renameLibraryFolder
+      tags: [library]
+      summary: >
+        Rename a folder (EDITOR role or above required, #820). Only the name changes; documents in
+        the folder and its subfolders are unaffected, their display path is derived from the
+        current folder chain. A name that already exists on the same level is rejected with 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryFolderRenameRequest"
+      responses:
+        "200":
+          description: Folder renamed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryFolderResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    delete:
+      operationId: deleteLibraryFolder
+      tags: [library]
+      summary: >
+        Delete a folder (EDITOR role or above required, #820), recursively removing its subfolders
+        and every document they contain. Document cleanup (chunks, stored file) runs through the
+        same application service GET /api/v1/libraries/{libraryId}/documents/{documentId} deletion
+        already uses, never a database cascade (ADR-0020, Entscheidung 5) - the frontend shows the
+        affected document count from GET on this folder first and requires explicit confirmation
+        before calling this endpoint.
+      responses:
+        "204":
+          description: Folder (and its contained subfolders/documents) deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/documents/{documentId}/content:
     parameters:
       - name: documentId
@@ -3972,6 +4096,68 @@ components:
           type: integer
           format: int64
           description: Total number of documents matching the (optional) q filter, across all pages.
+
+    LibraryFolderRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: >
+            Trimmed before validation; must not be empty and must not contain "/" (#820) - a
+            display path is derived from the folder chain, not stored as a string, so a slash in a
+            single folder's own name would be indistinguishable from a path separator.
+          example: Protokolle
+        parentFolderId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The containing folder, or omitted/null to create a root-level folder (ADR-0020: null
+            parent_folder_id means the library's root). Must reference an existing folder in the
+            same library.
+
+    LibraryFolderRenameRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Same validation as LibraryFolderRequest.name.
+          example: Protokolle 2026
+
+    LibraryFolderResponse:
+      type: object
+      required: [id, libraryId, name, documentCount, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        libraryId:
+          type: string
+          format: uuid
+        parentFolderId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Null for a root-level folder.
+        name:
+          type: string
+          example: Protokolle
+        documentCount:
+          type: integer
+          format: int64
+          description: >
+            Total number of documents directly in this folder and every one of its subfolders,
+            recursively (#820) - the count a confirmation dialog shows before DELETE removes them
+            all (ADR-0020, Entscheidung 5).
+        createdAt:
+          type: string
+          format: date-time
 
     AssetRole:
       type: string

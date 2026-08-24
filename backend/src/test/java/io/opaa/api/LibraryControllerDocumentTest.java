@@ -23,6 +23,7 @@ import io.opaa.indexing.DocumentStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
+import io.opaa.library.LibraryFolderService;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.space.SpaceAssetAssociationService;
 import java.util.List;
@@ -61,6 +62,7 @@ class LibraryControllerDocumentTest {
   @MockitoBean private KnowledgeLibraryService libraryService;
   @MockitoBean private AssetGrantService grantService;
   @MockitoBean private LibraryDocumentService documentService;
+  @MockitoBean private LibraryFolderService folderService;
   @MockitoBean private DocumentIndexingService indexingService;
   @MockitoBean private UserService userService;
   @MockitoBean private SourceConnectionTestService sourceConnectionTestService;
