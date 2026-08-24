@@ -381,22 +381,31 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
     // class), or the closure drags the whole build script into the configuration cache, which
     // Gradle rejects ("cannot serialize Gradle script object references").
     val generatedDtoDir = project.layout.buildDirectory.dir("generated/openapi/src/main/java/io/opaa/api/dto")
-    // Files to remove are derived from typeMappings (issue #835) instead of a hand-maintained
-    // list: the generator still emits a model file for every mapped type, named after the
-    // *mapped* Java type, not the OpenAPI schema name. For most entries the two coincide (e.g.
-    // "SpaceRole" -> "SpaceRole"); the one exception is "AuditActorKind" -> "ActorKind", where the
-    // generated (and thus deleted) file is "ActorKind.java", not "AuditActorKind.java" — using the
-    // mapped value here handles that case for free. "DateTime" -> "Instant" is excluded: it is a
-    // scalar substitution, not a domain enum, and names no generated model file. Adding a new
-    // domain enum therefore only needs an entry in typeMappings/importMappings; this list follows
-    // automatically.
+    // Candidate file names to remove are derived from typeMappings (issue #835) instead of a
+    // hand-maintained list. With the currently pinned generator version, a schema fully covered by
+    // typeMappings emits no model file at all, so this list is empty in practice — it is a safety
+    // net for a future generator version that goes back to emitting one (an earlier version of
+    // this plugin did; that mismatch is the whole reason this doLast block exists). Both the
+    // OpenAPI schema name (the typeMappings key, e.g. "AuditActorKind") and the mapped Java type
+    // name (the value, e.g. "ActorKind") are included defensively, since it is not contractually
+    // specified which one a future generator version would use for the file name. "DateTime"/
+    // "Instant" is excluded: it is a scalar substitution, not a domain enum, and names no
+    // generated model file. Adding a new domain enum therefore only needs an entry in
+    // typeMappings/importMappings; this list follows automatically. Built with `.map` rather than
+    // `.get()` here so the value is computed lazily from whatever this task's typeMappings holds
+    // at execution time, instead of taking a config-time snapshot that would silently depend on
+    // the registration order of this and the preceding tasks.named block.
     val generatedEnumFileNames =
-        typeMappings.get().filterKeys { it != "DateTime" }.values.map { "$it.java" }
+        typeMappings.map { mappings ->
+            (mappings.keys + mappings.values)
+                .filter { it != "DateTime" && it != "Instant" }
+                .map { "$it.java" }
+        }
     doLast {
         // Remove generated enum files that are mapped to existing domain enums via typeMappings.
-        // The generator still creates these files even with typeMappings configured.
+        // See the comment above: currently a no-op safety net, kept for forward compatibility.
         val generatedDir = generatedDtoDir.get().asFile
-        generatedEnumFileNames.forEach { fileName -> File(generatedDir, fileName).delete() }
+        generatedEnumFileNames.get().forEach { fileName -> File(generatedDir, fileName).delete() }
     }
 }
 

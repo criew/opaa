@@ -46,4 +46,4 @@ Der OpenAPI-Generator ist in `backend/build.gradle.kts` konfiguriert:
 
 - **Generierter Code-Stil:** Generierte DTOs sind veränderliche POJOs mit Gettern/Settern anstatt prägnanter Java-Records. Service-Code verwendet `request.getName()` anstatt `request.name()`.
 - **Build-Abhängigkeit:** `compileJava` hängt von `openApiGenerate` ab; die Spezifikation muss gültig sein, damit der Build erfolgreich ist
-- **Enum-Mapping-Wartung:** Wenn neue Domain-Enums hinzugefügt werden, die in der API verwendet werden, müssen `typeMappings` und `importMappings` in `build.gradle.kts` aktualisiert werden, und die entsprechende generierte Datei muss dem `doLast`-Cleanup-Block hinzugefügt werden
+- **Enum-Mapping-Wartung:** Wenn neue Domain-Enums hinzugefügt werden, die in der API verwendet werden, müssen `typeMappings` und `importMappings` in `build.gradle.kts` aktualisiert werden; der `doLast`-Cleanup-Block leitet die zu entfernenden generierten Dateien mechanisch aus `typeMappings` ab und muss dafür nicht mehr separat gepflegt werden
