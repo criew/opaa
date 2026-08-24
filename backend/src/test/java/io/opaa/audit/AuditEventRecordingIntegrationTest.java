@@ -4,8 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.TestcontainersConfiguration;
-import io.opaa.api.dto.GroupRequest;
-import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
