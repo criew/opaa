@@ -1,11 +1,11 @@
 package io.opaa.indexing;
 
 /**
- * A single attachment link an {@link AttachmentProfile} found on an RSS entry's detail page (#468).
+ * A single attachment link an {@link AttachmentProfile} found on an RSS entry's detail page.
  *
  * @param url the absolute URL the attachment is downloaded from - also its identity for
  *     deduplication via {@link DocumentRepository#findByFilePath}: the same attachment linked from
- *     two entries becomes one document (#468 acceptance criteria), exactly the way {@link
+ *     two entries becomes one document, exactly the way {@link
  *     FileProcessingService#processUrlFile} already deduplicates by {@code file_path} for {@code
  *     HTTP_DIRECTORY} documents.
  * @param suggestedFileName a best-effort file name for the attachment. For {@link

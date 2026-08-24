@@ -9,50 +9,40 @@ import java.util.Set;
 import org.jsoup.nodes.Element;
 
 /**
- * Describes which links on an RSS entry's detail page count as attachments (#468) - a named,
- * configurable answer to "which of this page's links are documents", kept as an explicit code
- * construct instead of an {@code if} chain inside {@link RssFeedIndexingExecutor}: a second CMS
- * with a different attachment pattern becomes a third enum constant, not a new branch in the
- * executor. Selected per deployment via {@code opaa.indexing.rss.attachment-profile} ({@link
- * IndexingProperties.Rss#attachmentProfile()}), not per run and not by guessing the CMS from the
- * feed's address (#468 explicitly rules out address-based CMS detection).
+ * Describes which links on an RSS entry's detail page count as attachments - a named, configurable
+ * answer to "which of this page's links are documents", kept as an explicit code construct instead
+ * of an {@code if} chain inside {@link RssFeedIndexingExecutor}: a second CMS with a different
+ * attachment pattern becomes a third enum constant. Selected per deployment via {@code
+ * opaa.indexing.rss.attachment-profile} ({@link IndexingProperties.Rss#attachmentProfile()}), not
+ * per run and not by guessing the CMS from the feed's address.
  *
  * <p>Both profiles search only inside the same content area {@link RssFeedIndexingExecutor} already
- * extracts the article text from ({@code opaa.indexing.rss.main-content-selector}) - a profile's
- * "Einschränkung auf einen Bereich der Seite" from the issue's profile concept is therefore not a
- * second, separately configured selector but the boundary already drawn for the article text
- * itself. A link outside that area (site navigation, a footer's imprint link) is never an
- * attachment under either profile, and neither profile ever considers a link to a different host
- * than the detail page's own - the #468 acceptance criterion "Verweise, die aus der Seite
- * hinausführen, gelten nicht als Anlage" applies across both.
+ * extracts the article text from ({@code opaa.indexing.rss.main-content-selector}). A link outside
+ * that area (site navigation, a footer's imprint link) is never an attachment under either profile,
+ * and neither profile ever considers a link to a different host than the detail page's own.
  */
 public enum AttachmentProfile {
 
   /**
-   * The default profile (#468 acceptance criteria: "ohne Profilangabe greift das allgemeine
-   * Profil"): a link is a candidate attachment when it carries some file extension at all and stays
-   * on the detail page's own host - {@code fileHasSomeExtension} below, not {@link
-   * SupportedDocumentFormats#isSupported} (#404 review, finding 2).
+   * The default profile: a link is a candidate attachment when it carries some file extension at
+   * all and stays on the detail page's own host - {@code fileHasSomeExtension} below, not {@link
+   * SupportedDocumentFormats#isSupported}.
    *
-   * <p><b>Deliberately not filtered down to {@link SupportedDocumentFormats}'s own six extensions
-   * here.</b> This method only ever sees a URL, never the bytes behind it - {@link
+   * <p>Deliberately not filtered down to {@link SupportedDocumentFormats}'s own six extensions
+   * here: this method only ever sees a URL, never the bytes behind it - {@link
    * RssFeedIndexingExecutor#processAttachment} is the one place that actually downloads a candidate
-   * and decides acceptance from its content via {@link SupportedDocumentFormats#decideForFileName},
-   * exactly like the filesystem and web-directory paths. Filtering candidates down to the six
-   * recognized extensions here, before any content is ever inspected, would have silently excluded
-   * the very case #404 exists for: a document linked under the wrong extension (a PDF published as
-   * {@code bescheid.csv}) never became a candidate at all, so its content was never even looked at.
-   * "Carries some extension" still excludes ordinary navigation links (an {@code /impressum} page,
-   * a "read more" link to another article) that a CMS routinely renders without one - the
-   * structural signal "this looks like a file, not a page", not a content-type whitelist.
+   * and decides acceptance from its content via {@link SupportedDocumentFormats#decideForFileName}.
+   * Filtering candidates down to the six recognized extensions here would have silently excluded a
+   * document linked under the wrong extension (a PDF published as {@code bescheid.csv}). "Carries
+   * some extension" still excludes ordinary navigation links that a CMS routinely renders without
+   * one - the structural signal "this looks like a file, not a page", not a content-type whitelist.
    */
   GENERIC {
     @Override
     List<AttachmentCandidate> findAttachments(Element contentArea, URI pageUri) {
-      // LinkedHashSet, not List (PR #492 review, finding 8): the same attachment is routinely
-      // linked twice on one detail page (an inline text link plus a "downloads" list at the
-      // bottom) - without dedup here, the executor would download it twice, wait out politeness
-      // twice, and exhaust maxAttachmentsPerEntry on duplicates rather than distinct attachments.
+      // LinkedHashSet, not List: the same attachment is routinely linked twice on one detail page
+      // (an inline text link plus a "downloads" list at the bottom) - without dedup here, the
+      // executor would download it twice and exhaust maxAttachmentsPerEntry on duplicates.
       Set<AttachmentCandidate> candidates = new LinkedHashSet<>();
       for (Element link : contentArea.select("a[href]")) {
         String absoluteUrl = link.absUrl("href");
@@ -71,17 +61,16 @@ public enum AttachmentProfile {
   },
 
   /**
-   * The Government Site Builder profile (#468): the CMS of the German federal government does not
-   * expose attachments under a URL with a file extension - it serves them through a query parameter
-   * on the page's own address instead ({@code __blob=publicationFile}). The pattern below is the
-   * generic shape of that mechanism; this class's own tests reproduce it exclusively with fictional
-   * {@code example.gov}-style addresses, never a real institution's domain (#468 acceptance
-   * criteria).
+   * The Government Site Builder profile: the CMS of the German federal government does not expose
+   * attachments under a URL with a file extension - it serves them through a query parameter on the
+   * page's own address instead ({@code __blob=publicationFile}). This class's own tests reproduce
+   * it exclusively with fictional {@code example.gov}-style addresses, never a real institution's
+   * domain.
    */
   GSB {
     @Override
     List<AttachmentCandidate> findAttachments(Element contentArea, URI pageUri) {
-      // See GENERIC's own comment on the same dedup (PR #492 review, finding 8).
+      // See GENERIC's own comment on the same dedup.
       Set<AttachmentCandidate> candidates = new LinkedHashSet<>();
       for (Element link : contentArea.select("a[href]")) {
         String absoluteUrl = link.absUrl("href");
@@ -138,11 +127,10 @@ public enum AttachmentProfile {
 
   /**
    * Whether {@code linkUri} is the same origin as {@code pageUri} - host, scheme and port all have
-   * to match (PR #492 review, finding 9). Host alone let an {@code http} link on an {@code https}
-   * detail page through, silently downgrading the attachment download to plain text; port alone let
-   * a link to an unrelated service on the same host through. Default ports ({@code 80}/{@code 443})
-   * are normalised so an explicit {@code :443} on an {@code https} link still counts as the same
-   * origin as one without.
+   * to match. Host alone would let an {@code http} link on an {@code https} detail page through,
+   * silently downgrading the attachment download to plain text; port alone would let a link to an
+   * unrelated service on the same host through. Default ports are normalised so an explicit {@code
+   * :443} on an {@code https} link still counts as the same origin as one without.
    */
   private static boolean sameHost(URI pageUri, URI linkUri) {
     return pageUri.getHost() != null
@@ -172,14 +160,12 @@ public enum AttachmentProfile {
 
   /**
    * Whether {@code fileName}'s last path segment carries a file extension at all - a dot that is
-   * neither the first nor the last character (#404 review, finding 2). Used by {@link #GENERIC} as
-   * the structural "this looks like a file" signal instead of {@link
-   * SupportedDocumentFormats#isSupported}; see that constant's own Javadoc for why. Package-visible
-   * (not {@code private}) so {@link RssFeedIndexingExecutor#resolveFileName} can apply the
-   * identical rule when deciding whether a GENERIC candidate's name already carries a real
-   * extension (possibly one {@link SupportedDocumentFormats} does not recognize) that must be kept
-   * verbatim, rather than one only {@link AttachmentProfile#GSB}'s extension-less candidates
-   * actually need synthesized.
+   * neither the first nor the last character. Used by {@link #GENERIC} as the structural "this
+   * looks like a file" signal instead of {@link SupportedDocumentFormats#isSupported}.
+   * Package-visible so {@link RssFeedIndexingExecutor#resolveFileName} can apply the identical rule
+   * when deciding whether a GENERIC candidate's name already carries a real extension that must be
+   * kept verbatim, rather than one only {@link AttachmentProfile#GSB}'s extension-less candidates
+   * need synthesized.
    */
   static boolean fileHasSomeExtension(String fileName) {
     if (fileName == null || fileName.isBlank()) {

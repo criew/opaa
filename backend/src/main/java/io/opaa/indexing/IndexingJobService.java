@@ -15,22 +15,21 @@ public class IndexingJobService {
 
   /**
    * Error message a run that was still {@link JobStatus#RUNNING} at the previous application
-   * startup gets (#501) - see {@link #recoverJobsOrphanedByRestart}.
+   * startup gets - see {@link #recoverJobsOrphanedByRestart}.
    */
   static final String RESTART_ABORTED_MESSAGE = "Durch Neustart abgebrochen";
 
   /**
    * Error message a run gets when it is still {@link JobStatus#RUNNING} well past {@code
-   * IndexingProperties#staleJobTimeout} while the application keeps running (#501) - see {@link
+   * IndexingProperties#staleJobTimeout} while the application keeps running - see {@link
    * #recoverStaleJobs}.
    */
   static final String STALE_RUN_MESSAGE =
       "Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)";
 
   /**
-   * How many runs are kept per library (#513, Umfangserweiterung - Maintainer-Ergaenzung
-   * 20.08.2026): older runs, together with their {@link IndexingRunEvent}s, are pruned by {@link
-   * #pruneOldRuns} whenever a new run starts.
+   * How many runs are kept per library: older runs, together with their {@link IndexingRunEvent}s,
+   * are pruned by {@link #pruneOldRuns} whenever a new run starts.
    */
   static final int MAX_RETAINED_RUNS_PER_LIBRARY = 10;
 
@@ -42,21 +41,16 @@ public class IndexingJobService {
 
   /**
    * Starts a new {@link JobStatus#RUNNING} run for {@code libraryId}, recording {@code
-   * organizationId} on the job itself (#401) - the caller (currently only {@link
-   * DocumentIndexingService#triggerIndexing}) has already resolved and authorized {@code libraryId}
-   * within that organization, so this simply carries the fact forward onto the row.
+   * organizationId} on the job itself - the caller has already resolved and authorized {@code
+   * libraryId} within that organization, so this simply carries the fact forward onto the row.
    *
-   * <p><b>#500 review, finding 3 (TOCTOU).</b> {@code DocumentIndexingService#triggerIndexing}'s
-   * own {@link #isJobRunning(UUID, UUID)} check and this insert are two separate statements with no
-   * lock between them, so two concurrent triggers for the same library can both pass that check
-   * before either has inserted its row. The database closes that gap: {@code
-   * uk_indexing_jobs_library_running} (migration 028) is a partial unique index on {@code
-   * (library_id) WHERE status = 'RUNNING'}, so at most one RUNNING row per library can ever exist.
-   * {@link IndexingJobRepository#saveAndFlush} - not plain {@code save} - forces the insert (and
-   * therefore the constraint check) to happen synchronously here, inside this method's own
-   * transaction, rather than being deferred to a later flush the caller could not catch. The loser
-   * of the race gets the exact same 409 the in-memory check already produces for the same-thread
-   * case, so callers cannot tell which of the two guards actually caught it.
+   * <p>{@code DocumentIndexingService#triggerIndexing}'s own {@link #isJobRunning(UUID, UUID)}
+   * check and this insert are two separate statements with no lock between them (TOCTOU). The
+   * database closes that gap: {@code uk_indexing_jobs_library_running} is a partial unique index on
+   * {@code (library_id) WHERE status = 'RUNNING'}, so at most one RUNNING row per library can ever
+   * exist. {@link IndexingJobRepository#saveAndFlush} - not plain {@code save} - forces the insert
+   * (and therefore the constraint check) to happen synchronously here rather than being deferred to
+   * a later flush the caller could not catch.
    */
   @Transactional
   public IndexingJob startJob(UUID libraryId, UUID organizationId) {
@@ -64,8 +58,8 @@ public class IndexingJobService {
   }
 
   /**
-   * Same as {@link #startJob(UUID, UUID)}, additionally recording {@code triggeredBy} (#485) -
-   * {@link io.opaa.indexing.LibraryIndexingScheduler} is the only caller that passes {@link
+   * Same as {@link #startJob(UUID, UUID)}, additionally recording {@code triggeredBy} - {@link
+   * io.opaa.indexing.LibraryIndexingScheduler} is the only caller that passes {@link
    * JobTriggerSource#SCHEDULED}.
    */
   @Transactional
@@ -76,16 +70,9 @@ public class IndexingJobService {
   /**
    * The actual work behind both {@code startJob} overloads above - deliberately a private helper
    * both public, {@code @Transactional} entry points delegate to, rather than one overload calling
-   * the other directly (PR #705 review, blocker 2): a same-class call to another method on {@code
-   * this} never goes through the Spring AOP proxy that applies {@code @Transactional} in the first
-   * place, since the proxy only intercepts calls arriving from *outside* the bean. Before this fix,
-   * {@code startJob(UUID, UUID)} carried no {@code @Transactional} of its own and called {@code
-   * startJob(UUID, UUID, JobTriggerSource)} as a plain, unintercepted self-invocation - the
-   * manual-trigger path (every caller of the two-arg overload) ran {@link
-   * IndexingJobRepository#saveAndFlush} and {@link #pruneOldRuns} with no surrounding transaction
-   * at all, silently reproducing the #501 class of bug this codebase already learned to avoid. Both
-   * overloads are now themselves {@code @Transactional} and simply forward here once the proxy has
-   * already opened (or joined) a transaction - this method needs no annotation of its own.
+   * the other directly: a same-class call to another method on {@code this} never goes through the
+   * Spring AOP proxy that applies {@code @Transactional}, since the proxy only intercepts calls
+   * arriving from outside the bean.
    */
   private IndexingJob doStartJob(
       UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy) {
@@ -105,12 +92,10 @@ public class IndexingJobService {
   }
 
   /**
-   * Keeps only the {@value #MAX_RETAINED_RUNS_PER_LIBRARY} most recent runs for {@code libraryId}
-   * (#513, Umfangserweiterung), deleting every older one - {@code fk_indexing_run_events_job}'s
-   * {@code ON DELETE CASCADE} (migration 037) removes each pruned run's own {@link
-   * IndexingRunEvent}s along with it, so this method never needs to know about the event table at
-   * all. Called from {@link #startJob} so the newly started run is always counted among the
-   * retained ones, rather than pruning happening only on completion and briefly allowing 11.
+   * Keeps only the {@value #MAX_RETAINED_RUNS_PER_LIBRARY} most recent runs for {@code libraryId},
+   * deleting every older one - {@code fk_indexing_run_events_job}'s {@code ON DELETE CASCADE}
+   * removes each pruned run's own {@link IndexingRunEvent}s along with it. Called from {@link
+   * #startJob} so the newly started run is always counted among the retained ones.
    */
   private void pruneOldRuns(UUID libraryId) {
     List<IndexingJob> runs = indexingJobRepository.findByLibraryIdOrderByStartedAtDesc(libraryId);
@@ -125,13 +110,11 @@ public class IndexingJobService {
   }
 
   /**
-   * Completes {@code jobId} - unless it is no longer {@link JobStatus#RUNNING} (#501 review,
-   * finding 1). Without that guard, a job the stale-run sweep or startup recovery already failed -
-   * while its own executor thread, unaware of the recovery, kept running regardless - would have
-   * this call silently flip the row back from {@code FAILED} to {@code COMPLETED} once that thread
-   * finally finishes, stranding the already-set {@code errorMessage} on a row that now looks
-   * successful. See {@link IndexingJobRepository#completeIfRunning}'s Javadoc for the
-   * conditional-update mechanics.
+   * Completes {@code jobId} - unless it is no longer {@link JobStatus#RUNNING}. Without that guard,
+   * a job the stale-run sweep or startup recovery already failed - while its own executor thread,
+   * unaware, kept running regardless - would have this call silently flip the row back from {@code
+   * FAILED} to {@code COMPLETED} once that thread finally finishes. See {@link
+   * IndexingJobRepository#completeIfRunning}'s Javadoc for the conditional-update mechanics.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void completeJob(
@@ -152,8 +135,8 @@ public class IndexingJobService {
   }
 
   /**
-   * Fails {@code jobId} - unless it is no longer {@link JobStatus#RUNNING} (#501 review, finding
-   * 1), the same reasoning and guard as {@link #completeJob}.
+   * Fails {@code jobId} - unless it is no longer {@link JobStatus#RUNNING}, the same reasoning and
+   * guard as {@link #completeJob}.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void failJob(UUID jobId, String errorMessage) {
@@ -163,10 +146,9 @@ public class IndexingJobService {
 
   /**
    * {@link #completeJob} and {@link #failJob} both use a conditional {@code UPDATE ... WHERE status
-   * = RUNNING}, so zero rows updated is ambiguous: either {@code jobId} does not exist at all (a
-   * genuine caller error, matching the {@link IllegalArgumentException} both methods have always
-   * thrown for it), or it exists but is no longer {@code RUNNING} (already recovered - a legitimate
-   * race this issue exists to handle silently, not an error). This distinguishes the two with one
+   * = RUNNING}, so zero rows updated is ambiguous: either {@code jobId} does not exist at all
+   * (throws {@link IllegalArgumentException}), or it exists but is no longer {@code RUNNING}
+   * (already recovered - a legitimate race, not an error). This distinguishes the two with one
    * extra existence check, made only in the zero-rows case.
    */
   private void requireJobExistedIfNoRowsUpdated(UUID jobId, int updatedRows) {
@@ -186,15 +168,13 @@ public class IndexingJobService {
   }
 
   /**
-   * Reports progress and, since #501 (review finding 1), touches {@link
-   * IndexingJob#getLastProgressAt()} - the heartbeat {@link #recoverStaleJobs} compares against its
-   * cutoff. Called once per file/entry an active run processes ({@link
-   * IndexingRunProgress#report}), so a genuinely active run's heartbeat never falls behind, however
-   * long the run's total wall-clock age grows.
+   * Reports progress and touches {@link IndexingJob#getLastProgressAt()} - the heartbeat {@link
+   * #recoverStaleJobs} compares against its cutoff. Called once per file/entry an active run
+   * processes ({@link IndexingRunProgress#report}), so a genuinely active run's heartbeat never
+   * falls behind, however long the run's total wall-clock age grows.
    *
    * <p>A no-op once the job is no longer {@link JobStatus#RUNNING} - mirrors {@link #completeJob}'s
-   * and {@link #failJob}'s conditional-update guard: a job the sweep already failed must not have
-   * its counters (or heartbeat) keep moving because its executor thread, unaware, is still running.
+   * and {@link #failJob}'s conditional-update guard.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void updateProgress(
@@ -220,8 +200,8 @@ public class IndexingJobService {
 
   /**
    * Records how many further {@link IndexingRunEvent}s {@code jobId}'s run recorded beyond {@link
-   * IndexingRunEventRecorder#MAX_EVENTS_PER_RUN} (#513) - a no-op call (0) is never made; every
-   * executor only calls this once, at the end of a run, when {@code
+   * IndexingRunEventRecorder#MAX_EVENTS_PER_RUN} - a no-op call (0) is never made; every executor
+   * only calls this once, at the end of a run, when {@code
    * IndexingRunEventRecorder#overflowCount()} is actually positive.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -237,8 +217,8 @@ public class IndexingJobService {
   /**
    * The most recent run for {@code libraryId} within {@code organizationId}, or empty if it never
    * ran. Used both to answer the per-library status endpoint and, indirectly, by {@link
-   * #isJobRunning(UUID, UUID)} (#478). {@code organizationId} is a second, independent guard on top
-   * of {@code libraryId} (#401) - see {@link
+   * #isJobRunning(UUID, UUID)}. {@code organizationId} is a second, independent guard on top of
+   * {@code libraryId} - see {@link
    * IndexingJobRepository#findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc}'s Javadoc.
    */
   @Transactional(readOnly = true)
@@ -248,15 +228,12 @@ public class IndexingJobService {
   }
 
   /**
-   * The last {@value #MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId}, newest first
-   * (#513). {@link #pruneOldRuns} keeps at most that many rows for a library going forward, but a
-   * Bestandsbibliothek can still carry far more historical rows predating this issue's retention
-   * pruning until its next run prunes them - {@link
-   * IndexingJobRepository#findTop10ByLibraryIdOrderByStartedAtDesc}, not the unbounded {@code
-   * findByLibraryIdOrderByStartedAtDesc} {@link #pruneOldRuns} itself uses, is what actually bounds
-   * this query (PR #604 review, finding 3). {@code organizationId} is a second, independent guard
-   * on top of {@code libraryId} (#401) - see {@link
-   * IndexingJobRepository#findTop10ByLibraryIdAndOrganizationIdOrderByStartedAtDesc}'s Javadoc.
+   * The last {@value #MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId}, newest first.
+   * {@link #pruneOldRuns} keeps at most that many rows for a library going forward, but a
+   * pre-existing library can still carry more historical rows until its next run prunes them -
+   * {@link IndexingJobRepository#findTop10ByLibraryIdAndOrganizationIdOrderByStartedAtDesc} is what
+   * actually bounds this query, not the unbounded {@code findByLibraryIdOrderByStartedAtDesc}
+   * {@link #pruneOldRuns} itself uses.
    */
   @Transactional(readOnly = true)
   public List<IndexingJob> getRecentJobs(UUID libraryId, UUID organizationId) {
@@ -265,10 +242,9 @@ public class IndexingJobService {
   }
 
   /**
-   * Whether a run for {@code libraryId} within {@code organizationId} is currently in progress
-   * (#478: one running job per library, not one running job for the whole application - runs of
-   * different libraries no longer block each other). {@code organizationId} is a second,
-   * independent guard on top of {@code libraryId} (#401) - see {@link
+   * Whether a run for {@code libraryId} within {@code organizationId} is currently in progress -
+   * one running job per library, not one running job for the whole application. {@code
+   * organizationId} is a second, independent guard on top of {@code libraryId} - see {@link
    * IndexingJobRepository#findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc}'s Javadoc.
    */
   @Transactional(readOnly = true)
@@ -279,11 +255,9 @@ public class IndexingJobService {
 
   /**
    * Whether {@code libraryId}'s two most recent {@link JobTriggerSource#SCHEDULED} runs both ended
-   * {@link JobStatus#FAILED} (#485) - {@code false} when fewer than two scheduled runs exist yet,
-   * matching {@code LibraryResponse.lastScheduledRunsFailed}'s own "wiederholtes Scheitern"
-   * definition. A currently {@link JobStatus#RUNNING} scheduled run (the most recent one, say)
-   * counts as not-failed here, exactly like every other non-FAILED status - the banner only fires
-   * once a retry has actually failed again, not while one is in flight.
+   * {@link JobStatus#FAILED} - {@code false} when fewer than two scheduled runs exist yet. A
+   * currently {@link JobStatus#RUNNING} scheduled run counts as not-failed here, like every other
+   * non-FAILED status - the banner only fires once a retry has actually failed again.
    */
   @Transactional(readOnly = true)
   public boolean lastScheduledRunsFailed(UUID libraryId, UUID organizationId) {
@@ -296,11 +270,10 @@ public class IndexingJobService {
   }
 
   /**
-   * Fails every row still {@link JobStatus#RUNNING} from a previous application run (#501). Called
-   * once at startup ({@code IndexingJobRecoveryScheduler#recoverOnStartup}): a fresh JVM cannot be
-   * running the {@code @Async} task any such row refers to, so every one of them is orphaned by
-   * definition, not merely suspected of it - unlike {@link #recoverStaleJobs}, no age threshold
-   * applies here.
+   * Fails every row still {@link JobStatus#RUNNING} from a previous application run. Called once at
+   * startup ({@code IndexingJobRecoveryScheduler#recoverOnStartup}): a fresh JVM cannot be running
+   * the {@code @Async} task any such row refers to, so every one of them is orphaned by definition
+   * - unlike {@link #recoverStaleJobs}, no age threshold applies here.
    *
    * <p>Assumes exactly one backend process; under genuine multi-instance operation this would abort
    * another, still-running instance's legitimate jobs on restart. See ADR-0021.
@@ -314,15 +287,14 @@ public class IndexingJobService {
 
   /**
    * Fails every row still {@link JobStatus#RUNNING} whose {@link IndexingJob#getLastProgressAt()}
-   * heartbeat is older than {@code staleAfter} (#501). Called periodically while the application
-   * keeps running ({@code IndexingJobRecoveryScheduler#recoverStaleRunningJobs}) - the only guard
-   * against a run orphaned without a restart, e.g. a task a full queue silently dropped before this
-   * issue's {@code AbortPolicy} change, or one truly hung well past its last recorded progress.
+   * heartbeat is older than {@code staleAfter}. Called periodically while the application keeps
+   * running ({@code IndexingJobRecoveryScheduler#recoverStaleRunningJobs}) - the only guard against
+   * a run orphaned without a restart, e.g. a task a full queue silently dropped, or one truly hung
+   * well past its last recorded progress.
    *
-   * <p><b>#501 review, finding 1.</b> Compares against {@code lastProgressAt}, not {@code
-   * startedAt}: a large FILESYSTEM/HTTP_DIRECTORY/RSS_FEED bestand can genuinely take longer than
-   * {@code staleAfter} in total wall-clock age while still actively processing files - {@code
-   * startedAt} alone cannot tell that apart from a run that has actually stopped.
+   * <p>Compares against {@code lastProgressAt}, not {@code startedAt}: a large corpus can genuinely
+   * take longer than {@code staleAfter} in total wall-clock age while still actively processing
+   * files - {@code startedAt} alone cannot tell that apart from a run that has actually stopped.
    *
    * @return the number of rows recovered
    */

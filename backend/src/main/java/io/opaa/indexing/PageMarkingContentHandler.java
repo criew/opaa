@@ -5,13 +5,12 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 
 /**
- * Tika body handler that keeps page boundaries in the extracted text (#667). Tika's paginating
- * parsers (PDF, Office) wrap every page in {@code <div class="page">}; plain text extraction
- * flattens that to a newline, after which no chunk can say which page it came from. This handler
- * writes a form feed ({@link ChunkLocationResolver#PAGE_BREAK}) at the start of every page after
- * the first, which {@link ChunkLocationResolver} turns into "S. n" locations and {@link
- * ChunkingService} strips again before the chunk text is embedded - the marker never reaches the
- * vector store.
+ * Tika body handler that keeps page boundaries in the extracted text. Tika's paginating parsers
+ * (PDF, Office) wrap every page in {@code <div class="page">}; plain text extraction flattens that
+ * to a newline, after which no chunk can say which page it came from. This handler writes a form
+ * feed ({@link ChunkLocationResolver#PAGE_BREAK}) at the start of every page after the first, which
+ * {@link ChunkLocationResolver} turns into "S. n" locations and {@link ChunkingService} strips
+ * again before the chunk text is embedded.
  */
 final class PageMarkingContentHandler extends BodyContentHandler {
 
