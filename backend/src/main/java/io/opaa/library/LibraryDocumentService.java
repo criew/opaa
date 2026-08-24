@@ -1,6 +1,5 @@
 package io.opaa.library;
 
-import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.indexing.AutoindexCrawlerService;
@@ -161,7 +160,7 @@ public class LibraryDocumentService {
    * The pre-#823 signature, kept for every caller that never needs a {@code folderPath} - delegates
    * to the full overload below with {@code folderPath = null}.
    */
-  public LibraryDocumentResponse uploadDocument(
+  public LibraryDocumentEntry uploadDocument(
       UUID libraryId, MultipartFile file, UUID folderId, UUID currentUserId, boolean systemAdmin) {
     return uploadDocument(libraryId, file, folderId, null, currentUserId, systemAdmin);
   }
@@ -176,7 +175,7 @@ public class LibraryDocumentService {
    * whole dragged-and-dropped directory tree upload one file at a time while still ending up under
    * a single, shared folder chain instead of a separate accidental duplicate per file.
    */
-  public LibraryDocumentResponse uploadDocument(
+  public LibraryDocumentEntry uploadDocument(
       UUID libraryId,
       MultipartFile file,
       UUID folderId,
@@ -338,7 +337,7 @@ public class LibraryDocumentService {
             document, storedFile, "Die Verarbeitung konnte nicht gestartet werden");
       }
 
-      return LibraryDocumentResponses.from(
+      return new LibraryDocumentEntry(
           document, LibraryFolderPaths.pathOf(folderRepository, document.getFolderId()));
     } catch (DataIntegrityViolationException e) {
       // #821 review round 1, finding 5: the save() above can violate two different constraints,
@@ -391,7 +390,7 @@ public class LibraryDocumentService {
    * asynchronous path. The response returned here still reflects the caller's own upload attempt
    * either way - {@code document} is only ever used to build it, never persisted directly again.
    */
-  private LibraryDocumentResponse failAlreadyPersistedUpload(
+  private LibraryDocumentEntry failAlreadyPersistedUpload(
       Document document, Path storedFile, String errorMessage) {
     int updated = documentRepository.markFailed(document.getId(), errorMessage);
     if (updated == 0) {
@@ -403,7 +402,7 @@ public class LibraryDocumentService {
     document.setStatus(DocumentStatus.FAILED);
     document.setErrorMessage(errorMessage);
     deleteQuietly(storedFile);
-    return LibraryDocumentResponses.from(
+    return new LibraryDocumentEntry(
         document, LibraryFolderPaths.pathOf(folderRepository, document.getFolderId()));
   }
 

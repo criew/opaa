@@ -1,10 +1,12 @@
 package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.DevAuthFilter;
 import java.nio.charset.StandardCharsets;
@@ -247,5 +249,83 @@ class LibraryControllerCredentialsIntegrationTest {
     mockMvc
         .perform(post("/api/v1/libraries/source-test").with(devUser()).content(body))
         .andExpect(status().isBadRequest());
+  }
+
+  // --- Mapper access to entity state outside the read-only service transaction --------------
+  //
+  // spring.jpa.open-in-view=false (application.yml): every mapper in io.opaa.api runs strictly
+  // after the @Transactional(readOnly = true) service method that loaded the entities it maps has
+  // already returned, exactly the boundary PR #870's review found a LazyInitializationException
+  // across (SpaceResponseMapper reading a not-fetch-joined getMemberships() there). These three
+  // list endpoints - one per mapper this PR/series adds - go through the real service and mapper
+  // against a real, Testcontainers-backed database, not a mock: a mapper that touched a collection
+  // Hibernate had not already loaded would surface here as a 500, not as a passing test with a
+  // transient/mocked entity that hides the problem. KnowledgeLibrary, AssetGrant and Document carry
+  // no JPA-managed collection relationships at all (unlike Space#memberships), so none of these
+  // mappers has anything left to fetch-join in the first place - these tests pin that down for the
+  // future, not just document it in prose.
+
+  @Test
+  void listLibrariesSucceedsThroughTheRealMapperOutsideTheServiceTransaction() throws Exception {
+    String body =
+        """
+        { "name": "Listen-Test-Bibliothek", "sourceType": "UPLOAD" }
+        """;
+    mockMvc
+        .perform(post("/api/v1/libraries").with(devUser()).content(body))
+        .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(get("/api/v1/libraries").with(devUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.name == 'Listen-Test-Bibliothek')]").isNotEmpty());
+  }
+
+  @Test
+  void listAssetGrantsSucceedsThroughTheRealMapperOutsideTheServiceTransaction() throws Exception {
+    String body =
+        """
+        { "name": "Grant-Listen-Test-Bibliothek", "sourceType": "UPLOAD" }
+        """;
+    String createResponse =
+        mockMvc
+            .perform(post("/api/v1/libraries").with(devUser()).content(body))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    String libraryId = JsonPath.read(createResponse, "$.id");
+
+    // createLibrary always grants the creator OWNER explicitly (KnowledgeLibraryService's class
+    // Javadoc) - subjectDisplayName is resolved by AssetGrantService#toViews and mapped by
+    // AssetGrantResponseMapper, neither of which touches a lazy relation.
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/grants").with(devUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].role").value("OWNER"))
+        .andExpect(jsonPath("$[0].subjectDisplayName").isNotEmpty());
+  }
+
+  @Test
+  void listDocumentsSucceedsThroughTheRealMapperOutsideTheServiceTransaction() throws Exception {
+    String body =
+        """
+        { "name": "Dokumenten-Listen-Test-Bibliothek", "sourceType": "UPLOAD" }
+        """;
+    String createResponse =
+        mockMvc
+            .perform(post("/api/v1/libraries").with(devUser()).content(body))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    String libraryId = JsonPath.read(createResponse, "$.id");
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/documents").with(devUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items").isArray())
+        .andExpect(jsonPath("$.folders").isArray())
+        .andExpect(jsonPath("$.breadcrumb").isArray());
   }
 }

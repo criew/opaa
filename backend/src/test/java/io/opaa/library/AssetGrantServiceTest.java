@@ -11,7 +11,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -83,8 +82,8 @@ class AssetGrantServiceTest {
     when(accessService.requireRole(any(), any(), anyBoolean(), eq(AssetRole.MANAGER)))
         .thenThrow(
             new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
-    AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER);
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
@@ -111,12 +110,12 @@ class AssetGrantServiceTest {
     when(grantRepository.save(any(AssetGrant.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
-    AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
     var response = grantService.upsertGrant(libraryId, request, managerId, false);
 
-    assertThat(response.getSubjectId()).isEqualTo(subjectId);
-    assertThat(response.getRole()).isEqualTo(AssetRole.VIEWER);
+    assertThat(response.grant().getSubjectId()).isEqualTo(subjectId);
+    assertThat(response.grant().getRole()).isEqualTo(AssetRole.VIEWER);
     // No active transaction synchronization in this unit test, so invalidation runs immediately -
     // see AssetGrantService#invalidateAfterCommit's fallback branch.
     verify(accessService).invalidateLibrary(libraryId);
@@ -133,8 +132,8 @@ class AssetGrantServiceTest {
     foreignUser.setOrganizationId(UUID.randomUUID());
     when(userRepository.findById(foreignUserId)).thenReturn(Optional.of(foreignUser));
 
-    AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.USER, foreignUserId, AssetRole.VIEWER);
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, foreignUserId, AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
@@ -154,8 +153,8 @@ class AssetGrantServiceTest {
     Group foreignGroup = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "Fremd", null, null, null);
     when(groupRepository.findById(foreignGroupId)).thenReturn(Optional.of(foreignGroup));
 
-    AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.GROUP, foreignGroupId, AssetRole.VIEWER);
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, foreignGroupId, AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
@@ -183,11 +182,11 @@ class AssetGrantServiceTest {
     when(grantRepository.save(any(AssetGrant.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
-    AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.USER, subjectId, AssetRole.MANAGER);
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.MANAGER);
     var response = grantService.upsertGrant(libraryId, request, managerId, false);
 
-    assertThat(response.getRole()).isEqualTo(AssetRole.MANAGER);
+    assertThat(response.grant().getRole()).isEqualTo(AssetRole.MANAGER);
     verify(grantRepository, never()).save(argThat((AssetGrant g) -> g != existing));
   }
 
@@ -253,8 +252,8 @@ class AssetGrantServiceTest {
     User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
     subjectUser.setOrganizationId(organizationId);
     when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
-    AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.USER, subjectId, AssetRole.OWNER);
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.OWNER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
@@ -285,11 +284,11 @@ class AssetGrantServiceTest {
     when(grantRepository.save(any(AssetGrant.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
-    AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.USER, subjectId, AssetRole.MANAGER);
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.MANAGER);
     var response = grantService.upsertGrant(libraryId, request, managerId, false);
 
-    assertThat(response.getRole()).isEqualTo(AssetRole.MANAGER);
+    assertThat(response.grant().getRole()).isEqualTo(AssetRole.MANAGER);
   }
 
   @Test
@@ -303,9 +302,8 @@ class AssetGrantServiceTest {
     dissolvedGroup.dissolve(Instant.now());
     when(groupRepository.findById(dissolvedGroup.getId())).thenReturn(Optional.of(dissolvedGroup));
 
-    AssetGrantRequest request =
-        new AssetGrantRequest(
-            PermissionSubjectType.GROUP, dissolvedGroup.getId(), AssetRole.VIEWER);
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, dissolvedGroup.getId(), AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
@@ -344,8 +342,8 @@ class AssetGrantServiceTest {
             eq(libraryId), eq(onlyOwnerGrant.getId()), any()))
         .thenReturn(0L);
 
-    AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
@@ -476,8 +474,8 @@ class AssetGrantServiceTest {
             libraryId, PermissionSubjectType.USER, subjectId))
         .thenReturn(Optional.of(existingOwnerGrant));
 
-    AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
@@ -513,8 +511,8 @@ class AssetGrantServiceTest {
             eq(libraryId), eq(onlyOwnerGrant.getId()), any()))
         .thenReturn(0L);
 
-    AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.USER, managerId, AssetRole.OWNER)
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, managerId, AssetRole.OWNER)
             .expiresAt(Instant.now().minusSeconds(60));
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
@@ -542,11 +540,11 @@ class AssetGrantServiceTest {
     when(grantRepository.save(any(AssetGrant.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
-    AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.USER, managerId, AssetRole.OWNER);
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, managerId, AssetRole.OWNER);
     var response = grantService.upsertGrant(libraryId, request, managerId, false);
 
-    assertThat(response.getRole()).isEqualTo(AssetRole.OWNER);
+    assertThat(response.grant().getRole()).isEqualTo(AssetRole.OWNER);
     verify(grantRepository, never()).countOtherActiveOwnerGrants(any(), any(), any());
   }
 
@@ -579,8 +577,8 @@ class AssetGrantServiceTest {
     var responses = grantService.listGrants(libraryId, managerId, false);
 
     assertThat(responses).hasSize(1);
-    assertThat(responses.get(0).getSubjectDisplayName()).isEqualTo("Subjekt Person");
-    assertThat(responses.get(0).getGrantedByDisplayName()).isEqualTo("Erteilende Person");
+    assertThat(responses.get(0).subjectDisplayName()).isEqualTo("Subjekt Person");
+    assertThat(responses.get(0).grantedByDisplayName()).isEqualTo("Erteilende Person");
   }
 
   @Test
@@ -597,7 +595,7 @@ class AssetGrantServiceTest {
     var responses = grantService.listGrants(libraryId, managerId, false);
 
     assertThat(responses).hasSize(1);
-    assertThat(responses.get(0).getSubjectDisplayName()).isEqualTo("Referat 50");
+    assertThat(responses.get(0).subjectDisplayName()).isEqualTo("Referat 50");
   }
 
   @Test
@@ -620,7 +618,7 @@ class AssetGrantServiceTest {
     var responses = grantService.listGrants(libraryId, managerId, false);
 
     assertThat(responses).hasSize(1);
-    assertThat(responses.get(0).getSubjectDisplayName()).isEqualTo("subject@example.com");
+    assertThat(responses.get(0).subjectDisplayName()).isEqualTo("subject@example.com");
   }
 
   @Test
@@ -637,7 +635,7 @@ class AssetGrantServiceTest {
     var responses = grantService.listGrants(libraryId, managerId, false);
 
     assertThat(responses).hasSize(1);
-    assertThat(responses.get(0).getSubjectDisplayName()).isNull();
-    assertThat(responses.get(0).getGrantedByDisplayName()).isNull();
+    assertThat(responses.get(0).subjectDisplayName()).isNull();
+    assertThat(responses.get(0).grantedByDisplayName()).isNull();
   }
 }

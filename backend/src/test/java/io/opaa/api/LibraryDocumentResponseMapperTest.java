@@ -1,4 +1,4 @@
-package io.opaa.library;
+package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -8,13 +8,14 @@ import io.opaa.indexing.DocumentSourceType;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for {@link LibraryDocumentResponses} (#493): {@code sourceEntryUrl} must round-trip
+ * Unit tests for {@link LibraryDocumentResponseMapper} (#493, moved here from {@code
+ * io.opaa.library.LibraryDocumentResponsesTest} by #860): {@code sourceEntryUrl} must round-trip
  * from {@link Document} into {@link LibraryDocumentResponse} exactly like the fields #420/#434
  * already established this mapper for ({@code uploadedByUserId}, {@code errorMessage}) - present
  * when the document carries one (an RSS attachment, #468), {@code null} for every document that
  * does not.
  */
-class LibraryDocumentResponsesTest {
+class LibraryDocumentResponseMapperTest {
 
   @Test
   void carriesSourceEntryUrlFromAnRssAttachmentIntoTheResponse() {
@@ -27,7 +28,7 @@ class LibraryDocumentResponsesTest {
             DocumentSourceType.RSS_FEED);
     document.setSourceEntryUrl("https://example.gov/aktuelles/dienstanweisung-2024");
 
-    LibraryDocumentResponse response = LibraryDocumentResponses.from(document);
+    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
 
     assertThat(response.getSourceEntryUrl())
         .isEqualTo("https://example.gov/aktuelles/dienstanweisung-2024");
@@ -43,7 +44,7 @@ class LibraryDocumentResponsesTest {
             2048L,
             DocumentSourceType.UPLOAD);
 
-    LibraryDocumentResponse response = LibraryDocumentResponses.from(document);
+    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
 
     assertThat(response.getSourceEntryUrl()).isNull();
   }
@@ -60,7 +61,7 @@ class LibraryDocumentResponsesTest {
             2048L,
             DocumentSourceType.HTTP_DIRECTORY);
 
-    LibraryDocumentResponse response = LibraryDocumentResponses.from(document);
+    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
 
     assertThat(response.getSourceUrl())
         .isEqualTo("https://example.gov/verzeichnis/dienstanweisung-2024.pdf");
@@ -80,7 +81,7 @@ class LibraryDocumentResponsesTest {
             2048L,
             DocumentSourceType.RSS_FEED);
 
-    LibraryDocumentResponse response = LibraryDocumentResponses.from(document);
+    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
 
     assertThat(response.getSourceUrl()).isEqualTo("https://example.gov/feed/rundschreiben.pdf");
   }
@@ -96,7 +97,7 @@ class LibraryDocumentResponsesTest {
             2048L,
             DocumentSourceType.UPLOAD);
 
-    LibraryDocumentResponse response = LibraryDocumentResponses.from(document);
+    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
 
     assertThat(response.getSourceUrl()).isNull();
   }

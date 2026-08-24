@@ -78,9 +78,8 @@ class UploadPendingRecoveryRunnerIntegrationTest {
     editor.setOrganizationId(organizationId);
     editor = userRepository.save(editor);
 
-    var libraryRequest =
-        new io.opaa.api.dto.LibraryRequest("Bibliothek", DocumentSourceType.UPLOAD);
-    libraryId = libraryService.createLibrary(libraryRequest, editor.getId()).getId();
+    var libraryRequest = new LibraryCreation("Bibliothek", DocumentSourceType.UPLOAD);
+    libraryId = libraryService.createLibrary(libraryRequest, editor.getId()).library().getId();
   }
 
   @AfterEach

@@ -4,12 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.TestcontainersConfiguration;
-import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.GroupRequest;
 import io.opaa.api.dto.GroupUpdateRequest;
-import io.opaa.api.dto.LibraryRequest;
-import io.opaa.api.dto.LibraryResponse;
-import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -30,10 +26,14 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.AssetGrantService;
+import io.opaa.library.AssetGrantUpsert;
 import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.KnowledgeLibraryService;
+import io.opaa.library.LibraryCreation;
+import io.opaa.library.LibraryDetail;
 import io.opaa.library.LibraryOwnerType;
+import io.opaa.library.LibraryUpdate;
 import io.opaa.library.LibraryVisibility;
 import io.opaa.library.LibraryVisibilityHistoryRepository;
 import io.opaa.organization.Organization;
@@ -214,13 +214,13 @@ class AuditEventRecordingIntegrationTest {
   }
 
   private UUID createLibrary(UUID ownerId) {
-    LibraryResponse response =
+    LibraryDetail detail =
         libraryService.createLibrary(
-            new LibraryRequest("Bibliothek", DocumentSourceType.UPLOAD)
+            new LibraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
                 .ownerType(LibraryOwnerType.USER)
                 .ownerId(ownerId),
             ownerId);
-    return response.getId();
+    return detail.library().getId();
   }
 
   private List<AuditLogEntry> entriesFor(AuditObjectType objectType, UUID objectId) {
@@ -241,7 +241,7 @@ class AuditEventRecordingIntegrationTest {
 
     grantService.upsertGrant(
         libraryId,
-        new AssetGrantRequest(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
         owner,
         false);
 
@@ -291,7 +291,7 @@ class AuditEventRecordingIntegrationTest {
     UUID manager = createUser();
     grantService.upsertGrant(
         libraryId,
-        new AssetGrantRequest(PermissionSubjectType.USER, manager, AssetRole.MANAGER),
+        new AssetGrantUpsert(PermissionSubjectType.USER, manager, AssetRole.MANAGER),
         owner,
         false);
     UUID targetUser = createUser();
@@ -301,7 +301,7 @@ class AuditEventRecordingIntegrationTest {
             () ->
                 grantService.upsertGrant(
                     libraryId,
-                    new AssetGrantRequest(PermissionSubjectType.USER, targetUser, AssetRole.OWNER),
+                    new AssetGrantUpsert(PermissionSubjectType.USER, targetUser, AssetRole.OWNER),
                     manager,
                     false))
         .isInstanceOf(ResponseStatusException.class)
@@ -341,7 +341,7 @@ class AuditEventRecordingIntegrationTest {
             () ->
                 grantService.upsertGrant(
                     libraryId,
-                    new AssetGrantRequest(
+                    new AssetGrantUpsert(
                         PermissionSubjectType.USER, unknownSubject, AssetRole.VIEWER),
                     owner,
                     false))
@@ -371,7 +371,7 @@ class AuditEventRecordingIntegrationTest {
               () ->
                   grantService.upsertGrant(
                       libraryId,
-                      new AssetGrantRequest(
+                      new AssetGrantUpsert(
                           PermissionSubjectType.USER, foreignUserId, AssetRole.VIEWER),
                       owner,
                       false))
@@ -410,7 +410,7 @@ class AuditEventRecordingIntegrationTest {
 
     libraryService.updateLibrary(
         libraryId,
-        new LibraryUpdateRequest("Bibliothek").visibility(LibraryVisibility.ORGANIZATION),
+        new LibraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION),
         owner,
         false);
     List<AuditLogEntry> visibilityChanged =
@@ -782,7 +782,7 @@ class AuditEventRecordingIntegrationTest {
                       protected void doInTransactionWithoutResult(TransactionStatus status) {
                         grantService.upsertGrant(
                             libraryId,
-                            new AssetGrantRequest(
+                            new AssetGrantUpsert(
                                 PermissionSubjectType.USER, reader, AssetRole.VIEWER),
                             owner,
                             false);

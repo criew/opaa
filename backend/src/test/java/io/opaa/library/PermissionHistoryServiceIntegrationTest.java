@@ -3,10 +3,6 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.TestcontainersConfiguration;
-import io.opaa.api.dto.AssetGrantRequest;
-import io.opaa.api.dto.LibraryRequest;
-import io.opaa.api.dto.LibraryResponse;
-import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -162,13 +158,13 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   private UUID createLibrary(UUID ownerId) {
-    LibraryResponse response =
+    LibraryDetail response =
         libraryService.createLibrary(
-            new LibraryRequest("Bibliothek", DocumentSourceType.UPLOAD)
+            new LibraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
                 .ownerType(LibraryOwnerType.USER)
                 .ownerId(ownerId),
             ownerId);
-    return response.getId();
+    return response.library().getId();
   }
 
   @Test
@@ -179,7 +175,7 @@ class PermissionHistoryServiceIntegrationTest {
 
     grantService.upsertGrant(
         libraryId,
-        new AssetGrantRequest(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
         owner,
         false);
     Instant whileGranted = Instant.now();
@@ -229,7 +225,7 @@ class PermissionHistoryServiceIntegrationTest {
 
     grantService.upsertGrant(
         libraryId,
-        new AssetGrantRequest(PermissionSubjectType.GROUP, savedGroup.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, savedGroup.getId(), AssetRole.VIEWER),
         owner,
         false);
     groupService.addMember(savedGroup.getId(), member, owner);
@@ -276,14 +272,14 @@ class PermissionHistoryServiceIntegrationTest {
 
     libraryService.updateLibrary(
         libraryId,
-        new LibraryUpdateRequest("Bibliothek").visibility(LibraryVisibility.ORGANIZATION),
+        new LibraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION),
         owner,
         false);
     Instant whileOrganizationWide = Instant.now();
 
     libraryService.updateLibrary(
         libraryId,
-        new LibraryUpdateRequest("Bibliothek").visibility(LibraryVisibility.PRIVATE),
+        new LibraryUpdate("Bibliothek").visibility(LibraryVisibility.PRIVATE),
         owner,
         false);
     Instant afterNarrowing = Instant.now();
@@ -312,7 +308,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID sharedLibraryId = createLibrary(sharedOwner);
     grantService.upsertGrant(
         sharedLibraryId,
-        new AssetGrantRequest(PermissionSubjectType.USER, user, AssetRole.VIEWER),
+        new AssetGrantUpsert(PermissionSubjectType.USER, user, AssetRole.VIEWER),
         sharedOwner,
         false);
 
@@ -323,7 +319,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID groupLibraryId = createLibrary(groupOwner);
     grantService.upsertGrant(
         groupLibraryId,
-        new AssetGrantRequest(PermissionSubjectType.GROUP, savedGroup.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, savedGroup.getId(), AssetRole.VIEWER),
         groupOwner,
         false);
     groupService.addMember(savedGroup.getId(), user, groupOwner);
@@ -332,7 +328,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID orgWideLibraryId = createLibrary(orgWideOwner);
     libraryService.updateLibrary(
         orgWideLibraryId,
-        new LibraryUpdateRequest("Bibliothek").visibility(LibraryVisibility.ORGANIZATION),
+        new LibraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION),
         orgWideOwner,
         false);
 
@@ -356,7 +352,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID reader = createUser();
     grantService.upsertGrant(
         libraryId,
-        new AssetGrantRequest(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
         owner,
         false);
 
