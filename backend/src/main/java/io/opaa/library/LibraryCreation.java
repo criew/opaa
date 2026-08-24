@@ -1,0 +1,28 @@
+package io.opaa.library;
+
+import io.opaa.indexing.DocumentSourceType;
+import java.net.URI;
+import java.util.UUID;
+
+/**
+ * Parameters for {@link KnowledgeLibraryService#createLibrary} - replaces the generated {@code
+ * LibraryRequest} at the service boundary (#860): domain services do not know {@code
+ * io.opaa.api.dto} types, see AGENTS.md "API & DTO-Konvention". Tests that need a fluent call site
+ * use {@code LibraryCreationBuilder} (src/test).
+ *
+ * @param ownerType {@code null} means {@code USER} (the creator) - the same default the service
+ *     applied to a {@code null} {@code LibraryRequest.ownerType}.
+ */
+public record LibraryCreation(
+    String name,
+    String description,
+    LibraryOwnerType ownerType,
+    UUID ownerId,
+    LibraryVisibility visibility,
+    Boolean listed,
+    DocumentSourceType sourceType,
+    String sourcePath,
+    URI sourceUrl,
+    String sourceProxy,
+    String sourceCredentials,
+    Boolean sourceInsecureSsl) {}

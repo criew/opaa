@@ -12,7 +12,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.indexing.ChecksumService;
@@ -206,22 +205,22 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-123"))
         .thenReturn(Optional.empty());
 
-    LibraryDocumentResponse response =
+    LibraryDocumentEntry response =
         service.uploadDocument(
             libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
 
     // #434: the response reflects the PENDING row created synchronously - not a result from
     // FileProcessingService, which now only runs asynchronously and returns nothing.
-    assertThat(response.getFileName()).isEqualTo("report.pdf");
-    assertThat(response.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
-    assertThat(response.getUploadedByUserId()).isEqualTo(currentUserId);
-    assertThat(response.getStatus()).isEqualTo(DocumentStatus.PENDING);
+    assertThat(response.document().getFileName()).isEqualTo("report.pdf");
+    assertThat(response.document().getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
+    assertThat(response.document().getUploadedByUserId()).isEqualTo(currentUserId);
+    assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.PENDING);
 
     // The stored file lives under the library's own subdirectory of the storage path, and async
     // processing was handed exactly that path.
     ArgumentCaptor<Path> pathCaptor = ArgumentCaptor.forClass(Path.class);
     verify(fileProcessingService)
-        .processUploadedFileAsync(eq(response.getId()), pathCaptor.capture());
+        .processUploadedFileAsync(eq(response.document().getId()), pathCaptor.capture());
     assertThat(pathCaptor.getValue()).isNotNull();
     assertThat(pathCaptor.getValue().startsWith(storageDir.resolve(libraryId.toString()))).isTrue();
     assertThat(pathCaptor.getValue().getFileName().toString()).endsWith(".pdf");
@@ -322,12 +321,12 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-real-pdf"))
         .thenReturn(Optional.empty());
 
-    LibraryDocumentResponse response =
+    LibraryDocumentEntry response =
         service.uploadDocument(
             libraryId, pdfFile("report.pdf", "%PDF content"), null, currentUserId, false);
 
-    assertThat(response.getFileName()).isEqualTo("report.pdf");
-    verify(fileProcessingService).processUploadedFileAsync(eq(response.getId()), any());
+    assertThat(response.document().getFileName()).isEqualTo("report.pdf");
+    verify(fileProcessingService).processUploadedFileAsync(eq(response.document().getId()), any());
   }
 
   @Test
@@ -345,11 +344,11 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-docx"))
         .thenReturn(Optional.empty());
 
-    LibraryDocumentResponse response =
+    LibraryDocumentEntry response =
         service.uploadDocument(libraryId, realDocxFile("vertrag.docx"), null, currentUserId, false);
 
-    assertThat(response.getFileName()).isEqualTo("vertrag.docx");
-    verify(fileProcessingService).processUploadedFileAsync(eq(response.getId()), any());
+    assertThat(response.document().getFileName()).isEqualTo("vertrag.docx");
+    verify(fileProcessingService).processUploadedFileAsync(eq(response.document().getId()), any());
   }
 
   private MultipartFile realDocxFile(String originalFileName) throws IOException {
@@ -403,11 +402,11 @@ class LibraryDocumentServiceTest {
         new MockMultipartFile(
             "file", "notes.md", "text/markdown", "# Titel\n\nEin Absatz Text.".getBytes());
 
-    LibraryDocumentResponse response =
+    LibraryDocumentEntry response =
         service.uploadDocument(libraryId, markdown, null, currentUserId, false);
 
-    assertThat(response.getFileName()).isEqualTo("notes.md");
-    verify(fileProcessingService).processUploadedFileAsync(eq(response.getId()), any());
+    assertThat(response.document().getFileName()).isEqualTo("notes.md");
+    verify(fileProcessingService).processUploadedFileAsync(eq(response.document().getId()), any());
   }
 
   @Test
@@ -512,17 +511,17 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-retry"))
         .thenReturn(Optional.of(oldFailedDoc));
 
-    LibraryDocumentResponse response =
+    LibraryDocumentEntry response =
         service.uploadDocument(
             libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
 
-    assertThat(response.getStatus()).isEqualTo(DocumentStatus.PENDING);
+    assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.PENDING);
     verify(vectorStore).delete(documentIdFilter(oldFailedDoc.getId()));
     verify(documentRepository).delete(oldFailedDoc);
     assertThat(Files.exists(oldFailedFile))
         .as("The old FAILED row's own file must be cleaned up when it is replaced")
         .isFalse();
-    verify(fileProcessingService).processUploadedFileAsync(eq(response.getId()), any());
+    verify(fileProcessingService).processUploadedFileAsync(eq(response.document().getId()), any());
   }
 
   @Test
@@ -593,7 +592,7 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-xyz"))
         .thenReturn(Optional.empty());
 
-    LibraryDocumentResponse response =
+    LibraryDocumentEntry response =
         service.uploadDocument(
             libraryId,
             new MockMultipartFile(
@@ -605,10 +604,10 @@ class LibraryDocumentServiceTest {
             currentUserId,
             false);
 
-    assertThat(response.getFileName()).isEqualTo("evil.pdf");
+    assertThat(response.document().getFileName()).isEqualTo("evil.pdf");
     ArgumentCaptor<Path> pathCaptor = ArgumentCaptor.forClass(Path.class);
     verify(fileProcessingService)
-        .processUploadedFileAsync(eq(response.getId()), pathCaptor.capture());
+        .processUploadedFileAsync(eq(response.document().getId()), pathCaptor.capture());
     Path storedPath = pathCaptor.getValue().toAbsolutePath().normalize();
     Path libraryDir = storageDir.resolve(libraryId.toString()).toAbsolutePath().normalize();
     assertThat(storedPath.startsWith(libraryDir))
@@ -631,12 +630,12 @@ class LibraryDocumentServiceTest {
         .when(fileProcessingService)
         .processUploadedFileAsync(any(), any());
 
-    LibraryDocumentResponse response =
+    LibraryDocumentEntry response =
         service.uploadDocument(
             libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
 
-    assertThat(response.getStatus()).isEqualTo(DocumentStatus.FAILED);
-    assertThat(response.getErrorMessage())
+    assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(response.document().getErrorMessage())
         .isEqualTo("Die Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen.");
     assertNoFilesWereStored();
   }
@@ -655,12 +654,12 @@ class LibraryDocumentServiceTest {
         .when(fileProcessingService)
         .processUploadedFileAsync(any(), any());
 
-    LibraryDocumentResponse response =
+    LibraryDocumentEntry response =
         service.uploadDocument(
             libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
 
-    assertThat(response.getStatus()).isEqualTo(DocumentStatus.FAILED);
-    assertThat(response.getErrorMessage())
+    assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(response.document().getErrorMessage())
         .isEqualTo("Die Verarbeitung konnte nicht gestartet werden");
     assertNoFilesWereStored();
   }
@@ -681,15 +680,15 @@ class LibraryDocumentServiceTest {
         .processUploadedFileAsync(any(), any());
     when(documentRepository.markFailed(any(), any())).thenReturn(1);
 
-    LibraryDocumentResponse response =
+    LibraryDocumentEntry response =
         service.uploadDocument(
             libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
 
-    assertThat(response.getStatus()).isEqualTo(DocumentStatus.FAILED);
-    assertThat(response.getErrorMessage())
+    assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(response.document().getErrorMessage())
         .isEqualTo("Die Verarbeitung konnte nicht gestartet werden");
     verify(documentRepository)
-        .markFailed(response.getId(), "Die Verarbeitung konnte nicht gestartet werden");
+        .markFailed(response.document().getId(), "Die Verarbeitung konnte nicht gestartet werden");
     // Exactly the one save from the PENDING row's own creation - never a second one for the FAILED
     // transition.
     verify(documentRepository, org.mockito.Mockito.times(1)).save(any(Document.class));
@@ -712,11 +711,11 @@ class LibraryDocumentServiceTest {
         .processUploadedFileAsync(any(), any());
     when(documentRepository.markFailed(any(), any())).thenReturn(0);
 
-    LibraryDocumentResponse response =
+    LibraryDocumentEntry response =
         service.uploadDocument(
             libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
 
-    assertThat(response.getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.FAILED);
     verify(documentRepository, org.mockito.Mockito.times(1)).save(any(Document.class));
   }
 

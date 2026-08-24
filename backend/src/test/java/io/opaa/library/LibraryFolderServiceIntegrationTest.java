@@ -1,11 +1,11 @@
 package io.opaa.library;
 
+import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
 import io.opaa.FakeEmbeddingModel;
-import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryFolderRenameRequest;
 import io.opaa.api.dto.LibraryFolderRequest;
 import io.opaa.api.dto.LibraryFolderResponse;
@@ -111,13 +111,12 @@ class LibraryFolderServiceIntegrationTest {
     viewer.setOrganizationId(organizationId);
     viewer = userRepository.save(viewer);
 
-    var libraryRequest =
-        new io.opaa.api.dto.LibraryRequest("Bibliothek", DocumentSourceType.UPLOAD);
+    var libraryRequest = libraryCreation("Bibliothek", DocumentSourceType.UPLOAD).build();
     var library = libraryService.createLibrary(libraryRequest, editor.getId());
-    libraryId = library.getId();
+    libraryId = library.library().getId();
 
     var grantRequest =
-        new io.opaa.api.dto.AssetGrantRequest(
+        new AssetGrantUpsert(
             io.opaa.group.PermissionSubjectType.USER, viewer.getId(), AssetRole.VIEWER);
     grantService.upsertGrant(libraryId, grantRequest, editor.getId(), false);
   }
@@ -353,14 +352,13 @@ class LibraryFolderServiceIntegrationTest {
     // "/tmp" matches application.yml's default opaa.indexing.filesystem-allowlist ("/data,/tmp") -
     // the source content of this library is never read, only its sourceType matters here.
     var connectorLibraryRequest =
-        new io.opaa.api.dto.LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
-            .sourcePath("/tmp");
+        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM).sourcePath("/tmp").build();
     var connectorLibrary = libraryService.createLibrary(connectorLibraryRequest, editor.getId());
     try {
       assertThatThrownBy(
               () ->
                   folderService.createFolder(
-                      connectorLibrary.getId(),
+                      connectorLibrary.library().getId(),
                       new LibraryFolderRequest("Protokolle"),
                       editor.getId(),
                       false))
@@ -370,7 +368,7 @@ class LibraryFolderServiceIntegrationTest {
                   assertThat(((ResponseStatusException) ex).getStatusCode())
                       .isEqualTo(HttpStatus.CONFLICT));
     } finally {
-      libraryRepository.deleteById(connectorLibrary.getId());
+      libraryRepository.deleteById(connectorLibrary.library().getId());
     }
   }
 
@@ -382,10 +380,10 @@ class LibraryFolderServiceIntegrationTest {
    * not how they got there.
    */
   private Document uploadDocumentIntoFolder(UUID folderId, String fileName, String content) {
-    LibraryDocumentResponse uploaded =
+    LibraryDocumentEntry uploaded =
         documentService.uploadDocument(
             libraryId, textFile(fileName, content), null, editor.getId(), false);
-    Document document = awaitDocumentStatus(uploaded.getId(), DocumentStatus.INDEXED);
+    Document document = awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
     document.setFolderId(folderId);
     return documentRepository.save(document);
   }

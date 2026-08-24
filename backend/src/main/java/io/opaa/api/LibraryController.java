@@ -110,7 +110,10 @@ public class LibraryController {
   public ResponseEntity<LibraryResponse> createLibrary(
       @Valid @RequestBody LibraryRequest request, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    LibraryResponse response = libraryService.createLibrary(request, currentUser.getId());
+    LibraryResponse response =
+        LibraryResponseMapper.toResponse(
+            libraryService.createLibrary(
+                LibraryResponseMapper.toCreation(request), currentUser.getId()));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -132,16 +135,20 @@ public class LibraryController {
   @GetMapping
   public List<LibraryListResponse> listLibraries(@AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return libraryService.listLibraries(
-        currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return LibraryResponseMapper.toListResponses(
+        libraryService.listLibraries(
+            currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
   }
 
   @GetMapping("/{libraryId}")
   public LibraryResponse getLibrary(
       @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return libraryService.getLibrary(
-        libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return LibraryResponseMapper.toResponse(
+        libraryService.getLibrary(
+            libraryId,
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
   }
 
   @PutMapping("/{libraryId}")
@@ -150,11 +157,12 @@ public class LibraryController {
       @Valid @RequestBody LibraryUpdateRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return libraryService.updateLibrary(
-        libraryId,
-        request,
-        currentUser.getId(),
-        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return LibraryResponseMapper.toResponse(
+        libraryService.updateLibrary(
+            libraryId,
+            LibraryResponseMapper.toUpdate(request),
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
   }
 
   @DeleteMapping("/{libraryId}")
@@ -192,13 +200,14 @@ public class LibraryController {
     // column users actually browse/search by), id as a tiebreaker for documents sharing a name.
     Pageable pageable =
         PageRequest.of(page, size, Sort.by(Sort.Order.asc("fileName"), Sort.Order.asc("id")));
-    return libraryService.listDocuments(
-        libraryId,
-        currentUser.getId(),
-        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN,
-        q,
-        folderId,
-        pageable);
+    return LibraryDocumentResponseMapper.toPageResponse(
+        libraryService.listDocuments(
+            libraryId,
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN,
+            q,
+            folderId,
+            pageable));
   }
 
   @PostMapping(value = "/{libraryId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -210,13 +219,14 @@ public class LibraryController {
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     LibraryDocumentResponse response =
-        documentService.uploadDocument(
-            libraryId,
-            file,
-            folderId,
-            folderPath,
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+        LibraryDocumentResponseMapper.toResponse(
+            documentService.uploadDocument(
+                libraryId,
+                file,
+                folderId,
+                folderPath,
+                currentUser.getId(),
+                currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -291,8 +301,11 @@ public class LibraryController {
   public List<AssetGrantResponse> listAssetGrants(
       @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return grantService.listGrants(
-        libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return AssetGrantResponseMapper.toResponses(
+        grantService.listGrants(
+            libraryId,
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
   }
 
   @PostMapping("/{libraryId}/grants")
@@ -301,11 +314,12 @@ public class LibraryController {
       @Valid @RequestBody AssetGrantRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return grantService.upsertGrant(
-        libraryId,
-        request,
-        currentUser.getId(),
-        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return AssetGrantResponseMapper.toResponse(
+        grantService.upsertGrant(
+            libraryId,
+            AssetGrantResponseMapper.toUpsert(request),
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
   }
 
   @DeleteMapping("/{libraryId}/grants/{grantId}")

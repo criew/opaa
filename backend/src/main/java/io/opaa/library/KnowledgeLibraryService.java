@@ -1,15 +1,5 @@
 package io.opaa.library;
 
-import io.opaa.api.dto.LibraryDocumentPageResponse;
-import io.opaa.api.dto.LibraryDocumentResponse;
-import io.opaa.api.dto.LibraryFolderBreadcrumbItem;
-import io.opaa.api.dto.LibraryFolderListItem;
-import io.opaa.api.dto.LibraryListResponse;
-import io.opaa.api.dto.LibraryRequest;
-import io.opaa.api.dto.LibraryResponse;
-import io.opaa.api.dto.LibrarySchedule;
-import io.opaa.api.dto.LibraryScheduleRequest;
-import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.ScheduleFrequency;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
@@ -158,28 +148,27 @@ public class KnowledgeLibraryService {
   }
 
   @Transactional
-  public LibraryResponse createLibrary(LibraryRequest request, UUID currentUserId) {
+  public LibraryDetail createLibrary(LibraryCreation request, UUID currentUserId) {
     User currentUser = requireUser(currentUserId);
-    String normalizedName = validateName(request.getName());
-    validateDescription(request.getDescription());
+    String normalizedName = validateName(request.name());
+    validateDescription(request.description());
 
     LibraryOwnerType ownerType =
-        request.getOwnerType() != null ? request.getOwnerType() : LibraryOwnerType.USER;
+        request.ownerType() != null ? request.ownerType() : LibraryOwnerType.USER;
 
     LibraryVisibility visibility =
-        request.getVisibility() != null ? request.getVisibility() : LibraryVisibility.PRIVATE;
-    boolean listed = Boolean.TRUE.equals(request.getListed());
+        request.visibility() != null ? request.visibility() : LibraryVisibility.PRIVATE;
+    boolean listed = Boolean.TRUE.equals(request.listed());
     SourceConfiguration sourceConfiguration = validateSourceConfiguration(request);
 
     KnowledgeLibrary library;
     Group ownerGroup = null;
     if (ownerType == LibraryOwnerType.GROUP) {
-      if (request.getOwnerId() == null) {
+      if (request.ownerId() == null) {
         throw new ResponseStatusException(
             HttpStatus.BAD_REQUEST, "ownerId ist erforderlich, wenn ownerType GROUP ist");
       }
-      ownerGroup =
-          requireGroupInOrganization(request.getOwnerId(), currentUser.getOrganizationId());
+      ownerGroup = requireGroupInOrganization(request.ownerId(), currentUser.getOrganizationId());
       if (!membershipResolver.groupIdsForUser(currentUserId).contains(ownerGroup.getId())) {
         throw new ResponseStatusException(
             HttpStatus.FORBIDDEN,
@@ -194,7 +183,7 @@ public class KnowledgeLibraryService {
           KnowledgeLibrary.ownedByGroup(
               currentUser.getOrganizationId(),
               normalizedName,
-              request.getDescription(),
+              request.description(),
               ownerGroup.getId(),
               visibility,
               listed,
@@ -209,7 +198,7 @@ public class KnowledgeLibraryService {
           KnowledgeLibrary.ownedByUser(
               currentUser.getOrganizationId(),
               normalizedName,
-              request.getDescription(),
+              request.description(),
               currentUserId,
               visibility,
               listed,
@@ -308,7 +297,7 @@ public class KnowledgeLibraryService {
         libraryAuditPayload(saved),
         AuditOutcome.SUCCESS,
         null);
-    return toLibraryResponse(saved, AssetRole.OWNER);
+    return toLibraryDetail(saved, AssetRole.OWNER);
   }
 
   private Map<String, Object> libraryAuditPayload(KnowledgeLibrary library) {
@@ -351,7 +340,7 @@ public class KnowledgeLibraryService {
    * reproducible order across calls - {@link LibraryAccessService#readableLibraryIds} returns a
    * {@code HashSet}, whose iteration order is not guaranteed to be stable.
    */
-  public List<LibraryListResponse> listLibraries(UUID currentUserId, boolean systemAdmin) {
+  public List<LibrarySummary> listLibraries(UUID currentUserId, boolean systemAdmin) {
     User currentUser = requireUser(currentUserId);
     Set<UUID> readableIds =
         accessService.readableLibraryIds(currentUserId, currentUser.getOrganizationId());
@@ -378,7 +367,7 @@ public class KnowledgeLibraryService {
     return libraries.stream()
         .map(
             library ->
-                toLibraryListResponse(
+                new LibrarySummary(
                     library,
                     roles.get(library.getId()),
                     documentCounts.getOrDefault(library.getId(), 0L),
@@ -388,15 +377,15 @@ public class KnowledgeLibraryService {
 
   /**
    * Resolves each library's owner display name in two batched queries (one per owner kind) instead
-   * of one lookup per library (#438) - the same pattern {@link AssetGrantService#toResponses}
-   * already uses for grant subject names. A missing entry (owner deleted) simply leaves {@code
-   * ownerName} {@code null} on the response, matching {@code LibraryListResponse}'s optional field.
+   * of one lookup per library (#438) - the same pattern {@link AssetGrantService#toViews} already
+   * uses for grant subject names. A missing entry (owner deleted) simply leaves {@code ownerName}
+   * {@code null} on the response, matching {@link LibrarySummary#ownerName()}'s optional nature.
    *
-   * <p>Unlike {@link AssetGrantService#toResponses}, a {@code USER} owner with no {@code
-   * displayName} resolves to {@code null} here rather than falling back to their email address (PR
-   * #601 review, finding 1): that method's audience is limited to a library's own {@code MANAGER}s,
-   * but this list reaches every reader of an organization-wide or shared library - potentially the
-   * whole organization - so leaking an email address here has a materially larger blast radius. The
+   * <p>Unlike {@link AssetGrantService#toViews}, a {@code USER} owner with no {@code displayName}
+   * resolves to {@code null} here rather than falling back to their email address (PR #601 review,
+   * finding 1): that method's audience is limited to a library's own {@code MANAGER}s, but this
+   * list reaches every reader of an organization-wide or shared library - potentially the whole
+   * organization - so leaking an email address here has a materially larger blast radius. The
    * frontend already falls back to a generic label when {@code ownerName} is absent.
    */
   private Map<UUID, String> resolveOwnerNames(List<KnowledgeLibrary> libraries) {
@@ -421,24 +410,24 @@ public class KnowledgeLibraryService {
     return ownerNames;
   }
 
-  public LibraryResponse getLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
+  public LibraryDetail getLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
     AssetRole role =
         accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
-    return toLibraryResponse(library, role);
+    return toLibraryDetail(library, role);
   }
 
   @Transactional
-  public LibraryResponse updateLibrary(
-      UUID libraryId, LibraryUpdateRequest request, UUID currentUserId, boolean systemAdmin) {
+  public LibraryDetail updateLibrary(
+      UUID libraryId, LibraryUpdate request, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.MANAGER);
     // ADR-0018: sourceType is chosen once, at creation, and is permanent - a library that started
     // as a directory crawl cannot become an upload container (or vice versa) without mixing
-    // Bestand and Loeschsemantik the way the ADR explicitly rules out. request.getSourceType() is
+    // Bestand and Loeschsemantik the way the ADR explicitly rules out. request.sourceType() is
     // optional purely so resending the current value (e.g. a naive client that echoes
-    // LibraryResponse back) is not itself an error - only an actual change is rejected.
-    if (request.getSourceType() != null && request.getSourceType() != library.getSourceType()) {
+    // LibraryDetail back) is not itself an error - only an actual change is rejected.
+    if (request.sourceType() != null && request.sourceType() != library.getSourceType()) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
           "sourceType kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
@@ -454,15 +443,15 @@ public class KnowledgeLibraryService {
     SourceConfiguration sourceConfiguration =
         replacesSourceConfiguration ? validateSourceConfigurationForUpdate(library, request) : null;
     // #485: schedule follows the same replace-as-a-whole rule as the source configuration above -
-    // only present when the caller actually intends to change it (LibraryUpdateRequest.schedule),
-    // so a request that only renames the library leaves an already-configured schedule untouched.
-    boolean replacesSchedule = request.getSchedule() != null;
+    // only present when the caller actually intends to change it (LibraryUpdate.schedule), so a
+    // request that only renames the library leaves an already-configured schedule untouched.
+    boolean replacesSchedule = request.schedule() != null;
     ValidatedSchedule validatedSchedule =
-        replacesSchedule ? validateSchedule(request.getSchedule(), library.getSourceType()) : null;
+        replacesSchedule ? validateSchedule(request.schedule(), library.getSourceType()) : null;
 
-    String normalizedName = validateName(request.getName());
-    validateDescription(request.getDescription());
-    boolean listed = Boolean.TRUE.equals(request.getListed());
+    String normalizedName = validateName(request.name());
+    validateDescription(request.description());
+    boolean listed = Boolean.TRUE.equals(request.listed());
     String previousName = library.getName();
     String previousDescription = library.getDescription();
     LibraryVisibility previousVisibility = library.getVisibility();
@@ -472,8 +461,7 @@ public class KnowledgeLibraryService {
     String previousSourceProxy = library.getSourceProxy();
     String previousSourceCredentials = library.getSourceCredentials();
     boolean previousSourceInsecureSsl = library.isSourceInsecureSsl();
-    library.updateDetails(
-        normalizedName, request.getDescription(), request.getVisibility(), listed);
+    library.updateDetails(normalizedName, request.description(), request.visibility(), listed);
     if (replacesSchedule) {
       library.updateSchedule(validatedSchedule.enabled(), validatedSchedule.cron());
     }
@@ -588,7 +576,7 @@ public class KnowledgeLibraryService {
             null);
       }
     }
-    return toLibraryResponse(
+    return toLibraryDetail(
         updated, accessService.effectiveRole(updated, currentUserId, systemAdmin));
   }
 
@@ -752,12 +740,12 @@ public class KnowledgeLibraryService {
    * bibliotheksweit regardless of {@code folderId} - it is not used to filter or scope the search
    * itself (ADR-0020, Entscheidung 4 - no folder-scoped retrieval yet) - {@code folders}/{@code
    * breadcrumb} are both empty, and each hit's own {@code folderId}/{@code folderPath} ({@link
-   * LibraryDocumentResponses#from(Document, String)}) show where it lives instead. A given {@code
-   * folderId} is still validated even then (#821 review round 1, finding 3): an unknown or foreign
-   * one answers 404 exactly as it would without {@code q}, so a caller cannot distinguish "this
-   * folder does not exist" from "it exists, but I only ever check it while browsing, not while
-   * searching" - it would otherwise be the one caller-supplied identifier on this endpoint that
-   * silently tolerates a value from another library.
+   * #toLibraryDocumentEntry}) show where it lives instead. A given {@code folderId} is still
+   * validated even then (#821 review round 1, finding 3): an unknown or foreign one answers 404
+   * exactly as it would without {@code q}, so a caller cannot distinguish "this folder does not
+   * exist" from "it exists, but I only ever check it while browsing, not while searching" - it
+   * would otherwise be the one caller-supplied identifier on this endpoint that silently tolerates
+   * a value from another library.
    *
    * <p><b>Backward compatibility (#821 acceptance criteria).</b> A caller that omits {@code
    * folderId} - every client before this task - now lists the library's root rather than its whole
@@ -768,7 +756,7 @@ public class KnowledgeLibraryService {
    * navigating into the folder, which is exactly what {@code folderId} is for (frontend follows in
    * #822).
    */
-  public LibraryDocumentPageResponse listDocuments(
+  public LibraryDocumentPage listDocuments(
       UUID libraryId,
       UUID currentUserId,
       boolean systemAdmin,
@@ -791,16 +779,14 @@ public class KnowledgeLibraryService {
           documentRepository.findByLibraryIdAndFileNameContainingIgnoreCase(libraryId, q, pageable);
       Map<UUID, LibraryFolder> foldersById =
           LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
-      return new LibraryDocumentPageResponse(
-              page.getContent().stream()
-                  .map(d -> toLibraryDocumentResponse(d, foldersById))
-                  .toList(),
-              pageable.getPageNumber(),
-              pageable.getPageSize(),
-              page.getTotalElements(),
-              List.of(),
-              List.of())
-          .folderId(null);
+      return new LibraryDocumentPage(
+          page.getContent().stream().map(d -> toLibraryDocumentEntry(d, foldersById)).toList(),
+          pageable.getPageNumber(),
+          pageable.getPageSize(),
+          page.getTotalElements(),
+          List.of(),
+          List.of(),
+          null);
     }
 
     Page<Document> page =
@@ -810,14 +796,14 @@ public class KnowledgeLibraryService {
     Map<UUID, LibraryFolder> foldersById =
         LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
 
-    return new LibraryDocumentPageResponse(
-            page.getContent().stream().map(d -> toLibraryDocumentResponse(d, foldersById)).toList(),
-            pageable.getPageNumber(),
-            pageable.getPageSize(),
-            page.getTotalElements(),
-            foldersOf(libraryId, folderId),
-            breadcrumbOf(folderId, foldersById))
-        .folderId(folderId);
+    return new LibraryDocumentPage(
+        page.getContent().stream().map(d -> toLibraryDocumentEntry(d, foldersById)).toList(),
+        pageable.getPageNumber(),
+        pageable.getPageSize(),
+        page.getTotalElements(),
+        foldersOf(libraryId, folderId),
+        breadcrumbOf(folderId, foldersById),
+        folderId);
   }
 
   /**
@@ -829,7 +815,7 @@ public class KnowledgeLibraryService {
    * DocumentRepository#countRecursiveByFolderIdIn}), not one {@link
    * DocumentRepository#countByFolderId}/subtree walk per subfolder.
    */
-  private List<LibraryFolderListItem> foldersOf(UUID libraryId, UUID folderId) {
+  private List<LibraryFolderChild> foldersOf(UUID libraryId, UUID folderId) {
     List<LibraryFolder> subfolders =
         folderId == null
             ? folderRepository.findByLibraryIdAndParentFolderIdIsNullOrderByNameAsc(libraryId)
@@ -847,10 +833,7 @@ public class KnowledgeLibraryService {
     return subfolders.stream()
         .map(
             folder ->
-                new LibraryFolderListItem(
-                    folder.getId(),
-                    folder.getName(),
-                    documentCounts.getOrDefault(folder.getId(), 0L)))
+                new LibraryFolderChild(folder, documentCounts.getOrDefault(folder.getId(), 0L)))
         .toList();
   }
 
@@ -860,19 +843,18 @@ public class KnowledgeLibraryService {
    * library's folders, so this costs no further queries beyond the one {@link
    * LibraryFolderPaths#loadFoldersById} already ran for the page's {@code folderPath} values.
    */
-  private List<LibraryFolderBreadcrumbItem> breadcrumbOf(
-      UUID folderId, Map<UUID, LibraryFolder> foldersById) {
+  private List<LibraryFolder> breadcrumbOf(UUID folderId, Map<UUID, LibraryFolder> foldersById) {
     if (folderId == null) {
       return List.of();
     }
-    Deque<LibraryFolderBreadcrumbItem> chain = new ArrayDeque<>();
+    Deque<LibraryFolder> chain = new ArrayDeque<>();
     UUID current = folderId;
     while (current != null) {
       LibraryFolder folder = foldersById.get(current);
       if (folder == null) {
         break;
       }
-      chain.addFirst(new LibraryFolderBreadcrumbItem(folder.getId(), folder.getName()));
+      chain.addFirst(folder);
       current = folder.getParentFolderId();
     }
     return new ArrayList<>(chain);
@@ -922,17 +904,17 @@ public class KnowledgeLibraryService {
    * sourceInsecureSsl} defaults to {@code false} when omitted, mirroring {@code
    * IndexingTriggerRequest}'s equivalent field.
    */
-  private SourceConfiguration validateSourceConfiguration(LibraryRequest request) {
-    DocumentSourceType sourceType = request.getSourceType();
+  private SourceConfiguration validateSourceConfiguration(LibraryCreation request) {
+    DocumentSourceType sourceType = request.sourceType();
     if (sourceType == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceType ist erforderlich");
     }
-    String sourcePath = blankToNull(request.getSourcePath());
+    String sourcePath = blankToNull(request.sourcePath());
     String sourceUrl =
-        blankToNull(request.getSourceUrl() == null ? null : request.getSourceUrl().toString());
-    String sourceProxy = blankToNull(request.getSourceProxy());
-    String sourceCredentials = blankToNull(request.getSourceCredentials());
-    boolean sourceInsecureSsl = Boolean.TRUE.equals(request.getSourceInsecureSsl());
+        blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString());
+    String sourceProxy = blankToNull(request.sourceProxy());
+    String sourceCredentials = blankToNull(request.sourceCredentials());
+    boolean sourceInsecureSsl = Boolean.TRUE.equals(request.sourceInsecureSsl());
 
     validateConfigurationForType(
         sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
@@ -947,12 +929,12 @@ public class KnowledgeLibraryService {
    * resend-the-current-value case (see {@link #updateLibrary}'s own Javadoc comment) and carries no
    * configuration-change intent of its own.
    */
-  private boolean hasSourceConfigurationFields(LibraryUpdateRequest request) {
-    return request.getSourcePath() != null
-        || request.getSourceUrl() != null
-        || request.getSourceProxy() != null
-        || request.getSourceCredentials() != null
-        || request.getSourceInsecureSsl() != null;
+  private boolean hasSourceConfigurationFields(LibraryUpdate request) {
+    return request.sourcePath() != null
+        || request.sourceUrl() != null
+        || request.sourceProxy() != null
+        || request.sourceCredentials() != null
+        || request.sourceInsecureSsl() != null;
   }
 
   /**
@@ -981,18 +963,18 @@ public class KnowledgeLibraryService {
    * unchanged" by design.
    */
   private SourceConfiguration validateSourceConfigurationForUpdate(
-      KnowledgeLibrary library, LibraryUpdateRequest request) {
+      KnowledgeLibrary library, LibraryUpdate request) {
     DocumentSourceType sourceType = library.getSourceType();
-    String sourcePath = blankToNull(request.getSourcePath());
+    String sourcePath = blankToNull(request.sourcePath());
     String sourceUrl =
-        blankToNull(request.getSourceUrl() == null ? null : request.getSourceUrl().toString());
-    String sourceProxy = blankToNull(request.getSourceProxy());
-    String sourceCredentials = blankToNull(request.getSourceCredentials());
+        blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString());
+    String sourceProxy = blankToNull(request.sourceProxy());
+    String sourceCredentials = blankToNull(request.sourceCredentials());
     if (sourceCredentials == null
         && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), sourceUrl)) {
       sourceCredentials = library.getSourceCredentials();
     }
-    boolean sourceInsecureSsl = Boolean.TRUE.equals(request.getSourceInsecureSsl());
+    boolean sourceInsecureSsl = Boolean.TRUE.equals(request.sourceInsecureSsl());
 
     validateConfigurationForType(
         sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
@@ -1115,8 +1097,8 @@ public class KnowledgeLibraryService {
    * 400-before-insert.
    */
   private ValidatedSchedule validateSchedule(
-      LibraryScheduleRequest request, DocumentSourceType sourceType) {
-    ScheduleFrequency frequency = request.getFrequency();
+      LibraryScheduleUpdate request, DocumentSourceType sourceType) {
+    ScheduleFrequency frequency = request.frequency();
     if (frequency == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "frequency ist erforderlich");
     }
@@ -1125,9 +1107,9 @@ public class KnowledgeLibraryService {
           HttpStatus.BAD_REQUEST,
           "Ein Zeitplan ist nur für Konnektorbibliotheken verfügbar, nicht für UPLOAD");
     }
-    Integer hour = request.getHour();
-    Integer minute = request.getMinute();
-    var weekday = request.getWeekday();
+    Integer hour = request.hour();
+    Integer minute = request.minute();
+    var weekday = request.weekday();
     switch (frequency) {
       case DISABLED, HOURLY -> {
         if (hour != null || minute != null || weekday != null) {
@@ -1165,7 +1147,7 @@ public class KnowledgeLibraryService {
   /** The validated {@code (enabled, cron)} pair {@link KnowledgeLibrary#updateSchedule} takes. */
   private record ValidatedSchedule(boolean enabled, String cron) {}
 
-  /** Groups a validated {@link LibraryRequest}'s source fields for the two entity factories. */
+  /** Groups a validated {@link LibraryCreation}'s source fields for the two entity factories. */
   private record SourceConfiguration(
       DocumentSourceType sourceType,
       String sourcePath,
@@ -1220,94 +1202,55 @@ public class KnowledgeLibraryService {
     return library;
   }
 
-  private LibraryListResponse toLibraryListResponse(
-      KnowledgeLibrary library, AssetRole myRole, long documentCount, String ownerName) {
-    return new LibraryListResponse(
-            library.getId(),
-            library.getName(),
-            library.getOwnerType(),
-            library.getVisibility(),
-            library.isListed(),
-            myRole,
-            library.getSourceType(),
-            documentCount,
-            library.getCreatedAt(),
-            library.getUpdatedAt())
-        .description(library.getDescription())
-        .ownerName(ownerName);
-  }
-
-  private LibraryResponse toLibraryResponse(KnowledgeLibrary library, AssetRole myRole) {
+  private LibraryDetail toLibraryDetail(KnowledgeLibrary library, AssetRole myRole) {
+    long documentCount = documentRepository.countByLibraryId(library.getId());
+    // #507/#119: sourcePath/sourceUrl/sourceProxy/schedule/storage quota are administration
+    // detail - internal server paths, crawl targets and bestand size - gated at MANAGER, not
+    // exposed to a mere VIEWER (or even EDITOR) of an organization-wide library.
     // sourceCredentials is deliberately never read here - ADR-0018 makes it a write-only field
     // that appears in no API response, not even for the library's own owner.
-    LibraryResponse response =
-        new LibraryResponse(
-                library.getId(),
-                library.getName(),
-                library.getOwnerType(),
-                library.getOwnerId(),
-                library.getVisibility(),
-                library.isListed(),
-                myRole,
-                library.getSourceType(),
-                library.getCreatedAt(),
-                library.getUpdatedAt())
-            .description(library.getDescription())
-            .documentCount(documentRepository.countByLibraryId(library.getId()));
-    // #507: sourcePath/sourceUrl/sourceProxy expose internal server paths, source URLs and proxy
-    // hosts - fine to hand to whoever may change them (the MANAGER bar updateLibrary above already
-    // enforces), a leak of internal infrastructure detail to a mere VIEWER (or even EDITOR) of an
-    // organization-wide library. sourceType alone stays visible to everyone above - it reveals the
-    // connector kind, never *where* it points. sourceCredentials was already write-only for
-    // everyone regardless of role (ADR-0018).
-    if (myRole.atLeast(AssetRole.MANAGER)) {
-      response
-          .sourcePath(library.getSourcePath())
-          .sourceUrl(library.getSourceUrl() == null ? null : URI.create(library.getSourceUrl()))
-          .sourceProxy(library.getSourceProxy())
-          .sourceInsecureSsl(library.isSourceInsecureSsl())
-          // PR #542 review, nit 3: a non-secret yes/no, not the credential itself (ADR-0018) -
-          // lets a client phrase an accurate "leave blank to keep the current credential" hint
-          // only when one is actually stored.
-          .sourceCredentialsSet(library.getSourceCredentials() != null);
-    }
-    // #485: schedule/lastScheduledRunsFailed follow the same MANAGER threshold and the same
-    // "connector libraries only" restriction as the source configuration above - a schedule
-    // cannot exist on a UPLOAD library at all (chk_knowledge_libraries_schedule), and nextRunAt
-    // would otherwise leak the same "does an internal crawl target exist" detail #507 already
-    // gates.
-    if (library.getSourceType() != DocumentSourceType.UPLOAD && myRole.atLeast(AssetRole.MANAGER)) {
-      LibraryScheduleCodec.Schedule schedule =
-          LibraryScheduleCodec.parse(library.getScheduleCron());
+    LibraryManagementDetail managementDetail =
+        myRole.atLeast(AssetRole.MANAGER)
+            ? toManagementDetail(library)
+            : LibraryManagementDetail.EMPTY;
+    return new LibraryDetail(library, myRole, documentCount, managementDetail);
+  }
+
+  private LibraryManagementDetail toManagementDetail(KnowledgeLibrary library) {
+    // #485: schedule/lastScheduledRunsFailed stay null for an UPLOAD library, which cannot carry
+    // a schedule at all (chk_knowledge_libraries_schedule) - nextRunAt would otherwise leak the
+    // same "does an internal crawl target exist" detail #507 already gates.
+    LibraryScheduleDetail schedule = null;
+    Boolean lastScheduledRunsFailed = null;
+    if (library.getSourceType() != DocumentSourceType.UPLOAD) {
+      LibraryScheduleCodec.Schedule parsed = LibraryScheduleCodec.parse(library.getScheduleCron());
       Instant nextRunAt =
           LibraryScheduleCodec.nextRunAt(
               library.getScheduleCron(), schedulingClock.instant(), schedulingClock.getZone());
-      var scheduleResponse =
-          new LibrarySchedule(schedule.frequency())
-              .hour(schedule.hour())
-              .minute(schedule.minute())
-              .weekday(schedule.weekday())
-              .nextRunAt(nextRunAt);
-      response
-          .schedule(scheduleResponse)
-          .lastScheduledRunsFailed(
-              indexingJobService.lastScheduledRunsFailed(
-                  library.getId(), library.getOrganizationId()));
+      schedule =
+          new LibraryScheduleDetail(
+              parsed.frequency(), parsed.hour(), parsed.minute(), parsed.weekday(), nextRunAt);
+      lastScheduledRunsFailed =
+          indexingJobService.lastScheduledRunsFailed(library.getId(), library.getOrganizationId());
     }
-    // #119: storage quota usage is administration detail, not something a mere VIEWER needs to
-    // manage the bestand - gated the same way sourcePath/sourceUrl above are, at MANAGER, rather
-    // than exposed to everyone with read access to the library.
-    if (myRole.atLeast(AssetRole.MANAGER)) {
-      response
-          .storageQuotaBytes(storageQuotaService.quotaBytes())
-          .storageUsedBytes(storageQuotaService.usedBytes(library.getId()));
-    }
-    return response;
+    return new LibraryManagementDetail(
+        library.getSourcePath(),
+        library.getSourceUrl(),
+        library.getSourceProxy(),
+        library.isSourceInsecureSsl(),
+        // PR #542 review, nit 3: a non-secret yes/no, not the credential itself (ADR-0018) - lets
+        // a client phrase an accurate "leave blank to keep the current credential" hint only when
+        // one is actually stored.
+        library.getSourceCredentials() != null,
+        schedule,
+        lastScheduledRunsFailed,
+        storageQuotaService.quotaBytes(),
+        storageQuotaService.usedBytes(library.getId()));
   }
 
-  private LibraryDocumentResponse toLibraryDocumentResponse(
+  private LibraryDocumentEntry toLibraryDocumentEntry(
       Document document, Map<UUID, LibraryFolder> foldersById) {
-    return LibraryDocumentResponses.from(
+    return new LibraryDocumentEntry(
         document, LibraryFolderPaths.pathOf(document.getFolderId(), foldersById));
   }
 }

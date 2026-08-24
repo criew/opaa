@@ -1,7 +1,5 @@
 package io.opaa.library;
 
-import io.opaa.api.dto.AssetGrantRequest;
-import io.opaa.api.dto.AssetGrantResponse;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -74,8 +72,7 @@ import org.springframework.web.server.ResponseStatusException;
  * dissolved keep working, but no new or updated grant may target it).
  *
  * <p>Every response also carries {@code subjectDisplayName} and {@code grantedByDisplayName},
- * resolved here rather than left to the frontend (#423 code review) - see {@link
- * #toResponses(List)}.
+ * resolved here rather than left to the frontend (#423 code review) - see {@link #toViews(List)}.
  */
 @Service
 @Transactional(readOnly = true)
@@ -106,10 +103,9 @@ public class AssetGrantService {
     this.auditEventRecorder = auditEventRecorder;
   }
 
-  public List<AssetGrantResponse> listGrants(
-      UUID libraryId, UUID currentUserId, boolean systemAdmin) {
+  public List<AssetGrantView> listGrants(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = requireManageable(libraryId, currentUserId, systemAdmin);
-    return toResponses(grantRepository.findByLibraryId(library.getId()));
+    return toViews(grantRepository.findByLibraryId(library.getId()));
   }
 
   // #392: noRollbackFor(ResponseStatusException) - without it, the DENIED audit entry the
@@ -123,19 +119,19 @@ public class AssetGrantService {
   // persisted on a path this annotation keeps from rolling back, so "not rolling back" changes
   // nothing about the (never attempted) grant write, only preserves the audit trail of the attempt.
   @Transactional(noRollbackFor = ResponseStatusException.class)
-  public AssetGrantResponse upsertGrant(
-      UUID libraryId, AssetGrantRequest request, UUID currentUserId, boolean systemAdmin) {
+  public AssetGrantView upsertGrant(
+      UUID libraryId, AssetGrantUpsert request, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = requireManageable(libraryId, currentUserId, systemAdmin);
     User currentUser = requireUser(currentUserId);
 
-    if (request.getSubjectType() == null || request.getSubjectId() == null) {
+    if (request.subjectType() == null || request.subjectId() == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Empfänger ist erforderlich");
     }
-    if (request.getRole() == null) {
+    if (request.role() == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rolle ist erforderlich");
     }
     // #392 code review, finding 2: subject validation moved ahead of the escalation guard below.
-    // The guard's catch block pseudonymises request.getSubjectId() as the DENIED entry's
+    // The guard's catch block pseudonymises request.subjectId() as the DENIED entry's
     // subject_ref - audit_actor_pseudonyms.user_id carries
     // fk_audit_actor_pseudonyms_user_organization against users(id, organization_id) (migration
     // 017, composite as of migration 047), so pseudonymising an id that names no real user (a
@@ -150,10 +146,10 @@ public class AssetGrantService {
     // - a request that cannot even name a real subject is not a recordable "rejected grant to
     // subject X", it is a plain 404, and the guard now only ever pseudonymises a subject that is
     // already known to exist in this organization.
-    if (request.getSubjectType() == PermissionSubjectType.USER) {
-      requireUserInOrganization(request.getSubjectId(), library.getOrganizationId());
+    if (request.subjectType() == PermissionSubjectType.USER) {
+      requireUserInOrganization(request.subjectId(), library.getOrganizationId());
     } else {
-      requireGrantableGroup(request.getSubjectId(), library.getOrganizationId());
+      requireGrantableGroup(request.subjectId(), library.getOrganizationId());
     }
 
     // Escalation guard, half 1: a caller may never grant a role higher than the one they
@@ -163,9 +159,9 @@ public class AssetGrantService {
     try {
       requireCallerRoleAtLeast(
           callerRole,
-          request.getRole(),
+          request.role(),
           "Die eigene Rolle reicht nicht aus, um die Rolle "
-              + roleLabel(request.getRole())
+              + roleLabel(request.role())
               + " zu vergeben");
     } catch (ResponseStatusException denied) {
       // #392: the rejected attempt to grant a role higher than the caller's own is itself
@@ -178,12 +174,12 @@ public class AssetGrantService {
           AuditObjectType.KNOWLEDGE_LIBRARY,
           library.getId(),
           library.getName(),
-          request.getSubjectType() == PermissionSubjectType.USER
+          request.subjectType() == PermissionSubjectType.USER
               ? AuditSubjectKind.USER
               : AuditSubjectKind.GROUP,
-          request.getSubjectId(),
+          request.subjectId(),
           null,
-          Map.of("role", request.getRole().name()),
+          Map.of("role", request.role().name()),
           AuditOutcome.DENIED,
           denied.getReason());
       throw denied;
@@ -195,11 +191,11 @@ public class AssetGrantService {
     // "before" half of an ASSET_GRANT_CHANGED entry.
     AssetRole previousRole = null;
     Instant previousExpiresAt = null;
-    if (request.getSubjectType() == PermissionSubjectType.USER) {
+    if (request.subjectType() == PermissionSubjectType.USER) {
       grant =
           grantRepository
               .findByLibraryIdAndSubjectTypeAndSubjectUserId(
-                  library.getId(), PermissionSubjectType.USER, request.getSubjectId())
+                  library.getId(), PermissionSubjectType.USER, request.subjectId())
               .orElse(null);
       isNewGrant = grant == null;
       if (grant == null) {
@@ -207,23 +203,23 @@ public class AssetGrantService {
             AssetGrant.forUser(
                 library.getId(),
                 library.getOrganizationId(),
-                request.getSubjectId(),
-                request.getRole(),
-                request.getExpiresAt(),
+                request.subjectId(),
+                request.role(),
+                request.expiresAt(),
                 currentUser.getId());
       } else {
         requireCallerCanTouchExistingGrant(callerRole, grant, "ändern");
         requireNotDowngradingTheLastActiveOwnerGrant(
-            library.getId(), grant, request.getRole(), request.getExpiresAt());
+            library.getId(), grant, request.role(), request.expiresAt());
         previousRole = grant.getRole();
         previousExpiresAt = grant.getExpiresAt();
-        grant.updateRole(request.getRole(), request.getExpiresAt());
+        grant.updateRole(request.role(), request.expiresAt());
       }
     } else {
       grant =
           grantRepository
               .findByLibraryIdAndSubjectTypeAndSubjectGroupId(
-                  library.getId(), PermissionSubjectType.GROUP, request.getSubjectId())
+                  library.getId(), PermissionSubjectType.GROUP, request.subjectId())
               .orElse(null);
       isNewGrant = grant == null;
       if (grant == null) {
@@ -231,17 +227,17 @@ public class AssetGrantService {
             AssetGrant.forGroup(
                 library.getId(),
                 library.getOrganizationId(),
-                request.getSubjectId(),
-                request.getRole(),
-                request.getExpiresAt(),
+                request.subjectId(),
+                request.role(),
+                request.expiresAt(),
                 currentUser.getId());
       } else {
         requireCallerCanTouchExistingGrant(callerRole, grant, "ändern");
         requireNotDowngradingTheLastActiveOwnerGrant(
-            library.getId(), grant, request.getRole(), request.getExpiresAt());
+            library.getId(), grant, request.role(), request.expiresAt());
         previousRole = grant.getRole();
         previousExpiresAt = grant.getExpiresAt();
-        grant.updateRole(request.getRole(), request.getExpiresAt());
+        grant.updateRole(request.role(), request.expiresAt());
       }
     }
 
@@ -291,7 +287,7 @@ public class AssetGrantService {
           null);
     }
     invalidateAfterCommit(library.getId());
-    return toResponses(List.of(saved)).get(0);
+    return toViews(List.of(saved)).get(0);
   }
 
   private Map<String, Object> grantAuditPayload(AssetRole role, Instant expiresAt) {
@@ -544,7 +540,7 @@ public class AssetGrantService {
    * folded into the user query) rather than one lookup per grant, since {@link #listGrants} is the
    * expected caller and a per-grant round trip would turn an O(1)-query list into O(n).
    */
-  private List<AssetGrantResponse> toResponses(List<AssetGrant> grants) {
+  private List<AssetGrantView> toViews(List<AssetGrant> grants) {
     Set<UUID> userIds = new HashSet<>();
     Set<UUID> groupIds = new HashSet<>();
     for (AssetGrant grant : grants) {
@@ -584,17 +580,7 @@ public class AssetGrantService {
                   grant.getGrantedByUserId() == null
                       ? null
                       : userNames.get(grant.getGrantedByUserId());
-              return new AssetGrantResponse(
-                      grant.getId(),
-                      grant.getSubjectType(),
-                      grant.getSubjectId(),
-                      grant.getRole(),
-                      grant.getCreatedAt(),
-                      grant.getUpdatedAt())
-                  .subjectDisplayName(subjectName)
-                  .expiresAt(grant.getExpiresAt())
-                  .grantedByUserId(grant.getGrantedByUserId())
-                  .grantedByDisplayName(grantedByName);
+              return new AssetGrantView(grant, subjectName, grantedByName);
             })
         .toList();
   }

@@ -12,17 +12,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.dto.LibraryDocumentPageResponse;
-import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.DocumentStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
+import io.opaa.library.LibraryDocumentEntry;
+import io.opaa.library.LibraryDocumentPage;
 import io.opaa.library.LibraryDocumentService;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.SourceConnectionTestService;
@@ -97,7 +98,7 @@ class LibraryControllerDocumentTest {
   @Test
   void listingDocumentsPassesPageSizeAndQToTheServiceWithAStableSort() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    var response = new LibraryDocumentPageResponse(List.of(), 1, 5, 12L, List.of(), List.of());
+    var response = new LibraryDocumentPage(List.of(), 1, 5, 12L, List.of(), List.of(), null);
     when(libraryService.listDocuments(
             eq(libraryId),
             eq(currentUserId),
@@ -133,7 +134,7 @@ class LibraryControllerDocumentTest {
     // no-param case above implicitly covers via any().
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
-    var response = new LibraryDocumentPageResponse(List.of(), 0, 20, 0L, List.of(), List.of());
+    var response = new LibraryDocumentPage(List.of(), 0, 20, 0L, List.of(), List.of(), folderId);
     when(libraryService.listDocuments(
             eq(libraryId), eq(currentUserId), eq(false), isNull(), eq(folderId), any()))
         .thenReturn(response);
@@ -182,10 +183,12 @@ class LibraryControllerDocumentTest {
   @Test
   void uploadingADocumentReturns201WithTheResponseFromTheService() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    UUID documentId = UUID.randomUUID();
-    var response =
-        new LibraryDocumentResponse(
-            documentId, "report.pdf", DocumentStatus.INDEXED, DocumentSourceType.UPLOAD, 3);
+    Document document =
+        new Document(
+            "report.pdf", "/tmp/report.pdf", "application/pdf", 3L, DocumentSourceType.UPLOAD);
+    document.setStatus(DocumentStatus.INDEXED);
+    document.setChunkCount(3);
+    var response = new LibraryDocumentEntry(document, null);
     // #823: the controller now calls LibraryDocumentService's 6-arg folderPath overload
     // unconditionally (folderPath is simply null/omitted when the request does not send one).
     when(documentService.uploadDocument(
@@ -200,7 +203,7 @@ class LibraryControllerDocumentTest {
                 .file(file)
                 .with(asTestUser()))
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.id").value(documentId.toString()))
+        .andExpect(jsonPath("$.id").value(document.getId().toString()))
         .andExpect(jsonPath("$.fileName").value("report.pdf"))
         .andExpect(jsonPath("$.sourceType").value("UPLOAD"));
   }
@@ -209,12 +212,13 @@ class LibraryControllerDocumentTest {
   void uploadingADocumentPassesFolderIdToTheService() throws Exception {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
-    UUID documentId = UUID.randomUUID();
-    var response =
-        new LibraryDocumentResponse(
-                documentId, "report.pdf", DocumentStatus.INDEXED, DocumentSourceType.UPLOAD, 3)
-            .folderId(folderId)
-            .folderPath("Protokolle");
+    Document document =
+        new Document(
+            "report.pdf", "/tmp/report.pdf", "application/pdf", 3L, DocumentSourceType.UPLOAD);
+    document.setStatus(DocumentStatus.INDEXED);
+    document.setChunkCount(3);
+    document.setFolderId(folderId);
+    var response = new LibraryDocumentEntry(document, "Protokolle");
     when(documentService.uploadDocument(
             eq(libraryId), any(), eq(folderId), any(), eq(currentUserId), eq(false)))
         .thenReturn(response);
@@ -237,11 +241,11 @@ class LibraryControllerDocumentTest {
     // #823: folderPath is forwarded to the service alongside folderId, letting a
     // dragged-and-dropped/webkitdirectory-selected folder tree materialize its structure.
     UUID libraryId = UUID.randomUUID();
-    UUID documentId = UUID.randomUUID();
-    var response =
-        new LibraryDocumentResponse(
-                documentId, "januar.pdf", DocumentStatus.PENDING, DocumentSourceType.UPLOAD, 0)
-            .folderPath("Protokolle/2026");
+    Document document =
+        new Document(
+            "januar.pdf", "/tmp/januar.pdf", "application/pdf", 0L, DocumentSourceType.UPLOAD);
+    document.setStatus(DocumentStatus.PENDING);
+    var response = new LibraryDocumentEntry(document, "Protokolle/2026");
     when(documentService.uploadDocument(
             eq(libraryId), any(), isNull(), eq("Protokolle/2026"), eq(currentUserId), eq(false)))
         .thenReturn(response);
