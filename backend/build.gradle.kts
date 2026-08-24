@@ -57,67 +57,101 @@ dependencies {
     testRuntimeOnly(libs.bundles.test.runtime.deps)
 }
 
-// Runs the retrieval-quality evaluation harness against eval/corpus (issue #227). Not wired into
-// `check`/`build`/`test` on purpose (see the `evalTest` source set comment above) — invoke
-// explicitly with `./gradlew evaluateRetrieval`. Needs Docker; downloads the `nomic-embed-text`
-// model into the Ollama Testcontainer on first run.
+// Registers the evaluateXRetrieval/checkXRetrievalBaseline task pair for one eval domain (issue
+// #835 — this used to be ~130 hand-copied lines per domain; see git history for the original,
+// per-domain comments this collapses). Both tasks share identical Test wiring across domains;
+// only the task-name suffix, descriptions, and the domain's own harness/baseline test classes
+// vary between calls.
 //
-// Produces the report, and only the report: BaselineRegressionTest is excluded because it consumes
-// a report that this very task writes (issue #414). Without the filter, JUnit runs it alphabetically
-// before RetrievalEvaluationHarnessTest — that is, before build/eval-reports/retrieval-metrics.json
-// exists — so the task fails on its "No report found" guard before checkRetrievalBaseline ever gets
-// a turn. The three tasks split the evalTest source set along these roles: evalUnitTest = pure
-// metric math (Docker-free, part of `check`), evaluateRetrieval = produce the report (needs
-// Docker), checkRetrievalBaseline = compare the report against the baseline (Docker-free, depends
-// on evaluateRetrieval).
-tasks.register<Test>("evaluateRetrieval") {
-    description = "Runs the retrieval-quality evaluation harness (Hit Rate, MRR, nDCG, Recall) " +
-        "against eval/corpus using Testcontainers (pgvector + Ollama). Not part of build/check."
-    group = "verification"
-    testClassesDirs = sourceSets["evalTest"].output.classesDirs
-    classpath = sourceSets["evalTest"].runtimeClasspath
-    useJUnitPlatform()
-    filter {
-        excludeTestsMatching("*BaselineRegressionTest")
-        // Issue #234: the evalTest source set now also holds the city-landmarks domain's own
-        // Testcontainers harness and dry-run test. Both are excluded here so this task keeps
-        // running only the comic-characters harness — "*RetrievalEvaluationHarnessTest" alone
-        // would also match "CityLandmarksRetrievalEvaluationHarnessTest" (it ends with that
-        // suffix), silently doubling the runtime and coupling both domains' runs together.
-        excludeTestsMatching("*CityLandmarksRetrievalEvaluationHarnessTest")
-        excludeTestsMatching("*CityLandmarksChunkSizeDryRunTest")
+// Not wired into `check`/`build`/`test` on purpose (see the `evalTest` source set comment above)
+// — invoke explicitly, e.g. `./gradlew evaluateRetrieval`. Needs Docker; the evaluate task
+// downloads the `nomic-embed-text` model into the Ollama Testcontainer on first run.
+//
+// The evaluate task produces the report, and only the report: the baseline test is never part of
+// it, because that test consumes a report the evaluate task itself writes (issue #414) — included,
+// JUnit would run it alphabetically before the harness test, i.e. before the report file exists,
+// failing its "No report found" guard before the check task ever gets a turn.
+//
+// Filtering by the harness/baseline test's fully qualified class name (rather than a "*Suffix"
+// wildcard) sidesteps the wildcard trap that originally motivated this refactor (issue #234): a
+// wildcard like "*RetrievalEvaluationHarnessTest" also matches
+// "CityLandmarksRetrievalEvaluationHarnessTest" because it ends with that suffix, which would
+// silently double the runtime and couple both domains' runs together.
+fun registerEvalDomain(
+    name: String,
+    evaluateDescription: String,
+    checkDescription: String,
+    harnessTestClass: String,
+    baselineTestClass: String,
+) {
+    val evaluateTaskName = "evaluate${name}Retrieval"
+    tasks.register<Test>(evaluateTaskName) {
+        description = evaluateDescription
+        group = "verification"
+        testClassesDirs = sourceSets["evalTest"].output.classesDirs
+        classpath = sourceSets["evalTest"].runtimeClasspath
+        useJUnitPlatform()
+        filter {
+            includeTestsMatching(harnessTestClass)
+        }
+        outputs.upToDateWhen { false }
+        jvmArgs("-XX:+EnableDynamicAgentLoading")
+        systemProperty("file.encoding", "UTF-8")
+        testLogging {
+            events("passed", "skipped", "failed", "standard_out")
+            showStandardStreams = true
+        }
     }
-    outputs.upToDateWhen { false }
-    jvmArgs("-XX:+EnableDynamicAgentLoading")
-    systemProperty("file.encoding", "UTF-8")
-    testLogging {
-        events("passed", "skipped", "failed", "standard_out")
-        showStandardStreams = true
+
+    // Depends on the evaluate task above so a single `./gradlew check${name}RetrievalBaseline`
+    // invocation (as used by the nightly/manual/label-triggered CI job in
+    // .github/workflows/retrieval-regression.yml) runs the full Docker-requiring harness and then
+    // the baseline comparison, in order. Not part of `check`/`build`/`evalUnitTest` — same
+    // rationale as the evaluate task itself.
+    tasks.register<Test>("check${name}RetrievalBaseline") {
+        description = checkDescription
+        group = "verification"
+        dependsOn(evaluateTaskName)
+        testClassesDirs = sourceSets["evalTest"].output.classesDirs
+        classpath = sourceSets["evalTest"].runtimeClasspath
+        useJUnitPlatform()
+        outputs.upToDateWhen { false }
+        filter {
+            includeTestsMatching(baselineTestClass)
+        }
+        testLogging {
+            events("passed", "skipped", "failed", "standard_out")
+            showStandardStreams = true
+        }
     }
 }
 
-// city-landmarks counterpart of evaluateRetrieval (issue #234): same mechanism, second domain,
-// second test class (CityLandmarksRetrievalEvaluationHarnessTest) — see that class' Javadoc for
-// why it is a near-duplicate rather than a parameterization of RetrievalEvaluationHarnessTest.
-tasks.register<Test>("evaluateCityLandmarksRetrieval") {
-    description = "Runs the retrieval-quality evaluation harness for the city-landmarks domain " +
+// comic-characters domain (issue #227/#228).
+registerEvalDomain(
+    name = "",
+    evaluateDescription = "Runs the retrieval-quality evaluation harness (Hit Rate, MRR, nDCG, Recall) " +
+        "against eval/corpus using Testcontainers (pgvector + Ollama). Not part of build/check.",
+    checkDescription = "Runs evaluateRetrieval, then fails if the result regresses beyond tolerance " +
+        "against eval/baseline/comic-characters.json (issue #228). Needs Docker.",
+    harnessTestClass = "io.opaa.eval.RetrievalEvaluationHarnessTest",
+    baselineTestClass = "io.opaa.eval.BaselineRegressionTest",
+)
+
+// city-landmarks domain (issue #234): second domain, second test class pair — see
+// CityLandmarksRetrievalEvaluationHarnessTest's Javadoc for why it is a near-duplicate rather than
+// a parameterization of RetrievalEvaluationHarnessTest. No shared report file, no shared baseline,
+// no shared group with the comic-characters domain (issue #234 acceptance criterion "keine
+// gemeinsame overall-Gruppe mit Comichelden").
+registerEvalDomain(
+    name = "CityLandmarks",
+    evaluateDescription = "Runs the retrieval-quality evaluation harness for the city-landmarks domain " +
         "against eval/corpus/city-landmarks using Testcontainers (pgvector + Ollama). Not part " +
-        "of build/check."
-    group = "verification"
-    testClassesDirs = sourceSets["evalTest"].output.classesDirs
-    classpath = sourceSets["evalTest"].runtimeClasspath
-    useJUnitPlatform()
-    filter {
-        includeTestsMatching("*CityLandmarksRetrievalEvaluationHarnessTest")
-    }
-    outputs.upToDateWhen { false }
-    jvmArgs("-XX:+EnableDynamicAgentLoading")
-    systemProperty("file.encoding", "UTF-8")
-    testLogging {
-        events("passed", "skipped", "failed", "standard_out")
-        showStandardStreams = true
-    }
-}
+        "of build/check.",
+    checkDescription = "Runs evaluateCityLandmarksRetrieval, then fails if the result regresses " +
+        "beyond tolerance against eval/baseline/city-landmarks.json (issue #234). Needs Docker.",
+    harnessTestClass = "io.opaa.eval.CityLandmarksRetrievalEvaluationHarnessTest",
+    baselineTestClass = "io.opaa.eval.CityLandmarksBaselineRegressionTest",
+)
 
 // Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
 // CorpusManifest, BaselineComparator — see their Javadoc). Lives in the evalTest source set (not
@@ -173,56 +207,6 @@ tasks.register<Test>("openAiIntegrationTest") {
     // later keyed run without ever contacting OpenAI. Same pattern as evaluateRetrieval.
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }
-}
-
-// Compares the report produced by evaluateRetrieval against the committed baseline
-// (eval/baseline/comic-characters.json, issue #228). Depends on evaluateRetrieval so a single
-// `./gradlew checkRetrievalBaseline` invocation (as used by the nightly/manual/label-triggered CI
-// job in .github/workflows/retrieval-regression.yml) runs the full Docker-requiring harness and
-// then the baseline comparison, in order. Not part of `check`/`build`/`evalUnitTest` — same
-// rationale as `evaluateRetrieval` itself.
-tasks.register<Test>("checkRetrievalBaseline") {
-    description = "Runs evaluateRetrieval, then fails if the result regresses beyond tolerance " +
-        "against eval/baseline/comic-characters.json (issue #228). Needs Docker."
-    group = "verification"
-    dependsOn("evaluateRetrieval")
-    testClassesDirs = sourceSets["evalTest"].output.classesDirs
-    classpath = sourceSets["evalTest"].runtimeClasspath
-    useJUnitPlatform()
-    outputs.upToDateWhen { false }
-    filter {
-        // Exact class name, not "*BaselineRegressionTest": that wildcard would also match
-        // "CityLandmarksBaselineRegressionTest" (issue #234) and run the wrong domain's baseline
-        // check inside this comic-characters-only task.
-        includeTestsMatching("io.opaa.eval.BaselineRegressionTest")
-    }
-    testLogging {
-        events("passed", "skipped", "failed", "standard_out")
-        showStandardStreams = true
-    }
-}
-
-// city-landmarks counterpart of checkRetrievalBaseline (issue #234): compares the report
-// produced by evaluateCityLandmarksRetrieval against eval/baseline/city-landmarks.json. Entirely
-// separate from checkRetrievalBaseline/comic-characters — no shared report file, no shared
-// baseline, no shared group (issue #234 acceptance criterion "keine gemeinsame overall-Gruppe mit
-// Comichelden").
-tasks.register<Test>("checkCityLandmarksRetrievalBaseline") {
-    description = "Runs evaluateCityLandmarksRetrieval, then fails if the result regresses " +
-        "beyond tolerance against eval/baseline/city-landmarks.json (issue #234). Needs Docker."
-    group = "verification"
-    dependsOn("evaluateCityLandmarksRetrieval")
-    testClassesDirs = sourceSets["evalTest"].output.classesDirs
-    classpath = sourceSets["evalTest"].runtimeClasspath
-    useJUnitPlatform()
-    outputs.upToDateWhen { false }
-    filter {
-        includeTestsMatching("*CityLandmarksBaselineRegressionTest")
-    }
-    testLogging {
-        events("passed", "skipped", "failed", "standard_out")
-        showStandardStreams = true
-    }
 }
 
 dependencyManagement {
@@ -392,18 +376,27 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
 }
 
 tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerate") {
-    // Local copy inside the configure block on purpose: the doLast action must not reference
+    // Local copies inside the configure block on purpose: the doLast action must not reference
     // script-level members (layout, file(...), top-level vals — those are fields of the script
     // class), or the closure drags the whole build script into the configuration cache, which
     // Gradle rejects ("cannot serialize Gradle script object references").
     val generatedDtoDir = project.layout.buildDirectory.dir("generated/openapi/src/main/java/io/opaa/api/dto")
+    // Files to remove are derived from typeMappings (issue #835) instead of a hand-maintained
+    // list: the generator still emits a model file for every mapped type, named after the
+    // *mapped* Java type, not the OpenAPI schema name. For most entries the two coincide (e.g.
+    // "SpaceRole" -> "SpaceRole"); the one exception is "AuditActorKind" -> "ActorKind", where the
+    // generated (and thus deleted) file is "ActorKind.java", not "AuditActorKind.java" — using the
+    // mapped value here handles that case for free. "DateTime" -> "Instant" is excluded: it is a
+    // scalar substitution, not a domain enum, and names no generated model file. Adding a new
+    // domain enum therefore only needs an entry in typeMappings/importMappings; this list follows
+    // automatically.
+    val generatedEnumFileNames =
+        typeMappings.get().filterKeys { it != "DateTime" }.values.map { "$it.java" }
     doLast {
         // Remove generated enum files that are mapped to existing domain enums via typeMappings.
         // The generator still creates these files even with typeMappings configured.
         val generatedDir = generatedDtoDir.get().asFile
-        listOf("SpaceRole.java", "SpaceKind.java", "SpaceVisibility.java", "SystemRole.java", "GroupKind.java", "DirectorySyncOutcome.java", "LibraryOwnerType.java", "LibraryVisibility.java", "DocumentStatus.java", "DocumentSourceType.java", "AssetRole.java", "PermissionSubjectType.java", "ActorKind.java", "AuditSubjectKind.java", "AuditOutcome.java", "AuditObjectType.java", "AuditEventType.java", "AuditIncidentScopePurpose.java", "AuditIncidentScopeStatus.java", "ChatStatus.java", "ChatRole.java", "ColorScheme.java", "NotificationType.java").forEach { fileName ->
-            File(generatedDir, fileName).delete()
-        }
+        generatedEnumFileNames.forEach { fileName -> File(generatedDir, fileName).delete() }
     }
 }
 
