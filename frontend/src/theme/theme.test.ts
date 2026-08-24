@@ -12,6 +12,7 @@ import {
   semanticColors,
   white,
 } from './tokens'
+import { contrastRatio, TEXT_CONTRAST_MINIMUM } from '../utils/contrast'
 
 describe('tokens', () => {
   test('light and dark schemes define the identical set of roles', () => {
@@ -26,6 +27,26 @@ describe('tokens', () => {
 
   test('the default radius is the 10px squircle from the guidelines', () => {
     expect(radius.md).toBe(10)
+  })
+
+  // #725: the Wissensbibliotheken table's column head ("Stand") and secondary description text
+  // both render in fg-3, which axe-core flagged at 3.68:1 against white once the E2E suite
+  // started seeding a real row (test(e2e) #233 - before that the table was always empty and the
+  // violation never rendered). fg-3 is gray[400] with 3.69/3.47/3.28:1 against bg1/bg2/bg3
+  // respectively - all below the 4.5:1 WCAG AA floor; reassigning it to gray[500] fixes every
+  // surface that uses the role, not just this one table.
+  test('fg-3 meets the 4.5:1 text contrast floor against every light-scheme surface (#725)', () => {
+    const backgrounds: Array<[string, string]> = [
+      ['bg1', lightRoles.bg1],
+      ['bg2', lightRoles.bg2],
+      ['bg3', lightRoles.bg3],
+    ]
+
+    for (const [label, background] of backgrounds) {
+      const ratio = contrastRatio(lightRoles.fg3, background)
+      expect(ratio, `fg-3 on ${label}`).not.toBeNull()
+      expect(ratio, `fg-3 on ${label}`).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+    }
   })
 })
 

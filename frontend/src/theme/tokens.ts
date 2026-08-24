@@ -105,7 +105,11 @@ export const lightRoles: SchemeRoles = {
   bg3: smoke,
   fg1: navy[800],
   fg2: gray[600],
-  fg3: gray[400],
+  // gray[500], not gray[400] (#725): gray[400] only reaches 3.68:1 against white, below the
+  // 4.5:1 WCAG AA floor for the fg-3 role (tertiary text, table heads, metadata - see
+  // frontend/src/theme/theme.test.ts). gray[500] reaches 6.08:1 and keeps the gray scale itself
+  // at its original, ordered values.
+  fg3: gray[500],
   accent: blue[500],
   accentFg: white,
   accentHover: blue[600],

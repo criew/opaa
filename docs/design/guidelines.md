@@ -89,11 +89,17 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 | `bg-3` | gedämpfte Fläche (Eingabefeld, Tabellenkopf) | Smoke `#EEF2F7` | Carbon-850 `#1F1F1F` |
 | `fg-1` | Primärtext | Navy `#012142` | `#DEDEDE` |
 | `fg-2` | Sekundärtext | Grau-600 `#3B4958` | `#9E9E9E` |
-| `fg-3` | Tertiärtext, Metadaten | Grau-400 `#778797` | `#8A8A8A` |
+| `fg-3` | Tertiärtext, Metadaten | Grau-500 `#556473` | `#8A8A8A` |
 | `accent` | Handlung, Bezug, aktiver Zustand | Blau-500 `#1292EE` | Blau-500 `#1292EE` |
 | `accent-fg` | Text auf Akzentfläche | Weiß | Weiß |
 | `border` | Standardrahmen | Grau-100 `#E6EBF1` | Carbon-800 `#252525` |
 | `border-strong` | betonter Rahmen (Eingaben, Tabellen) | Grau-200 `#CBD4DF` | Carbon-700 `#333333` |
+
+`fg-3` im hellen Schema ist Grau-500, nicht Grau-400 (#725): Grau-400 (`#778797`) erreicht gegen
+Weiß nur 3,68:1 — unter der 4,5:1-Anforderung für Fließtext (2.4) — und lag als Tertiärtext in
+der Wissensbibliotheken-Tabelle (Spaltenkopf, Metadaten) sichtbar unter der Schwelle. Grau-500
+erreicht 6,08:1 gegen Weiß und bleibt auch gegen `bg-2`/`bg-3` klar über 4,5:1; die Grau-Skala
+selbst (2.1) bleibt dabei unverändert.
 
 Die Seitenleiste im hellen Schema verwendet ein eigenes Rollenset auf Navy-Basis
 (`navyRoles`: Flächen Navy-800/700/600, Text Weiß/`#B9C6D4`/`#7A8BA0`, Ränder
