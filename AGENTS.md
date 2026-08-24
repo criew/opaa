@@ -94,23 +94,29 @@ pnpm test                               # Stack via Docker Compose starten, Suit
 
 ### Code-Kommentare
 
-Ein Kommentar beschreibt den Verhaltensvertrag oder eine nicht offensichtliche Invariante — in 1–5 Zeilen. Entstehungsgeschichte (Review-Runden, verworfene Alternativen, Fehlversuche) gehört in Commit-Nachrichten und PR-Beschreibungen, nicht in den Code; sie ist dort über `git log`/`git blame` jederzeit auffindbar. Eine Issue-/PR-Referenz im Code ist nur zulässig, wenn sie eine aktive Einschränkung markiert (z. B. „Workaround bis Upstream-Fix in #NNN"). Gilt projektweit — Javadoc, TSDoc, Inline-Kommentare in `.java`/`.ts`/`.tsx`, sowie `application.yml`, `build.gradle.kts`, `vite.config.ts` und Workflow-Dateien.
+Ein Kommentar beschreibt den Verhaltensvertrag oder eine nicht offensichtliche Invariante — in 1–5 Zeilen. Entstehungsgeschichte (Review-Runden, verworfene Alternativen, Fehlversuche) gehört in Commit-Nachrichten und PR-Beschreibungen, nicht in den Code; sie ist dort über `git log`/`git blame` jederzeit auffindbar. Eine Issue-/PR-Referenz im Code ist nur zulässig, wenn sie eine aktive Einschränkung markiert, zum Beispiel ein Workaround bis zu einem Upstream-Fix, ein `@Disabled`/`.skip` mit Ticketverweis, oder eine Deprecation mit dem Ablösungs-Issue. Gilt projektweit — Javadoc, TSDoc, Inline-Kommentare in `.java`/`.ts`/`.tsx`, sowie `application.yml`, `build.gradle.kts`, `vite.config.ts` und Workflow-Dateien. Nicht betroffen: Markdown-Dokumentation und ADRs — dort ist die Abwägung (verworfene Alternativen, Entscheidungshistorie) Zweck des Dokuments.
+
+In Tests darf ein Kommentar zusätzlich die abgesicherte Regression benennen (z. B. `// regression guard for #307: ...`), sofern er die Invariante nennt und nicht den Review-Verlauf — sonst ist die Regel genau beim größten Bestand nicht durchsetzbar.
 
 **Negativbeispiel** (Nacherzählung statt Vertrag):
 
 ```java
-// PR #612 review, finding 3: ursprünglich wurde hier direkt der Repository-Call
-// verwendet, das führte aber zu einem N+1-Problem, siehe Diskussion in #598.
-// Nach Rücksprache mit dem Reviewer wurde stattdessen auf den Cache umgestellt,
-// der in #545 eingeführt wurde. Vorsicht: #501 hatte hier bereits einen
-// ähnlichen Bug, der Cache muss bei jedem Schreibpfad invalidiert werden.
+// PR #612 review, finding 3: originally this called the repository directly,
+// which caused an N+1 problem, see discussion in #598.
+// After a talk with the reviewer we switched to the cache introduced in #545.
+// Careful: #501 already had a similar bug here — the cache must be invalidated
+// on every write path, and #559 nearly reverted this fix because someone
+// missed one of the three write paths. Do not remove this without re-reading
+// the whole thread in #598 first.
 ```
 
 **Positivbeispiel** (Vertrag/Invariante):
 
 ```java
-// Gecachte Werte werden bei jedem Schreibpfad in {@link SpaceService} invalidiert;
-// ein Cache-Hit ist daher immer konsistent mit dem zuletzt committeten Zustand.
+/**
+ * Cached values are invalidated on every write path in {@link SpaceService};
+ * a cache hit is therefore always consistent with the last committed state.
+ */
 ```
 
 ### Commit-Nachrichten
