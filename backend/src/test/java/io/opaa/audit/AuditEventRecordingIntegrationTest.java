@@ -4,8 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.dto.AssetGrantRequest;
-import io.opaa.api.dto.GroupRequest;
-import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
@@ -14,10 +12,12 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.UserService;
 import io.opaa.group.Group;
+import io.opaa.group.GroupCreation;
 import io.opaa.group.GroupKind;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
+import io.opaa.group.GroupUpdate;
 import io.opaa.group.PermissionSubjectType;
 import io.opaa.group.sync.DirectoryClient;
 import io.opaa.group.sync.DirectoryGroup;
@@ -433,9 +433,8 @@ class AuditEventRecordingIntegrationTest {
   @Test
   void groupLifecycleAndMembershipChangesEachProduceAnAuditEntry() {
     UUID admin = createUser();
-    var created =
-        groupService.createGroup(new GroupRequest("Referat 5").description("Test"), admin);
-    UUID groupId = created.getId();
+    var created = groupService.createGroup(new GroupCreation("Referat 5", "Test"), admin);
+    UUID groupId = created.group().getId();
     createdGroupIds.add(groupId);
 
     assertThat(
@@ -447,7 +446,7 @@ class AuditEventRecordingIntegrationTest {
     // #392 code review, nit 5: updateGroup's own audit write had no coverage against the real
     // Liquibase schema - this remains the only place that exercises this specific event, even
     // though GroupServiceIntegrationTest (#308) no longer mocks AuditEventRecorder either.
-    groupService.updateGroup(groupId, new GroupUpdateRequest("Referat 5 neu"), admin);
+    groupService.updateGroup(groupId, new GroupUpdate("Referat 5 neu", null), admin);
     List<AuditLogEntry> changed =
         entriesFor(AuditObjectType.GROUP, groupId).stream()
             .filter(e -> e.getEventType() == AuditEventType.GROUP_CHANGED)

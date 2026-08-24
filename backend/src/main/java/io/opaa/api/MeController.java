@@ -3,6 +3,7 @@ package io.opaa.api;
 import io.opaa.api.dto.GroupListResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.group.Group;
 import io.opaa.group.GroupService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -37,7 +38,8 @@ public class MeController {
 
   @GetMapping("/groups")
   public List<GroupListResponse> myGroups(@AuthenticationPrincipal Jwt jwt) {
-    return groupService.listMyGroups(currentUser(jwt).getId());
+    List<Group> groups = groupService.listMyGroups(currentUser(jwt).getId());
+    return GroupResponseMapper.toListResponses(groups);
   }
 
   private User currentUser(Jwt jwt) {

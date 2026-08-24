@@ -11,6 +11,21 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
 
   List<Group> findByOrganizationId(UUID organizationId);
 
+  /**
+   * Same as {@link #findByOrganizationId}, but with memberships eagerly fetched - required whenever
+   * the caller reads {@code getMemberships()} outside the read transaction (e.g. to compute {@code
+   * memberCount} in a response mapper called from the controller, with {@code open-in-view:
+   * false}); otherwise a {@code LazyInitializationException} surfaces as an unhandled 500.
+   */
+  @Query(
+      "select distinct g from Group g left join fetch g.memberships "
+          + "where g.organizationId = :organizationId")
+  List<Group> findByOrganizationIdWithMemberships(@Param("organizationId") UUID organizationId);
+
+  /** Same fetch-join reasoning as {@link #findByOrganizationIdWithMemberships}, by id set. */
+  @Query("select distinct g from Group g left join fetch g.memberships where g.id in :groupIds")
+  List<Group> findAllByIdWithMemberships(@Param("groupIds") Iterable<UUID> groupIds);
+
   @Query("select distinct g from Group g left join fetch g.memberships where g.id = :groupId")
   Optional<Group> findByIdWithMemberships(@Param("groupId") UUID groupId);
 
