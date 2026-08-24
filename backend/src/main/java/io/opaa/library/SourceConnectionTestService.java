@@ -1,9 +1,7 @@
 package io.opaa.library;
 
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
+import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
-import io.opaa.common.UnauthorizedException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.AutoindexCrawlerService;
 import io.opaa.indexing.DocumentService;
@@ -111,7 +109,6 @@ public class SourceConnectionTestService {
   private final AutoindexCrawlerService crawlerService;
   private final RssFeedParser rssFeedParser;
   private final FilesystemPathAllowlist filesystemAllowlist;
-  private final UserRepository userRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryAccessService libraryAccessService;
   private final String rssUserAgent;
@@ -125,7 +122,6 @@ public class SourceConnectionTestService {
       AutoindexCrawlerService crawlerService,
       RssFeedParser rssFeedParser,
       FilesystemPathAllowlist filesystemAllowlist,
-      UserRepository userRepository,
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       IndexingProperties properties,
@@ -134,7 +130,6 @@ public class SourceConnectionTestService {
     this.crawlerService = crawlerService;
     this.rssFeedParser = rssFeedParser;
     this.filesystemAllowlist = filesystemAllowlist;
-    this.userRepository = userRepository;
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
     this.rssUserAgent = properties.rss().userAgent();
@@ -151,30 +146,23 @@ public class SourceConnectionTestService {
    * set.
    */
   public SourceConnectionTestResult test(SourceConnectionTest request) {
-    return test(request, null, false);
+    return test(request, null);
   }
 
   /**
-   * @param currentUserId the caller, only consulted when {@code request.libraryId()} is set (#544)
-   *     - a standalone test (no libraryId) keeps #514's original permission bar, checked by the
-   *     controller before this method is even called.
-   * @param systemAdmin whether the caller holds {@code SystemRole.SYSTEM_ADMIN}, also only
-   *     consulted once {@code request.libraryId()} is set (#615 review, finding 3) - {@code
-   *     LibraryController} passes the same value here it already passes to {@code
-   *     KnowledgeLibraryService#updateLibrary} for the very save this test precedes, so a system
-   *     admin who can save a library's quellkonfiguration without a grant can test it beforehand
-   *     too, instead of the test alone answering 404.
+   * @param caller the caller, only consulted when {@code request.libraryId()} is set (#544) - a
+   *     standalone test (no libraryId) keeps #514's original permission bar, checked by the
+   *     controller before this method is even called, so {@code caller} may be {@code null} in that
+   *     case (see {@link #test(SourceConnectionTest)}).
    */
-  public SourceConnectionTestResult test(
-      SourceConnectionTest request, UUID currentUserId, boolean systemAdmin) {
+  public SourceConnectionTestResult test(SourceConnectionTest request, CurrentUser caller) {
     DocumentSourceType sourceType = request.sourceType();
     if (sourceType == null) {
       throw new ValidationException("sourceType ist erforderlich");
     }
     SourceConnectionTest effectiveRequest = request;
     if (request.libraryId() != null) {
-      KnowledgeLibrary library =
-          requireManagedLibrary(request.libraryId(), currentUserId, systemAdmin);
+      KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
       if (library.getSourceType() != sourceType) {
         throw new ValidationException(
             "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
@@ -206,18 +194,14 @@ public class SourceConnectionTestService {
    * indexing runs, ADR-0018 Entscheidung 2) would make a system admin's own "Verbindung testen"
    * click fail with 404 right before a save that would have succeeded.
    */
-  private KnowledgeLibrary requireManagedLibrary(
-      UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    User currentUser =
-        userRepository
-            .findById(currentUserId)
-            .orElseThrow(() -> new UnauthorizedException("Benutzer nicht gefunden"));
+  private KnowledgeLibrary requireManagedLibrary(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library =
         libraryRepository
             .findById(libraryId)
-            .filter(l -> l.getOrganizationId().equals(currentUser.getOrganizationId()))
+            .filter(l -> l.getOrganizationId().equals(caller.organizationId()))
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
-    libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.MANAGER);
+    libraryAccessService.requireRole(
+        library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     return library;
   }
 

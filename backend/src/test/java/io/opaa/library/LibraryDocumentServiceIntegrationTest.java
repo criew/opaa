@@ -7,6 +7,8 @@ import static org.awaitility.Awaitility.await;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -153,13 +155,34 @@ class LibraryDocumentServiceIntegrationTest {
     viewer = userRepository.save(viewer);
 
     var libraryRequest = libraryCreation("Bibliothek", DocumentSourceType.UPLOAD).build();
-    var library = libraryService.createLibrary(libraryRequest, editor.getId());
+    var library = libraryService.createLibrary(libraryRequest, currentUserOf(editor));
     libraryId = library.library().getId();
 
     var grantRequest =
         new AssetGrantUpsert(
             io.opaa.group.PermissionSubjectType.USER, viewer.getId(), AssetRole.VIEWER);
-    grantService.upsertGrant(libraryId, grantRequest, editor.getId(), false);
+    grantService.upsertGrant(libraryId, grantRequest, currentUserOf(editor, false));
+  }
+
+  /** {@link CurrentUser} snapshot for a {@link User} entity this test already loaded/created. */
+  private CurrentUser currentUserOf(User user) {
+    return currentUserOf(user, false);
+  }
+
+  private CurrentUser currentUserOf(User user, boolean systemAdmin) {
+    return CurrentUser.of(
+        user.getId(),
+        user.getOrganizationId(),
+        systemAdmin ? SystemRole.SYSTEM_ADMIN : user.getSystemRole(),
+        user.getDisplayName());
+  }
+
+  private CurrentUser currentUserOf(UUID userId) {
+    return currentUserOf(userId, false);
+  }
+
+  private CurrentUser currentUserOf(UUID userId, boolean systemAdmin) {
+    return currentUserOf(userRepository.findById(userId).orElseThrow(), systemAdmin);
   }
 
   @AfterEach
@@ -191,8 +214,7 @@ class LibraryDocumentServiceIntegrationTest {
             libraryId,
             textFile("dienstanweisung.txt", "Diese Dienstanweisung regelt den Publikumsverkehr."),
             null,
-            editor.getId(),
-            false);
+            currentUserOf(editor, false));
 
     // #434: uploadDocument itself only ever returns PENDING - parsing/embedding still run on
     // uploadTaskExecutor after this call has already returned.
@@ -224,7 +246,7 @@ class LibraryDocumentServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 documentService.uploadDocument(
-                    libraryId, textFile("x.txt", "content"), null, viewer.getId(), false))
+                    libraryId, textFile("x.txt", "content"), null, currentUserOf(viewer, false)))
         .isInstanceOf(AccessDeniedException.class);
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
   }
@@ -236,7 +258,8 @@ class LibraryDocumentServiceIntegrationTest {
 
     assertThatThrownBy(
             () ->
-                documentService.uploadDocument(libraryId, unsupported, null, editor.getId(), false))
+                documentService.uploadDocument(
+                    libraryId, unsupported, null, currentUserOf(editor, false)))
         .isInstanceOf(ValidationException.class);
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
     assertNoFilesStored();
@@ -247,7 +270,9 @@ class LibraryDocumentServiceIntegrationTest {
     MultipartFile tooBig = textFile("big.txt", "x".repeat(2000));
 
     assertThatThrownBy(
-            () -> documentService.uploadDocument(libraryId, tooBig, null, editor.getId(), false))
+            () ->
+                documentService.uploadDocument(
+                    libraryId, tooBig, null, currentUserOf(editor, false)))
         .isInstanceOf(PayloadTooLargeException.class);
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
     assertNoFilesStored();
@@ -257,26 +282,25 @@ class LibraryDocumentServiceIntegrationTest {
   void theSameFileTwiceInTheSameLibraryIsRejectedButADifferentLibraryIsAllowed() {
     String content = "identical content";
     documentService.uploadDocument(
-        libraryId, textFile("first.txt", content), null, editor.getId(), false);
+        libraryId, textFile("first.txt", content), null, currentUserOf(editor, false));
 
     assertThatThrownBy(
             () ->
                 documentService.uploadDocument(
-                    libraryId, textFile("second.txt", content), null, editor.getId(), false))
+                    libraryId, textFile("second.txt", content), null, currentUserOf(editor, false)))
         .isInstanceOf(ConflictException.class);
     assertThat(documentRepository.findByLibraryId(libraryId)).hasSize(1);
 
     var secondLibraryRequest =
         libraryCreation("Zweite Bibliothek", DocumentSourceType.UPLOAD).build();
-    var secondLibrary = libraryService.createLibrary(secondLibraryRequest, editor.getId());
+    var secondLibrary = libraryService.createLibrary(secondLibraryRequest, currentUserOf(editor));
     try {
       LibraryDocumentEntry response =
           documentService.uploadDocument(
               secondLibrary.library().getId(),
               textFile("third.txt", content),
               null,
-              editor.getId(),
-              false);
+              currentUserOf(editor, false));
       awaitDocumentStatus(response.document().getId(), DocumentStatus.INDEXED);
       assertThat(documentRepository.findByLibraryId(secondLibrary.library().getId())).hasSize(1);
     } finally {
@@ -291,7 +315,10 @@ class LibraryDocumentServiceIntegrationTest {
   void deletingRemovesTheRowTheChunksAndTheFile() {
     LibraryDocumentEntry uploaded =
         documentService.uploadDocument(
-            libraryId, textFile("to-delete.txt", "content to remove"), null, editor.getId(), false);
+            libraryId,
+            textFile("to-delete.txt", "content to remove"),
+            null,
+            currentUserOf(editor, false));
     Document savedDoc = awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
     Path storedFile = Path.of(savedDoc.getFilePath());
     assertThat(Files.exists(storedFile)).isTrue();
@@ -303,7 +330,8 @@ class LibraryDocumentServiceIntegrationTest {
             uploaded.document().getId().toString());
     assertThat(chunksBefore).isGreaterThan(0);
 
-    documentService.deleteDocument(libraryId, uploaded.document().getId(), editor.getId(), false);
+    documentService.deleteDocument(
+        libraryId, uploaded.document().getId(), currentUserOf(editor, false));
 
     assertThat(documentRepository.findById(uploaded.document().getId())).isEmpty();
     assertThat(Files.exists(storedFile)).isFalse();
@@ -319,12 +347,12 @@ class LibraryDocumentServiceIntegrationTest {
   void aViewerCannotDelete() {
     LibraryDocumentEntry uploaded =
         documentService.uploadDocument(
-            libraryId, textFile("protected.txt", "content"), null, editor.getId(), false);
+            libraryId, textFile("protected.txt", "content"), null, currentUserOf(editor, false));
 
     assertThatThrownBy(
             () ->
                 documentService.deleteDocument(
-                    libraryId, uploaded.document().getId(), viewer.getId(), false))
+                    libraryId, uploaded.document().getId(), currentUserOf(viewer, false)))
         .isInstanceOf(AccessDeniedException.class);
     assertThat(documentRepository.findById(uploaded.document().getId())).isPresent();
   }
@@ -340,7 +368,10 @@ class LibraryDocumentServiceIntegrationTest {
       assertThatThrownBy(
               () ->
                   documentService.uploadDocument(
-                      libraryId, textFile("x.txt", "content"), null, strangerId, false))
+                      libraryId,
+                      textFile("x.txt", "content"),
+                      null,
+                      currentUserOf(strangerId, false)))
           .isInstanceOf(NotFoundException.class);
     } finally {
       userRepository.deleteById(stranger.getId());
@@ -368,7 +399,7 @@ class LibraryDocumentServiceIntegrationTest {
     crawlDoc.setOrganizationId(organizationId);
     crawlDoc = documentRepository.save(crawlDoc);
 
-    documentService.deleteDocument(libraryId, crawlDoc.getId(), editor.getId(), false);
+    documentService.deleteDocument(libraryId, crawlDoc.getId(), currentUserOf(editor, false));
 
     assertThat(documentRepository.findById(crawlDoc.getId())).isEmpty();
     assertThat(Files.exists(crawledFile))
@@ -400,8 +431,7 @@ class LibraryDocumentServiceIntegrationTest {
                       textFile(
                           "racer-" + Thread.currentThread().getId() + ".txt", identicalContent),
                       null,
-                      editor.getId(),
-                      false);
+                      currentUserOf(editor, false));
               return response.document().getId();
             } catch (ConflictException e) {
               return null;
@@ -445,7 +475,8 @@ class LibraryDocumentServiceIntegrationTest {
         libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
             .sourcePath("/data/documents")
             .build();
-    var connectorLibrary = libraryService.createLibrary(connectorLibraryRequest, editor.getId());
+    var connectorLibrary =
+        libraryService.createLibrary(connectorLibraryRequest, currentUserOf(editor));
     try {
       assertThatThrownBy(
               () ->
@@ -453,8 +484,7 @@ class LibraryDocumentServiceIntegrationTest {
                       connectorLibrary.library().getId(),
                       textFile("x.txt", "content"),
                       null,
-                      editor.getId(),
-                      false))
+                      currentUserOf(editor, false)))
           .isInstanceOf(ConflictException.class);
       assertThat(documentRepository.findByLibraryId(connectorLibrary.library().getId())).isEmpty();
     } finally {
@@ -472,7 +502,8 @@ class LibraryDocumentServiceIntegrationTest {
         libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
             .sourcePath("/data/documents")
             .build();
-    var connectorLibrary = libraryService.createLibrary(connectorLibraryRequest, editor.getId());
+    var connectorLibrary =
+        libraryService.createLibrary(connectorLibraryRequest, currentUserOf(editor));
 
     Document crawlDoc =
         new Document(
@@ -503,7 +534,7 @@ class LibraryDocumentServiceIntegrationTest {
             connectorLibrary.library().getId().toString());
     assertThat(chunksBefore).isEqualTo(1);
 
-    libraryService.deleteLibrary(connectorLibrary.library().getId(), editor.getId(), false);
+    libraryService.deleteLibrary(connectorLibrary.library().getId(), currentUserOf(editor));
 
     assertThat(libraryRepository.findById(connectorLibrary.library().getId())).isEmpty();
     assertThat(documentRepository.findById(crawlDoc.getId())).isEmpty();
@@ -532,8 +563,7 @@ class LibraryDocumentServiceIntegrationTest {
             libraryId,
             textFile("../../../../etc/evil.txt", "traversal content"),
             null,
-            editor.getId(),
-            false);
+            currentUserOf(editor, false));
 
     Document saved = documentRepository.findById(response.document().getId()).orElseThrow();
     Path storedFile = Path.of(saved.getFilePath()).toAbsolutePath().normalize();
@@ -551,19 +581,18 @@ class LibraryDocumentServiceIntegrationTest {
             libraryId,
             textFile("bescheid.txt", "Originaltext des Bescheids."),
             null,
-            editor.getId(),
-            false);
+            currentUserOf(editor, false));
     Document saved = awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
 
     DocumentContent contentForEditor =
-        documentService.loadContent(uploaded.document().getId(), editor.getId(), false);
+        documentService.loadContent(uploaded.document().getId(), currentUserOf(editor, false));
     assertThat(contentForEditor.path()).isEqualTo(Path.of(saved.getFilePath()));
     assertThat(contentForEditor.fileName()).isEqualTo("bescheid.txt");
 
     // VIEWER is the acceptance criteria's floor - the same role listing/reading the library
     // configuration already requires, one below the EDITOR upload/delete needs.
     DocumentContent contentForViewer =
-        documentService.loadContent(uploaded.document().getId(), viewer.getId(), false);
+        documentService.loadContent(uploaded.document().getId(), currentUserOf(viewer, false));
     assertThat(contentForViewer.path()).isEqualTo(Path.of(saved.getFilePath()));
   }
 
@@ -571,7 +600,7 @@ class LibraryDocumentServiceIntegrationTest {
   void loadContentRefusesAUserWithNoGrantAtAllWith404NotForbidden() {
     LibraryDocumentEntry uploaded =
         documentService.uploadDocument(
-            libraryId, textFile("geheim.txt", "content"), null, editor.getId(), false);
+            libraryId, textFile("geheim.txt", "content"), null, currentUserOf(editor, false));
     awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
 
     User stranger = new User("content-stranger-subject", "issuer", "stranger2@example.com", "S");
@@ -581,7 +610,8 @@ class LibraryDocumentServiceIntegrationTest {
     try {
       var strangerId = stranger.getId();
       var documentId = uploaded.document().getId();
-      assertThatThrownBy(() -> documentService.loadContent(documentId, strangerId, false))
+      assertThatThrownBy(
+              () -> documentService.loadContent(documentId, currentUserOf(strangerId, false)))
           .isInstanceOf(NotFoundException.class);
     } finally {
       userRepository.deleteById(stranger.getId());
@@ -601,7 +631,7 @@ class LibraryDocumentServiceIntegrationTest {
     remoteDoc = documentRepository.save(remoteDoc);
     var documentId = remoteDoc.getId();
 
-    assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+    assertThatThrownBy(() -> documentService.loadContent(documentId, currentUserOf(editor, false)))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
   }
@@ -685,7 +715,7 @@ class LibraryDocumentServiceIntegrationTest {
       remoteDoc = documentRepository.save(remoteDoc);
 
       DocumentContent content =
-          documentService.loadContent(remoteDoc.getId(), editor.getId(), false);
+          documentService.loadContent(remoteDoc.getId(), currentUserOf(editor, false));
       try {
         assertThat(content.isStreamed()).isTrue();
         assertThat(content.contentType()).isEqualTo("application/pdf");
@@ -729,7 +759,7 @@ class LibraryDocumentServiceIntegrationTest {
       remoteDoc = documentRepository.save(remoteDoc);
 
       DocumentContent content =
-          documentService.loadContent(remoteDoc.getId(), editor.getId(), false);
+          documentService.loadContent(remoteDoc.getId(), currentUserOf(editor, false));
       try {
         String expected =
             "Basic "
@@ -769,7 +799,8 @@ class LibraryDocumentServiceIntegrationTest {
       remoteDoc.setOrganizationId(organizationId);
       var documentId = documentRepository.save(remoteDoc).getId();
 
-      assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+      assertThatThrownBy(
+              () -> documentService.loadContent(documentId, currentUserOf(editor, false)))
           .isInstanceOf(NotFoundException.class)
           .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
     } finally {
@@ -840,7 +871,8 @@ class LibraryDocumentServiceIntegrationTest {
       remoteDoc.setOrganizationId(organizationId);
       var documentId = documentRepository.save(remoteDoc).getId();
 
-      assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+      assertThatThrownBy(
+              () -> documentService.loadContent(documentId, currentUserOf(editor, false)))
           .isInstanceOf(NotFoundException.class)
           .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
       assertThat(requestsReceived.get()).isZero();
@@ -855,12 +887,12 @@ class LibraryDocumentServiceIntegrationTest {
   void loadContentAnswers404WhenTheFileHasBeenRemovedFromDisk() throws IOException {
     LibraryDocumentEntry uploaded =
         documentService.uploadDocument(
-            libraryId, textFile("verschwunden.txt", "content"), null, editor.getId(), false);
+            libraryId, textFile("verschwunden.txt", "content"), null, currentUserOf(editor, false));
     Document saved = awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
     Files.delete(Path.of(saved.getFilePath()));
 
     var documentId = uploaded.document().getId();
-    assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+    assertThatThrownBy(() -> documentService.loadContent(documentId, currentUserOf(editor, false)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -884,7 +916,7 @@ class LibraryDocumentServiceIntegrationTest {
     escapee = documentRepository.save(escapee);
     var documentId = escapee.getId();
 
-    assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+    assertThatThrownBy(() -> documentService.loadContent(documentId, currentUserOf(editor, false)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -898,7 +930,7 @@ class LibraryDocumentServiceIntegrationTest {
     // reach the grant check.
     LibraryDocumentEntry uploaded =
         documentService.uploadDocument(
-            libraryId, textFile("nur-fuer-uns.txt", "content"), null, editor.getId(), false);
+            libraryId, textFile("nur-fuer-uns.txt", "content"), null, currentUserOf(editor, false));
     awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
 
     UUID otherOrganizationId =
@@ -911,7 +943,8 @@ class LibraryDocumentServiceIntegrationTest {
     try {
       var strangerId = strangerFromAnotherOrg.getId();
       var documentId = uploaded.document().getId();
-      assertThatThrownBy(() -> documentService.loadContent(documentId, strangerId, false))
+      assertThatThrownBy(
+              () -> documentService.loadContent(documentId, currentUserOf(strangerId, false)))
           .isInstanceOf(NotFoundException.class);
     } finally {
       userRepository.deleteById(strangerFromAnotherOrg.getId());
@@ -982,7 +1015,8 @@ class LibraryDocumentServiceIntegrationTest {
       doc.setOrganizationId(organizationId);
       doc = documentRepository.save(doc);
 
-      DocumentContent content = documentService.loadContent(doc.getId(), editor.getId(), false);
+      DocumentContent content =
+          documentService.loadContent(doc.getId(), currentUserOf(editor, false));
 
       assertThat(content.path()).isEqualTo(sourceFile.toRealPath());
       assertThat(content.fileName()).isEqualTo("dienstanweisung.txt");
@@ -1023,7 +1057,8 @@ class LibraryDocumentServiceIntegrationTest {
       escapee = documentRepository.save(escapee);
       var documentId = escapee.getId();
 
-      assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+      assertThatThrownBy(
+              () -> documentService.loadContent(documentId, currentUserOf(editor, false)))
           .isInstanceOf(NotFoundException.class);
     } finally {
       documentRepository
@@ -1054,7 +1089,7 @@ class LibraryDocumentServiceIntegrationTest {
     doc = documentRepository.save(doc);
     var documentId = doc.getId();
 
-    assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
+    assertThatThrownBy(() -> documentService.loadContent(documentId, currentUserOf(editor, false)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -1099,7 +1134,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var firstPage =
         libraryService.listDocuments(
-            libraryId, editor.getId(), false, null, null, stableOrder(0, 2));
+            libraryId, currentUserOf(editor, false), null, null, stableOrder(0, 2));
     assertThat(firstPage.documents()).hasSize(2);
     assertThat(firstPage.page()).isZero();
     assertThat(firstPage.size()).isEqualTo(2);
@@ -1107,14 +1142,14 @@ class LibraryDocumentServiceIntegrationTest {
 
     var secondPage =
         libraryService.listDocuments(
-            libraryId, editor.getId(), false, null, null, stableOrder(1, 2));
+            libraryId, currentUserOf(editor, false), null, null, stableOrder(1, 2));
     assertThat(secondPage.documents()).hasSize(2);
     assertThat(secondPage.page()).isEqualTo(1);
     assertThat(secondPage.totalElements()).isEqualTo(5);
 
     var lastPage =
         libraryService.listDocuments(
-            libraryId, editor.getId(), false, null, null, stableOrder(2, 2));
+            libraryId, currentUserOf(editor, false), null, null, stableOrder(2, 2));
     assertThat(lastPage.documents()).hasSize(1);
 
     assertThat(
@@ -1142,7 +1177,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var result =
         libraryService.listDocuments(
-            libraryId, editor.getId(), false, "dienst", null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), "dienst", null, stableOrder(0, 20));
 
     assertThat(result.totalElements()).isEqualTo(2);
     assertThat(result.documents())
@@ -1164,14 +1199,14 @@ class LibraryDocumentServiceIntegrationTest {
 
     var percentResult =
         libraryService.listDocuments(
-            libraryId, editor.getId(), false, "100%", null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), "100%", null, stableOrder(0, 20));
     assertThat(percentResult.documents())
         .extracting(entry -> entry.document().getFileName())
         .containsExactly("100%-Regel.pdf");
 
     var underscoreResult =
         libraryService.listDocuments(
-            libraryId, editor.getId(), false, "akte_alt", null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), "akte_alt", null, stableOrder(0, 20));
     assertThat(underscoreResult.documents())
         .extracting(entry -> entry.document().getFileName())
         .containsExactly("akte_alt.pdf");
@@ -1184,7 +1219,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var result =
         libraryService.listDocuments(
-            libraryId, editor.getId(), false, "  ", null, PageRequest.of(0, 20));
+            libraryId, currentUserOf(editor, false), "  ", null, PageRequest.of(0, 20));
 
     assertThat(result.totalElements()).isEqualTo(2);
   }
@@ -1194,7 +1229,11 @@ class LibraryDocumentServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 libraryService.listDocuments(
-                    UUID.randomUUID(), editor.getId(), false, null, null, PageRequest.of(0, 20)))
+                    UUID.randomUUID(),
+                    currentUserOf(editor, false),
+                    null,
+                    null,
+                    PageRequest.of(0, 20)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -1210,7 +1249,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var result =
         libraryService.listDocuments(
-            libraryId, editor.getId(), false, null, null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), null, null, stableOrder(0, 20));
 
     // Only the root-level document - not the one inside Protokolle - mirrors ADR-0020's
     // documented, accepted behaviour change from "the whole bestand" to "the root" (#821 spec).
@@ -1242,7 +1281,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var result =
         libraryService.listDocuments(
-            libraryId, editor.getId(), false, null, null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), null, null, stableOrder(0, 20));
 
     assertThat(result.folders())
         .extracting(f -> f.folder().getName())
@@ -1260,7 +1299,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var result =
         libraryService.listDocuments(
-            libraryId, editor.getId(), false, null, protokolle.getId(), stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), null, protokolle.getId(), stableOrder(0, 20));
 
     assertThat(result.documents())
         .extracting(entry -> entry.document().getFileName())
@@ -1287,8 +1326,7 @@ class LibraryDocumentServiceIntegrationTest {
     var result =
         libraryService.listDocuments(
             libraryId,
-            editor.getId(),
-            false,
+            currentUserOf(editor, false),
             "dienstanweisung",
             jahr2026.getId(),
             stableOrder(0, 20));
@@ -1322,7 +1360,11 @@ class LibraryDocumentServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 libraryService.listDocuments(
-                    libraryId, editor.getId(), false, null, UUID.randomUUID(), stableOrder(0, 20)))
+                    libraryId,
+                    currentUserOf(editor, false),
+                    null,
+                    UUID.randomUUID(),
+                    stableOrder(0, 20)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -1337,8 +1379,7 @@ class LibraryDocumentServiceIntegrationTest {
             () ->
                 libraryService.listDocuments(
                     libraryId,
-                    editor.getId(),
-                    false,
+                    currentUserOf(editor, false),
                     "dienst",
                     UUID.randomUUID(),
                     stableOrder(0, 20)))
@@ -1349,7 +1390,7 @@ class LibraryDocumentServiceIntegrationTest {
   void listDocumentsWithAFolderFromAnotherLibraryAnswers404() {
     var otherLibraryRequest =
         libraryCreation("Andere Bibliothek", DocumentSourceType.UPLOAD).build();
-    var otherLibrary = libraryService.createLibrary(otherLibraryRequest, editor.getId());
+    var otherLibrary = libraryService.createLibrary(otherLibraryRequest, currentUserOf(editor));
     LibraryFolder foreignFolder =
         folderRepository.save(
             new LibraryFolder(otherLibrary.library().getId(), null, "Fremd", organizationId));
@@ -1358,8 +1399,7 @@ class LibraryDocumentServiceIntegrationTest {
             () ->
                 libraryService.listDocuments(
                     libraryId,
-                    editor.getId(),
-                    false,
+                    currentUserOf(editor, false),
                     null,
                     foreignFolder.getId(),
                     stableOrder(0, 20)))
@@ -1384,8 +1424,7 @@ class LibraryDocumentServiceIntegrationTest {
             libraryId,
             textFile("sitzung.txt", "Inhalt der Sitzung"),
             protokolle.getId(),
-            editor.getId(),
-            false);
+            currentUserOf(editor, false));
 
     assertThat(response.document().getFolderId()).isEqualTo(protokolle.getId());
     assertThat(response.folderPath()).isEqualTo("Protokolle");
@@ -1402,8 +1441,7 @@ class LibraryDocumentServiceIntegrationTest {
                     libraryId,
                     textFile("x.txt", "content"),
                     UUID.randomUUID(),
-                    editor.getId(),
-                    false))
+                    currentUserOf(editor, false)))
         .isInstanceOf(NotFoundException.class);
 
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
@@ -1413,7 +1451,7 @@ class LibraryDocumentServiceIntegrationTest {
   void uploadDocumentWithAFolderFromAnotherLibraryAnswers404() {
     var otherLibraryRequest =
         libraryCreation("Andere Bibliothek", DocumentSourceType.UPLOAD).build();
-    var otherLibrary = libraryService.createLibrary(otherLibraryRequest, editor.getId());
+    var otherLibrary = libraryService.createLibrary(otherLibraryRequest, currentUserOf(editor));
     LibraryFolder foreignFolder =
         folderRepository.save(
             new LibraryFolder(otherLibrary.library().getId(), null, "Fremd", organizationId));
@@ -1424,8 +1462,7 @@ class LibraryDocumentServiceIntegrationTest {
                     libraryId,
                     textFile("x.txt", "content"),
                     foreignFolder.getId(),
-                    editor.getId(),
-                    false))
+                    currentUserOf(editor, false)))
         .isInstanceOf(NotFoundException.class);
 
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
@@ -1446,8 +1483,7 @@ class LibraryDocumentServiceIntegrationTest {
             textFile("protokoll.txt", "Sitzungsprotokoll"),
             null,
             "Protokolle/2026",
-            editor.getId(),
-            false);
+            currentUserOf(editor, false));
 
     assertThat(response.folderPath()).isEqualTo("Protokolle/2026");
     Document saved = documentRepository.findById(response.document().getId()).orElseThrow();
@@ -1469,16 +1505,14 @@ class LibraryDocumentServiceIntegrationTest {
             textFile("erste-datei.txt", "erster Inhalt"),
             null,
             "Protokolle/2026",
-            editor.getId(),
-            false);
+            currentUserOf(editor, false));
     LibraryDocumentEntry second =
         documentService.uploadDocument(
             libraryId,
             textFile("zweite-datei.txt", "zweiter Inhalt"),
             null,
             "Protokolle/2026",
-            editor.getId(),
-            false);
+            currentUserOf(editor, false));
 
     Document firstDoc = documentRepository.findById(first.document().getId()).orElseThrow();
     Document secondDoc = documentRepository.findById(second.document().getId()).orElseThrow();
@@ -1498,8 +1532,7 @@ class LibraryDocumentServiceIntegrationTest {
             textFile("sitzung.txt", "Inhalt"),
             null,
             "Protokolle",
-            editor.getId(),
-            false);
+            currentUserOf(editor, false));
 
     Document saved = documentRepository.findById(response.document().getId()).orElseThrow();
     assertThat(saved.getFolderId()).isEqualTo(existing.getId());
@@ -1517,8 +1550,7 @@ class LibraryDocumentServiceIntegrationTest {
             textFile("dokument.txt", "Inhalt"),
             bestand.getId(),
             "Unterordner",
-            editor.getId(),
-            false);
+            currentUserOf(editor, false));
 
     Document saved = documentRepository.findById(response.document().getId()).orElseThrow();
     LibraryFolder leaf = folderRepository.findById(saved.getFolderId()).orElseThrow();
@@ -1535,8 +1567,7 @@ class LibraryDocumentServiceIntegrationTest {
                     textFile("x.txt", "content"),
                     null,
                     "Protokolle/../etc",
-                    editor.getId(),
-                    false))
+                    currentUserOf(editor, false)))
         .isInstanceOf(ValidationException.class);
 
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
@@ -1559,7 +1590,7 @@ class LibraryDocumentServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 documentService.uploadDocument(
-                    libraryId, unsupported, null, "Protokolle/2026", editor.getId(), false))
+                    libraryId, unsupported, null, "Protokolle/2026", currentUserOf(editor, false)))
         .isInstanceOf(ValidationException.class);
 
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
@@ -1572,7 +1603,8 @@ class LibraryDocumentServiceIntegrationTest {
         libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
             .sourcePath("/data/documents")
             .build();
-    var connectorLibrary = libraryService.createLibrary(connectorLibraryRequest, editor.getId());
+    var connectorLibrary =
+        libraryService.createLibrary(connectorLibraryRequest, currentUserOf(editor));
     try {
       assertThatThrownBy(
               () ->
@@ -1581,8 +1613,7 @@ class LibraryDocumentServiceIntegrationTest {
                       textFile("x.txt", "content"),
                       null,
                       "Protokolle",
-                      editor.getId(),
-                      false))
+                      currentUserOf(editor, false)))
           .isInstanceOf(ConflictException.class);
       assertThat(documentRepository.findByLibraryId(connectorLibrary.library().getId())).isEmpty();
       assertThat(folderRepository.findByLibraryId(connectorLibrary.library().getId())).isEmpty();
@@ -1609,8 +1640,7 @@ class LibraryDocumentServiceIntegrationTest {
                       textFile("x.txt", "content"),
                       null,
                       "Protokolle",
-                      strangerId,
-                      false))
+                      currentUserOf(strangerId, false)))
           .isInstanceOf(NotFoundException.class);
       assertThat(folderRepository.findByLibraryId(libraryId)).isEmpty();
     } finally {

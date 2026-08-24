@@ -93,7 +93,9 @@ class UserServiceOrganizationBoundaryIntegrationTest {
     assertThatThrownBy(
             () ->
                 userService.updateRole(
-                    targetInOtherOrganization.getId(), SystemRole.SYSTEM_ADMIN, actor))
+                    targetInOtherOrganization.getId(),
+                    SystemRole.SYSTEM_ADMIN,
+                    CurrentUser.from(actor)))
         .isInstanceOf(UserNotFoundException.class);
 
     User reloaded = userRepository.findById(targetInOtherOrganization.getId()).orElseThrow();
@@ -108,7 +110,8 @@ class UserServiceOrganizationBoundaryIntegrationTest {
     User targetInSameOrganization = createUser(organizationA);
 
     User updated =
-        userService.updateRole(targetInSameOrganization.getId(), SystemRole.SYSTEM_ADMIN, actor);
+        userService.updateRole(
+            targetInSameOrganization.getId(), SystemRole.SYSTEM_ADMIN, CurrentUser.from(actor));
 
     assertThat(updated.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
   }

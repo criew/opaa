@@ -9,6 +9,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipResolver;
@@ -64,6 +66,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
   private DocumentRepository documentRepository;
   private VectorStore vectorStore;
   private UUID ownerId;
+  private CurrentUser ownerCaller;
   private KnowledgeLibrary library;
 
   @BeforeEach
@@ -117,6 +120,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");
     owner.setOrganizationId(organizationId);
     when(userRepository.findById(ownerId)).thenReturn(Optional.of(owner));
+    ownerCaller = CurrentUser.of(ownerId, organizationId, SystemRole.USER, "Owner");
 
     library =
         KnowledgeLibrary.ownedByUser(
@@ -159,7 +163,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     // No active transaction synchronization here (no @Transactional AOP proxy in a plain unit
     // test) - deleteAfterCommit's fallback runs its cleanup immediately, so the row-then-chunk
     // order is still observable synchronously.
-    libraryService.deleteLibrary(library.getId(), ownerId, false);
+    libraryService.deleteLibrary(library.getId(), ownerCaller);
 
     InOrder order = inOrder(documentRepository, vectorStore);
     order.verify(documentRepository).deleteByLibraryId(library.getId());
@@ -172,7 +176,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     // the @Transactional AOP proxy deleteLibrary actually runs under in production.
     TransactionSynchronizationManager.initSynchronization();
 
-    libraryService.deleteLibrary(library.getId(), ownerId, false);
+    libraryService.deleteLibrary(library.getId(), ownerCaller);
 
     verify(documentRepository).deleteByLibraryId(library.getId());
     // The row delete already ran, but the chunk delete must not have - it is only registered to
@@ -194,7 +198,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     // real rollback never would.
     TransactionSynchronizationManager.initSynchronization();
 
-    libraryService.deleteLibrary(library.getId(), ownerId, false);
+    libraryService.deleteLibrary(library.getId(), ownerCaller);
     TransactionSynchronizationManager.clearSynchronization();
 
     verify(vectorStore, never()).delete(any(Filter.Expression.class));

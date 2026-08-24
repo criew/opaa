@@ -1,12 +1,10 @@
 package io.opaa.indexing;
 
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
+import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ServiceUnavailableException;
-import io.opaa.common.UnauthorizedException;
 import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -31,7 +29,6 @@ public class DocumentIndexingService {
 
   private final IndexingJobService indexingJobService;
   private final IndexingSourceExecutorRegistry executorRegistry;
-  private final UserRepository userRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryAccessService libraryAccessService;
   private final IndexingRunEventRepository indexingRunEventRepository;
@@ -39,13 +36,11 @@ public class DocumentIndexingService {
   public DocumentIndexingService(
       IndexingJobService indexingJobService,
       IndexingSourceExecutorRegistry executorRegistry,
-      UserRepository userRepository,
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       IndexingRunEventRepository indexingRunEventRepository) {
     this.indexingJobService = indexingJobService;
     this.executorRegistry = executorRegistry;
-    this.userRepository = userRepository;
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
     this.indexingRunEventRepository = indexingRunEventRepository;
@@ -72,8 +67,8 @@ public class DocumentIndexingService {
    * ever complete it. Catching it here and failing the job immediately keeps that row's lifecycle
    * intact and answers the caller with 503 instead of a misleading 202.
    */
-  public IndexingJob triggerIndexing(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, currentUserId);
+  public IndexingJob triggerIndexing(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, caller);
     IndexingSourceType sourceType = toIndexingSourceType(targetLibrary.getSourceType());
     if (indexingJobService.isJobRunning(targetLibrary.getId(), targetLibrary.getOrganizationId())) {
       throw new ConflictException("Für diese Bibliothek läuft bereits ein Indizierungslauf");
@@ -130,8 +125,10 @@ public class DocumentIndexingService {
    * detail. The caller (the controller) is responsible for actually shortening the message when
    * this is {@code false}; this method only decides the permission.
    */
-  public IndexingStatusView getStatus(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
+  public IndexingStatusView getStatus(UUID libraryId, CurrentUser caller) {
+    UUID currentUserId = caller.id();
+    boolean systemAdmin = caller.isSystemAdmin();
+    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, caller);
     libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
     boolean canSeeErrorDetail = libraryAccessService.canManage(library, currentUserId, systemAdmin);
     return new IndexingStatusView(
@@ -151,10 +148,9 @@ public class DocumentIndexingService {
    * upstream URLs it was never granted access to. {@code canManage} mirrors {@code
    * KnowledgeLibraryService#updateLibrary}'s own bar for touching the source configuration.
    */
-  public List<IndexingRunDetail> getRecentRuns(
-      UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
-    if (!libraryAccessService.canManage(library, currentUserId, systemAdmin)) {
+  public List<IndexingRunDetail> getRecentRuns(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, caller);
+    if (!libraryAccessService.canManage(library, caller.id(), caller.isSystemAdmin())) {
       throw new AccessDeniedException("Kein Zugriff auf diese Bibliothek");
     }
     return indexingJobService.getRecentJobs(libraryId, library.getOrganizationId()).stream()
@@ -194,9 +190,9 @@ public class DocumentIndexingService {
    * the same reason {@link #getStatus} does: "no access at all" must answer 404, not a 403 that
    * confirms the library exists.
    */
-  private KnowledgeLibrary requireEditableLibrary(UUID libraryId, UUID currentUserId) {
-    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
-    libraryAccessService.requireRole(library, currentUserId, false, AssetRole.EDITOR);
+  private KnowledgeLibrary requireEditableLibrary(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, caller);
+    libraryAccessService.requireRole(library, caller.id(), false, AssetRole.EDITOR);
     return library;
   }
 
@@ -204,14 +200,10 @@ public class DocumentIndexingService {
    * Loads a library and enforces the organization boundary, treating a library from another
    * organization as not found - mirrors {@code KnowledgeLibraryService#loadLibrary}.
    */
-  private KnowledgeLibrary loadLibraryInOrganization(UUID libraryId, UUID currentUserId) {
-    User currentUser =
-        userRepository
-            .findById(currentUserId)
-            .orElseThrow(() -> new UnauthorizedException("Benutzer nicht gefunden"));
+  private KnowledgeLibrary loadLibraryInOrganization(UUID libraryId, CurrentUser caller) {
     return libraryRepository
         .findById(libraryId)
-        .filter(l -> l.getOrganizationId().equals(currentUser.getOrganizationId()))
+        .filter(l -> l.getOrganizationId().equals(caller.organizationId()))
         .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
   }
 }

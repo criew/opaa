@@ -25,7 +25,6 @@ import io.opaa.chat.ChatPatch;
 import io.opaa.chat.ChatService;
 import io.opaa.common.NotFoundException;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,8 +62,8 @@ class ChatControllerTest {
   void setUp() {
     currentUser = new User(TEST_SUBJECT, TEST_ISSUER, "test@example.com", "Test User");
     currentUser.setSystemRole(SystemRole.USER);
-    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
-        .thenReturn(Optional.of(currentUser));
+    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+        .thenReturn(currentUser);
   }
 
   private RequestPostProcessor asTestUser() {

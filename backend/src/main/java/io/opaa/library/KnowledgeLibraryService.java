@@ -6,6 +6,7 @@ import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditSubjectKind;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -150,8 +151,8 @@ public class KnowledgeLibraryService {
   }
 
   @Transactional
-  public LibraryDetail createLibrary(LibraryCreation request, UUID currentUserId) {
-    User currentUser = requireUser(currentUserId);
+  public LibraryDetail createLibrary(LibraryCreation request, CurrentUser caller) {
+    UUID currentUserId = caller.id();
     String normalizedName = validateName(request.name());
     validateDescription(request.description());
 
@@ -169,7 +170,7 @@ public class KnowledgeLibraryService {
       if (request.ownerId() == null) {
         throw new ValidationException("ownerId ist erforderlich, wenn ownerType GROUP ist");
       }
-      ownerGroup = requireGroupInOrganization(request.ownerId(), currentUser.getOrganizationId());
+      ownerGroup = requireGroupInOrganization(request.ownerId(), caller.organizationId());
       if (!membershipResolver.groupIdsForUser(currentUserId).contains(ownerGroup.getId())) {
         throw new AccessDeniedException(
             "Nur Mitglieder der Gruppe können eine Bibliothek in ihrem Namen anlegen");
@@ -178,10 +179,10 @@ public class KnowledgeLibraryService {
       // AssetGrantService#upsertGrant's own check for the exact same case - reused here rather
       // than duplicated so the two grant-writing paths can never disagree on which groups are
       // grantable.
-      grantService.requireGrantableGroup(ownerGroup.getId(), currentUser.getOrganizationId());
+      grantService.requireGrantableGroup(ownerGroup.getId(), caller.organizationId());
       library =
           KnowledgeLibrary.ownedByGroup(
-              currentUser.getOrganizationId(),
+              caller.organizationId(),
               normalizedName,
               request.description(),
               ownerGroup.getId(),
@@ -196,7 +197,7 @@ public class KnowledgeLibraryService {
     } else {
       library =
           KnowledgeLibrary.ownedByUser(
-              currentUser.getOrganizationId(),
+              caller.organizationId(),
               normalizedName,
               request.description(),
               currentUserId,
@@ -340,10 +341,10 @@ public class KnowledgeLibraryService {
    * reproducible order across calls - {@link LibraryAccessService#readableLibraryIds} returns a
    * {@code HashSet}, whose iteration order is not guaranteed to be stable.
    */
-  public List<LibrarySummary> listLibraries(UUID currentUserId, boolean systemAdmin) {
-    User currentUser = requireUser(currentUserId);
+  public List<LibrarySummary> listLibraries(CurrentUser caller) {
+    UUID currentUserId = caller.id();
     Set<UUID> readableIds =
-        accessService.readableLibraryIds(currentUserId, currentUser.getOrganizationId());
+        accessService.readableLibraryIds(currentUserId, caller.organizationId());
     List<KnowledgeLibrary> libraries =
         libraryRepository.findAllById(readableIds).stream()
             .sorted(
@@ -410,17 +411,18 @@ public class KnowledgeLibraryService {
     return ownerNames;
   }
 
-  public LibraryDetail getLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
+  public LibraryDetail getLibrary(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
     AssetRole role =
-        accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
+        accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
     return toLibraryDetail(library, role);
   }
 
   @Transactional
-  public LibraryDetail updateLibrary(
-      UUID libraryId, LibraryUpdate request, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
+  public LibraryDetail updateLibrary(UUID libraryId, LibraryUpdate request, CurrentUser caller) {
+    UUID currentUserId = caller.id();
+    boolean systemAdmin = caller.isSystemAdmin();
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.MANAGER);
     // ADR-0018: sourceType is chosen once, at creation, and is permanent - a library that started
     // as a directory crawl cannot become an upload container (or vice versa) without mixing
@@ -580,8 +582,10 @@ public class KnowledgeLibraryService {
   }
 
   @Transactional
-  public void deleteLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
+  public void deleteLibrary(UUID libraryId, CurrentUser caller) {
+    UUID currentUserId = caller.id();
+    boolean systemAdmin = caller.isSystemAdmin();
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
     // #202 code review round 3 (Blocker 1): deleting requires OWNER, not MANAGER - AssetRole's
     // Javadoc reserves "delete the asset and transfer ownership" for OWNER alone, and canManage
     // (MANAGER) was the wrong gate here: a group's MANAGER grant (round 2's fix for group-owned
@@ -754,14 +758,9 @@ public class KnowledgeLibraryService {
    * #822).
    */
   public LibraryDocumentPage listDocuments(
-      UUID libraryId,
-      UUID currentUserId,
-      boolean systemAdmin,
-      String q,
-      UUID folderId,
-      Pageable pageable) {
-    KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
+      UUID libraryId, CurrentUser caller, String q, UUID folderId, Pageable pageable) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
 
     // #821 review round 1, finding 3: validated unconditionally, before either branch below - a
     // folderId from another library or one that does not exist answers 404 whether or not q is
@@ -1134,12 +1133,6 @@ public class KnowledgeLibraryService {
       String sourceCredentials,
       boolean sourceInsecureSsl) {}
 
-  private User requireUser(UUID userId) {
-    return userRepository
-        .findById(userId)
-        .orElseThrow(() -> new NotFoundException("Benutzer nicht gefunden"));
-  }
-
   /**
    * Resolves a group and enforces the organization boundary, treating a group from another
    * organization as not found - mirrors {@code SpaceService#requireUserInOrganization} and {@code
@@ -1163,14 +1156,13 @@ public class KnowledgeLibraryService {
    * organization as not found - mirrors {@code SpaceService#loadSpace}. Applies to system admins as
    * well; the boundary is not overstepped even to reveal existence.
    */
-  private KnowledgeLibrary loadLibrary(UUID libraryId, UUID currentUserId) {
-    User currentUser = requireUser(currentUserId);
+  private KnowledgeLibrary loadLibrary(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library =
         libraryRepository
             .findById(libraryId)
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
 
-    if (!library.getOrganizationId().equals(currentUser.getOrganizationId())) {
+    if (!library.getOrganizationId().equals(caller.organizationId())) {
       throw new NotFoundException("Bibliothek nicht gefunden");
     }
     return library;

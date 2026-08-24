@@ -107,7 +107,13 @@ würde weiterhin jede Anfrage abweisen, der Nutzer säße vor einer funktionslos
 Bei authentifizierten Anfragen extrahiert `UserProvisioningFilter` Benutzerinformationen aus dem
 JWT (`sub`, `iss`, `email`, `name`) und legt bzw. aktualisiert einen Datensatz in der
 `users`-Tabelle. Gruppenzugehörigkeiten kommen **nicht** aus dem Token, sondern über
-`DirectoryClient` (`io.opaa.group.sync`).
+`DirectoryClient` (`io.opaa.group.sync`). Derselbe Filter baut aus diesem Datensatz einmalig
+einen `CurrentUser`-Schnappschuss der Aufrufer-Identität und legt ihn als Request-Attribut ab;
+Controller erhalten ihn über einen dedizierten, ausschließlich `@Caller`-annotierte Parameter
+bedienenden `HandlerMethodArgumentResolver` statt ihn selbst erneut aus dem JWT abzuleiten (#884) -
+`CurrentUser` besitzt bewusst keinen öffentlichen Konstruktor, damit ein fehlkonfigurierter
+Resolver-Chain die Anfrage scheitern lässt statt sie über Spring MVCs generisches
+Modell-Attribut-Binding aus Anfrageparametern zu befüllen.
 
 ### Auth-Konfigurationserkennung
 

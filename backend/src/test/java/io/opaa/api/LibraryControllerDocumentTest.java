@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
@@ -30,7 +31,6 @@ import io.opaa.library.LibraryFolderService;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.space.SpaceAssetAssociationService;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,14 +70,18 @@ class LibraryControllerDocumentTest {
   @MockitoBean private SpaceAssetAssociationService associationService;
 
   private final UUID currentUserId = UUID.randomUUID();
+  private CurrentUser caller;
 
   @BeforeEach
   void setUp() {
     User user = new User(TEST_SUBJECT, TEST_ISSUER, "test@example.com", "Test User");
     user.setSystemRole(SystemRole.USER);
     setId(user, currentUserId);
-    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
-        .thenReturn(Optional.of(user));
+    caller =
+        CurrentUser.of(
+            user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
+    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+        .thenReturn(user);
   }
 
   private RequestPostProcessor asTestUser() {
@@ -100,8 +104,7 @@ class LibraryControllerDocumentTest {
     var response = new LibraryDocumentPage(List.of(), 1, 5, 12L, List.of(), List.of(), null);
     when(libraryService.listDocuments(
             eq(libraryId),
-            eq(currentUserId),
-            eq(false),
+            eq(caller),
             eq("dienst"),
             any(),
             argThat(
@@ -134,8 +137,7 @@ class LibraryControllerDocumentTest {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
     var response = new LibraryDocumentPage(List.of(), 0, 20, 0L, List.of(), List.of(), folderId);
-    when(libraryService.listDocuments(
-            eq(libraryId), eq(currentUserId), eq(false), isNull(), eq(folderId), any()))
+    when(libraryService.listDocuments(eq(libraryId), eq(caller), isNull(), eq(folderId), any()))
         .thenReturn(response);
 
     mockMvc
@@ -190,8 +192,7 @@ class LibraryControllerDocumentTest {
     var response = new LibraryDocumentEntry(document, null);
     // #823: the controller now calls LibraryDocumentService's 6-arg folderPath overload
     // unconditionally (folderPath is simply null/omitted when the request does not send one).
-    when(documentService.uploadDocument(
-            eq(libraryId), any(), any(), any(), eq(currentUserId), eq(false)))
+    when(documentService.uploadDocument(eq(libraryId), any(), any(), any(), eq(caller)))
         .thenReturn(response);
 
     var file = new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes());
@@ -218,8 +219,7 @@ class LibraryControllerDocumentTest {
     document.setChunkCount(3);
     document.setFolderId(folderId);
     var response = new LibraryDocumentEntry(document, "Protokolle");
-    when(documentService.uploadDocument(
-            eq(libraryId), any(), eq(folderId), any(), eq(currentUserId), eq(false)))
+    when(documentService.uploadDocument(eq(libraryId), any(), eq(folderId), any(), eq(caller)))
         .thenReturn(response);
 
     var file = new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes());
@@ -246,7 +246,7 @@ class LibraryControllerDocumentTest {
     document.setStatus(DocumentStatus.PENDING);
     var response = new LibraryDocumentEntry(document, "Protokolle/2026");
     when(documentService.uploadDocument(
-            eq(libraryId), any(), isNull(), eq("Protokolle/2026"), eq(currentUserId), eq(false)))
+            eq(libraryId), any(), isNull(), eq("Protokolle/2026"), eq(caller)))
         .thenReturn(response);
 
     var file = new MockMultipartFile("file", "januar.pdf", "application/pdf", "content".getBytes());
@@ -264,8 +264,7 @@ class LibraryControllerDocumentTest {
   @Test
   void uploadingIntoAForbiddenLibraryReturns403() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(documentService.uploadDocument(
-            eq(libraryId), any(), any(), any(), eq(currentUserId), eq(false)))
+    when(documentService.uploadDocument(eq(libraryId), any(), any(), any(), eq(caller)))
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     var file = new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes());

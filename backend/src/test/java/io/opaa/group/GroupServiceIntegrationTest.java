@@ -3,6 +3,7 @@ package io.opaa.group;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
@@ -132,12 +133,21 @@ class GroupServiceIntegrationTest {
     return id;
   }
 
+  /**
+   * {@link CurrentUser} snapshot for a user id this test already created via {@link #createUser}.
+   */
+  private CurrentUser currentUserOf(UUID userId) {
+    User user = userRepository.findById(userId).orElseThrow();
+    return CurrentUser.of(
+        user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
+  }
+
   @Test
   void createsAnAdHocGroup() {
     UUID admin = createUser(organizationA);
     GroupCreation creation = new GroupCreation("Projektbeteiligte Phoenix", "Ad hoc");
 
-    GroupDetail created = groupService.createGroup(creation, admin);
+    GroupDetail created = groupService.createGroup(creation, currentUserOf(admin));
 
     assertThat(created.group().getKind()).isEqualTo(GroupKind.AD_HOC);
     assertThat(created.group().getName()).isEqualTo("Projektbeteiligte Phoenix");
@@ -151,7 +161,7 @@ class GroupServiceIntegrationTest {
     Group saved = groupRepository.save(group);
 
     GroupUpdate update = new GroupUpdate("New name", "Updated");
-    GroupDetail updated = groupService.updateGroup(saved.getId(), update, admin);
+    GroupDetail updated = groupService.updateGroup(saved.getId(), update, currentUserOf(admin));
 
     assertThat(updated.group().getName()).isEqualTo("New name");
     assertThat(updated.group().getDescription()).isEqualTo("Updated");
@@ -165,7 +175,7 @@ class GroupServiceIntegrationTest {
     Group saved = groupRepository.save(group);
 
     GroupUpdate update = new GroupUpdate("Renamed", null);
-    assertThatThrownBy(() -> groupService.updateGroup(saved.getId(), update, admin))
+    assertThatThrownBy(() -> groupService.updateGroup(saved.getId(), update, currentUserOf(admin)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -177,7 +187,7 @@ class GroupServiceIntegrationTest {
     group.addMembership(new GroupMembership(member, organizationA));
     Group saved = groupRepository.save(group);
 
-    groupService.deleteGroup(saved.getId(), admin);
+    groupService.deleteGroup(saved.getId(), currentUserOf(admin));
 
     assertThat(groupRepository.findById(saved.getId())).isEmpty();
     assertThat(membershipRepository.findByGroupId(saved.getId())).isEmpty();
@@ -199,14 +209,14 @@ class GroupServiceIntegrationTest {
             organizationA, "Rechtsquellen", null, saved.getId(), LibraryVisibility.PRIVATE, false);
     libraryRepository.save(library);
 
-    assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), admin))
+    assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), currentUserOf(admin)))
         .isInstanceOf(ConflictException.class);
     assertThat(groupRepository.findById(saved.getId())).isPresent();
 
     // Once the library no longer references the group, deletion succeeds - the check is a live
     // guard, not a one-time flag on the group.
     libraryRepository.delete(library);
-    groupService.deleteGroup(saved.getId(), admin);
+    groupService.deleteGroup(saved.getId(), currentUserOf(admin));
     assertThat(groupRepository.findById(saved.getId())).isEmpty();
   }
 
@@ -231,14 +241,14 @@ class GroupServiceIntegrationTest {
             savedLibrary.getId(), organizationA, saved.getId(), AssetRole.VIEWER, null, owner);
     grantRepository.save(grant);
 
-    assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), admin))
+    assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), currentUserOf(admin)))
         .isInstanceOf(ConflictException.class);
     assertThat(groupRepository.findById(saved.getId())).isPresent();
 
     // Once the grant is revoked, deletion succeeds - the check is a live guard, not a one-time
     // flag on the group.
     grantRepository.delete(grant);
-    groupService.deleteGroup(saved.getId(), admin);
+    groupService.deleteGroup(saved.getId(), currentUserOf(admin));
     assertThat(groupRepository.findById(saved.getId())).isEmpty();
   }
 
@@ -249,7 +259,7 @@ class GroupServiceIntegrationTest {
         new Group(organizationA, GroupKind.ORG_UNIT, "Referat 50", null, "directory-guid", null);
     Group saved = groupRepository.save(group);
 
-    assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), admin))
+    assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), currentUserOf(admin)))
         .isInstanceOf(ValidationException.class);
     assertThat(groupRepository.findById(saved.getId())).isPresent();
   }
@@ -261,11 +271,11 @@ class GroupServiceIntegrationTest {
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
     Group saved = groupRepository.save(group);
 
-    groupService.addMember(saved.getId(), member, admin);
+    groupService.addMember(saved.getId(), member, currentUserOf(admin));
     Group afterAdd = groupRepository.findByIdWithMemberships(saved.getId()).orElseThrow();
     assertThat(afterAdd.getMemberships()).hasSize(1);
 
-    groupService.removeMember(saved.getId(), member, admin);
+    groupService.removeMember(saved.getId(), member, currentUserOf(admin));
     Group afterRemove = groupRepository.findByIdWithMemberships(saved.getId()).orElseThrow();
     assertThat(afterRemove.getMemberships()).isEmpty();
   }
@@ -276,9 +286,9 @@ class GroupServiceIntegrationTest {
     UUID member = createUser(organizationA);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
     Group saved = groupRepository.save(group);
-    groupService.addMember(saved.getId(), member, admin);
+    groupService.addMember(saved.getId(), member, currentUserOf(admin));
 
-    assertThatThrownBy(() -> groupService.addMember(saved.getId(), member, admin))
+    assertThatThrownBy(() -> groupService.addMember(saved.getId(), member, currentUserOf(admin)))
         .isInstanceOf(ConflictException.class);
   }
 
@@ -289,7 +299,7 @@ class GroupServiceIntegrationTest {
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
     Group saved = groupRepository.save(group);
 
-    assertThatThrownBy(() -> groupService.addMember(saved.getId(), outsider, admin))
+    assertThatThrownBy(() -> groupService.addMember(saved.getId(), outsider, currentUserOf(admin)))
         .isInstanceOf(NotFoundException.class);
     assertThat(membershipRepository.findByGroupId(saved.getId())).isEmpty();
   }
@@ -301,7 +311,8 @@ class GroupServiceIntegrationTest {
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
     Group saved = groupRepository.save(group);
 
-    assertThatThrownBy(() -> groupService.getGroup(saved.getId(), adminOfOtherOrganization))
+    assertThatThrownBy(
+            () -> groupService.getGroup(saved.getId(), currentUserOf(adminOfOtherOrganization)))
         .isInstanceOf(NotFoundException.class);
 
     assertThat(owner).isNotNull();
@@ -314,7 +325,7 @@ class GroupServiceIntegrationTest {
     groupRepository.save(new Group(organizationA, GroupKind.AD_HOC, "Team A", null, null, null));
     groupRepository.save(new Group(organizationB, GroupKind.AD_HOC, "Team B", null, null, null));
 
-    List<Group> groups = groupService.listGroups(adminA);
+    List<Group> groups = groupService.listGroups(currentUserOf(adminA));
 
     assertThat(groups).extracting(Group::getName).containsExactly("Team A");
   }
@@ -332,7 +343,7 @@ class GroupServiceIntegrationTest {
     memberGroup.addMembership(new GroupMembership(member, organizationA));
     groupRepository.save(memberGroup);
 
-    List<Group> groups = groupService.listMyGroups(member);
+    List<Group> groups = groupService.listMyGroups(currentUserOf(member));
 
     assertThat(groups).extracting(Group::getName).containsExactly("Team A");
     assertThat(otherGroup.getId()).isNotNull();
@@ -345,7 +356,7 @@ class GroupServiceIntegrationTest {
     // GET /api/v1/me/groups directly with a non-admin role.
     UUID user = createUser(organizationA);
 
-    List<Group> groups = groupService.listMyGroups(user);
+    List<Group> groups = groupService.listMyGroups(currentUserOf(user));
 
     assertThat(groups).isEmpty();
   }
@@ -362,7 +373,7 @@ class GroupServiceIntegrationTest {
     saved.dissolve(Instant.now());
     groupRepository.save(saved);
 
-    List<Group> groups = groupService.listMyGroups(member);
+    List<Group> groups = groupService.listMyGroups(currentUserOf(member));
 
     assertThat(groups).isEmpty();
   }
@@ -398,11 +409,11 @@ class GroupServiceIntegrationTest {
 
     assertThat(membershipResolver.groupIdsForUser(member)).isEmpty();
 
-    groupService.addMember(saved.getId(), member, admin);
+    groupService.addMember(saved.getId(), member, currentUserOf(admin));
     // Without invalidation, this would still return the empty set cached above.
     assertThat(membershipResolver.groupIdsForUser(member)).containsExactly(saved.getId());
 
-    groupService.removeMember(saved.getId(), member, admin);
+    groupService.removeMember(saved.getId(), member, currentUserOf(admin));
     // Without invalidation, this would still return the membership added above.
     assertThat(membershipResolver.groupIdsForUser(member)).isEmpty();
   }
@@ -416,7 +427,7 @@ class GroupServiceIntegrationTest {
     Group saved = groupRepository.save(group);
     assertThat(membershipResolver.groupIdsForUser(member)).containsExactly(saved.getId());
 
-    groupService.deleteGroup(saved.getId(), admin);
+    groupService.deleteGroup(saved.getId(), currentUserOf(admin));
 
     assertThat(membershipResolver.groupIdsForUser(member)).isEmpty();
   }
@@ -456,7 +467,7 @@ class GroupServiceIntegrationTest {
           // removeMember's own @Transactional(REQUIRED) joins this already-open transaction
           // rather than starting and committing a second one, so the deletion below is not yet
           // committed when the reader thread runs.
-          groupService.removeMember(saved.getId(), member, admin);
+          groupService.removeMember(saved.getId(), member, currentUserOf(admin));
 
           Thread reader =
               new Thread(

@@ -5,8 +5,8 @@ import io.opaa.api.dto.LlmModelRequest;
 import io.opaa.api.dto.LlmModelResponse;
 import io.opaa.api.dto.LlmModelTestRequest;
 import io.opaa.api.dto.LlmModelTestResponse;
-import io.opaa.auth.User;
-import io.opaa.auth.UserService;
+import io.opaa.auth.Caller;
+import io.opaa.auth.CurrentUser;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.LlmModel;
@@ -20,8 +20,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -59,21 +57,16 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/v1/admin/models")
 public class LlmModelController {
 
-  private static final String UNKNOWN_ISSUER = "unknown";
-
   private final LlmModelService llmModelService;
   private final LlmModelConnectionTester connectionTester;
-  private final UserService userService;
   private final EmbeddingInfoService embeddingInfoService;
 
   public LlmModelController(
       LlmModelService llmModelService,
       LlmModelConnectionTester connectionTester,
-      UserService userService,
       EmbeddingInfoService embeddingInfoService) {
     this.llmModelService = llmModelService;
     this.connectionTester = connectionTester;
-    this.userService = userService;
     this.embeddingInfoService = embeddingInfoService;
   }
 
@@ -86,12 +79,11 @@ public class LlmModelController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping
   public ResponseEntity<LlmModelResponse> createModel(
-      @Valid @RequestBody LlmModelRequest request, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      @Valid @RequestBody LlmModelRequest request, @Caller CurrentUser caller) {
     LlmModel model =
         llmModelService.createModel(
-            currentUser.getOrganizationId(),
-            currentUser.getId(),
+            caller.organizationId(),
+            caller.id(),
             request.getDisplayName(),
             request.getBaseUrl(),
             request.getModelIdentifier(),
@@ -106,12 +98,11 @@ public class LlmModelController {
   public LlmModelResponse updateModel(
       @PathVariable UUID modelId,
       @Valid @RequestBody LlmModelRequest request,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      @Caller CurrentUser caller) {
     LlmModel model =
         llmModelService.updateModel(
-            currentUser.getOrganizationId(),
-            currentUser.getId(),
+            caller.organizationId(),
+            caller.id(),
             modelId,
             request.getDisplayName(),
             request.getBaseUrl(),
@@ -124,22 +115,16 @@ public class LlmModelController {
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @DeleteMapping("/{modelId}")
-  public ResponseEntity<Void> deleteModel(
-      @PathVariable UUID modelId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    llmModelService.deleteModel(currentUser.getOrganizationId(), currentUser.getId(), modelId);
+  public ResponseEntity<Void> deleteModel(@PathVariable UUID modelId, @Caller CurrentUser caller) {
+    llmModelService.deleteModel(caller.organizationId(), caller.id(), modelId);
     return ResponseEntity.noContent().build();
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/{modelId}/activate")
-  public LlmModelResponse activateModel(
-      @PathVariable UUID modelId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+  public LlmModelResponse activateModel(@PathVariable UUID modelId, @Caller CurrentUser caller) {
     try {
-      LlmModel model =
-          llmModelService.activateModel(
-              currentUser.getOrganizationId(), currentUser.getId(), modelId);
+      LlmModel model = llmModelService.activateModel(caller.organizationId(), caller.id(), modelId);
       return toResponse(model);
     } catch (DataIntegrityViolationException e) {
       // #757 review of #763: without this, the concurrency window still ends in a 409 (Spring's
@@ -171,18 +156,6 @@ public class LlmModelController {
             request.getApiKey(),
             request.getModelId());
     return new LlmModelTestResponse(outcome.success(), outcome.message());
-  }
-
-  private User currentUser(Jwt jwt) {
-    String issuer = jwt.getClaimAsString("iss");
-    if (issuer == null || issuer.isBlank()) {
-      issuer = UNKNOWN_ISSUER;
-    }
-
-    return userService
-        .findBySubjectAndIssuer(jwt.getSubject(), issuer)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
   }
 
   private static BigDecimal toTemperature(Double temperature) {

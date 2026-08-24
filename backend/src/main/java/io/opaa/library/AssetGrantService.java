@@ -5,6 +5,7 @@ import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditSubjectKind;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -105,8 +106,8 @@ public class AssetGrantService {
     this.auditEventRecorder = auditEventRecorder;
   }
 
-  public List<AssetGrantView> listGrants(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary library = requireManageable(libraryId, currentUserId, systemAdmin);
+  public List<AssetGrantView> listGrants(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary library = requireManageable(libraryId, caller);
     return toViews(grantRepository.findByLibraryId(library.getId()));
   }
 
@@ -121,10 +122,9 @@ public class AssetGrantService {
   // a path this annotation keeps from rolling back, so "not rolling back" changes nothing about the
   // (never attempted) grant write, only preserves the audit trail of the attempt.
   @Transactional(noRollbackFor = AccessDeniedException.class)
-  public AssetGrantView upsertGrant(
-      UUID libraryId, AssetGrantUpsert request, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary library = requireManageable(libraryId, currentUserId, systemAdmin);
-    User currentUser = requireUser(currentUserId);
+  public AssetGrantView upsertGrant(UUID libraryId, AssetGrantUpsert request, CurrentUser caller) {
+    UUID currentUserId = caller.id();
+    KnowledgeLibrary library = requireManageable(libraryId, caller);
 
     if (request.subjectType() == null || request.subjectId() == null) {
       throw new ValidationException("Empfänger ist erforderlich");
@@ -157,7 +157,8 @@ public class AssetGrantService {
     // Escalation guard, half 1: a caller may never grant a role higher than the one they
     // themselves hold - see the class Javadoc. requireManageable already established callerRole is
     // at least MANAGER.
-    AssetRole callerRole = accessService.effectiveRole(library, currentUserId, systemAdmin);
+    AssetRole callerRole =
+        accessService.effectiveRole(library, currentUserId, caller.isSystemAdmin());
     try {
       requireCallerRoleAtLeast(
           callerRole,
@@ -208,7 +209,7 @@ public class AssetGrantService {
                 request.subjectId(),
                 request.role(),
                 request.expiresAt(),
-                currentUser.getId());
+                currentUserId);
       } else {
         requireCallerCanTouchExistingGrant(callerRole, grant, "ändern");
         requireNotDowngradingTheLastActiveOwnerGrant(
@@ -232,7 +233,7 @@ public class AssetGrantService {
                 request.subjectId(),
                 request.role(),
                 request.expiresAt(),
-                currentUser.getId());
+                currentUserId);
       } else {
         requireCallerCanTouchExistingGrant(callerRole, grant, "ändern");
         requireNotDowngradingTheLastActiveOwnerGrant(
@@ -255,13 +256,13 @@ public class AssetGrantService {
             ? saved.getSubjectUserId()
             : saved.getSubjectGroupId();
     if (isNewGrant) {
-      permissionHistoryService.recordGrantCreated(saved, currentUser.getId());
+      permissionHistoryService.recordGrantCreated(saved, currentUserId);
       // #392: the counterpart event to PermissionHistoryService#recordGrantCreated above - the
       // rights-state interval and the event log entry are written side by side, never merged (see
       // the class Javadoc's "verwandt, nicht ueberschneidend" note).
       auditEventRecorder.recordUserActionOnSubject(
           library.getOrganizationId(),
-          currentUser.getId(),
+          currentUserId,
           AuditEventType.ASSET_GRANT_GRANTED,
           AuditObjectType.KNOWLEDGE_LIBRARY,
           library.getId(),
@@ -273,10 +274,10 @@ public class AssetGrantService {
           AuditOutcome.SUCCESS,
           null);
     } else {
-      permissionHistoryService.recordGrantRoleChanged(saved, currentUser.getId());
+      permissionHistoryService.recordGrantRoleChanged(saved, currentUserId);
       auditEventRecorder.recordUserActionOnSubject(
           library.getOrganizationId(),
-          currentUser.getId(),
+          currentUserId,
           AuditEventType.ASSET_GRANT_CHANGED,
           AuditObjectType.KNOWLEDGE_LIBRARY,
           library.getId(),
@@ -302,8 +303,9 @@ public class AssetGrantService {
   }
 
   @Transactional
-  public void revokeGrant(UUID libraryId, UUID grantId, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary library = requireManageable(libraryId, currentUserId, systemAdmin);
+  public void revokeGrant(UUID libraryId, UUID grantId, CurrentUser caller) {
+    UUID currentUserId = caller.id();
+    KnowledgeLibrary library = requireManageable(libraryId, caller);
     AssetGrant grant =
         grantRepository
             .findById(grantId)
@@ -314,7 +316,8 @@ public class AssetGrantService {
     // Escalation guard, half 2 - see the class Javadoc: a caller may never touch a grant that
     // already carries a role higher than their own, regardless of whether they could have
     // *granted* that role in the first place.
-    AssetRole callerRole = accessService.effectiveRole(library, currentUserId, systemAdmin);
+    AssetRole callerRole =
+        accessService.effectiveRole(library, currentUserId, caller.isSystemAdmin());
     requireCallerCanTouchExistingGrant(callerRole, grant, "entfernen");
 
     // Last-active-OWNER guard, the mirror image of upsertGrant's downgrade guard: removing the
@@ -446,19 +449,17 @@ public class AssetGrantService {
     }
   }
 
-  private KnowledgeLibrary requireManageable(
-      UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    User currentUser = requireUser(currentUserId);
+  private KnowledgeLibrary requireManageable(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library =
         libraryRepository
             .findById(libraryId)
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
-    if (!library.getOrganizationId().equals(currentUser.getOrganizationId())) {
+    if (!library.getOrganizationId().equals(caller.organizationId())) {
       throw new NotFoundException("Bibliothek nicht gefunden");
     }
     // #436: no access at all (no grant, no organization-wide visibility) also answers 404, not just
     // the organization-boundary case above - see LibraryAccessService#requireRole.
-    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.MANAGER);
+    accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     return library;
   }
 

@@ -2,16 +2,13 @@ package io.opaa.api;
 
 import io.opaa.api.dto.BrandingResponse;
 import io.opaa.api.dto.BrandingUpdateRequest;
-import io.opaa.auth.User;
-import io.opaa.auth.UserService;
+import io.opaa.auth.Caller;
+import io.opaa.auth.CurrentUser;
 import io.opaa.branding.BrandingLogoValidator;
 import io.opaa.branding.BrandingSettingsService;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The write side of operator branding (#582), {@code SYSTEM_ADMIN} only. Separate from {@link
@@ -38,19 +34,13 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/v1/system/branding")
 public class SystemBrandingController {
 
-  private static final String UNKNOWN_ISSUER = "unknown";
-
   private final BrandingSettingsService brandingSettingsService;
   private final BrandingLogoValidator logoValidator;
-  private final UserService userService;
 
   public SystemBrandingController(
-      BrandingSettingsService brandingSettingsService,
-      BrandingLogoValidator logoValidator,
-      UserService userService) {
+      BrandingSettingsService brandingSettingsService, BrandingLogoValidator logoValidator) {
     this.brandingSettingsService = brandingSettingsService;
     this.logoValidator = logoValidator;
-    this.userService = userService;
   }
 
   /**
@@ -61,12 +51,11 @@ public class SystemBrandingController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PutMapping
   public BrandingResponse updateBranding(
-      @RequestBody BrandingUpdateRequest request, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      @RequestBody BrandingUpdateRequest request, @Caller CurrentUser caller) {
     return BrandingResponseMapper.toResponse(
         brandingSettingsService.updateBranding(
-            currentUser.getOrganizationId(),
-            currentUser.getId(),
+            caller.organizationId(),
+            caller.id(),
             request.getProductName(),
             request.getClaim(),
             request.getPrimaryColor(),
@@ -81,20 +70,17 @@ public class SystemBrandingController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PutMapping(path = "/logo", consumes = "multipart/form-data")
   public BrandingResponse updateBrandingLogo(
-      @RequestPart("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      @RequestPart("file") MultipartFile file, @Caller CurrentUser caller) {
     return BrandingResponseMapper.toResponse(
-        brandingSettingsService.replaceLogo(
-            currentUser.getOrganizationId(), currentUser.getId(), bytesOf(file)));
+        brandingSettingsService.replaceLogo(caller.organizationId(), caller.id(), bytesOf(file)));
   }
 
   /** Removes the configured logo; the app falls back to the bundled OPAA logo. Idempotent. */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @DeleteMapping("/logo")
-  public BrandingResponse deleteBrandingLogo(@AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+  public BrandingResponse deleteBrandingLogo(@Caller CurrentUser caller) {
     return BrandingResponseMapper.toResponse(
-        brandingSettingsService.removeLogo(currentUser.getOrganizationId(), currentUser.getId()));
+        brandingSettingsService.removeLogo(caller.organizationId(), caller.id()));
   }
 
   /**
@@ -109,17 +95,5 @@ public class SystemBrandingController {
     } catch (IOException e) {
       throw new UncheckedIOException("Die hochgeladene Logo-Datei konnte nicht gelesen werden", e);
     }
-  }
-
-  private User currentUser(Jwt jwt) {
-    String issuer = jwt.getClaimAsString("iss");
-    if (issuer == null || issuer.isBlank()) {
-      issuer = UNKNOWN_ISSUER;
-    }
-
-    return userService
-        .findBySubjectAndIssuer(jwt.getSubject(), issuer)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
   }
 }

@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
@@ -116,6 +118,11 @@ class QueryIntegrationTest {
   private UUID userId;
   private UUID libraryId;
 
+  /** Every user this class creates lives in {@link #DEFAULT_ORGANIZATION_ID}. */
+  private static CurrentUser asCaller(UUID userId) {
+    return CurrentUser.of(userId, DEFAULT_ORGANIZATION_ID, SystemRole.USER, null);
+  }
+
   @BeforeEach
   void setUp() {
     jdbcTemplate.execute("TRUNCATE TABLE vector_store");
@@ -219,7 +226,7 @@ class QueryIntegrationTest {
 
     // Execute the query
     QueryResult response =
-        queryService.query("What is OPAA?", null, userId, true, java.util.List.of());
+        queryService.query("What is OPAA?", null, asCaller(userId), true, java.util.List.of());
 
     // Verify the response
     assertThat(response.getAnswer()).isEqualTo("OPAA is an AI project assistant (readme.md).");
@@ -240,7 +247,7 @@ class QueryIntegrationTest {
 
     QueryResult response =
         queryService.query(
-            "Something completely unrelated", null, userId, true, java.util.List.of());
+            "Something completely unrelated", null, asCaller(userId), true, java.util.List.of());
 
     assertThat(response.getAnswer()).contains("don't have enough context");
     assertThat(response.getSources()).isEmpty();
@@ -283,7 +290,8 @@ class QueryIntegrationTest {
         DEFAULT_ORGANIZATION_ID);
     try {
       QueryResult response =
-          queryService.query("What is the secret?", null, strangerId, true, java.util.List.of());
+          queryService.query(
+              "What is the secret?", null, asCaller(strangerId), true, java.util.List.of());
 
       assertThat(response.getAnswer()).contains("don't have enough context");
       assertThat(response.getSources()).isEmpty();
@@ -342,7 +350,8 @@ class QueryIntegrationTest {
 
     try {
       QueryResult closed =
-          queryService.query("Wie gross ist Batman?", null, userId, true, java.util.List.of());
+          queryService.query(
+              "Wie gross ist Batman?", null, asCaller(userId), true, java.util.List.of());
       assertThat(closed.getSources()).isEmpty();
 
       jdbcTemplate.update(
@@ -355,7 +364,8 @@ class QueryIntegrationTest {
           .thenReturn(new ChatResponse(List.of(new Generation(answer))));
 
       QueryResult opened =
-          queryService.query("Wie gross ist Batman?", null, userId, true, java.util.List.of());
+          queryService.query(
+              "Wie gross ist Batman?", null, asCaller(userId), true, java.util.List.of());
 
       assertThat(opened.getSources()).hasSize(1);
       assertThat(opened.getSources().getFirst().getFileName()).isEqualTo("batman.md");
@@ -427,7 +437,7 @@ class QueryIntegrationTest {
 
     try {
       QueryResult response =
-          queryService.query("Beliebige Frage", null, userId, true, java.util.List.of());
+          queryService.query("Beliebige Frage", null, asCaller(userId), true, java.util.List.of());
 
       // Exactly topK (5, application.yml default) results, every one of them from the granted
       // library - the count itself is the assertion that matters (see the comment above).
@@ -457,7 +467,7 @@ class QueryIntegrationTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
-    queryService.query("Erste Frage", chatId, userId, true, List.of());
+    queryService.query("Erste Frage", chatId, asCaller(userId), true, List.of());
 
     Integer messageCount =
         jdbcTemplate.queryForObject(
@@ -479,7 +489,8 @@ class QueryIntegrationTest {
     var firstResponse =
         new ChatResponse(List.of(new Generation(new AssistantMessage("Erste Antwort"))));
     when(chatModel.call(any(Prompt.class))).thenReturn(firstResponse);
-    queryService.query("Was sind meine Ausgaben bei Apple?", chatId, userId, true, List.of());
+    queryService.query(
+        "Was sind meine Ausgaben bei Apple?", chatId, asCaller(userId), true, List.of());
 
     // Simulate a cold cache (restart/eviction) - see QueryService#query's Javadoc for the exact
     // conversation-cache key format this reconstructs.
@@ -490,7 +501,7 @@ class QueryIntegrationTest {
         new ChatResponse(List.of(new Generation(new AssistantMessage("Zweite Antwort"))));
     when(chatModel.call(promptCaptor.capture())).thenReturn(secondResponse);
 
-    queryService.query("Mach daraus eine Tabelle", chatId, userId, true, List.of());
+    queryService.query("Mach daraus eine Tabelle", chatId, asCaller(userId), true, List.of());
 
     boolean firstQuestionInPrompt =
         promptCaptor.getValue().getInstructions().stream()
@@ -527,7 +538,7 @@ class QueryIntegrationTest {
 
     try {
       QueryResult response =
-          queryService.query("Fremde Frage", chatId, strangerId, true, List.of());
+          queryService.query("Fremde Frage", chatId, asCaller(strangerId), true, List.of());
 
       // Falls back to an ephemeral conversation, not the owner's chat - the returned id is the
       // supplied chatId (echoed back, exactly as an unresolvable id always is), but nothing was
@@ -566,7 +577,7 @@ class QueryIntegrationTest {
         new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort für den Besitzer"))));
     when(chatModel.call(any(Prompt.class))).thenReturn(ownerAnswer);
     queryService.query(
-        "Geheime Eigentümerfrage über Gehaltsdaten", chatId, userId, true, List.of());
+        "Geheime Eigentümerfrage über Gehaltsdaten", chatId, asCaller(userId), true, List.of());
 
     UUID strangerId = UUID.randomUUID();
     jdbcTemplate.update(
@@ -600,7 +611,7 @@ class QueryIntegrationTest {
 
     try {
       // Stranger queries with the owner's real chatId - not an unresolvable random one.
-      queryService.query("Fremde Frage", chatId, strangerId, true, List.of());
+      queryService.query("Fremde Frage", chatId, asCaller(strangerId), true, List.of());
 
       assertThat(callThreadNames)
           .as(
@@ -633,7 +644,9 @@ class QueryIntegrationTest {
         "DELETE FROM space_memberships WHERE space_id = ? AND user_id = ?", spaceId, userId);
 
     org.assertj.core.api.Assertions.assertThatThrownBy(
-            () -> queryService.query("Frage nach Austritt", chatId, userId, true, List.of()))
+            () ->
+                queryService.query(
+                    "Frage nach Austritt", chatId, asCaller(userId), true, List.of()))
         .isInstanceOf(io.opaa.common.AccessDeniedException.class);
   }
 
@@ -660,7 +673,7 @@ class QueryIntegrationTest {
         .thenThrow(new RuntimeException("Titelmodell nicht erreichbar"));
 
     QueryResult response =
-        queryService.query("Erste Frage", chatId, userId, true, java.util.List.of());
+        queryService.query("Erste Frage", chatId, asCaller(userId), true, java.util.List.of());
 
     assertThat(response.getAnswer()).isEqualTo("Antwort trotz Fehler");
     assertThat(response.getChatTitle()).isEqualTo("Erste Frage");

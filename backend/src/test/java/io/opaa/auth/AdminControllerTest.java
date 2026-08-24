@@ -1,6 +1,7 @@
 package io.opaa.auth;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -9,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +30,7 @@ class AdminControllerTest {
 
   private static final String TEST_ISSUER = "test-issuer";
   private static final String TEST_SUBJECT = "test-subject";
+  private static final String REGULAR_USER_SUBJECT = "test-subject-regular";
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private UserService userService;
@@ -56,7 +57,7 @@ class AdminControllerTest {
 
   private RequestPostProcessor asRegularUser() {
     return jwt()
-        .jwt(builder -> builder.subject(TEST_SUBJECT).claim("iss", TEST_ISSUER))
+        .jwt(builder -> builder.subject(REGULAR_USER_SUBJECT).claim("iss", TEST_ISSUER))
         .authorities(new SimpleGrantedAuthority("ROLE_USER"));
   }
 
@@ -68,8 +69,18 @@ class AdminControllerTest {
     actingAdmin.setSystemRole(SystemRole.SYSTEM_ADMIN);
     actingAdmin.setOrganizationId(actingAdminOrganizationId);
     setId(actingAdmin, actingAdminId);
-    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
-        .thenReturn(Optional.of(actingAdmin));
+    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+        .thenReturn(actingAdmin);
+
+    // UserProvisioningFilter (wired via AdminTestSecurityConfig) re-derives authorities from the
+    // provisioned User's real SystemRole - a distinct subject/user is required so that enrichment
+    // does not silently grant ROLE_SYSTEM_ADMIN to a request meant to simulate a regular caller.
+    User regularUser = new User(REGULAR_USER_SUBJECT, TEST_ISSUER, "user@example.com", "User");
+    regularUser.setSystemRole(SystemRole.USER);
+    regularUser.setOrganizationId(UUID.randomUUID());
+    setId(regularUser, UUID.randomUUID());
+    when(userService.findOrCreateUser(eq(REGULAR_USER_SUBJECT), eq(TEST_ISSUER), any(), any()))
+        .thenReturn(regularUser);
   }
 
   private void setId(User user, UUID id) {
@@ -107,7 +118,8 @@ class AdminControllerTest {
     UUID userId = UUID.randomUUID();
     User user = new User("sub1", "issuer1", "test@example.com", "Test User");
     user.setSystemRole(SystemRole.SYSTEM_ADMIN);
-    when(userService.updateRole(userId, SystemRole.SYSTEM_ADMIN, actingAdmin)).thenReturn(user);
+    when(userService.updateRole(userId, SystemRole.SYSTEM_ADMIN, CurrentUser.from(actingAdmin)))
+        .thenReturn(user);
 
     mockMvc
         .perform(

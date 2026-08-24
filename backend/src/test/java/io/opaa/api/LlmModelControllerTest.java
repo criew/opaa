@@ -26,7 +26,6 @@ import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.LlmModelService;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -86,8 +85,8 @@ class LlmModelControllerTest {
     User actingAdmin = new User(TEST_SUBJECT, TEST_ISSUER, "admin@example.com", "Admin");
     actingAdmin.setOrganizationId(actingAdminOrganizationId);
     setId(actingAdmin, actingAdminId);
-    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
-        .thenReturn(Optional.of(actingAdmin));
+    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+        .thenReturn(actingAdmin);
   }
 
   private void setId(User user, UUID id) {

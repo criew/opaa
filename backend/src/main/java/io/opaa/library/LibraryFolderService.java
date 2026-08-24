@@ -1,7 +1,6 @@
 package io.opaa.library;
 
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
+import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
@@ -63,7 +62,6 @@ public class LibraryFolderService {
 
   private final LibraryFolderRepository folderRepository;
   private final KnowledgeLibraryRepository libraryRepository;
-  private final UserRepository userRepository;
   private final LibraryAccessService accessService;
   private final DocumentRepository documentRepository;
   private final LibraryDocumentService documentService;
@@ -72,7 +70,6 @@ public class LibraryFolderService {
   public LibraryFolderService(
       LibraryFolderRepository folderRepository,
       KnowledgeLibraryRepository libraryRepository,
-      UserRepository userRepository,
       LibraryAccessService accessService,
       DocumentRepository documentRepository,
       // #823: LibraryDocumentService now depends on this class too (uploadDocument's folderPath
@@ -84,7 +81,6 @@ public class LibraryFolderService {
       PlatformTransactionManager transactionManager) {
     this.folderRepository = folderRepository;
     this.libraryRepository = libraryRepository;
-    this.userRepository = userRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
     this.documentService = documentService;
@@ -99,13 +95,9 @@ public class LibraryFolderService {
 
   @Transactional
   public LibraryFolderDetail createFolder(
-      UUID libraryId,
-      String requestedName,
-      UUID parentFolderId,
-      UUID currentUserId,
-      boolean systemAdmin) {
-    KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    requireEditable(library, currentUserId, systemAdmin);
+      UUID libraryId, String requestedName, UUID parentFolderId, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    requireEditable(library, caller.id(), caller.isSystemAdmin());
     requireUploadLibrary(library);
 
     String name = validateName(requestedName);
@@ -147,13 +139,9 @@ public class LibraryFolderService {
 
   @Transactional
   public LibraryFolderDetail renameFolder(
-      UUID libraryId,
-      UUID folderId,
-      String requestedName,
-      UUID currentUserId,
-      boolean systemAdmin) {
-    KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    requireEditable(library, currentUserId, systemAdmin);
+      UUID libraryId, UUID folderId, String requestedName, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    requireEditable(library, caller.id(), caller.isSystemAdmin());
     requireUploadLibrary(library);
 
     LibraryFolder folder = loadFolder(libraryId, folderId);
@@ -170,22 +158,21 @@ public class LibraryFolderService {
     return toDetail(folder);
   }
 
-  public LibraryFolderDetail getFolder(
-      UUID libraryId, UUID folderId, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
+  public LibraryFolderDetail getFolder(UUID libraryId, UUID folderId, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
     LibraryFolder folder = loadFolder(libraryId, folderId);
     return toDetail(folder);
   }
 
   @Transactional
-  public void deleteFolder(UUID libraryId, UUID folderId, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    requireEditable(library, currentUserId, systemAdmin);
+  public void deleteFolder(UUID libraryId, UUID folderId, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    requireEditable(library, caller.id(), caller.isSystemAdmin());
     requireUploadLibrary(library);
 
     LibraryFolder folder = loadFolder(libraryId, folderId);
-    deleteRecursive(libraryId, folder, currentUserId, systemAdmin);
+    deleteRecursive(libraryId, folder, caller);
   }
 
   /**
@@ -194,15 +181,14 @@ public class LibraryFolderService {
    * - the order {@code fk_library_folders_parent}/{@code fk_documents_folder}'s {@code RESTRICT}
    * constraints require (see this class's Javadoc).
    */
-  private void deleteRecursive(
-      UUID libraryId, LibraryFolder folder, UUID currentUserId, boolean systemAdmin) {
+  private void deleteRecursive(UUID libraryId, LibraryFolder folder, CurrentUser caller) {
     for (LibraryFolder child :
         folderRepository.findByLibraryIdAndParentFolderIdOrderByNameAsc(
             libraryId, folder.getId())) {
-      deleteRecursive(libraryId, child, currentUserId, systemAdmin);
+      deleteRecursive(libraryId, child, caller);
     }
     for (Document document : documentRepository.findByFolderId(folder.getId())) {
-      documentService.deleteDocument(libraryId, document.getId(), currentUserId, systemAdmin);
+      documentService.deleteDocument(libraryId, document.getId(), caller);
     }
     folderRepository.delete(folder);
   }
@@ -326,13 +312,9 @@ public class LibraryFolderService {
    */
   @Transactional
   public UUID resolveOrCreateFolderPath(
-      UUID libraryId,
-      UUID baseFolderId,
-      List<String> pathSegments,
-      UUID currentUserId,
-      boolean systemAdmin) {
-    KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    requireEditable(library, currentUserId, systemAdmin);
+      UUID libraryId, UUID baseFolderId, List<String> pathSegments, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    requireEditable(library, caller.id(), caller.isSystemAdmin());
     requireUploadLibrary(library);
     resolveParent(libraryId, baseFolderId);
 
@@ -583,21 +565,14 @@ public class LibraryFolderService {
    * organization as not found - mirrors {@code KnowledgeLibraryService#loadLibrary}/{@code
    * LibraryDocumentService#loadLibrary}.
    */
-  private KnowledgeLibrary loadLibrary(UUID libraryId, UUID currentUserId) {
-    User currentUser = requireUser(currentUserId);
+  private KnowledgeLibrary loadLibrary(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library =
         libraryRepository
             .findById(libraryId)
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
-    if (!library.getOrganizationId().equals(currentUser.getOrganizationId())) {
+    if (!library.getOrganizationId().equals(caller.organizationId())) {
       throw new NotFoundException("Bibliothek nicht gefunden");
     }
     return library;
-  }
-
-  private User requireUser(UUID userId) {
-    return userRepository
-        .findById(userId)
-        .orElseThrow(() -> new NotFoundException("Benutzer nicht gefunden"));
   }
 }

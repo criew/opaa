@@ -1,16 +1,14 @@
 package io.opaa.api;
 
 import io.opaa.api.dto.NotificationResponse;
-import io.opaa.auth.User;
-import io.opaa.auth.UserService;
+import io.opaa.auth.Caller;
+import io.opaa.auth.CurrentUser;
 import io.opaa.notification.Notification;
 import io.opaa.notification.NotificationService;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,37 +21,32 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/v1/notifications")
 public class NotificationController {
 
-  private static final String UNKNOWN_ISSUER = "unknown";
   private static final int DEFAULT_LIMIT = 50;
   private static final int MAX_LIMIT = 100;
 
   private final NotificationService notificationService;
-  private final UserService userService;
 
-  public NotificationController(NotificationService notificationService, UserService userService) {
+  public NotificationController(NotificationService notificationService) {
     this.notificationService = notificationService;
-    this.userService = userService;
   }
 
   @GetMapping
   public List<NotificationResponse> listNotifications(
-      @RequestParam(required = false) Integer limit, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      @RequestParam(required = false) Integer limit, @Caller CurrentUser caller) {
     int resolvedLimit = limit == null ? DEFAULT_LIMIT : limit;
     if (resolvedLimit < 1 || resolvedLimit > MAX_LIMIT) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "limit muss zwischen 1 und " + MAX_LIMIT + " liegen");
     }
-    return notificationService.listForRecipient(currentUser.getId(), resolvedLimit).stream()
+    return notificationService.listForRecipient(caller.id(), resolvedLimit).stream()
         .map(this::toResponse)
         .toList();
   }
 
   @PostMapping("/{notificationId}/read")
   public ResponseEntity<Void> markRead(
-      @PathVariable UUID notificationId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    notificationService.markRead(notificationId, currentUser.getId());
+      @PathVariable UUID notificationId, @Caller CurrentUser caller) {
+    notificationService.markRead(notificationId, caller.id());
     return ResponseEntity.noContent().build();
   }
 
@@ -67,17 +60,5 @@ public class NotificationController {
         .objectId(notification.getObjectId())
         .body(notification.getBody())
         .readAt(notification.getReadAt());
-  }
-
-  private User currentUser(Jwt jwt) {
-    String issuer = jwt.getClaimAsString("iss");
-    if (issuer == null || issuer.isBlank()) {
-      issuer = UNKNOWN_ISSUER;
-    }
-
-    return userService
-        .findBySubjectAndIssuer(jwt.getSubject(), issuer)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
   }
 }

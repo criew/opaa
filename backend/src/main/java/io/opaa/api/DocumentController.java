@@ -1,8 +1,7 @@
 package io.opaa.api;
 
-import io.opaa.auth.SystemRole;
-import io.opaa.auth.User;
-import io.opaa.auth.UserService;
+import io.opaa.auth.Caller;
+import io.opaa.auth.CurrentUser;
 import io.opaa.library.DocumentContent;
 import io.opaa.library.LibraryDocumentService;
 import java.nio.charset.StandardCharsets;
@@ -13,17 +12,13 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Serves the original file behind an indexed document (#736), so a search result or a library
@@ -38,14 +33,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class DocumentController {
 
   private static final Logger log = LoggerFactory.getLogger(DocumentController.class);
-  private static final String UNKNOWN_ISSUER = "unknown";
 
   private final LibraryDocumentService documentService;
-  private final UserService userService;
 
-  public DocumentController(LibraryDocumentService documentService, UserService userService) {
+  public DocumentController(LibraryDocumentService documentService) {
     this.documentService = documentService;
-    this.userService = userService;
   }
 
   /**
@@ -70,13 +62,8 @@ public class DocumentController {
    */
   @GetMapping("/{documentId}/content")
   public ResponseEntity<Resource> getDocumentContent(
-      @PathVariable UUID documentId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    DocumentContent content =
-        documentService.loadContent(
-            documentId,
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+      @PathVariable UUID documentId, @Caller CurrentUser caller) {
+    DocumentContent content = documentService.loadContent(documentId, caller);
 
     Resource resource =
         content.isStreamed()
@@ -159,17 +146,5 @@ public class DocumentController {
       }
     }
     return result.toString();
-  }
-
-  private User currentUser(Jwt jwt) {
-    String issuer = jwt.getClaimAsString("iss");
-    if (issuer == null || issuer.isBlank()) {
-      issuer = UNKNOWN_ISSUER;
-    }
-
-    return userService
-        .findBySubjectAndIssuer(jwt.getSubject(), issuer)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
   }
 }

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import io.opaa.TestcontainersConfiguration;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.indexing.*;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -154,7 +156,10 @@ class OpenAiIntegrationTest {
         The frontend uses React and Material UI.
         """);
 
-    IndexingJob job = documentIndexingService.triggerIndexing(targetLibraryId, userId, true);
+    IndexingJob job =
+        documentIndexingService.triggerIndexing(
+            targetLibraryId,
+            CurrentUser.of(userId, SEEDED_ORGANIZATION_ID, SystemRole.SYSTEM_ADMIN, null));
     assumeTrue(
         job.getDocumentsProcessed() > 0,
         "Skipping: OpenAI API returned an error (quota exceeded or rate limited)."
@@ -164,7 +169,12 @@ class OpenAiIntegrationTest {
 
     // Query with a question about the indexed document
     QueryResult response =
-        queryService.query("What does OPAA stand for?", null, userId, true, java.util.List.of());
+        queryService.query(
+            "What does OPAA stand for?",
+            null,
+            CurrentUser.of(userId, SEEDED_ORGANIZATION_ID, SystemRole.SYSTEM_ADMIN, null),
+            true,
+            java.util.List.of());
 
     assertThat(response.getAnswer()).isNotBlank();
     assertThat(response.getAnswer().toLowerCase()).contains("open project ai assistant");

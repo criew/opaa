@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.GroupListResponse;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -84,14 +85,21 @@ class GroupResponseMapperIntegrationTest {
     return id;
   }
 
+  private CurrentUser currentUserOf(UUID userId) {
+    User user = userRepository.findById(userId).orElseThrow();
+    return CurrentUser.of(
+        user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
+  }
+
   @Test
   void listGroupsFollowedByTheMapperDoesNotThrowAndReflectsTheMemberCount() {
     UUID admin = createUser();
     UUID member = createUser();
-    Group created = groupService.createGroup(new GroupCreation("Team", null), admin).group();
-    groupService.addMember(created.getId(), member, admin);
+    CurrentUser adminCaller = currentUserOf(admin);
+    Group created = groupService.createGroup(new GroupCreation("Team", null), adminCaller).group();
+    groupService.addMember(created.getId(), member, adminCaller);
 
-    List<Group> groups = groupService.listGroups(admin);
+    List<Group> groups = groupService.listGroups(adminCaller);
     List<GroupListResponse> responses = GroupResponseMapper.toListResponses(groups);
 
     assertThat(responses).extracting(GroupListResponse::getName).containsExactly("Team");
@@ -102,11 +110,12 @@ class GroupResponseMapperIntegrationTest {
   void listMyGroupsFollowedByTheMapperDoesNotThrowAndReflectsTheMemberCount() {
     UUID admin = createUser();
     UUID member = createUser();
-    Group created = groupService.createGroup(new GroupCreation("Team", null), admin).group();
-    groupService.addMember(created.getId(), member, admin);
-    groupService.addMember(created.getId(), admin, admin);
+    CurrentUser adminCaller = currentUserOf(admin);
+    Group created = groupService.createGroup(new GroupCreation("Team", null), adminCaller).group();
+    groupService.addMember(created.getId(), member, adminCaller);
+    groupService.addMember(created.getId(), admin, adminCaller);
 
-    List<Group> groups = groupService.listMyGroups(admin);
+    List<Group> groups = groupService.listMyGroups(adminCaller);
     List<GroupListResponse> responses = GroupResponseMapper.toListResponses(groups);
 
     assertThat(responses).extracting(GroupListResponse::getName).containsExactly("Team");

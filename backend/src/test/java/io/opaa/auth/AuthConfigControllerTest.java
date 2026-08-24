@@ -19,6 +19,10 @@ class AuthConfigControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private AuthProperties authProperties;
 
+  // TestSecurityConfig's UserProvisioningFilter needs a UserService bean even though this
+  // unauthenticated endpoint never calls it.
+  @MockitoBean private UserService userService;
+
   @Test
   void getAuthConfigReturnsModeFromProperties() throws Exception {
     when(authProperties.mode()).thenReturn("dev");

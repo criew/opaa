@@ -7,6 +7,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
@@ -43,6 +45,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
   private LibraryAccessService accessService;
   private IndexingJobRepository indexingJobRepository;
   private UUID ownerId;
+  private CurrentUser ownerCaller;
   private KnowledgeLibrary library;
 
   @BeforeEach
@@ -92,6 +95,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");
     owner.setOrganizationId(organizationId);
     when(userRepository.findById(ownerId)).thenReturn(Optional.of(owner));
+    ownerCaller = CurrentUser.of(ownerId, organizationId, SystemRole.USER, "Owner");
 
     library =
         KnowledgeLibrary.ownedByUser(
@@ -119,7 +123,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
             JobStatus.RUNNING, library.getId(), library.getOrganizationId()))
         .thenReturn(true);
 
-    assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), ownerId, false))
+    assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), ownerCaller))
         .isInstanceOf(ConflictException.class)
         .satisfies(
             ex -> {
@@ -133,6 +137,6 @@ class KnowledgeLibraryServiceDeleteLockTest {
             JobStatus.RUNNING, library.getId(), library.getOrganizationId()))
         .thenReturn(false);
 
-    libraryService.deleteLibrary(library.getId(), ownerId, false);
+    libraryService.deleteLibrary(library.getId(), ownerCaller);
   }
 }

@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -94,6 +96,27 @@ class LibraryFolderServiceIntegrationTest {
   private User viewer;
   private UUID libraryId;
 
+  /** {@link CurrentUser} snapshot for a {@link User} entity this test already loaded/created. */
+  private CurrentUser currentUserOf(User user) {
+    return currentUserOf(user, false);
+  }
+
+  private CurrentUser currentUserOf(User user, boolean systemAdmin) {
+    return CurrentUser.of(
+        user.getId(),
+        user.getOrganizationId(),
+        systemAdmin ? SystemRole.SYSTEM_ADMIN : user.getSystemRole(),
+        user.getDisplayName());
+  }
+
+  private CurrentUser currentUserOf(UUID userId) {
+    return currentUserOf(userId, false);
+  }
+
+  private CurrentUser currentUserOf(UUID userId, boolean systemAdmin) {
+    return currentUserOf(userRepository.findById(userId).orElseThrow(), systemAdmin);
+  }
+
   @BeforeEach
   void setUp() {
     jdbcTemplate.execute("TRUNCATE TABLE vector_store");
@@ -109,13 +132,13 @@ class LibraryFolderServiceIntegrationTest {
     viewer = userRepository.save(viewer);
 
     var libraryRequest = libraryCreation("Bibliothek", DocumentSourceType.UPLOAD).build();
-    var library = libraryService.createLibrary(libraryRequest, editor.getId());
+    var library = libraryService.createLibrary(libraryRequest, currentUserOf(editor));
     libraryId = library.library().getId();
 
     var grantRequest =
         new AssetGrantUpsert(
             io.opaa.group.PermissionSubjectType.USER, viewer.getId(), AssetRole.VIEWER);
-    grantService.upsertGrant(libraryId, grantRequest, editor.getId(), false);
+    grantService.upsertGrant(libraryId, grantRequest, currentUserOf(editor, false));
   }
 
   @AfterEach
@@ -160,16 +183,17 @@ class LibraryFolderServiceIntegrationTest {
   @Test
   void editorCreatesRenamesAndNestsFolders() {
     LibraryFolderDetail root =
-        folderService.createFolder(libraryId, "Protokolle", null, editor.getId(), false);
+        folderService.createFolder(libraryId, "Protokolle", null, currentUserOf(editor, false));
     assertThat(root.folder().getParentFolderId()).isNull();
 
     LibraryFolderDetail child =
-        folderService.createFolder(libraryId, "2026", root.folder().getId(), editor.getId(), false);
+        folderService.createFolder(
+            libraryId, "2026", root.folder().getId(), currentUserOf(editor, false));
     assertThat(child.folder().getParentFolderId()).isEqualTo(root.folder().getId());
 
     LibraryFolderDetail renamed =
         folderService.renameFolder(
-            libraryId, child.folder().getId(), "2026-Q1", editor.getId(), false);
+            libraryId, child.folder().getId(), "2026-Q1", currentUserOf(editor, false));
     assertThat(renamed.folder().getName()).isEqualTo("2026-Q1");
     assertThat(folderRepository.findById(child.folder().getId()).orElseThrow().getName())
         .isEqualTo("2026-Q1");
@@ -177,10 +201,12 @@ class LibraryFolderServiceIntegrationTest {
 
   @Test
   void aDuplicateNameOnTheSameLevelIsRejectedWithConflict() {
-    folderService.createFolder(libraryId, "Protokolle", null, editor.getId(), false);
+    folderService.createFolder(libraryId, "Protokolle", null, currentUserOf(editor, false));
 
     assertThatThrownBy(
-            () -> folderService.createFolder(libraryId, "Protokolle", null, editor.getId(), false))
+            () ->
+                folderService.createFolder(
+                    libraryId, "Protokolle", null, currentUserOf(editor, false)))
         .isInstanceOf(ConflictException.class);
   }
 
@@ -200,7 +226,8 @@ class LibraryFolderServiceIntegrationTest {
             barrier.await(10, TimeUnit.SECONDS);
             try {
               LibraryFolderDetail response =
-                  folderService.createFolder(libraryId, "Protokolle", null, editor.getId(), false);
+                  folderService.createFolder(
+                      libraryId, "Protokolle", null, currentUserOf(editor, false));
               return response.folder().getId();
             } catch (ConflictException e) {
               return null;
@@ -228,9 +255,9 @@ class LibraryFolderServiceIntegrationTest {
     // renameFolder's identical saveAndFlush fix: two distinct, pre-existing folders both renamed
     // to the same target name at the same time.
     LibraryFolderDetail folderA =
-        folderService.createFolder(libraryId, "Ordner A", null, editor.getId(), false);
+        folderService.createFolder(libraryId, "Ordner A", null, currentUserOf(editor, false));
     LibraryFolderDetail folderB =
-        folderService.createFolder(libraryId, "Ordner B", null, editor.getId(), false);
+        folderService.createFolder(libraryId, "Ordner B", null, currentUserOf(editor, false));
 
     CyclicBarrier barrier = new CyclicBarrier(2);
     ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -241,7 +268,7 @@ class LibraryFolderServiceIntegrationTest {
             try {
               LibraryFolderDetail response =
                   folderService.renameFolder(
-                      libraryId, folderA.folder().getId(), "Ziel", editor.getId(), false);
+                      libraryId, folderA.folder().getId(), "Ziel", currentUserOf(editor, false));
               return response.folder().getId();
             } catch (ConflictException e) {
               return null;
@@ -253,7 +280,7 @@ class LibraryFolderServiceIntegrationTest {
             try {
               LibraryFolderDetail response =
                   folderService.renameFolder(
-                      libraryId, folderB.folder().getId(), "Ziel", editor.getId(), false);
+                      libraryId, folderB.folder().getId(), "Ziel", currentUserOf(editor, false));
               return response.folder().getId();
             } catch (ConflictException e) {
               return null;
@@ -278,16 +305,16 @@ class LibraryFolderServiceIntegrationTest {
   @Test
   void theSameNameIsAllowedUnderDifferentParents() {
     LibraryFolderDetail parentA =
-        folderService.createFolder(libraryId, "Abteilung A", null, editor.getId(), false);
+        folderService.createFolder(libraryId, "Abteilung A", null, currentUserOf(editor, false));
     LibraryFolderDetail parentB =
-        folderService.createFolder(libraryId, "Abteilung B", null, editor.getId(), false);
+        folderService.createFolder(libraryId, "Abteilung B", null, currentUserOf(editor, false));
 
     LibraryFolderDetail childA =
         folderService.createFolder(
-            libraryId, "Protokolle", parentA.folder().getId(), editor.getId(), false);
+            libraryId, "Protokolle", parentA.folder().getId(), currentUserOf(editor, false));
     LibraryFolderDetail childB =
         folderService.createFolder(
-            libraryId, "Protokolle", parentB.folder().getId(), editor.getId(), false);
+            libraryId, "Protokolle", parentB.folder().getId(), currentUserOf(editor, false));
 
     assertThat(childA.folder().getName()).isEqualTo(childB.folder().getName());
     assertThat(childA.folder().getId()).isNotEqualTo(childB.folder().getId());
@@ -296,7 +323,9 @@ class LibraryFolderServiceIntegrationTest {
   @Test
   void aViewerCannotCreateAFolder() {
     assertThatThrownBy(
-            () -> folderService.createFolder(libraryId, "Protokolle", null, viewer.getId(), false))
+            () ->
+                folderService.createFolder(
+                    libraryId, "Protokolle", null, currentUserOf(viewer, false)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -306,7 +335,8 @@ class LibraryFolderServiceIntegrationTest {
     // the source content of this library is never read, only its sourceType matters here.
     var connectorLibraryRequest =
         libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM).sourcePath("/tmp").build();
-    var connectorLibrary = libraryService.createLibrary(connectorLibraryRequest, editor.getId());
+    var connectorLibrary =
+        libraryService.createLibrary(connectorLibraryRequest, currentUserOf(editor));
     try {
       assertThatThrownBy(
               () ->
@@ -314,8 +344,7 @@ class LibraryFolderServiceIntegrationTest {
                       connectorLibrary.library().getId(),
                       "Protokolle",
                       null,
-                      editor.getId(),
-                      false))
+                      currentUserOf(editor, false)))
           .isInstanceOf(ConflictException.class);
     } finally {
       libraryRepository.deleteById(connectorLibrary.library().getId());
@@ -332,7 +361,7 @@ class LibraryFolderServiceIntegrationTest {
   private Document uploadDocumentIntoFolder(UUID folderId, String fileName, String content) {
     LibraryDocumentEntry uploaded =
         documentService.uploadDocument(
-            libraryId, textFile(fileName, content), null, editor.getId(), false);
+            libraryId, textFile(fileName, content), null, currentUserOf(editor));
     Document document = awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
     document.setFolderId(folderId);
     return documentRepository.save(document);
@@ -341,9 +370,10 @@ class LibraryFolderServiceIntegrationTest {
   @Test
   void deletingAFolderRemovesItsOwnDocumentsAndNestedSubfoldersWithTheirDocuments() {
     LibraryFolderDetail root =
-        folderService.createFolder(libraryId, "Archiv", null, editor.getId(), false);
+        folderService.createFolder(libraryId, "Archiv", null, currentUserOf(editor, false));
     LibraryFolderDetail child =
-        folderService.createFolder(libraryId, "2026", root.folder().getId(), editor.getId(), false);
+        folderService.createFolder(
+            libraryId, "2026", root.folder().getId(), currentUserOf(editor, false));
 
     Document rootDocument =
         uploadDocumentIntoFolder(root.folder().getId(), "root-doc.txt", "Inhalt der Wurzelakte");
@@ -356,10 +386,10 @@ class LibraryFolderServiceIntegrationTest {
     assertThat(Files.exists(childStoredFile)).isTrue();
 
     LibraryFolderDetail fetchedBeforeDelete =
-        folderService.getFolder(libraryId, root.folder().getId(), editor.getId(), false);
+        folderService.getFolder(libraryId, root.folder().getId(), currentUserOf(editor, false));
     assertThat(fetchedBeforeDelete.documentCount()).isEqualTo(2L);
 
-    folderService.deleteFolder(libraryId, root.folder().getId(), editor.getId(), false);
+    folderService.deleteFolder(libraryId, root.folder().getId(), currentUserOf(editor, false));
 
     // Both documents are gone - row, stored file, and vector store chunks (ADR-0020,
     // Entscheidung 5: the recursive delete runs through LibraryDocumentService#deleteDocument,
@@ -384,9 +414,9 @@ class LibraryFolderServiceIntegrationTest {
   @Test
   void deletingAnEmptyFolderRemovesOnlyTheFolderRow() {
     LibraryFolderDetail folder =
-        folderService.createFolder(libraryId, "Leer", null, editor.getId(), false);
+        folderService.createFolder(libraryId, "Leer", null, currentUserOf(editor, false));
 
-    folderService.deleteFolder(libraryId, folder.folder().getId(), editor.getId(), false);
+    folderService.deleteFolder(libraryId, folder.folder().getId(), currentUserOf(editor, false));
 
     assertThat(folderRepository.findById(folder.folder().getId())).isEmpty();
   }
@@ -394,12 +424,12 @@ class LibraryFolderServiceIntegrationTest {
   @Test
   void aViewerCannotDeleteAFolder() {
     LibraryFolderDetail folder =
-        folderService.createFolder(libraryId, "Geschützt", null, editor.getId(), false);
+        folderService.createFolder(libraryId, "Geschützt", null, currentUserOf(editor, false));
 
     assertThatThrownBy(
             () ->
                 folderService.deleteFolder(
-                    libraryId, folder.folder().getId(), viewer.getId(), false))
+                    libraryId, folder.folder().getId(), currentUserOf(viewer, false)))
         .isInstanceOf(AccessDeniedException.class);
     assertThat(folderRepository.findById(folder.folder().getId())).isPresent();
   }
@@ -421,7 +451,7 @@ class LibraryFolderServiceIntegrationTest {
           () -> {
             barrier.await(10, TimeUnit.SECONDS);
             return folderService.resolveOrCreateFolderPath(
-                libraryId, null, List.of("Protokolle", "2026"), editor.getId(), false);
+                libraryId, null, List.of("Protokolle", "2026"), currentUserOf(editor, false));
           };
 
       Future<UUID> first = executor.submit(resolve);

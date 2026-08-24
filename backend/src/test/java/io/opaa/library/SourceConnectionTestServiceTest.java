@@ -7,8 +7,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
@@ -45,12 +45,13 @@ class SourceConnectionTestServiceTest {
   private HttpServer server;
   private String baseUrl;
   private FilesystemPathAllowlist filesystemAllowlist;
-  private UserRepository userRepository;
   private KnowledgeLibraryRepository libraryRepository;
   private LibraryAccessService libraryAccessService;
   private SourceConnectionTestService service;
   private UUID currentUserId;
   private UUID organizationId;
+  private CurrentUser caller;
+  private CurrentUser systemAdminCaller;
 
   @BeforeEach
   void setUp() throws IOException {
@@ -59,21 +60,19 @@ class SourceConnectionTestServiceTest {
     baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
 
     filesystemAllowlist = mock(FilesystemPathAllowlist.class);
-    userRepository = mock(UserRepository.class);
     libraryRepository = mock(KnowledgeLibraryRepository.class);
     libraryAccessService = mock(LibraryAccessService.class);
     currentUserId = UUID.randomUUID();
     organizationId = UUID.randomUUID();
-    User currentUser = new User("subject", "issuer", "caller@example.com", "Caller");
-    currentUser.setOrganizationId(organizationId);
-    when(userRepository.findById(currentUserId)).thenReturn(Optional.of(currentUser));
+    caller = CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "Caller");
+    systemAdminCaller =
+        CurrentUser.of(currentUserId, organizationId, SystemRole.SYSTEM_ADMIN, "Caller");
     service =
         new SourceConnectionTestService(
             new DocumentService(),
             new AutoindexCrawlerService(TargetAddressValidator.disabled()),
             new RssFeedParser(),
             filesystemAllowlist,
-            userRepository,
             libraryRepository,
             libraryAccessService,
             new IndexingProperties(null, 1000, 0, 50, null, null, null, null, null, 0),
@@ -449,7 +448,6 @@ class SourceConnectionTestServiceTest {
             new AutoindexCrawlerService(TargetAddressValidator.disabled()),
             new RssFeedParser(),
             filesystemAllowlist,
-            userRepository,
             libraryRepository,
             libraryAccessService,
             new IndexingProperties(
@@ -590,7 +588,6 @@ class SourceConnectionTestServiceTest {
             new AutoindexCrawlerService(TargetAddressValidator.disabled()),
             new RssFeedParser(),
             filesystemAllowlist,
-            userRepository,
             libraryRepository,
             libraryAccessService,
             new IndexingProperties(
@@ -647,7 +644,6 @@ class SourceConnectionTestServiceTest {
             new AutoindexCrawlerService(TargetAddressValidator.disabled()),
             new RssFeedParser(),
             filesystemAllowlist,
-            userRepository,
             libraryRepository,
             libraryAccessService,
             new IndexingProperties(
@@ -795,8 +791,7 @@ class SourceConnectionTestServiceTest {
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
                 .libraryId(libraryId)
                 .build(),
-            currentUserId,
-            false);
+            caller);
 
     assertThat(response.reachable()).isTrue();
   }
@@ -849,8 +844,7 @@ class SourceConnectionTestServiceTest {
                   .sourceUrl(URI.create(otherBaseUrl + "/dir/"))
                   .libraryId(libraryId)
                   .build(),
-              currentUserId,
-              false);
+              caller);
 
       assertThat(response.reachable()).isFalse();
       assertThat(observedAuth.get()).isNull();
@@ -918,8 +912,7 @@ class SourceConnectionTestServiceTest {
                 .sourceInsecureSsl(true)
                 .libraryId(libraryId)
                 .build(),
-            currentUserId,
-            false);
+            caller);
 
     assertThat(response.reachable()).isTrue();
     assertThat(observedAuth.get()).isEqualTo(expectedAuth);
@@ -966,8 +959,7 @@ class SourceConnectionTestServiceTest {
                         .sourcePath("/data/documents")
                         .libraryId(libraryId)
                         .build(),
-                    currentUserId,
-                    true))
+                    systemAdminCaller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -1000,8 +992,7 @@ class SourceConnectionTestServiceTest {
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
                         .libraryId(libraryId)
                         .build(),
-                    currentUserId,
-                    false))
+                    caller))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -1018,8 +1009,7 @@ class SourceConnectionTestServiceTest {
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
                         .libraryId(libraryId)
                         .build(),
-                    currentUserId,
-                    false))
+                    caller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -1052,8 +1042,7 @@ class SourceConnectionTestServiceTest {
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
                         .libraryId(libraryId)
                         .build(),
-                    currentUserId,
-                    false))
+                    caller))
         .isInstanceOf(ValidationException.class);
   }
 

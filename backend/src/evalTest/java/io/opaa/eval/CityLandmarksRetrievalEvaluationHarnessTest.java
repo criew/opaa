@@ -6,6 +6,7 @@ import static org.awaitility.Awaitility.await;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Volume;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.SystemRole;
 import io.opaa.eval.EvaluationReport.ChunkCountInvariantResult;
 import io.opaa.eval.EvaluationReport.DatasetNotes;
@@ -452,7 +453,10 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
                 + "EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE deliberately.")
         .isEqualTo(EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE);
 
-    IndexingJob job = documentIndexingService.triggerIndexing(evalLibraryId, evalUserId, true);
+    CurrentUser evalCaller =
+        CurrentUser.of(
+            evalUserId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "Eval Harness User");
+    IndexingJob job = documentIndexingService.triggerIndexing(evalLibraryId, evalCaller);
     awaitJobCompletion(job);
     var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
     assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);

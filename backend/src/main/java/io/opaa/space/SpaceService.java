@@ -7,6 +7,7 @@ import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditSubjectKind;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatRepository;
@@ -78,21 +79,19 @@ public class SpaceService {
   }
 
   @Transactional
-  public Space createSpace(SpaceCreation creation, UUID currentUserId, boolean systemAdmin) {
-    User currentUser = requireUser(currentUserId);
-
+  public Space createSpace(SpaceCreation creation, CurrentUser caller) {
     // #333 removed SpaceKind: every user may create any number of spaces, including ones they work
     // in alone. Only the default space is special, and it is created automatically rather than
     // through this endpoint - see ensureDefaultSpace.
-    UUID ownerId = creation.ownerId() != null ? creation.ownerId() : currentUserId;
-    if (!systemAdmin && !ownerId.equals(currentUserId)) {
+    UUID ownerId = creation.ownerId() != null ? creation.ownerId() : caller.id();
+    if (!caller.isSystemAdmin() && !ownerId.equals(caller.id())) {
       throw new AccessDeniedException(
           "Nur Systemadministratoren können beim Erstellen einen anderen Eigentümer festlegen");
     }
-    if (!ownerId.equals(currentUserId)) {
+    if (!ownerId.equals(caller.id())) {
       // The organization boundary is checked even for system admins - a user from another
       // organization must not become owner of a space in this one.
-      requireUserInOrganization(ownerId, currentUser.getOrganizationId());
+      requireUserInOrganization(ownerId, caller.organizationId());
     }
 
     SpaceVisibility visibility =
@@ -105,13 +104,13 @@ public class SpaceService {
             false,
             visibility,
             ownerId,
-            currentUser.getOrganizationId());
+            caller.organizationId());
     appendInitialMemberships(space, ownerId, creation.initialMembers());
 
     Space saved = spaceRepository.save(space);
     auditEventRecorder.recordUserAction(
         saved.getOrganizationId(),
-        currentUserId,
+        caller.id(),
         AuditEventType.SPACE_CREATED,
         AuditObjectType.SPACE,
         saved.getId(),
@@ -129,7 +128,7 @@ public class SpaceService {
     // both the space row and every association already inserted for it.
     if (creation.libraryIds() != null) {
       for (UUID libraryId : creation.libraryIds()) {
-        associationService.associate(saved.getId(), libraryId, currentUserId, systemAdmin);
+        associationService.associate(saved.getId(), libraryId, caller);
       }
     }
 
@@ -144,20 +143,18 @@ public class SpaceService {
     return payload;
   }
 
-  public List<SpaceOverview> listSpaces(UUID currentUserId, boolean systemAdmin) {
-    User currentUser = requireUser(currentUserId);
+  public List<SpaceOverview> listSpaces(CurrentUser caller) {
     List<Space> memberSpaces =
-        spaceRepository.findDistinctByMembershipsUserIdWithMemberships(currentUserId).stream()
-            .filter(space -> space.getOrganizationId().equals(currentUser.getOrganizationId()))
+        spaceRepository.findDistinctByMembershipsUserIdWithMemberships(caller.id()).stream()
+            .filter(space -> space.getOrganizationId().equals(caller.organizationId()))
             .toList();
     List<UUID> spaceIds = memberSpaces.stream().map(Space::getId).toList();
     // #682: the overview card's figures ("n Quellen · n Chats · n Mitglieder") come from two
     // grouped queries for the whole list, never one lookup per space. The chat figure counts the
     // caller's own chats only (#525) - which is exactly the "has a chat of their own" question
     // the #543 archived-space rule below asks, so it answers that too.
-    Map<UUID, Long> chatCounts = ownChatCounts(spaceIds, currentUserId);
-    Map<UUID, Long> libraryCounts =
-        associationService.countVisibleBySpace(memberSpaces, currentUserId, systemAdmin);
+    Map<UUID, Long> chatCounts = ownChatCounts(spaceIds, caller.id());
+    Map<UUID, Long> libraryCounts = associationService.countVisibleBySpace(memberSpaces, caller);
     return memberSpaces.stream()
         // #543: an archived space is left out of this list unless the caller has a chat of their
         // own in it, is the space's owner, or is a system admin - otherwise, in the typical #543
@@ -167,8 +164,8 @@ public class SpaceService {
         .filter(
             space ->
                 !space.isArchived()
-                    || systemAdmin
-                    || space.getOwnerId().equals(currentUserId)
+                    || caller.isSystemAdmin()
+                    || space.getOwnerId().equals(caller.id())
                     || chatCounts.getOrDefault(space.getId(), 0L) > 0)
         .map(
             space ->
@@ -190,25 +187,25 @@ public class SpaceService {
                 ChatRepository.SpaceChatCount::getChatCount));
   }
 
-  public Space getSpace(UUID spaceId, UUID currentUserId, boolean systemAdmin) {
-    Space space = loadSpace(spaceId, currentUserId);
+  public Space getSpace(UUID spaceId, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
 
-    if (!systemAdmin && userMembership(space, currentUserId) == null) {
+    if (!caller.isSystemAdmin() && userMembership(space, caller.id()) == null) {
       throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
     }
 
     return space;
   }
 
-  public List<SpaceMemberView> listMembers(UUID spaceId, UUID currentUserId, boolean systemAdmin) {
-    Space space = loadSpace(spaceId, currentUserId);
+  public List<SpaceMemberView> listMembers(UUID spaceId, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
     // #144: the member list names every member of the space - who else works in "Disziplinar-
     // verfahren" or "Umstrukturierung Abteilung 3" is itself sensitive. Unlike getSpace, which only
     // checks membership, this is restricted to ADMIN, the owner (checked explicitly by
     // requireMemberListViewer - transferOwnership never changes the new owner's membership role,
     // so the owner is not always ADMIN) and system admins.
-    if (!systemAdmin) {
-      requireMemberListViewer(space, currentUserId);
+    if (!caller.isSystemAdmin()) {
+      requireMemberListViewer(space, caller.id());
     }
 
     List<UUID> userIds = space.getMemberships().stream().map(SpaceMembership::getUserId).toList();
@@ -221,9 +218,9 @@ public class SpaceService {
 
   @Transactional
   public SpaceMemberView addMember(
-      UUID spaceId, UUID memberUserId, SpaceRole requestedRole, UUID currentUserId) {
-    Space space = loadSpace(spaceId, currentUserId);
-    requireManager(space, currentUserId);
+      UUID spaceId, UUID memberUserId, SpaceRole requestedRole, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
+    requireManager(space, caller.id());
     // #613 review, finding 2: an archived space accepts no new content, and a new member is new
     // content in the sense the specification means - see docs/features/spaces-and-assets.md#einen-
     // space-stilllegen-archivieren-statt-löschen ("keine neuen Chats, Nachrichten, Umbenennungen
@@ -244,7 +241,7 @@ public class SpaceService {
     spaceRepository.save(space);
     auditEventRecorder.recordUserActionOnSubject(
         space.getOrganizationId(),
-        currentUserId,
+        caller.id(),
         AuditEventType.SPACE_MEMBER_ADDED,
         AuditObjectType.SPACE,
         space.getId(),
@@ -261,9 +258,9 @@ public class SpaceService {
 
   @Transactional
   public SpaceMemberView updateMemberRole(
-      UUID spaceId, UUID memberUserId, SpaceRole newRole, UUID currentUserId) {
-    Space space = loadSpace(spaceId, currentUserId);
-    requireManager(space, currentUserId);
+      UUID spaceId, UUID memberUserId, SpaceRole newRole, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
+    requireManager(space, caller.id());
     if (newRole == null) {
       throw new ValidationException("role ist erforderlich");
     }
@@ -283,7 +280,7 @@ public class SpaceService {
     spaceRepository.save(space);
     auditEventRecorder.recordUserActionOnSubject(
         space.getOrganizationId(),
-        currentUserId,
+        caller.id(),
         AuditEventType.SPACE_MEMBER_ROLE_CHANGED,
         AuditObjectType.SPACE,
         space.getId(),
@@ -298,9 +295,9 @@ public class SpaceService {
   }
 
   @Transactional
-  public void removeMember(UUID spaceId, UUID memberUserId, UUID currentUserId) {
-    Space space = loadSpace(spaceId, currentUserId);
-    requireManager(space, currentUserId);
+  public void removeMember(UUID spaceId, UUID memberUserId, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
+    requireManager(space, caller.id());
 
     SpaceMembership target = userMembership(space, memberUserId);
     if (target == null) {
@@ -315,7 +312,7 @@ public class SpaceService {
     spaceRepository.save(space);
     auditEventRecorder.recordUserActionOnSubject(
         space.getOrganizationId(),
-        currentUserId,
+        caller.id(),
         AuditEventType.SPACE_MEMBER_REMOVED,
         AuditObjectType.SPACE,
         space.getId(),
@@ -329,10 +326,9 @@ public class SpaceService {
   }
 
   @Transactional
-  public void transferOwnership(
-      UUID spaceId, UUID newOwnerUserId, UUID currentUserId, boolean systemAdmin) {
-    Space space = loadSpace(spaceId, currentUserId);
-    if (!systemAdmin && !space.getOwnerId().equals(currentUserId)) {
+  public void transferOwnership(UUID spaceId, UUID newOwnerUserId, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
+    if (!caller.isSystemAdmin() && !space.getOwnerId().equals(caller.id())) {
       throw new AccessDeniedException(
           "Nur der Eigentümer oder ein Systemadministrator kann die Verantwortung übertragen");
     }
@@ -352,7 +348,7 @@ public class SpaceService {
     // event_type = ASSET_OWNER_CHANGED).
     auditEventRecorder.recordUserAction(
         space.getOrganizationId(),
-        currentUserId,
+        caller.id(),
         AuditEventType.ASSET_OWNER_CHANGED,
         AuditObjectType.SPACE,
         space.getId(),
@@ -364,15 +360,14 @@ public class SpaceService {
   }
 
   @Transactional
-  public Space updateSpace(
-      UUID spaceId, SpaceUpdate update, UUID currentUserId, boolean systemAdmin) {
-    Space space = loadSpace(spaceId, currentUserId);
+  public Space updateSpace(UUID spaceId, SpaceUpdate update, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
 
-    SpaceMembership membership = userMembership(space, currentUserId);
+    SpaceMembership membership = userMembership(space, caller.id());
     boolean adminOrOwner =
         (membership != null && membership.getRole() == SpaceRole.ADMIN)
-            || space.getOwnerId().equals(currentUserId);
-    if (!systemAdmin && !adminOrOwner) {
+            || space.getOwnerId().equals(caller.id());
+    if (!caller.isSystemAdmin() && !adminOrOwner) {
       throw new AccessDeniedException(
           "Nur Administratoren oder der Eigentümer können einen Space ändern");
     }
@@ -411,7 +406,7 @@ public class SpaceService {
       }
       auditEventRecorder.recordUserAction(
           updated.getOrganizationId(),
-          currentUserId,
+          caller.id(),
           AuditEventType.SPACE_CHANGED,
           AuditObjectType.SPACE,
           updated.getId(),
@@ -425,15 +420,15 @@ public class SpaceService {
   }
 
   @Transactional
-  public void deleteSpace(UUID spaceId, UUID currentUserId, boolean systemAdmin) {
-    Space space = loadSpace(spaceId, currentUserId);
+  public void deleteSpace(UUID spaceId, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
 
     if (space.isDefault()) {
       throw new ValidationException("Der Standard-Space kann nicht gelöscht werden");
     }
 
-    boolean owner = space.getOwnerId().equals(currentUserId);
-    if (!systemAdmin && !owner) {
+    boolean owner = space.getOwnerId().equals(caller.id());
+    if (!caller.isSystemAdmin() && !owner) {
       throw new AccessDeniedException(
           "Nur der Eigentümer oder ein Systemadministrator kann einen Space löschen");
     }
@@ -452,7 +447,7 @@ public class SpaceService {
 
     auditEventRecorder.recordUserAction(
         space.getOrganizationId(),
-        currentUserId,
+        caller.id(),
         AuditEventType.SPACE_DELETED,
         AuditObjectType.SPACE,
         space.getId(),
@@ -485,15 +480,15 @@ public class SpaceService {
    * returns its current state, not an error.
    */
   @Transactional
-  public Space archiveSpace(UUID spaceId, UUID currentUserId, boolean systemAdmin) {
-    Space space = loadSpace(spaceId, currentUserId);
+  public Space archiveSpace(UUID spaceId, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
 
     if (space.isDefault()) {
       throw new ValidationException("Der Standard-Space kann nicht archiviert werden");
     }
 
-    boolean owner = space.getOwnerId().equals(currentUserId);
-    if (!systemAdmin && !owner) {
+    boolean owner = space.getOwnerId().equals(caller.id());
+    if (!caller.isSystemAdmin() && !owner) {
       throw new AccessDeniedException(
           "Nur der Eigentümer oder ein Systemadministrator kann einen Space archivieren");
     }
@@ -506,7 +501,7 @@ public class SpaceService {
     Space archived = spaceRepository.save(space);
     auditEventRecorder.recordUserAction(
         archived.getOrganizationId(),
-        currentUserId,
+        caller.id(),
         AuditEventType.SPACE_ARCHIVED,
         AuditObjectType.SPACE,
         archived.getId(),
@@ -678,14 +673,13 @@ public class SpaceService {
    * organization than the caller is treated as not found - the boundary is not overstepped even to
    * reveal existence, and this applies to system administrators as well.
    */
-  private Space loadSpace(UUID spaceId, UUID currentUserId) {
-    User currentUser = requireUser(currentUserId);
+  private Space loadSpace(UUID spaceId, CurrentUser caller) {
     Space space =
         spaceRepository
             .findByIdWithMemberships(spaceId)
             .orElseThrow(() -> new NotFoundException("Space nicht gefunden"));
 
-    if (!space.getOrganizationId().equals(currentUser.getOrganizationId())) {
+    if (!space.getOrganizationId().equals(caller.organizationId())) {
       throw new NotFoundException("Space nicht gefunden");
     }
     return space;

@@ -11,8 +11,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
@@ -39,7 +39,6 @@ class LibraryFolderServiceTest {
 
   private LibraryFolderRepository folderRepository;
   private KnowledgeLibraryRepository libraryRepository;
-  private UserRepository userRepository;
   private LibraryAccessService accessService;
   private DocumentRepository documentRepository;
   private LibraryDocumentService documentService;
@@ -49,12 +48,13 @@ class LibraryFolderServiceTest {
   private final UUID currentUserId = UUID.randomUUID();
   private final UUID organizationId = UUID.randomUUID();
   private final UUID libraryId = UUID.randomUUID();
+  private final CurrentUser caller =
+      CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "Test User");
 
   @BeforeEach
   void setUp() {
     folderRepository = mock(LibraryFolderRepository.class);
     libraryRepository = mock(KnowledgeLibraryRepository.class);
-    userRepository = mock(UserRepository.class);
     accessService = mock(LibraryAccessService.class);
     documentRepository = mock(DocumentRepository.class);
     documentService = mock(LibraryDocumentService.class);
@@ -69,15 +69,10 @@ class LibraryFolderServiceTest {
         new LibraryFolderService(
             folderRepository,
             libraryRepository,
-            userRepository,
             accessService,
             documentRepository,
             documentService,
             transactionManager);
-
-    User user = new User("subject", "issuer", "user@example.com", "Test User");
-    user.setOrganizationId(organizationId);
-    when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
 
     library = mock(KnowledgeLibrary.class);
     when(library.getId()).thenReturn(libraryId);
@@ -114,8 +109,7 @@ class LibraryFolderServiceTest {
     when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "Protokolle"))
         .thenReturn(Optional.empty());
 
-    LibraryFolderDetail response =
-        service.createFolder(libraryId, "Protokolle", null, currentUserId, false);
+    LibraryFolderDetail response = service.createFolder(libraryId, "Protokolle", null, caller);
 
     assertThat(response.folder().getName()).isEqualTo("Protokolle");
     assertThat(response.folder().getLibraryId()).isEqualTo(libraryId);
@@ -129,8 +123,7 @@ class LibraryFolderServiceTest {
     when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "Protokolle"))
         .thenReturn(Optional.empty());
 
-    LibraryFolderDetail response =
-        service.createFolder(libraryId, "  Protokolle  ", null, currentUserId, false);
+    LibraryFolderDetail response = service.createFolder(libraryId, "  Protokolle  ", null, caller);
 
     assertThat(response.folder().getName()).isEqualTo("Protokolle");
   }
@@ -139,8 +132,7 @@ class LibraryFolderServiceTest {
   void aViewerCannotCreateAFolder() {
     denyEditor();
 
-    assertThatThrownBy(
-            () -> service.createFolder(libraryId, "Protokolle", null, currentUserId, false))
+    assertThatThrownBy(() -> service.createFolder(libraryId, "Protokolle", null, caller))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -149,8 +141,7 @@ class LibraryFolderServiceTest {
     grantEditor();
     when(library.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
 
-    assertThatThrownBy(
-            () -> service.createFolder(libraryId, "Protokolle", null, currentUserId, false))
+    assertThatThrownBy(() -> service.createFolder(libraryId, "Protokolle", null, caller))
         .isInstanceOf(ConflictException.class);
   }
 
@@ -158,7 +149,7 @@ class LibraryFolderServiceTest {
   void aBlankNameIsRejected() {
     grantEditor();
 
-    assertThatThrownBy(() -> service.createFolder(libraryId, "   ", null, currentUserId, false))
+    assertThatThrownBy(() -> service.createFolder(libraryId, "   ", null, caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -166,8 +157,7 @@ class LibraryFolderServiceTest {
   void aNameContainingASlashIsRejected() {
     grantEditor();
 
-    assertThatThrownBy(
-            () -> service.createFolder(libraryId, "Akten/2026", null, currentUserId, false))
+    assertThatThrownBy(() -> service.createFolder(libraryId, "Akten/2026", null, caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -175,8 +165,7 @@ class LibraryFolderServiceTest {
   void aNameOverTheLengthLimitIsRejected() {
     grantEditor();
 
-    assertThatThrownBy(
-            () -> service.createFolder(libraryId, "x".repeat(256), null, currentUserId, false))
+    assertThatThrownBy(() -> service.createFolder(libraryId, "x".repeat(256), null, caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -186,8 +175,7 @@ class LibraryFolderServiceTest {
     when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "Protokolle"))
         .thenReturn(Optional.of(new LibraryFolder(libraryId, null, "Protokolle", organizationId)));
 
-    assertThatThrownBy(
-            () -> service.createFolder(libraryId, "Protokolle", null, currentUserId, false))
+    assertThatThrownBy(() -> service.createFolder(libraryId, "Protokolle", null, caller))
         .isInstanceOf(ConflictException.class);
   }
 
@@ -197,10 +185,7 @@ class LibraryFolderServiceTest {
     UUID missingParentId = UUID.randomUUID();
     when(folderRepository.findById(missingParentId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(
-            () ->
-                service.createFolder(
-                    libraryId, "Protokolle", missingParentId, currentUserId, false))
+    assertThatThrownBy(() -> service.createFolder(libraryId, "Protokolle", missingParentId, caller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -212,9 +197,7 @@ class LibraryFolderServiceTest {
     when(folderRepository.findById(foreignParent.getId())).thenReturn(Optional.of(foreignParent));
 
     assertThatThrownBy(
-            () ->
-                service.createFolder(
-                    libraryId, "Protokolle", foreignParent.getId(), currentUserId, false))
+            () -> service.createFolder(libraryId, "Protokolle", foreignParent.getId(), caller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -231,8 +214,7 @@ class LibraryFolderServiceTest {
     }
     UUID deepestParentId = parentId;
 
-    assertThatThrownBy(
-            () -> service.createFolder(libraryId, "Zu tief", deepestParentId, currentUserId, false))
+    assertThatThrownBy(() -> service.createFolder(libraryId, "Zu tief", deepestParentId, caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -247,8 +229,7 @@ class LibraryFolderServiceTest {
     LibraryFolder folder = new LibraryFolder(libraryId, null, "Protokolle", organizationId);
     when(folderRepository.findById(folder.getId())).thenReturn(Optional.of(folder));
 
-    assertThatThrownBy(
-            () -> service.renameFolder(libraryId, folder.getId(), "Archiv", currentUserId, false))
+    assertThatThrownBy(() -> service.renameFolder(libraryId, folder.getId(), "Archiv", caller))
         .isInstanceOf(ConflictException.class);
   }
 
@@ -261,7 +242,7 @@ class LibraryFolderServiceTest {
     LibraryFolder folder = new LibraryFolder(libraryId, null, "Protokolle", organizationId);
     when(folderRepository.findById(folder.getId())).thenReturn(Optional.of(folder));
 
-    assertThatThrownBy(() -> service.deleteFolder(libraryId, folder.getId(), currentUserId, false))
+    assertThatThrownBy(() -> service.deleteFolder(libraryId, folder.getId(), caller))
         .isInstanceOf(ConflictException.class);
   }
 
@@ -389,7 +370,7 @@ class LibraryFolderServiceTest {
         .thenReturn(Optional.empty());
 
     LibraryFolderDetail response =
-        service.renameFolder(libraryId, folder.getId(), "Protokolle", currentUserId, false);
+        service.renameFolder(libraryId, folder.getId(), "Protokolle", caller);
 
     assertThat(response.folder().getName()).isEqualTo("Protokolle");
   }
@@ -403,8 +384,7 @@ class LibraryFolderServiceTest {
             libraryId, "Archiv", folder.getId()))
         .thenReturn(Optional.of(new LibraryFolder(libraryId, null, "Archiv", organizationId)));
 
-    assertThatThrownBy(
-            () -> service.renameFolder(libraryId, folder.getId(), "Archiv", currentUserId, false))
+    assertThatThrownBy(() -> service.renameFolder(libraryId, folder.getId(), "Archiv", caller))
         .isInstanceOf(ConflictException.class);
   }
 
@@ -414,8 +394,7 @@ class LibraryFolderServiceTest {
     LibraryFolder folder = new LibraryFolder(libraryId, null, "Protokolle", organizationId);
     when(folderRepository.findById(folder.getId())).thenReturn(Optional.of(folder));
 
-    LibraryFolderDetail response =
-        service.getFolder(libraryId, folder.getId(), currentUserId, false);
+    LibraryFolderDetail response = service.getFolder(libraryId, folder.getId(), caller);
 
     assertThat(response.folder().getId()).isEqualTo(folder.getId());
   }
@@ -440,15 +419,13 @@ class LibraryFolderServiceTest {
     when(documentRepository.findByFolderId(root.getId())).thenReturn(List.of(rootDocument));
     when(documentRepository.findByFolderId(child.getId())).thenReturn(List.of(childDocument));
 
-    service.deleteFolder(libraryId, root.getId(), currentUserId, false);
+    service.deleteFolder(libraryId, root.getId(), caller);
 
     // Child folder's document is removed before the root folder's own document - leaf first, the
     // order fk_library_folders_parent/fk_documents_folder's RESTRICT constraints require (see
     // LibraryFolderService's class Javadoc).
-    verify(documentService, times(1))
-        .deleteDocument(libraryId, childDocumentId, currentUserId, false);
-    verify(documentService, times(1))
-        .deleteDocument(libraryId, rootDocumentId, currentUserId, false);
+    verify(documentService, times(1)).deleteDocument(libraryId, childDocumentId, caller);
+    verify(documentService, times(1)).deleteDocument(libraryId, rootDocumentId, caller);
     verify(folderRepository).delete(child);
     verify(folderRepository).delete(root);
   }
@@ -459,9 +436,9 @@ class LibraryFolderServiceTest {
     LibraryFolder folder = new LibraryFolder(libraryId, null, "Leer", organizationId);
     when(folderRepository.findById(folder.getId())).thenReturn(Optional.of(folder));
 
-    service.deleteFolder(libraryId, folder.getId(), currentUserId, false);
+    service.deleteFolder(libraryId, folder.getId(), caller);
 
-    verify(documentService, never()).deleteDocument(any(), any(), any(), eq(false));
+    verify(documentService, never()).deleteDocument(any(), any(), any());
     verify(folderRepository).delete(folder);
   }
 
@@ -472,9 +449,7 @@ class LibraryFolderServiceTest {
         new LibraryFolder(UUID.randomUUID(), null, "Fremd", organizationId);
     when(folderRepository.findById(foreignFolder.getId())).thenReturn(Optional.of(foreignFolder));
 
-    assertThatThrownBy(
-            () ->
-                service.renameFolder(libraryId, foreignFolder.getId(), "Neu", currentUserId, false))
+    assertThatThrownBy(() -> service.renameFolder(libraryId, foreignFolder.getId(), "Neu", caller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -490,8 +465,7 @@ class LibraryFolderServiceTest {
         .thenReturn(Optional.empty());
 
     UUID leafId =
-        service.resolveOrCreateFolderPath(
-            libraryId, null, List.of("Protokolle", "2026"), currentUserId, false);
+        service.resolveOrCreateFolderPath(libraryId, null, List.of("Protokolle", "2026"), caller);
 
     assertThat(leafId).isNotNull();
     verify(folderRepository, times(2)).saveAndFlush(any(LibraryFolder.class));
@@ -505,8 +479,7 @@ class LibraryFolderServiceTest {
         .thenReturn(Optional.of(existing));
 
     UUID resolvedId =
-        service.resolveOrCreateFolderPath(
-            libraryId, null, List.of("Protokolle"), currentUserId, false);
+        service.resolveOrCreateFolderPath(libraryId, null, List.of("Protokolle"), caller);
 
     assertThat(resolvedId).isEqualTo(existing.getId());
     verify(folderRepository, never()).saveAndFlush(any(LibraryFolder.class));
@@ -521,8 +494,7 @@ class LibraryFolderServiceTest {
             libraryId, base.getId(), "Unterordner"))
         .thenReturn(Optional.empty());
 
-    service.resolveOrCreateFolderPath(
-        libraryId, base.getId(), List.of("Unterordner"), currentUserId, false);
+    service.resolveOrCreateFolderPath(libraryId, base.getId(), List.of("Unterordner"), caller);
 
     verify(folderRepository)
         .saveAndFlush(
@@ -536,8 +508,7 @@ class LibraryFolderServiceTest {
   void resolveOrCreateFolderPathReturnsTheBaseFolderForAnEmptyPath() {
     grantEditor();
 
-    UUID resolvedId =
-        service.resolveOrCreateFolderPath(libraryId, null, List.of(), currentUserId, false);
+    UUID resolvedId = service.resolveOrCreateFolderPath(libraryId, null, List.of(), caller);
 
     assertThat(resolvedId).isNull();
     verify(folderRepository, never()).saveAndFlush(any(LibraryFolder.class));
@@ -550,7 +521,7 @@ class LibraryFolderServiceTest {
     assertThatThrownBy(
             () ->
                 service.resolveOrCreateFolderPath(
-                    libraryId, null, List.of("Protokolle", ""), currentUserId, false))
+                    libraryId, null, List.of("Protokolle", ""), caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -561,7 +532,7 @@ class LibraryFolderServiceTest {
     assertThatThrownBy(
             () ->
                 service.resolveOrCreateFolderPath(
-                    libraryId, null, List.of("Ordner\\Unterordner"), currentUserId, false))
+                    libraryId, null, List.of("Ordner\\Unterordner"), caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -570,9 +541,7 @@ class LibraryFolderServiceTest {
     grantEditor();
 
     assertThatThrownBy(
-            () ->
-                service.resolveOrCreateFolderPath(
-                    libraryId, null, List.of(".."), currentUserId, false))
+            () -> service.resolveOrCreateFolderPath(libraryId, null, List.of(".."), caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -586,8 +555,7 @@ class LibraryFolderServiceTest {
     when(folderRepository.findByLibraryIdAndParentFolderIdAndName(eq(libraryId), any(), any()))
         .thenReturn(Optional.empty());
 
-    assertThatThrownBy(
-            () -> service.resolveOrCreateFolderPath(libraryId, null, tooDeep, currentUserId, false))
+    assertThatThrownBy(() -> service.resolveOrCreateFolderPath(libraryId, null, tooDeep, caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -597,9 +565,7 @@ class LibraryFolderServiceTest {
     when(library.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
 
     assertThatThrownBy(
-            () ->
-                service.resolveOrCreateFolderPath(
-                    libraryId, null, List.of("Protokolle"), currentUserId, false))
+            () -> service.resolveOrCreateFolderPath(libraryId, null, List.of("Protokolle"), caller))
         .isInstanceOf(ConflictException.class);
   }
 
@@ -612,7 +578,7 @@ class LibraryFolderServiceTest {
     assertThatThrownBy(
             () ->
                 service.resolveOrCreateFolderPath(
-                    libraryId, foreignBase.getId(), List.of("Protokolle"), currentUserId, false))
+                    libraryId, foreignBase.getId(), List.of("Protokolle"), caller))
         .isInstanceOf(NotFoundException.class);
   }
 }

@@ -1,6 +1,7 @@
 package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -9,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
@@ -22,7 +24,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,14 +58,18 @@ class DocumentControllerTest {
   @MockitoBean private UserService userService;
 
   private final UUID currentUserId = UUID.randomUUID();
+  private CurrentUser expectedCaller;
 
   @BeforeEach
   void setUp() {
     User user = new User(TEST_SUBJECT, TEST_ISSUER, "test@example.com", "Test User");
     user.setSystemRole(SystemRole.USER);
     setId(user, currentUserId);
-    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
-        .thenReturn(Optional.of(user));
+    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+        .thenReturn(user);
+    expectedCaller =
+        CurrentUser.of(
+            currentUserId, user.getOrganizationId(), SystemRole.USER, user.getDisplayName());
   }
 
   private RequestPostProcessor asTestUser() {
@@ -87,7 +92,7 @@ class DocumentControllerTest {
     UUID documentId = UUID.randomUUID();
     Path file = tempDir.resolve("original.txt");
     Files.writeString(file, "Originalinhalt", StandardCharsets.UTF_8);
-    when(documentService.loadContent(eq(documentId), eq(currentUserId), eq(false)))
+    when(documentService.loadContent(eq(documentId), eq(expectedCaller)))
         .thenReturn(new DocumentContent(file, "bericht 2026.txt", "text/plain"));
 
     mockMvc
@@ -113,7 +118,7 @@ class DocumentControllerTest {
     UUID documentId = UUID.randomUUID();
     Path file = tempDir.resolve("original.txt");
     Files.writeString(file, "Originalinhalt", StandardCharsets.UTF_8);
-    when(documentService.loadContent(eq(documentId), eq(currentUserId), eq(false)))
+    when(documentService.loadContent(eq(documentId), eq(expectedCaller)))
         .thenReturn(new DocumentContent(file, "Prüfbericht *2026*.txt", "text/plain"));
 
     mockMvc
@@ -147,7 +152,7 @@ class DocumentControllerTest {
             super.close();
           }
         };
-    when(documentService.loadContent(eq(documentId), eq(currentUserId), eq(false)))
+    when(documentService.loadContent(eq(documentId), eq(expectedCaller)))
         .thenReturn(DocumentContent.ofStream(remoteBody, "original.pdf", "application/pdf"));
 
     mockMvc
@@ -168,7 +173,7 @@ class DocumentControllerTest {
     UUID documentId = UUID.randomUUID();
     Path file = tempDir.resolve("original.bin");
     Files.writeString(file, "Originalinhalt", StandardCharsets.UTF_8);
-    when(documentService.loadContent(eq(documentId), eq(currentUserId), eq(false)))
+    when(documentService.loadContent(eq(documentId), eq(expectedCaller)))
         .thenReturn(new DocumentContent(file, "original.bin", "pdf"));
 
     mockMvc
@@ -181,7 +186,7 @@ class DocumentControllerTest {
   @Test
   void aDocumentTheServiceRefusesAnswers404() throws Exception {
     UUID documentId = UUID.randomUUID();
-    when(documentService.loadContent(eq(documentId), eq(currentUserId), eq(false)))
+    when(documentService.loadContent(eq(documentId), eq(expectedCaller)))
         .thenThrow(new NotFoundException("Dokument nicht gefunden"));
 
     mockMvc

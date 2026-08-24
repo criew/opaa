@@ -1,5 +1,7 @@
 package io.opaa.api;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -7,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.auth.AdminTestSecurityConfig;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
@@ -14,7 +17,6 @@ import io.opaa.group.Group;
 import io.opaa.group.GroupKind;
 import io.opaa.group.GroupService;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,13 +51,17 @@ class MeControllerTest {
   @MockitoBean private UserService userService;
 
   private User user;
+  private CurrentUser expectedCaller;
 
   @BeforeEach
   void setUp() {
     user = new User(TEST_SUBJECT, TEST_ISSUER, "test@example.com", "Test User");
     user.setSystemRole(SystemRole.USER);
-    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
-        .thenReturn(Optional.of(user));
+    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+        .thenReturn(user);
+    expectedCaller =
+        CurrentUser.of(
+            user.getId(), user.getOrganizationId(), SystemRole.USER, user.getDisplayName());
   }
 
   private RequestPostProcessor asRegularUser() {
@@ -67,7 +73,7 @@ class MeControllerTest {
   @Test
   void myGroupsSucceedsForARegularUserWithoutTheSystemAdminRole() throws Exception {
     Group group = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "Team A", null, null, null);
-    when(groupService.listMyGroups(user.getId())).thenReturn(List.of(group));
+    when(groupService.listMyGroups(eq(expectedCaller))).thenReturn(List.of(group));
 
     mockMvc
         .perform(get("/api/v1/me/groups").with(asRegularUser()))
@@ -78,7 +84,7 @@ class MeControllerTest {
 
   @Test
   void myGroupsReturnsAnEmptyListForARegularUserWithoutAnyMembership() throws Exception {
-    when(groupService.listMyGroups(user.getId())).thenReturn(List.of());
+    when(groupService.listMyGroups(eq(expectedCaller))).thenReturn(List.of());
 
     mockMvc
         .perform(get("/api/v1/me/groups").with(asRegularUser()))

@@ -9,8 +9,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
@@ -44,7 +44,6 @@ class DocumentIndexingServiceTest {
   @Mock private SourceIndexingExecutor asyncIndexingExecutor;
   @Mock private SourceIndexingExecutor urlIndexingExecutor;
   @Mock private SourceIndexingExecutor rssFeedIndexingExecutor;
-  @Mock private UserRepository userRepository;
   @Mock private KnowledgeLibraryRepository libraryRepository;
   @Mock private LibraryAccessService libraryAccessService;
   @Mock private IndexingRunEventRepository indexingRunEventRepository;
@@ -53,6 +52,8 @@ class DocumentIndexingServiceTest {
 
   private final UUID organizationId = UUID.randomUUID();
   private User currentUser;
+  private CurrentUser caller;
+  private CurrentUser systemAdminCaller;
   private KnowledgeLibrary library;
 
   @BeforeEach
@@ -67,13 +68,18 @@ class DocumentIndexingServiceTest {
         new DocumentIndexingService(
             indexingJobService,
             registry,
-            userRepository,
             libraryRepository,
             libraryAccessService,
             indexingRunEventRepository);
 
     currentUser = new User("subject", "issuer", "user@example.com", "Test User");
     currentUser.setOrganizationId(organizationId);
+    caller =
+        CurrentUser.of(
+            currentUser.getId(), organizationId, io.opaa.auth.SystemRole.USER, "Test User");
+    systemAdminCaller =
+        CurrentUser.of(
+            currentUser.getId(), organizationId, io.opaa.auth.SystemRole.SYSTEM_ADMIN, "Test User");
     library =
         KnowledgeLibrary.ownedByUser(
             organizationId,
@@ -91,9 +97,8 @@ class DocumentIndexingServiceTest {
   }
 
   private void stubEditableLibrary() {
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.EDITOR))
+    when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
   }
 
@@ -101,12 +106,11 @@ class DocumentIndexingServiceTest {
   void triggerIndexingWithAViewerOnlyGrantFailsWithForbiddenAndDoesNotStartAJob() {
     // Some access (a real VIEWER grant), just not enough - #436 keeps this at 403, distinct from
     // "no access at all" (see aSystemAdminWithoutAGrantOnAnOrdinaryLibraryIsStillRejected below).
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.EDITOR))
+    when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.EDITOR))
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
-    assertThatThrownBy(() -> service.triggerIndexing(library.getId(), currentUser.getId(), false))
+    assertThatThrownBy(() -> service.triggerIndexing(library.getId(), caller))
         .isInstanceOf(AccessDeniedException.class);
     verify(indexingJobService, never()).startJob(any(), any());
     verify(asyncIndexingExecutor, never()).execute(any(), any());
@@ -124,12 +128,10 @@ class DocumentIndexingServiceTest {
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
             false);
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(foreignLibrary.getId()))
         .thenReturn(Optional.of(foreignLibrary));
 
-    assertThatThrownBy(
-            () -> service.triggerIndexing(foreignLibrary.getId(), currentUser.getId(), false))
+    assertThatThrownBy(() -> service.triggerIndexing(foreignLibrary.getId(), caller))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Bibliothek nicht gefunden");
     verify(indexingJobService, never()).startJob(any(), any());
@@ -137,11 +139,10 @@ class DocumentIndexingServiceTest {
 
   @Test
   void triggerIndexingWithAnUnknownLibraryFailsWithNotFound() {
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     UUID unknownLibraryId = UUID.randomUUID();
     when(libraryRepository.findById(unknownLibraryId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.triggerIndexing(unknownLibraryId, currentUser.getId(), false))
+    assertThatThrownBy(() -> service.triggerIndexing(unknownLibraryId, caller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -151,7 +152,7 @@ class DocumentIndexingServiceTest {
     var job = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobService.startJob(library.getId(), organizationId)).thenReturn(job);
 
-    IndexingJob result = service.triggerIndexing(library.getId(), currentUser.getId(), false);
+    IndexingJob result = service.triggerIndexing(library.getId(), caller);
 
     assertThat(result).isEqualTo(job);
     verify(asyncIndexingExecutor).execute(job.getId(), library);
@@ -168,17 +169,17 @@ class DocumentIndexingServiceTest {
     // also pins that requireRole is now consulted unconditionally, the same as for any other
     // library. #436: no grant at all now answers 404, not 403 - a system admin's own missing grant
     // must not be distinguishable from the library not existing.
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.EDITOR))
+    when(libraryAccessService.requireRole(library, systemAdminCaller.id(), false, AssetRole.EDITOR))
         .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
 
-    assertThatThrownBy(() -> service.triggerIndexing(library.getId(), currentUser.getId(), true))
+    assertThatThrownBy(() -> service.triggerIndexing(library.getId(), systemAdminCaller))
         .isInstanceOf(NotFoundException.class);
     verify(indexingJobService, never()).startJob(any(), any());
-    verify(libraryAccessService).requireRole(library, currentUser.getId(), false, AssetRole.EDITOR);
+    verify(libraryAccessService)
+        .requireRole(library, systemAdminCaller.id(), false, AssetRole.EDITOR);
     verify(libraryAccessService, never())
-        .requireRole(library, currentUser.getId(), true, AssetRole.EDITOR);
+        .requireRole(library, systemAdminCaller.id(), true, AssetRole.EDITOR);
   }
 
   @Test
@@ -186,7 +187,7 @@ class DocumentIndexingServiceTest {
     stubEditableLibrary();
     when(indexingJobService.isJobRunning(library.getId(), organizationId)).thenReturn(true);
 
-    assertThatThrownBy(() -> service.triggerIndexing(library.getId(), currentUser.getId(), false))
+    assertThatThrownBy(() -> service.triggerIndexing(library.getId(), caller))
         .isInstanceOf(ConflictException.class);
     verify(indexingJobService, never()).startJob(any(), any());
   }
@@ -206,7 +207,7 @@ class DocumentIndexingServiceTest {
         .when(asyncIndexingExecutor)
         .execute(job.getId(), library);
 
-    assertThatThrownBy(() -> service.triggerIndexing(library.getId(), currentUser.getId(), false))
+    assertThatThrownBy(() -> service.triggerIndexing(library.getId(), caller))
         .isInstanceOf(ServiceUnavailableException.class);
     verify(indexingJobService).failJob(eq(job.getId()), any());
   }
@@ -220,7 +221,7 @@ class DocumentIndexingServiceTest {
     when(indexingJobService.startJob(library.getId(), organizationId)).thenReturn(job);
     when(indexingJobService.isJobRunning(library.getId(), organizationId)).thenReturn(false);
 
-    IndexingJob result = service.triggerIndexing(library.getId(), currentUser.getId(), false);
+    IndexingJob result = service.triggerIndexing(library.getId(), caller);
 
     assertThat(result).isEqualTo(job);
   }
@@ -235,14 +236,11 @@ class DocumentIndexingServiceTest {
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
             false);
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(uploadLibrary.getId())).thenReturn(Optional.of(uploadLibrary));
-    when(libraryAccessService.requireRole(
-            uploadLibrary, currentUser.getId(), false, AssetRole.EDITOR))
+    when(libraryAccessService.requireRole(uploadLibrary, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
 
-    assertThatThrownBy(
-            () -> service.triggerIndexing(uploadLibrary.getId(), currentUser.getId(), false))
+    assertThatThrownBy(() -> service.triggerIndexing(uploadLibrary.getId(), caller))
         .isInstanceOf(ConflictException.class);
     verify(indexingJobService, never()).startJob(any(), any());
     verify(asyncIndexingExecutor, never()).execute(any(), any());
@@ -264,15 +262,13 @@ class DocumentIndexingServiceTest {
             null,
             null,
             false);
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(httpLibrary.getId())).thenReturn(Optional.of(httpLibrary));
-    when(libraryAccessService.requireRole(
-            httpLibrary, currentUser.getId(), false, AssetRole.EDITOR))
+    when(libraryAccessService.requireRole(httpLibrary, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
     var job = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobService.startJob(httpLibrary.getId(), organizationId)).thenReturn(job);
 
-    IndexingJob result = service.triggerIndexing(httpLibrary.getId(), currentUser.getId(), false);
+    IndexingJob result = service.triggerIndexing(httpLibrary.getId(), caller);
 
     assertThat(result).isEqualTo(job);
     verify(urlIndexingExecutor).execute(job.getId(), httpLibrary);
@@ -295,14 +291,13 @@ class DocumentIndexingServiceTest {
             null,
             null,
             false);
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(rssLibrary.getId())).thenReturn(Optional.of(rssLibrary));
-    when(libraryAccessService.requireRole(rssLibrary, currentUser.getId(), false, AssetRole.EDITOR))
+    when(libraryAccessService.requireRole(rssLibrary, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
     var job = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobService.startJob(rssLibrary.getId(), organizationId)).thenReturn(job);
 
-    IndexingJob result = service.triggerIndexing(rssLibrary.getId(), currentUser.getId(), false);
+    IndexingJob result = service.triggerIndexing(rssLibrary.getId(), caller);
 
     assertThat(result).isEqualTo(job);
     verify(rssFeedIndexingExecutor).execute(job.getId(), rssLibrary);
@@ -323,29 +318,27 @@ class DocumentIndexingServiceTest {
 
   @Test
   void getStatusReturnsEmptyForALibraryThatNeverRan() {
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.VIEWER))
+    when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.VIEWER))
         .thenReturn(AssetRole.VIEWER);
-    when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(false);
+    when(libraryAccessService.canManage(library, caller.id(), false)).thenReturn(false);
     when(indexingJobService.getLatestJob(library.getId(), organizationId))
         .thenReturn(Optional.empty());
 
-    assertThat(service.getStatus(library.getId(), currentUser.getId(), false).job()).isEmpty();
+    assertThat(service.getStatus(library.getId(), caller).job()).isEmpty();
   }
 
   @Test
   void getStatusReturnsTheLibrarysLatestJob() {
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.VIEWER))
+    when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.VIEWER))
         .thenReturn(AssetRole.VIEWER);
-    when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(false);
+    when(libraryAccessService.canManage(library, caller.id(), false)).thenReturn(false);
     var job = new IndexingJob(JobStatus.COMPLETED);
     when(indexingJobService.getLatestJob(library.getId(), organizationId))
         .thenReturn(Optional.of(job));
 
-    assertThat(service.getStatus(library.getId(), currentUser.getId(), false).job()).contains(job);
+    assertThat(service.getStatus(library.getId(), caller).job()).contains(job);
   }
 
   @Test
@@ -353,32 +346,28 @@ class DocumentIndexingServiceTest {
     // #507/#659: getStatus's caller (LibraryController) decides whether to shorten a FAILED job's
     // raw error message based on this flag - pinned here independently of that shortening so a
     // regression in either place fails the layer it actually belongs to.
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.VIEWER))
+    when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.VIEWER))
         .thenReturn(AssetRole.VIEWER);
     when(indexingJobService.getLatestJob(library.getId(), organizationId))
         .thenReturn(Optional.empty());
 
-    when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(false);
-    assertThat(service.getStatus(library.getId(), currentUser.getId(), false).canSeeErrorDetail())
-        .isFalse();
+    when(libraryAccessService.canManage(library, caller.id(), false)).thenReturn(false);
+    assertThat(service.getStatus(library.getId(), caller).canSeeErrorDetail()).isFalse();
 
-    when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(true);
-    assertThat(service.getStatus(library.getId(), currentUser.getId(), false).canSeeErrorDetail())
-        .isTrue();
+    when(libraryAccessService.canManage(library, caller.id(), false)).thenReturn(true);
+    assertThat(service.getStatus(library.getId(), caller).canSeeErrorDetail()).isTrue();
   }
 
   @Test
   void getStatusWithoutAnyGrantFailsWithNotFound() {
     // #436: no grant at all answers 404, not 403 - the same "does not exist" GET
     // /libraries/{id} already answers for the same caller and library.
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.VIEWER))
+    when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.VIEWER))
         .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
 
-    assertThatThrownBy(() -> service.getStatus(library.getId(), currentUser.getId(), false))
+    assertThatThrownBy(() -> service.getStatus(library.getId(), caller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -392,11 +381,10 @@ class DocumentIndexingServiceTest {
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
             false);
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(foreignLibrary.getId()))
         .thenReturn(Optional.of(foreignLibrary));
 
-    assertThatThrownBy(() -> service.getStatus(foreignLibrary.getId(), currentUser.getId(), false))
+    assertThatThrownBy(() -> service.getStatus(foreignLibrary.getId(), caller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -404,16 +392,15 @@ class DocumentIndexingServiceTest {
 
   @Test
   void getRecentRunsWithManageAccessReturnsTheLibrarysRuns() {
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(true);
+    when(libraryAccessService.canManage(library, caller.id(), false)).thenReturn(true);
     var job = new IndexingJob(JobStatus.COMPLETED);
     when(indexingJobService.getRecentJobs(library.getId(), organizationId))
         .thenReturn(List.of(job));
     when(indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(job.getId()))
         .thenReturn(List.of());
 
-    var runs = service.getRecentRuns(library.getId(), currentUser.getId(), false);
+    var runs = service.getRecentRuns(library.getId(), caller);
 
     assertThat(runs).hasSize(1);
     assertThat(runs.getFirst().job()).isEqualTo(job);
@@ -430,11 +417,10 @@ class DocumentIndexingServiceTest {
    */
   @Test
   void getRecentRunsWithOnlyReadAccessFailsWithForbidden() {
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(false);
+    when(libraryAccessService.canManage(library, caller.id(), false)).thenReturn(false);
 
-    assertThatThrownBy(() -> service.getRecentRuns(library.getId(), currentUser.getId(), false))
+    assertThatThrownBy(() -> service.getRecentRuns(library.getId(), caller))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -448,12 +434,10 @@ class DocumentIndexingServiceTest {
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
             false);
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(foreignLibrary.getId()))
         .thenReturn(Optional.of(foreignLibrary));
 
-    assertThatThrownBy(
-            () -> service.getRecentRuns(foreignLibrary.getId(), currentUser.getId(), false))
+    assertThatThrownBy(() -> service.getRecentRuns(foreignLibrary.getId(), caller))
         .isInstanceOf(NotFoundException.class);
   }
 }

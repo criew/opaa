@@ -4,6 +4,7 @@ import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static io.opaa.library.LibraryUpdateBuilder.libraryUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -160,8 +161,17 @@ class PermissionHistoryServiceIntegrationTest {
                 .ownerType(LibraryOwnerType.USER)
                 .ownerId(ownerId)
                 .build(),
-            ownerId);
+            currentUserOf(ownerId));
     return response.library().getId();
+  }
+
+  /**
+   * {@link CurrentUser} snapshot for a user id this test already created via {@link #createUser}.
+   */
+  private CurrentUser currentUserOf(UUID userId) {
+    User user = userRepository.findById(userId).orElseThrow();
+    return CurrentUser.of(
+        user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
   }
 
   @Test
@@ -173,8 +183,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
-        owner,
-        false);
+        currentUserOf(owner));
     Instant whileGranted = Instant.now();
 
     AssetGrantHistory grantHistory =
@@ -185,7 +194,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID grantId = grantHistory.getId();
     assertThat(grantHistory.getCause()).isEqualTo(AssetGrantHistoryCause.GRANTED);
 
-    grantService.revokeGrant(libraryId, findLiveGrantId(libraryId, reader), owner, false);
+    grantService.revokeGrant(libraryId, findLiveGrantId(libraryId, reader), currentUserOf(owner));
     Instant afterRevocation = Instant.now();
 
     assertThat(
@@ -223,12 +232,11 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.GROUP, savedGroup.getId(), AssetRole.VIEWER),
-        owner,
-        false);
-    groupService.addMember(savedGroup.getId(), member, owner);
+        currentUserOf(owner));
+    groupService.addMember(savedGroup.getId(), member, currentUserOf(owner));
     Instant whileMember = Instant.now();
 
-    groupService.removeMember(savedGroup.getId(), member, owner);
+    groupService.removeMember(savedGroup.getId(), member, currentUserOf(owner));
     Instant afterRemoval = Instant.now();
 
     assertThat(permissionHistoryService.readableLibraryIdsAsOf(member, organizationId, whileMember))
@@ -270,15 +278,13 @@ class PermissionHistoryServiceIntegrationTest {
     libraryService.updateLibrary(
         libraryId,
         libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
-        owner,
-        false);
+        currentUserOf(owner));
     Instant whileOrganizationWide = Instant.now();
 
     libraryService.updateLibrary(
         libraryId,
         libraryUpdate("Bibliothek").visibility(LibraryVisibility.PRIVATE).build(),
-        owner,
-        false);
+        currentUserOf(owner));
     Instant afterNarrowing = Instant.now();
 
     assertThat(
@@ -306,8 +312,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         sharedLibraryId,
         new AssetGrantUpsert(PermissionSubjectType.USER, user, AssetRole.VIEWER),
-        sharedOwner,
-        false);
+        currentUserOf(sharedOwner));
 
     Group group = new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null);
     Group savedGroup = groupRepository.save(group);
@@ -317,17 +322,15 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         groupLibraryId,
         new AssetGrantUpsert(PermissionSubjectType.GROUP, savedGroup.getId(), AssetRole.VIEWER),
-        groupOwner,
-        false);
-    groupService.addMember(savedGroup.getId(), user, groupOwner);
+        currentUserOf(groupOwner));
+    groupService.addMember(savedGroup.getId(), user, currentUserOf(groupOwner));
 
     UUID orgWideOwner = createUser();
     UUID orgWideLibraryId = createLibrary(orgWideOwner);
     libraryService.updateLibrary(
         orgWideLibraryId,
         libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
-        orgWideOwner,
-        false);
+        currentUserOf(orgWideOwner));
 
     Instant now = Instant.now();
     Set<UUID> live = accessService.readableLibraryIds(user, organizationId);
@@ -350,10 +353,9 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
-        owner,
-        false);
+        currentUserOf(owner));
 
-    libraryService.deleteLibrary(libraryId, owner, false);
+    libraryService.deleteLibrary(libraryId, currentUserOf(owner));
 
     boolean grantClosedWithCorrectCause =
         grantHistoryRepository.findAll().stream()
@@ -392,9 +394,9 @@ class PermissionHistoryServiceIntegrationTest {
     Group group = new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null);
     Group savedGroup = groupRepository.save(group);
     createdGroupIds.add(savedGroup.getId());
-    groupService.addMember(savedGroup.getId(), member, owner);
+    groupService.addMember(savedGroup.getId(), member, currentUserOf(owner));
 
-    groupService.deleteGroup(savedGroup.getId(), owner);
+    groupService.deleteGroup(savedGroup.getId(), currentUserOf(owner));
 
     boolean membershipClosedWithCorrectCause =
         membershipHistoryRepository.findAll().stream()
