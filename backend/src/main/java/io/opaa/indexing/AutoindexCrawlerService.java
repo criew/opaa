@@ -17,11 +17,13 @@ import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -48,9 +50,16 @@ public class AutoindexCrawlerService {
   private static final Logger log = LoggerFactory.getLogger(AutoindexCrawlerService.class);
 
   private final TargetAddressValidator targetAddressValidator;
+  private final CrawlProperties crawlProperties;
 
   public AutoindexCrawlerService(TargetAddressValidator targetAddressValidator) {
+    this(targetAddressValidator, new CrawlProperties(0, 0));
+  }
+
+  public AutoindexCrawlerService(
+      TargetAddressValidator targetAddressValidator, CrawlProperties crawlProperties) {
     this.targetAddressValidator = targetAddressValidator;
+    this.crawlProperties = crawlProperties;
   }
 
   public record CrawledFileEntry(
@@ -77,32 +86,89 @@ public class AutoindexCrawlerService {
     String authHeader = buildAuthHeader(username, password);
 
     List<CrawledFileEntry> results = new ArrayList<>();
-    crawlRecursive(httpClient, authHeader, baseUrl, 0, results);
+    crawlRecursive(
+        httpClient, authHeader, baseUrl, 0, results, new HashSet<>(), new boolean[] {false});
     return results;
   }
 
+  /**
+   * Recurses into {@code url} unless a limit already stops it (#836): {@code visited} (normalized
+   * URLs) breaks a cycle back to a directory already crawled, {@code depth} bounds a same-origin
+   * cycle that never repeats a URL exactly (e.g. a symlink loop growing the URL by one segment per
+   * hop), and {@code results} being at {@link CrawlProperties#maxEntries} stops collecting further
+   * entries. Every limit truncates - logged once via {@code truncationLogged}, never thrown as an
+   * error, mirroring {@code RssFeedIndexingExecutor}'s {@code maxEntries} treatment.
+   */
   private void crawlRecursive(
       HttpClient httpClient,
       String authHeader,
       String url,
       int depth,
-      List<CrawledFileEntry> results)
+      List<CrawledFileEntry> results,
+      Set<String> visited,
+      boolean[] truncationLogged)
       throws IOException, InterruptedException {
+
+    if (depth > crawlProperties.maxDepth()) {
+      logTruncationOnce(
+          truncationLogged,
+          "Crawl depth limit ({}) reached at {}, not descending further"
+              + " (opaa.indexing.crawl.max-depth)",
+          crawlProperties.maxDepth(),
+          url);
+      return;
+    }
+    if (!visited.add(normalizeUrl(url))) {
+      log.debug("Skipping already-visited directory (cycle guard): {}", url);
+      return;
+    }
 
     log.debug("Crawling directory: {}", url);
     String html = fetchPage(httpClient, authHeader, url);
     List<CrawledFileEntry> entries = parseDirectory(html, url, depth);
 
     for (CrawledFileEntry entry : entries) {
+      if (results.size() >= crawlProperties.maxEntries()) {
+        logTruncationOnce(
+            truncationLogged,
+            "Crawl entry limit ({}) reached, truncating remaining entries under {}"
+                + " (opaa.indexing.crawl.max-entries)",
+            crawlProperties.maxEntries(),
+            url);
+        return;
+      }
       if (entry.isDirectory()) {
         try {
-          crawlRecursive(httpClient, authHeader, entry.url(), depth + 1, results);
+          crawlRecursive(
+              httpClient, authHeader, entry.url(), depth + 1, results, visited, truncationLogged);
         } catch (IOException e) {
           log.warn("Failed to crawl directory {}: {}", entry.url(), e.getMessage());
         }
       } else {
         results.add(entry);
       }
+    }
+  }
+
+  private void logTruncationOnce(boolean[] truncationLogged, String format, Object... args) {
+    if (!truncationLogged[0]) {
+      truncationLogged[0] = true;
+      log.info(format, args);
+    }
+  }
+
+  /**
+   * Normalizes {@code url} for the visited-URL cycle guard (#836): {@link URI#normalize()}
+   * collapses {@code .}/{@code ..} path segments so two links resolving to the same directory via a
+   * different path spelling are recognized as the same visit. Falls back to the raw string on a URL
+   * {@link URI} cannot parse - a guard that fails open on odd input would be worse than one that
+   * simply never merges it with anything else.
+   */
+  private static String normalizeUrl(String url) {
+    try {
+      return URI.create(url).normalize().toString();
+    } catch (IllegalArgumentException e) {
+      return url;
     }
   }
 
