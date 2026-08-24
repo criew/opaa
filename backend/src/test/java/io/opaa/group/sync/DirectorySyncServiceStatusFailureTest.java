@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 
-import io.opaa.api.dto.DirectorySyncReportResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -96,9 +95,9 @@ class DirectorySyncServiceStatusFailureTest {
     directoryClient.respondWith(
         new DirectoryGroup("dir-guid-9", "Referat 99", null, Set.of("member-1")));
 
-    DirectorySyncReportResponse report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId);
 
-    assertThat(report.getOutcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
+    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     // The group/membership change is real and committed, regardless of the status write failure.
     List<Group> groups = groupRepository.findByOrganizationId(organizationId);
     assertThat(groups).hasSize(1);

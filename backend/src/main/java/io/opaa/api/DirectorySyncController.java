@@ -5,6 +5,8 @@ import io.opaa.api.dto.DirectorySyncStatusResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.group.sync.DirectorySyncService;
+import io.opaa.group.sync.DirectorySyncStatus;
+import io.opaa.group.sync.SyncReport;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -33,19 +35,23 @@ public class DirectorySyncController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/dry-run")
   public DirectorySyncReportResponse dryRun(@AuthenticationPrincipal Jwt jwt) {
-    return directorySyncService.dryRun(currentUser(jwt).getOrganizationId());
+    SyncReport report = directorySyncService.dryRun(currentUser(jwt).getOrganizationId());
+    return DirectorySyncResponseMapper.toReportResponse(report);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/run")
   public DirectorySyncReportResponse run(@AuthenticationPrincipal Jwt jwt) {
-    return directorySyncService.run(currentUser(jwt).getOrganizationId());
+    SyncReport report = directorySyncService.run(currentUser(jwt).getOrganizationId());
+    return DirectorySyncResponseMapper.toReportResponse(report);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/status")
   public DirectorySyncStatusResponse status(@AuthenticationPrincipal Jwt jwt) {
-    return directorySyncService.getStatus(currentUser(jwt).getOrganizationId());
+    DirectorySyncStatus status =
+        directorySyncService.getStatus(currentUser(jwt).getOrganizationId());
+    return DirectorySyncResponseMapper.toStatusResponse(status);
   }
 
   private User currentUser(Jwt jwt) {

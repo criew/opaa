@@ -8,7 +8,12 @@ import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.group.Group;
+import io.opaa.group.GroupCreation;
+import io.opaa.group.GroupDetail;
+import io.opaa.group.GroupMemberView;
 import io.opaa.group.GroupService;
+import io.opaa.group.GroupUpdate;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -44,21 +49,27 @@ public class GroupController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping
   public List<GroupListResponse> listGroups(@AuthenticationPrincipal Jwt jwt) {
-    return groupService.listGroups(currentUser(jwt).getId());
+    List<Group> groups = groupService.listGroups(currentUser(jwt).getId());
+    return GroupResponseMapper.toListResponses(groups);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping
   public ResponseEntity<GroupResponse> createGroup(
       @Valid @RequestBody GroupRequest request, @AuthenticationPrincipal Jwt jwt) {
-    GroupResponse response = groupService.createGroup(request, currentUser(jwt).getId());
+    GroupDetail created =
+        groupService.createGroup(
+            new GroupCreation(request.getName(), request.getDescription()),
+            currentUser(jwt).getId());
+    GroupResponse response = GroupResponseMapper.toResponse(created);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/{groupId}")
   public GroupResponse getGroup(@PathVariable UUID groupId, @AuthenticationPrincipal Jwt jwt) {
-    return groupService.getGroup(groupId, currentUser(jwt).getId());
+    GroupDetail detail = groupService.getGroup(groupId, currentUser(jwt).getId());
+    return GroupResponseMapper.toResponse(detail);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -67,7 +78,12 @@ public class GroupController {
       @PathVariable UUID groupId,
       @Valid @RequestBody GroupUpdateRequest request,
       @AuthenticationPrincipal Jwt jwt) {
-    return groupService.updateGroup(groupId, request, currentUser(jwt).getId());
+    GroupDetail updated =
+        groupService.updateGroup(
+            groupId,
+            new GroupUpdate(request.getName(), request.getDescription()),
+            currentUser(jwt).getId());
+    return GroupResponseMapper.toResponse(updated);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -82,7 +98,8 @@ public class GroupController {
   @GetMapping("/{groupId}/members")
   public List<GroupMemberResponse> listMembers(
       @PathVariable UUID groupId, @AuthenticationPrincipal Jwt jwt) {
-    return groupService.listMembers(groupId, currentUser(jwt).getId());
+    List<GroupMemberView> members = groupService.listMembers(groupId, currentUser(jwt).getId());
+    return GroupResponseMapper.toMemberResponses(members);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -92,7 +109,8 @@ public class GroupController {
       @Valid @RequestBody GroupAddMemberRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     GroupMemberResponse response =
-        groupService.addMember(groupId, request.getUserId(), currentUser(jwt).getId());
+        GroupResponseMapper.toMemberResponse(
+            groupService.addMember(groupId, request.getUserId(), currentUser(jwt).getId()));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 

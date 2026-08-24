@@ -1,9 +1,5 @@
 package io.opaa.group.sync;
 
-import io.opaa.api.dto.DirectorySyncGroupChange;
-import io.opaa.api.dto.DirectorySyncMembershipChange;
-import io.opaa.api.dto.DirectorySyncReportResponse;
-import io.opaa.api.dto.DirectorySyncUserRef;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -148,18 +144,16 @@ class DirectorySyncPlanExecutor {
   // dry-run's only other write in this method, none, made readOnly look safe until this entry
   // needed writing too.
   @Transactional
-  DirectorySyncReportResponse planOnly(
-      UUID organizationId, Instant now, DirectorySnapshot snapshot) {
+  SyncReport planOnly(UUID organizationId, Instant now, DirectorySnapshot snapshot) {
     return handle(organizationId, now, snapshot, false);
   }
 
   @Transactional
-  DirectorySyncReportResponse planAndApply(
-      UUID organizationId, Instant now, DirectorySnapshot snapshot) {
+  SyncReport planAndApply(UUID organizationId, Instant now, DirectorySnapshot snapshot) {
     return handle(organizationId, now, snapshot, true);
   }
 
-  private DirectorySyncReportResponse handle(
+  private SyncReport handle(
       UUID organizationId, Instant now, DirectorySnapshot snapshot, boolean applyIfPlausible) {
     // #392: one correlation id per run, shared by the header entry below and, if the run actually
     // applies anything, by every DIRECTORY_SYNC_CHANGE_APPLIED entry applyPlan writes - "verbunden
@@ -248,18 +242,18 @@ class DirectorySyncPlanExecutor {
    * inside {@link #applyPlan}, only reachable on the {@code APPLIED} path) share the same {@code
    * correlationRef}.
    */
-  private DirectorySyncReportResponse finish(
+  private SyncReport finish(
       UUID organizationId,
       UUID correlationRef,
       Instant now,
       DirectorySyncOutcome outcome,
       String message,
       SyncPlan plan) {
-    DirectorySyncReportResponse report = buildReport(now, outcome, message, plan);
+    SyncReport report = buildReport(now, outcome, message, plan);
     Map<String, Object> after = new LinkedHashMap<>();
     after.put("outcome", outcome.name());
-    after.put("membershipsAdded", report.getMembershipsAdded());
-    after.put("membershipsRemoved", report.getMembershipsRemoved());
+    after.put("membershipsAdded", report.membershipsAdded());
+    after.put("membershipsRemoved", report.membershipsRemoved());
     auditEventRecorder.recordSystemProcessAction(
         organizationId,
         DIRECTORY_SYNC_ACTOR,
@@ -360,13 +354,13 @@ class DirectorySyncPlanExecutor {
       for (GroupMembership membership : existing.getMemberships()) {
         currentMemberIds.add(membership.getUserId());
       }
-      Map<UUID, UserRef> desiredMembers = new HashMap<>();
-      for (UserRef user : resolved.users()) {
+      Map<UUID, ResolvedUserRef> desiredMembers = new HashMap<>();
+      for (ResolvedUserRef user : resolved.users()) {
         desiredMembers.put(user.id(), user);
       }
 
-      Set<UserRef> toAdd = new HashSet<>();
-      for (Map.Entry<UUID, UserRef> entry : desiredMembers.entrySet()) {
+      Set<ResolvedUserRef> toAdd = new HashSet<>();
+      for (Map.Entry<UUID, ResolvedUserRef> entry : desiredMembers.entrySet()) {
         if (!currentMemberIds.contains(entry.getKey())) {
           toAdd.add(entry.getValue());
         }
@@ -377,7 +371,7 @@ class DirectorySyncPlanExecutor {
       // (review of PR #297): the report is exactly where an admin decides whether to let a run
       // through that would remove access, and "who" matters most for the direction that costs
       // rights.
-      Set<UserRef> toRemove = resolveUserRefsById(toRemoveIds);
+      Set<ResolvedUserRef> toRemove = resolveResolvedUserRefsById(toRemoveIds);
 
       if (!toAdd.isEmpty() || !toRemove.isEmpty()) {
         membershipChanges.add(new PlannedMembershipChange(existing, toAdd, toRemove));
@@ -467,9 +461,9 @@ class DirectorySyncPlanExecutor {
       return new ResolvedMembers(Set.of(), 0);
     }
     List<User> users = userRepository.findByOrganizationIdAndSubjectIn(organizationId, subjects);
-    Set<UserRef> userRefs = new HashSet<>();
+    Set<ResolvedUserRef> userRefs = new HashSet<>();
     for (User user : users) {
-      userRefs.add(toUserRef(user));
+      userRefs.add(toResolvedUserRef(user));
     }
     int unresolved = subjects.size() - users.size();
     return new ResolvedMembers(userRefs, Math.max(unresolved, 0));
@@ -482,20 +476,20 @@ class DirectorySyncPlanExecutor {
    * so no organization-boundary check is needed here the way {@link
    * io.opaa.auth.UserRepository#findByOrganizationIdAndSubjectIn} enforces one.
    */
-  private Set<UserRef> resolveUserRefsById(Set<UUID> userIds) {
+  private Set<ResolvedUserRef> resolveResolvedUserRefsById(Set<UUID> userIds) {
     if (userIds.isEmpty()) {
       return Set.of();
     }
-    Set<UserRef> userRefs = new HashSet<>();
+    Set<ResolvedUserRef> userRefs = new HashSet<>();
     for (User user : userRepository.findAllById(userIds)) {
-      userRefs.add(toUserRef(user));
+      userRefs.add(toResolvedUserRef(user));
     }
     return userRefs;
   }
 
-  private UserRef toUserRef(User user) {
+  private ResolvedUserRef toResolvedUserRef(User user) {
     String displayName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
-    return new UserRef(user.getId(), displayName);
+    return new ResolvedUserRef(user.getId(), displayName);
   }
 
   // ---------------------------------------------------------------------------------------
@@ -516,7 +510,7 @@ class DirectorySyncPlanExecutor {
               null,
               incoming.externalId(),
               null);
-      for (UserRef member : create.members()) {
+      for (ResolvedUserRef member : create.members()) {
         group.addMembership(new GroupMembership(member.id(), organizationId));
         affectedUserIds.add(member.id());
         log.info(
@@ -590,7 +584,7 @@ class DirectorySyncPlanExecutor {
     }
 
     for (PlannedMembershipChange change : plan.membershipChanges()) {
-      for (UserRef member : change.toAdd()) {
+      for (ResolvedUserRef member : change.toAdd()) {
         GroupMembership membership = new GroupMembership(member.id(), organizationId);
         change.group().addMembership(membership);
         affectedUserIds.add(member.id());
@@ -612,7 +606,7 @@ class DirectorySyncPlanExecutor {
             change.group().getId(),
             change.group().getExternalId());
       }
-      for (UserRef member : change.toRemove()) {
+      for (ResolvedUserRef member : change.toRemove()) {
         change.group().getMemberships().stream()
             .filter(m -> m.getUserId().equals(member.id()))
             .findFirst()
@@ -775,23 +769,21 @@ class DirectorySyncPlanExecutor {
   // transaction has committed successfully. See the class javadoc.
   // ---------------------------------------------------------------------------------------
 
-  private DirectorySyncReportResponse buildReport(
+  private SyncReport buildReport(
       Instant now, DirectorySyncOutcome outcome, String message, SyncPlan plan) {
-    DirectorySyncReportResponse response =
-        new DirectorySyncReportResponse(
-            outcome,
-            now,
-            toChanges(plan.creates()),
-            toRenameChanges(plan.renames()),
-            toDissolutionChanges(plan.dissolutions()),
-            toMembershipChanges(plan),
-            plan.membershipsAdded(),
-            plan.membershipsRemoved(),
-            plan.changedFraction(),
-            properties.changeThresholdFraction(),
-            message);
-    response.unresolvedMemberCount(plan.unresolvedMemberCount());
-    return response;
+    return new SyncReport(
+        outcome,
+        now,
+        toChanges(plan.creates()),
+        toRenameChanges(plan.renames()),
+        toDissolutionChanges(plan.dissolutions()),
+        toMembershipChanges(plan),
+        plan.membershipsAdded(),
+        plan.membershipsRemoved(),
+        plan.unresolvedMemberCount(),
+        plan.changedFraction(),
+        properties.changeThresholdFraction(),
+        message);
   }
 
   static SyncPlan emptyPlan() {
@@ -800,33 +792,32 @@ class DirectorySyncPlanExecutor {
         0, 0.0);
   }
 
-  private List<DirectorySyncGroupChange> toChanges(List<PlannedCreate> creates) {
-    List<DirectorySyncGroupChange> result = new ArrayList<>();
+  private List<GroupChange> toChanges(List<PlannedCreate> creates) {
+    List<GroupChange> result = new ArrayList<>();
     for (PlannedCreate create : creates) {
       result.add(
-          new DirectorySyncGroupChange(
-              create.directoryGroup().externalId(), create.directoryGroup().name()));
+          new GroupChange(
+              create.directoryGroup().externalId(), create.directoryGroup().name(), null));
     }
     return result;
   }
 
-  private List<DirectorySyncGroupChange> toRenameChanges(List<PlannedRename> renames) {
-    List<DirectorySyncGroupChange> result = new ArrayList<>();
+  private List<GroupChange> toRenameChanges(List<PlannedRename> renames) {
+    List<GroupChange> result = new ArrayList<>();
     for (PlannedRename rename : renames) {
       result.add(
-          new DirectorySyncGroupChange(rename.group().getExternalId(), rename.newName())
-              .previousName(rename.group().getName()));
+          new GroupChange(
+              rename.group().getExternalId(), rename.newName(), rename.group().getName()));
     }
     return result;
   }
 
-  private List<DirectorySyncGroupChange> toDissolutionChanges(
-      List<PlannedDissolution> dissolutions) {
-    List<DirectorySyncGroupChange> result = new ArrayList<>();
+  private List<GroupChange> toDissolutionChanges(List<PlannedDissolution> dissolutions) {
+    List<GroupChange> result = new ArrayList<>();
     for (PlannedDissolution dissolution : dissolutions) {
       result.add(
-          new DirectorySyncGroupChange(
-              dissolution.group().getExternalId(), dissolution.group().getName()));
+          new GroupChange(
+              dissolution.group().getExternalId(), dissolution.group().getName(), null));
     }
     return result;
   }
@@ -837,11 +828,11 @@ class DirectorySyncPlanExecutor {
    * not only how many. Covers both newly created groups (all members are additions) and existing
    * groups with an actual diff; a matched-but-unchanged group produces no entry.
    */
-  private List<DirectorySyncMembershipChange> toMembershipChanges(SyncPlan plan) {
-    List<DirectorySyncMembershipChange> result = new ArrayList<>();
+  private List<MembershipChange> toMembershipChanges(SyncPlan plan) {
+    List<MembershipChange> result = new ArrayList<>();
     for (PlannedCreate create : plan.creates()) {
       result.add(
-          new DirectorySyncMembershipChange(
+          new MembershipChange(
               create.directoryGroup().externalId(),
               create.directoryGroup().name(),
               toUserRefs(create.members()),
@@ -849,7 +840,7 @@ class DirectorySyncPlanExecutor {
     }
     for (PlannedMembershipChange change : plan.membershipChanges()) {
       result.add(
-          new DirectorySyncMembershipChange(
+          new MembershipChange(
               change.group().getExternalId(),
               change.group().getName(),
               toUserRefs(change.toAdd()),
@@ -858,12 +849,8 @@ class DirectorySyncPlanExecutor {
     return result;
   }
 
-  private List<DirectorySyncUserRef> toUserRefs(Set<UserRef> users) {
-    List<DirectorySyncUserRef> result = new ArrayList<>();
-    for (UserRef user : users) {
-      result.add(new DirectorySyncUserRef(user.id()).displayName(user.displayName()));
-    }
-    return result;
+  private List<UserRef> toUserRefs(Set<ResolvedUserRef> users) {
+    return users.stream().map(u -> new UserRef(u.id(), u.displayName())).toList();
   }
 
   /**
@@ -890,17 +877,18 @@ class DirectorySyncPlanExecutor {
   // ---------------------------------------------------------------------------------------
 
   /** A member reference resolved from the directory's subject to a known user's id. */
-  private record UserRef(UUID id, String displayName) {}
+  private record ResolvedUserRef(UUID id, String displayName) {}
 
-  private record ResolvedMembers(Set<UserRef> users, int unresolvedCount) {}
+  private record ResolvedMembers(Set<ResolvedUserRef> users, int unresolvedCount) {}
 
-  private record PlannedCreate(DirectoryGroup directoryGroup, Set<UserRef> members) {}
+  private record PlannedCreate(DirectoryGroup directoryGroup, Set<ResolvedUserRef> members) {}
 
   private record PlannedRename(Group group, String newName) {}
 
   private record PlannedReactivation(Group group) {}
 
-  private record PlannedMembershipChange(Group group, Set<UserRef> toAdd, Set<UserRef> toRemove) {}
+  private record PlannedMembershipChange(
+      Group group, Set<ResolvedUserRef> toAdd, Set<ResolvedUserRef> toRemove) {}
 
   private record PlannedDissolution(Group group) {}
 
