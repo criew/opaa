@@ -18,6 +18,7 @@ import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
 import io.opaa.indexing.RssFeedStateRepository;
+import io.opaa.indexing.VectorChunkStore;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
@@ -58,7 +59,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
     accessService = mock(LibraryAccessService.class);
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
-    VectorStore vectorStore = mock(VectorStore.class);
+    VectorChunkStore vectorChunkStore = new VectorChunkStore(mock(VectorStore.class));
     FilesystemPathAllowlist filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     indexingJobRepository = mock(IndexingJobRepository.class);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
@@ -78,7 +79,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
             accessService,
             permissionHistoryService,
             auditEventRecorder,
-            vectorStore,
+            vectorChunkStore,
             filesystemAllowlist,
             indexingJobRepository,
             indexingJobService,

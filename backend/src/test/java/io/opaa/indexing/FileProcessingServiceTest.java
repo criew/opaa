@@ -35,6 +35,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 
 @ExtendWith(MockitoExtension.class)
 class FileProcessingServiceTest {
@@ -43,6 +45,7 @@ class FileProcessingServiceTest {
   @Mock private ChunkingService chunkingService;
   @Mock private DocumentRepository documentRepository;
   @Mock private VectorStore vectorStore;
+  private VectorChunkStore vectorChunkStore;
   @Mock private ChecksumService checksumService;
   @Mock private LibraryStorageQuotaService storageQuotaService;
 
@@ -60,12 +63,14 @@ class FileProcessingServiceTest {
   @BeforeEach
   void setUp() {
     meterRegistry = new SimpleMeterRegistry();
+    vectorChunkStore = new VectorChunkStore(vectorStore);
     service =
         new FileProcessingService(
             documentService,
             chunkingService,
             documentRepository,
             vectorStore,
+            vectorChunkStore,
             checksumService,
             new IndexingMetrics(meterRegistry),
             storageQuotaService,
@@ -98,6 +103,13 @@ class FileProcessingServiceTest {
   // EmbeddingConcurrencyTest) - Runnable::run above is therefore never actually invoked here.
   private static IndexingProperties defaultIndexingProperties() {
     return new IndexingProperties(null, 1000, 0, 50, null, null, null, null, null, 1);
+  }
+
+  // Mirrors VectorChunkStore#deleteByDocumentId's own filter construction, so assertions here
+  // compare against the actual Filter.Expression the helper builds rather than the pre-#838
+  // raw delete string.
+  private static Filter.Expression documentIdFilter(UUID documentId) {
+    return new FilterExpressionBuilder().eq("document_id", documentId.toString()).build();
   }
 
   @Test
@@ -184,6 +196,7 @@ class FileProcessingServiceTest {
             chunkingService,
             documentRepository,
             vectorStore,
+            vectorChunkStore,
             checksumService,
             new IndexingMetrics(meterRegistry),
             realQuotaService,
@@ -345,7 +358,7 @@ class FileProcessingServiceTest {
     verify(documentService, never()).parseDocument(any());
     verify(chunkingService, never()).chunkDocuments(anyString(), any());
     verify(vectorStore, never()).add(any());
-    verify(vectorStore, never()).delete(anyString());
+    verify(vectorStore, never()).delete(any(Filter.Expression.class));
   }
 
   @Test
@@ -377,7 +390,7 @@ class FileProcessingServiceTest {
     FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
+    verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
     verify(documentRepository).delete(existingDoc);
     verify(documentService).parseDocument(file);
   }
@@ -451,7 +464,7 @@ class FileProcessingServiceTest {
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     // Deleting by document_id removes every chunk the old row had, regardless of library_id -
     // no chunk with otherLibrary's id can remain.
-    verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
+    verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
     verify(documentRepository).delete(existingDoc);
 
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
@@ -490,7 +503,7 @@ class FileProcessingServiceTest {
     FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
+    verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
     verify(documentRepository).delete(existingDoc);
   }
 
@@ -816,7 +829,7 @@ class FileProcessingServiceTest {
             targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
+    verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
     verify(documentRepository).delete(existingDoc);
     verify(documentService).parseDocument(file);
   }
@@ -857,9 +870,9 @@ class FileProcessingServiceTest {
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
     verify(vectorStore).add(any());
-    ArgumentCaptor<String> deleteFilterCaptor = ArgumentCaptor.forClass(String.class);
-    verify(vectorStore).delete(deleteFilterCaptor.capture());
-    assertThat(deleteFilterCaptor.getValue()).startsWith("document_id == '");
+    ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(savedDocCaptor.capture());
+    verify(vectorStore).delete(documentIdFilter(savedDocCaptor.getValue().getId()));
     // The initial insert is the only save() call - the final transition never falls back to one.
     verify(documentRepository, org.mockito.Mockito.times(1)).save(any(Document.class));
     // #636 review round 2, item 2: the deletion race is counted as skipped, not silently dropped -
@@ -893,7 +906,7 @@ class FileProcessingServiceTest {
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
     // No chunks were ever written on this path - nothing to remove from the vector store.
-    verify(vectorStore, never()).delete(anyString());
+    verify(vectorStore, never()).delete(any(Filter.Expression.class));
     verify(chunkingService, never()).chunkDocuments(anyString(), any());
   }
 
@@ -916,9 +929,9 @@ class FileProcessingServiceTest {
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
     verify(vectorStore).add(any());
-    ArgumentCaptor<String> deleteFilterCaptor = ArgumentCaptor.forClass(String.class);
-    verify(vectorStore).delete(deleteFilterCaptor.capture());
-    assertThat(deleteFilterCaptor.getValue()).startsWith("document_id == '");
+    ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(savedDocCaptor.capture());
+    verify(vectorStore).delete(documentIdFilter(savedDocCaptor.getValue().getId()));
   }
 
   @Test
@@ -975,7 +988,7 @@ class FileProcessingServiceTest {
     ArgumentCaptor<UUID> idCaptor = ArgumentCaptor.forClass(UUID.class);
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository).save(docCaptor.capture());
-    verify(vectorStore).delete("document_id == '" + docCaptor.getValue().getId() + "'");
+    verify(vectorStore).delete(documentIdFilter(docCaptor.getValue().getId()));
     verify(documentRepository)
         .markFailed(eq(docCaptor.getValue().getId()), org.mockito.ArgumentMatchers.isNull());
   }
@@ -1021,7 +1034,7 @@ class FileProcessingServiceTest {
 
     verify(vectorStore).add(any());
     verify(documentRepository).markIndexed(eq(doc.getId()), eq(1), any());
-    verify(vectorStore, never()).delete(anyString());
+    verify(vectorStore, never()).delete(any(Filter.Expression.class));
   }
 
   @Test
@@ -1043,7 +1056,7 @@ class FileProcessingServiceTest {
     verify(vectorStore, never()).add(any());
     // Nothing was ever written for this document, so there is nothing to remove from the vector
     // store either - unlike the exception path below, which may have already written chunks.
-    verify(vectorStore, never()).delete(anyString());
+    verify(vectorStore, never()).delete(any(Filter.Expression.class));
   }
 
   @Test
@@ -1068,7 +1081,7 @@ class FileProcessingServiceTest {
     // processFile/processUrlFile's own re-index paths always do regardless of whether there was
     // anything to remove (chunkDocuments itself threw here, before storeChunks could run).
     verify(vectorStore, never()).add(any());
-    verify(vectorStore).delete("document_id == '" + doc.getId() + "'");
+    verify(vectorStore).delete(documentIdFilter(doc.getId()));
     // Unlike the synchronous #420 design, the row survives a failed upload - it is never deleted.
     verify(documentRepository, never()).delete(any(Document.class));
   }
@@ -1118,7 +1131,7 @@ class FileProcessingServiceTest {
     // returning them for a document that, as far as the rest of the application is concerned, no
     // longer exists. Nothing is ever marked FAILED either - the row is simply gone.
     verify(vectorStore).add(any());
-    verify(vectorStore).delete("document_id == '" + doc.getId() + "'");
+    verify(vectorStore).delete(documentIdFilter(doc.getId()));
     verify(documentRepository, never()).markFailed(any(), anyString());
     verify(documentRepository, never()).save(any());
   }
@@ -1153,7 +1166,7 @@ class FileProcessingServiceTest {
     // orphaned: still returned by /api/v1/query, unreachable through deleteDocument once nothing
     // else points at them.
     verify(vectorStore).add(any());
-    verify(vectorStore).delete("document_id == '" + doc.getId() + "'");
+    verify(vectorStore).delete(documentIdFilter(doc.getId()));
     verify(documentRepository).markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
     verify(documentRepository, never()).delete(any(Document.class));
   }
@@ -1197,7 +1210,7 @@ class FileProcessingServiceTest {
             targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
+    verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
     verify(documentRepository).delete(existingDoc);
 
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
