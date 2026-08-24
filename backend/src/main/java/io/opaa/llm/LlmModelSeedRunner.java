@@ -31,6 +31,9 @@ import org.springframework.stereotype.Component;
  * see that method's own Javadoc. Only this class ever needs to distinguish "startup may proceed"
  * from "startup must abort"; {@link LlmModelSeeder} never decides that for itself beyond this one
  * case.
+ *
+ * <p><b>Ablaufdatum:</b> einmalige Übernahme für Bestandsinstallationen, Kandidat zur Entfernung ab
+ * v1.0.
  */
 @Component
 public class LlmModelSeedRunner implements ApplicationRunner {

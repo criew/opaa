@@ -292,20 +292,6 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Classifies an already-downloaded file from its actual content (#404) - the network path's own
-   * call into {@link SupportedDocumentFormats#decideForFileName}, mirroring {@link
-   * DocumentService}'s equivalent for the filesystem path so both paths can never diverge on what
-   * "supported" means. {@code entryName} (the listing's own file name) is only the hint used for
-   * {@link SupportedDocumentFormats.ContentDecision#extensionMismatch()}, never for acceptance
-   * itself. Package-visible for {@code DocumentFormatParityTest}.
-   */
-  static SupportedDocumentFormats.ContentDecision classifyDownloadedFile(
-      Path downloadedFile, String entryName) throws IOException {
-    String detectedMimeType = SupportedDocumentFormats.detectMediaType(downloadedFile);
-    return SupportedDocumentFormats.decideForFileName(entryName, detectedMimeType);
-  }
-
-  /**
    * Extracts this executor's own configuration ({@code sourceUrl}/{@code sourceProxy}/{@code
    * sourceCredentials}/{@code sourceInsecureSsl}) from {@code targetLibrary} (ADR-0018, #478) - the
    * library's persisted quellkonfiguration, not a per-request field any more. {@code
