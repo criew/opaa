@@ -20,6 +20,7 @@ function renderShell(initialRoute = '/chat') {
         <Route element={<GlobalAreaLayout />}>
           <Route path="/libraries" element={<div>Ohne Überschrift</div>} />
           <Route path="/spaces" element={<div>Spaces-Karten</div>} />
+          <Route path="/spaces/new" element={<div>Space-Assistent</div>} />
         </Route>
         <Route element={<GlobalAreaLayout title="Administration" sections={ADMIN_SECTIONS} />}>
           <Route path="/admin/groups" element={<div>Gruppen-Inhalt</div>} />
@@ -139,6 +140,22 @@ describe('AppShell', () => {
     renderShell('/spaces')
 
     expect(screen.getByText('Spaces-Karten')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
+  })
+
+  it('treats a trailing slash like the route matcher does (#814)', () => {
+    // React Router renders "/spaces/" as the overview; the shell must not bring the
+    // column back there.
+    renderShell('/spaces/')
+
+    expect(screen.getByText('Spaces-Karten')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
+  })
+
+  it('drops the space column in the create wizard as well (#809)', () => {
+    renderShell('/spaces/new')
+
+    expect(screen.getByText('Space-Assistent')).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
   })
 
