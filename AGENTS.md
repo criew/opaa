@@ -85,7 +85,7 @@ pnpm test                               # Stack via Docker Compose starten, Suit
 - **Alle API-DTOs MÜSSEN aus der OpenAPI-Spezifikation generiert werden** (`backend/src/main/resources/openapi/opaa-api.yaml`) — niemals DTO-Klassen in `io.opaa.api.dto` manuell schreiben
 - Änderungen an Request-/Response-Schemas beginnen mit einer Spec-Änderung, dann werden die generierten DTOs verwendet
 - Domain-Enums in DTOs (z. B. `SpaceRole`, `SpaceKind`) werden über `typeMappings`/`importMappings` in `build.gradle.kts` gemappt
-- Beim Hinzufügen neuer Domain-Enums zur API `typeMappings`, `importMappings` und den `doLast`-Cleanup-Block in `build.gradle.kts` aktualisieren
+- Beim Hinzufügen neuer Domain-Enums zur API genügen Einträge in `typeMappings` und `importMappings`; der `doLast`-Cleanup-Block im `openApiGenerate`-Task leitet die zu löschenden generierten Dateien mechanisch aus `typeMappings` ab
 - Frontend-Typen werden aus derselben Spezifikation über `openapi-typescript` generiert
 
 > Vollständige Begründung: [ADR-0006](docs/decisions/0006-openapi-dto-generation.md)
