@@ -6,14 +6,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.dto.GroupListResponse;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.group.Group;
 import io.opaa.group.GroupKind;
 import io.opaa.group.GroupService;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -67,15 +66,13 @@ class MeControllerTest {
 
   @Test
   void myGroupsSucceedsForARegularUserWithoutTheSystemAdminRole() throws Exception {
-    UUID groupId = UUID.randomUUID();
-    GroupListResponse group =
-        new GroupListResponse(groupId, "Team A", GroupKind.AD_HOC, 2, Instant.now(), Instant.now());
+    Group group = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "Team A", null, null, null);
     when(groupService.listMyGroups(user.getId())).thenReturn(List.of(group));
 
     mockMvc
         .perform(get("/api/v1/me/groups").with(asRegularUser()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].id").value(groupId.toString()))
+        .andExpect(jsonPath("$[0].id").value(group.getId().toString()))
         .andExpect(jsonPath("$[0].name").value("Team A"));
   }
 

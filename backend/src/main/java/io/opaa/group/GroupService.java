@@ -1,10 +1,5 @@
 package io.opaa.group;
 
-import io.opaa.api.dto.GroupListResponse;
-import io.opaa.api.dto.GroupMemberResponse;
-import io.opaa.api.dto.GroupRequest;
-import io.opaa.api.dto.GroupResponse;
-import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -87,17 +82,17 @@ public class GroupService {
   }
 
   @Transactional
-  public GroupResponse createGroup(GroupRequest request, UUID currentUserId) {
+  public GroupDetail createGroup(GroupCreation creation, UUID currentUserId) {
     User currentUser = requireUser(currentUserId);
-    String normalizedName = validateName(request.getName());
-    validateDescription(request.getDescription());
+    String normalizedName = validateName(creation.name());
+    validateDescription(creation.description());
 
     Group group =
         new Group(
             currentUser.getOrganizationId(),
             GroupKind.AD_HOC,
             normalizedName,
-            request.getDescription(),
+            creation.description(),
             null,
             null);
     Group saved = groupRepository.save(group);
@@ -112,14 +107,12 @@ public class GroupService {
         null,
         AuditOutcome.SUCCESS,
         null);
-    return toGroupResponse(saved);
+    return toGroupDetail(saved);
   }
 
-  public List<GroupListResponse> listGroups(UUID currentUserId) {
+  public List<Group> listGroups(UUID currentUserId) {
     User currentUser = requireUser(currentUserId);
-    return groupRepository.findByOrganizationId(currentUser.getOrganizationId()).stream()
-        .map(this::toGroupListResponse)
-        .toList();
+    return groupRepository.findByOrganizationIdWithMemberships(currentUser.getOrganizationId());
   }
 
   /**
@@ -149,34 +142,33 @@ public class GroupService {
    * rely on the schema invariant above continuing to hold, in case a future migration ever loosens
    * it.
    */
-  public List<GroupListResponse> listMyGroups(UUID currentUserId) {
+  public List<Group> listMyGroups(UUID currentUserId) {
     User currentUser = requireUser(currentUserId);
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(currentUserId);
     if (groupIds.isEmpty()) {
       return List.of();
     }
-    return groupRepository.findAllById(groupIds).stream()
+    return groupRepository.findAllByIdWithMemberships(groupIds).stream()
         .filter(group -> !group.isDissolved())
         .filter(group -> group.getOrganizationId().equals(currentUser.getOrganizationId()))
-        .map(this::toGroupListResponse)
         .toList();
   }
 
-  public GroupResponse getGroup(UUID groupId, UUID currentUserId) {
+  public GroupDetail getGroup(UUID groupId, UUID currentUserId) {
     Group group = loadGroup(groupId, currentUserId);
-    return toGroupResponse(group);
+    return toGroupDetail(group);
   }
 
   @Transactional
-  public GroupResponse updateGroup(UUID groupId, GroupUpdateRequest request, UUID currentUserId) {
+  public GroupDetail updateGroup(UUID groupId, GroupUpdate update, UUID currentUserId) {
     Group group = loadGroup(groupId, currentUserId);
     rejectOrgUnit(group);
 
-    String normalizedName = validateName(request.getName());
-    validateDescription(request.getDescription());
+    String normalizedName = validateName(update.name());
+    validateDescription(update.description());
     String previousName = group.getName();
     String previousDescription = group.getDescription();
-    group.updateDetails(normalizedName, request.getDescription());
+    group.updateDetails(normalizedName, update.description());
     Group updated = groupRepository.save(group);
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
@@ -203,7 +195,7 @@ public class GroupService {
           AuditOutcome.SUCCESS,
           null);
     }
-    return toGroupResponse(updated);
+    return toGroupDetail(updated);
   }
 
   @Transactional
@@ -266,21 +258,13 @@ public class GroupService {
     invalidateAfterCommit(() -> membershipResolver.invalidateUsers(affectedUserIds));
   }
 
-  public List<GroupMemberResponse> listMembers(UUID groupId, UUID currentUserId) {
+  public List<GroupMemberView> listMembers(UUID groupId, UUID currentUserId) {
     Group group = loadGroup(groupId, currentUserId);
-    List<UUID> userIds = group.getMemberships().stream().map(GroupMembership::getUserId).toList();
-    Map<UUID, String> displayNames = resolveDisplayNames(userIds);
-
-    return group.getMemberships().stream()
-        .map(
-            m ->
-                new GroupMemberResponse(m.getUserId(), m.getCreatedAt())
-                    .displayName(displayNames.get(m.getUserId())))
-        .toList();
+    return toGroupMemberViews(group);
   }
 
   @Transactional
-  public GroupMemberResponse addMember(UUID groupId, UUID memberUserId, UUID currentUserId) {
+  public GroupMemberView addMember(UUID groupId, UUID memberUserId, UUID currentUserId) {
     Group group = loadGroup(groupId, currentUserId);
     rejectOrgUnit(group);
     // Resolving the target user first also turns a non-existent userId into a clean 404 instead
@@ -312,8 +296,7 @@ public class GroupService {
         null);
     invalidateAfterCommit(() -> membershipResolver.invalidateUser(memberUserId));
 
-    return new GroupMemberResponse(membership.getUserId(), membership.getCreatedAt())
-        .displayName(resolveDisplayName(membership.getUserId()));
+    return new GroupMemberView(membership, resolveDisplayName(membership.getUserId()));
   }
 
   @Transactional
@@ -472,41 +455,16 @@ public class GroupService {
     return result;
   }
 
-  private GroupListResponse toGroupListResponse(Group group) {
-    return new GroupListResponse(
-            group.getId(),
-            group.getName(),
-            group.getKind(),
-            group.getMemberships().size(),
-            group.getCreatedAt(),
-            group.getUpdatedAt())
-        .description(group.getDescription())
-        .externalId(group.getExternalId())
-        .parentGroupId(group.getParentGroupId());
-  }
-
-  private GroupResponse toGroupResponse(Group group) {
+  private List<GroupMemberView> toGroupMemberViews(Group group) {
     List<UUID> memberIds = group.getMemberships().stream().map(GroupMembership::getUserId).toList();
     Map<UUID, String> displayNames = resolveDisplayNames(memberIds);
 
-    List<GroupMemberResponse> members =
-        group.getMemberships().stream()
-            .map(
-                m ->
-                    new GroupMemberResponse(m.getUserId(), m.getCreatedAt())
-                        .displayName(displayNames.get(m.getUserId())))
-            .toList();
+    return group.getMemberships().stream()
+        .map(m -> new GroupMemberView(m, displayNames.get(m.getUserId())))
+        .toList();
+  }
 
-    return new GroupResponse(
-            group.getId(),
-            group.getName(),
-            group.getKind(),
-            members.size(),
-            members,
-            group.getCreatedAt(),
-            group.getUpdatedAt())
-        .description(group.getDescription())
-        .externalId(group.getExternalId())
-        .parentGroupId(group.getParentGroupId());
+  private GroupDetail toGroupDetail(Group group) {
+    return new GroupDetail(group, toGroupMemberViews(group));
   }
 }
