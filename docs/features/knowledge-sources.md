@@ -653,20 +653,20 @@ anhält.
 
 ## Ordner in Bibliotheken
 
-**Backend und Oberfläche für UPLOAD-Bibliotheken gebaut (#820, #821, #822, #823); die read-only
-Abbildung für FILESYSTEM-Bibliotheken folgt (#824).** Konzept und Datenmodell sind entschieden —
-siehe [ADR-0020](../decisions/0020-ordner-in-bibliotheken-navigation.md): eine eigene Tabelle
-`library_folders` (statt virtueller Pfad-Präfixe), Ordner sind reine Navigation innerhalb einer
-Bibliothek und **keine eigene Rechtegrenze** — Grants bleiben ausschließlich auf Bibliotheksebene
-(`asset_grants.library_id`). Details zur Rechte-Abgrenzung stehen in
+**Vollständig gebaut (#820–#824), Epic #520 abgeschlossen.** Konzept und Datenmodell sind
+entschieden — siehe [ADR-0020](../decisions/0020-ordner-in-bibliotheken-navigation.md): eine eigene
+Tabelle `library_folders` (statt virtueller Pfad-Präfixe), Ordner sind reine Navigation innerhalb
+einer Bibliothek und **keine eigene Rechtegrenze** — Grants bleiben ausschließlich auf
+Bibliotheksebene (`asset_grants.library_id`). Details zur Rechte-Abgrenzung stehen in
 [Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md).
 
 Schema und CRUD-API (Ordner anlegen, umbenennen, rekursiv löschen) sind mit #820 **gebaut**, die
 ordner-bewusste Dokumentliste und der Upload in einen Ordner mit #821, die Navigation und Verwaltung
 in der Bibliotheks-Detailansicht (Breadcrumb, Ordnerzeilen, Anlegen/Umbenennen/Löschen, Upload in den
 geöffneten Ordner, Ordnerpfad bei Suchtreffern) mit #822, der Ordner-Upload per Drag & Drop mit
-Strukturübernahme mit #823 — die darunterstehende Liste beschreibt ab hier noch das Zielbild, wo
-nicht ausdrücklich gekennzeichnet.
+Strukturübernahme mit #823, die read-only Abbildung der Verzeichnisstruktur für
+FILESYSTEM-Bibliotheken mit #824 — die darunterstehende Liste beschreibt durchgängig gebaute
+Funktionalität, kein Zielbild mehr.
 
 ### Ordner in UPLOAD-Bibliotheken
 
@@ -706,7 +706,14 @@ nicht ausdrücklich gekennzeichnet.
   Oberfläche löst einen gezogenen Ordner über `DataTransferItem.webkitGetAsEntry()` rekursiv auf
   (mehrere `readEntries()`-Aufrufe, bis die Auflistung leer ist) und lädt jede Datei sequenziell mit
   ihrem relativen Pfad hoch — abgewiesene Dateien werden gesammelt gemeldet, der Rest lädt weiter,
-  wie beim bestehenden Mehrfach-Upload.
+  wie beim bestehenden Mehrfach-Upload. Ein leeres Unterverzeichnis im gezogenen Ordner erzeugt dabei
+  keinen Ordner in der Bibliothek, da `folderPath` nur je hochgeladener Datei mitgeschickt wird —
+  dieselbe Einschränkung wie bei der FILESYSTEM-Abbildung unten, dort aus demselben Grund. Ein
+  clientseitiger Formatfilter (dieselbe erlaubte Endungsliste wie der Dateidialog) und eine
+  Fehlersammlung greifen sowohl beim Ziehen als auch bei der Ordnerauswahl per Dateidialog: bekannte
+  Betriebssystem-Metadateien (`Thumbs.db`, `.DS_Store`, `desktop.ini`) werden stillschweigend
+  übersprungen, jedes andere nicht unterstützte Format sowie eine nicht lesbare Datei werden gesammelt
+  in einer Meldung ausgewiesen, ohne den restlichen Upload zu blockieren.
 - **Bibliotheksweite Suche mit Ordnerpfad-Anzeige (#821/#822, gebaut).** Die Suche innerhalb einer
   Bibliothek (`q`) durchsucht weiterhin den gesamten Bestand unabhängig von der Ordnerstruktur und
   ignoriert ein mitgegebenes `folderId` (siehe ADR-0020, Entscheidung 4 — kein Ordner-Filter im
