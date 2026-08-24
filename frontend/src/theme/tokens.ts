@@ -30,17 +30,12 @@ export const navy = {
   500: '#055396',
 } as const
 
-/**
- * Cool gray scale, harmonised with the navy. 400 was darkened from #778797 to #5C6B7A (#725):
- * the lighter value only reached 3.68:1 against white for the fg-3 role (tertiary text, table
- * heads, metadata) - below the 4.5:1 WCAG AA floor. #5C6B7A reaches 5.47:1 while keeping the
- * step ordered between 300 and 500.
- */
+/** Cool gray scale, harmonised with the navy. */
 export const gray = {
   100: '#E6EBF1',
   200: '#CBD4DF',
   300: '#A4B1C1',
-  400: '#5C6B7A',
+  400: '#778797',
   500: '#556473',
   600: '#3B4958',
   700: '#26323F',
@@ -110,7 +105,11 @@ export const lightRoles: SchemeRoles = {
   bg3: smoke,
   fg1: navy[800],
   fg2: gray[600],
-  fg3: gray[400],
+  // gray[500], not gray[400] (#725): gray[400] only reaches 3.68:1 against white, below the
+  // 4.5:1 WCAG AA floor for the fg-3 role (tertiary text, table heads, metadata - see
+  // frontend/src/theme/theme.test.ts). gray[500] reaches 6.08:1 and keeps the gray scale itself
+  // at its original, ordered values.
+  fg3: gray[500],
   accent: blue[500],
   accentFg: white,
   accentHover: blue[600],
