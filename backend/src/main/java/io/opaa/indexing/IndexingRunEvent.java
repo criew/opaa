@@ -11,23 +11,21 @@ import java.util.UUID;
 import org.springframework.data.domain.Persistable;
 
 /**
- * A single skipped/rejected item or error an indexing run recorded (#513) - the "why" behind a
- * lower documentsSkipped/documentsFailed count than the number of items the source offered, which
- * before this issue was only visible in the backend log (see the issue's motivating BMF case: 19 of
- * 20 RSS entries skipped by bot protection, invisible without server access).
+ * A single skipped/rejected item or error an indexing run recorded - the "why" behind a lower
+ * documentsSkipped/documentsFailed count than the number of items the source offered, which
+ * otherwise is only visible in the backend log.
  *
  * <p>Every event belongs to exactly one {@link IndexingJob} via {@code jobId} - not a JPA
  * {@code @ManyToOne}, mirroring {@link IndexingJob#getLibraryId()}'s own plain-UUID style, since
  * nothing here ever needs to navigate back to the job entity itself. Rows are deleted in bulk by
  * {@code fk_indexing_run_events_job}'s {@code ON DELETE CASCADE} whenever {@link
- * IndexingJobService} prunes an old run (migration 037), not by any code in this class.
+ * IndexingJobService} prunes an old run.
  *
  * <p>Implements {@link Persistable} with {@link #isNew()} always {@code true} - the same reason and
- * the same pattern as {@code io.opaa.audit.AuditLogEntry} (see that class's Javadoc): {@code id} is
- * client-generated in the constructor, never database-assigned, so without this Spring Data JPA
- * would treat every {@code save} as an update candidate and route it through {@code
- * EntityManager#merge} - an extra {@code SELECT} before every insert, on the hot path of every
- * executor's per-item skip/error recording (PR #604 review, nit a).
+ * pattern as {@code io.opaa.audit.AuditLogEntry}: {@code id} is client-generated in the
+ * constructor, never database-assigned, so without this Spring Data JPA would treat every {@code
+ * save} as an update candidate and route it through {@code EntityManager#merge} - an extra {@code
+ * SELECT} before every insert, on the hot path of every executor's per-item skip/error recording.
  */
 @Entity
 @Table(name = "indexing_run_events")
@@ -47,9 +45,7 @@ public class IndexingRunEvent implements Persistable<UUID> {
 
   /**
    * The affected document name, file path or source URL - never the raw challenge/redirect target a
-   * bot-protection page issued (#513 acceptance criteria). Nullable: an event is not always about a
-   * single addressable item (e.g. an ALLOWLIST rejection of the run's own sourcePath still sets
-   * this, but a hypothetical future run-wide event might not).
+   * bot-protection page issued. Nullable: an event is not always about a single addressable item.
    */
   @Column(name = "reference", columnDefinition = "text", updatable = false)
   private String reference;

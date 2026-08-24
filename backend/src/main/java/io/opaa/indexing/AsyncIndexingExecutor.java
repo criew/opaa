@@ -17,18 +17,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 
 /**
- * Executes indexing runs for {@link IndexingSourceType#FILESYSTEM} (ADR-0017). Since ADR-0018
- * (#478), the directory to crawl is the library's own {@link KnowledgeLibrary#getSourcePath()} -
- * not a single, application-wide {@code IndexingProperties#documentPath()} any more, so different
- * FILESYSTEM libraries can watch different directories.
+ * Executes indexing runs for {@link IndexingSourceType#FILESYSTEM} (ADR-0017). Since ADR-0018, the
+ * directory to crawl is the library's own {@link KnowledgeLibrary#getSourcePath()} - not a single,
+ * application-wide {@code IndexingProperties#documentPath()}, so different FILESYSTEM libraries can
+ * watch different directories.
  *
- * <p><b>#824 (Epic #520 Phase 4, ADR-0020):</b> every discovered file's directory under {@code
- * sourcePath} is mirrored into {@code library_folders} via {@link
- * LibraryFolderService#materializeFolderPath} before it is handed to {@link
- * FileProcessingService#processFile(Path, KnowledgeLibrary, UUID)} - the read-only counterpart to
- * the CRUD-managed folders of an {@code UPLOAD} library. Once the run's own discovery has finished,
- * {@link LibraryFolderService#pruneOrphanedFolders} removes any folder this run never touched (its
- * source directory is gone) and that holds no document, directly or transitively.
+ * <p>Every discovered file's directory under {@code sourcePath} is mirrored into {@code
+ * library_folders} via {@link LibraryFolderService#materializeFolderPath} before it is handed to
+ * {@link FileProcessingService#processFile(Path, KnowledgeLibrary, UUID)} (ADR-0020) - the
+ * read-only counterpart to the CRUD-managed folders of an {@code UPLOAD} library. Once the run's
+ * own discovery has finished, {@link LibraryFolderService#pruneOrphanedFolders} removes any folder
+ * this run never touched and that holds no document, directly or transitively.
  */
 public class AsyncIndexingExecutor implements SourceIndexingExecutor {
 
@@ -71,12 +70,10 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     var events =
         new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
 
-    // #484/ADR-0018 Entscheidung 6: re-checked at run time, not only at library creation/update
-    // time - the operator-configured allowlist can be narrowed after a FILESYSTEM library was
-    // created, and a Bestandsbibliothek whose sourcePath has since fallen outside it must not run
-    // just because it once passed validation. The job is started (see DocumentIndexingService)
-    // before this executor ever runs, so rejecting it here means the job, not the trigger,
-    // FAILED.
+    // ADR-0018 Entscheidung 6: re-checked at run time, not only at library creation/update time -
+    // the operator-configured allowlist can be narrowed after a FILESYSTEM library was created. The
+    // job is started (see DocumentIndexingService) before this executor ever runs, so rejecting it
+    // here means the job, not the trigger, FAILED.
     if (!filesystemAllowlist.isAllowed(targetLibrary.getSourcePath())) {
       log.warn(
           "Refusing to index library {}: sourcePath {} is outside the configured filesystem"
@@ -94,17 +91,12 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     }
 
     try {
-      // #824 review (Befund 4c): normalize()/toAbsolutePath() are new here - before #824,
-      // documentDir was Path.of(sourcePath) verbatim. A sourcePath that is not already in
-      // canonical form (contains "." / ".." segments, or is relative to the process working
-      // directory) now produces a different documentDir string than before, which changes every
-      // file's own file.toAbsolutePath().toString() key (FileProcessingService#processFile's
-      // documentRepository.findByFilePath lookup) the same way. This is a deliberate, accepted
-      // one-time effect of this issue, not a regression this class works around: sourcePath is an
-      // operator-configured, effectively-fixed value (ADR-0018), and a library whose sourcePath
-      // was never in canonical form would re-key its documents exactly once, the next time it is
-      // indexed after this change ships - a normal re-index (new document rows, old ones deleted,
-      // see processFile's own "document changed" path), not data loss.
+      // normalize()/toAbsolutePath(): a sourcePath that is not already in canonical form (contains
+      // "." / ".." segments, or is relative to the process working directory) produces a different
+      // documentDir string, which changes every file's own file.toAbsolutePath().toString() key
+      // (FileProcessingService#processFile's documentRepository.findByFilePath lookup) the same
+      // way. A library whose sourcePath was never in canonical form re-keys its documents exactly
+      // once, the next time it is indexed after this change - a normal re-index, not data loss.
       Path documentDir = Path.of(targetLibrary.getSourcePath()).toAbsolutePath().normalize();
       DocumentService.DiscoveredFiles discovered = documentService.discoverFiles(documentDir);
       List<Path> files = discovered.supported();
@@ -114,11 +106,9 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
           documentDir,
           files.size());
 
-      // Issue #375: rejected documents are part of the job, not invisible. They count towards the
-      // total and are reported as skipped, so nobody has to guess why the number of indexed
-      // documents is lower than the number of files in the directory. #513: each one now also
-      // becomes its own UNSUPPORTED_FORMAT event, so the reason is visible per file, not only as
-      // a total in the backend log.
+      // Rejected documents are part of the job, not invisible. They count towards the total and
+      // are reported as skipped, and each one also becomes its own UNSUPPORTED_FORMAT event, so
+      // the reason is visible per file.
       for (Path rejected : discovered.rejected()) {
         events.record(
             IndexingEventCategory.UNSUPPORTED_FORMAT,
@@ -131,8 +121,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
               documentDir.toString(),
               discovered.rejected().stream().map(p -> p.getFileName().toString()).toList()));
 
-      // #404: a file whose own extension does not match its detected content is still indexed -
-      // only reported, never rejected or silently reinterpreted (acceptance criteria).
+      // A file whose own extension does not match its detected content is still indexed - only
+      // reported, never rejected or silently reinterpreted.
       for (DocumentService.FormatMismatch mismatch : discovered.mismatches()) {
         events.record(
             IndexingEventCategory.FORMAT_MISMATCH,
@@ -145,15 +135,13 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       progress.setTotal(discovered.totalFound());
       progress.report();
 
-      // #824: the set of folders this run actually materialized/touched - everything else under
-      // this library once the loop below finishes is a candidate for pruneOrphanedFolders.
+      // The set of folders this run actually materialized/touched - everything else under this
+      // library once the loop below finishes is a candidate for pruneOrphanedFolders.
       Set<UUID> seenFolderIds = new HashSet<>();
-      // #824 review (Befund 1): a large tree can hold thousands of files per directory - without
-      // this cache, every one of them would call materializeFolderPath (a SELECT per path
-      // segment, its own @Transactional) for a relative directory this run has already resolved
-      // moments ago. Keyed by the relative directory Path (null for the library's root, mirroring
-      // materializeFolder's own convention below) - Path implements equals/hashCode structurally,
-      // so two files in the same directory produce equal keys without needing to intern them.
+      // A large tree can hold thousands of files per directory - without this cache, every one of
+      // them would call materializeFolderPath (a SELECT per path segment) for a relative directory
+      // this run has already resolved moments ago. Keyed by the relative directory Path (null for
+      // the library's root, mirroring materializeFolder's own convention below).
       Map<Path, UUID> folderIdByRelativeDir = new HashMap<>();
 
       for (Path file : files) {
@@ -168,9 +156,9 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
           FileProcessingResult result =
               fileProcessingService.processFile(file, targetLibrary, folderId);
           if (result == FileProcessingResult.QUOTA_EXCEEDED) {
-            // #119: the library's storage quota was reached mid-run - the file is skipped, not
-            // treated as an error, and the reason is recorded so an operator can see why the
-            // bestand stopped growing (#604).
+            // The library's storage quota was reached mid-run - the file is skipped, not treated
+            // as an error, and the reason is recorded so an operator can see why the bestand
+            // stopped growing.
             events.record(
                 IndexingEventCategory.REJECTED,
                 storageQuotaService.quotaExceededMessage(targetLibrary.getId()),
@@ -190,8 +178,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
         progress.report();
       }
 
-      // #824: caught separately, not left to the outer catch below - a failure here must not turn
-      // an otherwise-successful document run into a FAILED job.
+      // Caught separately, not left to the outer catch below - a failure here must not turn an
+      // otherwise-successful document run into a FAILED job.
       try {
         folderService.pruneOrphanedFolders(targetLibrary, seenFolderIds);
       } catch (Exception e) {
@@ -214,19 +202,17 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * Resolves the {@code io.opaa.library.LibraryFolder} {@code file}'s own directory maps to under
-   * {@code documentDir} (#824), materializing it via {@link
-   * LibraryFolderService#materializeFolderPath} only on a {@code folderIdByRelativeDir} cache miss
-   * (#824 review, Befund 1) - one {@code materializeFolderPath} call (itself one {@code SELECT} per
-   * path segment, in its own {@code @Transactional}) per distinct directory this run visits, not
-   * one per file; every other file in an already-resolved directory is a plain map lookup.
+   * {@code documentDir}, materializing it via {@link LibraryFolderService#materializeFolderPath}
+   * only on a {@code folderIdByRelativeDir} cache miss - one call per distinct directory this run
+   * visits, not one per file; every other file in an already-resolved directory is a plain map
+   * lookup.
    *
    * <p>{@code documentDir} and {@code file} are both already absolute and {@link Path#normalize()
    * normalize}d - {@code file} because {@link DocumentService#discoverFiles(Path)} only ever
    * returns entries {@link java.nio.file.Files#walk} found physically under {@code documentDir}
-   * (walked without {@code FOLLOW_LINKS} - a symlink is a leaf, never traversed into), never one
-   * reached through a symlink that would place its real location outside that tree - so a defensive
-   * {@link Path#startsWith} guard is enough to catch an unexpected escape rather than needing to
-   * resolve symlinks (which would need disk I/O this call has no other reason to perform) up front.
+   * (walked without {@code FOLLOW_LINKS} - a symlink is a leaf, never traversed into), so a
+   * defensive {@link Path#startsWith} guard is enough to catch an unexpected escape rather than
+   * needing to resolve symlinks up front.
    *
    * @return {@code null} for a file directly in {@code documentDir} (the library's root), or when
    *     {@code file} unexpectedly does not sit under {@code documentDir} at all

@@ -12,14 +12,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.support.CronExpression;
 
 /**
- * Translates between the four fixed intervalstufen a library's indexing schedule may take (#485,
- * Zuschnitt 21.08.2026: stündlich/täglich HH:MM/wöchentlich am Tag X HH:MM/aus) and the cron
- * expression {@link io.opaa.library.KnowledgeLibrary#getScheduleCron()} stores - the single place
- * that knows the mapping, so a later "expert cron field" would only need a new UI, never a schema
- * or codec change. Every cron expression this class ever writes, it can also read back exactly
- * (round-trip); {@link #parse} only ever needs to cope with data this class itself wrote, since the
- * API never accepts a raw cron string (see {@code io.opaa.api.dto.LibraryScheduleRequest}'s
- * Javadoc).
+ * Translates between the four fixed intervalstufen a library's indexing schedule may take
+ * (stündlich/täglich HH:MM/wöchentlich am Tag X HH:MM/aus) and the cron expression {@link
+ * io.opaa.library.KnowledgeLibrary#getScheduleCron()} stores - the single place that knows the
+ * mapping, so a later "expert cron field" would only need a new UI, never a schema or codec change.
+ * Every cron expression this class ever writes, it can also read back exactly (round-trip); {@link
+ * #parse} only ever needs to cope with data this class itself wrote, since the API never accepts a
+ * raw cron string.
  *
  * <p>Uses {@link CronExpression}'s six-field dialect (seconds first, matching {@code
  * io.opaa.audit.AuditRetentionScheduler}'s own {@code @Scheduled(cron = ...)} usage) - the second
@@ -44,7 +43,7 @@ public final class LibraryScheduleCodec {
    * Builds the cron expression for an already-validated schedule ({@code
    * io.opaa.library.KnowledgeLibraryService#validateSchedule} enforces which of hour/minute/
    * weekday are required for each frequency before this is ever called). Never called for {@link
-   * ScheduleFrequency#DISABLED} - a disabled schedule stores no cron at all (migration 054's {@code
+   * ScheduleFrequency#DISABLED} - a disabled schedule stores no cron at all ({@code
    * chk_knowledge_libraries_schedule}).
    */
   public static String toCron(
@@ -60,14 +59,13 @@ public final class LibraryScheduleCodec {
 
   /**
    * Decodes a stored cron expression back into the four-intervalstufen shape the UI/API works with.
-   * {@code null} decodes to {@link Schedule#DISABLED}, matching the stored pair (migration 054:
-   * {@code schedule_cron} is {@code null} exactly when {@code schedule_enabled} is {@code false}).
+   * {@code null} decodes to {@link Schedule#DISABLED}, matching the stored pair ({@code
+   * schedule_cron} is {@code null} exactly when {@code schedule_enabled} is {@code false}).
    *
    * <p>An unrecognized shape logs a warning and falls back to {@link Schedule#DISABLED} rather than
    * throwing, mirroring {@code SourceCredentialsConverter}'s "cannot decode, degrade visibly, do
    * not fail the whole load" reasoning - this can only happen for a row this class did not itself
-   * write (a hand-edited database row, say), never for one saved through {@code
-   * KnowledgeLibraryService}.
+   * write (a hand-edited database row, say).
    */
   public static Schedule parse(String cron) {
     if (cron == null) {
@@ -107,20 +105,13 @@ public final class LibraryScheduleCodec {
    * LibraryResponse.schedule.nextRunAt} and, at minute granularity, by {@code
    * LibraryIndexingScheduler} to decide whether a library is due on the current tick.
    *
-   * <p><b>PR #705 review, blocker 3.</b> {@link CronExpression#parse} throws {@link
-   * IllegalArgumentException} for a string that does not parse as a valid six-field cron expression
-   * - a case {@link #parse} above cannot always rule out on its own, since a value can pass that
-   * method's field-shape check (six fields, right wildcards in the right places) while still
-   * failing {@link CronExpression}'s own range validation (an hour of 99, say). Without this
-   * try/catch, an undecodable stored value would propagate out of every caller: {@code
-   * KnowledgeLibraryService#toLibraryResponse} would turn a single defective row into an unhandled
-   * 500 on {@code GET}/{@code PUT /api/v1/libraries/{id}}, and {@code
-   * LibraryIndexingScheduler#triggerDueLibraries} would abort its whole tick - both for a row this
-   * class never itself wrote (a hand-edited database row, a future format change), mirroring {@link
-   * #parse}'s own "cannot decode, degrade visibly, do not fail the whole load" reasoning. Degrading
-   * here means treating the schedule as never due / with no next run, not {@link Schedule#DISABLED}
-   * outright - callers that need the full decoded shape go through {@link #parse}, which already
-   * has its own, independent fallback.
+   * <p>{@link CronExpression#parse} throws {@link IllegalArgumentException} for a string that does
+   * not parse as a valid six-field cron expression - a case {@link #parse} above cannot always rule
+   * out on its own, since a value can pass that method's field-shape check while still failing
+   * {@link CronExpression}'s own range validation (an hour of 99, say). Without this try/catch, an
+   * undecodable stored value would propagate out of every caller, mirroring {@link #parse}'s own
+   * "cannot decode, degrade visibly, do not fail the whole load" reasoning. Degrading here means
+   * treating the schedule as never due / with no next run, not {@link Schedule#DISABLED} outright.
    */
   public static Instant nextRunAt(String cron, Instant now, ZoneId zone) {
     if (cron == null) {

@@ -2,18 +2,16 @@ package io.opaa.indexing;
 
 /**
  * Parses a source configuration's {@code sourceProxy} ({@code host:port}) and {@code
- * sourceCredentials} ({@code user:password}, Basic Auth) fields (PR #642 review, finding 4) - the
- * single implementation for what used to be three separate copies of the same parsing: {@code
- * UrlIndexingExecutor#execute}, {@code RssFeedIndexingExecutor#execute} and {@code
- * SourceConnectionTestService}'s own (now-removed) private {@code ProxyAndCredentials.from}.
+ * sourceCredentials} ({@code user:password}, Basic Auth) fields - the single implementation shared
+ * by {@code UrlIndexingExecutor#execute}, {@code RssFeedIndexingExecutor#execute} and {@code
+ * SourceConnectionTestService}, instead of three separate copies of the same parsing.
  */
 public record ProxyAndCredentials(
     String proxyHost, int proxyPort, String username, String password) {
 
   /**
    * Message for {@link InvalidProxyConfigurationException} (package-visible so production callers
-   * and tests reference the same constant instead of duplicating the literal - issue #839 review,
-   * nit 3).
+   * and tests reference the same constant instead of duplicating the literal).
    */
   static final String INVALID_PROXY_MESSAGE = "sourceProxy muss dem Format host:port entsprechen";
 
@@ -27,10 +25,6 @@ public record ProxyAndCredentials(
         try {
           proxyPort = Integer.parseInt(proxy.substring(colonIdx + 1));
         } catch (NumberFormatException e) {
-          // PR #642 review, finding 4: RssFeedIndexingExecutor's own copy of this parsing was the
-          // only one of the three that already caught this NumberFormatException (via its outer
-          // catch (Exception e)) but let the JDK's own (English) message escape straight into
-          // progress.fail - callers now get the understandable German message below instead.
           throw new InvalidProxyConfigurationException(INVALID_PROXY_MESSAGE);
         }
       }

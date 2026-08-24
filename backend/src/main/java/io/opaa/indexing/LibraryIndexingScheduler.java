@@ -16,39 +16,33 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Triggers a due connector library's indexing run automatically, on the schedule stored on the
- * library itself (#485). A periodic tick, following {@code io.opaa.audit.AuditRetentionScheduler}
- * ("Vorbild") - not a per-library dynamically registered trigger: {@code
- * KnowledgeLibraryRepository} already tells this class which libraries are due on every tick, so
- * there is nothing to keep in sync when a schedule changes, a library is deleted, or the
- * application restarts.
+ * library itself. A periodic tick, following {@code io.opaa.audit.AuditRetentionScheduler} - not a
+ * per-library dynamically registered trigger: {@code KnowledgeLibraryRepository} already tells this
+ * class which libraries are due on every tick, so there is nothing to keep in sync when a schedule
+ * changes, a library is deleted, or the application restarts.
  *
- * <p><b>No leader election, no distributed lock.</b> Multiple backend instances ticking the same
- * due library at the same minute would race to insert a {@code RUNNING} row; {@code
- * uk_indexing_jobs_library_running} (migration 028) already makes that race safe - the loser's
- * {@link IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource)} call fails
- * with the same 409 a second concurrent manual trigger gets, which this class treats identically to
- * its own pre-check finding a run already in progress: no new run, one {@link
+ * <p>No leader election, no distributed lock: multiple backend instances ticking the same due
+ * library at the same minute would race to insert a {@code RUNNING} row; {@code
+ * uk_indexing_jobs_library_running} already makes that race safe - the loser's {@link
+ * IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource)} call fails with
+ * the same 409 a second concurrent manual trigger gets: no new run, one {@link
  * IndexingEventCategory#SCHEDULE_SKIPPED} event on the run that is already going. Assumes exactly
  * one backend process overall; see ADR-0021.
  *
- * <p><b>Never disables a schedule on failure (#485, Zuschnitt 21.08.2026).</b> A run that fails
- * leaves the schedule as-is; it tries again at the next due time. {@code
- * KnowledgeLibraryService#toLibraryResponse} is what makes repeated failure visible in the UI (via
- * {@code lastScheduledRunsFailed}), not this class turning the schedule off - stille Ausfälle
- * vermeiden, not silent retries either.
+ * <p>Never disables a schedule on failure: a run that fails leaves the schedule as-is; it tries
+ * again at the next due time. {@code KnowledgeLibraryService#toLibraryResponse} is what makes
+ * repeated failure visible in the UI (via {@code lastScheduledRunsFailed}), not this class turning
+ * the schedule off.
  *
- * <p><b>Missed due times are skipped, not caught up (#485, PR #705 review).</b> A due time that
- * falls while the application is not running at all (down for maintenance, a restart spanning
- * several minutes) is simply never fired - {@link #lastTickAt} resets to {@code null} on every
+ * <p>Missed due times are skipped, not caught up: a due time that falls while the application is
+ * not running at all is simply never fired - {@link #lastTickAt} resets to {@code null} on every
  * restart, so the very next tick only ever looks one tick-interval into the past (see {@link
- * #determineWindowStart}), never further. Catching up every missed run after a longer outage would
- * risk a burst of simultaneous triggers across every schedule-enabled library at once, which this
- * design deliberately avoids - an operator who needs the latest content after maintenance still has
- * the manual "Jetzt indizieren" trigger. What this field <em>does</em> guard against is in-process
- * jitter between two consecutive ticks (GC pause, a slow previous tick, scheduler thread
- * contention): without it, a fixed one-minute look-back window anchored purely on "now minus 60s"
- * can develop a gap between two ticks that fired more than 60s apart, silently dropping a due time
- * that fell exactly in that gap.
+ * #determineWindowStart}). Catching up every missed run after a longer outage would risk a burst of
+ * simultaneous triggers across every schedule-enabled library at once - an operator who needs the
+ * latest content after maintenance still has the manual "Jetzt indizieren" trigger. What this field
+ * does guard against is in-process jitter between two consecutive ticks: without it, a fixed
+ * one-minute look-back window anchored purely on "now minus 60s" can develop a gap between two
+ * ticks that fired more than 60s apart, silently dropping a due time that fell exactly in that gap.
  */
 @Component
 public class LibraryIndexingScheduler {
@@ -91,18 +85,15 @@ public class LibraryIndexingScheduler {
   }
 
   /**
-   * Runs at the top of every minute (#485 - the finest grain any of the four intervalstufen needs),
-   * server local time ({@link Clock#getZone()} of the injected {@link Clock}, see {@code
-   * io.opaa.indexing.IndexingConfiguration#schedulingClock} - the same "server time, no separate
-   * timezone configuration yet" choice {@code AuditRetentionScheduler} already made implicitly for
-   * its own {@code @Scheduled(cron = ...)}). A library is due when its stored cron expression has a
-   * fire time in the window between the previous tick and now - see {@link #determineWindowStart}
-   * and {@link #isDueNow}.
+   * Runs at the top of every minute (the finest grain any of the four intervalstufen needs), server
+   * local time ({@link Clock#getZone()} of the injected {@link Clock}, see {@code
+   * io.opaa.indexing.IndexingConfiguration#schedulingClock}). A library is due when its stored cron
+   * expression has a fire time in the window between the previous tick and now - see {@link
+   * #determineWindowStart} and {@link #isDueNow}.
    *
-   * <p><b>PR #705 review, blocker 3.</b> {@link #isDueNow} - and therefore the cron parse it
-   * performs - runs inside this loop's own per-library {@code try/catch}, not before it: one
-   * library with an undecodable stored cron expression (a hand-edited row, a future format change)
-   * must not abort the whole tick and leave every other due library untouched.
+   * <p>{@link #isDueNow} - and therefore the cron parse it performs - runs inside this loop's own
+   * per-library {@code try/catch}, not before it: one library with an undecodable stored cron
+   * expression must not abort the whole tick and leave every other due library untouched.
    */
   @Scheduled(cron = "0 * * * * *")
   public void triggerDueLibraries() {
@@ -130,10 +121,8 @@ public class LibraryIndexingScheduler {
    * {@code now} when known, so consecutive windows are contiguous with no gap regardless of how
    * late a tick actually fired (see the class Javadoc). Falls back to exactly one {@link
    * #TICK_INTERVAL_SECONDS} before {@code now} before the first tick (or after a restart, since
-   * {@link #lastTickAt} does not survive one) - a single tick-interval look-back, matching the
-   * pre-jitter-fix behaviour, deliberately not further back: see the class Javadoc's "missed due
-   * times are skipped, not caught up" paragraph for why a longer look-back after downtime is not
-   * wanted here.
+   * {@link #lastTickAt} does not survive one) - deliberately not further back, see the class
+   * Javadoc's "missed due times are skipped, not caught up" paragraph.
    */
   private Instant determineWindowStart(Instant now) {
     Instant previous = lastTickAt.get();
@@ -157,9 +146,8 @@ public class LibraryIndexingScheduler {
       indexingService.triggerScheduledIndexing(library);
     } catch (ResponseStatusException e) {
       if (e.getStatusCode() == HttpStatus.CONFLICT) {
-        // #500 review, finding 3 style TOCTOU: the pre-check above and startJob's own insert are
-        // two separate statements - a run could have started between them (this instance's own
-        // recovery/other trigger path, or another backend instance racing the same tick).
+        // TOCTOU: the pre-check above and startJob's own insert are two separate statements - a
+        // run could have started between them (another backend instance racing the same tick).
         recordSkipEvent(library);
       } else {
         log.error("Scheduled indexing trigger for library {} failed", library.getId(), e);
@@ -171,10 +159,8 @@ public class LibraryIndexingScheduler {
 
   /**
    * Records {@link IndexingEventCategory#SCHEDULE_SKIPPED} against the library's currently RUNNING
-   * job, not a new run of its own (#485, Zuschnitt: "als Ereignis im Laufprotokoll (#604)
-   * festgehalten") - a skip is not a run, so it gets no {@link IndexingJob} row. A no-op if no
-   * RUNNING job is found any more by the time this executes (the race already resolved itself
-   * between the check and here) - nothing meaningful left to attach the event to.
+   * job, not a new run of its own - a skip is not a run, so it gets no {@link IndexingJob} row. A
+   * no-op if no RUNNING job is found any more by the time this executes.
    */
   private void recordSkipEvent(KnowledgeLibrary library) {
     Optional<IndexingJob> runningJob =

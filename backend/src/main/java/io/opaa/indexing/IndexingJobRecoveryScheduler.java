@@ -9,21 +9,19 @@ import org.springframework.stereotype.Component;
 
 /**
  * Reclaims {@code indexing_jobs} rows stuck at {@link JobStatus#RUNNING} with no {@code @Async}
- * task left to ever complete them (#501). Since #478, a {@code RUNNING} row is not merely stale
- * bookkeeping - the partial unique index from migration 028 means it locks its one library out of
- * every future trigger (409, {@code IndexingJobService#isJobRunning}), with no way to resolve it
- * from the UI. Two independent recovery paths cover the two ways a row gets orphaned:
+ * task left to ever complete them. A {@code RUNNING} row is not merely stale bookkeeping - the
+ * partial unique index locks its one library out of every future trigger (409, {@code
+ * IndexingJobService#isJobRunning}), with no way to resolve it from the UI. Two independent
+ * recovery paths cover the two ways a row gets orphaned:
  *
  * <ul>
  *   <li>{@link #recoverOnStartup()} - a fresh JVM cannot possibly still be running the task any
- *       {@code RUNNING} row refers to, so every one of them is orphaned by definition the moment
- *       the application comes back up, whether the previous process crashed mid-run or the task was
- *       silently discarded by a full queue before this issue's {@code AbortPolicy} change. Assumes
- *       exactly one backend process; see ADR-0021.
+ *       {@code RUNNING} row refers to, so every one of them is orphaned the moment the application
+ *       comes back up, whether the previous process crashed mid-run or the task was silently
+ *       discarded by a full queue. Assumes exactly one backend process; see ADR-0021.
  *   <li>{@link #recoverStaleRunningJobs()} - catches everything that does not involve a restart at
- *       all: a task dropped by the (now-removed) {@code DiscardPolicy} while the application kept
- *       running, or a run that is still technically in progress but has been for implausibly long
- *       (an unreachable remote source, say).
+ *       all: a task silently dropped while the application kept running, or a run that is still
+ *       technically in progress but has been for implausibly long.
  * </ul>
  */
 @Component

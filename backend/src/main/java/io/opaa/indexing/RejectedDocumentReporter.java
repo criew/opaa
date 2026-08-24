@@ -5,15 +5,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Reports documents an indexing run rejected because of an unsupported format (issue #375):
- * rejected documents are part of the job, not invisible - they count towards the total and are
- * reported as skipped, so nobody has to guess why the number of indexed documents is lower than the
- * number of items the source offered.
+ * Reports documents an indexing run rejected because of an unsupported format: rejected documents
+ * are part of the job, not invisible - they count towards the total and are reported as skipped, so
+ * nobody has to guess why the number of indexed documents is lower than the number of items the
+ * source offered.
  *
  * <p>Used by {@link AsyncIndexingExecutor}, which maps its own rejected-item list down to display
- * names before calling this shared helper. {@code sourceType} and {@code location} are passed in
- * explicitly rather than baked into a shared logger name, so each run's type/origin stays visible
- * in the log line.
+ * names before calling this shared helper.
  */
 final class RejectedDocumentReporter {
 

@@ -5,31 +5,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Records a single run's protocol of skipped/rejected items and errors (#513), one instance per run
- * - mirrors {@link IndexingRunProgress}'s own per-run instantiation pattern, held locally by each
+ * Records a single run's protocol of skipped/rejected items and errors, one instance per run -
+ * mirrors {@link IndexingRunProgress}'s own per-run instantiation pattern, held locally by each
  * {@link SourceIndexingExecutor} for the duration of its {@code execute} call. Every executor runs
  * on exactly one thread (its own {@code @Async} invocation), so the in-memory counter below needs
  * no synchronization.
  *
- * <p><b>Capped at {@link #MAX_EVENTS_PER_RUN} (Umfangserweiterung, Issue #513 comment).</b> A run
- * that skips thousands of items (a large HTTP_DIRECTORY tree behind bot protection, for instance)
- * must not turn its own protocol into an unbounded table scan or an unusable page - events beyond
- * the cap are counted, not persisted; {@link #finalizeRun} writes that count once, at the end of
- * the run, to {@link IndexingJob#getEventsTruncatedCount()}, so the UI can render "… und N weitere"
- * without listing them.
+ * <p>Capped at {@link #MAX_EVENTS_PER_RUN}: a run that skips thousands of items must not turn its
+ * own protocol into an unbounded table scan or an unusable page - events beyond the cap are
+ * counted, not persisted; {@link #finalizeRun} writes that count once, at the end of the run, to
+ * {@link IndexingJob#getEventsTruncatedCount()}, so the UI can render "… und N weitere" without
+ * listing them.
  *
- * <p><b>Never breaks the run it protocols (PR #604 review, finding 2).</b> Both {@link #record} and
- * {@link #finalizeRun} swallow any exception the persistence layer throws, logging it instead of
- * propagating it: a run's own outcome (processed/skipped/failed counters, {@link JobStatus}) must
- * never depend on whether its <em>protocol</em> could be written. Before this, a single failed
- * insert (a transient DB hiccup, a truncated {@code message} column) would propagate out of
- * whichever executor called {@code record} mid-loop, past its own {@code catch (Exception e)}
- * around only the file-processing call, and prevent {@link IndexingJobService#completeJob}/{@code
- * failJob} from ever running - leaving the job stuck {@link JobStatus#RUNNING} forever and, via
- * {@code uk_indexing_jobs_library_running} (migration 028), permanently blocking every future run
- * of that library. Centralized here rather than in each of the three executors' own call sites, so
- * every executor is covered by construction rather than by remembering to wrap each call
- * individually.
+ * <p>Never breaks the run it protocols: both {@link #record} and {@link #finalizeRun} swallow any
+ * exception the persistence layer throws, logging it instead of propagating it - a run's own
+ * outcome (processed/skipped/failed counters, {@link JobStatus}) must never depend on whether its
+ * protocol could be written. A propagated failure would prevent {@link
+ * IndexingJobService#completeJob}/{@code failJob} from ever running, leaving the job stuck {@link
+ * JobStatus#RUNNING} forever and permanently blocking every future run of that library. Centralized
+ * here rather than in each executor's own call sites, so every executor is covered by construction.
  */
 final class IndexingRunEventRecorder {
 
@@ -73,10 +67,9 @@ final class IndexingRunEventRecorder {
   }
 
   /**
-   * Persists this run's overflow count on the job, once, at the end of a run (#513) - a no-op when
-   * nothing was truncated. Never throws - see the class Javadoc; called from every executor's
-   * terminal branches ({@code progress.complete()}/{@code progress.fail()}), which must run
-   * regardless of whether this write succeeds.
+   * Persists this run's overflow count on the job, once, at the end of a run - a no-op when nothing
+   * was truncated. Never throws - see the class Javadoc; called from every executor's terminal
+   * branches ({@code progress.complete()}/{@code progress.fail()}).
    */
   void finalizeRun() {
     if (overflowCount == 0) {
