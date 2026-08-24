@@ -5,9 +5,9 @@ package io.opaa.audit;
  * (docs/features/security-and-compliance.md#die-ereignisse-der-ersten-stufe, decision #355). "Was
  * hier nicht steht, wird in der ersten Stufe nicht geschrieben" - the list is deliberately closed,
  * not a category with a free-text detail: {@link AuditLogEntry#getEventType()} is this enum, not a
- * {@code String}, and the database check constraint {@code chk_audit_log_event_type} (migration
- * 017) enforces the same closed set independently. Adding a value here requires a migration
- * updating that constraint in lockstep.
+ * {@code String}. This enum is the sole write guard since migration 064 (#862) dropped the database
+ * check constraint {@code chk_audit_log_event_type} that used to enforce the same closed set
+ * independently - adding a value here no longer requires a migration.
  *
  * <p>#391 only builds the store; no service emits any of these yet. Emission is wired up service by
  * service in later issues, against this exact list.

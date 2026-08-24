@@ -54,7 +54,7 @@ umgesetzt wird, nicht spekulativ jetzt.
 
 Die Tabelle ist so geschnitten, dass ein künftiges Postfach **aus ihr heraus wachsen** kann, statt
 sie zu ersetzen: `type` ist bereits ein geschlossenes, erweiterbares Vokabular (dasselbe Muster wie
-`AuditEventType`/`chk_audit_log_event_type`), `objectType`/`objectId` binden bereits an ein
+`AuditEventType`), `objectType`/`objectId` binden bereits an ein
 beliebiges Objekt, und `readAt` trägt bereits die Grundunterscheidung gelesen/ungelesen, die auch
 ein Todo-Postfach braucht. Ein Todo-spezifisches Feld (z. B. eine Fälligkeit oder ein
 Erledigt-Status) kommt erst mit der Notwendigkeit, nicht vorab.
@@ -68,7 +68,8 @@ Erledigt-Status) kommt erst mit der Notwendigkeit, nicht vorab.
   soll.
 - Die nächste Benachrichtigungszusage (z. B. die Leserkreis-Erweiterung bei Chats) kann dieselbe
   Tabelle und dieselben zwei Endpunkte wiederverwenden, indem sie nur einen neuen `NotificationType`
-  ergänzt (Migration analog zu `chk_notifications_type`s Erweiterung).
+  ergänzt — ohne eigene Migration, seit #862 `chk_notifications_type` ersatzlos entfernt hat und der
+  Java-Enum allein der Schreibschutz ist.
 
 **Schwieriger / bewusst aufgeschoben:**
 

@@ -3,11 +3,9 @@ package io.opaa.migration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.audit.AuditEventType;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -25,23 +23,16 @@ import org.junit.jupiter.api.Test;
  * <p>#613 review, finding 1: an earlier version of this test applied only 017 and 022, skipping 035
  * - the exact gap that let 040's own CHECK list silently drop {@code LIBRARY_SOURCE_UPDATED}
  * (rebuilt from the 022 state instead of the current one) without any test catching it. This class
- * now chains through every migration that has actually widened the constraint before 040, and
- * {@link #everyEventTypeKnownWhenMigration040WasWrittenIsAcceptedAfterIt()} inserts <em>every</em>
- * such {@link AuditEventType} value - not a representative sample - so a future
- * rebuild-from-a-stale-base mistake fails on the very value it drops, rather than possibly missing
- * it if that value is not among the ones a sample happens to cover.
+ * now chains through every migration that has actually widened the constraint before 040.
  *
  * <p>Proves, against a real database rather than only the Java enum, that {@code
  * chk_audit_log_event_type} accepts {@code SPACE_ARCHIVED} after 040 runs, and that every value
  * accepted before 040 is still accepted afterwards (a widen must never accidentally narrow).
  *
- * <p><b>#582:</b> the exhaustive assertion is now against "every value 040 knew about", not
- * literally {@code AuditEventType.values()}. It has to be: 042 adds {@code
- * BRANDING_SETTINGS_CHANGED} to both the enum and the constraint, and this class deliberately stops
- * at 040 - asserting the live enum here would make every later widening migration fail this test
- * for a value 040 could not possibly have contained. That is the same stake-in-the-ground {@code
- * Migration017AuditLogTest} plants for 017, and {@code Migration042BrandingSettingsEventTypeTest}
- * is where the later value is proven instead.
+ * <p>#862 (Epic #826, Befund B4): {@link #EXPECTED_VALUES} is frozen as a literal list matching
+ * 040's own CHECK clause, not derived from the live {@code AuditEventType} enum - a value added to
+ * the enum by a later migration (or, since #862, without any migration at all) must not silently
+ * pass this test just because the enum grew.
  */
 class Migration040SpaceArchivedEventTypeTest extends AbstractMigrationTest {
 
@@ -50,22 +41,49 @@ class Migration040SpaceArchivedEventTypeTest extends AbstractMigrationTest {
   private static final String AUDIT_APP_ROLE_PASSWORD = "audit_app_role_password";
   private static final String OWNER_ROLE = "opaa_audit_owner";
 
-  /**
-   * Values added to {@link AuditEventType} by a migration <em>after</em> 040 - {@code
-   * BRANDING_SETTINGS_CHANGED} arrives with 042 (#582), {@code LIBRARY_DETACHED_FROM_SPACE} with
-   * 053 (#706), the four {@code LLM_MODEL_*} values with 059 (#756), and {@code
-   * LLM_MODEL_DEACTIVATED} with 061 (#757). This class applies 040 and stops there, so these cannot
-   * be in its constraint and must not be asserted against it.
-   */
-  private static final Set<AuditEventType> VALUES_ADDED_AFTER_MIGRATION_040 =
-      EnumSet.of(
-          AuditEventType.BRANDING_SETTINGS_CHANGED,
-          AuditEventType.LIBRARY_DETACHED_FROM_SPACE,
-          AuditEventType.LLM_MODEL_CREATED,
-          AuditEventType.LLM_MODEL_CHANGED,
-          AuditEventType.LLM_MODEL_DELETED,
-          AuditEventType.LLM_MODEL_ACTIVATED,
-          AuditEventType.LLM_MODEL_DEACTIVATED);
+  private static final Set<String> EXPECTED_VALUES =
+      Set.of(
+          "ASSET_GRANT_GRANTED",
+          "ASSET_GRANT_CHANGED",
+          "ASSET_GRANT_REVOKED",
+          "ASSET_GRANT_EXPIRED",
+          "ASSET_VISIBILITY_CHANGED",
+          "ASSET_GRANT_SUSPENDED",
+          "SPACE_CREATED",
+          "SPACE_CHANGED",
+          "SPACE_DELETED",
+          "SPACE_ARCHIVED",
+          "LIBRARY_CREATED",
+          "LIBRARY_CHANGED",
+          "LIBRARY_DELETED",
+          "LIBRARY_SOURCE_UPDATED",
+          "GROUP_CREATED",
+          "GROUP_CHANGED",
+          "GROUP_DELETED",
+          "SPACE_MEMBER_ADDED",
+          "SPACE_MEMBER_ROLE_CHANGED",
+          "SPACE_MEMBER_REMOVED",
+          "GROUP_MEMBER_ADDED",
+          "GROUP_MEMBER_REMOVED",
+          "LIBRARY_SHARED_TO_SPACE",
+          "ASSET_OWNER_CHANGED",
+          "ASSET_OWNERSHIP_CLAIMED",
+          "ASSET_SUCCESSION_OPENED",
+          "SYSTEM_ADMIN_ROLE_GRANTED",
+          "SYSTEM_ADMIN_ROLE_REVOKED",
+          "AUDITOR_ROLE_GRANTED",
+          "AUDITOR_ROLE_REVOKED",
+          "ACCOUNT_DEACTIVATED",
+          "ACCOUNT_REAUTHENTICATION_FORCED",
+          "API_TOKEN_ISSUED",
+          "API_TOKEN_REVOKED",
+          "DIRECTORY_SYNC_CHANGE_APPLIED",
+          "DIRECTORY_SYNC_RUN_COMPLETED",
+          "GOVERNANCE_SETTINGS_CHANGED",
+          "AUDIT_LOG_CONFIGURATION_CHANGED",
+          "MODEL_POLICY_CHANGED",
+          "CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED",
+          "AUDIT_LOG_ACCESSED");
 
   @Override
   protected String baseFixtureChangelogPath() {
@@ -129,25 +147,14 @@ class Migration040SpaceArchivedEventTypeTest extends AbstractMigrationTest {
   }
 
   /**
-   * #613 review, finding 1: exhaustive, not a sample - every {@link AuditEventType} value 040 could
-   * have contained, including {@code SPACE_ARCHIVED} itself, must round-trip through the widened
-   * constraint. Deliberately not restricted to values that existed before 040: the point is that
-   * nothing 040 was supposed to install may be missing from its CHECK list.
-   *
-   * <p>{@link #VALUES_ADDED_AFTER_MIGRATION_040} is what keeps this honest without making it wrong
-   * - see the class Javadoc. Every later widening migration adds its own value there and proves it
-   * in its own test class.
+   * #613 review, finding 1: exhaustive, not a sample - every value 040's own CHECK clause installs,
+   * including {@code SPACE_ARCHIVED} itself, must round-trip through the widened constraint.
    */
   @Test
   void everyEventTypeKnownWhenMigration040WasWrittenIsAcceptedAfterIt() throws Exception {
-    for (AuditEventType eventType : AuditEventType.values()) {
-      if (VALUES_ADDED_AFTER_MIGRATION_040.contains(eventType)) {
-        continue;
-      }
-      UUID eventId = insertEntry(eventType.name());
-      assertThat(eventExists(eventId))
-          .as("event_type %s accepted after 040", eventType.name())
-          .isTrue();
+    for (String eventType : EXPECTED_VALUES) {
+      UUID eventId = insertEntry(eventType);
+      assertThat(eventExists(eventId)).as("event_type %s accepted after 040", eventType).isTrue();
     }
   }
 
