@@ -62,8 +62,9 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     try {
       // Issue #839: parsing goes through the shared ProxyAndCredentials rather than an inline
       // copy, mirroring RssFeedIndexingExecutor#execute (PR #642 review, finding 4) - an invalid
-      // sourceProxy port is now a controlled failure instead of an unhandled
-      // NumberFormatException.
+      // sourceProxy port was already caught by the outer catch (Exception e) below, but as the
+      // JDK's own (English) NumberFormatException message; callers now get the understandable
+      // German message instead.
       ProxyAndCredentials config;
       try {
         config = ProxyAndCredentials.parse(request.proxy(), request.credentials());
