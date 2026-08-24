@@ -119,7 +119,7 @@ class UrlIndexingExecutorExecuteTest {
   void acceptsAMislabeledPdfAndReportsTheMismatchInsteadOfRejectingItByExtension()
       throws IOException {
     // The core case #404 exists for, now proven on a real request/response round trip rather than
-    // only through classifyDownloadedFile in isolation.
+    // only through UrlIndexingExecutor#decideForEntry in isolation.
     serve(
         "/files/",
         "text/html",

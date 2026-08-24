@@ -125,3 +125,9 @@ databaseChangeLog:
       file: db/changelog/changes/062-create-library-folders.yaml
   - include:
       file: db/changelog/changes/063-audit-log-time-range-and-incident-scope-indexes.yaml
+  - include:
+      file: db/changelog/changes/064-drop-audit-log-event-type-check.yaml
+  - include:
+      file: db/changelog/changes/065-drop-indexing-run-events-category-check.yaml
+  - include:
+      file: db/changelog/changes/066-drop-notifications-type-check.yaml
