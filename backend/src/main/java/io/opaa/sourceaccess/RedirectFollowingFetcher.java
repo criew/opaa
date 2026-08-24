@@ -33,12 +33,18 @@ import org.slf4j.LoggerFactory;
  * <p>{@code targetAddressValidator} is validated against the current URI at the top of every
  * iteration - the initial request and every redirect hop alike - before a single further byte is
  * requested, so an SSRF target-address check applies identically whether the blocked address was
- * the configured start URL or only reached via a redirect. Under {@link
- * RedirectPolicy#REJECT_OFF_ORIGIN}, the response actually received is additionally checked against
+ * the configured start URL or only reached via a redirect.
+ *
+ * <p><b>Post-hoc check asymmetry (#876 PR 1 review, nit 4).</b> Only under {@link
+ * RedirectPolicy#REJECT_OFF_ORIGIN} is the response actually received additionally checked against
  * the original URL on every iteration (not only the explicit {@code Location}-based hops this loop
  * itself walks) - closing the gap a caller-supplied {@link HttpClient} configured to auto-follow
  * redirects on its own would otherwise leave, since its returned {@link HttpResponse#uri()} then
- * already reflects a followed target this loop never decided to walk to.
+ * already reflects a followed target this loop never decided to walk to. {@link
+ * RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN} carries no equivalent check: an already-followed
+ * off-origin redirect is simply accepted there, the same outcome this loop's own hop-by-hop
+ * handling would have reached (drop {@code Authorization}, keep following) - the asymmetry is safe
+ * because {@code DROP_AUTHORIZATION_OFF_ORIGIN} never refuses an off-origin target to begin with.
  */
 public final class RedirectFollowingFetcher {
 
