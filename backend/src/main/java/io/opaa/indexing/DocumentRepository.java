@@ -15,7 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
-  Optional<Document> findByFilePath(String filePath);
+  /**
+   * Document identity is scoped to {@code (library_id, file_path)} (#877), enforced by {@code
+   * uk_documents_library_path} (migration 067): the same path or URL indexed into two different
+   * libraries is two independent documents, never a "move" of one into the other. Backs every
+   * dedup/change-detection lookup in {@link FileProcessingService}, {@link UrlIndexingExecutor} and
+   * {@link RssFeedIndexingExecutor}.
+   */
+  Optional<Document> findByLibraryIdAndFilePath(UUID libraryId, String filePath);
 
   /**
    * Whether at least one attachment document for {@code sourceEntryUrl} (an RSS entry's own {@code

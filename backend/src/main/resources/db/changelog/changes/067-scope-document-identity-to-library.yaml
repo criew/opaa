@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: 067-scope-document-identity-to-library
+      author: opaa
+      comment: >
+        Document identity is (library_id, file_path), not file_path alone (#877 - Epic #826, Befund
+        B6). Every dedup lookup in FileProcessingService/UrlIndexingExecutor/RssFeedIndexingExecutor
+        used to query file_path globally, so indexing the same path/URL into a second library
+        deleted the first library's document and its chunks instead of creating an independent one.
+
+        Safe against pre-existing data: findByFilePath's own delete-then-insert pattern already
+        guaranteed at most one documents row per file_path value at any time, for every source type
+        that keys on file_path (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED) - the previous lookup, finding a
+        row from a different library, always deleted it before inserting the new one, so no two
+        libraries could ever hold a row with the same file_path simultaneously. UPLOAD documents
+        store a per-upload random file name under a library-scoped storage directory
+        (LibraryDocumentService#uploadDocument), which is already globally unique on its own. No
+        (library_id, file_path) duplicate can exist in any pre-067 database, so this constraint
+        cannot fail against real data.
+      changes:
+        - addUniqueConstraint:
+            tableName: documents
+            columnNames: library_id, file_path
+            constraintName: uk_documents_library_path
+      rollback:
+        - dropUniqueConstraint:
+            tableName: documents
+            constraintName: uk_documents_library_path

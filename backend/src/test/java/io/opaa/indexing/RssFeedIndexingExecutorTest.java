@@ -393,7 +393,8 @@ class RssFeedIndexingExecutorTest {
     existing.setStatus(DocumentStatus.INDEXED);
     existing.setLastModifiedRemote(java.time.Instant.parse("2024-01-01T10:00:00Z").toString());
     existing.setLibraryId(library.getId());
-    when(documentRepository.findByFilePath(baseUrl + "/a.html")).thenReturn(Optional.of(existing));
+    when(documentRepository.findByLibraryIdAndFilePath(library.getId(), baseUrl + "/a.html"))
+        .thenReturn(Optional.of(existing));
     when(documentRepository.existsBySourceEntryUrl(baseUrl + "/a.html")).thenReturn(true);
 
     execute(baseUrl + "/feed.xml");
@@ -428,7 +429,8 @@ class RssFeedIndexingExecutorTest {
     existing.setStatus(DocumentStatus.INDEXED);
     existing.setLastModifiedRemote(java.time.Instant.parse("2024-01-01T10:00:00Z").toString());
     existing.setLibraryId(library.getId());
-    when(documentRepository.findByFilePath(baseUrl + "/a.html")).thenReturn(Optional.of(existing));
+    when(documentRepository.findByLibraryIdAndFilePath(library.getId(), baseUrl + "/a.html"))
+        .thenReturn(Optional.of(existing));
     when(documentRepository.existsBySourceEntryUrl(baseUrl + "/a.html")).thenReturn(false);
     when(fileProcessingService.processUrlFile(
             any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
@@ -455,23 +457,20 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void anEntryMovedToAnotherLibraryIsNotTreatedAsUnchanged() {
-    // #490 review, finding 8: mirrors FileProcessingService#processRssEntry's own library check -
-    // without it, a library move never took effect for an entry whose pubDate is unchanged,
-    // because this check runs before the detail page (and processRssEntry) is ever reached.
+  void anEntryAlreadyIndexedIntoAnotherLibraryDoesNotSuppressProcessingForThisLibrary() {
+    // #877 (Epic #826, Befund B6): isUnchanged's lookup is scoped to the run's own target
+    // library (findByLibraryIdAndFilePath) - an entry another library already indexed under the
+    // same URL is simply never found here, so its unchanged pubDate there cannot suppress
+    // processing here, the same outcome the pre-#877 library-equality check used to guarantee.
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    Document existing = new Document("Titel", baseUrl + "/a.html", "text/html", 10L);
-    existing.setStatus(DocumentStatus.INDEXED);
-    existing.setLastModifiedRemote(java.time.Instant.parse("2024-01-01T10:00:00Z").toString());
-    existing.setLibraryId(UUID.randomUUID()); // a different library than the run's target
-    when(documentRepository.findByFilePath(baseUrl + "/a.html")).thenReturn(Optional.of(existing));
     when(fileProcessingService.processRssEntry(
             anyString(), anyString(), anyString(), any(), eq(library)))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
+    verify(documentRepository).findByLibraryIdAndFilePath(library.getId(), baseUrl + "/a.html");
     verify(fileProcessingService, timeout(2000))
         .processRssEntry(anyString(), anyString(), eq(baseUrl + "/a.html"), any(), eq(library));
   }

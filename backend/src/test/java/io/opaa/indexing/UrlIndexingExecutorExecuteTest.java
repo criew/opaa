@@ -76,7 +76,8 @@ class UrlIndexingExecutorExecuteTest {
     fileProcessingService = mock(FileProcessingService.class);
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
-    when(documentRepository.findByFilePath(anyString())).thenReturn(Optional.empty());
+    when(documentRepository.findByLibraryIdAndFilePath(any(), anyString()))
+        .thenReturn(Optional.empty());
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
 
     // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest) -

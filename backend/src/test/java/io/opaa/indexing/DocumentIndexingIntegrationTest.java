@@ -400,15 +400,16 @@ class DocumentIndexingIntegrationTest {
   }
 
   @Test
-  void reindexingIntoADifferentLibraryLeavesNoChunksWithTheOldLibraryIdBehind() throws IOException {
-    // PR #431 review, Befund 3: FileProcessingServiceTest proves this only against a mocked
-    // VectorStore.delete() call - the string handed to a mock, not that the filter actually
-    // matches every chunk of the old document in real pgvector. This indexes the same file twice,
-    // once per library, against a real Postgres/pgvector schema and asserts by direct SQL that no
-    // row in vector_store still carries the old library_id afterwards.
+  void indexingTheSameSourcePathIntoASecondLibraryLeavesTheFirstLibrarysChunksUntouched()
+      throws IOException {
+    // #877 (Epic #826, Befund B6): document identity is scoped to (library_id, file_path) -
+    // indexing the same path into a second library must create an independent document with its
+    // own chunks, never delete the first library's document/chunks the way the pre-#877 global
+    // findByFilePath lookup did. Real Postgres/pgvector schema, not a mocked VectorStore, so the
+    // library_id filter is actually exercised against real rows, not a string handed to a mock.
     // Same sourcePath as targetLibraryId's FILESYSTEM configuration (setUp) - both libraries watch
-    // the same directory, so re-triggering into otherLibraryId picks up the same file that was
-    // first indexed into targetLibraryId, exercising the library-move assertions below.
+    // the same directory, so triggering otherLibraryId picks up the same file already indexed into
+    // targetLibraryId.
     KnowledgeLibrary otherLibrary =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
@@ -427,7 +428,8 @@ class DocumentIndexingIntegrationTest {
     UUID otherLibraryId = otherLibrary.getId();
     grantOwner(otherLibraryId, userId);
 
-    Files.writeString(sharedTempDir.resolve("moved.txt"), "Content that will move libraries.");
+    Files.writeString(
+        sharedTempDir.resolve("shared-source.txt"), "Content indexed into two libraries.");
 
     IndexingJob firstJob = triggerIndexing();
     awaitJobCompletion(firstJob);
@@ -452,8 +454,8 @@ class DocumentIndexingIntegrationTest {
             Long.class,
             targetLibraryId.toString());
     assertThat(chunksStillInOriginalLibrary)
-        .as("no chunk may still carry the old library_id after a move")
-        .isZero();
+        .as("the first library's chunks must survive the second library's independent run")
+        .isEqualTo(chunksInOriginalLibrary);
 
     Long chunksInNewLibrary =
         jdbcTemplate.queryForObject(
@@ -462,8 +464,21 @@ class DocumentIndexingIntegrationTest {
             otherLibraryId.toString());
     assertThat(chunksInNewLibrary).isPositive();
 
-    Document movedDoc = documentRepository.findAll().getFirst();
-    assertThat(movedDoc.getLibraryId()).isEqualTo(otherLibraryId);
+    assertThat(
+            documentRepository.findByLibraryIdAndFilePath(
+                targetLibraryId, filePath("shared-source.txt")))
+        .as("the first library keeps its own document")
+        .isPresent();
+    assertThat(
+            documentRepository.findByLibraryIdAndFilePath(
+                otherLibraryId, filePath("shared-source.txt")))
+        .as("the second library has its own, independent document")
+        .isPresent();
+    assertThat(documentRepository.count()).isEqualTo(2);
+  }
+
+  private String filePath(String fileName) {
+    return sharedTempDir.resolve(fileName).toAbsolutePath().toString();
   }
 
   @Test

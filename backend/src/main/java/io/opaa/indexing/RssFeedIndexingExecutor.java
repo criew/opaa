@@ -433,19 +433,19 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * Checks if an RSS entry's document is unchanged based on its {@code pubDate}, before its detail
    * page is ever requested (ADR-0017) - mirrors {@link UrlIndexingExecutor#isUnchanged}. A missing
    * {@code pubDate} is treated as "changed" - the SHA-256 checksum inside {@link
-   * FileProcessingService#processRssEntry} becomes the deciding change signal instead.
+   * FileProcessingService#processRssEntry} becomes the deciding change signal instead. The lookup
+   * is scoped to {@code targetLibrary} (#877): the same entry URL indexed into a different library
+   * is an independent document.
    */
   private boolean isUnchanged(
       String entryUrl, Optional<Instant> publishedAt, KnowledgeLibrary targetLibrary) {
     if (publishedAt.isEmpty()) {
       return false;
     }
-    Optional<Document> existing = documentRepository.findByFilePath(entryUrl);
-    // library changed -> not unchanged: moving the target library must take effect even for an
-    // entry whose pubDate is otherwise unchanged.
+    Optional<Document> existing =
+        documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl);
     return existing.isPresent()
         && publishedAt.get().toString().equals(existing.get().getLastModifiedRemote())
-        && existing.get().getStatus() == DocumentStatus.INDEXED
-        && targetLibrary.getId().equals(existing.get().getLibraryId());
+        && existing.get().getStatus() == DocumentStatus.INDEXED;
   }
 }

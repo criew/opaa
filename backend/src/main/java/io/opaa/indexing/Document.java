@@ -18,6 +18,11 @@ public class Document {
   @Column(name = "file_name", nullable = false, length = 500)
   private String fileName;
 
+  /**
+   * Polymorphic by {@link #sourceType} (#877, not resolved yet): a local filesystem/storage path
+   * for {@code FILESYSTEM}/{@code UPLOAD}, a remote URL for {@code HTTP_DIRECTORY}/{@code
+   * RSS_FEED}.
+   */
   @Column(name = "file_path", nullable = false, length = 2000)
   private String filePath;
 
