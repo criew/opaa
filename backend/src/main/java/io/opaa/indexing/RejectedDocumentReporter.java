@@ -10,13 +10,10 @@ import org.slf4j.LoggerFactory;
  * reported as skipped, so nobody has to guess why the number of indexed documents is lower than the
  * number of items the source offered.
  *
- * <p>Both {@link AsyncIndexingExecutor} and {@link UrlIndexingExecutor} used to duplicate this
- * exact logic against different element types ({@code Path} vs. {@code
- * AutoindexCrawlerService.CrawledFileEntry}, see ADR-0017). Each executor now maps its own
- * rejected-item list down to display names before calling this shared helper, keeping the reporting
- * itself in exactly one place. {@code sourceType} and {@code location} are passed in explicitly - a
- * single shared logger name would otherwise erase the run type/origin the two executors' own
- * loggers used to convey implicitly.
+ * <p>Used by {@link AsyncIndexingExecutor}, which maps its own rejected-item list down to display
+ * names before calling this shared helper. {@code sourceType} and {@code location} are passed in
+ * explicitly rather than baked into a shared logger name, so each run's type/origin stays visible
+ * in the log line.
  */
 final class RejectedDocumentReporter {
 

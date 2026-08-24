@@ -56,10 +56,9 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
    * save()} cycle {@code ChatService#appendTurn} used before - that {@link Chat} instance was
    * loaded by {@code QueryService#query} before retrieval and LLM answer generation (which can take
    * seconds), so a full merge {@code save()} of it would write back a stale snapshot of every other
-   * column too, clobbering a concurrent {@code PATCH} rename that landed in between. Mirrors the
-   * condition the removed {@code Chat#deriveTitleFromFirstQuestionIfAbsent} used to apply in
-   * memory: only the true "never set" case ({@code title IS NULL}) falls back - a title explicitly
-   * set to blank by the author is left alone.
+   * column too, clobbering a concurrent {@code PATCH} rename that landed in between. Only the true
+   * "never set" case ({@code title IS NULL}) falls back - a title explicitly set to blank by the
+   * author is left alone.
    *
    * @return the number of rows updated (0 or 1) - 0 means the chat already had a title (or no
    *     longer exists)

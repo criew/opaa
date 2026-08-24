@@ -31,9 +31,8 @@ spring-boot-starter-validation = { module = "org.springframework.boot:spring-boo
 spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
 spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
-# Spring Boot 4 splits the test slices into dedicated starters (@WebMvcTest, @DataJpaTest)
+# Spring Boot 4 splits the test slices into dedicated starters (@WebMvcTest)
 spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
-spring-boot-starter-data-jpa-test = { module = "org.springframework.boot:spring-boot-starter-data-jpa-test" }
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
 
 # Spring AI (versions managed by Spring AI BOM)
@@ -57,7 +56,6 @@ tika-core = { module = "org.apache.tika:tika-core", version.ref = "tika-core" }
 spring-boot-starter-liquibase = { module = "org.springframework.boot:spring-boot-starter-liquibase" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
 postgresql = { module = "org.postgresql:postgresql" }
-h2 = { module = "com.h2database:h2" }
 
 # Security
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
@@ -91,7 +89,6 @@ runtime = ["micrometer-registry-prometheus", "postgresql"]
 test-deps = [
     "spring-boot-starter-test",
     "spring-boot-starter-webmvc-test",
-    "spring-boot-starter-data-jpa-test",
     "spring-boot-starter-security-test",
     "spring-boot-testcontainers",
     "spring-ai-spring-boot-testcontainers",
@@ -100,7 +97,7 @@ test-deps = [
     "testcontainers-postgresql",
     "awaitility",
 ]
-test-runtime-deps = ["h2", "junit-platform-launcher"]
+test-runtime-deps = ["junit-platform-launcher"]
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

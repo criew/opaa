@@ -60,27 +60,22 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
         new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
 
     try {
-      // Parse proxy config
-      String proxyHost = null;
-      int proxyPort = -1;
-      if (request.proxy() != null && !request.proxy().isBlank()) {
-        int colonIdx = request.proxy().lastIndexOf(':');
-        if (colonIdx > 0) {
-          proxyHost = request.proxy().substring(0, colonIdx);
-          proxyPort = Integer.parseInt(request.proxy().substring(colonIdx + 1));
-        }
+      // Issue #839: parsing goes through the shared ProxyAndCredentials rather than an inline
+      // copy, mirroring RssFeedIndexingExecutor#execute (PR #642 review, finding 4) - an invalid
+      // sourceProxy port was already caught by the outer catch (Exception e) below, but as the
+      // JDK's own (English) NumberFormatException message; callers now get the understandable
+      // German message instead.
+      ProxyAndCredentials config;
+      try {
+        config = ProxyAndCredentials.parse(request.proxy(), request.credentials());
+      } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
+        progress.fail(e.getMessage());
+        return;
       }
-
-      // Parse credentials
-      String username = null;
-      String password = null;
-      if (request.credentials() != null && !request.credentials().isBlank()) {
-        int colonIdx = request.credentials().indexOf(':');
-        if (colonIdx > 0) {
-          username = request.credentials().substring(0, colonIdx);
-          password = request.credentials().substring(colonIdx + 1);
-        }
-      }
+      String proxyHost = config.proxyHost();
+      int proxyPort = config.proxyPort();
+      String username = config.username();
+      String password = config.password();
 
       // Normalize URL
       String url = request.url();
@@ -91,11 +86,24 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       log.info("Starting URL crawl of: {}", url);
 
       // Step 1: Crawl directory listing
-      List<AutoindexCrawlerService.CrawledFileEntry> allFiles =
+      AutoindexCrawlerService.CrawlResult crawlResult =
           crawlerService.crawl(
               url, proxyHost, proxyPort, username, password, request.insecureSsl());
+      List<AutoindexCrawlerService.CrawledFileEntry> allFiles = crawlResult.entries();
 
       log.info("Discovered {} files for URL indexing", allFiles.size());
+
+      // #836 review, finding 8: a run capped by CrawlProperties' depth or entry limit is only
+      // visible in the application log otherwise - recorded as REJECTED (mirrors this same
+      // executor's own QUOTA_EXCEEDED handling below: a configured limit declining further items
+      // is not a processing error) so the run's own protocol in the UI can tell a truncated crawl
+      // apart from a genuinely complete one.
+      if (crawlResult.truncated()) {
+        events.record(
+            IndexingEventCategory.REJECTED,
+            "Crawl wurde durch ein konfiguriertes Limit abgeschnitten (Tiefe oder Anzahl Einträge)",
+            url);
+      }
 
       progress.setTotal(allFiles.size());
       progress.report();

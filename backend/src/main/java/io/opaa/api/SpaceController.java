@@ -59,8 +59,7 @@ public class SpaceController {
     boolean systemAdmin = currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN;
     // #686/#706 review: SpaceService#createSpace associates request.getLibraryIds() itself, in
     // the same transaction as the space row - a library that cannot be associated rolls the whole
-    // creation back instead of leaving a half-created space behind (this controller used to loop
-    // over associationService.associate() here, which could not offer that guarantee).
+    // creation back instead of leaving a half-created space behind.
     SpaceResponse response = spaceService.createSpace(request, currentUser.getId(), systemAdmin);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }

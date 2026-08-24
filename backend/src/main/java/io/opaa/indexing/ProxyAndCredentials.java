@@ -5,13 +5,17 @@ package io.opaa.indexing;
  * sourceCredentials} ({@code user:password}, Basic Auth) fields (PR #642 review, finding 4) - the
  * single implementation for what used to be three separate copies of the same parsing: {@code
  * UrlIndexingExecutor#execute}, {@code RssFeedIndexingExecutor#execute} and {@code
- * SourceConnectionTestService}'s own (now-removed) private {@code ProxyAndCredentials.from}. Only
- * the RSS executor and the connection test currently go through this shared type; {@code
- * UrlIndexingExecutor} keeps its own inline copy to keep this change small - a future cleanup can
- * fold it in too.
+ * SourceConnectionTestService}'s own (now-removed) private {@code ProxyAndCredentials.from}.
  */
 public record ProxyAndCredentials(
     String proxyHost, int proxyPort, String username, String password) {
+
+  /**
+   * Message for {@link InvalidProxyConfigurationException} (package-visible so production callers
+   * and tests reference the same constant instead of duplicating the literal - issue #839 review,
+   * nit 3).
+   */
+  static final String INVALID_PROXY_MESSAGE = "sourceProxy muss dem Format host:port entsprechen";
 
   public static ProxyAndCredentials parse(String proxy, String credentials) {
     String proxyHost = null;
@@ -24,11 +28,10 @@ public record ProxyAndCredentials(
           proxyPort = Integer.parseInt(proxy.substring(colonIdx + 1));
         } catch (NumberFormatException e) {
           // PR #642 review, finding 4: RssFeedIndexingExecutor's own copy of this parsing was the
-          // only one of the three that let an invalid port escape as the JDK's own (English)
-          // NumberFormatException message straight into progress.fail - callers now get a German,
-          // user-facing message via this exception instead.
-          throw new InvalidProxyConfigurationException(
-              "sourceProxy muss dem Format host:port entsprechen");
+          // only one of the three that already caught this NumberFormatException (via its outer
+          // catch (Exception e)) but let the JDK's own (English) message escape straight into
+          // progress.fail - callers now get the understandable German message below instead.
+          throw new InvalidProxyConfigurationException(INVALID_PROXY_MESSAGE);
         }
       }
     }

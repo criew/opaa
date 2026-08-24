@@ -218,10 +218,11 @@ function toMockFolderResponse(libraryId: string, folder: MockLibraryFolder) {
 }
 
 /**
- * Mirrors Chat#deriveTitleFromFirstQuestionIfAbsent/#applyGeneratedTitle (#557): if the chat
- * exists and has no title yet, derives one (mock stand-in for the real LLM title) and persists it
- * on the mock chat; an existing title - whether user-set or already derived - is never
- * overwritten. Returns null for a chatId with no matching mock chat (an ephemeral query).
+ * Mirrors ChatRepository#deriveTitleFromFirstQuestionIfAbsent/#applyGeneratedTitleIfGenerated
+ * (#557): if the chat exists and has no title yet, derives one (mock stand-in for the real LLM
+ * title) and persists it on the mock chat; an existing title - whether user-set or already
+ * derived - is never overwritten. Returns null for a chatId with no matching mock chat (an
+ * ephemeral query).
  */
 function applyMockChatTitle(chatId: string, question: string): string | null {
   const chat = mockChatDetails[chatId]

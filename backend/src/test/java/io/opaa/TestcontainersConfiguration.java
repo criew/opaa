@@ -8,9 +8,9 @@ import org.testcontainers.utility.DockerImageName;
 
 /**
  * Shared {@code pgvector/pgvector:pg18} Testcontainers datasource for integration tests that need a
- * real Postgres instance instead of Hibernate-generated (or H2) schema. {@code public} so it can be
- * reused across packages via {@code @Import(TestcontainersConfiguration.class)} instead of
- * duplicating the container definition per test class - see #288.
+ * real Postgres instance instead of Hibernate-generated schema. {@code public} so it can be reused
+ * across packages via {@code @Import(TestcontainersConfiguration.class)} instead of duplicating the
+ * container definition per test class - see #288.
  */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {

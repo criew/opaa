@@ -202,40 +202,6 @@ class LibraryAccessServiceTest {
   }
 
   @Test
-  void aDirectEditorGrantAllowsEditingButNotManaging() {
-    // #419: canEdit backs the indexing-trigger authorization - EDITOR is enough to target a
-    // library with an indexing run, but not enough to manage it (rename, visibility, grants).
-    UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
-    AssetGrant grant =
-        AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.EDITOR, null, userId);
-    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
-
-    assertThat(accessService.canEdit(library, userId, false)).isTrue();
-    assertThat(accessService.canManage(library, userId, false)).isFalse();
-  }
-
-  @Test
-  void aDirectViewerGrantDoesNotAllowEditing() {
-    UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
-    AssetGrant grant =
-        AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.VIEWER, null, userId);
-    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
-
-    assertThat(accessService.canEdit(library, userId, false)).isFalse();
-  }
-
-  @Test
-  void systemAdminBypassesTheEditCheckToo() {
-    UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
-    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of());
-
-    assertThat(accessService.canEdit(library, userId, true)).isTrue();
-  }
-
-  @Test
   void aDirectManagerGrantAllowsBothReadingAndManaging() {
     UUID libraryId = UUID.randomUUID();
     KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
@@ -245,32 +211,6 @@ class LibraryAccessServiceTest {
 
     assertThat(accessService.canRead(library, userId, false)).isTrue();
     assertThat(accessService.canManage(library, userId, false)).isTrue();
-  }
-
-  @Test
-  void aDirectManagerGrantAllowsManagingButNotDeleting() {
-    // #202 code review round 3 (Blocker 1): MANAGER is enough to rename, change visibility or
-    // manage grants, but never enough to delete the library or (once it exists) transfer its
-    // ownership - AssetRole reserves that for OWNER alone.
-    UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
-    AssetGrant grant =
-        AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.MANAGER, null, userId);
-    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
-
-    assertThat(accessService.canManage(library, userId, false)).isTrue();
-    assertThat(accessService.canDelete(library, userId, false)).isFalse();
-  }
-
-  @Test
-  void aDirectOwnerGrantAllowsDeleting() {
-    UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
-    AssetGrant grant =
-        AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.OWNER, null, userId);
-    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
-
-    assertThat(accessService.canDelete(library, userId, false)).isTrue();
   }
 
   @Test
