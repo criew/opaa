@@ -2666,10 +2666,6 @@ components:
         fileName:
           type: string
           example: architecture-overview.md
-        spaceName:
-          type: string
-          nullable: true
-          example: Engineering
         relevanceScore:
           type: number
           format: double

@@ -89,13 +89,6 @@ function renderOpenOriginalLink(
   )
 }
 
-/** Space and indexing date - the Fundort itself (#667) is rendered separately per row. */
-function sourceMeta(doc: CitationIndex['docs'][number]): string | null {
-  if (!doc.source) return null
-  const parts = [doc.source.spaceName, formatIndexedAt(doc.source.indexedAt)].filter(Boolean)
-  return parts.length > 0 ? parts.join(' · ') : null
-}
-
 /**
  * Mockup 1a's Fundstellen block (#590): a quiet footnote list under the answer - eyebrow, count
  * line, one row per document with its footnote numbers, and the checked-but-uncited tail behind
@@ -108,6 +101,7 @@ function renderDocRow(
   highlighted: boolean,
   onOpenLocalOriginal: (source: SourceReference, fileName: string) => void,
 ) {
+  const indexedAtLabel = formatIndexedAt(doc.source?.indexedAt)
   return (
     <Box
       key={doc.fileName}
@@ -160,9 +154,9 @@ function renderDocRow(
           {doc.locations.join(' · ')}
         </Typography>
       )}
-      {sourceMeta(doc) && (
+      {indexedAtLabel && (
         <Typography component="span" sx={{ fontSize: 12, color: 'text.disabled' }}>
-          {sourceMeta(doc)}
+          {indexedAtLabel}
         </Typography>
       )}
       {/* #739/#747: a button that opens through the content endpoint for every sourceType, plus a
@@ -370,11 +364,6 @@ export default function SourceFootnotes({
                   <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>
                     {source.fileName}
                   </Typography>
-                  {source.spaceName && (
-                    <Typography component="span" sx={{ fontSize: 12, color: 'text.disabled' }}>
-                      {source.spaceName}
-                    </Typography>
-                  )}
                   {canOpenOriginal(source) &&
                     renderOpenOriginalLink(source, source.fileName, handleOpenLocalOriginal)}
                 </Box>
