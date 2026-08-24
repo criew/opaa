@@ -16,6 +16,7 @@ import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.DocumentSourceType;
@@ -38,13 +39,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Controller-level wiring test for the two endpoints #420 adds: uploadDocument/deleteDocument
@@ -267,8 +266,7 @@ class LibraryControllerDocumentTest {
     UUID libraryId = UUID.randomUUID();
     when(documentService.uploadDocument(
             eq(libraryId), any(), any(), any(), eq(currentUserId), eq(false)))
-        .thenThrow(
-            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     var file = new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes());
 

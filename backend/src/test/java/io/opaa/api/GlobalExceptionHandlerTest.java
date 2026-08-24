@@ -314,6 +314,45 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
+  void handleUnauthorizedExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleUnauthorizedException(
+            new io.opaa.common.UnauthorizedException("Benutzer nicht gefunden"));
+    assertEquals(401, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(401, body.getStatus());
+    assertEquals("Benutzer nicht gefunden", body.getError());
+  }
+
+  @Test
+  void handlePayloadTooLargeExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handlePayloadTooLargeException(
+            new io.opaa.common.PayloadTooLargeException(
+                "Das Logo darf höchstens 512 KiB groß sein"));
+    assertEquals(413, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(413, body.getStatus());
+    assertEquals("Das Logo darf höchstens 512 KiB groß sein", body.getError());
+  }
+
+  @Test
+  void handleServiceUnavailableExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleServiceUnavailableException(
+            new io.opaa.common.ServiceUnavailableException(
+                "Indizierung derzeit nicht möglich, bitte später erneut versuchen"));
+    assertEquals(503, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(503, body.getStatus());
+    assertEquals(
+        "Indizierung derzeit nicht möglich, bitte später erneut versuchen", body.getError());
+  }
+
+  @Test
   void handleResponseStatusExceptionKeepsStatusAndReason() {
     var response =
         handler.handleResponseStatusException(

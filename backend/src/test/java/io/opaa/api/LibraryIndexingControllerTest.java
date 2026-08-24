@@ -13,6 +13,9 @@ import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJob;
@@ -35,20 +38,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * #478: {@code POST}/{@code GET /api/v1/libraries/{libraryId}/indexing[/status]} replace the old
  * {@code /api/v1/indexing/trigger}/{@code /status} - both now read the run's target and
  * quellkonfiguration from the library itself, so the only thing left on the wire is the path
  * variable. {@link DocumentIndexingService} owns every authorization/validation decision (see
- * {@code DocumentIndexingServiceTest}); this pins that its {@link ResponseStatusException}s reach
- * the client as the matching HTTP status/body.
+ * {@code DocumentIndexingServiceTest}); this pins that its {@code io.opaa.common} domain exceptions
+ * reach the client as the matching HTTP status/body.
  */
 @WebMvcTest(LibraryController.class)
 @ActiveProfiles("test")
@@ -103,8 +104,7 @@ class LibraryIndexingControllerTest {
     UUID libraryId = UUID.randomUUID();
     when(indexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(false)))
         .thenThrow(
-            new ResponseStatusException(
-                HttpStatus.CONFLICT, "Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf"));
+            new ConflictException("Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf"));
 
     mockMvc
         .perform(post("/api/v1/libraries/" + libraryId + "/indexing").with(asTestUser()))
@@ -118,8 +118,7 @@ class LibraryIndexingControllerTest {
     UUID libraryId = UUID.randomUUID();
     when(indexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(false)))
         .thenThrow(
-            new ResponseStatusException(
-                HttpStatus.CONFLICT, "Für diese Bibliothek läuft bereits ein Indizierungslauf"));
+            new ConflictException("Für diese Bibliothek läuft bereits ein Indizierungslauf"));
 
     mockMvc
         .perform(post("/api/v1/libraries/" + libraryId + "/indexing").with(asTestUser()))
@@ -131,8 +130,7 @@ class LibraryIndexingControllerTest {
   void triggerWithInsufficientRoleReturnsForbidden() throws Exception {
     UUID libraryId = UUID.randomUUID();
     when(indexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(false)))
-        .thenThrow(
-            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     mockMvc
         .perform(post("/api/v1/libraries/" + libraryId + "/indexing").with(asTestUser()))
@@ -144,7 +142,7 @@ class LibraryIndexingControllerTest {
   void triggerWithAForeignLibraryReturnsNotFound() throws Exception {
     UUID libraryId = UUID.randomUUID();
     when(indexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(false)))
-        .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+        .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
 
     mockMvc
         .perform(post("/api/v1/libraries/" + libraryId + "/indexing").with(asTestUser()))
@@ -284,8 +282,7 @@ class LibraryIndexingControllerTest {
   void listIndexingRunsWithInsufficientAccessReturnsForbidden() throws Exception {
     UUID libraryId = UUID.randomUUID();
     when(indexingService.getRecentRuns(eq(libraryId), eq(currentUser.getId()), eq(false)))
-        .thenThrow(
-            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/runs").with(asTestUser()))
@@ -297,8 +294,7 @@ class LibraryIndexingControllerTest {
   void getStatusWithInsufficientAccessReturnsForbidden() throws Exception {
     UUID libraryId = UUID.randomUUID();
     when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
-        .thenThrow(
-            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))

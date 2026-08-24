@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.common.ConflictException;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.LlmModel;
@@ -33,14 +34,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * {@link LlmModelController} in isolation, {@link LlmModelService}/{@link LlmModelConnectionTester}
@@ -266,9 +265,7 @@ class LlmModelControllerTest {
   @Test
   void deletingTheActiveModelReturns409() throws Exception {
     UUID modelId = UUID.randomUUID();
-    doThrow(
-            new ResponseStatusException(
-                HttpStatus.CONFLICT, "Das aktive Chat-Modell kann nicht gelöscht werden."))
+    doThrow(new ConflictException("Das aktive Chat-Modell kann nicht gelöscht werden."))
         .when(llmModelService)
         .deleteModel(actingAdminOrganizationId, actingAdminId, modelId);
 

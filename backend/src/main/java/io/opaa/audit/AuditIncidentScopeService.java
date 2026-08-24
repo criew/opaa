@@ -30,8 +30,8 @@ public class AuditIncidentScopeService {
    * Creates a new {@code PENDING} incident scope grant. Not usable for querying until approved.
    *
    * @throws NotFoundException if {@code subjectUserId} does not belong to {@code organizationId} -
-   *     a grant must never be created, and no pseudonym ever minted at query time, against a
-   *     person outside the requester's own organization.
+   *     a grant must never be created, and no pseudonym ever minted at query time, against a person
+   *     outside the requester's own organization.
    */
   public AuditIncidentScopeGrant request(
       UUID organizationId,

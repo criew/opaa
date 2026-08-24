@@ -13,6 +13,7 @@ import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.common.NotFoundException;
 import io.opaa.library.DocumentContent;
 import io.opaa.library.LibraryDocumentService;
 import java.io.ByteArrayInputStream;
@@ -30,13 +31,11 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Controller-level wiring test for {@link DocumentController} (#736): the HTTP request is
@@ -183,7 +182,7 @@ class DocumentControllerTest {
   void aDocumentTheServiceRefusesAnswers404() throws Exception {
     UUID documentId = UUID.randomUUID();
     when(documentService.loadContent(eq(documentId), eq(currentUserId), eq(false)))
-        .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Dokument nicht gefunden"));
+        .thenThrow(new NotFoundException("Dokument nicht gefunden"));
 
     mockMvc
         .perform(get("/api/v1/documents/" + documentId + "/content").with(asTestUser()))
