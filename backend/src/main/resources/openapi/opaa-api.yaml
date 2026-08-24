@@ -1445,7 +1445,7 @@ paths:
       summary: >
         Delete a folder (EDITOR role or above required, #820), recursively removing its subfolders
         and every document they contain. Document cleanup (chunks, stored file) runs through the
-        same application service GET /api/v1/libraries/{libraryId}/documents/{documentId} deletion
+        same application service DELETE /api/v1/libraries/{libraryId}/documents/{documentId}
         already uses, never a database cascade (ADR-0020, Entscheidung 5) - the frontend shows the
         affected document count from GET on this folder first and requires explicit confirmation
         before calling this endpoint.
@@ -1456,6 +1456,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/documents/{documentId}/content:
     parameters:
