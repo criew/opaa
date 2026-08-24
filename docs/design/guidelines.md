@@ -58,7 +58,9 @@ aufgezählt.
 | Navy-500 | `#055396` | Grenzfälle, Diagramme |
 
 **Grau** (kühl, auf Navy abgestimmt): `#E6EBF1` (100), `#CBD4DF` (200), `#A4B1C1` (300),
-`#778797` (400), `#556473` (500), `#3B4958` (600), `#26323F` (700), `#162231` (800).
+`#5C6B7A` (400), `#556473` (500), `#3B4958` (600), `#26323F` (700), `#162231` (800). Stufe 400
+wurde mit #725 von `#778797` abgedunkelt (3,68:1 gegen Weiß reichte nicht für Fließtext-Kontrast,
+4,5:1 gefordert); `#5C6B7A` erreicht 5,47:1.
 
 **Weißtöne:** Weiß `#FFFFFF` · Off-White `#F6F8FB` (helle erhöhte Fläche) · Smoke `#EEF2F7`
 (gedämpfte Fläche, Trennlinien).
@@ -89,7 +91,7 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 | `bg-3` | gedämpfte Fläche (Eingabefeld, Tabellenkopf) | Smoke `#EEF2F7` | Carbon-850 `#1F1F1F` |
 | `fg-1` | Primärtext | Navy `#012142` | `#DEDEDE` |
 | `fg-2` | Sekundärtext | Grau-600 `#3B4958` | `#9E9E9E` |
-| `fg-3` | Tertiärtext, Metadaten | Grau-400 `#778797` | `#8A8A8A` |
+| `fg-3` | Tertiärtext, Metadaten | Grau-400 `#5C6B7A` | `#8A8A8A` |
 | `accent` | Handlung, Bezug, aktiver Zustand | Blau-500 `#1292EE` | Blau-500 `#1292EE` |
 | `accent-fg` | Text auf Akzentfläche | Weiß | Weiß |
 | `border` | Standardrahmen | Grau-100 `#E6EBF1` | Carbon-800 `#252525` |

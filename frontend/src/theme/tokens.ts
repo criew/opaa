@@ -30,12 +30,17 @@ export const navy = {
   500: '#055396',
 } as const
 
-/** Cool gray scale, harmonised with the navy. */
+/**
+ * Cool gray scale, harmonised with the navy. 400 was darkened from #778797 to #5C6B7A (#725):
+ * the lighter value only reached 3.68:1 against white for the fg-3 role (tertiary text, table
+ * heads, metadata) - below the 4.5:1 WCAG AA floor. #5C6B7A reaches 5.47:1 while keeping the
+ * step ordered between 300 and 500.
+ */
 export const gray = {
   100: '#E6EBF1',
   200: '#CBD4DF',
   300: '#A4B1C1',
-  400: '#778797',
+  400: '#5C6B7A',
   500: '#556473',
   600: '#3B4958',
   700: '#26323F',
