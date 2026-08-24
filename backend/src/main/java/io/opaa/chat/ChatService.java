@@ -476,8 +476,15 @@ public class ChatService {
    * a chat's space always exists (fk_chats_space_organization is ON DELETE RESTRICT, migration 032,
    * composite as of migration 047), so this never needs to reason about a missing space the way
    * {@link #requireMembership} does.
+   *
+   * <p>#840: also called from {@code QueryService#query}, before retrieval/the LLM call, for a
+   * persisted chat - so the ordinary case ("space was already archived") never pays for an LLM call
+   * whose answer {@link #appendTurn} would discard anyway. Widened to public for that caller rather
+   * than duplicating the rule; {@link #appendTurn}'s own call stays in place as the race guard for
+   * a space archived after this early check ran but before the turn was persisted (see that
+   * method's Javadoc).
    */
-  private void requireSpaceNotArchived(UUID spaceId) {
+  public void requireSpaceNotArchived(UUID spaceId) {
     Space space =
         spaceRepository
             .findById(spaceId)

@@ -188,6 +188,13 @@ public class QueryService {
                 // ChatService#requireStillSpaceMember's Javadoc for why this check lives only on
                 // this path and not on getChat/updateChat/deleteChat.
                 chat.ifPresent(chatService::requireStillSpaceMember);
+                // #840: an archived space accepts no new content (see
+                // ChatService#requireSpaceNotArchived's Javadoc) - checked here, before
+                // retrieval/the LLM call, so the ordinary case ("space was already archived")
+                // never pays for a paid LLM call whose answer appendTurn below would discard
+                // anyway. appendTurn's own call to the same guard stays in place as the race
+                // guard for a space archived after this point but before the turn is persisted.
+                chat.ifPresent(c -> chatService.requireSpaceNotArchived(c.getSpaceId()));
                 // A chatId that does not resolve to an owned persisted chat (including "none
                 // given") still runs ephemerally rather than being rejected - the pre-#525
                 // behaviour, preserved for callers that have not moved to persisted chats yet
