@@ -11,6 +11,10 @@ import static org.mockito.Mockito.doThrow;
 
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -41,10 +45,8 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
@@ -206,11 +208,7 @@ class ChatServiceIntegrationTest {
     UUID spaceId = createSpaceWithMember(member);
 
     assertThatThrownBy(() -> chatService.createChat(spaceId, outsider, new ChatCreation()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -224,11 +222,7 @@ class ChatServiceIntegrationTest {
     spaceRepository.save(space);
 
     assertThatThrownBy(() -> chatService.createChat(spaceId, author, new ChatCreation()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
   }
 
   @Test
@@ -247,11 +241,7 @@ class ChatServiceIntegrationTest {
             () ->
                 chatService.updateChat(
                     created.getId(), author, new ChatPatch().title("Neuer Titel")))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
   }
 
   @Test
@@ -266,11 +256,7 @@ class ChatServiceIntegrationTest {
     spaceRepository.save(space);
 
     assertThatThrownBy(() -> chatService.appendTurn(chat, "Frage?", "Antwort.", List.of()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
     // The rejected turn must not have been persisted.
     assertThat(chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId())).isEmpty();
   }
@@ -280,11 +266,7 @@ class ChatServiceIntegrationTest {
     UUID author = createUser();
 
     assertThatThrownBy(() -> chatService.createChat(UUID.randomUUID(), author, new ChatCreation()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -301,11 +283,7 @@ class ChatServiceIntegrationTest {
     // #525 acceptance criterion: a foreign user - even a fellow space admin - gets 404, not 403,
     // which would confirm the chat's existence.
     assertThatThrownBy(() -> chatService.getChat(chat.getId(), otherMember))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -356,16 +334,14 @@ class ChatServiceIntegrationTest {
                     spaceId,
                     author,
                     new ChatCreation().referencedLibraryIds(List.of(unreadableLibrary))))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ValidationException.class)
         .satisfies(
-            ex -> {
-              ResponseStatusException statusException = (ResponseStatusException) ex;
-              assertThat(statusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-              // #525 review, finding/nit b: identical message whether the library exists and is
-              // merely unreadable, or does not exist at all - no existence oracle.
-              assertThat(statusException.getReason())
-                  .isEqualTo("referencedLibraryIds enthält eine Bibliothek, die nicht lesbar ist");
-            });
+            ex ->
+                // #525 review, finding/nit b: identical message whether the library exists and is
+                // merely unreadable, or does not exist at all - no existence oracle.
+                assertThat(ex.getMessage())
+                    .isEqualTo(
+                        "referencedLibraryIds enthält eine Bibliothek, die nicht lesbar ist"));
   }
 
   @Test
@@ -382,14 +358,12 @@ class ChatServiceIntegrationTest {
                     spaceId,
                     author,
                     new ChatCreation().referencedLibraryIds(List.of(unreadableLibrary))))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ValidationException.class)
         .satisfies(
-            ex -> {
-              ResponseStatusException statusException = (ResponseStatusException) ex;
-              assertThat(statusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-              assertThat(statusException.getReason())
-                  .isEqualTo("referencedLibraryIds enthält eine Bibliothek, die nicht lesbar ist");
-            });
+            ex ->
+                assertThat(ex.getMessage())
+                    .isEqualTo(
+                        "referencedLibraryIds enthält eine Bibliothek, die nicht lesbar ist"));
   }
 
   @Test
@@ -405,11 +379,7 @@ class ChatServiceIntegrationTest {
                     created.getId(),
                     author,
                     new ChatPatch().referencedLibraryIds(List.of(unreadableLibrary))))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -421,7 +391,7 @@ class ChatServiceIntegrationTest {
     chatService.deleteChat(created.getId(), author);
 
     assertThatThrownBy(() -> chatService.getChat(created.getId(), author))
-        .isInstanceOf(ResponseStatusException.class);
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -677,11 +647,7 @@ class ChatServiceIntegrationTest {
     spaceMembershipRepository.deleteAll(spaceMembershipRepository.findBySpaceId(spaceId));
 
     assertThatThrownBy(() -> chatService.requireStillSpaceMember(chat))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test

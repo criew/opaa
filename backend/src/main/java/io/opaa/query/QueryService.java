@@ -8,6 +8,7 @@ import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
+import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.VectorChunkStore;
@@ -41,8 +42,6 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 public class QueryService {
 
@@ -173,10 +172,7 @@ public class QueryService {
                 User currentUser =
                     userRepository
                         .findById(currentUserId)
-                        .orElseThrow(
-                            () ->
-                                new ResponseStatusException(
-                                    HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
+                        .orElseThrow(() -> new UnauthorizedException("Benutzer nicht gefunden"));
 
                 Optional<Chat> chat = chatService.findOwnedChat(chatId, currentUserId);
                 // #525 review, finding 4: querying is chatting, and chatting requires space

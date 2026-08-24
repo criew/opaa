@@ -15,6 +15,9 @@ import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
@@ -31,25 +34,23 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Controller-level wiring test for the four folder endpoints #820 adds (review finding on PR #827:
  * the issue's acceptance criteria call for service <em>and</em> web tests, mirroring {@code
  * LibraryControllerDocumentTest}). Verifies that {@link LibraryController}'s folder methods
  * translate an HTTP request into the correct {@link LibraryFolderService} call and its result - or
- * thrown {@link ResponseStatusException} - into the expected status code, that the generated DTOs'
- * {@code @Valid} constraints ({@code LibraryFolderRequest.name}'s {@code minLength}/{@code
- * maxLength}) are actually enforced at this layer, and that the {@code systemAdmin} flag reaches
- * the service unchanged. Business logic (permissions, name/depth/conflict validation, recursive
- * deletion) is covered at the service level in {@code LibraryFolderServiceTest}/{@code
- * LibraryFolderServiceIntegrationTest}.
+ * a thrown {@code io.opaa.common} domain exception - into the expected status code, that the
+ * generated DTOs' {@code @Valid} constraints ({@code LibraryFolderRequest.name}'s {@code
+ * minLength}/{@code maxLength}) are actually enforced at this layer, and that the {@code
+ * systemAdmin} flag reaches the service unchanged. Business logic (permissions, name/depth/conflict
+ * validation, recursive deletion) is covered at the service level in {@code
+ * LibraryFolderServiceTest}/{@code LibraryFolderServiceIntegrationTest}.
  */
 @WebMvcTest(LibraryController.class)
 @ActiveProfiles({"test", "dev"})
@@ -200,8 +201,7 @@ class LibraryControllerFolderTest {
             org.mockito.ArgumentMatchers.any(),
             eq(currentUserId),
             eq(false)))
-        .thenThrow(
-            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     mockMvc
         .perform(
@@ -222,8 +222,7 @@ class LibraryControllerFolderTest {
             eq(currentUserId),
             eq(false)))
         .thenThrow(
-            new ResponseStatusException(
-                HttpStatus.CONFLICT,
+            new ConflictException(
                 "Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene"));
 
     mockMvc
@@ -254,7 +253,7 @@ class LibraryControllerFolderTest {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
     when(folderService.getFolder(libraryId, folderId, currentUserId, false))
-        .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden"));
+        .thenThrow(new NotFoundException("Ordner nicht gefunden"));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/folders/" + folderId).with(asTestUser()))
@@ -311,8 +310,7 @@ class LibraryControllerFolderTest {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
     org.mockito.Mockito.doThrow(
-            new ResponseStatusException(
-                HttpStatus.CONFLICT,
+            new ConflictException(
                 "Diese Bibliothek ist eine Konnektorbibliothek und unterstützt keine manuell"
                     + " verwalteten Ordner"))
         .when(folderService)

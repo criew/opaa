@@ -8,6 +8,8 @@ import static org.awaitility.Awaitility.await;
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
@@ -35,13 +37,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Runs {@link LibraryFolderService} against a real Postgres database with the real, versioned
@@ -181,11 +181,7 @@ class LibraryFolderServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> folderService.createFolder(libraryId, "Protokolle", null, editor.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
   }
 
   @Test
@@ -206,8 +202,7 @@ class LibraryFolderServiceIntegrationTest {
               LibraryFolderDetail response =
                   folderService.createFolder(libraryId, "Protokolle", null, editor.getId(), false);
               return response.folder().getId();
-            } catch (ResponseStatusException e) {
-              assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            } catch (ConflictException e) {
               return null;
             }
           };
@@ -248,8 +243,7 @@ class LibraryFolderServiceIntegrationTest {
                   folderService.renameFolder(
                       libraryId, folderA.folder().getId(), "Ziel", editor.getId(), false);
               return response.folder().getId();
-            } catch (ResponseStatusException e) {
-              assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            } catch (ConflictException e) {
               return null;
             }
           };
@@ -261,8 +255,7 @@ class LibraryFolderServiceIntegrationTest {
                   folderService.renameFolder(
                       libraryId, folderB.folder().getId(), "Ziel", editor.getId(), false);
               return response.folder().getId();
-            } catch (ResponseStatusException e) {
-              assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            } catch (ConflictException e) {
               return null;
             }
           };
@@ -304,11 +297,7 @@ class LibraryFolderServiceIntegrationTest {
   void aViewerCannotCreateAFolder() {
     assertThatThrownBy(
             () -> folderService.createFolder(libraryId, "Protokolle", null, viewer.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -327,11 +316,7 @@ class LibraryFolderServiceIntegrationTest {
                       null,
                       editor.getId(),
                       false))
-          .isInstanceOf(ResponseStatusException.class)
-          .satisfies(
-              ex ->
-                  assertThat(((ResponseStatusException) ex).getStatusCode())
-                      .isEqualTo(HttpStatus.CONFLICT));
+          .isInstanceOf(ConflictException.class);
     } finally {
       libraryRepository.deleteById(connectorLibrary.library().getId());
     }
@@ -415,11 +400,7 @@ class LibraryFolderServiceIntegrationTest {
             () ->
                 folderService.deleteFolder(
                     libraryId, folder.folder().getId(), viewer.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
     assertThat(folderRepository.findById(folder.folder().getId())).isPresent();
   }
 

@@ -1,15 +1,14 @@
 package io.opaa.indexing;
 
+import io.opaa.common.ConflictException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 public class IndexingJobService {
 
@@ -84,8 +83,7 @@ public class IndexingJobService {
     try {
       saved = indexingJobRepository.saveAndFlush(job);
     } catch (DataIntegrityViolationException ex) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Für diese Bibliothek läuft bereits ein Indizierungslauf", ex);
+      throw new ConflictException("Für diese Bibliothek läuft bereits ein Indizierungslauf", ex);
     }
     pruneOldRuns(libraryId);
     return saved;

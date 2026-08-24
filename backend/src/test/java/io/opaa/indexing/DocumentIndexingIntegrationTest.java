@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.auth.SystemRole;
+import io.opaa.common.NotFoundException;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
@@ -43,12 +44,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.web.server.ResponseStatusException;
 
 // Own @DynamicPropertySource (below, indexing-specific paths/chunk sizing) means Spring's context
 // cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
@@ -663,8 +662,7 @@ class DocumentIndexingIntegrationTest {
             () ->
                 documentIndexingService.getStatus(
                     libraryInOrganizationA.getId(), userInOrganizationB, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
+        .isInstanceOf(NotFoundException.class);
 
     // The second, independent guard this issue adds at the indexing_jobs row itself (#401): even
     // asked directly, bypassing the library-ownership check above entirely, the same libraryId

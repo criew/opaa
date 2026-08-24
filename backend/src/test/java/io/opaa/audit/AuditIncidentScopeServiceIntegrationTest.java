@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -21,7 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * #393: the one personenbezogene exception - anlassbezogene Klärung, Vier-Augen-Prinzip - against a
@@ -114,7 +115,7 @@ class AuditIncidentScopeServiceIntegrationTest {
             () ->
                 queryService.byIncidentScope(
                     organizationId, auditor, REASON, grant.getId(), scopeStart, scopeEnd, 0, 50))
-        .isInstanceOf(ResponseStatusException.class);
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -258,7 +259,7 @@ class AuditIncidentScopeServiceIntegrationTest {
             () ->
                 queryService.byIncidentScope(
                     organizationId, auditor, REASON, grant.getId(), scopeStart, scopeEnd, 0, 50))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("abgelaufen");
   }
 
@@ -287,7 +288,7 @@ class AuditIncidentScopeServiceIntegrationTest {
                       scopeEnd,
                       AuditIncidentScopePurpose.SECURITY_INCIDENT,
                       "Verdacht auf unbefugten Zugriff auf Personalvorgaenge"))
-          .isInstanceOf(ResponseStatusException.class);
+          .isInstanceOf(NotFoundException.class);
     } finally {
       userRepository.deleteById(foreignUserId);
       organizationRepository.deleteById(foreignOrganizationId);

@@ -11,6 +11,10 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ServiceUnavailableException;
 import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -25,9 +29,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.task.TaskRejectedException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * #478/ADR-0018: triggering an indexing run reduces to "index this library" - type and
@@ -103,13 +104,10 @@ class DocumentIndexingServiceTest {
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.EDITOR))
-        .thenThrow(
-            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     assertThatThrownBy(() -> service.triggerIndexing(library.getId(), currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
+        .isInstanceOf(AccessDeniedException.class);
     verify(indexingJobService, never()).startJob(any(), any());
     verify(asyncIndexingExecutor, never()).execute(any(), any());
   }
@@ -132,12 +130,8 @@ class DocumentIndexingServiceTest {
 
     assertThatThrownBy(
             () -> service.triggerIndexing(foreignLibrary.getId(), currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> {
-              assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(404));
-              assertThat(ex.getReason()).isEqualTo("Bibliothek nicht gefunden");
-            });
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Bibliothek nicht gefunden");
     verify(indexingJobService, never()).startJob(any(), any());
   }
 
@@ -148,9 +142,7 @@ class DocumentIndexingServiceTest {
     when(libraryRepository.findById(unknownLibraryId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.triggerIndexing(unknownLibraryId, currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(404)));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -179,12 +171,10 @@ class DocumentIndexingServiceTest {
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.EDITOR))
-        .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+        .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
 
     assertThatThrownBy(() -> service.triggerIndexing(library.getId(), currentUser.getId(), true))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(404)));
+        .isInstanceOf(NotFoundException.class);
     verify(indexingJobService, never()).startJob(any(), any());
     verify(libraryAccessService).requireRole(library, currentUser.getId(), false, AssetRole.EDITOR);
     verify(libraryAccessService, never())
@@ -197,9 +187,7 @@ class DocumentIndexingServiceTest {
     when(indexingJobService.isJobRunning(library.getId(), organizationId)).thenReturn(true);
 
     assertThatThrownBy(() -> service.triggerIndexing(library.getId(), currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(409)));
+        .isInstanceOf(ConflictException.class);
     verify(indexingJobService, never()).startJob(any(), any());
   }
 
@@ -219,9 +207,7 @@ class DocumentIndexingServiceTest {
         .execute(job.getId(), library);
 
     assertThatThrownBy(() -> service.triggerIndexing(library.getId(), currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(503)));
+        .isInstanceOf(ServiceUnavailableException.class);
     verify(indexingJobService).failJob(eq(job.getId()), any());
   }
 
@@ -257,9 +243,7 @@ class DocumentIndexingServiceTest {
 
     assertThatThrownBy(
             () -> service.triggerIndexing(uploadLibrary.getId(), currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(409)));
+        .isInstanceOf(ConflictException.class);
     verify(indexingJobService, never()).startJob(any(), any());
     verify(asyncIndexingExecutor, never()).execute(any(), any());
   }
@@ -392,12 +376,10 @@ class DocumentIndexingServiceTest {
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.VIEWER))
-        .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+        .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
 
     assertThatThrownBy(() -> service.getStatus(library.getId(), currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(404)));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -415,9 +397,7 @@ class DocumentIndexingServiceTest {
         .thenReturn(Optional.of(foreignLibrary));
 
     assertThatThrownBy(() -> service.getStatus(foreignLibrary.getId(), currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(404)));
+        .isInstanceOf(NotFoundException.class);
   }
 
   // --- getRecentRuns (#513, PR #604 review finding 1) ---
@@ -455,9 +435,7 @@ class DocumentIndexingServiceTest {
     when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(false);
 
     assertThatThrownBy(() -> service.getRecentRuns(library.getId(), currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -476,8 +454,6 @@ class DocumentIndexingServiceTest {
 
     assertThatThrownBy(
             () -> service.getRecentRuns(foreignLibrary.getId(), currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(404)));
+        .isInstanceOf(NotFoundException.class);
   }
 }

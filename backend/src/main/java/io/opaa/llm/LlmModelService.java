@@ -4,16 +4,16 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditOutcome;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Reads and changes the managed chat models (Stufe 1, #756,
@@ -151,8 +151,7 @@ public class LlmModelService {
   public void deleteModel(UUID organizationId, UUID actorUserId, UUID id) {
     LlmModel model = repository.findById(id).orElseThrow(() -> notFound(id));
     if (model.isActive()) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
+      throw new ConflictException(
           "Das aktive Chat-Modell kann nicht gelöscht werden. Aktivieren Sie zuerst ein anderes"
               + " Modell.");
     }
@@ -260,8 +259,7 @@ public class LlmModelService {
     return OBJECT_LABEL_PREFIX + ": " + model.getDisplayName();
   }
 
-  private static ResponseStatusException notFound(UUID id) {
-    return new ResponseStatusException(
-        HttpStatus.NOT_FOUND, "Kein Chat-Modell mit der ID " + id + " gefunden");
+  private static NotFoundException notFound(UUID id) {
+    return new NotFoundException("Kein Chat-Modell mit der ID " + id + " gefunden");
   }
 }

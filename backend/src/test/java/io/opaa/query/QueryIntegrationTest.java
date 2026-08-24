@@ -634,13 +634,7 @@ class QueryIntegrationTest {
 
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () -> queryService.query("Frage nach Austritt", chatId, userId, true, List.of()))
-        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(
-                        ((org.springframework.web.server.ResponseStatusException) ex)
-                            .getStatusCode())
-                    .isEqualTo(org.springframework.http.HttpStatus.FORBIDDEN));
+        .isInstanceOf(io.opaa.common.AccessDeniedException.class);
   }
 
   /**

@@ -14,6 +14,11 @@ import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
@@ -49,10 +54,8 @@ import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Unit tests for {@link LibraryDocumentService} (#420, #434): the format/size/dedup validation, the
@@ -171,13 +174,12 @@ class LibraryDocumentServiceTest {
 
   private void grantViewerOnly() {
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.EDITOR)))
-        .thenThrow(
-            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
   }
 
   private void grantNoAccess() {
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.EDITOR)))
-        .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+        .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
   }
 
   // Real PDF magic bytes (#435): since uploadDocument now runs Tika content detection against the
@@ -234,8 +236,7 @@ class LibraryDocumentServiceTest {
             () ->
                 service.uploadDocument(
                     libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.FORBIDDEN);
+        .isInstanceOf(AccessDeniedException.class);
 
     verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
   }
@@ -251,8 +252,7 @@ class LibraryDocumentServiceTest {
             () ->
                 service.uploadDocument(
                     libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -266,8 +266,7 @@ class LibraryDocumentServiceTest {
             () ->
                 service.uploadDocument(
                     libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -285,8 +284,7 @@ class LibraryDocumentServiceTest {
             () ->
                 service.uploadDocument(
                     libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT);
+        .isInstanceOf(ConflictException.class);
 
     assertNoFilesWereStored();
     verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
@@ -305,8 +303,7 @@ class LibraryDocumentServiceTest {
                     null,
                     currentUserId,
                     false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.BAD_REQUEST);
+        .isInstanceOf(ValidationException.class);
 
     assertNoFilesWereStored();
     verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
@@ -381,8 +378,7 @@ class LibraryDocumentServiceTest {
             new byte[] {0x00, 0x01, 0x02, (byte) 0xFF, 0x00, (byte) 0xDE, (byte) 0xAD});
 
     assertThatThrownBy(() -> service.uploadDocument(libraryId, fakePdf, null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.BAD_REQUEST)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("entspricht nicht dem Format .pdf");
 
     assertNoFilesWereStored();
@@ -422,8 +418,7 @@ class LibraryDocumentServiceTest {
 
     assertThatThrownBy(
             () -> service.uploadDocument(libraryId, pdfAsTxt, null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.BAD_REQUEST)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("entspricht nicht dem Format .txt");
 
     assertNoFilesWereStored();
@@ -439,8 +434,7 @@ class LibraryDocumentServiceTest {
             () ->
                 service.uploadDocument(
                     libraryId, pdfFile("big.pdf", tooBig), null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.PAYLOAD_TOO_LARGE);
+        .isInstanceOf(PayloadTooLargeException.class);
 
     assertNoFilesWereStored();
   }
@@ -458,8 +452,7 @@ class LibraryDocumentServiceTest {
             () ->
                 service.uploadDocument(
                     libraryId, pdfFile("report.pdf", "content"), null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.PAYLOAD_TOO_LARGE)
+        .isInstanceOf(PayloadTooLargeException.class)
         .hasMessageContaining("Speicherkontingent der Bibliothek erschöpft")
         .hasMessageContaining("10,0 GB von 10,0 GB belegt");
 
@@ -479,8 +472,7 @@ class LibraryDocumentServiceTest {
             () ->
                 service.uploadDocument(
                     libraryId, pdfFile("copy.pdf", "same content"), null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT);
+        .isInstanceOf(ConflictException.class);
 
     assertNoFilesWereStored();
     verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
@@ -542,8 +534,7 @@ class LibraryDocumentServiceTest {
             () ->
                 service.uploadDocument(
                     libraryId, pdfFile("racer.pdf", "same content"), null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT);
+        .isInstanceOf(ConflictException.class);
 
     assertNoFilesWereStored();
     verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
@@ -577,8 +568,7 @@ class LibraryDocumentServiceTest {
             () ->
                 service.uploadDocument(
                     libraryId, pdfFile("race.pdf", "content"), folderId, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND)
+        .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("inzwischen gelöscht");
 
     assertNoFilesWereStored();
@@ -725,8 +715,7 @@ class LibraryDocumentServiceTest {
 
     assertThatThrownBy(
             () -> service.deleteDocument(libraryId, UUID.randomUUID(), currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.FORBIDDEN);
+        .isInstanceOf(AccessDeniedException.class);
     verify(documentRepository, never()).delete(any());
   }
 
@@ -736,8 +725,7 @@ class LibraryDocumentServiceTest {
 
     assertThatThrownBy(
             () -> service.deleteDocument(libraryId, UUID.randomUUID(), currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
+        .isInstanceOf(NotFoundException.class);
     verify(documentRepository, never()).delete(any());
   }
 
@@ -748,8 +736,7 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findById(documentId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.deleteDocument(libraryId, documentId, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -761,8 +748,7 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(foreignDoc));
 
     assertThatThrownBy(() -> service.deleteDocument(libraryId, documentId, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
+        .isInstanceOf(NotFoundException.class);
     verify(documentRepository, never()).delete(any());
   }
 
@@ -880,8 +866,7 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
     assertThatThrownBy(() -> service.loadContent(documentId, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -1075,13 +1060,8 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
 
     assertThatThrownBy(() -> service.loadContent(documentId, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND))
-        .hasFieldOrPropertyWithValue(
-            "reason", "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
   }
 
   @Test
@@ -1137,10 +1117,8 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
 
     assertThatThrownBy(() -> serviceWithValidation.loadContent(documentId, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND)
-        .hasFieldOrPropertyWithValue(
-            "reason", "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
     assertThat(requestsReceived.get()).isZero();
   }
 }

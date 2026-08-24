@@ -259,6 +259,99 @@ class GlobalExceptionHandlerTest {
     assertEquals("bad input", body.getError());
   }
 
+  /**
+   * #875: each domain exception in {@code io.opaa.common} must produce the identical response body
+   * {@link #handleResponseStatusExceptionKeepsStatusAndReason} pins for {@link
+   * ResponseStatusException} - status and the exception's own message as the reason.
+   */
+  @Test
+  void handleNotFoundExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleNotFoundException(
+            new io.opaa.common.NotFoundException("Space nicht gefunden"));
+    assertEquals(404, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(404, body.getStatus());
+    assertEquals("Space nicht gefunden", body.getError());
+    assertNotNull(body.getTimestamp());
+  }
+
+  @Test
+  void handleDomainAccessDeniedExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleDomainAccessDeniedException(
+            new io.opaa.common.AccessDeniedException("Sie sind kein Mitglied dieses Space"));
+    assertEquals(403, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(403, body.getStatus());
+    assertEquals("Sie sind kein Mitglied dieses Space", body.getError());
+  }
+
+  @Test
+  void handleConflictExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleConflictException(
+            new io.opaa.common.ConflictException("Der Benutzer ist bereits Mitglied dieses Space"));
+    assertEquals(409, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(409, body.getStatus());
+    assertEquals("Der Benutzer ist bereits Mitglied dieses Space", body.getError());
+  }
+
+  @Test
+  void handleDomainValidationExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleValidationException(
+            new io.opaa.common.ValidationException("name ist erforderlich"));
+    assertEquals(400, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(400, body.getStatus());
+    assertEquals("name ist erforderlich", body.getError());
+  }
+
+  @Test
+  void handleUnauthorizedExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleUnauthorizedException(
+            new io.opaa.common.UnauthorizedException("Benutzer nicht gefunden"));
+    assertEquals(401, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(401, body.getStatus());
+    assertEquals("Benutzer nicht gefunden", body.getError());
+  }
+
+  @Test
+  void handlePayloadTooLargeExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handlePayloadTooLargeException(
+            new io.opaa.common.PayloadTooLargeException(
+                "Das Logo darf höchstens 512 KiB groß sein"));
+    assertEquals(413, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(413, body.getStatus());
+    assertEquals("Das Logo darf höchstens 512 KiB groß sein", body.getError());
+  }
+
+  @Test
+  void handleServiceUnavailableExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleServiceUnavailableException(
+            new io.opaa.common.ServiceUnavailableException(
+                "Indizierung derzeit nicht möglich, bitte später erneut versuchen"));
+    assertEquals(503, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(503, body.getStatus());
+    assertEquals(
+        "Indizierung derzeit nicht möglich, bitte später erneut versuchen", body.getError());
+  }
+
   @Test
   void handleResponseStatusExceptionKeepsStatusAndReason() {
     var response =

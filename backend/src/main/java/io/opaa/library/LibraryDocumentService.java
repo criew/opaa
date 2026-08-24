@@ -2,6 +2,10 @@ package io.opaa.library;
 
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.AutoindexCrawlerService;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
@@ -34,7 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -42,7 +45,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Uploads documents into, and removes them from, a {@link KnowledgeLibrary} via the REST API (#420,
@@ -194,11 +196,10 @@ public class LibraryDocumentService {
     }
 
     if (file == null || file.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datei ist erforderlich");
+      throw new ValidationException("Datei ist erforderlich");
     }
     if (file.getSize() > uploadProperties.maxFileSize()) {
-      throw new ResponseStatusException(
-          HttpStatus.PAYLOAD_TOO_LARGE,
+      throw new PayloadTooLargeException(
           "Die Datei ist zu groß. Erlaubt sind höchstens "
               + (uploadProperties.maxFileSize() / (1024 * 1024))
               + " MB");
@@ -209,14 +210,12 @@ public class LibraryDocumentService {
     // upload might be about to replace (see the dedup check further down) - a conservative, simple
     // check rather than one that would have to duplicate that lookup this early.
     if (storageQuotaService.wouldExceedQuota(libraryId, file.getSize())) {
-      throw new ResponseStatusException(
-          HttpStatus.PAYLOAD_TOO_LARGE, storageQuotaService.quotaExceededMessage(libraryId));
+      throw new PayloadTooLargeException(storageQuotaService.quotaExceededMessage(libraryId));
     }
 
     String displayFileName = sanitizeDisplayFileName(file.getOriginalFilename());
     if (!SupportedDocumentFormats.isSupported(displayFileName)) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "Das Dateiformat wird nicht unterstützt. Erlaubt sind: "
               + String.join(", ", SupportedDocumentFormats.extensions()));
     }
@@ -264,8 +263,7 @@ public class LibraryDocumentService {
         Document existingDoc = existing.get();
         if (existingDoc.getStatus() != DocumentStatus.FAILED) {
           Files.deleteIfExists(storedFile);
-          throw new ResponseStatusException(
-              HttpStatus.CONFLICT, "Diese Datei ist bereits in dieser Bibliothek vorhanden");
+          throw new ConflictException("Diese Datei ist bereits in dieser Bibliothek vorhanden");
         }
         // #589 review, item 3: a FAILED row must not block a retry of the same file forever - the
         // per-library dedup check above (and uk_documents_library_checksum, migration 020) can't
@@ -349,8 +347,7 @@ public class LibraryDocumentService {
       // never a duplicate at all.
       deleteQuietly(storedFile);
       if (isFolderForeignKeyViolation(e)) {
-        throw new ResponseStatusException(
-            HttpStatus.NOT_FOUND, "Der Ordner wurde inzwischen gelöscht");
+        throw new NotFoundException("Der Ordner wurde inzwischen gelöscht");
       }
       // Race-safety net for the findByLibraryIdAndChecksum check above (#420 code review, nit 5):
       // that check and the eventual INSERT are two separate steps with no database guarantee
@@ -359,8 +356,7 @@ public class LibraryDocumentService {
       // its violation - and any other DataIntegrityViolationException this INSERT could still
       // raise - to the same 409 the sequential check already produces, kept as the neutral
       // fallback rather than assuming every violation is the folder race handled above.
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Diese Datei ist bereits in dieser Bibliothek vorhanden");
+      throw new ConflictException("Diese Datei ist bereits in dieser Bibliothek vorhanden");
     } catch (IOException e) {
       deleteQuietly(storedFile);
       throw new UncheckedIOException("Datei konnte nicht gespeichert werden", e);
@@ -436,15 +432,13 @@ public class LibraryDocumentService {
     Document document =
         documentRepository
             .findById(documentId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dokument nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
 
     KnowledgeLibrary library =
         libraryRepository
             .findById(document.getLibraryId())
             .filter(lib -> lib.getOrganizationId().equals(currentUser.getOrganizationId()))
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dokument nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
 
     if (document.getSourceType() == DocumentSourceType.HTTP_DIRECTORY
@@ -459,8 +453,7 @@ public class LibraryDocumentService {
           case HTTP_DIRECTORY, RSS_FEED -> null; // unreachable, handled above
         };
     if (resolvedFile == null || !Files.isRegularFile(resolvedFile)) {
-      throw new ResponseStatusException(
-          HttpStatus.NOT_FOUND, "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+      throw new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
     }
 
     // #742 review, finding 1: document.getContentType() is itself set from Files.probeContentType
@@ -537,8 +530,7 @@ public class LibraryDocumentService {
   private DocumentContent loadRemoteContent(Document document, KnowledgeLibrary library) {
     String sourceUrl = document.getFilePath();
     if (sourceUrl == null || sourceUrl.isBlank()) {
-      throw new ResponseStatusException(
-          HttpStatus.NOT_FOUND, "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+      throw new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
     }
 
     HttpClient httpClient = null;
@@ -605,13 +597,11 @@ public class LibraryDocumentService {
       // other reason no original is available.
       log.warn("Remote document content unavailable: {} ({})", sourceUrl, e.getMessage());
       closeQuietly(httpClient);
-      throw new ResponseStatusException(
-          HttpStatus.NOT_FOUND, "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+      throw new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       closeQuietly(httpClient);
-      throw new ResponseStatusException(
-          HttpStatus.NOT_FOUND, "Für dieses Dokument steht kein Originaldokument zur Verfügung");
+      throw new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
     }
   }
 
@@ -710,12 +700,11 @@ public class LibraryDocumentService {
     Document document =
         documentRepository
             .findById(documentId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dokument nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
     // Treats a document from another library the same as one that does not exist at all - the same
     // reasoning KnowledgeLibraryService#loadLibrary applies across organizations.
     if (!document.getLibraryId().equals(libraryId)) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Dokument nicht gefunden");
+      throw new NotFoundException("Dokument nicht gefunden");
     }
 
     Path fileManagedByThisService = uploadedFileIfManagedByThisService(document, libraryId);
@@ -825,8 +814,7 @@ public class LibraryDocumentService {
    */
   private void requireUploadLibrary(KnowledgeLibrary library) {
     if (library.getSourceType() != DocumentSourceType.UPLOAD) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
+      throw new ConflictException(
           "Diese Bibliothek ist eine Konnektorbibliothek und akzeptiert keine manuellen Uploads");
     }
   }
@@ -840,10 +828,9 @@ public class LibraryDocumentService {
     LibraryFolder folder =
         folderRepository
             .findById(folderId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Ordner nicht gefunden"));
     if (!folder.getLibraryId().equals(libraryId)) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden");
+      throw new NotFoundException("Ordner nicht gefunden");
     }
   }
 
@@ -868,11 +855,9 @@ public class LibraryDocumentService {
     KnowledgeLibrary library =
         libraryRepository
             .findById(libraryId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
     if (!library.getOrganizationId().equals(currentUser.getOrganizationId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden");
+      throw new NotFoundException("Bibliothek nicht gefunden");
     }
     return library;
   }
@@ -880,8 +865,7 @@ public class LibraryDocumentService {
   private User requireUser(UUID userId) {
     return userRepository
         .findById(userId)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+        .orElseThrow(() -> new NotFoundException("Benutzer nicht gefunden"));
   }
 
   /**
@@ -977,8 +961,8 @@ public class LibraryDocumentService {
       throw new UncheckedIOException("Datei konnte nicht auf ihr Format geprueft werden", e);
     }
     if (!SupportedDocumentFormats.contentMatchesExtension(extension, detectedMimeType)) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Der Inhalt der Datei entspricht nicht dem Format " + extension);
+      throw new ValidationException(
+          "Der Inhalt der Datei entspricht nicht dem Format " + extension);
     }
   }
 

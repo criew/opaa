@@ -6,6 +6,8 @@ import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditOutcome;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.PermissionSubject;
 import io.opaa.library.AssetRole;
@@ -22,10 +24,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Manages {@link SpaceAssetAssociation}s - the pure-curation link between a {@link Space} and a
@@ -224,8 +224,7 @@ public class SpaceAssetAssociationService {
     boolean spaceCurator = hasCuratorRole(space, currentUserId) || systemAdmin;
     boolean libraryManager = libraryAccessService.canManage(library, currentUserId, systemAdmin);
     if (!spaceCurator && !libraryManager) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN,
+      throw new AccessDeniedException(
           "Nur Kuratoren dieses Space oder Verwaltende der Bibliothek können die Zuordnung lösen");
     }
 
@@ -261,9 +260,7 @@ public class SpaceAssetAssociationService {
         libraryRepository
             .findById(libraryId)
             .filter(l -> l.getOrganizationId().equals(currentUser.getOrganizationId()))
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
     libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.MANAGER);
 
     List<SpaceAssetAssociation> associations =
@@ -367,8 +364,7 @@ public class SpaceAssetAssociationService {
     if (systemAdmin || hasCuratorRole(space, userId)) {
       return;
     }
-    throw new ResponseStatusException(
-        HttpStatus.FORBIDDEN, "Nur Kuratoren dieses Space können Bibliotheken zuordnen");
+    throw new AccessDeniedException("Nur Kuratoren dieses Space können Bibliotheken zuordnen");
   }
 
   private void requireMember(Space space, UUID userId, boolean systemAdmin) {
@@ -377,8 +373,7 @@ public class SpaceAssetAssociationService {
     }
     boolean member = space.getMemberships().stream().anyMatch(m -> m.getUserId().equals(userId));
     if (!member) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Sie sind kein Mitglied dieses Space");
+      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
     }
   }
 
@@ -387,10 +382,9 @@ public class SpaceAssetAssociationService {
     Space space =
         spaceRepository
             .findByIdWithMemberships(spaceId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Space nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Space nicht gefunden"));
     if (!space.getOrganizationId().equals(currentUser.getOrganizationId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Space nicht gefunden");
+      throw new NotFoundException("Space nicht gefunden");
     }
     return space;
   }
@@ -399,11 +393,9 @@ public class SpaceAssetAssociationService {
     KnowledgeLibrary library =
         libraryRepository
             .findById(libraryId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
     if (!library.getOrganizationId().equals(organizationId)) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden");
+      throw new NotFoundException("Bibliothek nicht gefunden");
     }
     return library;
   }
@@ -411,8 +403,7 @@ public class SpaceAssetAssociationService {
   private User requireUser(UUID userId) {
     return userRepository
         .findById(userId)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+        .orElseThrow(() -> new NotFoundException("Benutzer nicht gefunden"));
   }
 
   private Map<UUID, KnowledgeLibrary> loadLibraries(List<SpaceAssetAssociation> associations) {

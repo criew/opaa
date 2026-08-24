@@ -2,6 +2,11 @@ package io.opaa.indexing;
 
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ServiceUnavailableException;
+import io.opaa.common.UnauthorizedException;
 import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -9,8 +14,6 @@ import io.opaa.library.LibraryAccessService;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.core.task.TaskRejectedException;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Orchestrates triggering an indexing run for a single knowledge library, reading its own stored
@@ -73,8 +76,7 @@ public class DocumentIndexingService {
     KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, currentUserId);
     IndexingSourceType sourceType = toIndexingSourceType(targetLibrary.getSourceType());
     if (indexingJobService.isJobRunning(targetLibrary.getId(), targetLibrary.getOrganizationId())) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Für diese Bibliothek läuft bereits ein Indizierungslauf");
+      throw new ConflictException("Für diese Bibliothek läuft bereits ein Indizierungslauf");
     }
     SourceIndexingExecutor executor = executorRegistry.resolve(sourceType);
     var job = indexingJobService.startJob(targetLibrary.getId(), targetLibrary.getOrganizationId());
@@ -83,10 +85,8 @@ public class DocumentIndexingService {
     } catch (TaskRejectedException e) {
       indexingJobService.failJob(
           job.getId(), "Indizierungslauf abgelehnt: Kapazität derzeit erschöpft");
-      throw new ResponseStatusException(
-          HttpStatus.SERVICE_UNAVAILABLE,
-          "Indizierung derzeit nicht möglich, bitte später erneut versuchen",
-          e);
+      throw new ServiceUnavailableException(
+          "Indizierung derzeit nicht möglich, bitte später erneut versuchen", e);
     }
     return job;
   }
@@ -111,10 +111,8 @@ public class DocumentIndexingService {
     } catch (TaskRejectedException e) {
       indexingJobService.failJob(
           job.getId(), "Indizierungslauf abgelehnt: Kapazität derzeit erschöpft");
-      throw new ResponseStatusException(
-          HttpStatus.SERVICE_UNAVAILABLE,
-          "Indizierung derzeit nicht möglich, bitte später erneut versuchen",
-          e);
+      throw new ServiceUnavailableException(
+          "Indizierung derzeit nicht möglich, bitte später erneut versuchen", e);
     }
     return job;
   }
@@ -157,7 +155,7 @@ public class DocumentIndexingService {
       UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
     if (!libraryAccessService.canManage(library, currentUserId, systemAdmin)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
+      throw new AccessDeniedException("Kein Zugriff auf diese Bibliothek");
     }
     return indexingJobService.getRecentJobs(libraryId, library.getOrganizationId()).stream()
         .map(
@@ -179,8 +177,7 @@ public class DocumentIndexingService {
       case HTTP_DIRECTORY -> IndexingSourceType.HTTP_DIRECTORY;
       case RSS_FEED -> IndexingSourceType.RSS_FEED;
       case UPLOAD ->
-          throw new ResponseStatusException(
-              HttpStatus.CONFLICT, "Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf");
+          throw new ConflictException("Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf");
     };
   }
 
@@ -211,14 +208,10 @@ public class DocumentIndexingService {
     User currentUser =
         userRepository
             .findById(currentUserId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
+            .orElseThrow(() -> new UnauthorizedException("Benutzer nicht gefunden"));
     return libraryRepository
         .findById(libraryId)
         .filter(l -> l.getOrganizationId().equals(currentUser.getOrganizationId()))
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+        .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
   }
 }

@@ -20,10 +20,10 @@ import org.springframework.ai.document.Document;
  * every call via {@link ActiveChatModelResolver} rather than built once in the constructor from the
  * static Spring AI OpenAI autoconfiguration - the only way an activation via the admin API (#764)
  * takes effect without a restart. {@link ActiveChatModelResolver#resolveChatClient()} throws {@code
- * io.opaa.llm.NoActiveChatModelException} (a {@code ResponseStatusException}) when no model is
- * active, which propagates through {@code io.opaa.query.QueryService#query} exactly like any other
- * domain error already does - {@code io.opaa.api.GlobalExceptionHandler} turns it into a German,
- * user-facing error response rather than an NPE or an opaque 500.
+ * io.opaa.llm.NoActiveChatModelException} (a {@code io.opaa.common.ServiceUnavailableException})
+ * when no model is active, which propagates through {@code io.opaa.query.QueryService#query}
+ * exactly like any other domain error already does - {@code io.opaa.api.GlobalExceptionHandler}
+ * turns it into a German, user-facing error response rather than an NPE or an opaque 500.
  */
 public class AnswerGenerationService {
 

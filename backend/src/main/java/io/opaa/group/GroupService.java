@@ -7,6 +7,9 @@ import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.PermissionHistoryService;
@@ -17,12 +20,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Manages groups as permission subjects. All endpoints are system-admin only (enforced at the
@@ -211,15 +212,13 @@ public class GroupService {
     // (agents, prompt libraries, in later epic stages) extends this same check to those tables; it
     // does not replace it.
     if (libraryRepository.existsByOwnerGroupId(groupId)) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
+      throw new ConflictException(
           "Die Gruppe besitzt noch Bibliotheken und kann nicht gelöscht werden");
     }
     // #202 code review: a group that merely holds a grant (never owns anything) hits the same
     // RESTRICT constraint via fk_asset_grants_subject_group_organization - see the class Javadoc.
     if (grantRepository.existsBySubjectGroupId(groupId)) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
+      throw new ConflictException(
           "Die Gruppe hat noch Berechtigungen auf Bibliotheken und kann nicht gelöscht werden");
     }
 
@@ -272,8 +271,7 @@ public class GroupService {
     requireUserInOrganization(memberUserId, group.getOrganizationId());
 
     if (userMembership(group, memberUserId) != null) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Der Benutzer ist bereits Mitglied dieser Gruppe");
+      throw new ConflictException("Der Benutzer ist bereits Mitglied dieser Gruppe");
     }
 
     GroupMembership membership = new GroupMembership(memberUserId, group.getOrganizationId());
@@ -306,7 +304,7 @@ public class GroupService {
 
     GroupMembership target = userMembership(group, memberUserId);
     if (target == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Mitglied der Gruppe nicht gefunden");
+      throw new NotFoundException("Mitglied der Gruppe nicht gefunden");
     }
 
     group.removeMembership(target);
@@ -335,20 +333,18 @@ public class GroupService {
 
   private String validateName(String name) {
     if (name == null || name.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name ist erforderlich");
+      throw new ValidationException("name ist erforderlich");
     }
     String trimmed = name.trim();
     if (trimmed.length() > MAX_NAME_LENGTH) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "name darf höchstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
+      throw new ValidationException("name darf höchstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
     }
     return trimmed;
   }
 
   private void validateDescription(String description) {
     if (description != null && description.length() > MAX_DESCRIPTION_LENGTH) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "description darf höchstens " + MAX_DESCRIPTION_LENGTH + " Zeichen umfassen");
     }
   }
@@ -385,8 +381,7 @@ public class GroupService {
 
   private void rejectOrgUnit(Group group) {
     if (group.isOrgUnit()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "Organisationseinheiten werden aus dem Verzeichnis synchronisiert und können hier"
               + " nicht bearbeitet werden");
     }
@@ -395,8 +390,7 @@ public class GroupService {
   private User requireUser(UUID userId) {
     return userRepository
         .findById(userId)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+        .orElseThrow(() -> new NotFoundException("Benutzer nicht gefunden"));
   }
 
   /**
@@ -408,7 +402,7 @@ public class GroupService {
   private User requireUserInOrganization(UUID userId, UUID organizationId) {
     User user = requireUser(userId);
     if (!user.getOrganizationId().equals(organizationId)) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden");
+      throw new NotFoundException("Benutzer nicht gefunden");
     }
     return user;
   }
@@ -423,11 +417,10 @@ public class GroupService {
     Group group =
         groupRepository
             .findByIdWithMemberships(groupId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Gruppe nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
 
     if (!group.getOrganizationId().equals(currentUser.getOrganizationId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Gruppe nicht gefunden");
+      throw new NotFoundException("Gruppe nicht gefunden");
     }
     return group;
   }

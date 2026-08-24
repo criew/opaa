@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.audit.AuditEventType;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ConflictException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -18,9 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * {@link LlmModelService} against a real Postgres with the real, versioned Liquibase schema applied
@@ -363,8 +362,7 @@ class LlmModelServiceIntegrationTest {
     llmModelService.activateModel(organizationId, userId, model.getId());
 
     assertThatThrownBy(() -> llmModelService.deleteModel(organizationId, userId, model.getId()))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT);
+        .isInstanceOf(ConflictException.class);
 
     assertThat(llmModelService.listModels()).extracting(LlmModel::getId).contains(model.getId());
     assertThat(auditEntries(AuditEventType.LLM_MODEL_DELETED)).isEmpty();

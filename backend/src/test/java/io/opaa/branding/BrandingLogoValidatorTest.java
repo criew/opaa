@@ -3,14 +3,14 @@ package io.opaa.branding;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.ValidationException;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * #582's upload rules for the operator logo: format, size, pixel dimensions, and - the one that
@@ -57,9 +57,8 @@ class BrandingLogoValidatorTest {
             .getBytes(StandardCharsets.UTF_8);
 
     assertThatThrownBy(() -> validator.validate(svg))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasMessageContaining("SVG")
-        .satisfies(e -> assertThat(status(e)).isEqualTo(HttpStatus.BAD_REQUEST.value()));
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("SVG");
   }
 
   @Test
@@ -67,9 +66,7 @@ class BrandingLogoValidatorTest {
     byte[] html =
         "<html><body><script>alert(1)</script></body></html>".getBytes(StandardCharsets.UTF_8);
 
-    assertThatThrownBy(() -> validator.validate(html))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(e -> assertThat(status(e)).isEqualTo(HttpStatus.BAD_REQUEST.value()));
+    assertThatThrownBy(() -> validator.validate(html)).isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -77,14 +74,13 @@ class BrandingLogoValidatorTest {
     byte[] tooLarge = new byte[BrandingLogoValidator.MAX_LOGO_SIZE_BYTES + 1];
 
     assertThatThrownBy(() -> validator.validate(tooLarge))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(e -> assertThat(status(e)).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE.value()));
+        .isInstanceOf(PayloadTooLargeException.class);
   }
 
   @Test
   void rejectsEmptyContent() {
     assertThatThrownBy(() -> validator.validate(new byte[0]))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("leer");
   }
 
@@ -96,17 +92,8 @@ class BrandingLogoValidatorTest {
     assertThat(oversized.length).isLessThan(BrandingLogoValidator.MAX_LOGO_SIZE_BYTES);
 
     assertThatThrownBy(() -> validator.validate(oversized))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Bildpunkte");
-  }
-
-  /**
-   * Compares the numeric status, not the enum constant: {@code HttpStatus.valueOf(413)} resolves to
-   * {@code CONTENT_TOO_LARGE}, while the production code (like the rest of this codebase) names the
-   * same status {@code PAYLOAD_TOO_LARGE} - two constants, one status.
-   */
-  private static int status(Throwable e) {
-    return ((ResponseStatusException) e).getStatusCode().value();
   }
 
   private static byte[] png(int width, int height) throws IOException {

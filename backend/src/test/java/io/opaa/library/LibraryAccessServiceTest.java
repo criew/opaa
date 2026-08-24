@@ -9,6 +9,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.group.GroupMembershipResolver;
 import java.time.Instant;
 import java.util.List;
@@ -16,8 +18,6 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 class LibraryAccessServiceTest {
 
@@ -128,11 +128,7 @@ class LibraryAccessServiceTest {
     when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of());
 
     assertThatThrownBy(() -> accessService.requireRole(library, userId, false, AssetRole.VIEWER))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -146,11 +142,7 @@ class LibraryAccessServiceTest {
     when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
 
     assertThatThrownBy(() -> accessService.requireRole(library, userId, false, AssetRole.MANAGER))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
