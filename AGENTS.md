@@ -87,6 +87,7 @@ pnpm test                               # Stack via Docker Compose starten, Suit
 - Domain-Enums in DTOs (z. B. `SpaceRole`, `SpaceKind`) werden über `typeMappings`/`importMappings` in `build.gradle.kts` gemappt
 - Beim Hinzufügen neuer Domain-Enums zur API genügen Einträge in `typeMappings` und `importMappings`; der `doLast`-Cleanup-Block im `openApiGenerate`-Task leitet die zu löschenden generierten Dateien mechanisch aus `typeMappings` ab
 - Frontend-Typen werden aus derselben Spezifikation über `openapi-typescript` generiert
+- **Domain-Services kennen keine `io.opaa.api.dto`-Typen** (#860): Service-Methoden nehmen Entities, Einzelparameter oder kleine Domain-Parameter-Records entgegen und geben Entities oder Domain-Records zurück. Das Entity→Response-Mapping lebt in package-private Mapper-Klassen unter `io.opaa.api` (Vorbild: `BrandingResponseMapper`, `SpaceResponseMapper`). Für angereicherte Ansichten (Response ≠ Entity, z. B. mit einer zusätzlichen Zählung) trägt ein Domain-Record im jeweiligen Fachpaket die zusätzlichen Felder (z. B. `SpaceOverview(space, libraryCount, chatCount)`) — kein Mapping-Framework, handgeschriebene Mapper genügen bei dieser DTO-Größenordnung
 
 > Vollständige Begründung: [ADR-0006](docs/decisions/0006-openapi-dto-generation.md)
 

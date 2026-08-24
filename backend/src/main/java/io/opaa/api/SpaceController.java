@@ -14,10 +14,17 @@ import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationService;
+import io.opaa.space.SpaceCreation;
+import io.opaa.space.SpaceMemberSeed;
+import io.opaa.space.SpaceMemberView;
+import io.opaa.space.SpaceOverview;
 import io.opaa.space.SpaceService;
+import io.opaa.space.SpaceUpdate;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -60,7 +67,9 @@ public class SpaceController {
     // #686/#706 review: SpaceService#createSpace associates request.getLibraryIds() itself, in
     // the same transaction as the space row - a library that cannot be associated rolls the whole
     // creation back instead of leaving a half-created space behind.
-    SpaceResponse response = spaceService.createSpace(request, currentUser.getId(), systemAdmin);
+    Space created =
+        spaceService.createSpace(toSpaceCreation(request), currentUser.getId(), systemAdmin);
+    SpaceResponse response = SpaceResponseMapper.toResponse(created, currentUser.getId());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -68,8 +77,9 @@ public class SpaceController {
   public SpaceLibraryAssociationListResponse listLibraryAssociations(
       @PathVariable UUID spaceId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return associationService.listForSpace(
-        spaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return SpaceLibraryAssociationResponseMapper.toListResponse(
+        associationService.listForSpace(
+            spaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
   }
 
   @PostMapping("/{spaceId}/libraries")
@@ -79,11 +89,12 @@ public class SpaceController {
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     SpaceLibraryAssociationResponse response =
-        associationService.associate(
-            spaceId,
-            request.getLibraryId(),
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+        SpaceLibraryAssociationResponseMapper.toResponse(
+            associationService.associate(
+                spaceId,
+                request.getLibraryId(),
+                currentUser.getId(),
+                currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -102,15 +113,19 @@ public class SpaceController {
   @GetMapping
   public List<SpaceListResponse> listSpaces(@AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return spaceService.listSpaces(
-        currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    List<SpaceOverview> overviews =
+        spaceService.listSpaces(
+            currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return SpaceResponseMapper.toListResponses(overviews, currentUser.getId());
   }
 
   @GetMapping("/{spaceId}")
   public SpaceResponse getSpace(@PathVariable UUID spaceId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return spaceService.getSpace(
-        spaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    Space space =
+        spaceService.getSpace(
+            spaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return SpaceResponseMapper.toResponse(space, currentUser.getId());
   }
 
   @PutMapping("/{spaceId}")
@@ -119,11 +134,13 @@ public class SpaceController {
       @Valid @RequestBody SpaceUpdateRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return spaceService.updateSpace(
-        spaceId,
-        request,
-        currentUser.getId(),
-        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    Space updated =
+        spaceService.updateSpace(
+            spaceId,
+            new SpaceUpdate(request.getName(), request.getDescription(), request.getVisibility()),
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return SpaceResponseMapper.toResponse(updated, currentUser.getId());
   }
 
   @DeleteMapping("/{spaceId}")
@@ -138,16 +155,20 @@ public class SpaceController {
   @PostMapping("/{spaceId}/archive")
   public SpaceResponse archiveSpace(@PathVariable UUID spaceId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return spaceService.archiveSpace(
-        spaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    Space archived =
+        spaceService.archiveSpace(
+            spaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return SpaceResponseMapper.toResponse(archived, currentUser.getId());
   }
 
   @GetMapping("/{spaceId}/members")
   public List<SpaceMemberResponse> listMembers(
       @PathVariable UUID spaceId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return spaceService.listMembers(
-        spaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    List<SpaceMemberView> members =
+        spaceService.listMembers(
+            spaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return SpaceResponseMapper.toMemberResponses(members);
   }
 
   @PostMapping("/{spaceId}/members")
@@ -157,8 +178,9 @@ public class SpaceController {
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     SpaceMemberResponse response =
-        spaceService.addMember(
-            spaceId, request.getUserId(), request.getRole(), currentUser.getId());
+        SpaceResponseMapper.toMemberResponse(
+            spaceService.addMember(
+                spaceId, request.getUserId(), request.getRole(), currentUser.getId()));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -177,7 +199,8 @@ public class SpaceController {
       @Valid @RequestBody SpaceRoleUpdateRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return spaceService.updateMemberRole(spaceId, userId, request.getRole(), currentUser.getId());
+    return SpaceResponseMapper.toMemberResponse(
+        spaceService.updateMemberRole(spaceId, userId, request.getRole(), currentUser.getId()));
   }
 
   @PostMapping("/{spaceId}/transfer-ownership")
@@ -192,6 +215,23 @@ public class SpaceController {
         currentUser.getId(),
         currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
     return ResponseEntity.noContent().build();
+  }
+
+  private SpaceCreation toSpaceCreation(SpaceRequest request) {
+    List<SpaceMemberSeed> initialMembers =
+        request.getInitialMembers() == null
+            ? null
+            : request.getInitialMembers().stream()
+                .filter(Objects::nonNull)
+                .map(member -> new SpaceMemberSeed(member.getUserId(), member.getRole()))
+                .toList();
+    return new SpaceCreation(
+        request.getName(),
+        request.getDescription(),
+        request.getOwnerId(),
+        request.getVisibility(),
+        initialMembers,
+        request.getLibraryIds());
   }
 
   private User currentUser(Jwt jwt) {

@@ -1,8 +1,5 @@
 package io.opaa.space;
 
-import io.opaa.api.dto.LibrarySpaceAssociationResponse;
-import io.opaa.api.dto.SpaceLibraryAssociationListResponse;
-import io.opaa.api.dto.SpaceLibraryAssociationResponse;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -120,14 +117,13 @@ public class SpaceAssetAssociationService {
    * detach an over-broad association they have no personal grant on (#706 review: the filtered list
    * otherwise hid it from the one role that is supposed to be able to undo it).
    *
-   * <p>{@link SpaceLibraryAssociationListResponse#getHasAssociations()} is computed unfiltered,
-   * independently of the (possibly filtered) item list - it is what lets the caller (via {@code
+   * <p>{@link SpaceLibraryLinks#hasAssociations()} is computed unfiltered, independently of the
+   * (possibly filtered) item list - it is what lets the caller (via {@code
    * ChatService#effectiveLibraryScope}'s counterpart logic, mirrored here for the read side)
    * distinguish "no association at all" from "curated, but nothing the viewer may read" (#706
    * review, finding 2).
    */
-  public SpaceLibraryAssociationListResponse listForSpace(
-      UUID spaceId, UUID currentUserId, boolean systemAdmin) {
+  public SpaceLibraryLinks listForSpace(UUID spaceId, UUID currentUserId, boolean systemAdmin) {
     Space space = loadSpace(spaceId, currentUserId);
     requireMember(space, currentUserId, systemAdmin);
 
@@ -135,7 +131,7 @@ public class SpaceAssetAssociationService {
         associationRepository.findBySpaceIdOrderByCreatedAtAsc(space.getId());
     boolean hasAssociations = !associations.isEmpty();
     if (associations.isEmpty()) {
-      return new SpaceLibraryAssociationListResponse(hasAssociations, List.of());
+      return new SpaceLibraryLinks(hasAssociations, List.of());
     }
     boolean unfiltered = hasCuratorRole(space, currentUserId) || systemAdmin;
     Set<UUID> readable =
@@ -145,23 +141,21 @@ public class SpaceAssetAssociationService {
             associations.stream().map(SpaceAssetAssociation::getCreatedByUserId).toList());
     Map<UUID, KnowledgeLibrary> librariesById = loadLibraries(associations);
 
-    List<SpaceLibraryAssociationResponse> items =
+    List<SpaceLibraryLink> items =
         associations.stream()
             .filter(association -> unfiltered || readable.contains(association.getLibraryId()))
             .map(
                 association -> {
                   boolean readableByCaller = readable.contains(association.getLibraryId());
                   KnowledgeLibrary library = librariesById.get(association.getLibraryId());
-                  return new SpaceLibraryAssociationResponse(
-                          association.getLibraryId(),
-                          readableByCaller,
-                          association.getCreatedByUserId(),
-                          association.getCreatedAt())
-                      .libraryName(readableByCaller && library != null ? library.getName() : null)
-                      .createdByDisplayName(displayNames.get(association.getCreatedByUserId()));
+                  return new SpaceLibraryLink(
+                      association,
+                      readableByCaller,
+                      readableByCaller && library != null ? library.getName() : null,
+                      displayNames.get(association.getCreatedByUserId()));
                 })
             .toList();
-    return new SpaceLibraryAssociationListResponse(hasAssociations, items);
+    return new SpaceLibraryLinks(hasAssociations, items);
   }
 
   /**
@@ -169,7 +163,7 @@ public class SpaceAssetAssociationService {
    * an already-existing association is returned unchanged rather than duplicated or rejected.
    */
   @Transactional
-  public SpaceLibraryAssociationResponse associate(
+  public SpaceLibraryLink associate(
       UUID spaceId, UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     Space space = loadSpace(spaceId, currentUserId);
     requireCurator(space, currentUserId, systemAdmin);
@@ -188,7 +182,7 @@ public class SpaceAssetAssociationService {
 
     var existing = associationRepository.findBySpaceIdAndLibraryId(space.getId(), library.getId());
     if (existing.isPresent()) {
-      return toSpaceLibraryAssociationResponse(existing.get(), library);
+      return toSpaceLibraryLink(existing.get(), library);
     }
 
     SpaceAssetAssociation association =
@@ -213,7 +207,7 @@ public class SpaceAssetAssociationService {
 
     notifyOwnerIfMixedAudience(space, library, currentUserId);
 
-    return toSpaceLibraryAssociationResponse(saved, library);
+    return toSpaceLibraryLink(saved, library);
   }
 
   /**
@@ -260,7 +254,7 @@ public class SpaceAssetAssociationService {
    * own space membership: the owner sees every association, including in spaces they do not belong
    * to.
    */
-  public List<LibrarySpaceAssociationResponse> listForLibrary(
+  public List<LibrarySpaceLink> listForLibrary(
       UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     User currentUser = requireUser(currentUserId);
     KnowledgeLibrary library =
@@ -290,13 +284,11 @@ public class SpaceAssetAssociationService {
         .map(
             association -> {
               Space space = spacesById.get(association.getSpaceId());
-              return new LibrarySpaceAssociationResponse(
-                      association.getSpaceId(),
-                      space != null ? space.getName() : "",
-                      association.getCreatedByUserId(),
-                      association.getCreatedAt(),
-                      space != null && !allMembersCanRead(space, library))
-                  .createdByDisplayName(displayNames.get(association.getCreatedByUserId()));
+              return new LibrarySpaceLink(
+                  association,
+                  space != null ? space.getName() : "",
+                  space != null && !allMembersCanRead(space, library),
+                  displayNames.get(association.getCreatedByUserId()));
             })
         .toList();
   }
@@ -442,16 +434,13 @@ public class SpaceAssetAssociationService {
     return result;
   }
 
-  private SpaceLibraryAssociationResponse toSpaceLibraryAssociationResponse(
+  private SpaceLibraryLink toSpaceLibraryLink(
       SpaceAssetAssociation association, KnowledgeLibrary library) {
-    return new SpaceLibraryAssociationResponse(
-            association.getLibraryId(),
-            true,
-            association.getCreatedByUserId(),
-            association.getCreatedAt())
-        .libraryName(library.getName())
-        .createdByDisplayName(
-            resolveDisplayNames(List.of(association.getCreatedByUserId()))
-                .get(association.getCreatedByUserId()));
+    return new SpaceLibraryLink(
+        association,
+        true,
+        library.getName(),
+        resolveDisplayNames(List.of(association.getCreatedByUserId()))
+            .get(association.getCreatedByUserId()));
   }
 }

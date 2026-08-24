@@ -2,12 +2,6 @@ package io.opaa.space;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import io.opaa.api.dto.SpaceListResponse;
-import io.opaa.api.dto.SpaceMemberRequest;
-import io.opaa.api.dto.SpaceMemberResponse;
-import io.opaa.api.dto.SpaceRequest;
-import io.opaa.api.dto.SpaceResponse;
-import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -82,13 +76,13 @@ public class SpaceService {
   }
 
   @Transactional
-  public SpaceResponse createSpace(SpaceRequest request, UUID currentUserId, boolean systemAdmin) {
+  public Space createSpace(SpaceCreation creation, UUID currentUserId, boolean systemAdmin) {
     User currentUser = requireUser(currentUserId);
 
     // #333 removed SpaceKind: every user may create any number of spaces, including ones they work
     // in alone. Only the default space is special, and it is created automatically rather than
     // through this endpoint - see ensureDefaultSpace.
-    UUID ownerId = request.getOwnerId() != null ? request.getOwnerId() : currentUserId;
+    UUID ownerId = creation.ownerId() != null ? creation.ownerId() : currentUserId;
     if (!systemAdmin && !ownerId.equals(currentUserId)) {
       throw new ResponseStatusException(
           HttpStatus.FORBIDDEN,
@@ -101,17 +95,17 @@ public class SpaceService {
     }
 
     SpaceVisibility visibility =
-        request.getVisibility() != null ? request.getVisibility() : SpaceVisibility.PRIVATE;
+        creation.visibility() != null ? creation.visibility() : SpaceVisibility.PRIVATE;
 
     Space space =
         buildValidatedSpace(
-            request.getName(),
-            request.getDescription(),
+            creation.name(),
+            creation.description(),
             false,
             visibility,
             ownerId,
             currentUser.getOrganizationId());
-    appendInitialMemberships(space, ownerId, request.getInitialMembers());
+    appendInitialMemberships(space, ownerId, creation.initialMembers());
 
     Space saved = spaceRepository.save(space);
     auditEventRecorder.recordUserAction(
@@ -132,13 +126,13 @@ public class SpaceService {
     // space behind. associationService.associate participates in this method's own transaction
     // (default REQUIRES propagation on a Spring-managed bean call), so a failure here rolls back
     // both the space row and every association already inserted for it.
-    if (request.getLibraryIds() != null) {
-      for (UUID libraryId : request.getLibraryIds()) {
+    if (creation.libraryIds() != null) {
+      for (UUID libraryId : creation.libraryIds()) {
         associationService.associate(saved.getId(), libraryId, currentUserId, systemAdmin);
       }
     }
 
-    return toSpaceResponse(saved, currentUserId);
+    return saved;
   }
 
   private Map<String, Object> spaceAuditPayload(Space space) {
@@ -149,7 +143,7 @@ public class SpaceService {
     return payload;
   }
 
-  public List<SpaceListResponse> listSpaces(UUID currentUserId, boolean systemAdmin) {
+  public List<SpaceOverview> listSpaces(UUID currentUserId, boolean systemAdmin) {
     User currentUser = requireUser(currentUserId);
     List<Space> memberSpaces =
         spaceRepository.findDistinctByMembershipsUserIdWithMemberships(currentUserId).stream()
@@ -177,9 +171,10 @@ public class SpaceService {
                     || chatCounts.getOrDefault(space.getId(), 0L) > 0)
         .map(
             space ->
-                toSpaceListResponse(space, currentUserId)
-                    .libraryCount(libraryCounts.getOrDefault(space.getId(), 0L).intValue())
-                    .chatCount(chatCounts.getOrDefault(space.getId(), 0L).intValue()))
+                new SpaceOverview(
+                    space,
+                    libraryCounts.getOrDefault(space.getId(), 0L).intValue(),
+                    chatCounts.getOrDefault(space.getId(), 0L).intValue()))
         .toList();
   }
 
@@ -194,7 +189,7 @@ public class SpaceService {
                 ChatRepository.SpaceChatCount::getChatCount));
   }
 
-  public SpaceResponse getSpace(UUID spaceId, UUID currentUserId, boolean systemAdmin) {
+  public Space getSpace(UUID spaceId, UUID currentUserId, boolean systemAdmin) {
     Space space = loadSpace(spaceId, currentUserId);
 
     if (!systemAdmin && userMembership(space, currentUserId) == null) {
@@ -202,11 +197,10 @@ public class SpaceService {
           HttpStatus.FORBIDDEN, "Sie sind kein Mitglied dieses Space");
     }
 
-    return toSpaceResponse(space, currentUserId);
+    return space;
   }
 
-  public List<SpaceMemberResponse> listMembers(
-      UUID spaceId, UUID currentUserId, boolean systemAdmin) {
+  public List<SpaceMemberView> listMembers(UUID spaceId, UUID currentUserId, boolean systemAdmin) {
     Space space = loadSpace(spaceId, currentUserId);
     // #144: the member list names every member of the space - who else works in "Disziplinar-
     // verfahren" or "Umstrukturierung Abteilung 3" is itself sensitive. Unlike getSpace, which only
@@ -221,15 +215,12 @@ public class SpaceService {
     Map<UUID, String> displayNames = resolveDisplayNames(userIds);
 
     return space.getMemberships().stream()
-        .map(
-            m ->
-                new SpaceMemberResponse(m.getUserId(), m.getRole(), m.getCreatedAt())
-                    .displayName(displayNames.get(m.getUserId())))
+        .map(m -> new SpaceMemberView(m, displayNames.get(m.getUserId())))
         .toList();
   }
 
   @Transactional
-  public SpaceMemberResponse addMember(
+  public SpaceMemberView addMember(
       UUID spaceId, UUID memberUserId, SpaceRole requestedRole, UUID currentUserId) {
     Space space = loadSpace(spaceId, currentUserId);
     requireManager(space, currentUserId);
@@ -266,13 +257,11 @@ public class SpaceService {
         AuditOutcome.SUCCESS,
         null);
 
-    return new SpaceMemberResponse(
-            membership.getUserId(), membership.getRole(), membership.getCreatedAt())
-        .displayName(resolveDisplayName(membership.getUserId()));
+    return new SpaceMemberView(membership, resolveDisplayName(membership.getUserId()));
   }
 
   @Transactional
-  public SpaceMemberResponse updateMemberRole(
+  public SpaceMemberView updateMemberRole(
       UUID spaceId, UUID memberUserId, SpaceRole newRole, UUID currentUserId) {
     Space space = loadSpace(spaceId, currentUserId);
     requireManager(space, currentUserId);
@@ -307,8 +296,7 @@ public class SpaceService {
         Map.of("role", newRole.name()),
         AuditOutcome.SUCCESS,
         null);
-    return new SpaceMemberResponse(target.getUserId(), target.getRole(), target.getCreatedAt())
-        .displayName(resolveDisplayName(target.getUserId()));
+    return new SpaceMemberView(target, resolveDisplayName(target.getUserId()));
   }
 
   @Transactional
@@ -381,8 +369,8 @@ public class SpaceService {
   }
 
   @Transactional
-  public SpaceResponse updateSpace(
-      UUID spaceId, SpaceUpdateRequest request, UUID currentUserId, boolean systemAdmin) {
+  public Space updateSpace(
+      UUID spaceId, SpaceUpdate update, UUID currentUserId, boolean systemAdmin) {
     Space space = loadSpace(spaceId, currentUserId);
 
     SpaceMembership membership = userMembership(space, currentUserId);
@@ -395,12 +383,12 @@ public class SpaceService {
           "Nur Administratoren oder der Eigentümer können einen Space ändern");
     }
 
-    String normalizedName = validateName(request.getName());
-    validateDescription(request.getDescription());
+    String normalizedName = validateName(update.name());
+    validateDescription(update.description());
     String previousName = space.getName();
     String previousDescription = space.getDescription();
     SpaceVisibility previousVisibility = space.getVisibility();
-    space.updateDetails(normalizedName, request.getDescription(), request.getVisibility());
+    space.updateDetails(normalizedName, update.description(), update.visibility());
     Space updated = spaceRepository.save(space);
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
@@ -439,7 +427,7 @@ public class SpaceService {
           AuditOutcome.SUCCESS,
           null);
     }
-    return toSpaceResponse(updated, currentUserId);
+    return updated;
   }
 
   @Transactional
@@ -506,7 +494,7 @@ public class SpaceService {
    * returns its current state, not an error.
    */
   @Transactional
-  public SpaceResponse archiveSpace(UUID spaceId, UUID currentUserId, boolean systemAdmin) {
+  public Space archiveSpace(UUID spaceId, UUID currentUserId, boolean systemAdmin) {
     Space space = loadSpace(spaceId, currentUserId);
 
     if (space.isDefault()) {
@@ -522,7 +510,7 @@ public class SpaceService {
     }
 
     if (space.isArchived()) {
-      return toSpaceResponse(space, currentUserId);
+      return space;
     }
 
     space.archive();
@@ -538,7 +526,7 @@ public class SpaceService {
         null,
         AuditOutcome.SUCCESS,
         null);
-    return toSpaceResponse(archived, currentUserId);
+    return archived;
   }
 
   /**
@@ -783,14 +771,14 @@ public class SpaceService {
   }
 
   private void appendInitialMemberships(
-      Space space, UUID ownerId, List<SpaceMemberRequest> initialMembers) {
+      Space space, UUID ownerId, List<SpaceMemberSeed> initialMembers) {
     Map<UUID, SpaceRole> resolvedRoles = new LinkedHashMap<>();
     if (initialMembers != null) {
-      for (SpaceMemberRequest member : initialMembers) {
+      for (SpaceMemberSeed member : initialMembers) {
         if (member == null) {
           continue;
         }
-        resolvedRoles.put(member.getUserId(), member.getRole());
+        resolvedRoles.put(member.userId(), member.role());
       }
     }
     resolvedRoles.put(ownerId, SpaceRole.ADMIN);
@@ -810,46 +798,5 @@ public class SpaceService {
         .filter(membership -> membership.getUserId().equals(userId))
         .findFirst()
         .orElse(null);
-  }
-
-  private SpaceListResponse toSpaceListResponse(Space space, UUID currentUserId) {
-    SpaceMembership membership = userMembership(space, currentUserId);
-    return new SpaceListResponse(
-            space.getId(),
-            space.getName(),
-            space.isDefault(),
-            space.isArchived(),
-            space.getMemberships().size(),
-            space.getCreatedAt(),
-            space.getUpdatedAt())
-        .description(space.getDescription())
-        .visibility(space.getVisibility())
-        .userRole(membership == null ? null : membership.getRole());
-  }
-
-  private SpaceResponse toSpaceResponse(Space space, UUID currentUserId) {
-    SpaceMembership membership = userMembership(space, currentUserId);
-    Map<String, Long> roleCounts = new HashMap<>();
-    for (SpaceRole role : SpaceRole.values()) {
-      roleCounts.put(role.name(), 0L);
-    }
-    space.getMemberships().forEach(m -> roleCounts.merge(m.getRole().name(), 1L, Long::sum));
-
-    // #144: the aggregated roleCounts stay visible to every member ("how big is this room"), but
-    // the full member list with identities and display names is not part of SpaceResponse anymore
-    // - it is only available via listMembers, restricted to ADMIN, owner and system admins.
-    return new SpaceResponse(
-            space.getId(),
-            space.getName(),
-            space.isDefault(),
-            space.isArchived(),
-            space.getOwnerId(),
-            space.getMemberships().size(),
-            roleCounts,
-            space.getCreatedAt(),
-            space.getUpdatedAt())
-        .description(space.getDescription())
-        .visibility(space.getVisibility())
-        .userRole(membership == null ? null : membership.getRole());
   }
 }
