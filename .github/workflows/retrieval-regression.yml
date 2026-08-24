@@ -35,60 +35,20 @@ concurrency:
 
 jobs:
   evaluate:
-    # Issue #863: eine Job-Definition, Matrix über die Eval-Domäne (Task-Namen, Report-/Artefakt-
-    # Dateien, Issue-Melde-Texte je Domäne), statt einer zweiten fast identischen ~285-Zeilen-
-    # Job-Kopie für jede weitere Domäne (Issue #234 hatte city-landmarks bewusst noch als eigenen
-    # Job angelegt, um die bereits reviewten comic-characters-Schritte nicht anzufassen — #863
-    # macht diese Kopie rückgängig, jetzt wo beide Jobs identisch verdrahtet sind). Eine dritte
-    # Domäne ist dadurch ein zusätzlicher matrix.include-Eintrag, keine weitere Job-Kopie.
-    # fail-fast: false, damit eine rote Domäne die andere nicht abbricht — beide Baselines sind
-    # unabhängig voneinander aussagekräftig.
+    # Eine Job-Definition, Matrix über die Eval-Domäne — eine weitere Domäne ist ein zusätzlicher
+    # matrix.include-Eintrag, keine Job-Kopie. fail-fast: false, damit eine rote Domäne die andere
+    # nicht abbricht — beide Baselines sind unabhängig voneinander aussagekräftig.
+    name: evaluate (${{ matrix.domain }})
     strategy:
       fail-fast: false
       matrix:
         include:
           - domain: comic-characters
             task: checkRetrievalBaseline
-            # PR #301 review, Befund 6: 20 Minuten gegen eine gemessene evaluateRetrieval-Laufzeit von
-            # ~1004s (~17 min) plus Checkout, Java-Setup, Gradle-Build, Image-Pulls und ggf. einen
-            # ~275-MB-Modell-Pull auf einem kalten Cache ließ praktisch keine Marge. 30 Minuten geben dem
-            # Rest realistisch Raum; das Abnahmekriterium in Issue #228 ("20 Minuten") ist dazu als
-            # bewusste, dokumentierte Abweichung im PR und als Issue-Kommentar festgehalten.
-            #
-            # Update (Issue #311): die ~1004s-Messung, auf der die 30 Minuten oben beruhten, stammte nicht
-            # von einem echten GitHub-Actions-Runner — der Workflow ist seit seiner Einführung (PR #292/#301)
-            # auf main noch nie erfolgreich durchgelaufen, jeder bisherige Lauf wurde entweder per
-            # Label-Filter übersprungen oder lief ins Zeitlimit. Der erste nächtliche Lauf
-            # (https://github.com/criew/opaa/actions/runs/30880506057) hat im Indizierungsschritt selbst
-            # 1078 von 1448 Korpus-Dokumenten in 1704s geschafft (~1,58s/Dokument, aus den
-            # AsyncIndexingExecutor-Log-Zeitstempeln), bevor er ins 30-Minuten-Limit lief — Checkout,
-            # Java-/Gradle-Setup und Image-Pulls brauchten dabei zusammen nur rund 15s, sind also nicht die
-            # Ursache. Hochgerechnet auf den vollen Korpus (1448 Dokumente) allein schon ~38 Minuten
-            # Indizierung, dazu golden-Query-Auswertung (121 Anfragen, dieselbe sequenzielle
-            # Ollama-Embedding-Latenz), Report- und Baseline-Schritte. Ursache ist die reale
-            # GitHub-Actions-Runner-CPU (2 vCPU, geteilt zwischen Postgres-, Ollama- und
-            # Anwendungs-Container) — keine Regression durch #201/#202 (deren Indizierungs-Änderungen
-            # sind zwei zusätzliche, statische Setter-Aufrufe pro Dokument, keine zusätzlichen
-            # Datenbank-Roundtrips). 60 Minuten geben dem gemessenen ~44-Minuten-Vollauf wieder eine
-            # reale Marge, statt bei jedem Lauf erneut ins Limit zu laufen.
-            #
-            # Update (Issue #414): dieses Zeitbudget hat ein Gegenstück im Test selbst — den
-            # Awaitility-Timeout in `awaitJobCompletion` (RetrievalEvaluationHarnessTest). Der blieb bei der
-            # Anhebung oben auf 30 Minuten stehen und widersprach damit derselben Messung, auf der die 60
-            # Minuten hier beruhen; PR #415 lief prompt hinein (1121 von 1448 Dokumenten). Er steht jetzt
-            # auf 45 Minuten und muss unter `timeout-minutes` bleiben, damit eine hängende Indizierung als
-            # diagnostizierbarer Testfehlschlag endet statt als abgebrochener Job. Wer eines der beiden
-            # Limits anfasst, prüft das andere mit.
-            #
-            # Update (Issue #721): der Harness unterstützt jetzt mehrchunkige Domänen (dokumentbezogenes
-            # k-Fenster, siehe ADR-0012 Nachtrag) — bewusst geprüft, ob dieses Budget dadurch schon jetzt
-            # angepasst werden muss. Für comic-characters (Ein-Chunk-Invariante, maxChunksPerDocument=1)
-            # ist chunkTopK == documentTopK == 10, also dieselbe Chunk-Zahl je Anfrage wie vor #721 — keine
-            # Laufzeitänderung. Die Chunk-Map-Erzeugung (neuer Schritt, io.opaa.eval.ChunkMap) parst und
-            # chunked den Korpus ein zweites Mal, aber ohne Embedding-Aufruf (kein Ollama-Roundtrip je
-            # Dokument) — die dominante, sequenzielle Ollama-Embedding-Latenz bleibt unverändert. Das
-            # Budget steigt erst mit der mehrchunkigen Domäne aus #234, dann anhand einer echten Messung
-            # ihres Korpus, nicht spekulativ hier.
+            # Muss über dem Awaitility-Timeout in awaitJobCompletion (RetrievalEvaluationHarnessTest,
+            # aktuell 45 min) liegen, sonst endet eine hängende Indizierung als abgebrochener Job statt
+            # als diagnostizierbarer Testfehlschlag. Wer eines der beiden Limits anfasst, prüft das
+            # andere mit.
             timeout_minutes: 60
             exec_step_name: 'Retrieval-Regression ausführen'
             report_file: baseline-comparison.md
@@ -104,30 +64,10 @@ jobs:
             success_comment: 'Der nächtliche Retrieval-Regressionslauf ist wieder grün:'
           - domain: city-landmarks
             task: checkCityLandmarksRetrievalBaseline
-            # PR #730, zweite Review-Runde — gemessen, mit historischem Kontext, warum das Budget so hoch ist:
-            # Lokal (Entwickler-Hardware) lief checkCityLandmarksRetrievalBaseline für den vollen,
-            # GeoNames-basierten Korpus (200 Dokumente, median 8/Maximum 13 Chunks, RANK_NEIGHBOR_RADIUS=40)
-            # in ~36,3 Minuten (runDurationSeconds=2176.7, siehe eval/baseline/city-landmarks.json). Ein
-            # erster echter GitHub-Actions-Lauf erreichte im 45-Minuten-Zeitfenster des damaligen Budgets nur
-            # 78 von 200 Dokumenten (~1,7 Dokumente/Minute) und lief in den Awaitility-Timeout in
-            # CityLandmarksRetrievalEvaluationHarnessTest#awaitJobCompletion; hochgerechnet auf dieser Rate
-            # hätte der volle Korpus rund 115 Minuten gebraucht. Das Budget wurde in zwei Schritten korrigiert
-            # (zuerst zu niedrig auf 90/105 Minuten, dann auf 150/170 Minuten). **Gemessen** mit diesem
-            # 150/170-Minuten-Budget: Job-Gesamtlaufzeit 2h3m43s (123,7 Minuten, GitHub-Actions-Run 32524864494,
-            # 2026-08-21) — grün, inklusive Checkout/Setup/Docker-Pulls/Indexierung/Auswertung/
-            # Baseline-Vergleich. Das 170-Minuten-Job-Timeout bleibt trotz dieser Messung bestehen (nicht auf
-            # z. B. 140 abgesenkt), weil ein einzelner grüner Lauf keine belastbare Streuungsangabe ist. Die
-            # eigentliche Ursachenbehebung war als Issue #734 dokumentiert (parallelisierte/gebündelte
-            # Ollama-Embedding-Anbindung in io.opaa.indexing) und ist inzwischen in #735 umgesetzt und auf
-            # main gemergt — dieser Feature-Branch enthält sie seit dem Merge von main. **Erneut gemessen
-            # danach** (PR #730, Verifikationsrunde, GitHub-Actions-Run 32550844537, 2026-08-22, mit dem
-            # Verifikationsrunden-Korpus RANK_NEIGHBOR_RADIUS=2/generalisierte Sehenswürdigkeiten-Abfrage):
-            # Job-Gesamtlaufzeit 2h11m45s (131,75 Minuten) — grün, aber langsamer als der Wert oben von vor
-            # der Parallelisierung erwarten ließ; die Parallelisierung reduziert primär die
-            # Embedding-Latenz pro Dokument, nicht notwendigerweise die Gesamtlaufzeit auf einem ohnehin
-            # I/O-gebundenen, geteilten GitHub-Actions-Runner. Timeout bleibt bei 170 Minuten (ein einzelner
-            # grüner Lauf ist weiterhin keine belastbare Streuungsangabe); dieser Wert ist jetzt zweimal
-            # unabhängig gemessen worden (123,7 und 131,75 Minuten), beide deutlich unter dem Budget.
+            # Muss über dem Awaitility-Timeout in awaitJobCompletion
+            # (CityLandmarksRetrievalEvaluationHarnessTest) liegen. Zwei unabhängig gemessene volle
+            # Läufe lagen bei ~124 bzw. ~132 Minuten (GitHub-Actions-Runs 32524864494, 32550844537),
+            # beide deutlich unter dem 170-Minuten-Budget.
             timeout_minutes: 170
             exec_step_name: 'Retrieval-Regression (city-landmarks) ausführen'
             report_file: baseline-comparison-city-landmarks.md
