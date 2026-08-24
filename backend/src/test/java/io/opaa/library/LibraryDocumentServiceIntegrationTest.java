@@ -102,7 +102,7 @@ class LibraryDocumentServiceIntegrationTest {
     // #747: target validation stays enabled (application.yml's own default) - only 127.0.0.1 is
     // allowlisted, so this suite's own local HttpServer instances are reachable for the remote
     // content proxy tests without weakening the check for anything else (mirrors
-    // UrlFileDownloaderTest#downloadRejectsARedirectToABlockedTargetWhenValidationIsEnabled's
+    // BoundedDownloaderTest#downloadRejectsARedirectToABlockedTargetWhenValidationIsEnabled's
     // identical, narrowly scoped allowlist).
     registry.add("opaa.indexing.target-validation.allowlist", () -> "127.0.0.1");
   }
@@ -644,7 +644,7 @@ class LibraryDocumentServiceIntegrationTest {
 
   // #747: GET /api/v1/documents/{documentId}/content for HTTP_DIRECTORY/RSS_FEED - proxied from
   // the document's stored source URL through the real, Spring-wired TargetAddressValidator/
-  // UrlFileDownloader beans rather than mocks, so the SSRF re-check and credential handling are
+  // BoundedDownloader beans rather than mocks, so the SSRF re-check and credential handling are
   // exercised end to end. 127.0.0.1 is allowlisted via configureProperties (target validation is
   // enabled by default, see application.yml) so this suite's own local HttpServer instances are
   // reachable without weakening the check for anything else.

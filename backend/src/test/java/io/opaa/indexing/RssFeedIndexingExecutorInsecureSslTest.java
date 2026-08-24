@@ -40,9 +40,9 @@ import org.mockito.ArgumentCaptor;
 /**
  * #637: {@link RssFeedIndexingExecutor} must honour {@code targetLibrary.isSourceInsecureSsl()} for
  * its own feed fetch exactly like {@link UrlIndexingExecutor} already does for its crawl (#505) -
- * {@link AutoindexCrawlerService#buildHttpClient} used to be called with a hardcoded {@code false}
- * here, so a RSS_FEED library configured with {@code sourceInsecureSsl: true} still rejected a
- * self-signed certificate.
+ * {@link io.opaa.sourceaccess.SourceHttpClientFactory#buildHttpClient} used to be called with a
+ * hardcoded {@code false} here, so a RSS_FEED library configured with {@code sourceInsecureSsl:
+ * true} still rejected a self-signed certificate.
  *
  * <p><b>Not a blanket bypass (#663 review, finding 1).</b> {@code sourceInsecureSsl} must only
  * relax certificate validation for the feed's own origin, never for a foreign one an entry's {@code
@@ -76,7 +76,8 @@ class RssFeedIndexingExecutorInsecureSslTest {
   // The feed's own origin - sourceInsecureSsl is expected to relax certificate validation here.
   private static TestHttpsServer feedServer;
   // A second, distinct origin (different port, hence a different origin per
-  // AutoindexCrawlerService#sameOrigin) simulating a foreign host a feed entry's <link> points at -
+  // RedirectFollowingFetcher#sameOrigin) simulating a foreign host a feed entry's <link> points
+  // at -
   // sourceInsecureSsl must never relax validation here, no matter the library's own configuration.
   private static TestHttpsServer foreignServer;
 

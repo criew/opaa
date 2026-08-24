@@ -144,7 +144,8 @@ opaa:
     # must resolve underneath. No default on purpose - an empty allowlist disables the FILESYSTEM
     # quellentyp entirely, the safe default for a fresh installation.
     filesystem-allowlist: ${OPAA_INDEXING_FILESYSTEM_ALLOWLIST:}
-    # #267: SSRF hardening for HTTP_DIRECTORY/RSS_FEED fetches - see TargetAddressValidator.
+    # #267: SSRF hardening for HTTP_DIRECTORY/RSS_FEED fetches - see
+    # io.opaa.sourceaccess.TargetAddressValidator.
     target-validation:
       enabled: ${OPAA_INDEXING_TARGET_VALIDATION_ENABLED:true}
       allowlist: ${OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST:}
@@ -169,8 +170,8 @@ opaa:
     # #748 review, finding 1: the synchronous remote-content proxy path (GET
     # /api/v1/documents/{documentId}/content for a HTTP_DIRECTORY/RSS_FEED document, #747) gets its
     # own, smaller bound and shorter per-hop timeout instead of reusing opaa.upload.max-file-size
-    # and UrlFileDownloader#downloadBounded's 120s background-indexing timeout - see
-    # RemoteContentProperties.
+    # and io.opaa.sourceaccess.BoundedDownloader#downloadBounded's 120s background-indexing
+    # timeout - see RemoteContentProperties.
     remote-content:
       max-bytes: ${OPAA_DOCUMENTS_REMOTE_CONTENT_MAX_BYTES:20971520}
       timeout-seconds: ${OPAA_DOCUMENTS_REMOTE_CONTENT_TIMEOUT_SECONDS:20}

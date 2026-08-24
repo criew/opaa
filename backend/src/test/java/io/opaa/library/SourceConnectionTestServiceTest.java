@@ -839,7 +839,7 @@ class SourceConnectionTestServiceTest {
     // libraryId set - was previously untested. A second HttpServer instance stands in for a
     // foreign host; only the port differs from baseUrl, which SourceOriginMatcher's port
     // normalization must still catch (#542 review finding 1's same-origin rule, delegated to
-    // AutoindexCrawlerService#sameOrigin).
+    // RedirectFollowingFetcher#sameOrigin).
     UUID libraryId = UUID.randomUUID();
     HttpServer otherServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     otherServer.start();

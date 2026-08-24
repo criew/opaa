@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
  * Ziel führt"), PR #699 review finding 2: {@link RssFeedIndexingExecutorTest} disables {@link
  * TargetAddressValidator} entirely - every stub server it talks to is loopback by construction
  * (#467's own acceptance criteria) - so that suite would stay green even if the per-hop {@code
- * validate} call inside {@link AutoindexCrawlerService#sendFollowingRedirects} (used by {@code
+ * validate} call inside {@link RedirectFollowingFetcher#sendFollowingRedirects} (used by {@code
  * RssFeedIndexingExecutor#fetchFeed}) were accidentally removed or hoisted out of the redirect
  * loop. This class exercises the check with an actually enabled validator instead.
  *

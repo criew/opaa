@@ -630,9 +630,8 @@ class AutoindexCrawlerServiceTest {
   void redirectOriginTrusted_stillRejectsADowngrade() {
     // isSchemeDowngrade is checked independently by every caller and refuses this before
     // isRedirectOriginTrusted is even consulted (see
-    // AutoindexCrawlerService#sendFollowingRedirects)
-    // - this asserts the trust check itself would not accidentally treat a downgrade as trusted if
-    // that ordering were ever changed.
+    // RedirectFollowingFetcher#sendFollowingRedirects) - this asserts the trust check itself
+    // would not accidentally treat a downgrade as trusted if that ordering were ever changed.
     assertThat(
             RedirectFollowingFetcher.isRedirectOriginTrusted(
                 URI.create("https://host.example/a"), URI.create("http://host.example/a")))

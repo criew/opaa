@@ -11,7 +11,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
@@ -899,19 +898,16 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     HttpClient httpClient = httpClientForTarget(secureClient, insecureClient, feedUrl, entryUrl);
     HttpResponse<InputStream> response = sendDetailPageRequest(httpClient, entryUrl, authHeader);
 
-    // Every path below - the three early rejections and the ordinary 200 - must close the
-    // response body, hence try-with-resources around the whole evaluation.
+    // Every path below - the early rejections and the ordinary 200 - must close the response
+    // body, hence try-with-resources around the whole evaluation. A foreign-host redirect is
+    // already rejected inside sendDetailPageRequest (REJECT_OFF_ORIGIN), before a response for
+    // that hop is ever returned here - no separate check is needed on the response this method
+    // receives.
     try (InputStream body = response.body()) {
       if (response.statusCode() == 403 || response.statusCode() == 429) {
         throw new RejectedByRemoteException(
             "HTTP " + response.statusCode(),
             "Vom Quellserver abgewiesen (HTTP " + response.statusCode() + ")");
-      }
-      if (isForeignHostRedirect(entryUrl, response.uri())) {
-        throw new RejectedByRemoteException(
-            "redirected to a foreign host: " + response.uri(),
-            RedirectFollowingFetcher.redirectRejectionMessage(
-                RedirectFollowingFetcher.RedirectRejectionReason.FOREIGN_HOST, response.uri()));
       }
       if (response.statusCode() != 200) {
         throw new IOException("HTTP " + response.statusCode() + " for URL: " + entryUrl);
@@ -1025,24 +1021,6 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       }
     }
     return null;
-  }
-
-  /**
-   * Whether {@code finalUri} is a different origin (scheme, host and normalized port) than {@code
-   * originalUrl} - the signature of a bot-protection challenge page. An unparsable host on either
-   * side, or an unparsable {@code originalUrl}, is always treated as foreign, never trusted with
-   * the feed's own credentials. Delegates to {@link
-   * RedirectFollowingFetcher#isRedirectOriginTrusted} rather than {@code sameOrigin} directly, so a
-   * same-host {@code http}→{@code https} upgrade is not counted as foreign; {@link
-   * #sendDetailPageRequest} refuses the opposite (downgrade) direction unconditionally.
-   */
-  private boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
-    try {
-      URI originalUri = new URI(originalUrl);
-      return !RedirectFollowingFetcher.isRedirectOriginTrusted(originalUri, finalUri);
-    } catch (URISyntaxException e) {
-      return true;
-    }
   }
 
   /**
