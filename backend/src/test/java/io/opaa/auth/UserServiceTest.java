@@ -18,6 +18,10 @@ import io.opaa.audit.AuditEventType;
 import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,7 +49,37 @@ class UserServiceTest {
   private AuthProperties authProperties;
   private AuditEventRecorder auditEventRecorder;
   private AuthMetrics authMetrics;
+  private MutableClock clock;
   private UserService userService;
+
+  /**
+   * #833: a settable {@link Clock}, not {@link Clock#fixed}, so a test can advance time between two
+   * {@code findOrCreateUser} calls within the same test method to exercise the lastLoginAt-write
+   * threshold - {@code Clock.fixed} would need a whole new {@code UserService} instance per
+   * timestamp instead.
+   */
+  private static final class MutableClock extends Clock {
+    private Instant instant;
+
+    private MutableClock(Instant instant) {
+      this.instant = instant;
+    }
+
+    @Override
+    public java.time.ZoneId getZone() {
+      return ZoneOffset.UTC;
+    }
+
+    @Override
+    public Clock withZone(java.time.ZoneId zone) {
+      return this;
+    }
+
+    @Override
+    public Instant instant() {
+      return instant;
+    }
+  }
 
   @BeforeEach
   void setUp() {
@@ -57,9 +91,10 @@ class UserServiceTest {
     // 3): this lets ensuresPersonalSpaceWithoutPropagatingAFailure below assert the Micrometer
     // counter itself actually incremented, not just that some method was called on a mock.
     authMetrics = new AuthMetrics(new SimpleMeterRegistry());
+    clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
     userService =
         new UserService(
-            userRepository, spaceService, authProperties, auditEventRecorder, authMetrics);
+            userRepository, spaceService, authProperties, auditEventRecorder, authMetrics, clock);
   }
 
   @Test
@@ -82,6 +117,7 @@ class UserServiceTest {
   void findOrCreateUserUpdatesExistingUser() {
     User existing = new User("sub1", "issuer1", "old@example.com", "Old Name");
     existing.setOrganizationId(Organization.DEFAULT_ID);
+    existing.setLastLoginAt(clock.instant().minus(Duration.ofMinutes(10)));
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
         .thenReturn(Optional.of(existing));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -91,6 +127,80 @@ class UserServiceTest {
     assertThat(user.getEmail()).isEqualTo("new@example.com");
     assertThat(user.getDisplayName()).isEqualTo("New Name");
     verify(spaceService).ensureDefaultSpace(existing.getId(), Organization.DEFAULT_ID);
+  }
+
+  /**
+   * #833 acceptance criterion: two consecutive requests for the same, already-known user within the
+   * threshold produce exactly one UPDATE, not zero and not two. Before the fix, {@code
+   * updateExistingUser} called {@code save()} unconditionally on every call, so this would observe
+   * {@code times(2)} instead.
+   */
+  @Test
+  void twoRequestsWithinTheThresholdWriteLastLoginAtExactlyOnce() {
+    User existing = new User("sub1", "issuer1", "same@example.com", "Same Name");
+    existing.setOrganizationId(Organization.DEFAULT_ID);
+    existing.setLastLoginAt(clock.instant().minus(Duration.ofMinutes(10)));
+    when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
+        .thenReturn(Optional.of(existing));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    userService.findOrCreateUser("sub1", "issuer1", "same@example.com", "Same Name");
+    clock.instant = clock.instant.plus(Duration.ofSeconds(30));
+    userService.findOrCreateUser("sub1", "issuer1", "same@example.com", "Same Name");
+
+    verify(userRepository, times(1)).save(any(User.class));
+  }
+
+  /** #833: once the threshold has elapsed, the next request must refresh lastLoginAt again. */
+  @Test
+  void requestAfterTheThresholdWritesLastLoginAtAgain() {
+    User existing = new User("sub1", "issuer1", "same@example.com", "Same Name");
+    existing.setOrganizationId(Organization.DEFAULT_ID);
+    existing.setLastLoginAt(clock.instant());
+    when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
+        .thenReturn(Optional.of(existing));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    clock.instant = clock.instant.plus(Duration.ofMinutes(5));
+    User user = userService.findOrCreateUser("sub1", "issuer1", "same@example.com", "Same Name");
+
+    assertThat(user.getLastLoginAt()).isEqualTo(clock.instant);
+    verify(userRepository, times(1)).save(any(User.class));
+  }
+
+  /**
+   * #833: a changed claim must be written immediately, even though {@code lastLoginAt} itself is
+   * still within the throttling threshold and would not by itself trigger a write.
+   */
+  @Test
+  void changedEmailWithinTheThresholdIsStillWrittenImmediately() {
+    User existing = new User("sub1", "issuer1", "old@example.com", "Same Name");
+    existing.setOrganizationId(Organization.DEFAULT_ID);
+    existing.setLastLoginAt(clock.instant());
+    when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
+        .thenReturn(Optional.of(existing));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    User user = userService.findOrCreateUser("sub1", "issuer1", "new@example.com", "Same Name");
+
+    assertThat(user.getEmail()).isEqualTo("new@example.com");
+    verify(userRepository, times(1)).save(any(User.class));
+  }
+
+  /** #833: same as the email case above, but for the independent displayName condition. */
+  @Test
+  void changedDisplayNameWithinTheThresholdIsStillWrittenImmediately() {
+    User existing = new User("sub1", "issuer1", "same@example.com", "Old Name");
+    existing.setOrganizationId(Organization.DEFAULT_ID);
+    existing.setLastLoginAt(clock.instant());
+    when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
+        .thenReturn(Optional.of(existing));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    User user = userService.findOrCreateUser("sub1", "issuer1", "same@example.com", "New Name");
+
+    assertThat(user.getDisplayName()).isEqualTo("New Name");
+    verify(userRepository, times(1)).save(any(User.class));
   }
 
   @Test

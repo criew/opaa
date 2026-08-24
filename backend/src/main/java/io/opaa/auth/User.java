@@ -48,6 +48,11 @@ public class User {
 
   protected User() {}
 
+  /**
+   * {@code createdAt}/{@code lastLoginAt} come from the wall clock ({@link Instant#now()}), not
+   * {@link UserService}'s injected {@code Clock} - a test constructing a {@link User} with a fixed
+   * clock cannot control these two timestamps this way.
+   */
   public User(String subject, String issuer, String email, String displayName) {
     this.id = UUID.randomUUID();
     this.subject = subject;

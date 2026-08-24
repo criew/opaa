@@ -8,6 +8,8 @@ import io.opaa.audit.AuditSubjectKind;
 import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -34,23 +36,30 @@ public class UserService {
   private static final int SEARCH_RESULT_LIMIT = 20;
   private static final int SEARCH_MIN_QUERY_LENGTH = 2;
 
+  // Throttles lastLoginAt writes to at most once per user per interval (#833) - 5 minutes of
+  // staleness is an acceptable trade for dropping the per-request UPDATE.
+  private static final Duration LAST_LOGIN_UPDATE_THRESHOLD = Duration.ofMinutes(5);
+
   private final UserRepository userRepository;
   private final SpaceService spaceService;
   private final AuthProperties authProperties;
   private final AuditEventRecorder auditEventRecorder;
   private final AuthMetrics authMetrics;
+  private final Clock clock;
 
   public UserService(
       UserRepository userRepository,
       SpaceService spaceService,
       AuthProperties authProperties,
       AuditEventRecorder auditEventRecorder,
-      AuthMetrics authMetrics) {
+      AuthMetrics authMetrics,
+      Clock clock) {
     this.userRepository = userRepository;
     this.spaceService = spaceService;
     this.authProperties = authProperties;
     this.auditEventRecorder = auditEventRecorder;
     this.authMetrics = authMetrics;
+    this.clock = clock;
   }
 
   /**
@@ -111,15 +120,30 @@ public class UserService {
    */
   private record UserCreationResult(User user, boolean createdHere) {}
 
+  /**
+   * {@code lastLoginAt} is refreshed only after {@link #LAST_LOGIN_UPDATE_THRESHOLD}; {@code
+   * email}/{@code displayName} (identity-provider claims) are written immediately whenever they
+   * differ from the stored value. No {@link UserRepository#save} call when none of the three
+   * changed (#833).
+   */
   private User updateExistingUser(User existing, String email, String displayName) {
-    existing.setLastLoginAt(Instant.now());
-    if (email != null) {
+    Instant now = clock.instant();
+    boolean changed = false;
+    Instant lastLoginAt = existing.getLastLoginAt();
+    if (lastLoginAt == null
+        || Duration.between(lastLoginAt, now).compareTo(LAST_LOGIN_UPDATE_THRESHOLD) >= 0) {
+      existing.setLastLoginAt(now);
+      changed = true;
+    }
+    if (email != null && !email.equals(existing.getEmail())) {
       existing.setEmail(email);
+      changed = true;
     }
-    if (displayName != null) {
+    if (displayName != null && !displayName.equals(existing.getDisplayName())) {
       existing.setDisplayName(displayName);
+      changed = true;
     }
-    return userRepository.save(existing);
+    return changed ? userRepository.save(existing) : existing;
   }
 
   /**
