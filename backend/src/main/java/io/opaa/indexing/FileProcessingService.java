@@ -77,10 +77,10 @@ public class FileProcessingService {
   private static final ContentFormatter CHUNK_EMBED_CONTENT_FORMATTER =
       DefaultContentFormatter.builder()
           .withExcludedEmbedMetadataKeys(
-              "document_id",
+              VectorChunkStore.DOCUMENT_ID_METADATA_KEY,
               "chunk_index",
               "file_name",
-              "library_id",
+              VectorChunkStore.LIBRARY_ID_METADATA_KEY,
               "organization_id",
               ChunkingService.LOCATION_METADATA_KEY)
           .withTextTemplate("{content}")
@@ -90,6 +90,7 @@ public class FileProcessingService {
   private final ChunkingService chunkingService;
   private final DocumentRepository documentRepository;
   private final VectorStore vectorStore;
+  private final VectorChunkStore vectorChunkStore;
   private final ChecksumService checksumService;
   private final IndexingMetrics metrics;
   private final LibraryStorageQuotaService storageQuotaService;
@@ -102,6 +103,7 @@ public class FileProcessingService {
       ChunkingService chunkingService,
       DocumentRepository documentRepository,
       VectorStore vectorStore,
+      VectorChunkStore vectorChunkStore,
       ChecksumService checksumService,
       IndexingMetrics metrics,
       LibraryStorageQuotaService storageQuotaService,
@@ -111,6 +113,7 @@ public class FileProcessingService {
     this.chunkingService = chunkingService;
     this.documentRepository = documentRepository;
     this.vectorStore = vectorStore;
+    this.vectorChunkStore = vectorChunkStore;
     this.checksumService = checksumService;
     this.metrics = metrics;
     this.storageQuotaService = storageQuotaService;
@@ -164,7 +167,7 @@ public class FileProcessingService {
       // delete old data. Deleting by document_id removes every chunk regardless of which
       // library it used to carry, so no chunk with the old library_id survives a move (#419
       // acceptance criteria).
-      vectorStore.delete("document_id == '" + existingDoc.getId().toString() + "'");
+      vectorChunkStore.deleteByDocumentId(existingDoc.getId());
       documentRepository.delete(existingDoc);
     }
 
@@ -287,7 +290,7 @@ public class FileProcessingService {
       // delete old data. Deleting by document_id removes every chunk regardless of which
       // library it used to carry, so no chunk with the old library_id survives a move (#419
       // acceptance criteria).
-      vectorStore.delete("document_id == '" + existingDoc.getId().toString() + "'");
+      vectorChunkStore.deleteByDocumentId(existingDoc.getId());
       documentRepository.delete(existingDoc);
     }
 
@@ -372,7 +375,7 @@ public class FileProcessingService {
         return FileProcessingResult.SKIPPED;
       }
       logLibraryChange(existingDoc, targetLibrary);
-      vectorStore.delete("document_id == '" + existingDoc.getId().toString() + "'");
+      vectorChunkStore.deleteByDocumentId(existingDoc.getId());
       documentRepository.delete(existingDoc);
     }
 
@@ -496,7 +499,7 @@ public class FileProcessingService {
             "Uploaded document {} was deleted while its chunks were being written; removing them"
                 + " again",
             doc.getId());
-        vectorStore.delete("document_id == '" + doc.getId() + "'");
+        vectorChunkStore.deleteByDocumentId(doc.getId());
         return;
       }
       metrics.recordProcessed();
@@ -505,7 +508,7 @@ public class FileProcessingService {
       // Whatever failed, storeChunks may already have written chunks for doc.getId() into the
       // vector store - deleting them here mirrors processFile/processUrlFile's own re-index
       // cleanup, so a FAILED row never leaves orphaned chunks still returned by /api/v1/query.
-      vectorStore.delete("document_id == '" + doc.getId() + "'");
+      vectorChunkStore.deleteByDocumentId(doc.getId());
       markUploadFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
       metrics.recordFailed();
     }
@@ -544,7 +547,7 @@ public class FileProcessingService {
       log.warn(
           "Document {} was deleted while its chunks were being written; removing them again",
           documentId);
-      vectorStore.delete("document_id == '" + documentId + "'");
+      vectorChunkStore.deleteByDocumentId(documentId);
       metrics.recordSkipped();
       return FileProcessingResult.SKIPPED;
     }
@@ -593,7 +596,7 @@ public class FileProcessingService {
    */
   private void markConnectorFailedAfterException(UUID documentId) {
     try {
-      vectorStore.delete("document_id == '" + documentId + "'");
+      vectorChunkStore.deleteByDocumentId(documentId);
     } catch (RuntimeException e) {
       log.error(
           "Failed to remove vector store chunks for document {} after a processing error -"
@@ -649,10 +652,12 @@ public class FileProcessingService {
                 chunk -> {
                   int index = chunks.indexOf(chunk);
                   Map<String, Object> metadata = new HashMap<>();
-                  metadata.put("document_id", document.getId().toString());
+                  metadata.put(
+                      VectorChunkStore.DOCUMENT_ID_METADATA_KEY, document.getId().toString());
                   metadata.put("chunk_index", index);
                   metadata.put("file_name", document.getFileName());
-                  metadata.put("library_id", document.getLibraryId().toString());
+                  metadata.put(
+                      VectorChunkStore.LIBRARY_ID_METADATA_KEY, document.getLibraryId().toString());
                   metadata.put("organization_id", document.getOrganizationId().toString());
                   // #667: the chunk's Fundort, when ChunkingService could derive one.
                   Object location = chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);

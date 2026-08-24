@@ -1,7 +1,6 @@
 package io.opaa.library;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -21,6 +20,7 @@ import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
 import io.opaa.indexing.RssFeedStateRepository;
+import io.opaa.indexing.VectorChunkStore;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +30,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
@@ -78,6 +80,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
     vectorStore = mock(VectorStore.class);
+    VectorChunkStore vectorChunkStore = new VectorChunkStore(vectorStore);
     FilesystemPathAllowlist filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     IndexingJobRepository indexingJobRepository = mock(IndexingJobRepository.class);
     when(indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
@@ -100,7 +103,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
             accessService,
             permissionHistoryService,
             auditEventRecorder,
-            vectorStore,
+            vectorChunkStore,
             filesystemAllowlist,
             indexingJobRepository,
             indexingJobService,
@@ -137,6 +140,13 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     when(documentRepository.deleteByLibraryId(library.getId())).thenReturn(3L);
   }
 
+  // Mirrors VectorChunkStore#deleteByLibraryId's own filter construction, so assertions here
+  // compare against the actual Filter.Expression the helper builds rather than the pre-#838 raw
+  // delete string.
+  private static Filter.Expression libraryIdFilter(UUID libraryId) {
+    return new FilterExpressionBuilder().eq("library_id", libraryId.toString()).build();
+  }
+
   @AfterEach
   void tearDown() {
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -153,7 +163,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
 
     InOrder order = inOrder(documentRepository, vectorStore);
     order.verify(documentRepository).deleteByLibraryId(library.getId());
-    order.verify(vectorStore).delete("library_id == '" + library.getId() + "'");
+    order.verify(vectorStore).delete(libraryIdFilter(library.getId()));
   }
 
   @Test
@@ -167,12 +177,12 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     verify(documentRepository).deleteByLibraryId(library.getId());
     // The row delete already ran, but the chunk delete must not have - it is only registered to
     // run once this transaction actually commits.
-    verify(vectorStore, never()).delete(anyString());
+    verify(vectorStore, never()).delete(any(Filter.Expression.class));
 
     TransactionSynchronizationManager.getSynchronizations()
         .forEach(synchronization -> synchronization.afterCommit());
 
-    verify(vectorStore).delete("library_id == '" + library.getId() + "'");
+    verify(vectorStore).delete(libraryIdFilter(library.getId()));
   }
 
   @Test
@@ -187,6 +197,6 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     libraryService.deleteLibrary(library.getId(), ownerId, false);
     TransactionSynchronizationManager.clearSynchronization();
 
-    verify(vectorStore, never()).delete(anyString());
+    verify(vectorStore, never()).delete(any(Filter.Expression.class));
   }
 }

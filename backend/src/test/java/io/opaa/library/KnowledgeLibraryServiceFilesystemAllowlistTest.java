@@ -19,6 +19,7 @@ import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.RssFeedStateRepository;
+import io.opaa.indexing.VectorChunkStore;
 import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
@@ -56,7 +57,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     LibraryAccessService accessService = mock(LibraryAccessService.class);
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
-    VectorStore vectorStore = mock(VectorStore.class);
+    VectorChunkStore vectorChunkStore = new VectorChunkStore(mock(VectorStore.class));
     filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     IndexingJobRepository indexingJobRepository = mock(IndexingJobRepository.class);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
@@ -76,7 +77,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             accessService,
             permissionHistoryService,
             auditEventRecorder,
-            vectorStore,
+            vectorChunkStore,
             filesystemAllowlist,
             indexingJobRepository,
             indexingJobService,

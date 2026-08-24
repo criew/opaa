@@ -117,6 +117,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         chunkingService,
         documentRepository,
         vectorStore,
+        new VectorChunkStore(vectorStore),
         checksumService,
         new IndexingMetrics(meterRegistry),
         storageQuotaService,
