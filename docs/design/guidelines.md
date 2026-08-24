@@ -112,6 +112,18 @@ mit Navy-600-Rahmen, Text Weiß/`#99A1AB`/`#7A8BA0`) — so lesen sich globale u
 einen Blick auseinander. Im dunklen Schema folgt die Rail wie die Seitenleiste dem Carbon-Schema;
 Carbon hat keine dunklere Stufe, die Trennung übernimmt der Standardrahmen.
 
+`fg-3` (`#7A8BA0`) erreicht in `navyRoles` gegen `bg-1` 4,65:1, gegen `bg-2` 3,80:1 und gegen
+`bg-3` 2,99:1; in `railRoles` (eine Stufe dunklere Flächen) gegen `bg-1` 5,26:1, gegen `bg-2`
+4,65:1 und gegen `bg-3` 3,80:1 — je Rollenset unterschreitet nur `bg-3` (und im Navy-Set
+zusätzlich `bg-2`) die 4,5:1-Schwelle (#853). Das ist folgenlos, weil `fg-3` dort nie als Text
+auf Hover- oder Aktivflächen landet: Rail-Kacheln zeigen im Hover `fg-2` (inaktiv, 6,20:1 gegen
+`bg-2`) bzw. `fg-1` (aktiv, Weiß) — nie `fg-3`. In der Seitenleiste nutzt der einzige `fg-3`-Text
+außerhalb der Rail (`MuiOutlinedInput`-Hover-Rahmen im Umbenennen-Feld von `ChatList.tsx`) nur
+die Rahmenfarbe, für die die 3:1-UI-Schwelle gilt — dort erfüllt (3,80:1 auf `bg-2`). Die
+Space-Navigation-Einträge der Seitenleiste bleiben bei 72 % Weiß, nicht `fg-3`. Eine künftige
+Komponente, die `fg-3` als Text auf `bg-2`/`bg-3` dieser Rollensets einsetzt, verletzt 2.4 und
+braucht einen dunkleren Ton oder eine andere Rolle.
+
 ### 2.3 Regeln
 
 - **Nur Rollen in Komponenten.** Kein Hex-Wert und kein Skalenwert in Komponenten-Code; alles
@@ -121,7 +133,12 @@ Carbon hat keine dunklere Stufe, die Trennung übernimmt der Standardrahmen.
 - **Die Seitenleiste ist im hellen Schema Navy, im dunklen folgt sie dem dunklen Schema**
   (#654). Hell ist sie der bewusste Kontrastblock der App (Rollenset `navyRoles`); dunkel
   verschmilzt sie wie bei den Claude-Docs mit der Carbon-Grundfläche, getrennt durch den
-  Standardrahmen.
+  Standardrahmen. Zwei Textstellen weichen hart codiert von den Rollen ab (#853, Ausnahme laut
+  vorigem Punkt): Die Space-Navigation-Einträge nutzen `rgba(255,255,255,0.72)` — auf allen drei
+  Navy-Flächen AA-konform (6,20–8,88:1). Die Overline-Beschriftungen ("Chats") nutzen
+  `rgba(255,255,255,0.55)`, aber ausschließlich auf `bg-1` (5,70:1); auf `bg-2`/`bg-3` würde der
+  Wert auf 5,03:1 bzw. 4,28:1 fallen — eine künftige Verwendung auf diesen Flächen bräuchte einen
+  höheren Alpha-Wert.
 - **Die globale Leiste folgt derselben Regel eine Stufe dunkler** (Rollenset `railRoles`,
   #786). Ihre Aktivkachel (Navy-700 auf Navy-900, Rahmen Navy-600) liegt als Flächenkontrast
   unter 3:1 — zulässig, weil der Zustand nicht allein über die Fläche getragen wird: die
@@ -145,8 +162,9 @@ Carbon hat keine dunklere Stufe, die Trennung übernimmt der Standardrahmen.
 Text mindestens 4,5:1 gegen seine Fläche, große Schrift (ab 24 px bzw. 19 px fett) und
 UI-Komponenten/Grafik mindestens 3:1 — in beiden Schemata. Die Rollen aus 2.2 erfüllen das in
 den vorgesehenen Kombinationen (`fg-*` auf `bg-*`, `accent-fg` auf `accent`); wer andere
-Kombinationen bildet, weist den Kontrast im PR nach. Details regelt die
-[Barrierefreiheits-Richtlinie](./accessibility.md).
+Kombinationen bildet, weist den Kontrast im PR nach. Ausnahme: `fg-3` in `navyRoles`/`railRoles`
+erfüllt das nicht gegen `bg-2`/`bg-3` (siehe 2.2) — dort ist `fg-3` als Text ausgeschlossen, nicht
+nachgewiesen. Details regelt die [Barrierefreiheits-Richtlinie](./accessibility.md).
 
 ---
 

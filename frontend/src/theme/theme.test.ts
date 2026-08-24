@@ -9,6 +9,7 @@ import {
   navy,
   navyRoles,
   radius,
+  railRoles,
   semanticColors,
   white,
 } from './tokens'
@@ -47,6 +48,34 @@ describe('tokens', () => {
       expect(ratio, `fg-3 on ${label}`).not.toBeNull()
       expect(ratio, `fg-3 on ${label}`).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
     }
+  })
+
+  // #853: fg-3 ('#7A8BA0') only clears 4.5:1 against bg1 in both sets (verified: Sidebar.tsx/
+  // GlobalRail.tsx never render fg-3 text on bg2/bg3, see guidelines.md 2.2). The bg2/bg3
+  // ratios are pinned too, not asserted against the floor - a token edit that silently pushes
+  // one of them past 4.5:1 must re-open the verification, not slip through as a green diff.
+  test('fg-3 in navy/rail is pinned to its known bg1/bg2/bg3 ratios (#853)', () => {
+    const cases: Array<[string, string, string, number]> = [
+      ['navy fg-3 vs bg1', navyRoles.fg3, navyRoles.bg1, 4.65],
+      ['navy fg-3 vs bg2', navyRoles.fg3, navyRoles.bg2, 3.8],
+      ['navy fg-3 vs bg3', navyRoles.fg3, navyRoles.bg3, 2.99],
+      ['rail fg-3 vs bg1', railRoles.fg3, railRoles.bg1, 5.26],
+      ['rail fg-3 vs bg2', railRoles.fg3, railRoles.bg2, 4.65],
+      ['rail fg-3 vs bg3', railRoles.fg3, railRoles.bg3, 3.8],
+    ]
+
+    for (const [label, foreground, background, expected] of cases) {
+      const ratio = contrastRatio(foreground, background)
+      expect(ratio, label).not.toBeNull()
+      expect(ratio, label).toBeCloseTo(expected, 2)
+    }
+
+    expect(contrastRatio(navyRoles.fg3, navyRoles.bg1)).toBeGreaterThanOrEqual(
+      TEXT_CONTRAST_MINIMUM,
+    )
+    expect(contrastRatio(railRoles.fg3, railRoles.bg1)).toBeGreaterThanOrEqual(
+      TEXT_CONTRAST_MINIMUM,
+    )
   })
 })
 
