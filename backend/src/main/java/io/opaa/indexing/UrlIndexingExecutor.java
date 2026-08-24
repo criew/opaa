@@ -60,27 +60,21 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
         new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
 
     try {
-      // Parse proxy config
-      String proxyHost = null;
-      int proxyPort = -1;
-      if (request.proxy() != null && !request.proxy().isBlank()) {
-        int colonIdx = request.proxy().lastIndexOf(':');
-        if (colonIdx > 0) {
-          proxyHost = request.proxy().substring(0, colonIdx);
-          proxyPort = Integer.parseInt(request.proxy().substring(colonIdx + 1));
-        }
+      // Issue #839: parsing goes through the shared ProxyAndCredentials rather than an inline
+      // copy, mirroring RssFeedIndexingExecutor#execute (PR #642 review, finding 4) - an invalid
+      // sourceProxy port is now a controlled failure instead of an unhandled
+      // NumberFormatException.
+      ProxyAndCredentials config;
+      try {
+        config = ProxyAndCredentials.parse(request.proxy(), request.credentials());
+      } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
+        progress.fail(e.getMessage());
+        return;
       }
-
-      // Parse credentials
-      String username = null;
-      String password = null;
-      if (request.credentials() != null && !request.credentials().isBlank()) {
-        int colonIdx = request.credentials().indexOf(':');
-        if (colonIdx > 0) {
-          username = request.credentials().substring(0, colonIdx);
-          password = request.credentials().substring(colonIdx + 1);
-        }
-      }
+      String proxyHost = config.proxyHost();
+      int proxyPort = config.proxyPort();
+      String username = config.username();
+      String password = config.password();
 
       // Normalize URL
       String url = request.url();

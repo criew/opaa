@@ -5,10 +5,7 @@ package io.opaa.indexing;
  * sourceCredentials} ({@code user:password}, Basic Auth) fields (PR #642 review, finding 4) - the
  * single implementation for what used to be three separate copies of the same parsing: {@code
  * UrlIndexingExecutor#execute}, {@code RssFeedIndexingExecutor#execute} and {@code
- * SourceConnectionTestService}'s own (now-removed) private {@code ProxyAndCredentials.from}. Only
- * the RSS executor and the connection test currently go through this shared type; {@code
- * UrlIndexingExecutor} keeps its own inline copy to keep this change small - a future cleanup can
- * fold it in too.
+ * SourceConnectionTestService}'s own (now-removed) private {@code ProxyAndCredentials.from}.
  */
 public record ProxyAndCredentials(
     String proxyHost, int proxyPort, String username, String password) {

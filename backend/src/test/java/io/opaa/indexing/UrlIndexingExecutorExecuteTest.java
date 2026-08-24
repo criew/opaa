@@ -171,6 +171,25 @@ class UrlIndexingExecutorExecuteTest {
         .save(argThat(categoryIs(IndexingEventCategory.UNSUPPORTED_FORMAT)));
   }
 
+  @Test
+  void anInvalidSourceProxyPortFailsTheJobWithAGermanMessage() throws IOException {
+    // Issue #839: proxy/credentials parsing goes through the shared ProxyAndCredentials.parse
+    // rather than an inline copy - an invalid port now fails with the same German message
+    // RssFeedIndexingExecutorTest#anInvalidSourceProxyPortFailsTheJobWithAGermanMessage already
+    // proves for the RSS path (PR #642 review, finding 4), instead of an unhandled
+    // NumberFormatException.
+    library.updateSourceConfiguration(
+        null, baseUrl + "/files/", "127.0.0.1:not-a-port", null, false);
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library);
+
+    verify(indexingJobService, timeout(5000))
+        .failJob(eq(jobId), eq("sourceProxy muss dem Format host:port entsprechen"));
+    verify(fileProcessingService, never())
+        .processUrlFile(any(), any(), any(), any(), anyLong(), any());
+  }
+
   private static org.mockito.ArgumentMatcher<IndexingRunEvent> categoryIs(
       IndexingEventCategory category) {
     return event -> event != null && event.getCategory() == category;
