@@ -112,8 +112,9 @@ public class IndexingConfiguration {
   }
 
   @Bean
-  AutoindexCrawlerService autoindexCrawlerService(TargetAddressValidator targetAddressValidator) {
-    return new AutoindexCrawlerService(targetAddressValidator);
+  AutoindexCrawlerService autoindexCrawlerService(
+      TargetAddressValidator targetAddressValidator, CrawlProperties crawlProperties) {
+    return new AutoindexCrawlerService(targetAddressValidator, crawlProperties);
   }
 
   @Bean

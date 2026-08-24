@@ -134,6 +134,12 @@ opaa:
       attachment-profile: ${OPAA_INDEXING_RSS_ATTACHMENT_PROFILE:GENERIC}
       max-attachments-per-entry: ${OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY:10}
       max-attachment-size-bytes: ${OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES:20971520}
+    # #836: bounds AutoindexCrawlerService's recursive HTTP_DIRECTORY crawl - see CrawlProperties.
+    # A separate opaa.indexing.crawl.* property block, not nested fields of IndexingProperties
+    # itself (own record, own binding prefix).
+    crawl:
+      max-depth: ${OPAA_INDEXING_CRAWL_MAX_DEPTH:10}
+      max-entries: ${OPAA_INDEXING_CRAWL_MAX_ENTRIES:5000}
     # #484/ADR-0018 Entscheidung 6: absolute base directories a FILESYSTEM library's sourcePath
     # must resolve underneath. No default on purpose - an empty allowlist disables the FILESYSTEM
     # quellentyp entirely, the safe default for a fresh installation.

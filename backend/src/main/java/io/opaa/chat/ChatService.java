@@ -321,12 +321,12 @@ public class ChatService {
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public String appendTurn(
       Chat chat, String question, String answer, List<SourceReference> sources) {
-    // #613 review, finding 2: an archived space accepts no new content - including a new turn in
-    // an existing chat, or the space could keep gaining fresh content forever and never actually
-    // empty out into a state deleteSpace would accept. Checked here rather than only earlier in
-    // QueryService#query so every appendTurn caller is covered, present and future - the cost is
-    // that by this point QueryService has already spent an LLM call on the now-discarded answer;
-    // restructuring the call order to check before generation is outside this fix's scope.
+    // #613 review, finding 2 / #840: an archived space accepts no new content - including a new
+    // turn in an existing chat, or the space could keep gaining fresh content forever and never
+    // actually empty out into a state deleteSpace would accept. The early check now lives in
+    // QueryService#query, before retrieval/the LLM call (see requireSpaceNotArchived's Javadoc);
+    // this call here is the race guard for the window between that early check and this method's
+    // write - a space archived in between still must not be able to add a turn.
     requireSpaceNotArchived(chat.getSpaceId());
     boolean firstTurn = false;
     for (int attempt = 1; attempt <= APPEND_TURN_MAX_ATTEMPTS; attempt++) {
@@ -476,8 +476,15 @@ public class ChatService {
    * a chat's space always exists (fk_chats_space_organization is ON DELETE RESTRICT, migration 032,
    * composite as of migration 047), so this never needs to reason about a missing space the way
    * {@link #requireMembership} does.
+   *
+   * <p>#840: also called from {@code QueryService#query}, before retrieval/the LLM call, for a
+   * persisted chat - so the ordinary case ("space was already archived") never pays for an LLM call
+   * whose answer {@link #appendTurn} would discard anyway. Widened to public for that caller rather
+   * than duplicating the rule; {@link #appendTurn}'s own call stays in place as the race guard for
+   * a space archived after this early check ran but before the turn was persisted (see that
+   * method's Javadoc).
    */
-  private void requireSpaceNotArchived(UUID spaceId) {
+  public void requireSpaceNotArchived(UUID spaceId) {
     Space space =
         spaceRepository
             .findById(spaceId)

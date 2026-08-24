@@ -1812,6 +1812,6 @@ class RssFeedIndexingExecutorTest {
     execute(baseUrl + "/feed.xml", "127.0.0.1:not-a-port", null);
 
     verify(indexingJobService, timeout(2000))
-        .failJob(any(), eq("sourceProxy muss dem Format host:port entsprechen"));
+        .failJob(any(), eq(ProxyAndCredentials.INVALID_PROXY_MESSAGE));
   }
 }
