@@ -19,7 +19,10 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -66,6 +69,7 @@ public class LibraryFolderService {
   private final LibraryAccessService accessService;
   private final DocumentRepository documentRepository;
   private final LibraryDocumentService documentService;
+  private final TransactionTemplate requiresNewTransactionTemplate;
 
   public LibraryFolderService(
       LibraryFolderRepository folderRepository,
@@ -78,13 +82,21 @@ public class LibraryFolderService {
       // a genuine constructor-injection cycle Spring cannot resolve. @Lazy breaks it on this side -
       // the only use of documentService here (deleteRecursive, below) runs long after both beans
       // are fully constructed, so a lazy proxy costs nothing at the one call site that needs it.
-      @Lazy LibraryDocumentService documentService) {
+      @Lazy LibraryDocumentService documentService,
+      PlatformTransactionManager transactionManager) {
     this.folderRepository = folderRepository;
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
     this.documentService = documentService;
+    // #823 review (pre-existing #824 race, made user-reachable by #823's concurrent, request-
+    // driven callers): see materializeSingleFolder's own comment for why the insert attempt needs
+    // its own REQUIRES_NEW transaction rather than running inside the caller's ambient one -
+    // mirrors ChatService/SpaceService's identical constructor-built TransactionTemplate.
+    this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
+    this.requiresNewTransactionTemplate.setPropagationBehavior(
+        TransactionDefinition.PROPAGATION_REQUIRES_NEW);
   }
 
   @Transactional
@@ -255,23 +267,43 @@ public class LibraryFolderService {
     }
   }
 
+  /**
+   * The insert attempt below runs in its own {@code REQUIRES_NEW} transaction ({@link
+   * #requiresNewTransactionTemplate}), not the caller's ambient one - a pre-existing #824 race
+   * (review, Befund 6) that #823 made user-reachable: on Postgres, a unique-constraint violation
+   * aborts the <em>whole</em> transaction it occurs in, not just the failing statement, so without
+   * this isolation, the retry lookup in the {@code catch} block below would itself fail against the
+   * same now-poisoned transaction/connection ("current transaction is aborted, commands ignored
+   * until end of transaction block") - turning a legitimate reuse into a loud 500 instead. Two
+   * concurrent uploads racing the same brand-new folder path (two browser tabs, or a whole
+   * dragged-and-dropped tree's parallel-enough requests) hit exactly this window. Isolating the
+   * insert into its own transaction means only that small transaction rolls back on a race; the
+   * retry lookup then runs against the resumed, still-healthy outer transaction instead.
+   */
   private UUID materializeSingleFolder(KnowledgeLibrary library, UUID parentFolderId, String name) {
     Optional<LibraryFolder> existing = findByParentAndName(library.getId(), parentFolderId, name);
     if (existing.isPresent()) {
       return existing.get().getId();
     }
-    LibraryFolder folder =
-        new LibraryFolder(library.getId(), parentFolderId, name, library.getOrganizationId());
     try {
-      // saveAndFlush - see createFolder's identical reasoning: forces the unique-index violation
-      // (a concurrent materialization race - e.g. a re-triggered run overlapping the previous one)
-      // to surface here, inside this try, rather than at some later, unrelated flush.
-      folder = folderRepository.saveAndFlush(folder);
-      return folder.getId();
+      return requiresNewTransactionTemplate.execute(
+          status -> {
+            LibraryFolder folder =
+                new LibraryFolder(
+                    library.getId(), parentFolderId, name, library.getOrganizationId());
+            // saveAndFlush, not save: forces the unique-index violation (a concurrent
+            // materialization race - e.g. a re-triggered run overlapping the previous one, or two
+            // concurrent uploads) to surface here, inside this try, rather than at this inner
+            // transaction's commit further down the call stack.
+            return folderRepository.saveAndFlush(folder).getId();
+          });
     } catch (DataIntegrityViolationException e) {
       // Race-safety net, mirroring createFolder's identical handling: another concurrent
       // materialization already won the insert for this exact (library, parent, name) - reuse its
-      // row instead of failing this one.
+      // row instead of failing this one. Safe to query here specifically because the failed
+      // insert's own REQUIRES_NEW transaction (see this method's own Javadoc above) has already
+      // rolled back by the time execute() rethrows - this runs against the resumed outer
+      // transaction, never the poisoned inner one.
       return findByParentAndName(library.getId(), parentFolderId, name)
           .map(LibraryFolder::getId)
           .orElseThrow(() -> e);
@@ -304,16 +336,29 @@ public class LibraryFolderService {
     requireUploadLibrary(library);
     resolveParent(libraryId, baseFolderId);
 
-    UUID parentFolderId = baseFolderId;
+    // #823 review, Befund 1 (follow-up to Befund 6): every segment is validated - and the
+    // resulting depth checked - in this own upfront pass, before materializeSingleFolder ever
+    // creates a single row. materializeSingleFolder's own insert now runs in its own REQUIRES_NEW
+    // transaction (see its Javadoc, Befund 6) and therefore commits independently the moment it
+    // succeeds; validating and materializing one segment at a time would let an earlier, valid
+    // segment's folder survive permanently even when a later segment's invalid name or a depth
+    // overrun aborts this call - exactly the partial folder skeleton this whole method exists to
+    // avoid, just one level further in than the original "resolved before any byte is written"
+    // ordering bug (LibraryDocumentService#uploadDocument's own Befund 1 fix).
+    List<String> names = new ArrayList<>(pathSegments.size());
     int depth = baseFolderId == null ? 0 : depthOfParentChain(baseFolderId);
     for (String rawSegment : pathSegments) {
-      String name = validatePathSegment(rawSegment);
+      names.add(validatePathSegment(rawSegment));
       depth++;
       if (depth > MAX_DEPTH) {
         throw new ResponseStatusException(
             HttpStatus.BAD_REQUEST,
             "Die Ordnerstruktur ist zu tief verschachtelt (maximal " + MAX_DEPTH + " Ebenen)");
       }
+    }
+
+    UUID parentFolderId = baseFolderId;
+    for (String name : names) {
       parentFolderId = materializeSingleFolder(library, parentFolderId, name);
     }
     return parentFolderId;

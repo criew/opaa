@@ -1630,6 +1630,31 @@ class LibraryDocumentServiceIntegrationTest {
   }
 
   @Test
+  void uploadDocumentWithAnUnsupportedFormatAndAFolderPathCreatesNoFolders() {
+    // #823 review, Befund 1: resolveOrCreateFolderPath used to run before the format check
+    // (empty/size/quota/format), so a rejected upload into a brand-new folderPath still left that
+    // folder chain behind - three hundred wrong-format files dropped into "Protokolle/2026" would
+    // have created that same folder chain three hundred times over before the first ever actually
+    // failed. Moving the resolve call past the format check (see uploadDocument's own comment)
+    // means a rejected format never reaches it at all.
+    MultipartFile unsupported =
+        new MockMultipartFile("file", "malware.exe", "application/octet-stream", "x".getBytes());
+
+    assertThatThrownBy(
+            () ->
+                documentService.uploadDocument(
+                    libraryId, unsupported, null, "Protokolle/2026", editor.getId(), false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+
+    assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
+    assertThat(folderRepository.findByLibraryId(libraryId)).isEmpty();
+  }
+
+  @Test
   void uploadDocumentWithAFolderPathIntoAConnectorLibraryIsRejectedWithConflict() {
     var connectorLibraryRequest =
         new io.opaa.api.dto.LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)

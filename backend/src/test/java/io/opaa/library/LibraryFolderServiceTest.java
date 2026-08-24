@@ -26,6 +26,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -57,6 +59,12 @@ class LibraryFolderServiceTest {
     accessService = mock(LibraryAccessService.class);
     documentRepository = mock(DocumentRepository.class);
     documentService = mock(LibraryDocumentService.class);
+    // #823 review, Befund 6: LibraryFolderService now builds a REQUIRES_NEW TransactionTemplate
+    // from this in its constructor - TransactionTemplate#execute invokes the callback synchronously
+    // regardless of whether the underlying manager is real, mirroring SpaceServiceTest's identical
+    // setup for the same reason.
+    PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
 
     service =
         new LibraryFolderService(
@@ -65,7 +73,8 @@ class LibraryFolderServiceTest {
             userRepository,
             accessService,
             documentRepository,
-            documentService);
+            documentService,
+            transactionManager);
 
     User user = new User("subject", "issuer", "user@example.com", "Test User");
     user.setOrganizationId(organizationId);

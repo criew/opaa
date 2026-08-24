@@ -170,10 +170,11 @@ public class LibraryDocumentService {
    * {@code folderPath} (#823, Epic #520 Phase 4): an optional path relative to {@code folderId}
    * (itself optional, meaning the library's root) - e.g. {@code "Protokolle/2026"} - whose
    * intermediate folders are created idempotently (existing ones of the same name reused, never
-   * duplicated) via {@link LibraryFolderService#resolveOrCreateFolderPath} before the file is
-   * stored. Lets a whole dragged-and-dropped directory tree upload one file at a time while still
-   * ending up under a single, shared folder chain instead of a separate accidental duplicate per
-   * file.
+   * duplicated) via {@link LibraryFolderService#resolveOrCreateFolderPath}, resolved right before
+   * the file is actually written to disk - after every cheap, certain-to-reject check (empty file,
+   * size, quota, format) has already passed, see the comment at that call site for why. Lets a
+   * whole dragged-and-dropped directory tree upload one file at a time while still ending up under
+   * a single, shared folder chain instead of a separate accidental duplicate per file.
    */
   public LibraryDocumentResponse uploadDocument(
       UUID libraryId,
@@ -191,17 +192,6 @@ public class LibraryDocumentService {
     // library, treated identically per resolveFolder) must leave the bestand exactly as it was.
     if (folderId != null) {
       resolveFolder(libraryId, folderId);
-    }
-
-    // #823: resolved (and, where needed, created) before any byte is written to disk too, same
-    // reasoning as the folderId check above - an invalid path segment or a depth overrun must leave
-    // the bestand untouched rather than aborting mid-upload with folders already half-created.
-    UUID effectiveFolderId = folderId;
-    List<String> pathSegments = splitFolderPath(folderPath);
-    if (!pathSegments.isEmpty()) {
-      effectiveFolderId =
-          folderService.resolveOrCreateFolderPath(
-              libraryId, folderId, pathSegments, currentUserId, systemAdmin);
     }
 
     if (file == null || file.isEmpty()) {
@@ -232,6 +222,27 @@ public class LibraryDocumentService {
               + String.join(", ", SupportedDocumentFormats.extensions()));
     }
     String extension = matchedExtension(displayFileName);
+
+    // #823 review, Befund 1: resolved (and, where needed, created) only after every cheap,
+    // certain-to-reject check above (empty file, size, quota, format) has already passed - unlike
+    // those checks, resolveOrCreateFolderPath's own transaction cannot be rolled back afterwards:
+    // resolveOrCreateFolderPath is its own separate @Transactional call (this method itself is not
+    // @Transactional), so it commits its folder chain the moment it
+    // returns, regardless of what this method does afterwards. Running it before those checks
+    // (the original #823 order) left a committed, empty folder skeleton behind for every rejected
+    // upload - three hundred oversized/wrong-format files dropped into a new "Protokolle/2026"
+    // path created that folder chain three hundred times over before ever failing. Moved to
+    // directly precede the actual disk write, the last point before which nothing about this
+    // upload is yet certain to fail; a failure past this point (a race on the folder chain itself
+    // aside, see resolveOrCreateFolderPath) is comparatively rare and already leaves worse traces
+    // (a written file, see the catch blocks below) that this method already has to clean up.
+    UUID effectiveFolderId = folderId;
+    List<String> pathSegments = splitFolderPath(folderPath);
+    if (!pathSegments.isEmpty()) {
+      effectiveFolderId =
+          folderService.resolveOrCreateFolderPath(
+              libraryId, folderId, pathSegments, currentUserId, systemAdmin);
+    }
 
     Path libraryDir = Paths.get(uploadProperties.storagePath()).resolve(libraryId.toString());
     Path storedFile = libraryDir.resolve(UUID.randomUUID() + extension);

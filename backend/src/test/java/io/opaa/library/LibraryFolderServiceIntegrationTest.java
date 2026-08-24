@@ -469,4 +469,38 @@ class LibraryFolderServiceIntegrationTest {
                     .isEqualTo(HttpStatus.FORBIDDEN));
     assertThat(folderRepository.findById(folder.getId())).isPresent();
   }
+
+  @Test
+  void concurrentResolveOrCreateFolderPathCallsForTheSameNewPathProduceExactlyOneFolderTree()
+      throws Exception {
+    // #823 review, Befund 6: a pre-existing #824 race (materializeSingleFolder's unique-constraint
+    // catch retrying its lookup against the same, now-aborted Postgres transaction) made
+    // user-reachable by #823 - two concurrent uploads (e.g. two browser tabs) racing to
+    // materialize the same brand-new folder path must both succeed and land on the very same
+    // folder, never a 500 from the losing side. Only a genuine concurrent attempt (real threads,
+    // real Postgres) exercises the unique-index violation this guards against - a sequential call
+    // would never hit it.
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Callable<UUID> resolve =
+          () -> {
+            barrier.await(10, TimeUnit.SECONDS);
+            return folderService.resolveOrCreateFolderPath(
+                libraryId, null, List.of("Protokolle", "2026"), editor.getId(), false);
+          };
+
+      Future<UUID> first = executor.submit(resolve);
+      Future<UUID> second = executor.submit(resolve);
+      UUID firstResult = first.get(20, TimeUnit.SECONDS);
+      UUID secondResult = second.get(20, TimeUnit.SECONDS);
+
+      assertThat(firstResult).isNotNull();
+      assertThat(secondResult).isEqualTo(firstResult);
+      // Exactly one "Protokolle" and one "2026" row, not one pair per racing call.
+      assertThat(folderRepository.findByLibraryId(libraryId)).hasSize(2);
+    } finally {
+      executor.shutdownNow();
+    }
+  }
 }
