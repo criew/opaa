@@ -8,72 +8,55 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Configuration properties for the document indexing pipeline.
  *
  * @param documentPath filesystem path where source documents are stored. Unused by production code
- *     since ADR-0018/#478: a FILESYSTEM library now reads its own {@code sourcePath} instead of
- *     this single, application-wide value. Kept as a configuration property rather than removed
- *     outright, since deleting it would ripple through the many tests that still set {@code
- *     opaa.indexing.document-path} for unrelated reasons; a follow-up cleanup can remove it once
- *     those are untangled.
- * @param chunkSize target token count per chunk. Default 1000: standard for token-based chunking —
- *     balances sufficient context per chunk against retrieval granularity. Valid range: 1–10 000.
+ *     since ADR-0018: a FILESYSTEM library now reads its own {@code sourcePath} instead of this
+ *     single, application-wide value. Kept as a configuration property since removing it would
+ *     ripple through the many tests that still set {@code opaa.indexing.document-path}.
+ * @param chunkSize target token count per chunk. Default 1000: balances sufficient context per
+ *     chunk against retrieval granularity. Valid range: 1–10 000.
  * @param chunkOverlap number of tokens each chunk repeats from the end of its predecessor, so that
- *     a statement straddling a chunk boundary survives in at least one chunk as a whole (issue
- *     #374). Must be smaller than {@code chunkSize}; 0 disables overlap. A negative value is
- *     normalised to 0.
+ *     a statement straddling a chunk boundary survives in at least one chunk as a whole. Must be
+ *     smaller than {@code chunkSize}; 0 disables overlap. A negative value is normalised to 0.
  * @param batchSize the upper bound on chunks sent to the embedding model in one call. Default 50:
- *     moderate batch size that avoids memory spikes during embedding generation. Valid range: 1–1
- *     000. Since #734/#735, this is also the upper bound {@link #embeddingConcurrency}'s own
- *     sub-batch sizing respects (see that parameter's Javadoc for the actual sizing formula, which
- *     is not simply this value) - previously dead configuration (nothing in {@code
- *     io.opaa.indexing} read it), now load-bearing.
+ *     moderate batch size that avoids memory spikes during embedding generation. Valid range:
+ *     1–1000. Also the upper bound {@link #embeddingConcurrency}'s own sub-batch sizing respects
+ *     (see that parameter's Javadoc for the actual sizing formula, which is not simply this value).
  * @param threadPool thread pool settings for async indexing. Defaults (core=2, max=4, queue=20) are
  *     conservative values suitable for typical single-server deployments.
- * @param rss settings governing {@link IndexingSourceType#RSS_FEED} runs (#467) - obergrenzen and
+ * @param rss settings governing {@link IndexingSourceType#RSS_FEED} runs - obergrenzen and
  *     politeness settings the executor must apply against feed operators it does not control (see
  *     {@link Rss}'s own Javadoc).
  * @param filesystemAllowlist absolute base directories a {@code FILESYSTEM} library's {@code
- *     sourcePath} must resolve underneath (#484, ADR-0018 Entscheidung 6). Every path with
- *     anlage-recht may still choose {@code FILESYSTEM} as a quellentyp - this is the actual
- *     security boundary: a caller-chosen path outside every configured base directory is rejected,
- *     and an <b>empty allowlist (the default) disables the FILESYSTEM quellentyp entirely</b>
- *     rather than defaulting to "everything allowed". Checked by {@link FilesystemPathAllowlist},
- *     both at library creation/update time ({@code KnowledgeLibraryService}) and again at run time
- *     ({@link AsyncIndexingExecutor}), because the allowlist can be narrowed after a library was
- *     created. Bound from a comma-separated environment variable ({@code
- *     OPAA_INDEXING_FILESYSTEM_ALLOWLIST}) like any other {@code List<String>} property.
+ *     sourcePath} must resolve underneath (ADR-0018 Entscheidung 6) - the actual security boundary:
+ *     a caller-chosen path outside every configured base directory is rejected, and an <b>empty
+ *     allowlist (the default) disables the FILESYSTEM quellentyp entirely</b> rather than
+ *     defaulting to "everything allowed". Checked by {@link FilesystemPathAllowlist}, both at
+ *     library creation/update time ({@code KnowledgeLibraryService}) and again at run time ({@link
+ *     AsyncIndexingExecutor}), because the allowlist can be narrowed after a library was created.
  * @param staleJobTimeout how long a run may stay {@link JobStatus#RUNNING} before {@code
  *     IndexingJobRecoveryScheduler} treats it as orphaned and fails it, even without an application
- *     restart (#501) - see {@code IndexingJobService#recoverStaleJobs}. Default 4 hours: generous
- *     enough for a large FILESYSTEM/HTTP_DIRECTORY/RSS_FEED run to finish normally, short enough
- *     that a genuinely stuck run does not lock its library out for days.
+ *     restart - see {@code IndexingJobService#recoverStaleJobs}. Default 4 hours: generous enough
+ *     for a large run to finish normally, short enough that a genuinely stuck run does not lock its
+ *     library out for days.
  * @param targetValidation the SSRF target-address check {@link TargetAddressValidator} applies to
- *     every {@code HTTP_DIRECTORY}/{@code RSS_FEED} fetch (#267) - see {@link TargetValidation}'s
- *     own Javadoc.
+ *     every {@code HTTP_DIRECTORY}/{@code RSS_FEED} fetch - see {@link TargetValidation}'s own
+ *     Javadoc.
  * @param embeddingConcurrency the maximum number of sub-batches a single document's chunks are
- *     split into for concurrent embedding and persistence (#734/#735, {@code
+ *     split into for concurrent embedding and persistence ({@code
  *     OPAA_INDEXING_EMBEDDING_CONCURRENCY}) - see {@code
- *     io.opaa.indexing.FileProcessingService#subBatchSize} for the exact sizing formula (a
- *     document's chunk count spread evenly across up to this many workers, capped by {@link
- *     #batchSize} as the per-call upper bound, deliberately <em>not</em> {@code batchSize} itself
- *     as the slice size - see that method's own Javadoc for why the earlier, batchSize-sized-slice
- *     design left this path dead for ordinary documents under the defaults). Concurrent sub-batches
- *     of a splitting document share a single, fixed-size pool ({@code
+ *     io.opaa.indexing.FileProcessingService#subBatchSize} for the exact sizing formula. Concurrent
+ *     sub-batches of a splitting document share a single, fixed-size pool ({@code
  *     IndexingConfiguration#embeddingTaskExecutor}) process-wide, not one per document or per
- *     library - <b>but that pool bounds only the fan-out of documents that are actually being
- *     split, not the total number of concurrent embedding calls the process makes</b>: a document
- *     that is not split (too few chunks, or {@code embeddingConcurrency <= 1}) embeds directly on
- *     whichever thread called {@code storeChunks} (an indexing- or upload-pool thread), entirely
- *     outside this pool - see {@code IndexingConfiguration#embeddingTaskExecutor}'s own Javadoc for
- *     the full accounting. Default 3: moderate concurrency chosen from #734/#735's own benchmark -
- *     a CPU-bound local Ollama shows next to no throughput gain past concurrency 1 (its embedding
- *     computation itself serializes), while a network-latency-bound API/GPU backend scales close to
- *     linearly with concurrency in the same benchmark; 3 stays conservative for the former without
- *     giving up all of the latter's headroom. An operator fronting a GPU-backed or hosted embedding
- *     API can raise this (8-16 is a reasonable starting point per that same benchmark - see
- *     docs/deployment.md) once they know their backend actually serves concurrent requests in
- *     parallel. <b>A value of 1 reproduces the exact pre-#734 sequential behaviour</b> - {@code
- *     io.opaa.indexing.FileProcessingService#storeChunks} takes an entirely different, untouched
- *     code path in that case, not merely a pool of size one. Valid range: 1–32 - the upper bound
- *     keeps this a moderate, bounded fan-out rather than an unbounded one.
+ *     library - but that pool bounds only the fan-out of documents that are actually being split,
+ *     not the total number of concurrent embedding calls the process makes: a document that is not
+ *     split embeds directly on whichever thread called {@code storeChunks}, entirely outside this
+ *     pool. Default 3: a CPU-bound local Ollama shows next to no throughput gain past concurrency 1
+ *     (its embedding computation serializes), while a network-latency-bound API/GPU backend scales
+ *     close to linearly with concurrency; 3 stays conservative for the former without giving up all
+ *     of the latter's headroom. An operator fronting a GPU-backed or hosted embedding API can raise
+ *     this (8-16 is a reasonable starting point - see docs/deployment.md). A value of 1 reproduces
+ *     the exact sequential behaviour - {@code io.opaa.indexing.FileProcessingService#storeChunks}
+ *     takes an entirely different code path in that case, not merely a pool of size one. Valid
+ *     range: 1–32.
  */
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record IndexingProperties(
@@ -161,45 +144,39 @@ public record IndexingProperties(
   }
 
   /**
-   * Politeness and DoS-hardening settings for {@link IndexingSourceType#RSS_FEED} runs (#467, PR
-   * #474 review). The addresses an RSS run touches - the feed itself and every entry's detail page
-   * - come from the feed operator, not from OPAA's own configuration; {@link RssFeedParser}
-   * deliberately does not enforce any of these limits itself (it is a pure, unbounded parser meant
-   * to run without network or database), so the executor that drives it is the only place left to
-   * apply them.
+   * Politeness and DoS-hardening settings for {@link IndexingSourceType#RSS_FEED} runs. The
+   * addresses an RSS run touches - the feed itself and every entry's detail page - come from the
+   * feed operator, not from OPAA's own configuration; {@link RssFeedParser} deliberately does not
+   * enforce any of these limits itself (it is a pure, unbounded parser meant to run without network
+   * or database), so the executor that drives it is the only place left to apply them.
    *
    * @param maxEntries the maximum number of feed entries processed in a single run. Excess entries
-   *     are logged and dropped, not treated as an error - a feed is allowed to simply carry more
-   *     entries than one run processes.
+   *     are logged and dropped, not treated as an error.
    * @param maxFeedSizeBytes the maximum number of bytes read from the feed itself before parsing
    *     aborts. Enforced while streaming the response, not after it has already been fully
-   *     downloaded (PR #474 review) - the parser has no cap of its own.
+   *     downloaded - the parser has no cap of its own.
    * @param maxPageSizeBytes the maximum number of bytes read from a single entry's detail page. A
    *     page exceeding this is skipped like any other rejection by the remote end, not treated as a
    *     run-ending failure.
    * @param requestDelayMs the minimum delay, in milliseconds, between two detail-page requests -
-   *     the "Kennung des abrufenden Programms" side of being a well-behaved crawler against sites
-   *     OPAA does not operate. Default 1000: a conservative one request per second.
+   *     being a well-behaved crawler against sites OPAA does not operate. Default 1000: a
+   *     conservative one request per second.
    * @param userAgent the {@code User-Agent} header sent with every request this executor makes.
-   *     Deliberately truthful by default (see below) - impersonating a browser is explicitly out of
-   *     scope (#467).
+   *     Deliberately truthful by default - impersonating a browser is explicitly out of scope.
    * @param mainContentSelector the CSS selector (Jsoup syntax) used to find a detail page's main
    *     content, tried against the whole document. Falls back to {@code body} when it matches
    *     nothing, so an unusual page still yields the full page's text rather than nothing at all.
    * @param attachmentProfile the {@link AttachmentProfile} deciding which links on a detail page
-   *     count as attachments (#468). Defaults to {@link AttachmentProfile#GENERIC}. This is
-   *     deliberately an application property, not a per-request field on {@code
-   *     IndexingTriggerRequest} - ADR-0018 (#486) is already moving persistent source configuration
-   *     from the trigger request onto the knowledge library, and a new request field here would be
-   *     thrown away the moment that lands. See the #468 pull request description for this deviation
-   *     from the issue's "Profilwahl je Lauf" wording.
+   *     count as attachments. Defaults to {@link AttachmentProfile#GENERIC}. This is deliberately
+   *     an application property, not a per-request field on {@code IndexingTriggerRequest} -
+   *     ADR-0018 already moves persistent source configuration from the trigger request onto the
+   *     knowledge library.
    * @param maxAttachmentsPerEntry the maximum number of attachments downloaded per RSS entry.
    *     Excess candidates are logged and dropped, not treated as an error - mirrors {@link
    *     #maxEntries}'s truncation-not-failure treatment.
    * @param maxAttachmentSizeBytes the maximum number of bytes read from a single attachment.
    *     Enforced while streaming the response, not after it has already been fully downloaded
-   *     (mirrors {@link #maxPageSizeBytes}). An attachment exceeding this is skipped like any other
-   *     rejected attachment, never a run-ending failure.
+   *     (mirrors {@link #maxPageSizeBytes}).
    */
   public record Rss(
       int maxEntries,
@@ -212,13 +189,13 @@ public record IndexingProperties(
       int maxAttachmentsPerEntry,
       long maxAttachmentSizeBytes) {
 
-    /** Truthful default {@code User-Agent} - never a value that impersonates a browser (#467). */
+    /** Truthful default {@code User-Agent} - never a value that impersonates a browser. */
     static final String DEFAULT_USER_AGENT = "OPAA-Indexer/1.0";
 
     /**
      * Tried in order against the whole document; the first selector that matches anything wins.
      * {@code main}/{@code article}/{@code [role=main]} cover the vast majority of German public
-     * administration CMS templates (#467) without any per-site configuration.
+     * administration CMS templates without any per-site configuration.
      */
     static final String DEFAULT_MAIN_CONTENT_SELECTOR = "main, article, [role=main]";
 
@@ -254,19 +231,17 @@ public record IndexingProperties(
   }
 
   /**
-   * SSRF hardening for {@code HTTP_DIRECTORY}/{@code RSS_FEED} fetches (#267): {@link
+   * SSRF hardening for {@code HTTP_DIRECTORY}/{@code RSS_FEED} fetches: {@link
    * TargetAddressValidator} rejects a target whose resolved address lies in a loopback, link-local,
    * private or otherwise non-routable range, and any non-{@code http(s)} scheme.
    *
    * @param enabled whether the check runs at all. Default {@code true} - an operator with a
-   *     legitimate internal document source turns this off deliberately (env var {@code
-   *     OPAA_INDEXING_TARGET_VALIDATION_ENABLED}), the check does not default to permissive.
+   *     legitimate internal document source turns this off deliberately; the check does not default
+   *     to permissive.
    * @param allowlist hostnames (exact, case-insensitive match against the URI's own host - not a
    *     resolved address) exempted from the address check even while {@code enabled} is {@code
    *     true} - lets an operator name specific internal sources without disabling the check for
-   *     every other target. Comma-separated environment variable ({@code
-   *     OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST}), mirroring {@link
-   *     IndexingProperties#filesystemAllowlist()}'s configuration style. Empty by default.
+   *     every other target. Empty by default.
    */
   public record TargetValidation(boolean enabled, List<String> allowlist) {
 

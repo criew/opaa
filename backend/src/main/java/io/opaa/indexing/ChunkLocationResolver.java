@@ -6,9 +6,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Derives a human-readable, German location ("Fundort", #667) for a chunk from the structure of the
- * text it was cut from - the information mockup 1a prints next to a footnote ("S. 2–4", "Abschn.
- * 4.2 ‚Fristsetzung'"). Two structural signals are recognised, independently of each other:
+ * Derives a human-readable, German location ("Fundort") for a chunk from the structure of the text
+ * it was cut from - the information printed next to a footnote ("S. 2–4", "Abschn. 4.2
+ * ‚Fristsetzung'"). Two structural signals are recognised, independently of each other:
  *
  * <ul>
  *   <li><b>Page breaks</b>: a form feed ({@code \f}) marks the start of every page after the first

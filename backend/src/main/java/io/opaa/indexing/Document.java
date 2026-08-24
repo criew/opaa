@@ -48,75 +48,65 @@ public class Document {
   private String lastModifiedRemote;
 
   /**
-   * The knowledge library this document belongs to (#201) - every document belongs to exactly one
-   * library, enforced as {@code NOT NULL} with {@code fk_documents_library} once migration 012's
-   * backfill has run. Not part of the constructors (unlike {@code fileName}/{@code filePath}):
-   * callers set it explicitly after construction, the same way {@code checksum} and {@code status}
-   * are set. Since #419, a directory or URL indexing run always targets a library the caller chose
-   * and holds at least {@code EDITOR} on ({@code FileProcessingService#processFile}/{@code
-   * #processUrlFile}) - the earlier interim state, where this always resolved to a single
-   * well-known system library, is gone for new and re-indexed documents; #521 later deleted that
-   * system library and its content outright. Selecting a target library per connector source is
-   * still open, #207.
+   * The knowledge library this document belongs to - every document belongs to exactly one library,
+   * enforced as {@code NOT NULL} with {@code fk_documents_library}. Not part of the constructors
+   * (unlike {@code fileName}/{@code filePath}): callers set it explicitly after construction, the
+   * same way {@code checksum} and {@code status} are set. A directory or URL indexing run always
+   * targets a library the caller chose and holds at least {@code EDITOR} on ({@code
+   * FileProcessingService#processFile}/{@code #processUrlFile}).
    */
   @Column(name = "library_id")
   private UUID libraryId;
 
   /**
-   * The organization the {@link #libraryId} library belongs to, denormalized onto the document
-   * (#201) so the permission-aware vector search (#202) can filter chunks by organization without a
-   * join back to {@code knowledge_libraries} - see the same reasoning on {@code
+   * The organization the {@link #libraryId} library belongs to, denormalized onto the document so
+   * the permission-aware vector search can filter chunks by organization without a join back to
+   * {@code knowledge_libraries} - see the same reasoning on {@code
    * FileProcessingService#storeChunks}. Set together with {@link #libraryId}, never independently.
    */
   @Column(name = "organization_id")
   private UUID organizationId;
 
   /**
-   * The user who uploaded this document via the REST upload endpoint (#420), or {@code null} for
-   * every other {@link #sourceType} (directory crawl, URL indexing) and for documents that predate
-   * this column. Kept separate from {@link #libraryId}'s owner: a library's owner and the person
-   * who happened to upload a given file into it are frequently different once a library is shared.
+   * The user who uploaded this document via the REST upload endpoint, or {@code null} for every
+   * other {@link #sourceType} (directory crawl, URL indexing) and for documents that predate this
+   * column. Kept separate from {@link #libraryId}'s owner: a library's owner and the person who
+   * happened to upload a given file into it are frequently different once a library is shared.
    */
   @Column(name = "uploaded_by_user_id")
   private UUID uploadedByUserId;
 
   /**
-   * For an attachment discovered on an RSS entry's detail page (#468), the entry's own {@link
-   * #filePath} (its detail page URL) - the trace back to the entry the acceptance criteria of #468
-   * require ("Zu jeder Anlage ist der Eintrag erkennbar, aus dem sie stammt"). {@code null} for
-   * every other document, including the RSS entry's own row and every {@code FILESYSTEM}/{@code
-   * HTTP_DIRECTORY}/{@code UPLOAD} document.
+   * For an attachment discovered on an RSS entry's detail page, the entry's own {@link #filePath}
+   * (its detail page URL) - the trace back to the entry the origin document is found on. {@code
+   * null} for every other document, including the RSS entry's own row and every {@code
+   * FILESYSTEM}/{@code HTTP_DIRECTORY}/{@code UPLOAD} document.
    */
   @Column(name = "source_entry_url", length = 2000)
   private String sourceEntryUrl;
 
   /**
-   * A German, user-facing reason {@link #status} is {@link DocumentStatus#FAILED} (#434) - set by
-   * {@code FileProcessingService#processUploadedFileAsync} when parsing or embedding an uploaded
-   * file fails asynchronously, after the row has already been returned to the caller with {@code
-   * PENDING}. {@code null} for every other status; a document that later succeeds after a retry
-   * (there is none today, but nothing here prevents one) would have this cleared alongside {@link
-   * #status} moving back to {@link DocumentStatus#INDEXED}.
+   * A German, user-facing reason {@link #status} is {@link DocumentStatus#FAILED} - set by {@code
+   * FileProcessingService#processUploadedFileAsync} when parsing or embedding an uploaded file
+   * fails asynchronously, after the row has already been returned to the caller with {@code
+   * PENDING}. {@code null} for every other status.
    */
   @Column(name = "error_message", columnDefinition = "text")
   private String errorMessage;
 
   /**
-   * When this row was first created (#614) - backs {@code UploadPendingRecoveryRunner}'s "how long
-   * has this been PENDING" check, since {@link #indexedAt} stays {@code null} for a row's entire
-   * {@code PENDING} lifetime and cannot serve that purpose. Set once in the constructor and never
-   * updated afterwards, the same {@code updatable = false} contract {@code
-   * KnowledgeLibrary#createdAt} uses.
+   * When this row was first created - backs {@code UploadPendingRecoveryRunner}'s "how long has
+   * this been PENDING" check, since {@link #indexedAt} stays {@code null} for a row's entire {@code
+   * PENDING} lifetime. Set once in the constructor and never updated afterwards, the same {@code
+   * updatable = false} contract {@code KnowledgeLibrary#createdAt} uses.
    */
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
   /**
-   * The {@code io.opaa.library.LibraryFolder} this document sits in (#820, Epic #520 Phase 2,
-   * ADR-0020), or {@code null} for the library's root - the same convention {@code
-   * LibraryFolder#getParentFolderId()} uses one level up. Not yet set by any indexing or upload
-   * path (#821 wires folder-aware upload/listing); every document created before that lands at the
-   * root.
+   * The {@code io.opaa.library.LibraryFolder} this document sits in (ADR-0020), or {@code null} for
+   * the library's root - the same convention {@code LibraryFolder#getParentFolderId()} uses one
+   * level up.
    */
   @Column(name = "folder_id")
   private UUID folderId;
@@ -264,19 +254,17 @@ public class Document {
   }
 
   /**
-   * The deep link target for a document with no local file (#738/#739): {@link #getFilePath()}
-   * holds the remote URL itself for {@code HTTP_DIRECTORY} and {@code RSS_FEED} - the same identity
-   * {@code FileProcessingService#processUrlFile} deduplicates by - but the server-local storage
-   * path for {@code UPLOAD}/{@code FILESYSTEM}, which must stay internal (the same floor #507
-   * already draws for a library's own configured sourcePath). Shared between {@code
-   * LibraryDocumentResponses} (library listing, #738) and {@code QueryService} (citation deep
-   * links, #739) so both compute the identical value from a single place.
+   * The deep link target for a document with no local file: {@link #getFilePath()} holds the remote
+   * URL itself for {@code HTTP_DIRECTORY} and {@code RSS_FEED} - the same identity {@code
+   * FileProcessingService#processUrlFile} deduplicates by - but the server-local storage path for
+   * {@code UPLOAD}/{@code FILESYSTEM}, which must stay internal. Shared between {@code
+   * LibraryDocumentResponses} (library listing) and {@code QueryService} (citation deep links) so
+   * both compute the identical value from a single place.
    *
-   * <p>Unlike {@code LibraryResponse.sourceUrl}, which #507 masks below MANAGER, this value is
-   * deliberately visible to every VIEWER - the masked field is the library's own <em>source
-   * configuration</em> (crawl target, proxy, credentials), while this one names only a single
-   * document's own origin URL, the same visibility {@code sourceEntryUrl} has carried since #493.
-   * Maintainer decision on PR #743 (epic #740).
+   * <p>Unlike {@code LibraryResponse.sourceUrl}, which is masked below MANAGER, this value is
+   * deliberately visible to every VIEWER - the masked field is the library's own source
+   * configuration (crawl target, proxy, credentials), while this one names only a single document's
+   * own origin URL, the same visibility {@code sourceEntryUrl} has.
    */
   public String getDeepLinkSourceUrl() {
     if (sourceType == DocumentSourceType.HTTP_DIRECTORY

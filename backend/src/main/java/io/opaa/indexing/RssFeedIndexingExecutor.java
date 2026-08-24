@@ -30,74 +30,44 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Async;
 
 /**
- * Executes indexing runs for {@link IndexingSourceType#RSS_FEED} (#467, ADR-0017): fetches an RSS
- * 2.0 feed, resolves every entry's detail page and hands the page's main text - not the whole page
- * - into the shared processing chain via {@link FileProcessingService#processRssEntry}.
+ * Executes indexing runs for {@link IndexingSourceType#RSS_FEED} (ADR-0017): fetches an RSS 2.0
+ * feed, resolves every entry's detail page and hands the page's main text - not the whole page -
+ * into the shared processing chain via {@link FileProcessingService#processRssEntry}.
  *
- * <p><b>Two-stage change detection (ADR-0017).</b> The feed itself is fetched with a conditional
- * {@code GET} (ETag/{@code If-Modified-Since}, tracked per library and feed URL in {@link
- * RssFeedState} - #646, see that class's Javadoc for why per-library rather than per-URL alone) -
- * an unchanged feed ends the run after a single {@code 304} response. Every entry is then checked
- * against its stored {@code pubDate} <em>before</em> its detail page is ever requested (mirroring
- * {@link UrlIndexingExecutor#isUnchanged}), so an unchanged entry costs nothing beyond the already-
- * downloaded feed. The SHA-256 checksum computed inside {@link
- * FileProcessingService#processRssEntry} is the final, content-based layer once a page has actually
- * been fetched.
+ * <p><b>Two-stage change detection.</b> The feed itself is fetched with a conditional {@code GET}
+ * (ETag/{@code If-Modified-Since}, tracked per library and feed URL in {@link RssFeedState}) - an
+ * unchanged feed ends the run after a single {@code 304} response. Every entry is then checked
+ * against its stored {@code pubDate} before its detail page is requested (mirrors {@link
+ * UrlIndexingExecutor#isUnchanged}); the SHA-256 checksum inside {@link
+ * FileProcessingService#processRssEntry} is the final, content-based layer once a page is fetched.
  *
  * <p><b>No deletion by absence (ADR-0017, decision 5).</b> An entry that has scrolled out of the
- * feed's window is not touched here - see the ADR for why that would silently lose still-valid
- * older articles.
+ * feed's window is not touched here.
  *
- * <p><b>Hardening against a feed operator OPAA does not control</b> (#467, PR #474 review of the
- * parser this executor drives): entry- and byte-size limits, a link scheme check (only {@code
- * http}/{@code https} detail pages are ever fetched), a minimum delay between detail-page requests
- * and a truthful, configurable {@code User-Agent} - all from {@link IndexingProperties.Rss}. A
- * single rejected, oversized or unreachable entry never aborts the run; it is skipped, counted and
- * logged, and the run continues (ADR-0017's "Verhalten gegenüber fremden Zielen").
+ * <p>Entry- and byte-size limits, a link scheme check ({@code http}/{@code https} only), a minimum
+ * delay between detail-page requests and a configurable {@code User-Agent} come from {@link
+ * IndexingProperties.Rss}. A rejected, oversized or unreachable entry never aborts the run; it is
+ * skipped, counted and logged.
  *
- * <p><b>Attachments (#468).</b> Once an entry's detail page has yielded its main text, the same
- * content area is searched for attachments using the configured {@link
- * IndexingProperties.Rss#attachmentProfile()} ({@link AttachmentProfile}) - {@code GENERIC} by
- * default, {@code GSB} for the Government Site Builder's query-parameter attachment pattern. Every
- * candidate is downloaded (bounded by {@link IndexingProperties.Rss#maxAttachmentSizeBytes()},
- * subject to the same politeness delay as detail pages) and handed into the same shared processing
- * chain as an {@code HTTP_DIRECTORY} file via {@link
- * FileProcessingService#processUrlFile(java.nio.file.Path, String, String, String, long,
- * KnowledgeLibrary, DocumentSourceType, String)}, with the entry's own URL recorded as {@code
- * sourceEntryUrl} so the attachment's origin stays traceable. An attachment failure (unreachable,
- * oversized, unsupported format) is logged and skipped; unlike an entry-level failure it never
- * affects this entry's own processed/skipped/failed outcome or the run as a whole - it does,
- * however, mark the run as having deferred something (see {@link #processAttachments}), the same
- * way a lost entry does.
+ * <p><b>Attachments.</b> Once an entry's detail page has yielded its main text, the same content
+ * area is searched for attachments using the configured {@link
+ * IndexingProperties.Rss#attachmentProfile()} ({@link AttachmentProfile}). Every candidate is
+ * downloaded (bounded by {@link IndexingProperties.Rss#maxAttachmentSizeBytes()}) and handed into
+ * the shared processing chain via {@link FileProcessingService#processUrlFile(java.nio.file.Path,
+ * String, String, String, long, KnowledgeLibrary, DocumentSourceType, String)}, with the entry's
+ * own URL recorded as {@code sourceEntryUrl}. An attachment failure never affects the entry's own
+ * outcome, but marks the run as having deferred something (see {@link #processAttachments}). An
+ * entry whose {@code pubDate} is unchanged still gets its detail page fetched once for attachments
+ * alone when it has none yet ({@link DocumentRepository#existsBySourceEntryUrl}, see {@link
+ * #processUnchangedEntry}) - otherwise it would never receive attachments discovered after it was
+ * first indexed.
  *
- * <p><b>Attachments of an already-unchanged entry (#468, PR #492 review finding 1).</b> An entry
- * whose {@code pubDate} is unchanged still gets a cheap detail-page-free skip - <em>unless</em> it
- * has no attachment documents yet ({@link DocumentRepository#existsBySourceEntryUrl}), in which
- * case its detail page is fetched once more for attachments alone; see {@link
- * #processUnchangedEntry}. Without this, an entry indexed before attachment support existed would
- * never get attachments discovered for it at all, since its {@code pubDate} never changes again.
- *
- * <p><b>Credentials and proxy (#505).</b> {@code targetLibrary}'s {@code sourceCredentials} (Basic
- * Auth, {@code user:password}) and {@code sourceProxy} - already offered by the schema (#476) for
- * {@code RSS_FEED} exactly like {@code HTTP_DIRECTORY} - are applied to every request this executor
- * makes: the feed itself, every entry's detail page, and every attachment download, mirroring
- * {@link UrlIndexingExecutor#toUrlIndexingRequest}. The {@code Authorization} header is never
- * replayed to a foreign host: {@link #fetchFeed} relies on {@link
- * AutoindexCrawlerService#sendFollowingRedirects} for that, {@link #sendDetailPageRequest} only
- * ever continues to a hop {@link #isForeignHostRedirect} has already cleared, and attachment
- * downloads go through {@link UrlFileDownloader#downloadBounded}, which rejects a foreign-host
- * redirect outright before a further request is ever sent.
- *
- * <p><b>The feed's own origin, not just the redirect chain (PR #642 review, finding 1).</b> None of
- * the above protects against the <em>starting</em> address: a feed entry's own {@code <link>} and
- * an attachment candidate's URL are both content the feed operator controls, checked only for an
- * {@code http(s)} scheme before this fix - a feed carrying {@code
- * <link>https://angreifer.example/x</link>} would have sent the feed's own Basic Auth credentials
- * straight to that address on hop 0, before any redirect-chain check ever ran. {@link
- * #authHeaderForTarget} withholds the header (never the entry or attachment itself) whenever a
- * detail page or attachment target is not the feed's own origin ({@link
- * AutoindexCrawlerService#sameOrigin}) - an aggregator feed with no credentials of its own keeps
- * working exactly as before.
+ * <p><b>Credentials and proxy.</b> {@code targetLibrary}'s {@code sourceCredentials} (Basic Auth)
+ * and {@code sourceProxy} are applied to every request this executor makes, mirroring {@link
+ * UrlIndexingExecutor#toUrlIndexingRequest}. The {@code Authorization} header and {@code
+ * sourceInsecureSsl} relaxation are withheld for any target outside the feed's own origin ({@link
+ * #authHeaderForTarget}, {@link #httpClientForTarget}) - an entry's {@code <link>} or an attachment
+ * URL is content the feed operator controls, not a target the library owner vouches for.
  */
 public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
@@ -148,15 +118,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     var progress = new IndexingRunProgress(indexingJobService, jobId);
     var events =
         new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
-    // ADR-0018 (#478): the feed's address is the library's own sourceUrl, not a per-request field.
+    // ADR-0018: the feed's address is the library's own sourceUrl, not a per-request field.
     String feedUrl = targetLibrary.getSourceUrl();
 
     try {
-      // #505: sourceProxy/sourceCredentials, mirroring UrlIndexingExecutor#toUrlIndexingRequest -
-      // the library's persisted quellkonfiguration, not a per-request field. PR #642 review,
-      // finding 4: parsing itself now goes through the shared ProxyAndCredentials rather than a
-      // third inline copy, which also fixes an invalid sourceProxy port surfacing as the JDK's raw
-      // NumberFormatException message in progress.fail below.
       ProxyAndCredentials config;
       try {
         config =
@@ -169,18 +134,11 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       String authHeader =
           AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
 
-      // #637: the library's own sourceInsecureSsl, mirroring UrlIndexingExecutor#execute - before
-      // this fix it was always false here, so a RSS_FEED library configured with
-      // sourceInsecureSsl: true still rejected a self-signed certificate on its own feed fetch.
-      //
-      // #663 review, finding 1: sourceInsecureSsl must never weaken certificate validation for a
-      // target the feed's own *content* points at (an entry's <link>, an attachment URL) once that
-      // target is a foreign host - only the feed's own origin is a source configuration the library
-      // owner actually vouches for. Two clients are therefore built: secureClient always validates
-      // normally, insecureClient relaxes validation only when the library asks for it, and is used
-      // exclusively for requests {@link #httpClientForTarget} resolves as same-origin with the feed
-      // itself (mirroring {@link #authHeaderForTarget}'s already-existing same-origin decision for
-      // the Authorization header, #642 review finding 1).
+      // sourceInsecureSsl must never weaken certificate validation for a target the feed's own
+      // content points at (an entry's <link>, an attachment URL) once it leaves the feed's origin -
+      // only the feed's own origin is a source the library owner vouches for. secureClient always
+      // validates normally; insecureClient relaxes validation only when the library asks for it and
+      // is used exclusively for same-origin requests ({@link #httpClientForTarget}).
       HttpClient secureClient =
           AutoindexCrawlerService.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
       HttpClient insecureClient =
@@ -189,10 +147,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                   config.proxyHost(), config.proxyPort(), true)
               : secureClient;
 
-      // #646: keyed by (libraryId, feedUrl), not feedUrl alone - see RssFeedState's Javadoc for
-      // why a lookup by feedUrl alone let a new library inherit a previously deleted or
-      // reconfigured library's stale ETag/Last-Modified state and end its first run with a false
-      // 304.
+      // Keyed by (libraryId, feedUrl), not feedUrl alone - see RssFeedState's Javadoc.
       Optional<RssFeedState> feedState =
           feedStateRepository.findByLibraryIdAndFeedUrl(targetLibrary.getId(), feedUrl);
       HttpResponse<InputStream> feedResponse =
@@ -217,8 +172,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         byte[] feedBytes = readBounded(body, properties.maxFeedSizeBytes());
         entries = feedParser.parse(new ByteArrayInputStream(feedBytes));
       } catch (RssFeedParseException e) {
-        // German, user-facing message straight from the parser (PR #474 review) - the only
-        // trace an operator has for e.g. undefined HTML entities turning a feed unparseable.
+        // German, user-facing message straight from the parser.
         log.warn("RSS feed did not parse: {}", feedUrl, e);
         progress.fail(e.getMessage());
         return;
@@ -230,10 +184,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         return;
       }
 
-      // #490 review, finding 3: whether entries were deferred (dropped by the max-entries
-      // truncation below, or skipped because the remote end rejected/failed to hand over a
-      // detail page) decides whether the feed's ETag/Last-Modified may be persisted at all -
-      // see the saveFeedState call below for why.
+      // Whether entries were deferred (truncated below, or skipped because the remote end
+      // rejected/failed to hand over a detail page) decides whether the feed's ETag/Last-Modified
+      // may be persisted at all - see the saveFeedState call below.
       boolean truncated = entries.size() > properties.maxEntries();
       int totalFound = entries.size();
       if (truncated) {
@@ -262,11 +215,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         progress.report();
       }
 
-      // #490 review, finding 3: an ETag/Last-Modified saved after a run that deferred entries
-      // (truncation, or a detail page the remote end rejected/failed to hand over) would let the
-      // *next* run's feed-level 304 permanently hide those entries - even once the remote side
-      // (e.g. a bot-protection challenge) stops rejecting them. The feed's conditional-GET state
-      // is therefore only advanced once a run has actually accounted for every entry it saw.
+      // An ETag/Last-Modified saved after a run that deferred entries would let a future 304
+      // permanently hide those entries - the conditional-GET state only advances once a run has
+      // accounted for every entry it saw.
       if (!anyEntryDeferred.get() && progress.failedCount() == 0) {
         saveFeedState(targetLibrary.getId(), feedUrl, feedResponse);
       } else {
@@ -285,13 +236,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         Thread.currentThread().interrupt();
       }
     } catch (DataIntegrityViolationException e) {
-      // #646, PR #665 review, optional finding 6: fk_rss_feed_state_library (migration 045) makes
-      // the narrow delete-during-run race visible as a constraint violation - the target library
-      // was deleted (e.g. by a concurrent request that raced
-      // KnowledgeLibraryService#deleteLibrary's
-      // own RUNNING guard) between this run starting and saveFeedState's write. The raw JDBC/
-      // Hibernate exception message must never reach the user-facing run status (German, technical
-      // detail belongs in the log only, mirroring every other progress.fail call in this class).
+      // fk_rss_feed_state_library makes the delete-during-run race visible as a constraint
+      // violation - the target library was deleted between this run starting and saveFeedState's
+      // write. The raw JDBC/Hibernate message must never reach the user-facing run status.
       log.error("RSS feed indexing failed - target library no longer exists: {}", feedUrl, e);
       events.finalizeRun();
       progress.fail("Die Bibliothek wurde während des Laufs gelöscht.");
@@ -326,12 +273,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
 
-    // #651: an http(s)-prefixed link can still be syntactically invalid (e.g. an embedded space
-    // or an illegal host character) - URI.create(entryUrl) deep inside fetchDetailPage would then
-    // throw IllegalArgumentException, uncaught by any of the catch clauses below, and propagate all
-    // the way out to execute()'s outer catch (Exception e), ending the *entire* run instead of just
-    // this one malformed entry - exactly like the scheme check above, but for a validity problem
-    // isHttpOrHttps's plain prefix check cannot detect.
+    // An http(s)-prefixed link can still be syntactically invalid; URI.create(entryUrl) inside
+    // fetchDetailPage would then throw IllegalArgumentException uncaught, ending the whole run
+    // instead of just this entry.
     if (!isValidUri(entryUrl)) {
       log.warn("Skipping RSS entry with a syntactically invalid link: {}", entryUrl);
       events.record(
@@ -368,14 +312,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
               entryUrl,
               authHeaderForTarget(authHeader, feedUrl, entryUrl));
     } catch (RejectedByRemoteException e) {
-      // Deliberately kept apart from the catch below (ADR-0017): a 403/429/redirect to a
-      // foreign host is the *other side* declining to hand over the page, not a failure of
-      // OPAA's own processing - both still count as "skipped" (the job status has no separate
-      // bucket), but with a log message that says which of the two happened. #513/maintainer
-      // nachtrag to #693: the German event message is e.userMessage(), never e.getMessage() -
-      // the latter can carry the raw, unsanitized redirect target (see isForeignHostRedirect),
-      // which must never reach the UI; userMessage() is distinguishable per cause and already
-      // stripped to scheme/host only where a target is named at all.
+      // Kept apart from the catch below (ADR-0017): a 403/429/redirect to a foreign host is the
+      // other side declining to hand over the page, not a processing failure. Both count as
+      // "skipped". The German event message is e.userMessage(), never e.getMessage() - the latter
+      // can carry the raw, unsanitized redirect target and must never reach the UI.
       log.warn(
           "RSS detail page rejected by remote host, skipping: {} ({})", entryUrl, e.getMessage());
       events.record(IndexingEventCategory.REJECTED, e.userMessage(), entryUrl);
@@ -383,18 +323,16 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       anyEntryDeferred.set(true);
       return;
     } catch (TargetAddressValidator.TargetAddressBlockedException e) {
-      // #267: e.getMessage() is already German, user-facing and never carries more than the
-      // rejected host itself (see TargetAddressValidator's own Javadoc) - safe to show as-is,
-      // unlike RejectedByRemoteException's raw message above.
+      // e.getMessage() is already German, user-facing and safe to show as-is (see
+      // TargetAddressValidator's Javadoc).
       log.warn("RSS detail page target rejected, skipping: {} ({})", entryUrl, e.getMessage());
       events.record(IndexingEventCategory.REJECTED, e.getMessage(), entryUrl);
       progress.recordSkipped();
       anyEntryDeferred.set(true);
       return;
     } catch (UnsupportedContentTypeException e) {
-      // #490 review, finding 2: a <link> pointing straight at a PDF (or any non-HTML content)
-      // must not be pushed through Jsoup and indexed as garbled binary text - attachments are
-      // #468's job, not this one's.
+      // A <link> pointing straight at a PDF (or any non-HTML content) must not be pushed through
+      // Jsoup and indexed as garbled binary text - attachments are handled separately.
       log.warn(
           "Skipping RSS detail page with an unsupported content type, skipping: {} ({})",
           entryUrl,
@@ -416,12 +354,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       }
       return;
     } catch (IllegalArgumentException e) {
-      // #651, PR #664 review finding 1: entryUrl itself already passed isValidUri above, but a
-      // redirect hop's own Location header is server-controlled input no pre-validation can cover -
-      // sendDetailPageRequest's currentUri.resolve(location) can still throw this for a Location
-      // value that is not a valid relative/absolute reference at all, uncaught by any of the
-      // clauses above. Skipping only this entry (instead of letting it propagate to execute()'s
-      // outer catch and end the whole run) mirrors every other rejection above.
+      // entryUrl already passed isValidUri above, but a redirect hop's own Location header is
+      // server-controlled and can still make currentUri.resolve(location) throw here.
       log.warn(
           "Skipping RSS entry whose detail-page redirect could not be resolved: {} ({})",
           entryUrl,
@@ -450,7 +384,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
               publishedAt.map(Instant::toString).orElse(null),
               targetLibrary);
       if (result == FileProcessingResult.QUOTA_EXCEEDED) {
-        // #119: see AsyncIndexingExecutor's own handling of this outcome.
+        // See AsyncIndexingExecutor's own handling of this outcome.
         events.record(
             IndexingEventCategory.REJECTED,
             storageQuotaService.quotaExceededMessage(targetLibrary.getId()),
@@ -485,16 +419,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Handles an entry whose {@code pubDate} is unchanged (#468, PR #492 review finding 1). Before
-   * this fix, an unchanged entry returned immediately - which meant an entry indexed *before*
-   * attachment support existed, or before this feature's attachment profile was configured, never
-   * had its attachments discovered at all: its {@code pubDate} never changes again, so {@link
-   * #processEntry} would forever take this branch and never re-fetch the detail page attachments
-   * are found on. This method closes that gap cheaply: it checks whether at least one attachment
-   * document already exists for this entry ({@link DocumentRepository#existsBySourceEntryUrl}) and
-   * only fetches the detail page - for attachments alone, the entry's own main text is not
-   * reprocessed - when none do. An entry that already has its attachments stays as cheap as before
-   * (no detail-page request at all).
+   * Handles an entry whose {@code pubDate} is unchanged. Since the pubDate never changes again,
+   * {@link #processEntry} would otherwise never re-fetch the detail page attachments are found on.
+   * This method fetches the detail page for attachments alone (the entry's own text is not
+   * reprocessed) only when no attachment document exists yet for it ({@link
+   * DocumentRepository#existsBySourceEntryUrl}); an entry that already has its attachments stays as
+   * cheap as before.
    */
   private void processUnchangedEntry(
       HttpClient secureClient,
@@ -579,10 +509,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       }
       return;
     } catch (IllegalArgumentException e) {
-      // #651, PR #664 review finding 1 - mirrors processEntry's identical catch above: a redirect
-      // hop's own (server-controlled) Location header can still make currentUri.resolve(location)
-      // throw here, uncaught by any clause above, ending the whole run instead of just deferring
-      // this entry's attachment backfill to a future one.
+      // Mirrors processEntry's identical catch: a redirect hop's own Location header can still
+      // make currentUri.resolve(location) throw here.
       log.warn(
           "Could not fetch RSS detail page to backfill attachments, its redirect could not be"
               + " resolved, will retry on a future run: {} ({})",
@@ -610,18 +538,11 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * Downloads and indexes every attachment {@code candidates} lists, up to {@link
-   * IndexingProperties.Rss#maxAttachmentsPerEntry()} (#468). Never throws: a single attachment that
-   * cannot be downloaded, exceeds the configured size limit, or turns out to be an unsupported
-   * format is logged and skipped, exactly as the issue's acceptance criteria require ("Ein
-   * Anlagen-Fehler bricht weder Eintrag noch Lauf ab") - it has no effect on {@code entryUrl}'s own
-   * processed/skipped/failed outcome, which was already decided by the time this method runs.
-   *
-   * <p><b>{@code anyEntryDeferred} (PR #492 review, finding 2).</b> A lost attachment - too large,
-   * unreachable, rejected, or cut off by {@link IndexingProperties.Rss#maxAttachmentsPerEntry()} -
-   * marks the run the same way a deferred entry does: without this, {@code saveFeedState} could
-   * persist the feed's ETag for a run that actually lost an attachment, and the entry's own {@code
-   * pubDate} check would then suppress every future attempt to recover it (the #490 finding-3 class
-   * of bug, one level down).
+   * IndexingProperties.Rss#maxAttachmentsPerEntry()}. Never throws: a lost attachment (too large,
+   * unreachable, rejected, unsupported format, or cut off by the per-entry limit) is logged and
+   * skipped, with no effect on {@code entryUrl}'s own processed/skipped/failed outcome - but marks
+   * {@code anyEntryDeferred}, the same way a deferred entry does, so {@code saveFeedState} does not
+   * persist an ETag that would suppress a future retry of the lost attachment.
    */
   private void processAttachments(
       HttpClient secureClient,
@@ -661,11 +582,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Downloads and indexes a single attachment. Deliberately never lets an exception escape - PR
-   * #492 review, finding 11: an attachment that throws an unchecked exception (e.g. an unusual
-   * malformed URL) would otherwise propagate out of {@link #processEntry}'s already-passed {@code
-   * recordProcessed()} call and into its {@code catch (Exception e)}, counting the same entry as
-   * both processed <em>and</em> failed.
+   * Downloads and indexes a single attachment. Deliberately never lets an exception escape:
+   * otherwise it would propagate out of {@link #processEntry}'s already-passed {@code
+   * recordProcessed()} call into its own {@code catch (Exception e)}, counting the same entry as
+   * both processed and failed.
    */
   private void processAttachment(
       HttpClient secureClient,
@@ -680,9 +600,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       String feedUrl) {
     UrlFileDownloader.DownloadedFile downloaded = null;
     try {
-      // #663 review, finding 1: an attachment candidate's own URL is content the feed operator
-      // controls, exactly like an entry's <link> (see #httpClientForTarget) - sourceInsecureSsl
-      // must not weaken certificate validation for it once it points off the feed's own origin.
+      // An attachment candidate's own URL is content the feed operator controls, exactly like an
+      // entry's <link> (see #httpClientForTarget) - sourceInsecureSsl must not weaken certificate
+      // validation once it points off the feed's own origin.
       HttpClient client =
           httpClientForTarget(secureClient, insecureClient, feedUrl, candidate.url());
       downloaded =
@@ -696,11 +616,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
       String contentType = downloaded.contentType();
       if (isHtmlContentType(contentType)) {
-        // #492 review, finding 3: an HTML response on what a profile identified as an attachment
-        // link - a bot-protection challenge or a 200-status error page - must never be trusted
-        // just because the *URL* carried a supported extension (GENERIC's case; GSB's candidates
-        // never carry an extension to begin with, so they already went through
-        // extensionForContentType, which has no HTML mapping and would already reject this).
+        // An HTML response on what a profile identified as an attachment link - a bot-protection
+        // challenge or a 200-status error page - must never be trusted just because the URL
+        // carried a supported extension.
         log.info(
             "Skipping RSS attachment that answered with HTML instead of a document (likely a"
                 + " bot-protection or error page): {} (from entry {})",
@@ -714,20 +632,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         return;
       }
 
-      // The GSB profile's candidates carry no extension in their URL (#468) - resolved here, once
-      // the response's actual Content-Type is known, rather than in AttachmentProfile itself,
-      // which never downloads anything. Only a display name / hint from here on (#404) - the
-      // actual accept/reject decision below is made from the downloaded bytes.
+      // The GSB profile's candidates carry no extension in their URL - resolved here, once the
+      // response's actual Content-Type is known. Only a display name / hint from here on; the
+      // accept/reject decision below is made from the downloaded bytes.
       String fileName = resolveFileName(candidate.suggestedFileName(), contentType);
 
-      // #404: the same content-based decision the other two indexing paths use, now that the
-      // attachment's bytes are already on disk - a declared Content-Type header (used only for
-      // resolveFileName above) is server-asserted, not verified content.
-      //
-      // #404 review, finding 5: detectMediaType's IOException is caught right here, not by the
-      // broader catch (IOException | InterruptedException e) below - that one reports "Anlage
-      // nicht erreichbar", which would be misleading for a failure reading a file already
-      // downloaded and sitting on local disk; the remote end answered just fine.
+      // Caught here, not by the broader catch (IOException | InterruptedException e) below - that
+      // one reports "Anlage nicht erreichbar", which would be misleading for a read failure on a
+      // file already downloaded; the remote end answered just fine.
       String detectedMimeType;
       try {
         detectedMimeType = SupportedDocumentFormats.detectMediaType(downloaded.path());
@@ -762,7 +674,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         return;
       }
       if (decision.extensionMismatch()) {
-        // #404 acceptance criteria: indexed anyway, only reported.
+        // Indexed anyway, only reported.
         events.record(
             IndexingEventCategory.FORMAT_MISMATCH,
             "Dateiendung passt nicht zum erkannten Inhalt (erkannt: "
@@ -771,13 +683,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             candidate.url());
       }
 
-      // #492 review, finding 7: the downloaded temp file's own suffix reflects
-      // candidate.suggestedFileName(), which for a GSB attachment carries no extension at all
-      // (".tmp") - Files.probeContentType inside FileProcessingService#processUrlFile probes that
-      // physical file, not the resolved fileName above, and would find nothing even though the
-      // response's Content-Type was known all along. Renaming the temp file to match the resolved
-      // name's extension lets that probe succeed the normal way, without changing
-      // processUrlFile's signature.
+      // Files.probeContentType inside FileProcessingService#processUrlFile probes the physical
+      // temp file, which for a GSB attachment carries no extension (".tmp") - renaming it to match
+      // the resolved name's extension lets that probe succeed.
       Path indexedFile = withMatchingExtension(downloaded.path(), fileName);
 
       long size = Files.size(indexedFile);
@@ -792,12 +700,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
               DocumentSourceType.RSS_FEED,
               entryUrl);
       if (result == FileProcessingResult.QUOTA_EXCEEDED) {
-        // #119: see AsyncIndexingExecutor's own handling of this outcome. Deferred (not
-        // recordSkipped, see the field-level QUOTA_EXCEEDED branch above for the contrast) rather
-        // than counted, the same way a lost/oversized attachment already is just below - an
-        // attachment was never a discrete unit of the run's own total to begin with (#518, next
-        // comment), so there is nothing to mark skipped here, only the feed's ETag persistence to
-        // defer so a future run retries it.
+        // Deferred, not recordSkipped: an attachment was never a discrete unit of the run's own
+        // total, so there is nothing to mark skipped - only the feed's ETag persistence to defer
+        // so a future run retries it.
         events.record(
             IndexingEventCategory.REJECTED,
             storageQuotaService.quotaExceededMessage(targetLibrary.getId()),
@@ -805,9 +710,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         anyEntryDeferred.set(true);
         return;
       }
-      // #518: an unchanged attachment (same checksum as an already-indexed document) is
-      // deduplicated by processUrlFile itself and returns SKIPPED - it must not inflate the
-      // document count a second time for a document already counted on a previous run.
+      // An unchanged attachment (same checksum as an already-indexed document) is deduplicated by
+      // processUrlFile itself and returns SKIPPED - must not inflate the document count again.
       if (result == FileProcessingResult.PROCESSED) {
         progress.recordDocumentIndexed();
       }
@@ -869,30 +773,19 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * Appends an extension derived from {@code contentType} when {@code suggestedFileName} carries no
-   * extension at all (#468, the Government Site Builder profile's case) - a no-op for {@link
-   * AttachmentProfile#GENERIC} candidates, which always already carry one.
+   * extension at all (the Government Site Builder profile's case) - a no-op for {@link
+   * AttachmentProfile#GENERIC} candidates, which always already carry one. Checks {@code
+   * AttachmentProfile.fileHasSomeExtension}, not {@link SupportedDocumentFormats#isSupported}: a
+   * GENERIC candidate can carry an extension {@link SupportedDocumentFormats} does not recognize
+   * (e.g. {@code bescheid.csv}), and must not get a second, content-type-derived extension appended
+   * on top. Only a name with no extension whatsoever gets one synthesized here; from here on, only
+   * the actually detected content - never this declared, server-asserted {@code contentType} -
+   * decides acceptance.
    *
-   * <p><b>Checks {@code AttachmentProfile.fileHasSomeExtension}, not {@link
-   * SupportedDocumentFormats#isSupported} (#404 review, finding 2 follow-up).</b> A GENERIC
-   * candidate can now carry an extension {@link SupportedDocumentFormats} does not recognize (a
-   * document linked as {@code bescheid.csv}, the exact case #404 exists for) - the old {@code
-   * isSupported} check would have treated that the same as GSB's extension-less case and appended a
-   * second, content-type-derived extension on top ({@code bescheid.csv.pdf}), corrupting the very
-   * name {@link SupportedDocumentFormats#decideForFileName} below needs intact to compare against
-   * the actual detected content. Only a name with no extension whatsoever still gets one
-   * synthesized here - from here on, only the actually detected content (never this declared,
-   * server-asserted {@code contentType}) decides acceptance.
-   *
-   * <p><b>Residual gap for GSB's own extension-less candidates (#404 review, finding 6).</b> A GSB
-   * attachment carries no URL extension to begin with, so the text-tolerant branch of {@link
-   * SupportedDocumentFormats#decideForFileName} - which only accepts ambiguous, text-like content
-   * once the file's own claimed extension already says {@code .md}/{@code .txt} - can only ever be
-   * satisfied here via the extension this method just synthesized from the declared {@code
-   * Content-Type} header, not from anything independently verified. A GSB endpoint that mislabels a
-   * non-text response as {@code Content-Type: text/plain} would therefore still be trusted for that
-   * one disambiguating bit, same as before #404. Accepted as a narrow, pre-existing gap: GSB's
-   * addresses carry no extension of their own at all, so the declared header is the only hint
-   * available - the alternative would be rejecting every GSB text attachment outright.
+   * <p>Known gap: a GSB attachment (no URL extension) that mislabels a non-text response as {@code
+   * Content-Type: text/plain} is still trusted for the text-tolerant acceptance branch of {@link
+   * SupportedDocumentFormats#decideForFileName}, since the declared header is the only hint
+   * available for an extension-less address.
    */
   private static String resolveFileName(String suggestedFileName, String contentType) {
     if (AttachmentProfile.fileHasSomeExtension(suggestedFileName)) {
@@ -909,9 +802,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * Renames {@code tempFile} to a new temp file carrying {@code fileName}'s own extension, when it
-   * does not already have it (#492 review, finding 7). A no-op - returns {@code tempFile} unchanged
-   * - whenever the extension already matches, which covers every {@link AttachmentProfile#GENERIC}
-   * attachment (its candidates already carry a supported extension the download used verbatim).
+   * does not already have it. A no-op when the extension already matches, which covers every {@link
+   * AttachmentProfile#GENERIC} attachment.
    */
   private static Path withMatchingExtension(Path tempFile, String fileName) throws IOException {
     String desiredSuffix = extractExtension(fileName);
@@ -939,9 +831,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       throws IOException, InterruptedException {
     Map<String, String> headers = new LinkedHashMap<>();
     headers.put("User-Agent", properties.userAgent());
-    // #505: the library's own sourceCredentials, exactly like UrlIndexingExecutor already applies
-    // to its own crawl. sendFollowingRedirects itself drops this header the moment a hop leaves
-    // the feed's own origin, so a redirect (e.g. http -> https) never leaks it to a foreign host.
+    // sendFollowingRedirects drops this header the moment a hop leaves the feed's own origin, so
+    // a redirect never leaks it to a foreign host.
     if (authHeader != null) {
       headers.put("Authorization", authHeader);
     }
@@ -975,24 +866,19 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     feedStateRepository.save(state);
   }
 
-  /**
-   * An entry's detail page, reduced to its main content's text and attachment candidates (#468).
-   */
+  /** An entry's detail page, reduced to its main content's text and attachment candidates. */
   private record DetailPage(String mainText, List<AttachmentCandidate> attachments) {}
 
   /**
-   * Fetches a single entry's detail page and reduces it to its main content's text (#467), together
-   * with every attachment the configured {@link AttachmentProfile} finds inside that same content
-   * area (#468). {@code nav}/{@code header}/{@code footer}/menu-ish elements are stripped before
-   * the configured selector is applied, so boilerplate that happens to sit inside the matched main
-   * element (a skip link, a "share this article" bar) does not survive either, and is never
-   * considered for attachments.
+   * Fetches a single entry's detail page and reduces it to its main content's text, together with
+   * every attachment the configured {@link AttachmentProfile} finds inside that same content area.
+   * {@code nav}/{@code header}/{@code footer}/menu-ish elements are stripped before the configured
+   * selector is applied, so boilerplate inside the matched main element does not survive either and
+   * is never considered for attachments.
    *
-   * <p>{@code secureClient}/{@code insecureClient} (#663 review, finding 1): {@link
-   * #httpClientForTarget} picks the client for {@code entryUrl} itself, once, before any redirect
-   * is followed - {@link #sendDetailPageRequest} already refuses every hop that would leave {@code
-   * entryUrl}'s own origin (a foreign one, or the feed's), so the origin - and therefore which
-   * client is correct - never changes mid-chain.
+   * <p>{@link #httpClientForTarget} picks {@code secureClient}/{@code insecureClient} for {@code
+   * entryUrl} once, before any redirect is followed - {@link #sendDetailPageRequest} refuses every
+   * hop that would leave {@code entryUrl}'s own origin, so the origin never changes mid-chain.
    */
   private DetailPage fetchDetailPage(
       HttpClient secureClient,
@@ -1004,10 +890,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     HttpClient httpClient = httpClientForTarget(secureClient, insecureClient, feedUrl, entryUrl);
     HttpResponse<InputStream> response = sendDetailPageRequest(httpClient, entryUrl, authHeader);
 
-    // #490 review, finding 4: every path below - the three early rejections and the ordinary
-    // 200 - must close the response body. try-with-resources around the whole evaluation (rather
-    // than only around the byte-reading branch, as before) closes it on every exit, including the
-    // three throws, instead of leaking an open connection until GC gets around to it.
+    // Every path below - the three early rejections and the ordinary 200 - must close the
+    // response body, hence try-with-resources around the whole evaluation.
     try (InputStream body = response.body()) {
       if (response.statusCode() == 403 || response.statusCode() == 429) {
         throw new RejectedByRemoteException(
@@ -1026,8 +910,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
       String contentType = response.headers().firstValue("Content-Type").orElse(null);
       if (!isHtmlContentType(contentType)) {
-        // #490 review, finding 2: a <link> pointing straight at a PDF (or anything else that is
-        // not HTML) must never be pushed through Jsoup - attachments are #468's job.
+        // A <link> pointing straight at a PDF (or anything else that is not HTML) must never be
+        // pushed through Jsoup - attachments are handled separately.
         throw new UnsupportedContentTypeException(
             contentType != null ? contentType : "(kein Content-Type)");
       }
@@ -1043,15 +927,13 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                 + entryUrl);
       }
 
-      // #490 review, finding 1: the server's declared charset (Content-Type's charset
-      // parameter) wins when present; otherwise Jsoup.parse(InputStream, ...) itself detects the
-      // charset from a BOM or a <meta> tag and falls back to UTF-8 - never a hardcoded
-      // StandardCharsets.UTF_8, which silently mangled e.g. ISO-8859-1 pages into U+FFFD.
+      // The server's declared charset wins when present; otherwise Jsoup.parse(InputStream, ...)
+      // itself detects the charset from a BOM or a <meta> tag and falls back to UTF-8 - never a
+      // hardcoded StandardCharsets.UTF_8, which silently mangles e.g. ISO-8859-1 into U+FFFD.
       org.jsoup.nodes.Document htmlDoc =
           Jsoup.parse(new ByteArrayInputStream(pageBytes), charsetNameFrom(contentType), entryUrl);
-      // Boilerplate removal (#467 acceptance criteria): nav/header/footer/menu-ish elements
-      // never survive into the index, regardless of whether they sit inside or outside the
-      // matched main element below.
+      // nav/header/footer/menu-ish elements never survive into the index, regardless of whether
+      // they sit inside or outside the matched main element below.
       htmlDoc
           .select(
               "nav, header, footer, [role=navigation], [role=banner], [role=contentinfo],"
@@ -1071,17 +953,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * Sends the detail-page request for {@code entryUrl}, manually following up to {@link
-   * AutoindexCrawlerService#MAX_REDIRECTS} same-origin redirects (#538) - {@code httpClient} (built
-   * with {@code Redirect.NEVER} by {@link AutoindexCrawlerService#buildHttpClient}) never follows
-   * one on its own any more. A redirect off origin (a different host or scheme, or a protocol
-   * downgrade specifically - {@link AutoindexCrawlerService#sameOrigin}) is rejected right here
-   * with a {@link RejectedByRemoteException} - the same exception a post-hoc check on an
-   * already-followed response produced before #538, still thrown for the same reason (ADR-0017's
-   * bot-protection motivation), just before the foreign target is ever contacted instead of after.
+   * AutoindexCrawlerService#MAX_REDIRECTS} same-origin redirects - {@code httpClient} (built with
+   * {@code Redirect.NEVER}) never follows one on its own. A redirect off origin (different
+   * host/scheme, or a protocol downgrade - {@link AutoindexCrawlerService#sameOrigin}) is rejected
+   * right here with a {@link RejectedByRemoteException}, before the foreign target is contacted.
    *
-   * <p><b>{@code authHeader} (#505).</b> Sent on every hop this loop actually reaches - a foreign
-   * host is always rejected with {@link RejectedByRemoteException} before the request for it is
-   * built, so the header is never resent to anything outside {@code entryUrl}'s own origin.
+   * <p>{@code authHeader} is sent on every hop this loop reaches - a foreign host is always
+   * rejected before its request is built, so the header is never resent outside {@code entryUrl}'s
+   * own origin.
    */
   private HttpResponse<InputStream> sendDetailPageRequest(
       HttpClient httpClient, String entryUrl, String authHeader)
@@ -1111,9 +990,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       }
       URI redirectUri = currentUri.resolve(location.get());
       closeQuietly(response.body());
-      // #538 follow-up review: a protocol downgrade is refused outright, the one thing
-      // Redirect.NORMAL itself always refused too - see
-      // AutoindexCrawlerService.isSchemeDowngrade's Javadoc.
+      // A protocol downgrade is refused outright - see AutoindexCrawlerService.isSchemeDowngrade.
       if (AutoindexCrawlerService.isSchemeDowngrade(currentUri, redirectUri)) {
         throw new RejectedByRemoteException(
             "refusing a protocol downgrade redirect (https to http): " + redirectUri,
@@ -1163,37 +1040,13 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Whether {@code finalUri} is a different origin (scheme, host and normalized port - {@link
-   * AutoindexCrawlerService#sameOrigin}, #538 follow-up review) than {@code originalUrl} - the
-   * signature of a bot-protection challenge page a feed operator's detail page redirected to (#467,
-   * ADR-0017 motivation), distinguished from an ordinary same-origin redirect (e.g. a trailing
-   * slash). A scheme change (including an {@code http} to {@code https} upgrade) now counts as a
-   * different origin too, not only a different host - {@link #sendDetailPageRequest} rejects a
-   * downgrade specifically before ever reaching this check.
-   *
-   * <p><b>An unparsable host on either side is foreign, not "not foreign" (#651).</b> Delegates the
-   * comparison entirely to {@link AutoindexCrawlerService#sameOrigin}, which already treats a
-   * {@code null} host on either side (a hostname {@code URI} cannot parse, e.g. one containing an
-   * underscore) as never matching - previously this method special-cased {@code getHost() == null}
-   * itself and returned {@code false} ("not foreign") whenever a host could not be parsed, the
-   * exact opposite of {@code sameOrigin}'s reasoning (#615 review, finding 1): a redirect target
-   * OPAA cannot even identify the host of must never be trusted with the feed's own credentials.
-   *
-   * <p><b>An unparsable {@code originalUrl} is foreign too (PR #664 review, finding 2).</b> {@code
-   * originalUrl} is always {@code entryUrl} or an already-followed, previously-vetted redirect hop
-   * here - by the time this method runs it has no legitimate reason to fail {@code new URI(...)}.
-   * Falling back to "not foreign" on that failure would have silently matched the same
-   * inverted-default bug the null-host fix above closes; {@code true} is the only answer consistent
-   * with the rest of this method's "unparsable = untrustworthy" reasoning.
-   *
-   * <p><b>A same-host http→https upgrade is not foreign (#693).</b> Delegates to {@link
-   * AutoindexCrawlerService#isRedirectOriginTrusted} rather than {@code sameOrigin} directly - the
-   * production case this method's own class Javadoc already flagged as "now counts as a different
-   * origin too" was too strict for the ubiquitous upgrade redirect: a Basic-Auth-protected {@code
-   * http://} source whose server 301'd every request to {@code https://} had every one of its
-   * entries rejected as "redirected to a foreign host", observed on a real deployment (issue #693).
-   * {@code isSchemeDowngrade} still refuses the opposite direction unconditionally, independent of
-   * this method.
+   * Whether {@code finalUri} is a different origin (scheme, host and normalized port) than {@code
+   * originalUrl} - the signature of a bot-protection challenge page. An unparsable host on either
+   * side, or an unparsable {@code originalUrl}, is always treated as foreign, never trusted with
+   * the feed's own credentials. Delegates to {@link
+   * AutoindexCrawlerService#isRedirectOriginTrusted} rather than {@code sameOrigin} directly, so a
+   * same-host {@code http}→{@code https} upgrade is not counted as foreign; {@link
+   * #sendDetailPageRequest} refuses the opposite (downgrade) direction unconditionally.
    */
   private boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
     try {
@@ -1206,15 +1059,13 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * Restricts {@code authHeader} to a request whose target shares the feed's own origin ({@link
-   * AutoindexCrawlerService#sameOrigin}) - PR #642 review, finding 1. Neither {@code
-   * sendDetailPageRequest} nor {@code UrlFileDownloader#downloadBounded}'s own foreign-host checks
-   * protect against the <em>starting</em> address of a detail-page or attachment request: both only
-   * ever compare a redirect hop against the previous one, never against the feed itself. An entry's
-   * own {@code <link>} or an attachment candidate's URL is content the feed operator controls, so a
-   * request to an address outside the feed's origin must never carry credentials configured for the
-   * feed's own host - the entry (or attachment) is still processed, only the header is withheld, so
-   * an aggregator feed without its own credentials keeps working. An unparseable {@code targetUrl}
-   * is treated as foreign (no header) rather than trusted by default.
+   * AutoindexCrawlerService#sameOrigin}). Neither {@code sendDetailPageRequest} nor {@code
+   * UrlFileDownloader#downloadBounded}'s own foreign-host checks protect against the starting
+   * address of a request: both only compare a redirect hop against the previous one, never against
+   * the feed itself. An entry's own {@code <link>} or an attachment URL is content the feed
+   * operator controls, so a request outside the feed's origin must never carry the feed's own
+   * credentials - the entry/attachment is still processed, only the header is withheld. An
+   * unparseable {@code targetUrl} is treated as foreign.
    */
   private static String authHeaderForTarget(String authHeader, String feedUrl, String targetUrl) {
     if (authHeader == null) {
@@ -1224,15 +1075,11 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Picks {@code insecureClient} for a request whose target shares the feed's own origin ({@link
-   * AutoindexCrawlerService#sameOrigin}), {@code secureClient} for anything else - #663 review,
-   * finding 1. {@code sourceInsecureSsl} is a property of the library's own configured source, not
-   * a blanket "skip certificate validation for whatever this feed points at": an entry's own {@code
-   * <link>} or an attachment candidate's URL is content the feed operator controls, exactly like
-   * {@link #authHeaderForTarget}'s credentials case above, and a request to an address outside the
-   * feed's origin must be validated normally, no matter how the library itself is configured. An
-   * unparseable {@code targetUrl} is treated as foreign (the secure client) rather than trusted by
-   * default.
+   * Picks {@code insecureClient} for a request whose target shares the feed's own origin, {@code
+   * secureClient} for anything else. {@code sourceInsecureSsl} is a property of the library's own
+   * configured source, not a blanket "skip certificate validation for whatever this feed points at"
+   * - mirrors {@link #authHeaderForTarget}'s credentials reasoning. An unparseable {@code
+   * targetUrl} is treated as foreign (the secure client).
    */
   private static HttpClient httpClientForTarget(
       HttpClient secureClient, HttpClient insecureClient, String feedUrl, String targetUrl) {
@@ -1268,22 +1115,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Whether {@code url} is a syntactically valid, resolvable {@link URI} (#651) - {@code
-   * isHttpOrHttps} only checks the scheme prefix, so an http(s)-prefixed link with e.g. an embedded
-   * space or an illegal host character still passes it, but would make {@code URI.create(url)}
-   * throw {@link IllegalArgumentException} the moment {@link #fetchDetailPage} (or {@link
-   * #processUnchangedEntry}'s own detail-page fetch) is reached.
-   *
-   * <p><b>{@code getHost() != null} is checked too (PR #664 review, finding 1).</b> {@code
-   * URI.create} itself accepts a link whose host it cannot parse (e.g. a raw, non-punycode IDN like
-   * {@code https://münchen.de/...}, or one containing an underscore) without throwing at all -
-   * {@code getHost()} then simply returns {@code null}. Only the later {@code
-   * HttpRequest.newBuilder().uri(...)} call inside {@link #sendDetailPageRequest} rejects such a
-   * URI (with {@code IllegalArgumentException: unsupported URI}), by which point this check has
-   * long been passed and the same uncaught-exception problem this method exists to close would
-   * recur. This is deliberately a stricter, extra condition on top of validity - not a delegation
-   * to {@link AutoindexCrawlerService#sameOrigin}, which answers a different question (same origin
-   * as another URI) and always needs two URIs to compare, not one to validate on its own.
+   * Whether {@code url} is a syntactically valid, resolvable {@link URI} with a parseable host.
+   * {@code isHttpOrHttps} only checks the scheme prefix, so a malformed link would otherwise make
+   * {@code URI.create(url)} throw {@link IllegalArgumentException} inside {@link #fetchDetailPage}.
+   * {@code getHost() != null} is checked too: {@code URI.create} accepts a link whose host it
+   * cannot parse (e.g. a raw, non-punycode IDN) without throwing, and only the later {@code
+   * HttpRequest} builder inside {@link #sendDetailPageRequest} would reject it.
    */
   private static boolean isValidUri(String url) {
     try {
@@ -1306,10 +1143,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       return false;
     }
     Optional<Document> existing = documentRepository.findByFilePath(entryUrl);
-    // #490 review, finding 8: mirrors the same check FileProcessingService#processRssEntry makes
-    // (library changed -> not unchanged) - without it, moving the target library never took
-    // effect for an entry whose pubDate is otherwise unchanged, because this check runs before
-    // the detail page (and processRssEntry) is ever reached.
+    // Mirrors the check FileProcessingService#processRssEntry makes (library changed -> not
+    // unchanged): without it, moving the target library would never take effect for an entry
+    // whose pubDate is otherwise unchanged.
     return existing.isPresent()
         && publishedAt.get().toString().equals(existing.get().getLastModifiedRemote())
         && existing.get().getStatus() == DocumentStatus.INDEXED
@@ -1319,8 +1155,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   /**
    * Reads at most {@code maxBytes} from {@code in}, throwing {@link FeedTooLargeException} the
    * moment a further byte would exceed the limit - enforced while streaming, not after the full
-   * response has already been downloaded (PR #474 review of {@link RssFeedParser}, which itself
-   * enforces no such limit).
+   * response has already been downloaded.
    */
   private static byte[] readBounded(InputStream in, long maxBytes) throws IOException {
     byte[] probe = in.readNBytes(Math.toIntExact(Math.min(maxBytes + 1, Integer.MAX_VALUE)));
@@ -1331,11 +1166,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Closes a response body on a path that never reads it (a rejection before any bytes are
-   * consumed) - {@code close()} on the {@code InputStream} {@link
-   * HttpResponse.BodyHandlers#ofInputStream()} hands back is what actually releases the underlying
-   * connection; skipping it on every early exit was PR #490 review finding 4 (up to {@code
-   * max-entries} connections left open per run in the mass-rejection case).
+   * Closes a response body on a path that never reads it - {@code close()} on the {@code
+   * InputStream} is what actually releases the underlying connection.
    */
   private static void closeQuietly(InputStream in) {
     try {
@@ -1351,11 +1183,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   /**
    * Thrown when the remote end itself declined to hand over a detail page (403/429, a redirect to a
    * foreign host, or a refused protocol downgrade) - kept distinct from an ordinary {@link
-   * IOException} so the caller can log and count it separately from a processing failure
-   * (ADR-0017's "Verhalten gegenüber fremden Zielen"). {@link #userMessage()} is a German,
-   * cause-specific, sanitized run-log text (maintainer nachtrag to #693, 21.08.2026) - distinct
-   * from this exception's own ({@code super}) message, which stays the unsanitized,
-   * developer-facing detail for the log only, exactly as {@link #getMessage()} always did here.
+   * IOException} so the caller can log and count it separately from a processing failure. {@link
+   * #userMessage()} is a German, cause-specific, sanitized run-log text, distinct from this
+   * exception's own message, which stays the unsanitized, developer-facing detail for the log only.
    */
   private static final class RejectedByRemoteException extends RuntimeException {
     private final String userMessage;
@@ -1371,10 +1201,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Thrown when a detail page's {@code Content-Type} is not HTML (#490 review, finding 2) - e.g. a
-   * {@code <link>} pointing straight at a PDF. Kept distinct from {@link
-   * RejectedByRemoteException}: the remote end answered normally here, it just did not hand over
-   * something this executor can extract text from. Attachments are #468's job.
+   * Thrown when a detail page's {@code Content-Type} is not HTML - e.g. a {@code <link>} pointing
+   * straight at a PDF. Kept distinct from {@link RejectedByRemoteException}: the remote end
+   * answered normally here, it just did not hand over something this executor can extract text
+   * from.
    */
   private static final class UnsupportedContentTypeException extends RuntimeException {
     UnsupportedContentTypeException(String actualContentType) {

@@ -12,9 +12,9 @@ import org.springframework.stereotype.Component;
  * builder {@code QueryService#libraryFilter} already uses for reads).
  *
  * <p>{@link #DOCUMENT_ID_METADATA_KEY} and {@link #LIBRARY_ID_METADATA_KEY} are the single source
- * of truth for these two chunk metadata keys (PR #849 review) - {@code FileProcessingService}
- * writes them on every chunk it stores, {@code QueryService} reads them back for the
- * permission-aware search filter, and this class deletes by them.
+ * of truth for these two chunk metadata keys - {@code FileProcessingService} writes them on every
+ * chunk it stores, {@code QueryService} reads them back for the permission-aware search filter, and
+ * this class deletes by them.
  */
 @Component
 public class VectorChunkStore {
