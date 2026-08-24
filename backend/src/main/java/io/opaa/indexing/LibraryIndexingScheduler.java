@@ -22,14 +22,14 @@ import org.springframework.web.server.ResponseStatusException;
  * there is nothing to keep in sync when a schedule changes, a library is deleted, or the
  * application restarts.
  *
- * <p><b>No leader election, no distributed lock (#485, Zuschnitt 21.08.2026).</b> Multiple backend
- * instances ticking the same due library at the same minute would race to insert a {@code RUNNING}
- * row; {@code uk_indexing_jobs_library_running} (migration 028) already makes that race safe - the
- * loser's {@link IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource)}
- * call fails with the same 409 a second concurrent manual trigger gets, which this class treats
- * identically to its own pre-check finding a run already in progress: no new run, one {@link
- * IndexingEventCategory#SCHEDULE_SKIPPED} event on the run that is already going. Multi-instance
- * scheduling gets a real leader/lock mechanism only once such a deployment actually exists.
+ * <p><b>No leader election, no distributed lock.</b> Multiple backend instances ticking the same
+ * due library at the same minute would race to insert a {@code RUNNING} row; {@code
+ * uk_indexing_jobs_library_running} (migration 028) already makes that race safe - the loser's
+ * {@link IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource)} call fails
+ * with the same 409 a second concurrent manual trigger gets, which this class treats identically to
+ * its own pre-check finding a run already in progress: no new run, one {@link
+ * IndexingEventCategory#SCHEDULE_SKIPPED} event on the run that is already going. Assumes exactly
+ * one backend process overall; see ADR-0021.
  *
  * <p><b>Never disables a schedule on failure (#485, Zuschnitt 21.08.2026).</b> A run that fails
  * leaves the schedule as-is; it tries again at the next due time. {@code

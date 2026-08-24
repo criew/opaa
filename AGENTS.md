@@ -113,6 +113,33 @@ einer weiteren Ad-hoc-Kombination — im Zweifel den Code Reviewer fragen.
 
 ## Code-Konventionen
 
+### Code-Kommentare
+
+Ein Kommentar beschreibt den Verhaltensvertrag oder eine nicht offensichtliche Invariante — in 1–5 Zeilen. Entstehungsgeschichte (Review-Runden, verworfene Alternativen, Fehlversuche) gehört in Commit-Nachrichten und PR-Beschreibungen, nicht in den Code; sie ist dort über `git log`/`git blame` jederzeit auffindbar. Eine Issue-/PR-Referenz im Code ist nur zulässig, wenn sie eine aktive Einschränkung markiert, zum Beispiel ein Workaround bis zu einem Upstream-Fix, ein `@Disabled`/`.skip` mit Ticketverweis, oder eine Deprecation mit dem Ablösungs-Issue. Gilt projektweit — Javadoc, TSDoc, Inline-Kommentare in `.java`/`.ts`/`.tsx`, sowie `application.yml`, `build.gradle.kts`, `vite.config.ts` und Workflow-Dateien. Nicht betroffen: Markdown-Dokumentation und ADRs — dort ist die Abwägung (verworfene Alternativen, Entscheidungshistorie) Zweck des Dokuments.
+
+In Tests darf ein Kommentar zusätzlich die abgesicherte Regression benennen (z. B. `// regression guard for #307: ...`), sofern er die Invariante nennt und nicht den Review-Verlauf — sonst ist die Regel genau beim größten Bestand nicht durchsetzbar.
+
+**Negativbeispiel** (Nacherzählung statt Vertrag):
+
+```java
+// PR #612 review, finding 3: originally this called the repository directly,
+// which caused an N+1 problem, see discussion in #598.
+// After a talk with the reviewer we switched to the cache introduced in #545.
+// Careful: #501 already had a similar bug here — the cache must be invalidated
+// on every write path, and #559 nearly reverted this fix because someone
+// missed one of the three write paths. Do not remove this without re-reading
+// the whole thread in #598 first.
+```
+
+**Positivbeispiel** (Vertrag/Invariante):
+
+```java
+/**
+ * Cached values are invalidated on every write path in {@link SpaceService};
+ * a cache hit is therefore always consistent with the last committed state.
+ */
+```
+
 ### Commit-Nachrichten
 
 [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) verwenden:
@@ -200,7 +227,7 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 ## Wichtige Pfade
 
 - `docs/AGENT-ORGANIZATION.md` — Agenten-Rollen, Idee-bis-Merge-Workflow und Kollaborationsregeln
-- `docs/decisions/` — Architecture Decision Records (ADRs)
+- `docs/decisions/` — Architecture Decision Records (ADRs), u. a. [ADR-0021](docs/decisions/0021-single-instance-betrieb.md) zur Single-Instance-Annahme des Backends
 - `docs/features/` — Feature-Spezifikationen
 - `.github/ISSUE_TEMPLATE/` — Issue-Templates
 - `.github/PULL_REQUEST_TEMPLATE.md` — PR-Template

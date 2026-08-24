@@ -18,7 +18,8 @@ import org.springframework.stereotype.Component;
  *   <li>{@link #recoverOnStartup()} - a fresh JVM cannot possibly still be running the task any
  *       {@code RUNNING} row refers to, so every one of them is orphaned by definition the moment
  *       the application comes back up, whether the previous process crashed mid-run or the task was
- *       silently discarded by a full queue before this issue's {@code AbortPolicy} change.
+ *       silently discarded by a full queue before this issue's {@code AbortPolicy} change. Assumes
+ *       exactly one backend process; see ADR-0021.
  *   <li>{@link #recoverStaleRunningJobs()} - catches everything that does not involve a restart at
  *       all: a task dropped by the (now-removed) {@code DiscardPolicy} while the application kept
  *       running, or a run that is still technically in progress but has been for implausibly long

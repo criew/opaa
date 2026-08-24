@@ -302,6 +302,9 @@ public class IndexingJobService {
    * definition, not merely suspected of it - unlike {@link #recoverStaleJobs}, no age threshold
    * applies here.
    *
+   * <p>Assumes exactly one backend process; under genuine multi-instance operation this would abort
+   * another, still-running instance's legitimate jobs on restart. See ADR-0021.
+   *
    * @return the number of rows recovered
    */
   @Transactional
