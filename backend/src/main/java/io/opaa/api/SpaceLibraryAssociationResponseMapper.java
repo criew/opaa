@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * Maps {@link SpaceLibraryLink}, {@link SpaceLibraryLinks} and {@link LibrarySpaceLink} onto their
  * generated response counterparts (ADR-0006: API DTOs are generated from the specification, never
- * hand-written; #860: services return domain types, mapping moves here).
+ * hand-written).
  */
 final class SpaceLibraryAssociationResponseMapper {
 

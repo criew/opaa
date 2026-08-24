@@ -24,7 +24,6 @@ import io.opaa.space.SpaceService;
 import io.opaa.space.SpaceUpdate;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -218,12 +217,17 @@ public class SpaceController {
   }
 
   private SpaceCreation toSpaceCreation(SpaceRequest request) {
+    // A null element is passed through unchanged - SpaceService#appendInitialMemberships is the
+    // single place that skips it, not this mapping step too.
     List<SpaceMemberSeed> initialMembers =
         request.getInitialMembers() == null
             ? null
             : request.getInitialMembers().stream()
-                .filter(Objects::nonNull)
-                .map(member -> new SpaceMemberSeed(member.getUserId(), member.getRole()))
+                .map(
+                    member ->
+                        member == null
+                            ? null
+                            : new SpaceMemberSeed(member.getUserId(), member.getRole()))
                 .toList();
     return new SpaceCreation(
         request.getName(),

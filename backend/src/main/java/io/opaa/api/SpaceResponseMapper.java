@@ -16,7 +16,7 @@ import java.util.UUID;
 /**
  * Maps {@link Space}, {@link SpaceOverview} and {@link SpaceMemberView} onto their generated
  * response counterparts (ADR-0006: API DTOs are generated from the specification, never
- * hand-written; #860: services return domain types, mapping moves here).
+ * hand-written).
  */
 final class SpaceResponseMapper {
 
