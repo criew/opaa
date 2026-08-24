@@ -99,8 +99,11 @@ public class LibraryController {
   public List<LibrarySpaceAssociationResponse> listSpaceAssociations(
       @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return associationService.listForLibrary(
-        libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return SpaceLibraryAssociationResponseMapper.toLibrarySpaceResponses(
+        associationService.listForLibrary(
+            libraryId,
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
   }
 
   @PostMapping

@@ -10,8 +10,6 @@ import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
-import io.opaa.api.dto.SpaceRequest;
-import io.opaa.api.dto.SpaceResponse;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -40,6 +38,8 @@ import io.opaa.library.LibraryVisibility;
 import io.opaa.library.LibraryVisibilityHistoryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.space.Space;
+import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceRole;
@@ -489,9 +489,11 @@ class AuditEventRecordingIntegrationTest {
   @Test
   void spaceLifecycleAndMembershipChangesEachProduceAnAuditEntry() {
     UUID owner = createUser();
-    SpaceResponse created =
+    Space created =
         spaceService.createSpace(
-            new SpaceRequest("Team Alpha").visibility(SpaceVisibility.PRIVATE), owner, false);
+            new SpaceCreation("Team Alpha", null, null, SpaceVisibility.PRIVATE, null, null),
+            owner,
+            false);
     UUID spaceId = created.getId();
 
     assertThat(
