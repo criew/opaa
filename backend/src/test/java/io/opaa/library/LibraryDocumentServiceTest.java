@@ -533,6 +533,42 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
+  void aFolderDeletedBetweenValidationAndInsertAnswers404NotTheChecksumMessage()
+      throws IOException {
+    // #821 review round 1, finding 5: fk_documents_folder (migration 062) can fire on the very
+    // same save() the checksum race above tests, if folderId - already confirmed to exist by
+    // resolveFolder - is deleted by a concurrent request in the narrow window before this INSERT.
+    // That must not surface as "Diese Datei ist bereits in dieser Bibliothek vorhanden" - the file
+    // was never a duplicate at all.
+    grantEditor();
+    UUID folderId = UUID.randomUUID();
+    LibraryFolder folder = new LibraryFolder(libraryId, null, "Wird-Geloescht", organizationId);
+    when(folderRepository.findById(folderId)).thenReturn(Optional.of(folder));
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-fk-race");
+    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-fk-race"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class)))
+        .thenThrow(
+            new DataIntegrityViolationException(
+                "insert failed",
+                new org.hibernate.exception.ConstraintViolationException(
+                    "violates foreign key constraint",
+                    new java.sql.SQLException("test"),
+                    "fk_documents_folder")));
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("race.pdf", "content"), folderId, currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND)
+        .hasMessageContaining("inzwischen gelöscht");
+
+    assertNoFilesWereStored();
+    verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
+  }
+
+  @Test
   void aPathTraversingFileNameNeverEscapesTheLibraryStorageDirectory() throws IOException {
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-xyz");

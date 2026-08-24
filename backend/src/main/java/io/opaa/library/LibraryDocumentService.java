@@ -27,6 +27,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -290,12 +291,25 @@ public class LibraryDocumentService {
       return LibraryDocumentResponses.from(
           document, LibraryFolderPaths.pathOf(folderRepository, document.getFolderId()));
     } catch (DataIntegrityViolationException e) {
+      // #821 review round 1, finding 5: the save() above can violate two different constraints,
+      // and they must not share one message. fk_documents_folder (migration 062) fires when
+      // folderId - already confirmed to exist by resolveFolder above - is deleted by a concurrent
+      // request in the narrow window between that check and this INSERT; without this
+      // distinction, that race surfaced as the same "Diese Datei ist bereits in dieser Bibliothek
+      // vorhanden" the checksum race below produces, actively misleading a caller whose file was
+      // never a duplicate at all.
+      deleteQuietly(storedFile);
+      if (isFolderForeignKeyViolation(e)) {
+        throw new ResponseStatusException(
+            HttpStatus.NOT_FOUND, "Der Ordner wurde inzwischen gelöscht");
+      }
       // Race-safety net for the findByLibraryIdAndChecksum check above (#420 code review, nit 5):
       // that check and the eventual INSERT are two separate steps with no database guarantee
       // between them, so two concurrent uploads of the same file into the same library could both
       // pass it. uk_documents_library_checksum (migration 020) is the actual guarantee; this maps
-      // its violation to the same 409 the sequential check already produces.
-      deleteQuietly(storedFile);
+      // its violation - and any other DataIntegrityViolationException this INSERT could still
+      // raise - to the same 409 the sequential check already produces, kept as the neutral
+      // fallback rather than assuming every violation is the folder race handled above.
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Diese Datei ist bereits in dieser Bibliothek vorhanden");
     } catch (IOException e) {
@@ -834,6 +848,29 @@ public class LibraryDocumentService {
     int lastSlash = normalized.lastIndexOf('/');
     String lastSegment = lastSlash >= 0 ? normalized.substring(lastSlash + 1) : normalized;
     return lastSegment.isBlank() ? originalFileName : lastSegment;
+  }
+
+  /**
+   * Whether {@code e} was raised by {@code fk_documents_folder} (migration 062) specifically, not
+   * {@code uk_documents_library_checksum} or anything else {@code documentRepository.save} could
+   * violate (#821 review round 1, finding 5) - inspects the wrapped Hibernate {@link
+   * ConstraintViolationException}'s own {@code constraintName} (populated from the database
+   * driver's error detail, {@code PostgreSQLDialect}'s violated-constraint-name extractor for
+   * Postgres) rather than guessing from {@link DataIntegrityViolationException#getMessage()} alone,
+   * which does not reliably say which of several constraints on the same table actually fired.
+   * {@code false} - the safe, conservative default - whenever no {@link
+   * ConstraintViolationException} is found in the cause chain at all (e.g. a hand-built exception a
+   * test throws directly, mirroring how a real driver failure is always wrapped in practice).
+   */
+  private boolean isFolderForeignKeyViolation(DataIntegrityViolationException e) {
+    Throwable cause = e.getCause();
+    while (cause != null) {
+      if (cause instanceof ConstraintViolationException constraintViolation) {
+        return "fk_documents_folder".equals(constraintViolation.getConstraintName());
+      }
+      cause = cause.getCause();
+    }
+    return false;
   }
 
   /** The accepted extension the given (already validated as supported) file name ends with. */
