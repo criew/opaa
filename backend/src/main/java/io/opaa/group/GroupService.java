@@ -112,7 +112,7 @@ public class GroupService {
 
   public List<Group> listGroups(UUID currentUserId) {
     User currentUser = requireUser(currentUserId);
-    return groupRepository.findByOrganizationId(currentUser.getOrganizationId());
+    return groupRepository.findByOrganizationIdWithMemberships(currentUser.getOrganizationId());
   }
 
   /**
@@ -148,7 +148,7 @@ public class GroupService {
     if (groupIds.isEmpty()) {
       return List.of();
     }
-    return groupRepository.findAllById(groupIds).stream()
+    return groupRepository.findAllByIdWithMemberships(groupIds).stream()
         .filter(group -> !group.isDissolved())
         .filter(group -> group.getOrganizationId().equals(currentUser.getOrganizationId()))
         .toList();

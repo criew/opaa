@@ -600,13 +600,14 @@ class DirectorySyncServiceIntegrationTest {
 
   @Test
   void statusReflectsTheMostRecentRunIncludingUnreachableAttempts() {
-    assertThat(directorySyncService.getStatus(organizationId)).isNull();
+    assertThat(directorySyncService.getStatus(organizationId)).isEmpty();
 
     directoryClient.failWith("timeout");
     directorySyncService.run(organizationId);
 
-    assertThat(directorySyncService.getStatus(organizationId).getLastOutcome())
+    assertThat(directorySyncService.getStatus(organizationId).orElseThrow().getLastOutcome())
         .isEqualTo(DirectorySyncOutcome.UNREACHABLE);
-    assertThat(directorySyncService.getStatus(organizationId).getLastAppliedAt()).isNull();
+    assertThat(directorySyncService.getStatus(organizationId).orElseThrow().getLastAppliedAt())
+        .isNull();
   }
 }

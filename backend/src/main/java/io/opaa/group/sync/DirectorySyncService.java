@@ -7,6 +7,7 @@ import io.opaa.audit.AuditOutcome;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,9 +83,9 @@ public class DirectorySyncService {
     return execute(organizationId, true);
   }
 
-  /** The organization's most recent run, or {@code null} if it has never run one. */
-  public DirectorySyncStatus getStatus(UUID organizationId) {
-    return statusRepository.findByOrganizationId(organizationId).orElse(null);
+  /** The organization's most recent run, empty if it has never run one. */
+  public Optional<DirectorySyncStatus> getStatus(UUID organizationId) {
+    return statusRepository.findByOrganizationId(organizationId);
   }
 
   private SyncReport execute(UUID organizationId, boolean applyIfPlausible) {

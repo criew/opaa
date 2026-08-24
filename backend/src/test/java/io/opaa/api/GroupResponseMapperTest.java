@@ -47,6 +47,21 @@ class GroupResponseMapperTest {
   }
 
   @Test
+  void toListResponseReflectsTheMemberCountForAGroupWithMembers() {
+    // Regression guard: the mapper reads group.getMemberships().size() directly, so a group whose
+    // memberships were never initialized (LAZY, no fetch join) would throw
+    // LazyInitializationException here instead of returning a wrong count - this case exercises
+    // the non-empty path, which an always-empty-collection test cannot.
+    Group group = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "Team", null, null, null);
+    group.addMembership(new GroupMembership(UUID.randomUUID(), group.getOrganizationId()));
+    group.addMembership(new GroupMembership(UUID.randomUUID(), group.getOrganizationId()));
+
+    GroupListResponse response = GroupResponseMapper.toListResponse(group);
+
+    assertThat(response.getMemberCount()).isEqualTo(2);
+  }
+
+  @Test
   void toListResponsesMapsEveryGroupInOrder() {
     Group first = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "A", null, null, null);
     Group second = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "B", null, null, null);

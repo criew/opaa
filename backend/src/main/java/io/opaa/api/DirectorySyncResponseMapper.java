@@ -11,6 +11,7 @@ import io.opaa.group.sync.MembershipChange;
 import io.opaa.group.sync.SyncReport;
 import io.opaa.group.sync.UserRef;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Maps {@link SyncReport} and {@link DirectorySyncStatus} onto their generated response
@@ -38,16 +39,17 @@ final class DirectorySyncResponseMapper {
     return response;
   }
 
-  static DirectorySyncStatusResponse toStatusResponse(DirectorySyncStatus status) {
-    if (status == null) {
-      return new DirectorySyncStatusResponse();
-    }
-    return new DirectorySyncStatusResponse()
-        .lastRunAt(status.getLastRunAt())
-        .lastOutcome(status.getLastOutcome())
-        .lastMessage(status.getLastMessage())
-        .lastAppliedAt(status.getLastAppliedAt())
-        .lastChangedFraction(status.getLastChangedFraction());
+  static DirectorySyncStatusResponse toStatusResponse(Optional<DirectorySyncStatus> status) {
+    return status
+        .map(
+            s ->
+                new DirectorySyncStatusResponse()
+                    .lastRunAt(s.getLastRunAt())
+                    .lastOutcome(s.getLastOutcome())
+                    .lastMessage(s.getLastMessage())
+                    .lastAppliedAt(s.getLastAppliedAt())
+                    .lastChangedFraction(s.getLastChangedFraction()))
+        .orElseGet(DirectorySyncStatusResponse::new);
   }
 
   private static DirectorySyncGroupChange toGroupChange(GroupChange change) {

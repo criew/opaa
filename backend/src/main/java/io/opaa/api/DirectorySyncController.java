@@ -7,6 +7,7 @@ import io.opaa.auth.UserService;
 import io.opaa.group.sync.DirectorySyncService;
 import io.opaa.group.sync.DirectorySyncStatus;
 import io.opaa.group.sync.SyncReport;
+import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -49,7 +50,7 @@ public class DirectorySyncController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/status")
   public DirectorySyncStatusResponse status(@AuthenticationPrincipal Jwt jwt) {
-    DirectorySyncStatus status =
+    Optional<DirectorySyncStatus> status =
         directorySyncService.getStatus(currentUser(jwt).getOrganizationId());
     return DirectorySyncResponseMapper.toStatusResponse(status);
   }

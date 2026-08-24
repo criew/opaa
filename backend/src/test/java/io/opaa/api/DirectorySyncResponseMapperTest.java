@@ -14,6 +14,7 @@ import io.opaa.group.sync.SyncReport;
 import io.opaa.group.sync.UserRef;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -124,7 +125,8 @@ class DirectorySyncResponseMapperTest {
 
   @Test
   void toStatusResponseReturnsAllNullFieldsForAnOrganizationThatNeverRan() {
-    DirectorySyncStatusResponse response = DirectorySyncResponseMapper.toStatusResponse(null);
+    DirectorySyncStatusResponse response =
+        DirectorySyncResponseMapper.toStatusResponse(Optional.empty());
 
     assertThat(response.getLastRunAt()).isNull();
     assertThat(response.getLastOutcome()).isNull();
@@ -139,7 +141,8 @@ class DirectorySyncResponseMapperTest {
     Instant runAt = Instant.now();
     status.recordRun(runAt, DirectorySyncOutcome.APPLIED, "Synchronisation angewendet.", 0.1);
 
-    DirectorySyncStatusResponse response = DirectorySyncResponseMapper.toStatusResponse(status);
+    DirectorySyncStatusResponse response =
+        DirectorySyncResponseMapper.toStatusResponse(Optional.of(status));
 
     assertThat(response.getLastRunAt()).isEqualTo(runAt);
     assertThat(response.getLastOutcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
@@ -153,7 +156,8 @@ class DirectorySyncResponseMapperTest {
     DirectorySyncStatus status = new DirectorySyncStatus(UUID.randomUUID());
     status.recordRun(Instant.now(), DirectorySyncOutcome.DRY_RUN, "Trockenlauf.", 0.0);
 
-    DirectorySyncStatusResponse response = DirectorySyncResponseMapper.toStatusResponse(status);
+    DirectorySyncStatusResponse response =
+        DirectorySyncResponseMapper.toStatusResponse(Optional.of(status));
 
     assertThat(response.getLastOutcome()).isEqualTo(DirectorySyncOutcome.DRY_RUN);
     assertThat(response.getLastAppliedAt()).isNull();
