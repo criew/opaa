@@ -1,7 +1,5 @@
 package io.opaa.library;
 
-import io.opaa.api.dto.SourceConnectionTestRequest;
-import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.indexing.AutoindexCrawlerService;
@@ -79,9 +77,9 @@ import org.springframework.web.server.ResponseStatusException;
  * docs/features/knowledge-sources.md.
  *
  * <p><b>Testing an existing library's stored quellkonfiguration (#544).</b> {@link
- * SourceConnectionTestRequest#getLibraryId()} lets {@code EditLibrarySourceDialog} test a
- * password-protected source without forcing the caller to re-type a credential the library already
- * has stored - reachable only with at least {@link AssetRole#MANAGER} on that library (see {@link
+ * SourceConnectionTest#libraryId()} lets {@code EditLibrarySourceDialog} test a password-protected
+ * source without forcing the caller to re-type a credential the library already has stored -
+ * reachable only with at least {@link AssetRole#MANAGER} on that library (see {@link
  * #requireManagedLibrary}), via {@link LibraryAccessService#requireRole} (#436), the same
  * not-found/forbidden split every other library-scoped endpoint now uses. The library's own {@code
  * sourceType} must match this request's (otherwise 400 - #544 acceptance criterion), and a missing
@@ -145,35 +143,35 @@ public class SourceConnectionTestService {
 
   /**
    * Convenience overload for a standalone test carrying no {@code libraryId} (#514's original
-   * shape, before #544) - equivalent to {@link #test(SourceConnectionTestRequest, UUID, boolean)}
-   * with a {@code null} caller, which that overload only ever consults once {@code
-   * request.getLibraryId()} is set.
+   * shape, before #544) - equivalent to {@link #test(SourceConnectionTest, UUID, boolean)} with a
+   * {@code null} caller, which that overload only ever consults once {@code request.libraryId()} is
+   * set.
    */
-  public SourceConnectionTestResponse test(SourceConnectionTestRequest request) {
+  public SourceConnectionTestResult test(SourceConnectionTest request) {
     return test(request, null, false);
   }
 
   /**
-   * @param currentUserId the caller, only consulted when {@code request.getLibraryId()} is set
-   *     (#544) - a standalone test (no libraryId) keeps #514's original permission bar, checked by
-   *     the controller before this method is even called.
+   * @param currentUserId the caller, only consulted when {@code request.libraryId()} is set (#544)
+   *     - a standalone test (no libraryId) keeps #514's original permission bar, checked by the
+   *     controller before this method is even called.
    * @param systemAdmin whether the caller holds {@code SystemRole.SYSTEM_ADMIN}, also only
-   *     consulted once {@code request.getLibraryId()} is set (#615 review, finding 3) - {@code
+   *     consulted once {@code request.libraryId()} is set (#615 review, finding 3) - {@code
    *     LibraryController} passes the same value here it already passes to {@code
    *     KnowledgeLibraryService#updateLibrary} for the very save this test precedes, so a system
    *     admin who can save a library's quellkonfiguration without a grant can test it beforehand
    *     too, instead of the test alone answering 404.
    */
-  public SourceConnectionTestResponse test(
-      SourceConnectionTestRequest request, UUID currentUserId, boolean systemAdmin) {
-    DocumentSourceType sourceType = request.getSourceType();
+  public SourceConnectionTestResult test(
+      SourceConnectionTest request, UUID currentUserId, boolean systemAdmin) {
+    DocumentSourceType sourceType = request.sourceType();
     if (sourceType == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceType ist erforderlich");
     }
-    SourceConnectionTestRequest effectiveRequest = request;
-    if (request.getLibraryId() != null) {
+    SourceConnectionTest effectiveRequest = request;
+    if (request.libraryId() != null) {
       KnowledgeLibrary library =
-          requireManagedLibrary(request.getLibraryId(), currentUserId, systemAdmin);
+          requireManagedLibrary(request.libraryId(), currentUserId, systemAdmin);
       if (library.getSourceType() != sourceType) {
         throw new ResponseStatusException(
             HttpStatus.BAD_REQUEST,
@@ -247,27 +245,27 @@ public class SourceConnectionTestService {
    * the credential themselves - that combination was never a legitimate use of this fallback to
    * begin with, so nothing a real caller relied on changes.
    */
-  private SourceConnectionTestRequest withStoredCredentialsIfOmitted(
-      SourceConnectionTestRequest request, KnowledgeLibrary library) {
-    if (blankToNull(request.getSourceCredentials()) != null) {
+  private SourceConnectionTest withStoredCredentialsIfOmitted(
+      SourceConnectionTest request, KnowledgeLibrary library) {
+    if (blankToNull(request.sourceCredentials()) != null) {
       return request;
     }
-    String requestSourceUrl =
-        request.getSourceUrl() == null ? null : request.getSourceUrl().toString();
+    String requestSourceUrl = request.sourceUrl() == null ? null : request.sourceUrl().toString();
     if (!SourceOriginMatcher.sameOrigin(library.getSourceUrl(), requestSourceUrl)) {
       return request;
     }
-    return new SourceConnectionTestRequest(request.getSourceType())
-        .sourcePath(request.getSourcePath())
-        .sourceUrl(request.getSourceUrl())
-        .sourceProxy(library.getSourceProxy())
-        .sourceCredentials(library.getSourceCredentials())
-        .sourceInsecureSsl(library.isSourceInsecureSsl())
-        .libraryId(request.getLibraryId());
+    return new SourceConnectionTest(
+        request.sourceType(),
+        request.sourcePath(),
+        request.sourceUrl(),
+        library.getSourceProxy(),
+        library.getSourceCredentials(),
+        library.isSourceInsecureSsl(),
+        request.libraryId());
   }
 
-  private SourceConnectionTestResponse testFilesystem(SourceConnectionTestRequest request) {
-    String sourcePath = blankToNull(request.getSourcePath());
+  private SourceConnectionTestResult testFilesystem(SourceConnectionTest request) {
+    String sourcePath = blankToNull(request.sourcePath());
     if (sourcePath == null) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "sourcePath ist erforderlich, wenn sourceType FILESYSTEM ist");
@@ -276,16 +274,16 @@ public class SourceConnectionTestService {
     // FILESYSTEM branch - without this, a client could get a green test for a combination the
     // subsequent createLibrary call rejects outright with 400.
     String sourceUrl =
-        blankToNull(request.getSourceUrl() == null ? null : request.getSourceUrl().toString());
-    String sourceProxy = blankToNull(request.getSourceProxy());
-    String sourceCredentials = blankToNull(request.getSourceCredentials());
+        blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString());
+    String sourceProxy = blankToNull(request.sourceProxy());
+    String sourceCredentials = blankToNull(request.sourceCredentials());
     if (sourceUrl != null || sourceProxy != null || sourceCredentials != null) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
           "sourceUrl, sourceProxy und sourceCredentials sind für sourceType FILESYSTEM nicht"
               + " zulässig");
     }
-    if (Boolean.TRUE.equals(request.getSourceInsecureSsl())) {
+    if (Boolean.TRUE.equals(request.sourceInsecureSsl())) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "sourceInsecureSsl ist für sourceType FILESYSTEM nicht zulässig");
     }
@@ -337,7 +335,7 @@ public class SourceConnectionTestService {
     }
   }
 
-  private SourceConnectionTestResponse testHttpDirectory(SourceConnectionTestRequest request) {
+  private SourceConnectionTestResult testHttpDirectory(SourceConnectionTest request) {
     String url = requireHttpUrl(request);
     // PR #537 review, nit 5: mirrors UrlIndexingExecutor#execute exactly - a trailing slash is
     // only appended when the URL does not already look like a file (e.g. ".../index.html"),
@@ -351,7 +349,7 @@ public class SourceConnectionTestService {
         AutoindexCrawlerService.buildHttpClient(
             config.proxyHost(),
             config.proxyPort(),
-            Boolean.TRUE.equals(request.getSourceInsecureSsl()));
+            Boolean.TRUE.equals(request.sourceInsecureSsl()));
     String authHeader =
         AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
 
@@ -441,14 +439,14 @@ public class SourceConnectionTestService {
     }
   }
 
-  private SourceConnectionTestResponse testRssFeed(SourceConnectionTestRequest request) {
+  private SourceConnectionTestResult testRssFeed(SourceConnectionTest request) {
     String url = requireHttpUrl(request);
     ProxyAndCredentials config = parseProxyAndCredentials(request);
     HttpClient httpClient =
         AutoindexCrawlerService.buildHttpClient(
             config.proxyHost(),
             config.proxyPort(),
-            Boolean.TRUE.equals(request.getSourceInsecureSsl()));
+            Boolean.TRUE.equals(request.sourceInsecureSsl()));
     String authHeader =
         AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
 
@@ -518,9 +516,9 @@ public class SourceConnectionTestService {
     }
   }
 
-  private String requireHttpUrl(SourceConnectionTestRequest request) {
+  private String requireHttpUrl(SourceConnectionTest request) {
     String sourceUrl =
-        blankToNull(request.getSourceUrl() == null ? null : request.getSourceUrl().toString());
+        blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString());
     if (sourceUrl == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceUrl ist erforderlich");
     }
@@ -528,10 +526,10 @@ public class SourceConnectionTestService {
     // sourcePath alongside a URL-based sourceType is rejected at creation time, so accepting it
     // silently here would again let a client see a green test for a combination createLibrary
     // itself refuses.
-    if (blankToNull(request.getSourcePath()) != null) {
+    if (blankToNull(request.sourcePath()) != null) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "sourcePath ist für sourceType " + request.getSourceType() + " nicht zulässig");
+          "sourcePath ist für sourceType " + request.sourceType() + " nicht zulässig");
     }
     URI uri;
     try {
@@ -564,12 +562,12 @@ public class SourceConnectionTestService {
         + documentWord(count);
   }
 
-  private static SourceConnectionTestResponse reachable(String message, long documentCount) {
-    return new SourceConnectionTestResponse(true, message).documentCount(documentCount);
+  private static SourceConnectionTestResult reachable(String message, long documentCount) {
+    return new SourceConnectionTestResult(true, message, documentCount);
   }
 
-  private static SourceConnectionTestResponse unreachable(String message) {
-    return new SourceConnectionTestResponse(false, message);
+  private static SourceConnectionTestResult unreachable(String message) {
+    return new SourceConnectionTestResult(false, message, null);
   }
 
   /**
@@ -628,10 +626,10 @@ public class SourceConnectionTestService {
    * becomes this endpoint's usual {@code 400}, unlike the two indexing executors, which fail the
    * asynchronous job instead of answering a synchronous HTTP request.
    */
-  private static ProxyAndCredentials parseProxyAndCredentials(SourceConnectionTestRequest request) {
+  private static ProxyAndCredentials parseProxyAndCredentials(SourceConnectionTest request) {
     try {
       return ProxyAndCredentials.parse(
-          blankToNull(request.getSourceProxy()), blankToNull(request.getSourceCredentials()));
+          blankToNull(request.sourceProxy()), blankToNull(request.sourceCredentials()));
     } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
     }
