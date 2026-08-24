@@ -26,10 +26,9 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.DocumentStatus;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.FilesystemPathAllowlist;
-import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.TargetAddressValidator;
-import io.opaa.indexing.UrlFileDownloader;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -83,10 +82,10 @@ class LibraryDocumentServiceTest {
   private FilesystemPathAllowlist filesystemAllowlist;
   // Target validation disabled here (#747): every server this class's remote-content tests talk to
   // is deliberately loopback, and TargetAddressValidator's own SSRF logic is already covered by its
-  // dedicated TargetAddressValidatorTest/UrlFileDownloaderTest - mirrors those suites' identical
+  // dedicated TargetAddressValidatorTest/BoundedDownloaderTest - mirrors those suites' identical
   // choice for the same reason. loadContentAnswers404WhenTheAllowlistRejectsTheStoredSourceUrl
   // below builds its own, deliberately enabled validator instead.
-  private UrlFileDownloader urlFileDownloader;
+  private BoundedDownloader boundedDownloader;
   private TargetAddressValidator disabledTargetAddressValidator;
   private RemoteContentProperties remoteContentProperties;
   private LibraryFolderRepository folderRepository;
@@ -124,7 +123,7 @@ class LibraryDocumentServiceTest {
     // explicitly narrows this - see the allowlist-specific tests further down, which override it.
     when(filesystemAllowlist.isAllowed(any())).thenReturn(true);
     disabledTargetAddressValidator = TargetAddressValidator.disabled();
-    urlFileDownloader = new UrlFileDownloader(disabledTargetAddressValidator);
+    boundedDownloader = new BoundedDownloader(disabledTargetAddressValidator);
     remoteContentProperties = new RemoteContentProperties(10L * 1024 * 1024, 5);
     folderRepository = mock(LibraryFolderRepository.class);
     folderService = mock(LibraryFolderService.class);
@@ -141,7 +140,7 @@ class LibraryDocumentServiceTest {
             uploadProperties,
             storageQuotaService,
             filesystemAllowlist,
-            urlFileDownloader,
+            boundedDownloader,
             disabledTargetAddressValidator,
             remoteContentProperties,
             folderRepository,
@@ -1088,8 +1087,7 @@ class LibraryDocumentServiceTest {
     // A dedicated, enabled validator with an empty allowlist stands in for an allowlist that has
     // since been narrowed (or was never configured to include this host) - loopback is always
     // blocked once validation is enabled, regardless of the allowlist.
-    TargetAddressValidator enabledValidator =
-        new TargetAddressValidator(new IndexingProperties.TargetValidation(true, List.of()));
+    TargetAddressValidator enabledValidator = new TargetAddressValidator(true, List.of());
     LibraryDocumentService serviceWithValidation =
         new LibraryDocumentService(
             libraryRepository,
@@ -1102,7 +1100,7 @@ class LibraryDocumentServiceTest {
             new UploadProperties(storageDir.toString(), 10L * 1024, null, 0, 0),
             storageQuotaService,
             filesystemAllowlist,
-            new UrlFileDownloader(enabledValidator),
+            new BoundedDownloader(enabledValidator),
             enabledValidator,
             remoteContentProperties,
             folderRepository,

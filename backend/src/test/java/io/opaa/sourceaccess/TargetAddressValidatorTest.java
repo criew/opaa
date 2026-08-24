@@ -1,4 +1,4 @@
-package io.opaa.indexing;
+package io.opaa.sourceaccess;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 class TargetAddressValidatorTest {
 
   private TargetAddressValidator enabled(List<String> allowlist) {
-    return new TargetAddressValidator(new IndexingProperties.TargetValidation(true, allowlist));
+    return new TargetAddressValidator(true, allowlist);
   }
 
   private TargetAddressValidator enabled() {

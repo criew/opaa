@@ -1088,7 +1088,7 @@ paths:
       description: >
         Checks the given sourceType/sourcePath/sourceUrl/sourceProxy/sourceCredentials/
         sourceInsecureSsl combination the way the corresponding indexing run later would,
-        using the same HTTP client building blocks (AutoindexCrawlerService.buildHttpClient)
+        using the same HTTP client building blocks (io.opaa.sourceaccess.SourceHttpClientFactory.buildHttpClient)
         and, for FILESYSTEM, the same operator-configured allowlist (FilesystemPathAllowlist)
         createLibrary itself enforces - a path outside the allowlist is rejected with 400
         before anything on disk is touched, exactly like creation. sourceType UPLOAD has

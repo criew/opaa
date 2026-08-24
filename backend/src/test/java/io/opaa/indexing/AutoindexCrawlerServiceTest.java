@@ -2,6 +2,9 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.net.URI;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -166,7 +169,7 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void buildsBasicAuthHeader() {
-    String header = AutoindexCrawlerService.buildAuthHeader("admin", "secret");
+    String header = SourceHttpClientFactory.buildAuthHeader("admin", "secret");
 
     assertThat(header).startsWith("Basic ");
     assertThat(header).isEqualTo("Basic YWRtaW46c2VjcmV0");
@@ -174,9 +177,9 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void returnsNullAuthHeaderForNullCredentials() {
-    assertThat(AutoindexCrawlerService.buildAuthHeader(null, null)).isNull();
-    assertThat(AutoindexCrawlerService.buildAuthHeader("user", null)).isNull();
-    assertThat(AutoindexCrawlerService.buildAuthHeader(null, "pass")).isNull();
+    assertThat(SourceHttpClientFactory.buildAuthHeader(null, null)).isNull();
+    assertThat(SourceHttpClientFactory.buildAuthHeader("user", null)).isNull();
+    assertThat(SourceHttpClientFactory.buildAuthHeader(null, "pass")).isNull();
   }
 
   @Test
@@ -568,7 +571,7 @@ class AutoindexCrawlerServiceTest {
   @Test
   void redirectOriginTrusted_allowsASameHostUpgradeAtBothDefaultPorts() {
     assertThat(
-            AutoindexCrawlerService.isRedirectOriginTrusted(
+            RedirectFollowingFetcher.isRedirectOriginTrusted(
                 URI.create("http://host.example/a"), URI.create("https://host.example/a")))
         .isTrue();
   }
@@ -576,7 +579,7 @@ class AutoindexCrawlerServiceTest {
   @Test
   void redirectOriginTrusted_allowsASameHostUpgradeAtMatchingExplicitPorts() {
     assertThat(
-            AutoindexCrawlerService.isRedirectOriginTrusted(
+            RedirectFollowingFetcher.isRedirectOriginTrusted(
                 URI.create("http://host.example:8443/a"),
                 URI.create("https://host.example:8443/a")))
         .isTrue();
@@ -588,7 +591,7 @@ class AutoindexCrawlerServiceTest {
     // ":80" on the http side compared unequal to the https side's unspecified (-1) port, even
     // though both are the standard port for their own scheme.
     assertThat(
-            AutoindexCrawlerService.isRedirectOriginTrusted(
+            RedirectFollowingFetcher.isRedirectOriginTrusted(
                 URI.create("http://host.example:80/a"), URI.create("https://host.example/a")))
         .isTrue();
   }
@@ -598,7 +601,7 @@ class AutoindexCrawlerServiceTest {
     // PR #699 review, finding 1: the mirror image - a server that writes the standard https port
     // explicitly into its own Location header.
     assertThat(
-            AutoindexCrawlerService.isRedirectOriginTrusted(
+            RedirectFollowingFetcher.isRedirectOriginTrusted(
                 URI.create("http://host.example/a"), URI.create("https://host.example:443/a")))
         .isTrue();
   }
@@ -609,7 +612,7 @@ class AutoindexCrawlerServiceTest {
     // gleicher Port" - an explicit http port that differs from an explicit https port is not
     // covered, even though both individually look plausible.
     assertThat(
-            AutoindexCrawlerService.isRedirectOriginTrusted(
+            RedirectFollowingFetcher.isRedirectOriginTrusted(
                 URI.create("http://host.example:8080/a"),
                 URI.create("https://host.example:8443/a")))
         .isFalse();
@@ -618,7 +621,7 @@ class AutoindexCrawlerServiceTest {
   @Test
   void redirectOriginTrusted_rejectsAnUpgradeToADifferentHost() {
     assertThat(
-            AutoindexCrawlerService.isRedirectOriginTrusted(
+            RedirectFollowingFetcher.isRedirectOriginTrusted(
                 URI.create("http://host.example/a"), URI.create("https://angreifer.example/a")))
         .isFalse();
   }
@@ -627,11 +630,10 @@ class AutoindexCrawlerServiceTest {
   void redirectOriginTrusted_stillRejectsADowngrade() {
     // isSchemeDowngrade is checked independently by every caller and refuses this before
     // isRedirectOriginTrusted is even consulted (see
-    // AutoindexCrawlerService#sendFollowingRedirects)
-    // - this asserts the trust check itself would not accidentally treat a downgrade as trusted if
-    // that ordering were ever changed.
+    // RedirectFollowingFetcher#sendFollowingRedirects) - this asserts the trust check itself
+    // would not accidentally treat a downgrade as trusted if that ordering were ever changed.
     assertThat(
-            AutoindexCrawlerService.isRedirectOriginTrusted(
+            RedirectFollowingFetcher.isRedirectOriginTrusted(
                 URI.create("https://host.example/a"), URI.create("http://host.example/a")))
         .isFalse();
   }
@@ -639,7 +641,7 @@ class AutoindexCrawlerServiceTest {
   @Test
   void redirectOriginTrusted_trueForAGenuineSameOriginRedirect() {
     assertThat(
-            AutoindexCrawlerService.isRedirectOriginTrusted(
+            RedirectFollowingFetcher.isRedirectOriginTrusted(
                 URI.create("https://host.example/a"), URI.create("https://host.example/b")))
         .isTrue();
   }
@@ -652,8 +654,8 @@ class AutoindexCrawlerServiceTest {
     // token, session id or other sensitive query parameter - the message must name only the
     // rejected target's scheme and host, never its path, query, fragment or userinfo.
     String message =
-        AutoindexCrawlerService.redirectRejectionMessage(
-            AutoindexCrawlerService.RedirectRejectionReason.FOREIGN_HOST,
+        RedirectFollowingFetcher.redirectRejectionMessage(
+            RedirectFollowingFetcher.RedirectRejectionReason.FOREIGN_HOST,
             URI.create("https://user:secret@angreifer.example:8443/pfad?token=geheim#frag"));
 
     assertThat(message).contains("https://angreifer.example:8443");
@@ -668,11 +670,11 @@ class AutoindexCrawlerServiceTest {
   void redirectRejectionMessage_distinguishesForeignHostFromProtocolDowngrade() {
     URI target = URI.create("http://host.example/a");
     String foreignHostMessage =
-        AutoindexCrawlerService.redirectRejectionMessage(
-            AutoindexCrawlerService.RedirectRejectionReason.FOREIGN_HOST, target);
+        RedirectFollowingFetcher.redirectRejectionMessage(
+            RedirectFollowingFetcher.RedirectRejectionReason.FOREIGN_HOST, target);
     String downgradeMessage =
-        AutoindexCrawlerService.redirectRejectionMessage(
-            AutoindexCrawlerService.RedirectRejectionReason.PROTOCOL_DOWNGRADE, target);
+        RedirectFollowingFetcher.redirectRejectionMessage(
+            RedirectFollowingFetcher.RedirectRejectionReason.PROTOCOL_DOWNGRADE, target);
 
     assertThat(foreignHostMessage).isNotEqualTo(downgradeMessage);
     assertThat(foreignHostMessage).contains("fremden Host");

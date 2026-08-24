@@ -2,6 +2,10 @@ package io.opaa.indexing;
 
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
@@ -22,7 +26,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   private static final Logger log = LoggerFactory.getLogger(UrlIndexingExecutor.class);
 
   private final AutoindexCrawlerService crawlerService;
-  private final UrlFileDownloader downloader;
+  private final BoundedDownloader downloader;
   private final FileProcessingService fileProcessingService;
   private final IndexingJobService indexingJobService;
   private final DocumentRepository documentRepository;
@@ -31,7 +35,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
   public UrlIndexingExecutor(
       AutoindexCrawlerService crawlerService,
-      UrlFileDownloader downloader,
+      BoundedDownloader downloader,
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
@@ -106,8 +110,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
       // Build shared HttpClient and auth header for downloads
       HttpClient httpClient =
-          AutoindexCrawlerService.buildHttpClient(proxyHost, proxyPort, request.insecureSsl());
-      String authHeader = AutoindexCrawlerService.buildAuthHeader(username, password);
+          SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, request.insecureSsl());
+      String authHeader = SourceHttpClientFactory.buildAuthHeader(username, password);
 
       // Step 2: Process each file. Whether a file is indexed at all is decided from its actual
       // content, not from its name in the listing - but only a bounded prefix is read to decide,

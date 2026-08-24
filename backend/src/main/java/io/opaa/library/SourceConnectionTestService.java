@@ -10,13 +10,15 @@ import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.ProxyAndCredentials;
 import io.opaa.indexing.RssFeedEntry;
 import io.opaa.indexing.RssFeedParseException;
 import io.opaa.indexing.RssFeedParser;
 import io.opaa.indexing.SupportedDocumentFormats;
-import io.opaa.indexing.TargetAddressValidator;
 import io.opaa.indexing.UrlIndexingExecutor;
+import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,10 +51,10 @@ import org.springframework.stereotype.Service;
  * URL serves a parseable feed.
  *
  * <p><b>Same building blocks as the real runs, deliberately</b> (issue #514): {@link
- * AutoindexCrawlerService#buildHttpClient} and {@link AutoindexCrawlerService#buildAuthHeader} are
+ * SourceHttpClientFactory#buildHttpClient} and {@link SourceHttpClientFactory#buildAuthHeader} are
  * the exact methods {@code UrlIndexingExecutor} and {@code RssFeedIndexingExecutor} use, and the
  * response body is bounded exactly the way {@code RssFeedIndexingExecutor#readBounded} and {@code
- * UrlFileDownloader#readBounded} bound theirs - {@link IndexingProperties.Rss#maxPageSizeBytes()}
+ * BoundedDownloader#readBounded} bound theirs - {@link IndexingProperties.Rss#maxPageSizeBytes()}
  * for the HTTP_DIRECTORY listing page, {@link IndexingProperties.Rss#maxFeedSizeBytes()} for the
  * RSS feed (PR #537 review, finding 2: an unbounded read here let an authenticated caller crash the
  * whole backend with a single request against an endless or multi-gigabyte response). {@code
@@ -335,12 +337,12 @@ public class SourceConnectionTestService {
     }
     ProxyAndCredentials config = parseProxyAndCredentials(request);
     HttpClient httpClient =
-        AutoindexCrawlerService.buildHttpClient(
+        SourceHttpClientFactory.buildHttpClient(
             config.proxyHost(),
             config.proxyPort(),
             Boolean.TRUE.equals(request.sourceInsecureSsl()));
     String authHeader =
-        AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
+        SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
 
     Map<String, String> headers = new LinkedHashMap<>();
     if (authHeader != null) {
@@ -354,10 +356,15 @@ public class SourceConnectionTestService {
       targetAddressValidator.validateHost(config.proxyHost());
       // #538: Authorization (the tested source configuration's own credentials) must not be
       // replayed to a redirect target on a different host/scheme - see
-      // AutoindexCrawlerService.sendFollowingRedirects's Javadoc.
+      // RedirectFollowingFetcher.sendFollowingRedirects's Javadoc.
       HttpResponse<InputStream> response =
-          AutoindexCrawlerService.sendFollowingRedirects(
-              httpClient, url, REQUEST_TIMEOUT, headers, targetAddressValidator);
+          RedirectFollowingFetcher.sendFollowingRedirects(
+              httpClient,
+              url,
+              REQUEST_TIMEOUT,
+              headers,
+              targetAddressValidator,
+              RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN);
       try (InputStream body = response.body()) {
         if (response.statusCode() == 401) {
           return unreachable(
@@ -432,12 +439,12 @@ public class SourceConnectionTestService {
     String url = requireHttpUrl(request);
     ProxyAndCredentials config = parseProxyAndCredentials(request);
     HttpClient httpClient =
-        AutoindexCrawlerService.buildHttpClient(
+        SourceHttpClientFactory.buildHttpClient(
             config.proxyHost(),
             config.proxyPort(),
             Boolean.TRUE.equals(request.sourceInsecureSsl()));
     String authHeader =
-        AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
+        SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
 
     Map<String, String> headers = new LinkedHashMap<>();
     headers.put("User-Agent", rssUserAgent);
@@ -450,8 +457,13 @@ public class SourceConnectionTestService {
       targetAddressValidator.validateHost(config.proxyHost());
       // #538: same reasoning as testHttpDirectory above.
       HttpResponse<InputStream> response =
-          AutoindexCrawlerService.sendFollowingRedirects(
-              httpClient, url, REQUEST_TIMEOUT, headers, targetAddressValidator);
+          RedirectFollowingFetcher.sendFollowingRedirects(
+              httpClient,
+              url,
+              REQUEST_TIMEOUT,
+              headers,
+              targetAddressValidator,
+              RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN);
       try (InputStream body = response.body()) {
         if (response.statusCode() == 401) {
           return unreachable(
@@ -591,7 +603,7 @@ public class SourceConnectionTestService {
   /**
    * Reads at most {@code maxBytes} from {@code in}, throwing {@link ResponseTooLargeException} the
    * moment a further byte would exceed the limit - enforced while streaming, mirroring {@code
-   * RssFeedIndexingExecutor#readBounded}/{@code UrlFileDownloader#readBounded} (PR #537 review,
+   * RssFeedIndexingExecutor#readBounded}/{@code BoundedDownloader#readBounded} (PR #537 review,
    * finding 2).
    */
   private static byte[] readBounded(InputStream in, long maxBytes) throws IOException {

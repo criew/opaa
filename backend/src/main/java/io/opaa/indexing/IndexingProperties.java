@@ -37,9 +37,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     restart - see {@code IndexingJobService#recoverStaleJobs}. Default 4 hours: generous enough
  *     for a large run to finish normally, short enough that a genuinely stuck run does not lock its
  *     library out for days.
- * @param targetValidation the SSRF target-address check {@link TargetAddressValidator} applies to
- *     every {@code HTTP_DIRECTORY}/{@code RSS_FEED} fetch - see {@link TargetValidation}'s own
- *     Javadoc.
+ * @param targetValidation the SSRF target-address check {@code
+ *     io.opaa.sourceaccess.TargetAddressValidator} applies to every {@code HTTP_DIRECTORY}/{@code
+ *     RSS_FEED} fetch - see {@link TargetValidation}'s own Javadoc.
  * @param embeddingConcurrency the maximum number of sub-batches a single document's chunks are
  *     split into for concurrent embedding and persistence ({@code
  *     OPAA_INDEXING_EMBEDDING_CONCURRENCY}) - see {@code
@@ -231,9 +231,10 @@ public record IndexingProperties(
   }
 
   /**
-   * SSRF hardening for {@code HTTP_DIRECTORY}/{@code RSS_FEED} fetches: {@link
-   * TargetAddressValidator} rejects a target whose resolved address lies in a loopback, link-local,
-   * private or otherwise non-routable range, and any non-{@code http(s)} scheme.
+   * SSRF hardening for {@code HTTP_DIRECTORY}/{@code RSS_FEED} fetches: {@code
+   * io.opaa.sourceaccess.TargetAddressValidator} rejects a target whose resolved address lies in a
+   * loopback, link-local, private or otherwise non-routable range, and any non-{@code http(s)}
+   * scheme.
    *
    * @param enabled whether the check runs at all. Default {@code true} - an operator with a
    *     legitimate internal document source turns this off deliberately; the check does not default

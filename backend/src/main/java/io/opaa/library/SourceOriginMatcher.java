@@ -1,6 +1,6 @@
 package io.opaa.library;
 
-import io.opaa.indexing.AutoindexCrawlerService;
+import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.net.URI;
 
 /**
@@ -11,11 +11,11 @@ import java.net.URI;
  * as "different origin" - a caller then re-requires the credential rather than risking a false
  * positive match.
  *
- * <p><b>Delegates to {@link AutoindexCrawlerService#sameOrigin(URI, URI)} (#615 review, finding
+ * <p><b>Delegates to {@link RedirectFollowingFetcher#sameOrigin(URI, URI)} (#615 review, finding
  * 1)</b> rather than re-implementing the comparison on top of {@link URI#getHost()} directly: a
  * naive {@code Objects.equals(a.getHost(), b.getHost())} treats two unrelated underscore-hostname
  * URLs as the same origin, since {@code URI} parses an underscore-containing host as {@code null}
- * on both sides - {@code AutoindexCrawlerService#sameOrigin} already guards against exactly that
+ * on both sides - {@code RedirectFollowingFetcher#sameOrigin} already guards against exactly that
  * (any {@code null} host loses outright, never matches another {@code null}), and duplicating that
  * guard here would only risk the copy drifting out of sync again.
  */
@@ -28,7 +28,7 @@ final class SourceOriginMatcher {
       return false;
     }
     try {
-      return AutoindexCrawlerService.sameOrigin(URI.create(previousUrl), URI.create(nextUrl));
+      return RedirectFollowingFetcher.sameOrigin(URI.create(previousUrl), URI.create(nextUrl));
     } catch (IllegalArgumentException ex) {
       return false;
     }

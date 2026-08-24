@@ -16,6 +16,9 @@ import com.sun.net.httpserver.HttpServer;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.LibraryVisibility;
+import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -28,13 +31,13 @@ import org.junit.jupiter.api.Test;
 /**
  * Exercises {@link UrlIndexingExecutor#execute} end to end against a local {@code
  * com.sun.net.httpserver.HttpServer} stub, mirroring {@link RssFeedIndexingExecutorTest}'s pattern
- * - {@link AutoindexCrawlerService} and {@link UrlFileDownloader} are the real implementations
+ * - {@link AutoindexCrawlerService} and {@link BoundedDownloader} are the real implementations
  * here, only {@link FileProcessingService}/{@link IndexingJobService}/{@link DocumentRepository}/
  * {@link IndexingRunEventRepository} are mocked.
  *
  * <p>Covers #404 review, finding 1 (the BLOCKER): a crawled entry this run ends up rejecting must
  * never reach {@link FileProcessingService#processUrlFile} and must count as skipped, not failed -
- * {@link UrlFileDownloaderTest} already proves the underlying {@code downloadPrefix} call itself
+ * {@code BoundedDownloaderTest} already proves the underlying {@code downloadPrefix} call itself
  * never reads more than its cap; this class proves the executor actually uses that bounded read to
  * decide before ever calling the unbounded {@code download}.
  */
@@ -78,12 +81,12 @@ class UrlIndexingExecutorExecuteTest {
 
     // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest) -
     // disabled here so a loopback test server is actually reachable, mirroring
-    // UrlFileDownloaderTest/RssFeedIndexingExecutorTest's own setup.
+    // BoundedDownloaderTest/RssFeedIndexingExecutorTest's own setup.
     TargetAddressValidator targetAddressValidator = TargetAddressValidator.disabled();
     executor =
         new UrlIndexingExecutor(
             new AutoindexCrawlerService(targetAddressValidator),
-            new UrlFileDownloader(targetAddressValidator),
+            new BoundedDownloader(targetAddressValidator),
             fileProcessingService,
             indexingJobService,
             documentRepository,

@@ -86,7 +86,7 @@ Drei Zustände werden unterschieden:
 
 **Gebaut**
 - Aufnahme aus einem konfigurierten Verzeichnis (`OPAA_INDEXING_DOCUMENT_PATH`)
-- Indizierung aus dem Netz über URL (`UrlIndexingExecutor`, `UrlFileDownloader`, `AutoindexCrawlerService`)
+- Indizierung aus dem Netz über URL (`UrlIndexingExecutor`, `io.opaa.sourceaccess.BoundedDownloader`, `AutoindexCrawlerService`)
 - Formate: Markdown, Text, PDF, DOCX, DOC, PPTX — an einer Stelle festgelegt
   (`SupportedDocumentFormats`) und für alle Aufnahmewege verbindlich, seit #404 anhand des
   tatsächlichen Inhalts entschieden (siehe A, oben); ein abgewiesenes Dokument zählt im

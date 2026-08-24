@@ -2,13 +2,16 @@ package io.opaa.indexing;
 
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -78,7 +81,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private final IndexingJobService indexingJobService;
   private final DocumentRepository documentRepository;
   private final RssFeedStateRepository feedStateRepository;
-  private final UrlFileDownloader attachmentDownloader;
+  private final BoundedDownloader attachmentDownloader;
   private final IndexingProperties.Rss properties;
   private final IndexingRunEventRepository indexingRunEventRepository;
   private final TargetAddressValidator targetAddressValidator;
@@ -90,7 +93,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       RssFeedStateRepository feedStateRepository,
-      UrlFileDownloader attachmentDownloader,
+      BoundedDownloader attachmentDownloader,
       IndexingProperties properties,
       IndexingRunEventRepository indexingRunEventRepository,
       TargetAddressValidator targetAddressValidator,
@@ -132,7 +135,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         return;
       }
       String authHeader =
-          AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
+          SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
 
       // sourceInsecureSsl must never weaken certificate validation for a target the feed's own
       // content points at (an entry's <link>, an attachment URL) once it leaves the feed's origin -
@@ -140,10 +143,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       // validates normally; insecureClient relaxes validation only when the library asks for it and
       // is used exclusively for same-origin requests ({@link #httpClientForTarget}).
       HttpClient secureClient =
-          AutoindexCrawlerService.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
+          SourceHttpClientFactory.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
       HttpClient insecureClient =
           targetLibrary.isSourceInsecureSsl()
-              ? AutoindexCrawlerService.buildHttpClient(
+              ? SourceHttpClientFactory.buildHttpClient(
                   config.proxyHost(), config.proxyPort(), true)
               : secureClient;
 
@@ -598,7 +601,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       IndexingRunEventRecorder events,
       String authHeader,
       String feedUrl) {
-    UrlFileDownloader.DownloadedFile downloaded = null;
+    BoundedDownloader.DownloadedFile downloaded = null;
     try {
       // An attachment candidate's own URL is content the feed operator controls, exactly like an
       // entry's <link> (see #httpClientForTarget) - sourceInsecureSsl must not weaken certificate
@@ -716,7 +719,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         progress.recordDocumentIndexed();
       }
       log.info("Indexed RSS attachment: {} (from entry {})", candidate.url(), entryUrl);
-    } catch (UrlFileDownloader.AttachmentTooLargeException e) {
+    } catch (BoundedDownloader.AttachmentTooLargeException e) {
       log.warn(
           "Skipping RSS attachment exceeding the size limit of {} bytes: {} (from entry {})",
           properties.maxAttachmentSizeBytes(),
@@ -727,7 +730,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           "Anlage überschreitet die zulässige Größe",
           candidate.url());
       anyEntryDeferred.set(true);
-    } catch (UrlFileDownloader.ForeignHostRedirectException e) {
+    } catch (RedirectFollowingFetcher.RedirectRejectedException e) {
       log.warn(
           "RSS attachment redirected to a foreign host, skipping: {} (from entry {}, {})",
           candidate.url(),
@@ -845,8 +848,13 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             headers.put("If-Modified-Since", state.getLastModified());
           }
         });
-    return AutoindexCrawlerService.sendFollowingRedirects(
-        httpClient, feedUrl, Duration.ofSeconds(60), headers, targetAddressValidator);
+    return RedirectFollowingFetcher.sendFollowingRedirects(
+        httpClient,
+        feedUrl,
+        Duration.ofSeconds(60),
+        headers,
+        targetAddressValidator,
+        RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN);
   }
 
   private void saveFeedState(
@@ -890,19 +898,16 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     HttpClient httpClient = httpClientForTarget(secureClient, insecureClient, feedUrl, entryUrl);
     HttpResponse<InputStream> response = sendDetailPageRequest(httpClient, entryUrl, authHeader);
 
-    // Every path below - the three early rejections and the ordinary 200 - must close the
-    // response body, hence try-with-resources around the whole evaluation.
+    // Every path below - the early rejections and the ordinary 200 - must close the response
+    // body, hence try-with-resources around the whole evaluation. A foreign-host redirect is
+    // already rejected inside sendDetailPageRequest (REJECT_OFF_ORIGIN), before a response for
+    // that hop is ever returned here - no separate check is needed on the response this method
+    // receives.
     try (InputStream body = response.body()) {
       if (response.statusCode() == 403 || response.statusCode() == 429) {
         throw new RejectedByRemoteException(
             "HTTP " + response.statusCode(),
             "Vom Quellserver abgewiesen (HTTP " + response.statusCode() + ")");
-      }
-      if (isForeignHostRedirect(entryUrl, response.uri())) {
-        throw new RejectedByRemoteException(
-            "redirected to a foreign host: " + response.uri(),
-            AutoindexCrawlerService.redirectRejectionMessage(
-                AutoindexCrawlerService.RedirectRejectionReason.FOREIGN_HOST, response.uri()));
       }
       if (response.statusCode() != 200) {
         throw new IOException("HTTP " + response.statusCode() + " for URL: " + entryUrl);
@@ -952,11 +957,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Sends the detail-page request for {@code entryUrl}, manually following up to {@link
-   * AutoindexCrawlerService#MAX_REDIRECTS} same-origin redirects - {@code httpClient} (built with
-   * {@code Redirect.NEVER}) never follows one on its own. A redirect off origin (different
-   * host/scheme, or a protocol downgrade - {@link AutoindexCrawlerService#sameOrigin}) is rejected
-   * right here with a {@link RejectedByRemoteException}, before the foreign target is contacted.
+   * Sends the detail-page request for {@code entryUrl}, following up to {@link
+   * RedirectFollowingFetcher#MAX_REDIRECTS} same-origin redirects via the shared {@link
+   * RedirectFollowingFetcher#sendFollowingRedirects} - {@code httpClient} (built with {@code
+   * Redirect.NEVER}) never follows one on its own. A redirect off origin (different host/scheme, or
+   * a protocol downgrade) is rejected under {@link
+   * RedirectFollowingFetcher.RedirectPolicy#REJECT_OFF_ORIGIN}, before the foreign target is
+   * contacted - remapped here to a {@link RejectedByRemoteException} with the identical wording, so
+   * this executor's own rejection handling stays uniform regardless of cause.
    *
    * <p>{@code authHeader} is sent on every hop this loop reaches - a foreign host is always
    * rejected before its request is built, so the header is never resent outside {@code entryUrl}'s
@@ -965,45 +973,21 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private HttpResponse<InputStream> sendDetailPageRequest(
       HttpClient httpClient, String entryUrl, String authHeader)
       throws IOException, InterruptedException {
-    URI currentUri = URI.create(entryUrl);
-    for (int hop = 0; ; hop++) {
-      targetAddressValidator.validate(currentUri);
-      HttpRequest.Builder requestBuilder =
-          HttpRequest.newBuilder()
-              .uri(currentUri)
-              .timeout(Duration.ofSeconds(30))
-              .header("User-Agent", properties.userAgent())
-              .GET();
-      if (authHeader != null) {
-        requestBuilder.header("Authorization", authHeader);
-      }
-      HttpResponse<InputStream> response =
-          httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
-
-      if (!AutoindexCrawlerService.isRedirectStatus(response.statusCode())
-          || hop >= AutoindexCrawlerService.MAX_REDIRECTS) {
-        return response;
-      }
-      Optional<String> location = response.headers().firstValue("Location");
-      if (location.isEmpty()) {
-        return response;
-      }
-      URI redirectUri = currentUri.resolve(location.get());
-      closeQuietly(response.body());
-      // A protocol downgrade is refused outright - see AutoindexCrawlerService.isSchemeDowngrade.
-      if (AutoindexCrawlerService.isSchemeDowngrade(currentUri, redirectUri)) {
-        throw new RejectedByRemoteException(
-            "refusing a protocol downgrade redirect (https to http): " + redirectUri,
-            AutoindexCrawlerService.redirectRejectionMessage(
-                AutoindexCrawlerService.RedirectRejectionReason.PROTOCOL_DOWNGRADE, redirectUri));
-      }
-      if (isForeignHostRedirect(currentUri.toString(), redirectUri)) {
-        throw new RejectedByRemoteException(
-            "redirected to a foreign host: " + redirectUri,
-            AutoindexCrawlerService.redirectRejectionMessage(
-                AutoindexCrawlerService.RedirectRejectionReason.FOREIGN_HOST, redirectUri));
-      }
-      currentUri = redirectUri;
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("User-Agent", properties.userAgent());
+    if (authHeader != null) {
+      headers.put("Authorization", authHeader);
+    }
+    try {
+      return RedirectFollowingFetcher.sendFollowingRedirects(
+          httpClient,
+          entryUrl,
+          Duration.ofSeconds(30),
+          headers,
+          targetAddressValidator,
+          RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN);
+    } catch (RedirectFollowingFetcher.RedirectRejectedException e) {
+      throw new RejectedByRemoteException(e.getMessage(), e.userMessage());
     }
   }
 
@@ -1040,27 +1024,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Whether {@code finalUri} is a different origin (scheme, host and normalized port) than {@code
-   * originalUrl} - the signature of a bot-protection challenge page. An unparsable host on either
-   * side, or an unparsable {@code originalUrl}, is always treated as foreign, never trusted with
-   * the feed's own credentials. Delegates to {@link
-   * AutoindexCrawlerService#isRedirectOriginTrusted} rather than {@code sameOrigin} directly, so a
-   * same-host {@code http}→{@code https} upgrade is not counted as foreign; {@link
-   * #sendDetailPageRequest} refuses the opposite (downgrade) direction unconditionally.
-   */
-  private boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
-    try {
-      URI originalUri = new URI(originalUrl);
-      return !AutoindexCrawlerService.isRedirectOriginTrusted(originalUri, finalUri);
-    } catch (URISyntaxException e) {
-      return true;
-    }
-  }
-
-  /**
    * Restricts {@code authHeader} to a request whose target shares the feed's own origin ({@link
-   * AutoindexCrawlerService#sameOrigin}). Neither {@code sendDetailPageRequest} nor {@code
-   * UrlFileDownloader#downloadBounded}'s own foreign-host checks protect against the starting
+   * RedirectFollowingFetcher#sameOrigin}). Neither {@code sendDetailPageRequest} nor {@code
+   * BoundedDownloader#downloadBounded}'s own foreign-host checks protect against the starting
    * address of a request: both only compare a redirect hop against the previous one, never against
    * the feed itself. An entry's own {@code <link>} or an attachment URL is content the feed
    * operator controls, so a request outside the feed's origin must never carry the feed's own
@@ -1088,7 +1054,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   private static boolean isSameOriginAsFeed(String feedUrl, String targetUrl) {
     try {
-      return AutoindexCrawlerService.sameOrigin(URI.create(feedUrl), URI.create(targetUrl));
+      return RedirectFollowingFetcher.sameOrigin(URI.create(feedUrl), URI.create(targetUrl));
     } catch (IllegalArgumentException e) {
       // An unparseable target URL is never trusted as same-origin.
       return false;
