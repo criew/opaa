@@ -112,6 +112,15 @@ mit Navy-600-Rahmen, Text Weiß/`#99A1AB`/`#7A8BA0`) — so lesen sich globale u
 einen Blick auseinander. Im dunklen Schema folgt die Rail wie die Seitenleiste dem Carbon-Schema;
 Carbon hat keine dunklere Stufe, die Trennung übernimmt der Standardrahmen.
 
+`fg-3` (`#7A8BA0`) in `navyRoles`/`railRoles` erreicht nur gegen die jeweilige `bg-1`-Fläche
+4,5:1 (Navy 4,65:1, Rail 5,26:1) — gegen `bg-2` (3,80:1) und `bg-3` (2,99:1) unterschreitet es
+die Schwelle deutlich (#853). Das ist folgenlos, weil `fg-3` dort nie als Text auf Hover- oder
+Aktivflächen landet: Beide Zustände wechseln die Textfarbe auf `fg-1` (Weiß) statt auf `fg-3`
+(Seitenleiste: Space-Navigation-Einträge bleiben bei 72 % Weiß, nicht `fg-3`; Rail: aktive und
+gehoverte Kacheln in `text.primary`, siehe 2.3-Regel zur Rail-Aktivkachel). Eine künftige
+Komponente, die `fg-3` auf `bg-2`/`bg-3` dieser Rollensets als Text einsetzt, verletzt 2.4 und
+braucht einen dunkleren Ton oder eine andere Rolle.
+
 ### 2.3 Regeln
 
 - **Nur Rollen in Komponenten.** Kein Hex-Wert und kein Skalenwert in Komponenten-Code; alles

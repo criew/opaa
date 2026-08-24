@@ -9,6 +9,7 @@ import {
   navy,
   navyRoles,
   radius,
+  railRoles,
   semanticColors,
   white,
 } from './tokens'
@@ -46,6 +47,25 @@ describe('tokens', () => {
       const ratio = contrastRatio(lightRoles.fg3, background)
       expect(ratio, `fg-3 on ${label}`).not.toBeNull()
       expect(ratio, `fg-3 on ${label}`).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+    }
+  })
+
+  // #853: navyRoles.fg3/railRoles.fg3 ('#7A8BA0') only reach 4.5:1 against bg1 (4.65:1 navy,
+  // 5.26:1 rail); against bg2 they drop to 3.80:1 and against bg3 to 2.99:1 - both below the
+  // WCAG AA floor. Verified against Sidebar.tsx and GlobalRail.tsx (the only two consumers of
+  // createSidebarTheme/createRailTheme): fg-3 there only ever renders on bg1 - the hover fill
+  // (bg2) and the active tile (bg3) both switch their *text* to fg-1 (white) instead, per
+  // guidelines.md 2.3 ("die Textfarbe wechselt auf Weiß"). This guard therefore checks fg-3
+  // against the surface it is actually used on; it must fail loudly the moment a future change
+  // starts rendering fg-3 text on bg2/bg3 of either role set, since neither reaches 4.5:1 there.
+  test('fg-3 in the navy and rail role sets meets 4.5:1 against the surface it renders text on (#853)', () => {
+    for (const [label, roles] of [
+      ['navy', navyRoles],
+      ['rail', railRoles],
+    ] as const) {
+      const ratio = contrastRatio(roles.fg3, roles.bg1)
+      expect(ratio, `${label} fg-3 on bg1`).not.toBeNull()
+      expect(ratio, `${label} fg-3 on bg1`).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
     }
   })
 })
