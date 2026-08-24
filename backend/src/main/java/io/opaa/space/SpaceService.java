@@ -10,6 +10,10 @@ import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -19,14 +23,12 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional(readOnly = true)
@@ -84,8 +86,7 @@ public class SpaceService {
     // through this endpoint - see ensureDefaultSpace.
     UUID ownerId = creation.ownerId() != null ? creation.ownerId() : currentUserId;
     if (!systemAdmin && !ownerId.equals(currentUserId)) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN,
+      throw new AccessDeniedException(
           "Nur Systemadministratoren können beim Erstellen einen anderen Eigentümer festlegen");
     }
     if (!ownerId.equals(currentUserId)) {
@@ -193,8 +194,7 @@ public class SpaceService {
     Space space = loadSpace(spaceId, currentUserId);
 
     if (!systemAdmin && userMembership(space, currentUserId) == null) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Sie sind kein Mitglied dieses Space");
+      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
     }
 
     return space;
@@ -234,8 +234,7 @@ public class SpaceService {
     requireUserInOrganization(memberUserId, space.getOrganizationId());
 
     if (userMembership(space, memberUserId) != null) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Der Benutzer ist bereits Mitglied dieses Space");
+      throw new ConflictException("Der Benutzer ist bereits Mitglied dieses Space");
     }
 
     SpaceRole roleToAssign = requestedRole == null ? SpaceRole.MEMBER : requestedRole;
@@ -266,16 +265,15 @@ public class SpaceService {
     Space space = loadSpace(spaceId, currentUserId);
     requireManager(space, currentUserId);
     if (newRole == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "role ist erforderlich");
+      throw new ValidationException("role ist erforderlich");
     }
 
     SpaceMembership target = userMembership(space, memberUserId);
     if (target == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Mitglied des Space nicht gefunden");
+      throw new NotFoundException("Mitglied des Space nicht gefunden");
     }
     if (space.getOwnerId().equals(memberUserId) && newRole != SpaceRole.ADMIN) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "Die Rolle des Eigentümers kann nicht geändert werden; übertragen Sie zuerst die"
               + " Verantwortung");
     }
@@ -306,11 +304,10 @@ public class SpaceService {
 
     SpaceMembership target = userMembership(space, memberUserId);
     if (target == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Mitglied des Space nicht gefunden");
+      throw new NotFoundException("Mitglied des Space nicht gefunden");
     }
     if (space.getOwnerId().equals(memberUserId)) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "Der Eigentümer kann nicht entfernt werden; übertragen Sie zuerst die Verantwortung");
     }
 
@@ -336,15 +333,13 @@ public class SpaceService {
       UUID spaceId, UUID newOwnerUserId, UUID currentUserId, boolean systemAdmin) {
     Space space = loadSpace(spaceId, currentUserId);
     if (!systemAdmin && !space.getOwnerId().equals(currentUserId)) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN,
+      throw new AccessDeniedException(
           "Nur der Eigentümer oder ein Systemadministrator kann die Verantwortung übertragen");
     }
 
     SpaceMembership newOwnerMembership = userMembership(space, newOwnerUserId);
     if (newOwnerMembership == null) {
-      throw new ResponseStatusException(
-          HttpStatus.NOT_FOUND, "Der ausgewählte Benutzer ist kein Mitglied dieses Space");
+      throw new NotFoundException("Der ausgewählte Benutzer ist kein Mitglied dieses Space");
     }
 
     UUID previousOwnerId = space.getOwnerId();
@@ -378,8 +373,7 @@ public class SpaceService {
         (membership != null && membership.getRole() == SpaceRole.ADMIN)
             || space.getOwnerId().equals(currentUserId);
     if (!systemAdmin && !adminOrOwner) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN,
+      throw new AccessDeniedException(
           "Nur Administratoren oder der Eigentümer können einen Space ändern");
     }
 
@@ -435,14 +429,12 @@ public class SpaceService {
     Space space = loadSpace(spaceId, currentUserId);
 
     if (space.isDefault()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Der Standard-Space kann nicht gelöscht werden");
+      throw new ValidationException("Der Standard-Space kann nicht gelöscht werden");
     }
 
     boolean owner = space.getOwnerId().equals(currentUserId);
     if (!systemAdmin && !owner) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN,
+      throw new AccessDeniedException(
           "Nur der Eigentümer oder ein Systemadministrator kann einen Space löschen");
     }
 
@@ -453,8 +445,7 @@ public class SpaceService {
     // 047) and would reject this anyway, but a raw constraint violation surfaces as an opaque 500 -
     // this check turns it into an understandable 409 instead.
     if (chatRepository.existsBySpaceId(spaceId)) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
+      throw new ConflictException(
           "Der Space enthält noch Chats und kann deshalb nicht gelöscht werden. Archivieren Sie"
               + " den Space stattdessen.");
     }
@@ -498,14 +489,12 @@ public class SpaceService {
     Space space = loadSpace(spaceId, currentUserId);
 
     if (space.isDefault()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Der Standard-Space kann nicht archiviert werden");
+      throw new ValidationException("Der Standard-Space kann nicht archiviert werden");
     }
 
     boolean owner = space.getOwnerId().equals(currentUserId);
     if (!systemAdmin && !owner) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN,
+      throw new AccessDeniedException(
           "Nur der Eigentümer oder ein Systemadministrator kann einen Space archivieren");
     }
 
@@ -646,20 +635,18 @@ public class SpaceService {
 
   private String validateName(String name) {
     if (name == null || name.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name ist erforderlich");
+      throw new ValidationException("name ist erforderlich");
     }
     String trimmed = name.trim();
     if (trimmed.length() > MAX_NAME_LENGTH) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "name darf höchstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
+      throw new ValidationException("name darf höchstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
     }
     return trimmed;
   }
 
   private void validateDescription(String description) {
     if (description != null && description.length() > MAX_DESCRIPTION_LENGTH) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "description darf höchstens " + MAX_DESCRIPTION_LENGTH + " Zeichen umfassen");
     }
   }
@@ -667,8 +654,7 @@ public class SpaceService {
   private User requireUser(UUID userId) {
     return userRepository
         .findById(userId)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+        .orElseThrow(() -> new NotFoundException("Benutzer nicht gefunden"));
   }
 
   /**
@@ -682,7 +668,7 @@ public class SpaceService {
   private User requireUserInOrganization(UUID userId, UUID organizationId) {
     User user = requireUser(userId);
     if (!user.getOrganizationId().equals(organizationId)) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden");
+      throw new NotFoundException("Benutzer nicht gefunden");
     }
     return user;
   }
@@ -697,11 +683,10 @@ public class SpaceService {
     Space space =
         spaceRepository
             .findByIdWithMemberships(spaceId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Space nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Space nicht gefunden"));
 
     if (!space.getOrganizationId().equals(currentUser.getOrganizationId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Space nicht gefunden");
+      throw new NotFoundException("Space nicht gefunden");
     }
     return space;
   }
@@ -709,8 +694,7 @@ public class SpaceService {
   private SpaceMembership requireMembership(Space space, UUID userId) {
     SpaceMembership membership = userMembership(space, userId);
     if (membership == null) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Sie sind kein Mitglied dieses Space");
+      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
     }
     return membership;
   }
@@ -718,8 +702,7 @@ public class SpaceService {
   private SpaceMembership requireManager(Space space, UUID userId) {
     SpaceMembership membership = requireMembership(space, userId);
     if (membership.getRole() != SpaceRole.ADMIN) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Nur Administratoren können Mitglieder verwalten");
+      throw new AccessDeniedException("Nur Administratoren können Mitglieder verwalten");
     }
     return membership;
   }
@@ -734,8 +717,7 @@ public class SpaceService {
   private SpaceMembership requireMemberListViewer(Space space, UUID userId) {
     SpaceMembership membership = requireMembership(space, userId);
     if (membership.getRole() != SpaceRole.ADMIN && !space.getOwnerId().equals(userId)) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN,
+      throw new AccessDeniedException(
           "Nur Administratoren oder der Eigentümer können die Mitgliederliste einsehen");
     }
     return membership;
@@ -749,8 +731,8 @@ public class SpaceService {
    */
   private void requireNotArchived(Space space) {
     if (space.isArchived()) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Der Space ist archiviert und lässt keine neuen Mitglieder mehr zu");
+      throw new ConflictException(
+          "Der Space ist archiviert und lässt keine neuen Mitglieder mehr zu");
     }
   }
 

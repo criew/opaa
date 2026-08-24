@@ -4,16 +4,15 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditOutcome;
+import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Reads and changes the single, system-wide branding configuration (#582,
@@ -215,13 +214,11 @@ public class BrandingSettingsService {
       return null;
     }
     if (trimmed.length() > maxLength) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           fieldLabel + " darf höchstens " + maxLength + " Zeichen lang sein");
     }
     if (trimmed.chars().anyMatch(Character::isISOControl)) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, fieldLabel + " darf keine Steuerzeichen enthalten");
+      throw new ValidationException(fieldLabel + " darf keine Steuerzeichen enthalten");
     }
     return trimmed;
   }
@@ -235,8 +232,7 @@ public class BrandingSettingsService {
       return null;
     }
     if (!HEX_COLOR.matcher(trimmed).matches()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel"
               + " #1292EE");
     }

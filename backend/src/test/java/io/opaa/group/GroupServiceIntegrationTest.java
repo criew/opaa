@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.library.AssetGrant;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.AssetRole;
@@ -25,11 +28,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
@@ -165,11 +166,7 @@ class GroupServiceIntegrationTest {
 
     GroupUpdate update = new GroupUpdate("Renamed", null);
     assertThatThrownBy(() -> groupService.updateGroup(saved.getId(), update, admin))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -203,11 +200,7 @@ class GroupServiceIntegrationTest {
     libraryRepository.save(library);
 
     assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), admin))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
     assertThat(groupRepository.findById(saved.getId())).isPresent();
 
     // Once the library no longer references the group, deletion succeeds - the check is a live
@@ -239,11 +232,7 @@ class GroupServiceIntegrationTest {
     grantRepository.save(grant);
 
     assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), admin))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
     assertThat(groupRepository.findById(saved.getId())).isPresent();
 
     // Once the grant is revoked, deletion succeeds - the check is a live guard, not a one-time
@@ -261,11 +250,7 @@ class GroupServiceIntegrationTest {
     Group saved = groupRepository.save(group);
 
     assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), admin))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
     assertThat(groupRepository.findById(saved.getId())).isPresent();
   }
 
@@ -294,11 +279,7 @@ class GroupServiceIntegrationTest {
     groupService.addMember(saved.getId(), member, admin);
 
     assertThatThrownBy(() -> groupService.addMember(saved.getId(), member, admin))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
   }
 
   @Test
@@ -309,11 +290,7 @@ class GroupServiceIntegrationTest {
     Group saved = groupRepository.save(group);
 
     assertThatThrownBy(() -> groupService.addMember(saved.getId(), outsider, admin))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
     assertThat(membershipRepository.findByGroupId(saved.getId())).isEmpty();
   }
 
@@ -325,11 +302,7 @@ class GroupServiceIntegrationTest {
     Group saved = groupRepository.save(group);
 
     assertThatThrownBy(() -> groupService.getGroup(saved.getId(), adminOfOtherOrganization))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
 
     assertThat(owner).isNotNull();
   }

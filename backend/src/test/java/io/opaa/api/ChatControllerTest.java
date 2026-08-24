@@ -23,6 +23,7 @@ import io.opaa.chat.ChatConversation;
 import io.opaa.chat.ChatCreation;
 import io.opaa.chat.ChatPatch;
 import io.opaa.chat.ChatService;
+import io.opaa.common.NotFoundException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -33,13 +34,11 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * HTTP-level coverage for {@link ChatController} (#525 review, finding/nit e): status codes and
@@ -188,7 +187,7 @@ class ChatControllerTest {
   void getChatReturns404ForAForeignChat() throws Exception {
     UUID chatId = UUID.randomUUID();
     when(chatService.getChat(eq(chatId), any()))
-        .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Chat nicht gefunden"));
+        .thenThrow(new NotFoundException("Chat nicht gefunden"));
 
     mockMvc
         .perform(get("/api/v1/chats/{chatId}", chatId).with(asTestUser()))
@@ -262,7 +261,7 @@ class ChatControllerTest {
   void updateChatReturns404ForAForeignChat() throws Exception {
     UUID chatId = UUID.randomUUID();
     when(chatService.updateChat(eq(chatId), any(), any()))
-        .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Chat nicht gefunden"));
+        .thenThrow(new NotFoundException("Chat nicht gefunden"));
 
     mockMvc
         .perform(
@@ -289,8 +288,7 @@ class ChatControllerTest {
   @Test
   void deleteChatReturns404ForAForeignChat() throws Exception {
     UUID chatId = UUID.randomUUID();
-    org.mockito.Mockito.doThrow(
-            new ResponseStatusException(HttpStatus.NOT_FOUND, "Chat nicht gefunden"))
+    org.mockito.Mockito.doThrow(new NotFoundException("Chat nicht gefunden"))
         .when(chatService)
         .deleteChat(eq(chatId), any());
 

@@ -8,6 +8,10 @@ import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
@@ -41,12 +45,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Manages knowledge libraries - the first asset type (#201, see
@@ -165,13 +167,11 @@ public class KnowledgeLibraryService {
     Group ownerGroup = null;
     if (ownerType == LibraryOwnerType.GROUP) {
       if (request.ownerId() == null) {
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST, "ownerId ist erforderlich, wenn ownerType GROUP ist");
+        throw new ValidationException("ownerId ist erforderlich, wenn ownerType GROUP ist");
       }
       ownerGroup = requireGroupInOrganization(request.ownerId(), currentUser.getOrganizationId());
       if (!membershipResolver.groupIdsForUser(currentUserId).contains(ownerGroup.getId())) {
-        throw new ResponseStatusException(
-            HttpStatus.FORBIDDEN,
+        throw new AccessDeniedException(
             "Nur Mitglieder der Gruppe können eine Bibliothek in ihrem Namen anlegen");
       }
       // #441: a dissolved group must not receive the group MANAGER grant below, mirroring
@@ -428,8 +428,7 @@ public class KnowledgeLibraryService {
     // optional purely so resending the current value (e.g. a naive client that echoes
     // LibraryDetail back) is not itself an error - only an actual change is rejected.
     if (request.sourceType() != null && request.sourceType() != library.getSourceType()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "sourceType kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
     }
     // #476 code review, finding 4: the typed configuration - unlike sourceType itself - can be
@@ -603,8 +602,7 @@ public class KnowledgeLibraryService {
     // otherwise block deletion indefinitely.
     if (indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
         JobStatus.RUNNING, libraryId, library.getOrganizationId())) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
+      throw new ConflictException(
           "Die Bibliothek wird gerade indiziert und kann erst nach Abschluss des Laufs gelöscht"
               + " werden");
     }
@@ -622,8 +620,7 @@ public class KnowledgeLibraryService {
     long documentsRemoved = 0;
     if (library.getSourceType() == DocumentSourceType.UPLOAD) {
       if (documentCount > 0) {
-        throw new ResponseStatusException(
-            HttpStatus.CONFLICT,
+        throw new ConflictException(
             "Die Bibliothek enthält noch Dokumente und kann nicht gelöscht werden");
       }
     } else if (documentCount > 0) {
@@ -869,29 +866,26 @@ public class KnowledgeLibraryService {
     LibraryFolder folder =
         folderRepository
             .findById(folderId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Ordner nicht gefunden"));
     if (!folder.getLibraryId().equals(libraryId)) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden");
+      throw new NotFoundException("Ordner nicht gefunden");
     }
   }
 
   private String validateName(String name) {
     if (name == null || name.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name ist erforderlich");
+      throw new ValidationException("name ist erforderlich");
     }
     String trimmed = name.trim();
     if (trimmed.length() > MAX_NAME_LENGTH) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "name darf höchstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
+      throw new ValidationException("name darf höchstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
     }
     return trimmed;
   }
 
   private void validateDescription(String description) {
     if (description != null && description.length() > MAX_DESCRIPTION_LENGTH) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "description darf höchstens " + MAX_DESCRIPTION_LENGTH + " Zeichen umfassen");
     }
   }
@@ -907,7 +901,7 @@ public class KnowledgeLibraryService {
   private SourceConfiguration validateSourceConfiguration(LibraryCreation request) {
     DocumentSourceType sourceType = request.sourceType();
     if (sourceType == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceType ist erforderlich");
+      throw new ValidationException("sourceType ist erforderlich");
     }
     String sourcePath = blankToNull(request.sourcePath());
     String sourceUrl =
@@ -1007,29 +1001,24 @@ public class KnowledgeLibraryService {
             || sourceProxy != null
             || sourceCredentials != null
             || sourceInsecureSsl) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST, "sourceType UPLOAD erlaubt keine Quellkonfiguration");
+          throw new ValidationException("sourceType UPLOAD erlaubt keine Quellkonfiguration");
         }
       }
       case FILESYSTEM -> {
         if (sourcePath == null) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
+          throw new ValidationException(
               "sourcePath ist erforderlich, wenn sourceType FILESYSTEM ist");
         }
         if (!sourcePath.startsWith("/")) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST, "sourcePath muss ein absoluter Pfad sein");
+          throw new ValidationException("sourcePath muss ein absoluter Pfad sein");
         }
         if (sourceUrl != null || sourceProxy != null || sourceCredentials != null) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
+          throw new ValidationException(
               "sourceUrl, sourceProxy und sourceCredentials sind für sourceType FILESYSTEM nicht"
                   + " zulässig");
         }
         if (sourceInsecureSsl) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
+          throw new ValidationException(
               "sourceInsecureSsl ist für sourceType FILESYSTEM nicht zulässig");
         }
         // #484/ADR-0018 Entscheidung 6: the actual security boundary for FILESYSTEM - anlage-recht
@@ -1038,14 +1027,12 @@ public class KnowledgeLibraryService {
         // defaulting to "everything allowed", so this check fires before - and independent of -
         // whether sourcePath itself is inside it.
         if (!filesystemAllowlist.isConfigured()) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
+          throw new ValidationException(
               "sourceType FILESYSTEM ist deaktiviert: der Betrieb hat keine Verzeichnisse für"
                   + " Dateisystem-Bibliotheken freigegeben");
         }
         if (!filesystemAllowlist.isAllowed(sourcePath)) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
+          throw new ValidationException(
               "sourcePath liegt außerhalb der vom Betrieb freigegebenen Verzeichnisse. Die"
                   + " freigegebenen Basisverzeichnisse teilt die Systemverwaltung mit.");
         }
@@ -1053,8 +1040,7 @@ public class KnowledgeLibraryService {
       case HTTP_DIRECTORY -> validateUrlBasedConfiguration(sourceType, sourcePath, sourceUrl);
       case RSS_FEED -> validateUrlBasedConfiguration(sourceType, sourcePath, sourceUrl);
       default ->
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST, "sourceType " + sourceType + " wird nicht unterstützt");
+          throw new ValidationException("sourceType " + sourceType + " wird nicht unterstützt");
     }
   }
 
@@ -1062,25 +1048,22 @@ public class KnowledgeLibraryService {
   private void validateUrlBasedConfiguration(
       DocumentSourceType sourceType, String sourcePath, String sourceUrl) {
     if (sourceUrl == null) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "sourceUrl ist erforderlich, wenn sourceType " + sourceType + " ist");
     }
     if (sourcePath != null) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "sourcePath ist für sourceType " + sourceType + " nicht zulässig");
     }
     URI uri;
     try {
       uri = URI.create(sourceUrl);
     } catch (IllegalArgumentException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceUrl ist keine gültige URL");
+      throw new ValidationException("sourceUrl ist keine gültige URL");
     }
     String scheme = uri.getScheme();
     if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "sourceUrl muss mit http:// oder https:// beginnen");
+      throw new ValidationException("sourceUrl muss mit http:// oder https:// beginnen");
     }
   }
 
@@ -1100,11 +1083,10 @@ public class KnowledgeLibraryService {
       LibraryScheduleUpdate request, DocumentSourceType sourceType) {
     ScheduleFrequency frequency = request.frequency();
     if (frequency == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "frequency ist erforderlich");
+      throw new ValidationException("frequency ist erforderlich");
     }
     if (frequency != ScheduleFrequency.DISABLED && sourceType == DocumentSourceType.UPLOAD) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "Ein Zeitplan ist nur für Konnektorbibliotheken verfügbar, nicht für UPLOAD");
     }
     Integer hour = request.hour();
@@ -1113,26 +1095,22 @@ public class KnowledgeLibraryService {
     switch (frequency) {
       case DISABLED, HOURLY -> {
         if (hour != null || minute != null || weekday != null) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
+          throw new ValidationException(
               "hour, minute und weekday sind für frequency " + frequency + " nicht zulässig");
         }
       }
       case DAILY -> {
         if (hour == null || minute == null) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
+          throw new ValidationException(
               "hour und minute sind erforderlich, wenn frequency DAILY ist");
         }
         if (weekday != null) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST, "weekday ist für frequency DAILY nicht zulässig");
+          throw new ValidationException("weekday ist für frequency DAILY nicht zulässig");
         }
       }
       case WEEKLY -> {
         if (hour == null || minute == null || weekday == null) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
+          throw new ValidationException(
               "hour, minute und weekday sind erforderlich, wenn frequency WEEKLY ist");
         }
       }
@@ -1159,8 +1137,7 @@ public class KnowledgeLibraryService {
   private User requireUser(UUID userId) {
     return userRepository
         .findById(userId)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+        .orElseThrow(() -> new NotFoundException("Benutzer nicht gefunden"));
   }
 
   /**
@@ -1174,10 +1151,9 @@ public class KnowledgeLibraryService {
     Group group =
         groupRepository
             .findById(groupId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Gruppe nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
     if (!group.getOrganizationId().equals(organizationId)) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Gruppe nicht gefunden");
+      throw new NotFoundException("Gruppe nicht gefunden");
     }
     return group;
   }
@@ -1192,12 +1168,10 @@ public class KnowledgeLibraryService {
     KnowledgeLibrary library =
         libraryRepository
             .findById(libraryId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
 
     if (!library.getOrganizationId().equals(currentUser.getOrganizationId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden");
+      throw new NotFoundException("Bibliothek nicht gefunden");
     }
     return library;
   }

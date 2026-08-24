@@ -7,6 +7,7 @@ import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -23,7 +24,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * #582: {@link BrandingSettingsService} against a real Postgres with the real, versioned Liquibase
@@ -146,7 +146,7 @@ class BrandingSettingsServiceIntegrationTest {
             () ->
                 brandingSettingsService.updateBranding(
                     organizationId, userId, "Landesamt-Assistent", null, "blau", null))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Primärfarbe");
 
     assertThat(brandingSettingsService.currentBranding().productName())
@@ -162,7 +162,7 @@ class BrandingSettingsServiceIntegrationTest {
             () ->
                 brandingSettingsService.updateBranding(
                     organizationId, userId, tooLong, null, null, null))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Produktname");
   }
 
@@ -172,7 +172,7 @@ class BrandingSettingsServiceIntegrationTest {
             () ->
                 brandingSettingsService.updateBranding(
                     organizationId, userId, "Zeile\nUmbruch", null, null, null))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Steuerzeichen");
   }
 

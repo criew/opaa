@@ -7,6 +7,7 @@ import com.openai.errors.OpenAIIoException;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ServiceUnavailableException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -29,9 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * {@link ActiveChatModelResolver} against a real Postgres (the canonical {@link
@@ -182,16 +181,14 @@ class ActiveChatModelResolverIntegrationTest {
   @Test
   void resolvingWithoutAnActiveModelFailsWithAGermanServiceUnavailableMessage() {
     assertThatThrownBy(() -> resolver.resolveChatClient())
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.SERVICE_UNAVAILABLE)
+        .isInstanceOf(ServiceUnavailableException.class)
         .hasMessageContaining("kein aktives Chat-Modell");
   }
 
   @Test
   void resolvingDescriptionWithoutAnActiveModelAlsoFails() {
     assertThatThrownBy(() -> resolver.resolveDescription())
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.SERVICE_UNAVAILABLE);
+        .isInstanceOf(ServiceUnavailableException.class);
   }
 
   @Test

@@ -9,6 +9,11 @@ import com.sun.net.httpserver.HttpServer;
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.ValidationException;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
@@ -48,13 +53,11 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Runs {@link LibraryDocumentService} against a real Postgres database with the real, versioned
@@ -222,11 +225,7 @@ class LibraryDocumentServiceIntegrationTest {
             () ->
                 documentService.uploadDocument(
                     libraryId, textFile("x.txt", "content"), null, viewer.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
   }
 
@@ -238,11 +237,7 @@ class LibraryDocumentServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 documentService.uploadDocument(libraryId, unsupported, null, editor.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
     assertNoFilesStored();
   }
@@ -253,11 +248,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> documentService.uploadDocument(libraryId, tooBig, null, editor.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE));
+        .isInstanceOf(PayloadTooLargeException.class);
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
     assertNoFilesStored();
   }
@@ -272,11 +263,7 @@ class LibraryDocumentServiceIntegrationTest {
             () ->
                 documentService.uploadDocument(
                     libraryId, textFile("second.txt", content), null, editor.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
     assertThat(documentRepository.findByLibraryId(libraryId)).hasSize(1);
 
     var secondLibraryRequest =
@@ -338,11 +325,7 @@ class LibraryDocumentServiceIntegrationTest {
             () ->
                 documentService.deleteDocument(
                     libraryId, uploaded.document().getId(), viewer.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
     assertThat(documentRepository.findById(uploaded.document().getId())).isPresent();
   }
 
@@ -358,11 +341,7 @@ class LibraryDocumentServiceIntegrationTest {
               () ->
                   documentService.uploadDocument(
                       libraryId, textFile("x.txt", "content"), null, strangerId, false))
-          .isInstanceOf(ResponseStatusException.class)
-          .satisfies(
-              ex ->
-                  assertThat(((ResponseStatusException) ex).getStatusCode())
-                      .isEqualTo(HttpStatus.NOT_FOUND));
+          .isInstanceOf(NotFoundException.class);
     } finally {
       userRepository.deleteById(stranger.getId());
     }
@@ -424,8 +403,7 @@ class LibraryDocumentServiceIntegrationTest {
                       editor.getId(),
                       false);
               return response.document().getId();
-            } catch (ResponseStatusException e) {
-              assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            } catch (ConflictException e) {
               return null;
             }
           };
@@ -477,11 +455,7 @@ class LibraryDocumentServiceIntegrationTest {
                       null,
                       editor.getId(),
                       false))
-          .isInstanceOf(ResponseStatusException.class)
-          .satisfies(
-              ex ->
-                  assertThat(((ResponseStatusException) ex).getStatusCode())
-                      .isEqualTo(HttpStatus.CONFLICT));
+          .isInstanceOf(ConflictException.class);
       assertThat(documentRepository.findByLibraryId(connectorLibrary.library().getId())).isEmpty();
     } finally {
       libraryRepository.deleteById(connectorLibrary.library().getId());
@@ -608,11 +582,7 @@ class LibraryDocumentServiceIntegrationTest {
       var strangerId = stranger.getId();
       var documentId = uploaded.document().getId();
       assertThatThrownBy(() -> documentService.loadContent(documentId, strangerId, false))
-          .isInstanceOf(ResponseStatusException.class)
-          .satisfies(
-              ex ->
-                  assertThat(((ResponseStatusException) ex).getStatusCode())
-                      .isEqualTo(HttpStatus.NOT_FOUND));
+          .isInstanceOf(NotFoundException.class);
     } finally {
       userRepository.deleteById(stranger.getId());
     }
@@ -632,14 +602,8 @@ class LibraryDocumentServiceIntegrationTest {
     var documentId = remoteDoc.getId();
 
     assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex -> {
-              var responseStatusException = (ResponseStatusException) ex;
-              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-              assertThat(responseStatusException.getReason())
-                  .isEqualTo("Für dieses Dokument steht kein Originaldokument zur Verfügung");
-            });
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
   }
 
   // #747: GET /api/v1/documents/{documentId}/content for HTTP_DIRECTORY/RSS_FEED - proxied from
@@ -806,14 +770,8 @@ class LibraryDocumentServiceIntegrationTest {
       var documentId = documentRepository.save(remoteDoc).getId();
 
       assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
-          .isInstanceOf(ResponseStatusException.class)
-          .satisfies(
-              ex -> {
-                var responseStatusException = (ResponseStatusException) ex;
-                assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-                assertThat(responseStatusException.getReason())
-                    .isEqualTo("Für dieses Dokument steht kein Originaldokument zur Verfügung");
-              });
+          .isInstanceOf(NotFoundException.class)
+          .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
     } finally {
       documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
       libraryRepository.deleteById(remoteLibrary.getId());
@@ -883,14 +841,8 @@ class LibraryDocumentServiceIntegrationTest {
       var documentId = documentRepository.save(remoteDoc).getId();
 
       assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
-          .isInstanceOf(ResponseStatusException.class)
-          .satisfies(
-              ex -> {
-                var responseStatusException = (ResponseStatusException) ex;
-                assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-                assertThat(responseStatusException.getReason())
-                    .isEqualTo("Für dieses Dokument steht kein Originaldokument zur Verfügung");
-              });
+          .isInstanceOf(NotFoundException.class)
+          .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
       assertThat(requestsReceived.get()).isZero();
     } finally {
       documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
@@ -909,11 +861,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var documentId = uploaded.document().getId();
     assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -937,11 +885,7 @@ class LibraryDocumentServiceIntegrationTest {
     var documentId = escapee.getId();
 
     assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -968,11 +912,7 @@ class LibraryDocumentServiceIntegrationTest {
       var strangerId = strangerFromAnotherOrg.getId();
       var documentId = uploaded.document().getId();
       assertThatThrownBy(() -> documentService.loadContent(documentId, strangerId, false))
-          .isInstanceOf(ResponseStatusException.class)
-          .satisfies(
-              ex ->
-                  assertThat(((ResponseStatusException) ex).getStatusCode())
-                      .isEqualTo(HttpStatus.NOT_FOUND));
+          .isInstanceOf(NotFoundException.class);
     } finally {
       userRepository.deleteById(strangerFromAnotherOrg.getId());
       organizationRepository.deleteById(otherOrganizationId);
@@ -1084,11 +1024,7 @@ class LibraryDocumentServiceIntegrationTest {
       var documentId = escapee.getId();
 
       assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
-          .isInstanceOf(ResponseStatusException.class)
-          .satisfies(
-              ex ->
-                  assertThat(((ResponseStatusException) ex).getStatusCode())
-                      .isEqualTo(HttpStatus.NOT_FOUND));
+          .isInstanceOf(NotFoundException.class);
     } finally {
       documentRepository
           .findByLibraryId(connectorLibrary.getId())
@@ -1119,11 +1055,7 @@ class LibraryDocumentServiceIntegrationTest {
     var documentId = doc.getId();
 
     assertThatThrownBy(() -> documentService.loadContent(documentId, editor.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   // #517: page/size/q on GET /libraries/{id}/documents, backed by
@@ -1263,11 +1195,7 @@ class LibraryDocumentServiceIntegrationTest {
             () ->
                 libraryService.listDocuments(
                     UUID.randomUUID(), editor.getId(), false, null, null, PageRequest.of(0, 20)))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   // #821 (Epic #520 Phase 2, ADR-0020): folder-aware GET .../documents - a folderId (or its
@@ -1395,11 +1323,7 @@ class LibraryDocumentServiceIntegrationTest {
             () ->
                 libraryService.listDocuments(
                     libraryId, editor.getId(), false, null, UUID.randomUUID(), stableOrder(0, 20)))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -1418,11 +1342,7 @@ class LibraryDocumentServiceIntegrationTest {
                     "dienst",
                     UUID.randomUUID(),
                     stableOrder(0, 20)))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -1443,11 +1363,7 @@ class LibraryDocumentServiceIntegrationTest {
                     null,
                     foreignFolder.getId(),
                     stableOrder(0, 20)))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
 
     documentRepository
         .findByLibraryId(otherLibrary.library().getId())
@@ -1488,11 +1404,7 @@ class LibraryDocumentServiceIntegrationTest {
                     UUID.randomUUID(),
                     editor.getId(),
                     false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
 
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
   }
@@ -1514,11 +1426,7 @@ class LibraryDocumentServiceIntegrationTest {
                     foreignFolder.getId(),
                     editor.getId(),
                     false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
 
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
 
@@ -1629,11 +1537,7 @@ class LibraryDocumentServiceIntegrationTest {
                     "Protokolle/../etc",
                     editor.getId(),
                     false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
 
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
     // Neither the valid "Protokolle" segment nor anything else must have been created - the whole
@@ -1656,11 +1560,7 @@ class LibraryDocumentServiceIntegrationTest {
             () ->
                 documentService.uploadDocument(
                     libraryId, unsupported, null, "Protokolle/2026", editor.getId(), false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
 
     assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
     assertThat(folderRepository.findByLibraryId(libraryId)).isEmpty();
@@ -1683,11 +1583,7 @@ class LibraryDocumentServiceIntegrationTest {
                       "Protokolle",
                       editor.getId(),
                       false))
-          .isInstanceOf(ResponseStatusException.class)
-          .satisfies(
-              ex ->
-                  assertThat(((ResponseStatusException) ex).getStatusCode())
-                      .isEqualTo(HttpStatus.CONFLICT));
+          .isInstanceOf(ConflictException.class);
       assertThat(documentRepository.findByLibraryId(connectorLibrary.library().getId())).isEmpty();
       assertThat(folderRepository.findByLibraryId(connectorLibrary.library().getId())).isEmpty();
     } finally {
@@ -1715,11 +1611,7 @@ class LibraryDocumentServiceIntegrationTest {
                       "Protokolle",
                       strangerId,
                       false))
-          .isInstanceOf(ResponseStatusException.class)
-          .satisfies(
-              ex ->
-                  assertThat(((ResponseStatusException) ex).getStatusCode())
-                      .isEqualTo(HttpStatus.NOT_FOUND));
+          .isInstanceOf(NotFoundException.class);
       assertThat(folderRepository.findByLibraryId(libraryId)).isEmpty();
     } finally {
       userRepository.deleteById(strangerFromAnotherOrg.getId());

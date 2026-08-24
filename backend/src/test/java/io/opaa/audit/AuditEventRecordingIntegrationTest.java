@@ -9,6 +9,8 @@ import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.UserService;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupCreation;
 import io.opaa.group.GroupKind;
@@ -59,13 +61,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * #392: proves that {@link AssetGrantService}, {@link KnowledgeLibraryService}, {@link
@@ -302,11 +302,7 @@ class AuditEventRecordingIntegrationTest {
                     new AssetGrantUpsert(PermissionSubjectType.USER, targetUser, AssetRole.OWNER),
                     manager,
                     false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
 
     List<AuditLogEntry> denied =
         entriesFor(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId).stream()
@@ -343,11 +339,7 @@ class AuditEventRecordingIntegrationTest {
                         PermissionSubjectType.USER, unknownSubject, AssetRole.VIEWER),
                     owner,
                     false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
 
     assertThat(auditLogRepository.count()).isEqualTo(before);
   }
@@ -373,11 +365,7 @@ class AuditEventRecordingIntegrationTest {
                           PermissionSubjectType.USER, foreignUserId, AssetRole.VIEWER),
                       owner,
                       false))
-          .isInstanceOf(ResponseStatusException.class)
-          .satisfies(
-              ex ->
-                  assertThat(((ResponseStatusException) ex).getStatusCode())
-                      .isEqualTo(HttpStatus.NOT_FOUND));
+          .isInstanceOf(NotFoundException.class);
 
       // No pseudonym row was minted for a user this organization never had standing to reference,
       // and no new audit_log row of any kind was written for this attempt - createLibrary above

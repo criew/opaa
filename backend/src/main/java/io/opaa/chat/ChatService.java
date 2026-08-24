@@ -1,5 +1,9 @@
 package io.opaa.chat;
 
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationRepository;
@@ -17,14 +21,12 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -107,8 +109,7 @@ public class ChatService {
     // #543: an archived space accepts no new content - see docs/features/spaces-and-assets.md#
     // einen-space-stilllegen-archivieren-statt-löschen.
     if (space.isArchived()) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Der Space ist archiviert und lässt keine neuen Chats mehr zu");
+      throw new ConflictException("Der Space ist archiviert und lässt keine neuen Chats mehr zu");
     }
     Boolean useKnowledge = creation.getUseKnowledge();
     String title = creation.getTitle();
@@ -172,8 +173,7 @@ public class ChatService {
   private Chat getOwnedChat(UUID chatId, UUID authorId) {
     return chatRepository
         .findByIdAndAuthorId(chatId, authorId)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Chat nicht gefunden"));
+        .orElseThrow(() -> new NotFoundException("Chat nicht gefunden"));
   }
 
   /**
@@ -199,8 +199,7 @@ public class ChatService {
             .findByUserIdAndSpaceId(chat.getAuthorId(), chat.getSpaceId())
             .isPresent();
     if (!member) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Sie sind kein Mitglied dieses Space mehr");
+      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space mehr");
     }
   }
 
@@ -430,12 +429,10 @@ public class ChatService {
     Space space =
         spaceRepository
             .findById(spaceId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Space nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Space nicht gefunden"));
     boolean member = spaceMembershipRepository.findByUserIdAndSpaceId(userId, spaceId).isPresent();
     if (!member) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Sie sind kein Mitglied dieses Space");
+      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
     }
     return space;
   }
@@ -457,11 +454,9 @@ public class ChatService {
     Space space =
         spaceRepository
             .findById(spaceId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Space nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Space nicht gefunden"));
     if (space.isArchived()) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Der Space ist archiviert und lässt keine neuen Inhalte mehr zu");
+      throw new ConflictException("Der Space ist archiviert und lässt keine neuen Inhalte mehr zu");
     }
   }
 
@@ -490,8 +485,7 @@ public class ChatService {
     }
     Set<UUID> readable = libraryAccessService.readableLibraryIds(authorId, organizationId);
     if (!readable.containsAll(referencedLibraryIds)) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "referencedLibraryIds enthält eine Bibliothek, die nicht lesbar ist");
     }
   }

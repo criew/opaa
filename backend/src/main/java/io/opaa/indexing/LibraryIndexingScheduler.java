@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.common.ConflictException;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import java.time.Clock;
@@ -9,10 +10,8 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Triggers a due connector library's indexing run automatically, on the schedule stored on the
@@ -144,14 +143,10 @@ public class LibraryIndexingScheduler {
     }
     try {
       indexingService.triggerScheduledIndexing(library);
-    } catch (ResponseStatusException e) {
-      if (e.getStatusCode() == HttpStatus.CONFLICT) {
-        // TOCTOU: the pre-check above and startJob's own insert are two separate statements - a
-        // run could have started between them (another backend instance racing the same tick).
-        recordSkipEvent(library);
-      } else {
-        log.error("Scheduled indexing trigger for library {} failed", library.getId(), e);
-      }
+    } catch (ConflictException e) {
+      // TOCTOU: the pre-check above and startJob's own insert are two separate statements - a
+      // run could have started between them (another backend instance racing the same tick).
+      recordSkipEvent(library);
     } catch (Exception e) {
       log.error("Scheduled indexing trigger for library {} failed", library.getId(), e);
     }

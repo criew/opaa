@@ -9,6 +9,9 @@ import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.AutoindexCrawlerService;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.DocumentSourceType;
@@ -30,8 +33,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Unit-level coverage of {@link SourceConnectionTestService} for all three testable quellentypen
@@ -139,11 +140,7 @@ class SourceConnectionTestServiceTest {
                         .sourceType(DocumentSourceType.FILESYSTEM)
                         .sourcePath("/etc/shadow")
                         .build()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -157,11 +154,7 @@ class SourceConnectionTestServiceTest {
                         .sourceType(DocumentSourceType.FILESYSTEM)
                         .sourcePath("/data/documents")
                         .build()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -173,11 +166,7 @@ class SourceConnectionTestServiceTest {
                         .sourceType(DocumentSourceType.FILESYSTEM)
                         .sourcePath("relative/path")
                         .build()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -193,11 +182,7 @@ class SourceConnectionTestServiceTest {
                         .sourcePath("/data/documents")
                         .sourceUrl(URI.create("https://files.example.com"))
                         .build()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -210,11 +195,7 @@ class SourceConnectionTestServiceTest {
                         .sourcePath("/data/documents")
                         .sourceInsecureSsl(true)
                         .build()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   // --- HTTP_DIRECTORY ------------------------------------------------------
@@ -514,11 +495,7 @@ class SourceConnectionTestServiceTest {
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
                         .sourcePath("/data/documents")
                         .build()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -566,11 +543,7 @@ class SourceConnectionTestServiceTest {
                         .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                         .sourceUrl(URI.create("ftp://files.example.com"))
                         .build()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   // --- RSS_FEED --------------------------------------------------------------
@@ -723,11 +696,7 @@ class SourceConnectionTestServiceTest {
                         .sourceUrl(URI.create(baseUrl + "/feed.xml"))
                         .sourcePath("/data/documents")
                         .build()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -983,7 +952,7 @@ class SourceConnectionTestServiceTest {
     when(libraryAccessService.requireRole(library, currentUserId, true, AssetRole.MANAGER))
         .thenReturn(AssetRole.MANAGER);
     when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
-        .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+        .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
 
     // systemAdmin=false would answer 404 here (no grant on this library at all); systemAdmin=true
     // reaches past requireRole into the actual FILESYSTEM check below (400, allowlist gate) -
@@ -999,11 +968,7 @@ class SourceConnectionTestServiceTest {
                         .build(),
                     currentUserId,
                     true))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -1025,8 +990,7 @@ class SourceConnectionTestServiceTest {
             false);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
-        .thenThrow(
-            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     assertThatThrownBy(
             () ->
@@ -1038,11 +1002,7 @@ class SourceConnectionTestServiceTest {
                         .build(),
                     currentUserId,
                     false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -1060,11 +1020,7 @@ class SourceConnectionTestServiceTest {
                         .build(),
                     currentUserId,
                     false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -1098,11 +1054,7 @@ class SourceConnectionTestServiceTest {
                         .build(),
                     currentUserId,
                     false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   // --- UPLOAD ------------------------------------------------------------
@@ -1112,20 +1064,12 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(sourceConnectionTest().sourceType(DocumentSourceType.UPLOAD).build()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
   void missingSourceTypeIsRejectedWith400() {
     assertThatThrownBy(() -> service.test(sourceConnectionTest().build()))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 }

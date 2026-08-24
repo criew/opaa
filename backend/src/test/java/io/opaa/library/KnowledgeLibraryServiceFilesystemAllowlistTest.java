@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ValidationException;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.DocumentRepository;
@@ -25,8 +26,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Unit-level coverage of {@link KnowledgeLibraryService}'s FILESYSTEM allowlist enforcement (#484,
@@ -100,11 +99,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, ownerId))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -129,11 +124,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, ownerId))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test

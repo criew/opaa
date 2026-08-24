@@ -20,6 +20,7 @@ import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
+import io.opaa.common.ConflictException;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.KnowledgeLibrary;
@@ -55,9 +56,7 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
 class QueryServiceTest {
@@ -728,15 +727,12 @@ class QueryServiceTest {
     Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    doThrow(
-            new ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "Der Space ist archiviert und lässt keine neuen Inhalte mehr zu"))
+    doThrow(new ConflictException("Der Space ist archiviert und lässt keine neuen Inhalte mehr zu"))
         .when(chatService)
         .requireSpaceNotArchived(chat.getSpaceId());
 
     assertThatThrownBy(() -> queryService.query("Question", chatId, currentUserId, true, List.of()))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ConflictException.class)
         .hasMessageContaining("archiviert");
 
     // Not just "before the model": nothing past the early check runs at all, including the

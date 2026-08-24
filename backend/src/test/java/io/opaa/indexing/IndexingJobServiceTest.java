@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.common.ConflictException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -20,8 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
 class IndexingJobServiceTest {
@@ -80,8 +79,7 @@ class IndexingJobServiceTest {
         .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
     assertThatThrownBy(() -> service.startJob(libraryId, UUID.randomUUID()))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT)
+        .isInstanceOf(ConflictException.class)
         .hasMessageContaining("Für diese Bibliothek läuft bereits ein Indizierungslauf");
   }
 

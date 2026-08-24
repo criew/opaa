@@ -2,6 +2,8 @@ package io.opaa.library;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.PermissionSubjectType;
 import java.time.Duration;
@@ -13,9 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Resolves the {@link AssetRole} a user effectively holds on a {@link KnowledgeLibrary}, and the
@@ -116,10 +116,10 @@ public class LibraryAccessService {
       KnowledgeLibrary library, UUID userId, boolean systemAdmin, AssetRole required) {
     AssetRole role = effectiveRole(library, userId, systemAdmin);
     if (role == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden");
+      throw new NotFoundException("Bibliothek nicht gefunden");
     }
     if (!role.atLeast(required)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
+      throw new AccessDeniedException("Kein Zugriff auf diese Bibliothek");
     }
     return role;
   }

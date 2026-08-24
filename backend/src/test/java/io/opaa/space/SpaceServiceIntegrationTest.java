@@ -7,6 +7,10 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -22,9 +26,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
@@ -349,11 +351,7 @@ class SpaceServiceIntegrationTest {
         new Chat(saved.getId(), owner, organizationA, "Meine Frage", true, Set.of()));
 
     assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), owner, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
     assertThat(spaceRepository.findById(saved.getId())).isPresent();
   }
 
@@ -367,11 +365,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(personal);
 
     assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), owner, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -426,11 +420,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(defaultSpace);
 
     assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), owner, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -444,11 +434,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(() -> spaceService.removeMember(saved.getId(), owner, admin))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -478,11 +464,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(() -> spaceService.transferOwnership(saved.getId(), owner, admin, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -517,11 +499,7 @@ class SpaceServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> spaceService.updateMemberRole(saved.getId(), target, SpaceRole.MEMBER, member))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -534,11 +512,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(() -> spaceService.getSpace(saved.getId(), outsider, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -551,11 +525,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(() -> spaceService.getSpace(saved.getId(), otherOrgAdmin, true))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -594,11 +564,7 @@ class SpaceServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> spaceService.addMember(saved.getId(), outsider, SpaceRole.MEMBER, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
     assertThat(membershipRepository.findBySpaceId(saved.getId())).hasSize(1);
   }
 
@@ -612,11 +578,7 @@ class SpaceServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> spaceService.addMember(saved.getId(), UUID.randomUUID(), SpaceRole.MEMBER, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -633,11 +595,7 @@ class SpaceServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> spaceService.addMember(saved.getId(), newMember, SpaceRole.MEMBER, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
     assertThat(membershipRepository.findBySpaceId(saved.getId())).hasSize(1);
   }
 
@@ -648,11 +606,7 @@ class SpaceServiceIntegrationTest {
     SpaceCreation request = new SpaceCreation("Engineering", null, outsider, null, List.of(), null);
 
     assertThatThrownBy(() -> spaceService.createSpace(request, admin, true))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
     assertThat(spaceRepository.findAll()).isEmpty();
   }
 
@@ -670,11 +624,7 @@ class SpaceServiceIntegrationTest {
             null);
 
     assertThatThrownBy(() -> spaceService.createSpace(request, admin, true))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
     assertThat(spaceRepository.findAll()).isEmpty();
   }
 
@@ -690,11 +640,7 @@ class SpaceServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> spaceService.updateMemberRole(saved.getId(), owner, SpaceRole.MEMBER, admin))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
 
     Space reloaded = spaceRepository.findByIdWithMemberships(saved.getId()).orElseThrow();
     assertThat(reloaded.getMemberships())
@@ -725,11 +671,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), outsider, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   // #144: the full member list (identities and display names) is restricted to ADMIN, the owner
@@ -764,11 +706,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), member, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -782,11 +720,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), curator, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -867,11 +801,7 @@ class SpaceServiceIntegrationTest {
     SpaceCreation request = new SpaceCreation("x".repeat(256), null, null, null, List.of(), null);
 
     assertThatThrownBy(() -> spaceService.createSpace(request, userId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   // #543: archiving a space with a foreign chat - a Space mit fremden privaten Chats ist dauerhaft
@@ -892,12 +822,10 @@ class SpaceServiceIntegrationTest {
         new Chat(saved.getId(), otherMember, organizationA, "Fremde Frage", true, Set.of()));
 
     assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), owner, false))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ConflictException.class)
         .satisfies(
             ex -> {
-              ResponseStatusException statusException = (ResponseStatusException) ex;
-              assertThat(statusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-              assertThat(statusException.getReason()).contains("Archivieren");
+              assertThat(ex.getMessage()).contains("Archivieren");
             });
   }
 
@@ -947,11 +875,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(() -> spaceService.archiveSpace(saved.getId(), otherMember, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -963,11 +887,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(defaultSpace);
 
     assertThatThrownBy(() -> spaceService.archiveSpace(saved.getId(), owner, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -1058,7 +978,7 @@ class SpaceServiceIntegrationTest {
             "Datenraum", null, null, null, null, List.of(readableLibrary, nonExistentLibrary));
 
     assertThatThrownBy(() -> spaceService.createSpace(request, creator, false))
-        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        .isInstanceOf(io.opaa.common.NotFoundException.class);
 
     assertThat(spaceRepository.findDistinctByMembershipsUserId(creator)).isEmpty();
   }

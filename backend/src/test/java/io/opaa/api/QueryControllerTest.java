@@ -179,12 +179,25 @@ class QueryControllerTest {
         .andExpect(status().isBadRequest());
   }
 
-  // No test for the "unknown user" 401 path here: GlobalExceptionHandler has no
-  // @ExceptionHandler(ResponseStatusException.class), so a ResponseStatusException thrown from
-  // currentUser() (the same pattern LibraryController, GroupController and SpaceController
-  // already use) falls through to the generic Exception.class handler and surfaces as 500, not
-  // its actual status - a pre-existing gap this PR does not fix (out of scope for #202, see the
-  // PR description's follow-up note).
+  @Test
+  void queryWithUnknownJwtSubjectReturns401() throws Exception {
+    // #202/#875: QueryController#currentUser (the same pattern LibraryController, GroupController
+    // and SpaceController use) throws ResponseStatusException(UNAUTHORIZED) directly when the
+    // JWT subject resolves to no known user; GlobalExceptionHandler's
+    // @ExceptionHandler(ResponseStatusException.class) maps that to the matching status/body.
+    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
+        .thenReturn(Optional.empty());
+
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\": \"What?\"}"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error").value("Benutzer nicht gefunden"))
+        .andExpect(jsonPath("$.status").value(401));
+  }
 
   @Test
   void queryWithTransientAiExceptionReturns503() throws Exception {
