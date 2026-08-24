@@ -13,10 +13,16 @@ databaseChangeLog:
   #                                             own null parent_folder_id
   #
   # Every foreign key here that points from one organization_id-carrying table to another is
-  # composite - (fk_column, organization_id) -> (referenced_pk, organization_id) - never a plain
-  # single-column key, per the schema-wide rule OrganizationBoundarySchemaTest (#390) enforces:
-  # library_folders -> knowledge_libraries, library_folders -> library_folders (its own parent) and
-  # documents -> library_folders all carry organization_id on both sides.
+  # composite - never a plain single-column key - per the schema-wide rule
+  # OrganizationBoundarySchemaTest (#390) enforces. fk_library_folders_parent and fk_documents_folder
+  # go one step further than the minimum that rule requires (organization_id alone): both also carry
+  # library_id, so a parent/folder reference can never cross library boundaries within the same
+  # organization either - a document from library B could otherwise reference a folder in library A
+  # (both in the same organization), which would make LibraryFolderService#deleteRecursive 404 on
+  # that document's own library check while fk_documents_folder's RESTRICT still refused to let the
+  # foreign folder be deleted. uk_library_folders_id_library_organization on (id, library_id,
+  # organization_id) is what both self- and cross-table references below target for exactly that
+  # reason.
 
   - changeSet:
       id: 062-create-library-folders
@@ -30,12 +36,13 @@ databaseChangeLog:
         root - RESTRICT turns any future violation of that order into a loud database error instead
         of a silent orphaned subtree. organization_id is denormalized from the owning library, the
         same pattern documents.organization_id already uses, so a query never needs a join back to
-        knowledge_libraries to filter by organization - and, per fk_library_folders_library/
-        fk_library_folders_parent below, is also what lets both foreign keys be composite
-        (#390's organization boundary rule). uk_library_folders_id_organization exists for
+        knowledge_libraries to filter by organization. uk_library_folders_id_library_organization on
+        (id, library_id, organization_id) - not just (id, organization_id) - is what
         fk_library_folders_parent (this changeSet) and fk_documents_folder
-        (062-add-folder-id-to-documents) to reference, the same uk_knowledge_libraries_id_organization
-        pattern (migration 012) knowledge_libraries already established.
+        (062-add-folder-id-to-documents) both reference: binding library_id into the key, not only
+        organization_id, additionally guarantees a parent folder (or a document's folder) always
+        belongs to the very same library as the row referencing it, not merely the same
+        organization - see this file's header comment.
       changes:
         - createTable:
             tableName: library_folders
@@ -74,8 +81,8 @@ databaseChangeLog:
                     nullable: false
         - addUniqueConstraint:
             tableName: library_folders
-            columnNames: id, organization_id
-            constraintName: uk_library_folders_id_organization
+            columnNames: id, library_id, organization_id
+            constraintName: uk_library_folders_id_library_organization
         - addForeignKeyConstraint:
             baseTableName: library_folders
             baseColumnNames: library_id, organization_id
@@ -85,9 +92,9 @@ databaseChangeLog:
             onDelete: CASCADE
         - addForeignKeyConstraint:
             baseTableName: library_folders
-            baseColumnNames: parent_folder_id, organization_id
+            baseColumnNames: parent_folder_id, library_id, organization_id
             referencedTableName: library_folders
-            referencedColumnNames: id, organization_id
+            referencedColumnNames: id, library_id, organization_id
             constraintName: fk_library_folders_parent
             onDelete: RESTRICT
         - createIndex:
@@ -108,7 +115,7 @@ databaseChangeLog:
             constraintName: fk_library_folders_library
         - dropUniqueConstraint:
             tableName: library_folders
-            constraintName: uk_library_folders_id_organization
+            constraintName: uk_library_folders_id_library_organization
         - dropTable:
             tableName: library_folders
 
@@ -148,8 +155,11 @@ databaseChangeLog:
         same convention library_folders.parent_folder_id uses one level up. RESTRICT:
         LibraryFolderService#deleteFolder always removes every document referencing a folder before
         deleting that folder's own row - see 062-create-library-folders' identical reasoning for
-        parent_folder_id. Composite (folder_id, organization_id) against
-        uk_library_folders_id_organization, same as that changeSet's own foreign keys (#390).
+        parent_folder_id. Composite (folder_id, library_id, organization_id) against
+        uk_library_folders_id_library_organization, same as that changeSet's own
+        fk_library_folders_parent (#390 plus the library-boundary guarantee described in this file's
+        header comment) - a document can never reference a folder from a different library, even
+        within the same organization.
       changes:
         - addColumn:
             tableName: documents
@@ -161,9 +171,9 @@ databaseChangeLog:
                     nullable: true
         - addForeignKeyConstraint:
             baseTableName: documents
-            baseColumnNames: folder_id, organization_id
+            baseColumnNames: folder_id, library_id, organization_id
             referencedTableName: library_folders
-            referencedColumnNames: id, organization_id
+            referencedColumnNames: id, library_id, organization_id
             constraintName: fk_documents_folder
             onDelete: RESTRICT
         - createIndex:
