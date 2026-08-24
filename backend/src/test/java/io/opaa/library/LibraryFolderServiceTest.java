@@ -3,6 +3,7 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -25,6 +26,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -56,6 +59,12 @@ class LibraryFolderServiceTest {
     accessService = mock(LibraryAccessService.class);
     documentRepository = mock(DocumentRepository.class);
     documentService = mock(LibraryDocumentService.class);
+    // #823 review, Befund 6: LibraryFolderService now builds a REQUIRES_NEW TransactionTemplate
+    // from this in its constructor - TransactionTemplate#execute invokes the callback synchronously
+    // regardless of whether the underlying manager is real, mirroring SpaceServiceTest's identical
+    // setup for the same reason.
+    PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
 
     service =
         new LibraryFolderService(
@@ -64,7 +73,8 @@ class LibraryFolderServiceTest {
             userRepository,
             accessService,
             documentRepository,
-            documentService);
+            documentService,
+            transactionManager);
 
     User user = new User("subject", "issuer", "user@example.com", "Test User");
     user.setOrganizationId(organizationId);
@@ -563,6 +573,168 @@ class LibraryFolderServiceTest {
                     new LibraryFolderRenameRequest("Neu"),
                     currentUserId,
                     false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
+  // #823: LibraryFolderService#resolveOrCreateFolderPath - the upload-path counterpart to
+  // materializeFolderPath above, but UPLOAD-only and permission-checked like createFolder.
+
+  @Test
+  void resolveOrCreateFolderPathCreatesTheFullChainForANewPath() {
+    grantEditor();
+    when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "Protokolle"))
+        .thenReturn(Optional.empty());
+    when(folderRepository.findByLibraryIdAndParentFolderIdAndName(eq(libraryId), any(), eq("2026")))
+        .thenReturn(Optional.empty());
+
+    UUID leafId =
+        service.resolveOrCreateFolderPath(
+            libraryId, null, List.of("Protokolle", "2026"), currentUserId, false);
+
+    assertThat(leafId).isNotNull();
+    verify(folderRepository, times(2)).saveAndFlush(any(LibraryFolder.class));
+  }
+
+  @Test
+  void resolveOrCreateFolderPathReusesAnExistingFolderInsteadOfCreatingADuplicate() {
+    grantEditor();
+    LibraryFolder existing = new LibraryFolder(libraryId, null, "Protokolle", organizationId);
+    when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "Protokolle"))
+        .thenReturn(Optional.of(existing));
+
+    UUID resolvedId =
+        service.resolveOrCreateFolderPath(
+            libraryId, null, List.of("Protokolle"), currentUserId, false);
+
+    assertThat(resolvedId).isEqualTo(existing.getId());
+    verify(folderRepository, never()).saveAndFlush(any(LibraryFolder.class));
+  }
+
+  @Test
+  void resolveOrCreateFolderPathIsRelativeToAnExplicitBaseFolder() {
+    grantEditor();
+    LibraryFolder base = new LibraryFolder(libraryId, null, "Bestand", organizationId);
+    when(folderRepository.findById(base.getId())).thenReturn(Optional.of(base));
+    when(folderRepository.findByLibraryIdAndParentFolderIdAndName(
+            libraryId, base.getId(), "Unterordner"))
+        .thenReturn(Optional.empty());
+
+    service.resolveOrCreateFolderPath(
+        libraryId, base.getId(), List.of("Unterordner"), currentUserId, false);
+
+    verify(folderRepository)
+        .saveAndFlush(
+            argThat(
+                folder ->
+                    folder.getParentFolderId().equals(base.getId())
+                        && folder.getName().equals("Unterordner")));
+  }
+
+  @Test
+  void resolveOrCreateFolderPathReturnsTheBaseFolderForAnEmptyPath() {
+    grantEditor();
+
+    UUID resolvedId =
+        service.resolveOrCreateFolderPath(libraryId, null, List.of(), currentUserId, false);
+
+    assertThat(resolvedId).isNull();
+    verify(folderRepository, never()).saveAndFlush(any(LibraryFolder.class));
+  }
+
+  @Test
+  void resolveOrCreateFolderPathRejectsAnEmptySegment() {
+    grantEditor();
+
+    assertThatThrownBy(
+            () ->
+                service.resolveOrCreateFolderPath(
+                    libraryId, null, List.of("Protokolle", ""), currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void resolveOrCreateFolderPathRejectsASegmentContainingABackslash() {
+    grantEditor();
+
+    assertThatThrownBy(
+            () ->
+                service.resolveOrCreateFolderPath(
+                    libraryId, null, List.of("Ordner\\Unterordner"), currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void resolveOrCreateFolderPathRejectsADotDotSegment() {
+    grantEditor();
+
+    assertThatThrownBy(
+            () ->
+                service.resolveOrCreateFolderPath(
+                    libraryId, null, List.of(".."), currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void resolveOrCreateFolderPathRejectsNestingBeyondTheDepthLimit() {
+    grantEditor();
+    // Ten segments starting at the root already exhaust MAX_DEPTH (10) - an eleventh must fail.
+    List<String> tooDeep = List.of("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k");
+    when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(eq(libraryId), any()))
+        .thenReturn(Optional.empty());
+    when(folderRepository.findByLibraryIdAndParentFolderIdAndName(eq(libraryId), any(), any()))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () -> service.resolveOrCreateFolderPath(libraryId, null, tooDeep, currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void resolveOrCreateFolderPathInAConnectorLibraryIsRejectedWithConflict() {
+    grantEditor();
+    when(library.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
+
+    assertThatThrownBy(
+            () ->
+                service.resolveOrCreateFolderPath(
+                    libraryId, null, List.of("Protokolle"), currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+  }
+
+  @Test
+  void resolveOrCreateFolderPathRejectsAForeignBaseFolder() {
+    grantEditor();
+    LibraryFolder foreignBase = new LibraryFolder(UUID.randomUUID(), null, "Fremd", organizationId);
+    when(folderRepository.findById(foreignBase.getId())).thenReturn(Optional.of(foreignBase));
+
+    assertThatThrownBy(
+            () ->
+                service.resolveOrCreateFolderPath(
+                    libraryId, foreignBase.getId(), List.of("Protokolle"), currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->

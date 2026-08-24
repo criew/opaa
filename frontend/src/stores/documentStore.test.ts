@@ -209,7 +209,9 @@ describe('documentStore', () => {
 
     await useDocumentStore.getState().uploadNewDocument('library-1', new File(['x'], 'x.pdf'))
 
-    expect(mockUploadDocument).toHaveBeenCalledWith('library-1', expect.any(File), null)
+    // #823: uploadDocumentRequest's signature grew a trailing folderPath - undefined here, since
+    // no folderPath was passed to uploadNewDocument.
+    expect(mockUploadDocument).toHaveBeenCalledWith('library-1', expect.any(File), null, undefined)
     expect(mockGetLibraryDocuments).toHaveBeenCalledWith('library-1', {
       page: 1,
       size: 5,
@@ -224,6 +226,27 @@ describe('documentStore', () => {
     expect(useDocumentStore.getState().isUploading).toBe(false)
   })
 
+  it('passes a given folderPath through to the request layer, relative to the open folder (#823)', async () => {
+    useDocumentStore.setState({
+      pageStateByLibrary: {
+        'library-1': { page: 0, size: 20, q: '', totalElements: 0, folderId: 'folder-bestand' },
+      },
+    })
+    mockUploadDocument.mockResolvedValueOnce(pendingDocument)
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
+
+    await useDocumentStore
+      .getState()
+      .uploadNewDocument('library-1', new File(['x'], 'protokoll.pdf'), 'Protokolle/2026')
+
+    expect(mockUploadDocument).toHaveBeenCalledWith(
+      'library-1',
+      expect.any(File),
+      'folder-bestand',
+      'Protokolle/2026',
+    )
+  })
+
   it('names the file in the upload error message, appends it to uploadErrors and rethrows', async () => {
     mockUploadDocument.mockRejectedValueOnce(new Error('Diese Datei ist bereits vorhanden'))
     const file = new File(['x'], 'doppelt.pdf')
@@ -234,6 +257,22 @@ describe('documentStore', () => {
       'Diese Datei ist bereits vorhanden (Datei: doppelt.pdf)',
     ])
     expect(useDocumentStore.getState().isUploading).toBe(false)
+  })
+
+  it('qualifies the file name with folderPath in the upload error message (#823 review, Befund 5a)', async () => {
+    // Disambiguates two same-named files from different subfolders of a dragged-and-dropped tree
+    // - without folderPath, both would produce the identical uploadErrors message, which is both
+    // ambiguous to read and a duplicate React key where the list is rendered.
+    mockUploadDocument.mockRejectedValueOnce(new Error('Diese Datei ist bereits vorhanden'))
+    const file = new File(['x'], 'protokoll.pdf')
+
+    await expect(
+      useDocumentStore.getState().uploadNewDocument('library-1', file, 'Protokolle/2026'),
+    ).rejects.toThrow()
+
+    expect(useDocumentStore.getState().uploadErrors).toEqual([
+      'Diese Datei ist bereits vorhanden (Datei: Protokolle/2026/protokoll.pdf)',
+    ])
   })
 
   it('keeps an earlier upload error when a later file in the same batch succeeds', async () => {
@@ -276,6 +315,22 @@ describe('documentStore', () => {
     useDocumentStore.getState().clearUploadErrors()
 
     expect(useDocumentStore.getState().uploadErrors).toEqual([])
+  })
+
+  it('reportUploadError appends a message without going through a file upload', () => {
+    // #823 review, Befund 2: used by the folder-upload paths (LibraryDetailPage) for a
+    // batch-level, client-side rejection (unsupported format, unreadable file) that names no
+    // single uploadNewDocument call.
+    useDocumentStore.getState().reportUploadError('3 Dateien wurden übersprungen.')
+
+    expect(useDocumentStore.getState().uploadErrors).toEqual(['3 Dateien wurden übersprungen.'])
+
+    useDocumentStore.getState().reportUploadError('1 Datei konnte nicht gelesen werden.')
+
+    expect(useDocumentStore.getState().uploadErrors).toEqual([
+      '3 Dateien wurden übersprungen.',
+      '1 Datei konnte nicht gelesen werden.',
+    ])
   })
 
   it('reloads the current page from the server after a successful deletion', async () => {

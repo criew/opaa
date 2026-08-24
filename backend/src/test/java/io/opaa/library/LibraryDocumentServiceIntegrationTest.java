@@ -1514,6 +1514,206 @@ class LibraryDocumentServiceIntegrationTest {
     libraryRepository.deleteById(otherLibrary.getId());
   }
 
+  // #823 (Epic #520 Phase 4): POST .../documents' folderPath - idempotent intermediate folder
+  // creation for a whole dragged-and-dropped or webkitdirectory-selected directory tree, uploaded
+  // one file at a time.
+
+  @Test
+  void uploadDocumentWithAFolderPathCreatesTheChainAndPlacesTheDocumentInTheLeafFolder() {
+    LibraryDocumentResponse response =
+        documentService.uploadDocument(
+            libraryId,
+            textFile("protokoll.txt", "Sitzungsprotokoll"),
+            null,
+            "Protokolle/2026",
+            editor.getId(),
+            false);
+
+    assertThat(response.getFolderPath()).isEqualTo("Protokolle/2026");
+    Document saved = documentRepository.findById(response.getId()).orElseThrow();
+    LibraryFolder leaf = folderRepository.findById(saved.getFolderId()).orElseThrow();
+    assertThat(leaf.getName()).isEqualTo("2026");
+    LibraryFolder root = folderRepository.findById(leaf.getParentFolderId()).orElseThrow();
+    assertThat(root.getName()).isEqualTo("Protokolle");
+    assertThat(root.getParentFolderId()).isNull();
+    assertThat(folderRepository.findByLibraryId(libraryId)).hasSize(2);
+  }
+
+  @Test
+  void twoUploadsIntoTheSameNewFolderPathShareOneFolderTreeInsteadOfDuplicatingIt() {
+    // #823 acceptance criteria: a second file dragged into the same new path must reuse the
+    // folders the first file's upload already created, not create a sibling tree.
+    LibraryDocumentResponse first =
+        documentService.uploadDocument(
+            libraryId,
+            textFile("erste-datei.txt", "erster Inhalt"),
+            null,
+            "Protokolle/2026",
+            editor.getId(),
+            false);
+    LibraryDocumentResponse second =
+        documentService.uploadDocument(
+            libraryId,
+            textFile("zweite-datei.txt", "zweiter Inhalt"),
+            null,
+            "Protokolle/2026",
+            editor.getId(),
+            false);
+
+    Document firstDoc = documentRepository.findById(first.getId()).orElseThrow();
+    Document secondDoc = documentRepository.findById(second.getId()).orElseThrow();
+    assertThat(secondDoc.getFolderId()).isEqualTo(firstDoc.getFolderId());
+    assertThat(folderRepository.findByLibraryId(libraryId)).hasSize(2);
+  }
+
+  @Test
+  void uploadDocumentWithAFolderPathReusesAnAlreadyExistingFolderOfTheSameName() {
+    // #823 acceptance criteria: a folder a person already created manually (e.g. via the folder
+    // CRUD endpoint) must be reused, not shadowed by a second folder of the same name.
+    LibraryFolder existing = seedFolder("Protokolle", null);
+
+    LibraryDocumentResponse response =
+        documentService.uploadDocument(
+            libraryId,
+            textFile("sitzung.txt", "Inhalt"),
+            null,
+            "Protokolle",
+            editor.getId(),
+            false);
+
+    Document saved = documentRepository.findById(response.getId()).orElseThrow();
+    assertThat(saved.getFolderId()).isEqualTo(existing.getId());
+    assertThat(folderRepository.findByLibraryId(libraryId)).hasSize(1);
+  }
+
+  @Test
+  void uploadDocumentWithAFolderPathRelativeToAnExplicitFolderIdNestsUnderIt() {
+    // #823: folderId + folderPath together - folderPath is relative to folderId, not the root.
+    LibraryFolder bestand = seedFolder("Bestand", null);
+
+    LibraryDocumentResponse response =
+        documentService.uploadDocument(
+            libraryId,
+            textFile("dokument.txt", "Inhalt"),
+            bestand.getId(),
+            "Unterordner",
+            editor.getId(),
+            false);
+
+    Document saved = documentRepository.findById(response.getId()).orElseThrow();
+    LibraryFolder leaf = folderRepository.findById(saved.getFolderId()).orElseThrow();
+    assertThat(leaf.getName()).isEqualTo("Unterordner");
+    assertThat(leaf.getParentFolderId()).isEqualTo(bestand.getId());
+  }
+
+  @Test
+  void uploadDocumentWithAFolderPathContainingAnInvalidSegmentAnswers400AndStoresNothing() {
+    assertThatThrownBy(
+            () ->
+                documentService.uploadDocument(
+                    libraryId,
+                    textFile("x.txt", "content"),
+                    null,
+                    "Protokolle/../etc",
+                    editor.getId(),
+                    false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+
+    assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
+    // Neither the valid "Protokolle" segment nor anything else must have been created - the whole
+    // path is validated before any folder is materialized.
+    assertThat(folderRepository.findByLibraryId(libraryId)).isEmpty();
+  }
+
+  @Test
+  void uploadDocumentWithAnUnsupportedFormatAndAFolderPathCreatesNoFolders() {
+    // #823 review, Befund 1: resolveOrCreateFolderPath used to run before the format check
+    // (empty/size/quota/format), so a rejected upload into a brand-new folderPath still left that
+    // folder chain behind - three hundred wrong-format files dropped into "Protokolle/2026" would
+    // have created that same folder chain three hundred times over before the first ever actually
+    // failed. Moving the resolve call past the format check (see uploadDocument's own comment)
+    // means a rejected format never reaches it at all.
+    MultipartFile unsupported =
+        new MockMultipartFile("file", "malware.exe", "application/octet-stream", "x".getBytes());
+
+    assertThatThrownBy(
+            () ->
+                documentService.uploadDocument(
+                    libraryId, unsupported, null, "Protokolle/2026", editor.getId(), false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+
+    assertThat(documentRepository.findByLibraryId(libraryId)).isEmpty();
+    assertThat(folderRepository.findByLibraryId(libraryId)).isEmpty();
+  }
+
+  @Test
+  void uploadDocumentWithAFolderPathIntoAConnectorLibraryIsRejectedWithConflict() {
+    var connectorLibraryRequest =
+        new io.opaa.api.dto.LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
+            .sourcePath("/data/documents");
+    var connectorLibrary = libraryService.createLibrary(connectorLibraryRequest, editor.getId());
+    try {
+      assertThatThrownBy(
+              () ->
+                  documentService.uploadDocument(
+                      connectorLibrary.getId(),
+                      textFile("x.txt", "content"),
+                      null,
+                      "Protokolle",
+                      editor.getId(),
+                      false))
+          .isInstanceOf(ResponseStatusException.class)
+          .satisfies(
+              ex ->
+                  assertThat(((ResponseStatusException) ex).getStatusCode())
+                      .isEqualTo(HttpStatus.CONFLICT));
+      assertThat(documentRepository.findByLibraryId(connectorLibrary.getId())).isEmpty();
+      assertThat(folderRepository.findByLibraryId(connectorLibrary.getId())).isEmpty();
+    } finally {
+      libraryRepository.deleteById(connectorLibrary.getId());
+    }
+  }
+
+  @Test
+  void uploadDocumentWithAFolderPathIntoAnotherOrganizationsLibraryAnswers404() {
+    UUID otherOrganizationId =
+        organizationRepository.save(new Organization(UUID.randomUUID(), "Andere Org")).getId();
+    User strangerFromAnotherOrg =
+        new User("folder-path-stranger-subject", "issuer", "fp-stranger@example.com", "Fremd");
+    strangerFromAnotherOrg.setOrganizationId(otherOrganizationId);
+    strangerFromAnotherOrg = userRepository.save(strangerFromAnotherOrg);
+
+    try {
+      var strangerId = strangerFromAnotherOrg.getId();
+      assertThatThrownBy(
+              () ->
+                  documentService.uploadDocument(
+                      libraryId,
+                      textFile("x.txt", "content"),
+                      null,
+                      "Protokolle",
+                      strangerId,
+                      false))
+          .isInstanceOf(ResponseStatusException.class)
+          .satisfies(
+              ex ->
+                  assertThat(((ResponseStatusException) ex).getStatusCode())
+                      .isEqualTo(HttpStatus.NOT_FOUND));
+      assertThat(folderRepository.findByLibraryId(libraryId)).isEmpty();
+    } finally {
+      userRepository.deleteById(strangerFromAnotherOrg.getId());
+      organizationRepository.deleteById(otherOrganizationId);
+    }
+  }
+
   /**
    * Polls the document row until asynchronous processing (#434) has moved it past {@code PENDING}
    * to some terminal status, then asserts it is the expected one - mirrors {@code

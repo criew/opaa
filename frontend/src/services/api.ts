@@ -628,6 +628,10 @@ export async function uploadDocument(
   libraryId: string,
   file: File,
   folderId?: string | null,
+  // #823: a path relative to folderId (e.g. "Protokolle/2026") whose intermediate folders the
+  // backend creates idempotently - lets a whole dragged-and-dropped/webkitdirectory-selected
+  // folder tree upload one file at a time while landing under a single, shared folder chain.
+  folderPath?: string | null,
 ): Promise<LibraryDocumentResponse> {
   try {
     const formData = new FormData()
@@ -637,6 +641,10 @@ export async function uploadDocument(
     // either way.
     if (folderId) {
       formData.append('folderId', folderId)
+    }
+    // #823: same "omit rather than send empty" treatment as folderId above.
+    if (folderPath) {
+      formData.append('folderPath', folderPath)
     }
     const { data } = await client.post<LibraryDocumentResponse>(
       `/v1/libraries/${libraryId}/documents`,

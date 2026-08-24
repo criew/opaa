@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { mockQueryResponses } from './fixtures'
-import { buildMockFolderPath } from './handlers'
+import { mockLibraryFolders, mockQueryResponses } from './fixtures'
+import { buildMockFolderPath, resolveOrCreateMockFolderPath } from './handlers'
 
 describe('MSW Handlers', () => {
   describe('GET /api/health', () => {
@@ -288,6 +288,92 @@ describe('MSW Handlers', () => {
       const { id: subfolderId } = await subfolder.json()
 
       expect(buildMockFolderPath(uploadLibraryId, subfolderId)).toBe('Protokolle/2026')
+    })
+
+    // #823: resolveOrCreateMockFolderPath - the mock counterpart to LibraryFolderService#
+    // resolveOrCreateFolderPath - exercised directly for the same reason buildMockFolderPath is
+    // above (a real multipart upload request hangs in this project's jsdom test environment).
+    describe('resolveOrCreateMockFolderPath (#823)', () => {
+      it('creates the full chain for a new path and returns the leaf folder id', () => {
+        const result = resolveOrCreateMockFolderPath(uploadLibraryId, null, 'Rechtsquellen/2026')
+
+        expect('folderId' in result).toBe(true)
+        if ('folderId' in result) {
+          expect(result.folderId).toBeTruthy()
+          expect(buildMockFolderPath(uploadLibraryId, result.folderId)).toBe('Rechtsquellen/2026')
+        }
+      })
+
+      it('reuses an already existing folder of the same name instead of duplicating it', () => {
+        // 'folder-protokolle' is pre-seeded at the root of uploadLibraryId (fixtures.ts).
+        const result = resolveOrCreateMockFolderPath(uploadLibraryId, null, 'Protokolle')
+
+        expect(result).toEqual({ folderId: 'folder-protokolle' })
+      })
+
+      it('resolves relative to an explicit base folder, not the library root', () => {
+        const result = resolveOrCreateMockFolderPath(
+          uploadLibraryId,
+          'folder-protokolle',
+          'Unterordner',
+        )
+
+        expect('folderId' in result).toBe(true)
+        if ('folderId' in result) {
+          expect(buildMockFolderPath(uploadLibraryId, result.folderId)).toBe(
+            'Protokolle/Unterordner',
+          )
+        }
+      })
+
+      it('rejects a segment containing ".." with 400', () => {
+        const result = resolveOrCreateMockFolderPath(uploadLibraryId, null, 'Protokolle/../etc')
+
+        expect(result).toEqual({
+          error: 'Ordnername darf nicht ".." oder "." lauten',
+          status: 400,
+        })
+      })
+
+      it('rejects a segment containing a backslash with 400', () => {
+        const result = resolveOrCreateMockFolderPath(uploadLibraryId, null, 'Ordner\\Unterordner')
+
+        expect(result).toEqual({ error: 'Ordnername darf kein "\\" enthalten', status: 400 })
+      })
+
+      it('returns the base folder unchanged for an empty path', () => {
+        const result = resolveOrCreateMockFolderPath(uploadLibraryId, 'folder-protokolle', '')
+
+        expect(result).toEqual({ folderId: 'folder-protokolle' })
+      })
+
+      // #823 review, Befund 5d: mirrors LibraryFolderService's MAX_DEPTH (10, root counts as
+      // depth 1) - the mock previously had no depth limit for folderPath materialization at all.
+      it('rejects a path that would nest beyond the depth limit with 400', () => {
+        const tooDeep = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'].join('/')
+
+        const result = resolveOrCreateMockFolderPath(uploadLibraryId, null, tooDeep)
+
+        expect(result).toEqual({
+          error: 'Die Ordnerstruktur ist zu tief verschachtelt (maximal 10 Ebenen)',
+          status: 400,
+        })
+      })
+
+      // #823 review, Befund 1 (mock counterpart): every segment is validated before any folder is
+      // materialized - an earlier, valid segment must not survive when a later one is rejected.
+      it('creates no folders at all when a later segment is invalid', () => {
+        const before = (mockLibraryFolders[uploadLibraryId] ?? []).length
+
+        const result = resolveOrCreateMockFolderPath(uploadLibraryId, null, 'NeuerOrdner/../etc')
+
+        expect(result).toEqual({
+          error: 'Ordnername darf nicht ".." oder "." lauten',
+          status: 400,
+        })
+        // Neither "NeuerOrdner" (valid on its own) nor anything else was created.
+        expect(mockLibraryFolders[uploadLibraryId] ?? []).toHaveLength(before)
+      })
     })
   })
 

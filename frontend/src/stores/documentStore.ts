@@ -80,11 +80,15 @@ interface DocumentState {
     libraryId: string,
     options?: { page?: number; size?: number; q?: string; folderId?: string | null },
   ) => Promise<void>
-  uploadNewDocument: (libraryId: string, file: File) => Promise<void>
+  uploadNewDocument: (libraryId: string, file: File, folderPath?: string) => Promise<void>
   removeDocument: (libraryId: string, documentId: string) => Promise<void>
   createFolder: (libraryId: string, name: string, parentFolderId?: string | null) => Promise<void>
   renameFolder: (libraryId: string, folderId: string, name: string) => Promise<void>
   removeFolder: (libraryId: string, folderId: string) => Promise<void>
+  // #823 review, Befund 2: appends a message to uploadErrors without going through
+  // uploadNewDocument itself - used for a batch-level rejection (e.g. files skipped client-side
+  // for an unsupported format before ever reaching the backend) that names no single file.
+  reportUploadError: (message: string) => void
   clearUploadErrors: () => void
   clearDeleteError: () => void
   clearFolderError: () => void
@@ -132,13 +136,17 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     await runLoadDocuments(libraryId, options, set, get, false)
   },
 
-  uploadNewDocument: async (libraryId: string, file: File) => {
+  uploadNewDocument: async (libraryId: string, file: File, folderPath?: string) => {
     const sessionEpoch = currentSessionEpoch()
     const folderId = get().pageStateByLibrary[libraryId]?.folderId ?? null
     set({ isUploading: true })
     try {
       // #822: uploads land in the currently open folder, mirroring GET .../documents' own scoping.
-      await uploadDocumentRequest(libraryId, file, folderId)
+      // #823: folderPath (if given) is relative to that same folder - its intermediate folders are
+      // created idempotently by the backend, letting a whole dragged-and-dropped or
+      // webkitdirectory-selected folder tree land under one shared folder chain instead of a
+      // duplicate per file.
+      await uploadDocumentRequest(libraryId, file, folderId, folderPath)
       if (isStaleSessionEpoch(sessionEpoch)) return
       set({ isUploading: false })
     } catch (err) {
@@ -146,8 +154,15 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       const rawMessage =
         err instanceof Error ? err.message : 'Datei konnte nicht hochgeladen werden'
       // Names the concerned file alongside the backend's German reason (format, size, dedup) - the
-      // backend message alone does not repeat which of possibly several dropped files it refers to.
-      const message = `${rawMessage} (Datei: ${file.name})`
+      // backend message alone does not repeat which of possibly several dropped files it refers
+      // to. #823 review, Befund 5a: includes folderPath (if any) rather than the bare file name -
+      // a folder upload can easily carry two same-named files from different subfolders (e.g.
+      // "2025/protokoll.pdf" and "2026/protokoll.pdf"), which would otherwise produce two
+      // identical uploadErrors messages - duplicate React keys where they are rendered
+      // (LibraryDetailPage's uploadErrors Alert, keyed by message) as well as being genuinely
+      // ambiguous to a person reading the list.
+      const fileLabel = folderPath ? `${folderPath}/${file.name}` : file.name
+      const message = `${rawMessage} (Datei: ${fileLabel})`
       set({ uploadErrors: [...get().uploadErrors, message], isUploading: false })
       throw err
     }
@@ -208,6 +223,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     if (isStaleSessionEpoch(sessionEpoch)) return
     set({ folderError: null })
     await reloadCurrentPage(libraryId, get)
+  },
+
+  reportUploadError: (message: string) => {
+    set({ uploadErrors: [...get().uploadErrors, message] })
   },
 
   removeDocument: async (libraryId: string, documentId: string) => {

@@ -1311,6 +1311,15 @@ paths:
         the library's root, mirroring GET on this same path. When set, it must reference an
         existing folder in this library, or the request is rejected with 404 - the same
         unknown/foreign-folder treatment the folder CRUD endpoints already apply.
+
+        **folderPath (#823, Epic #520 Phase 4):** optional, relative to folderId (e.g.
+        "Protokolle/2026"). Intermediate folders are created idempotently - an existing folder of
+        the same name at the same level is reused, never duplicated - letting a whole
+        drag-and-dropped or webkitdirectory-selected folder tree be uploaded one file at a time
+        while ending up under a single, shared folder chain. Each path segment is validated like a
+        folder name (trimmed, length limit, no path separator, no ".."); an invalid segment or a
+        depth overrun is rejected with 400 before any byte of this file is stored. Only accepted
+        for UPLOAD libraries, like folderId itself.
       requestBody:
         required: true
         content:
@@ -1328,6 +1337,13 @@ paths:
                   nullable: true
                   description: >
                     The folder to upload into (#821). Omitted or null means the library's root.
+                folderPath:
+                  type: string
+                  nullable: true
+                  description: >
+                    A path relative to folderId whose intermediate folders are created idempotently
+                    (#823). Omitted or blank means no additional path - upload directly into
+                    folderId (or the library's root).
       responses:
         "201":
           description: >

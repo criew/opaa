@@ -32,6 +32,7 @@ import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder'
 import DeleteIcon from '@mui/icons-material/Delete'
+import DriveFolderUploadIcon from '@mui/icons-material/DriveFolderUpload'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import FolderIcon from '@mui/icons-material/Folder'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
@@ -64,6 +65,11 @@ import {
   scheduleFrequencyLabel,
 } from '../utils/labels'
 import { useDocumentPreview } from '../hooks/useDocumentPreview'
+import {
+  directoryPathFromWebkitRelativePath,
+  filterAcceptedFiles,
+  resolveDroppedItems,
+} from '../utils/directoryEntries'
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
@@ -78,6 +84,14 @@ import SectionHead from '../components/SectionHead'
 const ACCEPTED_FILE_EXTENSIONS = '.doc,.docx,.md,.pdf,.pptx,.txt'
 
 const allVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
+
+// #823: an upload entry carries an optional relativePath (the directory portion within a
+// dropped/selected folder tree, e.g. "Protokolle/2026") alongside each File - sequential upload,
+// per-file error collection unchanged from before #823.
+interface UploadEntry {
+  file: File
+  relativePath?: string
+}
 
 function canEditLibrary(role: AssetRole | undefined): boolean {
   return role === 'MANAGER' || role === 'OWNER'
@@ -461,6 +475,7 @@ function LibraryDocumentsSection({
   const createFolder = useDocumentStore((s) => s.createFolder)
   const renameFolder = useDocumentStore((s) => s.renameFolder)
   const removeFolder = useDocumentStore((s) => s.removeFolder)
+  const reportUploadError = useDocumentStore((s) => s.reportUploadError)
   const clearUploadErrors = useDocumentStore((s) => s.clearUploadErrors)
   const clearDeleteError = useDocumentStore((s) => s.clearDeleteError)
   const clearFolderError = useDocumentStore((s) => s.clearFolderError)
@@ -482,6 +497,9 @@ function LibraryDocumentsSection({
     folder: LibraryFolderListItem
   } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // #823: a whole-folder counterpart to fileInputRef - `webkitdirectory` is not part of React's
+  // JSX typings for <input>, so it is set imperatively via the effect below instead of as a prop.
+  const folderInputRef = useRef<HTMLInputElement>(null)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   // #738/#780: distinct from documentStore's error/uploadErrors/deleteError - opening the original
   // is a read-only, per-click action that never touches the store, so its failure (404, file
@@ -550,6 +568,17 @@ function LibraryDocumentsSection({
       setSearchParams(next, { replace: true })
     }
   }, [folderNotFoundMessage, folderIdParam, searchParams, setSearchParams])
+
+  useEffect(() => {
+    // #823: `webkitdirectory` (plus its older Firefox/legacy aliases) turns this hidden <input
+    // type="file"> into a directory picker - not part of React's <input> typings, so it has to be
+    // set on the DOM node directly rather than passed as a JSX prop.
+    const node = folderInputRef.current
+    if (!node) return
+    node.setAttribute('webkitdirectory', '')
+    node.setAttribute('directory', '')
+    node.setAttribute('mozdirectory', '')
+  }, [])
 
   const documents = documentsByLibrary[libraryId] ?? []
   const pageState = pageStateByLibrary[libraryId]
@@ -627,12 +656,17 @@ function LibraryDocumentsSection({
     }
   }
 
-  async function handleFiles(files: FileList | File[]) {
+  async function handleFiles(entries: UploadEntry[], options?: { skipClear?: boolean }) {
     if (!canManage) return
-    clearUploadErrors()
-    for (const file of Array.from(files)) {
+    // #823 review, Befund 2: the folder-upload entry points below already clear uploadErrors
+    // themselves, right before adding their own skipped-files summary (see reportSkippedFiles) -
+    // clearing again here would erase that summary before it is ever shown.
+    if (!options?.skipClear) {
+      clearUploadErrors()
+    }
+    for (const entry of entries) {
       try {
-        await uploadNewDocument(libraryId, file)
+        await uploadNewDocument(libraryId, entry.file, entry.relativePath || undefined)
         onDocumentsChanged()
       } catch {
         // Der Fehler landet bereits gesammelt in documentStore.uploadErrors und wird unten
@@ -642,11 +676,69 @@ function LibraryDocumentsSection({
     }
   }
 
+  // #823 review, Befund 2: one collective German message for every file skipped client-side
+  // before ever reaching the backend - naming three hundred individually rejected files would be
+  // worse than naming none. Well-known OS/desktop metadata files (Thumbs.db, .DS_Store, ...) are
+  // never counted here at all (see filterAcceptedFiles/isSystemFile in utils/directoryEntries.ts).
+  function reportSkippedFiles(skippedCount: number, failedCount: number) {
+    const parts: string[] = []
+    if (skippedCount > 0) {
+      parts.push(
+        `${skippedCount} ${skippedCount === 1 ? 'Datei wurde' : 'Dateien wurden'} wegen eines nicht unterstützten Formats übersprungen`,
+      )
+    }
+    if (failedCount > 0) {
+      // #823 review, Befund 3: resolveDroppedItems counts entries it could not read (permission
+      // error, a file removed/moved between the drop and this read) instead of aborting the whole
+      // drop - reported here alongside a format-based skip, in the same one collective message.
+      parts.push(
+        `${failedCount} ${failedCount === 1 ? 'Datei konnte' : 'Dateien konnten'} nicht gelesen werden`,
+      )
+    }
+    if (parts.length > 0) {
+      reportUploadError(`${parts.join('; ')}.`)
+    }
+  }
+
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault()
     setIsDragActive(false)
+    clearUploadErrors()
+    // #823: DataTransferItemList.webkitGetAsEntry() must be read synchronously, before any await -
+    // resolveDroppedItems does that internally, but the items list itself has to be captured here,
+    // inside this synchronous handler, not passed into a later .then()/await boundary.
+    const items = event.dataTransfer.items
+    if (items && items.length > 0) {
+      resolveDroppedItems(items)
+        .then(({ files, failedCount }) => {
+          // #823 review, Befund 2: filtered here, not left to the backend - a dropped OS folder
+          // routinely carries files nobody dragged there on purpose, and every rejected upload
+          // this filter avoids is also one fewer request the backend has to reject on its own.
+          const { accepted, skippedCount } = filterAcceptedFiles(files, ACCEPTED_FILE_EXTENSIONS)
+          reportSkippedFiles(skippedCount, failedCount)
+          if (accepted.length > 0) {
+            void handleFiles(
+              accepted.map((r) => ({ file: r.file, relativePath: r.relativePath || undefined })),
+              { skipClear: true },
+            )
+          }
+        })
+        .catch(() => {
+          // #823 review, Befund 3: resolveDroppedItems itself failing outright - not a single
+          // unreadable file (already handled above via failedCount), an unexpected rejection at
+          // the very top level - must still surface instead of the whole drop doing nothing
+          // without any visible feedback.
+          reportUploadError('Der abgelegte Ordner konnte nicht gelesen werden.')
+        })
+      return
+    }
     if (event.dataTransfer.files.length > 0) {
-      void handleFiles(event.dataTransfer.files)
+      const entries = Array.from(event.dataTransfer.files).map((file) => ({ file }))
+      const { accepted, skippedCount } = filterAcceptedFiles(entries, ACCEPTED_FILE_EXTENSIONS)
+      reportSkippedFiles(skippedCount, 0)
+      if (accepted.length > 0) {
+        void handleFiles(accepted, { skipClear: true })
+      }
     }
   }
 
@@ -714,7 +806,7 @@ function LibraryDocumentsSection({
           <Box
             role="button"
             tabIndex={0}
-            aria-label="Dateien hierher ziehen zum Hochladen"
+            aria-label="Dateien oder Ordner hierher ziehen zum Hochladen"
             onClick={() => fileInputRef.current?.click()}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -740,7 +832,7 @@ function LibraryDocumentsSection({
             }}
           >
             <UploadFileIcon sx={{ fontSize: 32, mb: 1 }} />
-            <Typography>Dateien hierher ziehen</Typography>
+            <Typography>Dateien oder Ordner hierher ziehen</Typography>
           </Box>
           <input
             ref={fileInputRef}
@@ -751,7 +843,39 @@ function LibraryDocumentsSection({
             aria-label="Dateien auswählen"
             onChange={(e) => {
               if (e.target.files && e.target.files.length > 0) {
-                void handleFiles(e.target.files)
+                void handleFiles(Array.from(e.target.files).map((file) => ({ file })))
+              }
+              e.target.value = ''
+            }}
+          />
+          {/* #823: webkitdirectory is set imperatively on this node (see the useEffect above) -
+              React's <input> typings do not include it as a JSX prop. */}
+          <input
+            ref={folderInputRef}
+            type="file"
+            multiple
+            hidden
+            // #823 review, Befund 2: browsers do not reliably enforce `accept` for a
+            // `webkitdirectory` selection - filterAcceptedFiles below is the check that actually
+            // holds, this is only the same client-side hint ACCEPTED_FILE_EXTENSIONS already gives
+            // the plain file input above.
+            accept={ACCEPTED_FILE_EXTENSIONS}
+            aria-label="Ordner auswählen"
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                clearUploadErrors()
+                const entries = Array.from(e.target.files).map((file) => ({
+                  file,
+                  relativePath: directoryPathFromWebkitRelativePath(file.webkitRelativePath),
+                }))
+                const { accepted, skippedCount } = filterAcceptedFiles(
+                  entries,
+                  ACCEPTED_FILE_EXTENSIONS,
+                )
+                reportSkippedFiles(skippedCount, 0)
+                if (accepted.length > 0) {
+                  void handleFiles(accepted, { skipClear: true })
+                }
               }
               e.target.value = ''
             }}
@@ -764,6 +888,14 @@ function LibraryDocumentsSection({
               disabled={isUploading}
             >
               Dateien hochladen
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DriveFolderUploadIcon />}
+              onClick={() => folderInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              Ordner hochladen
             </Button>
             {canManageFolders && (
               <Button
