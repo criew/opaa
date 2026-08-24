@@ -54,11 +54,9 @@ class FileProcessingServiceTest {
   private FileProcessingService service;
   private SimpleMeterRegistry meterRegistry;
 
-  // #419: an indexing run always targets a caller-chosen library, never the fixed system
-  // library - these two distinct libraries let tests both assert the metadata carries the
-  // chosen library and exercise a move from one library to another on re-indexing.
+  // #419: an indexing run always targets a caller-chosen library, never the fixed system library
+  // - lets tests assert the metadata carries the chosen library.
   private KnowledgeLibrary targetLibrary;
-  private KnowledgeLibrary otherLibrary;
 
   @BeforeEach
   void setUp() {
@@ -77,7 +75,6 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run);
     targetLibrary = library();
-    otherLibrary = library();
     // Default: plenty of headroom, so existing tests never trip the quota check unless they
     // explicitly stub it otherwise (see the quota-specific tests below). lenient() because most
     // tests never reach it (e.g. the "skips unchanged document" ones return before this is
@@ -118,7 +115,8 @@ class FileProcessingServiceTest {
     Files.writeString(file, "some content");
 
     when(checksumService.computeSha256(file)).thenReturn("abc123");
-    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
     when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), anyString(), any()))
@@ -159,7 +157,8 @@ class FileProcessingServiceTest {
     Files.writeString(file, "some content");
 
     when(checksumService.computeSha256(file)).thenReturn("abc123");
-    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.empty());
     when(storageQuotaService.wouldExceedQuota(eq(targetLibrary.getId()), anyLong()))
         .thenReturn(true);
@@ -216,7 +215,8 @@ class FileProcessingServiceTest {
 
     AtomicBoolean oldRowDeleted = new AtomicBoolean(false);
     when(checksumService.computeSha256(file)).thenReturn("new-checksum");
-    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
     doAnswer(
             inv -> {
@@ -251,7 +251,8 @@ class FileProcessingServiceTest {
     Files.writeString(file, "some content");
 
     when(checksumService.computeSha256(file)).thenReturn("abc123");
-    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -304,7 +305,8 @@ class FileProcessingServiceTest {
     Files.writeString(file, "some content");
 
     when(checksumService.computeSha256(file)).thenReturn("abc123");
-    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -349,7 +351,8 @@ class FileProcessingServiceTest {
     existingDoc.setChecksum("matching-checksum");
     existingDoc.setStatus(DocumentStatus.INDEXED);
     existingDoc.setLibraryId(targetLibrary.getId());
-    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
 
     FileProcessingResult result = service.processFile(file, targetLibrary);
@@ -372,7 +375,8 @@ class FileProcessingServiceTest {
     existingDoc.setChecksum("old-checksum");
     existingDoc.setStatus(DocumentStatus.INDEXED);
     existingDoc.setLibraryId(targetLibrary.getId());
-    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -412,7 +416,8 @@ class FileProcessingServiceTest {
     existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
     existingDoc.setChecksum("old-checksum");
     existingDoc.setStatus(DocumentStatus.INDEXED);
-    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -433,39 +438,48 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void reindexingIntoADifferentLibraryMovesTheDocumentAndLeavesNoOldChunksBehind()
-      throws IOException {
-    // #419 acceptance criteria: re-indexing an existing path into a different library moves the
-    // document and its chunks completely - no chunk with the old library_id survives. The move
-    // fires even though the content (and therefore the checksum) is unchanged: it is the library
-    // choice, not the content, that changed.
-    Path file = tempDir.resolve("moved.txt");
-    Files.writeString(file, "unchanged content");
+  void sameFilePathAlreadyIndexedIntoADifferentLibraryIsLeftUntouched() throws IOException {
+    // #877 (Epic #826, Befund B6): identity is (library_id, file_path), not file_path alone - the
+    // pre-#877 dedup lookup was global and "moved" (deleted) a document another library already
+    // held the moment a second library indexed the same path. findByLibraryIdAndFilePath is scoped
+    // to targetLibrary, so another library's existing document for this exact path is simply never
+    // found here, and this run creates its own, independent document instead of touching it.
+    Path file = tempDir.resolve("independent.txt");
+    Files.writeString(file, "same path indexed into two libraries");
+
+    KnowledgeLibrary otherLibrary = library();
+    Document docInOtherLibrary =
+        new Document("independent.txt", file.toAbsolutePath().toString(), null, 10L);
+    docInOtherLibrary.setLibraryId(otherLibrary.getId());
+    docInOtherLibrary.setChecksum("same-checksum");
+    docInOtherLibrary.setStatus(DocumentStatus.INDEXED);
+    // processFile only ever looks up (targetLibrary, filePath) - this stub is never actually
+    // invoked by the SUT, it documents/verifies (via the never().delete() below) that a
+    // pre-existing document in a different library is not what "PROCESSED" here depends on.
+    lenient()
+        .when(
+            documentRepository.findByLibraryIdAndFilePath(
+                otherLibrary.getId(), file.toAbsolutePath().toString()))
+        .thenReturn(Optional.of(docInOtherLibrary));
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
 
     when(checksumService.computeSha256(file)).thenReturn("same-checksum");
-
-    Document existingDoc = new Document("moved.txt", file.toAbsolutePath().toString(), null, 10L);
-    existingDoc.setLibraryId(otherLibrary.getId());
-    existingDoc.setOrganizationId(otherLibrary.getOrganizationId());
-    existingDoc.setChecksum("same-checksum");
-    existingDoc.setStatus(DocumentStatus.INDEXED);
-    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
-        .thenReturn(Optional.of(existingDoc));
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
 
     var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
-    when(chunkingService.chunkDocuments(eq("moved.txt"), eq(parsed))).thenReturn(chunks);
+    when(chunkingService.chunkDocuments(eq("independent.txt"), eq(parsed))).thenReturn(chunks);
 
     FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    // Deleting by document_id removes every chunk the old row had, regardless of library_id -
-    // no chunk with otherLibrary's id can remain.
-    verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
-    verify(documentRepository).delete(existingDoc);
+    // otherLibrary's own document and chunks for the same path are never touched by this run.
+    verify(documentRepository, never()).delete(docInOtherLibrary);
+    verify(vectorStore, never()).delete(any(Filter.Expression.class));
 
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
@@ -490,7 +504,8 @@ class FileProcessingServiceTest {
     Document existingDoc = new Document("legacy.txt", file.toAbsolutePath().toString(), null, 10L);
     existingDoc.setStatus(DocumentStatus.INDEXED);
     // checksum is null (legacy document without checksum)
-    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -518,7 +533,8 @@ class FileProcessingServiceTest {
     existingDoc.setChecksum("same-checksum");
     existingDoc.setStatus(DocumentStatus.FAILED);
     existingDoc.setLibraryId(targetLibrary.getId());
-    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -540,7 +556,8 @@ class FileProcessingServiceTest {
     Files.writeString(file, "pdf content");
 
     when(checksumService.computeSha256(file)).thenReturn("sha256-of-pdf");
-    when(documentRepository.findByFilePath("https://example.com/docs/remote-doc.pdf"))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://example.com/docs/remote-doc.pdf"))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -579,7 +596,8 @@ class FileProcessingServiceTest {
     Files.writeString(file, "pdf content");
 
     when(checksumService.computeSha256(file)).thenReturn("sha256-of-pdf");
-    when(documentRepository.findByFilePath("https://example.com/docs/over-quota-remote.pdf"))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://example.com/docs/over-quota-remote.pdf"))
         .thenReturn(Optional.empty());
     when(storageQuotaService.wouldExceedQuota(eq(targetLibrary.getId()), anyLong()))
         .thenReturn(true);
@@ -608,7 +626,8 @@ class FileProcessingServiceTest {
     Files.writeString(file, "pdf content");
 
     when(checksumService.computeSha256(file)).thenReturn("sha256-of-attachment");
-    when(documentRepository.findByFilePath("https://example.gov/downloads/anlage.pdf"))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://example.gov/downloads/anlage.pdf"))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -641,7 +660,8 @@ class FileProcessingServiceTest {
   @Test
   void theSameAttachmentUrlFromTwoEntriesBecomesOneDocument() throws IOException {
     // #492 review, finding 5: the previous dedup test verified two processUrlFile calls against a
-    // mock - the "one document" claim actually rests on findByFilePath, exercised here with a
+    // mock - the "one document" claim actually rests on findByLibraryIdAndFilePath, exercised here
+    // with a
     // stateful repository double instead of a plain call-count assertion.
     Path fileFromFirstEntry = tempDir.resolve("anlage-erster-lauf.pdf");
     Files.writeString(fileFromFirstEntry, "geteilter inhalt");
@@ -653,7 +673,7 @@ class FileProcessingServiceTest {
     when(checksumService.computeSha256(fileFromSecondEntry)).thenReturn("sha256-geteilt");
 
     Map<String, Document> savedByFilePath = new HashMap<>();
-    when(documentRepository.findByFilePath(attachmentUrl))
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), attachmentUrl))
         .thenAnswer(inv -> Optional.ofNullable(savedByFilePath.get(attachmentUrl)));
     when(documentRepository.save(any(Document.class)))
         .thenAnswer(
@@ -727,7 +747,8 @@ class FileProcessingServiceTest {
     String originalFileName = "my-report.pdf";
 
     when(checksumService.computeSha256(tempFile)).thenReturn("sha256-of-pdf");
-    when(documentRepository.findByFilePath("https://example.com/docs/my-report.pdf"))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://example.com/docs/my-report.pdf"))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -775,7 +796,8 @@ class FileProcessingServiceTest {
     existingDoc.setStatus(DocumentStatus.INDEXED);
     existingDoc.setLibraryId(targetLibrary.getId());
 
-    when(documentRepository.findByFilePath("https://example.com/docs/unchanged-url.pdf"))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://example.com/docs/unchanged-url.pdf"))
         .thenReturn(Optional.of(existingDoc));
 
     FileProcessingResult result =
@@ -809,7 +831,8 @@ class FileProcessingServiceTest {
     existingDoc.setStatus(DocumentStatus.INDEXED);
     existingDoc.setLibraryId(targetLibrary.getId());
 
-    when(documentRepository.findByFilePath("https://example.com/docs/changed-url.pdf"))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://example.com/docs/changed-url.pdf"))
         .thenReturn(Optional.of(existingDoc));
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -846,7 +869,8 @@ class FileProcessingServiceTest {
     Files.writeString(file, "content that outlives its own document row");
 
     when(checksumService.computeSha256(file)).thenReturn("sha256-of-pdf");
-    when(documentRepository.findByFilePath("https://example.com/docs/deleted-mid-flight.pdf"))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://example.com/docs/deleted-mid-flight.pdf"))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
     when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), anyString(), any()))
@@ -889,7 +913,8 @@ class FileProcessingServiceTest {
     Files.writeString(file, "");
 
     when(checksumService.computeSha256(file)).thenReturn("sha256-of-empty");
-    when(documentRepository.findByFilePath("https://example.com/docs/empty-url-doc.pdf"))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://example.com/docs/empty-url-doc.pdf"))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
     when(documentRepository.markFailed(any(), any())).thenReturn(0);
@@ -915,7 +940,8 @@ class FileProcessingServiceTest {
     String entryUrl = "https://example.gov/artikel/deleted-mid-flight";
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
-    when(documentRepository.findByFilePath(entryUrl)).thenReturn(Optional.empty());
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl))
+        .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
     when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), anyString(), any()))
         .thenReturn(0);
@@ -939,7 +965,8 @@ class FileProcessingServiceTest {
     String entryUrl = "https://example.gov/artikel/over-quota";
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
-    when(documentRepository.findByFilePath(entryUrl)).thenReturn(Optional.empty());
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl))
+        .thenReturn(Optional.empty());
     when(storageQuotaService.wouldExceedQuota(eq(targetLibrary.getId()), anyLong()))
         .thenReturn(true);
 
@@ -963,7 +990,8 @@ class FileProcessingServiceTest {
     Files.writeString(file, "content that makes it all the way to the final update");
 
     when(checksumService.computeSha256(file)).thenReturn("sha256-of-final-update-failure");
-    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -1172,46 +1200,47 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void processUrlFileMovesToADifferentLibraryOnReindex() throws IOException {
-    // #419 acceptance criteria, URL path counterpart of the filesystem test above.
-    Path file = tempDir.resolve("moved-url.pdf");
-    Files.writeString(file, "unchanged pdf content");
+  void sameUrlAlreadyIndexedIntoADifferentLibraryIsLeftUntouched() throws IOException {
+    // #877 (Epic #826, Befund B6), URL path counterpart of the filesystem test above: another
+    // library already has a document for this exact URL, but findByLibraryIdAndFilePath is scoped
+    // to targetLibrary and never finds it - this run creates its own, independent document.
+    Path file = tempDir.resolve("independent-url.pdf");
+    Files.writeString(file, "same URL indexed into two libraries");
+    String remoteUrl = "https://example.com/docs/independent-url.pdf";
+
+    KnowledgeLibrary otherLibrary = library();
+    Document docInOtherLibrary =
+        new Document(
+            "independent-url.pdf", remoteUrl, null, 1024L, DocumentSourceType.HTTP_DIRECTORY);
+    docInOtherLibrary.setLibraryId(otherLibrary.getId());
+    docInOtherLibrary.setChecksum("same-sha256");
+    docInOtherLibrary.setStatus(DocumentStatus.INDEXED);
+    // processUrlFile only ever looks up (targetLibrary, remoteUrl) - this stub is never actually
+    // invoked by the SUT, it documents/verifies (via the never().delete() below) that a
+    // pre-existing document in a different library is not what "PROCESSED" here depends on.
+    lenient()
+        .when(documentRepository.findByLibraryIdAndFilePath(otherLibrary.getId(), remoteUrl))
+        .thenReturn(Optional.of(docInOtherLibrary));
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), remoteUrl))
+        .thenReturn(Optional.empty());
 
     when(checksumService.computeSha256(file)).thenReturn("same-sha256");
-
-    Document existingDoc =
-        new Document(
-            "moved-url.pdf",
-            "https://example.com/docs/moved-url.pdf",
-            null,
-            1024L,
-            DocumentSourceType.HTTP_DIRECTORY);
-    existingDoc.setChecksum("same-sha256");
-    existingDoc.setStatus(DocumentStatus.INDEXED);
-    existingDoc.setLibraryId(otherLibrary.getId());
-
-    when(documentRepository.findByFilePath("https://example.com/docs/moved-url.pdf"))
-        .thenReturn(Optional.of(existingDoc));
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
 
     var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
-    when(chunkingService.chunkDocuments(eq("moved-url.pdf"), eq(parsed))).thenReturn(chunks);
+    when(chunkingService.chunkDocuments(eq("independent-url.pdf"), eq(parsed))).thenReturn(chunks);
 
     FileProcessingResult result =
         service.processUrlFile(
-            file,
-            "moved-url.pdf",
-            "https://example.com/docs/moved-url.pdf",
-            "2025-06-15 10:30",
-            1024,
-            targetLibrary);
+            file, "independent-url.pdf", remoteUrl, "2025-06-15 10:30", 1024, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
-    verify(documentRepository).delete(existingDoc);
+    // otherLibrary's own document and chunks for the same URL are never touched by this run.
+    verify(documentRepository, never()).delete(docInOtherLibrary);
+    verify(vectorStore, never()).delete(any(Filter.Expression.class));
 
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());

@@ -265,20 +265,20 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
    * run. Treating two empty strings as equal would mean such a source is fetched once and never
    * re-fetched again.
    *
-   * <p>Mirrors the same check {@code FileProcessingService#processUrlFile} makes (library changed
-   * -> not unchanged) - without it, indexing the same source into a different target library never
-   * took effect for a document whose {@code lastModified} is otherwise unchanged. The RSS path
-   * ({@link RssFeedIndexingExecutor#isUnchanged}) mirrors this too.
+   * <p>The lookup is scoped to {@code targetLibrary} (#877): the same URL indexed into a different
+   * library is an independent document, so this never reports "unchanged" for a document that
+   * belongs to another library. The RSS path ({@link RssFeedIndexingExecutor#isUnchanged}) mirrors
+   * this too.
    */
   boolean isUnchanged(String remoteUrl, String lastModified, KnowledgeLibrary targetLibrary) {
     if (lastModified == null || lastModified.isBlank()) {
       return false;
     }
-    Optional<Document> existing = documentRepository.findByFilePath(remoteUrl);
+    Optional<Document> existing =
+        documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), remoteUrl);
     return existing.isPresent()
         && lastModified.equals(existing.get().getLastModifiedRemote())
-        && existing.get().getStatus() == DocumentStatus.INDEXED
-        && targetLibrary.getId().equals(existing.get().getLibraryId());
+        && existing.get().getStatus() == DocumentStatus.INDEXED;
   }
 
   /**

@@ -131,3 +131,5 @@ databaseChangeLog:
       file: db/changelog/changes/065-drop-indexing-run-events-category-check.yaml
   - include:
       file: db/changelog/changes/066-drop-notifications-type-check.yaml
+  - include:
+      file: db/changelog/changes/067-scope-document-identity-to-library.yaml

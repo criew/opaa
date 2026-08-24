@@ -1,0 +1,91 @@
+databaseChangeLog:
+  - changeSet:
+      id: 067-deduplicate-documents-before-constraint
+      author: opaa
+      comment: >
+        Self-healing safety net ahead of uk_documents_library_path below (#877 review): the
+        analysis in that changeSet's own comment shows no (library_id, file_path) duplicate can
+        exist in a database this migration has ever run against in sequence, but a real, long-lived
+        instance (e.g. the demo) could in principle carry data this analysis did not anticipate -
+        a manual DB edit, a restored backup from a different code path, or simply a case this
+        review missed. Costs nothing to run (a no-op on a clean database) and turns a would-be
+        startup-aborting constraint violation into a quiet cleanup instead. For every
+        (library_id, file_path) pair with more than one row, keeps the most recently created one
+        and removes the rest, including their vector_store chunks (matched by document_id in the
+        JSON metadata) - mirrors 010-cleanup-duplicate-personal-spaces' RAISE NOTICE pattern.
+        vector_store is not under Liquibase control (PgVectorStore#initializeSchema creates it at
+        application startup) and may not exist yet on a fresh installation; the dynamic
+        to_regclass check and EXECUTE below avoid a parse-time failure against a table that is not
+        there, the same problem 016-backfill-vector-store-library-metadata solves with a
+        precondition instead - a precondition cannot be used here because the document cleanup
+        below must run regardless of whether vector_store exists yet.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              DO $$
+              DECLARE
+                duplicate_count integer;
+              BEGIN
+                CREATE TEMP TABLE tmp_duplicate_documents ON COMMIT DROP AS
+                SELECT id FROM (
+                  SELECT id, row_number() OVER (
+                    PARTITION BY library_id, file_path ORDER BY created_at DESC, id DESC
+                  ) AS rn
+                  FROM documents
+                ) ranked
+                WHERE rn > 1;
+
+                SELECT count(*) INTO duplicate_count FROM tmp_duplicate_documents;
+
+                IF duplicate_count > 0 THEN
+                  RAISE NOTICE 'uk_documents_library_path migration: removing % duplicate document row(s) sharing (library_id, file_path); the most recently created row per pair is kept', duplicate_count;
+
+                  IF to_regclass('public.vector_store') IS NOT NULL THEN
+                    EXECUTE $sql$DELETE FROM vector_store WHERE metadata->>'document_id' IN (SELECT id::text FROM tmp_duplicate_documents)$sql$;
+                  END IF;
+
+                  DELETE FROM documents WHERE id IN (SELECT id FROM tmp_duplicate_documents);
+                END IF;
+              END $$;
+      rollback:
+        - sql:
+            comment: >
+              Irreversible: the removed duplicate rows (and their chunks) cannot be reconstructed
+              from this migration - same reasoning as 010-cleanup-duplicate-personal-spaces. A
+              deliberate no-op so a rollback of this changeSet does not fail.
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 067-scope-document-identity-to-library
+      author: opaa
+      comment: >
+        Document identity is (library_id, file_path), not file_path alone (#877 - Epic #826, Befund
+        B6). Every dedup lookup in FileProcessingService/UrlIndexingExecutor/RssFeedIndexingExecutor
+        used to query file_path globally, so indexing the same path/URL into a second library
+        deleted the first library's document and its chunks instead of creating an independent one.
+
+        Safe against pre-existing data: findByFilePath's own delete-then-insert pattern already
+        guaranteed at most one documents row per file_path value at any time, for every source type
+        that keys on file_path (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED) - the previous lookup, finding a
+        row from a different library, always deleted it before inserting the new one, so no two
+        libraries could ever hold a row with the same file_path simultaneously. UPLOAD documents
+        store a per-upload random file name under a library-scoped storage directory
+        (LibraryDocumentService#uploadDocument), which is already globally unique on its own. No
+        (library_id, file_path) duplicate can exist in any pre-067 database, so this constraint
+        cannot fail against real data - 067-deduplicate-documents-before-constraint above is a
+        defensive no-op backstop, not evidence this analysis is in doubt.
+
+        Known, accepted limit: a btree index entry is capped at roughly a third of the 8 KB page
+        size (~2700 bytes); a file_path near its varchar(2000) maximum in multi-byte UTF-8 can
+        exceed that and abort the insert with an index-row-too-large error instead of the
+        application's own validation - not addressed here.
+      changes:
+        - addUniqueConstraint:
+            tableName: documents
+            columnNames: library_id, file_path
+            constraintName: uk_documents_library_path
+      rollback:
+        - dropUniqueConstraint:
+            tableName: documents
+            constraintName: uk_documents_library_path

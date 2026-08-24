@@ -94,9 +94,10 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       // normalize()/toAbsolutePath(): a sourcePath that is not already in canonical form (contains
       // "." / ".." segments, or is relative to the process working directory) produces a different
       // documentDir string, which changes every file's own file.toAbsolutePath().toString() key
-      // (FileProcessingService#processFile's documentRepository.findByFilePath lookup) the same
-      // way. A library whose sourcePath was never in canonical form re-keys its documents exactly
-      // once, the next time it is indexed after this change - a normal re-index, not data loss.
+      // (FileProcessingService#processFile's documentRepository.findByLibraryIdAndFilePath lookup)
+      // the same way. A library whose sourcePath was never in canonical form re-keys its documents
+      // exactly once, the next time it is indexed after this change - a normal re-index, not data
+      // loss.
       Path documentDir = Path.of(targetLibrary.getSourcePath()).toAbsolutePath().normalize();
       DocumentService.DiscoveredFiles discovered = documentService.discoverFiles(documentDir);
       List<Path> files = discovered.supported();
