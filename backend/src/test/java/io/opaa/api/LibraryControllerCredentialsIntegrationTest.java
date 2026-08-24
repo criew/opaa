@@ -7,19 +7,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.test.OpaaMockMvcTest;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * PR #489 review, Befund 6a: {@code sourceCredentials} must appear in no API response - not the
@@ -47,13 +42,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * here instead - onto the container and context this class needs regardless - removes that second
  * context entirely rather than trying to make two different classes share one.
  *
- * <p><b>Issue #497, measure 5:</b> replaced the class's own
- * {@code @Container}/{@code @DynamicPropertySource} pair with the shared {@link
- * TestcontainersConfiguration} for exactly the reason just described - this class, {@code
- * BrandingControllerIntegrationTest} and {@code AuditControllerAuthorizationIntegrationTest} now
- * carry the identical
- * {@code @SpringBootTest}/{@code @AutoConfigureMockMvc}/{@code @Import(TestcontainersConfiguration.class)}/{@code @ActiveProfiles("dev")}
- * signature and share one cached context and one container.
+ * <p>Carries the canonical {@link io.opaa.test.OpaaMockMvcTest} signature (AGENTS.md, "Spring-
+ * Testkontexte") for exactly the reason just described - this class, {@code
+ * BrandingControllerIntegrationTest} and {@code AuditControllerAuthorizationIntegrationTest} share
+ * one cached context and one container.
  *
  * <p><b>Caveat that comes with sharing that context:</b> the {@code RateLimitService} instances
  * behind {@code RateLimitFilter} are singleton beans, so their in-memory request counters are
@@ -64,11 +56,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * times across the whole group's combined test run can observe an unexpected 429 that a standalone
  * run of that one class would not have shown.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaMockMvcTest
 class LibraryControllerCredentialsIntegrationTest {
 
   private static final String SECRET = "admin:super-secret-password";

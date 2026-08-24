@@ -3,7 +3,6 @@ package io.opaa.space;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipHistoryRepository;
@@ -11,19 +10,16 @@ import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Runs against the real, versioned Liquibase schema ({@code spring.liquibase.enabled=true}, {@code
@@ -42,10 +38,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * violate. Against the real Liquibase schema it now fails loudly with {@code fk_spaces_owner} /
  * {@code fk_spaces_organization}, exactly like the #280 regression this pattern was built to catch.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class SpaceRepositoryTest {
 
   @Autowired private SpaceRepository spaceRepository;

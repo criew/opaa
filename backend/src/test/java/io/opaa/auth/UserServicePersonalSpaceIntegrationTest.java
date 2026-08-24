@@ -3,7 +3,6 @@ package io.opaa.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -11,6 +10,7 @@ import io.opaa.organization.Organization;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -21,10 +21,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Exercises {@link UserService#findOrCreateUser} against a real Postgres database with the real,
@@ -59,10 +55,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * ensureDefaultSpace}, exercised by this class's now-removed library-race tests; #522 deleted the
  * automatic personal library entirely, so this class is back to covering the personal space alone.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class UserServicePersonalSpaceIntegrationTest {
 
   @Autowired private UserService userService;

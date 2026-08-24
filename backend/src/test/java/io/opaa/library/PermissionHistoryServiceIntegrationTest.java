@@ -2,7 +2,6 @@ package io.opaa.library;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -21,6 +20,7 @@ import io.opaa.group.sync.DirectoryUnavailableException;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,14 +30,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Exercises #238's Stichtag reconstruction ({@link
@@ -50,13 +47,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * A") and the acceptance criteria's harder negative one ("prove they could not on day B") from the
  * same reconstruction.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import({
-  TestcontainersConfiguration.class,
-  PermissionHistoryServiceIntegrationTest.TestConfig.class
-})
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+// Own @Import (below) registers a FakeDirectoryClient not needed by the shared
+// @OpaaIntegrationTest group - documented exception per AGENTS.md.
+@OpaaIntegrationTest
+@Import(PermissionHistoryServiceIntegrationTest.TestConfig.class)
 class PermissionHistoryServiceIntegrationTest {
 
   @TestConfiguration(proxyBeanMethods = false)

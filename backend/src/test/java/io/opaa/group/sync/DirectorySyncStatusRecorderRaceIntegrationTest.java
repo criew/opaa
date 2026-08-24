@@ -2,8 +2,8 @@ package io.opaa.group.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.organization.Organization;
+import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -17,10 +17,6 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Exercises the race described in #300: two or more concurrent <em>first</em> synchronisation runs
@@ -46,10 +42,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * here (see its javadoc), so a run driven end to end would report success while silently losing the
  * status line - the exact outcome this test must be able to see.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class DirectorySyncStatusRecorderRaceIntegrationTest {
 
   /**

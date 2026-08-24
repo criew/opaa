@@ -2,7 +2,6 @@ package io.opaa.library;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipHistoryRepository;
@@ -12,6 +11,7 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.DocumentStatus;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -22,13 +22,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.DefaultApplicationArguments;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Runs {@link UploadPendingRecoveryRunner} against a real Postgres database with the real,
@@ -42,10 +38,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * test cares about do not exist yet at that point, so the automatic startup run is a harmless
  * no-op, and the assertions below need a run that happens after {@link #setUp} has seeded data.
  */
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+// Own @DynamicPropertySource (below, a short pending-recovery threshold) means Spring's context
+// cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
+// documented exception per AGENTS.md.
+@OpaaIntegrationTest
 class UploadPendingRecoveryRunnerIntegrationTest {
 
   private static final ApplicationArguments NO_ARGS = new DefaultApplicationArguments();
