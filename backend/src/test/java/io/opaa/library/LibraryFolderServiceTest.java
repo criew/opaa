@@ -336,8 +336,10 @@ class LibraryFolderServiceTest {
   @Test
   void materializeFolderPathCreatesTheFullChainForANewNestedDirectory() {
     // #824: the FILESYSTEM mirroring entry point - deliberately bypasses requireUploadLibrary/
-    // requireEditable (see this class's own Javadoc), so no grantEditor()/library.getSourceType()
-    // stubbing is needed here, unlike every CRUD test above.
+    // requireEditable (see this class's own Javadoc), so no grantEditor() stubbing is needed here,
+    // unlike every CRUD test above. requireFilesystemLibrary is a real guard though (#824 review,
+    // Befund 4a), hence the explicit FILESYSTEM stub.
+    when(library.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
     when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "Rechtsquellen"))
         .thenReturn(Optional.empty());
     when(folderRepository.findByLibraryIdAndParentFolderIdAndName(eq(libraryId), any(), eq("2026")))
@@ -353,6 +355,7 @@ class LibraryFolderServiceTest {
   void materializeFolderPathReusesAnExistingFolderInsteadOfCreatingADuplicate() {
     // #824 acceptance criteria: idempotent over the unique constraint - a second run over the same
     // directory tree must not create a sibling row.
+    when(library.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
     LibraryFolder existing = new LibraryFolder(libraryId, null, "Rechtsquellen", organizationId);
     when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "Rechtsquellen"))
         .thenReturn(Optional.of(existing));
@@ -365,6 +368,8 @@ class LibraryFolderServiceTest {
 
   @Test
   void materializeFolderPathReturnsNullForTheLibraryRoot() {
+    when(library.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
+
     UUID resolvedId = service.materializeFolderPath(library, List.of());
 
     assertThat(resolvedId).isNull();
@@ -372,23 +377,42 @@ class LibraryFolderServiceTest {
   }
 
   @Test
+  void materializeFolderPathRejectsANonFilesystemLibrary() {
+    // #824 review, Befund 4a: this internal entry point must never be called for anything but a
+    // FILESYSTEM library - library defaults to UPLOAD in setUp, so no extra stubbing is needed to
+    // exercise the guard.
+    assertThatThrownBy(() -> service.materializeFolderPath(library, List.of("Ordner")))
+        .isInstanceOf(IllegalArgumentException.class);
+    verify(folderRepository, never()).saveAndFlush(any(LibraryFolder.class));
+  }
+
+  @Test
+  void pruneOrphanedFoldersRejectsANonFilesystemLibrary() {
+    assertThatThrownBy(() -> service.pruneOrphanedFolders(library, Set.of()))
+        .isInstanceOf(IllegalArgumentException.class);
+    verify(folderRepository, never()).findByLibraryId(any());
+  }
+
+  @Test
   void pruneOrphanedFoldersRemovesAnEmptyFolderMissingFromTheCurrentRun() {
     // #824: a source directory that disappeared between two runs and never held any document.
+    when(library.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
     LibraryFolder orphan = new LibraryFolder(libraryId, null, "Verschwunden", organizationId);
     when(folderRepository.findByLibraryId(libraryId)).thenReturn(List.of(orphan));
     when(documentRepository.countByFolderId(orphan.getId())).thenReturn(0L);
 
-    service.pruneOrphanedFolders(libraryId, Set.of());
+    service.pruneOrphanedFolders(library, Set.of());
 
     verify(folderRepository).delete(orphan);
   }
 
   @Test
   void pruneOrphanedFoldersKeepsAFolderStillSeenInTheCurrentRun() {
+    when(library.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
     LibraryFolder seen = new LibraryFolder(libraryId, null, "Weiterhin da", organizationId);
     when(folderRepository.findByLibraryId(libraryId)).thenReturn(List.of(seen));
 
-    service.pruneOrphanedFolders(libraryId, Set.of(seen.getId()));
+    service.pruneOrphanedFolders(library, Set.of(seen.getId()));
 
     verify(folderRepository, never()).delete(any(LibraryFolder.class));
   }
@@ -397,11 +421,12 @@ class LibraryFolderServiceTest {
   void pruneOrphanedFoldersKeepsAnOrphanThatStillHoldsADocument() {
     // #824: a FILESYSTEM run does not yet delete a document whose file disappeared - a folder that
     // still (transitively) holds one must not be discarded underneath it.
+    when(library.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
     LibraryFolder orphan = new LibraryFolder(libraryId, null, "Verschwunden", organizationId);
     when(folderRepository.findByLibraryId(libraryId)).thenReturn(List.of(orphan));
     when(documentRepository.countByFolderId(orphan.getId())).thenReturn(1L);
 
-    service.pruneOrphanedFolders(libraryId, Set.of());
+    service.pruneOrphanedFolders(library, Set.of());
 
     verify(folderRepository, never()).delete(any(LibraryFolder.class));
   }
@@ -409,12 +434,13 @@ class LibraryFolderServiceTest {
   @Test
   void pruneOrphanedFoldersRemovesAnOrphanedParentOnlyAfterItsOwnEmptyOrphanedChild() {
     // #824: leaf-first - the parent only becomes empty once its own orphaned, empty child is gone.
+    when(library.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
     LibraryFolder parent = new LibraryFolder(libraryId, null, "Archiv", organizationId);
     LibraryFolder child = new LibraryFolder(libraryId, parent.getId(), "2025", organizationId);
     when(folderRepository.findByLibraryId(libraryId)).thenReturn(List.of(parent, child));
     when(documentRepository.countByFolderId(any())).thenReturn(0L);
 
-    service.pruneOrphanedFolders(libraryId, Set.of());
+    service.pruneOrphanedFolders(library, Set.of());
 
     var inOrder = org.mockito.Mockito.inOrder(folderRepository);
     inOrder.verify(folderRepository).delete(child);

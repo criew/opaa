@@ -196,17 +196,57 @@ public class LibraryFolderService {
    * mirror its source directory structure - see this class's own Javadoc for why it bypasses {@link
    * #requireUploadLibrary}/{@link #requireEditable}.
    *
+   * <p><b>{@link #validateName}/{@link #MAX_DEPTH} are bypassed too, deliberately</b> (#824 review,
+   * Befund 4b) - not just the permission/upload-type checks named above. A mirrored directory name
+   * is whatever the filesystem allows (which can differ from what {@link #validateName} accepts for
+   * a manually-typed {@code UPLOAD} folder name), and a real directory tree is free to nest deeper
+   * than {@link #MAX_DEPTH}; rejecting either would mean silently refusing to mirror part of the
+   * source instead of representing it as-is. {@code createFolder}'s own callers (the CRUD REST
+   * endpoints) never reach this method - see this class's own Javadoc - so neither gap is reachable
+   * through user input.
+   *
+   * <p><b>A single {@code fk_documents_folder} violation can occur if two runs of the same library
+   * overlap</b> (#824 review, Befund 4b) - e.g. after {@code IndexingJobRecoveryScheduler} restarts
+   * a run whose previous attempt was merely stuck, not actually finished, past {@code
+   * staleJobTimeout}: if the stale run's own {@link LibraryDocumentService#deleteDocument}-driven
+   * document write races the fresh run's {@link #pruneOrphanedFolders} deleting the very folder
+   * that document is about to reference, the insert fails loudly (the constraint is {@code
+   * RESTRICT}, by design - see this class's own Javadoc). Not specifically guarded against here:
+   * the next run re-materializes the same folder from the still uncrawled directory and re-attempts
+   * the document, so the condition self-heals rather than leaving a permanently broken document
+   * behind.
+   *
    * @param segments the path components between the library's {@code sourcePath} and the file
    *     itself, outermost first; an empty list means the library's root
    * @return the id of the deepest folder in {@code segments}, or {@code null} for an empty list
+   * @throws IllegalArgumentException if {@code library} is not {@link
+   *     DocumentSourceType#FILESYSTEM} - this method's only caller today ({@code
+   *     AsyncIndexingExecutor}) only ever passes a FILESYSTEM library, but the guard protects the
+   *     next one from silently mirroring a directory structure into an {@code UPLOAD}/{@code
+   *     HTTP_DIRECTORY}/{@code RSS_FEED} library's CRUD-managed folder tree
    */
   @Transactional
   public UUID materializeFolderPath(KnowledgeLibrary library, List<String> segments) {
+    requireFilesystemLibrary(library);
     UUID parentFolderId = null;
     for (String name : segments) {
       parentFolderId = materializeSingleFolder(library, parentFolderId, name);
     }
     return parentFolderId;
+  }
+
+  /**
+   * The internal counterpart to {@link #requireUploadLibrary}, guarding the opposite direction
+   * (#824 review, Befund 4a): {@link #materializeFolderPath}/{@link #pruneOrphanedFolders} must
+   * never run against anything but a {@code FILESYSTEM} library - see {@link
+   * #materializeFolderPath} 's own Javadoc for why.
+   */
+  private void requireFilesystemLibrary(KnowledgeLibrary library) {
+    if (library.getSourceType() != DocumentSourceType.FILESYSTEM) {
+      throw new IllegalArgumentException(
+          "materializeFolderPath/pruneOrphanedFolders is only valid for a FILESYSTEM library, got "
+              + library.getSourceType());
+    }
   }
 
   private UUID materializeSingleFolder(KnowledgeLibrary library, UUID parentFolderId, String name) {
@@ -254,9 +294,15 @@ public class LibraryFolderService {
    * has already either survived (still referenced, or non-empty) or been removed - mirroring {@link
    * #deleteRecursive}'s own order, though here driven by absence from {@code currentFolderIds}
    * rather than an explicit delete request.
+   *
+   * @throws IllegalArgumentException if {@code library} is not {@link
+   *     DocumentSourceType#FILESYSTEM} - see {@link #materializeFolderPath}'s own Javadoc, which
+   *     this method mirrors (#824 review, Befund 4a/4b)
    */
   @Transactional
-  public void pruneOrphanedFolders(UUID libraryId, Set<UUID> currentFolderIds) {
+  public void pruneOrphanedFolders(KnowledgeLibrary library, Set<UUID> currentFolderIds) {
+    requireFilesystemLibrary(library);
+    UUID libraryId = library.getId();
     List<LibraryFolder> all = folderRepository.findByLibraryId(libraryId);
     // Built by hand, not via Collectors.groupingBy (#824 review self-catch): groupingBy's
     // classifier is required to return a non-null key, but LibraryFolder#getParentFolderId is
