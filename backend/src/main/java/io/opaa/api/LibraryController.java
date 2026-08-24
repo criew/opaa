@@ -128,8 +128,11 @@ public class LibraryController {
   public SourceConnectionTestResponse testLibrarySource(
       @Valid @RequestBody SourceConnectionTestRequest request, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return sourceConnectionTestService.test(
-        request, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return SourceConnectionTestResponseMapper.toResponse(
+        sourceConnectionTestService.test(
+            SourceConnectionTestResponseMapper.toDomain(request),
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
   }
 
   @GetMapping
@@ -251,11 +254,13 @@ public class LibraryController {
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     LibraryFolderResponse response =
-        folderService.createFolder(
-            libraryId,
-            request,
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+        LibraryFolderResponseMapper.toResponse(
+            folderService.createFolder(
+                libraryId,
+                request.getName(),
+                request.getParentFolderId(),
+                currentUser.getId(),
+                currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -263,11 +268,12 @@ public class LibraryController {
   public LibraryFolderResponse getFolder(
       @PathVariable UUID libraryId, @PathVariable UUID folderId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return folderService.getFolder(
-        libraryId,
-        folderId,
-        currentUser.getId(),
-        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return LibraryFolderResponseMapper.toResponse(
+        folderService.getFolder(
+            libraryId,
+            folderId,
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
   }
 
   @PatchMapping("/{libraryId}/folders/{folderId}")
@@ -277,12 +283,13 @@ public class LibraryController {
       @Valid @RequestBody LibraryFolderRenameRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return folderService.renameFolder(
-        libraryId,
-        folderId,
-        request,
-        currentUser.getId(),
-        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return LibraryFolderResponseMapper.toResponse(
+        folderService.renameFolder(
+            libraryId,
+            folderId,
+            request.getName(),
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
   }
 
   @DeleteMapping("/{libraryId}/folders/{folderId}")

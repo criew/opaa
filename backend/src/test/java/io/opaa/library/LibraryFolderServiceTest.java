@@ -11,9 +11,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.dto.LibraryFolderRenameRequest;
-import io.opaa.api.dto.LibraryFolderRequest;
-import io.opaa.api.dto.LibraryFolderResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.indexing.Document;
@@ -116,14 +113,13 @@ class LibraryFolderServiceTest {
     when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "Protokolle"))
         .thenReturn(Optional.empty());
 
-    LibraryFolderResponse response =
-        service.createFolder(
-            libraryId, new LibraryFolderRequest("Protokolle"), currentUserId, false);
+    LibraryFolderDetail response =
+        service.createFolder(libraryId, "Protokolle", null, currentUserId, false);
 
-    assertThat(response.getName()).isEqualTo("Protokolle");
-    assertThat(response.getLibraryId()).isEqualTo(libraryId);
-    assertThat(response.getParentFolderId()).isNull();
-    assertThat(response.getDocumentCount()).isZero();
+    assertThat(response.folder().getName()).isEqualTo("Protokolle");
+    assertThat(response.folder().getLibraryId()).isEqualTo(libraryId);
+    assertThat(response.folder().getParentFolderId()).isNull();
+    assertThat(response.documentCount()).isZero();
   }
 
   @Test
@@ -132,11 +128,10 @@ class LibraryFolderServiceTest {
     when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "Protokolle"))
         .thenReturn(Optional.empty());
 
-    LibraryFolderResponse response =
-        service.createFolder(
-            libraryId, new LibraryFolderRequest("  Protokolle  "), currentUserId, false);
+    LibraryFolderDetail response =
+        service.createFolder(libraryId, "  Protokolle  ", null, currentUserId, false);
 
-    assertThat(response.getName()).isEqualTo("Protokolle");
+    assertThat(response.folder().getName()).isEqualTo("Protokolle");
   }
 
   @Test
@@ -144,9 +139,7 @@ class LibraryFolderServiceTest {
     denyEditor();
 
     assertThatThrownBy(
-            () ->
-                service.createFolder(
-                    libraryId, new LibraryFolderRequest("Protokolle"), currentUserId, false))
+            () -> service.createFolder(libraryId, "Protokolle", null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -160,9 +153,7 @@ class LibraryFolderServiceTest {
     when(library.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
 
     assertThatThrownBy(
-            () ->
-                service.createFolder(
-                    libraryId, new LibraryFolderRequest("Protokolle"), currentUserId, false))
+            () -> service.createFolder(libraryId, "Protokolle", null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -174,10 +165,7 @@ class LibraryFolderServiceTest {
   void aBlankNameIsRejected() {
     grantEditor();
 
-    assertThatThrownBy(
-            () ->
-                service.createFolder(
-                    libraryId, new LibraryFolderRequest("   "), currentUserId, false))
+    assertThatThrownBy(() -> service.createFolder(libraryId, "   ", null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -190,9 +178,7 @@ class LibraryFolderServiceTest {
     grantEditor();
 
     assertThatThrownBy(
-            () ->
-                service.createFolder(
-                    libraryId, new LibraryFolderRequest("Akten/2026"), currentUserId, false))
+            () -> service.createFolder(libraryId, "Akten/2026", null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -205,9 +191,7 @@ class LibraryFolderServiceTest {
     grantEditor();
 
     assertThatThrownBy(
-            () ->
-                service.createFolder(
-                    libraryId, new LibraryFolderRequest("x".repeat(256)), currentUserId, false))
+            () -> service.createFolder(libraryId, "x".repeat(256), null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -222,9 +206,7 @@ class LibraryFolderServiceTest {
         .thenReturn(Optional.of(new LibraryFolder(libraryId, null, "Protokolle", organizationId)));
 
     assertThatThrownBy(
-            () ->
-                service.createFolder(
-                    libraryId, new LibraryFolderRequest("Protokolle"), currentUserId, false))
+            () -> service.createFolder(libraryId, "Protokolle", null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -241,10 +223,7 @@ class LibraryFolderServiceTest {
     assertThatThrownBy(
             () ->
                 service.createFolder(
-                    libraryId,
-                    new LibraryFolderRequest("Protokolle").parentFolderId(missingParentId),
-                    currentUserId,
-                    false))
+                    libraryId, "Protokolle", missingParentId, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -262,10 +241,7 @@ class LibraryFolderServiceTest {
     assertThatThrownBy(
             () ->
                 service.createFolder(
-                    libraryId,
-                    new LibraryFolderRequest("Protokolle").parentFolderId(foreignParent.getId()),
-                    currentUserId,
-                    false))
+                    libraryId, "Protokolle", foreignParent.getId(), currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -287,12 +263,7 @@ class LibraryFolderServiceTest {
     UUID deepestParentId = parentId;
 
     assertThatThrownBy(
-            () ->
-                service.createFolder(
-                    libraryId,
-                    new LibraryFolderRequest("Zu tief").parentFolderId(deepestParentId),
-                    currentUserId,
-                    false))
+            () -> service.createFolder(libraryId, "Zu tief", deepestParentId, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -312,13 +283,7 @@ class LibraryFolderServiceTest {
     when(folderRepository.findById(folder.getId())).thenReturn(Optional.of(folder));
 
     assertThatThrownBy(
-            () ->
-                service.renameFolder(
-                    libraryId,
-                    folder.getId(),
-                    new LibraryFolderRenameRequest("Archiv"),
-                    currentUserId,
-                    false))
+            () -> service.renameFolder(libraryId, folder.getId(), "Archiv", currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -466,15 +431,10 @@ class LibraryFolderServiceTest {
             libraryId, "Protokolle", folder.getId()))
         .thenReturn(Optional.empty());
 
-    LibraryFolderResponse response =
-        service.renameFolder(
-            libraryId,
-            folder.getId(),
-            new LibraryFolderRenameRequest("Protokolle"),
-            currentUserId,
-            false);
+    LibraryFolderDetail response =
+        service.renameFolder(libraryId, folder.getId(), "Protokolle", currentUserId, false);
 
-    assertThat(response.getName()).isEqualTo("Protokolle");
+    assertThat(response.folder().getName()).isEqualTo("Protokolle");
   }
 
   @Test
@@ -487,13 +447,7 @@ class LibraryFolderServiceTest {
         .thenReturn(Optional.of(new LibraryFolder(libraryId, null, "Archiv", organizationId)));
 
     assertThatThrownBy(
-            () ->
-                service.renameFolder(
-                    libraryId,
-                    folder.getId(),
-                    new LibraryFolderRenameRequest("Archiv"),
-                    currentUserId,
-                    false))
+            () -> service.renameFolder(libraryId, folder.getId(), "Archiv", currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -507,10 +461,10 @@ class LibraryFolderServiceTest {
     LibraryFolder folder = new LibraryFolder(libraryId, null, "Protokolle", organizationId);
     when(folderRepository.findById(folder.getId())).thenReturn(Optional.of(folder));
 
-    LibraryFolderResponse response =
+    LibraryFolderDetail response =
         service.getFolder(libraryId, folder.getId(), currentUserId, false);
 
-    assertThat(response.getId()).isEqualTo(folder.getId());
+    assertThat(response.folder().getId()).isEqualTo(folder.getId());
   }
 
   @Test
@@ -567,12 +521,7 @@ class LibraryFolderServiceTest {
 
     assertThatThrownBy(
             () ->
-                service.renameFolder(
-                    libraryId,
-                    foreignFolder.getId(),
-                    new LibraryFolderRenameRequest("Neu"),
-                    currentUserId,
-                    false))
+                service.renameFolder(libraryId, foreignFolder.getId(), "Neu", currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
