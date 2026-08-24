@@ -140,6 +140,28 @@ class LibraryControllerFolderTest {
   }
 
   @Test
+  void creatingAFolderWithAParentFolderIdForwardsItToTheService() throws Exception {
+    // #872 review: request.getParentFolderId() unpacking at the LibraryController call site had no
+    // test forcing a non-null value through - a null literal there would have stayed green.
+    UUID libraryId = UUID.randomUUID();
+    UUID folderId = UUID.randomUUID();
+    UUID parentFolderId = UUID.randomUUID();
+    when(folderService.createFolder(
+            eq(libraryId), eq("2026"), eq(parentFolderId), eq(currentUserId), eq(false)))
+        .thenReturn(sampleDetail(libraryId, folderId, "2026"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + libraryId + "/folders")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"2026\",\"parentFolderId\":\"" + parentFolderId + "\"}"))
+        .andExpect(status().isCreated());
+
+    verify(folderService).createFolder(libraryId, "2026", parentFolderId, currentUserId, false);
+  }
+
+  @Test
   void creatingAFolderWithABlankNameIsRejectedWith400BeforeReachingTheService() throws Exception {
     // The generated LibraryFolderRequest.name carries @NotNull @Size(min = 1, max = 255) - this
     // proves @Valid on LibraryController#createFolder actually rejects an empty name at the web

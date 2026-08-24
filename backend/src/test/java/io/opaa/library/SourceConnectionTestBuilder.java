@@ -19,16 +19,10 @@ public final class SourceConnectionTestBuilder {
   private Boolean sourceInsecureSsl;
   private UUID libraryId;
 
-  private SourceConnectionTestBuilder(DocumentSourceType sourceType) {
-    this.sourceType = sourceType;
-  }
-
-  public static SourceConnectionTestBuilder sourceConnectionTest(DocumentSourceType sourceType) {
-    return new SourceConnectionTestBuilder(sourceType);
-  }
+  private SourceConnectionTestBuilder() {}
 
   public static SourceConnectionTestBuilder sourceConnectionTest() {
-    return new SourceConnectionTestBuilder(null);
+    return new SourceConnectionTestBuilder();
   }
 
   public SourceConnectionTestBuilder sourceType(DocumentSourceType sourceType) {
