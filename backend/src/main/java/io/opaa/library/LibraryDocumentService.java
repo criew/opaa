@@ -15,6 +15,7 @@ import io.opaa.indexing.ProxyAndCredentials;
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.TargetAddressValidator;
 import io.opaa.indexing.UrlFileDownloader;
+import io.opaa.indexing.VectorChunkStore;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,7 +33,6 @@ import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -114,7 +114,7 @@ public class LibraryDocumentService {
   private final DocumentRepository documentRepository;
   private final ChecksumService checksumService;
   private final FileProcessingService fileProcessingService;
-  private final VectorStore vectorStore;
+  private final VectorChunkStore vectorChunkStore;
   private final UploadProperties uploadProperties;
   private final LibraryStorageQuotaService storageQuotaService;
   private final FilesystemPathAllowlist filesystemAllowlist;
@@ -131,7 +131,7 @@ public class LibraryDocumentService {
       DocumentRepository documentRepository,
       ChecksumService checksumService,
       FileProcessingService fileProcessingService,
-      VectorStore vectorStore,
+      VectorChunkStore vectorChunkStore,
       UploadProperties uploadProperties,
       LibraryStorageQuotaService storageQuotaService,
       FilesystemPathAllowlist filesystemAllowlist,
@@ -146,7 +146,7 @@ public class LibraryDocumentService {
     this.documentRepository = documentRepository;
     this.checksumService = checksumService;
     this.fileProcessingService = fileProcessingService;
-    this.vectorStore = vectorStore;
+    this.vectorChunkStore = vectorChunkStore;
     this.uploadProperties = uploadProperties;
     this.storageQuotaService = storageQuotaService;
     this.filesystemAllowlist = filesystemAllowlist;
@@ -276,7 +276,7 @@ public class LibraryDocumentService {
         // every failure path), but the delete is unconditional anyway, mirroring processFile's own
         // re-index cleanup - defence in depth costs nothing here.
         Path oldFailedFile = uploadedFileIfManagedByThisService(existingDoc, libraryId);
-        vectorStore.delete("document_id == '" + existingDoc.getId() + "'");
+        vectorChunkStore.deleteByDocumentId(existingDoc.getId());
         documentRepository.delete(existingDoc);
         if (oldFailedFile != null) {
           deleteQuietly(oldFailedFile);
@@ -759,7 +759,7 @@ public class LibraryDocumentService {
     deleteAfterCommit(
         () -> {
           try {
-            vectorStore.delete("document_id == '" + chunkFilterDocumentId + "'");
+            vectorChunkStore.deleteByDocumentId(chunkFilterDocumentId);
           } catch (RuntimeException e) {
             log.error(
                 "Failed to remove vector store chunks for deleted document {} - orphaned chunks may"

@@ -13,6 +13,7 @@ import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.VectorChunkStore;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
@@ -49,8 +50,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class QueryService {
 
   private static final Logger log = LoggerFactory.getLogger(QueryService.class);
-
-  private static final String LIBRARY_ID_METADATA_KEY = "library_id";
 
   private final VectorStore vectorStore;
   private final AnswerGenerationService answerGenerationService;
@@ -406,7 +405,9 @@ public class QueryService {
   private Filter.Expression libraryFilter(Set<UUID> readableLibraryIds) {
     List<Object> libraryIdValues =
         readableLibraryIds.stream().map(UUID::toString).map(Object.class::cast).toList();
-    return new FilterExpressionBuilder().in(LIBRARY_ID_METADATA_KEY, libraryIdValues).build();
+    return new FilterExpressionBuilder()
+        .in(VectorChunkStore.LIBRARY_ID_METADATA_KEY, libraryIdValues)
+        .build();
   }
 
   /**

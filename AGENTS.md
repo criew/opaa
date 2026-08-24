@@ -212,6 +212,8 @@ Ein Test, der den Fehler nicht fangen würde, ist wertlos — und das fällt am 
 
 Deshalb gilt bei jeder Fehlerbehebung: Den Fix vorübergehend zurücknehmen, den Test laufen lassen, das Fehlschlagen belegen, den Fix wiederherstellen, erneut laufen lassen. **Beide Ergebnisse gehören in die PR-Beschreibung**, mit der konkreten Fehlermeldung des roten Laufs.
 
+**Beleg-Läufe nur auf aktuellem Stand:** Vor dem roten und dem grünen Lauf `origin/main` in den Branch mergen — ein Nachweis auf veraltetem Stand belegt nichts. Widerspricht ein lokaler grüner Lauf einem roten CI-Lauf, gilt die CI; der lokale Lauf ist dann auf einem anderen (meist älteren oder anders kombinierten) Stand gelaufen.
+
 Typische Ursachen dafür, dass ein Test den Fehler verfehlt:
 
 - **Er prüft eine Bedingung, die vor und nach dem Fix gilt** — etwa „irgendwann wurde invalidiert" statt „zum richtigen Zeitpunkt".

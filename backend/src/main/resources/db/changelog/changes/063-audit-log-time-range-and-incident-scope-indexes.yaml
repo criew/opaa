@@ -1,0 +1,110 @@
+databaseChangeLog:
+  # #834 (Phase 1 of epic #826's backend architecture review): two of AuditQueryService's five
+  # access paths have no matching index and fall back to a sequential scan of every partition -
+  # byTimeRange (organization_id, recorded_at) and byIncidentScope (organization_id, actor_ref,
+  # recorded_at). The other three access paths already have one from migration 017:
+  # idx_audit_log_object, idx_audit_log_event_type, idx_audit_log_correlation. This migration adds
+  # the missing two, on the partitioned parent table so Postgres propagates each to every existing
+  # and future partition automatically (CREATE INDEX on a partitioned table is itself a partitioned
+  # index - no per-partition changeSet needed, matching 017's own indexes).
+  #
+  # audit_log is owned by opaa_audit_owner, not the migration/application account (migration 017,
+  # ADR-0015) - reaching CREATE INDEX therefore needs the same temporary "GRANT ... WITH SET TRUE /
+  # SET ROLE / RESET ROLE / REVOKE" bracket migration 022 already established for DDL against
+  # audit_log (see that changeSet's own comment and #426 for why this is not specific to one
+  # migration - every future audit_log DDL migration needs the same dance).
+  #
+  # Locking (#846 code review): CREATE INDEX on a partitioned parent table takes ACCESS EXCLUSIVE on
+  # the parent and on every one of its partitions for the duration of the build, and cannot run
+  # CONCURRENTLY (Postgres does not support CREATE INDEX CONCURRENTLY on a partitioned table as a
+  # single statement). That is acceptable here because Liquibase runs this at application startup,
+  # before the instance accepts traffic (see AuthProfileGuard/ADR-0005's own startup-gate
+  # precedent) - nothing is blocked that is already serving requests. On a large existing audit_log
+  # (many partitions, each already holding years of rows), this does lengthen that startup step;
+  # IF NOT EXISTS below at least makes a second, redundant run of this changeSet (or an index an
+  # operator already created by hand with the same name) a no-op instead of a startup-blocking
+  # error.
+  - changeSet:
+      id: 063-create-audit-log-time-range-index
+      author: opaa
+      comment: >
+        Supports AuditQueryService#byTimeRange, the "nach Zeitraum" access path: every call filters
+        by organization_id and a recorded_at range, with no further predicate, so the leading
+        columns match the query's own WHERE clause and index-ordered scan exactly.
+      changes:
+        - sql:
+            comment: >
+              Runs as opaa_audit_owner via a temporary SET TRUE membership grant plus SET ROLE (see
+              the changelog header above) since audit_log's DDL is otherwise unreachable from the
+              migration account after 017's ownership transfer.
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+              SET ROLE opaa_audit_owner;
+              CREATE INDEX IF NOT EXISTS idx_audit_log_time_range
+              ON audit_log (organization_id, recorded_at);
+              RESET ROLE;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+              SET ROLE opaa_audit_owner;
+              DROP INDEX IF EXISTS idx_audit_log_time_range;
+              RESET ROLE;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+
+  - changeSet:
+      id: 063-create-audit-log-incident-scope-index
+      author: opaa
+      comment: >
+        Supports AuditQueryService#byIncidentScope, the anlassbezogene-Klärung access path: every
+        call filters by organization_id, the subject's pseudonymised actor_ref and a recorded_at
+        range together (see findByOrganizationIdAndActorRefAndRecordedAtBetween), so the column
+        order here matches that query exactly, actor_ref before recorded_at as the second equality
+        predicate belongs before the range predicate in a btree index.
+      changes:
+        - sql:
+            comment: "Same temporary SET ROLE bracket as the time-range index above - see that changeSet's comment."
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+              SET ROLE opaa_audit_owner;
+              CREATE INDEX IF NOT EXISTS idx_audit_log_incident_scope
+              ON audit_log (organization_id, actor_ref, recorded_at);
+              RESET ROLE;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+              SET ROLE opaa_audit_owner;
+              DROP INDEX IF EXISTS idx_audit_log_incident_scope;
+              RESET ROLE;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;

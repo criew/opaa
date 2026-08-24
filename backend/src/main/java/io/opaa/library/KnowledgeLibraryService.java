@@ -30,6 +30,7 @@ import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
 import io.opaa.indexing.LibraryScheduleCodec;
 import io.opaa.indexing.RssFeedStateRepository;
+import io.opaa.indexing.VectorChunkStore;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
@@ -48,7 +49,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -109,7 +109,7 @@ public class KnowledgeLibraryService {
   private final LibraryAccessService accessService;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
-  private final VectorStore vectorStore;
+  private final VectorChunkStore vectorChunkStore;
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final IndexingJobRepository indexingJobRepository;
   private final IndexingJobService indexingJobService;
@@ -129,7 +129,7 @@ public class KnowledgeLibraryService {
       LibraryAccessService accessService,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
-      VectorStore vectorStore,
+      VectorChunkStore vectorChunkStore,
       FilesystemPathAllowlist filesystemAllowlist,
       IndexingJobRepository indexingJobRepository,
       IndexingJobService indexingJobService,
@@ -147,7 +147,7 @@ public class KnowledgeLibraryService {
     this.accessService = accessService;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
-    this.vectorStore = vectorStore;
+    this.vectorChunkStore = vectorChunkStore;
     this.filesystemAllowlist = filesystemAllowlist;
     this.indexingJobRepository = indexingJobRepository;
     this.indexingJobService = indexingJobService;
@@ -673,7 +673,7 @@ public class KnowledgeLibraryService {
       deleteAfterCommit(
           () -> {
             try {
-              vectorStore.delete("library_id == '" + libraryId + "'");
+              vectorChunkStore.deleteByLibraryId(libraryId);
             } catch (RuntimeException e) {
               log.error(
                   "Failed to remove vector store chunks for deleted library {} - orphaned chunks"
