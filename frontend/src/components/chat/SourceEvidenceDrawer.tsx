@@ -37,7 +37,6 @@ interface EvidenceDoc {
   /** #386: false when the backend's deterministic check found at least one citation naming this
    *  source that does not match the chunks actually retrieved for this answer. */
   citationValid: boolean
-  spaceName?: string | null
   relevanceScore?: number
   indexedAt?: string | null
   sourceEntryUrl?: string | null
@@ -90,7 +89,6 @@ export default function SourceEvidenceDrawer({
       numbers: doc.numbers,
       cited: true,
       citationValid: doc.source?.citationValid !== false,
-      spaceName: doc.source?.spaceName,
       relevanceScore: doc.source?.relevanceScore,
       indexedAt: doc.source?.indexedAt,
       sourceEntryUrl: doc.source?.sourceEntryUrl,
@@ -103,7 +101,6 @@ export default function SourceEvidenceDrawer({
       numbers: [],
       cited: false,
       citationValid: source.citationValid !== false,
-      spaceName: source.spaceName,
       relevanceScore: source.relevanceScore,
       indexedAt: source.indexedAt,
       sourceEntryUrl: source.sourceEntryUrl,
@@ -121,12 +118,7 @@ export default function SourceEvidenceDrawer({
     const needle = query.trim().toLowerCase()
     return docs
       .filter((doc) => !citedOnly || doc.cited)
-      .filter(
-        (doc) =>
-          needle.length === 0 ||
-          doc.fileName.toLowerCase().includes(needle) ||
-          (doc.spaceName ?? '').toLowerCase().includes(needle),
-      )
+      .filter((doc) => needle.length === 0 || doc.fileName.toLowerCase().includes(needle))
   }, [citedOnly, docs, query])
 
   const stellen = citations.markerCount === 1 ? '1 Stelle' : `${citations.markerCount} Stellen`
@@ -275,7 +267,6 @@ export default function SourceEvidenceDrawer({
               >
                 <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
                   {[
-                    doc.spaceName,
                     doc.relevanceScore !== undefined
                       ? `Gewicht ${Math.round(doc.relevanceScore * 100)} %`
                       : null,
