@@ -12,10 +12,8 @@ import java.util.UUID;
  * (docs/features/security-and-compliance.md#unveränderlichkeit-und-löschrecht). {@code audit_log}
  * carries only the pseudonym (as {@code actor_ref}/{@code subject_ref}); this is the only place
  * that connects it back to a person, and it is the row deleted - independently of and without
- * touching any {@link AuditLogEntry} - when the account is deleted. {@code
- * fk_audit_actor_pseudonyms_user_organization} (migration 017, composite as of migration 047) is
- * {@code ON DELETE CASCADE}, so that removal happens automatically at the database level rather
- * than depending on application code remembering to do it.
+ * touching any {@link AuditLogEntry} - when the account is deleted, via an {@code ON DELETE
+ * CASCADE} foreign key so the removal happens at the database level.
  *
  * <p>Rows are only ever created via {@link AuditActorPseudonymRepository#insertIfAbsent}'s native
  * {@code INSERT ... ON CONFLICT} query, never through this entity's constructor - so there is

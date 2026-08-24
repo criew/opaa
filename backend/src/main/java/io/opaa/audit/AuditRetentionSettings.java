@@ -8,31 +8,26 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 /**
- * The single, system-wide retention configuration row (#395,
- * docs/features/security-and-compliance.md#aufbewahrung) - a singleton, not one row per
- * organization; see migration 023's changelog header for why. {@code retentionMonths} is bounded
- * 12..120 (1..10 years) by the database check constraint {@code
- * chk_audit_retention_settings_months}; {@link AuditRetentionSettingsService#updateRetention}
- * validates the same bound before ever writing, but the database is the binding guarantee.
+ * The single, system-wide retention configuration row
+ * (docs/features/security-and-compliance.md#aufbewahrung) - a singleton, not one row per
+ * organization. {@code retentionMonths} is bounded 12..120 (1..10 years) by the database check
+ * constraint {@code chk_audit_retention_settings_months}; {@link
+ * AuditRetentionSettingsService#updateRetention} validates the same bound before ever writing, but
+ * the database is the binding guarantee.
  *
  * <p>{@code lastCutoff}/{@code lastRunMonth} are written exclusively by the {@code
- * opaa_audit_delete_expired_partitions()} database function (migration 023) - the application
- * account's database grant deliberately excludes both columns (see that migration's comment).
+ * opaa_audit_delete_expired_partitions()} database function - the application account's database
+ * grant deliberately excludes both columns.
  *
- * <p><b>This entity is read-only end to end</b> (code review of #454, finding 2): every field is
- * {@code insertable = false, updatable = false}, and there is no setter. Writing {@code
- * retentionMonths} goes exclusively through {@link
- * AuditRetentionSettingsRepository#updateRetentionMonths}, a native {@code @Modifying} query that
- * touches only {@code retention_months}/{@code updated_at} - the two columns the application
- * account actually has {@code UPDATE} on (migration 023). A plain {@code repository.save(entity)}
- * would not have been safe here even with the setter this class used to have: Hibernate's default
- * dirty-checked {@code UPDATE} writes every mapped column, including {@code last_cutoff}/{@code
- * last_run_month} - which the application account cannot write - so it would fail with "permission
- * denied for table" the moment {@code save} ran against the real, restricted grant, not merely
- * against a schema-only test double. See {@code Migration023AuditRetentionTest} for both the red
- * reproduction of that failure (the naive multi-column {@code UPDATE}) and the green proof that the
- * narrower statement {@link AuditRetentionSettingsRepository#updateRetentionMonths} issues succeeds
- * against the same restricted role.
+ * <p><b>This entity is read-only end to end:</b> every field is {@code insertable = false,
+ * updatable = false}, and there is no setter. Writing {@code retentionMonths} goes exclusively
+ * through {@link AuditRetentionSettingsRepository#updateRetentionMonths}, a native
+ * {@code @Modifying} query that touches only {@code retention_months}/{@code updated_at} - the two
+ * columns the application account actually has {@code UPDATE} on. A plain {@code
+ * repository.save(entity)} would not be safe here: Hibernate's default dirty-checked {@code UPDATE}
+ * writes every mapped column, including {@code last_cutoff}/{@code last_run_month} - which the
+ * application account cannot write - and would fail with "permission denied for table" against the
+ * real, restricted grant.
  */
 @Entity
 @Table(name = "audit_retention_settings")

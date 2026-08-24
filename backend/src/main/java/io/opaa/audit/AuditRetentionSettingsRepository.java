@@ -9,10 +9,10 @@ import org.springframework.data.repository.query.Param;
 
 /**
  * Persistence for the singleton {@link AuditRetentionSettings} row and the entry point into the
- * {@code opaa_audit_delete_expired_partitions()} database function (migration 023) - the one and
- * only call in this codebase that can remove anything from {@code audit_log}, and the one this
- * interface deliberately exposes with no parameters, matching the function's own signature (#395
- * acceptance criteria: "ein Aufruf, der einzelne Sätze entfernen würde, existiert nicht").
+ * {@code opaa_audit_delete_expired_partitions()} database function - the one and only call in this
+ * codebase that can remove anything from {@code audit_log}, and the one this interface deliberately
+ * exposes with no parameters, matching the function's own signature ("ein Aufruf, der einzelne
+ * Sätze entfernen würde, existiert nicht").
  */
 public interface AuditRetentionSettingsRepository
     extends JpaRepository<AuditRetentionSettings, Integer> {
@@ -22,15 +22,13 @@ public interface AuditRetentionSettingsRepository
   }
 
   /**
-   * The only way this codebase changes {@code retention_months} (#395, code review of #454, finding
-   * 2) - a native, explicitly narrow {@code UPDATE} touching exactly {@code
-   * retention_months}/{@code updated_at}, matching the application account's actual database grant
-   * (migration 023). Deliberately not {@code JpaRepository#save} on the read-only {@link
-   * AuditRetentionSettings} entity: Hibernate's default dirty-checked {@code UPDATE} writes every
-   * mapped column regardless of which one logically changed, which would include {@code
-   * last_cutoff}/{@code last_run_month} - columns the application account cannot write - and fail
-   * with "permission denied for table" against the real, restricted grant. Verified directly
-   * against that restricted role in {@code Migration023AuditRetentionTest}.
+   * The only way this codebase changes {@code retention_months} - a native, explicitly narrow
+   * {@code UPDATE} touching exactly {@code retention_months}/{@code updated_at}, matching the
+   * application account's actual database grant. Deliberately not {@code JpaRepository#save} on the
+   * read-only {@link AuditRetentionSettings} entity: Hibernate's default dirty-checked {@code
+   * UPDATE} writes every mapped column regardless of which one logically changed, which would
+   * include {@code last_cutoff}/{@code last_run_month} - columns the application account cannot
+   * write - and fail with "permission denied for table" against the real, restricted grant.
    */
   @Modifying
   @Query(
@@ -46,8 +44,7 @@ public interface AuditRetentionSettingsRepository
    * the caller ({@link AuditRetentionDeletionService}) has open; the function itself is {@code
    * SECURITY DEFINER}, so the actual {@code DROP TABLE} statements execute as {@code
    * opaa_audit_owner} regardless of this call happening over the application account's own
-   * connection - see migration 023's comment for why that satisfies "läuft nicht über das
-   * Anwendungskonto".
+   * connection ("läuft nicht über das Anwendungskonto").
    */
   @Query(value = "SELECT * FROM opaa_audit_delete_expired_partitions()", nativeQuery = true)
   List<String> deleteExpiredPartitions();

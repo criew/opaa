@@ -13,10 +13,10 @@ import java.util.UUID;
 
 /**
  * The one exception the specification names by name: the anlassbezogene Klärung of a security
- * incident (#393,
- * docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt). A grant
- * names person ({@link #subjectUserId}), time range ({@link #scopeStart}/{@link #scopeEnd}) and
- * purpose <em>in advance</em>, and only these three - not an open filter - become the technical
+ * incident
+ * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt). A
+ * grant names person ({@link #subjectUserId}), time range ({@link #scopeStart}/{@link #scopeEnd})
+ * and purpose <em>in advance</em>, and only these three - not an open filter - become the technical
  * bound {@link AuditQueryService#byIncidentScope} enforces.
  *
  * <p>Vier-Augen-Prinzip: a grant is created {@code PENDING} by one AUDITOR ({@link
@@ -63,9 +63,9 @@ public class AuditIncidentScopeGrant {
   private Instant approvedAt;
 
   /**
-   * #393 code review, finding 7: an approved grant must not stay usable indefinitely - set at
-   * approval time to {@link #approvedAt} plus {@link #USABLE_WINDOW}, checked by {@link #isUsable}.
-   * Null while {@code PENDING}.
+   * An approved grant must not stay usable indefinitely - set at approval time to {@link
+   * #approvedAt} plus {@link #USABLE_WINDOW}, checked by {@link #isUsable}. Null while {@code
+   * PENDING}.
    */
   @Column(name = "usable_until")
   private Instant usableUntil;
@@ -75,11 +75,10 @@ public class AuditIncidentScopeGrant {
   private AuditIncidentScopeStatus status;
 
   /**
-   * How long an approved grant remains usable after approval (#393 code review, finding 7): 30 days
-   * - long enough to carry out an anlassbezogene Klärung once approved, short enough that an
-   * approved-but-forgotten grant does not become a standing personenbezogene view. Re-requesting
-   * (with a fresh Vier-Augen-Prinzip approval) is the intended path past this window, not an
-   * extension of the same grant.
+   * How long an approved grant remains usable after approval: 30 days - long enough to carry out an
+   * anlassbezogene Klärung once approved, short enough that an approved-but-forgotten grant does
+   * not become a standing personenbezogene view. Re-requesting (with a fresh Vier-Augen-Prinzip
+   * approval) is the intended path past this window, not an extension of the same grant.
    */
   static final Duration USABLE_WINDOW = Duration.ofDays(30);
 
@@ -138,8 +137,8 @@ public class AuditIncidentScopeGrant {
   }
 
   /**
-   * True once approved and still within {@link #usableUntil} at {@code now} (#393 code review,
-   * finding 7). A {@code PENDING} grant (where {@code usableUntil} is still null) is never usable.
+   * True once approved and still within {@link #usableUntil} at {@code now}. A {@code PENDING}
+   * grant (where {@code usableUntil} is still null) is never usable.
    */
   public boolean isUsable(Instant now) {
     return status == AuditIncidentScopeStatus.APPROVED
