@@ -1,13 +1,12 @@
 package io.opaa.library;
 
+import static io.opaa.library.SourceConnectionTestBuilder.sourceConnectionTest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.api.dto.SourceConnectionTestRequest;
-import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.indexing.AutoindexCrawlerService;
@@ -98,15 +97,16 @@ class SourceConnectionTestServiceTest {
     // "unsupported" as literal file content) would now be accepted, since content decides.
     Files.write(dir.resolve("c.xyz"), new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3});
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.FILESYSTEM)
-                .sourcePath(dir.toString()));
+                .sourcePath(dir.toString())
+                .build());
 
-    assertThat(response.getReachable()).isTrue();
-    assertThat(response.getDocumentCount()).isEqualTo(2L);
-    assertThat(response.getMessage()).contains("2").contains("Dokumente");
+    assertThat(response.reachable()).isTrue();
+    assertThat(response.documentCount()).isEqualTo(2L);
+    assertThat(response.message()).contains("2").contains("Dokumente");
   }
 
   @Test
@@ -115,15 +115,16 @@ class SourceConnectionTestServiceTest {
     when(filesystemAllowlist.isConfigured()).thenReturn(true);
     when(filesystemAllowlist.isAllowed(missing)).thenReturn(true);
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.FILESYSTEM)
-                .sourcePath(missing));
+                .sourcePath(missing)
+                .build());
 
-    assertThat(response.getReachable()).isFalse();
-    assertThat(response.getDocumentCount()).isNull();
-    assertThat(response.getMessage()).isEqualTo("Das Verzeichnis existiert nicht.");
+    assertThat(response.reachable()).isFalse();
+    assertThat(response.documentCount()).isNull();
+    assertThat(response.message()).isEqualTo("Das Verzeichnis existiert nicht.");
   }
 
   @Test
@@ -134,9 +135,10 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(
-                    new SourceConnectionTestRequest()
+                    sourceConnectionTest()
                         .sourceType(DocumentSourceType.FILESYSTEM)
-                        .sourcePath("/etc/shadow")))
+                        .sourcePath("/etc/shadow")
+                        .build()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -151,9 +153,10 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(
-                    new SourceConnectionTestRequest()
+                    sourceConnectionTest()
                         .sourceType(DocumentSourceType.FILESYSTEM)
-                        .sourcePath("/data/documents")))
+                        .sourcePath("/data/documents")
+                        .build()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -166,9 +169,10 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(
-                    new SourceConnectionTestRequest()
+                    sourceConnectionTest()
                         .sourceType(DocumentSourceType.FILESYSTEM)
-                        .sourcePath("relative/path")))
+                        .sourcePath("relative/path")
+                        .build()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -184,10 +188,11 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(
-                    new SourceConnectionTestRequest()
+                    sourceConnectionTest()
                         .sourceType(DocumentSourceType.FILESYSTEM)
                         .sourcePath("/data/documents")
-                        .sourceUrl(URI.create("https://files.example.com"))))
+                        .sourceUrl(URI.create("https://files.example.com"))
+                        .build()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -200,10 +205,11 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(
-                    new SourceConnectionTestRequest()
+                    sourceConnectionTest()
                         .sourceType(DocumentSourceType.FILESYSTEM)
                         .sourcePath("/data/documents")
-                        .sourceInsecureSsl(true)))
+                        .sourceInsecureSsl(true)
+                        .build()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -232,17 +238,18 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                .sourceUrl(URI.create(baseUrl + "/dir/")));
+                .sourceUrl(URI.create(baseUrl + "/dir/"))
+                .build());
 
-    assertThat(response.getReachable()).isTrue();
+    assertThat(response.reachable()).isTrue();
     // 2 linked documents - the subdir entry is a directory, not a linked document.
-    assertThat(response.getDocumentCount()).isEqualTo(2L);
+    assertThat(response.documentCount()).isEqualTo(2L);
     // #551: exact wording, incl. plural adjective agreement ("unterstützte Dokumente").
-    assertThat(response.getMessage())
+    assertThat(response.message())
         .isEqualTo(
             "Webverzeichnis erreichbar, 2 unterstützte Dokumente auf oberster Ebene gefunden.");
   }
@@ -267,14 +274,15 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                .sourceUrl(URI.create(baseUrl + "/dir/")));
+                .sourceUrl(URI.create(baseUrl + "/dir/"))
+                .build());
 
-    assertThat(response.getReachable()).isTrue();
-    assertThat(response.getDocumentCount()).isEqualTo(2L);
+    assertThat(response.reachable()).isTrue();
+    assertThat(response.documentCount()).isEqualTo(2L);
   }
 
   @Test
@@ -297,14 +305,15 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                .sourceUrl(URI.create(baseUrl + "/dir/")));
+                .sourceUrl(URI.create(baseUrl + "/dir/"))
+                .build());
 
-    assertThat(response.getReachable()).isTrue();
-    assertThat(response.getDocumentCount()).isEqualTo(2L);
+    assertThat(response.reachable()).isTrue();
+    assertThat(response.documentCount()).isEqualTo(2L);
   }
 
   @Test
@@ -326,14 +335,15 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                .sourceUrl(URI.create(baseUrl + "/dir/")));
+                .sourceUrl(URI.create(baseUrl + "/dir/"))
+                .build());
 
-    assertThat(response.getReachable()).isFalse();
-    assertThat(response.getMessage()).contains("kein erkennbares Verzeichnislisting");
+    assertThat(response.reachable()).isFalse();
+    assertThat(response.message()).contains("kein erkennbares Verzeichnislisting");
   }
 
   @Test
@@ -367,14 +377,15 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                .sourceUrl(URI.create(baseUrl + "/dir-old")));
+                .sourceUrl(URI.create(baseUrl + "/dir-old"))
+                .build());
 
-    assertThat(response.getReachable()).isTrue();
-    assertThat(response.getDocumentCount()).isEqualTo(1L);
+    assertThat(response.reachable()).isTrue();
+    assertThat(response.documentCount()).isEqualTo(1L);
   }
 
   @Test
@@ -398,17 +409,18 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                .sourceUrl(URI.create(baseUrl + "/dir/")));
+                .sourceUrl(URI.create(baseUrl + "/dir/"))
+                .build());
 
-    assertThat(response.getReachable()).isTrue();
-    assertThat(response.getDocumentCount()).isEqualTo(1L);
+    assertThat(response.reachable()).isTrue();
+    assertThat(response.documentCount()).isEqualTo(1L);
     // #551: the singular defect the issue is named after - "unterstütztes Dokument", not
     // "unterstuetzte Dokument".
-    assertThat(response.getMessage())
+    assertThat(response.message())
         .isEqualTo(
             "Webverzeichnis erreichbar, 1 unterstütztes Dokument auf oberster Ebene gefunden.");
   }
@@ -434,14 +446,15 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                .sourceUrl(URI.create(baseUrl + "/dir/index.html")));
+                .sourceUrl(URI.create(baseUrl + "/dir/index.html"))
+                .build());
 
-    assertThat(response.getReachable()).isTrue();
-    assertThat(response.getDocumentCount()).isEqualTo(1L);
+    assertThat(response.reachable()).isTrue();
+    assertThat(response.documentCount()).isEqualTo(1L);
   }
 
   @Test
@@ -480,14 +493,15 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         tightService.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                .sourceUrl(URI.create(baseUrl + "/dir/")));
+                .sourceUrl(URI.create(baseUrl + "/dir/"))
+                .build());
 
-    assertThat(response.getReachable()).isFalse();
-    assertThat(response.getMessage()).contains("Größe");
+    assertThat(response.reachable()).isFalse();
+    assertThat(response.message()).contains("Größe");
   }
 
   @Test
@@ -495,10 +509,11 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(
-                    new SourceConnectionTestRequest()
+                    sourceConnectionTest()
                         .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
-                        .sourcePath("/data/documents")))
+                        .sourcePath("/data/documents")
+                        .build()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -515,29 +530,31 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                .sourceUrl(URI.create(baseUrl + "/dir/")));
+                .sourceUrl(URI.create(baseUrl + "/dir/"))
+                .build());
 
-    assertThat(response.getReachable()).isFalse();
-    assertThat(response.getDocumentCount()).isNull();
-    assertThat(response.getMessage()).contains("401");
+    assertThat(response.reachable()).isFalse();
+    assertThat(response.documentCount()).isNull();
+    assertThat(response.message()).contains("401");
   }
 
   @Test
   void httpDirectoryReportsUnreachableHostInGerman() {
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                .sourceUrl(URI.create("http://127.0.0.1:1")));
+                .sourceUrl(URI.create("http://127.0.0.1:1"))
+                .build());
 
-    assertThat(response.getReachable()).isFalse();
-    assertThat(response.getMessage()).isNotBlank();
+    assertThat(response.reachable()).isFalse();
+    assertThat(response.message()).isNotBlank();
     // Message must be German, human text, never a raw Java exception message.
-    assertThat(response.getMessage()).doesNotContain("Exception");
+    assertThat(response.message()).doesNotContain("Exception");
   }
 
   @Test
@@ -545,9 +562,10 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(
-                    new SourceConnectionTestRequest()
+                    sourceConnectionTest()
                         .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                        .sourceUrl(URI.create("ftp://files.example.com"))))
+                        .sourceUrl(URI.create("ftp://files.example.com"))
+                        .build()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -577,14 +595,15 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.RSS_FEED)
-                .sourceUrl(URI.create(baseUrl + "/feed.xml")));
+                .sourceUrl(URI.create(baseUrl + "/feed.xml"))
+                .build());
 
-    assertThat(response.getReachable()).isTrue();
-    assertThat(response.getDocumentCount()).isEqualTo(2L);
+    assertThat(response.reachable()).isTrue();
+    assertThat(response.documentCount()).isEqualTo(2L);
   }
 
   @Test
@@ -631,16 +650,17 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         cappedService.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.RSS_FEED)
-                .sourceUrl(URI.create(baseUrl + "/feed.xml")));
+                .sourceUrl(URI.create(baseUrl + "/feed.xml"))
+                .build());
 
-    assertThat(response.getReachable()).isTrue();
-    assertThat(response.getDocumentCount()).isEqualTo(1L);
+    assertThat(response.reachable()).isTrue();
+    assertThat(response.documentCount()).isEqualTo(1L);
     // #551: exact wording, incl. correct umlauts ("enthält", "Einträge", "höchstens").
-    assertThat(response.getMessage())
+    assertThat(response.message())
         .isEqualTo(
             "RSS-Feed erreichbar, 1 Eintrag gefunden. Der Feed enthält insgesamt 2 Einträge; ein"
                 + " Lauf verarbeitet davon höchstens 1.");
@@ -682,14 +702,15 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         tightService.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.RSS_FEED)
-                .sourceUrl(URI.create(baseUrl + "/feed.xml")));
+                .sourceUrl(URI.create(baseUrl + "/feed.xml"))
+                .build());
 
-    assertThat(response.getReachable()).isFalse();
-    assertThat(response.getMessage()).contains("Größe");
+    assertThat(response.reachable()).isFalse();
+    assertThat(response.message()).contains("Größe");
   }
 
   @Test
@@ -697,10 +718,11 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(
-                    new SourceConnectionTestRequest()
+                    sourceConnectionTest()
                         .sourceType(DocumentSourceType.RSS_FEED)
                         .sourceUrl(URI.create(baseUrl + "/feed.xml"))
-                        .sourcePath("/data/documents")))
+                        .sourcePath("/data/documents")
+                        .build()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -719,14 +741,15 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.RSS_FEED)
-                .sourceUrl(URI.create(baseUrl + "/feed.xml")));
+                .sourceUrl(URI.create(baseUrl + "/feed.xml"))
+                .build());
 
-    assertThat(response.getReachable()).isFalse();
-    assertThat(response.getMessage()).contains("RSS-Feed");
+    assertThat(response.reachable()).isFalse();
+    assertThat(response.message()).contains("RSS-Feed");
   }
 
   @Test
@@ -738,14 +761,15 @@ class SourceConnectionTestServiceTest {
           exchange.close();
         });
 
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.RSS_FEED)
-                .sourceUrl(URI.create(baseUrl + "/feed.xml")));
+                .sourceUrl(URI.create(baseUrl + "/feed.xml"))
+                .build());
 
-    assertThat(response.getReachable()).isFalse();
-    assertThat(response.getMessage()).contains("404");
+    assertThat(response.reachable()).isFalse();
+    assertThat(response.message()).contains("404");
   }
 
   // --- libraryId (#544) ---------------------------------------------------
@@ -795,16 +819,17 @@ class SourceConnectionTestServiceTest {
 
     // No sourceCredentials on the request - #544 falls back to the library's stored one because
     // sourceUrl still names the same origin as the library's own stored sourceUrl.
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
-                .libraryId(libraryId),
+                .libraryId(libraryId)
+                .build(),
             currentUserId,
             false);
 
-    assertThat(response.getReachable()).isTrue();
+    assertThat(response.reachable()).isTrue();
   }
 
   @Test
@@ -848,16 +873,17 @@ class SourceConnectionTestServiceTest {
 
       // sourceUrl points at otherBaseUrl (a different port, everything else identical) - not the
       // library's own stored baseUrl.
-      SourceConnectionTestResponse response =
+      SourceConnectionTestResult response =
           service.test(
-              new SourceConnectionTestRequest()
+              sourceConnectionTest()
                   .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                   .sourceUrl(URI.create(otherBaseUrl + "/dir/"))
-                  .libraryId(libraryId),
+                  .libraryId(libraryId)
+                  .build(),
               currentUserId,
               false);
 
-      assertThat(response.getReachable()).isFalse();
+      assertThat(response.reachable()).isFalse();
       assertThat(observedAuth.get()).isNull();
     } finally {
       otherServer.stop(0);
@@ -914,18 +940,19 @@ class SourceConnectionTestServiceTest {
     // No sourceCredentials (falls back to the library's stored one), but a caller-supplied
     // sourceProxy nothing listens on - port 1 is a well-known reserved TCP port real services do
     // not bind, so connecting through it fails fast rather than hanging until a timeout.
-    SourceConnectionTestResponse response =
+    SourceConnectionTestResult response =
         service.test(
-            new SourceConnectionTestRequest()
+            sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
                 .sourceProxy("127.0.0.1:1")
                 .sourceInsecureSsl(true)
-                .libraryId(libraryId),
+                .libraryId(libraryId)
+                .build(),
             currentUserId,
             false);
 
-    assertThat(response.getReachable()).isTrue();
+    assertThat(response.reachable()).isTrue();
     assertThat(observedAuth.get()).isEqualTo(expectedAuth);
   }
 
@@ -965,10 +992,11 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(
-                    new SourceConnectionTestRequest()
+                    sourceConnectionTest()
                         .sourceType(DocumentSourceType.FILESYSTEM)
                         .sourcePath("/data/documents")
-                        .libraryId(libraryId),
+                        .libraryId(libraryId)
+                        .build(),
                     currentUserId,
                     true))
         .isInstanceOf(ResponseStatusException.class)
@@ -1003,10 +1031,11 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(
-                    new SourceConnectionTestRequest()
+                    sourceConnectionTest()
                         .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
-                        .libraryId(libraryId),
+                        .libraryId(libraryId)
+                        .build(),
                     currentUserId,
                     false))
         .isInstanceOf(ResponseStatusException.class)
@@ -1024,10 +1053,11 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(
-                    new SourceConnectionTestRequest()
+                    sourceConnectionTest()
                         .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
-                        .libraryId(libraryId),
+                        .libraryId(libraryId)
+                        .build(),
                     currentUserId,
                     false))
         .isInstanceOf(ResponseStatusException.class)
@@ -1061,10 +1091,11 @@ class SourceConnectionTestServiceTest {
     assertThatThrownBy(
             () ->
                 service.test(
-                    new SourceConnectionTestRequest()
+                    sourceConnectionTest()
                         .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
-                        .libraryId(libraryId),
+                        .libraryId(libraryId)
+                        .build(),
                     currentUserId,
                     false))
         .isInstanceOf(ResponseStatusException.class)
@@ -1080,8 +1111,7 @@ class SourceConnectionTestServiceTest {
   void uploadIsRejectedWith400() {
     assertThatThrownBy(
             () ->
-                service.test(
-                    new SourceConnectionTestRequest().sourceType(DocumentSourceType.UPLOAD)))
+                service.test(sourceConnectionTest().sourceType(DocumentSourceType.UPLOAD).build()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -1091,7 +1121,7 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void missingSourceTypeIsRejectedWith400() {
-    assertThatThrownBy(() -> service.test(new SourceConnectionTestRequest()))
+    assertThatThrownBy(() -> service.test(sourceConnectionTest().build()))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->

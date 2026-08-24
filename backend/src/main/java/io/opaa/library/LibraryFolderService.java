@@ -1,8 +1,5 @@
 package io.opaa.library;
 
-import io.opaa.api.dto.LibraryFolderRenameRequest;
-import io.opaa.api.dto.LibraryFolderRequest;
-import io.opaa.api.dto.LibraryFolderResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.indexing.Document;
@@ -100,14 +97,17 @@ public class LibraryFolderService {
   }
 
   @Transactional
-  public LibraryFolderResponse createFolder(
-      UUID libraryId, LibraryFolderRequest request, UUID currentUserId, boolean systemAdmin) {
+  public LibraryFolderDetail createFolder(
+      UUID libraryId,
+      String requestedName,
+      UUID parentFolderId,
+      UUID currentUserId,
+      boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
     requireEditable(library, currentUserId, systemAdmin);
     requireUploadLibrary(library);
 
-    String name = validateName(request.getName());
-    UUID parentFolderId = request.getParentFolderId();
+    String name = validateName(requestedName);
     resolveParent(libraryId, parentFolderId);
     int depth = depthOfParentChain(parentFolderId) + 1;
     if (depth > MAX_DEPTH) {
@@ -142,14 +142,14 @@ public class LibraryFolderService {
       // produces.
       throw conflict();
     }
-    return toResponse(folder);
+    return toDetail(folder);
   }
 
   @Transactional
-  public LibraryFolderResponse renameFolder(
+  public LibraryFolderDetail renameFolder(
       UUID libraryId,
       UUID folderId,
-      LibraryFolderRenameRequest request,
+      String requestedName,
       UUID currentUserId,
       boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
@@ -157,7 +157,7 @@ public class LibraryFolderService {
     requireUploadLibrary(library);
 
     LibraryFolder folder = loadFolder(libraryId, folderId);
-    String name = validateName(request.getName());
+    String name = validateName(requestedName);
     ensureNameAvailable(libraryId, folder.getParentFolderId(), name, folder.getId());
 
     folder.rename(name);
@@ -167,15 +167,15 @@ public class LibraryFolderService {
     } catch (DataIntegrityViolationException e) {
       throw conflict();
     }
-    return toResponse(folder);
+    return toDetail(folder);
   }
 
-  public LibraryFolderResponse getFolder(
+  public LibraryFolderDetail getFolder(
       UUID libraryId, UUID folderId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
     LibraryFolder folder = loadFolder(libraryId, folderId);
-    return toResponse(folder);
+    return toDetail(folder);
   }
 
   @Transactional
@@ -562,15 +562,9 @@ public class LibraryFolderService {
     return folder;
   }
 
-  private LibraryFolderResponse toResponse(LibraryFolder folder) {
+  private LibraryFolderDetail toDetail(LibraryFolder folder) {
     long documentCount = countDocumentsRecursive(folder.getLibraryId(), folder.getId());
-    return new LibraryFolderResponse(
-            folder.getId(),
-            folder.getLibraryId(),
-            folder.getName(),
-            documentCount,
-            folder.getCreatedAt())
-        .parentFolderId(folder.getParentFolderId());
+    return new LibraryFolderDetail(folder, documentCount);
   }
 
   /**

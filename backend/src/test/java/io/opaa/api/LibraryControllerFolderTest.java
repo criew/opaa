@@ -11,8 +11,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.dto.LibraryFolderRenameRequest;
-import io.opaa.api.dto.LibraryFolderResponse;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
@@ -21,10 +19,11 @@ import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
+import io.opaa.library.LibraryFolder;
+import io.opaa.library.LibraryFolderDetail;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.space.SpaceAssetAssociationService;
-import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -95,8 +94,25 @@ class LibraryControllerFolderTest {
     }
   }
 
-  private LibraryFolderResponse sampleResponse(UUID libraryId, UUID folderId, String name) {
-    return new LibraryFolderResponse(folderId, libraryId, name, 0L, Instant.now());
+  private LibraryFolderDetail sampleDetail(UUID libraryId, UUID folderId, String name) {
+    return sampleDetail(libraryId, folderId, name, 0L);
+  }
+
+  private LibraryFolderDetail sampleDetail(
+      UUID libraryId, UUID folderId, String name, long documentCount) {
+    LibraryFolder folder = new LibraryFolder(libraryId, null, name, UUID.randomUUID());
+    setId(folder, folderId);
+    return new LibraryFolderDetail(folder, documentCount);
+  }
+
+  private void setId(LibraryFolder folder, UUID id) {
+    try {
+      var field = LibraryFolder.class.getDeclaredField("id");
+      field.setAccessible(true);
+      field.set(folder, id);
+    } catch (ReflectiveOperationException e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   @Test
@@ -105,10 +121,11 @@ class LibraryControllerFolderTest {
     UUID folderId = UUID.randomUUID();
     when(folderService.createFolder(
             eq(libraryId),
-            org.mockito.ArgumentMatchers.argThat(request -> "Protokolle".equals(request.getName())),
+            eq("Protokolle"),
+            org.mockito.ArgumentMatchers.isNull(),
             eq(currentUserId),
             eq(false)))
-        .thenReturn(sampleResponse(libraryId, folderId, "Protokolle"));
+        .thenReturn(sampleDetail(libraryId, folderId, "Protokolle"));
 
     mockMvc
         .perform(
@@ -156,7 +173,11 @@ class LibraryControllerFolderTest {
   void creatingAFolderInAForbiddenLibraryReturns403() throws Exception {
     UUID libraryId = UUID.randomUUID();
     when(folderService.createFolder(
-            eq(libraryId), org.mockito.ArgumentMatchers.any(), eq(currentUserId), eq(false)))
+            eq(libraryId),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            eq(currentUserId),
+            eq(false)))
         .thenThrow(
             new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
 
@@ -173,7 +194,11 @@ class LibraryControllerFolderTest {
   void creatingADuplicateNamedFolderReturns409() throws Exception {
     UUID libraryId = UUID.randomUUID();
     when(folderService.createFolder(
-            eq(libraryId), org.mockito.ArgumentMatchers.any(), eq(currentUserId), eq(false)))
+            eq(libraryId),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            eq(currentUserId),
+            eq(false)))
         .thenThrow(
             new ResponseStatusException(
                 HttpStatus.CONFLICT,
@@ -193,7 +218,7 @@ class LibraryControllerFolderTest {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
     when(folderService.getFolder(libraryId, folderId, currentUserId, false))
-        .thenReturn(sampleResponse(libraryId, folderId, "Archiv").documentCount(3L));
+        .thenReturn(sampleDetail(libraryId, folderId, "Archiv", 3L));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/folders/" + folderId).with(asTestUser()))
@@ -219,13 +244,8 @@ class LibraryControllerFolderTest {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
     when(folderService.renameFolder(
-            eq(libraryId),
-            eq(folderId),
-            org.mockito.ArgumentMatchers.argThat(
-                (LibraryFolderRenameRequest request) -> "Neu".equals(request.getName())),
-            eq(currentUserId),
-            eq(false)))
-        .thenReturn(sampleResponse(libraryId, folderId, "Neu"));
+            eq(libraryId), eq(folderId), eq("Neu"), eq(currentUserId), eq(false)))
+        .thenReturn(sampleDetail(libraryId, folderId, "Neu"));
 
     mockMvc
         .perform(
@@ -296,7 +316,7 @@ class LibraryControllerFolderTest {
     when(userService.findBySubjectAndIssuer("admin-subject", TEST_ISSUER))
         .thenReturn(Optional.of(admin));
     when(folderService.getFolder(libraryId, folderId, adminId, true))
-        .thenReturn(sampleResponse(libraryId, folderId, "Archiv"));
+        .thenReturn(sampleDetail(libraryId, folderId, "Archiv"));
 
     mockMvc
         .perform(
