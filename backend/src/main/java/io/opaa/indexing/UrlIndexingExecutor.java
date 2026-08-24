@@ -134,9 +134,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                   authHeader,
                   entry.url(),
                   SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
-          SupportedDocumentFormats.ContentDecision decision =
-              SupportedDocumentFormats.decideForFileName(
-                  entry.name(), SupportedDocumentFormats.detectMediaType(prefix));
+          SupportedDocumentFormats.ContentDecision decision = decideForEntry(prefix, entry.name());
           if (!decision.supported()) {
             // Rejected documents are part of the job, not invisible - each one becomes its own
             // UNSUPPORTED_FORMAT event. Rejected here, before #download ever runs - the full file
@@ -280,17 +278,14 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Classifies an already-downloaded file from its actual content - the network path's own call
-   * into {@link SupportedDocumentFormats#decideForFileName}, mirroring {@link DocumentService}'s
-   * equivalent for the filesystem path so both paths can never diverge on what "supported" means.
-   * {@code entryName} (the listing's own file name) is only the hint used for {@link
-   * SupportedDocumentFormats.ContentDecision#extensionMismatch()}, never for acceptance itself.
-   * Package-visible for {@code DocumentFormatParityTest}.
+   * Decides whether a crawled entry is supported from a leading byte sample of its content, never
+   * from {@code entryName} alone - the same decision {@link #execute} makes before downloading an
+   * entry in full. Package-visible so {@code DocumentFormatParityTest} exercises this exact call
+   * instead of a reimplementation that could silently drift from it.
    */
-  static SupportedDocumentFormats.ContentDecision classifyDownloadedFile(
-      Path downloadedFile, String entryName) throws IOException {
-    String detectedMimeType = SupportedDocumentFormats.detectMediaType(downloadedFile);
-    return SupportedDocumentFormats.decideForFileName(entryName, detectedMimeType);
+  static SupportedDocumentFormats.ContentDecision decideForEntry(byte[] prefix, String entryName) {
+    return SupportedDocumentFormats.decideForFileName(
+        entryName, SupportedDocumentFormats.detectMediaType(prefix));
   }
 
   /**
