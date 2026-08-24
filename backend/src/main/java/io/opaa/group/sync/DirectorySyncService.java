@@ -1,7 +1,5 @@
 package io.opaa.group.sync;
 
-import io.opaa.api.dto.DirectorySyncReportResponse;
-import io.opaa.api.dto.DirectorySyncStatusResponse;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -9,6 +7,7 @@ import io.opaa.audit.AuditOutcome;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +69,7 @@ public class DirectorySyncService {
   /**
    * Computes the diff against the directory's current state. Never writes group/membership data.
    */
-  public DirectorySyncReportResponse dryRun(UUID organizationId) {
+  public SyncReport dryRun(UUID organizationId) {
     return execute(organizationId, false);
   }
 
@@ -80,25 +79,16 @@ public class DirectorySyncService {
    * DirectorySyncProperties#changeThresholdFraction()}. Otherwise behaves like {@link #dryRun} and
    * reports why nothing was written.
    */
-  public DirectorySyncReportResponse run(UUID organizationId) {
+  public SyncReport run(UUID organizationId) {
     return execute(organizationId, true);
   }
 
-  public DirectorySyncStatusResponse getStatus(UUID organizationId) {
-    return statusRepository
-        .findByOrganizationId(organizationId)
-        .map(
-            status ->
-                new DirectorySyncStatusResponse()
-                    .lastRunAt(status.getLastRunAt())
-                    .lastOutcome(status.getLastOutcome())
-                    .lastMessage(status.getLastMessage())
-                    .lastAppliedAt(status.getLastAppliedAt())
-                    .lastChangedFraction(status.getLastChangedFraction()))
-        .orElseGet(DirectorySyncStatusResponse::new);
+  /** The organization's most recent run, empty if it has never run one. */
+  public Optional<DirectorySyncStatus> getStatus(UUID organizationId) {
+    return statusRepository.findByOrganizationId(organizationId);
   }
 
-  private DirectorySyncReportResponse execute(UUID organizationId, boolean applyIfPlausible) {
+  private SyncReport execute(UUID organizationId, boolean applyIfPlausible) {
     Instant now = Instant.now();
     DirectorySnapshot snapshot;
     try {
@@ -131,31 +121,31 @@ public class DirectorySyncService {
           AuditOutcome.FAILURE,
           message,
           correlationRef.toString());
-      return new DirectorySyncReportResponse(
-              DirectorySyncOutcome.UNREACHABLE,
-              now,
-              List.of(),
-              List.of(),
-              List.of(),
-              List.of(),
-              0,
-              0,
-              0.0,
-              properties.changeThresholdFraction(),
-              message)
-          .unresolvedMemberCount(0);
+      return new SyncReport(
+          DirectorySyncOutcome.UNREACHABLE,
+          now,
+          List.of(),
+          List.of(),
+          List.of(),
+          List.of(),
+          0,
+          0,
+          0,
+          0.0,
+          properties.changeThresholdFraction(),
+          message);
     }
 
     // If planAndApply's transaction fails to commit (e.g. a directory-supplied value that
     // violates a column constraint), the exception propagates from here and nothing below runs -
     // so a failed apply can never be recorded as APPLIED. See DirectorySyncPlanExecutor's class
     // javadoc for the defect this replaced (review of PR #297).
-    DirectorySyncReportResponse report =
+    SyncReport report =
         applyIfPlausible
             ? planExecutor.planAndApply(organizationId, now, snapshot)
             : planExecutor.planOnly(organizationId, now, snapshot);
     recordStatusSafely(
-        organizationId, now, report.getOutcome(), report.getMessage(), report.getChangedFraction());
+        organizationId, now, report.outcome(), report.message(), report.changedFraction());
     return report;
   }
 

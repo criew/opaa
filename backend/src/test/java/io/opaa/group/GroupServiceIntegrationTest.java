@@ -4,10 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.TestcontainersConfiguration;
-import io.opaa.api.dto.GroupListResponse;
-import io.opaa.api.dto.GroupRequest;
-import io.opaa.api.dto.GroupResponse;
-import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.AssetGrant;
@@ -145,13 +141,13 @@ class GroupServiceIntegrationTest {
   @Test
   void createsAnAdHocGroup() {
     UUID admin = createUser(organizationA);
-    GroupRequest request = new GroupRequest("Projektbeteiligte Phoenix").description("Ad hoc");
+    GroupCreation creation = new GroupCreation("Projektbeteiligte Phoenix", "Ad hoc");
 
-    GroupResponse created = groupService.createGroup(request, admin);
+    GroupDetail created = groupService.createGroup(creation, admin);
 
-    assertThat(created.getKind()).isEqualTo(GroupKind.AD_HOC);
-    assertThat(created.getName()).isEqualTo("Projektbeteiligte Phoenix");
-    assertThat(created.getMemberCount()).isEqualTo(0);
+    assertThat(created.group().getKind()).isEqualTo(GroupKind.AD_HOC);
+    assertThat(created.group().getName()).isEqualTo("Projektbeteiligte Phoenix");
+    assertThat(created.members()).isEmpty();
   }
 
   @Test
@@ -160,11 +156,11 @@ class GroupServiceIntegrationTest {
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Old name", null, null, null);
     Group saved = groupRepository.save(group);
 
-    GroupUpdateRequest request = new GroupUpdateRequest("New name").description("Updated");
-    GroupResponse updated = groupService.updateGroup(saved.getId(), request, admin);
+    GroupUpdate update = new GroupUpdate("New name", "Updated");
+    GroupDetail updated = groupService.updateGroup(saved.getId(), update, admin);
 
-    assertThat(updated.getName()).isEqualTo("New name");
-    assertThat(updated.getDescription()).isEqualTo("Updated");
+    assertThat(updated.group().getName()).isEqualTo("New name");
+    assertThat(updated.group().getDescription()).isEqualTo("Updated");
   }
 
   @Test
@@ -174,8 +170,8 @@ class GroupServiceIntegrationTest {
         new Group(organizationA, GroupKind.ORG_UNIT, "Referat 50", null, "directory-guid", null);
     Group saved = groupRepository.save(group);
 
-    GroupUpdateRequest request = new GroupUpdateRequest("Renamed");
-    assertThatThrownBy(() -> groupService.updateGroup(saved.getId(), request, admin))
+    GroupUpdate update = new GroupUpdate("Renamed", null);
+    assertThatThrownBy(() -> groupService.updateGroup(saved.getId(), update, admin))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -352,9 +348,9 @@ class GroupServiceIntegrationTest {
     groupRepository.save(new Group(organizationA, GroupKind.AD_HOC, "Team A", null, null, null));
     groupRepository.save(new Group(organizationB, GroupKind.AD_HOC, "Team B", null, null, null));
 
-    List<GroupListResponse> groups = groupService.listGroups(adminA);
+    List<Group> groups = groupService.listGroups(adminA);
 
-    assertThat(groups).extracting(GroupListResponse::getName).containsExactly("Team A");
+    assertThat(groups).extracting(Group::getName).containsExactly("Team A");
   }
 
   @Test
@@ -370,9 +366,9 @@ class GroupServiceIntegrationTest {
     memberGroup.addMembership(new GroupMembership(member, organizationA));
     groupRepository.save(memberGroup);
 
-    List<GroupListResponse> groups = groupService.listMyGroups(member);
+    List<Group> groups = groupService.listMyGroups(member);
 
-    assertThat(groups).extracting(GroupListResponse::getName).containsExactly("Team A");
+    assertThat(groups).extracting(Group::getName).containsExactly("Team A");
     assertThat(otherGroup.getId()).isNotNull();
   }
 
@@ -383,7 +379,7 @@ class GroupServiceIntegrationTest {
     // GET /api/v1/me/groups directly with a non-admin role.
     UUID user = createUser(organizationA);
 
-    List<GroupListResponse> groups = groupService.listMyGroups(user);
+    List<Group> groups = groupService.listMyGroups(user);
 
     assertThat(groups).isEmpty();
   }
@@ -400,7 +396,7 @@ class GroupServiceIntegrationTest {
     saved.dissolve(Instant.now());
     groupRepository.save(saved);
 
-    List<GroupListResponse> groups = groupService.listMyGroups(member);
+    List<Group> groups = groupService.listMyGroups(member);
 
     assertThat(groups).isEmpty();
   }
