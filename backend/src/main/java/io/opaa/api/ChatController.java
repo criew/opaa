@@ -6,6 +6,9 @@ import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChatUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.chat.ChatConversation;
+import io.opaa.chat.ChatCreation;
+import io.opaa.chat.ChatPatch;
 import io.opaa.chat.ChatService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -44,21 +47,24 @@ public class ChatController {
       @Valid @RequestBody(required = false) ChatCreateRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    ChatDetail response = chatService.createChat(spaceId, currentUser.getId(), request);
-    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    ChatConversation created =
+        chatService.createChat(spaceId, currentUser.getId(), toChatCreation(request));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(ChatResponseMapper.toDetailResponse(created));
   }
 
   @GetMapping("/spaces/{spaceId}/chats")
   public List<ChatSummary> listSpaceChats(
       @PathVariable UUID spaceId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return chatService.listChats(spaceId, currentUser.getId());
+    return ChatResponseMapper.toSummaryResponses(
+        chatService.listChats(spaceId, currentUser.getId()));
   }
 
   @GetMapping("/chats/{chatId}")
   public ChatDetail getChat(@PathVariable UUID chatId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return chatService.getChat(chatId, currentUser.getId());
+    return ChatResponseMapper.toDetailResponse(chatService.getChat(chatId, currentUser.getId()));
   }
 
   @PatchMapping("/chats/{chatId}")
@@ -67,7 +73,9 @@ public class ChatController {
       @Valid @RequestBody ChatUpdateRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return chatService.updateChat(chatId, currentUser.getId(), request);
+    ChatConversation updated =
+        chatService.updateChat(chatId, currentUser.getId(), toChatPatch(request));
+    return ChatResponseMapper.toDetailResponse(updated);
   }
 
   @DeleteMapping("/chats/{chatId}")
@@ -76,6 +84,24 @@ public class ChatController {
     User currentUser = currentUser(jwt);
     chatService.deleteChat(chatId, currentUser.getId());
     return ResponseEntity.noContent().build();
+  }
+
+  private ChatCreation toChatCreation(ChatCreateRequest request) {
+    ChatCreation creation = new ChatCreation();
+    if (request == null) {
+      return creation;
+    }
+    return creation
+        .title(request.getTitle())
+        .useKnowledge(request.getUseKnowledge())
+        .referencedLibraryIds(request.getReferencedLibraryIds());
+  }
+
+  private ChatPatch toChatPatch(ChatUpdateRequest request) {
+    return new ChatPatch()
+        .title(request.getTitle())
+        .useKnowledge(request.getUseKnowledge())
+        .referencedLibraryIds(request.getReferencedLibraryIds());
   }
 
   private User currentUser(Jwt jwt) {

@@ -1,11 +1,5 @@
 package io.opaa.chat;
 
-import io.opaa.api.dto.ChatCreateRequest;
-import io.opaa.api.dto.ChatDetail;
-import io.opaa.api.dto.ChatMessageResponse;
-import io.opaa.api.dto.ChatSummary;
-import io.opaa.api.dto.ChatUpdateRequest;
-import io.opaa.api.dto.SourceReference;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationRepository;
@@ -41,13 +35,14 @@ import tools.jackson.databind.ObjectMapper;
  * space or system admin, see {@link ChatRepository#findByIdAndAuthorId}'s Javadoc, which every
  * chat-scoped read/write in this class goes through.
  *
- * <p>The public, DTO-returning methods ({@link #createChat}, {@link #listChats}, {@link #getChat},
- * {@link #updateChat}) follow the same convention as {@code SpaceService}: they accept the
- * generated request DTO directly and return the generated response DTO, so {@code ChatController}
- * stays a thin translation from HTTP to this service. The entity-returning methods below them
- * ({@link #findOwnedChat}, {@link #requireStillSpaceMember}, {@link #effectiveLibraryScope}, {@link
- * #historyAsSpringAiMessages}, {@link #appendTurn}) exist for {@code QueryService}, which needs the
- * {@link Chat} entity itself, not a response shape.
+ * <p><b>#860 Teil 4 (DTO-Leak):</b> every public method below takes and returns domain types only -
+ * {@link Chat} itself, the enriched {@link ChatConversation}/{@link ChatTurn} read views, and the
+ * {@link ChatCreation}/{@link ChatPatch} parameter records - never a generated {@code
+ * io.opaa.api.dto} type. {@code ChatController} converts to/from the generated request/response
+ * DTOs via {@code ChatResponseMapper} in {@code io.opaa.api}, mirroring the convention {@code
+ * SpaceService} established (AGENTS.md, "API & DTO-Konvention"). This also keeps this class usable
+ * by {@link io.opaa.query.QueryService}, which needs the {@link Chat} entity itself and the {@link
+ * ChatSource}/{@link ChatSourceLocation} domain shapes, never a response DTO.
  *
  * <p><b>{@link #getChat}/{@link #updateChat}/{@link #deleteChat} deliberately stay author-exclusive
  * even without space membership</b> (#525 review, finding 4) - a chat's private content belongs to
@@ -107,7 +102,7 @@ public class ChatService {
   }
 
   @Transactional
-  public ChatDetail createChat(UUID spaceId, UUID authorId, ChatCreateRequest request) {
+  public ChatConversation createChat(UUID spaceId, UUID authorId, ChatCreation creation) {
     Space space = requireMembership(spaceId, authorId);
     // #543: an archived space accepts no new content - see docs/features/spaces-and-assets.md#
     // einen-space-stilllegen-archivieren-statt-löschen.
@@ -115,12 +110,12 @@ public class ChatService {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Der Space ist archiviert und lässt keine neuen Chats mehr zu");
     }
-    Boolean useKnowledge = request == null ? null : request.getUseKnowledge();
-    String title = request == null ? null : request.getTitle();
+    Boolean useKnowledge = creation.getUseKnowledge();
+    String title = creation.getTitle();
     Set<UUID> referencedLibraryIds =
-        request == null || request.getReferencedLibraryIds() == null
+        creation.getReferencedLibraryIds() == null
             ? Set.of()
-            : new LinkedHashSet<>(request.getReferencedLibraryIds());
+            : new LinkedHashSet<>(creation.getReferencedLibraryIds());
     requireReadableLibraries(referencedLibraryIds, authorId, space.getOrganizationId());
 
     Chat chat =
@@ -132,22 +127,20 @@ public class ChatService {
             useKnowledge == null || useKnowledge,
             referencedLibraryIds);
     Chat saved = chatRepository.save(chat);
-    return toDetail(saved);
+    return toConversation(saved);
   }
 
-  public List<ChatSummary> listChats(UUID spaceId, UUID authorId) {
+  public List<Chat> listChats(UUID spaceId, UUID authorId) {
     requireMembership(spaceId, authorId);
-    return chatRepository.findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc(spaceId, authorId).stream()
-        .map(this::toSummary)
-        .toList();
+    return chatRepository.findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc(spaceId, authorId);
   }
 
-  public ChatDetail getChat(UUID chatId, UUID authorId) {
-    return toDetail(getOwnedChat(chatId, authorId));
+  public ChatConversation getChat(UUID chatId, UUID authorId) {
+    return toConversation(getOwnedChat(chatId, authorId));
   }
 
   @Transactional
-  public ChatDetail updateChat(UUID chatId, UUID authorId, ChatUpdateRequest request) {
+  public ChatConversation updateChat(UUID chatId, UUID authorId, ChatPatch patch) {
     Chat chat = getOwnedChat(chatId, authorId);
     // #613 review, finding 2: an archived space accepts no new content - not only no new chats,
     // but also no renaming, useKnowledge toggling or reference changes on an existing one. The
@@ -155,14 +148,14 @@ public class ChatService {
     // withdrawing are not "new content"), just frozen.
     requireSpaceNotArchived(chat.getSpaceId());
     Set<UUID> referencedLibraryIds =
-        request.getReferencedLibraryIds() == null
+        patch.getReferencedLibraryIds() == null
             ? null
-            : new LinkedHashSet<>(request.getReferencedLibraryIds());
+            : new LinkedHashSet<>(patch.getReferencedLibraryIds());
     if (referencedLibraryIds != null) {
       requireReadableLibraries(referencedLibraryIds, authorId, chat.getOrganizationId());
     }
-    chat.applyUpdate(request.getTitle(), request.getUseKnowledge(), referencedLibraryIds);
-    return toDetail(chatRepository.save(chat));
+    chat.applyUpdate(patch.getTitle(), patch.getUseKnowledge(), referencedLibraryIds);
+    return toConversation(chatRepository.save(chat));
   }
 
   @Transactional
@@ -319,8 +312,7 @@ public class ChatService {
    * @return the chat's current title after this turn, or {@code null} if it no longer exists
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  public String appendTurn(
-      Chat chat, String question, String answer, List<SourceReference> sources) {
+  public String appendTurn(Chat chat, String question, String answer, List<ChatSource> sources) {
     // #613 review, finding 2 / #840: an archived space accepts no new content - including a new
     // turn in an existing chat, or the space could keep gaining fresh content forever and never
     // actually empty out into a state deleteSpace would accept. The early check now lives in
@@ -358,7 +350,7 @@ public class ChatService {
    * @return true if this turn was the chat's very first ({@code nextSequence == 0})
    */
   private boolean appendTurnOnce(
-      UUID chatId, String question, String answer, List<SourceReference> sources) {
+      UUID chatId, String question, String answer, List<ChatSource> sources) {
     int nextSequence = nextSequenceFor(chatId);
     chatMessageRepository.save(
         new ChatMessage(chatId, nextSequence, ChatRole.USER, question, null));
@@ -381,60 +373,37 @@ public class ChatService {
     return chatMessageRepository.countByChatId(chatId);
   }
 
-  private ChatSummary toSummary(Chat chat) {
-    return new ChatSummary(
-            chat.getId(),
-            chat.getSpaceId(),
-            chat.getAuthorId(),
-            chat.isUseKnowledge(),
-            chat.getStatus(),
-            chat.getCreatedAt(),
-            chat.getUpdatedAt())
-        .title(chat.getTitle())
-        .referencedLibraryIds(List.copyOf(chat.getReferencedLibraryIds()));
-  }
-
-  private ChatDetail toDetail(Chat chat) {
-    List<ChatMessageResponse> messages =
+  private ChatConversation toConversation(Chat chat) {
+    List<ChatTurn> messages =
         chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId()).stream()
-            .map(this::toMessageResponse)
+            .map(this::toTurn)
             .toList();
-    return new ChatDetail(
-            chat.getId(),
-            chat.getSpaceId(),
-            chat.getAuthorId(),
-            chat.isUseKnowledge(),
-            chat.getStatus(),
-            messages,
-            chat.getCreatedAt(),
-            chat.getUpdatedAt())
-        .title(chat.getTitle())
-        .referencedLibraryIds(List.copyOf(chat.getReferencedLibraryIds()));
+    return new ChatConversation(chat, messages);
   }
 
-  private ChatMessageResponse toMessageResponse(ChatMessage message) {
-    return new ChatMessageResponse(
-            message.getId(),
-            message.getChatId(),
-            message.getRole(),
-            message.getContent(),
-            message.getCreatedAt())
-        .sources(parseSources(message.getSources()));
+  private ChatTurn toTurn(ChatMessage message) {
+    return new ChatTurn(
+        message.getId(),
+        message.getChatId(),
+        message.getRole(),
+        message.getContent(),
+        parseSources(message.getSources()),
+        message.getCreatedAt());
   }
 
-  private List<SourceReference> parseSources(String sourcesJson) {
+  private List<ChatSource> parseSources(String sourcesJson) {
     if (sourcesJson == null || sourcesJson.isBlank()) {
       return null;
     }
     try {
-      return objectMapper.readValue(sourcesJson, new TypeReference<List<SourceReference>>() {});
+      return objectMapper.readValue(sourcesJson, new TypeReference<List<ChatSource>>() {});
     } catch (JacksonException e) {
       log.warn("Failed to parse persisted chat message sources, treating as absent", e);
       return null;
     }
   }
 
-  private String serializeSources(List<SourceReference> sources) {
+  private String serializeSources(List<ChatSource> sources) {
     if (sources == null || sources.isEmpty()) {
       return null;
     }

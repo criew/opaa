@@ -4,12 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import io.opaa.TestcontainersConfiguration;
-import io.opaa.api.dto.QueryResponse;
 import io.opaa.indexing.*;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
 import io.opaa.organization.Organization;
+import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -163,7 +163,7 @@ class OpenAiIntegrationTest {
     assertThat(job.getDocumentsProcessed()).isEqualTo(1);
 
     // Query with a question about the indexed document
-    QueryResponse response =
+    QueryResult response =
         queryService.query("What does OPAA stand for?", null, userId, true, java.util.List.of());
 
     assertThat(response.getAnswer()).isNotBlank();

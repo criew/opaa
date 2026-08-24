@@ -19,9 +19,12 @@ import org.hibernate.type.SqlTypes;
  * remain in front of it as a pure read optimisation.
  *
  * <p>{@link #sources} is stored as a raw JSON string (the {@code chat_messages.sources} column is
- * {@code json}), shaped like {@code QueryResponse.sources} ({@code SourceReference}) - it is
- * (de)serialized by {@code ChatService}, not mapped field by field here, so this entity does not
- * need a dependency on the generated API DTOs.
+ * {@code json}), shaped like {@link ChatSource} - it is (de)serialized by {@code ChatService}, not
+ * mapped field by field here, so this entity does not need a dependency on the generated API DTOs.
+ * {@link ChatSource}'s own Javadoc documents the resulting wire-compatibility invariant: its field
+ * names deliberately match the generated {@code SourceReference}'s {@code @JsonProperty} names, so
+ * rows written before #860 Teil 4 (when {@code sources} was still serialized {@code
+ * SourceReference} JSON) still deserialize unchanged.
  *
  * <p>{@link #sequence} is an application-assigned, per-chat ordinal (0, 1, 2, ...) - {@code
  * created_at} alone is not a reliable ordering for two messages of the same turn written moments

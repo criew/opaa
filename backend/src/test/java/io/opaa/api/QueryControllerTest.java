@@ -11,13 +11,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.dto.QueryMetadata;
-import io.opaa.api.dto.QueryResponse;
-import io.opaa.api.dto.SourceReference;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.chat.ChatSource;
+import io.opaa.query.QueryOutcome;
+import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
 import java.time.Instant;
 import java.util.List;
@@ -65,10 +65,10 @@ class QueryControllerTest {
   void queryReturnsAnswerWithSources() throws Exception {
     UUID chatId = UUID.randomUUID();
     var response =
-        new QueryResponse(
+        new QueryResult(
             "The answer",
             List.of(sourceReference("doc.md", 0.9, 2, Instant.parse("2025-01-15T10:30:00Z"), true)),
-            new QueryMetadata("gpt-4o", 500, 1200L),
+            new QueryOutcome("gpt-4o", 500, 1200L),
             chatId);
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
 
@@ -95,7 +95,7 @@ class QueryControllerTest {
   void queryWithChatIdPassesItThrough() throws Exception {
     UUID chatId = UUID.randomUUID();
     var response =
-        new QueryResponse("Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500L), chatId);
+        new QueryResult("Answer", List.of(), new QueryOutcome("gpt-4o", 100, 500L), chatId);
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
 
     mockMvc
@@ -111,8 +111,8 @@ class QueryControllerTest {
   @Test
   void queryWithoutUseKnowledgeInBodyDefaultsToTrue() throws Exception {
     var response =
-        new QueryResponse(
-            "Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500L), UUID.randomUUID());
+        new QueryResult(
+            "Answer", List.of(), new QueryOutcome("gpt-4o", 100, 500L), UUID.randomUUID());
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
 
     mockMvc
@@ -134,8 +134,8 @@ class QueryControllerTest {
     UUID libraryId1 = UUID.randomUUID();
     UUID libraryId2 = UUID.randomUUID();
     var response =
-        new QueryResponse(
-            "Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500L), UUID.randomUUID());
+        new QueryResult(
+            "Answer", List.of(), new QueryOutcome("gpt-4o", 100, 500L), UUID.randomUUID());
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
 
     mockMvc
@@ -218,10 +218,9 @@ class QueryControllerTest {
         .andExpect(jsonPath("$.status").value(502));
   }
 
-  private static SourceReference sourceReference(
+  private static ChatSource sourceReference(
       String fileName, double relevanceScore, int matchCount, Instant indexedAt, boolean cited) {
-    SourceReference sourceReference =
-        new SourceReference(fileName, relevanceScore, matchCount, cited);
+    ChatSource sourceReference = new ChatSource(fileName, relevanceScore, matchCount, cited);
     sourceReference.setIndexedAt(indexedAt);
     return sourceReference;
   }
