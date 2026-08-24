@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
@@ -148,7 +149,7 @@ class LibraryDocumentServiceIntegrationTest {
     viewer.setOrganizationId(organizationId);
     viewer = userRepository.save(viewer);
 
-    var libraryRequest = new LibraryCreation("Bibliothek", DocumentSourceType.UPLOAD);
+    var libraryRequest = libraryCreation("Bibliothek", DocumentSourceType.UPLOAD).build();
     var library = libraryService.createLibrary(libraryRequest, editor.getId());
     libraryId = library.library().getId();
 
@@ -278,7 +279,8 @@ class LibraryDocumentServiceIntegrationTest {
                     .isEqualTo(HttpStatus.CONFLICT));
     assertThat(documentRepository.findByLibraryId(libraryId)).hasSize(1);
 
-    var secondLibraryRequest = new LibraryCreation("Zweite Bibliothek", DocumentSourceType.UPLOAD);
+    var secondLibraryRequest =
+        libraryCreation("Zweite Bibliothek", DocumentSourceType.UPLOAD).build();
     var secondLibrary = libraryService.createLibrary(secondLibraryRequest, editor.getId());
     try {
       LibraryDocumentEntry response =
@@ -462,8 +464,9 @@ class LibraryDocumentServiceIntegrationTest {
   void uploadingIntoAConnectorLibraryIsRejectedWithConflict() {
     // #479, ADR-0018 Entscheidung 1: only a UPLOAD library accepts manually uploaded files.
     var connectorLibraryRequest =
-        new LibraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
-            .sourcePath("/data/documents");
+        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
+            .sourcePath("/data/documents")
+            .build();
     var connectorLibrary = libraryService.createLibrary(connectorLibraryRequest, editor.getId());
     try {
       assertThatThrownBy(
@@ -492,8 +495,9 @@ class LibraryDocumentServiceIntegrationTest {
     // UPLOAD (see cannotDeleteALibraryThatStillContainsDocuments's UPLOAD-only counterpart in
     // KnowledgeLibraryServiceIntegrationTest).
     var connectorLibraryRequest =
-        new LibraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
-            .sourcePath("/data/documents");
+        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
+            .sourcePath("/data/documents")
+            .build();
     var connectorLibrary = libraryService.createLibrary(connectorLibraryRequest, editor.getId());
 
     Document crawlDoc =
@@ -1423,7 +1427,8 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void listDocumentsWithAFolderFromAnotherLibraryAnswers404() {
-    var otherLibraryRequest = new LibraryCreation("Andere Bibliothek", DocumentSourceType.UPLOAD);
+    var otherLibraryRequest =
+        libraryCreation("Andere Bibliothek", DocumentSourceType.UPLOAD).build();
     var otherLibrary = libraryService.createLibrary(otherLibraryRequest, editor.getId());
     LibraryFolder foreignFolder =
         folderRepository.save(
@@ -1494,7 +1499,8 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void uploadDocumentWithAFolderFromAnotherLibraryAnswers404() {
-    var otherLibraryRequest = new LibraryCreation("Andere Bibliothek", DocumentSourceType.UPLOAD);
+    var otherLibraryRequest =
+        libraryCreation("Andere Bibliothek", DocumentSourceType.UPLOAD).build();
     var otherLibrary = libraryService.createLibrary(otherLibraryRequest, editor.getId());
     LibraryFolder foreignFolder =
         folderRepository.save(
@@ -1663,8 +1669,9 @@ class LibraryDocumentServiceIntegrationTest {
   @Test
   void uploadDocumentWithAFolderPathIntoAConnectorLibraryIsRejectedWithConflict() {
     var connectorLibraryRequest =
-        new LibraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
-            .sourcePath("/data/documents");
+        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
+            .sourcePath("/data/documents")
+            .build();
     var connectorLibrary = libraryService.createLibrary(connectorLibraryRequest, editor.getId());
     try {
       assertThatThrownBy(

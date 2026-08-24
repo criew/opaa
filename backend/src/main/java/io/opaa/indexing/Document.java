@@ -258,8 +258,8 @@ public class Document {
    * URL itself for {@code HTTP_DIRECTORY} and {@code RSS_FEED} - the same identity {@code
    * FileProcessingService#processUrlFile} deduplicates by - but the server-local storage path for
    * {@code UPLOAD}/{@code FILESYSTEM}, which must stay internal. Shared between {@code
-   * LibraryDocumentResponses} (library listing) and {@code QueryService} (citation deep links) so
-   * both compute the identical value from a single place.
+   * io.opaa.api.LibraryDocumentResponseMapper} (library listing) and {@code QueryService} (citation
+   * deep links) so both compute the identical value from a single place.
    *
    * <p>Unlike {@code LibraryResponse.sourceUrl}, which is masked below MANAGER, this value is
    * deliberately visible to every VIEWER - the masked field is the library's own source

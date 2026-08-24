@@ -1,5 +1,7 @@
 package io.opaa.library;
 
+import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
+import static io.opaa.library.LibraryUpdateBuilder.libraryUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.auth.User;
@@ -154,9 +156,10 @@ class PermissionHistoryServiceIntegrationTest {
   private UUID createLibrary(UUID ownerId) {
     LibraryDetail response =
         libraryService.createLibrary(
-            new LibraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
+            libraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
                 .ownerType(LibraryOwnerType.USER)
-                .ownerId(ownerId),
+                .ownerId(ownerId)
+                .build(),
             ownerId);
     return response.library().getId();
   }
@@ -266,14 +269,14 @@ class PermissionHistoryServiceIntegrationTest {
 
     libraryService.updateLibrary(
         libraryId,
-        new LibraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION),
+        libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
         owner,
         false);
     Instant whileOrganizationWide = Instant.now();
 
     libraryService.updateLibrary(
         libraryId,
-        new LibraryUpdate("Bibliothek").visibility(LibraryVisibility.PRIVATE),
+        libraryUpdate("Bibliothek").visibility(LibraryVisibility.PRIVATE).build(),
         owner,
         false);
     Instant afterNarrowing = Instant.now();
@@ -322,7 +325,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID orgWideLibraryId = createLibrary(orgWideOwner);
     libraryService.updateLibrary(
         orgWideLibraryId,
-        new LibraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION),
+        libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
         orgWideOwner,
         false);
 

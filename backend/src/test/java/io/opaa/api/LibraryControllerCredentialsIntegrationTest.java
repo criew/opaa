@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -13,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
@@ -67,6 +69,18 @@ class LibraryControllerCredentialsIntegrationTest {
     return request -> {
       request.addHeader(DevAuthFilter.DEV_USER_HEADER, "dev-user");
       request.setContentType(MediaType.APPLICATION_JSON_VALUE);
+      return request;
+    };
+  }
+
+  /**
+   * Authenticates without forcing {@code Content-Type: application/json} - {@link #devUser()} would
+   * otherwise overwrite the multipart boundary a {@code multipart(...)} request builder already
+   * set, breaking the file part.
+   */
+  private RequestPostProcessor devUserPreservingContentType() {
+    return request -> {
+      request.addHeader(DevAuthFilter.DEV_USER_HEADER, "dev-user");
       return request;
     };
   }
@@ -308,12 +322,32 @@ class LibraryControllerCredentialsIntegrationTest {
             .getResponse()
             .getContentAsString(StandardCharsets.UTF_8);
     String libraryId = JsonPath.read(createResponse, "$.id");
+    // #860 review, finding 5: an empty library never exercises the mapper's document/folder
+    // branches at all - a document and a root-level folder make $.items/$.folders non-empty so
+    // LibraryDocumentResponseMapper actually runs against loaded entities, not empty lists.
+    mockMvc
+        .perform(
+            multipart("/api/v1/libraries/" + libraryId + "/documents")
+                .file(
+                    new MockMultipartFile(
+                        "file",
+                        "bericht.txt",
+                        "text/plain",
+                        "Inhalt".getBytes(StandardCharsets.UTF_8)))
+                .with(devUserPreservingContentType()))
+        .andExpect(status().isCreated());
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + libraryId + "/folders")
+                .with(devUser())
+                .content("{\"name\": \"Protokolle\"}"))
+        .andExpect(status().isCreated());
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/documents").with(devUser()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.items").isArray())
-        .andExpect(jsonPath("$.folders").isArray())
+        .andExpect(jsonPath("$.items[0].fileName").value("bericht.txt"))
+        .andExpect(jsonPath("$.folders[0].name").value("Protokolle"))
         .andExpect(jsonPath("$.breadcrumb").isArray());
   }
 }

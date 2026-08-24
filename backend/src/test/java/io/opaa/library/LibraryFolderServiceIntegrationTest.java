@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
@@ -110,7 +111,7 @@ class LibraryFolderServiceIntegrationTest {
     viewer.setOrganizationId(organizationId);
     viewer = userRepository.save(viewer);
 
-    var libraryRequest = new LibraryCreation("Bibliothek", DocumentSourceType.UPLOAD);
+    var libraryRequest = libraryCreation("Bibliothek", DocumentSourceType.UPLOAD).build();
     var library = libraryService.createLibrary(libraryRequest, editor.getId());
     libraryId = library.library().getId();
 
@@ -351,7 +352,7 @@ class LibraryFolderServiceIntegrationTest {
     // "/tmp" matches application.yml's default opaa.indexing.filesystem-allowlist ("/data,/tmp") -
     // the source content of this library is never read, only its sourceType matters here.
     var connectorLibraryRequest =
-        new LibraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM).sourcePath("/tmp");
+        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM).sourcePath("/tmp").build();
     var connectorLibrary = libraryService.createLibrary(connectorLibraryRequest, editor.getId());
     try {
       assertThatThrownBy(

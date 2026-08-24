@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -94,8 +95,9 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
   void createLibraryRejectsFilesystemSourceTypeWhenNoAllowlistIsConfigured() {
     when(filesystemAllowlist.isConfigured()).thenReturn(false);
     LibraryCreation request =
-        new LibraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
-            .sourcePath("/data/documents");
+        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
+            .sourcePath("/data/documents")
+            .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, ownerId))
         .isInstanceOf(ResponseStatusException.class)
@@ -110,7 +112,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     // The allowlist gates FILESYSTEM specifically - an operator who has configured none must not
     // accidentally lose every source type.
     when(filesystemAllowlist.isConfigured()).thenReturn(false);
-    LibraryCreation request = new LibraryCreation("Uploads", DocumentSourceType.UPLOAD);
+    LibraryCreation request = libraryCreation("Uploads", DocumentSourceType.UPLOAD).build();
 
     LibraryDetail response = libraryService.createLibrary(request, ownerId);
 
@@ -122,7 +124,9 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     when(filesystemAllowlist.isConfigured()).thenReturn(true);
     when(filesystemAllowlist.isAllowed("/etc/shadow")).thenReturn(false);
     LibraryCreation request =
-        new LibraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM).sourcePath("/etc/shadow");
+        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
+            .sourcePath("/etc/shadow")
+            .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, ownerId))
         .isInstanceOf(ResponseStatusException.class)
@@ -137,8 +141,9 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     when(filesystemAllowlist.isConfigured()).thenReturn(true);
     when(filesystemAllowlist.isAllowed("/srv/opaa/documents")).thenReturn(true);
     LibraryCreation request =
-        new LibraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
-            .sourcePath("/srv/opaa/documents");
+        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
+            .sourcePath("/srv/opaa/documents")
+            .build();
 
     LibraryDetail response = libraryService.createLibrary(request, ownerId);
 

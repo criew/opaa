@@ -29,8 +29,9 @@ import org.junit.jupiter.api.Test;
  * Pure JUnit tests (no Spring context) against directly constructed entities/records - the mapper
  * counterpart of {@code SpaceResponseMapperTest} (#860): pins {@link LibraryResponseMapper}'s
  * field-by-field behaviour, in particular that {@link LibraryDetail#managementDetail()} being
- * {@code null} (a caller below {@code MANAGER}) leaves every management-only field absent instead
- * of throwing or fabricating a value.
+ * {@link LibraryManagementDetail#EMPTY} (a caller below {@code MANAGER} - never {@code null}, which
+ * would NPE every field access) leaves every management-only field absent instead of throwing or
+ * fabricating a value.
  */
 class LibraryResponseMapperTest {
 
@@ -177,6 +178,9 @@ class LibraryResponseMapperTest {
   @Test
   void toCreationCopiesEveryRequestField() {
     UUID ownerId = UUID.randomUUID();
+    // #860 review, finding 2: every field below is deliberately a distinct value pairwise (in
+    // particular sourcePath/sourceProxy/sourceCredentials, three plain strings) - a mapper that
+    // swapped two of them would otherwise still pass with equal placeholder values.
     LibraryRequest request =
         new LibraryRequest("Rechtsquellen", DocumentSourceType.HTTP_DIRECTORY)
             .description("Beschreibung")
@@ -184,6 +188,7 @@ class LibraryResponseMapperTest {
             .ownerId(ownerId)
             .visibility(LibraryVisibility.ORGANIZATION)
             .listed(true)
+            .sourcePath("/data/documents")
             .sourceUrl(URI.create("https://example.com/documents/"))
             .sourceProxy("proxy.example.com:8080")
             .sourceCredentials("admin:secret")
@@ -198,6 +203,7 @@ class LibraryResponseMapperTest {
     assertThat(creation.visibility()).isEqualTo(LibraryVisibility.ORGANIZATION);
     assertThat(creation.listed()).isTrue();
     assertThat(creation.sourceType()).isEqualTo(DocumentSourceType.HTTP_DIRECTORY);
+    assertThat(creation.sourcePath()).isEqualTo("/data/documents");
     assertThat(creation.sourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
     assertThat(creation.sourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(creation.sourceCredentials()).isEqualTo("admin:secret");
@@ -206,13 +212,19 @@ class LibraryResponseMapperTest {
 
   @Test
   void toUpdateCopiesEveryRequestFieldIncludingTheSchedule() {
+    // #860 review, finding 2: sourcePath/sourceProxy/sourceCredentials are three distinct plain
+    // strings on purpose - see the identical reasoning on toCreationCopiesEveryRequestField above.
     LibraryUpdateRequest request =
         new LibraryUpdateRequest("Umbenannt")
             .description("Neue Beschreibung")
             .visibility(LibraryVisibility.PRIVATE)
             .listed(false)
             .sourceType(DocumentSourceType.RSS_FEED)
+            .sourcePath("/data/documents")
             .sourceUrl(URI.create("https://example.com/feed.xml"))
+            .sourceProxy("proxy.example.com:8080")
+            .sourceCredentials("admin:secret")
+            .sourceInsecureSsl(true)
             .schedule(
                 new LibraryScheduleRequest(ScheduleFrequency.WEEKLY)
                     .hour(6)
@@ -226,7 +238,11 @@ class LibraryResponseMapperTest {
     assertThat(update.visibility()).isEqualTo(LibraryVisibility.PRIVATE);
     assertThat(update.listed()).isFalse();
     assertThat(update.sourceType()).isEqualTo(DocumentSourceType.RSS_FEED);
+    assertThat(update.sourcePath()).isEqualTo("/data/documents");
     assertThat(update.sourceUrl()).isEqualTo(URI.create("https://example.com/feed.xml"));
+    assertThat(update.sourceProxy()).isEqualTo("proxy.example.com:8080");
+    assertThat(update.sourceCredentials()).isEqualTo("admin:secret");
+    assertThat(update.sourceInsecureSsl()).isTrue();
     assertThat(update.schedule().frequency()).isEqualTo(ScheduleFrequency.WEEKLY);
     assertThat(update.schedule().hour()).isEqualTo(6);
     assertThat(update.schedule().minute()).isEqualTo(0);

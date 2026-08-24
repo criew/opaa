@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.auth.User;
@@ -74,7 +75,7 @@ class UploadPendingRecoveryRunnerIntegrationTest {
     editor.setOrganizationId(organizationId);
     editor = userRepository.save(editor);
 
-    var libraryRequest = new LibraryCreation("Bibliothek", DocumentSourceType.UPLOAD);
+    var libraryRequest = libraryCreation("Bibliothek", DocumentSourceType.UPLOAD).build();
     libraryId = libraryService.createLibrary(libraryRequest, editor.getId()).library().getId();
   }
 

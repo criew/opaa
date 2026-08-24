@@ -1,5 +1,7 @@
 package io.opaa.audit;
 
+import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
+import static io.opaa.library.LibraryUpdateBuilder.libraryUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -29,10 +31,8 @@ import io.opaa.library.AssetGrantUpsert;
 import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.KnowledgeLibraryService;
-import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryDetail;
 import io.opaa.library.LibraryOwnerType;
-import io.opaa.library.LibraryUpdate;
 import io.opaa.library.LibraryVisibility;
 import io.opaa.library.LibraryVisibilityHistoryRepository;
 import io.opaa.organization.Organization;
@@ -213,9 +213,10 @@ class AuditEventRecordingIntegrationTest {
   private UUID createLibrary(UUID ownerId) {
     LibraryDetail detail =
         libraryService.createLibrary(
-            new LibraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
+            libraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
                 .ownerType(LibraryOwnerType.USER)
-                .ownerId(ownerId),
+                .ownerId(ownerId)
+                .build(),
             ownerId);
     return detail.library().getId();
   }
@@ -407,7 +408,7 @@ class AuditEventRecordingIntegrationTest {
 
     libraryService.updateLibrary(
         libraryId,
-        new LibraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION),
+        libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
         owner,
         false);
     List<AuditLogEntry> visibilityChanged =

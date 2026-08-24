@@ -377,16 +377,15 @@ public class KnowledgeLibraryService {
 
   /**
    * Resolves each library's owner display name in two batched queries (one per owner kind) instead
-   * of one lookup per library (#438) - the same pattern {@link AssetGrantService#toResponses}
-   * already uses for grant subject names. A missing entry (owner deleted) simply leaves {@code
-   * ownerName} {@code null} on the response, matching {@link LibrarySummary#ownerName()}'s optional
-   * nature.
+   * of one lookup per library (#438) - the same pattern {@link AssetGrantService#toViews} already
+   * uses for grant subject names. A missing entry (owner deleted) simply leaves {@code ownerName}
+   * {@code null} on the response, matching {@link LibrarySummary#ownerName()}'s optional nature.
    *
-   * <p>Unlike {@link AssetGrantService#toResponses}, a {@code USER} owner with no {@code
-   * displayName} resolves to {@code null} here rather than falling back to their email address (PR
-   * #601 review, finding 1): that method's audience is limited to a library's own {@code MANAGER}s,
-   * but this list reaches every reader of an organization-wide or shared library - potentially the
-   * whole organization - so leaking an email address here has a materially larger blast radius. The
+   * <p>Unlike {@link AssetGrantService#toViews}, a {@code USER} owner with no {@code displayName}
+   * resolves to {@code null} here rather than falling back to their email address (PR #601 review,
+   * finding 1): that method's audience is limited to a library's own {@code MANAGER}s, but this
+   * list reaches every reader of an organization-wide or shared library - potentially the whole
+   * organization - so leaking an email address here has a materially larger blast radius. The
    * frontend already falls back to a generic label when {@code ownerName} is absent.
    */
   private Map<UUID, String> resolveOwnerNames(List<KnowledgeLibrary> libraries) {
