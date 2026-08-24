@@ -8,20 +8,24 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface LibraryFolderRepository extends JpaRepository<LibraryFolder, UUID> {
 
   /**
-   * The direct subfolders of {@code parentFolderId} - always called with a non-null id ({@link
-   * LibraryFolderService#deleteFolder}'s recursive descent starts at an already-loaded folder), so
-   * this deliberately does not also cover the library's root the way {@code
-   * findByLibraryIdAndParentFolderIdIsNull} below does; there is no #820 use case yet that needs
-   * both in one call.
+   * The direct subfolders of {@code parentFolderId}, name ascending (#821 review: a stable,
+   * deterministic order for the {@code folders} array of a folder-scoped listing, mirroring #517's
+   * identical reasoning for the document list's own {@code fileName} sort) - always called with a
+   * non-null id ({@link LibraryFolderService#deleteFolder}'s recursive descent starts at an
+   * already-loaded folder), so this deliberately does not also cover the library's root the way
+   * {@code findByLibraryIdAndParentFolderIdIsNull} below does; there is no #820 use case yet that
+   * needs both in one call.
    */
-  List<LibraryFolder> findByLibraryIdAndParentFolderId(UUID libraryId, UUID parentFolderId);
+  List<LibraryFolder> findByLibraryIdAndParentFolderIdOrderByNameAsc(
+      UUID libraryId, UUID parentFolderId);
 
   /**
-   * The root-level counterpart to {@link #findByLibraryIdAndParentFolderId} (#821) - the direct
-   * subfolders of a library's root, used by {@code KnowledgeLibraryService#listDocuments} to build
-   * the {@code folders} array of a root-scoped listing.
+   * The root-level counterpart to {@link #findByLibraryIdAndParentFolderIdOrderByNameAsc} (#821) -
+   * the direct subfolders of a library's root, used by {@code
+   * KnowledgeLibraryService#listDocuments} to build the {@code folders} array of a root-scoped
+   * listing. Name ascending, same reasoning as the sibling method above.
    */
-  List<LibraryFolder> findByLibraryIdAndParentFolderIdIsNull(UUID libraryId);
+  List<LibraryFolder> findByLibraryIdAndParentFolderIdIsNullOrderByNameAsc(UUID libraryId);
 
   /**
    * Every folder in a library, in one query (#821) - backs {@code

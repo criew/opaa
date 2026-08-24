@@ -1228,9 +1228,11 @@ paths:
         scoped to exactly one folder level: folderId (or its absence, meaning the library's root)
         selects which documents items contains, plus that folder's direct subfolders (folders) and
         its breadcrumb chain (breadcrumb, empty at the root). With q, the search is deliberately
-        bibliotheksweit regardless of folderId (ADR-0020, Entscheidung 4 - no folder-scoped
-        retrieval/search yet): folders and breadcrumb are both empty, and every hit's own folderId/
-        folderPath (LibraryDocumentResponse) show where it lives in the structure.
+        bibliotheksweit regardless of folderId for scoping/filtering (ADR-0020, Entscheidung 4 - no
+        folder-scoped retrieval/search yet): folders and breadcrumb are both empty, and every hit's
+        own folderId/folderPath (LibraryDocumentResponse) show where it lives in the structure. A
+        folderId is nevertheless always validated when given, with or without q - see that
+        parameter's own description.
 
         **Backward compatibility:** a caller that omits folderId - every client before #821 - lists
         the library's root (documents with no folder plus the library's root-level subfolders), not
@@ -1270,9 +1272,10 @@ paths:
           in: query
           required: false
           description: >
-            The folder to list (#821). Omitted or null means the library's root. Ignored when q is
-            set (search is always bibliotheksweit). Must reference an existing folder in this
-            library, or the request is rejected with 404 - the same "unknown vs. foreign folder"
+            The folder to list (#821). Omitted or null means the library's root. When q is also
+            set, folderId is ignored for scoping/filtering - search is always bibliotheksweit - but
+            is still validated: it must reference an existing folder in this library whether or not
+            q is set, or the request is rejected with 404 - the same "unknown vs. foreign folder"
             treatment GET /api/v1/libraries/{libraryId}/folders/{folderId} already applies.
           schema:
             type: string
@@ -4151,10 +4154,11 @@ components:
           type: integer
           format: int64
           description: >
-            Documents directly inside this subfolder - deliberately not recursive into its own
-            subfolders (unlike LibraryFolderResponse.documentCount, which a delete confirmation
-            needs to add up), so this listing costs one grouped query regardless of how many
-            subfolders are shown, instead of walking each subfolder's own subtree.
+            Every document inside this subfolder and every one of its own descendant subfolders,
+            recursively - the same semantics as LibraryFolderResponse.documentCount (#821 review:
+            a subfolder row here shows the same number a subsequent delete confirmation for it
+            would). Computed with one bundled query for every subfolder shown, not one per
+            subfolder's own subtree walk.
 
     LibraryFolderBreadcrumbItem:
       type: object

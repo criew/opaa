@@ -750,10 +750,15 @@ public class KnowledgeLibraryService {
    * the library's root, the same convention {@code documents.folder_id}/{@code
    * library_folders.parent_folder_id} already use): {@link #foldersOf} lists that folder's direct
    * subfolders, {@link #breadcrumbOf} its ancestor chain. With {@code q}, the search stays
-   * bibliotheksweit regardless of {@code folderId} (ADR-0020, Entscheidung 4 - no folder-scoped
-   * retrieval yet) - {@code folders}/{@code breadcrumb} are both empty, and each hit's own {@code
-   * folderId}/{@code folderPath} ({@link LibraryDocumentResponses#from(Document, String)}) show
-   * where it lives instead.
+   * bibliotheksweit regardless of {@code folderId} - it is not used to filter or scope the search
+   * itself (ADR-0020, Entscheidung 4 - no folder-scoped retrieval yet) - {@code folders}/{@code
+   * breadcrumb} are both empty, and each hit's own {@code folderId}/{@code folderPath} ({@link
+   * LibraryDocumentResponses#from(Document, String)}) show where it lives instead. A given {@code
+   * folderId} is still validated even then (#821 review round 1, finding 3): an unknown or foreign
+   * one answers 404 exactly as it would without {@code q}, so a caller cannot distinguish "this
+   * folder does not exist" from "it exists, but I only ever check it while browsing, not while
+   * searching" - it would otherwise be the one caller-supplied identifier on this endpoint that
+   * silently tolerates a value from another library.
    *
    * <p><b>Backward compatibility (#821 acceptance criteria).</b> A caller that omits {@code
    * folderId} - every client before this task - now lists the library's root rather than its whole
@@ -774,6 +779,13 @@ public class KnowledgeLibraryService {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
 
+    // #821 review round 1, finding 3: validated unconditionally, before either branch below - a
+    // folderId from another library or one that does not exist answers 404 whether or not q is
+    // also set, instead of q silently bypassing the check.
+    if (folderId != null) {
+      requireFolderInLibrary(libraryId, folderId);
+    }
+
     boolean searching = q != null && !q.isBlank();
     if (searching) {
       Page<Document> page =
@@ -792,9 +804,6 @@ public class KnowledgeLibraryService {
           .folderId(null);
     }
 
-    if (folderId != null) {
-      requireFolderInLibrary(libraryId, folderId);
-    }
     Page<Document> page =
         folderId == null
             ? documentRepository.findByLibraryIdAndFolderIdIsNull(libraryId, pageable)
@@ -814,21 +823,24 @@ public class KnowledgeLibraryService {
 
   /**
    * The direct subfolders of {@code folderId} ({@code null} meaning the library's root), each with
-   * its own direct (non-recursive) document count - one grouped query for every subfolder's count
-   * (#821, {@link DocumentRepository#countByFolderIdIn}), not one {@link
-   * DocumentRepository#countByFolderId} call per subfolder.
+   * its own <em>recursive</em> document count - its own documents plus every document in every one
+   * of its descendant folders, matching {@code LibraryFolderResponse.documentCount}'s semantics
+   * (#821 review round 1, finding 4) so a subfolder row here shows the same number a subsequent
+   * delete confirmation for it would. One recursive-CTE query for every subfolder's count ({@link
+   * DocumentRepository#countRecursiveByFolderIdIn}), not one {@link
+   * DocumentRepository#countByFolderId}/subtree walk per subfolder.
    */
   private List<LibraryFolderListItem> foldersOf(UUID libraryId, UUID folderId) {
     List<LibraryFolder> subfolders =
         folderId == null
-            ? folderRepository.findByLibraryIdAndParentFolderIdIsNull(libraryId)
-            : folderRepository.findByLibraryIdAndParentFolderId(libraryId, folderId);
+            ? folderRepository.findByLibraryIdAndParentFolderIdIsNullOrderByNameAsc(libraryId)
+            : folderRepository.findByLibraryIdAndParentFolderIdOrderByNameAsc(libraryId, folderId);
     if (subfolders.isEmpty()) {
       return List.of();
     }
     List<UUID> subfolderIds = subfolders.stream().map(LibraryFolder::getId).toList();
     Map<UUID, Long> documentCounts =
-        documentRepository.countByFolderIdIn(subfolderIds).stream()
+        documentRepository.countRecursiveByFolderIdIn(subfolderIds).stream()
             .collect(
                 Collectors.toMap(
                     DocumentRepository.FolderDocumentCount::getFolderId,

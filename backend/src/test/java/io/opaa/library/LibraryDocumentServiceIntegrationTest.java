@@ -1290,6 +1290,29 @@ class LibraryDocumentServiceIntegrationTest {
   }
 
   @Test
+  void listDocumentsSubfolderCountsAreRecursiveNotJustDirectChildren() {
+    // #821 review round 1, finding 4: LibraryFolderListItem.documentCount must match
+    // LibraryFolderResponse.documentCount's recursive semantics (ADR-0020, Entscheidung 5) - a
+    // subfolder row here is exactly what a subsequent delete confirmation for it would show. Three
+    // nesting levels below Protokolle, with a document at every level but the queried one (root),
+    // so a shallow "direct children only" count (1, only Archiv's own direct document) would
+    // visibly disagree with the correct recursive one (3, everything Archiv contains).
+    LibraryFolder protokolle = seedFolder("Protokolle", null);
+    LibraryFolder archiv = seedFolder("Archiv", protokolle.getId());
+    LibraryFolder jahr2026 = seedFolder("2026", archiv.getId());
+    seedDocument("archiv-direkt.pdf", archiv.getId());
+    seedDocument("jahresbericht.pdf", jahr2026.getId());
+    seedDocument("nachtrag.pdf", jahr2026.getId());
+
+    var result =
+        libraryService.listDocuments(
+            libraryId, editor.getId(), false, null, null, stableOrder(0, 20));
+
+    assertThat(result.getFolders()).extracting(f -> f.getName()).containsExactly("Protokolle");
+    assertThat(result.getFolders().get(0).getDocumentCount()).isEqualTo(3L);
+  }
+
+  @Test
   void listDocumentsScopedToAFolderListsOnlyItsOwnDocumentsAndDirectSubfoldersWithBreadcrumb() {
     LibraryFolder protokolle = seedFolder("Protokolle", null);
     LibraryFolder jahr2026 = seedFolder("2026", protokolle.getId());
@@ -1362,6 +1385,29 @@ class LibraryDocumentServiceIntegrationTest {
             () ->
                 libraryService.listDocuments(
                     libraryId, editor.getId(), false, null, UUID.randomUUID(), stableOrder(0, 20)))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
+  @Test
+  void listDocumentsWithAnUnknownFolderIdAndAQAlsoAnswers404() {
+    // #821 review round 1, finding 3: folderId is validated whether or not q is also set - a
+    // caller must not be able to bypass the 404 simply by adding a search term, which the first
+    // implementation round accidentally allowed (q short-circuited the validation entirely).
+    seedDocument("dienstanweisung.pdf");
+
+    assertThatThrownBy(
+            () ->
+                libraryService.listDocuments(
+                    libraryId,
+                    editor.getId(),
+                    false,
+                    "dienst",
+                    UUID.randomUUID(),
+                    stableOrder(0, 20)))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
