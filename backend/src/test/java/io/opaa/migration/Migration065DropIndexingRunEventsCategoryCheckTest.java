@@ -13,14 +13,15 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Applies Liquibase changelog 065 in isolation against a database built from {@code
- * test-master-through-046.yaml} plus changelogs 037/056/057 (already past {@code
- * indexing_run_events} creation and both of its category widenings), the same base {@code
+ * test-master-through-046.yaml} - already past changelog 037 ({@code indexing_run_events} creation)
+ * - plus changelogs 056/057 (both category widenings), the same base {@code
  * Migration057WidenIndexingRunEventCategoryFormatMismatchTest} uses for its own predecessor.
  *
  * <p>Proves #862's acceptance criteria against a real database: {@code
  * chk_indexing_run_events_category} no longer exists after 065 runs, a value outside the old closed
- * list is now writable, and the migration/application account's own grants are unaffected
- * (indexing_run_events is not ownership-restricted the way audit_log is).
+ * list is now writable, and every value the constraint accepted before 065 is still accepted
+ * afterwards. Unlike {@code audit_log}, {@code indexing_run_events} is not ownership-restricted -
+ * there is no separate grant to re-prove here.
  */
 class Migration065DropIndexingRunEventsCategoryCheckTest extends AbstractMigrationTest {
 

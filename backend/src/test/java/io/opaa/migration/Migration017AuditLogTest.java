@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.audit.ActorKind;
-import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditSubjectKind;
@@ -563,39 +562,51 @@ class Migration017AuditLogTest extends AbstractMigrationTest {
   }
 
   @Test
-  void theEventTypeCheckConstraintMatchesTheJavaEnumExactly() throws Exception {
-    // #393 code review, finding 1: migration 022 widens this same constraint to also accept
-    // AUDITOR_ROLE_GRANTED/AUDITOR_ROLE_REVOKED, #545's migration 035 further widens it to accept
-    // LIBRARY_SOURCE_UPDATED, #543's migration 040 to accept SPACE_ARCHIVED, #582's migration
-    // 042 to accept BRANDING_SETTINGS_CHANGED, #706's migration 053 to accept
-    // LIBRARY_DETACHED_FROM_SPACE, #756's migration 059 to accept LLM_MODEL_CREATED/
-    // LLM_MODEL_CHANGED/LLM_MODEL_DELETED/LLM_MODEL_ACTIVATED, and #757's migration 061 to accept
-    // LLM_MODEL_DEACTIVATED - this test applies 017 alone (on top of test-master-through-016), so
-    // it must compare against 017's own, narrower value set, not the full live enum, which now
-    // includes those later-added values. See
-    // Migration022AuditorRoleEventTypesTest/Migration035LibrarySourceUpdatedEventTypeTest/
-    // Migration040SpaceArchivedEventTypeTest/Migration042BrandingSettingsEventTypeTest/
-    // Migration053WidenAuditEventTypeLibraryDetachedFromSpaceTest/
-    // Migration059WidenAuditEventTypeLlmModelChangesTest/
-    // Migration061WidenAuditEventTypeLlmModelDeactivatedTest for the equivalent proof once
-    // 022/035/040/042/053/059/061 have run. Every future widening migration adds its own value
-    // here too - that this list has to grow is the mechanism by which a widening that never
-    // reached a migration at all is caught.
-    Set<String> valuesAddedAfterMigration017 =
+  void theEventTypeCheckConstraintMatchesTheValueSet017Created() throws Exception {
+    // #862 (Epic #826, Befund B4): frozen as a literal list, not derived from the live
+    // AuditEventType enum - a value added to the enum without its own widening migration must not
+    // silently pass this test just because the enum grew too. This test applies 017 alone (on top
+    // of test-master-through-016), so it proves 017's own value set, not whatever the enum
+    // contains today.
+    Set<String> expected =
         Set.of(
-            AuditEventType.AUDITOR_ROLE_GRANTED.name(),
-            AuditEventType.AUDITOR_ROLE_REVOKED.name(),
-            AuditEventType.LIBRARY_SOURCE_UPDATED.name(),
-            AuditEventType.SPACE_ARCHIVED.name(),
-            AuditEventType.BRANDING_SETTINGS_CHANGED.name(),
-            AuditEventType.LIBRARY_DETACHED_FROM_SPACE.name(),
-            AuditEventType.LLM_MODEL_CREATED.name(),
-            AuditEventType.LLM_MODEL_CHANGED.name(),
-            AuditEventType.LLM_MODEL_DELETED.name(),
-            AuditEventType.LLM_MODEL_ACTIVATED.name(),
-            AuditEventType.LLM_MODEL_DEACTIVATED.name());
-    Set<String> expected = new HashSet<>(enumNames(AuditEventType.values()));
-    expected.removeAll(valuesAddedAfterMigration017);
+            "ASSET_GRANT_GRANTED",
+            "ASSET_GRANT_CHANGED",
+            "ASSET_GRANT_REVOKED",
+            "ASSET_GRANT_EXPIRED",
+            "ASSET_VISIBILITY_CHANGED",
+            "ASSET_GRANT_SUSPENDED",
+            "SPACE_CREATED",
+            "SPACE_CHANGED",
+            "SPACE_DELETED",
+            "LIBRARY_CREATED",
+            "LIBRARY_CHANGED",
+            "LIBRARY_DELETED",
+            "GROUP_CREATED",
+            "GROUP_CHANGED",
+            "GROUP_DELETED",
+            "SPACE_MEMBER_ADDED",
+            "SPACE_MEMBER_ROLE_CHANGED",
+            "SPACE_MEMBER_REMOVED",
+            "GROUP_MEMBER_ADDED",
+            "GROUP_MEMBER_REMOVED",
+            "LIBRARY_SHARED_TO_SPACE",
+            "ASSET_OWNER_CHANGED",
+            "ASSET_OWNERSHIP_CLAIMED",
+            "ASSET_SUCCESSION_OPENED",
+            "SYSTEM_ADMIN_ROLE_GRANTED",
+            "SYSTEM_ADMIN_ROLE_REVOKED",
+            "ACCOUNT_DEACTIVATED",
+            "ACCOUNT_REAUTHENTICATION_FORCED",
+            "API_TOKEN_ISSUED",
+            "API_TOKEN_REVOKED",
+            "DIRECTORY_SYNC_CHANGE_APPLIED",
+            "DIRECTORY_SYNC_RUN_COMPLETED",
+            "GOVERNANCE_SETTINGS_CHANGED",
+            "AUDIT_LOG_CONFIGURATION_CHANGED",
+            "MODEL_POLICY_CHANGED",
+            "CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED",
+            "AUDIT_LOG_ACCESSED");
 
     assertThat(checkConstraintValues("chk_audit_log_event_type")).isEqualTo(expected);
   }

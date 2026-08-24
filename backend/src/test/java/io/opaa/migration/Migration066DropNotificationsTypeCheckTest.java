@@ -18,8 +18,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>Proves #862's acceptance criteria against a real database: {@code chk_notifications_type} no
  * longer exists after 066 runs, a value outside the old closed list is now writable, and the
- * migration/application account's own grants are unaffected (notifications is not
- * ownership-restricted the way audit_log is).
+ * pre-existing value is still accepted. Unlike {@code audit_log}, {@code notifications} is not
+ * ownership-restricted - there is no separate grant to re-prove here.
  */
 class Migration066DropNotificationsTypeCheckTest extends AbstractMigrationTest {
 

@@ -7,11 +7,12 @@ databaseChangeLog:
   # todo-capable postbox item would need, just without the fields such an item would add on top
   # (e.g. an action/due date) - nothing about this table forecloses that.
   #
-  # type is a closed vocabulary enforced by chk_notifications_type, mirroring
-  # chk_audit_log_event_type (migration 017): "was hier nicht steht, wird nicht geschrieben" is the
-  # same discipline that class already applies. LIBRARY_ASSOCIATED_TO_MIXED_SPACE is the only value
-  # #203 needs; a later feature adds its own value the same way migrations 022/035/040/042 widened
-  # chk_audit_log_event_type.
+  # type was a closed vocabulary enforced by chk_notifications_type, mirroring
+  # chk_audit_log_event_type (migration 017): "was hier nicht steht, wird nicht geschrieben" was the
+  # same discipline that class already applied. LIBRARY_ASSOCIATED_TO_MIXED_SPACE is the only value
+  # #203 needs. Migration 066 (#862) later dropped chk_notifications_type without replacement - the
+  # NotificationType Java enum is the sole write guard from there on, so a later feature simply adds
+  # its own enum value, no migration required.
   - changeSet:
       id: 052-create-notifications
       author: opaa
