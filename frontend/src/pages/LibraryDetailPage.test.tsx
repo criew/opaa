@@ -1723,6 +1723,219 @@ describe('LibraryDetailPage', () => {
       })
     })
 
+    // #823 review, Befund 2: a real OS folder routinely carries files nobody dragged there on
+    // purpose - an unsupported format must be filtered client-side before ever reaching the
+    // backend, and reported as one collective summary instead of a per-file error.
+    it('filters an unsupported format out of a dropped folder and reports one summary message', async () => {
+      setLibraryState(personalLibrary, detailsOf(personalLibrary))
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+      mockUploadDocument.mockResolvedValueOnce({
+        id: 'document-new',
+        fileName: 'januar.pdf',
+        contentType: 'application/pdf',
+        fileSize: 100,
+        status: 'PENDING',
+        sourceType: 'UPLOAD',
+        chunkCount: 0,
+        indexedAt: null,
+        uploadedByUserId: 'mock-user-id',
+        folderId: 'folder-new',
+        folderPath: 'Protokolle',
+      })
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      const acceptedFile = new File(['Inhalt'], 'januar.pdf', { type: 'application/pdf' })
+      const rejectedFile = new File(['Inhalt'], 'foto.jpg', { type: 'image/jpeg' })
+      const acceptedEntry = {
+        isFile: true,
+        isDirectory: false,
+        name: 'januar.pdf',
+        file: (successCallback: (f: File) => void) => successCallback(acceptedFile),
+      }
+      const rejectedEntry = {
+        isFile: true,
+        isDirectory: false,
+        name: 'foto.jpg',
+        file: (successCallback: (f: File) => void) => successCallback(rejectedFile),
+      }
+      let readCount = 0
+      const folderEntry = {
+        isFile: false,
+        isDirectory: true,
+        name: 'Protokolle',
+        createReader: () => ({
+          readEntries: (callback: (entries: unknown[]) => void) => {
+            readCount += 1
+            callback(readCount === 1 ? [acceptedEntry, rejectedEntry] : [])
+          },
+        }),
+      }
+
+      const dropZone = await screen.findByLabelText(/dateien oder ordner hierher ziehen/i)
+      fireEvent.drop(dropZone, {
+        dataTransfer: {
+          items: [{ kind: 'file', webkitGetAsEntry: () => folderEntry }],
+          files: [],
+        },
+      })
+
+      await waitFor(() => {
+        expect(mockUploadDocument).toHaveBeenCalledWith(
+          'library-mine',
+          acceptedFile,
+          null,
+          'Protokolle',
+        )
+      })
+      expect(mockUploadDocument).not.toHaveBeenCalledWith(
+        'library-mine',
+        rejectedFile,
+        expect.anything(),
+        expect.anything(),
+      )
+      expect(
+        await screen.findByText(/1 datei wurde wegen eines nicht unterstützten formats/i),
+      ).toBeInTheDocument()
+    })
+
+    // #823 review, Befund 2: Thumbs.db/.DS_Store/desktop.ini are dropped silently, without being
+    // named in (or even counted towards) the skipped-files summary.
+    it('drops Thumbs.db silently from a dropped folder without a summary message', async () => {
+      setLibraryState(personalLibrary, detailsOf(personalLibrary))
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+      mockUploadDocument.mockResolvedValueOnce({
+        id: 'document-new',
+        fileName: 'januar.pdf',
+        contentType: 'application/pdf',
+        fileSize: 100,
+        status: 'PENDING',
+        sourceType: 'UPLOAD',
+        chunkCount: 0,
+        indexedAt: null,
+        uploadedByUserId: 'mock-user-id',
+        folderId: 'folder-new',
+        folderPath: 'Protokolle',
+      })
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      const acceptedFile = new File(['Inhalt'], 'januar.pdf', { type: 'application/pdf' })
+      const systemFile = new File(['x'], 'Thumbs.db')
+      const acceptedEntry = {
+        isFile: true,
+        isDirectory: false,
+        name: 'januar.pdf',
+        file: (successCallback: (f: File) => void) => successCallback(acceptedFile),
+      }
+      const systemEntry = {
+        isFile: true,
+        isDirectory: false,
+        name: 'Thumbs.db',
+        file: (successCallback: (f: File) => void) => successCallback(systemFile),
+      }
+      let readCount = 0
+      const folderEntry = {
+        isFile: false,
+        isDirectory: true,
+        name: 'Protokolle',
+        createReader: () => ({
+          readEntries: (callback: (entries: unknown[]) => void) => {
+            readCount += 1
+            callback(readCount === 1 ? [acceptedEntry, systemEntry] : [])
+          },
+        }),
+      }
+
+      const dropZone = await screen.findByLabelText(/dateien oder ordner hierher ziehen/i)
+      fireEvent.drop(dropZone, {
+        dataTransfer: {
+          items: [{ kind: 'file', webkitGetAsEntry: () => folderEntry }],
+          files: [],
+        },
+      })
+
+      await waitFor(() => {
+        expect(mockUploadDocument).toHaveBeenCalledWith(
+          'library-mine',
+          acceptedFile,
+          null,
+          'Protokolle',
+        )
+      })
+      expect(screen.queryByText(/übersprungen/i)).not.toBeInTheDocument()
+    })
+
+    // #823 review, Befund 3: an unreadable file inside a dropped folder must not abort the whole
+    // drop - the rest of the folder still uploads, and the failure is reported collectively.
+    it('reports an unreadable file inside a dropped folder without blocking the rest', async () => {
+      setLibraryState(personalLibrary, detailsOf(personalLibrary))
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+      mockUploadDocument.mockResolvedValueOnce({
+        id: 'document-new',
+        fileName: 'gut.pdf',
+        contentType: 'application/pdf',
+        fileSize: 100,
+        status: 'PENDING',
+        sourceType: 'UPLOAD',
+        chunkCount: 0,
+        indexedAt: null,
+        uploadedByUserId: 'mock-user-id',
+        folderId: 'folder-new',
+        folderPath: 'Protokolle',
+      })
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      const goodFile = new File(['Inhalt'], 'gut.pdf', { type: 'application/pdf' })
+      const goodEntry = {
+        isFile: true,
+        isDirectory: false,
+        name: 'gut.pdf',
+        file: (successCallback: (f: File) => void) => successCallback(goodFile),
+      }
+      const unreadableEntry = {
+        isFile: true,
+        isDirectory: false,
+        name: 'kaputt.pdf',
+        file: (_success: (f: File) => void, errorCallback?: (error: unknown) => void) =>
+          errorCallback?.(new Error('NotReadableError')),
+      }
+      let readCount = 0
+      const folderEntry = {
+        isFile: false,
+        isDirectory: true,
+        name: 'Protokolle',
+        createReader: () => ({
+          readEntries: (callback: (entries: unknown[]) => void) => {
+            readCount += 1
+            callback(readCount === 1 ? [unreadableEntry, goodEntry] : [])
+          },
+        }),
+      }
+
+      const dropZone = await screen.findByLabelText(/dateien oder ordner hierher ziehen/i)
+      fireEvent.drop(dropZone, {
+        dataTransfer: {
+          items: [{ kind: 'file', webkitGetAsEntry: () => folderEntry }],
+          files: [],
+        },
+      })
+
+      await waitFor(() => {
+        expect(mockUploadDocument).toHaveBeenCalledWith(
+          'library-mine',
+          goodFile,
+          null,
+          'Protokolle',
+        )
+      })
+      expect(await screen.findByText(/1 datei konnte nicht gelesen werden/i)).toBeInTheDocument()
+    })
+
     it("shows a search hit's folder path and navigates into it on click", async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
       mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))

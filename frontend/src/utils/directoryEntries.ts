@@ -25,6 +25,18 @@ export interface ResolvedDroppedFile {
   relativePath: string
 }
 
+export interface ResolveDroppedItemsResult {
+  files: ResolvedDroppedFile[]
+  /**
+   * How many entries (individual files, or whole subtrees under an unreadable directory) could
+   * not be read (#823 review, Befund 3) - a permission error, or a file removed/moved on disk
+   * between the drop and this read, must not silently abort the rest of a large drop. Counted
+   * here rather than thrown, so the caller can still upload everything that *did* resolve and
+   * report the rest in one collective message.
+   */
+  failedCount: number
+}
+
 interface FileSystemEntryLike {
   isFile: boolean
   isDirectory: boolean
@@ -52,10 +64,16 @@ interface DataTransferItemWithEntry {
   getAsFile: () => File | null
 }
 
-/** Resolves every item of a drop event's `DataTransferItemList` - see this module's own header. */
+/**
+ * Resolves every item of a drop event's `DataTransferItemList` - see this module's own header.
+ * Never rejects on its own account of a single unreadable entry (see `collectEntry`/{@link
+ * ResolveDroppedItemsResult.failedCount}) - a caller should still wrap the call itself in a
+ * `.catch` for a genuinely unexpected failure (e.g. `webkitGetAsEntry` throwing outright on some
+ * browser), which none of the per-entry handling below can guard against.
+ */
 export async function resolveDroppedItems(
   items: ArrayLike<DataTransferItemWithEntry>,
-): Promise<ResolvedDroppedFile[]> {
+): Promise<ResolveDroppedItemsResult> {
   const entries: FileSystemEntryLike[] = []
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
@@ -75,11 +93,12 @@ export async function resolveDroppedItems(
     }
   }
 
-  const resolved: ResolvedDroppedFile[] = []
+  const files: ResolvedDroppedFile[] = []
+  let failedCount = 0
   for (const entry of entries) {
-    await collectEntry(entry, '', resolved)
+    failedCount += await collectEntry(entry, '', files)
   }
-  return resolved
+  return { files, failedCount }
 }
 
 function fileEntryFallback(file: File): FileSystemFileEntryLike {
@@ -91,23 +110,43 @@ function fileEntryFallback(file: File): FileSystemFileEntryLike {
   }
 }
 
+/**
+ * @returns how many entries under (and including) `entry` could not be read (#823 review, Befund
+ *   3) - a single unreadable file, or a whole unreadable subdirectory, is counted and skipped
+ *   rather than rejecting the promise chain this is part of, which would otherwise abort every
+ *   sibling/later entry `resolveDroppedItems`'s own loop still has left to process.
+ */
 async function collectEntry(
   entry: FileSystemEntryLike,
   relativePath: string,
   out: ResolvedDroppedFile[],
-): Promise<void> {
+): Promise<number> {
   if (entry.isFile) {
-    const file = await entryToFile(entry as FileSystemFileEntryLike)
-    out.push({ file, relativePath })
-    return
+    try {
+      const file = await entryToFile(entry as FileSystemFileEntryLike)
+      out.push({ file, relativePath })
+      return 0
+    } catch {
+      return 1
+    }
   }
   if (entry.isDirectory) {
     const directoryPath = relativePath ? `${relativePath}/${entry.name}` : entry.name
-    const children = await readAllEntries((entry as FileSystemDirectoryEntryLike).createReader())
-    for (const child of children) {
-      await collectEntry(child, directoryPath, out)
+    let children: FileSystemEntryLike[]
+    try {
+      children = await readAllEntries((entry as FileSystemDirectoryEntryLike).createReader())
+    } catch {
+      // The directory itself could not be listed at all (e.g. a permission error) - the whole
+      // subtree counts as one failure rather than silently vanishing without a trace.
+      return 1
     }
+    let failedCount = 0
+    for (const child of children) {
+      failedCount += await collectEntry(child, directoryPath, out)
+    }
+    return failedCount
   }
+  return 0
 }
 
 function entryToFile(entry: FileSystemFileEntryLike): Promise<File> {
@@ -149,4 +188,50 @@ function readAllEntries(reader: FileSystemDirectoryReaderLike): Promise<FileSyst
 export function directoryPathFromWebkitRelativePath(webkitRelativePath: string): string {
   const lastSlash = webkitRelativePath.lastIndexOf('/')
   return lastSlash === -1 ? '' : webkitRelativePath.slice(0, lastSlash)
+}
+
+// #823 review, Befund 2: a real OS folder routinely carries files nobody dragged there on
+// purpose - a browser's `accept` attribute is not reliably enforced for a `webkitdirectory`
+// selection at all, and neither it nor a drop's `DataTransferItem.webkitGetAsEntry()` walk ever
+// filters by format on their own. Treated as two different things: well-known OS/desktop metadata
+// files are dropped silently (nobody dragged "Thumbs.db" into a document library on purpose, and
+// naming it in a summary would only be noise), while every other unsupported format is counted and
+// reported as one collective summary message - naming three hundred individual rejected files
+// would be worse than naming none.
+const SYSTEM_FILE_NAMES = new Set(['thumbs.db', '.ds_store', 'desktop.ini'])
+
+/** Whether `fileName` is a well-known OS/desktop metadata file - see the constant above. */
+export function isSystemFile(fileName: string): boolean {
+  return SYSTEM_FILE_NAMES.has(fileName.toLowerCase())
+}
+
+/**
+ * Splits `entries` into those whose file name matches one of `acceptedExtensions` (the same
+ * comma-separated shape `LibraryDetailPage`'s own `ACCEPTED_FILE_EXTENSIONS`/the file input's
+ * `accept` attribute already use) and a count of how many were skipped for not matching - a
+ * well-known system file (see `isSystemFile`) is dropped silently and counted in neither list, the
+ * same way it would be if a person had simply never dragged it in.
+ */
+export function filterAcceptedFiles<T extends { file: File }>(
+  entries: T[],
+  acceptedExtensions: string,
+): { accepted: T[]; skippedCount: number } {
+  const extensions = acceptedExtensions
+    .split(',')
+    .map((extension) => extension.trim().toLowerCase())
+    .filter((extension) => extension.length > 0)
+  const accepted: T[] = []
+  let skippedCount = 0
+  for (const entry of entries) {
+    const lowerCasedName = entry.file.name.toLowerCase()
+    if (isSystemFile(lowerCasedName)) {
+      continue
+    }
+    if (extensions.some((extension) => lowerCasedName.endsWith(extension))) {
+      accepted.push(entry)
+    } else {
+      skippedCount += 1
+    }
+  }
+  return { accepted, skippedCount }
 }

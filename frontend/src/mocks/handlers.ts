@@ -145,13 +145,23 @@ export function buildMockFolderPath(libraryId: string, folderId: string | null):
 //
 // Exported for the same reason as buildMockFolderPath above: handlers.test.ts cannot exercise a
 // real multipart upload request in this project's jsdom test environment.
+// Mirrors LibraryFolderService's MAX_DEPTH (#823 review, Befund 5d) - root counts as depth 1.
+const MOCK_MAX_FOLDER_DEPTH = 10
+
 export function resolveOrCreateMockFolderPath(
   libraryId: string,
   baseFolderId: string | null,
   folderPath: string,
 ): { folderId: string | null } | { error: string; status: number } {
   const segments = folderPath.split('/').filter((segment) => segment.trim() !== '')
-  let parentFolderId = baseFolderId
+
+  // #823 review, Befund 1/5d: every segment (and the resulting depth) is validated in this own
+  // upfront pass, before any folder is created - mirrors LibraryFolderService#
+  // resolveOrCreateFolderPath's identical two-pass structure (validate the whole chain, then
+  // materialize it), so an invalid later segment or a depth overrun never leaves an earlier,
+  // valid segment's folder behind.
+  const names: string[] = []
+  let depth = baseFolderId ? buildMockBreadcrumb(libraryId, baseFolderId).length : 0
   for (const rawSegment of segments) {
     const name = rawSegment.trim()
     // Mirrors LibraryFolderService#validatePathSegment (#823): trimmed, no further separator, no
@@ -165,6 +175,18 @@ export function resolveOrCreateMockFolderPath(
     if (name === '..' || name === '.') {
       return { error: 'Ordnername darf nicht ".." oder "." lauten', status: 400 }
     }
+    depth += 1
+    if (depth > MOCK_MAX_FOLDER_DEPTH) {
+      return {
+        error: `Die Ordnerstruktur ist zu tief verschachtelt (maximal ${MOCK_MAX_FOLDER_DEPTH} Ebenen)`,
+        status: 400,
+      }
+    }
+    names.push(name)
+  }
+
+  let parentFolderId = baseFolderId
+  for (const name of names) {
     const existing = mockLibraryFolders[libraryId] ?? []
     let folder = existing.find(
       (f) => (f.parentFolderId ?? null) === parentFolderId && f.name === name,

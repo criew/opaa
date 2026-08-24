@@ -259,6 +259,22 @@ describe('documentStore', () => {
     expect(useDocumentStore.getState().isUploading).toBe(false)
   })
 
+  it('qualifies the file name with folderPath in the upload error message (#823 review, Befund 5a)', async () => {
+    // Disambiguates two same-named files from different subfolders of a dragged-and-dropped tree
+    // - without folderPath, both would produce the identical uploadErrors message, which is both
+    // ambiguous to read and a duplicate React key where the list is rendered.
+    mockUploadDocument.mockRejectedValueOnce(new Error('Diese Datei ist bereits vorhanden'))
+    const file = new File(['x'], 'protokoll.pdf')
+
+    await expect(
+      useDocumentStore.getState().uploadNewDocument('library-1', file, 'Protokolle/2026'),
+    ).rejects.toThrow()
+
+    expect(useDocumentStore.getState().uploadErrors).toEqual([
+      'Diese Datei ist bereits vorhanden (Datei: Protokolle/2026/protokoll.pdf)',
+    ])
+  })
+
   it('keeps an earlier upload error when a later file in the same batch succeeds', async () => {
     mockUploadDocument.mockRejectedValueOnce(new Error('Ursache A'))
     await expect(
@@ -299,6 +315,22 @@ describe('documentStore', () => {
     useDocumentStore.getState().clearUploadErrors()
 
     expect(useDocumentStore.getState().uploadErrors).toEqual([])
+  })
+
+  it('reportUploadError appends a message without going through a file upload', () => {
+    // #823 review, Befund 2: used by the folder-upload paths (LibraryDetailPage) for a
+    // batch-level, client-side rejection (unsupported format, unreadable file) that names no
+    // single uploadNewDocument call.
+    useDocumentStore.getState().reportUploadError('3 Dateien wurden übersprungen.')
+
+    expect(useDocumentStore.getState().uploadErrors).toEqual(['3 Dateien wurden übersprungen.'])
+
+    useDocumentStore.getState().reportUploadError('1 Datei konnte nicht gelesen werden.')
+
+    expect(useDocumentStore.getState().uploadErrors).toEqual([
+      '3 Dateien wurden übersprungen.',
+      '1 Datei konnte nicht gelesen werden.',
+    ])
   })
 
   it('reloads the current page from the server after a successful deletion', async () => {
