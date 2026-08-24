@@ -92,6 +92,27 @@ pnpm test                               # Stack via Docker Compose starten, Suit
 
 ## Code-Konventionen
 
+### Code-Kommentare
+
+Ein Kommentar beschreibt den Verhaltensvertrag oder eine nicht offensichtliche Invariante — in 1–5 Zeilen. Entstehungsgeschichte (Review-Runden, verworfene Alternativen, Fehlversuche) gehört in Commit-Nachrichten und PR-Beschreibungen, nicht in den Code; sie ist dort über `git log`/`git blame` jederzeit auffindbar. Eine Issue-/PR-Referenz im Code ist nur zulässig, wenn sie eine aktive Einschränkung markiert (z. B. „Workaround bis Upstream-Fix in #NNN"). Gilt projektweit — Javadoc, TSDoc, Inline-Kommentare in `.java`/`.ts`/`.tsx`, sowie `application.yml`, `build.gradle.kts`, `vite.config.ts` und Workflow-Dateien.
+
+**Negativbeispiel** (Nacherzählung statt Vertrag):
+
+```java
+// PR #612 review, finding 3: ursprünglich wurde hier direkt der Repository-Call
+// verwendet, das führte aber zu einem N+1-Problem, siehe Diskussion in #598.
+// Nach Rücksprache mit dem Reviewer wurde stattdessen auf den Cache umgestellt,
+// der in #545 eingeführt wurde. Vorsicht: #501 hatte hier bereits einen
+// ähnlichen Bug, der Cache muss bei jedem Schreibpfad invalidiert werden.
+```
+
+**Positivbeispiel** (Vertrag/Invariante):
+
+```java
+// Gecachte Werte werden bei jedem Schreibpfad in {@link SpaceService} invalidiert;
+// ein Cache-Hit ist daher immer konsistent mit dem zuletzt committeten Zustand.
+```
+
 ### Commit-Nachrichten
 
 [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) verwenden:
