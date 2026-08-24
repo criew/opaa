@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios'
 import { create } from 'zustand'
 import type {
   LibraryDocumentResponse,
@@ -13,6 +14,16 @@ import {
   uploadDocument as uploadDocumentRequest,
 } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+
+// #822 review, finding 2: normalizeError (services/api.ts) attaches the original AxiosError as
+// `cause` - this reaches into that to tell a real 404 (unknown/foreign folderId, ADR-0020) apart
+// from any other failure (500, network outage), which must surface as a normal error instead of
+// silently bouncing the caller back to the library's root.
+function isNotFoundError(err: unknown): boolean {
+  return (
+    err instanceof Error && err.cause instanceof AxiosError && err.cause.response?.status === 404
+  )
+}
 
 const POLL_INTERVAL_MS = 3000
 export const DEFAULT_PAGE_SIZE = 20
@@ -118,63 +129,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   loadDocuments: async (libraryId, options) => {
-    // #575: captured before the await below - checked again once it resolves, so a response
-    // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
-    // previous user's documents into the now-emptied store, and does not start a poll interval
-    // whose ticks would keep writing into it afterwards.
-    const sessionEpoch = currentSessionEpoch()
-    const previous = get().pageStateByLibrary[libraryId] ?? defaultPageState
-    const page = options?.page ?? previous.page
-    const size = options?.size ?? previous.size
-    const q = options?.q ?? previous.q
-    // #822: an explicit `folderId` key (even null, meaning "navigate to the root") always wins over
-    // the previously loaded folder - only its *absence* from options falls back to `previous`. A
-    // plain `options?.folderId ?? previous.folderId` could not tell "navigate to root" (null) apart
-    // from "keep browsing the same folder" (undefined).
-    const folderId =
-      options && Object.prototype.hasOwnProperty.call(options, 'folderId')
-        ? (options.folderId ?? null)
-        : previous.folderId
-
-    set({ isLoading: true, error: null })
-    try {
-      const response = await getLibraryDocuments(libraryId, { page, size, q, folderId })
-      if (isStaleSessionEpoch(sessionEpoch)) return
-      set({
-        documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: response.items },
-        pageStateByLibrary: {
-          ...get().pageStateByLibrary,
-          [libraryId]: {
-            page: response.page,
-            size: response.size,
-            q,
-            totalElements: response.totalElements,
-            folderId,
-          },
-        },
-        foldersByLibrary: { ...get().foldersByLibrary, [libraryId]: response.folders },
-        breadcrumbByLibrary: { ...get().breadcrumbByLibrary, [libraryId]: response.breadcrumb },
-        isLoading: false,
-      })
-      if (hasPendingDocument(response.items)) {
-        startPolling(libraryId, set, get)
-      } else {
-        get().stopPolling(libraryId)
-      }
-    } catch (err) {
-      if (isStaleSessionEpoch(sessionEpoch)) return
-      // #822: GET .../documents validates a given folderId regardless of q and rejects an
-      // unknown/foreign one with 404 (ADR-0020) - rather than surface that as a dead "loading
-      // failed" error, fall back to the library's root exactly once (folderId is null on the retry,
-      // so this branch cannot loop) and let the caller show a recoverable hint instead.
-      if (folderId !== null) {
-        set({ folderNotFoundMessage: 'Der Ordner wurde nicht gefunden. Zurück zur Wurzelebene.' })
-        await get().loadDocuments(libraryId, { ...options, folderId: null, page: 0 })
-        return
-      }
-      const message = err instanceof Error ? err.message : 'Dokumente konnten nicht geladen werden'
-      set({ error: message, isLoading: false })
-    }
+    await runLoadDocuments(libraryId, options, set, get, false)
   },
 
   uploadNewDocument: async (libraryId: string, file: File) => {
@@ -293,6 +248,87 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     }
   },
 }))
+
+// The actual implementation behind the public loadDocuments action - pulled out to a module-level
+// function (mirroring reloadCurrentPage/startPolling below) so the folder-not-found fallback can
+// recurse into it directly with isFolderFallbackRetry=true (#822 review, finding 5), rather than
+// through get().loadDocuments(), which would immediately clear the very
+// folderNotFoundMessage this call is in the middle of setting.
+async function runLoadDocuments(
+  libraryId: string,
+  options: { page?: number; size?: number; q?: string; folderId?: string | null } | undefined,
+  set: (partial: Partial<DocumentState>) => void,
+  get: () => DocumentState,
+  isFolderFallbackRetry: boolean,
+) {
+  // #575: captured before the await below - checked again once it resolves, so a response
+  // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
+  // previous user's documents into the now-emptied store, and does not start a poll interval
+  // whose ticks would keep writing into it afterwards.
+  const sessionEpoch = currentSessionEpoch()
+  const previous = get().pageStateByLibrary[libraryId] ?? defaultPageState
+  const page = options?.page ?? previous.page
+  const size = options?.size ?? previous.size
+  const q = options?.q ?? previous.q
+  // #822: an explicit `folderId` key (even null, meaning "navigate to the root") always wins over
+  // the previously loaded folder - only its *absence* from options falls back to `previous`. A
+  // plain `options?.folderId ?? previous.folderId` could not tell "navigate to root" (null) apart
+  // from "keep browsing the same folder" (undefined).
+  const folderId =
+    options && Object.prototype.hasOwnProperty.call(options, 'folderId')
+      ? (options.folderId ?? null)
+      : previous.folderId
+
+  set({ isLoading: true, error: null })
+  try {
+    const response = await getLibraryDocuments(libraryId, { page, size, q, folderId })
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    set({
+      documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: response.items },
+      pageStateByLibrary: {
+        ...get().pageStateByLibrary,
+        [libraryId]: {
+          page: response.page,
+          size: response.size,
+          q,
+          totalElements: response.totalElements,
+          folderId,
+        },
+      },
+      foldersByLibrary: { ...get().foldersByLibrary, [libraryId]: response.folders },
+      breadcrumbByLibrary: { ...get().breadcrumbByLibrary, [libraryId]: response.breadcrumb },
+      isLoading: false,
+      // #822 review, finding 5: a genuinely new successful load means whichever folder used to be
+      // missing is no longer relevant - reset the hint so it does not keep showing once the user
+      // has navigated elsewhere. Suppressed for the fallback's own retry call itself (see the catch
+      // block below): that call's success is what *produces* the hint, so resetting it here too
+      // would erase it before it was ever shown.
+      ...(isFolderFallbackRetry ? {} : { folderNotFoundMessage: null }),
+    })
+    if (hasPendingDocument(response.items)) {
+      startPolling(libraryId, set, get)
+    } else {
+      get().stopPolling(libraryId)
+    }
+  } catch (err) {
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    // #822: GET .../documents validates a given folderId regardless of q and rejects an
+    // unknown/foreign one with 404 (ADR-0020) - rather than surface that as a dead "loading
+    // failed" error, fall back to the library's root exactly once (folderId is null on the retry,
+    // so this branch cannot loop) and let the caller show a recoverable hint instead.
+    //
+    // #822 review, finding 2: scoped to an actual 404 - any other failure (500, network outage)
+    // must not bounce the caller out of the folder they were looking at, it must surface as a
+    // normal error like every other endpoint here.
+    if (folderId !== null && isNotFoundError(err)) {
+      set({ folderNotFoundMessage: 'Der Ordner wurde nicht gefunden. Zurück zur Wurzelebene.' })
+      await runLoadDocuments(libraryId, { ...options, folderId: null, page: 0 }, set, get, true)
+      return
+    }
+    const message = err instanceof Error ? err.message : 'Dokumente konnten nicht geladen werden'
+    set({ error: message, isLoading: false })
+  }
+}
 
 // Re-fetches the page/search a library's document list is currently showing (#517 code review,
 // finding 2) - shared by uploadNewDocument/removeDocument so a mutation is always followed by

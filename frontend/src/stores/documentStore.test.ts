@@ -1,7 +1,23 @@
+import { AxiosError } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentStore } from './documentStore'
 import { resetAllStores } from './resettableStores'
 import type { LibraryDocumentPageResponse, LibraryDocumentResponse } from '../types/api'
+
+// #822 review, finding 2: normalizeError (services/api.ts) attaches the original AxiosError as
+// `cause` - mirrors that shape here so isNotFoundError (documentStore.ts) has something real to
+// distinguish a 404 from any other failure, the same way api.test.ts's axiosErrorWithResponse
+// stands in for a real AxiosError elsewhere in this codebase.
+function notFoundError(message = 'Ordner nicht gefunden'): Error {
+  const axiosError = new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
+    status: 404,
+    statusText: '',
+    headers: {},
+    config: {} as never,
+    data: { error: message },
+  })
+  return new Error(message, { cause: axiosError })
+}
 
 const {
   mockGetLibraryDocuments,
@@ -128,7 +144,7 @@ describe('documentStore', () => {
   })
 
   it('falls back to the root and surfaces a hint when a folderId is unknown/foreign (404)', async () => {
-    mockGetLibraryDocuments.mockRejectedValueOnce(new Error('Ordner nicht gefunden'))
+    mockGetLibraryDocuments.mockRejectedValueOnce(notFoundError())
     mockGetLibraryDocuments.mockResolvedValueOnce(page([indexedDocument]))
 
     await useDocumentStore.getState().loadDocuments('library-1', { folderId: 'unknown-folder' })
@@ -142,6 +158,31 @@ describe('documentStore', () => {
     expect(useDocumentStore.getState().pageStateByLibrary['library-1'].folderId).toBeNull()
     expect(useDocumentStore.getState().folderNotFoundMessage).not.toBeNull()
     expect(useDocumentStore.getState().error).toBeNull()
+  })
+
+  // #822 review, finding 2: a bare 404 message string is not enough evidence to bounce a caller
+  // out of the folder they were looking at - only an actual AxiosError-carried 404 status may
+  // trigger the root fallback. Anything else (500, network outage, or - as here - an Error that
+  // merely happens to read "nicht gefunden" without a 404 cause) must surface as a normal error
+  // and leave the requested folder alone.
+  it('does not fall back to the root on a non-404 failure, even one that reads "nicht gefunden"', async () => {
+    mockGetLibraryDocuments.mockRejectedValueOnce(new Error('Ordner nicht gefunden'))
+
+    await useDocumentStore.getState().loadDocuments('library-1', { folderId: 'folder-1' })
+
+    expect(mockGetLibraryDocuments).toHaveBeenCalledTimes(1)
+    expect(useDocumentStore.getState().folderNotFoundMessage).toBeNull()
+    expect(useDocumentStore.getState().error).toBe('Ordner nicht gefunden')
+    expect(useDocumentStore.getState().isLoading).toBe(false)
+  })
+
+  it('resets a stale folderNotFoundMessage once a load succeeds', async () => {
+    useDocumentStore.setState({ folderNotFoundMessage: 'Der Ordner wurde nicht gefunden.' })
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([indexedDocument]))
+
+    await useDocumentStore.getState().loadDocuments('library-1')
+
+    expect(useDocumentStore.getState().folderNotFoundMessage).toBeNull()
   })
 
   it('shows a German error message when loading fails', async () => {

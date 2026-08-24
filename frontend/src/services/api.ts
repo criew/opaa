@@ -75,8 +75,12 @@ export function normalizeError(err: unknown, context?: 'upload'): never {
   if (err instanceof AxiosError) {
     const data = err.response?.data
 
+    // #822 review: `cause` keeps the original AxiosError (and thus its response.status) reachable
+    // for a caller that needs to distinguish e.g. 404 from any other failure - documentStore's
+    // folder-not-found fallback is the first to rely on this; every other caller keeps using the
+    // plain German message and can ignore cause entirely.
     if (isErrorResponse(data)) {
-      throw new Error(data.error)
+      throw new Error(data.error, { cause: err })
     }
 
     // #519: the compose reverse proxy (frontend/nginx.conf) answers uploads above its own
@@ -84,14 +88,16 @@ export function normalizeError(err: unknown, context?: 'upload'): never {
     // isErrorResponse above is false for that body, so this would otherwise fall through to the
     // generic "HTTP 413: ..." message below, which is neither German nor understandable to users.
     if (err.response?.status === 413 && context === 'upload') {
-      throw new Error('Die Datei ist zu groß für den Upload. Bitte eine kleinere Datei wählen.')
+      throw new Error('Die Datei ist zu groß für den Upload. Bitte eine kleinere Datei wählen.', {
+        cause: err,
+      })
     }
 
     if (err.response?.status) {
-      throw new Error(`HTTP ${err.response.status}: ${err.message}`)
+      throw new Error(`HTTP ${err.response.status}: ${err.message}`, { cause: err })
     }
 
-    throw new Error(err.message)
+    throw new Error(err.message, { cause: err })
   }
   throw err
 }
