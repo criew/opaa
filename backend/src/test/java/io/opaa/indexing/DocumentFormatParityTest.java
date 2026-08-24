@@ -8,6 +8,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
@@ -39,10 +40,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * has needed one so far. {@link SupportedDocumentFormatsTest} already exercises {@code
  * application/msword} detection directly against the media type string.
  *
- * <p>The network path's decision is exercised the same way {@link UrlIndexingExecutor#execute}
- * makes it: from a byte prefix, via {@link SupportedDocumentFormats#detectMediaType(byte[])}, not
- * from the full file - {@code UrlFileDownloader} only ever hands the executor a prefix before a
- * full download.
+ * <p>The network path's decision is exercised through {@link UrlIndexingExecutor#decideForEntry}
+ * itself, the exact call {@link UrlIndexingExecutor#execute} makes on a byte prefix before a full
+ * download - not a reimplementation of it, so this test cannot silently drift from production.
  */
 class DocumentFormatParityTest {
 
@@ -52,9 +52,12 @@ class DocumentFormatParityTest {
 
   private static SupportedDocumentFormats.ContentDecision networkPathDecision(
       Path file, String entryName) throws IOException {
-    byte[] prefix = Files.readAllBytes(file);
-    return SupportedDocumentFormats.decideForFileName(
-        entryName, SupportedDocumentFormats.detectMediaType(prefix));
+    byte[] fullContent = Files.readAllBytes(file);
+    byte[] prefix =
+        fullContent.length <= SupportedDocumentFormats.DETECTION_PREFIX_BYTES
+            ? fullContent
+            : Arrays.copyOf(fullContent, SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
+    return UrlIndexingExecutor.decideForEntry(prefix, entryName);
   }
 
   @ParameterizedTest

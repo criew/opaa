@@ -7,15 +7,21 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Refuses to start when {@code vector_store} already holds embeddings of a different dimension than
- * {@code spring.ai.vectorstore.pgvector.dimensions} (env: {@code OPAA_PGVECTOR_DIMENSIONS}). Spring
- * AI's own schema init only ever runs {@code CREATE TABLE IF NOT EXISTS}, so a changed dimensions
- * setting never reaches an existing table's column - without this guard, the mismatch only surfaces
- * as a cryptic pgvector error on the first indexing run afterwards. An empty or not-yet-created
- * {@code vector_store} has nothing to compare against and is not an error.
+ * Refuses to start when {@code vector_store}'s {@code embedding} column already has a different
+ * dimension than {@code spring.ai.vectorstore.pgvector.dimensions} (env: {@code
+ * OPAA_PGVECTOR_DIMENSIONS}). Spring AI's own schema init only ever runs {@code CREATE TABLE IF NOT
+ * EXISTS}, so a changed dimensions setting never reaches an existing table's column - without this
+ * guard, the mismatch only surfaces as a cryptic pgvector error on the first indexing run
+ * afterwards. Reads the column's own type modifier rather than an existing row, so an emptied (but
+ * still wrongly-dimensioned) table is caught too. An unbounded {@code vector} column ({@code
+ * atttypmod = -1}) or a not-yet-created table has nothing to compare against and is not an error.
  */
 @Component
 public class PgVectorDimensionsGuard implements ApplicationRunner {
+
+  private static final String EMBEDDING_COLUMN_TYPMOD_SQL =
+      "SELECT atttypmod FROM pg_attribute WHERE attrelid = to_regclass('vector_store') AND"
+          + " attname = 'embedding' AND NOT attisdropped";
 
   private final JdbcTemplate jdbcTemplate;
   private final int configuredDimensions;
@@ -29,21 +35,15 @@ public class PgVectorDimensionsGuard implements ApplicationRunner {
 
   @Override
   public void run(ApplicationArguments args) {
-    Boolean tableExists =
-        jdbcTemplate.queryForObject(
-            "SELECT to_regclass('vector_store') IS NOT NULL", Boolean.class);
-    if (!Boolean.TRUE.equals(tableExists)) {
-      return;
-    }
     Integer actualDimensions =
-        jdbcTemplate.query(
-            "SELECT vector_dims(embedding) FROM vector_store LIMIT 1",
-            rs -> rs.next() ? rs.getInt(1) : null);
-    if (actualDimensions == null || actualDimensions.equals(configuredDimensions)) {
+        jdbcTemplate.query(EMBEDDING_COLUMN_TYPMOD_SQL, rs -> rs.next() ? rs.getInt(1) : null);
+    if (actualDimensions == null
+        || actualDimensions == -1
+        || actualDimensions == configuredDimensions) {
       return;
     }
     throw new IllegalStateException(
-        ("vector_store already holds embeddings with %d dimensions, but "
+        ("vector_store's embedding column already has %d dimensions, but "
                 + "spring.ai.vectorstore.pgvector.dimensions (OPAA_PGVECTOR_DIMENSIONS) is "
                 + "configured to %d. Schema init never alters an existing table's column, so "
                 + "this must be fixed manually: either restore the previous dimensions/embedding "

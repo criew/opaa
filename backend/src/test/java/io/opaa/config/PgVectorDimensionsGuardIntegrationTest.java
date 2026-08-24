@@ -16,17 +16,22 @@ import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Against a real Postgres/pgvector instance rather than a mock - the guard's own SQL ({@code
- * to_regclass}, {@code vector_dims}) is exactly what needs proving, not the branching around it.
+ * Against a real Postgres/pgvector instance rather than a mock - the guard's own SQL against {@code
+ * pg_attribute} is exactly what needs proving, not the branching around it.
  *
- * <p>{@code spring.ai.vectorstore.pgvector.initialize-schema=false} (one deviation from the
- * canonical properties): Spring AI's own {@code CREATE TABLE IF NOT EXISTS} would otherwise create
- * {@code vector_store} with the configured dimension before a test gets to simulate a table stuck
- * at a different, older one.
+ * <p>Two deviations from the canonical properties, both documented here: {@code
+ * spring.ai.vectorstore.pgvector.dimensions=1536} is pinned explicitly so this test does not depend
+ * on an operator's {@code OPAA_PGVECTOR_DIMENSIONS} override, and {@code
+ * spring.ai.vectorstore.pgvector.initialize-schema=false} because Spring AI's own {@code CREATE
+ * TABLE IF NOT EXISTS} would otherwise create {@code vector_store} with the configured dimension
+ * before a test gets to simulate a table stuck at a different, older one.
  */
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = "spring.ai.vectorstore.pgvector.initialize-schema=false")
+    properties = {
+      "spring.ai.vectorstore.pgvector.dimensions=1536",
+      "spring.ai.vectorstore.pgvector.initialize-schema=false"
+    })
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles({"local", "dev"})
 @Testcontainers(disabledWithoutDocker = true)
@@ -46,7 +51,7 @@ class PgVectorDimensionsGuardIntegrationTest {
   }
 
   @Test
-  void doesNothingWhenVectorStoreIsEmpty() {
+  void doesNothingWhenVectorStoreIsEmptyAndDimensionsMatch() {
     createVectorStore(1536);
 
     assertThatCode(() -> guard.run(new DefaultApplicationArguments())).doesNotThrowAnyException();
@@ -58,6 +63,18 @@ class PgVectorDimensionsGuardIntegrationTest {
     insertEmbedding(1536);
 
     assertThatCode(() -> guard.run(new DefaultApplicationArguments())).doesNotThrowAnyException();
+  }
+
+  @Test
+  void failsFastWhenAnEmptyTableHasTheWrongColumnDimension() {
+    // TRUNCATE scenario: no row to read a dimension from, but the column itself is still wrong -
+    // reading the column's own type modifier (rather than a row) catches this too.
+    createVectorStore(768);
+
+    assertThatThrownBy(() -> guard.run(new DefaultApplicationArguments()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("768")
+        .hasMessageContaining("1536");
   }
 
   @Test

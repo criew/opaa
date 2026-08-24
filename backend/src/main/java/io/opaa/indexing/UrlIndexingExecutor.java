@@ -134,9 +134,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                   authHeader,
                   entry.url(),
                   SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
-          SupportedDocumentFormats.ContentDecision decision =
-              SupportedDocumentFormats.decideForFileName(
-                  entry.name(), SupportedDocumentFormats.detectMediaType(prefix));
+          SupportedDocumentFormats.ContentDecision decision = decideForEntry(prefix, entry.name());
           if (!decision.supported()) {
             // Rejected documents are part of the job, not invisible - each one becomes its own
             // UNSUPPORTED_FORMAT event. Rejected here, before #download ever runs - the full file
@@ -277,6 +275,17 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
         && lastModified.equals(existing.get().getLastModifiedRemote())
         && existing.get().getStatus() == DocumentStatus.INDEXED
         && targetLibrary.getId().equals(existing.get().getLibraryId());
+  }
+
+  /**
+   * Decides whether a crawled entry is supported from a leading byte sample of its content, never
+   * from {@code entryName} alone - the same decision {@link #execute} makes before downloading an
+   * entry in full. Package-visible so {@code DocumentFormatParityTest} exercises this exact call
+   * instead of a reimplementation that could silently drift from it.
+   */
+  static SupportedDocumentFormats.ContentDecision decideForEntry(byte[] prefix, String entryName) {
+    return SupportedDocumentFormats.decideForFileName(
+        entryName, SupportedDocumentFormats.detectMediaType(prefix));
   }
 
   /**
