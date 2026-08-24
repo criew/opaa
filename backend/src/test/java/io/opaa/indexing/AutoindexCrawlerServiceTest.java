@@ -421,6 +421,52 @@ class AutoindexCrawlerServiceTest {
     assertThat(entries.getFirst().name()).isEqualTo("readme.txt");
   }
 
+  // --- #836 PR review ("Mitnahme"): relative hrefs must not escape above baseUrl -------------
+
+  @Test
+  void tableLayoutDoesNotEscapeAboveBaseUrlViaARelativeParentLink() {
+    // parseHtmlTableLayout had no under-baseUrl check at all for relative hrefs (unlike
+    // parseLinkBasedLayout below) - href="../" resolves, via resolveUrl's naive baseUrl+relative
+    // concatenation, to a URL that only reveals it climbed back out of baseUrl's own subtree once
+    // actually normalized.
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[DIR]"></td><td><a href="../">../</a></td><td>2025-01-01</td><td>-</td></tr>
+        <tr><td><img alt="[TXT]"></td><td><a href="file.txt">file.txt</a></td><td>2025-01-01</td><td>1</td></tr>
+        </table>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://example.com/files/sub/", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().name()).isEqualTo("file.txt");
+  }
+
+  @Test
+  void linkBasedLayoutDoesNotEscapeAboveBaseUrlViaARelativePathThatNormalizesOutside() {
+    // A relative href's *raw* resolved URL always starts with baseUrl by construction (resolveUrl
+    // simply concatenates), no matter how many ".." segments it carries - so the pre-#836
+    // startsWith(normalizedBaseUrl) check on that raw string was vacuous for every relative href.
+    // Only normalizing first (staysUnderBase) actually catches an escape like this one.
+    String html =
+        """
+        <html><head><title>Index of /files/sub/</title></head><body>
+        <pre><a href="sibling/../../escape/">escape</a>\
+                  10-Jun-2025 14:22  1K
+        <a href="readme.txt">readme.txt</a>\
+                  10-Jun-2025 14:22  1K
+        </pre></body></html>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://example.com/files/sub", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().name()).isEqualTo("readme.txt");
+  }
+
   @Test
   void derivesNameFromHrefWhenTheDisplayedNameIsTruncated() {
     // #550 review, finding 4: Apache's "IndexOptions NameWidth" truncates only the *displayed*

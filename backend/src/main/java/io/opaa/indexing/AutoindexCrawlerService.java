@@ -70,10 +70,26 @@ public class AutoindexCrawlerService {
   }
 
   /**
+   * The outcome of {@link #crawl} (#836 review): {@code entries} is exactly what the pre-#836
+   * signature returned, {@code depthLimitReached}/{@code entryLimitReached} tell the caller whether
+   * either of {@link CrawlProperties}'s limits actually cut the crawl short - a caller with access
+   * to a run's {@code IndexingRunEventRecorder} (currently only {@code UrlIndexingExecutor}) uses
+   * these to record a truncation event, so a capped run is distinguishable from a complete one in
+   * the UI instead of only in the application log.
+   */
+  public record CrawlResult(
+      List<CrawledFileEntry> entries, boolean depthLimitReached, boolean entryLimitReached) {
+
+    boolean truncated() {
+      return depthLimitReached || entryLimitReached;
+    }
+  }
+
+  /**
    * Crawls an Apache mod_autoindex URL recursively and returns all discovered file entries
    * (non-directory entries only).
    */
-  public List<CrawledFileEntry> crawl(
+  public CrawlResult crawl(
       String baseUrl,
       String proxyHost,
       int proxyPort,
@@ -86,18 +102,55 @@ public class AutoindexCrawlerService {
     String authHeader = buildAuthHeader(username, password);
 
     List<CrawledFileEntry> results = new ArrayList<>();
-    crawlRecursive(
-        httpClient, authHeader, baseUrl, 0, results, new HashSet<>(), new boolean[] {false});
-    return results;
+    TruncationTracker truncation = new TruncationTracker();
+    crawlRecursive(httpClient, authHeader, baseUrl, 0, results, new HashSet<>(), truncation);
+    return new CrawlResult(results, truncation.depthLimitReached, truncation.entryLimitReached);
+  }
+
+  /**
+   * One log message per truncation reason, not per occurrence (#836 review, finding 2) - depth and
+   * entry-count truncation used to share a single flag, so once the depth limit logged first, the
+   * entry limit's own message never appeared even though it independently applied too.
+   */
+  private static final class TruncationTracker {
+    private boolean depthLimitReached;
+    private boolean entryLimitReached;
+
+    void logDepthLimitOnce(int maxDepth, String url) {
+      if (!depthLimitReached) {
+        depthLimitReached = true;
+        log.info(
+            "Crawl depth limit ({}) reached at {}, not descending further"
+                + " (opaa.indexing.crawl.max-depth)",
+            maxDepth,
+            url);
+      }
+    }
+
+    void logEntryLimitOnce(int maxEntries, String url) {
+      if (!entryLimitReached) {
+        entryLimitReached = true;
+        log.info(
+            "Crawl entry limit ({}) reached, truncating remaining entries under {}"
+                + " (opaa.indexing.crawl.max-entries)",
+            maxEntries,
+            url);
+      }
+    }
   }
 
   /**
    * Recurses into {@code url} unless a limit already stops it (#836): {@code visited} (normalized
-   * URLs) breaks a cycle back to a directory already crawled, {@code depth} bounds a same-origin
-   * cycle that never repeats a URL exactly (e.g. a symlink loop growing the URL by one segment per
-   * hop), and {@code results} being at {@link CrawlProperties#maxEntries} stops collecting further
-   * entries. Every limit truncates - logged once via {@code truncationLogged}, never thrown as an
-   * error, mirroring {@code RssFeedIndexingExecutor}'s {@code maxEntries} treatment.
+   * URLs) breaks a cycle back to a directory already crawled; {@code depth} exceeding {@link
+   * CrawlProperties#maxDepth} bounds a same-origin cycle that never repeats a URL exactly (e.g. a
+   * symlink loop growing the URL by one segment per hop) - the root is depth 0, so a crawl visits
+   * depths {@code 0..maxDepth} inclusive; and {@code visited} (not just {@code results}) reaching
+   * {@link CrawlProperties#maxEntries} bounds a directory-only symlink cycle (#836 review, finding
+   * 1) that {@code results} alone would never catch, since a directory linking only to further
+   * directories never grows {@code results} at all and would otherwise be bounded by {@code
+   * maxDepth} alone - for a cycle with branching factor {@code b}, still up to {@code b^maxDepth}
+   * requests. Every limit truncates - logged once per reason via {@code truncation}, never thrown
+   * as an error, mirroring {@code RssFeedIndexingExecutor}'s {@code maxEntries} treatment.
    */
   private void crawlRecursive(
       HttpClient httpClient,
@@ -106,20 +159,19 @@ public class AutoindexCrawlerService {
       int depth,
       List<CrawledFileEntry> results,
       Set<String> visited,
-      boolean[] truncationLogged)
+      TruncationTracker truncation)
       throws IOException, InterruptedException {
 
     if (depth > crawlProperties.maxDepth()) {
-      logTruncationOnce(
-          truncationLogged,
-          "Crawl depth limit ({}) reached at {}, not descending further"
-              + " (opaa.indexing.crawl.max-depth)",
-          crawlProperties.maxDepth(),
-          url);
+      truncation.logDepthLimitOnce(crawlProperties.maxDepth(), url);
       return;
     }
     if (!visited.add(normalizeUrl(url))) {
       log.debug("Skipping already-visited directory (cycle guard): {}", url);
+      return;
+    }
+    if (visited.size() > crawlProperties.maxEntries()) {
+      truncation.logEntryLimitOnce(crawlProperties.maxEntries(), url);
       return;
     }
 
@@ -129,31 +181,19 @@ public class AutoindexCrawlerService {
 
     for (CrawledFileEntry entry : entries) {
       if (results.size() >= crawlProperties.maxEntries()) {
-        logTruncationOnce(
-            truncationLogged,
-            "Crawl entry limit ({}) reached, truncating remaining entries under {}"
-                + " (opaa.indexing.crawl.max-entries)",
-            crawlProperties.maxEntries(),
-            url);
+        truncation.logEntryLimitOnce(crawlProperties.maxEntries(), url);
         return;
       }
       if (entry.isDirectory()) {
         try {
           crawlRecursive(
-              httpClient, authHeader, entry.url(), depth + 1, results, visited, truncationLogged);
+              httpClient, authHeader, entry.url(), depth + 1, results, visited, truncation);
         } catch (IOException e) {
           log.warn("Failed to crawl directory {}: {}", entry.url(), e.getMessage());
         }
       } else {
         results.add(entry);
       }
-    }
-  }
-
-  private void logTruncationOnce(boolean[] truncationLogged, String format, Object... args) {
-    if (!truncationLogged[0]) {
-      truncationLogged[0] = true;
-      log.info(format, args);
     }
   }
 
@@ -170,6 +210,20 @@ public class AutoindexCrawlerService {
     } catch (IllegalArgumentException e) {
       return url;
     }
+  }
+
+  /**
+   * Whether {@code fullUrl} stays inside {@code baseUrl}'s own subtree (#836 review, "Mitnahme") -
+   * both sides are normalized via {@link #normalizeUrl} before comparing, not compared as raw
+   * strings: a relative href like {@code "../"} resolves, via {@link #resolveUrl}'s naive
+   * string-concatenation, to a URL whose raw string still starts with {@code baseUrl} even though
+   * it climbs back out of it once the {@code ".."} segment is actually collapsed. Used by both
+   * {@link #parseHtmlTableLayout} and {@link #parseLinkBasedLayout} so a page's own links can never
+   * walk a crawl outside the directory it was asked to start at.
+   */
+  private static boolean staysUnderBase(String baseUrl, String fullUrl) {
+    String normalizedBase = normalizeUrl(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/");
+    return normalizeUrl(fullUrl).startsWith(normalizedBase);
   }
 
   String fetchPage(HttpClient httpClient, String authHeader, String url)
@@ -212,9 +266,10 @@ public class AutoindexCrawlerService {
    * {@code <ul>}) - but only if {@link #looksLikeDirectoryListing(Document)} recognizes the page as
    * a listing at all (#550 review). Without that gate, an ordinary homepage would be crawled as a
    * directory too: every link with a trailing {@code /} becomes a {@code DIR} entry {@link #crawl}
-   * then recurses into, with no bound on depth or visited URLs - a same-origin navigation cycle
-   * (say, a calendar page linking {@code .../2026/} which links back to itself) would recurse
-   * forever.
+   * then recurses into - a same-origin navigation cycle (say, a calendar page linking {@code
+   * .../2026/} which links back to itself) would otherwise cost real requests up to {@link
+   * CrawlProperties#maxDepth} before the depth and visited-URL guards (#836) stop it, rather than
+   * never being descended into at all.
    */
   List<CrawledFileEntry> parseDirectory(String html, String baseUrl, int depth) {
     if (html == null) {
@@ -332,7 +387,15 @@ public class AutoindexCrawlerService {
         }
         fullUrl = href;
       } else {
+        // #836 review ("Mitnahme"): unlike parseLinkBasedLayout below, this branch had no
+        // under-baseUrl check at all - a relative href like "../" resolves (via the naive
+        // baseUrl+relative concatenation resolveUrl does) to a URL that, once normalized, escapes
+        // above baseUrl's own subtree, letting a crawl wander into unrelated same-origin pages a
+        // listing happens to link to instead of staying inside the directory it was asked to crawl.
         fullUrl = resolveUrl(baseUrl, href);
+        if (!staysUnderBase(baseUrl, fullUrl)) {
+          continue;
+        }
       }
 
       // #229: derived from href, not linkText, for the same reason deriveEntryName already exists
@@ -362,7 +425,6 @@ public class AutoindexCrawlerService {
   private List<CrawledFileEntry> parseLinkBasedLayout(Document doc, String baseUrl, int depth) {
     List<CrawledFileEntry> entries = new ArrayList<>();
     Elements links = doc.select("a[href]");
-    String normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
 
     for (Element link : links) {
       String href = link.attr("href");
@@ -391,14 +453,17 @@ public class AutoindexCrawlerService {
         // baseUrl (not just same-origin) - this is the layout guessed purely from the presence of
         // links, so it must not wander off into unrelated same-origin pages a listing happens to
         // link to (a "back to homepage" link, a stylesheet), which is exactly what caused the
-        // uncontrolled recursion this review flagged in the first place.
-        if (!isSameOriginAsBase(baseUrl, href) || !href.startsWith(normalizedBaseUrl)) {
+        // uncontrolled recursion this review flagged in the first place. #836 review ("Mitnahme"):
+        // staysUnderBase normalizes both sides before comparing, not the raw strings this branch
+        // used to compare with startsWith - an already-normalized absolute href never differs, but
+        // keeps this branch and the relative one below consistent.
+        if (!isSameOriginAsBase(baseUrl, href) || !staysUnderBase(baseUrl, href)) {
           continue;
         }
         fullUrl = href;
       } else {
         fullUrl = resolveUrl(baseUrl, href);
-        if (!fullUrl.startsWith(normalizedBaseUrl)) {
+        if (!staysUnderBase(baseUrl, fullUrl)) {
           continue;
         }
       }

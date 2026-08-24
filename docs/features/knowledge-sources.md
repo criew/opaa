@@ -261,7 +261,12 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
 **Ablauf eines Laufs:**
 
 1. Die Verzeichnisliste unter der angegebenen Adresse wird abgerufen und **rekursiv** durch die
-   Unterverzeichnisse verfolgt.
+   Unterverzeichnisse verfolgt — begrenzt durch eine maximale Rekursionstiefe und eine Obergrenze
+   für die Gesamtzahl gecrawlter Einträge (`OPAA_INDEXING_CRAWL_MAX_DEPTH`,
+   `OPAA_INDEXING_CRAWL_MAX_ENTRIES`, siehe [Umgebungsvariablen](../deployment.md#alle-umgebungsvariablen)),
+   damit ein Zyklus auf dem Zielserver (z. B. eine Symlink-Schleife) nicht zu endloser Rekursion
+   führt (#836). Ein durch eines dieser Limits abgeschnittener Lauf wird als solcher protokolliert,
+   nicht als Fehler behandelt.
 2. Die gefundenen Einträge werden auf die verarbeitbaren Dateitypen gefiltert (siehe
    [Welche Dateien OPAA verarbeitet](./data-indexing-rag.md#welche-dateien-opaa-verarbeitet)).
 3. Der **Änderungszeitpunkt aus der Liste** entscheidet, ob überhaupt geladen wird. Ein unverändertes

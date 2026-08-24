@@ -91,11 +91,24 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       log.info("Starting URL crawl of: {}", url);
 
       // Step 1: Crawl directory listing
-      List<AutoindexCrawlerService.CrawledFileEntry> allFiles =
+      AutoindexCrawlerService.CrawlResult crawlResult =
           crawlerService.crawl(
               url, proxyHost, proxyPort, username, password, request.insecureSsl());
+      List<AutoindexCrawlerService.CrawledFileEntry> allFiles = crawlResult.entries();
 
       log.info("Discovered {} files for URL indexing", allFiles.size());
+
+      // #836 review, finding 8: a run capped by CrawlProperties' depth or entry limit is only
+      // visible in the application log otherwise - recorded as REJECTED (mirrors this same
+      // executor's own QUOTA_EXCEEDED handling below: a configured limit declining further items
+      // is not a processing error) so the run's own protocol in the UI can tell a truncated crawl
+      // apart from a genuinely complete one.
+      if (crawlResult.truncated()) {
+        events.record(
+            IndexingEventCategory.REJECTED,
+            "Crawl wurde durch ein konfiguriertes Limit abgeschnitten (Tiefe oder Anzahl Einträge)",
+            url);
+      }
 
       progress.setTotal(allFiles.size());
       progress.report();

@@ -75,7 +75,7 @@ class UrlIndexingExecutorQuotaTest {
         new AutoindexCrawlerService.CrawledFileEntry(
             "over-quota.txt", "https://example.com/docs/over-quota.txt", null, "1", "FILE", 0);
     when(crawlerService.crawl(anyString(), any(), anyInt(), any(), any(), anyBoolean()))
-        .thenReturn(List.of(entry));
+        .thenReturn(new AutoindexCrawlerService.CrawlResult(List.of(entry), false, false));
 
     Path downloaded = tempDir.resolve("over-quota.txt");
     Files.writeString(downloaded, "content");

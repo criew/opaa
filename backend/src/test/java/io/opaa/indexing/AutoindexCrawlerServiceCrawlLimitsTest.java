@@ -9,7 +9,6 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,10 +16,11 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Covers #836: {@link AutoindexCrawlerService#crawl} must terminate on a cyclic directory structure
- * instead of recursing without bound - both the visited-URL guard (a genuine cycle back to an
- * already-crawled URL) and the depth limit (a same-origin cycle that never repeats a URL exactly,
- * e.g. a symlink loop growing the path by one segment per hop) are exercised against a stub {@link
- * HttpServer}.
+ * instead of recursing without bound - the visited-URL guard (a genuine cycle back to an
+ * already-crawled URL), the depth limit (a same-origin cycle that never repeats a URL exactly, e.g.
+ * a symlink loop growing the path by one segment per hop) and the entry limit (both for the file
+ * count itself and, since the #836 PR review, for the number of directories visited) are each
+ * exercised against a stub {@link HttpServer}.
  */
 class AutoindexCrawlerServiceCrawlLimitsTest {
 
@@ -81,14 +81,16 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
         new AutoindexCrawlerService(
             TargetAddressValidator.disabled(), new CrawlProperties(10, 100));
 
-    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+    AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
             Duration.ofSeconds(10),
             () -> service.crawl(baseUrl + "/a/", null, -1, null, null, false));
 
-    assertThat(entries)
+    assertThat(result.entries())
         .extracting(AutoindexCrawlerService.CrawledFileEntry::name)
         .containsExactlyInAnyOrder("file-a.txt", "file-b.txt");
+    assertThat(result.depthLimitReached()).isFalse();
+    assertThat(result.entryLimitReached()).isFalse();
     // Exactly one fetch per directory - the second visit of either is skipped by the visited
     // guard rather than fetched (and recursed into) again.
     assertThat(requestCount.get()).isEqualTo(2);
@@ -112,13 +114,70 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
         new AutoindexCrawlerService(
             TargetAddressValidator.disabled(), new CrawlProperties(maxDepth, 1000));
 
-    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+    AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
             Duration.ofSeconds(10),
             () -> service.crawl(baseUrl + "/", null, -1, null, null, false));
 
     // One file discovered per visited directory level (0..maxDepth), then truncated.
-    assertThat(entries).hasSize(maxDepth + 1);
+    assertThat(result.entries()).hasSize(maxDepth + 1);
+    assertThat(result.depthLimitReached()).isTrue();
+    // #836 PR review, finding 2: depth and entry-count truncation used to share a single "already
+    // logged" flag - this asserts they are now tracked (and reported back to the caller)
+    // independently: this scenario never comes close to the (much larger) entry limit.
+    assertThat(result.entryLimitReached()).isFalse();
     assertThat(requestCount.get()).isEqualTo(maxDepth + 1);
+  }
+
+  @Test
+  void entryLimitTruncatesFileCountAcrossTwoLevelsWithoutException()
+      throws IOException, InterruptedException {
+    // #836 PR review, finding 3: the entry (file-count) limit itself was untested. The root
+    // listing carries three files and a subdirectory; the subdirectory carries three more files -
+    // five in total spread over two levels, well above maxEntries=2.
+    AtomicInteger subRequestCount = new AtomicInteger();
+    server.createContext(
+        "/",
+        exchange ->
+            respond(
+                exchange,
+                """
+                <table>
+                <tr><td><img alt="[TXT]"></td><td><a href="file1.txt">file1.txt</a></td><td>2025-01-01</td><td>1</td></tr>
+                <tr><td><img alt="[TXT]"></td><td><a href="file2.txt">file2.txt</a></td><td>2025-01-01</td><td>1</td></tr>
+                <tr><td><img alt="[DIR]"></td><td><a href="sub/">sub</a></td><td>2025-01-01</td><td>-</td></tr>
+                <tr><td><img alt="[TXT]"></td><td><a href="file3.txt">file3.txt</a></td><td>2025-01-01</td><td>1</td></tr>
+                </table>
+                """));
+    server.createContext(
+        "/sub/",
+        exchange -> {
+          subRequestCount.incrementAndGet();
+          respond(
+              exchange,
+              """
+              <table>
+              <tr><td><img alt="[TXT]"></td><td><a href="file4.txt">file4.txt</a></td><td>2025-01-01</td><td>1</td></tr>
+              <tr><td><img alt="[TXT]"></td><td><a href="file5.txt">file5.txt</a></td><td>2025-01-01</td><td>1</td></tr>
+              </table>
+              """);
+        });
+
+    AutoindexCrawlerService service =
+        new AutoindexCrawlerService(TargetAddressValidator.disabled(), new CrawlProperties(10, 2));
+
+    AutoindexCrawlerService.CrawlResult result =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(10),
+            () -> service.crawl(baseUrl + "/", null, -1, null, null, false));
+
+    assertThat(result.entries())
+        .extracting(AutoindexCrawlerService.CrawledFileEntry::name)
+        .containsExactly("file1.txt", "file2.txt");
+    assertThat(result.entryLimitReached()).isTrue();
+    assertThat(result.depthLimitReached()).isFalse();
+    // The root listing's own third file and its subdirectory are both past the limit - the
+    // subdirectory (and therefore its three further files) is never even fetched.
+    assertThat(subRequestCount.get()).isZero();
   }
 }
