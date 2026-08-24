@@ -10,9 +10,10 @@ import java.time.LocalDate;
 /**
  * The single, system-wide retention configuration row
  * (docs/features/security-and-compliance.md#aufbewahrung) - a singleton, not one row per
- * organization. {@code retentionMonths} is bounded 12..120 (1..10 years) by a database check
- * constraint; {@link AuditRetentionSettingsService#updateRetention} validates the same bound before
- * ever writing, but the database is the binding guarantee.
+ * organization. {@code retentionMonths} is bounded 12..120 (1..10 years) by the database check
+ * constraint {@code chk_audit_retention_settings_months}; {@link
+ * AuditRetentionSettingsService#updateRetention} validates the same bound before ever writing, but
+ * the database is the binding guarantee.
  *
  * <p>{@code lastCutoff}/{@code lastRunMonth} are written exclusively by the {@code
  * opaa_audit_delete_expired_partitions()} database function - the application account's database
@@ -32,7 +33,10 @@ import java.time.LocalDate;
 @Table(name = "audit_retention_settings")
 public class AuditRetentionSettings {
 
-  /** Always {@code 1} - see the class Javadoc; enforced by a database check constraint. */
+  /**
+   * Always {@code 1} - see the class Javadoc; enforced by {@code
+   * chk_audit_retention_settings_singleton}.
+   */
   public static final int SINGLETON_ID = 1;
 
   @Id private Integer id;

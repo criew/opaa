@@ -1,8 +1,8 @@
 package io.opaa.audit;
 
 /**
- * Lifecycle of an {@link AuditIncidentScopeGrant}. Mirrored by a database check constraint; keep
- * both in sync.
+ * Lifecycle of an {@link AuditIncidentScopeGrant}. Mirrored by the database check constraint {@code
+ * chk_audit_incident_scope_grants_status}; keep both in sync.
  *
  * <p>Deliberately only two states: a grant is either awaiting the required second, different
  * approver ({@code PENDING}) or usable ({@code APPROVED}). There is no {@code REJECTED} state - an

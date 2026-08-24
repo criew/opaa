@@ -3,7 +3,8 @@ package io.opaa.audit;
 /**
  * The closed list of purposes an anlassbezogene Klärung
  * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt) may be
- * requested for. Mirrored by a database check constraint; keep both in sync.
+ * requested for. Mirrored by the database check constraint {@code
+ * chk_audit_incident_scope_grants_purpose}; keep both in sync.
  *
  * <p>The specification's Zweckausschluss ("arbeitsrechtliche, disziplinarische und
  * leistungsbezogene Fragen") is enforced here by omission, not by a runtime check against an

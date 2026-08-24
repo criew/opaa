@@ -178,9 +178,10 @@ public class AuditEventRecorder {
    * for a rejected attempt, so a denied attempt is recorded exactly like a successful one. {@code
    * scope} (access path plus whatever of object/event type, correlation ref, incident scope id and
    * time range that path takes) has no dedicated column and is serialised into {@code after}.
-   * {@code object_id} is the fixed {@link #AUDIT_LOG_SELF_OBJECT_ID}, not a per-query id: {@code
-   * audit_log} itself is what was accessed, once per organization, regardless of which rows the
-   * query touched.
+   * {@code reason} is required by the caller ({@link AuditQueryService#loggedAccess}) before this
+   * method is ever reached, not re-validated here. {@code object_id} is the fixed {@link
+   * #AUDIT_LOG_SELF_OBJECT_ID}, not a per-query id: {@code audit_log} itself is what was accessed,
+   * once per organization, regardless of which rows the query touched.
    *
    * <p>This is the one method in this class carrying its own {@code @Transactional}. {@code
    * Propagation.NOT_SUPPORTED} suspends whatever transaction is active on the calling thread for

@@ -8,10 +8,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * The separately held mapping from a person's pseudonym id to their real {@code user_id}. {@code
- * audit_log} carries only the pseudonym (as {@code actor_ref}/{@code subject_ref}); this is the
- * only place that connects it back to a person, and it is the row deleted - independently of and
- * without touching any {@link AuditLogEntry} - when the account is deleted, via an {@code ON DELETE
+ * The separately held mapping from a person's pseudonym id to their real {@code user_id}
+ * (docs/features/security-and-compliance.md#unveränderlichkeit-und-löschrecht). {@code audit_log}
+ * carries only the pseudonym (as {@code actor_ref}/{@code subject_ref}); this is the only place
+ * that connects it back to a person, and it is the row deleted - independently of and without
+ * touching any {@link AuditLogEntry} - when the account is deleted, via an {@code ON DELETE
  * CASCADE} foreign key so the removal happens at the database level.
  *
  * <p>Rows are only ever created via {@link AuditActorPseudonymRepository#insertIfAbsent}'s native

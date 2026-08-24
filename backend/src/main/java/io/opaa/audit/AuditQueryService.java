@@ -131,8 +131,8 @@ public class AuditQueryService {
             throw new IllegalArgumentException(
                 "objectType USER_ACCOUNT ist über diesen Weg nicht abfragbar - object_id wäre"
                     + " hier dieselbe Pseudonymkennung, die anderswo actor_ref ist; die"
-                    + " anlassbezogene Klärung oder die Rechtehistorie (#238) sind der zulässige"
-                    + " Weg für diese Frage");
+                    + " anlassbezogene Klärung oder die Rechtehistorie sind der zulässige Weg für"
+                    + " diese Frage");
           }
           return auditLogRepository
               .findByOrganizationIdAndObjectTypeAndObjectIdAndRecordedAtBetween(
@@ -297,7 +297,9 @@ public class AuditQueryService {
             organizationId, callerId, scope, AuditOutcome.DENIED, reason);
       } catch (RuntimeException loggingFailure) {
         log.error(
-            "Failed to write the DENIED self-log entry for a rejected audit_log access",
+            "Failed to write the DENIED self-log entry for a rejected audit_log access - the"
+                + " rejection is still reported correctly, but this attempt is missing its"
+                + " audit_log entry",
             loggingFailure);
         ex.addSuppressed(loggingFailure);
       }

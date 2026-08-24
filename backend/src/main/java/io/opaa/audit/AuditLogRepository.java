@@ -12,14 +12,18 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * AuditLogService#record}) and {@code findById}; nothing in this codebase calls {@code delete}/
  * {@code deleteAll} on it, and calling it would not do anything anyway - {@link
  * AuditLogEntry#isNew()} is unconditionally {@code true} (see its Javadoc), which Spring Data JPA's
- * {@code SimpleJpaRepository} treats as "nothing to delete" and silently skips.
+ * {@code SimpleJpaRepository} treats as "nothing to delete" and silently skips. Tests that need to
+ * remove a row written during setup go around this repository entirely, via {@code JdbcTemplate}
+ * against the unrestricted superuser account Testcontainers provides, not the real application
+ * account.
  *
  * <p>The actual, binding guarantee that an entry cannot be changed or removed once written is not
  * this interface - it is a database-level restriction on {@code audit_log} (see ADR-0015):
  * ownership moved to a dedicated {@code opaa_audit_owner} role the application account is not a
  * member of, which is what makes the restriction hold even against a bug or an injected statement
- * that bypasses this repository entirely - an application account that is merely denied privileges,
- * but still owns the table, could always grant itself those privileges back.
+ * that bypasses this repository entirely and names a specific partition directly - an application
+ * account that is merely denied privileges, but still owns the table, could always grant itself
+ * those privileges back.
  *
  * <p>Package-private, not {@code public}: the DB-level restriction above only ever blocked {@code
  * UPDATE}/{@code DELETE}; the application account is explicitly granted {@code SELECT}, so nothing

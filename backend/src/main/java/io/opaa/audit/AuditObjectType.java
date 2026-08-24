@@ -2,7 +2,8 @@ package io.opaa.audit;
 
 /**
  * The kind of object an {@link AuditLogEntry} is about ({@link AuditLogEntry#getObjectType()}). A
- * closed vocabulary, mirrored by a database check constraint; keep both in sync.
+ * closed vocabulary, mirrored by the database check constraint {@code chk_audit_log_object_type};
+ * keep both in sync.
  */
 public enum AuditObjectType {
   KNOWLEDGE_LIBRARY,
