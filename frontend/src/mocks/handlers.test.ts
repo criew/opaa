@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mockQueryResponses } from './fixtures'
+import { buildMockFolderPath } from './handlers'
 
 describe('MSW Handlers', () => {
   describe('GET /api/health', () => {
@@ -235,6 +236,58 @@ describe('MSW Handlers', () => {
       expect(response.status).toBe(409)
       const data = await response.json()
       expect(data.error).toMatch(/konnektorbibliothek/i)
+    })
+  })
+
+  // #822 review, finding 6b: PATCH/DELETE on a connector library's folders must reject with the
+  // same 409 POST already does, mirroring LibraryFolderService#requireUploadLibrary - and an
+  // uploaded document's folderPath is the full folder chain, not just the immediate folder's own
+  // name.
+  describe('/api/v1/libraries/:libraryId/folders', () => {
+    // OWNER/UPLOAD on this fixture (fixtures.ts) - the only sourceType folders are ever accepted
+    // for, pre-seeded with a root-level 'folder-protokolle'.
+    const uploadLibraryId = 'library-mine'
+    // MANAGER/FILESYSTEM on this fixture - a connector library, the target for the 409 checks
+    // below.
+    const connectorLibraryId = 'library-referat-50'
+
+    it('returns 409 when renaming a folder in a connector library', async () => {
+      const response = await fetch(
+        `/api/v1/libraries/${connectorLibraryId}/folders/does-not-matter`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'Neuer Name' }),
+        },
+      )
+      expect(response.status).toBe(409)
+      const data = await response.json()
+      expect(data.error).toMatch(/konnektorbibliothek/i)
+    })
+
+    it('returns 409 when deleting a folder in a connector library', async () => {
+      const response = await fetch(
+        `/api/v1/libraries/${connectorLibraryId}/folders/does-not-matter`,
+        { method: 'DELETE' },
+      )
+      expect(response.status).toBe(409)
+      const data = await response.json()
+      expect(data.error).toMatch(/konnektorbibliothek/i)
+    })
+
+    // Exercises buildMockFolderPath directly rather than through a real multipart upload request
+    // (see the block comment on the documents describe block above for why) - folder creation
+    // itself is a plain JSON POST, so it is safe to drive through a real fetch here.
+    it("derives an uploaded document's folderPath from the full folder chain, not just the immediate folder's own name", async () => {
+      const subfolder = await fetch(`/api/v1/libraries/${uploadLibraryId}/folders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: '2026', parentFolderId: 'folder-protokolle' }),
+      })
+      expect(subfolder.status).toBe(201)
+      const { id: subfolderId } = await subfolder.json()
+
+      expect(buildMockFolderPath(uploadLibraryId, subfolderId)).toBe('Protokolle/2026')
     })
   })
 

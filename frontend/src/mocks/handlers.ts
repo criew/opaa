@@ -125,6 +125,19 @@ function buildMockBreadcrumb(
   return chain
 }
 
+// #822 review, finding 6b: the real backend derives folderPath from the full folder chain (e.g.
+// "Protokolle/2026"), not just the immediate folder's own name - reuses buildMockBreadcrumb above
+// so the two never drift apart.
+//
+// Exported so handlers.test.ts can exercise this directly rather than through a real multipart
+// upload request: a File/Blob request body hangs indefinitely against msw/node in this project's
+// jsdom test environment (see the block comment on the documents describe block in that file).
+export function buildMockFolderPath(libraryId: string, folderId: string | null): string | null {
+  if (!folderId) return null
+  const chain = buildMockBreadcrumb(libraryId, folderId)
+  return chain.length > 0 ? chain.map((item) => item.name).join('/') : null
+}
+
 function toMockFolderResponse(libraryId: string, folder: MockLibraryFolder) {
   return {
     id: folder.id,
@@ -1249,9 +1262,7 @@ export const handlers = [
       indexedAt: null,
       uploadedByUserId: 'mock-user-id',
       folderId,
-      folderPath: folderId
-        ? (mockLibraryFolders[libraryId] ?? []).find((folder) => folder.id === folderId)?.name
-        : null,
+      folderPath: buildMockFolderPath(libraryId, folderId),
     }
     if (isEmptyContent) {
       // Resolved to FAILED, not INDEXED, the next time this document is polled (see the
@@ -1307,11 +1318,15 @@ export const handlers = [
     if (!canManageMockLibrary(libraryId)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
+    // #822 review, finding 6b: matches LibraryFolderService#requireUploadLibrary's own message and
+    // status (409, not 400 - a well-formed request that simply conflicts with the library's fixed
+    // source type), applied to create/rename/delete alike (ADR-0020: folders exist only for UPLOAD
+    // libraries).
     if (mockLibraryDetails[libraryId]?.sourceType !== 'UPLOAD') {
       return HttpResponse.json(
         {
           error:
-            'Diese Bibliothek ist eine Konnektorbibliothek und akzeptiert keine manuellen Ordner',
+            'Diese Bibliothek ist eine Konnektorbibliothek und unterstützt keine manuell verwalteten Ordner',
         },
         { status: 409 },
       )
@@ -1369,6 +1384,17 @@ export const handlers = [
     if (!canManageMockLibrary(libraryId)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
+    // #822 review, finding 6b: mirrors the same check on POST .../folders above - rename is
+    // rejected for a connector library too, not just creation.
+    if (mockLibraryDetails[libraryId]?.sourceType !== 'UPLOAD') {
+      return HttpResponse.json(
+        {
+          error:
+            'Diese Bibliothek ist eine Konnektorbibliothek und unterstützt keine manuell verwalteten Ordner',
+        },
+        { status: 409 },
+      )
+    }
     const existing = mockLibraryFolders[libraryId] ?? []
     const folder = existing.find((f) => f.id === folderId)
     if (!folder) {
@@ -1404,6 +1430,17 @@ export const handlers = [
     }
     if (!canManageMockLibrary(libraryId)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
+    // #822 review, finding 6b: mirrors the same check on POST/PATCH .../folders above - deletion is
+    // rejected for a connector library too.
+    if (mockLibraryDetails[libraryId]?.sourceType !== 'UPLOAD') {
+      return HttpResponse.json(
+        {
+          error:
+            'Diese Bibliothek ist eine Konnektorbibliothek und unterstützt keine manuell verwalteten Ordner',
+        },
+        { status: 409 },
+      )
     }
     const existing = mockLibraryFolders[libraryId] ?? []
     const folder = existing.find((f) => f.id === folderId)
