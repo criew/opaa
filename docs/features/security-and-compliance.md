@@ -404,12 +404,10 @@ Schreibzugriff hat. Jede Friständerung erzeugt über `AuditEventRecorder` einen
 `AUDIT_LOG_CONFIGURATION_CHANGED` (kein neuer Ereignistyp nötig — dieser deckt „die
 Protokollkonfiguration selbst" bereits seit #391 ab).
 
-Die Warnung bei einer Protokollfrist unterhalb der Inhaltsaufbewahrung ist als Erweiterungspunkt
-vorbereitet (`ContentRetentionProvider`), aber noch **ohne Implementierung**: Eine konfigurierbare
-Inhaltsaufbewahrung existiert noch nicht (#216 ist eigener, späterer Umfang). Solange kein Anbieter
-registriert ist, kann keine Warnung ausgelöst werden — das ist kein Fehlverhalten, sondern die ehrliche
-Aussage, dass es noch nichts gibt, wogegen zu prüfen wäre; #216 muss nur eine Implementierung
-registrieren, ohne dass sich an dieser Stelle etwas ändert.
+Die Warnung bei einer Protokollfrist unterhalb der Inhaltsaufbewahrung liefert aktuell immer `false`:
+Eine konfigurierbare Inhaltsaufbewahrung existiert nicht (der dafür vorgesehene Umfang, #216, wurde
+als nicht geplant geschlossen). Der zuvor als Erweiterungspunkt vorbereitete `ContentRetentionProvider`
+wurde mit ihm entfernt (#817) und müsste bei Wiederaufnahme des Umfangs neu eingeführt werden.
 
 Die Löschung eines Kontos entfernt bereits seit #391 automatisch die Pseudonymzuordnung
 (`fk_audit_actor_pseudonyms_user_organization`, `ON DELETE CASCADE`, zusammengesetzt seit Migration 047) und lässt das Protokoll selbst unverändert — das

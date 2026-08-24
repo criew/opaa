@@ -17,6 +17,9 @@ import java.time.Instant;
  * nicht mehr ausgewertet." once the takeover has happened once. A single row here, inserted by
  * {@link LlmModelSeeder} rather than seeded by the migration itself, is what lets "never attempted"
  * and "attempted, found nothing to seed" be told apart.
+ *
+ * <p><b>Ablaufdatum:</b> einmalige Übernahme für Bestandsinstallationen, Kandidat zur Entfernung ab
+ * v1.0.
  */
 @Entity
 @Table(name = "llm_model_seed_marker")

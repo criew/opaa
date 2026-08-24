@@ -1,11 +1,7 @@
 package io.opaa.audit;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,8 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class AuditRetentionSettingsService {
-
-  private static final Logger log = LoggerFactory.getLogger(AuditRetentionSettingsService.class);
 
   /**
    * 1 year - the specification's non-negotiable floor
@@ -37,15 +31,11 @@ public class AuditRetentionSettingsService {
 
   private final AuditRetentionSettingsRepository repository;
   private final AuditEventRecorder auditEventRecorder;
-  private final ObjectProvider<ContentRetentionProvider> contentRetentionProvider;
 
   public AuditRetentionSettingsService(
-      AuditRetentionSettingsRepository repository,
-      AuditEventRecorder auditEventRecorder,
-      ObjectProvider<ContentRetentionProvider> contentRetentionProvider) {
+      AuditRetentionSettingsRepository repository, AuditEventRecorder auditEventRecorder) {
     this.repository = repository;
     this.auditEventRecorder = auditEventRecorder;
-    this.contentRetentionProvider = contentRetentionProvider;
   }
 
   /** The currently configured retention, in months. */
@@ -99,14 +89,6 @@ public class AuditRetentionSettingsService {
               + ") is missing");
     }
 
-    boolean inconsistent = isInconsistentWithContentRetention(newRetentionMonths);
-    if (inconsistent) {
-      log.warn(
-          "Audit-Protokollfrist ({} Monate) ist kuerzer als die konfigurierte"
-              + " Inhaltsaufbewahrung - inkonsistente Einstellung",
-          newRetentionMonths);
-    }
-
     auditEventRecorder.recordUserAction(
         organizationId,
         actorUserId,
@@ -120,23 +102,10 @@ public class AuditRetentionSettingsService {
         AuditOutcome.SUCCESS,
         reason);
 
-    return new AuditRetentionUpdateResult(newRetentionMonths, inconsistent);
-  }
-
-  /**
-   * #395 acceptance criteria: "Eine Protokollfrist kürzer als die Inhaltsaufbewahrung erzeugt eine
-   * Warnung". {@link ContentRetentionProvider} has no implementation yet (#216 is later scope, see
-   * its own Javadoc) - {@code contentRetentionProvider} then resolves to nothing, and this always
-   * returns {@code false}: there being no content retention configured yet is not itself an
-   * inconsistency to warn about.
-   */
-  private boolean isInconsistentWithContentRetention(int retentionMonths) {
-    ContentRetentionProvider provider = contentRetentionProvider.getIfAvailable();
-    if (provider == null) {
-      return false;
-    }
-    Optional<Integer> contentRetentionMonths = provider.contentRetentionMonths();
-    return contentRetentionMonths.map(months -> retentionMonths < months).orElse(false);
+    // #395's own cross-check against content retention (chats/artifacts/private content) has no
+    // data source: #216, which would have configured content retention, was closed as not
+    // planned. Always false until a content retention setting exists again.
+    return new AuditRetentionUpdateResult(newRetentionMonths, false);
   }
 
   private AuditRetentionSettings settingsRow() {

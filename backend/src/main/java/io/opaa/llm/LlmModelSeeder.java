@@ -69,6 +69,9 @@ import org.springframework.util.StringUtils;
  * than being an {@code ApplicationRunner} itself: {@code @Transactional} only takes effect on a
  * call that goes through this bean's Spring proxy, which requires the call to come from another
  * bean rather than from a method on {@code this}.
+ *
+ * <p><b>Ablaufdatum:</b> einmalige Übernahme für Bestandsinstallationen, Kandidat zur Entfernung ab
+ * v1.0.
  */
 @Component
 class LlmModelSeeder {
