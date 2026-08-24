@@ -50,23 +50,32 @@ describe('tokens', () => {
     }
   })
 
-  // #853: navyRoles.fg3/railRoles.fg3 ('#7A8BA0') only reach 4.5:1 against bg1 (4.65:1 navy,
-  // 5.26:1 rail); against bg2 they drop to 3.80:1 and against bg3 to 2.99:1 - both below the
-  // WCAG AA floor. Verified against Sidebar.tsx and GlobalRail.tsx (the only two consumers of
-  // createSidebarTheme/createRailTheme): fg-3 there only ever renders on bg1 - the hover fill
-  // (bg2) and the active tile (bg3) both switch their *text* to fg-1 (white) instead, per
-  // guidelines.md 2.3 ("die Textfarbe wechselt auf Weiß"). This guard therefore checks fg-3
-  // against the surface it is actually used on; it must fail loudly the moment a future change
-  // starts rendering fg-3 text on bg2/bg3 of either role set, since neither reaches 4.5:1 there.
-  test('fg-3 in the navy and rail role sets meets 4.5:1 against the surface it renders text on (#853)', () => {
-    for (const [label, roles] of [
-      ['navy', navyRoles],
-      ['rail', railRoles],
-    ] as const) {
-      const ratio = contrastRatio(roles.fg3, roles.bg1)
-      expect(ratio, `${label} fg-3 on bg1`).not.toBeNull()
-      expect(ratio, `${label} fg-3 on bg1`).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+  // #853: fg-3 ('#7A8BA0') only clears 4.5:1 against bg1 in both sets (verified: Sidebar.tsx/
+  // GlobalRail.tsx never render fg-3 text on bg2/bg3, see guidelines.md 2.2). The bg2/bg3
+  // ratios are pinned too, not asserted against the floor - a token edit that silently pushes
+  // one of them past 4.5:1 must re-open the verification, not slip through as a green diff.
+  test('fg-3 in navy/rail is pinned to its known bg1/bg2/bg3 ratios (#853)', () => {
+    const cases: Array<[string, string, string, number]> = [
+      ['navy fg-3 vs bg1', navyRoles.fg3, navyRoles.bg1, 4.65],
+      ['navy fg-3 vs bg2', navyRoles.fg3, navyRoles.bg2, 3.8],
+      ['navy fg-3 vs bg3', navyRoles.fg3, navyRoles.bg3, 2.99],
+      ['rail fg-3 vs bg1', railRoles.fg3, railRoles.bg1, 5.26],
+      ['rail fg-3 vs bg2', railRoles.fg3, railRoles.bg2, 4.65],
+      ['rail fg-3 vs bg3', railRoles.fg3, railRoles.bg3, 3.8],
+    ]
+
+    for (const [label, foreground, background, expected] of cases) {
+      const ratio = contrastRatio(foreground, background)
+      expect(ratio, label).not.toBeNull()
+      expect(ratio, label).toBeCloseTo(expected, 2)
     }
+
+    expect(contrastRatio(navyRoles.fg3, navyRoles.bg1)).toBeGreaterThanOrEqual(
+      TEXT_CONTRAST_MINIMUM,
+    )
+    expect(contrastRatio(railRoles.fg3, railRoles.bg1)).toBeGreaterThanOrEqual(
+      TEXT_CONTRAST_MINIMUM,
+    )
   })
 })
 
