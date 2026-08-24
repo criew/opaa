@@ -2,16 +2,12 @@ package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.TestcontainersConfiguration;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * #395: {@link AuditRetentionDeletionService} calling the real {@code
@@ -21,10 +17,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Migration023AuditRetentionTest}'s job, exercised against a properly restricted, non-superuser
  * role).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class AuditRetentionDeletionServiceIntegrationTest {
 
   @Autowired private AuditRetentionDeletionService deletionService;

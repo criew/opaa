@@ -40,6 +40,9 @@ import org.testcontainers.utility.DockerImageName;
  * produced; it exists only so this test's own {@code Environment} assertions do not need a real,
  * reachable chat endpoint to load the application context.
  */
+// Issue #843 inventory: deliberately not on @OpaaIntegrationTest/@OpaaMockMvcTest - proves the
+// application's default provider wiring, so it must stay free of the shared group's test-only
+// overrides rather than sharing a context with them.
 @SpringBootTest
 @ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)

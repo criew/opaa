@@ -15,6 +15,7 @@ import io.opaa.library.LibraryVisibility;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryService;
+import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -39,38 +40,28 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
-@SpringBootTest
-@ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+// Own @DynamicPropertySource (below, indexing-specific paths/chunk sizing) means Spring's context
+// cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
+// documented exception per AGENTS.md. Previously also declared its own duplicate Postgres
+// container and manually registered spring.datasource.* (issue #843) - removed, ServiceConnection
+// now comes from @OpaaIntegrationTest's import.
+@OpaaIntegrationTest
 class DocumentIndexingIntegrationTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
 
   @TempDir static Path sharedTempDir;
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("opaa.indexing.document-path", () -> sharedTempDir.toAbsolutePath().toString());
     // #484: overrides the dev profile's /data,/tmp default so this suite's own @TempDir (which is
     // neither, on most platforms/CI runners) stays inside the allowlist.

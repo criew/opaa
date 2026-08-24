@@ -9,7 +9,6 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.ChatCreateRequest;
 import io.opaa.api.dto.ChatDetail;
 import io.opaa.api.dto.ChatSummary;
@@ -29,6 +28,7 @@ import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceRole;
 import io.opaa.space.SpaceVisibility;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -45,14 +45,10 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
@@ -67,10 +63,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * create foreign keys for those, Liquibase does ({@code fk_chats_space}, {@code fk_chats_author},
  * migration 032).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+// Own @MockitoBean set (see below) means Spring's context cache still keys this to its own
+// context regardless of the shared @OpaaIntegrationTest base - documented exception per AGENTS.md.
+@OpaaIntegrationTest
 class ChatServiceIntegrationTest {
 
   @Autowired private ChatService chatService;

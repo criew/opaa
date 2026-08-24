@@ -10,10 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.branding.BrandingDefaults;
 import io.opaa.branding.BrandingLogoValidator;
+import io.opaa.test.OpaaMockMvcTest;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -22,17 +22,12 @@ import javax.imageio.ImageIO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * #582's acceptance criteria at the HTTP boundary, against the real {@code dev} security chain
@@ -57,11 +52,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * MockMvc lives in {@code BrandingSettingsServiceIntegrationTest}, which shares the other, {@code
  * {"local", "dev"}}-profiled context group instead.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaMockMvcTest
 class BrandingControllerIntegrationTest {
 
   @Autowired private MockMvc mockMvc;

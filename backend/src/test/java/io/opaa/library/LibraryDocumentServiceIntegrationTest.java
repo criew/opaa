@@ -6,7 +6,6 @@ import static org.awaitility.Awaitility.await;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.FakeEmbeddingModel;
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -17,6 +16,7 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.DocumentStatus;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -42,10 +42,8 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -53,12 +51,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Runs {@link LibraryDocumentService} against a real Postgres database with the real, versioned
@@ -81,10 +77,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * for a directory/URL indexing run, wherever a test needs the eventual {@code INDEXED}/{@code
  * FAILED} outcome rather than the immediate {@code PENDING} response.
  */
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+// Own @DynamicPropertySource (below) means Spring's context cache still keys this to its own
+// context regardless of the shared @OpaaIntegrationTest base - documented exception per AGENTS.md.
+@OpaaIntegrationTest
 class LibraryDocumentServiceIntegrationTest {
 
   @TempDir static Path uploadStorageDir;

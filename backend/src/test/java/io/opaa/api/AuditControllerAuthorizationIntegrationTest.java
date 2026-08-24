@@ -4,24 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.test.OpaaMockMvcTest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * PR #450 review, finding 6: {@code AuditControllerTest} (the {@code @WebMvcTest} slice) mocks
@@ -42,11 +37,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * {@code @SpringBootTest}/{@code @AutoConfigureMockMvc}/{@code @Import(TestcontainersConfiguration.class)}/{@code @ActiveProfiles("dev")}
  * signature.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaMockMvcTest
 class AuditControllerAuthorizationIntegrationTest {
 
   @Autowired private MockMvc mockMvc;

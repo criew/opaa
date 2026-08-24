@@ -3,7 +3,6 @@ package io.opaa.group;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.GroupListResponse;
 import io.opaa.api.dto.GroupRequest;
 import io.opaa.api.dto.GroupResponse;
@@ -18,6 +17,7 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,16 +28,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
@@ -62,10 +58,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * - the cache-invalidation-timing tests below rely on exactly that, the same way {@code
  * SpaceServiceIntegrationTest} does.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class GroupServiceIntegrationTest {
 
   @Autowired private GroupService groupService;

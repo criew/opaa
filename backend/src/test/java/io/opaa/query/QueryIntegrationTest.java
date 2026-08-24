@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,22 +30,16 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Exercises the permission-aware vector search (#202) end to end against a real Postgres schema:
@@ -52,20 +47,16 @@ import org.testcontainers.utility.DockerImageName;
  * library_id} metadata points at, or {@link QueryService#query} never even calls {@link
  * VectorStore#similaritySearch} for it - see {@link #userWithoutAnyGrantSeesNothing}.
  */
-@SpringBootTest
-@ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+// Own @DynamicPropertySource (below) means Spring's context cache still keys this to its own
+// context regardless of the shared @OpaaIntegrationTest base - documented exception per AGENTS.md.
+// Previously also declared its own duplicate Postgres container and manually registered
+// spring.datasource.* (issue #843) - removed, ServiceConnection now comes from
+// @OpaaIntegrationTest's import.
+@OpaaIntegrationTest
 class QueryIntegrationTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("opaa.indexing.document-path", () -> "/tmp/opaa-test-docs");
   }
 

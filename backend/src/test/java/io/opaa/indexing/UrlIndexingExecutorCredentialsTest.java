@@ -2,22 +2,18 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
 import io.opaa.organization.Organization;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * #483 acceptance criterion: a run reads its credentials from the {@link KnowledgeLibrary} entity
@@ -38,10 +34,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * second, otherwise redundant one (and its own Testcontainers Postgres instance) just for this
  * class.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class UrlIndexingExecutorCredentialsTest {
 
   private static final String OWNER_EMAIL = "url-indexing-credentials-it@example.com";

@@ -1,28 +1,16 @@
 package io.opaa;
 
+import io.opaa.test.OpaaIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Smoke-tests that the Spring context starts at all. Deliberately uses the exact same annotation
- * signature - {@code @SpringBootTest(webEnvironment = RANDOM_PORT)},
- * {@code @Import(TestcontainersConfiguration.class)}, {@code @ActiveProfiles({"local", "dev"})} -
- * as the shared-context integration test group (e.g. {@code SpaceServiceIntegrationTest}), instead
- * of {@code @ActiveProfiles("dev")} alone (issue #497): Spring Boot's test context cache keys on
- * the exact merged context configuration, so a differing profile set here forced a second,
- * otherwise redundant Spring context (and its own Testcontainers Postgres instance) to be built
- * just for this one no-op test. {@code local} is not a narrower assertion being dropped - it is the
- * same profile combination {@code SPRING_PROFILES_ACTIVE=local,dev ./gradlew bootRun} uses in
- * AGENTS.md's own Build &amp; Test section, so this test now starts the context the way the
- * application is actually run, not a variant of it.
+ * Smoke-tests that the Spring context starts at all. Uses {@link OpaaIntegrationTest} - the same
+ * canonical signature as the rest of the shared-context integration test group (e.g. {@code
+ * SpaceServiceIntegrationTest}) - so this test shares that context and Testcontainers Postgres
+ * instance instead of paying for a second, otherwise redundant one just to prove the app starts
+ * (issue #497, formalized into a meta-annotation by #843).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class OpaaApplicationTests {
 
   @Test

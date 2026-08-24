@@ -31,6 +31,9 @@ import org.testcontainers.utility.DockerImageName;
  * defaults it to a local Ollama endpoint, to prove the override actually takes effect. The address
  * below is never called — the embedding model is replaced by {@link FakeEmbeddingModel}.
  */
+// Issue #843 inventory: deliberately not on @OpaaIntegrationTest/@OpaaMockMvcTest - the
+// @SpringBootTest properties override below is the subject under test (a different embedding base
+// URL actually taking effect), so this context can never be shared with either canonical group.
 @SpringBootTest(
     properties = {"spring.ai.openai.embedding.base-url=http://model-server.invalid:8000/v1"})
 @ActiveProfiles("dev")

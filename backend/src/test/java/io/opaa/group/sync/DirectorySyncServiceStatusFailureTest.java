@@ -13,23 +13,18 @@ import io.opaa.group.Group;
 import io.opaa.group.GroupKind;
 import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * A separate Spring context from {@link DirectorySyncServiceIntegrationTest} - not one more test
@@ -44,20 +39,17 @@ import org.testcontainers.utility.DockerImageName;
  * successful, already-committed apply into an error response with no report at all - that would
  * additionally invite an operator to retry a run that already took effect.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// Own @MockitoBean (below) and @Import registering a FakeDirectoryClient mean Spring's context
+// cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
+// documented exception per AGENTS.md. Previously also declared its own duplicate Postgres
+// container bean instead of reusing the shared TestcontainersConfiguration (issue #843) - removed,
+// ServiceConnection now comes from @OpaaIntegrationTest's import.
+@OpaaIntegrationTest
 @Import(DirectorySyncServiceStatusFailureTest.TestConfig.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
 class DirectorySyncServiceStatusFailureTest {
 
   @TestConfiguration(proxyBeanMethods = false)
   static class TestConfig {
-    @Bean
-    @ServiceConnection
-    PostgreSQLContainer postgresContainer() {
-      return new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
-    }
-
     @Bean
     @Primary
     DirectorySyncServiceIntegrationTest.FakeDirectoryClient fakeDirectoryClient() {

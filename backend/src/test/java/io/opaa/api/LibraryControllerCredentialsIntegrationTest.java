@@ -5,19 +5,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.test.OpaaMockMvcTest;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * PR #489 review, Befund 6a: {@code sourceCredentials} must appear in no API response - not the
@@ -62,11 +57,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * times across the whole group's combined test run can observe an unexpected 429 that a standalone
  * run of that one class would not have shown.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaMockMvcTest
 class LibraryControllerCredentialsIntegrationTest {
 
   private static final String SECRET = "admin:super-secret-password";

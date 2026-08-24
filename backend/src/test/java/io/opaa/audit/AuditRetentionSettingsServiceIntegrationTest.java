@@ -3,21 +3,17 @@ package io.opaa.audit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * #395: {@link AuditRetentionSettingsService} against a real Postgres database with the real,
@@ -30,10 +26,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * exists but stays quiet - not merely "returns false because nothing crashed" - while none does
  * (#216 not built yet).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class AuditRetentionSettingsServiceIntegrationTest {
 
   @Autowired private AuditRetentionSettingsService retentionSettingsService;

@@ -2,25 +2,22 @@ package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * #395 acceptance criteria: "Eine Protokollfrist kürzer als die Inhaltsaufbewahrung erzeugt eine
@@ -30,13 +27,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * this test proves the wiring works the moment one is registered, without requiring #216 to exist
  * first.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import({
-  TestcontainersConfiguration.class,
-  AuditRetentionContentWarningIntegrationTest.FortyEightMonthContentRetentionConfig.class
-})
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+// Own @Import (below) registers a ContentRetentionProvider not present in production yet -
+// documented exception per AGENTS.md.
+@OpaaIntegrationTest
+@Import(AuditRetentionContentWarningIntegrationTest.FortyEightMonthContentRetentionConfig.class)
 class AuditRetentionContentWarningIntegrationTest {
 
   @Autowired private AuditRetentionSettingsService retentionSettingsService;

@@ -16,6 +16,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
 import io.opaa.organization.Organization;
+import io.opaa.test.OpaaMockMvcTest;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -25,16 +26,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * #501 reproduction: a {@code RUNNING} {@code indexing_jobs} row with no {@code @Async} task behind
@@ -46,23 +40,18 @@ import org.testcontainers.utility.DockerImageName;
  * IndexingJobService#recoverStaleJobs} must free it even without one - but only once its heartbeat
  * has actually gone stale, not merely because the run has been going on for a while.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+// Own @DynamicPropertySource (below, rate-limit disabled + a scoped filesystem allowlist) means
+// Spring's context cache still keys this to its own context regardless of the shared
+// @OpaaMockMvcTest base - documented exception per AGENTS.md. Previously also declared its own
+// duplicate Postgres container and manually registered spring.datasource.* (issue #843) -
+// removed, ServiceConnection now comes from @OpaaMockMvcTest's import.
+@OpaaMockMvcTest
 class IndexingJobRecoveryIntegrationTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
 
   @TempDir static Path documentDir;
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("opaa.rate-limit.enabled", () -> false);
     registry.add(
         "opaa.indexing.filesystem-allowlist", () -> documentDir.toAbsolutePath().toString());

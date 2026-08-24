@@ -3,7 +3,6 @@ package io.opaa.space;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.LibrarySpaceAssociationResponse;
 import io.opaa.api.dto.SpaceLibraryAssociationListResponse;
 import io.opaa.api.dto.SpaceLibraryAssociationResponse;
@@ -23,6 +22,7 @@ import io.opaa.notification.Notification;
 import io.opaa.notification.NotificationRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -30,22 +30,15 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied - same
  * pattern as {@link SpaceServiceIntegrationTest} (#288).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class SpaceAssetAssociationServiceIntegrationTest {
 
   @Autowired private SpaceAssetAssociationService associationService;

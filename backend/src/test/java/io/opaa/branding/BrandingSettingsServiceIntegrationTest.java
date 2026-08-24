@@ -3,13 +3,13 @@ package io.opaa.branding;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -21,13 +21,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * #582: {@link BrandingSettingsService} against a real Postgres with the real, versioned Liquibase
@@ -47,10 +43,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * non-administrator, the response headers) live in {@code BrandingControllerIntegrationTest}, which
  * needs MockMvc and therefore cannot share this context.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class BrandingSettingsServiceIntegrationTest {
 
   @Autowired private BrandingSettingsService brandingSettingsService;

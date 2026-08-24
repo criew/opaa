@@ -9,6 +9,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
 import io.opaa.organization.Organization;
+import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,19 +21,13 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Reproduces the deletion-window bug #632 fixes against the real Liquibase schema, not just {@link
@@ -50,22 +45,18 @@ import org.testcontainers.utility.DockerImageName;
  * request would land - genuinely racing the row's existence, not simulating a zero-rows-updated
  * result the way {@link FileProcessingServiceTest} does against a mocked repository.
  */
-@SpringBootTest
-@ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+// Own @DynamicPropertySource (below, indexing-specific paths/chunk sizing) means Spring's context
+// cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
+// documented exception per AGENTS.md. Previously also declared its own duplicate Postgres
+// container and manually registered spring.datasource.* (issue #843) - removed, ServiceConnection
+// now comes from @OpaaIntegrationTest's import.
+@OpaaIntegrationTest
 class FileProcessingServiceIntegrationTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
 
   @TempDir static Path sharedTempDir;
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("opaa.indexing.document-path", () -> sharedTempDir.toAbsolutePath().toString());
     registry.add(
         "opaa.indexing.filesystem-allowlist", () -> sharedTempDir.toAbsolutePath().toString());

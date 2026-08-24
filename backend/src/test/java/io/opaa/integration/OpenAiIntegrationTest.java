@@ -32,6 +32,10 @@ import org.testcontainers.utility.DockerImageName;
 /**
  * End-to-end integration test using real OpenAI API. Only runs when OPAA_OPENAI_API_KEY environment
  * variable is set.
+ *
+ * <p>Issue #843 inventory: deliberately not on @OpaaIntegrationTest - runs under the separate
+ * {@code openAiIntegrationTest} Gradle task (AGENTS.md), never alongside the shared-context group
+ * in {@code ./gradlew test}, so there is no context to share.
  */
 @SpringBootTest
 @ActiveProfiles("dev")

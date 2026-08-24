@@ -3,7 +3,6 @@ package io.opaa.space;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.SpaceListResponse;
 import io.opaa.api.dto.SpaceMemberRequest;
 import io.opaa.api.dto.SpaceMemberResponse;
@@ -19,6 +18,7 @@ import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -26,13 +26,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
@@ -43,10 +39,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * fk_spaces_organization}, {@code fk_space_memberships_organization}). Every test therefore creates
  * real {@link Organization} and {@link User} rows instead of using bare random UUIDs.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class SpaceServiceIntegrationTest {
 
   @Autowired private SpaceService spaceService;

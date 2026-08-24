@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.openai.errors.OpenAIIoException;
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
@@ -29,13 +29,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * {@link ActiveChatModelResolver} against a real Postgres (same
@@ -54,10 +50,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * enough to pass a time-based assertion, so only the counter actually distinguishes "rebuilt, but
  * cheap" from "never rebuilt at all".
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class ActiveChatModelResolverIntegrationTest {
 
   @Autowired private ActiveChatModelResolver resolver;

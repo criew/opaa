@@ -90,6 +90,27 @@ pnpm test                               # Stack via Docker Compose starten, Suit
 
 > Vollständige Begründung: [ADR-0006](docs/decisions/0006-openapi-dto-generation.md)
 
+## Spring-Testkontexte
+
+Neue Backend-Integrationstests verwenden eine der kanonischen Meta-Annotationen aus `io.opaa.test`
+(`backend/src/test/java/io/opaa/test/`) statt eigener `@SpringBootTest`/`@ActiveProfiles`/`@Import`/
+`@Testcontainers`-Kombinationen:
+
+- `@OpaaIntegrationTest` — Service-/Repository-Ebene gegen echtes Postgres, kein MockMvc/Web-Layer
+  (`webEnvironment = RANDOM_PORT`, `@ActiveProfiles({"local", "dev"})`).
+- `@OpaaMockMvcTest` — Controller-Ebene über MockMvc (`@AutoConfigureMockMvc`,
+  `@ActiveProfiles("dev")`).
+
+Jede Klasse mit identischer Signatur teilt sich einen Spring-Kontext und einen Testcontainers-
+Postgres statt einen eigenen zu booten — Spring cached Kontexte anhand der exakten, zusammengeführten
+Konfiguration (issue #843). Eine eigene `@DynamicPropertySource`, ein eigenes `@Import(...TestConfig)`
+oder ein eigener `@MockitoBean`-Satz erzwingt trotz gemeinsamer Meta-Annotation einen eigenen Kontext
+(Spring bezieht das in den Cache-Schlüssel ein) — das ist zulässig, wenn fachlich nötig, muss aber mit
+einem 1–2-zeiligen Kommentar über der Annotation begründet werden (Review-Flagge). Ein neuer
+Postgres-Container wird nie manuell deklariert; `@ServiceConnection` kommt aus der Meta-Annotation.
+Passt keine der beiden Signaturen, ist das ein Fall für eine dritte kanonische Meta-Annotation statt
+einer weiteren Ad-hoc-Kombination — im Zweifel den Code Reviewer fragen.
+
 ## Code-Konventionen
 
 ### Commit-Nachrichten
