@@ -84,6 +84,10 @@ class LibraryDocumentServiceTest {
   private TargetAddressValidator disabledTargetAddressValidator;
   private RemoteContentProperties remoteContentProperties;
   private LibraryFolderRepository folderRepository;
+  // #823: mocked no-op here - folderPath resolution is covered by its own tests further down and
+  // by LibraryFolderServiceTest/LibraryFolderServiceIntegrationTest, not by every pre-existing test
+  // in this class that never passes a folderPath at all.
+  private LibraryFolderService folderService;
   private LibraryDocumentService service;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -116,6 +120,7 @@ class LibraryDocumentServiceTest {
     urlFileDownloader = new UrlFileDownloader(disabledTargetAddressValidator);
     remoteContentProperties = new RemoteContentProperties(10L * 1024 * 1024, 5);
     folderRepository = mock(LibraryFolderRepository.class);
+    folderService = mock(LibraryFolderService.class);
 
     service =
         new LibraryDocumentService(
@@ -132,7 +137,8 @@ class LibraryDocumentServiceTest {
             urlFileDownloader,
             disabledTargetAddressValidator,
             remoteContentProperties,
-            folderRepository);
+            folderRepository,
+            folderService);
 
     User user = new User("subject", "issuer", "user@example.com", "Test User");
     user.setOrganizationId(organizationId);
@@ -1108,7 +1114,8 @@ class LibraryDocumentServiceTest {
             new UrlFileDownloader(enabledValidator),
             enabledValidator,
             remoteContentProperties,
-            folderRepository);
+            folderRepository,
+            folderService);
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenReturn(AssetRole.VIEWER);
     KnowledgeLibrary library = remoteLibrary(null);

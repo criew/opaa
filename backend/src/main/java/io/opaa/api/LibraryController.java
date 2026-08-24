@@ -203,6 +203,7 @@ public class LibraryController {
       @PathVariable UUID libraryId,
       @RequestParam("file") MultipartFile file,
       @RequestParam(required = false) UUID folderId,
+      @RequestParam(required = false) String folderPath,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     LibraryDocumentResponse response =
@@ -210,6 +211,7 @@ public class LibraryController {
             libraryId,
             file,
             folderId,
+            folderPath,
             currentUser.getId(),
             currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);

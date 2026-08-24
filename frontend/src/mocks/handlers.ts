@@ -138,6 +138,52 @@ export function buildMockFolderPath(libraryId: string, folderId: string | null):
   return chain.length > 0 ? chain.map((item) => item.name).join('/') : null
 }
 
+// #823: mirrors LibraryFolderService#resolveOrCreateFolderPath - idempotently materializes the
+// folder chain a dragged-and-dropped/webkitdirectory-selected upload's folderPath describes,
+// relative to baseFolderId, reusing an existing folder of the same name at each level rather than
+// creating a duplicate.
+//
+// Exported for the same reason as buildMockFolderPath above: handlers.test.ts cannot exercise a
+// real multipart upload request in this project's jsdom test environment.
+export function resolveOrCreateMockFolderPath(
+  libraryId: string,
+  baseFolderId: string | null,
+  folderPath: string,
+): { folderId: string | null } | { error: string; status: number } {
+  const segments = folderPath.split('/').filter((segment) => segment.trim() !== '')
+  let parentFolderId = baseFolderId
+  for (const rawSegment of segments) {
+    const name = rawSegment.trim()
+    // Mirrors LibraryFolderService#validatePathSegment (#823): trimmed, no further separator, no
+    // relative-path traversal segment.
+    if (name.length === 0 || name.length > 255) {
+      return { error: 'name darf höchstens 255 Zeichen umfassen', status: 400 }
+    }
+    if (name.includes('\\')) {
+      return { error: 'Ordnername darf kein "\\" enthalten', status: 400 }
+    }
+    if (name === '..' || name === '.') {
+      return { error: 'Ordnername darf nicht ".." oder "." lauten', status: 400 }
+    }
+    const existing = mockLibraryFolders[libraryId] ?? []
+    let folder = existing.find(
+      (f) => (f.parentFolderId ?? null) === parentFolderId && f.name === name,
+    )
+    if (!folder) {
+      folder = {
+        id: `folder-${crypto.randomUUID().slice(0, 8)}`,
+        libraryId,
+        parentFolderId,
+        name,
+        createdAt: new Date().toISOString(),
+      }
+      mockLibraryFolders[libraryId] = [...existing, folder]
+    }
+    parentFolderId = folder.id
+  }
+  return { folderId: parentFolderId }
+}
+
 function toMockFolderResponse(libraryId: string, folder: MockLibraryFolder) {
   return {
     id: folder.id,
@@ -1217,6 +1263,19 @@ export const handlers = [
     ) {
       return HttpResponse.json({ error: 'Ordner nicht gefunden' }, { status: 404 })
     }
+    // #823: folderPath (if given) is relative to folderId - its intermediate folders are created
+    // idempotently, mirroring LibraryDocumentService#uploadDocument/LibraryFolderService#
+    // resolveOrCreateFolderPath.
+    const folderPathField = formData.get('folderPath')
+    const folderPath = typeof folderPathField === 'string' ? folderPathField : ''
+    let effectiveFolderId = folderId
+    if (folderPath.trim() !== '') {
+      const resolved = resolveOrCreateMockFolderPath(libraryId, folderId, folderPath)
+      if ('error' in resolved) {
+        return HttpResponse.json({ error: resolved.error }, { status: resolved.status })
+      }
+      effectiveFolderId = resolved.folderId
+    }
     if (file.size > MAX_UPLOAD_SIZE_BYTES) {
       return HttpResponse.json(
         {
@@ -1261,8 +1320,8 @@ export const handlers = [
       chunkCount: 0,
       indexedAt: null,
       uploadedByUserId: 'mock-user-id',
-      folderId,
-      folderPath: buildMockFolderPath(libraryId, folderId),
+      folderId: effectiveFolderId,
+      folderPath: buildMockFolderPath(libraryId, effectiveFolderId),
     }
     if (isEmptyContent) {
       // Resolved to FAILED, not INDEXED, the next time this document is polled (see the

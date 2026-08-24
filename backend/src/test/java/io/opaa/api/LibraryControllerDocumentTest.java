@@ -186,7 +186,10 @@ class LibraryControllerDocumentTest {
     var response =
         new LibraryDocumentResponse(
             documentId, "report.pdf", DocumentStatus.INDEXED, DocumentSourceType.UPLOAD, 3);
-    when(documentService.uploadDocument(eq(libraryId), any(), any(), eq(currentUserId), eq(false)))
+    // #823: the controller now calls LibraryDocumentService's 6-arg folderPath overload
+    // unconditionally (folderPath is simply null/omitted when the request does not send one).
+    when(documentService.uploadDocument(
+            eq(libraryId), any(), any(), any(), eq(currentUserId), eq(false)))
         .thenReturn(response);
 
     var file = new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes());
@@ -213,7 +216,7 @@ class LibraryControllerDocumentTest {
             .folderId(folderId)
             .folderPath("Protokolle");
     when(documentService.uploadDocument(
-            eq(libraryId), any(), eq(folderId), eq(currentUserId), eq(false)))
+            eq(libraryId), any(), eq(folderId), any(), eq(currentUserId), eq(false)))
         .thenReturn(response);
 
     var file = new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes());
@@ -230,9 +233,36 @@ class LibraryControllerDocumentTest {
   }
 
   @Test
+  void uploadingADocumentPassesFolderPathToTheService() throws Exception {
+    // #823: folderPath is forwarded to the service alongside folderId, letting a
+    // dragged-and-dropped/webkitdirectory-selected folder tree materialize its structure.
+    UUID libraryId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    var response =
+        new LibraryDocumentResponse(
+                documentId, "januar.pdf", DocumentStatus.PENDING, DocumentSourceType.UPLOAD, 0)
+            .folderPath("Protokolle/2026");
+    when(documentService.uploadDocument(
+            eq(libraryId), any(), isNull(), eq("Protokolle/2026"), eq(currentUserId), eq(false)))
+        .thenReturn(response);
+
+    var file = new MockMultipartFile("file", "januar.pdf", "application/pdf", "content".getBytes());
+
+    mockMvc
+        .perform(
+            multipart("/api/v1/libraries/" + libraryId + "/documents")
+                .file(file)
+                .param("folderPath", "Protokolle/2026")
+                .with(asTestUser()))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.folderPath").value("Protokolle/2026"));
+  }
+
+  @Test
   void uploadingIntoAForbiddenLibraryReturns403() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(documentService.uploadDocument(eq(libraryId), any(), any(), eq(currentUserId), eq(false)))
+    when(documentService.uploadDocument(
+            eq(libraryId), any(), any(), any(), eq(currentUserId), eq(false)))
         .thenThrow(
             new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
 

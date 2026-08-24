@@ -32,6 +32,7 @@ import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder'
 import DeleteIcon from '@mui/icons-material/Delete'
+import DriveFolderUploadIcon from '@mui/icons-material/DriveFolderUpload'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import FolderIcon from '@mui/icons-material/Folder'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
@@ -64,6 +65,7 @@ import {
   scheduleFrequencyLabel,
 } from '../utils/labels'
 import { useDocumentPreview } from '../hooks/useDocumentPreview'
+import { directoryPathFromWebkitRelativePath, resolveDroppedItems } from '../utils/directoryEntries'
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
@@ -78,6 +80,14 @@ import SectionHead from '../components/SectionHead'
 const ACCEPTED_FILE_EXTENSIONS = '.doc,.docx,.md,.pdf,.pptx,.txt'
 
 const allVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
+
+// #823: an upload entry carries an optional relativePath (the directory portion within a
+// dropped/selected folder tree, e.g. "Protokolle/2026") alongside each File - sequential upload,
+// per-file error collection unchanged from before #823.
+interface UploadEntry {
+  file: File
+  relativePath?: string
+}
 
 function canEditLibrary(role: AssetRole | undefined): boolean {
   return role === 'MANAGER' || role === 'OWNER'
@@ -482,6 +492,9 @@ function LibraryDocumentsSection({
     folder: LibraryFolderListItem
   } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // #823: a whole-folder counterpart to fileInputRef - `webkitdirectory` is not part of React's
+  // JSX typings for <input>, so it is set imperatively via the effect below instead of as a prop.
+  const folderInputRef = useRef<HTMLInputElement>(null)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   // #738/#780: distinct from documentStore's error/uploadErrors/deleteError - opening the original
   // is a read-only, per-click action that never touches the store, so its failure (404, file
@@ -550,6 +563,17 @@ function LibraryDocumentsSection({
       setSearchParams(next, { replace: true })
     }
   }, [folderNotFoundMessage, folderIdParam, searchParams, setSearchParams])
+
+  useEffect(() => {
+    // #823: `webkitdirectory` (plus its older Firefox/legacy aliases) turns this hidden <input
+    // type="file"> into a directory picker - not part of React's <input> typings, so it has to be
+    // set on the DOM node directly rather than passed as a JSX prop.
+    const node = folderInputRef.current
+    if (!node) return
+    node.setAttribute('webkitdirectory', '')
+    node.setAttribute('directory', '')
+    node.setAttribute('mozdirectory', '')
+  }, [])
 
   const documents = documentsByLibrary[libraryId] ?? []
   const pageState = pageStateByLibrary[libraryId]
@@ -627,12 +651,12 @@ function LibraryDocumentsSection({
     }
   }
 
-  async function handleFiles(files: FileList | File[]) {
+  async function handleFiles(entries: UploadEntry[]) {
     if (!canManage) return
     clearUploadErrors()
-    for (const file of Array.from(files)) {
+    for (const entry of entries) {
       try {
-        await uploadNewDocument(libraryId, file)
+        await uploadNewDocument(libraryId, entry.file, entry.relativePath || undefined)
         onDocumentsChanged()
       } catch {
         // Der Fehler landet bereits gesammelt in documentStore.uploadErrors und wird unten
@@ -645,8 +669,22 @@ function LibraryDocumentsSection({
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault()
     setIsDragActive(false)
+    // #823: DataTransferItemList.webkitGetAsEntry() must be read synchronously, before any await -
+    // resolveDroppedItems does that internally, but the items list itself has to be captured here,
+    // inside this synchronous handler, not passed into a later .then()/await boundary.
+    const items = event.dataTransfer.items
+    if (items && items.length > 0) {
+      void resolveDroppedItems(items).then((resolved) => {
+        if (resolved.length > 0) {
+          void handleFiles(
+            resolved.map((r) => ({ file: r.file, relativePath: r.relativePath || undefined })),
+          )
+        }
+      })
+      return
+    }
     if (event.dataTransfer.files.length > 0) {
-      void handleFiles(event.dataTransfer.files)
+      void handleFiles(Array.from(event.dataTransfer.files).map((file) => ({ file })))
     }
   }
 
@@ -714,7 +752,7 @@ function LibraryDocumentsSection({
           <Box
             role="button"
             tabIndex={0}
-            aria-label="Dateien hierher ziehen zum Hochladen"
+            aria-label="Dateien oder Ordner hierher ziehen zum Hochladen"
             onClick={() => fileInputRef.current?.click()}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -740,7 +778,7 @@ function LibraryDocumentsSection({
             }}
           >
             <UploadFileIcon sx={{ fontSize: 32, mb: 1 }} />
-            <Typography>Dateien hierher ziehen</Typography>
+            <Typography>Dateien oder Ordner hierher ziehen</Typography>
           </Box>
           <input
             ref={fileInputRef}
@@ -751,7 +789,27 @@ function LibraryDocumentsSection({
             aria-label="Dateien auswählen"
             onChange={(e) => {
               if (e.target.files && e.target.files.length > 0) {
-                void handleFiles(e.target.files)
+                void handleFiles(Array.from(e.target.files).map((file) => ({ file })))
+              }
+              e.target.value = ''
+            }}
+          />
+          {/* #823: webkitdirectory is set imperatively on this node (see the useEffect above) -
+              React's <input> typings do not include it as a JSX prop. */}
+          <input
+            ref={folderInputRef}
+            type="file"
+            multiple
+            hidden
+            aria-label="Ordner auswählen"
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                void handleFiles(
+                  Array.from(e.target.files).map((file) => ({
+                    file,
+                    relativePath: directoryPathFromWebkitRelativePath(file.webkitRelativePath),
+                  })),
+                )
               }
               e.target.value = ''
             }}
@@ -764,6 +822,14 @@ function LibraryDocumentsSection({
               disabled={isUploading}
             >
               Dateien hochladen
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DriveFolderUploadIcon />}
+              onClick={() => folderInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              Ordner hochladen
             </Button>
             {canManageFolders && (
               <Button

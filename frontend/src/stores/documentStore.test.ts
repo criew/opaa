@@ -209,7 +209,9 @@ describe('documentStore', () => {
 
     await useDocumentStore.getState().uploadNewDocument('library-1', new File(['x'], 'x.pdf'))
 
-    expect(mockUploadDocument).toHaveBeenCalledWith('library-1', expect.any(File), null)
+    // #823: uploadDocumentRequest's signature grew a trailing folderPath - undefined here, since
+    // no folderPath was passed to uploadNewDocument.
+    expect(mockUploadDocument).toHaveBeenCalledWith('library-1', expect.any(File), null, undefined)
     expect(mockGetLibraryDocuments).toHaveBeenCalledWith('library-1', {
       page: 1,
       size: 5,
@@ -222,6 +224,27 @@ describe('documentStore', () => {
     ])
     expect(useDocumentStore.getState().pageStateByLibrary['library-1'].totalElements).toBe(7)
     expect(useDocumentStore.getState().isUploading).toBe(false)
+  })
+
+  it('passes a given folderPath through to the request layer, relative to the open folder (#823)', async () => {
+    useDocumentStore.setState({
+      pageStateByLibrary: {
+        'library-1': { page: 0, size: 20, q: '', totalElements: 0, folderId: 'folder-bestand' },
+      },
+    })
+    mockUploadDocument.mockResolvedValueOnce(pendingDocument)
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
+
+    await useDocumentStore
+      .getState()
+      .uploadNewDocument('library-1', new File(['x'], 'protokoll.pdf'), 'Protokolle/2026')
+
+    expect(mockUploadDocument).toHaveBeenCalledWith(
+      'library-1',
+      expect.any(File),
+      'folder-bestand',
+      'Protokolle/2026',
+    )
   })
 
   it('names the file in the upload error message, appends it to uploadErrors and rethrows', async () => {

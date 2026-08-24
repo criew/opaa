@@ -80,7 +80,7 @@ interface DocumentState {
     libraryId: string,
     options?: { page?: number; size?: number; q?: string; folderId?: string | null },
   ) => Promise<void>
-  uploadNewDocument: (libraryId: string, file: File) => Promise<void>
+  uploadNewDocument: (libraryId: string, file: File, folderPath?: string) => Promise<void>
   removeDocument: (libraryId: string, documentId: string) => Promise<void>
   createFolder: (libraryId: string, name: string, parentFolderId?: string | null) => Promise<void>
   renameFolder: (libraryId: string, folderId: string, name: string) => Promise<void>
@@ -132,13 +132,17 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     await runLoadDocuments(libraryId, options, set, get, false)
   },
 
-  uploadNewDocument: async (libraryId: string, file: File) => {
+  uploadNewDocument: async (libraryId: string, file: File, folderPath?: string) => {
     const sessionEpoch = currentSessionEpoch()
     const folderId = get().pageStateByLibrary[libraryId]?.folderId ?? null
     set({ isUploading: true })
     try {
       // #822: uploads land in the currently open folder, mirroring GET .../documents' own scoping.
-      await uploadDocumentRequest(libraryId, file, folderId)
+      // #823: folderPath (if given) is relative to that same folder - its intermediate folders are
+      // created idempotently by the backend, letting a whole dragged-and-dropped or
+      // webkitdirectory-selected folder tree land under one shared folder chain instead of a
+      // duplicate per file.
+      await uploadDocumentRequest(libraryId, file, folderId, folderPath)
       if (isStaleSessionEpoch(sessionEpoch)) return
       set({ isUploading: false })
     } catch (err) {

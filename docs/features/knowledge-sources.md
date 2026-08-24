@@ -653,19 +653,20 @@ anhält.
 
 ## Ordner in Bibliotheken
 
-**Backend und Oberfläche für UPLOAD-Bibliotheken gebaut (#820, #821, #822); Ordner-Upload per Drag &
-Drop und die read-only Abbildung für FILESYSTEM-Bibliotheken folgen.** Konzept und Datenmodell sind
-entschieden — siehe [ADR-0020](../decisions/0020-ordner-in-bibliotheken-navigation.md): eine eigene
-Tabelle `library_folders` (statt virtueller Pfad-Präfixe), Ordner sind reine Navigation innerhalb
-einer Bibliothek und **keine eigene Rechtegrenze** — Grants bleiben ausschließlich auf
-Bibliotheksebene (`asset_grants.library_id`). Details zur Rechte-Abgrenzung stehen in
+**Backend und Oberfläche für UPLOAD-Bibliotheken gebaut (#820, #821, #822, #823); die read-only
+Abbildung für FILESYSTEM-Bibliotheken folgt (#824).** Konzept und Datenmodell sind entschieden —
+siehe [ADR-0020](../decisions/0020-ordner-in-bibliotheken-navigation.md): eine eigene Tabelle
+`library_folders` (statt virtueller Pfad-Präfixe), Ordner sind reine Navigation innerhalb einer
+Bibliothek und **keine eigene Rechtegrenze** — Grants bleiben ausschließlich auf Bibliotheksebene
+(`asset_grants.library_id`). Details zur Rechte-Abgrenzung stehen in
 [Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md).
 
 Schema und CRUD-API (Ordner anlegen, umbenennen, rekursiv löschen) sind mit #820 **gebaut**, die
 ordner-bewusste Dokumentliste und der Upload in einen Ordner mit #821, die Navigation und Verwaltung
 in der Bibliotheks-Detailansicht (Breadcrumb, Ordnerzeilen, Anlegen/Umbenennen/Löschen, Upload in den
-geöffneten Ordner, Ordnerpfad bei Suchtreffern) mit #822 — die darunterstehende Liste beschreibt ab
-hier noch das Zielbild, wo nicht ausdrücklich gekennzeichnet.
+geöffneten Ordner, Ordnerpfad bei Suchtreffern) mit #822, der Ordner-Upload per Drag & Drop mit
+Strukturübernahme mit #823 — die darunterstehende Liste beschreibt ab hier noch das Zielbild, wo
+nicht ausdrücklich gekennzeichnet.
 
 ### Ordner in UPLOAD-Bibliotheken
 
@@ -694,10 +695,18 @@ hier noch das Zielbild, wo nicht ausdrücklich gekennzeichnet.
 - **Upload in den geöffneten Ordner (#821/#822, gebaut).** `POST .../documents` nimmt ein optionales
   `folderId` entgegen; die Bibliotheksdetailseite lädt Dateien standardmäßig in den Ordner, der
   gerade in der Navigation geöffnet ist, auf der Wurzelebene entsprechend dorthin.
-- **Ordner-Upload per Drag & Drop mit Strukturübernahme.** Wird ein ganzer Ordner aus dem
-  Dateisystem in die Bibliothek gezogen, übernimmt OPAA seine Unterstruktur: Zwischenordner werden bei
-  Bedarf angelegt (idempotent — ein bereits vorhandener gleichnamiger Ordner auf derselben Ebene wird
-  wiederverwendet, nicht dupliziert), und jede Datei landet im ihr entsprechenden Ordner.
+- **Ordner-Upload per Drag & Drop mit Strukturübernahme (#823, gebaut).** Wird ein ganzer Ordner aus
+  dem Dateisystem in die Bibliothek gezogen — oder über den Button „Ordner hochladen" per Dateidialog
+  ausgewählt —, übernimmt OPAA seine Unterstruktur unterhalb des gerade geöffneten Ordners:
+  `POST .../documents` nimmt dafür zusätzlich zum optionalen `folderId` ein optionales `folderPath`
+  entgegen (relativ zu `folderId`, z. B. „Protokolle/2026"), dessen Zwischenordner bei Bedarf angelegt
+  werden — idempotent (ein bereits vorhandener gleichnamiger Ordner auf derselben Ebene wird
+  wiederverwendet, nicht dupliziert) und mit denselben Validierungen wie ein manuell angelegter Ordner
+  (Länge, kein Pfadtrenner im Segment, kein „.."). Jede Datei landet im ihr entsprechenden Ordner; die
+  Oberfläche löst einen gezogenen Ordner über `DataTransferItem.webkitGetAsEntry()` rekursiv auf
+  (mehrere `readEntries()`-Aufrufe, bis die Auflistung leer ist) und lädt jede Datei sequenziell mit
+  ihrem relativen Pfad hoch — abgewiesene Dateien werden gesammelt gemeldet, der Rest lädt weiter,
+  wie beim bestehenden Mehrfach-Upload.
 - **Bibliotheksweite Suche mit Ordnerpfad-Anzeige (#821/#822, gebaut).** Die Suche innerhalb einer
   Bibliothek (`q`) durchsucht weiterhin den gesamten Bestand unabhängig von der Ordnerstruktur und
   ignoriert ein mitgegebenes `folderId` (siehe ADR-0020, Entscheidung 4 — kein Ordner-Filter im

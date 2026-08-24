@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -72,7 +73,12 @@ public class LibraryFolderService {
       UserRepository userRepository,
       LibraryAccessService accessService,
       DocumentRepository documentRepository,
-      LibraryDocumentService documentService) {
+      // #823: LibraryDocumentService now depends on this class too (uploadDocument's folderPath
+      // materializes a folder chain via resolveOrCreateFolderPath below), which would otherwise be
+      // a genuine constructor-injection cycle Spring cannot resolve. @Lazy breaks it on this side -
+      // the only use of documentService here (deleteRecursive, below) runs long after both beans
+      // are fully constructed, so a lazy proxy costs nothing at the one call site that needs it.
+      @Lazy LibraryDocumentService documentService) {
     this.folderRepository = folderRepository;
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
@@ -270,6 +276,66 @@ public class LibraryFolderService {
           .map(LibraryFolder::getId)
           .orElseThrow(() -> e);
     }
+  }
+
+  /**
+   * Resolves (idempotently creating as needed) the folder chain described by {@code pathSegments},
+   * relative to {@code baseFolderId} in an {@code UPLOAD} library (#823, Epic #520 Phase 4) - the
+   * upload-path counterpart to {@link #materializeFolderPath}'s FILESYSTEM-only mirroring. Unlike
+   * that method, this one enforces every check {@link #createFolder} itself enforces - permission,
+   * {@code UPLOAD}-only, name shape, depth - once for the whole chain, exactly as if each segment
+   * had been created one REST call at a time; an existing folder at any level is reused rather than
+   * duplicated, mirroring {@link #materializeSingleFolder}.
+   *
+   * @param baseFolderId the folder {@code pathSegments} is relative to; {@code null} means the
+   *     library's root, mirroring {@link #createFolder}'s own {@code parentFolderId}
+   * @return the id of the deepest folder in {@code pathSegments}, or {@code baseFolderId} unchanged
+   *     for an empty list
+   */
+  @Transactional
+  public UUID resolveOrCreateFolderPath(
+      UUID libraryId,
+      UUID baseFolderId,
+      List<String> pathSegments,
+      UUID currentUserId,
+      boolean systemAdmin) {
+    KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
+    requireEditable(library, currentUserId, systemAdmin);
+    requireUploadLibrary(library);
+    resolveParent(libraryId, baseFolderId);
+
+    UUID parentFolderId = baseFolderId;
+    int depth = baseFolderId == null ? 0 : depthOfParentChain(baseFolderId);
+    for (String rawSegment : pathSegments) {
+      String name = validatePathSegment(rawSegment);
+      depth++;
+      if (depth > MAX_DEPTH) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "Die Ordnerstruktur ist zu tief verschachtelt (maximal " + MAX_DEPTH + " Ebenen)");
+      }
+      parentFolderId = materializeSingleFolder(library, parentFolderId, name);
+    }
+    return parentFolderId;
+  }
+
+  /**
+   * {@link #validateName} plus the extra checks a path segment needs beyond a single, manually
+   * typed folder name (#823): no {@code "\"} (a Windows-style separator {@code validateName}'s own
+   * {@code "/"} check does not catch) and no {@code ".."}/{@code "."} (a relative-path traversal
+   * segment that means something other than a literal folder name).
+   */
+  private String validatePathSegment(String rawSegment) {
+    String name = validateName(rawSegment);
+    if (name.contains("\\")) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Ordnername darf kein \"\\\" enthalten");
+    }
+    if (name.equals("..") || name.equals(".")) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Ordnername darf nicht \"..\" oder \".\" lauten");
+    }
+    return name;
   }
 
   private Optional<LibraryFolder> findByParentAndName(

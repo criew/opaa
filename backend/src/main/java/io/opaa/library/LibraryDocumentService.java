@@ -25,6 +25,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
@@ -120,6 +122,7 @@ public class LibraryDocumentService {
   private final TargetAddressValidator targetAddressValidator;
   private final RemoteContentProperties remoteContentProperties;
   private final LibraryFolderRepository folderRepository;
+  private final LibraryFolderService folderService;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -135,7 +138,8 @@ public class LibraryDocumentService {
       UrlFileDownloader urlFileDownloader,
       TargetAddressValidator targetAddressValidator,
       RemoteContentProperties remoteContentProperties,
-      LibraryFolderRepository folderRepository) {
+      LibraryFolderRepository folderRepository,
+      LibraryFolderService folderService) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.accessService = accessService;
@@ -150,10 +154,34 @@ public class LibraryDocumentService {
     this.targetAddressValidator = targetAddressValidator;
     this.remoteContentProperties = remoteContentProperties;
     this.folderRepository = folderRepository;
+    this.folderService = folderService;
   }
 
+  /**
+   * The pre-#823 signature, kept for every caller that never needs a {@code folderPath} - delegates
+   * to the full overload below with {@code folderPath = null}.
+   */
   public LibraryDocumentResponse uploadDocument(
       UUID libraryId, MultipartFile file, UUID folderId, UUID currentUserId, boolean systemAdmin) {
+    return uploadDocument(libraryId, file, folderId, null, currentUserId, systemAdmin);
+  }
+
+  /**
+   * {@code folderPath} (#823, Epic #520 Phase 4): an optional path relative to {@code folderId}
+   * (itself optional, meaning the library's root) - e.g. {@code "Protokolle/2026"} - whose
+   * intermediate folders are created idempotently (existing ones of the same name reused, never
+   * duplicated) via {@link LibraryFolderService#resolveOrCreateFolderPath} before the file is
+   * stored. Lets a whole dragged-and-dropped directory tree upload one file at a time while still
+   * ending up under a single, shared folder chain instead of a separate accidental duplicate per
+   * file.
+   */
+  public LibraryDocumentResponse uploadDocument(
+      UUID libraryId,
+      MultipartFile file,
+      UUID folderId,
+      String folderPath,
+      UUID currentUserId,
+      boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
     requireEditable(library, currentUserId, systemAdmin);
     requireUploadLibrary(library);
@@ -163,6 +191,17 @@ public class LibraryDocumentService {
     // library, treated identically per resolveFolder) must leave the bestand exactly as it was.
     if (folderId != null) {
       resolveFolder(libraryId, folderId);
+    }
+
+    // #823: resolved (and, where needed, created) before any byte is written to disk too, same
+    // reasoning as the folderId check above - an invalid path segment or a depth overrun must leave
+    // the bestand untouched rather than aborting mid-upload with folders already half-created.
+    UUID effectiveFolderId = folderId;
+    List<String> pathSegments = splitFolderPath(folderPath);
+    if (!pathSegments.isEmpty()) {
+      effectiveFolderId =
+          folderService.resolveOrCreateFolderPath(
+              libraryId, folderId, pathSegments, currentUserId, systemAdmin);
     }
 
     if (file == null || file.isEmpty()) {
@@ -248,7 +287,7 @@ public class LibraryDocumentService {
       document.setLibraryId(libraryId);
       document.setOrganizationId(library.getOrganizationId());
       document.setUploadedByUserId(currentUserId);
-      document.setFolderId(folderId);
+      document.setFolderId(effectiveFolderId);
       // Set on this first (and only synchronous) save: this is where a concurrent duplicate
       // upload race against uk_documents_library_checksum (migration 020) is meant to be settled -
       // before any embedding work starts, not after (#420 second code review round, finding 1,
@@ -848,6 +887,28 @@ public class LibraryDocumentService {
     int lastSlash = normalized.lastIndexOf('/');
     String lastSegment = lastSlash >= 0 ? normalized.substring(lastSlash + 1) : normalized;
     return lastSegment.isBlank() ? originalFileName : lastSegment;
+  }
+
+  /**
+   * Splits a {@code folderPath} like {@code "Protokolle/2026"} into its individual segments (#823):
+   * empty segments - a leading/trailing/doubled {@code "/"} - are dropped rather than rejected, so
+   * a caller-built path does not have to be perfectly normalized first. {@link
+   * LibraryFolderService#resolveOrCreateFolderPath}'s own {@code validatePathSegment} is what
+   * actually validates each surviving segment's shape (length, no further separators, no {@code
+   * ".."}). {@code null}/blank yields an empty list, meaning "no path" - the same as omitting the
+   * parameter entirely.
+   */
+  private List<String> splitFolderPath(String folderPath) {
+    if (folderPath == null || folderPath.isBlank()) {
+      return List.of();
+    }
+    List<String> segments = new ArrayList<>();
+    for (String rawSegment : folderPath.split("/")) {
+      if (!rawSegment.isBlank()) {
+        segments.add(rawSegment);
+      }
+    }
+    return segments;
   }
 
   /**
