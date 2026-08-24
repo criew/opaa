@@ -11,6 +11,9 @@ import io.opaa.api.dto.IndexingStatusResponse;
 import io.opaa.api.dto.IndexingTriggerSource;
 import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
+import io.opaa.api.dto.LibraryFolderRenameRequest;
+import io.opaa.api.dto.LibraryFolderRequest;
+import io.opaa.api.dto.LibraryFolderResponse;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
@@ -30,6 +33,7 @@ import io.opaa.indexing.JobStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
+import io.opaa.library.LibraryFolderService;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.space.SpaceAssetAssociationService;
 import jakarta.validation.Valid;
@@ -46,6 +50,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -65,6 +70,7 @@ public class LibraryController {
   private final KnowledgeLibraryService libraryService;
   private final AssetGrantService grantService;
   private final LibraryDocumentService documentService;
+  private final LibraryFolderService folderService;
   private final DocumentIndexingService indexingService;
   private final UserService userService;
   private final SourceConnectionTestService sourceConnectionTestService;
@@ -74,6 +80,7 @@ public class LibraryController {
       KnowledgeLibraryService libraryService,
       AssetGrantService grantService,
       LibraryDocumentService documentService,
+      LibraryFolderService folderService,
       DocumentIndexingService indexingService,
       UserService userService,
       SourceConnectionTestService sourceConnectionTestService,
@@ -81,6 +88,7 @@ public class LibraryController {
     this.libraryService = libraryService;
     this.grantService = grantService;
     this.documentService = documentService;
+    this.folderService = folderService;
     this.indexingService = indexingService;
     this.userService = userService;
     this.sourceConnectionTestService = sourceConnectionTestService;
@@ -212,6 +220,59 @@ public class LibraryController {
     documentService.deleteDocument(
         libraryId,
         documentId,
+        currentUser.getId(),
+        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/{libraryId}/folders")
+  public ResponseEntity<LibraryFolderResponse> createFolder(
+      @PathVariable UUID libraryId,
+      @Valid @RequestBody LibraryFolderRequest request,
+      @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    LibraryFolderResponse response =
+        folderService.createFolder(
+            libraryId,
+            request,
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  @GetMapping("/{libraryId}/folders/{folderId}")
+  public LibraryFolderResponse getFolder(
+      @PathVariable UUID libraryId, @PathVariable UUID folderId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    return folderService.getFolder(
+        libraryId,
+        folderId,
+        currentUser.getId(),
+        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+  }
+
+  @PatchMapping("/{libraryId}/folders/{folderId}")
+  public LibraryFolderResponse renameFolder(
+      @PathVariable UUID libraryId,
+      @PathVariable UUID folderId,
+      @Valid @RequestBody LibraryFolderRenameRequest request,
+      @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    return folderService.renameFolder(
+        libraryId,
+        folderId,
+        request,
+        currentUser.getId(),
+        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+  }
+
+  @DeleteMapping("/{libraryId}/folders/{folderId}")
+  public ResponseEntity<Void> deleteFolder(
+      @PathVariable UUID libraryId, @PathVariable UUID folderId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    folderService.deleteFolder(
+        libraryId,
+        folderId,
         currentUser.getId(),
         currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
     return ResponseEntity.noContent().build();

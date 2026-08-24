@@ -29,6 +29,22 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   List<Document> findByLibraryId(UUID libraryId);
 
+  /**
+   * Backs {@code io.opaa.library.LibraryFolderService#deleteFolder} (#820): every document directly
+   * inside a folder, cleaned up one by one through {@code LibraryDocumentService#deleteDocument}
+   * (chunks, stored file, row) rather than a bulk delete or a database cascade - see {@code
+   * documents.folder_id}'s {@code onDelete: RESTRICT} (migration 062) and ADR-0020, Entscheidung 5,
+   * which draws the identical distinction for a document's own deletion.
+   */
+  List<Document> findByFolderId(UUID folderId);
+
+  /**
+   * The count-only counterpart to {@link #findByFolderId} - backs {@code LibraryFolderService}'s
+   * {@code documentCount} (GET/POST/PATCH .../folders response, #820), which a confirmation dialog
+   * shows before a recursive DELETE; cheaper than loading every row just to call {@code .size()}.
+   */
+  long countByFolderId(UUID folderId);
+
   long countByLibraryId(UUID libraryId);
 
   /**

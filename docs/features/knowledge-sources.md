@@ -653,12 +653,17 @@ anhält.
 
 ## Ordner in Bibliotheken
 
-**Zielbild, noch nicht gebaut.** Konzept und Datenmodell sind entschieden — siehe
-[ADR-0020](../decisions/0020-ordner-in-bibliotheken-navigation.md): eine eigene Tabelle
-`library_folders` (statt virtueller Pfad-Präfixe), Ordner sind reine Navigation innerhalb einer
-Bibliothek und **keine eigene Rechtegrenze** — Grants bleiben ausschließlich auf Bibliotheksebene
-(`asset_grants.library_id`). Details zur Rechte-Abgrenzung stehen in
+**Backend-Fundament gebaut (#820), Liste/Upload und Oberfläche folgen.** Konzept und Datenmodell
+sind entschieden — siehe [ADR-0020](../decisions/0020-ordner-in-bibliotheken-navigation.md): eine
+eigene Tabelle `library_folders` (statt virtueller Pfad-Präfixe), Ordner sind reine Navigation
+innerhalb einer Bibliothek und **keine eigene Rechtegrenze** — Grants bleiben ausschließlich auf
+Bibliotheksebene (`asset_grants.library_id`). Details zur Rechte-Abgrenzung stehen in
 [Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md).
+
+Schema und CRUD-API (Ordner anlegen, umbenennen, rekursiv löschen) sind mit #820 **gebaut** — die
+darunterstehende Liste beschreibt weiterhin überwiegend das Zielbild, wo nicht ausdrücklich
+gekennzeichnet. Die ordner-bewusste Dokumentliste und der Upload in einen geöffneten Ordner folgen
+mit #821, die Navigation in der Oberfläche (Breadcrumb, Ordnerzeilen) mit #822.
 
 ### Ordner in UPLOAD-Bibliotheken
 
