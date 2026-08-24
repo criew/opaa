@@ -23,13 +23,11 @@ function source(
   fileName: string,
   cited: boolean,
   relevanceScore: number,
-  spaceName = 'Engineering',
   citationValid: boolean | null = true,
   extra: Partial<SourceReference> = {},
 ): SourceReference {
   return {
     fileName,
-    spaceName,
     relevanceScore,
     matchCount: 1,
     cited,
@@ -118,7 +116,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
           id: 'ev-invalid',
           role: 'assistant',
           content: 'Beleg【source: a#0 | schwach.md】.',
-          sources: [source('schwach.md', true, 0.41, 'Engineering', false)],
+          sources: [source('schwach.md', true, 0.41, false)],
           timestamp: new Date('2026-08-21T09:00:00'),
         }}
       />,
@@ -180,7 +178,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
 
     it('fetches and opens a local original (UPLOAD/FILESYSTEM) via the download endpoint', async () => {
       const { user, drawer } = await openDrawerWith(
-        source('doc.pdf', true, 0.9, 'Engineering', true, {
+        source('doc.pdf', true, 0.9, true, {
           documentId: 'doc-1',
           sourceType: 'UPLOAD',
         }),
@@ -193,7 +191,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
 
     it('opens an HTTP_DIRECTORY document through the content endpoint too, keeping sourceUrl as a secondary "Quelle" link (#747)', async () => {
       const { user, drawer } = await openDrawerWith(
-        source('doc.pdf', true, 0.9, 'Engineering', true, {
+        source('doc.pdf', true, 0.9, true, {
           documentId: 'doc-1',
           sourceType: 'HTTP_DIRECTORY',
           sourceUrl: 'https://example.gov/verzeichnis/doc.pdf',
@@ -226,7 +224,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         new Error('Das Originaldokument wurde nicht gefunden.'),
       )
       const { user, drawer } = await openDrawerWith(
-        source('doc.pdf', true, 0.9, 'Engineering', true, {
+        source('doc.pdf', true, 0.9, true, {
           documentId: 'doc-1',
           sourceType: 'UPLOAD',
         }),
@@ -248,7 +246,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         content: '# Personalausweis\n\nAusgestellt am 1. März.',
       })
       const { user, drawer } = await openDrawerWith(
-        source('001_personalausweis.md', true, 0.9, 'Engineering', true, {
+        source('001_personalausweis.md', true, 0.9, true, {
           documentId: 'doc-1',
           sourceType: 'UPLOAD',
         }),
@@ -268,7 +266,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     it('shows a snackbar with the file name when a DOCX download starts (#780)', async () => {
       mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'bescheid.docx' })
       const { user, drawer } = await openDrawerWith(
-        source('bescheid.docx', true, 0.9, 'Engineering', true, {
+        source('bescheid.docx', true, 0.9, true, {
           documentId: 'doc-1',
           sourceType: 'UPLOAD',
         }),

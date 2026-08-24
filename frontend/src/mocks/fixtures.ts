@@ -102,7 +102,6 @@ export const mockQueryResponses: QueryResponse[] = [
     sources: [
       {
         fileName: 'architecture-overview.md',
-        spaceName: 'Engineering',
         relevanceScore: 0.92,
         matchCount: 3,
         indexedAt: '2025-01-15T10:30:00Z',
@@ -117,7 +116,6 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'getting-started.pdf',
-        spaceName: 'Meine Dokumente',
         relevanceScore: 0.85,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
@@ -130,7 +128,6 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'adr-0002-technology-stack.md',
-        spaceName: 'Engineering',
         relevanceScore: 0.78,
         matchCount: 2,
         indexedAt: '2025-01-14T08:00:00Z',
@@ -161,7 +158,6 @@ export const mockQueryResponses: QueryResponse[] = [
     sources: [
       {
         fileName: 'contributing-guide.md',
-        spaceName: 'Company',
         relevanceScore: 0.95,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
@@ -194,7 +190,6 @@ export const mockQueryResponses: QueryResponse[] = [
     sources: [
       {
         fileName: 'docker-compose.yml',
-        spaceName: 'Phoenix',
         relevanceScore: 0.97,
         matchCount: 2,
         indexedAt: '2025-01-15T10:30:00Z',
@@ -203,7 +198,6 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'deployment-guide.pdf',
-        spaceName: 'Phoenix',
         relevanceScore: 0.91,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
@@ -212,7 +206,6 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'adr-0002-technology-stack.md',
-        spaceName: 'Engineering',
         relevanceScore: 0.88,
         matchCount: 3,
         indexedAt: '2025-01-14T08:00:00Z',
@@ -221,7 +214,6 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'ci-pipeline.md',
-        spaceName: 'Company',
         relevanceScore: 0.85,
         matchCount: 1,
         indexedAt: '2025-01-13T15:00:00Z',
@@ -230,7 +222,6 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'liquibase-changelog.xml',
-        spaceName: 'Meine Dokumente',
         relevanceScore: 0.82,
         matchCount: 1,
         indexedAt: '2025-01-12T09:00:00Z',
@@ -239,7 +230,6 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'postgres-setup.md',
-        spaceName: 'Meine Dokumente',
         relevanceScore: 0.79,
         matchCount: 1,
         indexedAt: '2025-01-11T14:00:00Z',
@@ -248,7 +238,6 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'environment-config.md',
-        spaceName: 'Company',
         relevanceScore: 0.76,
         matchCount: 1,
         indexedAt: '2025-01-10T11:00:00Z',
@@ -257,7 +246,6 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'monitoring-guide.md',
-        spaceName: 'Phoenix',
         relevanceScore: 0.72,
         matchCount: 1,
         indexedAt: '2025-01-09T16:00:00Z',
@@ -266,7 +254,6 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'backup-strategy.pdf',
-        spaceName: 'Phoenix',
         relevanceScore: 0.68,
         matchCount: 1,
         indexedAt: null,
@@ -275,7 +262,6 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'security-checklist.md',
-        spaceName: 'Company',
         relevanceScore: 0.65,
         matchCount: 1,
         indexedAt: null,
