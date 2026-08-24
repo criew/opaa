@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -150,7 +151,9 @@ class FilesystemFolderMappingIntegrationTest {
   }
 
   private IndexingJob triggerIndexing() {
-    return documentIndexingService.triggerIndexing(targetLibraryId, userId, true);
+    return documentIndexingService.triggerIndexing(
+        targetLibraryId,
+        new CurrentUser(userId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, null));
   }
 
   private void awaitJobCompletion(IndexingJob job) {

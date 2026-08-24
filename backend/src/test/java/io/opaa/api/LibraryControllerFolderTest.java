@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
@@ -27,7 +28,6 @@ import io.opaa.library.LibraryFolderDetail;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.space.SpaceAssetAssociationService;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,14 +71,22 @@ class LibraryControllerFolderTest {
   @MockitoBean private SpaceAssetAssociationService associationService;
 
   private final UUID currentUserId = UUID.randomUUID();
+  private CurrentUser caller;
 
   @BeforeEach
   void setUp() {
     User user = new User(TEST_SUBJECT, TEST_ISSUER, "test@example.com", "Test User");
     user.setSystemRole(SystemRole.USER);
     setId(user, currentUserId);
-    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
-        .thenReturn(Optional.of(user));
+    caller =
+        new CurrentUser(
+            user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
+    when(userService.findOrCreateUser(
+            org.mockito.ArgumentMatchers.eq(TEST_SUBJECT),
+            org.mockito.ArgumentMatchers.eq(TEST_ISSUER),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any()))
+        .thenReturn(user);
   }
 
   private RequestPostProcessor asTestUser() {
@@ -121,11 +129,7 @@ class LibraryControllerFolderTest {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
     when(folderService.createFolder(
-            eq(libraryId),
-            eq("Protokolle"),
-            org.mockito.ArgumentMatchers.isNull(),
-            eq(currentUserId),
-            eq(false)))
+            eq(libraryId), eq("Protokolle"), org.mockito.ArgumentMatchers.isNull(), eq(caller)))
         .thenReturn(sampleDetail(libraryId, folderId, "Protokolle"));
 
     mockMvc
@@ -147,8 +151,7 @@ class LibraryControllerFolderTest {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
     UUID parentFolderId = UUID.randomUUID();
-    when(folderService.createFolder(
-            eq(libraryId), eq("2026"), eq(parentFolderId), eq(currentUserId), eq(false)))
+    when(folderService.createFolder(eq(libraryId), eq("2026"), eq(parentFolderId), eq(caller)))
         .thenReturn(sampleDetail(libraryId, folderId, "2026"));
 
     mockMvc
@@ -159,7 +162,7 @@ class LibraryControllerFolderTest {
                 .content("{\"name\":\"2026\",\"parentFolderId\":\"" + parentFolderId + "\"}"))
         .andExpect(status().isCreated());
 
-    verify(folderService).createFolder(libraryId, "2026", parentFolderId, currentUserId, false);
+    verify(folderService).createFolder(libraryId, "2026", parentFolderId, caller);
   }
 
   @Test
@@ -199,8 +202,7 @@ class LibraryControllerFolderTest {
             eq(libraryId),
             org.mockito.ArgumentMatchers.any(),
             org.mockito.ArgumentMatchers.any(),
-            eq(currentUserId),
-            eq(false)))
+            eq(caller)))
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     mockMvc
@@ -219,8 +221,7 @@ class LibraryControllerFolderTest {
             eq(libraryId),
             org.mockito.ArgumentMatchers.any(),
             org.mockito.ArgumentMatchers.any(),
-            eq(currentUserId),
-            eq(false)))
+            eq(caller)))
         .thenThrow(
             new ConflictException(
                 "Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene"));
@@ -238,7 +239,7 @@ class LibraryControllerFolderTest {
   void gettingAFolderReturns200WithTheDocumentCount() throws Exception {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
-    when(folderService.getFolder(libraryId, folderId, currentUserId, false))
+    when(folderService.getFolder(libraryId, folderId, caller))
         .thenReturn(sampleDetail(libraryId, folderId, "Archiv", 3L));
 
     mockMvc
@@ -252,7 +253,7 @@ class LibraryControllerFolderTest {
   void gettingAnUnknownFolderReturns404() throws Exception {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
-    when(folderService.getFolder(libraryId, folderId, currentUserId, false))
+    when(folderService.getFolder(libraryId, folderId, caller))
         .thenThrow(new NotFoundException("Ordner nicht gefunden"));
 
     mockMvc
@@ -264,8 +265,7 @@ class LibraryControllerFolderTest {
   void renamingAFolderReturns200WithTheUpdatedName() throws Exception {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
-    when(folderService.renameFolder(
-            eq(libraryId), eq(folderId), eq("Neu"), eq(currentUserId), eq(false)))
+    when(folderService.renameFolder(eq(libraryId), eq(folderId), eq("Neu"), eq(caller)))
         .thenReturn(sampleDetail(libraryId, folderId, "Neu"));
 
     mockMvc
@@ -302,7 +302,7 @@ class LibraryControllerFolderTest {
             delete("/api/v1/libraries/" + libraryId + "/folders/" + folderId).with(asTestUser()))
         .andExpect(status().isNoContent());
 
-    verify(folderService).deleteFolder(libraryId, folderId, currentUserId, false);
+    verify(folderService).deleteFolder(libraryId, folderId, caller);
   }
 
   @Test
@@ -314,7 +314,7 @@ class LibraryControllerFolderTest {
                 "Diese Bibliothek ist eine Konnektorbibliothek und unterstützt keine manuell"
                     + " verwalteten Ordner"))
         .when(folderService)
-        .deleteFolder(libraryId, folderId, currentUserId, false);
+        .deleteFolder(libraryId, folderId, caller);
 
     mockMvc
         .perform(
@@ -333,9 +333,19 @@ class LibraryControllerFolderTest {
     admin.setSystemRole(SystemRole.SYSTEM_ADMIN);
     UUID adminId = UUID.randomUUID();
     setId(admin, adminId);
-    when(userService.findBySubjectAndIssuer("admin-subject", TEST_ISSUER))
-        .thenReturn(Optional.of(admin));
-    when(folderService.getFolder(libraryId, folderId, adminId, true))
+    CurrentUser adminCaller =
+        new CurrentUser(
+            admin.getId(),
+            admin.getOrganizationId(),
+            admin.getSystemRole(),
+            admin.getDisplayName());
+    when(userService.findOrCreateUser(
+            org.mockito.ArgumentMatchers.eq("admin-subject"),
+            org.mockito.ArgumentMatchers.eq(TEST_ISSUER),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any()))
+        .thenReturn(admin);
+    when(folderService.getFolder(libraryId, folderId, adminCaller))
         .thenReturn(sampleDetail(libraryId, folderId, "Archiv"));
 
     mockMvc
@@ -347,6 +357,6 @@ class LibraryControllerFolderTest {
                             builder -> builder.subject("admin-subject").claim("iss", TEST_ISSUER))))
         .andExpect(status().isOk());
 
-    verify(folderService).getFolder(libraryId, folderId, adminId, true);
+    verify(folderService).getFolder(libraryId, folderId, adminCaller);
   }
 }

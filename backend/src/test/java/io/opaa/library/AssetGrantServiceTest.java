@@ -12,6 +12,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -42,6 +44,8 @@ class AssetGrantServiceTest {
 
   private final UUID organizationId = UUID.randomUUID();
   private final UUID managerId = UUID.randomUUID();
+  private final CurrentUser managerCaller =
+      new CurrentUser(managerId, organizationId, SystemRole.USER, "Manager");
   private UUID libraryId;
   private KnowledgeLibrary library;
 
@@ -86,7 +90,7 @@ class AssetGrantServiceTest {
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER);
 
-    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerCaller))
         .isInstanceOf(AccessDeniedException.class);
     verify(grantRepository, never()).save(any());
   }
@@ -109,7 +113,7 @@ class AssetGrantServiceTest {
 
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
-    var response = grantService.upsertGrant(libraryId, request, managerId, false);
+    var response = grantService.upsertGrant(libraryId, request, managerCaller);
 
     assertThat(response.grant().getSubjectId()).isEqualTo(subjectId);
     assertThat(response.grant().getRole()).isEqualTo(AssetRole.VIEWER);
@@ -132,7 +136,7 @@ class AssetGrantServiceTest {
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.USER, foreignUserId, AssetRole.VIEWER);
 
-    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerCaller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -149,7 +153,7 @@ class AssetGrantServiceTest {
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.GROUP, foreignGroupId, AssetRole.VIEWER);
 
-    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerCaller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -173,7 +177,7 @@ class AssetGrantServiceTest {
 
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.MANAGER);
-    var response = grantService.upsertGrant(libraryId, request, managerId, false);
+    var response = grantService.upsertGrant(libraryId, request, managerCaller);
 
     assertThat(response.grant().getRole()).isEqualTo(AssetRole.MANAGER);
     verify(grantRepository, never()).save(argThat((AssetGrant g) -> g != existing));
@@ -191,7 +195,7 @@ class AssetGrantServiceTest {
             libraryId, organizationId, UUID.randomUUID(), AssetRole.VIEWER, null, managerId);
     when(grantRepository.findById(grantId)).thenReturn(Optional.of(grant));
 
-    grantService.revokeGrant(libraryId, grantId, managerId, false);
+    grantService.revokeGrant(libraryId, grantId, managerCaller);
 
     verify(grantRepository).delete(grant);
     verify(accessService).invalidateLibrary(libraryId);
@@ -214,7 +218,7 @@ class AssetGrantServiceTest {
             managerId);
     when(grantRepository.findById(grantId)).thenReturn(Optional.of(grantOnAnotherLibrary));
 
-    assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerId, false))
+    assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerCaller))
         .isInstanceOf(NotFoundException.class);
     verify(grantRepository, never()).delete(any());
   }
@@ -240,7 +244,7 @@ class AssetGrantServiceTest {
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.OWNER);
 
-    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerCaller))
         .isInstanceOf(AccessDeniedException.class)
         .satisfies(
             ex -> {
@@ -269,7 +273,7 @@ class AssetGrantServiceTest {
 
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.MANAGER);
-    var response = grantService.upsertGrant(libraryId, request, managerId, false);
+    var response = grantService.upsertGrant(libraryId, request, managerCaller);
 
     assertThat(response.grant().getRole()).isEqualTo(AssetRole.MANAGER);
   }
@@ -288,7 +292,7 @@ class AssetGrantServiceTest {
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.GROUP, dissolvedGroup.getId(), AssetRole.VIEWER);
 
-    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerCaller))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             ex -> {
@@ -326,7 +330,7 @@ class AssetGrantServiceTest {
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
 
-    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerCaller))
         .isInstanceOf(ConflictException.class)
         .satisfies(
             ex -> {
@@ -353,7 +357,7 @@ class AssetGrantServiceTest {
             eq(libraryId), eq(onlyOwnerGrant.getId()), any()))
         .thenReturn(0L);
 
-    assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerId, false))
+    assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerCaller))
         .isInstanceOf(ConflictException.class)
         .satisfies(
             ex -> {
@@ -383,7 +387,7 @@ class AssetGrantServiceTest {
             eq(libraryId), eq(grantToRemove.getId()), any()))
         .thenReturn(1L);
 
-    grantService.revokeGrant(libraryId, grantId, managerId, false);
+    grantService.revokeGrant(libraryId, grantId, managerCaller);
 
     verify(grantRepository).delete(grantToRemove);
   }
@@ -413,7 +417,7 @@ class AssetGrantServiceTest {
             eq(libraryId), eq(ownerGrantToRemove.getId()), any()))
         .thenReturn(1L);
 
-    assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerId, false))
+    assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerCaller))
         .isInstanceOf(AccessDeniedException.class)
         .satisfies(
             ex -> {
@@ -452,7 +456,7 @@ class AssetGrantServiceTest {
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
 
-    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerCaller))
         .isInstanceOf(AccessDeniedException.class)
         .satisfies(
             ex -> {
@@ -488,7 +492,7 @@ class AssetGrantServiceTest {
         new AssetGrantUpsert(PermissionSubjectType.USER, managerId, AssetRole.OWNER)
             .expiresAt(Instant.now().minusSeconds(60));
 
-    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerCaller))
         .isInstanceOf(ConflictException.class);
     verify(grantRepository, never()).save(any());
   }
@@ -511,7 +515,7 @@ class AssetGrantServiceTest {
 
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.USER, managerId, AssetRole.OWNER);
-    var response = grantService.upsertGrant(libraryId, request, managerId, false);
+    var response = grantService.upsertGrant(libraryId, request, managerCaller);
 
     assertThat(response.grant().getRole()).isEqualTo(AssetRole.OWNER);
     verify(grantRepository, never()).countOtherActiveOwnerGrants(any(), any(), any());
@@ -543,7 +547,7 @@ class AssetGrantServiceTest {
     when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
     when(userRepository.findAllById(any())).thenReturn(List.of(subjectUser, granter));
 
-    var responses = grantService.listGrants(libraryId, managerId, false);
+    var responses = grantService.listGrants(libraryId, managerCaller);
 
     assertThat(responses).hasSize(1);
     assertThat(responses.get(0).subjectDisplayName()).isEqualTo("Subjekt Person");
@@ -561,7 +565,7 @@ class AssetGrantServiceTest {
     when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
     when(groupRepository.findAllById(any())).thenReturn(List.of(group));
 
-    var responses = grantService.listGrants(libraryId, managerId, false);
+    var responses = grantService.listGrants(libraryId, managerCaller);
 
     assertThat(responses).hasSize(1);
     assertThat(responses.get(0).subjectDisplayName()).isEqualTo("Referat 50");
@@ -584,7 +588,7 @@ class AssetGrantServiceTest {
     when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
     when(userRepository.findAllById(any())).thenReturn(List.of(subjectUser));
 
-    var responses = grantService.listGrants(libraryId, managerId, false);
+    var responses = grantService.listGrants(libraryId, managerCaller);
 
     assertThat(responses).hasSize(1);
     assertThat(responses.get(0).subjectDisplayName()).isEqualTo("subject@example.com");
@@ -601,7 +605,7 @@ class AssetGrantServiceTest {
     // Deliberately not stubbing userRepository.findAllById - a Mockito mock's default answer for
     // an unstubbed List-returning method is an empty list, exercising the "subject deleted" branch.
 
-    var responses = grantService.listGrants(libraryId, managerId, false);
+    var responses = grantService.listGrants(libraryId, managerCaller);
 
     assertThat(responses).hasSize(1);
     assertThat(responses.get(0).subjectDisplayName()).isNull();

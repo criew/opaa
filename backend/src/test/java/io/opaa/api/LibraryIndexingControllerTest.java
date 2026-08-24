@@ -1,6 +1,7 @@
 package io.opaa.api;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -9,6 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
@@ -70,13 +72,20 @@ class LibraryIndexingControllerTest {
   @MockitoBean private SpaceAssetAssociationService associationService;
 
   private User currentUser;
+  private CurrentUser caller;
 
   @BeforeEach
   void setUp() {
     currentUser = new User(TEST_SUBJECT, TEST_ISSUER, "test@example.com", "Test User");
     currentUser.setSystemRole(SystemRole.USER);
-    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
-        .thenReturn(Optional.of(currentUser));
+    caller =
+        new CurrentUser(
+            currentUser.getId(),
+            currentUser.getOrganizationId(),
+            currentUser.getSystemRole(),
+            currentUser.getDisplayName());
+    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+        .thenReturn(currentUser);
   }
 
   private RequestPostProcessor asTestUser() {
@@ -87,8 +96,7 @@ class LibraryIndexingControllerTest {
   void triggerIndexingReturnsAcceptedWithRunningStatus() throws Exception {
     UUID libraryId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(false)))
-        .thenReturn(job);
+    when(indexingService.triggerIndexing(eq(libraryId), eq(caller))).thenReturn(job);
 
     mockMvc
         .perform(post("/api/v1/libraries/" + libraryId + "/indexing").with(asTestUser()))
@@ -102,7 +110,7 @@ class LibraryIndexingControllerTest {
   @Test
   void triggerIndexingReturnsConflictWhenALibraryHasNoRunType() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(indexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(false)))
+    when(indexingService.triggerIndexing(eq(libraryId), eq(caller)))
         .thenThrow(
             new ConflictException("Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf"));
 
@@ -116,7 +124,7 @@ class LibraryIndexingControllerTest {
   @Test
   void triggerIndexingReturnsConflictWhenAlreadyRunningForThisLibrary() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(indexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(false)))
+    when(indexingService.triggerIndexing(eq(libraryId), eq(caller)))
         .thenThrow(
             new ConflictException("Für diese Bibliothek läuft bereits ein Indizierungslauf"));
 
@@ -129,7 +137,7 @@ class LibraryIndexingControllerTest {
   @Test
   void triggerWithInsufficientRoleReturnsForbidden() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(indexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(false)))
+    when(indexingService.triggerIndexing(eq(libraryId), eq(caller)))
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     mockMvc
@@ -141,7 +149,7 @@ class LibraryIndexingControllerTest {
   @Test
   void triggerWithAForeignLibraryReturnsNotFound() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(indexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(false)))
+    when(indexingService.triggerIndexing(eq(libraryId), eq(caller)))
         .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
 
     mockMvc
@@ -153,7 +161,7 @@ class LibraryIndexingControllerTest {
   @Test
   void getStatusReturnsIdleWhenTheLibraryNeverRan() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
+    when(indexingService.getStatus(eq(libraryId), eq(caller)))
         .thenReturn(new IndexingStatusView(Optional.empty(), false));
 
     mockMvc
@@ -171,7 +179,7 @@ class LibraryIndexingControllerTest {
     UUID libraryId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
-    when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
+    when(indexingService.getStatus(eq(libraryId), eq(caller)))
         .thenReturn(new IndexingStatusView(Optional.of(job), false));
 
     mockMvc
@@ -195,7 +203,7 @@ class LibraryIndexingControllerTest {
     // actually carries the new field rather than aliasing documentCount.
     job.setDocumentsIndexedTotal(23);
     job.setCompletedAt(Instant.now());
-    when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
+    when(indexingService.getStatus(eq(libraryId), eq(caller)))
         .thenReturn(new IndexingStatusView(Optional.of(job), false));
 
     mockMvc
@@ -223,7 +231,7 @@ class LibraryIndexingControllerTest {
     job.setLibraryId(libraryId);
     job.setErrorMessage("/data/dokumente/geheim: No such file or directory");
 
-    when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
+    when(indexingService.getStatus(eq(libraryId), eq(caller)))
         .thenReturn(new IndexingStatusView(Optional.of(job), false));
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
@@ -234,7 +242,7 @@ class LibraryIndexingControllerTest {
                 .value("Indizierung fehlgeschlagen. Details sind für Verwaltende sichtbar."))
         .andExpect(jsonPath("$.message", org.hamcrest.Matchers.not(containsString("/data"))));
 
-    when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
+    when(indexingService.getStatus(eq(libraryId), eq(caller)))
         .thenReturn(new IndexingStatusView(Optional.of(job), true));
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
@@ -263,7 +271,7 @@ class LibraryIndexingControllerTest {
             IndexingEventCategory.UNSUPPORTED_FORMAT,
             "Dateiformat wird nicht unterstützt",
             "bad.csv");
-    when(indexingService.getRecentRuns(eq(libraryId), eq(currentUser.getId()), eq(false)))
+    when(indexingService.getRecentRuns(eq(libraryId), eq(caller)))
         .thenReturn(List.of(new IndexingRunDetail(job, List.of(event))));
 
     mockMvc
@@ -281,7 +289,7 @@ class LibraryIndexingControllerTest {
   @Test
   void listIndexingRunsWithInsufficientAccessReturnsForbidden() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(indexingService.getRecentRuns(eq(libraryId), eq(currentUser.getId()), eq(false)))
+    when(indexingService.getRecentRuns(eq(libraryId), eq(caller)))
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     mockMvc
@@ -293,7 +301,7 @@ class LibraryIndexingControllerTest {
   @Test
   void getStatusWithInsufficientAccessReturnsForbidden() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
+    when(indexingService.getStatus(eq(libraryId), eq(caller)))
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     mockMvc

@@ -3,6 +3,8 @@ package io.opaa.space;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.Chat;
@@ -149,6 +151,19 @@ class SpaceServiceIntegrationTest {
         .getRole();
   }
 
+  private CurrentUser currentUserOf(UUID userId) {
+    return currentUserOf(userId, false);
+  }
+
+  private CurrentUser currentUserOf(UUID userId, boolean systemAdmin) {
+    User user = userRepository.findById(userId).orElseThrow();
+    return new CurrentUser(
+        userId,
+        user.getOrganizationId(),
+        systemAdmin ? SystemRole.SYSTEM_ADMIN : SystemRole.USER,
+        user.getDisplayName());
+  }
+
   @Test
   void systemAdminCanCreateTeamSpace() {
     UUID adminUserId = createUser(organizationA);
@@ -163,7 +178,7 @@ class SpaceServiceIntegrationTest {
             List.of(new SpaceMemberSeed(curatorId, SpaceRole.CURATOR)),
             null);
 
-    Space created = spaceService.createSpace(creation, adminUserId, true);
+    Space created = spaceService.createSpace(creation, currentUserOf(adminUserId, true));
 
     assertThat(created.isDefault()).isFalse();
     assertThat(created.getName()).isEqualTo("Engineering");
@@ -181,10 +196,10 @@ class SpaceServiceIntegrationTest {
 
     Space first =
         spaceService.createSpace(
-            new SpaceCreation("Vorhaben A", null, null, null, null, null), userId, false);
+            new SpaceCreation("Vorhaben A", null, null, null, null, null), currentUserOf(userId));
     Space second =
         spaceService.createSpace(
-            new SpaceCreation("Vorhaben B", null, null, null, null, null), userId, false);
+            new SpaceCreation("Vorhaben B", null, null, null, null, null), currentUserOf(userId));
 
     assertThat(first.isDefault()).isFalse();
     assertThat(second.isDefault()).isFalse();
@@ -198,7 +213,7 @@ class SpaceServiceIntegrationTest {
     SpaceCreation creation =
         new SpaceCreation("Phoenix", "My project", null, null, List.of(), null);
 
-    Space created = spaceService.createSpace(creation, userId, false);
+    Space created = spaceService.createSpace(creation, currentUserOf(userId));
 
     assertThat(created.isDefault()).isFalse();
     assertThat(created.getOwnerId()).isEqualTo(userId);
@@ -211,8 +226,8 @@ class SpaceServiceIntegrationTest {
     SpaceCreation requestA = new SpaceCreation("Phoenix", null, null, null, List.of(), null);
     SpaceCreation requestB = new SpaceCreation("Phoenix", null, null, null, List.of(), null);
 
-    Space createdA = spaceService.createSpace(requestA, userA, false);
-    Space createdB = spaceService.createSpace(requestB, userB, false);
+    Space createdA = spaceService.createSpace(requestA, currentUserOf(userA));
+    Space createdB = spaceService.createSpace(requestB, currentUserOf(userB));
 
     assertThat(createdA.getName()).isEqualTo("Phoenix");
     assertThat(createdB.getName()).isEqualTo("Phoenix");
@@ -237,7 +252,7 @@ class SpaceServiceIntegrationTest {
     hr.addMembership(new SpaceMembership(userB, SpaceRole.ADMIN, organizationA));
     spaceRepository.saveAll(List.of(eng, hr));
 
-    List<SpaceOverview> userASpaces = spaceService.listSpaces(userA, false);
+    List<SpaceOverview> userASpaces = spaceService.listSpaces(currentUserOf(userA));
 
     assertThat(userASpaces).hasSize(1);
     assertThat(userASpaces.getFirst().space().getName()).isEqualTo("Engineering");
@@ -281,7 +296,7 @@ class SpaceServiceIntegrationTest {
             new Chat(eng.getId(), userA, organizationA, "Dritte Frage", true, Set.of()),
             new Chat(eng.getId(), userB, organizationA, "Fremde Frage", true, Set.of())));
 
-    List<SpaceOverview> spaces = spaceService.listSpaces(userA, false);
+    List<SpaceOverview> spaces = spaceService.listSpaces(currentUserOf(userA));
 
     SpaceOverview engineering =
         spaces.stream()
@@ -295,7 +310,7 @@ class SpaceServiceIntegrationTest {
     assertThat(leer.libraryCount()).isZero();
     assertThat(leer.chatCount()).isZero();
 
-    List<SpaceOverview> userBSpaces = spaceService.listSpaces(userB, false);
+    List<SpaceOverview> userBSpaces = spaceService.listSpaces(currentUserOf(userB));
     assertThat(userBSpaces).hasSize(1);
     assertThat(userBSpaces.getFirst().libraryCount())
         .as("MEMBER userB may read only the library they own")
@@ -313,7 +328,7 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
 
-    Space response = spaceService.getSpace(saved.getId(), member, false);
+    Space response = spaceService.getSpace(saved.getId(), currentUserOf(member));
 
     assertThat(response.getMemberships()).hasSize(2);
     assertThat(roleOf(response, member)).isEqualTo(SpaceRole.MEMBER);
@@ -331,7 +346,7 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(curator, SpaceRole.CURATOR, organizationA));
     Space saved = spaceRepository.save(space);
 
-    spaceService.deleteSpace(saved.getId(), owner, false);
+    spaceService.deleteSpace(saved.getId(), currentUserOf(owner));
 
     assertThat(spaceRepository.findById(saved.getId())).isEmpty();
     assertThat(membershipRepository.findBySpaceId(saved.getId())).isEmpty();
@@ -350,7 +365,7 @@ class SpaceServiceIntegrationTest {
     chatRepository.save(
         new Chat(saved.getId(), owner, organizationA, "Meine Frage", true, Set.of()));
 
-    assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), owner, false))
+    assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), currentUserOf(owner)))
         .isInstanceOf(ConflictException.class);
     assertThat(spaceRepository.findById(saved.getId())).isPresent();
   }
@@ -364,7 +379,7 @@ class SpaceServiceIntegrationTest {
     personal.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(personal);
 
-    assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), owner, false))
+    assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -380,8 +395,8 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(admin, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
-    spaceService.addMember(saved.getId(), member, SpaceRole.MEMBER, admin);
-    spaceService.addMember(saved.getId(), curator, SpaceRole.CURATOR, admin);
+    spaceService.addMember(saved.getId(), member, SpaceRole.MEMBER, currentUserOf(admin));
+    spaceService.addMember(saved.getId(), curator, SpaceRole.CURATOR, currentUserOf(admin));
 
     Space reloaded = spaceRepository.findByIdWithMemberships(saved.getId()).orElseThrow();
     assertThat(reloaded.getMemberships()).hasSize(4);
@@ -406,9 +421,11 @@ class SpaceServiceIntegrationTest {
     defaultSpace.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(defaultSpace);
 
-    spaceService.addMember(saved.getId(), createUser(organizationA), SpaceRole.MEMBER, owner);
+    spaceService.addMember(
+        saved.getId(), createUser(organizationA), SpaceRole.MEMBER, currentUserOf(owner));
 
-    assertThat(spaceService.getSpace(saved.getId(), owner, false).getMemberships()).hasSize(2);
+    assertThat(spaceService.getSpace(saved.getId(), currentUserOf(owner)).getMemberships())
+        .hasSize(2);
   }
 
   @Test
@@ -419,7 +436,7 @@ class SpaceServiceIntegrationTest {
     defaultSpace.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(defaultSpace);
 
-    assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), owner, false))
+    assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -433,7 +450,7 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(admin, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
-    assertThatThrownBy(() -> spaceService.removeMember(saved.getId(), owner, admin))
+    assertThatThrownBy(() -> spaceService.removeMember(saved.getId(), owner, currentUserOf(admin)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -447,7 +464,7 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(admin, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
-    spaceService.transferOwnership(saved.getId(), admin, owner, false);
+    spaceService.transferOwnership(saved.getId(), admin, currentUserOf(owner));
 
     Space reloaded = spaceRepository.findByIdWithMemberships(saved.getId()).orElseThrow();
     assertThat(reloaded.getOwnerId()).isEqualTo(admin);
@@ -463,7 +480,8 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(admin, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
-    assertThatThrownBy(() -> spaceService.transferOwnership(saved.getId(), owner, admin, false))
+    assertThatThrownBy(
+            () -> spaceService.transferOwnership(saved.getId(), owner, currentUserOf(admin)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -479,8 +497,8 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
 
-    spaceService.updateMemberRole(saved.getId(), member, SpaceRole.CURATOR, admin);
-    Space details = spaceService.getSpace(saved.getId(), member, false);
+    spaceService.updateMemberRole(saved.getId(), member, SpaceRole.CURATOR, currentUserOf(admin));
+    Space details = spaceService.getSpace(saved.getId(), currentUserOf(member));
 
     assertThat(roleOf(details, member)).isEqualTo(SpaceRole.CURATOR);
   }
@@ -498,7 +516,9 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(
-            () -> spaceService.updateMemberRole(saved.getId(), target, SpaceRole.MEMBER, member))
+            () ->
+                spaceService.updateMemberRole(
+                    saved.getId(), target, SpaceRole.MEMBER, currentUserOf(member)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -511,7 +531,7 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
-    assertThatThrownBy(() -> spaceService.getSpace(saved.getId(), outsider, false))
+    assertThatThrownBy(() -> spaceService.getSpace(saved.getId(), currentUserOf(outsider)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -524,7 +544,8 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
-    assertThatThrownBy(() -> spaceService.getSpace(saved.getId(), otherOrgAdmin, true))
+    assertThatThrownBy(
+            () -> spaceService.getSpace(saved.getId(), currentUserOf(otherOrgAdmin, true)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -563,7 +584,9 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(
-            () -> spaceService.addMember(saved.getId(), outsider, SpaceRole.MEMBER, owner))
+            () ->
+                spaceService.addMember(
+                    saved.getId(), outsider, SpaceRole.MEMBER, currentUserOf(owner)))
         .isInstanceOf(NotFoundException.class);
     assertThat(membershipRepository.findBySpaceId(saved.getId())).hasSize(1);
   }
@@ -577,7 +600,9 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(
-            () -> spaceService.addMember(saved.getId(), UUID.randomUUID(), SpaceRole.MEMBER, owner))
+            () ->
+                spaceService.addMember(
+                    saved.getId(), UUID.randomUUID(), SpaceRole.MEMBER, currentUserOf(owner)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -591,10 +616,12 @@ class SpaceServiceIntegrationTest {
         new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
     space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
-    spaceService.archiveSpace(saved.getId(), owner, false);
+    spaceService.archiveSpace(saved.getId(), currentUserOf(owner));
 
     assertThatThrownBy(
-            () -> spaceService.addMember(saved.getId(), newMember, SpaceRole.MEMBER, owner))
+            () ->
+                spaceService.addMember(
+                    saved.getId(), newMember, SpaceRole.MEMBER, currentUserOf(owner)))
         .isInstanceOf(ConflictException.class);
     assertThat(membershipRepository.findBySpaceId(saved.getId())).hasSize(1);
   }
@@ -605,7 +632,7 @@ class SpaceServiceIntegrationTest {
     UUID outsider = createUser(organizationB);
     SpaceCreation request = new SpaceCreation("Engineering", null, outsider, null, List.of(), null);
 
-    assertThatThrownBy(() -> spaceService.createSpace(request, admin, true))
+    assertThatThrownBy(() -> spaceService.createSpace(request, currentUserOf(admin, true)))
         .isInstanceOf(NotFoundException.class);
     assertThat(spaceRepository.findAll()).isEmpty();
   }
@@ -623,7 +650,7 @@ class SpaceServiceIntegrationTest {
             List.of(new SpaceMemberSeed(outsider, SpaceRole.MEMBER)),
             null);
 
-    assertThatThrownBy(() -> spaceService.createSpace(request, admin, true))
+    assertThatThrownBy(() -> spaceService.createSpace(request, currentUserOf(admin, true)))
         .isInstanceOf(NotFoundException.class);
     assertThat(spaceRepository.findAll()).isEmpty();
   }
@@ -639,7 +666,9 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(
-            () -> spaceService.updateMemberRole(saved.getId(), owner, SpaceRole.MEMBER, admin))
+            () ->
+                spaceService.updateMemberRole(
+                    saved.getId(), owner, SpaceRole.MEMBER, currentUserOf(admin)))
         .isInstanceOf(ValidationException.class);
 
     Space reloaded = spaceRepository.findByIdWithMemberships(saved.getId()).orElseThrow();
@@ -658,7 +687,7 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
-    assertThat(spaceService.listMembers(saved.getId(), admin, true)).hasSize(1);
+    assertThat(spaceService.listMembers(saved.getId(), currentUserOf(admin, true))).hasSize(1);
   }
 
   @Test
@@ -670,7 +699,7 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
-    assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), outsider, false))
+    assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), currentUserOf(outsider)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -689,7 +718,7 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
 
-    List<SpaceMemberView> members = spaceService.listMembers(saved.getId(), owner, false);
+    List<SpaceMemberView> members = spaceService.listMembers(saved.getId(), currentUserOf(owner));
 
     assertThat(members).hasSize(2);
     assertThat(members).extracting(SpaceMemberView::displayName).containsOnly("Test User");
@@ -705,7 +734,7 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
 
-    assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), member, false))
+    assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), currentUserOf(member)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -719,7 +748,7 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(curator, SpaceRole.CURATOR, organizationA));
     Space saved = spaceRepository.save(space);
 
-    assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), curator, false))
+    assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), currentUserOf(curator)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -737,9 +766,9 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(newOwner, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
 
-    spaceService.transferOwnership(saved.getId(), newOwner, owner, false);
+    spaceService.transferOwnership(saved.getId(), newOwner, currentUserOf(owner));
 
-    assertThat(spaceService.listMembers(saved.getId(), newOwner, false)).hasSize(2);
+    assertThat(spaceService.listMembers(saved.getId(), currentUserOf(newOwner))).hasSize(2);
   }
 
   @Test
@@ -755,8 +784,8 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
 
-    Space asMember = spaceService.getSpace(saved.getId(), member, false);
-    Space asOwner = spaceService.getSpace(saved.getId(), owner, false);
+    Space asMember = spaceService.getSpace(saved.getId(), currentUserOf(member));
+    Space asOwner = spaceService.getSpace(saved.getId(), currentUserOf(owner));
 
     assertThat(roleCounts(asMember).get(SpaceRole.ADMIN)).isEqualTo(1L);
     assertThat(roleCounts(asMember).get(SpaceRole.MEMBER)).isEqualTo(1L);
@@ -773,7 +802,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     SpaceUpdate update = new SpaceUpdate("Team", "Team docs", SpaceVisibility.OPEN);
-    Space response = spaceService.updateSpace(saved.getId(), update, owner, false);
+    Space response = spaceService.updateSpace(saved.getId(), update, currentUserOf(owner));
 
     assertThat(response.getVisibility()).isEqualTo(SpaceVisibility.OPEN);
     Space reloaded = spaceRepository.findById(saved.getId()).orElseThrow();
@@ -789,7 +818,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     SpaceUpdate update = new SpaceUpdate("Team", "Team docs", null);
-    spaceService.updateSpace(saved.getId(), update, owner, false);
+    spaceService.updateSpace(saved.getId(), update, currentUserOf(owner));
 
     Space reloaded = spaceRepository.findById(saved.getId()).orElseThrow();
     assertThat(reloaded.getVisibility()).isEqualTo(SpaceVisibility.DISCOVERABLE);
@@ -800,7 +829,7 @@ class SpaceServiceIntegrationTest {
     UUID userId = createUser(organizationA);
     SpaceCreation request = new SpaceCreation("x".repeat(256), null, null, null, List.of(), null);
 
-    assertThatThrownBy(() -> spaceService.createSpace(request, userId, false))
+    assertThatThrownBy(() -> spaceService.createSpace(request, currentUserOf(userId)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -821,7 +850,7 @@ class SpaceServiceIntegrationTest {
     chatRepository.save(
         new Chat(saved.getId(), otherMember, organizationA, "Fremde Frage", true, Set.of()));
 
-    assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), owner, false))
+    assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), currentUserOf(owner)))
         .isInstanceOf(ConflictException.class)
         .satisfies(
             ex -> {
@@ -842,7 +871,7 @@ class SpaceServiceIntegrationTest {
         chatRepository.save(
             new Chat(saved.getId(), otherMember, organizationA, "Fremde Frage", true, Set.of()));
 
-    Space archived = spaceService.archiveSpace(saved.getId(), owner, false);
+    Space archived = spaceService.archiveSpace(saved.getId(), currentUserOf(owner));
 
     assertThat(archived.isArchived()).isTrue();
     assertThat(spaceRepository.findById(saved.getId())).isPresent();
@@ -857,9 +886,9 @@ class SpaceServiceIntegrationTest {
         new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
     space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
-    spaceService.archiveSpace(saved.getId(), owner, false);
+    spaceService.archiveSpace(saved.getId(), currentUserOf(owner));
 
-    Space secondCall = spaceService.archiveSpace(saved.getId(), owner, false);
+    Space secondCall = spaceService.archiveSpace(saved.getId(), currentUserOf(owner));
 
     assertThat(secondCall.isArchived()).isTrue();
   }
@@ -874,7 +903,7 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(otherMember, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
 
-    assertThatThrownBy(() -> spaceService.archiveSpace(saved.getId(), otherMember, false))
+    assertThatThrownBy(() -> spaceService.archiveSpace(saved.getId(), currentUserOf(otherMember)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -886,7 +915,7 @@ class SpaceServiceIntegrationTest {
     defaultSpace.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(defaultSpace);
 
-    assertThatThrownBy(() -> spaceService.archiveSpace(saved.getId(), owner, false))
+    assertThatThrownBy(() -> spaceService.archiveSpace(saved.getId(), currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -899,9 +928,9 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(new SpaceMembership(otherMember, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
-    spaceService.archiveSpace(saved.getId(), owner, false);
+    spaceService.archiveSpace(saved.getId(), currentUserOf(owner));
 
-    assertThat(spaceService.listSpaces(otherMember, false)).isEmpty();
+    assertThat(spaceService.listSpaces(currentUserOf(otherMember))).isEmpty();
   }
 
   @Test
@@ -917,9 +946,9 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
     chatRepository.save(
         new Chat(saved.getId(), otherMember, organizationA, "Fremde Frage", true, Set.of()));
-    spaceService.archiveSpace(saved.getId(), owner, false);
+    spaceService.archiveSpace(saved.getId(), currentUserOf(owner));
 
-    List<SpaceOverview> visibleToAuthor = spaceService.listSpaces(otherMember, false);
+    List<SpaceOverview> visibleToAuthor = spaceService.listSpaces(currentUserOf(otherMember));
 
     assertThat(visibleToAuthor).hasSize(1);
     assertThat(visibleToAuthor.getFirst().space().isArchived()).isTrue();
@@ -940,9 +969,9 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
     chatRepository.save(
         new Chat(saved.getId(), otherMember, organizationA, "Fremde Frage", true, Set.of()));
-    spaceService.archiveSpace(saved.getId(), owner, false);
+    spaceService.archiveSpace(saved.getId(), currentUserOf(owner));
 
-    List<SpaceOverview> visibleToOwner = spaceService.listSpaces(owner, false);
+    List<SpaceOverview> visibleToOwner = spaceService.listSpaces(currentUserOf(owner));
 
     assertThat(visibleToOwner).hasSize(1);
     assertThat(visibleToOwner.getFirst().space().isArchived()).isTrue();
@@ -957,9 +986,10 @@ class SpaceServiceIntegrationTest {
     space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(new SpaceMembership(adminMember, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
-    spaceService.archiveSpace(saved.getId(), owner, false);
+    spaceService.archiveSpace(saved.getId(), currentUserOf(owner));
 
-    List<SpaceOverview> visibleToSystemAdmin = spaceService.listSpaces(adminMember, true);
+    List<SpaceOverview> visibleToSystemAdmin =
+        spaceService.listSpaces(currentUserOf(adminMember, true));
 
     assertThat(visibleToSystemAdmin).hasSize(1);
     assertThat(visibleToSystemAdmin.getFirst().space().isArchived()).isTrue();
@@ -977,7 +1007,7 @@ class SpaceServiceIntegrationTest {
         new SpaceCreation(
             "Datenraum", null, null, null, null, List.of(readableLibrary, nonExistentLibrary));
 
-    assertThatThrownBy(() -> spaceService.createSpace(request, creator, false))
+    assertThatThrownBy(() -> spaceService.createSpace(request, currentUserOf(creator)))
         .isInstanceOf(io.opaa.common.NotFoundException.class);
 
     assertThat(spaceRepository.findDistinctByMembershipsUserId(creator)).isEmpty();
@@ -991,7 +1021,7 @@ class SpaceServiceIntegrationTest {
     SpaceCreation request =
         new SpaceCreation("Datenraum", null, null, null, null, List.of(libraryOne, libraryTwo));
 
-    Space created = spaceService.createSpace(request, creator, false);
+    Space created = spaceService.createSpace(request, currentUserOf(creator));
 
     List<UUID> associatedLibraryIds =
         jdbcTemplate.query(

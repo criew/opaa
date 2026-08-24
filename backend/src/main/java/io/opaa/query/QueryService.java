@@ -2,13 +2,11 @@ package io.opaa.query;
 
 import static java.util.stream.Collectors.toMap;
 
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
+import io.opaa.auth.CurrentUser;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
-import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.VectorChunkStore;
@@ -53,7 +51,6 @@ public class QueryService {
   private final CitationParser citationParser;
   private final CitationValidator citationValidator;
   private final DocumentRepository documentRepository;
-  private final UserRepository userRepository;
   private final LibraryAccessService libraryAccessService;
   private final PermissionHistoryService permissionHistoryService;
   private final ChatService chatService;
@@ -68,7 +65,6 @@ public class QueryService {
       CitationParser citationParser,
       CitationValidator citationValidator,
       DocumentRepository documentRepository,
-      UserRepository userRepository,
       LibraryAccessService libraryAccessService,
       PermissionHistoryService permissionHistoryService,
       ChatService chatService,
@@ -81,7 +77,6 @@ public class QueryService {
     this.citationParser = citationParser;
     this.citationValidator = citationValidator;
     this.documentRepository = documentRepository;
-    this.userRepository = userRepository;
     this.libraryAccessService = libraryAccessService;
     this.permissionHistoryService = permissionHistoryService;
     this.chatService = chatService;
@@ -161,19 +156,15 @@ public class QueryService {
   public QueryResult query(
       String question,
       UUID chatId,
-      UUID currentUserId,
+      CurrentUser caller,
       boolean useKnowledge,
       List<UUID> requestedLibraryIds) {
+    UUID currentUserId = caller.id();
     return metrics
         .queryTimer()
         .record(
             () -> {
               try {
-                User currentUser =
-                    userRepository
-                        .findById(currentUserId)
-                        .orElseThrow(() -> new UnauthorizedException("Benutzer nicht gefunden"));
-
                 Optional<Chat> chat = chatService.findOwnedChat(chatId, currentUserId);
                 // #525 review, finding 4: querying is chatting, and chatting requires space
                 // membership even for an author who already owns the chat - see
@@ -217,13 +208,9 @@ public class QueryService {
 
                 Instant scopeComputedAt = Instant.now();
                 Set<UUID> readableLibraryIds =
-                    libraryAccessService.readableLibraryIds(
-                        currentUserId, currentUser.getOrganizationId());
+                    libraryAccessService.readableLibraryIds(currentUserId, caller.organizationId());
                 checkAgainstPermissionHistory(
-                    readableLibraryIds,
-                    currentUserId,
-                    currentUser.getOrganizationId(),
-                    scopeComputedAt);
+                    readableLibraryIds, currentUserId, caller.organizationId(), scopeComputedAt);
 
                 // A persisted chat's own settings govern the scope entirely (#525); only an
                 // ephemeral query (no owned chat) falls back to the request-level useKnowledge/

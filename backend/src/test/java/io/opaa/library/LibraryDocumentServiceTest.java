@@ -12,8 +12,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
@@ -71,7 +71,6 @@ import org.springframework.web.multipart.MultipartFile;
 class LibraryDocumentServiceTest {
 
   private KnowledgeLibraryRepository libraryRepository;
-  private UserRepository userRepository;
   private LibraryAccessService accessService;
   private DocumentRepository documentRepository;
   private ChecksumService checksumService;
@@ -98,13 +97,14 @@ class LibraryDocumentServiceTest {
   private final UUID currentUserId = UUID.randomUUID();
   private final UUID organizationId = UUID.randomUUID();
   private final UUID libraryId = UUID.randomUUID();
+  private final CurrentUser caller =
+      new CurrentUser(currentUserId, organizationId, SystemRole.USER, "Test User");
 
   @TempDir Path storageDir;
 
   @BeforeEach
   void setUp() {
     libraryRepository = mock(KnowledgeLibraryRepository.class);
-    userRepository = mock(UserRepository.class);
     accessService = mock(LibraryAccessService.class);
     documentRepository = mock(DocumentRepository.class);
     checksumService = mock(ChecksumService.class);
@@ -131,7 +131,6 @@ class LibraryDocumentServiceTest {
     service =
         new LibraryDocumentService(
             libraryRepository,
-            userRepository,
             accessService,
             documentRepository,
             checksumService,
@@ -145,10 +144,6 @@ class LibraryDocumentServiceTest {
             remoteContentProperties,
             folderRepository,
             folderService);
-
-    User user = new User("subject", "issuer", "user@example.com", "Test User");
-    user.setOrganizationId(organizationId);
-    when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
 
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
     when(library.getId()).thenReturn(libraryId);
@@ -207,8 +202,7 @@ class LibraryDocumentServiceTest {
         .thenReturn(Optional.empty());
 
     LibraryDocumentEntry response =
-        service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
+        service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
 
     // #434: the response reflects the PENDING row created synchronously - not a result from
     // FileProcessingService, which now only runs asynchronously and returns nothing.
@@ -234,7 +228,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false))
+                    libraryId, pdfFile("report.pdf", "pdf content"), null, caller))
         .isInstanceOf(AccessDeniedException.class);
 
     verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
@@ -250,7 +244,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false))
+                    libraryId, pdfFile("report.pdf", "pdf content"), null, caller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -264,7 +258,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false))
+                    libraryId, pdfFile("report.pdf", "pdf content"), null, caller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -282,7 +276,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false))
+                    libraryId, pdfFile("report.pdf", "pdf content"), null, caller))
         .isInstanceOf(ConflictException.class);
 
     assertNoFilesWereStored();
@@ -300,8 +294,7 @@ class LibraryDocumentServiceTest {
                     new MockMultipartFile(
                         "file", "malware.exe", "application/octet-stream", "x".getBytes()),
                     null,
-                    currentUserId,
-                    false))
+                    caller))
         .isInstanceOf(ValidationException.class);
 
     assertNoFilesWereStored();
@@ -318,8 +311,7 @@ class LibraryDocumentServiceTest {
         .thenReturn(Optional.empty());
 
     LibraryDocumentEntry response =
-        service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "%PDF content"), null, currentUserId, false);
+        service.uploadDocument(libraryId, pdfFile("report.pdf", "%PDF content"), null, caller);
 
     assertThat(response.document().getFileName()).isEqualTo("report.pdf");
     verify(fileProcessingService).processUploadedFileAsync(eq(response.document().getId()), any());
@@ -341,7 +333,7 @@ class LibraryDocumentServiceTest {
         .thenReturn(Optional.empty());
 
     LibraryDocumentEntry response =
-        service.uploadDocument(libraryId, realDocxFile("vertrag.docx"), null, currentUserId, false);
+        service.uploadDocument(libraryId, realDocxFile("vertrag.docx"), null, caller);
 
     assertThat(response.document().getFileName()).isEqualTo("vertrag.docx");
     verify(fileProcessingService).processUploadedFileAsync(eq(response.document().getId()), any());
@@ -376,7 +368,7 @@ class LibraryDocumentServiceTest {
             "application/pdf",
             new byte[] {0x00, 0x01, 0x02, (byte) 0xFF, 0x00, (byte) 0xDE, (byte) 0xAD});
 
-    assertThatThrownBy(() -> service.uploadDocument(libraryId, fakePdf, null, currentUserId, false))
+    assertThatThrownBy(() -> service.uploadDocument(libraryId, fakePdf, null, caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("entspricht nicht dem Format .pdf");
 
@@ -397,8 +389,7 @@ class LibraryDocumentServiceTest {
         new MockMultipartFile(
             "file", "notes.md", "text/markdown", "# Titel\n\nEin Absatz Text.".getBytes());
 
-    LibraryDocumentEntry response =
-        service.uploadDocument(libraryId, markdown, null, currentUserId, false);
+    LibraryDocumentEntry response = service.uploadDocument(libraryId, markdown, null, caller);
 
     assertThat(response.document().getFileName()).isEqualTo("notes.md");
     verify(fileProcessingService).processUploadedFileAsync(eq(response.document().getId()), any());
@@ -415,8 +406,7 @@ class LibraryDocumentServiceTest {
         new MockMultipartFile(
             "file", "report.txt", "text/plain", (PDF_MAGIC_BYTES + "binary-ish").getBytes());
 
-    assertThatThrownBy(
-            () -> service.uploadDocument(libraryId, pdfAsTxt, null, currentUserId, false))
+    assertThatThrownBy(() -> service.uploadDocument(libraryId, pdfAsTxt, null, caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("entspricht nicht dem Format .txt");
 
@@ -430,9 +420,7 @@ class LibraryDocumentServiceTest {
     String tooBig = "x".repeat(11 * 1024);
 
     assertThatThrownBy(
-            () ->
-                service.uploadDocument(
-                    libraryId, pdfFile("big.pdf", tooBig), null, currentUserId, false))
+            () -> service.uploadDocument(libraryId, pdfFile("big.pdf", tooBig), null, caller))
         .isInstanceOf(PayloadTooLargeException.class);
 
     assertNoFilesWereStored();
@@ -448,9 +436,7 @@ class LibraryDocumentServiceTest {
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
 
     assertThatThrownBy(
-            () ->
-                service.uploadDocument(
-                    libraryId, pdfFile("report.pdf", "content"), null, currentUserId, false))
+            () -> service.uploadDocument(libraryId, pdfFile("report.pdf", "content"), null, caller))
         .isInstanceOf(PayloadTooLargeException.class)
         .hasMessageContaining("Speicherkontingent der Bibliothek erschöpft")
         .hasMessageContaining("10,0 GB von 10,0 GB belegt");
@@ -470,7 +456,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("copy.pdf", "same content"), null, currentUserId, false))
+                    libraryId, pdfFile("copy.pdf", "same content"), null, caller))
         .isInstanceOf(ConflictException.class);
 
     assertNoFilesWereStored();
@@ -503,8 +489,7 @@ class LibraryDocumentServiceTest {
         .thenReturn(Optional.of(oldFailedDoc));
 
     LibraryDocumentEntry response =
-        service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
+        service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
 
     assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.PENDING);
     verify(vectorStore).delete(documentIdFilter(oldFailedDoc.getId()));
@@ -532,7 +517,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("racer.pdf", "same content"), null, currentUserId, false))
+                    libraryId, pdfFile("racer.pdf", "same content"), null, caller))
         .isInstanceOf(ConflictException.class);
 
     assertNoFilesWereStored();
@@ -565,8 +550,7 @@ class LibraryDocumentServiceTest {
 
     assertThatThrownBy(
             () ->
-                service.uploadDocument(
-                    libraryId, pdfFile("race.pdf", "content"), folderId, currentUserId, false))
+                service.uploadDocument(libraryId, pdfFile("race.pdf", "content"), folderId, caller))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("inzwischen gelöscht");
 
@@ -590,8 +574,7 @@ class LibraryDocumentServiceTest {
                 "application/pdf",
                 (PDF_MAGIC_BYTES + "content").getBytes()),
             null,
-            currentUserId,
-            false);
+            caller);
 
     assertThat(response.document().getFileName()).isEqualTo("evil.pdf");
     ArgumentCaptor<Path> pathCaptor = ArgumentCaptor.forClass(Path.class);
@@ -620,8 +603,7 @@ class LibraryDocumentServiceTest {
         .processUploadedFileAsync(any(), any());
 
     LibraryDocumentEntry response =
-        service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
+        service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
 
     assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.FAILED);
     assertThat(response.document().getErrorMessage())
@@ -644,8 +626,7 @@ class LibraryDocumentServiceTest {
         .processUploadedFileAsync(any(), any());
 
     LibraryDocumentEntry response =
-        service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
+        service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
 
     assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.FAILED);
     assertThat(response.document().getErrorMessage())
@@ -670,8 +651,7 @@ class LibraryDocumentServiceTest {
     when(documentRepository.markFailed(any(), any())).thenReturn(1);
 
     LibraryDocumentEntry response =
-        service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
+        service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
 
     assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.FAILED);
     assertThat(response.document().getErrorMessage())
@@ -701,8 +681,7 @@ class LibraryDocumentServiceTest {
     when(documentRepository.markFailed(any(), any())).thenReturn(0);
 
     LibraryDocumentEntry response =
-        service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
+        service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
 
     assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.FAILED);
     verify(documentRepository, org.mockito.Mockito.times(1)).save(any(Document.class));
@@ -712,8 +691,7 @@ class LibraryDocumentServiceTest {
   void aViewerCannotDelete() {
     grantViewerOnly();
 
-    assertThatThrownBy(
-            () -> service.deleteDocument(libraryId, UUID.randomUUID(), currentUserId, false))
+    assertThatThrownBy(() -> service.deleteDocument(libraryId, UUID.randomUUID(), caller))
         .isInstanceOf(AccessDeniedException.class);
     verify(documentRepository, never()).delete(any());
   }
@@ -722,8 +700,7 @@ class LibraryDocumentServiceTest {
   void aUserWithNoAccessAtAllCannotEvenTellTheLibraryExists() {
     grantNoAccess();
 
-    assertThatThrownBy(
-            () -> service.deleteDocument(libraryId, UUID.randomUUID(), currentUserId, false))
+    assertThatThrownBy(() -> service.deleteDocument(libraryId, UUID.randomUUID(), caller))
         .isInstanceOf(NotFoundException.class);
     verify(documentRepository, never()).delete(any());
   }
@@ -734,7 +711,7 @@ class LibraryDocumentServiceTest {
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.deleteDocument(libraryId, documentId, currentUserId, false))
+    assertThatThrownBy(() -> service.deleteDocument(libraryId, documentId, caller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -746,7 +723,7 @@ class LibraryDocumentServiceTest {
     foreignDoc.setLibraryId(UUID.randomUUID());
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(foreignDoc));
 
-    assertThatThrownBy(() -> service.deleteDocument(libraryId, documentId, currentUserId, false))
+    assertThatThrownBy(() -> service.deleteDocument(libraryId, documentId, caller))
         .isInstanceOf(NotFoundException.class);
     verify(documentRepository, never()).delete(any());
   }
@@ -764,7 +741,7 @@ class LibraryDocumentServiceTest {
     doc.setSourceType(DocumentSourceType.UPLOAD);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
-    service.deleteDocument(libraryId, documentId, currentUserId, false);
+    service.deleteDocument(libraryId, documentId, caller);
 
     verify(vectorStore).delete(documentIdFilter(doc.getId()));
     verify(documentRepository).delete(doc);
@@ -793,7 +770,7 @@ class LibraryDocumentServiceTest {
     doc.setSourceType(DocumentSourceType.UPLOAD);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
-    service.deleteDocument(libraryId, documentId, currentUserId, false);
+    service.deleteDocument(libraryId, documentId, caller);
 
     org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(documentRepository, vectorStore);
     inOrder.verify(documentRepository).delete(doc);
@@ -821,7 +798,7 @@ class LibraryDocumentServiceTest {
         .when(vectorStore)
         .delete(documentIdFilter(doc.getId()));
 
-    service.deleteDocument(libraryId, documentId, currentUserId, false);
+    service.deleteDocument(libraryId, documentId, caller);
 
     verify(documentRepository).delete(doc);
     assertThat(Files.exists(storedFile))
@@ -864,7 +841,7 @@ class LibraryDocumentServiceTest {
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
-    assertThatThrownBy(() -> service.loadContent(documentId, currentUserId, false))
+    assertThatThrownBy(() -> service.loadContent(documentId, caller))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -890,7 +867,7 @@ class LibraryDocumentServiceTest {
     doc.setLibraryId(libraryId);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
-    service.deleteDocument(libraryId, documentId, currentUserId, false);
+    service.deleteDocument(libraryId, documentId, caller);
 
     verify(vectorStore).delete(documentIdFilter(doc.getId()));
     verify(documentRepository).delete(doc);
@@ -919,7 +896,7 @@ class LibraryDocumentServiceTest {
     doc.setLibraryId(libraryId);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
-    service.deleteDocument(libraryId, documentId, currentUserId, false);
+    service.deleteDocument(libraryId, documentId, caller);
 
     assertThat(Files.exists(outsideFile)).isTrue();
   }
@@ -989,7 +966,7 @@ class LibraryDocumentServiceTest {
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
 
-    DocumentContent content = service.loadContent(documentId, currentUserId, false);
+    DocumentContent content = service.loadContent(documentId, caller);
 
     try {
       assertThat(content.isStreamed()).isTrue();
@@ -1025,7 +1002,7 @@ class LibraryDocumentServiceTest {
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
 
-    DocumentContent content = service.loadContent(documentId, currentUserId, false);
+    DocumentContent content = service.loadContent(documentId, caller);
 
     try {
       String expected =
@@ -1058,7 +1035,7 @@ class LibraryDocumentServiceTest {
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
 
-    assertThatThrownBy(() -> service.loadContent(documentId, currentUserId, false))
+    assertThatThrownBy(() -> service.loadContent(documentId, caller))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
   }
@@ -1091,7 +1068,6 @@ class LibraryDocumentServiceTest {
     LibraryDocumentService serviceWithValidation =
         new LibraryDocumentService(
             libraryRepository,
-            userRepository,
             accessService,
             documentRepository,
             checksumService,
@@ -1114,7 +1090,7 @@ class LibraryDocumentServiceTest {
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
 
-    assertThatThrownBy(() -> serviceWithValidation.loadContent(documentId, currentUserId, false))
+    assertThatThrownBy(() -> serviceWithValidation.loadContent(documentId, caller))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
     assertThat(requestsReceived.get()).isZero();

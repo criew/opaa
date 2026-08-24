@@ -3,6 +3,8 @@ package io.opaa.library;
 import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipHistoryRepository;
@@ -76,7 +78,9 @@ class UploadPendingRecoveryRunnerIntegrationTest {
     editor = userRepository.save(editor);
 
     var libraryRequest = libraryCreation("Bibliothek", DocumentSourceType.UPLOAD).build();
-    libraryId = libraryService.createLibrary(libraryRequest, editor.getId()).library().getId();
+    CurrentUser editorCaller =
+        new CurrentUser(editor.getId(), organizationId, SystemRole.USER, editor.getDisplayName());
+    libraryId = libraryService.createLibrary(libraryRequest, editorCaller).library().getId();
   }
 
   @AfterEach

@@ -2,7 +2,6 @@ package io.opaa.query;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -89,7 +88,6 @@ public class QueryConfiguration {
       CitationParser citationParser,
       CitationValidator citationValidator,
       DocumentRepository documentRepository,
-      UserRepository userRepository,
       LibraryAccessService libraryAccessService,
       PermissionHistoryService permissionHistoryService,
       ChatService chatService,
@@ -103,7 +101,6 @@ public class QueryConfiguration {
         citationParser,
         citationValidator,
         documentRepository,
-        userRepository,
         libraryAccessService,
         permissionHistoryService,
         chatService,

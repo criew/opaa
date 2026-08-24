@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.SystemRole;
 import io.opaa.common.NotFoundException;
 import io.opaa.library.KnowledgeLibrary;
@@ -99,6 +100,14 @@ class DocumentIndexingIntegrationTest {
   private UUID userId;
   private UUID targetLibraryId;
 
+  /**
+   * {@link CurrentUser} snapshot for {@link #userId} - SYSTEM_ADMIN, {@link
+   * Organization#DEFAULT_ID}.
+   */
+  private CurrentUser asCaller() {
+    return new CurrentUser(userId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, null);
+  }
+
   @BeforeEach
   void setUp() throws IOException {
     jdbcTemplate.execute("TRUNCATE TABLE vector_store");
@@ -171,7 +180,7 @@ class DocumentIndexingIntegrationTest {
   }
 
   private IndexingJob triggerIndexing() {
-    return documentIndexingService.triggerIndexing(targetLibraryId, userId, true);
+    return documentIndexingService.triggerIndexing(targetLibraryId, asCaller());
   }
 
   @Test
@@ -284,7 +293,7 @@ class DocumentIndexingIntegrationTest {
     UUID otherLibraryId = otherLibrary.getId();
     grantOwner(otherLibraryId, userId);
     IndexingJob otherLibraryJob =
-        documentIndexingService.triggerIndexing(otherLibraryId, userId, true);
+        documentIndexingService.triggerIndexing(otherLibraryId, asCaller());
     awaitJobCompletion(otherLibraryJob);
 
     IndexingJob firstJob = triggerIndexing();
@@ -441,7 +450,7 @@ class DocumentIndexingIntegrationTest {
             targetLibraryId.toString());
     assertThat(chunksInOriginalLibrary).isPositive();
 
-    IndexingJob secondJob = documentIndexingService.triggerIndexing(otherLibraryId, userId, true);
+    IndexingJob secondJob = documentIndexingService.triggerIndexing(otherLibraryId, asCaller());
     awaitJobCompletion(secondJob);
     assertThat(indexingJobRepository.findById(secondJob.getId()).orElseThrow().getStatus())
         .isEqualTo(JobStatus.COMPLETED);
@@ -510,7 +519,11 @@ class DocumentIndexingIntegrationTest {
     // userId holds OWNER on targetLibraryId (granted in setUp) - the reader path.
     QueryResult withGrant =
         queryService.query(
-            "uniquely identifiable sentence", null, userId, true, java.util.List.of());
+            "uniquely identifiable sentence",
+            null,
+            new CurrentUser(userId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, null),
+            true,
+            java.util.List.of());
     assertThat(withGrant.getSources())
         .as("a user with a grant on the target library must find the indexed document")
         .anyMatch(source -> "findable.txt".equals(source.getFileName()));
@@ -543,7 +556,11 @@ class DocumentIndexingIntegrationTest {
 
     QueryResult withoutGrant =
         queryService.query(
-            "uniquely identifiable sentence", null, strangerId, true, java.util.List.of());
+            "uniquely identifiable sentence",
+            null,
+            new CurrentUser(strangerId, Organization.DEFAULT_ID, SystemRole.USER, null),
+            true,
+            java.util.List.of());
     assertThat(withoutGrant.getSources())
         .as("a user without any grant on the target library must not find the indexed document")
         .noneMatch(source -> "findable.txt".equals(source.getFileName()));
@@ -613,7 +630,7 @@ class DocumentIndexingIntegrationTest {
     grantOwner(outsideAllowlistLibrary.getId(), userId);
 
     IndexingJob job =
-        documentIndexingService.triggerIndexing(outsideAllowlistLibrary.getId(), userId, true);
+        documentIndexingService.triggerIndexing(outsideAllowlistLibrary.getId(), asCaller());
     assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
 
     awaitJobCompletion(job);
@@ -651,7 +668,8 @@ class DocumentIndexingIntegrationTest {
 
     assertThat(
             documentIndexingService
-                .getStatus(libraryInOrganizationA.getId(), userInOrganizationA, false)
+                .getStatus(
+                    libraryInOrganizationA.getId(), asCaller(userInOrganizationA, organizationA))
                 .job()
                 .map(IndexingJob::getId))
         .contains(job.getId());
@@ -661,7 +679,7 @@ class DocumentIndexingIntegrationTest {
     assertThatThrownBy(
             () ->
                 documentIndexingService.getStatus(
-                    libraryInOrganizationA.getId(), userInOrganizationB, false))
+                    libraryInOrganizationA.getId(), asCaller(userInOrganizationB, organizationB)))
         .isInstanceOf(NotFoundException.class);
 
     // The second, independent guard this issue adds at the indexing_jobs row itself (#401): even
@@ -712,7 +730,7 @@ class DocumentIndexingIntegrationTest {
 
     IndexingJob jobInOrganizationB =
         documentIndexingService.triggerIndexing(
-            libraryInOrganizationB.getId(), userInOrganizationB, false);
+            libraryInOrganizationB.getId(), asCaller(userInOrganizationB, organizationB));
 
     assertThat(jobInOrganizationB.getStatus()).isEqualTo(JobStatus.RUNNING);
     awaitJobCompletion(jobInOrganizationB);
@@ -736,6 +754,10 @@ class DocumentIndexingIntegrationTest {
         SystemRole.USER.name(),
         organizationId);
     return id;
+  }
+
+  private CurrentUser asCaller(UUID userId, UUID organizationId) {
+    return new CurrentUser(userId, organizationId, SystemRole.USER, "Test-Nutzer");
   }
 
   private KnowledgeLibrary createLibraryAndGrantEditor(

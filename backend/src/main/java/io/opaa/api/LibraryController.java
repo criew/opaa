@@ -21,9 +21,7 @@ import io.opaa.api.dto.LibrarySpaceAssociationResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
-import io.opaa.auth.SystemRole;
-import io.opaa.auth.User;
-import io.opaa.auth.UserService;
+import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJob;
@@ -46,8 +44,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -65,14 +61,11 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/v1/libraries")
 public class LibraryController {
 
-  private static final String UNKNOWN_ISSUER = "unknown";
-
   private final KnowledgeLibraryService libraryService;
   private final AssetGrantService grantService;
   private final LibraryDocumentService documentService;
   private final LibraryFolderService folderService;
   private final DocumentIndexingService indexingService;
-  private final UserService userService;
   private final SourceConnectionTestService sourceConnectionTestService;
   private final SpaceAssetAssociationService associationService;
 
@@ -82,7 +75,6 @@ public class LibraryController {
       LibraryDocumentService documentService,
       LibraryFolderService folderService,
       DocumentIndexingService indexingService,
-      UserService userService,
       SourceConnectionTestService sourceConnectionTestService,
       SpaceAssetAssociationService associationService) {
     this.libraryService = libraryService;
@@ -90,30 +82,23 @@ public class LibraryController {
     this.documentService = documentService;
     this.folderService = folderService;
     this.indexingService = indexingService;
-    this.userService = userService;
     this.sourceConnectionTestService = sourceConnectionTestService;
     this.associationService = associationService;
   }
 
   @GetMapping("/{libraryId}/spaces")
   public List<LibrarySpaceAssociationResponse> listSpaceAssociations(
-      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      @PathVariable UUID libraryId, CurrentUser caller) {
     return SpaceLibraryAssociationResponseMapper.toLibrarySpaceResponses(
-        associationService.listForLibrary(
-            libraryId,
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
+        associationService.listForLibrary(libraryId, caller));
   }
 
   @PostMapping
   public ResponseEntity<LibraryResponse> createLibrary(
-      @Valid @RequestBody LibraryRequest request, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      @Valid @RequestBody LibraryRequest request, CurrentUser caller) {
     LibraryResponse response =
         LibraryResponseMapper.toResponse(
-            libraryService.createLibrary(
-                LibraryResponseMapper.toCreation(request), currentUser.getId()));
+            libraryService.createLibrary(LibraryResponseMapper.toCreation(request), caller));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -126,54 +111,34 @@ public class LibraryController {
   // quellkonfiguration without a grant must not have "Verbindung testen" fail 404 right before it.
   @PostMapping("/source-test")
   public SourceConnectionTestResponse testLibrarySource(
-      @Valid @RequestBody SourceConnectionTestRequest request, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      @Valid @RequestBody SourceConnectionTestRequest request, CurrentUser caller) {
     return SourceConnectionTestResponseMapper.toResponse(
         sourceConnectionTestService.test(
-            SourceConnectionTestResponseMapper.toDomain(request),
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
+            SourceConnectionTestResponseMapper.toDomain(request), caller));
   }
 
   @GetMapping
-  public List<LibraryListResponse> listLibraries(@AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    return LibraryResponseMapper.toListResponses(
-        libraryService.listLibraries(
-            currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
+  public List<LibraryListResponse> listLibraries(CurrentUser caller) {
+    return LibraryResponseMapper.toListResponses(libraryService.listLibraries(caller));
   }
 
   @GetMapping("/{libraryId}")
-  public LibraryResponse getLibrary(
-      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    return LibraryResponseMapper.toResponse(
-        libraryService.getLibrary(
-            libraryId,
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
+  public LibraryResponse getLibrary(@PathVariable UUID libraryId, CurrentUser caller) {
+    return LibraryResponseMapper.toResponse(libraryService.getLibrary(libraryId, caller));
   }
 
   @PutMapping("/{libraryId}")
   public LibraryResponse updateLibrary(
       @PathVariable UUID libraryId,
       @Valid @RequestBody LibraryUpdateRequest request,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
-        libraryService.updateLibrary(
-            libraryId,
-            LibraryResponseMapper.toUpdate(request),
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
+        libraryService.updateLibrary(libraryId, LibraryResponseMapper.toUpdate(request), caller));
   }
 
   @DeleteMapping("/{libraryId}")
-  public ResponseEntity<Void> deleteLibrary(
-      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    libraryService.deleteLibrary(
-        libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+  public ResponseEntity<Void> deleteLibrary(@PathVariable UUID libraryId, CurrentUser caller) {
+    libraryService.deleteLibrary(libraryId, caller);
     return ResponseEntity.noContent().build();
   }
 
@@ -184,8 +149,7 @@ public class LibraryController {
       @RequestParam(defaultValue = "20") int size,
       @RequestParam(required = false) String q,
       @RequestParam(required = false) UUID folderId,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      CurrentUser caller) {
     // #517 code review, finding 2: the spec promises 1..100 - silently clamping an out-of-range
     // value would contradict that promise (size=500 quietly answering 100, size=0 quietly
     // answering 1), so both bounds and page<0 are rejected the same way bean validation would.
@@ -204,13 +168,7 @@ public class LibraryController {
     Pageable pageable =
         PageRequest.of(page, size, Sort.by(Sort.Order.asc("fileName"), Sort.Order.asc("id")));
     return LibraryDocumentResponseMapper.toPageResponse(
-        libraryService.listDocuments(
-            libraryId,
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN,
-            q,
-            folderId,
-            pageable));
+        libraryService.listDocuments(libraryId, caller, q, folderId, pageable));
   }
 
   @PostMapping(value = "/{libraryId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -219,31 +177,17 @@ public class LibraryController {
       @RequestParam("file") MultipartFile file,
       @RequestParam(required = false) UUID folderId,
       @RequestParam(required = false) String folderPath,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      CurrentUser caller) {
     LibraryDocumentResponse response =
         LibraryDocumentResponseMapper.toResponse(
-            documentService.uploadDocument(
-                libraryId,
-                file,
-                folderId,
-                folderPath,
-                currentUser.getId(),
-                currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
+            documentService.uploadDocument(libraryId, file, folderId, folderPath, caller));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @DeleteMapping("/{libraryId}/documents/{documentId}")
   public ResponseEntity<Void> deleteDocument(
-      @PathVariable UUID libraryId,
-      @PathVariable UUID documentId,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    documentService.deleteDocument(
-        libraryId,
-        documentId,
-        currentUser.getId(),
-        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+      @PathVariable UUID libraryId, @PathVariable UUID documentId, CurrentUser caller) {
+    documentService.deleteDocument(libraryId, documentId, caller);
     return ResponseEntity.noContent().build();
   }
 
@@ -251,29 +195,19 @@ public class LibraryController {
   public ResponseEntity<LibraryFolderResponse> createFolder(
       @PathVariable UUID libraryId,
       @Valid @RequestBody LibraryFolderRequest request,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      CurrentUser caller) {
     LibraryFolderResponse response =
         LibraryFolderResponseMapper.toResponse(
             folderService.createFolder(
-                libraryId,
-                request.getName(),
-                request.getParentFolderId(),
-                currentUser.getId(),
-                currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
+                libraryId, request.getName(), request.getParentFolderId(), caller));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @GetMapping("/{libraryId}/folders/{folderId}")
   public LibraryFolderResponse getFolder(
-      @PathVariable UUID libraryId, @PathVariable UUID folderId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      @PathVariable UUID libraryId, @PathVariable UUID folderId, CurrentUser caller) {
     return LibraryFolderResponseMapper.toResponse(
-        folderService.getFolder(
-            libraryId,
-            folderId,
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
+        folderService.getFolder(libraryId, folderId, caller));
   }
 
   @PatchMapping("/{libraryId}/folders/{folderId}")
@@ -281,83 +215,51 @@ public class LibraryController {
       @PathVariable UUID libraryId,
       @PathVariable UUID folderId,
       @Valid @RequestBody LibraryFolderRenameRequest request,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      CurrentUser caller) {
     return LibraryFolderResponseMapper.toResponse(
-        folderService.renameFolder(
-            libraryId,
-            folderId,
-            request.getName(),
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
+        folderService.renameFolder(libraryId, folderId, request.getName(), caller));
   }
 
   @DeleteMapping("/{libraryId}/folders/{folderId}")
   public ResponseEntity<Void> deleteFolder(
-      @PathVariable UUID libraryId, @PathVariable UUID folderId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    folderService.deleteFolder(
-        libraryId,
-        folderId,
-        currentUser.getId(),
-        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+      @PathVariable UUID libraryId, @PathVariable UUID folderId, CurrentUser caller) {
+    folderService.deleteFolder(libraryId, folderId, caller);
     return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/{libraryId}/grants")
   public List<AssetGrantResponse> listAssetGrants(
-      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    return AssetGrantResponseMapper.toResponses(
-        grantService.listGrants(
-            libraryId,
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
+      @PathVariable UUID libraryId, CurrentUser caller) {
+    return AssetGrantResponseMapper.toResponses(grantService.listGrants(libraryId, caller));
   }
 
   @PostMapping("/{libraryId}/grants")
   public AssetGrantResponse upsertAssetGrant(
       @PathVariable UUID libraryId,
       @Valid @RequestBody AssetGrantRequest request,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      CurrentUser caller) {
     return AssetGrantResponseMapper.toResponse(
-        grantService.upsertGrant(
-            libraryId,
-            AssetGrantResponseMapper.toUpsert(request),
-            currentUser.getId(),
-            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN));
+        grantService.upsertGrant(libraryId, AssetGrantResponseMapper.toUpsert(request), caller));
   }
 
   @DeleteMapping("/{libraryId}/grants/{grantId}")
   public ResponseEntity<Void> revokeAssetGrant(
-      @PathVariable UUID libraryId, @PathVariable UUID grantId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    grantService.revokeGrant(
-        libraryId,
-        grantId,
-        currentUser.getId(),
-        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+      @PathVariable UUID libraryId, @PathVariable UUID grantId, CurrentUser caller) {
+    grantService.revokeGrant(libraryId, grantId, caller);
     return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/{libraryId}/indexing")
   public ResponseEntity<IndexingStatusResponse> triggerIndexing(
-      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    IndexingJob job =
-        indexingService.triggerIndexing(
-            libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+      @PathVariable UUID libraryId, CurrentUser caller) {
+    IndexingJob job = indexingService.triggerIndexing(libraryId, caller);
     return ResponseEntity.status(HttpStatus.ACCEPTED).body(toIndexingStatusResponse(job));
   }
 
   @GetMapping("/{libraryId}/indexing/status")
   public IndexingStatusResponse getIndexingStatus(
-      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    IndexingStatusView view =
-        indexingService.getStatus(
-            libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+      @PathVariable UUID libraryId, CurrentUser caller) {
+    IndexingStatusView view = indexingService.getStatus(libraryId, caller);
     return view.job()
         .map(job -> toIndexingStatusResponse(job, view.canSeeErrorDetail()))
         .orElse(
@@ -368,11 +270,8 @@ public class LibraryController {
 
   @GetMapping("/{libraryId}/indexing/runs")
   public IndexingRunListResponse listIndexingRuns(
-      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
-    var runs =
-        indexingService.getRecentRuns(
-            libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+      @PathVariable UUID libraryId, CurrentUser caller) {
+    var runs = indexingService.getRecentRuns(libraryId, caller);
     return new IndexingRunListResponse(runs.stream().map(this::toIndexingRunResponse).toList());
   }
 
@@ -484,17 +383,5 @@ public class LibraryController {
       case COMPLETED -> IndexingStatus.COMPLETED;
       case FAILED -> IndexingStatus.FAILED;
     };
-  }
-
-  private User currentUser(Jwt jwt) {
-    String issuer = jwt.getClaimAsString("iss");
-    if (issuer == null || issuer.isBlank()) {
-      issuer = UNKNOWN_ISSUER;
-    }
-
-    return userService
-        .findBySubjectAndIssuer(jwt.getSubject(), issuer)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
   }
 }

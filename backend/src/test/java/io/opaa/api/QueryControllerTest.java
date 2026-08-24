@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -21,7 +22,6 @@ import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,8 +53,8 @@ class QueryControllerTest {
   void setUp() {
     User user = new User(TEST_SUBJECT, TEST_ISSUER, "test@example.com", "Test User");
     user.setSystemRole(SystemRole.USER);
-    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
-        .thenReturn(Optional.of(user));
+    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+        .thenReturn(user);
   }
 
   private RequestPostProcessor asTestUser() {
@@ -180,18 +180,14 @@ class QueryControllerTest {
   }
 
   @Test
-  void queryWithUnknownJwtSubjectReturns401() throws Exception {
-    // #202/#875: QueryController#currentUser (the same pattern LibraryController, GroupController
-    // and SpaceController use) throws ResponseStatusException(UNAUTHORIZED) directly when the
-    // JWT subject resolves to no known user; GlobalExceptionHandler's
+  void queryWithoutAuthenticationReturns401() throws Exception {
+    // #884: CurrentUserArgumentResolver throws ResponseStatusException(UNAUTHORIZED) when
+    // UserProvisioningFilter never ran (no Jwt principal, as here without asTestUser()) and so
+    // never populated the request attribute it reads; GlobalExceptionHandler's
     // @ExceptionHandler(ResponseStatusException.class) maps that to the matching status/body.
-    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
-        .thenReturn(Optional.empty());
-
     mockMvc
         .perform(
             post("/api/v1/query")
-                .with(asTestUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"question\": \"What?\"}"))
         .andExpect(status().isUnauthorized())

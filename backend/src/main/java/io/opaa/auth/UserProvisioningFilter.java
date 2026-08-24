@@ -34,6 +34,7 @@ public class UserProvisioningFilter extends OncePerRequestFilter {
       String email = jwt.getClaimAsString("email");
       String displayName = JwtUserClaims.displayName(jwt);
       User user = userService.findOrCreateUser(subject, issuer, email, displayName);
+      request.setAttribute(CurrentUserArgumentResolver.REQUEST_ATTRIBUTE, CurrentUser.from(user));
 
       Collection<GrantedAuthority> authorities = new ArrayList<>(authentication.getAuthorities());
       authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getSystemRole().name()));

@@ -3,6 +3,8 @@ package io.opaa.space;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatRepository;
@@ -118,6 +120,15 @@ class SpaceAssetAssociationServiceIntegrationTest {
     grantRepository.save(AssetGrant.forUser(libraryId, organizationA, userId, role, null, userId));
   }
 
+  private CurrentUser currentUserOf(UUID userId) {
+    return currentUserOf(userId, false);
+  }
+
+  private CurrentUser currentUserOf(UUID userId, boolean systemAdmin) {
+    return new CurrentUser(
+        userId, organizationA, systemAdmin ? SystemRole.SYSTEM_ADMIN : SystemRole.USER, "Caller");
+  }
+
   @Test
   void associatingALibraryChangesNoOnesEffectivePermissions() {
     UUID owner = createUser();
@@ -128,7 +139,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     addMember(space, member, SpaceRole.CURATOR);
 
     Set<UUID> readableBefore = libraryAccessService.readableLibraryIds(member, organizationA);
-    associationService.associate(space, library, owner, false);
+    associationService.associate(space, library, currentUserOf(owner));
     Set<UUID> readableAfter = libraryAccessService.readableLibraryIds(member, organizationA);
 
     assertThat(readableBefore).doesNotContain(library);
@@ -142,7 +153,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     grant(library, owner, AssetRole.OWNER);
     UUID space = createSpace(owner, SpaceRole.ADMIN);
 
-    SpaceLibraryLink response = associationService.associate(space, library, owner, false);
+    SpaceLibraryLink response = associationService.associate(space, library, currentUserOf(owner));
 
     assertThat(response.association().getLibraryId()).isEqualTo(library);
   }
@@ -159,7 +170,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID curator = createUser();
     UUID space = createSpace(curator, SpaceRole.ADMIN);
 
-    assertThatThrownBy(() -> associationService.associate(space, library, curator, false))
+    assertThatThrownBy(() -> associationService.associate(space, library, currentUserOf(curator)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -173,7 +184,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     addMember(space, member, SpaceRole.MEMBER);
     grant(library, member, AssetRole.VIEWER);
 
-    assertThatThrownBy(() -> associationService.associate(space, library, member, false))
+    assertThatThrownBy(() -> associationService.associate(space, library, currentUserOf(member)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -183,7 +194,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID library = createLibrary(owner);
     grant(library, owner, AssetRole.OWNER);
     UUID space = createSpace(owner, SpaceRole.ADMIN);
-    associationService.associate(space, library, owner, false);
+    associationService.associate(space, library, currentUserOf(owner));
 
     UUID memberWithAccess = createUser();
     addMember(space, memberWithAccess, SpaceRole.MEMBER);
@@ -193,9 +204,9 @@ class SpaceAssetAssociationServiceIntegrationTest {
     addMember(space, memberWithoutAccess, SpaceRole.MEMBER);
 
     SpaceLibraryLinks seenByMemberWithAccess =
-        associationService.listForSpace(space, memberWithAccess, false);
+        associationService.listForSpace(space, currentUserOf(memberWithAccess));
     SpaceLibraryLinks seenByMemberWithoutAccess =
-        associationService.listForSpace(space, memberWithoutAccess, false);
+        associationService.listForSpace(space, currentUserOf(memberWithoutAccess));
 
     assertThat(seenByMemberWithAccess.items())
         .extracting(link -> link.association().getLibraryId())
@@ -212,7 +223,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID member = createUser();
     UUID space = createSpace(member, SpaceRole.ADMIN);
 
-    SpaceLibraryLinks response = associationService.listForSpace(space, member, false);
+    SpaceLibraryLinks response = associationService.listForSpace(space, currentUserOf(member));
 
     assertThat(response.items()).isEmpty();
     assertThat(response.hasAssociations()).isFalse();
@@ -228,12 +239,13 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID curator = createUser();
     grant(library, curator, AssetRole.VIEWER);
     UUID space = createSpace(curator, SpaceRole.ADMIN);
-    associationService.associate(space, library, curator, false);
+    associationService.associate(space, library, currentUserOf(curator));
 
     UUID otherAdmin = createUser();
     addMember(space, otherAdmin, SpaceRole.ADMIN);
 
-    SpaceLibraryLinks seenByOtherAdmin = associationService.listForSpace(space, otherAdmin, false);
+    SpaceLibraryLinks seenByOtherAdmin =
+        associationService.listForSpace(space, currentUserOf(otherAdmin));
 
     assertThat(seenByOtherAdmin.items()).hasSize(1);
     SpaceLibraryLink entry = seenByOtherAdmin.items().get(0);
@@ -250,10 +262,10 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID curator = createUser();
     grant(library, curator, AssetRole.VIEWER);
     UUID space = createSpace(curator, SpaceRole.ADMIN);
-    associationService.associate(space, library, curator, false);
+    associationService.associate(space, library, currentUserOf(curator));
 
     // The owner is not even a member of this space - detach still succeeds unilaterally.
-    associationService.detach(space, library, owner, false);
+    associationService.detach(space, library, currentUserOf(owner));
 
     assertThat(associationRepository.existsBySpaceIdAndLibraryId(space, library)).isFalse();
   }
@@ -266,11 +278,11 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID curator = createUser();
     grant(library, curator, AssetRole.VIEWER);
     UUID space = createSpace(curator, SpaceRole.ADMIN);
-    associationService.associate(space, library, curator, false);
+    associationService.associate(space, library, currentUserOf(curator));
 
     UUID stranger = createUser();
 
-    assertThatThrownBy(() -> associationService.detach(space, library, stranger, false))
+    assertThatThrownBy(() -> associationService.detach(space, library, currentUserOf(stranger)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -282,12 +294,12 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID library = createLibrary(owner);
     grant(library, owner, AssetRole.OWNER);
     UUID space = createSpace(owner, SpaceRole.ADMIN);
-    associationService.associate(space, library, owner, false);
+    associationService.associate(space, library, currentUserOf(owner));
 
     UUID plainMember = createUser();
     addMember(space, plainMember, SpaceRole.MEMBER);
 
-    assertThatThrownBy(() -> associationService.detach(space, library, plainMember, false))
+    assertThatThrownBy(() -> associationService.detach(space, library, currentUserOf(plainMember)))
         .isInstanceOf(AccessDeniedException.class);
 
     assertThat(associationRepository.existsBySpaceIdAndLibraryId(space, library)).isTrue();
@@ -306,7 +318,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
 
     // The owner themselves creates the association (they are ADMIN of their own space) - a mixed
     // audience (memberWithoutAccess cannot read the library), but the owner is also the trigger.
-    associationService.associate(space, library, owner, false);
+    associationService.associate(space, library, currentUserOf(owner));
 
     assertThat(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(owner)).isEmpty();
   }
@@ -322,7 +334,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID memberWithoutAccess = createUser();
     addMember(space, memberWithoutAccess, SpaceRole.MEMBER);
 
-    associationService.associate(space, library, curator, false);
+    associationService.associate(space, library, currentUserOf(curator));
 
     List<Notification> notifications =
         notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(owner);
@@ -339,7 +351,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     grant(library, curator, AssetRole.VIEWER);
     UUID space = createSpace(curator, SpaceRole.ADMIN);
 
-    associationService.associate(space, library, curator, false);
+    associationService.associate(space, library, currentUserOf(curator));
 
     assertThat(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(owner)).isEmpty();
   }
@@ -352,9 +364,10 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID curator = createUser();
     grant(library, curator, AssetRole.VIEWER);
     UUID space = createSpace(curator, SpaceRole.ADMIN);
-    associationService.associate(space, library, curator, false);
+    associationService.associate(space, library, currentUserOf(curator));
 
-    List<LibrarySpaceLink> ownerView = associationService.listForLibrary(library, owner, false);
+    List<LibrarySpaceLink> ownerView =
+        associationService.listForLibrary(library, currentUserOf(owner));
 
     assertThat(ownerView)
         .extracting(link -> link.association().getSpaceId())
@@ -367,7 +380,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID library = createLibrary(owner);
     grant(library, owner, AssetRole.OWNER);
     UUID space = createSpace(owner, SpaceRole.ADMIN);
-    associationService.associate(space, library, owner, false);
+    associationService.associate(space, library, currentUserOf(owner));
 
     spaceRepository.deleteById(space);
 

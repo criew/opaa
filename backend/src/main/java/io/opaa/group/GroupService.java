@@ -5,6 +5,7 @@ import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditSubjectKind;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
@@ -83,14 +84,13 @@ public class GroupService {
   }
 
   @Transactional
-  public GroupDetail createGroup(GroupCreation creation, UUID currentUserId) {
-    User currentUser = requireUser(currentUserId);
+  public GroupDetail createGroup(GroupCreation creation, CurrentUser caller) {
     String normalizedName = validateName(creation.name());
     validateDescription(creation.description());
 
     Group group =
         new Group(
-            currentUser.getOrganizationId(),
+            caller.organizationId(),
             GroupKind.AD_HOC,
             normalizedName,
             creation.description(),
@@ -99,7 +99,7 @@ public class GroupService {
     Group saved = groupRepository.save(group);
     auditEventRecorder.recordUserAction(
         saved.getOrganizationId(),
-        currentUserId,
+        caller.id(),
         AuditEventType.GROUP_CREATED,
         AuditObjectType.GROUP,
         saved.getId(),
@@ -111,9 +111,8 @@ public class GroupService {
     return toGroupDetail(saved);
   }
 
-  public List<Group> listGroups(UUID currentUserId) {
-    User currentUser = requireUser(currentUserId);
-    return groupRepository.findByOrganizationIdWithMemberships(currentUser.getOrganizationId());
+  public List<Group> listGroups(CurrentUser caller) {
+    return groupRepository.findByOrganizationIdWithMemberships(caller.organizationId());
   }
 
   /**
@@ -143,26 +142,25 @@ public class GroupService {
    * rely on the schema invariant above continuing to hold, in case a future migration ever loosens
    * it.
    */
-  public List<Group> listMyGroups(UUID currentUserId) {
-    User currentUser = requireUser(currentUserId);
-    Set<UUID> groupIds = membershipResolver.groupIdsForUser(currentUserId);
+  public List<Group> listMyGroups(CurrentUser caller) {
+    Set<UUID> groupIds = membershipResolver.groupIdsForUser(caller.id());
     if (groupIds.isEmpty()) {
       return List.of();
     }
     return groupRepository.findAllByIdWithMemberships(groupIds).stream()
         .filter(group -> !group.isDissolved())
-        .filter(group -> group.getOrganizationId().equals(currentUser.getOrganizationId()))
+        .filter(group -> group.getOrganizationId().equals(caller.organizationId()))
         .toList();
   }
 
-  public GroupDetail getGroup(UUID groupId, UUID currentUserId) {
-    Group group = loadGroup(groupId, currentUserId);
+  public GroupDetail getGroup(UUID groupId, CurrentUser caller) {
+    Group group = loadGroup(groupId, caller);
     return toGroupDetail(group);
   }
 
   @Transactional
-  public GroupDetail updateGroup(UUID groupId, GroupUpdate update, UUID currentUserId) {
-    Group group = loadGroup(groupId, currentUserId);
+  public GroupDetail updateGroup(UUID groupId, GroupUpdate update, CurrentUser caller) {
+    Group group = loadGroup(groupId, caller);
     rejectOrgUnit(group);
 
     String normalizedName = validateName(update.name());
@@ -186,7 +184,7 @@ public class GroupService {
       }
       auditEventRecorder.recordUserAction(
           updated.getOrganizationId(),
-          currentUserId,
+          caller.id(),
           AuditEventType.GROUP_CHANGED,
           AuditObjectType.GROUP,
           updated.getId(),
@@ -200,8 +198,8 @@ public class GroupService {
   }
 
   @Transactional
-  public void deleteGroup(UUID groupId, UUID currentUserId) {
-    Group group = loadGroup(groupId, currentUserId);
+  public void deleteGroup(UUID groupId, CurrentUser caller) {
+    Group group = loadGroup(groupId, caller);
     rejectOrgUnit(group);
     // fk_knowledge_libraries_owner_group_organization is RESTRICT (migration 012): without this
     // check, deleting a group that still owns a library would surface as an unhandled
@@ -237,14 +235,14 @@ public class GroupService {
           group.getOrganizationId(),
           membership.getUserId(),
           GroupMembershipHistoryCause.GROUP_DELETED,
-          currentUserId);
+          caller.id());
     }
     // #392: GROUP_DELETED also covers the group's dissolution ("Auflösung einer Gruppe") - one
     // entry for the group itself, not one per member removed above (those are already covered by
     // the group's own deletion, not a separate membership-removal action).
     auditEventRecorder.recordUserAction(
         group.getOrganizationId(),
-        currentUserId,
+        caller.id(),
         AuditEventType.GROUP_DELETED,
         AuditObjectType.GROUP,
         group.getId(),
@@ -257,14 +255,14 @@ public class GroupService {
     invalidateAfterCommit(() -> membershipResolver.invalidateUsers(affectedUserIds));
   }
 
-  public List<GroupMemberView> listMembers(UUID groupId, UUID currentUserId) {
-    Group group = loadGroup(groupId, currentUserId);
+  public List<GroupMemberView> listMembers(UUID groupId, CurrentUser caller) {
+    Group group = loadGroup(groupId, caller);
     return toGroupMemberViews(group);
   }
 
   @Transactional
-  public GroupMemberView addMember(UUID groupId, UUID memberUserId, UUID currentUserId) {
-    Group group = loadGroup(groupId, currentUserId);
+  public GroupMemberView addMember(UUID groupId, UUID memberUserId, CurrentUser caller) {
+    Group group = loadGroup(groupId, caller);
     rejectOrgUnit(group);
     // Resolving the target user first also turns a non-existent userId into a clean 404 instead
     // of a raw foreign-key violation from the membership insert below.
@@ -278,10 +276,10 @@ public class GroupService {
     group.addMembership(membership);
     groupRepository.save(group);
     permissionHistoryService.recordMembershipAdded(
-        membership, GroupMembershipHistoryCause.ADDED, currentUserId);
+        membership, GroupMembershipHistoryCause.ADDED, caller.id());
     auditEventRecorder.recordUserActionOnSubject(
         group.getOrganizationId(),
-        currentUserId,
+        caller.id(),
         AuditEventType.GROUP_MEMBER_ADDED,
         AuditObjectType.GROUP,
         group.getId(),
@@ -298,8 +296,8 @@ public class GroupService {
   }
 
   @Transactional
-  public void removeMember(UUID groupId, UUID memberUserId, UUID currentUserId) {
-    Group group = loadGroup(groupId, currentUserId);
+  public void removeMember(UUID groupId, UUID memberUserId, CurrentUser caller) {
+    Group group = loadGroup(groupId, caller);
     rejectOrgUnit(group);
 
     GroupMembership target = userMembership(group, memberUserId);
@@ -314,10 +312,10 @@ public class GroupService {
         group.getOrganizationId(),
         memberUserId,
         GroupMembershipHistoryCause.REMOVED,
-        currentUserId);
+        caller.id());
     auditEventRecorder.recordUserActionOnSubject(
         group.getOrganizationId(),
-        currentUserId,
+        caller.id(),
         AuditEventType.GROUP_MEMBER_REMOVED,
         AuditObjectType.GROUP,
         group.getId(),
@@ -412,14 +410,13 @@ public class GroupService {
    * organization as not found - mirrors {@code SpaceService#loadSpace}. Applies to system admins as
    * well; the boundary is not overstepped even to reveal existence.
    */
-  private Group loadGroup(UUID groupId, UUID currentUserId) {
-    User currentUser = requireUser(currentUserId);
+  private Group loadGroup(UUID groupId, CurrentUser caller) {
     Group group =
         groupRepository
             .findByIdWithMemberships(groupId)
             .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
 
-    if (!group.getOrganizationId().equals(currentUser.getOrganizationId())) {
+    if (!group.getOrganizationId().equals(caller.organizationId())) {
       throw new NotFoundException("Gruppe nicht gefunden");
     }
     return group;

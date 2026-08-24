@@ -1,7 +1,6 @@
 package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.LibraryFolderService;
@@ -187,14 +186,12 @@ public class IndexingConfiguration {
   DocumentIndexingService documentIndexingService(
       IndexingJobService indexingJobService,
       IndexingSourceExecutorRegistry indexingSourceExecutorRegistry,
-      UserRepository userRepository,
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       IndexingRunEventRepository indexingRunEventRepository) {
     return new DocumentIndexingService(
         indexingJobService,
         indexingSourceExecutorRegistry,
-        userRepository,
         libraryRepository,
         libraryAccessService,
         indexingRunEventRepository);

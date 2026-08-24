@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.dto.ScheduleFrequency;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -186,6 +188,28 @@ class KnowledgeLibraryServiceIntegrationTest {
     return id;
   }
 
+  /**
+   * {@link CurrentUser} snapshot for a user id this test already created, as a non-admin caller.
+   */
+  private CurrentUser currentUserOf(UUID userId) {
+    return currentUserOf(userId, false);
+  }
+
+  /**
+   * {@link CurrentUser} snapshot for a user id this test already created - {@code systemAdmin}
+   * overrides the snapshot's role regardless of the row's actual, always-USER {@code system_role}
+   * (see {@link #createUser}), mirroring the {@code systemAdmin} boolean the pre-#884 signatures
+   * let every caller here set independently of the seeded row.
+   */
+  private CurrentUser currentUserOf(UUID userId, boolean systemAdmin) {
+    User user = userRepository.findById(userId).orElseThrow();
+    return new CurrentUser(
+        userId,
+        user.getOrganizationId(),
+        systemAdmin ? SystemRole.SYSTEM_ADMIN : SystemRole.USER,
+        user.getDisplayName());
+  }
+
   // sourceUrl is a URI on the generated response, a String on LibraryManagementDetail (and thus
   // absent whenever the caller was below MANAGER, i.e. managementDetail() is null) - this helper
   // keeps the assertions below reading like the pre-#860 DTO-typed ones.
@@ -213,7 +237,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryCreation request =
         libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build();
 
-    LibraryDetail response = libraryService.createLibrary(request, owner);
+    LibraryDetail response = libraryService.createLibrary(request, currentUserOf(owner));
 
     assertThat(response.library().getOwnerType()).isEqualTo(LibraryOwnerType.USER);
     assertThat(response.library().getOwnerId()).isEqualTo(owner);
@@ -228,7 +252,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     LibraryCreation request = libraryCreation("Ohne Typ", null).build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -237,7 +261,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     LibraryCreation request = libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM).build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -250,7 +274,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourceUrl(URI.create("https://files.example.com/documents/"))
             .build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -260,7 +284,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryCreation request =
         libraryCreation("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY).build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -270,7 +294,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryCreation request =
         libraryCreation("Upload", DocumentSourceType.UPLOAD).sourcePath("/data/documents").build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -288,7 +312,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourceProxy("proxy.example.com:8080")
             .build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -301,7 +325,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourcePath("relative/documents")
             .build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -314,7 +338,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourceUrl(URI.create("ftp://files.example.com/documents/"))
             .build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -328,7 +352,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourceUrl(URI.create("https://example.com/feed.xml"))
             .build();
 
-    LibraryDetail response = libraryService.createLibrary(request, owner);
+    LibraryDetail response = libraryService.createLibrary(request, currentUserOf(owner));
 
     assertThat(response.library().getSourceType()).isEqualTo(DocumentSourceType.RSS_FEED);
     assertThat(sourceUrl(response)).isEqualTo(URI.create("https://example.com/feed.xml"));
@@ -341,7 +365,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryCreation request =
         libraryCreation("Feed-Bibliothek", DocumentSourceType.RSS_FEED).build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -354,7 +378,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourcePath("/data/documents")
             .build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -372,7 +396,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Feed-Bibliothek", DocumentSourceType.RSS_FEED)
                 .sourceUrl(URI.create("https://example.com/feed.xml"))
                 .build(),
-            owner);
+            currentUserOf(owner));
     rssFeedStateRepository.save(
         new RssFeedState(
             library.library().getId(),
@@ -388,7 +412,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         libraryUpdate("Feed-Bibliothek")
             .sourceUrl(URI.create("https://example.com/other-feed.xml"))
             .build();
-    libraryService.updateLibrary(library.library().getId(), request, owner, false);
+    libraryService.updateLibrary(library.library().getId(), request, currentUserOf(owner, false));
 
     assertThat(
             rssFeedStateRepository.findByLibraryIdAndFeedUrl(
@@ -404,7 +428,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Feed-Bibliothek", DocumentSourceType.RSS_FEED)
                 .sourceUrl(URI.create("https://example.com/feed.xml"))
                 .build(),
-            owner);
+            currentUserOf(owner));
     rssFeedStateRepository.save(
         new RssFeedState(
             library.library().getId(),
@@ -418,8 +442,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     libraryService.updateLibrary(
         library.library().getId(),
         libraryUpdate("Feed-Bibliothek umbenannt").build(),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
     assertThat(
             rssFeedStateRepository.findByLibraryIdAndFeedUrl(
@@ -435,7 +458,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourcePath("/data/documents")
             .build();
 
-    LibraryDetail response = libraryService.createLibrary(request, owner);
+    LibraryDetail response = libraryService.createLibrary(request, currentUserOf(owner));
 
     assertThat(response.library().getSourceType()).isEqualTo(DocumentSourceType.FILESYSTEM);
     assertThat(response.managementDetail().sourcePath()).isEqualTo("/data/documents");
@@ -453,7 +476,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourcePath("/etc/shadow")
             .build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -468,7 +491,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourcePath("/data/../etc/shadow")
             .build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -483,12 +506,14 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
                 .sourcePath("/data/documents")
                 .build(),
-            owner);
+            currentUserOf(owner));
 
     LibraryUpdate update = libraryUpdate("Verzeichnis").sourcePath("/etc/shadow").build();
 
     assertThatThrownBy(
-            () -> libraryService.updateLibrary(created.library().getId(), update, owner, false))
+            () ->
+                libraryService.updateLibrary(
+                    created.library().getId(), update, currentUserOf(owner, false)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -504,7 +529,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourceInsecureSsl(true)
             .build();
 
-    LibraryDetail response = libraryService.createLibrary(request, owner);
+    LibraryDetail response = libraryService.createLibrary(request, currentUserOf(owner));
 
     assertThat(response.library().getSourceType()).isEqualTo(DocumentSourceType.HTTP_DIRECTORY);
     assertThat(sourceUrl(response)).isEqualTo(URI.create("https://files.example.com/documents/"));
@@ -519,7 +544,8 @@ class KnowledgeLibraryServiceIntegrationTest {
     KnowledgeLibrary stored = libraryRepository.findById(response.library().getId()).orElseThrow();
     assertThat(stored.getSourceCredentials()).isEqualTo("admin:secret");
 
-    LibraryDetail reloaded = libraryService.getLibrary(response.library().getId(), owner, false);
+    LibraryDetail reloaded =
+        libraryService.getLibrary(response.library().getId(), currentUserOf(owner, false));
     assertThat(reloaded.toString()).doesNotContain("admin:secret");
   }
 
@@ -535,7 +561,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourceCredentials("admin:super-secret-password")
             .build();
 
-    LibraryDetail response = libraryService.createLibrary(request, owner);
+    LibraryDetail response = libraryService.createLibrary(request, currentUserOf(owner));
 
     String rawColumnValue =
         jdbcTemplate.queryForObject(
@@ -572,7 +598,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourceCredentials(longCredentials)
             .build();
 
-    LibraryDetail response = libraryService.createLibrary(request, owner);
+    LibraryDetail response = libraryService.createLibrary(request, currentUserOf(owner));
 
     KnowledgeLibrary reloaded =
         libraryRepository.findById(response.library().getId()).orElseThrow();
@@ -593,7 +619,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourceUrl(URI.create("https://files.example.com/documents/"))
             .sourceCredentials("admin:super-secret-password")
             .build();
-    LibraryDetail response = libraryService.createLibrary(request, owner);
+    LibraryDetail response = libraryService.createLibrary(request, currentUserOf(owner));
 
     // Simulate a lost/rotated encryption key (or a corrupted column value) by writing a value
     // directly that carries the "enc:v1:" marker but no key can ever turn back into plaintext.
@@ -604,7 +630,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     // The list read must not fail for the whole set just because one library's credentials are
     // undecryptable.
-    assertThat(libraryService.listLibraries(owner, false))
+    assertThat(libraryService.listLibraries(currentUserOf(owner, false)))
         .anySatisfy(
             listed -> assertThat(listed.library().getId()).isEqualTo(response.library().getId()));
 
@@ -619,7 +645,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourceUrl(URI.create("https://files.example.com/documents/"))
             .sourceCredentials("admin:repaired-password")
             .build();
-    libraryService.updateLibrary(response.library().getId(), repair, owner, false);
+    libraryService.updateLibrary(response.library().getId(), repair, currentUserOf(owner, false));
 
     KnowledgeLibrary repaired =
         libraryRepository.findById(response.library().getId()).orElseThrow();
@@ -631,13 +657,15 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Upload", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Upload", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
 
     LibraryUpdate request =
         libraryUpdate("Upload").sourceType(DocumentSourceType.FILESYSTEM).build();
 
     assertThatThrownBy(
-            () -> libraryService.updateLibrary(library.library().getId(), request, owner, false))
+            () ->
+                libraryService.updateLibrary(
+                    library.library().getId(), request, currentUserOf(owner, false)))
         .isInstanceOf(ValidationException.class);
     assertThat(libraryRepository.findById(library.library().getId()).orElseThrow().getSourceType())
         .isEqualTo(DocumentSourceType.UPLOAD);
@@ -650,13 +678,14 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Upload", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Upload", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
 
     LibraryUpdate request =
         libraryUpdate("Upload umbenannt").sourceType(DocumentSourceType.UPLOAD).build();
 
     LibraryDetail updated =
-        libraryService.updateLibrary(library.library().getId(), request, owner, false);
+        libraryService.updateLibrary(
+            library.library().getId(), request, currentUserOf(owner, false));
 
     assertThat(updated.library().getName()).isEqualTo("Upload umbenannt");
     assertThat(updated.library().getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
@@ -673,7 +702,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .sourceUrl(URI.create("https://old.example.com/documents/"))
                 .sourceCredentials("admin:old-secret")
                 .build(),
-            owner);
+            currentUserOf(owner));
 
     LibraryUpdate request =
         libraryUpdate("Web-Verzeichnis")
@@ -684,7 +713,8 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     LibraryDetail updated =
-        libraryService.updateLibrary(library.library().getId(), request, owner, false);
+        libraryService.updateLibrary(
+            library.library().getId(), request, currentUserOf(owner, false));
 
     assertThat(updated.library().getSourceType()).isEqualTo(DocumentSourceType.HTTP_DIRECTORY);
     assertThat(sourceUrl(updated)).isEqualTo(URI.create("https://new.example.com/documents/"));
@@ -704,7 +734,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create("https://example.com/documents/"))
                 .build(),
-            owner);
+            currentUserOf(owner));
 
     LibraryUpdate request =
         libraryUpdate("Web-Verzeichnis")
@@ -712,7 +742,8 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     LibraryDetail updated =
-        libraryService.updateLibrary(library.library().getId(), request, owner, false);
+        libraryService.updateLibrary(
+            library.library().getId(), request, currentUserOf(owner, false));
 
     assertThat(updated.managementDetail().schedule()).isNotNull();
     assertThat(updated.managementDetail().schedule().frequency())
@@ -734,22 +765,20 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create("https://example.com/documents/"))
                 .build(),
-            owner);
+            currentUserOf(owner));
     libraryService.updateLibrary(
         library.library().getId(),
         libraryUpdate("Web-Verzeichnis")
             .schedule(new LibraryScheduleUpdate(ScheduleFrequency.HOURLY))
             .build(),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
     libraryService.updateLibrary(
         library.library().getId(),
         libraryUpdate("Web-Verzeichnis")
             .schedule(new LibraryScheduleUpdate(ScheduleFrequency.DISABLED))
             .build(),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
     KnowledgeLibrary stored = libraryRepository.findById(library.library().getId()).orElseThrow();
     assertThat(stored.isScheduleEnabled()).isFalse();
@@ -761,7 +790,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Upload", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Upload", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
 
     LibraryUpdate request =
         libraryUpdate("Upload")
@@ -769,7 +798,9 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     assertThatThrownBy(
-            () -> libraryService.updateLibrary(library.library().getId(), request, owner, false))
+            () ->
+                libraryService.updateLibrary(
+                    library.library().getId(), request, currentUserOf(owner, false)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -781,7 +812,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create("https://example.com/documents/"))
                 .build(),
-            owner);
+            currentUserOf(owner));
 
     LibraryUpdate request =
         libraryUpdate("Web-Verzeichnis")
@@ -789,7 +820,9 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     assertThatThrownBy(
-            () -> libraryService.updateLibrary(library.library().getId(), request, owner, false))
+            () ->
+                libraryService.updateLibrary(
+                    library.library().getId(), request, currentUserOf(owner, false)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -801,19 +834,18 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create("https://example.com/documents/"))
                 .build(),
-            owner);
+            currentUserOf(owner));
     libraryService.updateLibrary(
         library.library().getId(),
         libraryUpdate("Web-Verzeichnis")
             .schedule(new LibraryScheduleUpdate(ScheduleFrequency.HOURLY))
             .build(),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
     // A request that only renames the library (no schedule field at all) must leave the stored
     // schedule untouched, mirroring the source configuration's own replace-as-a-whole rule.
     libraryService.updateLibrary(
-        library.library().getId(), libraryUpdate("Umbenannt").build(), owner, false);
+        library.library().getId(), libraryUpdate("Umbenannt").build(), currentUserOf(owner, false));
 
     KnowledgeLibrary stored = libraryRepository.findById(library.library().getId()).orElseThrow();
     assertThat(stored.isScheduleEnabled()).isTrue();
@@ -833,14 +865,13 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create("https://example.com/documents/"))
                 .build(),
-            owner);
+            currentUserOf(owner));
     libraryService.updateLibrary(
         library.library().getId(),
         libraryUpdate("Web-Verzeichnis")
             .schedule(new LibraryScheduleUpdate(ScheduleFrequency.HOURLY))
             .build(),
-        owner,
-        false);
+        currentUserOf(owner, false));
     // schedule_enabled stays true (only NOT NULL is enforced at the database level, not the cron
     // syntax itself) - simulates a corrupted value rather than a disabled schedule.
     jdbcTemplate.update(
@@ -848,7 +879,8 @@ class KnowledgeLibraryServiceIntegrationTest {
         "not a cron expression",
         library.library().getId());
 
-    LibraryDetail reloaded = libraryService.getLibrary(library.library().getId(), owner, false);
+    LibraryDetail reloaded =
+        libraryService.getLibrary(library.library().getId(), currentUserOf(owner, false));
 
     assertThat(reloaded.managementDetail().schedule()).isNotNull();
     assertThat(reloaded.managementDetail().schedule().nextRunAt()).isNull();
@@ -870,7 +902,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .sourceUrl(URI.create("https://files.example.com/documents/"))
                 .sourceCredentials("admin:old-secret")
                 .build(),
-            owner);
+            currentUserOf(owner));
 
     LibraryUpdate request =
         libraryUpdate("Web-Verzeichnis")
@@ -878,7 +910,8 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     LibraryDetail updated =
-        libraryService.updateLibrary(library.library().getId(), request, owner, false);
+        libraryService.updateLibrary(
+            library.library().getId(), request, currentUserOf(owner, false));
 
     assertThat(sourceUrl(updated))
         .isEqualTo(URI.create("https://files.example.com/other-documents/"));
@@ -900,7 +933,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .sourceUrl(URI.create("https://internal.example.com/documents/"))
                 .sourceCredentials("admin:old-secret")
                 .build(),
-            owner);
+            currentUserOf(owner));
 
     LibraryUpdate request =
         libraryUpdate("Web-Verzeichnis")
@@ -908,7 +941,8 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     LibraryDetail updated =
-        libraryService.updateLibrary(library.library().getId(), request, owner, false);
+        libraryService.updateLibrary(
+            library.library().getId(), request, currentUserOf(owner, false));
 
     assertThat(sourceUrl(updated)).isEqualTo(URI.create("https://attacker.example.com/documents/"));
     KnowledgeLibrary stored = libraryRepository.findById(library.library().getId()).orElseThrow();
@@ -925,7 +959,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
                 .sourcePath("/data/documents")
                 .build(),
-            owner);
+            currentUserOf(owner));
 
     LibraryUpdate request =
         libraryUpdate("Verzeichnis")
@@ -933,7 +967,9 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     assertThatThrownBy(
-            () -> libraryService.updateLibrary(library.library().getId(), request, owner, false))
+            () ->
+                libraryService.updateLibrary(
+                    library.library().getId(), request, currentUserOf(owner, false)))
         .isInstanceOf(ValidationException.class);
     assertThat(libraryRepository.findById(library.library().getId()).orElseThrow().getSourcePath())
         .isEqualTo("/data/documents");
@@ -952,7 +988,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .sourceUrl(URI.create("https://files.example.com/documents/"))
                 .sourceCredentials("admin:old-secret")
                 .build(),
-            owner);
+            currentUserOf(owner));
     // The creation event itself must not satisfy the assertion below.
     jdbcTemplate.update(
         "DELETE FROM audit_log WHERE object_id = ?", library.library().getId().toString());
@@ -963,7 +999,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourceCredentials("admin:new-secret")
             .build();
 
-    libraryService.updateLibrary(library.library().getId(), request, owner, false);
+    libraryService.updateLibrary(library.library().getId(), request, currentUserOf(owner, false));
 
     List<String> afterPayloads =
         jdbcTemplate.queryForList(
@@ -988,12 +1024,14 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
                 .sourcePath("/data/documents")
                 .build(),
-            owner);
+            currentUserOf(owner));
     jdbcTemplate.update(
         "DELETE FROM audit_log WHERE object_id = ?", library.library().getId().toString());
 
     libraryService.updateLibrary(
-        library.library().getId(), libraryUpdate("Verzeichnis umbenannt").build(), owner, false);
+        library.library().getId(),
+        libraryUpdate("Verzeichnis umbenannt").build(),
+        currentUserOf(owner, false));
 
     Integer count =
         jdbcTemplate.queryForObject(
@@ -1019,7 +1057,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .sourceUrl(URI.create("https://files.example.com/documents/"))
                 .sourceCredentials("admin:old-secret")
                 .build(),
-            owner);
+            currentUserOf(owner));
     jdbcTemplate.update(
         "DELETE FROM audit_log WHERE object_id = ?", library.library().getId().toString());
 
@@ -1028,7 +1066,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourceUrl(URI.create("https://files.example.com/documents/"))
             .build();
 
-    libraryService.updateLibrary(library.library().getId(), request, owner, false);
+    libraryService.updateLibrary(library.library().getId(), request, currentUserOf(owner, false));
 
     Integer count =
         jdbcTemplate.queryForObject(
@@ -1052,7 +1090,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .sourceUrl(URI.create("https://old.example.com/documents/"))
                 .sourceCredentials("admin:old-secret")
                 .build(),
-            owner);
+            currentUserOf(owner));
     jdbcTemplate.update(
         "DELETE FROM audit_log WHERE object_id = ?", library.library().getId().toString());
 
@@ -1062,7 +1100,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .sourceCredentials("admin:new-secret")
             .build();
 
-    libraryService.updateLibrary(library.library().getId(), request, owner, false);
+    libraryService.updateLibrary(library.library().getId(), request, currentUserOf(owner, false));
 
     List<String> eventTypes =
         jdbcTemplate.queryForList(
@@ -1084,12 +1122,13 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
                 .sourcePath("/data/documents")
                 .build(),
-            owner);
+            currentUserOf(owner));
 
     LibraryUpdate request = libraryUpdate("Verzeichnis umbenannt").build();
 
     LibraryDetail updated =
-        libraryService.updateLibrary(library.library().getId(), request, owner, false);
+        libraryService.updateLibrary(
+            library.library().getId(), request, currentUserOf(owner, false));
 
     assertThat(updated.library().getName()).isEqualTo("Verzeichnis umbenannt");
     assertThat(updated.managementDetail().sourcePath()).isEqualTo("/data/documents");
@@ -1108,7 +1147,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .ownerType(LibraryOwnerType.GROUP)
             .ownerId(group.getId())
             .build();
-    LibraryDetail response = libraryService.createLibrary(asMember, member);
+    LibraryDetail response = libraryService.createLibrary(asMember, currentUserOf(member));
     assertThat(response.library().getOwnerType()).isEqualTo(LibraryOwnerType.GROUP);
     assertThat(response.library().getOwnerId()).isEqualTo(group.getId());
 
@@ -1117,7 +1156,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .ownerType(LibraryOwnerType.GROUP)
             .ownerId(group.getId())
             .build();
-    assertThatThrownBy(() -> libraryService.createLibrary(asOutsider, outsider))
+    assertThatThrownBy(() -> libraryService.createLibrary(asOutsider, currentUserOf(outsider)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -1135,7 +1174,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     // 404, not 403 - a caller must not be able to distinguish "no such group" from "group in
     // another organization" (#199's lesson for foreign ids in a request body).
-    assertThatThrownBy(() -> libraryService.createLibrary(request, caller))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(caller)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -1155,7 +1194,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .ownerId(group.getId())
             .build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, member))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(member)))
         .isInstanceOf(ValidationException.class);
     assertThat(libraryRepository.findAll())
         .noneMatch(l -> "Aufgeloeste Gruppe".equals(l.getName()));
@@ -1167,9 +1206,12 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID adminInB = createUser(organizationB);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Bibliothek A", DocumentSourceType.UPLOAD).build(), ownerInA);
+            libraryCreation("Bibliothek A", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(ownerInA));
 
-    assertThatThrownBy(() -> libraryService.getLibrary(library.library().getId(), adminInB, true))
+    assertThatThrownBy(
+            () ->
+                libraryService.getLibrary(library.library().getId(), currentUserOf(adminInB, true)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -1182,10 +1224,11 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Rechtsquellen", DocumentSourceType.UPLOAD)
                 .visibility(LibraryVisibility.ORGANIZATION)
                 .build(),
-            owner);
+            currentUserOf(owner));
 
     // Read succeeds for any member of the same organization once visibility is ORGANIZATION.
-    LibraryDetail read = libraryService.getLibrary(library.library().getId(), otherMember, false);
+    LibraryDetail read =
+        libraryService.getLibrary(library.library().getId(), currentUserOf(otherMember, false));
     assertThat(read.library().getId()).isEqualTo(library.library().getId());
 
     // Organization-wide visibility grants read, not manage - only the owner (or a group member,
@@ -1195,8 +1238,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                 libraryService.updateLibrary(
                     library.library().getId(),
                     libraryUpdate("Umbenannt").build(),
-                    otherMember,
-                    false))
+                    currentUserOf(otherMember, false)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -1216,7 +1258,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .sourcePath("/data/documents")
                 .visibility(LibraryVisibility.ORGANIZATION)
                 .build(),
-            owner);
+            currentUserOf(owner));
     // #507 code review, finding 2: an explicit EDITOR grant (one rank below the MANAGER bar) and
     // an explicit MANAGER grant, so an accidental weakening to atLeast(EDITOR) - a plausible typo
     // given AssetRole's general Javadoc calls EDITOR the "changes configuration" rank - fails this
@@ -1224,16 +1266,15 @@ class KnowledgeLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         created.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.USER, editorGrantee, AssetRole.EDITOR),
-        owner,
-        false);
+        currentUserOf(owner, false));
     grantService.upsertGrant(
         created.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.USER, managerGrantee, AssetRole.MANAGER),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
     // The owner holds OWNER (at least MANAGER) and sees the full source configuration.
-    LibraryDetail asOwner = libraryService.getLibrary(created.library().getId(), owner, false);
+    LibraryDetail asOwner =
+        libraryService.getLibrary(created.library().getId(), currentUserOf(owner, false));
     assertThat(asOwner.myRole()).isEqualTo(AssetRole.OWNER);
     assertThat(asOwner.managementDetail().sourcePath()).isEqualTo("/data/documents");
     assertThat(asOwner.managementDetail().sourceInsecureSsl()).isNotNull();
@@ -1241,7 +1282,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     // A direct MANAGER grantee sees it too - the bar is MANAGER, not OWNER specifically.
     LibraryDetail asManager =
-        libraryService.getLibrary(created.library().getId(), managerGrantee, false);
+        libraryService.getLibrary(created.library().getId(), currentUserOf(managerGrantee, false));
     assertThat(asManager.myRole()).isEqualTo(AssetRole.MANAGER);
     assertThat(asManager.managementDetail().sourcePath()).isEqualTo("/data/documents");
     assertThat(asManager.managementDetail().sourceInsecureSsl()).isNotNull();
@@ -1250,7 +1291,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     // An EDITOR grantee - one rank above VIEWER, one below the MANAGER bar - must not receive the
     // source configuration fields either.
     LibraryDetail asEditor =
-        libraryService.getLibrary(created.library().getId(), editorGrantee, false);
+        libraryService.getLibrary(created.library().getId(), currentUserOf(editorGrantee, false));
     assertThat(asEditor.myRole()).isEqualTo(AssetRole.EDITOR);
     assertThat(asEditor.managementDetail().sourcePath()).isNull();
     assertThat(sourceUrl(asEditor)).isNull();
@@ -1261,7 +1302,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     // Another organization member only reaches VIEWER through the ORGANIZATION-wide visibility
     // and must not receive the source configuration fields at all.
     LibraryDetail asViewer =
-        libraryService.getLibrary(created.library().getId(), otherMember, false);
+        libraryService.getLibrary(created.library().getId(), currentUserOf(otherMember, false));
     assertThat(asViewer.myRole()).isEqualTo(AssetRole.VIEWER);
     assertThat(asViewer.managementDetail().sourcePath()).isNull();
     assertThat(sourceUrl(asViewer)).isNull();
@@ -1283,15 +1324,16 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD)
                 .visibility(LibraryVisibility.ORGANIZATION)
                 .build(),
-            owner);
+            currentUserOf(owner));
 
-    LibraryDetail asOwner = libraryService.getLibrary(created.library().getId(), owner, false);
+    LibraryDetail asOwner =
+        libraryService.getLibrary(created.library().getId(), currentUserOf(owner, false));
     assertThat(asOwner.myRole()).isEqualTo(AssetRole.OWNER);
     assertThat(asOwner.managementDetail().storageQuotaBytes()).isNotNull().isPositive();
     assertThat(asOwner.managementDetail().storageUsedBytes()).isNotNull().isZero();
 
     LibraryDetail asViewer =
-        libraryService.getLibrary(created.library().getId(), otherMember, false);
+        libraryService.getLibrary(created.library().getId(), currentUserOf(otherMember, false));
     assertThat(asViewer.myRole()).isEqualTo(AssetRole.VIEWER);
     assertThat(asViewer.managementDetail().storageQuotaBytes()).isNull();
     assertThat(asViewer.managementDetail().storageUsedBytes()).isNull();
@@ -1309,52 +1351,78 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID stranger = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
     grantService.upsertGrant(
         library.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
     // stranger holds no grant at all on this (default PRIVATE) library - every endpoint answers
     // 404, not 403.
-    assertThatThrownBy(() -> libraryService.getLibrary(library.library().getId(), stranger, false))
+    assertThatThrownBy(
+            () ->
+                libraryService.getLibrary(
+                    library.library().getId(), currentUserOf(stranger, false)))
         .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(
             () ->
                 libraryService.listDocuments(
-                    library.library().getId(), stranger, false, null, null, PageRequest.of(0, 10)))
+                    library.library().getId(),
+                    currentUserOf(stranger),
+                    null,
+                    null,
+                    PageRequest.of(0, 10)))
         .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(
             () ->
                 libraryService.updateLibrary(
-                    library.library().getId(), libraryUpdate("Umbenannt").build(), stranger, false))
+                    library.library().getId(),
+                    libraryUpdate("Umbenannt").build(),
+                    currentUserOf(stranger, false)))
         .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(
-            () -> libraryService.deleteLibrary(library.library().getId(), stranger, false))
+            () ->
+                libraryService.deleteLibrary(
+                    library.library().getId(), currentUserOf(stranger, false)))
         .isInstanceOf(NotFoundException.class);
-    assertThatThrownBy(() -> grantService.listGrants(library.library().getId(), stranger, false))
+    assertThatThrownBy(
+            () ->
+                grantService.listGrants(library.library().getId(), currentUserOf(stranger, false)))
         .isInstanceOf(NotFoundException.class);
 
     // viewer holds VIEWER - enough to read, not enough to manage or delete - every
     // insufficient-access endpoint answers 403, not 404.
     assertThat(
-            libraryService.getLibrary(library.library().getId(), viewer, false).library().getId())
+            libraryService
+                .getLibrary(library.library().getId(), currentUserOf(viewer, false))
+                .library()
+                .getId())
         .isEqualTo(library.library().getId());
     assertThat(
             libraryService
                 .listDocuments(
-                    library.library().getId(), viewer, false, null, null, PageRequest.of(0, 10))
+                    library.library().getId(),
+                    currentUserOf(viewer, false),
+                    null,
+                    null,
+                    PageRequest.of(0, 10))
                 .page())
         .isZero();
     assertThatThrownBy(
             () ->
                 libraryService.updateLibrary(
-                    library.library().getId(), libraryUpdate("Umbenannt").build(), viewer, false))
+                    library.library().getId(),
+                    libraryUpdate("Umbenannt").build(),
+                    currentUserOf(viewer, false)))
         .isInstanceOf(AccessDeniedException.class);
-    assertThatThrownBy(() -> libraryService.deleteLibrary(library.library().getId(), viewer, false))
+    assertThatThrownBy(
+            () ->
+                libraryService.deleteLibrary(
+                    library.library().getId(), currentUserOf(viewer, false)))
         .isInstanceOf(AccessDeniedException.class);
-    assertThatThrownBy(() -> grantService.listGrants(library.library().getId(), viewer, false))
+    assertThatThrownBy(
+            () -> grantService.listGrants(library.library().getId(), currentUserOf(viewer, false)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -1366,20 +1434,23 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Nicht leer", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Nicht leer", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
     Document document = new Document("dienstanweisung.pdf", "/tmp/dienstanweisung.pdf", null, 10L);
     document.setLibraryId(library.library().getId());
     document.setOrganizationId(organizationA);
     documentRepository.save(document);
 
-    assertThatThrownBy(() -> libraryService.deleteLibrary(library.library().getId(), owner, false))
+    assertThatThrownBy(
+            () ->
+                libraryService.deleteLibrary(
+                    library.library().getId(), currentUserOf(owner, false)))
         .isInstanceOf(ConflictException.class);
     assertThat(libraryRepository.findById(library.library().getId())).isPresent();
 
     // Once the library is empty, deletion succeeds - the check is a live guard, not a one-time
     // flag on the library.
     documentRepository.delete(document);
-    libraryService.deleteLibrary(library.library().getId(), owner, false);
+    libraryService.deleteLibrary(library.library().getId(), currentUserOf(owner, false));
     assertThat(libraryRepository.findById(library.library().getId())).isEmpty();
   }
 
@@ -1392,13 +1463,17 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Laufende Indizierung", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Laufende Indizierung", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
     IndexingJob job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(library.library().getId());
     job.setOrganizationId(organizationA);
     indexingJobRepository.save(job);
 
-    assertThatThrownBy(() -> libraryService.deleteLibrary(library.library().getId(), owner, false))
+    assertThatThrownBy(
+            () ->
+                libraryService.deleteLibrary(
+                    library.library().getId(), currentUserOf(owner, false)))
         .isInstanceOf(ConflictException.class)
         .satisfies(
             ex -> {
@@ -1410,7 +1485,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     // current job state, not a one-time flag on the library.
     job.setStatus(JobStatus.COMPLETED);
     indexingJobRepository.save(job);
-    libraryService.deleteLibrary(library.library().getId(), owner, false);
+    libraryService.deleteLibrary(library.library().getId(), currentUserOf(owner, false));
     assertThat(libraryRepository.findById(library.library().getId())).isEmpty();
 
     indexingJobRepository.delete(job);
@@ -1449,7 +1524,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .ownerType(LibraryOwnerType.GROUP)
                 .ownerId(group.getId())
                 .build(),
-            creator);
+            currentUserOf(creator));
 
     // The creator personally holds OWNER; other group members hold MANAGER via the group grant.
     KnowledgeLibrary persistedLibrary =
@@ -1463,19 +1538,21 @@ class KnowledgeLibraryServiceIntegrationTest {
     // visibility - the library.
     assertThat(
             libraryService
-                .getLibrary(library.library().getId(), otherMember, false)
+                .getLibrary(library.library().getId(), currentUserOf(otherMember, false))
                 .library()
                 .getId())
         .isEqualTo(library.library().getId());
     libraryService.updateLibrary(
         library.library().getId(),
         libraryUpdate("Umbenannt von otherMember").build(),
-        otherMember,
-        false);
+        currentUserOf(otherMember, false));
 
     // An outsider - not a member of this group - has no access at all, so getLibrary answers 404
     // (#436), the same "does not exist" a caller with no relationship to the library at all sees.
-    assertThatThrownBy(() -> libraryService.getLibrary(library.library().getId(), outsider, false))
+    assertThatThrownBy(
+            () ->
+                libraryService.getLibrary(
+                    library.library().getId(), currentUserOf(outsider, false)))
         .isInstanceOf(NotFoundException.class);
 
     // otherMember, holding only MANAGER, cannot revoke the creator's personal OWNER grant - the
@@ -1490,7 +1567,9 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 grantService.revokeGrant(
-                    library.library().getId(), creatorsOwnerGrant.getId(), otherMember, false))
+                    library.library().getId(),
+                    creatorsOwnerGrant.getId(),
+                    currentUserOf(otherMember, false)))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -1515,22 +1594,23 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .ownerType(LibraryOwnerType.GROUP)
                 .ownerId(group.getId())
                 .build(),
-            creator);
+            currentUserOf(creator));
 
     // otherMember can still manage (rename, change visibility) via the group's MANAGER grant...
     libraryService.updateLibrary(
         library.library().getId(),
         libraryUpdate("Umbenannt von otherMember").build(),
-        otherMember,
-        false);
+        currentUserOf(otherMember, false));
     // ...but cannot delete: that requires OWNER, which only the creator personally holds.
     assertThatThrownBy(
-            () -> libraryService.deleteLibrary(library.library().getId(), otherMember, false))
+            () ->
+                libraryService.deleteLibrary(
+                    library.library().getId(), currentUserOf(otherMember, false)))
         .isInstanceOf(AccessDeniedException.class);
     assertThat(libraryRepository.findById(library.library().getId())).isPresent();
 
     // The creator, holding OWNER, can delete it.
-    libraryService.deleteLibrary(library.library().getId(), creator, false);
+    libraryService.deleteLibrary(library.library().getId(), currentUserOf(creator, false));
     assertThat(libraryRepository.findById(library.library().getId())).isEmpty();
   }
 
@@ -1547,15 +1627,16 @@ class KnowledgeLibraryServiceIntegrationTest {
     Group group = createGroup(organizationA, member);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
 
     grantService.upsertGrant(
         library.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
-    LibraryDetail read = libraryService.getLibrary(library.library().getId(), member, false);
+    LibraryDetail read =
+        libraryService.getLibrary(library.library().getId(), currentUserOf(member, false));
     assertThat(read.library().getId()).isEqualTo(library.library().getId());
 
     // Removing the membership through the real GroupService (not a raw repository update) is the
@@ -1566,11 +1647,13 @@ class KnowledgeLibraryServiceIntegrationTest {
     // reaches it - a raw repository update bypassing GroupService would leave the resolver's
     // cache stale and make this assertion pass for the wrong reason (a cache that was never
     // populated) or fail where it should not.
-    groupService.removeMember(group.getId(), member, owner);
+    groupService.removeMember(group.getId(), member, currentUserOf(owner));
 
     // No grant left at all reaches the (private, ORGANIZATION-less-by-default) library, so this
     // answers 404 (#436), not 403.
-    assertThatThrownBy(() -> libraryService.getLibrary(library.library().getId(), member, false))
+    assertThatThrownBy(
+            () ->
+                libraryService.getLibrary(library.library().getId(), currentUserOf(member, false)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -1583,23 +1666,29 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID viewer = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
 
     var grant =
         grantService.upsertGrant(
             library.library().getId(),
             new AssetGrantUpsert(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
-            owner,
-            false);
+            currentUserOf(owner, false));
     assertThat(
-            libraryService.getLibrary(library.library().getId(), viewer, false).library().getId())
+            libraryService
+                .getLibrary(library.library().getId(), currentUserOf(viewer, false))
+                .library()
+                .getId())
         .isEqualTo(library.library().getId());
 
-    grantService.revokeGrant(library.library().getId(), grant.grant().getId(), owner, false);
+    grantService.revokeGrant(
+        library.library().getId(), grant.grant().getId(), currentUserOf(owner, false));
 
     // The revoked grant was the viewer's only access to this (default-PRIVATE) library, so this
     // answers 404 (#436), not 403.
-    assertThatThrownBy(() -> libraryService.getLibrary(library.library().getId(), viewer, false))
+    assertThatThrownBy(
+            () ->
+                libraryService.getLibrary(library.library().getId(), currentUserOf(viewer, false)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -1615,23 +1704,23 @@ class KnowledgeLibraryServiceIntegrationTest {
     Group subjectGroup = createGroup(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
 
     grantService.upsertGrant(
         library.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.USER, subjectUser, AssetRole.VIEWER),
-        owner,
-        false);
+        currentUserOf(owner, false));
     grantService.upsertGrant(
         library.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.GROUP, subjectGroup.getId(), AssetRole.VIEWER),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
     // owner only ever holds a MANAGER-or-above library grant here, never SYSTEM_ADMIN - the
     // `false` below is the same systemAdmin flag AuthenticatedUserResolver would pass for a
     // caller whose SystemRole is USER.
-    List<AssetGrantView> grants = grantService.listGrants(library.library().getId(), owner, false);
+    List<AssetGrantView> grants =
+        grantService.listGrants(library.library().getId(), currentUserOf(owner, false));
 
     // Three grants in total: the two upserted above, plus the OWNER grant createLibrary always
     // creates for its caller (see createLibrarySetsMyRoleToOwnerForTheCreator) - "Eigentümerin"
@@ -1668,7 +1757,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryDetail library =
         libraryService.createLibrary(
             libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
-            firstOwner);
+            currentUserOf(firstOwner));
     AssetGrant firstOwnerGrant =
         grantRepository.findByLibraryId(library.library().getId()).stream()
             .filter(g -> firstOwner.equals(g.getSubjectUserId()))
@@ -1678,8 +1767,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         grantService.upsertGrant(
             library.library().getId(),
             new AssetGrantUpsert(PermissionSubjectType.USER, secondOwner, AssetRole.OWNER),
-            firstOwner,
-            false);
+            currentUserOf(firstOwner, false));
 
     var barrier = new CyclicBarrier(2);
     ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -1733,7 +1821,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     return () -> {
       barrier.await();
       try {
-        grantService.revokeGrant(libraryId, grantId, callerId, false);
+        grantService.revokeGrant(libraryId, grantId, currentUserOf(callerId, false));
         return null;
       } catch (ConflictException e) {
         return e;
@@ -1765,7 +1853,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryDetail library =
         libraryService.createLibrary(
             libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
-            firstOwner);
+            currentUserOf(firstOwner));
     AssetGrant firstOwnerGrant =
         grantRepository.findByLibraryId(library.library().getId()).stream()
             .filter(g -> firstOwner.equals(g.getSubjectUserId()))
@@ -1775,8 +1863,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         grantService.upsertGrant(
             library.library().getId(),
             new AssetGrantUpsert(PermissionSubjectType.USER, secondOwner, AssetRole.OWNER),
-            firstOwner,
-            false);
+            currentUserOf(firstOwner, false));
 
     var barrier = new CyclicBarrier(2);
     ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -1788,8 +1875,7 @@ class KnowledgeLibraryServiceIntegrationTest {
               grantService.upsertGrant(
                   library.library().getId(),
                   new AssetGrantUpsert(PermissionSubjectType.USER, firstOwner, AssetRole.VIEWER),
-                  firstOwner,
-                  false);
+                  currentUserOf(firstOwner, false));
               return null;
             } catch (ConflictException e) {
               return e;
@@ -1846,12 +1932,12 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID reader = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
     grantService.upsertGrant(
         library.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
     long startNanos = System.nanoTime();
     var readable = accessService.readableLibraryIds(reader, organizationA);
@@ -1876,17 +1962,18 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryDetail library =
         libraryService.createLibrary(
             libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
-            libraryOwner);
+            currentUserOf(libraryOwner));
     var space =
         spaceService.createSpace(
             new SpaceCreation("Team Leistungsgewaehrung", null, null, null, null, null),
-            spaceAdmin,
-            false);
+            currentUserOf(spaceAdmin, false));
     createdSpaceIds.add(space.getId());
 
     // Space authority is not library authority at all here, so this answers 404 (#436), not 403.
     assertThatThrownBy(
-            () -> libraryService.getLibrary(library.library().getId(), spaceAdmin, false))
+            () ->
+                libraryService.getLibrary(
+                    library.library().getId(), currentUserOf(spaceAdmin, false)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -1899,14 +1986,14 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID viewer = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
     grantService.upsertGrant(
         library.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
-    List<LibrarySummary> listed = libraryService.listLibraries(viewer, false);
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(viewer, false));
 
     assertThat(listed).extracting(s -> s.library().getId()).contains(library.library().getId());
     assertThat(listed)
@@ -1923,14 +2010,14 @@ class KnowledgeLibraryServiceIntegrationTest {
     Group group = createGroup(organizationA, member);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
     grantService.upsertGrant(
         library.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.EDITOR),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
-    List<LibrarySummary> listed = libraryService.listLibraries(member, false);
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(member, false));
 
     assertThat(listed).extracting(s -> s.library().getId()).contains(library.library().getId());
     assertThat(listed)
@@ -1947,15 +2034,15 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID formerViewer = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
     grantService.upsertGrant(
         library.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.USER, formerViewer, AssetRole.VIEWER)
             .expiresAt(Instant.now().minusSeconds(60)),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
-    List<LibrarySummary> listed = libraryService.listLibraries(formerViewer, false);
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(formerViewer, false));
 
     assertThat(listed)
         .extracting(s -> s.library().getId())
@@ -1971,9 +2058,10 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID outsider = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
 
-    List<LibrarySummary> listed = libraryService.listLibraries(outsider, false);
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(outsider, false));
 
     assertThat(listed)
         .extracting(s -> s.library().getId())
@@ -1991,34 +2079,36 @@ class KnowledgeLibraryServiceIntegrationTest {
     Group group = createGroup(organizationA, member);
     LibraryDetail ownedByMember =
         libraryService.createLibrary(
-            libraryCreation("Eigene Bibliothek", DocumentSourceType.UPLOAD).build(), member);
+            libraryCreation("Eigene Bibliothek", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(member));
     LibraryDetail directGrantLibrary =
         libraryService.createLibrary(
-            libraryCreation("Direkter Grant", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Direkter Grant", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
     grantService.upsertGrant(
         directGrantLibrary.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.USER, member, AssetRole.VIEWER),
-        owner,
-        false);
+        currentUserOf(owner, false));
     LibraryDetail groupGrantLibrary =
         libraryService.createLibrary(
-            libraryCreation("Gruppen-Grant", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Gruppen-Grant", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
     grantService.upsertGrant(
         groupGrantLibrary.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
-        owner,
-        false);
+        currentUserOf(owner, false));
     LibraryDetail orgWideLibrary =
         libraryService.createLibrary(
             libraryCreation("Organisationsweit", DocumentSourceType.UPLOAD)
                 .visibility(LibraryVisibility.ORGANIZATION)
                 .build(),
-            owner);
+            currentUserOf(owner));
     libraryService.createLibrary(
-        libraryCreation("Unerreichbar fuer member", DocumentSourceType.UPLOAD).build(), owner);
+        libraryCreation("Unerreichbar fuer member", DocumentSourceType.UPLOAD).build(),
+        currentUserOf(owner));
 
     Set<UUID> listedIds =
-        libraryService.listLibraries(member, false).stream()
+        libraryService.listLibraries(currentUserOf(member, false)).stream()
             .map(s -> s.library().getId())
             .collect(Collectors.toSet());
     Set<UUID> readableIds = accessService.readableLibraryIds(member, organizationA);
@@ -2045,9 +2135,9 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Organisationsweit in B", DocumentSourceType.UPLOAD)
                 .visibility(LibraryVisibility.ORGANIZATION)
                 .build(),
-            ownerInB);
+            currentUserOf(ownerInB));
 
-    List<LibrarySummary> listed = libraryService.listLibraries(userInA, false);
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(userInA, false));
 
     assertThat(listed)
         .extracting(s -> s.library().getId())
@@ -2061,18 +2151,22 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     LibraryDetail zebra =
         libraryService.createLibrary(
-            libraryCreation("Zebra", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Zebra", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
     LibraryDetail apple =
         libraryService.createLibrary(
-            libraryCreation("Apple", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Apple", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
     LibraryDetail mango =
         libraryService.createLibrary(
-            libraryCreation("Mango", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Mango", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
 
     List<UUID> firstCall =
-        libraryService.listLibraries(owner, false).stream().map(s -> s.library().getId()).toList();
+        libraryService.listLibraries(currentUserOf(owner, false)).stream()
+            .map(s -> s.library().getId())
+            .toList();
     List<UUID> secondCall =
-        libraryService.listLibraries(owner, false).stream().map(s -> s.library().getId()).toList();
+        libraryService.listLibraries(currentUserOf(owner, false)).stream()
+            .map(s -> s.library().getId())
+            .toList();
 
     assertThat(firstCall).isEqualTo(secondCall);
     List<UUID> testLibraryIds =
@@ -2090,10 +2184,10 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     LibraryDetail zebra =
         libraryService.createLibrary(
-            libraryCreation("Zebra", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Zebra", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
     LibraryDetail mango =
         libraryService.createLibrary(
-            libraryCreation("Mango", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Mango", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
 
     Document first = new Document("a.pdf", "/tmp/477-a.pdf", null, 10L);
     first.setLibraryId(zebra.library().getId());
@@ -2104,7 +2198,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     second.setOrganizationId(organizationA);
     documentRepository.save(second);
 
-    List<LibrarySummary> listed = libraryService.listLibraries(owner, false);
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(owner, false));
 
     assertThat(listed)
         .filteredOn(entry -> entry.library().getId().equals(zebra.library().getId()))
@@ -2129,7 +2223,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     statistics.setStatisticsEnabled(true);
     try {
       statistics.clear();
-      libraryService.listLibraries(owner, false);
+      libraryService.listLibraries(currentUserOf(owner, false));
       long statementsWithTwoLibraries = statistics.getPrepareStatementCount();
 
       LibraryDetail apple =
@@ -2137,14 +2231,14 @@ class KnowledgeLibraryServiceIntegrationTest {
               libraryCreation("Apple", DocumentSourceType.UPLOAD)
                   .visibility(LibraryVisibility.ORGANIZATION)
                   .build(),
-              appleOwner);
+              currentUserOf(appleOwner));
       Document third = new Document("c.pdf", "/tmp/477-c.pdf", null, 10L);
       third.setLibraryId(apple.library().getId());
       third.setOrganizationId(organizationA);
       documentRepository.save(third);
 
       statistics.clear();
-      libraryService.listLibraries(owner, false);
+      libraryService.listLibraries(currentUserOf(owner, false));
       long statementsWithThreeLibraries = statistics.getPrepareStatementCount();
 
       assertThat(statementsWithThreeLibraries).isEqualTo(statementsWithTwoLibraries);
@@ -2161,13 +2255,13 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     LibraryDetail upload =
         libraryService.createLibrary(
-            libraryCreation("Zebra", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Zebra", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
     LibraryDetail filesystem =
         libraryService.createLibrary(
             libraryCreation("Mango", DocumentSourceType.FILESYSTEM).sourcePath("/tmp/481").build(),
-            owner);
+            currentUserOf(owner));
 
-    List<LibrarySummary> listed = libraryService.listLibraries(owner, false);
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(owner, false));
 
     assertThat(listed)
         .filteredOn(entry -> entry.library().getId().equals(upload.library().getId()))
@@ -2189,16 +2283,16 @@ class KnowledgeLibraryServiceIntegrationTest {
     Group group = createGroup(organizationA, owner);
     LibraryDetail userOwned =
         libraryService.createLibrary(
-            libraryCreation("Zebra", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Zebra", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
     LibraryDetail groupOwned =
         libraryService.createLibrary(
             libraryCreation("Mango", DocumentSourceType.UPLOAD)
                 .ownerType(LibraryOwnerType.GROUP)
                 .ownerId(group.getId())
                 .build(),
-            owner);
+            currentUserOf(owner));
 
-    List<LibrarySummary> listed = libraryService.listLibraries(owner, false);
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(owner, false));
 
     assertThat(listed)
         .filteredOn(entry -> entry.library().getId().equals(userOwned.library().getId()))
@@ -2223,9 +2317,9 @@ class KnowledgeLibraryServiceIntegrationTest {
     createdUserIds.add(owner);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Zebra", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Zebra", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
 
-    List<LibrarySummary> listed = libraryService.listLibraries(owner, false);
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(owner, false));
 
     assertThat(listed)
         .filteredOn(entry -> entry.library().getId().equals(library.library().getId()))
@@ -2243,23 +2337,25 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID admin = createUser(organizationA);
     LibraryDetail privateLibraryNoGrantForAdmin =
         libraryService.createLibrary(
-            libraryCreation("Nur fuer Eigentuemer", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Nur fuer Eigentuemer", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
     LibraryDetail orgWideLibrary =
         libraryService.createLibrary(
             libraryCreation("Organisationsweit", DocumentSourceType.UPLOAD)
                 .visibility(LibraryVisibility.ORGANIZATION)
                 .build(),
-            owner);
+            currentUserOf(owner));
 
     // getLibrary does bypass for a system admin, on a library the admin has no grant on at all.
     assertThat(
             libraryService
-                .getLibrary(privateLibraryNoGrantForAdmin.library().getId(), admin, true)
+                .getLibrary(
+                    privateLibraryNoGrantForAdmin.library().getId(), currentUserOf(admin, true))
                 .myRole())
         .isEqualTo(AssetRole.OWNER);
 
     // listLibraries(admin, true) does not: membership still follows the formula alone...
-    List<LibrarySummary> listed = libraryService.listLibraries(admin, true);
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(admin, true));
     assertThat(listed)
         .extracting(s -> s.library().getId())
         .doesNotContain(privateLibraryNoGrantForAdmin.library().getId());
@@ -2280,7 +2376,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
 
     assertThat(library.myRole()).isEqualTo(AssetRole.OWNER);
   }
@@ -2291,19 +2388,24 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID viewer = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(), owner);
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
     grantService.upsertGrant(
         library.library().getId(),
         new AssetGrantUpsert(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
-    assertThat(libraryService.getLibrary(library.library().getId(), viewer, false).myRole())
+    assertThat(
+            libraryService
+                .getLibrary(library.library().getId(), currentUserOf(viewer, false))
+                .myRole())
         .isEqualTo(AssetRole.VIEWER);
     assertThat(
             libraryService
                 .updateLibrary(
-                    library.library().getId(), libraryUpdate("Umbenannt").build(), owner, false)
+                    library.library().getId(),
+                    libraryUpdate("Umbenannt").build(),
+                    currentUserOf(owner, false))
                 .myRole())
         .isEqualTo(AssetRole.OWNER);
   }

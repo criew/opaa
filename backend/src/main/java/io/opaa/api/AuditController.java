@@ -10,8 +10,7 @@ import io.opaa.audit.AuditIncidentScopeService;
 import io.opaa.audit.AuditLogEntry;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditQueryService;
-import io.opaa.auth.User;
-import io.opaa.auth.UserService;
+import io.opaa.auth.CurrentUser;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.UUID;
@@ -19,8 +18,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,7 +25,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The #393 revision access path (AUDITOR role only) - exactly the four bounded queries the
@@ -67,19 +63,13 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/v1/audit")
 public class AuditController {
 
-  private static final String UNKNOWN_ISSUER = "unknown";
-
   private final AuditQueryService queryService;
   private final AuditIncidentScopeService incidentScopeService;
-  private final UserService userService;
 
   public AuditController(
-      AuditQueryService queryService,
-      AuditIncidentScopeService incidentScopeService,
-      UserService userService) {
+      AuditQueryService queryService, AuditIncidentScopeService incidentScopeService) {
     this.queryService = queryService;
     this.incidentScopeService = incidentScopeService;
-    this.userService = userService;
   }
 
   // #394: deliberately no @PreAuthorize on any of the five read endpoints below - the AUDITOR
@@ -98,12 +88,11 @@ public class AuditController {
       // reaches AuditQueryService, which is where the mandatory-reason rejection is itself logged
       // (#394) rather than short-circuited by Spring MVC's own binding error.
       @RequestParam(name = "reason", required = false) String reason,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      CurrentUser caller) {
     Page<AuditLogEntry> result =
         queryService.byObject(
-            currentUser.getOrganizationId(),
-            currentUser.getId(),
+            caller.organizationId(),
+            caller.id(),
             reason,
             objectType,
             objectId,
@@ -121,11 +110,10 @@ public class AuditController {
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "50") int size,
       @RequestParam(name = "reason", required = false) String reason,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      CurrentUser caller) {
     Page<AuditLogEntry> result =
         queryService.byTimeRange(
-            currentUser.getOrganizationId(), currentUser.getId(), reason, from, to, page, size);
+            caller.organizationId(), caller.id(), reason, from, to, page, size);
     return toPage(result);
   }
 
@@ -137,18 +125,10 @@ public class AuditController {
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "50") int size,
       @RequestParam(name = "reason", required = false) String reason,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      CurrentUser caller) {
     Page<AuditLogEntry> result =
         queryService.byEventType(
-            currentUser.getOrganizationId(),
-            currentUser.getId(),
-            reason,
-            eventType,
-            from,
-            to,
-            page,
-            size);
+            caller.organizationId(), caller.id(), reason, eventType, from, to, page, size);
     return toPage(result);
   }
 
@@ -160,30 +140,21 @@ public class AuditController {
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "50") int size,
       @RequestParam(name = "reason", required = false) String reason,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      CurrentUser caller) {
     Page<AuditLogEntry> result =
         queryService.byCorrelation(
-            currentUser.getOrganizationId(),
-            currentUser.getId(),
-            reason,
-            correlationRef,
-            from,
-            to,
-            page,
-            size);
+            caller.organizationId(), caller.id(), reason, correlationRef, from, to, page, size);
     return toPage(result);
   }
 
   @PreAuthorize("hasRole('AUDITOR')")
   @PostMapping("/incident-scopes")
   public ResponseEntity<AuditIncidentScopeResponse> requestAuditIncidentScope(
-      @Valid @RequestBody AuditIncidentScopeRequest request, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      @Valid @RequestBody AuditIncidentScopeRequest request, CurrentUser caller) {
     AuditIncidentScopeGrant grant =
         incidentScopeService.request(
-            currentUser.getOrganizationId(),
-            currentUser.getId(),
+            caller.organizationId(),
+            caller.id(),
             request.getSubjectUserId(),
             request.getScopeStart(),
             request.getScopeEnd(),
@@ -195,10 +166,9 @@ public class AuditController {
   @PreAuthorize("hasRole('AUDITOR')")
   @PostMapping("/incident-scopes/{scopeId}/approve")
   public AuditIncidentScopeResponse approveAuditIncidentScope(
-      @PathVariable UUID scopeId, @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      @PathVariable UUID scopeId, CurrentUser caller) {
     AuditIncidentScopeGrant grant =
-        incidentScopeService.approve(currentUser.getOrganizationId(), scopeId, currentUser.getId());
+        incidentScopeService.approve(caller.organizationId(), scopeId, caller.id());
     return toIncidentScopeResponse(grant);
   }
 
@@ -210,18 +180,10 @@ public class AuditController {
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "50") int size,
       @RequestParam(name = "reason", required = false) String reason,
-      @AuthenticationPrincipal Jwt jwt) {
-    User currentUser = currentUser(jwt);
+      CurrentUser caller) {
     Page<AuditLogEntry> result =
         queryService.byIncidentScope(
-            currentUser.getOrganizationId(),
-            currentUser.getId(),
-            reason,
-            scopeId,
-            from,
-            to,
-            page,
-            size);
+            caller.organizationId(), caller.id(), reason, scopeId, from, to, page, size);
     return toPage(result);
   }
 
@@ -270,16 +232,5 @@ public class AuditController {
         .approvedByUserId(grant.getApprovedByUserId())
         .approvedAt(grant.getApprovedAt())
         .usableUntil(grant.getUsableUntil());
-  }
-
-  private User currentUser(Jwt jwt) {
-    String issuer = jwt.getClaimAsString("iss");
-    if (issuer == null || issuer.isBlank()) {
-      issuer = UNKNOWN_ISSUER;
-    }
-    return userService
-        .findBySubjectAndIssuer(jwt.getSubject(), issuer)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
   }
 }

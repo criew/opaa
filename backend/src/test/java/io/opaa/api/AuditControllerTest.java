@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -26,7 +27,6 @@ import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,6 +71,7 @@ class AuditControllerTest {
 
   private static final String TEST_ISSUER = "test-issuer";
   private static final String TEST_SUBJECT = "test-subject";
+  private static final String REGULAR_USER_SUBJECT = "test-subject-regular";
   private static final String REASON = "Quartalsrevision Q1 2026";
 
   @Autowired private MockMvc mockMvc;
@@ -88,7 +89,7 @@ class AuditControllerTest {
 
   private RequestPostProcessor asRegularUser() {
     return jwt()
-        .jwt(builder -> builder.subject(TEST_SUBJECT).claim("iss", TEST_ISSUER))
+        .jwt(builder -> builder.subject(REGULAR_USER_SUBJECT).claim("iss", TEST_ISSUER))
         .authorities(new SimpleGrantedAuthority("ROLE_USER"));
   }
 
@@ -98,8 +99,19 @@ class AuditControllerTest {
     auditor.setSystemRole(SystemRole.AUDITOR);
     auditor.setOrganizationId(organizationId);
     setId(auditor, UUID.randomUUID());
-    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
-        .thenReturn(Optional.of(auditor));
+    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+        .thenReturn(auditor);
+
+    // UserProvisioningFilter (wired below via AdminTestSecurityConfig) re-derives authorities
+    // from the provisioned User's real SystemRole - a distinct subject/user is required here so
+    // that enrichment does not silently grant ROLE_AUDITOR to a request meant to simulate a
+    // regular, non-AUDITOR caller.
+    User regularUser = new User(REGULAR_USER_SUBJECT, TEST_ISSUER, "user@example.com", "User");
+    regularUser.setSystemRole(SystemRole.USER);
+    regularUser.setOrganizationId(organizationId);
+    setId(regularUser, UUID.randomUUID());
+    when(userService.findOrCreateUser(eq(REGULAR_USER_SUBJECT), eq(TEST_ISSUER), any(), any()))
+        .thenReturn(regularUser);
   }
 
   private void setId(User user, UUID id) {
@@ -312,7 +324,12 @@ class AuditControllerTest {
             parameter.isAnnotationPresent(RequestParam.class)
                 || parameter.isAnnotationPresent(PathVariable.class)
                 || parameter.isAnnotationPresent(RequestBody.class)
-                || parameter.isAnnotationPresent(AuthenticationPrincipal.class);
+                || parameter.isAnnotationPresent(AuthenticationPrincipal.class)
+                // CurrentUser is resolved solely by CurrentUserArgumentResolver, keyed on this
+                // exact type - unlike Pageable/Sort, Spring never falls back to arbitrary
+                // query-parameter binding for it, so an unannotated parameter of this type carries
+                // the same explicit-binding guarantee the annotations above provide.
+                || type == io.opaa.auth.CurrentUser.class;
         failIf(
             !explicitlyBound,
             "Method "
@@ -348,8 +365,8 @@ class AuditControllerTest {
 
   /**
    * Every {@code public}, non-synthetic method declared directly on {@link AuditController} - its
-   * full HTTP-handler surface, private helpers like {@code toPage}/{@code currentUser} excluded by
-   * construction since those are not {@code public}.
+   * full HTTP-handler surface, private helpers like {@code toPage}/{@code toEventResponse} excluded
+   * by construction since those are not {@code public}.
    */
   private List<Method> httpHandlerMethods() {
     return Arrays.stream(AuditController.class.getDeclaredMethods())

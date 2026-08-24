@@ -264,10 +264,8 @@ class UserServiceTest {
         .searchByOrganizationId(eq(organizationId), eq("colleague"), eq(PageRequest.of(0, 20)));
   }
 
-  private User actorInOrganization(UUID organizationId) {
-    User actor = new User("admin-sub", "issuer1", "admin@example.com", "Admin");
-    actor.setOrganizationId(organizationId);
-    return actor;
+  private CurrentUser actorInOrganization(UUID organizationId) {
+    return new CurrentUser(UUID.randomUUID(), organizationId, SystemRole.SYSTEM_ADMIN, "Admin");
   }
 
   @Test

@@ -8,6 +8,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ValidationException;
@@ -40,6 +42,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
   private KnowledgeLibraryService libraryService;
   private FilesystemPathAllowlist filesystemAllowlist;
   private UUID ownerId;
+  private CurrentUser ownerCaller;
 
   @BeforeEach
   void setUp() {
@@ -88,6 +91,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");
     owner.setOrganizationId(UUID.randomUUID());
     when(userRepository.findById(ownerId)).thenReturn(Optional.of(owner));
+    ownerCaller = new CurrentUser(ownerId, owner.getOrganizationId(), SystemRole.USER, "Owner");
   }
 
   @Test
@@ -98,7 +102,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             .sourcePath("/data/documents")
             .build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, ownerId))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, ownerCaller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -109,7 +113,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     when(filesystemAllowlist.isConfigured()).thenReturn(false);
     LibraryCreation request = libraryCreation("Uploads", DocumentSourceType.UPLOAD).build();
 
-    LibraryDetail response = libraryService.createLibrary(request, ownerId);
+    LibraryDetail response = libraryService.createLibrary(request, ownerCaller);
 
     assertThat(response.library().getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
   }
@@ -123,7 +127,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             .sourcePath("/etc/shadow")
             .build();
 
-    assertThatThrownBy(() -> libraryService.createLibrary(request, ownerId))
+    assertThatThrownBy(() -> libraryService.createLibrary(request, ownerCaller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -136,7 +140,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             .sourcePath("/srv/opaa/documents")
             .build();
 
-    LibraryDetail response = libraryService.createLibrary(request, ownerId);
+    LibraryDetail response = libraryService.createLibrary(request, ownerCaller);
 
     assertThat(response.library().getSourceType()).isEqualTo(DocumentSourceType.FILESYSTEM);
     assertThat(response.managementDetail().sourcePath()).isEqualTo("/srv/opaa/documents");

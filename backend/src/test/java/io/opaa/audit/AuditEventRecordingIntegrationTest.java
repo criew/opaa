@@ -5,6 +5,7 @@ import static io.opaa.library.LibraryUpdateBuilder.libraryUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -210,6 +211,31 @@ class AuditEventRecordingIntegrationTest {
     return id;
   }
 
+  /** {@link CurrentUser} snapshot for a {@link User} entity this test already loaded/created. */
+  private CurrentUser currentUserOf(User user) {
+    return new CurrentUser(
+        user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
+  }
+
+  private CurrentUser currentUserOf(UUID userId) {
+    return currentUserOf(userRepository.findById(userId).orElseThrow());
+  }
+
+  /**
+   * {@link CurrentUser} snapshot for a user id this test already created, with {@code systemAdmin}
+   * overriding the snapshot's role regardless of the row's actual, always-USER {@code system_role}
+   * (see {@link #createUser}) - mirrors the {@code systemAdmin} boolean the pre-#884 signatures let
+   * every caller here set independently of the seeded row.
+   */
+  private CurrentUser currentUserOf(UUID userId, boolean systemAdmin) {
+    User user = userRepository.findById(userId).orElseThrow();
+    return new CurrentUser(
+        user.getId(),
+        user.getOrganizationId(),
+        systemAdmin ? SystemRole.SYSTEM_ADMIN : SystemRole.USER,
+        user.getDisplayName());
+  }
+
   private UUID createLibrary(UUID ownerId) {
     LibraryDetail detail =
         libraryService.createLibrary(
@@ -217,7 +243,7 @@ class AuditEventRecordingIntegrationTest {
                 .ownerType(LibraryOwnerType.USER)
                 .ownerId(ownerId)
                 .build(),
-            ownerId);
+            currentUserOf(ownerId));
     return detail.library().getId();
   }
 
@@ -240,8 +266,7 @@ class AuditEventRecordingIntegrationTest {
     grantService.upsertGrant(
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
-        owner,
-        false);
+        currentUserOf(owner, false));
 
     List<AuditLogEntry> afterGrant =
         entriesFor(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId).stream()
@@ -270,7 +295,7 @@ class AuditEventRecordingIntegrationTest {
                 libraryId, PermissionSubjectType.USER, reader)
             .orElseThrow()
             .getId();
-    grantService.revokeGrant(libraryId, grantId, owner, false);
+    grantService.revokeGrant(libraryId, grantId, currentUserOf(owner, false));
 
     List<AuditLogEntry> revoked =
         entriesFor(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId).stream()
@@ -290,8 +315,7 @@ class AuditEventRecordingIntegrationTest {
     grantService.upsertGrant(
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.USER, manager, AssetRole.MANAGER),
-        owner,
-        false);
+        currentUserOf(owner, false));
     UUID targetUser = createUser();
 
     // manager tries to grant a role higher than its own (OWNER) - rejected by the escalation guard.
@@ -300,8 +324,7 @@ class AuditEventRecordingIntegrationTest {
                 grantService.upsertGrant(
                     libraryId,
                     new AssetGrantUpsert(PermissionSubjectType.USER, targetUser, AssetRole.OWNER),
-                    manager,
-                    false))
+                    currentUserOf(manager, false)))
         .isInstanceOf(AccessDeniedException.class);
 
     List<AuditLogEntry> denied =
@@ -337,8 +360,7 @@ class AuditEventRecordingIntegrationTest {
                     libraryId,
                     new AssetGrantUpsert(
                         PermissionSubjectType.USER, unknownSubject, AssetRole.VIEWER),
-                    owner,
-                    false))
+                    currentUserOf(owner, false)))
         .isInstanceOf(NotFoundException.class);
 
     assertThat(auditLogRepository.count()).isEqualTo(before);
@@ -363,8 +385,7 @@ class AuditEventRecordingIntegrationTest {
                       libraryId,
                       new AssetGrantUpsert(
                           PermissionSubjectType.USER, foreignUserId, AssetRole.VIEWER),
-                      owner,
-                      false))
+                      currentUserOf(owner, false)))
           .isInstanceOf(NotFoundException.class);
 
       // No pseudonym row was minted for a user this organization never had standing to reference,
@@ -397,8 +418,7 @@ class AuditEventRecordingIntegrationTest {
     libraryService.updateLibrary(
         libraryId,
         libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
-        owner,
-        false);
+        currentUserOf(owner, false));
     List<AuditLogEntry> visibilityChanged =
         entriesFor(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId).stream()
             .filter(e -> e.getEventType() == AuditEventType.ASSET_VISIBILITY_CHANGED)
@@ -406,7 +426,7 @@ class AuditEventRecordingIntegrationTest {
     assertThat(visibilityChanged).hasSize(1);
     assertThat(visibilityChanged.get(0).getAfter()).contains("ORGANIZATION");
 
-    libraryService.deleteLibrary(libraryId, owner, false);
+    libraryService.deleteLibrary(libraryId, currentUserOf(owner, false));
     List<AuditLogEntry> deleted =
         entriesFor(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId).stream()
             .filter(e -> e.getEventType() == AuditEventType.LIBRARY_DELETED)
@@ -422,7 +442,8 @@ class AuditEventRecordingIntegrationTest {
   @Test
   void groupLifecycleAndMembershipChangesEachProduceAnAuditEntry() {
     UUID admin = createUser();
-    var created = groupService.createGroup(new GroupCreation("Referat 5", "Test"), admin);
+    var created =
+        groupService.createGroup(new GroupCreation("Referat 5", "Test"), currentUserOf(admin));
     UUID groupId = created.group().getId();
     createdGroupIds.add(groupId);
 
@@ -435,7 +456,7 @@ class AuditEventRecordingIntegrationTest {
     // #392 code review, nit 5: updateGroup's own audit write had no coverage against the real
     // Liquibase schema - this remains the only place that exercises this specific event, even
     // though GroupServiceIntegrationTest (#308) no longer mocks AuditEventRecorder either.
-    groupService.updateGroup(groupId, new GroupUpdate("Referat 5 neu", null), admin);
+    groupService.updateGroup(groupId, new GroupUpdate("Referat 5 neu", null), currentUserOf(admin));
     List<AuditLogEntry> changed =
         entriesFor(AuditObjectType.GROUP, groupId).stream()
             .filter(e -> e.getEventType() == AuditEventType.GROUP_CHANGED)
@@ -444,7 +465,7 @@ class AuditEventRecordingIntegrationTest {
     assertThat(changed.get(0).getAfter()).contains("name").doesNotContain("Referat 5 neu");
 
     UUID member = createUser();
-    groupService.addMember(groupId, member, admin);
+    groupService.addMember(groupId, member, currentUserOf(admin));
     List<AuditLogEntry> added =
         entriesFor(AuditObjectType.GROUP, groupId).stream()
             .filter(e -> e.getEventType() == AuditEventType.GROUP_MEMBER_ADDED)
@@ -452,14 +473,14 @@ class AuditEventRecordingIntegrationTest {
     assertThat(added).hasSize(1);
     assertThat(added.get(0).getSubjectKind()).isEqualTo(AuditSubjectKind.USER);
 
-    groupService.removeMember(groupId, member, admin);
+    groupService.removeMember(groupId, member, currentUserOf(admin));
     assertThat(
             entriesFor(AuditObjectType.GROUP, groupId).stream()
                 .filter(e -> e.getEventType() == AuditEventType.GROUP_MEMBER_REMOVED)
                 .toList())
         .hasSize(1);
 
-    groupService.deleteGroup(groupId, admin);
+    groupService.deleteGroup(groupId, currentUserOf(admin));
     assertThat(
             entriesFor(AuditObjectType.GROUP, groupId).stream()
                 .filter(e -> e.getEventType() == AuditEventType.GROUP_DELETED)
@@ -477,8 +498,7 @@ class AuditEventRecordingIntegrationTest {
     Space created =
         spaceService.createSpace(
             new SpaceCreation("Team Alpha", null, null, SpaceVisibility.PRIVATE, null, null),
-            owner,
-            false);
+            currentUserOf(owner, false));
     UUID spaceId = created.getId();
 
     assertThat(
@@ -488,14 +508,14 @@ class AuditEventRecordingIntegrationTest {
         .hasSize(1);
 
     UUID member = createUser();
-    spaceService.addMember(spaceId, member, SpaceRole.MEMBER, owner);
+    spaceService.addMember(spaceId, member, SpaceRole.MEMBER, currentUserOf(owner));
     assertThat(
             entriesFor(AuditObjectType.SPACE, spaceId).stream()
                 .filter(e -> e.getEventType() == AuditEventType.SPACE_MEMBER_ADDED)
                 .toList())
         .hasSize(1);
 
-    spaceService.updateMemberRole(spaceId, member, SpaceRole.CURATOR, owner);
+    spaceService.updateMemberRole(spaceId, member, SpaceRole.CURATOR, currentUserOf(owner));
     List<AuditLogEntry> roleChanged =
         entriesFor(AuditObjectType.SPACE, spaceId).stream()
             .filter(e -> e.getEventType() == AuditEventType.SPACE_MEMBER_ROLE_CHANGED)
@@ -509,8 +529,8 @@ class AuditEventRecordingIntegrationTest {
     // filtering event_type = ASSET_OWNER_CHANGED must find it. Transferred to member and
     // immediately back to owner so the rest of this test's flow (owner-only removeMember/
     // deleteSpace calls below) is unaffected.
-    spaceService.transferOwnership(spaceId, member, owner, false);
-    spaceService.transferOwnership(spaceId, owner, member, false);
+    spaceService.transferOwnership(spaceId, member, currentUserOf(owner, false));
+    spaceService.transferOwnership(spaceId, owner, currentUserOf(member, false));
     List<AuditLogEntry> ownerChanged =
         entriesFor(AuditObjectType.SPACE, spaceId).stream()
             .filter(e -> e.getEventType() == AuditEventType.ASSET_OWNER_CHANGED)
@@ -523,14 +543,14 @@ class AuditEventRecordingIntegrationTest {
                 .toList())
         .isEmpty();
 
-    spaceService.removeMember(spaceId, member, owner);
+    spaceService.removeMember(spaceId, member, currentUserOf(owner));
     assertThat(
             entriesFor(AuditObjectType.SPACE, spaceId).stream()
                 .filter(e -> e.getEventType() == AuditEventType.SPACE_MEMBER_REMOVED)
                 .toList())
         .hasSize(1);
 
-    spaceService.deleteSpace(spaceId, owner, false);
+    spaceService.deleteSpace(spaceId, currentUserOf(owner));
     assertThat(
             entriesFor(AuditObjectType.SPACE, spaceId).stream()
                 .filter(e -> e.getEventType() == AuditEventType.SPACE_DELETED)
@@ -689,7 +709,7 @@ class AuditEventRecordingIntegrationTest {
     UUID targetUser = createUser();
     String targetEmail = userRepository.findById(targetUser).orElseThrow().getEmail();
 
-    userService.updateRole(targetUser, SystemRole.SYSTEM_ADMIN, actingAdminUser);
+    userService.updateRole(targetUser, SystemRole.SYSTEM_ADMIN, currentUserOf(actingAdminUser));
     // #392/#444 re-review: object_id is now the account's pseudonym, not its real id - the entry
     // can no longer be found by filtering on the real userId as objectId (that would defeat the
     // fix), so this queries by event type across the organization's entries instead.
@@ -701,7 +721,7 @@ class AuditEventRecordingIntegrationTest {
     assertThat(granted).hasSize(1);
     assertThat(granted.get(0).getSubjectKind()).isEqualTo(AuditSubjectKind.USER);
 
-    userService.updateRole(targetUser, SystemRole.USER, actingAdminUser);
+    userService.updateRole(targetUser, SystemRole.USER, currentUserOf(actingAdminUser));
     List<AuditLogEntry> revoked =
         auditLogRepository.findAll().stream()
             .filter(e -> e.getOrganizationId().equals(organizationId))
@@ -725,7 +745,7 @@ class AuditEventRecordingIntegrationTest {
 
     // Re-setting the same role is not a change and writes nothing more.
     long before = auditLogRepository.count();
-    userService.updateRole(targetUser, SystemRole.USER, actingAdminUser);
+    userService.updateRole(targetUser, SystemRole.USER, currentUserOf(actingAdminUser));
     assertThat(auditLogRepository.count()).isEqualTo(before);
   }
 
@@ -739,10 +759,11 @@ class AuditEventRecordingIntegrationTest {
     UUID libraryId = createLibrary(owner);
     long before = auditLogRepository.count();
 
-    libraryService.listLibraries(owner, false);
-    libraryService.getLibrary(libraryId, owner, false);
-    libraryService.listDocuments(libraryId, owner, false, null, null, PageRequest.of(0, 20));
-    grantService.listGrants(libraryId, owner, false);
+    libraryService.listLibraries(currentUserOf(owner, false));
+    libraryService.getLibrary(libraryId, currentUserOf(owner, false));
+    libraryService.listDocuments(
+        libraryId, currentUserOf(owner), null, null, PageRequest.of(0, 20));
+    grantService.listGrants(libraryId, currentUserOf(owner, false));
 
     long after = auditLogRepository.count();
     assertThat(after).isEqualTo(before);
@@ -769,8 +790,7 @@ class AuditEventRecordingIntegrationTest {
                             libraryId,
                             new AssetGrantUpsert(
                                 PermissionSubjectType.USER, reader, AssetRole.VIEWER),
-                            owner,
-                            false);
+                            currentUserOf(owner, false));
                         throw new RuntimeException("simulated failure after the grant call");
                       }
                     }))

@@ -1,7 +1,6 @@
 package io.opaa.library;
 
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
+import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
@@ -111,7 +110,6 @@ public class LibraryDocumentService {
   private static final Logger log = LoggerFactory.getLogger(LibraryDocumentService.class);
 
   private final KnowledgeLibraryRepository libraryRepository;
-  private final UserRepository userRepository;
   private final LibraryAccessService accessService;
   private final DocumentRepository documentRepository;
   private final ChecksumService checksumService;
@@ -128,7 +126,6 @@ public class LibraryDocumentService {
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
-      UserRepository userRepository,
       LibraryAccessService accessService,
       DocumentRepository documentRepository,
       ChecksumService checksumService,
@@ -143,7 +140,6 @@ public class LibraryDocumentService {
       LibraryFolderRepository folderRepository,
       LibraryFolderService folderService) {
     this.libraryRepository = libraryRepository;
-    this.userRepository = userRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
     this.checksumService = checksumService;
@@ -164,8 +160,8 @@ public class LibraryDocumentService {
    * to the full overload below with {@code folderPath = null}.
    */
   public LibraryDocumentEntry uploadDocument(
-      UUID libraryId, MultipartFile file, UUID folderId, UUID currentUserId, boolean systemAdmin) {
-    return uploadDocument(libraryId, file, folderId, null, currentUserId, systemAdmin);
+      UUID libraryId, MultipartFile file, UUID folderId, CurrentUser caller) {
+    return uploadDocument(libraryId, file, folderId, null, caller);
   }
 
   /**
@@ -179,14 +175,10 @@ public class LibraryDocumentService {
    * a single, shared folder chain instead of a separate accidental duplicate per file.
    */
   public LibraryDocumentEntry uploadDocument(
-      UUID libraryId,
-      MultipartFile file,
-      UUID folderId,
-      String folderPath,
-      UUID currentUserId,
-      boolean systemAdmin) {
-    KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    requireEditable(library, currentUserId, systemAdmin);
+      UUID libraryId, MultipartFile file, UUID folderId, String folderPath, CurrentUser caller) {
+    UUID currentUserId = caller.id();
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    requireEditable(library, currentUserId, caller.isSystemAdmin());
     requireUploadLibrary(library);
 
     // #821: validated before any byte is written to disk, mirroring every other "reject this
@@ -239,8 +231,7 @@ public class LibraryDocumentService {
     List<String> pathSegments = splitFolderPath(folderPath);
     if (!pathSegments.isEmpty()) {
       effectiveFolderId =
-          folderService.resolveOrCreateFolderPath(
-              libraryId, folderId, pathSegments, currentUserId, systemAdmin);
+          folderService.resolveOrCreateFolderPath(libraryId, folderId, pathSegments, caller);
     }
 
     Path libraryDir = Paths.get(uploadProperties.storagePath()).resolve(libraryId.toString());
@@ -428,8 +419,7 @@ public class LibraryDocumentService {
    * instead, applying the library's own quellkonfiguration (proxy, credentials, insecure TLS) the
    * same way {@code UrlIndexingExecutor}/{@code RssFeedIndexingExecutor} already do.
    */
-  public DocumentContent loadContent(UUID documentId, UUID currentUserId, boolean systemAdmin) {
-    User currentUser = requireUser(currentUserId);
+  public DocumentContent loadContent(UUID documentId, CurrentUser caller) {
     Document document =
         documentRepository
             .findById(documentId)
@@ -438,9 +428,9 @@ public class LibraryDocumentService {
     KnowledgeLibrary library =
         libraryRepository
             .findById(document.getLibraryId())
-            .filter(lib -> lib.getOrganizationId().equals(currentUser.getOrganizationId()))
+            .filter(lib -> lib.getOrganizationId().equals(caller.organizationId()))
             .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
-    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
+    accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
 
     if (document.getSourceType() == DocumentSourceType.HTTP_DIRECTORY
         || document.getSourceType() == DocumentSourceType.RSS_FEED) {
@@ -694,10 +684,9 @@ public class LibraryDocumentService {
   }
 
   @Transactional
-  public void deleteDocument(
-      UUID libraryId, UUID documentId, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    requireEditable(library, currentUserId, systemAdmin);
+  public void deleteDocument(UUID libraryId, UUID documentId, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    requireEditable(library, caller.id(), caller.isSystemAdmin());
 
     Document document =
         documentRepository
@@ -852,22 +841,15 @@ public class LibraryDocumentService {
    * Loads a library and enforces the organization boundary, treating a library from another
    * organization as not found - mirrors {@code KnowledgeLibraryService#loadLibrary}.
    */
-  private KnowledgeLibrary loadLibrary(UUID libraryId, UUID currentUserId) {
-    User currentUser = requireUser(currentUserId);
+  private KnowledgeLibrary loadLibrary(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library =
         libraryRepository
             .findById(libraryId)
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
-    if (!library.getOrganizationId().equals(currentUser.getOrganizationId())) {
+    if (!library.getOrganizationId().equals(caller.organizationId())) {
       throw new NotFoundException("Bibliothek nicht gefunden");
     }
     return library;
-  }
-
-  private User requireUser(UUID userId) {
-    return userRepository
-        .findById(userId)
-        .orElseThrow(() -> new NotFoundException("Benutzer nicht gefunden"));
   }
 
   /**
