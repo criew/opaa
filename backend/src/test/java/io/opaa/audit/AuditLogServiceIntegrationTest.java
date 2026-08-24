@@ -2,23 +2,19 @@ package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
@@ -32,10 +28,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * AuditLogService#record} is not its own transaction, it joins whatever transaction the caller
  * already has open.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class AuditLogServiceIntegrationTest {
 
   @Autowired private AuditLogService auditLogService;

@@ -3,6 +3,7 @@ package io.opaa.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.indexing.*;
 import io.opaa.library.KnowledgeLibrary;
@@ -20,36 +21,34 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * End-to-end integration test using real OpenAI API. Only runs when OPAA_OPENAI_API_KEY environment
  * variable is set.
+ *
+ * <p>Issue #843 inventory: deliberately not on @OpaaIntegrationTest - runs under the separate
+ * {@code openAiIntegrationTest} Gradle task (AGENTS.md), never alongside the shared-context group
+ * in {@code ./gradlew test}, so there is no context to share.
  */
+// Own context (gradle task never runs alongside the shared groups), shared
+// TestcontainersConfiguration container config.
 @SpringBootTest
+@Import(TestcontainersConfiguration.class)
 @ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
 @EnabledIfEnvironmentVariable(named = "OPAA_OPENAI_API_KEY", matches = ".+")
 class OpenAiIntegrationTest {
 
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
-
   @TempDir static Path tempDir;
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("opaa.indexing.document-path", () -> tempDir.toAbsolutePath().toString());
     // #484: overrides the dev profile's /data,/tmp default so this suite's own @TempDir stays
     // inside the allowlist.

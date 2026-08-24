@@ -2,11 +2,11 @@ package io.opaa.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -20,10 +20,6 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Exercises the exact race described in #293: several real requests for the very first login of the
@@ -58,10 +54,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * deleted that automatic personal library entirely, so this test is back to covering the user row
  * and the personal space alone, exactly as it did before #201.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class UserServiceCreationRaceIntegrationTest {
 
   private static final int CONCURRENT_LOGINS = 12;

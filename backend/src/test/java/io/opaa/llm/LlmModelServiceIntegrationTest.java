@@ -3,12 +3,12 @@ package io.opaa.llm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.audit.AuditEventType;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -17,14 +17,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * {@link LlmModelService} against a real Postgres with the real, versioned Liquibase schema applied
@@ -36,18 +32,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * <p>{@code @BeforeEach}/{@code @AfterEach} clear {@code llm_models} rather than assuming it starts
  * empty: {@link LlmModelSeeder} (triggered once by {@link LlmModelSeedRunner}) seeds one row from
  * the {@code dev} profile's Ollama configuration on every fresh application context, including the
- * one this test shares with its siblings (same
- * {@code @SpringBootTest}/{@code @Import}/{@code @ActiveProfiles} signature, see {@code
- * BrandingSettingsServiceIntegrationTest}'s own Javadoc for why that signature must not change
- * lightly - a different one gets a second ApplicationContext and Postgres container). Clearing the
- * table this way doubles as the exact reproduction scenario {@link
- * #seedingNeverResumesOnceAttemptedEvenAfterEveryModelIsDeleted()} needs: a Systemverwaltung
- * deleting every managed model, followed by a restart.
+ * one this test shares with its siblings on the canonical {@link io.opaa.test.OpaaIntegrationTest}
+ * signature (AGENTS.md, "Spring-Testkontexte"). Clearing the table this way doubles as the exact
+ * reproduction scenario {@link #seedingNeverResumesOnceAttemptedEvenAfterEveryModelIsDeleted()}
+ * needs: a Systemverwaltung deleting every managed model, followed by a restart.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class LlmModelServiceIntegrationTest {
 
   @Autowired private LlmModelService llmModelService;

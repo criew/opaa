@@ -20,6 +20,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
 import io.opaa.organization.Organization;
+import io.opaa.test.OpaaMockMvcTest;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -28,17 +29,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * #478/ADR-0018: proves the {@code EDITOR} authorization on {@code POST
@@ -48,27 +42,16 @@ import org.testcontainers.utility.DockerImageName;
  * dev} security chain ({@link DevAuthFilter}, {@code UserProvisioningFilter}) against a real
  * Postgres, mirroring {@code IndexingControllerAuthorizationIntegrationTest} this replaces.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+// Own filesystem allowlist @DynamicPropertySource (below, scoped to this class's @TempDir) means
+// Spring's context cache still keys this to its own context regardless of the shared
+// @OpaaMockMvcTest base - documented exception per AGENTS.md.
+@OpaaMockMvcTest(properties = "opaa.rate-limit.enabled=false")
 class LibraryIndexingAuthorizationIntegrationTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
 
   @TempDir static Path documentDir;
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
-    // #478 code review precedent (former IndexingControllerAuthorizationIntegrationTest): the
-    // production default (opaa.rate-limit.indexing, 1 request per 60s) would otherwise turn every
-    // second trigger in this class into an unrelated 429.
-    registry.add("opaa.rate-limit.enabled", () -> false);
     // #484: overrides the dev profile's /data,/tmp default so this suite's own @TempDir stays
     // inside the allowlist.
     registry.add(

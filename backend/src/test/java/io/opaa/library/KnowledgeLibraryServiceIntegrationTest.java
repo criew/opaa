@@ -3,7 +3,6 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
 import io.opaa.api.dto.LibraryListResponse;
@@ -35,6 +34,7 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
+import io.opaa.test.OpaaIntegrationTest;
 import jakarta.persistence.EntityManagerFactory;
 import java.net.URI;
 import java.time.Instant;
@@ -54,15 +54,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
@@ -84,10 +80,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * gets MANAGER (not OWNER, which round 1 of the #202 review tried and round 2 reverted) and the
  * creator personally gets OWNER.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class KnowledgeLibraryServiceIntegrationTest {
 
   @Autowired private KnowledgeLibraryService libraryService;
@@ -113,8 +106,8 @@ class KnowledgeLibraryServiceIntegrationTest {
   private UUID organizationB;
 
   // This Spring context (and its Postgres container) is shared with other integration test
-  // classes carrying the identical @SpringBootTest/@Import/@ActiveProfiles
-  // combination (Spring caches the context) - some of those classes (e.g.
+  // classes carrying the canonical @OpaaIntegrationTest signature (Spring caches the context) -
+  // some of those classes (e.g.
   // UserServicePersonalSpaceIntegrationTest) have no @AfterEach and leave Space rows behind that
   // reference their users. A blanket userRepository.deleteAll() here would then fail on
   // fk_spaces_owner for a user this test never created. Every user, group and non-system library

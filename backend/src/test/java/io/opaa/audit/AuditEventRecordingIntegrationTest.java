@@ -3,7 +3,6 @@ package io.opaa.audit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
@@ -45,6 +44,7 @@ import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceRole;
 import io.opaa.space.SpaceService;
 import io.opaa.space.SpaceVisibility;
+import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,7 +54,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -62,13 +61,11 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * #392: proves that {@link AssetGrantService}, {@link KnowledgeLibraryService}, {@link
@@ -83,10 +80,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * audit_log.organization_id} is a plain {@code UUID} column with a real foreign key ({@code
  * fk_audit_log_organization}, migration 017) that only the versioned changelog creates.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import({TestcontainersConfiguration.class, AuditEventRecordingIntegrationTest.TestConfig.class})
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+// Own @Import (below) registers a FakeDirectoryClient not needed by the shared
+// @OpaaIntegrationTest group - documented exception per AGENTS.md.
+@OpaaIntegrationTest
+@Import(AuditEventRecordingIntegrationTest.TestConfig.class)
 class AuditEventRecordingIntegrationTest {
 
   @TestConfiguration(proxyBeanMethods = false)

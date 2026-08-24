@@ -5,22 +5,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaMockMvcTest;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * PR #679 review, finding 1: {@code UserServiceOrganizationBoundaryIntegrationTest} proves the
@@ -44,11 +39,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * existing, see {@code SpaceServiceIntegrationTest}'s identical reasoning) - only the throwaway
  * second organization and its one throwaway user are created and torn down per test.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaMockMvcTest
 class AdminControllerOrganizationBoundaryIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
