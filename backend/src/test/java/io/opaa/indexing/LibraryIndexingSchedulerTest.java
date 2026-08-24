@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.dto.ScheduleFrequency;
+import io.opaa.common.ConflictException;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
@@ -23,8 +24,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * #485: {@link LibraryIndexingScheduler}'s own responsibility is narrow - decide which libraries
@@ -122,8 +121,7 @@ class LibraryIndexingSchedulerTest {
         .thenReturn(false);
     when(indexingService.triggerScheduledIndexing(library))
         .thenThrow(
-            new ResponseStatusException(
-                HttpStatus.CONFLICT, "Für diese Bibliothek läuft bereits ein Indizierungslauf"));
+            new ConflictException("Für diese Bibliothek läuft bereits ein Indizierungslauf"));
     IndexingJob runningJob = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobService.getLatestJob(library.getId(), library.getOrganizationId()))
         .thenReturn(Optional.of(runningJob));

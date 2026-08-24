@@ -2,6 +2,9 @@ package io.opaa.library;
 
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.UnauthorizedException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.AutoindexCrawlerService;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.DocumentSourceType;
@@ -35,9 +38,7 @@ import java.util.UUID;
 import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Tests a source configuration <em>before</em> a library is created (#514) - the same three checks
@@ -166,23 +167,21 @@ public class SourceConnectionTestService {
       SourceConnectionTest request, UUID currentUserId, boolean systemAdmin) {
     DocumentSourceType sourceType = request.sourceType();
     if (sourceType == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceType ist erforderlich");
+      throw new ValidationException("sourceType ist erforderlich");
     }
     SourceConnectionTest effectiveRequest = request;
     if (request.libraryId() != null) {
       KnowledgeLibrary library =
           requireManagedLibrary(request.libraryId(), currentUserId, systemAdmin);
       if (library.getSourceType() != sourceType) {
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST,
+        throw new ValidationException(
             "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
       }
       effectiveRequest = withStoredCredentialsIfOmitted(request, library);
     }
     return switch (sourceType) {
       case UPLOAD ->
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST, "sourceType UPLOAD unterstützt keinen Verbindungstest");
+          throw new ValidationException("sourceType UPLOAD unterstützt keinen Verbindungstest");
       case FILESYSTEM -> testFilesystem(effectiveRequest);
       case HTTP_DIRECTORY -> testHttpDirectory(effectiveRequest);
       case RSS_FEED -> testRssFeed(effectiveRequest);
@@ -210,17 +209,12 @@ public class SourceConnectionTestService {
     User currentUser =
         userRepository
             .findById(currentUserId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
+            .orElseThrow(() -> new UnauthorizedException("Benutzer nicht gefunden"));
     KnowledgeLibrary library =
         libraryRepository
             .findById(libraryId)
             .filter(l -> l.getOrganizationId().equals(currentUser.getOrganizationId()))
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
     libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.MANAGER);
     return library;
   }
@@ -267,8 +261,7 @@ public class SourceConnectionTestService {
   private SourceConnectionTestResult testFilesystem(SourceConnectionTest request) {
     String sourcePath = blankToNull(request.sourcePath());
     if (sourcePath == null) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "sourcePath ist erforderlich, wenn sourceType FILESYSTEM ist");
+      throw new ValidationException("sourcePath ist erforderlich, wenn sourceType FILESYSTEM ist");
     }
     // PR #537 review, nit 7: mirrors KnowledgeLibraryService#validateConfigurationForType's
     // FILESYSTEM branch - without this, a client could get a green test for a combination the
@@ -278,14 +271,13 @@ public class SourceConnectionTestService {
     String sourceProxy = blankToNull(request.sourceProxy());
     String sourceCredentials = blankToNull(request.sourceCredentials());
     if (sourceUrl != null || sourceProxy != null || sourceCredentials != null) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "sourceUrl, sourceProxy und sourceCredentials sind für sourceType FILESYSTEM nicht"
               + " zulässig");
     }
     if (Boolean.TRUE.equals(request.sourceInsecureSsl())) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "sourceInsecureSsl ist für sourceType FILESYSTEM nicht zulässig");
+      throw new ValidationException(
+          "sourceInsecureSsl ist für sourceType FILESYSTEM nicht zulässig");
     }
     // Path.of(...).isAbsolute() rather than a literal startsWith("/") (unlike
     // KnowledgeLibraryService's identical-looking check): this method actually touches the
@@ -294,21 +286,18 @@ public class SourceConnectionTestService {
     // @TempDir on every OS the test suite runs on, not only one whose native path separator
     // happens to be "/".
     if (!Path.of(sourcePath).isAbsolute()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "sourcePath muss ein absoluter Pfad sein");
+      throw new ValidationException("sourcePath muss ein absoluter Pfad sein");
     }
     // #484/ADR-0018 Entscheidung 6: the same allowlist gate createLibrary itself enforces - the
     // actual security boundary against path enumeration, checked before anything on disk is
     // touched.
     if (!filesystemAllowlist.isConfigured()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "sourceType FILESYSTEM ist deaktiviert: der Betrieb hat keine Verzeichnisse für"
               + " Dateisystem-Bibliotheken freigegeben");
     }
     if (!filesystemAllowlist.isAllowed(sourcePath)) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "sourcePath liegt außerhalb der vom Betrieb freigegebenen Verzeichnisse. Die"
               + " freigegebenen Basisverzeichnisse teilt die Systemverwaltung mit.");
     }
@@ -520,27 +509,25 @@ public class SourceConnectionTestService {
     String sourceUrl =
         blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString());
     if (sourceUrl == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceUrl ist erforderlich");
+      throw new ValidationException("sourceUrl ist erforderlich");
     }
     // PR #537 review, nit 7: mirrors KnowledgeLibraryService#validateUrlBasedConfiguration - a
     // sourcePath alongside a URL-based sourceType is rejected at creation time, so accepting it
     // silently here would again let a client see a green test for a combination createLibrary
     // itself refuses.
     if (blankToNull(request.sourcePath()) != null) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "sourcePath ist für sourceType " + request.sourceType() + " nicht zulässig");
     }
     URI uri;
     try {
       uri = URI.create(sourceUrl);
     } catch (IllegalArgumentException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceUrl ist keine gültige URL");
+      throw new ValidationException("sourceUrl ist keine gültige URL");
     }
     String scheme = uri.getScheme();
     if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "sourceUrl muss mit http:// oder https:// beginnen");
+      throw new ValidationException("sourceUrl muss mit http:// oder https:// beginnen");
     }
     return sourceUrl;
   }
@@ -631,7 +618,7 @@ public class SourceConnectionTestService {
       return ProxyAndCredentials.parse(
           blankToNull(request.sourceProxy()), blankToNull(request.sourceCredentials()));
     } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+      throw new ValidationException(e.getMessage());
     }
   }
 }

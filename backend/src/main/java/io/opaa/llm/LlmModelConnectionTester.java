@@ -1,5 +1,7 @@
 package io.opaa.llm;
 
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.AutoindexCrawlerService;
 import io.opaa.security.SettingsEncryptor;
 import java.io.IOException;
@@ -21,10 +23,8 @@ import java.util.UUID;
 import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -87,8 +87,9 @@ public class LlmModelConnectionTester {
    * - otherwise the request is rejected with 400 rather than silently probing without a key or,
    * worse, sending the stored key to an address it was never meant for.
    *
-   * @throws ResponseStatusException 404 when {@code modelId} is set but no such model exists; 400
-   *     when the stored key would have to be sent to an address other than the model's own
+   * @throws NotFoundException 404 when {@code modelId} is set but no such model exists
+   * @throws ValidationException 400 when the stored key would have to be sent to an address other
+   *     than the model's own
    */
   public TestOutcome test(String baseUrl, String modelIdentifier, String apiKey, UUID modelId) {
     String effectiveApiKey = apiKey;
@@ -98,15 +99,13 @@ public class LlmModelConnectionTester {
               .findById(modelId)
               .orElseThrow(
                   () ->
-                      new ResponseStatusException(
-                          HttpStatus.NOT_FOUND,
+                      new NotFoundException(
                           "Kein Chat-Modell mit der ID " + modelId + " gefunden"));
       if (model.getApiKeyCiphertext() == null) {
         effectiveApiKey = null;
       } else {
         if (!sameOrigin(baseUrl, model.getBaseUrl())) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
+          throw new ValidationException(
               "Die angegebene Basis-Adresse weicht von der gespeicherten Adresse dieses Modells"
                   + " ab. Der gespeicherte Zugangsschlüssel kann nur für die ursprüngliche Adresse"
                   + " verwendet werden - bitte den Schlüssel erneut eingeben oder die"

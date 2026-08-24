@@ -7,6 +7,10 @@ import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.PermissionSubjectType;
@@ -18,12 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Manages {@link AssetGrant}s on a {@link KnowledgeLibrary} - the "who has which {@link AssetRole}"
@@ -108,27 +110,27 @@ public class AssetGrantService {
     return toViews(grantRepository.findByLibraryId(library.getId()));
   }
 
-  // #392: noRollbackFor(ResponseStatusException) - without it, the DENIED audit entry the
+  // #392: noRollbackFor(AccessDeniedException) - without it, the DENIED audit entry the
   // escalation-guard catch block below writes would be undone by Spring's default rollback-on-any-
   // RuntimeException the moment the same exception is rethrown to the caller, defeating the entire
   // point of recording a rejected attempt (AuditLogService's Javadoc: "a rejected action ... is
   // recorded ... as part of its own successful flow, not implied by a leftover row from a
   // rolled-back attempt" - the DENIED write must itself be that successful flow, not a doomed one).
-  // Safe here because every ResponseStatusException this method can throw - including the
-  // escalation guard's - fires strictly before grantRepository.save(grant) below: nothing is ever
-  // persisted on a path this annotation keeps from rolling back, so "not rolling back" changes
-  // nothing about the (never attempted) grant write, only preserves the audit trail of the attempt.
-  @Transactional(noRollbackFor = ResponseStatusException.class)
+  // Safe here because every domain exception this method can throw - including the escalation
+  // guard's - fires strictly before grantRepository.save(grant) below: nothing is ever persisted on
+  // a path this annotation keeps from rolling back, so "not rolling back" changes nothing about the
+  // (never attempted) grant write, only preserves the audit trail of the attempt.
+  @Transactional(noRollbackFor = AccessDeniedException.class)
   public AssetGrantView upsertGrant(
       UUID libraryId, AssetGrantUpsert request, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = requireManageable(libraryId, currentUserId, systemAdmin);
     User currentUser = requireUser(currentUserId);
 
     if (request.subjectType() == null || request.subjectId() == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Empfänger ist erforderlich");
+      throw new ValidationException("Empfänger ist erforderlich");
     }
     if (request.role() == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rolle ist erforderlich");
+      throw new ValidationException("Rolle ist erforderlich");
     }
     // #392 code review, finding 2: subject validation moved ahead of the escalation guard below.
     // The guard's catch block pseudonymises request.subjectId() as the DENIED entry's
@@ -137,8 +139,8 @@ public class AssetGrantService {
     // 017, composite as of migration 047), so pseudonymising an id that names no real user (a
     // bogus id, or a
     // valid id probed from outside this organization) violated that FK, turned a should-be-403 into
-    // an unhandled 500, and - because a DataIntegrityViolationException is not a
-    // ResponseStatusException, so upsertGrant's noRollbackFor did not apply - rolled back the very
+    // an unhandled 500, and - because a DataIntegrityViolationException is not an
+    // AccessDeniedException, so upsertGrant's noRollbackFor did not apply - rolled back the very
     // transaction that would have recorded the attempt, losing the audit trail for exactly the
     // probing behaviour it exists to catch. Validating first turns an unknown or foreign subject
     // into the same 404 ("Benutzer/Gruppe nicht gefunden") every other unresolvable reference in
@@ -163,7 +165,7 @@ public class AssetGrantService {
           "Die eigene Rolle reicht nicht aus, um die Rolle "
               + roleLabel(request.role())
               + " zu vergeben");
-    } catch (ResponseStatusException denied) {
+    } catch (AccessDeniedException denied) {
       // #392: the rejected attempt to grant a role higher than the caller's own is itself
       // protocol-worthy - "der zurueckgewiesene Versuch, sich eine hoehere Rolle zu geben, ist fuer
       // eine Pruefung oft der interessantere Vorgang" (docs/features/security-and-compliance.md).
@@ -181,7 +183,7 @@ public class AssetGrantService {
           null,
           Map.of("role", request.role().name()),
           AuditOutcome.DENIED,
-          denied.getReason());
+          denied.getMessage());
       throw denied;
     }
 
@@ -305,12 +307,9 @@ public class AssetGrantService {
     AssetGrant grant =
         grantRepository
             .findById(grantId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Berechtigung nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Berechtigung nicht gefunden"));
     if (!grant.getLibraryId().equals(library.getId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Berechtigung nicht gefunden");
+      throw new NotFoundException("Berechtigung nicht gefunden");
     }
     // Escalation guard, half 2 - see the class Javadoc: a caller may never touch a grant that
     // already carries a role higher than their own, regardless of whether they could have
@@ -326,8 +325,7 @@ public class AssetGrantService {
     if (grant.getRole() == AssetRole.OWNER
         && !grant.isExpired(Instant.now())
         && isLastActiveOwnerGrant(library.getId(), grant.getId())) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
+      throw new ConflictException(
           "Die letzte "
               + roleLabel(AssetRole.OWNER)
               + "-Berechtigung einer Bibliothek kann nicht"
@@ -396,7 +394,7 @@ public class AssetGrantService {
    */
   private void requireCallerRoleAtLeast(AssetRole callerRole, AssetRole otherRole, String message) {
     if (callerRole == null || otherRole.ordinal() > callerRole.ordinal()) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, message);
+      throw new AccessDeniedException(message);
     }
   }
 
@@ -440,8 +438,7 @@ public class AssetGrantService {
     // advisory lock before counting, rather than row-locking the grants directly (#202 code review
     // round 2 nit 2, round 3 blocker 2).
     if (isLastActiveOwnerGrant(libraryId, existingGrant.getId())) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
+      throw new ConflictException(
           "Die letzte "
               + roleLabel(AssetRole.OWNER)
               + "-Berechtigung einer Bibliothek kann nicht"
@@ -455,11 +452,9 @@ public class AssetGrantService {
     KnowledgeLibrary library =
         libraryRepository
             .findById(libraryId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
     if (!library.getOrganizationId().equals(currentUser.getOrganizationId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden");
+      throw new NotFoundException("Bibliothek nicht gefunden");
     }
     // #436: no access at all (no grant, no organization-wide visibility) also answers 404, not just
     // the organization-boundary case above - see LibraryAccessService#requireRole.
@@ -470,14 +465,13 @@ public class AssetGrantService {
   private User requireUser(UUID userId) {
     return userRepository
         .findById(userId)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+        .orElseThrow(() -> new NotFoundException("Benutzer nicht gefunden"));
   }
 
   private void requireUserInOrganization(UUID userId, UUID organizationId) {
     User user = requireUser(userId);
     if (!user.getOrganizationId().equals(organizationId)) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden");
+      throw new NotFoundException("Benutzer nicht gefunden");
     }
   }
 
@@ -495,14 +489,12 @@ public class AssetGrantService {
     Group group =
         groupRepository
             .findById(groupId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Gruppe nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
     if (!group.getOrganizationId().equals(organizationId)) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Gruppe nicht gefunden");
+      throw new NotFoundException("Gruppe nicht gefunden");
     }
     if (group.isDissolved()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "Die Gruppe ist aufgelöst und kann keine neuen Berechtigungen mehr erhalten");
     }
   }

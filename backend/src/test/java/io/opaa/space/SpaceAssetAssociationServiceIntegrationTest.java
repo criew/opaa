@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.library.AssetGrant;
 import io.opaa.library.AssetGrantHistoryRepository;
@@ -27,9 +29,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied - same
@@ -160,11 +160,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID space = createSpace(curator, SpaceRole.ADMIN);
 
     assertThatThrownBy(() -> associationService.associate(space, library, curator, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -178,11 +174,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     grant(library, member, AssetRole.VIEWER);
 
     assertThatThrownBy(() -> associationService.associate(space, library, member, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -279,11 +271,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID stranger = createUser();
 
     assertThatThrownBy(() -> associationService.detach(space, library, stranger, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   // #706 review, finding 7b: a plain MEMBER (neither CURATOR/ADMIN/owner of the space nor MANAGER
@@ -300,11 +288,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     addMember(space, plainMember, SpaceRole.MEMBER);
 
     assertThatThrownBy(() -> associationService.detach(space, library, plainMember, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
 
     assertThat(associationRepository.existsBySpaceIdAndLibraryId(space, library)).isTrue();
   }

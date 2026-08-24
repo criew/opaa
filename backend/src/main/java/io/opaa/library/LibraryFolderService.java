@@ -2,6 +2,9 @@ package io.opaa.library;
 
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
@@ -14,13 +17,11 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Creates, renames and (recursively) deletes {@link LibraryFolder}s (#820, Epic #520 Phase 2,
@@ -111,8 +112,7 @@ public class LibraryFolderService {
     resolveParent(libraryId, parentFolderId);
     int depth = depthOfParentChain(parentFolderId) + 1;
     if (depth > MAX_DEPTH) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "Die Ordnerstruktur ist zu tief verschachtelt (maximal " + MAX_DEPTH + " Ebenen)");
     }
 
@@ -351,8 +351,7 @@ public class LibraryFolderService {
       names.add(validatePathSegment(rawSegment));
       depth++;
       if (depth > MAX_DEPTH) {
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST,
+        throw new ValidationException(
             "Die Ordnerstruktur ist zu tief verschachtelt (maximal " + MAX_DEPTH + " Ebenen)");
       }
     }
@@ -373,12 +372,10 @@ public class LibraryFolderService {
   private String validatePathSegment(String rawSegment) {
     String name = validateName(rawSegment);
     if (name.contains("\\")) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Ordnername darf kein \"\\\" enthalten");
+      throw new ValidationException("Ordnername darf kein \"\\\" enthalten");
     }
     if (name.equals("..") || name.equals(".")) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Ordnername darf nicht \"..\" oder \".\" lauten");
+      throw new ValidationException("Ordnername darf nicht \"..\" oder \".\" lauten");
     }
     return name;
   }
@@ -483,9 +480,8 @@ public class LibraryFolderService {
     }
   }
 
-  private ResponseStatusException conflict() {
-    return new ResponseStatusException(
-        HttpStatus.CONFLICT, "Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene");
+  private ConflictException conflict() {
+    return new ConflictException("Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene");
   }
 
   /**
@@ -500,13 +496,9 @@ public class LibraryFolderService {
     LibraryFolder parent =
         folderRepository
             .findById(parentFolderId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Übergeordneter Ordner nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Übergeordneter Ordner nicht gefunden"));
     if (!parent.getLibraryId().equals(libraryId)) {
-      throw new ResponseStatusException(
-          HttpStatus.NOT_FOUND, "Übergeordneter Ordner nicht gefunden");
+      throw new NotFoundException("Übergeordneter Ordner nicht gefunden");
     }
   }
 
@@ -537,15 +529,14 @@ public class LibraryFolderService {
 
   private String validateName(String name) {
     if (name == null || name.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name ist erforderlich");
+      throw new ValidationException("name ist erforderlich");
     }
     String trimmed = name.trim();
     if (trimmed.length() > MAX_NAME_LENGTH) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "name darf höchstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
+      throw new ValidationException("name darf höchstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
     }
     if (trimmed.contains("/")) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name darf kein \"/\" enthalten");
+      throw new ValidationException("name darf kein \"/\" enthalten");
     }
     return trimmed;
   }
@@ -554,10 +545,9 @@ public class LibraryFolderService {
     LibraryFolder folder =
         folderRepository
             .findById(folderId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Ordner nicht gefunden"));
     if (!folder.getLibraryId().equals(libraryId)) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden");
+      throw new NotFoundException("Ordner nicht gefunden");
     }
     return folder;
   }
@@ -577,8 +567,7 @@ public class LibraryFolderService {
    */
   private void requireUploadLibrary(KnowledgeLibrary library) {
     if (library.getSourceType() != DocumentSourceType.UPLOAD) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
+      throw new ConflictException(
           "Diese Bibliothek ist eine Konnektorbibliothek und unterstützt keine manuell verwalteten"
               + " Ordner");
     }
@@ -599,11 +588,9 @@ public class LibraryFolderService {
     KnowledgeLibrary library =
         libraryRepository
             .findById(libraryId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
     if (!library.getOrganizationId().equals(currentUser.getOrganizationId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden");
+      throw new NotFoundException("Bibliothek nicht gefunden");
     }
     return library;
   }
@@ -611,7 +598,6 @@ public class LibraryFolderService {
   private User requireUser(UUID userId) {
     return userRepository
         .findById(userId)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+        .orElseThrow(() -> new NotFoundException("Benutzer nicht gefunden"));
   }
 }

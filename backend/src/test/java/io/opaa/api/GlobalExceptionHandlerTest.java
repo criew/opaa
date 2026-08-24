@@ -259,6 +259,60 @@ class GlobalExceptionHandlerTest {
     assertEquals("bad input", body.getError());
   }
 
+  /**
+   * #875: each domain exception in {@code io.opaa.common} must produce the identical response body
+   * {@link #handleResponseStatusExceptionKeepsStatusAndReason} pins for {@link
+   * ResponseStatusException} - status and the exception's own message as the reason.
+   */
+  @Test
+  void handleNotFoundExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleNotFoundException(
+            new io.opaa.common.NotFoundException("Space nicht gefunden"));
+    assertEquals(404, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(404, body.getStatus());
+    assertEquals("Space nicht gefunden", body.getError());
+    assertNotNull(body.getTimestamp());
+  }
+
+  @Test
+  void handleDomainAccessDeniedExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleDomainAccessDeniedException(
+            new io.opaa.common.AccessDeniedException("Sie sind kein Mitglied dieses Space"));
+    assertEquals(403, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(403, body.getStatus());
+    assertEquals("Sie sind kein Mitglied dieses Space", body.getError());
+  }
+
+  @Test
+  void handleConflictExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleConflictException(
+            new io.opaa.common.ConflictException("Der Benutzer ist bereits Mitglied dieses Space"));
+    assertEquals(409, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(409, body.getStatus());
+    assertEquals("Der Benutzer ist bereits Mitglied dieses Space", body.getError());
+  }
+
+  @Test
+  void handleDomainValidationExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleValidationException(
+            new io.opaa.common.ValidationException("name ist erforderlich"));
+    assertEquals(400, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(400, body.getStatus());
+    assertEquals("name ist erforderlich", body.getError());
+  }
+
   @Test
   void handleResponseStatusExceptionKeepsStatusAndReason() {
     var response =

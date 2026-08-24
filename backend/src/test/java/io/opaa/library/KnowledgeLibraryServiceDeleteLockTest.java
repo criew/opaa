@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ConflictException;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.DocumentRepository;
@@ -26,8 +27,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Unit-level coverage of the #433 delete lock: {@link KnowledgeLibraryService#deleteLibrary}
@@ -121,12 +120,10 @@ class KnowledgeLibraryServiceDeleteLockTest {
         .thenReturn(true);
 
     assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), ownerId, false))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ConflictException.class)
         .satisfies(
             ex -> {
-              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
-              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-              assertThat(responseStatusException.getReason()).contains("indiziert");
+              assertThat(ex.getMessage()).contains("indiziert");
             });
   }
 

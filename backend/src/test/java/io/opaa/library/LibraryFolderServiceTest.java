@@ -13,6 +13,10 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
@@ -22,10 +26,8 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Unit tests for {@link LibraryFolderService} (#820): name validation, the EDITOR/VIEWER permission
@@ -103,8 +105,7 @@ class LibraryFolderServiceTest {
 
   private void denyEditor() {
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.EDITOR)))
-        .thenThrow(
-            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
   }
 
   @Test
@@ -140,11 +141,7 @@ class LibraryFolderServiceTest {
 
     assertThatThrownBy(
             () -> service.createFolder(libraryId, "Protokolle", null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -154,11 +151,7 @@ class LibraryFolderServiceTest {
 
     assertThatThrownBy(
             () -> service.createFolder(libraryId, "Protokolle", null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
   }
 
   @Test
@@ -166,11 +159,7 @@ class LibraryFolderServiceTest {
     grantEditor();
 
     assertThatThrownBy(() -> service.createFolder(libraryId, "   ", null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -179,11 +168,7 @@ class LibraryFolderServiceTest {
 
     assertThatThrownBy(
             () -> service.createFolder(libraryId, "Akten/2026", null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -192,11 +177,7 @@ class LibraryFolderServiceTest {
 
     assertThatThrownBy(
             () -> service.createFolder(libraryId, "x".repeat(256), null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -207,11 +188,7 @@ class LibraryFolderServiceTest {
 
     assertThatThrownBy(
             () -> service.createFolder(libraryId, "Protokolle", null, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
   }
 
   @Test
@@ -224,11 +201,7 @@ class LibraryFolderServiceTest {
             () ->
                 service.createFolder(
                     libraryId, "Protokolle", missingParentId, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -242,11 +215,7 @@ class LibraryFolderServiceTest {
             () ->
                 service.createFolder(
                     libraryId, "Protokolle", foreignParent.getId(), currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -264,11 +233,7 @@ class LibraryFolderServiceTest {
 
     assertThatThrownBy(
             () -> service.createFolder(libraryId, "Zu tief", deepestParentId, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -284,11 +249,7 @@ class LibraryFolderServiceTest {
 
     assertThatThrownBy(
             () -> service.renameFolder(libraryId, folder.getId(), "Archiv", currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
   }
 
   @Test
@@ -301,11 +262,7 @@ class LibraryFolderServiceTest {
     when(folderRepository.findById(folder.getId())).thenReturn(Optional.of(folder));
 
     assertThatThrownBy(() -> service.deleteFolder(libraryId, folder.getId(), currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
   }
 
   @Test
@@ -448,11 +405,7 @@ class LibraryFolderServiceTest {
 
     assertThatThrownBy(
             () -> service.renameFolder(libraryId, folder.getId(), "Archiv", currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
   }
 
   @Test
@@ -522,11 +475,7 @@ class LibraryFolderServiceTest {
     assertThatThrownBy(
             () ->
                 service.renameFolder(libraryId, foreignFolder.getId(), "Neu", currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   // #823: LibraryFolderService#resolveOrCreateFolderPath - the upload-path counterpart to
@@ -602,11 +551,7 @@ class LibraryFolderServiceTest {
             () ->
                 service.resolveOrCreateFolderPath(
                     libraryId, null, List.of("Protokolle", ""), currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -617,11 +562,7 @@ class LibraryFolderServiceTest {
             () ->
                 service.resolveOrCreateFolderPath(
                     libraryId, null, List.of("Ordner\\Unterordner"), currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -632,11 +573,7 @@ class LibraryFolderServiceTest {
             () ->
                 service.resolveOrCreateFolderPath(
                     libraryId, null, List.of(".."), currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -651,11 +588,7 @@ class LibraryFolderServiceTest {
 
     assertThatThrownBy(
             () -> service.resolveOrCreateFolderPath(libraryId, null, tooDeep, currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -667,11 +600,7 @@ class LibraryFolderServiceTest {
             () ->
                 service.resolveOrCreateFolderPath(
                     libraryId, null, List.of("Protokolle"), currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
   }
 
   @Test
@@ -684,10 +613,6 @@ class LibraryFolderServiceTest {
             () ->
                 service.resolveOrCreateFolderPath(
                     libraryId, foreignBase.getId(), List.of("Protokolle"), currentUserId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 }

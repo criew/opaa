@@ -14,6 +14,10 @@ import static org.mockito.Mockito.when;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupKind;
 import io.opaa.group.GroupRepository;
@@ -24,8 +28,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 class AssetGrantServiceTest {
 
@@ -80,17 +82,12 @@ class AssetGrantServiceTest {
   @Test
   void upsertGrantRejectsACallerWithoutManagerRole() {
     when(accessService.requireRole(any(), any(), anyBoolean(), eq(AssetRole.MANAGER)))
-        .thenThrow(
-            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
     verify(grantRepository, never()).save(any());
   }
 
@@ -136,11 +133,7 @@ class AssetGrantServiceTest {
         new AssetGrantUpsert(PermissionSubjectType.USER, foreignUserId, AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -157,11 +150,7 @@ class AssetGrantServiceTest {
         new AssetGrantUpsert(PermissionSubjectType.GROUP, foreignGroupId, AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -226,11 +215,7 @@ class AssetGrantServiceTest {
     when(grantRepository.findById(grantId)).thenReturn(Optional.of(grantOnAnotherLibrary));
 
     assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
     verify(grantRepository, never()).delete(any());
   }
 
@@ -256,15 +241,13 @@ class AssetGrantServiceTest {
         new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.OWNER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(AccessDeniedException.class)
         .satisfies(
             ex -> {
-              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
-              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
               // #448: the message names the role in German ("Eigentümer"), not the raw enum
               // constant ("OWNER") - the escalation guard's whole point is a message an end user
               // (not just a developer reading logs) can act on.
-              assertThat(responseStatusException.getReason())
+              assertThat(ex.getMessage())
                   .isEqualTo(
                       "Die eigene Rolle reicht nicht aus, um die Rolle Eigentümer zu vergeben");
             });
@@ -306,13 +289,11 @@ class AssetGrantServiceTest {
         new AssetGrantUpsert(PermissionSubjectType.GROUP, dissolvedGroup.getId(), AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ValidationException.class)
         .satisfies(
             ex -> {
-              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
-              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
               // #448: correct German umlaut ("aufgelöst"), not the umlaut-free "aufgeloest".
-              assertThat(responseStatusException.getReason())
+              assertThat(ex.getMessage())
                   .isEqualTo(
                       "Die Gruppe ist aufgelöst und kann keine neuen Berechtigungen mehr"
                           + " erhalten");
@@ -346,13 +327,11 @@ class AssetGrantServiceTest {
         new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ConflictException.class)
         .satisfies(
             ex -> {
-              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
-              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
               // #448 code review: "Eigentümer", nicht die rohe Enum-Konstante "OWNER".
-              assertThat(responseStatusException.getReason())
+              assertThat(ex.getMessage())
                   .isEqualTo(
                       "Die letzte Eigentümer-Berechtigung einer Bibliothek kann nicht"
                           + " herabgestuft werden");
@@ -375,13 +354,11 @@ class AssetGrantServiceTest {
         .thenReturn(0L);
 
     assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerId, false))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ConflictException.class)
         .satisfies(
             ex -> {
-              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
-              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
               // #448 code review: "Eigentümer", nicht die rohe Enum-Konstante "OWNER".
-              assertThat(responseStatusException.getReason())
+              assertThat(ex.getMessage())
                   .isEqualTo(
                       "Die letzte Eigentümer-Berechtigung einer Bibliothek kann nicht entfernt"
                           + " werden");
@@ -437,13 +414,11 @@ class AssetGrantServiceTest {
         .thenReturn(1L);
 
     assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerId, false))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(AccessDeniedException.class)
         .satisfies(
             ex -> {
-              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
-              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
               // #448: the existing grant's role is named as "Eigentümer", not the raw "OWNER".
-              assertThat(responseStatusException.getReason())
+              assertThat(ex.getMessage())
                   .isEqualTo(
                       "Die eigene Rolle reicht nicht aus, um eine bestehende"
                           + " Eigentümer-Berechtigung zu entfernen");
@@ -478,13 +453,11 @@ class AssetGrantServiceTest {
         new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(AccessDeniedException.class)
         .satisfies(
             ex -> {
-              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
-              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
               // #448: "ändern" with the correct umlaut, not the umlaut-free "aendern".
-              assertThat(responseStatusException.getReason())
+              assertThat(ex.getMessage())
                   .isEqualTo(
                       "Die eigene Rolle reicht nicht aus, um eine bestehende"
                           + " Eigentümer-Berechtigung zu ändern");
@@ -516,11 +489,7 @@ class AssetGrantServiceTest {
             .expiresAt(Instant.now().minusSeconds(60));
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
     verify(grantRepository, never()).save(any());
   }
 

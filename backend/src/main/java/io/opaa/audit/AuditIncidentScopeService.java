@@ -1,12 +1,12 @@
 package io.opaa.audit;
 
 import io.opaa.auth.UserRepository;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import java.time.Instant;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Request/approve lifecycle for the one personenbezogene exception, the anlassbezogene Klärung
@@ -29,7 +29,7 @@ public class AuditIncidentScopeService {
   /**
    * Creates a new {@code PENDING} incident scope grant. Not usable for querying until approved.
    *
-   * @throws ResponseStatusException 404 if {@code subjectUserId} does not belong to {@code
+   * @throws NotFoundException 404 if {@code subjectUserId} does not belong to {@code
    *     organizationId} (#393 code review, finding 8) - a grant must never be created, and no
    *     pseudonym ever minted at query time, against a person outside the requester's own
    *     organization.
@@ -44,10 +44,7 @@ public class AuditIncidentScopeService {
       String reason) {
     userRepository
         .findByIdAndOrganizationId(subjectUserId, organizationId)
-        .orElseThrow(
-            () ->
-                new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "Person nicht in dieser Organisation gefunden"));
+        .orElseThrow(() -> new NotFoundException("Person nicht in dieser Organisation gefunden"));
     return repository.save(
         new AuditIncidentScopeGrant(
             organizationId,
@@ -85,7 +82,7 @@ public class AuditIncidentScopeService {
           grant.isApproved()
               ? "Die Freigabe ist abgelaufen"
               : "Der Vorgang ist noch nicht freigegeben";
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+      throw new ValidationException(message);
     }
     return grant;
   }
@@ -93,7 +90,6 @@ public class AuditIncidentScopeService {
   private AuditIncidentScopeGrant findOrThrow(UUID organizationId, UUID scopeId) {
     return repository
         .findByIdAndOrganizationId(scopeId, organizationId)
-        .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vorgang nicht gefunden"));
+        .orElseThrow(() -> new NotFoundException("Vorgang nicht gefunden"));
   }
 }

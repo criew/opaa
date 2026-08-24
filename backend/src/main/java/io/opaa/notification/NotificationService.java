@@ -1,13 +1,12 @@
 package io.opaa.notification;
 
 import io.opaa.audit.AuditObjectType;
+import io.opaa.common.NotFoundException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Creates and serves minimal in-app notifications (#203) - see {@link Notification}'s Javadoc for
@@ -47,12 +46,9 @@ public class NotificationService {
     Notification notification =
         notificationRepository
             .findById(notificationId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Benachrichtigung nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException("Benachrichtigung nicht gefunden"));
     if (!notification.getRecipientUserId().equals(currentUserId)) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Benachrichtigung nicht gefunden");
+      throw new NotFoundException("Benachrichtigung nicht gefunden");
     }
     notification.markRead();
     notificationRepository.save(notification);

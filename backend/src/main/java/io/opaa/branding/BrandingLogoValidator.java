@@ -1,5 +1,7 @@
 package io.opaa.branding;
 
+import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.ValidationException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,9 +14,7 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import org.apache.tika.Tika;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Everything that has to be true of an uploaded logo before it is stored (#582: "Validierung an der
@@ -66,20 +66,20 @@ public class BrandingLogoValidator {
   private final Tika tika = new Tika();
 
   /**
-   * Validates {@code content} and returns what should be stored for it. Throws a {@link
-   * ResponseStatusException} with a German-language message for every rejection - 413 for "too
-   * large", 400 for everything else - so a caller does not have to translate anything.
+   * Validates {@code content} and returns what should be stored for it. Throws {@link
+   * PayloadTooLargeException} (413, "too large") or {@link ValidationException} (400, everything
+   * else) with a German-language message for every rejection, so a caller does not have to
+   * translate anything.
    */
   public ValidatedLogo validate(byte[] content) {
     if (content == null || content.length == 0) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Die Logo-Datei ist leer");
+      throw new ValidationException("Die Logo-Datei ist leer");
     }
     requireAcceptableSize(content.length);
 
     String detectedMimeType = detectMimeType(content);
     if (!ACCEPTED_MIME_TYPES.contains(detectedMimeType)) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
+      throw new ValidationException(
           "Als Logo sind nur PNG- und JPEG-Dateien zulässig; SVG wird bewusst nicht angenommen,"
               + " weil eine SVG-Datei Skripte enthalten kann");
     }
@@ -99,8 +99,7 @@ public class BrandingLogoValidator {
    */
   public void requireAcceptableSize(long sizeBytes) {
     if (sizeBytes > MAX_LOGO_SIZE_BYTES) {
-      throw new ResponseStatusException(
-          HttpStatus.PAYLOAD_TOO_LARGE,
+      throw new PayloadTooLargeException(
           "Das Logo darf höchstens " + (MAX_LOGO_SIZE_BYTES / 1024) + " KiB groß sein");
     }
   }
@@ -111,8 +110,7 @@ public class BrandingLogoValidator {
     } catch (IOException e) {
       // Unreachable for a ByteArrayInputStream, but IOException is checked and swallowing it
       // silently would turn a genuine detection failure into "accepted".
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Das Logo konnte nicht auf sein Format geprüft werden");
+      throw new ValidationException("Das Logo konnte nicht auf sein Format geprüft werden");
     }
   }
 
@@ -129,8 +127,7 @@ public class BrandingLogoValidator {
       if (!readers.hasNext()) {
         // Only reachable if the accepted-type set and the JRE's readers ever drift apart; failing
         // closed here is what keeps that drift from silently disabling this check.
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST, "Das Logo konnte nicht als Bild gelesen werden");
+        throw new ValidationException("Das Logo konnte nicht als Bild gelesen werden");
       }
       ImageReader reader = readers.next();
       try {
@@ -138,8 +135,7 @@ public class BrandingLogoValidator {
         int width = reader.getWidth(0);
         int height = reader.getHeight(0);
         if (width > MAX_LOGO_EDGE_PIXELS || height > MAX_LOGO_EDGE_PIXELS) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
+          throw new ValidationException(
               "Das Logo darf höchstens "
                   + MAX_LOGO_EDGE_PIXELS
                   + " × "
@@ -153,8 +149,7 @@ public class BrandingLogoValidator {
         reader.dispose();
       }
     } catch (IOException e) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Das Logo konnte nicht als Bild gelesen werden");
+      throw new ValidationException("Das Logo konnte nicht als Bild gelesen werden");
     }
   }
 

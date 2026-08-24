@@ -6,6 +6,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
 import java.io.IOException;
@@ -21,8 +23,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -198,8 +198,7 @@ class LlmModelConnectionTesterTest {
     when(repository.findById(unknownModelId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> tester.test(baseUrl, "phi3:mini", null, unknownModelId))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -236,8 +235,7 @@ class LlmModelConnectionTesterTest {
       // the safer of the two options the review named, since a caller must not be able to
       // provoke a probe against a different origin merely by naming a real modelId.
       assertThatThrownBy(() -> tester.test(attackerBaseUrl, "phi3:mini", null, modelId))
-          .isInstanceOf(ResponseStatusException.class)
-          .hasFieldOrPropertyWithValue("statusCode", HttpStatus.BAD_REQUEST);
+          .isInstanceOf(ValidationException.class);
 
       assertThat(attackerServerWasContacted.get())
           .as("the attacker-controlled origin must never receive the stored key")

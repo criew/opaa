@@ -8,6 +8,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.api.dto.ScheduleFrequency;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupKind;
 import io.opaa.group.GroupMembership;
@@ -51,9 +55,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
@@ -227,11 +229,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryCreation request = libraryCreation("Ohne Typ", null).build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -240,11 +238,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryCreation request = libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM).build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -257,11 +251,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -271,11 +261,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         libraryCreation("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY).build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -285,11 +271,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         libraryCreation("Upload", DocumentSourceType.UPLOAD).sourcePath("/data/documents").build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -307,11 +289,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -324,11 +302,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -341,11 +315,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -372,11 +342,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         libraryCreation("Feed-Bibliothek", DocumentSourceType.RSS_FEED).build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -389,11 +355,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -492,11 +454,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -511,11 +469,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -535,11 +489,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> libraryService.updateLibrary(created.library().getId(), update, owner, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -688,11 +638,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> libraryService.updateLibrary(library.library().getId(), request, owner, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
     assertThat(libraryRepository.findById(library.library().getId()).orElseThrow().getSourceType())
         .isEqualTo(DocumentSourceType.UPLOAD);
   }
@@ -824,11 +770,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> libraryService.updateLibrary(library.library().getId(), request, owner, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -848,11 +790,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> libraryService.updateLibrary(library.library().getId(), request, owner, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -996,11 +934,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> libraryService.updateLibrary(library.library().getId(), request, owner, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
     assertThat(libraryRepository.findById(library.library().getId()).orElseThrow().getSourcePath())
         .isEqualTo("/data/documents");
   }
@@ -1184,11 +1118,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .ownerId(group.getId())
             .build();
     assertThatThrownBy(() -> libraryService.createLibrary(asOutsider, outsider))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -1206,11 +1136,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     // 404, not 403 - a caller must not be able to distinguish "no such group" from "group in
     // another organization" (#199's lesson for foreign ids in a request body).
     assertThatThrownBy(() -> libraryService.createLibrary(request, caller))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -1230,11 +1156,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, member))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+        .isInstanceOf(ValidationException.class);
     assertThat(libraryRepository.findAll())
         .noneMatch(l -> "Aufgeloeste Gruppe".equals(l.getName()));
   }
@@ -1248,11 +1170,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Bibliothek A", DocumentSourceType.UPLOAD).build(), ownerInA);
 
     assertThatThrownBy(() -> libraryService.getLibrary(library.library().getId(), adminInB, true))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -1279,11 +1197,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                     libraryUpdate("Umbenannt").build(),
                     otherMember,
                     false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -1405,42 +1319,22 @@ class KnowledgeLibraryServiceIntegrationTest {
     // stranger holds no grant at all on this (default PRIVATE) library - every endpoint answers
     // 404, not 403.
     assertThatThrownBy(() -> libraryService.getLibrary(library.library().getId(), stranger, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(
             () ->
                 libraryService.listDocuments(
                     library.library().getId(), stranger, false, null, null, PageRequest.of(0, 10)))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(
             () ->
                 libraryService.updateLibrary(
                     library.library().getId(), libraryUpdate("Umbenannt").build(), stranger, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(
             () -> libraryService.deleteLibrary(library.library().getId(), stranger, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(() -> grantService.listGrants(library.library().getId(), stranger, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
 
     // viewer holds VIEWER - enough to read, not enough to manage or delete - every
     // insufficient-access endpoint answers 403, not 404.
@@ -1457,23 +1351,11 @@ class KnowledgeLibraryServiceIntegrationTest {
             () ->
                 libraryService.updateLibrary(
                     library.library().getId(), libraryUpdate("Umbenannt").build(), viewer, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
     assertThatThrownBy(() -> libraryService.deleteLibrary(library.library().getId(), viewer, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
     assertThatThrownBy(() -> grantService.listGrants(library.library().getId(), viewer, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -1491,11 +1373,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     documentRepository.save(document);
 
     assertThatThrownBy(() -> libraryService.deleteLibrary(library.library().getId(), owner, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+        .isInstanceOf(ConflictException.class);
     assertThat(libraryRepository.findById(library.library().getId())).isPresent();
 
     // Once the library is empty, deletion succeeds - the check is a live guard, not a one-time
@@ -1521,12 +1399,10 @@ class KnowledgeLibraryServiceIntegrationTest {
     indexingJobRepository.save(job);
 
     assertThatThrownBy(() -> libraryService.deleteLibrary(library.library().getId(), owner, false))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(ConflictException.class)
         .satisfies(
             ex -> {
-              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
-              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-              assertThat(responseStatusException.getReason()).contains("indiziert");
+              assertThat(ex.getMessage()).contains("indiziert");
             });
     assertThat(libraryRepository.findById(library.library().getId())).isPresent();
 
@@ -1600,11 +1476,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     // An outsider - not a member of this group - has no access at all, so getLibrary answers 404
     // (#436), the same "does not exist" a caller with no relationship to the library at all sees.
     assertThatThrownBy(() -> libraryService.getLibrary(library.library().getId(), outsider, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
 
     // otherMember, holding only MANAGER, cannot revoke the creator's personal OWNER grant - the
     // escalation guard this exact scenario motivated (Befund 1): a MANAGER may never touch a grant
@@ -1619,11 +1491,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             () ->
                 grantService.revokeGrant(
                     library.library().getId(), creatorsOwnerGrant.getId(), otherMember, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
@@ -1658,11 +1526,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     // ...but cannot delete: that requires OWNER, which only the creator personally holds.
     assertThatThrownBy(
             () -> libraryService.deleteLibrary(library.library().getId(), otherMember, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+        .isInstanceOf(AccessDeniedException.class);
     assertThat(libraryRepository.findById(library.library().getId())).isPresent();
 
     // The creator, holding OWNER, can delete it.
@@ -1707,11 +1571,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     // No grant left at all reaches the (private, ORGANIZATION-less-by-default) library, so this
     // answers 404 (#436), not 403.
     assertThatThrownBy(() -> libraryService.getLibrary(library.library().getId(), member, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -1740,11 +1600,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     // The revoked grant was the viewer's only access to this (default-PRIVATE) library, so this
     // answers 404 (#436), not 403.
     assertThatThrownBy(() -> libraryService.getLibrary(library.library().getId(), viewer, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -1845,8 +1701,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         Exception outcome = result.get();
         if (outcome == null) {
           successes++;
-        } else if (outcome instanceof ResponseStatusException rse
-            && rse.getStatusCode() == HttpStatus.CONFLICT) {
+        } else if (outcome instanceof ConflictException) {
           conflicts++;
         } else {
           throw new AssertionError("Unexpected outcome", outcome);
@@ -1870,8 +1725,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   /**
    * A task that waits for the other thread at {@code barrier} before calling {@code
-   * grantService.revokeGrant}, returning the {@link ResponseStatusException} it threw (if any)
-   * instead of letting it propagate, so both outcomes can be inspected on the calling thread.
+   * grantService.revokeGrant}, returning the {@link ConflictException} it threw (if any) instead of
+   * letting it propagate, so both outcomes can be inspected on the calling thread.
    */
   private Callable<Exception> revokeAfterBarrier(
       CyclicBarrier barrier, UUID libraryId, UUID grantId, UUID callerId) {
@@ -1880,7 +1735,7 @@ class KnowledgeLibraryServiceIntegrationTest {
       try {
         grantService.revokeGrant(libraryId, grantId, callerId, false);
         return null;
-      } catch (ResponseStatusException e) {
+      } catch (ConflictException e) {
         return e;
       }
     };
@@ -1936,7 +1791,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                   firstOwner,
                   false);
               return null;
-            } catch (ResponseStatusException e) {
+            } catch (ConflictException e) {
               return e;
             }
           };
@@ -1953,8 +1808,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         Exception outcome = result.get();
         if (outcome == null) {
           successes++;
-        } else if (outcome instanceof ResponseStatusException rse
-            && rse.getStatusCode() == HttpStatus.CONFLICT) {
+        } else if (outcome instanceof ConflictException) {
           conflicts++;
         } else {
           throw new AssertionError("Unexpected outcome", outcome);
@@ -2033,11 +1887,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     // Space authority is not library authority at all here, so this answers 404 (#436), not 403.
     assertThatThrownBy(
             () -> libraryService.getLibrary(library.library().getId(), spaceAdmin, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.NOT_FOUND));
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
