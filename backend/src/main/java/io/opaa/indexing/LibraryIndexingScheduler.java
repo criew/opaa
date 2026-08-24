@@ -26,7 +26,8 @@ import org.springframework.web.server.ResponseStatusException;
  * uk_indexing_jobs_library_running} already makes that race safe - the loser's {@link
  * IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource)} call fails with
  * the same 409 a second concurrent manual trigger gets: no new run, one {@link
- * IndexingEventCategory#SCHEDULE_SKIPPED} event on the run that is already going.
+ * IndexingEventCategory#SCHEDULE_SKIPPED} event on the run that is already going. Assumes exactly
+ * one backend process overall; see ADR-0021.
  *
  * <p>Never disables a schedule on failure: a run that fails leaves the schedule as-is; it tries
  * again at the next due time. {@code KnowledgeLibraryService#toLibraryResponse} is what makes
@@ -64,7 +65,9 @@ public class LibraryIndexingScheduler {
    * The {@code now} of the previous successful tick, {@code null} before the first tick since
    * application start (see the class Javadoc's "missed due times" paragraph). An {@link
    * AtomicReference}, not a plain field, purely for its safe-publication guarantee across the
-   * scheduler thread.
+   * scheduler thread - {@code @Scheduled} methods on the default single-threaded {@code
+   * TaskScheduler} never actually run concurrently with each other, so no compare-and-set semantics
+   * are needed, only visibility.
    */
   private final AtomicReference<Instant> lastTickAt = new AtomicReference<>();
 

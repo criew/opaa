@@ -50,7 +50,9 @@ public class FileProcessingService {
    *
    * <p>{@code withTextTemplate("{content}")}: with every metadata key excluded, {@link
    * DefaultContentFormatter}'s default template ({@code "{metadata_string}\n\n{content}"}) would
-   * still leave two leading newlines ahead of the chunk text.
+   * still leave two leading newlines ahead of the chunk text. Together with the exclusion list
+   * above, this turns the formatter into a true whitelist: only the chunk text is ever embedded,
+   * regardless of which or how many keys a future change adds to the metadata map.
    */
   private static final ContentFormatter CHUNK_EMBED_CONTENT_FORMATTER =
       DefaultContentFormatter.builder()
@@ -637,9 +639,11 @@ public class FileProcessingService {
    * <p>Failure propagation mirrors the single-call path: {@link CompletableFuture#allOf} on every
    * sub-batch's future, unwrapped from {@link CompletionException} to the same {@link
    * RuntimeException} {@code vectorStore.add} would have thrown, so every existing catch block that
-   * assumes {@code storeChunks} may throw needs no change. A failing sub-batch does not cancel
-   * sibling sub-batches already in flight; whatever they wrote is cleaned up the same way a
-   * partially-written single call already could (see {@link #markConnectorFailedAfterException}).
+   * assumes {@code storeChunks} may throw needs no change. An {@link Error} is rethrown unwrapped
+   * too, exactly as a direct {@code vectorStore.add} call would let it propagate. A failing
+   * sub-batch does not cancel sibling sub-batches already in flight; whatever they wrote is cleaned
+   * up the same way a partially-written single call already could (see {@link
+   * #markConnectorFailedAfterException}).
    *
    * <p>{@code embeddingTaskExecutor} is one pool shared by every document currently splitting its
    * chunks across sub-batches - a document with many sub-batches can head-of-line-block a smaller

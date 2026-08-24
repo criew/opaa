@@ -1019,7 +1019,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   /**
    * Extracts the {@code charset} parameter from a {@code Content-Type} header value, or {@code
    * null} when absent - {@link Jsoup#parse(InputStream, String, String)} treats {@code null} as
-   * "detect from the document itself" (#490 review, finding 1).
+   * "detect from the document itself".
    */
   private static String charsetNameFrom(String contentType) {
     if (contentType == null) {

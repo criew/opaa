@@ -231,9 +231,9 @@ public class IndexingJobService {
    * The last {@value #MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId}, newest first.
    * {@link #pruneOldRuns} keeps at most that many rows for a library going forward, but a
    * pre-existing library can still carry more historical rows until its next run prunes them -
-   * {@link IndexingJobRepository#findTop10ByLibraryIdOrderByStartedAtDesc} is what actually bounds
-   * this query, not the unbounded {@code findByLibraryIdOrderByStartedAtDesc} {@link #pruneOldRuns}
-   * itself uses.
+   * {@link IndexingJobRepository#findTop10ByLibraryIdAndOrganizationIdOrderByStartedAtDesc} is what
+   * actually bounds this query, not the unbounded {@code findByLibraryIdOrderByStartedAtDesc}
+   * {@link #pruneOldRuns} itself uses.
    */
   @Transactional(readOnly = true)
   public List<IndexingJob> getRecentJobs(UUID libraryId, UUID organizationId) {
@@ -274,6 +274,9 @@ public class IndexingJobService {
    * startup ({@code IndexingJobRecoveryScheduler#recoverOnStartup}): a fresh JVM cannot be running
    * the {@code @Async} task any such row refers to, so every one of them is orphaned by definition
    * - unlike {@link #recoverStaleJobs}, no age threshold applies here.
+   *
+   * <p>Assumes exactly one backend process; under genuine multi-instance operation this would abort
+   * another, still-running instance's legitimate jobs on restart. See ADR-0021.
    *
    * @return the number of rows recovered
    */
