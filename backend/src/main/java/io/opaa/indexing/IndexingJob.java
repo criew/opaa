@@ -32,13 +32,12 @@ public class IndexingJob {
   private int documentsSkipped;
 
   /**
-   * The true count of documents indexed by this run (#518) - equals {@code documentsProcessed} for
+   * The true count of documents indexed by this run - equals {@code documentsProcessed} for
    * FILESYSTEM/HTTP_DIRECTORY runs (one processed file is exactly one document), but exceeds it for
-   * an RSS_FEED run whose entries carry attachments (#468): every attachment indexed for an entry -
-   * including one backfilled for an otherwise-unchanged entry - adds to this count without adding
-   * another processed entry. {@link IndexingRunProgress#recordProcessed} increments this alongside
-   * {@code documentsProcessed}; {@link IndexingRunProgress#recordDocumentIndexed} increments only
-   * this one, for a document that has no processed/skipped/failed outcome of its own.
+   * an RSS_FEED run whose entries carry attachments: every attachment indexed for an entry adds to
+   * this count without adding another processed entry. {@link IndexingRunProgress#recordProcessed}
+   * increments this alongside {@code documentsProcessed}; {@link
+   * IndexingRunProgress#recordDocumentIndexed} increments only this one.
    */
   @Column(name = "documents_indexed_total")
   private int documentsIndexedTotal;
@@ -47,12 +46,11 @@ public class IndexingJob {
   private Instant startedAt;
 
   /**
-   * Heartbeat for the stale-run sweep (#501, migration 043): {@code
-   * IndexingJobService#updateProgress} touches this on every file/entry an active run processes, so
-   * {@code IndexingJobRepository#failStaleRunningJobs} can tell a merely long-running job (a large
-   * bestand can take hours) apart from one that has genuinely stopped making progress - {@link
-   * #startedAt} alone cannot make that distinction. Initialized to {@link #startedAt} so a run that
-   * fails before its first progress report is still comparable against the sweep's cutoff.
+   * Heartbeat for the stale-run sweep: {@code IndexingJobService#updateProgress} touches this on
+   * every file/entry an active run processes, so {@code IndexingJobRepository#failStaleRunningJobs}
+   * can tell a merely long-running job apart from one that has genuinely stopped making progress -
+   * {@link #startedAt} alone cannot make that distinction. Initialized to {@link #startedAt} so a
+   * run that fails before its first progress report is still comparable against the sweep's cutoff.
    */
   @Column(name = "last_progress_at", nullable = false)
   private Instant lastProgressAt;
@@ -64,19 +62,18 @@ public class IndexingJob {
   private String errorMessage;
 
   /**
-   * The knowledge library this run writes into (#419) - set once at {@link
+   * The knowledge library this run writes into - set once at {@link
    * io.opaa.indexing.IndexingJobService#startJob}, so a completed or failed run stays traceable to
-   * its target after the fact. Nullable because runs started before migration 019 added this column
-   * have no recorded target; a new run always sets it, {@code libraryId} being mandatory on every
-   * trigger since #419.
+   * its target after the fact. Nullable because a target library can later be deleted ({@code ON
+   * DELETE SET NULL}).
    */
   @Column(name = "library_id")
   private UUID libraryId;
 
   /**
    * How many further {@link IndexingRunEvent}s this run recorded beyond {@link
-   * IndexingRunEventRecorder#MAX_EVENTS_PER_RUN} (#513), without persisting them - 0 when every
-   * event fit under the cap. Set once, at the end of a run, by {@code
+   * IndexingRunEventRecorder#MAX_EVENTS_PER_RUN}, without persisting them - 0 when every event fit
+   * under the cap. Set once, at the end of a run, by {@code
    * IndexingJobService#recordEventsTruncated}; the UI renders it as "… und N weitere" after the
    * (necessarily capped) event list.
    */
@@ -84,18 +81,17 @@ public class IndexingJob {
   private int eventsTruncatedCount;
 
   /**
-   * The organization this run belongs to (#401) - set once at {@link
+   * The organization this run belongs to - set once at {@link
    * io.opaa.indexing.IndexingJobService#startJob}, mirroring {@link #libraryId} but never left
-   * unset going forward: unlike {@code libraryId} (nullable since migration 019's {@code ON DELETE
-   * SET NULL}), {@code organization_id} is {@code NOT NULL} at the database level (migration 049) -
-   * a run's organization must stay reconstructable even after its target library is deleted, which
-   * is exactly the case that made deriving it from {@link #libraryId} at query time insufficient.
+   * unset going forward: unlike {@code libraryId} (nullable, {@code ON DELETE SET NULL}), {@code
+   * organization_id} is {@code NOT NULL} at the database level - a run's organization must stay
+   * reconstructable even after its target library is deleted.
    */
   @Column(name = "organization_id", nullable = false, updatable = false)
   private UUID organizationId;
 
   /**
-   * Who started this run (#485) - {@link JobTriggerSource#MANUAL} unless {@link
+   * Who started this run - {@link JobTriggerSource#MANUAL} unless {@link
    * io.opaa.indexing.IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource)}
    * was called with {@link JobTriggerSource#SCHEDULED}. {@code KnowledgeLibraryService} uses this
    * to compute {@code LibraryResponse.lastScheduledRunsFailed} without conflating a manual retry

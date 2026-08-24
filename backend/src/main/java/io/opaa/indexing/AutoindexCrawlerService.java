@@ -39,10 +39,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Crawls HTTP directory-listing pages and returns discovered file entries. Understands the
- * autoindex layouts a plain HTTP server is realistically going to serve (#550): Apache
- * mod_autoindex with {@code IndexOptions HTMLTable} (a {@code <table>} of {@code <tr>} rows), plain
- * Apache mod_autoindex ({@code <pre>} listing with icons), nginx's {@code autoindex on} ({@code
- * <pre>} listing without icons) and the plain {@code <ul>} layout used by both {@code IndexOptions
+ * autoindex layouts a plain HTTP server is realistically going to serve: Apache mod_autoindex with
+ * {@code IndexOptions HTMLTable} (a {@code <table>} of {@code <tr>} rows), plain Apache
+ * mod_autoindex ({@code <pre>} listing with icons), nginx's {@code autoindex on} ({@code <pre>}
+ * listing without icons) and the plain {@code <ul>} layout used by both {@code IndexOptions
  * -FancyIndexing} and Python's {@code http.server}.
  */
 public class AutoindexCrawlerService {
@@ -70,12 +70,9 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * The outcome of {@link #crawl} (#836 review): {@code entries} is exactly what the pre-#836
-   * signature returned, {@code depthLimitReached}/{@code entryLimitReached} tell the caller whether
-   * either of {@link CrawlProperties}'s limits actually cut the crawl short - a caller with access
-   * to a run's {@code IndexingRunEventRecorder} (currently only {@code UrlIndexingExecutor}) uses
-   * these to record a truncation event, so a capped run is distinguishable from a complete one in
-   * the UI instead of only in the application log.
+   * The outcome of {@link #crawl}: {@code depthLimitReached}/{@code entryLimitReached} tell the
+   * caller whether either of {@link CrawlProperties}'s limits actually cut the crawl short, so a
+   * capped run is distinguishable from a complete one in the UI instead of only in the log.
    */
   public record CrawlResult(
       List<CrawledFileEntry> entries, boolean depthLimitReached, boolean entryLimitReached) {
@@ -107,11 +104,7 @@ public class AutoindexCrawlerService {
     return new CrawlResult(results, truncation.depthLimitReached, truncation.entryLimitReached);
   }
 
-  /**
-   * One log message per truncation reason, not per occurrence (#836 review, finding 2) - depth and
-   * entry-count truncation used to share a single flag, so once the depth limit logged first, the
-   * entry limit's own message never appeared even though it independently applied too.
-   */
+  /** One log message per truncation reason, not per occurrence. */
   private static final class TruncationTracker {
     private boolean depthLimitReached;
     private boolean entryLimitReached;
@@ -140,17 +133,14 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Recurses into {@code url} unless a limit already stops it (#836): {@code visited} (normalized
-   * URLs) breaks a cycle back to a directory already crawled; {@code depth} exceeding {@link
-   * CrawlProperties#maxDepth} bounds a same-origin cycle that never repeats a URL exactly (e.g. a
-   * symlink loop growing the URL by one segment per hop) - the root is depth 0, so a crawl visits
-   * depths {@code 0..maxDepth} inclusive; and {@code visited} (not just {@code results}) reaching
-   * {@link CrawlProperties#maxEntries} bounds a directory-only symlink cycle (#836 review, finding
-   * 1) that {@code results} alone would never catch, since a directory linking only to further
-   * directories never grows {@code results} at all and would otherwise be bounded by {@code
-   * maxDepth} alone - for a cycle with branching factor {@code b}, still up to {@code b^maxDepth}
-   * requests. Every limit truncates - logged once per reason via {@code truncation}, never thrown
-   * as an error, mirroring {@code RssFeedIndexingExecutor}'s {@code maxEntries} treatment.
+   * Recurses into {@code url} unless a limit already stops it: {@code visited} (normalized URLs)
+   * breaks a cycle back to a directory already crawled; {@code depth} exceeding {@link
+   * CrawlProperties#maxDepth} bounds a same-origin cycle that never repeats a URL exactly (root is
+   * depth 0, so a crawl visits depths {@code 0..maxDepth} inclusive); and {@code visited} (not just
+   * {@code results}) reaching {@link CrawlProperties#maxEntries} bounds a directory-only symlink
+   * cycle that {@code results} alone would never catch, since a directory linking only to further
+   * directories never grows {@code results} at all. Every limit truncates - logged once per reason
+   * via {@code truncation}, never thrown as an error.
    */
   private void crawlRecursive(
       HttpClient httpClient,
@@ -198,11 +188,10 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Normalizes {@code url} for the visited-URL cycle guard (#836): {@link URI#normalize()}
-   * collapses {@code .}/{@code ..} path segments so two links resolving to the same directory via a
-   * different path spelling are recognized as the same visit. Falls back to the raw string on a URL
-   * {@link URI} cannot parse - a guard that fails open on odd input would be worse than one that
-   * simply never merges it with anything else.
+   * Normalizes {@code url} for the visited-URL cycle guard: {@link URI#normalize()} collapses
+   * {@code .}/{@code ..} path segments so two links resolving to the same directory via a different
+   * path spelling are recognized as the same visit. Falls back to the raw string on a URL {@link
+   * URI} cannot parse.
    */
   private static String normalizeUrl(String url) {
     try {
@@ -213,13 +202,13 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Whether {@code fullUrl} stays inside {@code baseUrl}'s own subtree (#836 review, "Mitnahme") -
-   * both sides are normalized via {@link #normalizeUrl} before comparing, not compared as raw
-   * strings: a relative href like {@code "../"} resolves, via {@link #resolveUrl}'s naive
-   * string-concatenation, to a URL whose raw string still starts with {@code baseUrl} even though
-   * it climbs back out of it once the {@code ".."} segment is actually collapsed. Used by both
-   * {@link #parseHtmlTableLayout} and {@link #parseLinkBasedLayout} so a page's own links can never
-   * walk a crawl outside the directory it was asked to start at.
+   * Whether {@code fullUrl} stays inside {@code baseUrl}'s own subtree - both sides are normalized
+   * via {@link #normalizeUrl} before comparing, not compared as raw strings: a relative href like
+   * {@code "../"} resolves, via {@link #resolveUrl}'s naive string-concatenation, to a URL whose
+   * raw string still starts with {@code baseUrl} even though it climbs back out of it once the
+   * {@code ".."} segment is actually collapsed. Used by both {@link #parseHtmlTableLayout} and
+   * {@link #parseLinkBasedLayout} so a page's own links can never walk a crawl outside the
+   * directory it was asked to start at.
    */
   private static boolean staysUnderBase(String baseUrl, String fullUrl) {
     String normalizedBase = normalizeUrl(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/");
@@ -251,8 +240,8 @@ public class AutoindexCrawlerService {
 
   /**
    * Parses only the top-level (non-recursive) entries of an Apache mod_autoindex HTML directory
-   * listing - used by the source connection test (#514), which counts linked documents without
-   * crawling the whole tree the way {@link #crawl} does.
+   * listing - used by the source connection test, which counts linked documents without crawling
+   * the whole tree the way {@link #crawl} does.
    */
   public List<CrawledFileEntry> parseTopLevelEntries(String html, String baseUrl) {
     return parseDirectory(html, baseUrl, 0);
@@ -264,12 +253,9 @@ public class AutoindexCrawlerService {
    * it carries date/size in dedicated columns the other layouts only approximate from trailing
    * text; if it finds no rows, the page is re-parsed as a link-based layout ({@code <pre>} or
    * {@code <ul>}) - but only if {@link #looksLikeDirectoryListing(Document)} recognizes the page as
-   * a listing at all (#550 review). Without that gate, an ordinary homepage would be crawled as a
-   * directory too: every link with a trailing {@code /} becomes a {@code DIR} entry {@link #crawl}
-   * then recurses into - a same-origin navigation cycle (say, a calendar page linking {@code
-   * .../2026/} which links back to itself) would otherwise cost real requests up to {@link
-   * CrawlProperties#maxDepth} before the depth and visited-URL guards (#836) stop it, rather than
-   * never being descended into at all.
+   * a listing at all. Without that gate, an ordinary homepage would be crawled as a directory too:
+   * every link with a trailing {@code /} becomes a {@code DIR} entry {@link #crawl} then recurses
+   * into.
    */
   List<CrawledFileEntry> parseDirectory(String html, String baseUrl, int depth) {
     if (html == null) {
@@ -290,9 +276,8 @@ public class AutoindexCrawlerService {
   /**
    * Whether {@code html} looks like a directory-listing page in any of the layouts this class
    * understands, even if the listing turned out to be empty (no linked files) - used by the source
-   * connection test (#514, #550) to tell "reachable, but genuinely empty directory" apart from
-   * "reachable, but this isn't a directory listing at all", which needs a different, more
-   * explanatory response.
+   * connection test to tell "reachable, but genuinely empty directory" apart from "reachable, but
+   * this isn't a directory listing at all", which needs a different, more explanatory response.
    */
   public boolean looksLikeDirectoryListing(String html) {
     if (html == null) {
@@ -302,15 +287,15 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * See {@link #looksLikeDirectoryListing(String)}; also gates {@link #parseDirectory} itself (#550
-   * review) so the link-based fallback never runs on a page this heuristic wouldn't call a listing.
+   * See {@link #looksLikeDirectoryListing(String)}; also gates {@link #parseDirectory} itself so
+   * the link-based fallback never runs on a page this heuristic wouldn't call a listing.
    */
   private boolean looksLikeDirectoryListing(Document doc) {
     // A <table> is specific enough on its own - real websites rarely use one for navigation.
     boolean hasTable = !doc.select("tr td").isEmpty();
     // A single link inside a <pre> proves nothing (a code sample can contain one), but a real
     // Apache/nginx pre-listing always has at least the parent-directory link plus one entry, or an
-    // entry whose trailing text actually looks like a date/size column (#550 review, nit a).
+    // entry whose trailing text actually looks like a date/size column.
     Elements preLinks = doc.select("pre a[href]");
     boolean hasPreLinks =
         preLinks.size() >= 2
@@ -377,33 +362,25 @@ public class AutoindexCrawlerService {
 
       String fullUrl;
       if (href.startsWith("http://") || href.startsWith("https://")) {
-        // #550 review: an absolute href pointing at a foreign origin must never be followed - the
-        // caller's Authorization header (built from this source configuration's own credentials)
-        // would otherwise be sent to a host that configuration was never meant for. This mirrors
-        // #538's redirect hardening (sendFollowingRedirects/sameOrigin), which only ever covered
-        // redirect targets, not a link the listing page itself points elsewhere with.
+        // An absolute href pointing at a foreign origin must never be followed - the caller's
+        // Authorization header (built from this source configuration's own credentials) would
+        // otherwise be sent to a host that configuration was never meant for.
         if (!isSameOriginAsBase(baseUrl, href)) {
           continue;
         }
         fullUrl = href;
       } else {
-        // #836 review ("Mitnahme"): unlike parseLinkBasedLayout below, this branch had no
-        // under-baseUrl check at all - a relative href like "../" resolves (via the naive
-        // baseUrl+relative concatenation resolveUrl does) to a URL that, once normalized, escapes
-        // above baseUrl's own subtree, letting a crawl wander into unrelated same-origin pages a
-        // listing happens to link to instead of staying inside the directory it was asked to crawl.
+        // A relative href like "../" resolves (via the naive baseUrl+relative concatenation
+        // resolveUrl does) to a URL that, once normalized, may escape above baseUrl's own subtree.
         fullUrl = resolveUrl(baseUrl, href);
         if (!staysUnderBase(baseUrl, fullUrl)) {
           continue;
         }
       }
 
-      // #229: derived from href, not linkText, for the same reason deriveEntryName already exists
-      // for parseLinkBasedLayout (#550 review, finding 4) - Apache's "IndexOptions NameWidth"
-      // truncates only the *displayed* name here too (rendered "some-long-file-na..&gt;"), and this
-      // layout (IndexOptions FancyIndexing HTMLTable) is the one this project's own demo corpus
-      // (docs/features/demo-instance.md) recommends, so a long, realistic file name must not lose
-      // its extension and silently drop out of SupportedDocumentFormats.
+      // Derived from href, not linkText: Apache's "IndexOptions NameWidth" truncates only the
+      // displayed name (rendered "some-long-file-na..&gt;"), so a long, realistic file name must
+      // not lose its extension and silently drop out of SupportedDocumentFormats.
       String type = "DIR".equalsIgnoreCase(altText) ? "DIR" : altText;
       entries.add(
           new CrawledFileEntry(deriveEntryName(href, linkText), fullUrl, date, size, type, depth));
@@ -448,15 +425,10 @@ public class AutoindexCrawlerService {
 
       String fullUrl;
       if (href.startsWith("http://") || href.startsWith("https://")) {
-        // #550 review: same reasoning as parseHtmlTableLayout - never leak credentials to a
-        // foreign origin. The fallback also requires the resolved URL to stay *underneath*
-        // baseUrl (not just same-origin) - this is the layout guessed purely from the presence of
-        // links, so it must not wander off into unrelated same-origin pages a listing happens to
-        // link to (a "back to homepage" link, a stylesheet), which is exactly what caused the
-        // uncontrolled recursion this review flagged in the first place. #836 review ("Mitnahme"):
-        // staysUnderBase normalizes both sides before comparing, not the raw strings this branch
-        // used to compare with startsWith - an already-normalized absolute href never differs, but
-        // keeps this branch and the relative one below consistent.
+        // Same reasoning as parseHtmlTableLayout - never leak credentials to a foreign origin. Also
+        // requires the resolved URL to stay underneath baseUrl (not just same-origin): this is the
+        // layout guessed purely from the presence of links, so it must not wander off into
+        // unrelated same-origin pages a listing happens to link to (a "back to homepage" link).
         if (!isSameOriginAsBase(baseUrl, href) || !staysUnderBase(baseUrl, href)) {
           continue;
         }
@@ -491,14 +463,12 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Derives an entry's display name from its {@code href} rather than its link text (#550 review,
-   * finding 4): Apache's {@code IndexOptions NameWidth} truncates the *displayed* name to a fixed
-   * column width (rendered as {@code some-long-file-na..&gt;}) while the {@code href} itself always
-   * carries the untruncated, URL-encoded file name - using the link text as the name would lose the
-   * file extension for any name long enough to be truncated, silently dropping it from {@link
+   * Derives an entry's display name from its {@code href} rather than its link text: Apache's
+   * {@code IndexOptions NameWidth} truncates the displayed name to a fixed column width while the
+   * {@code href} itself always carries the untruncated, URL-encoded file name - using the link text
+   * would lose the file extension for any truncated name, silently dropping it from {@link
    * SupportedDocumentFormats#isSupported}. Falls back to the (trailing-slash-stripped) link text
-   * only when the href's last path segment cannot be recovered at all (an empty path, or a href
-   * like {@code "/"}).
+   * only when the href's last path segment cannot be recovered at all.
    */
   private static String deriveEntryName(String href, String linkText) {
     String fromHref = extractLastPathSegment(href);
@@ -527,13 +497,11 @@ public class AutoindexCrawlerService {
       return null;
     }
     try {
-      // #229 review, klein 6: URLDecoder is built for application/x-www-form-urlencoded (query
-      // strings), where a literal '+' means a space - but this decodes a URL *path* segment,
-      // where '+' has no such meaning and a listing's href may contain one as an ordinary
-      // character (e.g. "bericht+final.pdf"). Escaping every literal '+' to "%2B" first makes
-      // URLDecoder treat it like any other already-percent-encoded byte, so it round-trips back
-      // to '+' - while a genuine "%2B" in the href (an actual encoded plus) decodes exactly the
-      // same way it already did, and every other %XX escape is unaffected.
+      // URLDecoder is built for application/x-www-form-urlencoded (query strings), where a literal
+      // '+' means a space - but this decodes a URL path segment, where '+' has no such meaning and
+      // a listing's href may contain one as an ordinary character (e.g. "bericht+final.pdf").
+      // Escaping every literal '+' to "%2B" first makes URLDecoder treat it like any other
+      // already-percent-encoded byte, so it round-trips back to '+'.
       return URLDecoder.decode(lastSegment.replace("+", "%2B"), StandardCharsets.UTF_8);
     } catch (IllegalArgumentException e) {
       return lastSegment;
@@ -542,9 +510,9 @@ public class AutoindexCrawlerService {
 
   /**
    * Whether {@code absoluteHref} (an already-absolute {@code http://}/{@code https://} link found
-   * on the page fetched from {@code baseUrl}) targets the same origin as {@code baseUrl} (#550
-   * review, finding 2) - mirrors {@link #sameOrigin}'s own reasoning for redirect targets (#538),
-   * applied here to links the listing page itself contains rather than a {@code 3xx} response.
+   * on the page fetched from {@code baseUrl}) targets the same origin as {@code baseUrl} - mirrors
+   * {@link #sameOrigin}'s own reasoning for redirect targets, applied here to links the listing
+   * page itself contains rather than a {@code 3xx} response.
    */
   private static boolean isSameOriginAsBase(String baseUrl, String absoluteHref) {
     try {
@@ -579,9 +547,9 @@ public class AutoindexCrawlerService {
    * never for deciding what gets indexed.
    *
    * <p>The last three whitespace-separated tokens are only accepted as "date time size" if they
-   * actually look like one (#550 review, nit d) - Apache's optional {@code IndexOptions
-   * Description} column would otherwise be blindly picked up as a fabricated date/size whenever it
-   * happens to end in three space-separated words.
+   * actually look like one - Apache's optional {@code IndexOptions Description} column would
+   * otherwise be blindly picked up as a fabricated date/size whenever it happens to end in three
+   * space-separated words.
    */
   private static String[] extractTrailingLineMeta(Element link) {
     StringBuilder line = new StringBuilder();
@@ -620,23 +588,22 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Maximum number of redirects {@link #sendFollowingRedirects} follows manually (#538) - generous
-   * enough for an ordinary same-origin redirect chain (a trailing-slash normalization, a
-   * login-portal bounce) while still bounding how many requests a misbehaving server can force per
-   * crawl step. A redirect that changes origin still gets a hop (with {@code Authorization}
-   * dropped, see {@link #sendFollowingRedirects}) - except a protocol downgrade (https to http),
-   * which is refused outright, matching {@code Redirect.NORMAL}'s own pre-#538 behaviour.
+   * Maximum number of redirects {@link #sendFollowingRedirects} follows manually - generous enough
+   * for an ordinary same-origin redirect chain (a trailing-slash normalization, a login-portal
+   * bounce) while still bounding how many requests a misbehaving server can force per crawl step. A
+   * redirect that changes origin still gets a hop (with {@code Authorization} dropped, see {@link
+   * #sendFollowingRedirects}) - except a protocol downgrade (https to http), which is refused
+   * outright.
    */
   static final int MAX_REDIRECTS = 5;
 
   /**
-   * Builds the {@link HttpClient} shared by every indexing/connection-test caller of this class
-   * (#538). {@code Redirect.NEVER}, not {@code Redirect.NORMAL} as before #538: the JDK's built-in
-   * redirect handling resends every request header - {@code Authorization} included - to whatever
-   * host a {@code 3xx} response names, regardless of the source configuration's own credentials
-   * ever having been meant for that host. Callers that need to follow a redirect at all use {@link
-   * #sendFollowingRedirects}, which re-validates the target host/scheme on every hop and drops
-   * {@code Authorization} the moment it stops matching, instead of the JDK's silent full replay.
+   * Builds the {@link HttpClient} shared by every indexing/connection-test caller of this class.
+   * {@code Redirect.NEVER}: the JDK's built-in redirect handling resends every request header -
+   * {@code Authorization} included - to whatever host a {@code 3xx} response names, regardless of
+   * the source configuration's own credentials ever having been meant for that host. Callers that
+   * need to follow a redirect at all use {@link #sendFollowingRedirects}, which re-validates the
+   * target host/scheme on every hop and drops {@code Authorization} the moment it stops matching.
    */
   public static HttpClient buildHttpClient(String proxyHost, int proxyPort, boolean insecureSsl) {
     HttpClient.Builder builder =
@@ -675,31 +642,25 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Sends a GET request to {@code url} and manually follows up to {@link #MAX_REDIRECTS} redirects
-   * (#538), the way {@code httpClient} - built with {@code Redirect.NEVER} by {@link
-   * #buildHttpClient} - never does on its own any more. {@code headers} (most importantly {@code
-   * Authorization}, carrying a source configuration's own credentials) is sent again on the next
-   * hop only when that hop is still the same origin ({@link #sameOrigin}) as the URL it was set
-   * for; the moment a redirect points elsewhere, the header is dropped for the rest of the chain
-   * instead of being replayed to a target the credentials were never meant for. This mirrors what a
-   * browser does on a cross-origin redirect, and closes the gap {@code Redirect.NORMAL} left open
-   * (a foreign-host redirect target received the exact same {@code Authorization} header as the
-   * original request).
+   * Sends a GET request to {@code url} and manually follows up to {@link #MAX_REDIRECTS} redirects,
+   * the way {@code httpClient} - built with {@code Redirect.NEVER} by {@link #buildHttpClient} -
+   * never does on its own. {@code headers} (most importantly {@code Authorization}, carrying a
+   * source configuration's own credentials) is sent again on the next hop only when that hop is
+   * still the same origin ({@link #sameOrigin}) as the URL it was set for; the moment a redirect
+   * points elsewhere, the header is dropped for the rest of the chain, mirroring what a browser
+   * does on a cross-origin redirect.
    *
-   * <p>A protocol downgrade (https to http) is never followed at all, even anonymized - {@code
-   * Redirect.NORMAL} already refused to follow one before #538, and silently downgrading the
-   * transport a source configuration was set up to use is worse than simply failing the request.
+   * <p>A protocol downgrade (https to http) is never followed at all, even anonymized - silently
+   * downgrading the transport a source configuration was set up to use is worse than simply failing
+   * the request.
    *
    * <p>A redirect chain longer than {@link #MAX_REDIRECTS}, or a redirect response without a {@code
-   * Location} header, ends the loop and returns that response as-is - the caller's own status-code
-   * handling then reports it the same way it always reported an unexpected status.
+   * Location} header, ends the loop and returns that response as-is.
    *
-   * <p><b>{@code targetAddressValidator} (#267).</b> Validated against {@code currentUri} at the
-   * top of every iteration - the initial request and every redirect hop alike - before a single
-   * further byte is requested, so an SSRF target-address check applies identically whether the
-   * blocked address was the configured start URL or only reached via a redirect (including the
-   * http→https upgrade case #693 exempts from the foreign-host check just below: the target address
-   * is still re-validated for that hop, only the {@code Authorization} header treatment changes).
+   * <p>{@code targetAddressValidator} is validated against {@code currentUri} at the top of every
+   * iteration - the initial request and every redirect hop alike - before a single further byte is
+   * requested, so an SSRF target-address check applies identically whether the blocked address was
+   * the configured start URL or only reached via a redirect.
    */
   public static HttpResponse<InputStream> sendFollowingRedirects(
       HttpClient httpClient,
@@ -735,11 +696,8 @@ public class AutoindexCrawlerService {
             "refusing to follow a redirect from https to http (protocol downgrade): "
                 + redirectUri);
       }
-      // #693: a same-host http->https upgrade redirect is not a foreign origin - see
-      // isRedirectOriginTrusted's Javadoc. Before this fix, sameOrigin's scheme comparison treated
-      // the ubiquitous upgrade redirect exactly like a genuine cross-origin one and stripped
-      // Authorization from it, breaking Basic-Auth-protected http:// sources the moment their
-      // server 301'd to https (as every well-behaved one does).
+      // A same-host http->https upgrade redirect is not a foreign origin - see
+      // isRedirectOriginTrusted's Javadoc.
       if (!isRedirectOriginTrusted(currentUri, redirectUri)) {
         currentHeaders.remove("Authorization");
       }
@@ -761,25 +719,16 @@ public class AutoindexCrawlerService {
   /**
    * Whether {@code a} and {@code b} are the same origin - scheme, host and port, with an absent
    * port ({@code -1}) normalized to the scheme's default (80 for {@code http}, 443 for {@code
-   * https}) before comparing (#538 follow-up review). Comparing only host and scheme, as this
-   * method originally did, missed exactly the case that default normalization now covers: {@code
-   * https://intranet} and {@code https://intranet:8443} share a host and scheme but are different
-   * services - the JDK's own {@code Redirect.NORMAL} already told them apart before #538, and this
-   * comparison must be at least as strict everywhere it is used ({@link #sendFollowingRedirects}
-   * here, and the equivalent foreign-host checks in {@code UrlFileDownloader} and {@code
-   * RssFeedIndexingExecutor}).
+   * https}) before comparing: {@code https://intranet} and {@code https://intranet:8443} share a
+   * host and scheme but are different services. Used consistently across {@link
+   * #sendFollowingRedirects} and the equivalent foreign-host checks in {@code UrlFileDownloader}
+   * and {@code RssFeedIndexingExecutor}.
    *
-   * <p><b>Both hosts {@code null} must not compare equal (#615 review, finding 1).</b> {@link
-   * URI#getHost()} returns {@code null} for a syntactically valid but non-standard authority - a
-   * hostname containing an underscore, for instance, which {@code java.net.URI} does not recognize
-   * as a valid {@code reg-name}. An implementation that only compared {@code
-   * Objects.equals(a.getHost(), b.getHost())} would then treat two completely unrelated
-   * underscore-hostname URLs as the same origin, since both sides evaluate to {@code null}. The
-   * explicit {@code a.getHost() == null || b.getHost() == null} branch below rejects that case
-   * outright - a host {@code URI} cannot parse is never "the same" as another one it also cannot
-   * parse, regardless of what the two original strings actually said. {@code
-   * io.opaa.library.SourceOriginMatcher} delegates here for the identical reason (#615) rather than
-   * keeping a second, narrower copy of just the {@code Objects.equals} comparison.
+   * <p>Both hosts {@code null} must not compare equal: {@link URI#getHost()} returns {@code null}
+   * for a syntactically valid but non-standard authority (e.g. a hostname containing an
+   * underscore), so an implementation that only compared {@code Objects.equals(a.getHost(),
+   * b.getHost())} would treat two unrelated underscore-hostname URLs as the same origin. {@code
+   * io.opaa.library.SourceOriginMatcher} delegates here for the identical reason.
    */
   public static boolean sameOrigin(URI a, URI b) {
     if (a.getHost() == null
@@ -795,9 +744,8 @@ public class AutoindexCrawlerService {
 
   /**
    * Whether following the redirect from {@code from} to {@code to} would downgrade the transport
-   * from {@code https} to plain {@code http} (#538 follow-up review) - refused unconditionally by
-   * every manual redirect loop in this package, the one thing {@code Redirect.NORMAL} itself always
-   * refused too, before #538 replaced it with manual handling.
+   * from {@code https} to plain {@code http} - refused unconditionally by every manual redirect
+   * loop in this package.
    */
   static boolean isSchemeDowngrade(URI from, URI to) {
     return "https".equalsIgnoreCase(from.getScheme()) && "http".equalsIgnoreCase(to.getScheme());
@@ -805,31 +753,26 @@ public class AutoindexCrawlerService {
 
   /**
    * Whether a redirect from {@code from} to {@code to} may keep being treated as its own origin -
-   * {@link #sameOrigin}'s exact rule, <b>plus</b> the one exception #693 identified: a same-host
-   * {@code http} to {@code https} upgrade at matching ports (both left at their scheme's default,
-   * or both given the identical explicit port). {@code isSchemeDowngrade} already refuses the
-   * opposite direction (https to http) unconditionally and independently of this method - an
-   * upgrade is exactly the harmless, ubiquitous case that refusal was never meant to cover.
+   * {@link #sameOrigin}'s exact rule, plus one exception: a same-host {@code http} to {@code https}
+   * upgrade at matching ports. {@code isSchemeDowngrade} already refuses the opposite direction
+   * unconditionally and independently of this method.
    *
-   * <p><b>Why this needed its own method instead of loosening {@link #sameOrigin} itself.</b>
-   * {@link #sameOrigin} is also the identical comparison {@code isSameOriginAsBase} (this class),
-   * {@code authHeaderForTarget}/{@code httpClientForTarget} ({@code RssFeedIndexingExecutor}) and
-   * {@code SourceOriginMatcher} use for a different question each - whether a *link a page or feed
-   * itself carries* stays within a source configuration's own vetted origin, not whether a
-   * same-request redirect hop should still carry that request's own credentials. Loosening {@code
-   * sameOrigin} itself would have widened all of those unrelated checks too.
+   * <p>Kept as its own method rather than loosening {@link #sameOrigin} itself, since {@code
+   * sameOrigin} is also used by {@code isSameOriginAsBase}, {@code authHeaderForTarget}/{@code
+   * httpClientForTarget} ({@code RssFeedIndexingExecutor}) and {@code SourceOriginMatcher} for a
+   * different question each - whether a link a page or feed itself carries stays within a source
+   * configuration's own vetted origin, not whether a same-request redirect hop should still carry
+   * that request's own credentials.
    */
   static boolean isRedirectOriginTrusted(URI from, URI to) {
     return sameOrigin(from, to) || isSameHostSchemeUpgrade(from, to);
   }
 
   /**
-   * Whether {@code from}/{@code to} is a same-host http-to-https upgrade at the standard ports (PR
-   * #699 review, finding 1) - {@code normalizedPort} (already used by {@link #sameOrigin}) so that
-   * {@code http://host:80/a} -> {@code https://host/a} and {@code http://host/a} -> {@code
-   * https://host:443/a} both count, not only the case where neither side names a port at all. The
-   * original raw-{@code getPort()} comparison missed exactly those two variants of the same
-   * everyday upgrade redirect #693 exists to allow.
+   * Whether {@code from}/{@code to} is a same-host http-to-https upgrade at the standard ports -
+   * uses {@code normalizedPort} (already used by {@link #sameOrigin}) so that {@code
+   * http://host:80/a} -> {@code https://host/a} and {@code http://host/a} -> {@code
+   * https://host:443/a} both count, not only the case where neither side names a port at all.
    */
   private static boolean isSameHostSchemeUpgrade(URI from, URI to) {
     if (!"http".equalsIgnoreCase(from.getScheme()) || !"https".equalsIgnoreCase(to.getScheme())) {
@@ -849,15 +792,11 @@ public class AutoindexCrawlerService {
   /**
    * Renders {@code uri} as {@code scheme://host[:port]} only - never path, query or fragment, which
    * on a redirect's own {@code Location} target can carry a token or other sensitive data a run-log
-   * message must never surface (maintainer nachtrag to #693, 21.08.2026: "nur Schema/Host, NIE die
-   * vollständige Ziel-URL"). Used to name a rejected redirect's target in the German, user-facing
-   * message every caller shows in the UI.
+   * message must never surface. Used to name a rejected redirect's target in the German,
+   * user-facing message every caller shows in the UI.
    *
-   * <p><b>Not a general-purpose redaction (PR #699 review, nit 2).</b> A caller's own {@code
-   * log.warn}/{@code log.debug} calls (e.g. {@code RssFeedIndexingExecutor}'s rejection handling)
-   * still log the unsanitized target via the underlying exception's {@code getMessage()} - the
-   * application log, unlike this message, is not shown to an ordinary caller, but it is not nothing
-   * either, and this method makes no claim about it.
+   * <p>Not a general-purpose redaction: a caller's own {@code log.warn}/{@code log.debug} calls
+   * still log the unsanitized target via the underlying exception's {@code getMessage()}.
    */
   static String sanitizedOrigin(URI uri) {
     String scheme = uri.getScheme() == null ? "?" : uri.getScheme();
@@ -871,8 +810,7 @@ public class AutoindexCrawlerService {
    * {@link #isRedirectOriginTrusted}) - shared by {@link
    * UrlFileDownloader.ForeignHostRedirectException} and {@code RssFeedIndexingExecutor}'s own
    * rejection exception, so both build the identically worded, sanitized run-log message {@link
-   * #redirectRejectionMessage} produces (maintainer nachtrag to #693, 21.08.2026: distinguishable
-   * messages per cause, never the full target URL).
+   * #redirectRejectionMessage} produces.
    */
   public enum RedirectRejectionReason {
     FOREIGN_HOST,

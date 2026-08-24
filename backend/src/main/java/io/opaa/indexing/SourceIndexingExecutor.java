@@ -10,14 +10,10 @@ import java.util.UUID;
  * this interface and wiring one more bean in {@code IndexingConfiguration}, never by editing an
  * existing implementation or the registry itself.
  *
- * <p><b>Since ADR-0018 (#478), {@code targetLibrary} is the only source of configuration.</b> A run
- * no longer receives a per-request {@code IndexingTriggerRequest}: {@code sourcePath}, {@code
- * sourceUrl}, {@code sourceProxy}, {@code sourceCredentials} and {@code sourceInsecureSsl} all live
- * on the library itself (ADR-0018, Entscheidung 1) and every executor reads whichever of them its
- * own type carries - an executor that needs none of them (e.g. {@link
- * IndexingSourceType#FILESYSTEM} before this issue relied on a global {@code
- * IndexingProperties#documentPath()}; it now reads {@link KnowledgeLibrary#getSourcePath()}
- * instead) simply ignores the rest.
+ * <p>{@code targetLibrary} is the only source of configuration (ADR-0018): {@code sourcePath},
+ * {@code sourceUrl}, {@code sourceProxy}, {@code sourceCredentials} and {@code sourceInsecureSsl}
+ * all live on the library itself, and every executor reads whichever of them its own type carries,
+ * ignoring the rest.
  */
 public interface SourceIndexingExecutor {
 

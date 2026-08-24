@@ -17,11 +17,10 @@ public class DocumentService {
   private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
 
   /**
-   * Everything found below the document directory, split into what will be indexed and what was
-   * rejected because of its format (issue #375) - and, since #404, which of the indexed files
-   * carried an extension that did not match their actually detected content. The rejected files are
-   * carried out of here on purpose: they belong in the indexing job's counters, not in a filter
-   * nobody sees.
+   * Everything found below the document directory, split into what will be indexed, what was
+   * rejected because of its format, and which of the indexed files carried an extension that did
+   * not match their actually detected content. The rejected files are carried out of here on
+   * purpose: they belong in the indexing job's counters, not in a filter nobody sees.
    */
   public record DiscoveredFiles(
       List<Path> supported, List<Path> rejected, List<FormatMismatch> mismatches) {
@@ -37,9 +36,9 @@ public class DocumentService {
 
   /**
    * A file that was accepted for indexing, but whose own extension did not match its Tika-detected
-   * content (#404 acceptance criteria: this is reported, never silently reinterpreted or rejected).
-   * {@code detectedExtension} is the extension {@link SupportedDocumentFormats} associates with the
-   * detected content, for the event message.
+   * content - reported, never silently reinterpreted or rejected. {@code detectedExtension} is the
+   * extension {@link SupportedDocumentFormats} associates with the detected content, for the event
+   * message.
    */
   public record FormatMismatch(Path file, String detectedExtension) {}
 
@@ -74,7 +73,7 @@ public class DocumentService {
   public List<org.springframework.ai.document.Document> parseDocument(Path file) {
     log.debug("Parsing document: {}", file);
     var resource = new FileSystemResource(file);
-    // #667: keep page boundaries as form feeds so chunks can carry a "S. n" location.
+    // Keep page boundaries as form feeds so chunks can carry a "S. n" location.
     var reader =
         new TikaDocumentReader(
             resource, new PageMarkingContentHandler(), ExtractedTextFormatter.defaults());
@@ -82,11 +81,10 @@ public class DocumentService {
   }
 
   /**
-   * Whether {@code file} is accepted for indexing, decided from its actual content (#404) - see
-   * {@link SupportedDocumentFormats#decideForFileName}. A file that cannot even be read for
-   * detection (deleted or permission-denied between {@link #discoverFiles}'s own walk and this
-   * call) is treated as unsupported rather than propagating the {@link IOException}, mirroring how
-   * an unreadable file was already silently absent from the old, extension-only listing.
+   * Whether {@code file} is accepted for indexing, decided from its actual content - see {@link
+   * SupportedDocumentFormats#decideForFileName}. A file that cannot even be read for detection
+   * (deleted or permission-denied between {@link #discoverFiles}'s own walk and this call) is
+   * treated as unsupported rather than propagating the {@link IOException}.
    */
   boolean isSupportedFormat(Path file) {
     return classify(file).supported();

@@ -21,30 +21,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Parses a standard RSS 2.0 feed (ADR-0017, #466) into its {@link RssFeedEntry} items, using only
- * the JDK's own StAX implementation - no additional library is needed for a format this small.
+ * Parses a standard RSS 2.0 feed (ADR-0017) into its {@link RssFeedEntry} items, using only the
+ * JDK's own StAX implementation - no additional library is needed for a format this small.
  *
- * <p><b>Scope (ADR-0017, decision 2):</b> this class stops at "a list of content elements with a
- * name, a reference to the origin and a change marker" - here, {@code title}/{@code link}/{@code
+ * <p>Scope (ADR-0017, decision 2): this class stops at "a list of content elements with a name, a
+ * reference to the origin and a change marker" - here, {@code title}/{@code link}/{@code
  * description}/{@code pubDate}. Resolving a {@code <link>} to its detail page's article text and
- * attachments is a separate, later step (#467/#468), deliberately not part of this parser: parsing
- * is pure transformation (text in, entries out) and is fully checkable against fixtures, without
- * network or database (see #466's motivation).
+ * attachments is a separate, later step, deliberately not part of this parser: parsing is pure
+ * transformation (text in, entries out) and is fully checkable against fixtures, without network or
+ * database.
  *
- * <p><b>Hardening against XXE.</b> A feed is attacker-controlled content from a third party; the
- * JDK's default StAX settings would otherwise let a feed instruct the parser to read local files or
- * reach out over the network via a DOCTYPE-declared external entity. Both DTDs and external
- * entities are disabled below, following the standard StAX XXE mitigation (OWASP XML External
- * Entity Prevention Cheat Sheet).
+ * <p>Hardening against XXE: a feed is attacker-controlled content from a third party; the JDK's
+ * default StAX settings would otherwise let a feed instruct the parser to read local files or reach
+ * out over the network via a DOCTYPE-declared external entity. Both DTDs and external entities are
+ * disabled below, following the standard StAX XXE mitigation.
  *
- * <p><b>Leniency (ADR-0017, #466).</b> Unknown elements and elements from a foreign namespace
- * (Atom's {@code atom:link}, Media RSS's {@code media:*}, {@code content:encoded}, ...) are simply
- * skipped rather than treated as errors - only the four fields above, read directly under {@code
- * <item>} without a namespace, are recognised. An item without a {@code <link>} is skipped
- * entirely, since the link is the only handle a later step has on the entry. A document that does
- * not parse as XML at all fails with a German, user-facing {@link RssFeedParseException} - this
- * message is expected to surface in an indexing job's status (#467), unlike the rest of this
- * class's log/exception text, which stays English per AGENTS.md's language split.
+ * <p>Leniency: unknown elements and elements from a foreign namespace (Atom's {@code atom:link},
+ * Media RSS's {@code media:*}, {@code content:encoded}, ...) are simply skipped rather than treated
+ * as errors - only the four fields above, read directly under {@code <item>} without a namespace,
+ * are recognised. An item without a {@code <link>} is skipped entirely. A document that does not
+ * parse as XML at all fails with a German, user-facing {@link RssFeedParseException} - unlike the
+ * rest of this class's log/exception text, which stays English per AGENTS.md's language split.
  */
 public class RssFeedParser {
 
@@ -74,17 +71,13 @@ public class RssFeedParser {
           Map.entry("PDT", "-0700"));
 
   /**
-   * A two-digit-year variant of RFC 822/2822, tried <b>before</b> {@link
+   * A two-digit-year variant of RFC 822/2822, tried before {@link
    * DateTimeFormatter#RFC_1123_DATE_TIME} - that formatter also accepts a two-digit year but
-   * resolves it literally (e.g. {@code "24"} becomes the year 24, not 2024), silently producing a
-   * wrong-by-a-millennium date instead of failing. {@link
+   * resolves it literally (e.g. {@code "24"} becomes the year 24, not 2024). {@link
    * java.time.format.DateTimeFormatterBuilder#appendValueReduced} maps the two parsed digits into
-   * the century-spanning window {@code [1970, 2069]} (e.g. {@code "99"} -> 1999, {@code "24"} ->
-   * 2024), the same windowing scheme {@code strptime}'s {@code %y} uses. Day-of-week and seconds
-   * are optional here too, matching {@code RFC_1123_DATE_TIME}'s own leniency on those parts. A
-   * four-digit year does not match this formatter at all (the reduced-value field consumes exactly
-   * two digits, leaving trailing digits that make the rest of the pattern fail to match), so trying
-   * this first never misinterprets an ordinary four-digit date.
+   * the century-spanning window {@code [1970, 2069]}, the same windowing scheme {@code strptime}'s
+   * {@code %y} uses. A four-digit year does not match this formatter at all, so trying this first
+   * never misinterprets an ordinary four-digit date.
    */
   private static final DateTimeFormatter TWO_DIGIT_YEAR_DATE_TIME =
       new DateTimeFormatterBuilder()
@@ -182,7 +175,7 @@ public class RssFeedParser {
               && RECOGNIZED_ITEM_FIELDS.contains(localName)
               && !("link".equals(localName) && link != null)) {
             // The "link" exclusion keeps the first <link> of an item, not the last - the more
-            // reliable choice if an item ever carries more than one (ADR-0017/#466 review).
+            // reliable choice if an item ever carries more than one.
             currentField = localName;
             currentText = new StringBuilder();
           }
@@ -231,7 +224,7 @@ public class RssFeedParser {
   /**
    * Parses an RSS {@code pubDate} (nominally RFC 822/2822) leniently. An unparseable or missing
    * value yields {@link Optional#empty()} rather than a failure - a date the parser cannot read
-   * must not invalidate the entry (ADR-0017, #466).
+   * must not invalidate the entry.
    */
   Optional<Instant> parsePubDate(String rawValue) {
     if (rawValue == null || rawValue.isBlank()) {

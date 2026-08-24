@@ -10,19 +10,17 @@ import java.util.UUID;
 
 /**
  * The {@code ETag}/{@code Last-Modified} pair {@link RssFeedIndexingExecutor} last saw for a given
- * feed URL (#467, ADR-0017), keyed by {@code (libraryId, feedUrl)} - lets a run send a conditional
- * GET and end in a single request when the feed itself has not changed. See migration {@code
- * 025-create-rss-feed-state} for why this is its own table rather than a {@link Document} row.
+ * feed URL (ADR-0017), keyed by {@code (libraryId, feedUrl)} - lets a run send a conditional GET
+ * and end in a single request when the feed itself has not changed. Its own table rather than a
+ * {@link Document} row.
  *
- * <p><b>Keyed per library, not per URL alone (#646).</b> Before migration {@code
- * 045-key-rss-feed-state-by-library}, {@code feed_url} alone was unique: a library deleted or
- * reconfigured to a different {@code sourceUrl} left its row behind, and a *new* library later
- * pointed at the same feed address found that stale row, sent a conditional GET, got a {@code 304}
- * from the feed's own perspective, and ended its very first run with zero documents - reported as
- * success, not failure. {@code libraryId} plus {@code onDelete: CASCADE} on {@code
- * fk_rss_feed_state_library} means a library's own deletion now takes its state row with it, and a
- * library that changes its {@code sourceUrl} simply finds no row for the new address (see {@link
- * RssFeedIndexingExecutor}).
+ * <p>Keyed per library, not per URL alone: {@code feed_url} alone as unique key would let a library
+ * deleted or reconfigured to a different {@code sourceUrl} leave its row behind, so a new library
+ * later pointed at the same feed address would find that stale row, send a conditional GET, get a
+ * {@code 304}, and end its very first run with zero documents - reported as success, not failure.
+ * {@code libraryId} plus {@code onDelete: CASCADE} on {@code fk_rss_feed_state_library} means a
+ * library's own deletion takes its state row with it, and a library that changes its {@code
+ * sourceUrl} simply finds no row for the new address.
  */
 @Entity
 @Table(

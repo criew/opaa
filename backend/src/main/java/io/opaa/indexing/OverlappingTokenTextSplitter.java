@@ -19,7 +19,7 @@ import org.springframework.ai.transformer.splitter.TokenTextSplitter;
  * stream into disjoint windows. Without overlap a statement that straddles a chunk boundary is torn
  * apart: the heading or introducing clause ends up at the end of one chunk and the definition at
  * the start of the next, so neither half carries the claim on its own. That hurts citability, not
- * just recall (issue #374).
+ * just recall.
  *
  * <p>This splitter therefore delegates the actual splitting and then prefixes every chunk after the
  * first with the last {@code overlapTokens} tokens of its predecessor. The overlap is measured in
@@ -44,12 +44,12 @@ class OverlappingTokenTextSplitter extends TextSplitter {
 
   /**
    * Splits like {@link TextSplitter#apply}, but additionally stamps every chunk with its {@link
-   * ChunkingService#LOCATION_METADATA_KEY} (#667) - derived from where the chunk's own text (before
-   * the overlap prefix is prepended) sits in the source document, so the location describes the
-   * chunk's beginning, not the carried-over tail of its predecessor. Page-break markers (see {@link
+   * ChunkingService#LOCATION_METADATA_KEY} - derived from where the chunk's own text (before the
+   * overlap prefix is prepended) sits in the source document, so the location describes the chunk's
+   * beginning, not the carried-over tail of its predecessor. Page-break markers (see {@link
    * PageMarkingContentHandler}) are stripped from the stored text here, after locating; they must
-   * not reach the embedding. A chunk whose text cannot be found again in the source (the splitter
-   * normalised it beyond recognition) simply carries no location.
+   * not reach the embedding. A chunk whose text cannot be found again in the source simply carries
+   * no location.
    */
   @Override
   public List<Document> apply(List<Document> documents) {

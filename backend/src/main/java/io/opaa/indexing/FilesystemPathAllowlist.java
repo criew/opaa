@@ -4,12 +4,12 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Enforces the {@code FILESYSTEM} quellentyp's path allowlist (#484, ADR-0018 Entscheidung 6):
- * every anlage-berechtigte caller may still choose {@code FILESYSTEM} as a quellentyp - no new role
- * gates that choice - but the {@code sourcePath} it configures must resolve underneath one of the
+ * Enforces the {@code FILESYSTEM} quellentyp's path allowlist (ADR-0018 Entscheidung 6): every
+ * anlage-berechtigte caller may still choose {@code FILESYSTEM} as a quellentyp - no new role gates
+ * that choice - but the {@code sourcePath} it configures must resolve underneath one of the
  * operator-configured base directories in {@link IndexingProperties#filesystemAllowlist()}. An
- * <b>empty allowlist disables the FILESYSTEM quellentyp entirely</b> - the safe default - rather
- * than falling back to "everything allowed".
+ * empty allowlist disables the FILESYSTEM quellentyp entirely - the safe default - rather than
+ * falling back to "everything allowed".
  *
  * <p>Checked twice, deliberately: {@code io.opaa.library.KnowledgeLibraryService} enforces this at
  * creation and update time (a fast 400 for an operator who has not opened the directory), and

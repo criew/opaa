@@ -14,16 +14,13 @@ import java.util.stream.Collectors;
  * bean, without touching this class or any of the call sites that use it.
  *
  * <p>The key space is deliberately {@link IndexingSourceType}, not {@link DocumentSourceType}:
- * {@code UPLOAD} cannot be looked up here at all, because it is not a value of {@link
- * IndexingSourceType} in the first place - the missing mapping the ADR calls out is excluded by the
- * type system, not handled as a runtime case.
+ * {@code UPLOAD} cannot be looked up here at all, since it is not a value of {@link
+ * IndexingSourceType} in the first place.
  *
- * <p><b>Completeness is checked at construction, not at resolve time.</b> A missing executor for a
- * declared {@link IndexingSourceType} is a wiring bug (a new enum value was added without its
- * matching {@code @Bean}), and this constructor fails application startup with a clear message
- * instead of letting {@link #resolve(IndexingSourceType)} throw the first time some caller happens
- * to hit the gap - which, reached through an HTTP request, would otherwise surface as an opaque 500
- * rather than a startup failure a developer sees immediately.
+ * <p>Completeness is checked at construction, not at resolve time: a missing executor for a
+ * declared {@link IndexingSourceType} is a wiring bug, and this constructor fails application
+ * startup with a clear message instead of letting {@link #resolve(IndexingSourceType)} throw the
+ * first time some caller happens to hit the gap.
  */
 public class IndexingSourceExecutorRegistry {
 
