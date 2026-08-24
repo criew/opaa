@@ -86,8 +86,8 @@ public class LibraryAccessService {
   /**
    * Whether the user may rename, change visibility/listed, or manage grants - requires {@link
    * AssetRole#MANAGER}. Deliberately <b>not</b> sufficient for deleting the library or (once it
-   * exists) transferring ownership - see {@link #canDelete} and {@link AssetRole#OWNER}'s Javadoc
-   * ("additionally delete the asset and transfer ownership"). Code review round 3 of #202: this
+   * exists) transferring ownership, which requires {@link AssetRole#OWNER} (see its Javadoc,
+   * "additionally delete the asset and transfer ownership"). Code review round 3 of #202: this
    * method's own Javadoc used to list "delete" here, and {@code
    * KnowledgeLibraryService#deleteLibrary} called it directly - the exact gap that let a group's
    * {@code MANAGER} grant (post round-2's group-gets-MANAGER fix) delete a library it could never
@@ -95,40 +95,6 @@ public class LibraryAccessService {
    */
   public boolean canManage(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
     return atLeast(effectiveRole(library, userId, systemAdmin), AssetRole.MANAGER);
-  }
-
-  /**
-   * Whether the user may target this library as the destination of an indexing run (#419) -
-   * requires {@link AssetRole#EDITOR}, one level below {@link #canManage}. A directory or URL
-   * indexing run writes documents into the library, which is a content change, not a configuration
-   * change (rename, visibility, grants) - {@code EDITOR} is the role {@link AssetRole}'s Javadoc
-   * reserves for "change the configuration" one level above {@code VIEWER}, and is deliberately the
-   * floor here rather than {@code MANAGER}: requiring sharing/grant rights just to add documents
-   * would force every indexing operator to also be able to reshape the library's access list.
-   */
-  public boolean canEdit(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
-    return atLeast(effectiveRole(library, userId, systemAdmin), AssetRole.EDITOR);
-  }
-
-  /**
-   * Whether the user may delete the library (and, once it exists, transfer its ownership) -
-   * requires {@link AssetRole#OWNER}, one level above {@link #canManage}. Split out in #202 code
-   * review round 3: before this method existed, {@code KnowledgeLibraryService#deleteLibrary}
-   * called {@link #canManage}, so a group's {@code MANAGER} grant (round 2's fix for the
-   * group-owned-library case) could delete the library outright - taking every grant on it,
-   * including the creator's {@code OWNER} grant, down with it via {@code
-   * fk_asset_grants_library_organization}'s {@code ON DELETE CASCADE} (migration 013). That is
-   * strictly worse than the escalation the round-1/round-2 guards close: those guards stop a {@code
-   * MANAGER} from touching the {@code OWNER} grant directly, but deleting the library was an
-   * untouched detour around them. For a migrated, backfilled group-owned library - deliberately
-   * left without any {@code OWNER} grant at all, see 013-asset-grants.yaml's backfill comment -
-   * this meant nobody could downgrade the group's grant, yet any member could still delete the
-   * library wholesale; this method closes that gap by requiring a role nobody currently holds on
-   * such a library, matching the "Nachfolge offen" intent (only a system admin, or a person granted
-   * {@code OWNER} once a curator is assigned, may delete or transfer such a library).
-   */
-  public boolean canDelete(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
-    return atLeast(effectiveRole(library, userId, systemAdmin), AssetRole.OWNER);
   }
 
   /**

@@ -56,10 +56,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * below creates real {@link Organization} rows instead of bare random UUIDs, mirroring {@code
  * SpaceServiceIntegrationTest} and {@code UserServicePersonalSpaceIntegrationTest} (#288).
  *
- * <p>Unlike the {@code @DataJpaTest} slice this class used to be, plain {@code @SpringBootTest}
- * test methods are not wrapped in their own rollback transaction, so every {@code GroupService}
- * call below commits on its own without needing {@code @Transactional(NOT_SUPPORTED)} to opt out of
- * one - the cache-invalidation-timing tests below rely on exactly that, the same way {@code
+ * <p>Unlike the narrower JPA test slice this class used to be, plain {@code @SpringBootTest} test
+ * methods are not wrapped in their own rollback transaction, so every {@code GroupService} call
+ * below commits on its own without needing {@code @Transactional(NOT_SUPPORTED)} to opt out of one
+ * - the cache-invalidation-timing tests below rely on exactly that, the same way {@code
  * SpaceServiceIntegrationTest} does.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)

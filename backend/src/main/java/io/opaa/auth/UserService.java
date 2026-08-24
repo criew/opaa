@@ -256,10 +256,6 @@ public class UserService {
     return userRepository.findBySubjectAndIssuer(subject, issuer);
   }
 
-  public Optional<User> findById(UUID id) {
-    return userRepository.findById(id);
-  }
-
   /**
    * Scopes the admin user list to the caller's own organization (#271) - {@code findAll()} used to
    * return every organization's users, including to a SYSTEM_ADMIN, whose reach the organization
