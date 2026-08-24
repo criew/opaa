@@ -27,6 +27,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -118,6 +119,7 @@ public class LibraryDocumentService {
   private final UrlFileDownloader urlFileDownloader;
   private final TargetAddressValidator targetAddressValidator;
   private final RemoteContentProperties remoteContentProperties;
+  private final LibraryFolderRepository folderRepository;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -132,7 +134,8 @@ public class LibraryDocumentService {
       FilesystemPathAllowlist filesystemAllowlist,
       UrlFileDownloader urlFileDownloader,
       TargetAddressValidator targetAddressValidator,
-      RemoteContentProperties remoteContentProperties) {
+      RemoteContentProperties remoteContentProperties,
+      LibraryFolderRepository folderRepository) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.accessService = accessService;
@@ -146,13 +149,21 @@ public class LibraryDocumentService {
     this.urlFileDownloader = urlFileDownloader;
     this.targetAddressValidator = targetAddressValidator;
     this.remoteContentProperties = remoteContentProperties;
+    this.folderRepository = folderRepository;
   }
 
   public LibraryDocumentResponse uploadDocument(
-      UUID libraryId, MultipartFile file, UUID currentUserId, boolean systemAdmin) {
+      UUID libraryId, MultipartFile file, UUID folderId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
     requireEditable(library, currentUserId, systemAdmin);
     requireUploadLibrary(library);
+
+    // #821: validated before any byte is written to disk, mirroring every other "reject this
+    // request outright" check below - a folderId that does not exist (or belongs to another
+    // library, treated identically per resolveFolder) must leave the bestand exactly as it was.
+    if (folderId != null) {
+      resolveFolder(libraryId, folderId);
+    }
 
     if (file == null || file.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datei ist erforderlich");
@@ -237,6 +248,7 @@ public class LibraryDocumentService {
       document.setLibraryId(libraryId);
       document.setOrganizationId(library.getOrganizationId());
       document.setUploadedByUserId(currentUserId);
+      document.setFolderId(folderId);
       // Set on this first (and only synchronous) save: this is where a concurrent duplicate
       // upload race against uk_documents_library_checksum (migration 020) is meant to be settled -
       // before any embedding work starts, not after (#420 second code review round, finding 1,
@@ -276,14 +288,28 @@ public class LibraryDocumentService {
             document, storedFile, "Die Verarbeitung konnte nicht gestartet werden");
       }
 
-      return LibraryDocumentResponses.from(document);
+      return LibraryDocumentResponses.from(
+          document, LibraryFolderPaths.pathOf(folderRepository, document.getFolderId()));
     } catch (DataIntegrityViolationException e) {
+      // #821 review round 1, finding 5: the save() above can violate two different constraints,
+      // and they must not share one message. fk_documents_folder (migration 062) fires when
+      // folderId - already confirmed to exist by resolveFolder above - is deleted by a concurrent
+      // request in the narrow window between that check and this INSERT; without this
+      // distinction, that race surfaced as the same "Diese Datei ist bereits in dieser Bibliothek
+      // vorhanden" the checksum race below produces, actively misleading a caller whose file was
+      // never a duplicate at all.
+      deleteQuietly(storedFile);
+      if (isFolderForeignKeyViolation(e)) {
+        throw new ResponseStatusException(
+            HttpStatus.NOT_FOUND, "Der Ordner wurde inzwischen gelöscht");
+      }
       // Race-safety net for the findByLibraryIdAndChecksum check above (#420 code review, nit 5):
       // that check and the eventual INSERT are two separate steps with no database guarantee
       // between them, so two concurrent uploads of the same file into the same library could both
       // pass it. uk_documents_library_checksum (migration 020) is the actual guarantee; this maps
-      // its violation to the same 409 the sequential check already produces.
-      deleteQuietly(storedFile);
+      // its violation - and any other DataIntegrityViolationException this INSERT could still
+      // raise - to the same 409 the sequential check already produces, kept as the neutral
+      // fallback rather than assuming every violation is the folder race handled above.
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Diese Datei ist bereits in dieser Bibliothek vorhanden");
     } catch (IOException e) {
@@ -327,7 +353,8 @@ public class LibraryDocumentService {
     document.setStatus(DocumentStatus.FAILED);
     document.setErrorMessage(errorMessage);
     deleteQuietly(storedFile);
-    return LibraryDocumentResponses.from(document);
+    return LibraryDocumentResponses.from(
+        document, LibraryFolderPaths.pathOf(folderRepository, document.getFolderId()));
   }
 
   /**
@@ -756,6 +783,22 @@ public class LibraryDocumentService {
   }
 
   /**
+   * Validates {@code folderId} references an existing folder in {@code libraryId} (#821) - mirrors
+   * {@code LibraryFolderService#resolveParent}'s identical cross-library treatment: a folder from
+   * another library answers the same 404 as one that does not exist at all.
+   */
+  private void resolveFolder(UUID libraryId, UUID folderId) {
+    LibraryFolder folder =
+        folderRepository
+            .findById(folderId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden"));
+    if (!folder.getLibraryId().equals(libraryId)) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ordner nicht gefunden");
+    }
+  }
+
+  /**
    * Whether the caller may add or remove documents in {@code library} - requires {@link
    * AssetRole#EDITOR}. Introduced here in #420 with its own "no access at all" ({@code 404}) vs.
    * "some access, but not enough" ({@code 403}) distinction; #436 later generalised that same check
@@ -805,6 +848,29 @@ public class LibraryDocumentService {
     int lastSlash = normalized.lastIndexOf('/');
     String lastSegment = lastSlash >= 0 ? normalized.substring(lastSlash + 1) : normalized;
     return lastSegment.isBlank() ? originalFileName : lastSegment;
+  }
+
+  /**
+   * Whether {@code e} was raised by {@code fk_documents_folder} (migration 062) specifically, not
+   * {@code uk_documents_library_checksum} or anything else {@code documentRepository.save} could
+   * violate (#821 review round 1, finding 5) - inspects the wrapped Hibernate {@link
+   * ConstraintViolationException}'s own {@code constraintName} (populated from the database
+   * driver's error detail, {@code PostgreSQLDialect}'s violated-constraint-name extractor for
+   * Postgres) rather than guessing from {@link DataIntegrityViolationException#getMessage()} alone,
+   * which does not reliably say which of several constraints on the same table actually fired.
+   * {@code false} - the safe, conservative default - whenever no {@link
+   * ConstraintViolationException} is found in the cause chain at all (e.g. a hand-built exception a
+   * test throws directly, mirroring how a real driver failure is always wrapped in practice).
+   */
+  private boolean isFolderForeignKeyViolation(DataIntegrityViolationException e) {
+    Throwable cause = e.getCause();
+    while (cause != null) {
+      if (cause instanceof ConstraintViolationException constraintViolation) {
+        return "fk_documents_folder".equals(constraintViolation.getConstraintName());
+      }
+      cause = cause.getCause();
+    }
+    return false;
   }
 
   /** The accepted extension the given (already validated as supported) file name ends with. */

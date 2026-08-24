@@ -131,7 +131,7 @@ class LibraryFolderServiceIntegrationTest {
   void tearDown() {
     documentRepository.findByLibraryId(libraryId).forEach(documentRepository::delete);
     folderRepository
-        .findByLibraryIdAndParentFolderId(libraryId, null)
+        .findByLibraryIdAndParentFolderIdOrderByNameAsc(libraryId, null)
         .forEach(this::deleteRecursively);
     libraryRepository.deleteById(libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId(), viewer.getId()));
@@ -144,7 +144,7 @@ class LibraryFolderServiceIntegrationTest {
 
   private void deleteRecursively(LibraryFolder folder) {
     folderRepository
-        .findByLibraryIdAndParentFolderId(libraryId, folder.getId())
+        .findByLibraryIdAndParentFolderIdOrderByNameAsc(libraryId, folder.getId())
         .forEach(this::deleteRecursively);
     folderRepository.delete(folder);
   }
@@ -242,7 +242,8 @@ class LibraryFolderServiceIntegrationTest {
       assertThat((firstResult == null) ^ (secondResult == null))
           .as("Exactly one of the two concurrent creates must succeed")
           .isTrue();
-      assertThat(folderRepository.findByLibraryIdAndParentFolderId(libraryId, null)).hasSize(1);
+      assertThat(folderRepository.findByLibraryIdAndParentFolderIdOrderByNameAsc(libraryId, null))
+          .hasSize(1);
     } finally {
       executor.shutdownNow();
     }
@@ -388,7 +389,7 @@ class LibraryFolderServiceIntegrationTest {
   private Document uploadDocumentIntoFolder(UUID folderId, String fileName, String content) {
     LibraryDocumentResponse uploaded =
         documentService.uploadDocument(
-            libraryId, textFile(fileName, content), editor.getId(), false);
+            libraryId, textFile(fileName, content), null, editor.getId(), false);
     Document document = awaitDocumentStatus(uploaded.getId(), DocumentStatus.INDEXED);
     document.setFolderId(folderId);
     return documentRepository.save(document);

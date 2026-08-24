@@ -3,6 +3,7 @@ package io.opaa.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -96,12 +97,13 @@ class LibraryControllerDocumentTest {
   @Test
   void listingDocumentsPassesPageSizeAndQToTheServiceWithAStableSort() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    var response = new LibraryDocumentPageResponse(List.of(), 1, 5, 12L);
+    var response = new LibraryDocumentPageResponse(List.of(), 1, 5, 12L, List.of(), List.of());
     when(libraryService.listDocuments(
             eq(libraryId),
             eq(currentUserId),
             eq(false),
             eq("dienst"),
+            any(),
             argThat(
                 (Pageable p) ->
                     p.getPageNumber() == 1
@@ -123,6 +125,25 @@ class LibraryControllerDocumentTest {
         .andExpect(jsonPath("$.page").value(1))
         .andExpect(jsonPath("$.size").value(5))
         .andExpect(jsonPath("$.totalElements").value(12));
+  }
+
+  @Test
+  void listingDocumentsPassesFolderIdToTheService() throws Exception {
+    // #821: folderId is forwarded to the service as-is, distinct from the eq(null) default the
+    // no-param case above implicitly covers via any().
+    UUID libraryId = UUID.randomUUID();
+    UUID folderId = UUID.randomUUID();
+    var response = new LibraryDocumentPageResponse(List.of(), 0, 20, 0L, List.of(), List.of());
+    when(libraryService.listDocuments(
+            eq(libraryId), eq(currentUserId), eq(false), isNull(), eq(folderId), any()))
+        .thenReturn(response);
+
+    mockMvc
+        .perform(
+            get("/api/v1/libraries/" + libraryId + "/documents")
+                .param("folderId", folderId.toString())
+                .with(asTestUser()))
+        .andExpect(status().isOk());
   }
 
   @Test
@@ -165,7 +186,7 @@ class LibraryControllerDocumentTest {
     var response =
         new LibraryDocumentResponse(
             documentId, "report.pdf", DocumentStatus.INDEXED, DocumentSourceType.UPLOAD, 3);
-    when(documentService.uploadDocument(eq(libraryId), any(), eq(currentUserId), eq(false)))
+    when(documentService.uploadDocument(eq(libraryId), any(), any(), eq(currentUserId), eq(false)))
         .thenReturn(response);
 
     var file = new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes());
@@ -182,9 +203,36 @@ class LibraryControllerDocumentTest {
   }
 
   @Test
+  void uploadingADocumentPassesFolderIdToTheService() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    UUID folderId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    var response =
+        new LibraryDocumentResponse(
+                documentId, "report.pdf", DocumentStatus.INDEXED, DocumentSourceType.UPLOAD, 3)
+            .folderId(folderId)
+            .folderPath("Protokolle");
+    when(documentService.uploadDocument(
+            eq(libraryId), any(), eq(folderId), eq(currentUserId), eq(false)))
+        .thenReturn(response);
+
+    var file = new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes());
+
+    mockMvc
+        .perform(
+            multipart("/api/v1/libraries/" + libraryId + "/documents")
+                .file(file)
+                .param("folderId", folderId.toString())
+                .with(asTestUser()))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.folderId").value(folderId.toString()))
+        .andExpect(jsonPath("$.folderPath").value("Protokolle"));
+  }
+
+  @Test
   void uploadingIntoAForbiddenLibraryReturns403() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(documentService.uploadDocument(eq(libraryId), any(), eq(currentUserId), eq(false)))
+    when(documentService.uploadDocument(eq(libraryId), any(), any(), eq(currentUserId), eq(false)))
         .thenThrow(
             new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
 

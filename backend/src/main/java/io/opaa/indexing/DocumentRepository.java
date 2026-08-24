@@ -61,6 +61,65 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   Page<Document> findByLibraryId(UUID libraryId, Pageable pageable);
 
   /**
+   * Backs a folder-scoped {@code GET .../documents} (#821, no {@code q}): a page of exactly the
+   * documents sitting directly in {@code folderId}, mirroring {@link #findByLibraryId(UUID,
+   * Pageable)}'s existing root/whole-library paging.
+   */
+  Page<Document> findByLibraryIdAndFolderId(UUID libraryId, UUID folderId, Pageable pageable);
+
+  /**
+   * The library root's counterpart to {@link #findByLibraryIdAndFolderId} (#821) - backs {@code GET
+   * .../documents} with no {@code folderId} and no {@code q}, ADR-0020's convention that a {@code
+   * null folder_id} means the library's root.
+   */
+  Page<Document> findByLibraryIdAndFolderIdIsNull(UUID libraryId, Pageable pageable);
+
+  /**
+   * The <em>recursive</em> document counts of a set of folders - each folder's own documents plus
+   * every document in every one of its descendant folders, one query for the whole set rather than
+   * one per subfolder (#821 review round 1, finding 4). Deliberately matches {@code
+   * LibraryFolderService#countDocumentsRecursive}'s semantics (the count {@code
+   * LibraryFolderResponse.documentCount} shows before a recursive DELETE, ADR-0020 Entscheidung 5),
+   * not a shallow "direct children only" count: a subfolder row in a folder-scoped {@code GET
+   * .../documents} response is exactly what a subsequent delete confirmation for that same folder
+   * would show, so the two must agree - a "0" next to a subfolder that actually holds 500 documents
+   * nested a few levels down would be misleading, not merely imprecise.
+   *
+   * <p>A single recursive CTE, not {@code countByFolderId}/{@code
+   * LibraryFolderRepository#findByLibraryIdAndParentFolderIdOrderByNameAsc} walked in application
+   * code per subfolder (which is exactly the N+1 {@link #countByLibraryIdIn}'s sibling pattern
+   * exists to avoid one level up): {@code folder_tree} expands every requested id in {@code
+   * folderIds} into itself plus its full descendant subtree, tagging each descendant with the
+   * requested ancestor it came from ({@code root_id}); the outer query then counts {@code
+   * documents} joined on every id in that expanded tree, grouped by {@code root_id}. A {@code LEFT
+   * JOIN}, not an inner join, so a folder with zero documents anywhere in its subtree still
+   * contributes a row with count {@code 0} rather than disappearing from the result the way {@link
+   * #countByLibraryIdIn}'s inner-join equivalent does for empty libraries - correct here because
+   * the caller (unlike that sibling method) needs to tell "this subfolder is empty" apart from "no
+   * row means the caller never asked", not just default a missing row to zero either way.
+   */
+  @Query(
+      value =
+          "WITH RECURSIVE folder_tree AS ("
+              + "  SELECT id AS root_id, id FROM library_folders WHERE id IN (:folderIds)"
+              + "  UNION ALL"
+              + "  SELECT ft.root_id, lf.id FROM library_folders lf"
+              + "  JOIN folder_tree ft ON lf.parent_folder_id = ft.id"
+              + ") "
+              + "SELECT ft.root_id AS folder_id, count(d.id) AS document_count "
+              + "FROM folder_tree ft LEFT JOIN documents d ON d.folder_id = ft.id "
+              + "GROUP BY ft.root_id",
+      nativeQuery = true)
+  List<FolderDocumentCount> countRecursiveByFolderIdIn(
+      @Param("folderIds") Collection<UUID> folderIds);
+
+  interface FolderDocumentCount {
+    UUID getFolderId();
+
+    long getDocumentCount();
+  }
+
+  /**
    * Backs {@code KnowledgeLibraryService#deleteLibrary}'s connector-library path (#479, ADR-0018
    * Entscheidung 5): deleting a lauf-basierte (connector) library takes its whole document bestand
    * with it, unlike {@code UPLOAD}, which keeps the pre-existing "blocked while non-empty" guard.

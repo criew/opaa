@@ -83,6 +83,7 @@ class LibraryDocumentServiceTest {
   private UrlFileDownloader urlFileDownloader;
   private TargetAddressValidator disabledTargetAddressValidator;
   private RemoteContentProperties remoteContentProperties;
+  private LibraryFolderRepository folderRepository;
   private LibraryDocumentService service;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -114,6 +115,7 @@ class LibraryDocumentServiceTest {
     disabledTargetAddressValidator = TargetAddressValidator.disabled();
     urlFileDownloader = new UrlFileDownloader(disabledTargetAddressValidator);
     remoteContentProperties = new RemoteContentProperties(10L * 1024 * 1024, 5);
+    folderRepository = mock(LibraryFolderRepository.class);
 
     service =
         new LibraryDocumentService(
@@ -129,7 +131,8 @@ class LibraryDocumentServiceTest {
             filesystemAllowlist,
             urlFileDownloader,
             disabledTargetAddressValidator,
-            remoteContentProperties);
+            remoteContentProperties,
+            folderRepository);
 
     User user = new User("subject", "issuer", "user@example.com", "Test User");
     user.setOrganizationId(organizationId);
@@ -187,7 +190,7 @@ class LibraryDocumentServiceTest {
 
     LibraryDocumentResponse response =
         service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false);
+            libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
 
     // #434: the response reflects the PENDING row created synchronously - not a result from
     // FileProcessingService, which now only runs asynchronously and returns nothing.
@@ -213,7 +216,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false))
+                    libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.FORBIDDEN);
 
@@ -230,7 +233,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false))
+                    libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
   }
@@ -245,7 +248,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false))
+                    libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
   }
@@ -264,7 +267,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false))
+                    libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT);
 
@@ -282,6 +285,7 @@ class LibraryDocumentServiceTest {
                     libraryId,
                     new MockMultipartFile(
                         "file", "malware.exe", "application/octet-stream", "x".getBytes()),
+                    null,
                     currentUserId,
                     false))
         .isInstanceOf(ResponseStatusException.class)
@@ -302,7 +306,7 @@ class LibraryDocumentServiceTest {
 
     LibraryDocumentResponse response =
         service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "%PDF content"), currentUserId, false);
+            libraryId, pdfFile("report.pdf", "%PDF content"), null, currentUserId, false);
 
     assertThat(response.getFileName()).isEqualTo("report.pdf");
     verify(fileProcessingService).processUploadedFileAsync(eq(response.getId()), any());
@@ -324,7 +328,7 @@ class LibraryDocumentServiceTest {
         .thenReturn(Optional.empty());
 
     LibraryDocumentResponse response =
-        service.uploadDocument(libraryId, realDocxFile("vertrag.docx"), currentUserId, false);
+        service.uploadDocument(libraryId, realDocxFile("vertrag.docx"), null, currentUserId, false);
 
     assertThat(response.getFileName()).isEqualTo("vertrag.docx");
     verify(fileProcessingService).processUploadedFileAsync(eq(response.getId()), any());
@@ -359,7 +363,7 @@ class LibraryDocumentServiceTest {
             "application/pdf",
             new byte[] {0x00, 0x01, 0x02, (byte) 0xFF, 0x00, (byte) 0xDE, (byte) 0xAD});
 
-    assertThatThrownBy(() -> service.uploadDocument(libraryId, fakePdf, currentUserId, false))
+    assertThatThrownBy(() -> service.uploadDocument(libraryId, fakePdf, null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.BAD_REQUEST)
         .hasMessageContaining("entspricht nicht dem Format .pdf");
@@ -382,7 +386,7 @@ class LibraryDocumentServiceTest {
             "file", "notes.md", "text/markdown", "# Titel\n\nEin Absatz Text.".getBytes());
 
     LibraryDocumentResponse response =
-        service.uploadDocument(libraryId, markdown, currentUserId, false);
+        service.uploadDocument(libraryId, markdown, null, currentUserId, false);
 
     assertThat(response.getFileName()).isEqualTo("notes.md");
     verify(fileProcessingService).processUploadedFileAsync(eq(response.getId()), any());
@@ -399,7 +403,8 @@ class LibraryDocumentServiceTest {
         new MockMultipartFile(
             "file", "report.txt", "text/plain", (PDF_MAGIC_BYTES + "binary-ish").getBytes());
 
-    assertThatThrownBy(() -> service.uploadDocument(libraryId, pdfAsTxt, currentUserId, false))
+    assertThatThrownBy(
+            () -> service.uploadDocument(libraryId, pdfAsTxt, null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.BAD_REQUEST)
         .hasMessageContaining("entspricht nicht dem Format .txt");
@@ -415,7 +420,8 @@ class LibraryDocumentServiceTest {
 
     assertThatThrownBy(
             () ->
-                service.uploadDocument(libraryId, pdfFile("big.pdf", tooBig), currentUserId, false))
+                service.uploadDocument(
+                    libraryId, pdfFile("big.pdf", tooBig), null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.PAYLOAD_TOO_LARGE);
 
@@ -434,7 +440,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("report.pdf", "content"), currentUserId, false))
+                    libraryId, pdfFile("report.pdf", "content"), null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.PAYLOAD_TOO_LARGE)
         .hasMessageContaining("Speicherkontingent der Bibliothek erschöpft")
@@ -455,7 +461,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("copy.pdf", "same content"), currentUserId, false))
+                    libraryId, pdfFile("copy.pdf", "same content"), null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT);
 
@@ -490,7 +496,7 @@ class LibraryDocumentServiceTest {
 
     LibraryDocumentResponse response =
         service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false);
+            libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
 
     assertThat(response.getStatus()).isEqualTo(DocumentStatus.PENDING);
     verify(vectorStore).delete("document_id == '" + oldFailedDoc.getId() + "'");
@@ -518,9 +524,45 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(
             () ->
                 service.uploadDocument(
-                    libraryId, pdfFile("racer.pdf", "same content"), currentUserId, false))
+                    libraryId, pdfFile("racer.pdf", "same content"), null, currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT);
+
+    assertNoFilesWereStored();
+    verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
+  }
+
+  @Test
+  void aFolderDeletedBetweenValidationAndInsertAnswers404NotTheChecksumMessage()
+      throws IOException {
+    // #821 review round 1, finding 5: fk_documents_folder (migration 062) can fire on the very
+    // same save() the checksum race above tests, if folderId - already confirmed to exist by
+    // resolveFolder - is deleted by a concurrent request in the narrow window before this INSERT.
+    // That must not surface as "Diese Datei ist bereits in dieser Bibliothek vorhanden" - the file
+    // was never a duplicate at all.
+    grantEditor();
+    UUID folderId = UUID.randomUUID();
+    LibraryFolder folder = new LibraryFolder(libraryId, null, "Wird-Geloescht", organizationId);
+    when(folderRepository.findById(folderId)).thenReturn(Optional.of(folder));
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-fk-race");
+    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-fk-race"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class)))
+        .thenThrow(
+            new DataIntegrityViolationException(
+                "insert failed",
+                new org.hibernate.exception.ConstraintViolationException(
+                    "violates foreign key constraint",
+                    new java.sql.SQLException("test"),
+                    "fk_documents_folder")));
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("race.pdf", "content"), folderId, currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND)
+        .hasMessageContaining("inzwischen gelöscht");
 
     assertNoFilesWereStored();
     verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
@@ -541,6 +583,7 @@ class LibraryDocumentServiceTest {
                 "../../../../etc/evil.pdf",
                 "application/pdf",
                 (PDF_MAGIC_BYTES + "content").getBytes()),
+            null,
             currentUserId,
             false);
 
@@ -572,7 +615,7 @@ class LibraryDocumentServiceTest {
 
     LibraryDocumentResponse response =
         service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false);
+            libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
 
     assertThat(response.getStatus()).isEqualTo(DocumentStatus.FAILED);
     assertThat(response.getErrorMessage())
@@ -596,7 +639,7 @@ class LibraryDocumentServiceTest {
 
     LibraryDocumentResponse response =
         service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false);
+            libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
 
     assertThat(response.getStatus()).isEqualTo(DocumentStatus.FAILED);
     assertThat(response.getErrorMessage())
@@ -622,7 +665,7 @@ class LibraryDocumentServiceTest {
 
     LibraryDocumentResponse response =
         service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false);
+            libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
 
     assertThat(response.getStatus()).isEqualTo(DocumentStatus.FAILED);
     assertThat(response.getErrorMessage())
@@ -653,7 +696,7 @@ class LibraryDocumentServiceTest {
 
     LibraryDocumentResponse response =
         service.uploadDocument(
-            libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false);
+            libraryId, pdfFile("report.pdf", "pdf content"), null, currentUserId, false);
 
     assertThat(response.getStatus()).isEqualTo(DocumentStatus.FAILED);
     verify(documentRepository, org.mockito.Mockito.times(1)).save(any(Document.class));
@@ -1064,7 +1107,8 @@ class LibraryDocumentServiceTest {
             filesystemAllowlist,
             new UrlFileDownloader(enabledValidator),
             enabledValidator,
-            remoteContentProperties);
+            remoteContentProperties,
+            folderRepository);
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenReturn(AssetRole.VIEWER);
     KnowledgeLibrary library = remoteLibrary(null);

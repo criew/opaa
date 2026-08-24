@@ -165,7 +165,8 @@ public class LibraryFolderService {
   private void deleteRecursive(
       UUID libraryId, LibraryFolder folder, UUID currentUserId, boolean systemAdmin) {
     for (LibraryFolder child :
-        folderRepository.findByLibraryIdAndParentFolderId(libraryId, folder.getId())) {
+        folderRepository.findByLibraryIdAndParentFolderIdOrderByNameAsc(
+            libraryId, folder.getId())) {
       deleteRecursive(libraryId, child, currentUserId, systemAdmin);
     }
     for (Document document : documentRepository.findByFolderId(folder.getId())) {
@@ -177,7 +178,7 @@ public class LibraryFolderService {
   private long countDocumentsRecursive(UUID libraryId, UUID folderId) {
     long count = documentRepository.countByFolderId(folderId);
     for (LibraryFolder child :
-        folderRepository.findByLibraryIdAndParentFolderId(libraryId, folderId)) {
+        folderRepository.findByLibraryIdAndParentFolderIdOrderByNameAsc(libraryId, folderId)) {
       count += countDocumentsRecursive(libraryId, child.getId());
     }
     return count;

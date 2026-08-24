@@ -8,13 +8,34 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface LibraryFolderRepository extends JpaRepository<LibraryFolder, UUID> {
 
   /**
-   * The direct subfolders of {@code parentFolderId} - always called with a non-null id ({@link
-   * LibraryFolderService#deleteFolder}'s recursive descent starts at an already-loaded folder), so
-   * this deliberately does not also cover the library's root the way {@code
-   * findByLibraryIdAndParentFolderIdIsNull} below does; there is no #820 use case yet that needs
-   * both in one call.
+   * The direct subfolders of {@code parentFolderId}, name ascending (#821 review: a stable,
+   * deterministic order for the {@code folders} array of a folder-scoped listing, mirroring #517's
+   * identical reasoning for the document list's own {@code fileName} sort) - always called with a
+   * non-null id ({@link LibraryFolderService#deleteFolder}'s recursive descent starts at an
+   * already-loaded folder), so this deliberately does not also cover the library's root the way
+   * {@code findByLibraryIdAndParentFolderIdIsNull} below does; there is no #820 use case yet that
+   * needs both in one call.
    */
-  List<LibraryFolder> findByLibraryIdAndParentFolderId(UUID libraryId, UUID parentFolderId);
+  List<LibraryFolder> findByLibraryIdAndParentFolderIdOrderByNameAsc(
+      UUID libraryId, UUID parentFolderId);
+
+  /**
+   * The root-level counterpart to {@link #findByLibraryIdAndParentFolderIdOrderByNameAsc} (#821) -
+   * the direct subfolders of a library's root, used by {@code
+   * KnowledgeLibraryService#listDocuments} to build the {@code folders} array of a root-scoped
+   * listing. Name ascending, same reasoning as the sibling method above.
+   */
+  List<LibraryFolder> findByLibraryIdAndParentFolderIdIsNullOrderByNameAsc(UUID libraryId);
+
+  /**
+   * Every folder in a library, in one query (#821) - backs {@code
+   * LibraryFolderPaths#loadFoldersById}, which builds an in-memory {@code id -> folder} map so a
+   * page of documents can each derive its {@code folderPath} (and a folder-scoped listing its
+   * breadcrumb) without a per-row/per-ancestor query. A library's folder count is bounded by {@link
+   * LibraryFolderService#MAX_DEPTH}-deep, human-curated navigation trees, not an unbounded dataset,
+   * so loading it whole is cheaper than chasing each document's own parent chain individually.
+   */
+  List<LibraryFolder> findByLibraryId(UUID libraryId);
 
   /**
    * Backs the root-level half of the create/rename conflict check (#820 acceptance criteria:

@@ -1223,6 +1223,25 @@ paths:
         without it, LIMIT/OFFSET across two separate requests (e.g. two pages fetched moments
         apart, or the same page re-polled while indexing concurrently updates a row) has no
         guaranteed stable result in PostgreSQL and could return a document twice or skip it.
+
+        **Folder-aware since #821 (Epic #520 Phase 2, ADR-0020).** Without q, the response is
+        scoped to exactly one folder level: folderId (or its absence, meaning the library's root)
+        selects which documents items contains, plus that folder's direct subfolders (folders) and
+        its breadcrumb chain (breadcrumb, empty at the root). With q, the search is deliberately
+        bibliotheksweit regardless of folderId for scoping/filtering (ADR-0020, Entscheidung 4 - no
+        folder-scoped retrieval/search yet): folders and breadcrumb are both empty, and every hit's
+        own folderId/folderPath (LibraryDocumentResponse) show where it lives in the structure. A
+        folderId is nevertheless always validated when given, with or without q - see that
+        parameter's own description.
+
+        **Backward compatibility:** a caller that omits folderId - every client before #821 - lists
+        the library's root (documents with no folder plus the library's root-level subfolders), not
+        the library's full bestand across all folders the way this endpoint used to behave before
+        folders existed at all. This is a deliberate, accepted behaviour change: folders can only
+        exist through the CRUD API #820 added, so no pre-#821 library has any folder yet, and this
+        endpoint's root-only response is therefore identical to its pre-#821 one until someone
+        creates a folder and uploads into it - at which point browsing into that folder is exactly
+        what folderId is for (frontend navigation follows in #822).
       parameters:
         - name: page
           in: query
@@ -1244,9 +1263,23 @@ paths:
         - name: q
           in: query
           required: false
-          description: Case-insensitive substring match against the document's file name.
+          description: >
+            Case-insensitive substring match against the document's file name, searched across the
+            whole library regardless of folderId (#821).
           schema:
             type: string
+        - name: folderId
+          in: query
+          required: false
+          description: >
+            The folder to list (#821). Omitted or null means the library's root. When q is also
+            set, folderId is ignored for scoping/filtering - search is always bibliotheksweit - but
+            is still validated: it must reference an existing folder in this library whether or not
+            q is set, or the request is rejected with 404 - the same "unknown vs. foreign folder"
+            treatment GET /api/v1/libraries/{libraryId}/folders/{folderId} already applies.
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: Page of documents
@@ -1273,6 +1306,11 @@ paths:
         infrastructure the directory/URL indexing paths use. Poll GET on this library's document
         list to observe the transition to INDEXED or FAILED (errorMessage set on failure).
         Malware scanning is explicitly out of scope - see #420.
+
+        **folderId (#821, Epic #520 Phase 2, ADR-0020):** optional; omitted or null uploads into
+        the library's root, mirroring GET on this same path. When set, it must reference an
+        existing folder in this library, or the request is rejected with 404 - the same
+        unknown/foreign-folder treatment the folder CRUD endpoints already apply.
       requestBody:
         required: true
         content:
@@ -1284,6 +1322,12 @@ paths:
                 file:
                   type: string
                   format: binary
+                folderId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: >
+                    The folder to upload into (#821). Omitted or null means the library's root.
       responses:
         "201":
           description: >
@@ -4079,10 +4123,58 @@ components:
           description: >
             A German, user-facing reason set only while status is FAILED (#434) - why parsing or
             embedding could not complete. Always null for PENDING and INDEXED.
+        folderId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The folder this document sits in (#821, ADR-0020). Null means the library's root.
+        folderPath:
+          type: string
+          nullable: true
+          description: >
+            The document's folder chain as a display path, e.g. "Protokolle/2026" (#821) - derived
+            from library_folders, never stored. Null for a root-level document (folderId null).
+
+    LibraryFolderListItem:
+      type: object
+      required: [id, name, documentCount]
+      description: >
+        A direct subfolder shown alongside a folder-scoped GET .../documents response (#821) - a
+        lighter projection than LibraryFolderResponse, without parentFolderId/createdAt, which that
+        listing has no use for.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Protokolle
+        documentCount:
+          type: integer
+          format: int64
+          description: >
+            Every document inside this subfolder and every one of its own descendant subfolders,
+            recursively - the same semantics as LibraryFolderResponse.documentCount (#821 review:
+            a subfolder row here shows the same number a subsequent delete confirmation for it
+            would). Computed with one bundled query for every subfolder shown, not one per
+            subfolder's own subtree walk.
+
+    LibraryFolderBreadcrumbItem:
+      type: object
+      required: [id, name]
+      description: One link in the breadcrumb chain from a library's root to the requested folder.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Protokolle
 
     LibraryDocumentPageResponse:
       type: object
-      required: [items, page, size, totalElements]
+      required: [items, page, size, totalElements, folders, breadcrumb]
       properties:
         items:
           type: array
@@ -4098,6 +4190,27 @@ components:
           type: integer
           format: int64
           description: Total number of documents matching the (optional) q filter, across all pages.
+        folderId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The requested folderId, echoed back (#821). Null both for the library's root and for a
+            q search (search is always bibliotheksweit, regardless of folderId).
+        folders:
+          type: array
+          description: >
+            The requested folder's direct subfolders (#821). Always empty when q is set - search
+            results are a flat, bibliotheksweit list, not folder-scoped.
+          items:
+            $ref: "#/components/schemas/LibraryFolderListItem"
+        breadcrumb:
+          type: array
+          description: >
+            The requested folder's ancestor chain, root-first, ending with the requested folder
+            itself (#821). Empty at the library's root and always empty when q is set.
+          items:
+            $ref: "#/components/schemas/LibraryFolderBreadcrumbItem"
 
     LibraryFolderRequest:
       type: object

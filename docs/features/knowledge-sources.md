@@ -660,10 +660,10 @@ innerhalb einer Bibliothek und **keine eigene Rechtegrenze** — Grants bleiben 
 Bibliotheksebene (`asset_grants.library_id`). Details zur Rechte-Abgrenzung stehen in
 [Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md).
 
-Schema und CRUD-API (Ordner anlegen, umbenennen, rekursiv löschen) sind mit #820 **gebaut** — die
-darunterstehende Liste beschreibt weiterhin überwiegend das Zielbild, wo nicht ausdrücklich
-gekennzeichnet. Die ordner-bewusste Dokumentliste und der Upload in einen geöffneten Ordner folgen
-mit #821, die Navigation in der Oberfläche (Breadcrumb, Ordnerzeilen) mit #822.
+Schema und CRUD-API (Ordner anlegen, umbenennen, rekursiv löschen) sind mit #820 **gebaut**, die
+ordner-bewusste Dokumentliste und der Upload in einen Ordner mit #821 — die darunterstehende Liste
+beschreibt ab hier noch das Zielbild der Oberfläche, wo nicht ausdrücklich gekennzeichnet. Die
+Navigation in der Oberfläche (Breadcrumb, Ordnerzeilen) folgt mit #822.
 
 ### Ordner in UPLOAD-Bibliotheken
 
@@ -677,15 +677,24 @@ mit #821, die Navigation in der Oberfläche (Breadcrumb, Ordnerzeilen) mit #822.
   Bestätigung. Bestätigt, löscht der Vorgang die enthaltenen Dokumente inklusive ihrer Chunks und der
   abgelegten Datei — durch denselben Service, der auch die Einzellöschung eines Dokuments durchführt,
   nicht durch eine Datenbank-Kaskade (ADR-0020, Entscheidung 5).
-- **Upload in den geöffneten Ordner.** Die Bibliotheksdetailseite lädt Dateien standardmäßig in den
-  Ordner, der gerade in der Navigation geöffnet ist; auf der Wurzelebene entsprechend dorthin.
+- **Ordner-bewusste Dokumentliste (#821, gebaut).** `GET .../documents` zeigt ohne Suchbegriff nur
+  die Dokumente und direkten Unterordner des angefragten Ordners (`folderId`, dessen Fehlen die
+  Wurzel meint) plus dessen Breadcrumb-Kette — Bestandsclients ohne `folderId` landen damit auf der
+  Wurzel statt auf dem gesamten, ordnerübergreifenden Bestand wie vor #821 (ADR-0020: akzeptierte
+  Verhaltensänderung, da vor #820 ohnehin kein Ordner existieren konnte). Die Navigation selbst
+  (Breadcrumb, Ordnerzeilen in der Oberfläche) folgt mit #822.
+- **Upload in den geöffneten Ordner (#821, gebaut).** `POST .../documents` nimmt ein optionales
+  `folderId` entgegen; die Bibliotheksdetailseite lädt Dateien standardmäßig in den Ordner, der
+  gerade in der Navigation geöffnet ist (Oberfläche folgt mit #822), auf der Wurzelebene
+  entsprechend dorthin.
 - **Ordner-Upload per Drag & Drop mit Strukturübernahme.** Wird ein ganzer Ordner aus dem
   Dateisystem in die Bibliothek gezogen, übernimmt OPAA seine Unterstruktur: Zwischenordner werden bei
   Bedarf angelegt (idempotent — ein bereits vorhandener gleichnamiger Ordner auf derselben Ebene wird
   wiederverwendet, nicht dupliziert), und jede Datei landet im ihr entsprechenden Ordner.
-- **Bibliotheksweite Suche mit Ordnerpfad-Anzeige.** Die Suche innerhalb einer Bibliothek durchsucht
-  weiterhin den gesamten Bestand unabhängig von der Ordnerstruktur (siehe ADR-0020, Entscheidung 4 —
-  kein Ordner-Filter im Retrieval); ein Treffer zeigt zusätzlich den Ordnerpfad seines Dokuments an, damit
+- **Bibliotheksweite Suche mit Ordnerpfad-Anzeige (#821, gebaut).** Die Suche innerhalb einer
+  Bibliothek (`q`) durchsucht weiterhin den gesamten Bestand unabhängig von der Ordnerstruktur und
+  ignoriert ein mitgegebenes `folderId` (siehe ADR-0020, Entscheidung 4 — kein Ordner-Filter im
+  Retrieval); ein Treffer trägt zusätzlich `folderId`/`folderPath` seines Dokuments, damit
   erkennbar bleibt, wo es in der Struktur liegt.
 
 ### Ordner in FILESYSTEM-Bibliotheken

@@ -77,7 +77,8 @@ class LibraryFolderServiceTest {
 
     when(folderRepository.saveAndFlush(any(LibraryFolder.class)))
         .thenAnswer(inv -> inv.getArgument(0));
-    when(folderRepository.findByLibraryIdAndParentFolderId(any(), any())).thenReturn(List.of());
+    when(folderRepository.findByLibraryIdAndParentFolderIdOrderByNameAsc(any(), any()))
+        .thenReturn(List.of());
     when(documentRepository.countByFolderId(any())).thenReturn(0L);
     when(documentRepository.findByFolderId(any())).thenReturn(List.of());
   }
@@ -350,9 +351,9 @@ class LibraryFolderServiceTest {
     LibraryFolder root = new LibraryFolder(libraryId, null, "Archiv", organizationId);
     LibraryFolder child = new LibraryFolder(libraryId, root.getId(), "2026", organizationId);
     when(folderRepository.findById(root.getId())).thenReturn(Optional.of(root));
-    when(folderRepository.findByLibraryIdAndParentFolderId(libraryId, root.getId()))
+    when(folderRepository.findByLibraryIdAndParentFolderIdOrderByNameAsc(libraryId, root.getId()))
         .thenReturn(List.of(child));
-    when(folderRepository.findByLibraryIdAndParentFolderId(libraryId, child.getId()))
+    when(folderRepository.findByLibraryIdAndParentFolderIdOrderByNameAsc(libraryId, child.getId()))
         .thenReturn(List.of());
 
     Document rootDocument = mock(Document.class);
