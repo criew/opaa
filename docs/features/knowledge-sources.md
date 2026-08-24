@@ -653,49 +653,56 @@ anhält.
 
 ## Ordner in Bibliotheken
 
-**Backend-Fundament gebaut (#820), Liste/Upload und Oberfläche folgen.** Konzept und Datenmodell
-sind entschieden — siehe [ADR-0020](../decisions/0020-ordner-in-bibliotheken-navigation.md): eine
-eigene Tabelle `library_folders` (statt virtueller Pfad-Präfixe), Ordner sind reine Navigation
-innerhalb einer Bibliothek und **keine eigene Rechtegrenze** — Grants bleiben ausschließlich auf
+**Backend und Oberfläche für UPLOAD-Bibliotheken gebaut (#820, #821, #822); Ordner-Upload per Drag &
+Drop und die read-only Abbildung für FILESYSTEM-Bibliotheken folgen.** Konzept und Datenmodell sind
+entschieden — siehe [ADR-0020](../decisions/0020-ordner-in-bibliotheken-navigation.md): eine eigene
+Tabelle `library_folders` (statt virtueller Pfad-Präfixe), Ordner sind reine Navigation innerhalb
+einer Bibliothek und **keine eigene Rechtegrenze** — Grants bleiben ausschließlich auf
 Bibliotheksebene (`asset_grants.library_id`). Details zur Rechte-Abgrenzung stehen in
 [Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md).
 
 Schema und CRUD-API (Ordner anlegen, umbenennen, rekursiv löschen) sind mit #820 **gebaut**, die
-ordner-bewusste Dokumentliste und der Upload in einen Ordner mit #821 — die darunterstehende Liste
-beschreibt ab hier noch das Zielbild der Oberfläche, wo nicht ausdrücklich gekennzeichnet. Die
-Navigation in der Oberfläche (Breadcrumb, Ordnerzeilen) folgt mit #822.
+ordner-bewusste Dokumentliste und der Upload in einen Ordner mit #821, die Navigation und Verwaltung
+in der Bibliotheks-Detailansicht (Breadcrumb, Ordnerzeilen, Anlegen/Umbenennen/Löschen, Upload in den
+geöffneten Ordner, Ordnerpfad bei Suchtreffern) mit #822 — die darunterstehende Liste beschreibt ab
+hier noch das Zielbild, wo nicht ausdrücklich gekennzeichnet.
 
 ### Ordner in UPLOAD-Bibliotheken
 
-- **Anlegen, auch leer.** Eine Bibliothek lässt sich vorab strukturieren — Ordner wie „Protokolle" oder
-  „Archiv/2025" entstehen, bevor überhaupt ein Dokument darin liegt. Der typische Ablauf ist erst
-  Struktur, dann Inhalt.
-- **Umbenennen.** Ändert nur `library_folders.name`; Dokumente im Ordner und seinen Unterordnern sind
-  davon unberührt, ihr Anzeigepfad wird aus der aktuellen Ordnerkette abgeleitet.
-- **Löschen mit Bestätigungsdialog samt Dokumentanzahl.** Enthält der Ordner (oder ein Unterordner)
-  Dokumente, zeigt die Oberfläche vor dem Löschen deren Anzahl an und verlangt eine ausdrückliche
-  Bestätigung. Bestätigt, löscht der Vorgang die enthaltenen Dokumente inklusive ihrer Chunks und der
-  abgelegten Datei — durch denselben Service, der auch die Einzellöschung eines Dokuments durchführt,
-  nicht durch eine Datenbank-Kaskade (ADR-0020, Entscheidung 5).
-- **Ordner-bewusste Dokumentliste (#821, gebaut).** `GET .../documents` zeigt ohne Suchbegriff nur
-  die Dokumente und direkten Unterordner des angefragten Ordners (`folderId`, dessen Fehlen die
-  Wurzel meint) plus dessen Breadcrumb-Kette — Bestandsclients ohne `folderId` landen damit auf der
-  Wurzel statt auf dem gesamten, ordnerübergreifenden Bestand wie vor #821 (ADR-0020: akzeptierte
-  Verhaltensänderung, da vor #820 ohnehin kein Ordner existieren konnte). Die Navigation selbst
-  (Breadcrumb, Ordnerzeilen in der Oberfläche) folgt mit #822.
-- **Upload in den geöffneten Ordner (#821, gebaut).** `POST .../documents` nimmt ein optionales
+- **Anlegen, auch leer (#820/#822, gebaut).** Eine Bibliothek lässt sich vorab strukturieren — der
+  Button „Neuer Ordner" in der Bibliotheks-Detailansicht legt einen Ordner unter dem gerade
+  geöffneten Ordner an, auch bevor überhaupt ein Dokument darin liegt. Der typische Ablauf ist erst
+  Struktur, dann Inhalt. Ein Name, der auf derselben Ebene bereits vergeben ist, wird mit einer
+  verständlichen Meldung im Dialog abgewiesen (409).
+- **Umbenennen (#820/#822, gebaut).** Ändert nur `library_folders.name`; Dokumente im Ordner und
+  seinen Unterordnern sind davon unberührt, ihr Anzeigepfad wird aus der aktuellen Ordnerkette
+  abgeleitet. Über das Kontextmenü der Ordnerzeile.
+- **Löschen mit Bestätigungsdialog samt Dokumentanzahl (#820/#822, gebaut).** Enthält der Ordner
+  (oder ein Unterordner) Dokumente, nennt die Bestätigung vor dem Löschen deren Anzahl
+  („Ordner ‚Protokolle' und 47 Dokumente löschen?"). Bestätigt, löscht der Vorgang die enthaltenen
+  Dokumente inklusive ihrer Chunks und der abgelegten Datei — durch denselben Service, der auch die
+  Einzellöschung eines Dokuments durchführt, nicht durch eine Datenbank-Kaskade (ADR-0020,
+  Entscheidung 5).
+- **Ordner-bewusste Dokumentliste mit Navigation (#821/#822, gebaut).** `GET .../documents` zeigt
+  ohne Suchbegriff nur die Dokumente und direkten Unterordner des angefragten Ordners (`folderId`,
+  dessen Fehlen die Wurzel meint) plus dessen Breadcrumb-Kette — Bestandsclients ohne `folderId`
+  landen damit auf der Wurzel statt auf dem gesamten, ordnerübergreifenden Bestand wie vor #821
+  (ADR-0020: akzeptierte Verhaltensänderung, da vor #820 ohnehin kein Ordner existieren konnte). Die
+  Bibliotheks-Detailansicht zeigt Ordnerzeilen vor den Dokumenten und einen Breadcrumb-Pfad; der
+  geöffnete Ordner ist URL-Zustand (`?folder=<id>`), sodass Reload und geteilte Links funktionieren.
+  Eine ungültige oder fremde `folderId` in der URL (404) führt zurück zur Wurzel mit einem Hinweis.
+- **Upload in den geöffneten Ordner (#821/#822, gebaut).** `POST .../documents` nimmt ein optionales
   `folderId` entgegen; die Bibliotheksdetailseite lädt Dateien standardmäßig in den Ordner, der
-  gerade in der Navigation geöffnet ist (Oberfläche folgt mit #822), auf der Wurzelebene
-  entsprechend dorthin.
+  gerade in der Navigation geöffnet ist, auf der Wurzelebene entsprechend dorthin.
 - **Ordner-Upload per Drag & Drop mit Strukturübernahme.** Wird ein ganzer Ordner aus dem
   Dateisystem in die Bibliothek gezogen, übernimmt OPAA seine Unterstruktur: Zwischenordner werden bei
   Bedarf angelegt (idempotent — ein bereits vorhandener gleichnamiger Ordner auf derselben Ebene wird
   wiederverwendet, nicht dupliziert), und jede Datei landet im ihr entsprechenden Ordner.
-- **Bibliotheksweite Suche mit Ordnerpfad-Anzeige (#821, gebaut).** Die Suche innerhalb einer
+- **Bibliotheksweite Suche mit Ordnerpfad-Anzeige (#821/#822, gebaut).** Die Suche innerhalb einer
   Bibliothek (`q`) durchsucht weiterhin den gesamten Bestand unabhängig von der Ordnerstruktur und
   ignoriert ein mitgegebenes `folderId` (siehe ADR-0020, Entscheidung 4 — kein Ordner-Filter im
-  Retrieval); ein Treffer trägt zusätzlich `folderId`/`folderPath` seines Dokuments, damit
-  erkennbar bleibt, wo es in der Struktur liegt.
+  Retrieval); ein Treffer trägt zusätzlich `folderId`/`folderPath` seines Dokuments und zeigt diesen
+  Pfad an — ein Klick darauf öffnet den betreffenden Ordner.
 
 ### Ordner in FILESYSTEM-Bibliotheken
 

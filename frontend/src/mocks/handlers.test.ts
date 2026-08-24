@@ -169,6 +169,7 @@ describe('MSW Handlers', () => {
         page: 0,
         size: 20,
         totalElements: 0,
+        folderId: null,
         folders: [],
         breadcrumb: [],
       })

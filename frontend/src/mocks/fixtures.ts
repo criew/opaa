@@ -20,6 +20,17 @@ import type {
   LibraryResponse,
   SpaceLibraryAssociationListResponse,
 } from '../types/api'
+
+// #822: a plain mock shape rather than LibraryFolderResponse itself - documentCount there is
+// derived (recursive, computed on read), not a stored field, so keeping it out of the stored
+// fixture avoids it silently going stale as documents/folders are added or removed in tests.
+export interface MockLibraryFolder {
+  id: string
+  libraryId: string
+  parentFolderId: string | null
+  name: string
+  createdAt: string
+}
 import type { AuthConfig, AuthUser } from '../types/auth'
 
 export const mockHealthResponse: HealthResponse = {
@@ -815,6 +826,32 @@ export let mockLibraryDocuments: Record<string, LibraryDocumentResponse[]> =
 
 export function resetMockLibraryDocuments() {
   mockLibraryDocuments = structuredClone(INITIAL_LIBRARY_DOCUMENTS)
+}
+
+// #822: one pre-existing root-level folder on 'library-mine' (the OWNER/UPLOAD fixture already
+// used above for canManage-gated document actions) so folder navigation itself has something to
+// exercise without every test having to create a folder first.
+const INITIAL_LIBRARY_FOLDERS: Record<string, MockLibraryFolder[]> = {
+  'library-mine': [
+    {
+      id: 'folder-protokolle',
+      libraryId: 'library-mine',
+      parentFolderId: null,
+      name: 'Protokolle',
+      createdAt: '2026-03-01T10:00:00Z',
+    },
+  ],
+  'library-referat-50': [],
+  'library-dienstanweisungen': [],
+}
+
+// Mutable copy, mirroring mockLibraryDocuments above - handlers.ts reads and writes on the folder
+// CRUD endpoints, reset between tests via resetMockLibraryFolders().
+export let mockLibraryFolders: Record<string, MockLibraryFolder[]> =
+  structuredClone(INITIAL_LIBRARY_FOLDERS)
+
+export function resetMockLibraryFolders() {
+  mockLibraryFolders = structuredClone(INITIAL_LIBRARY_FOLDERS)
 }
 
 const INITIAL_LIBRARY_GRANTS: Record<string, AssetGrantResponse[]> = {
