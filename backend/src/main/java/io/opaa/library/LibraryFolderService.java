@@ -8,6 +8,12 @@ import io.opaa.auth.UserRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -22,6 +28,14 @@ import org.springframework.web.server.ResponseStatusException;
  * "only an UPLOAD library accepts this" restriction (see {@link #requireUploadLibrary}): a
  * FILESYSTEM library's folders will be read-only, derived from the crawled directory structure
  * itself in a later task (#824), not editable through this service.
+ *
+ * <p><b>#824 (Epic #520 Phase 4) is that later task:</b> {@link #materializeFolderPath} and {@link
+ * #pruneOrphanedFolders} are the internal counterparts a FILESYSTEM indexing run uses to mirror its
+ * source directory structure - deliberately bypassing {@link #requireUploadLibrary} (a FILESYSTEM
+ * library's folders are meant to be created this way, not blocked) and {@link #requireEditable} (an
+ * indexing job acts on the system's own behalf, there is no request-scoped caller/role to check).
+ * Neither method is reachable through {@link io.opaa.api.LibraryController} - only {@code
+ * io.opaa.indexing.AsyncIndexingExecutor} calls them.
  *
  * <p><b>Deletion is recursive and runs through the application layer, never a database cascade</b>
  * (ADR-0020, Entscheidung 5): {@link #deleteFolder} walks the folder's subtree leaf-first, deleting
@@ -173,6 +187,113 @@ public class LibraryFolderService {
       documentService.deleteDocument(libraryId, document.getId(), currentUserId, systemAdmin);
     }
     folderRepository.delete(folder);
+  }
+
+  /**
+   * Materializes (idempotently) the {@link LibraryFolder} chain for {@code segments} - one row per
+   * path component, reusing an existing folder at the same level instead of creating a duplicate
+   * (#824). The internal counterpart to {@link #createFolder} a FILESYSTEM indexing run uses to
+   * mirror its source directory structure - see this class's own Javadoc for why it bypasses {@link
+   * #requireUploadLibrary}/{@link #requireEditable}.
+   *
+   * @param segments the path components between the library's {@code sourcePath} and the file
+   *     itself, outermost first; an empty list means the library's root
+   * @return the id of the deepest folder in {@code segments}, or {@code null} for an empty list
+   */
+  @Transactional
+  public UUID materializeFolderPath(KnowledgeLibrary library, List<String> segments) {
+    UUID parentFolderId = null;
+    for (String name : segments) {
+      parentFolderId = materializeSingleFolder(library, parentFolderId, name);
+    }
+    return parentFolderId;
+  }
+
+  private UUID materializeSingleFolder(KnowledgeLibrary library, UUID parentFolderId, String name) {
+    Optional<LibraryFolder> existing = findByParentAndName(library.getId(), parentFolderId, name);
+    if (existing.isPresent()) {
+      return existing.get().getId();
+    }
+    LibraryFolder folder =
+        new LibraryFolder(library.getId(), parentFolderId, name, library.getOrganizationId());
+    try {
+      // saveAndFlush - see createFolder's identical reasoning: forces the unique-index violation
+      // (a concurrent materialization race - e.g. a re-triggered run overlapping the previous one)
+      // to surface here, inside this try, rather than at some later, unrelated flush.
+      folder = folderRepository.saveAndFlush(folder);
+      return folder.getId();
+    } catch (DataIntegrityViolationException e) {
+      // Race-safety net, mirroring createFolder's identical handling: another concurrent
+      // materialization already won the insert for this exact (library, parent, name) - reuse its
+      // row instead of failing this one.
+      return findByParentAndName(library.getId(), parentFolderId, name)
+          .map(LibraryFolder::getId)
+          .orElseThrow(() -> e);
+    }
+  }
+
+  private Optional<LibraryFolder> findByParentAndName(
+      UUID libraryId, UUID parentFolderId, String name) {
+    return parentFolderId == null
+        ? folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, name)
+        : folderRepository.findByLibraryIdAndParentFolderIdAndName(libraryId, parentFolderId, name);
+  }
+
+  /**
+   * Removes every {@link LibraryFolder} of {@code libraryId} that is both absent from {@code
+   * currentFolderIds} (this indexing run's own directory walk never touched it - its source
+   * directory is gone) and empty, including transitively (#824, docs/features/knowledge-sources.md
+   * "Ordner in FILESYSTEM-Bibliotheken"). Deliberately conservative: a FILESYSTEM run does not yet
+   * delete a document whose backing file disappeared ("Löschung durch Abwesenheit" is decided by
+   * ADR-0017 but not yet built for documents) - so a folder that still holds such a stale document
+   * (directly, or in one of its own subfolders) is left standing rather than silently discarding
+   * it. Once document deletion-by-absence ships, this same check keeps working unchanged: an empty
+   * folder is empty regardless of why.
+   *
+   * <p>Walked leaf-first (post-order): a folder only qualifies once every one of its own subfolders
+   * has already either survived (still referenced, or non-empty) or been removed - mirroring {@link
+   * #deleteRecursive}'s own order, though here driven by absence from {@code currentFolderIds}
+   * rather than an explicit delete request.
+   */
+  @Transactional
+  public void pruneOrphanedFolders(UUID libraryId, Set<UUID> currentFolderIds) {
+    List<LibraryFolder> all = folderRepository.findByLibraryId(libraryId);
+    // Built by hand, not via Collectors.groupingBy (#824 review self-catch): groupingBy's
+    // classifier is required to return a non-null key, but LibraryFolder#getParentFolderId is
+    // null for exactly the root-level folders this method must also walk - java.util.HashMap
+    // itself has no such restriction, so a plain computeIfAbsent loop handles the null-parent
+    // (root) case the same way as every other parent id.
+    Map<UUID, List<LibraryFolder>> childrenByParent = new HashMap<>();
+    for (LibraryFolder folder : all) {
+      childrenByParent
+          .computeIfAbsent(folder.getParentFolderId(), key -> new ArrayList<>())
+          .add(folder);
+    }
+    for (LibraryFolder root : childrenByParent.getOrDefault(null, List.of())) {
+      pruneRecursive(root, childrenByParent, currentFolderIds);
+    }
+  }
+
+  /**
+   * @return whether {@code folder} itself was removed
+   */
+  private boolean pruneRecursive(
+      LibraryFolder folder,
+      Map<UUID, List<LibraryFolder>> childrenByParent,
+      Set<UUID> currentFolderIds) {
+    boolean everyChildRemoved = true;
+    for (LibraryFolder child : childrenByParent.getOrDefault(folder.getId(), List.of())) {
+      if (!pruneRecursive(child, childrenByParent, currentFolderIds)) {
+        everyChildRemoved = false;
+      }
+    }
+    if (!everyChildRemoved
+        || currentFolderIds.contains(folder.getId())
+        || documentRepository.countByFolderId(folder.getId()) > 0) {
+      return false;
+    }
+    folderRepository.delete(folder);
+    return true;
   }
 
   private long countDocumentsRecursive(UUID libraryId, UUID folderId) {
