@@ -93,10 +93,9 @@ public class Chat {
    *
    * <p>{@code EAGER} (#525 review round 2, finding A; kept under #889's read phase/LLM call/write
    * phase pipeline - {@code QueryService#effectiveLibraryScope} still reads this collection on a
-   * detached, untransacted {@link Chat} in the read phase, never inside the write phase's
-   * transaction): the default {@code LAZY} fetch would throw {@code LazyInitializationException}
-   * there. Safe to pay unconditionally - the collection is small and read on essentially every
-   * load.
+   * detached {@link Chat} in the read phase, never inside the write phase's transaction): the
+   * default {@code LAZY} fetch would throw {@code LazyInitializationException} there. Safe to pay
+   * unconditionally - the collection is small and read on essentially every load.
    */
   @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "chat_library_references", joinColumns = @JoinColumn(name = "chat_id"))

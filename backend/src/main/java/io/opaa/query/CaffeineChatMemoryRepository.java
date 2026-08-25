@@ -23,10 +23,10 @@ import org.springframework.stereotype.Service;
  * with the {@code opaa.conversations.active} {@link Gauge} that {@link #size()} now backs -
  * self-registered in the constructor below like {@code ChatHealthIndicator} and the other
  * {@code @Component} classes in {@code io.opaa.observability} already do, rather than a separate
- * {@code @Bean} method. The two-/three-arg constructors below stay package-visible for tests that
- * need non-default limits or a synchronous eviction executor; {@link #CaffeineChatMemoryRepository(
- * MeterRegistry)} is the one Spring actually calls, marked {@link Autowired} because more than one
- * public constructor exists.
+ * {@code @Bean} method. The two-/three-arg constructors below are package-visible, for tests in
+ * {@code io.opaa.query} that need non-default limits or a synchronous eviction executor; {@link
+ * #CaffeineChatMemoryRepository(MeterRegistry)} is the one Spring actually calls, marked {@link
+ * Autowired} because more than one constructor exists.
  */
 @Service
 public class CaffeineChatMemoryRepository implements ChatMemoryRepository {
@@ -63,7 +63,7 @@ public class CaffeineChatMemoryRepository implements ChatMemoryRepository {
    * @param maxConversations maximum number of conversations to keep (LRU eviction)
    * @param ttlMinutes time-to-live in minutes after last access before a conversation is evicted
    */
-  public CaffeineChatMemoryRepository(int maxConversations, int ttlMinutes) {
+  CaffeineChatMemoryRepository(int maxConversations, int ttlMinutes) {
     this(maxConversations, ttlMinutes, null);
   }
 

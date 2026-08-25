@@ -21,6 +21,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
@@ -52,9 +53,12 @@ import tools.jackson.databind.ObjectMapper;
  * history remain theirs to read.
  *
  * <p>No class-level {@code @Transactional} (#889): every reading method carries its own explicit
- * {@code @Transactional(readOnly = true)}. {@link #appendTurn} carries none at all and runs, like
- * {@code QueryService#query} that calls it, with no ambient transaction of its own - only the
- * isolated per-attempt write in {@link ChatMessageWriter#writeTurnOnce} actually opens one.
+ * {@code @Transactional(readOnly = true)}. {@link #appendTurn} carries {@link
+ * Propagation#NOT_SUPPORTED} - not because a class-level default needs overriding anymore, but to
+ * structurally guarantee its retry loop never runs inside a caller's ambient transaction (the
+ * #299/#525 two-connections deadlock), rather than depending on every future caller's good
+ * behaviour. Only the isolated per-attempt write in {@link ChatMessageWriter#writeTurnOnce}
+ * actually opens a transaction.
  */
 @Service
 public class ChatService {
@@ -266,9 +270,11 @@ public class ChatService {
    * one from the question (#525's "Titel-Default aus der ersten Frage ableiten"). Called from
    * {@code QueryService#query} after generating the answer - the caller has already verified {@code
    * chat} belongs to the requesting user via {@link #findOwnedChat}. This is the write phase of
-   * that pipeline (#889): carries no ambient transaction of its own, same as {@code
-   * QueryService#query}'s read phase and LLM call that precede it - only {@link
-   * ChatMessageWriter#writeTurnOnce}, called per retry attempt below, actually opens one.
+   * that pipeline (#889): {@link Propagation#NOT_SUPPORTED} suspends any ambient transaction of the
+   * caller for this method's whole duration - {@code QueryService#query}'s read phase and LLM call
+   * that precede it already run with none of their own, but this annotation makes that a structural
+   * guarantee rather than one this method's behaviour merely depends on. Only {@link
+   * ChatMessageWriter#writeTurnOnce}, called per retry attempt below, actually opens a transaction.
    *
    * <p><b>Retries on a {@code sequence} collision</b> (#525 review round 2, finding/nit 2; #889:
    * the sequence is now {@code MAX(sequence) + 1}, not a row count, so it tolerates a gap left by a
@@ -303,6 +309,7 @@ public class ChatService {
    *
    * @return the chat's current title after this turn, or {@code null} if it no longer exists
    */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public String appendTurn(Chat chat, String question, String answer, List<ChatSource> sources) {
     // #613 review, finding 2 / #840: an archived space accepts no new content - including a new
     // turn in an existing chat, or the space could keep gaining fresh content forever and never

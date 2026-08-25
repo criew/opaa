@@ -16,32 +16,33 @@ import org.springframework.transaction.annotation.Transactional;
  * the full reasoning). Mirrors {@code
  * QueryServiceTest#queryMethodCarriesNoTransactionalAnnotation}, the equivalent structural proof
  * for the read/LLM side of the same pipeline - a reflection check, not a genuine
- * concurrent-connections test, deliberately: the previous manual {@code TransactionTemplate}/{@code
- * Propagation.NOT_SUPPORTED} construct these annotations replace had no such test either, only this
- * same class of structural Javadoc contract.
+ * concurrent-connections test, deliberately: the manual {@code TransactionTemplate} this class's
+ * replacement, {@link ChatMessageWriter}, replaces had no such test either, only this same class of
+ * structural Javadoc contract.
  */
 class ChatTurnTransactionBoundaryTest {
 
   /**
-   * {@link ChatService#appendTurn} must carry no {@code @Transactional} annotation of its own: with
-   * the class-level annotation removed (#889), a class-level default no longer needs an override,
-   * and any annotation here would again wrap the whole method - including its LLM-call-adjacent
-   * retry loop - in one ambient transaction, holding a connection the caller never needs.
+   * {@link ChatService#appendTurn} must carry {@link Propagation#NOT_SUPPORTED} (#889): it no
+   * longer needs to override a class-level default (that default is gone), but the annotation stays
+   * as a structural guarantee that this method's retry loop never runs inside a caller's ambient
+   * transaction - the #299/#525 two-connections deadlock - rather than depending on every future
+   * caller never carrying one.
    */
   @Test
-  void appendTurnCarriesNoTransactionalAnnotation() throws NoSuchMethodException {
+  void appendTurnSuspendsAnyAmbientTransaction() throws NoSuchMethodException {
     Method appendTurn =
         ChatService.class.getMethod(
             "appendTurn", Chat.class, String.class, String.class, List.class);
 
-    assertThat(appendTurn.getAnnotation(Transactional.class)).isNull();
+    Transactional annotation = appendTurn.getAnnotation(Transactional.class);
+    assertThat(annotation).isNotNull();
+    assertThat(annotation.propagation()).isEqualTo(Propagation.NOT_SUPPORTED);
   }
 
   /**
    * {@link ChatService} must carry no class-level {@code @Transactional} annotation at all (#889) -
-   * every reading method declares its own explicit {@code @Transactional(readOnly = true)} instead,
-   * precisely so {@link #appendTurnCarriesNoTransactionalAnnotation} holds without needing an
-   * override.
+   * every reading method declares its own explicit {@code @Transactional(readOnly = true)} instead.
    */
   @Test
   void chatServiceCarriesNoClassLevelTransactionalAnnotation() {

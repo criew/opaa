@@ -586,6 +586,7 @@ Sinn; das ist jeweils vermerkt.
 | **Abfrage (RAG-Retrieval)** | | | |
 | `OPAA_QUERY_TOP_K` | `5` | `5` | Anzahl der pro Abfrage abgerufenen Dokument-Chunks (1–100) |
 | `OPAA_QUERY_SIMILARITY_THRESHOLD` | `0.3` | `0.3` | Minimale Kosinus-Ähnlichkeit für Chunk-Aufnahme (0,0–1,0) |
+| `OPAA_QUERY_PERMISSION_HISTORY_SAMPLE_RATE` | `1.0` | `1.0` | Anteil der Abfragen, für die der Abgleich der Live-Rechte gegen die historisierte Rechteformel (#238) tatsächlich läuft, als Wahrscheinlichkeit zwischen `0,0` und `1,0` (#889). Standardmäßig läuft der Abgleich bei jeder Abfrage; drei Zusatz-Queries über wachsende Tabellen je Anfrage sind der Grund, den Wert für eine Betriebsumgebung mit hohem Abfrageaufkommen abzusenken |
 | **Indizierung** | | | |
 | `OPAA_INDEXING_DOCUMENT_PATH` | `./documents` | `./documents` | Dateisystempfad für Quelldokumente |
 | `OPAA_INDEXING_CHUNK_SIZE` | `1000` | `1000` | Ziel-Tokens pro Chunk (1–10.000) |

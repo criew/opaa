@@ -9,8 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * The write-phase persistence unit of one {@link ChatService#appendTurn} retry attempt (#889).
  * {@link #writeTurnOnce}'s {@link Propagation#REQUIRES_NEW} guarantees a failed attempt's rollback
- * never poisons a later retry attempt sharing one physical transaction, regardless of whether the
- * caller happens to carry an ambient transaction of its own.
+ * never poisons a later retry attempt sharing one physical transaction - it says nothing about
+ * connection count on its own; {@code appendTurn}'s own {@code Propagation.NOT_SUPPORTED} is what
+ * guarantees this method's transaction is never a <em>second</em> connection held alongside an
+ * ambient one (the #299/#525 deadlock).
  */
 @Service
 class ChatMessageWriter {

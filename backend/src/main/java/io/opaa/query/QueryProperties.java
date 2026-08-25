@@ -1,6 +1,7 @@
 package io.opaa.query;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
  * Configuration properties for the RAG query pipeline.
@@ -13,20 +14,20 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     miss relevant documents on imprecise user queries.
  * @param permissionHistorySampleRate the fraction of queries {@link
  *     QueryService#checkAgainstPermissionHistory} actually runs for, expressed as a probability in
- *     {@code [0.0, 1.0]} (#889, O1). Default 0.01 (1 %): the check reconstructs the historized
- *     permission set from three append-only-growing tables on every call it runs for, purely to log
- *     a drift warning
- *     (docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten) -
- *     running it on every single query paid that cost on the hot path for a signal that is, by
- *     construction, either "no drift" (the overwhelming majority of calls) or a bug that, once
- *     introduced, keeps reproducing on every subsequent query until fixed - a 1 % sample still
- *     surfaces it well within the time it takes to notice, without paying the reconstruction cost
- *     on every request. {@code 1.0} restores the pre-#889 "every query" behaviour for a test or a
- *     deployment that wants it.
+ *     {@code [0.0, 1.0]} (#889, O1) - see
+ *     docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten. Default
+ *     {@code 1.0}: the pre-#889 behaviour, every query checked, unchanged without an explicit
+ *     maintainer decision to lower it - the check is a compliance control, and a missing property
+ *     must not silently disable most of it. {@code @DefaultValue} backs this at the binder level
+ *     too, not just in {@code application.yml}, so a caller assembling an {@code Environment}
+ *     without that file still gets {@code 1.0}, never Java's primitive-{@code double} zero.
+ *     Lowering it trades that guarantee for less load from the check's three additional queries
+ *     against ever-growing tables per sampled query - an operator's explicit choice, not this
+ *     project's default.
  */
 @ConfigurationProperties(prefix = "opaa.query")
 public record QueryProperties(
-    int topK, double similarityThreshold, double permissionHistorySampleRate) {
+    int topK, double similarityThreshold, @DefaultValue("1.0") double permissionHistorySampleRate) {
 
   public QueryProperties {
     if (topK <= 0) {
