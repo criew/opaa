@@ -33,6 +33,12 @@ public final class SpaceAccessPolicy {
    * The caller's effective role in {@code space}: their own membership role, or {@link
    * SpaceRole#ADMIN} if they are the space's owner, whichever ranks higher. {@code null} if the
    * caller is neither a member nor the owner.
+   *
+   * <p><b>Not to be confused with {@code LibraryAccessService#effectiveRole}</b>, which folds a
+   * system-admin bypass <em>into</em> its own return value (system admin ⇒ {@code AssetRole.OWNER}
+   * unconditionally). This method deliberately does the opposite - system-admin bypass is never
+   * folded in here, see the class Javadoc - so a system admin who is not a member of {@code space}
+   * still gets {@code null} from this method, not {@link SpaceRole#ADMIN}.
    */
   public static SpaceRole effectiveRole(Space space, UUID userId) {
     SpaceMembership membership = membership(space, userId);
@@ -40,7 +46,7 @@ public final class SpaceAccessPolicy {
     if (membership == null) {
       return owner ? SpaceRole.ADMIN : null;
     }
-    return owner && membership.getRole() != SpaceRole.ADMIN
+    return owner && !membership.getRole().atLeast(SpaceRole.ADMIN)
         ? SpaceRole.ADMIN
         : membership.getRole();
   }
@@ -53,7 +59,7 @@ public final class SpaceAccessPolicy {
   /** Whether the caller's {@link #effectiveRole} ranks at or above {@code minRole}. */
   public static boolean hasAtLeast(Space space, UUID userId, SpaceRole minRole) {
     SpaceRole role = effectiveRole(space, userId);
-    return role != null && role.ordinal() >= minRole.ordinal();
+    return role != null && role.atLeast(minRole);
   }
 
   /**
@@ -70,17 +76,25 @@ public final class SpaceAccessPolicy {
   }
 
   /**
-   * Requires ADMIN {@link #effectiveRole} - i.e. an ADMIN member or the owner. Deliberately no
-   * system-admin bypass: {@code SpaceService}'s pre-#888 {@code requireManager} had none either,
-   * and callers ({@code addMember}, {@code updateMemberRole}, {@code removeMember}) still check
-   * {@code caller.isSystemAdmin()} themselves where they need it.
+   * Requires ADMIN {@link #effectiveRole} - i.e. an ADMIN member or the owner. No system-admin
+   * bypass, bewusst wie vor #888: {@code SpaceService}'s pre-#888 {@code requireManager} had none
+   * either, and its callers ({@code addMember}, {@code updateMemberRole}, {@code removeMember}) do
+   * not check {@code caller.isSystemAdmin()} themselves either - a system admin who is not already
+   * an ADMIN member (or the owner) of this particular space cannot manage its members. A
+   * pre-existing gap, not something #888 introduces or was asked to close.
+   *
+   * <p>Requires an actual {@link SpaceMembership} row to exist even for the owner: the "kein
+   * Mitglied"/"no member" branch below checks raw membership presence, not {@link #effectiveRole},
+   * so an owner without any membership row (unreachable through the API - {@code transferOwnership}
+   * only ever transfers to an existing member, and every space is created with its owner as an
+   * ADMIN member) would still be rejected here rather than silently treated as ADMIN.
    */
   public static SpaceMembership requireManager(Space space, CurrentUser caller) {
     SpaceMembership membership = membership(space, caller.id());
     if (membership == null) {
       throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
     }
-    if (effectiveRole(space, caller) != SpaceRole.ADMIN) {
+    if (!effectiveRole(space, caller).atLeast(SpaceRole.ADMIN)) {
       throw new AccessDeniedException("Nur Administratoren können Mitglieder verwalten");
     }
     return membership;
@@ -90,13 +104,16 @@ public final class SpaceAccessPolicy {
    * #144: the member list is restricted to ADMIN, the owner and system admins - the owner check was
    * already explicit before #888 ({@code transferOwnership} never raises the new owner's own
    * membership role), so routing it through {@link #effectiveRole} here changes no behavior.
+   *
+   * <p>Like {@link #requireManager}, this requires an actual membership row even for the owner -
+   * see that method's Javadoc for why that state is unreachable through the API in practice.
    */
   public static SpaceMembership requireMemberListViewer(Space space, CurrentUser caller) {
     SpaceMembership membership = membership(space, caller.id());
     if (membership == null) {
       throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
     }
-    if (effectiveRole(space, caller) != SpaceRole.ADMIN) {
+    if (!effectiveRole(space, caller).atLeast(SpaceRole.ADMIN)) {
       throw new AccessDeniedException(
           "Nur Administratoren oder der Eigentümer können die Mitgliederliste einsehen");
     }

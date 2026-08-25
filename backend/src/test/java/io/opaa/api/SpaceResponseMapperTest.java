@@ -68,6 +68,40 @@ class SpaceResponseMapperTest {
     assertThat(response.getUserRole()).isNull();
   }
 
+  /**
+   * #891 review: {@code userRole} is the caller's {@code SpaceAccessPolicy#effectiveRole}, not
+   * their raw {@link SpaceMembership} row - an owner whose own membership is still MEMBER (unraised
+   * by {@code SpaceService#transferOwnership}) gets {@code userRole=ADMIN} here, which is what lets
+   * the frontend's {@code role==='ADMIN'} gate show them the manager UI.
+   */
+  @Test
+  void toResponseReportsAdminUserRoleForAnOwnerWithABelowAdminMembership() {
+    UUID owner = UUID.randomUUID();
+    UUID organization = UUID.randomUUID();
+    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.MEMBER, organization));
+
+    SpaceResponse response = SpaceResponseMapper.toResponse(space, owner);
+
+    assertThat(response.getUserRole()).isEqualTo(SpaceRole.ADMIN);
+    // roleCounts keeps showing the raw membership role, including the owner's own row - only
+    // userRole is adjusted for ownership.
+    assertThat(response.getRoleCounts()).containsEntry("MEMBER", 1L).containsEntry("ADMIN", 0L);
+  }
+
+  @Test
+  void toListResponseReportsAdminUserRoleForAnOwnerWithABelowAdminMembership() {
+    UUID owner = UUID.randomUUID();
+    UUID organization = UUID.randomUUID();
+    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.CURATOR, organization));
+    SpaceOverview overview = new SpaceOverview(space, 0, 0);
+
+    SpaceListResponse response = SpaceResponseMapper.toListResponse(overview, owner);
+
+    assertThat(response.getUserRole()).isEqualTo(SpaceRole.ADMIN);
+  }
+
   @Test
   void toListResponseCarriesOverviewFiguresAlongsideSpaceFields() {
     UUID owner = UUID.randomUUID();
