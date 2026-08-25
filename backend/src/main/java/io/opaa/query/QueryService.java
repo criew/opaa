@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -40,7 +41,10 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
+import org.springframework.stereotype.Service;
 
+/** {@code @Service} (#889, O2): previously wired manually in {@code QueryConfiguration}. */
+@Service
 public class QueryService {
 
   private static final Logger log = LoggerFactory.getLogger(QueryService.class);
@@ -114,16 +118,18 @@ public class QueryService {
    * exactly as #526 introduced them, remembered only in the in-memory cache under a key reused from
    * a caller-supplied {@code chatId} when one was given, or freshly generated otherwise.
    *
-   * <p><b>#238's regression check:</b> the readable set ({@code readableLibraryIds} below, distinct
-   * from the narrower {@code searchScope} #525/#526 may derive from it) is compared against {@link
+   * <p><b>#238's regression check</b> (#889, O1: now sampled - see {@link
+   * #maybeCheckAgainstPermissionHistory}): for {@link QueryProperties#permissionHistorySampleRate}
+   * of queries, the readable set ({@code readableLibraryIds} below, distinct from the narrower
+   * {@code searchScope} #525/#526 may derive from it) is compared against {@link
    * PermissionHistoryService#readableLibraryIdsAsOf}'s reconstruction for the same instant, logging
    * a warning if the live computation reaches a library the history would not - a beweisbarer
    * Durchsetzungsfehler per
    * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten.
    * Deliberately not a per-query log line of the full permission set itself: the feature spec
    * rejects that as an unnecessary expansion of personal data (see the same section), so only a
-   * detected mismatch - not every query - is written to the application log, and even then only the
-   * offending library id, not the caller's whole readable set.
+   * detected mismatch - not every sampled query - is written to the application log, and even then
+   * only the offending library id, not the caller's whole readable set.
    *
    * <p><b>#526's search-scope controls</b>, {@code useKnowledge} and {@code requestedLibraryIds}
    * (only consulted for a query with no persisted chat, see above): {@code useKnowledge = true}
@@ -165,6 +171,10 @@ public class QueryService {
         .record(
             () -> {
               try {
+                // --- Read phase (#889): membership/archive/scope checks and the vector search
+                // below all run without any ambient transaction of their own - each repository
+                // call opens and releases its own short-lived connection (see this method's
+                // Javadoc's "Deliberately not @Transactional" section).
                 Optional<Chat> chat = chatService.findOwnedChat(chatId, currentUserId);
                 // #525 review, finding 4: querying is chatting, and chatting requires space
                 // membership even for an author who already owns the chat - see
@@ -209,7 +219,7 @@ public class QueryService {
                 Instant scopeComputedAt = Instant.now();
                 Set<UUID> readableLibraryIds =
                     libraryAccessService.readableLibraryIds(currentUserId, caller.organizationId());
-                checkAgainstPermissionHistory(
+                maybeCheckAgainstPermissionHistory(
                     readableLibraryIds, currentUserId, caller.organizationId(), scopeComputedAt);
 
                 // A persisted chat's own settings govern the scope entirely (#525); only an
@@ -252,6 +262,9 @@ public class QueryService {
 
                 log.debug("Found {} relevant chunks for query", relevantChunks.size());
 
+                // --- LLM call (#889): the slowest step, and the reason no phase in this method
+                // carries a transaction - see this method's Javadoc's "Deliberately not
+                // @Transactional" section for the pool-deadlock history (#299/#525) this avoids.
                 ChatResponse chatResponse =
                     answerGenerationService.generateAnswer(
                         question, relevantChunks, conversationKey);
@@ -279,6 +292,8 @@ public class QueryService {
 
                 metrics.recordSuccess(tokenCount);
 
+                // --- Write phase (#889): the one place this method's result is persisted, in
+                // ChatService#appendTurn's own transaction(s) - see that method's Javadoc.
                 // #561 review, finding 2: appendTurn no longer mutates the `chat` instance loaded
                 // above in place - its title/title_source writes go through atomic, targeted
                 // ChatRepository updates instead (see that method's Javadoc), so this `chat`
@@ -343,6 +358,24 @@ public class QueryService {
   }
 
   /**
+   * #889 (O1): samples {@link #checkAgainstPermissionHistory} down to {@link
+   * QueryProperties#permissionHistorySampleRate} of queries instead of running it on every single
+   * one - see that field's Javadoc for why paying the reconstruction cost on every request is
+   * unnecessary for a drift signal that either never fires or, once introduced, keeps firing on
+   * every subsequent query until fixed. {@code sampleRate = 1.0} runs the check every time (the
+   * pre-#889 behaviour, e.g. for a deployment or a test that wants it); {@code sampleRate = 0.0}
+   * never runs it. The dice roll happens here, not inside {@link #checkAgainstPermissionHistory}
+   * itself, so that method stays a plain, deterministic, directly testable check.
+   */
+  private void maybeCheckAgainstPermissionHistory(
+      Set<UUID> readableScope, UUID currentUserId, UUID organizationId, Instant asOf) {
+    if (ThreadLocalRandom.current().nextDouble() >= queryProperties.permissionHistorySampleRate()) {
+      return;
+    }
+    checkAgainstPermissionHistory(readableScope, currentUserId, organizationId, asOf);
+  }
+
+  /**
    * #238's regression check - see {@link #query}'s Javadoc. {@code readableScope} is the full set
    * {@link LibraryAccessService#readableLibraryIds} computed for this query at {@code asOf} - not
    * necessarily the narrower {@code searchScope} #525/#526 may actually hand to the vector store,
@@ -351,7 +384,9 @@ public class QueryService {
    * logged as a single warning per query (not once per offending library - code review of #427, nit
    * 2), never silently ignored. {@code asOf} is the instant {@code readableScope} was itself
    * computed at, not a fresh {@code Instant.now()} taken here - reusing it avoids a false-positive
-   * mismatch from a permission change landing in the gap between the two computations.
+   * mismatch from a permission change landing in the gap between the two computations. Not sampled
+   * itself - see {@link #maybeCheckAgainstPermissionHistory}, its only caller, for the sampling
+   * decision (#889, O1).
    */
   private void checkAgainstPermissionHistory(
       Set<UUID> readableScope, UUID currentUserId, UUID organizationId, Instant asOf) {

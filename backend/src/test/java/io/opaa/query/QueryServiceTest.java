@@ -91,7 +91,7 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(5, 0.3),
+            new QueryProperties(5, 0.3, 1.0),
             knowledgeLibraryRepository);
 
     // lenient: not every test in this class exercises the full query() path (e.g. the
@@ -108,6 +108,73 @@ class QueryServiceTest {
     // #525 default: no chatId given (or it does not resolve to a chat the caller authored) runs
     // the query ephemerally, exactly as before persisted chats existed.
     lenient().when(chatService.findOwnedChat(any(), any())).thenReturn(Optional.empty());
+  }
+
+  /**
+   * #889 (O1): {@code permissionHistorySampleRate = 0.0} must skip the check entirely - the whole
+   * point of sampling is to spare the reconstruction cost for queries it does not run for.
+   */
+  @Test
+  void permissionHistoryCheckNeverRunsWhenSampleRateIsZero() {
+    QueryService serviceWithNoSampling =
+        new QueryService(
+            vectorStore,
+            answerGenerationService,
+            chatMemory,
+            new CitationParser(),
+            new CitationValidator(),
+            documentRepository,
+            libraryAccessService,
+            permissionHistoryService,
+            chatService,
+            new QueryMetrics(new SimpleMeterRegistry()),
+            new QueryProperties(5, 0.3, 0.0),
+            knowledgeLibraryRepository);
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    serviceWithNoSampling.query("Question", null, caller, true, List.of());
+
+    verifyNoInteractions(permissionHistoryService);
+  }
+
+  /**
+   * #889 (O1): {@code permissionHistorySampleRate = 1.0} is the pre-#889 "every query" behaviour -
+   * a mismatch must still be logged exactly as before sampling existed. No test previously
+   * exercised this log line at all (only the lenient default stub in {@link #setUp} existed); this
+   * closes that gap while proving sampling's "1.0 = always" boundary.
+   */
+  @Test
+  void permissionHistoryCheckLogsMismatchWhenSampleRateIsOne() {
+    var logger =
+        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(QueryService.class);
+    var logAppender =
+        new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+    logAppender.start();
+    logger.addAppender(logAppender);
+    try {
+      when(permissionHistoryService.readableLibraryIdsAsOf(eq(currentUserId), any(), any()))
+          .thenReturn(Set.of());
+      when(chatMemory.get(any())).thenReturn(List.of());
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      queryService.query("Question", null, caller, true, List.of());
+
+      var mismatchEvents =
+          logAppender.list.stream()
+              .filter(
+                  event ->
+                      event.getFormattedMessage().contains("Permission history regression check"))
+              .toList();
+      assertThat(mismatchEvents).isNotEmpty();
+      assertThat(mismatchEvents)
+          .allSatisfy(
+              event -> assertThat(event.getLevel()).isEqualTo(ch.qos.logback.classic.Level.WARN));
+    } finally {
+      logger.detachAppender(logAppender);
+    }
   }
 
   /**
@@ -779,7 +846,7 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(5, 0.3),
+            new QueryProperties(5, 0.3, 1.0),
             knowledgeLibraryRepository);
 
     UUID otherUserId = UUID.randomUUID();

@@ -490,10 +490,17 @@ Prüfungen gerade sie häufig betreffen.
 
 **Regressionsprüfung gegen Filterfehler:** Wendet eine Abfrage einen Suchbereich an, der eine nach der
 Historie zu diesem Zeitpunkt nicht lesbare Bibliothek enthält, ist das ein beweisbarer
-Durchsetzungsfehler. Der Abgleich ist billig — er läuft aber als **automatisierte Prüfung gegen die
-Rechtehistorie**, nicht über eine Protokollzeile je Abfrage: Die erste Protokollstufe schreibt Abfragen
-bewusst nicht mit (siehe [Was ausdrücklich nicht protokolliert wird](#was-ausdrücklich-nicht-protokolliert-wird)).
-Die Prüfung braucht die Ereignisse auch nicht dauerhaft, sondern nur im Moment der Ausführung.
+Durchsetzungsfehler. Sie läuft als **automatisierte Prüfung gegen die Rechtehistorie**, nicht über eine
+Protokollzeile je Abfrage: Die erste Protokollstufe schreibt Abfragen bewusst nicht mit (siehe
+[Was ausdrücklich nicht protokolliert wird](#was-ausdrücklich-nicht-protokolliert-wird)). Die Prüfung
+braucht die Ereignisse auch nicht dauerhaft, sondern nur im Moment der Ausführung.
+
+Standardmäßig läuft der Abgleich bei **jeder** Abfrage (`OPAA_QUERY_PERMISSION_HISTORY_SAMPLE_RATE=1.0`)
+— die Zusicherung dieses Abschnitts gilt uneingeschränkt für jede Suche. Er rekonstruiert die
+historisierte Rechteformel über drei Zusatz-Queries gegen anhaltend wachsende Tabellen, was bei hohem
+Abfrageaufkommen spürbar wird; ein Betrieb kann den Anteil geprüfter Abfragen über dieselbe Variable
+absenken (#889). Das ist eine bewusste Performance-/Nachweisbarkeits-Abwägung des Betriebsteams, keine
+Werkseinstellung dieses Projekts — der Regelfall bleibt die vollständige Prüfung.
 
 Das ist bewusst **anders gelöst als über eine Protokollzeile je Abfrage**: Die Rechtemenge bei jeder Suche
 mitzuschreiben würde das Protokoll um eine erhebliche Menge personenbezogener Daten erweitern — genau das,

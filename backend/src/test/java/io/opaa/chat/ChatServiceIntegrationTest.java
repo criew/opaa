@@ -47,6 +47,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
@@ -63,14 +64,19 @@ import tools.jackson.databind.ObjectMapper;
  * create foreign keys for those, Liquibase does ({@code fk_chats_space}, {@code fk_chats_author},
  * migration 032).
  */
-// Own @MockitoBean set (see below) means Spring's context cache still keys this to its own
-// context regardless of the shared @OpaaIntegrationTest base - documented exception per AGENTS.md.
+// Own @MockitoBean/@MockitoSpyBean set (see below) means Spring's context cache still keys this to
+// its own context regardless of the shared @OpaaIntegrationTest base - documented exception per
+// AGENTS.md.
 @OpaaIntegrationTest
 class ChatServiceIntegrationTest {
 
   @Autowired private ChatService chatService;
   @Autowired private ChatRepository chatRepository;
-  @Autowired private ChatMessageRepository chatMessageRepository;
+
+  // @MockitoSpyBean, not @Autowired (own context - see this class's Javadoc, already forced by the
+  // @MockitoBean set below): appendTurnRetriesWhenAConcurrentTurnWinsTheRaceOnTheSameSequence below
+  // stubs one call of findMaxSequenceByChatId to force a deterministic sequence collision.
+  @MockitoSpyBean private ChatMessageRepository chatMessageRepository;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private SpaceMembershipRepository spaceMembershipRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
@@ -609,34 +615,67 @@ class ChatServiceIntegrationTest {
   }
 
   /**
-   * #525 review round 2, finding/nit 2: {@code nextSequenceFor} is a plain {@code COUNT(*)}, not a
-   * locking read, so two turns appended to the same chat at nearly the same instant can compute the
-   * same next sequence and race to insert it. Deterministically forces exactly that collision by
-   * pre-inserting a row at the sequence {@code appendTurn} is about to compute, instead of relying
-   * on genuine thread concurrency (flaky and slow) - {@code appendTurn} must recover via its retry
-   * loop rather than surfacing the {@code uk_chat_messages_chat_sequence} violation to the caller.
+   * #889 review: {@code MAX(sequence)} is not a locking read, so two turns appended to the same
+   * chat at nearly the same instant can still compute the same next sequence. Forces exactly that
+   * collision deterministically: stubs one {@code findMaxSequenceByChatId} call to return a stale
+   * value (as if read just before a concurrent turn's insert committed), while that concurrent row
+   * is already present in the database - {@code appendTurn} must recover via its retry loop rather
+   * than surfacing the {@code uk_chat_messages_chat_sequence} violation to the caller.
    */
   @Test
-  void appendTurnRetriesPastASequenceCollisionInsteadOfFailing() {
+  void appendTurnRetriesWhenAConcurrentTurnWinsTheRaceOnTheSameSequence() {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    chatService.appendTurn(chat, "Erste Frage", "Erste Antwort", List.of()); // sequence 0, 1
 
-    // Simulates a concurrent turn that already won sequence 0 by the time this call's own
-    // COUNT(*)-based nextSequenceFor would otherwise compute the same number.
+    // The concurrent turn's insert (sequence 2) has already committed, but the stub below makes
+    // this call's own read see the value from before it did.
     jdbcTemplate.update(
         "INSERT INTO chat_messages (id, chat_id, sequence, role, content, created_at)"
-            + " VALUES (?, ?, 0, 'USER', 'Konkurrierende Frage', now())",
+            + " VALUES (?, ?, 2, 'USER', 'Konkurrierende Frage', now())",
         UUID.randomUUID(),
         chat.getId());
+    // doReturn(1, 2), not doCallRealMethod() for the second call: Mockito cannot call through to
+    // the real implementation of a Spring Data repository interface method (it has none of its
+    // own - the real bean is itself a dynamic proxy), so the retry's correct value (2, matching
+    // the concurrent insert above) is supplied explicitly instead.
+    doReturn(1, 2).when(chatMessageRepository).findMaxSequenceByChatId(chat.getId());
 
     chatService.appendTurn(chat, "Meine Frage", "Meine Antwort", List.of());
 
     List<ChatMessage> messages = chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId());
-    assertThat(messages).hasSize(3);
-    assertThat(messages).extracting(ChatMessage::getSequence).containsExactly(0, 1, 2);
-    assertThat(messages.get(1).getContent()).isEqualTo("Meine Frage");
-    assertThat(messages.get(2).getContent()).isEqualTo("Meine Antwort");
+    assertThat(messages).extracting(ChatMessage::getSequence).containsExactly(0, 1, 2, 3, 4);
+    assertThat(messages.get(3).getContent()).isEqualTo("Meine Frage");
+    assertThat(messages.get(4).getContent()).isEqualTo("Meine Antwort");
+  }
+
+  /**
+   * #889 hardening: no path in the application deletes an individual {@link ChatMessage} today, so
+   * this guards against a latent failure mode rather than an active bug - {@code MAX(sequence)}
+   * tolerates a gap a deletion would leave, where a row count would collide with a still-existing
+   * row on every retry and exhaust them, discarding an already-generated LLM answer.
+   */
+  @Test
+  void appendTurnSucceedsAfterAnEarlierMessageWasDeleted() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+
+    chatService.appendTurn(chat, "Erste Frage", "Erste Antwort", List.of());
+    chatService.appendTurn(chat, "Zweite Frage", "Zweite Antwort", List.of());
+    // Leaves sequences {0, 2, 3} - COUNT(*) now returns 3, colliding with the still-existing row
+    // at sequence 3, while MAX(sequence) + 1 correctly continues at 4.
+    List<ChatMessage> messagesBeforeDeletion =
+        chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId());
+    chatMessageRepository.delete(messagesBeforeDeletion.get(1));
+
+    chatService.appendTurn(chat, "Dritte Frage", "Dritte Antwort", List.of());
+
+    List<ChatMessage> messages = chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId());
+    assertThat(messages).extracting(ChatMessage::getSequence).containsExactly(0, 2, 3, 4, 5);
+    assertThat(messages.get(3).getContent()).isEqualTo("Dritte Frage");
+    assertThat(messages.get(4).getContent()).isEqualTo("Dritte Antwort");
   }
 
   @Test
