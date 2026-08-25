@@ -3,7 +3,6 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
@@ -12,9 +11,9 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryFolder;
 import io.opaa.library.LibraryFolderRepository;
-import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIndexingTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,17 +23,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * End-to-end coverage of #824 (Epic #520 Phase 4, ADR-0020): a FILESYSTEM library's real directory
@@ -45,31 +35,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * fk_library_folders_parent} only exist there, not under {@code ddl-auto=create-drop}), the same
  * Testcontainers/{@code FakeEmbeddingModel} setup {@link DocumentIndexingIntegrationTest} uses.
  */
-// Own @DynamicPropertySource (below, indexing-specific paths/chunk sizing) means Spring's context
-// cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
-// documented exception per AGENTS.md.
-@OpaaIntegrationTest
+@OpaaIndexingIntegrationTest
 class FilesystemFolderMappingIntegrationTest {
 
-  @TempDir static Path sharedTempDir;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add(
-        "opaa.indexing.filesystem-allowlist", () -> sharedTempDir.toAbsolutePath().toString());
-    registry.add("opaa.indexing.chunk-size", () -> 100);
-    registry.add("opaa.indexing.chunk-overlap", () -> 10);
-    registry.add("opaa.indexing.batch-size", () -> 10);
-  }
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
+  private static final Path sharedTempDir =
+      OpaaIndexingTestDirectory.subdirectory("filesystem-folder-mapping");
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
@@ -78,8 +48,6 @@ class FilesystemFolderMappingIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
-  @MockitoBean private ChatModel chatModel;
-  @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
 
   private UUID userId;
   private UUID targetLibraryId;

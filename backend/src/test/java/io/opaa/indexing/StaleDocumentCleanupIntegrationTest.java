@@ -10,9 +10,9 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIndexingTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,17 +21,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * End-to-end coverage of #886: {@link StaleDocumentCleanupService}, wired into {@link
@@ -42,32 +33,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * - the whole point of these tests is proving chunks are actually gone from pgvector, not just that
  * a repository method was called.
  */
-// Own @DynamicPropertySource (below, indexing-specific paths/chunk sizing) means Spring's context
-// cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
-// documented exception per AGENTS.md.
-@OpaaIntegrationTest
+@OpaaIndexingIntegrationTest
 class StaleDocumentCleanupIntegrationTest {
 
-  @TempDir static Path sharedTempDir;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("opaa.indexing.document-path", () -> sharedTempDir.toAbsolutePath().toString());
-    registry.add(
-        "opaa.indexing.filesystem-allowlist", () -> sharedTempDir.toAbsolutePath().toString());
-    registry.add("opaa.indexing.chunk-size", () -> 100);
-    registry.add("opaa.indexing.chunk-overlap", () -> 10);
-    registry.add("opaa.indexing.batch-size", () -> 10);
-  }
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
+  private static final Path sharedTempDir =
+      OpaaIndexingTestDirectory.subdirectory("stale-document-cleanup");
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
@@ -75,8 +45,6 @@ class StaleDocumentCleanupIntegrationTest {
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private IndexingRunEventRepository indexingRunEventRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
-  @MockitoBean private ChatModel chatModel;
-  @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
 
   private UUID userId;
   private UUID targetLibraryId;

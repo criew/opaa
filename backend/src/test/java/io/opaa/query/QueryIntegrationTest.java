@@ -4,11 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.llm.ActiveChatModelResolver;
-import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,17 +27,12 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.convention.TestBean;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * Exercises the permission-aware vector search (#202) end to end against a real Postgres schema:
@@ -46,31 +40,22 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * library_id} metadata points at, or {@link QueryService#query} never even calls {@link
  * VectorStore#similaritySearch} for it - see {@link #userWithoutAnyGrantSeesNothing}.
  */
-// Own @TestConfiguration @Primary EmbeddingModel bean and @MockitoBean set below mean Spring's
-// context cache still keys this to its own context regardless of the shared @OpaaIntegrationTest
-// base - documented exception per AGENTS.md.
-@OpaaIntegrationTest
+// Own @TestBean chatTitleTaskExecutor override below means Spring's context cache still keys this
+// to its own context regardless of the shared @OpaaIndexingIntegrationTest base - documented
+// exception per AGENTS.md.
+@OpaaIndexingIntegrationTest
 class QueryIntegrationTest {
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
 
   private static final UUID DEFAULT_ORGANIZATION_ID =
       UUID.fromString("00000000-0000-0000-0000-000000000001");
 
-  @MockitoBean private ChatModel chatModel;
+  @Autowired private ChatModel chatModel;
 
   // #758: AnswerGenerationService/ChatTitleGenerationService now resolve their ChatClient via
   // ActiveChatModelResolver on every call instead of holding one built once at startup - stubbed
   // once in setUp() below to always hand back a ChatClient wrapping the class-wide chatModel mock
   // above, so every existing when(chatModel...) stub in this class keeps working unchanged.
-  @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
+  @Autowired private ActiveChatModelResolver activeChatModelResolver;
 
   /**
    * #616: replaces {@code ChatConfiguration#chatTitleTaskExecutor} with a same-name, fully
