@@ -6,7 +6,6 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditOutcome;
-import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -45,6 +44,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -111,6 +111,7 @@ public class KnowledgeLibraryService {
   private final Clock schedulingClock;
   private final LibraryStorageQuotaService storageQuotaService;
   private final LibraryFolderRepository folderRepository;
+  private final ApplicationEventPublisher eventPublisher;
 
   public KnowledgeLibraryService(
       KnowledgeLibraryRepository libraryRepository,
@@ -130,7 +131,8 @@ public class KnowledgeLibraryService {
       RssFeedStateRepository rssFeedStateRepository,
       Clock schedulingClock,
       LibraryStorageQuotaService storageQuotaService,
-      LibraryFolderRepository folderRepository) {
+      LibraryFolderRepository folderRepository,
+      ApplicationEventPublisher eventPublisher) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
@@ -149,6 +151,7 @@ public class KnowledgeLibraryService {
     this.schedulingClock = schedulingClock;
     this.storageQuotaService = storageQuotaService;
     this.folderRepository = folderRepository;
+    this.eventPublisher = eventPublisher;
   }
 
   @Transactional
@@ -243,19 +246,16 @@ public class KnowledgeLibraryService {
                   AssetRole.MANAGER,
                   null,
                   currentUserId));
-      permissionHistoryService.recordGrantCreated(groupGrant, currentUserId);
-      // #392: mirrors AssetGrantService#upsertGrant's own ASSET_GRANT_GRANTED entry - this grant
-      // is written directly here, not through that service, but is exactly the same kind of event.
-      auditEventRecorder.recordUserActionOnSubject(
-          AuditEvent.builder()
-              .organizationId(saved.getOrganizationId())
-              .actor(currentUserId)
-              .type(AuditEventType.ASSET_GRANT_GRANTED)
-              .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.getName())
-              .subject(AuditSubjectKind.GROUP, ownerGroup.getId())
-              .after(Map.of("role", AssetRole.MANAGER.name()))
-              .outcome(AuditOutcome.SUCCESS)
-              .build());
+      // #392/#892: mirrors AssetGrantService#upsertGrant's own GrantChanged publish - this grant is
+      // written directly here, not through that service, but is exactly the same kind of event.
+      eventPublisher.publishEvent(
+          new GrantChanged(
+              saved,
+              groupGrant,
+              GrantChanged.Cause.GRANTED,
+              currentUserId,
+              null,
+              Map.of("role", AssetRole.MANAGER.name())));
     }
     AssetGrant ownerGrant =
         grantRepository.save(
@@ -266,31 +266,22 @@ public class KnowledgeLibraryService {
                 AssetRole.OWNER,
                 null,
                 currentUserId));
-    permissionHistoryService.recordGrantCreated(ownerGrant, currentUserId);
-    auditEventRecorder.recordUserActionOnSubject(
-        AuditEvent.builder()
-            .organizationId(saved.getOrganizationId())
-            .actor(currentUserId)
-            .type(AuditEventType.ASSET_GRANT_GRANTED)
-            .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.getName())
-            .subject(AuditSubjectKind.USER, currentUserId)
-            .after(Map.of("role", AssetRole.OWNER.name()))
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
-    // #238: the library's initial visibility/listed state is also historised, the third source
-    // the readable-library formula depends on besides direct and group grants.
-    permissionHistoryService.recordLibraryCreated(saved, currentUserId);
-    // #392: the library-creation event itself, distinct from the grant events above - "Anlegen ...
-    // von Wissensbibliotheken" (docs/features/security-and-compliance.md).
-    auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(saved.getOrganizationId())
-            .actor(currentUserId)
-            .type(AuditEventType.LIBRARY_CREATED)
-            .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.getName())
-            .after(libraryAuditPayload(saved))
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
+    eventPublisher.publishEvent(
+        new GrantChanged(
+            saved,
+            ownerGrant,
+            GrantChanged.Cause.GRANTED,
+            currentUserId,
+            null,
+            Map.of("role", AssetRole.OWNER.name())));
+    // #238/#892: the library's initial visibility/listed state is also historised, the third
+    // source the readable-library formula depends on besides direct and group grants - one
+    // LibraryChanged publish, distinct from the grant events above, covers both the history
+    // interval and the LIBRARY_CREATED audit entry ("Anlegen ... von Wissensbibliotheken",
+    // docs/features/security-and-compliance.md).
+    eventPublisher.publishEvent(
+        new LibraryChanged(
+            saved, LibraryChanged.Cause.CREATED, currentUserId, null, libraryAuditPayload(saved)));
     return toLibraryDetail(saved, AssetRole.OWNER);
   }
 
@@ -470,28 +461,19 @@ public class KnowledgeLibraryService {
     KnowledgeLibrary updated = libraryRepository.save(library);
     boolean visibilityOrListedChanged =
         updated.getVisibility() != previousVisibility || updated.isListed() != previousListed;
-    // #238: only visibility and listed feed the readable-library formula, so only a change to
-    // either of them opens a new interval - a rename alone is not a permission change.
+    // #238/#892: only visibility and listed feed the readable-library formula, so only a change
+    // to either of them opens a new interval - a rename alone is not a permission change. One
+    // LibraryChanged publish covers both the history interval and the ASSET_VISIBILITY_CHANGED
+    // audit entry (#392 code review, nit 4: independent of LIBRARY_CHANGED below - a call that
+    // renames the library and widens its visibility in the same request writes both).
     if (visibilityOrListedChanged) {
-      permissionHistoryService.recordVisibilityChanged(updated, currentUserId);
-    }
-    // #392 code review, nit 4: ASSET_VISIBILITY_CHANGED and LIBRARY_CHANGED are independent events
-    // - a call that renames the library and widens its visibility in the same request writes both,
-    // instead of the earlier version's else-if silently dropping the rename whenever visibility
-    // also changed.
-    if (visibilityOrListedChanged) {
-      auditEventRecorder.recordUserAction(
-          AuditEvent.builder()
-              .organizationId(updated.getOrganizationId())
-              .actor(currentUserId)
-              .type(AuditEventType.ASSET_VISIBILITY_CHANGED)
-              .object(AuditObjectType.KNOWLEDGE_LIBRARY, updated.getId(), updated.getName())
-              .before(Map.of("visibility", previousVisibility.name(), "listed", previousListed))
-              .after(
-                  Map.of(
-                      "visibility", updated.getVisibility().name(), "listed", updated.isListed()))
-              .outcome(AuditOutcome.SUCCESS)
-              .build());
+      eventPublisher.publishEvent(
+          new LibraryChanged(
+              updated,
+              LibraryChanged.Cause.VISIBILITY_CHANGED,
+              currentUserId,
+              Map.of("visibility", previousVisibility.name(), "listed", previousListed),
+              Map.of("visibility", updated.getVisibility().name(), "listed", updated.isListed())));
     }
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());

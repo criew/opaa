@@ -435,6 +435,44 @@ class AuditEventRecordingIntegrationTest {
     assertThat(deleted.get(0).getAfter()).isNull();
   }
 
+  /**
+   * #892 review: the GROUP-owned branch of {@code createLibrary} runs {@link
+   * io.opaa.library.GrantChanged}'s subject resolution through the group id, never a pseudonym -
+   * {@link #grantingAndRevokingAGrantEachProduceExactlyOneAuditEntry} only ever exercises a USER
+   * subject, so this path was otherwise untested against the real schema.
+   */
+  @Test
+  void creatingAGroupOwnedLibraryGrantsTheOwningGroupItself() {
+    UUID admin = createUser();
+    var group =
+        groupService.createGroup(
+            new GroupCreation("Referat 50", "Grundsatz"), currentUserOf(admin));
+    UUID groupId = group.group().getId();
+    createdGroupIds.add(groupId);
+    groupService.addMember(groupId, admin, currentUserOf(admin));
+
+    LibraryDetail detail =
+        libraryService.createLibrary(
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD)
+                .ownerType(LibraryOwnerType.GROUP)
+                .ownerId(groupId)
+                .build(),
+            currentUserOf(admin));
+    UUID libraryId = detail.library().getId();
+
+    List<AuditLogEntry> groupGrants =
+        entriesFor(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId).stream()
+            .filter(e -> e.getEventType() == AuditEventType.ASSET_GRANT_GRANTED)
+            .filter(e -> e.getSubjectKind() == AuditSubjectKind.GROUP)
+            .toList();
+    assertThat(groupGrants).hasSize(1);
+    AuditLogEntry granted = groupGrants.get(0);
+    // A group is not a person - referenced by its plain id, never pseudonymised (unlike the USER
+    // subject case AssetGrantService already covers).
+    assertThat(granted.getSubjectRef()).isEqualTo(groupId.toString());
+    assertThat(granted.getAfter()).contains("MANAGER");
+  }
+
   // ---------------------------------------------------------------------------------------
   // GroupService
   // ---------------------------------------------------------------------------------------

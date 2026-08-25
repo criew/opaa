@@ -29,6 +29,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.context.ApplicationEventPublisher;
 
 /**
  * Unit-level coverage of the #433 delete lock: {@link KnowledgeLibraryService#deleteLibrary}
@@ -68,6 +69,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
     IndexingJobService indexingJobService = mock(IndexingJobService.class);
     LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
     LibraryFolderRepository folderRepository = mock(LibraryFolderRepository.class);
+    ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
     libraryService =
         new KnowledgeLibraryService(
@@ -88,7 +90,8 @@ class KnowledgeLibraryServiceDeleteLockTest {
             rssFeedStateRepository,
             Clock.systemDefaultZone(),
             storageQuotaService,
-            folderRepository);
+            folderRepository,
+            eventPublisher);
 
     ownerId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
