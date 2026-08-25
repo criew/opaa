@@ -3182,7 +3182,7 @@ components:
       type: string
       description: >
         The closed vocabulary of a notification's type - see
-        io.opaa.notification.NotificationType, kept in lockstep with the database check
+        io.opaa.api.types.NotificationType, kept in lockstep with the database check
         constraint chk_notifications_type (migration 052).
       enum: [LIBRARY_ASSOCIATED_TO_MIXED_SPACE]
       example: LIBRARY_ASSOCIATED_TO_MIXED_SPACE
@@ -4531,25 +4531,25 @@ components:
     # docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
     AuditActorKind:
       type: string
-      description: Mirrors io.opaa.audit.ActorKind. Output-only field, never a filter/sort key.
+      description: Mirrors io.opaa.api.types.ActorKind. Output-only field, never a filter/sort key.
       enum: [USER, SERVICE_ACCOUNT, SYSTEM_PROCESS]
       example: USER
 
     AuditSubjectKind:
       type: string
-      description: Mirrors io.opaa.audit.AuditSubjectKind.
+      description: Mirrors io.opaa.api.types.AuditSubjectKind.
       enum: [USER, GROUP]
       example: GROUP
 
     AuditOutcome:
       type: string
-      description: Mirrors io.opaa.audit.AuditOutcome.
+      description: Mirrors io.opaa.api.types.AuditOutcome.
       enum: [SUCCESS, DENIED, FAILURE]
       example: SUCCESS
 
     AuditObjectType:
       type: string
-      description: Mirrors io.opaa.audit.AuditObjectType. The only entry point besides time range,
+      description: Mirrors io.opaa.api.types.AuditObjectType. The only entry point besides time range,
         event type and correlation ref - never a person.
       enum:
         [
@@ -4567,7 +4567,7 @@ components:
 
     AuditEventType:
       type: string
-      description: Mirrors io.opaa.audit.AuditEventType - the closed first-stage event list.
+      description: Mirrors io.opaa.api.types.AuditEventType - the closed first-stage event list.
       enum:
         [
           ASSET_GRANT_GRANTED,
@@ -4706,7 +4706,7 @@ components:
     AuditIncidentScopePurpose:
       type: string
       description: >
-        Mirrors io.opaa.audit.AuditIncidentScopePurpose - a closed list that deliberately excludes
+        Mirrors io.opaa.api.types.AuditIncidentScopePurpose - a closed list that deliberately excludes
         arbeitsrechtliche, disziplinarische und leistungsbezogene purposes by omission (Zweckausschluss).
       enum:
         [
@@ -4719,7 +4719,7 @@ components:
 
     AuditIncidentScopeStatus:
       type: string
-      description: Mirrors io.opaa.audit.AuditIncidentScopeStatus.
+      description: Mirrors io.opaa.api.types.AuditIncidentScopeStatus.
       enum: [PENDING, APPROVED]
       example: PENDING
 

@@ -1,9 +1,10 @@
-# The frontend image is the only build that uses the repo root as its context
-# (docker-compose.yml, e2e.yml, demo-smoke.yml and publish-images.yml all pass
-# context "." with frontend/Dockerfile); the backend build uses backend/ as its
-# context and has its own backend/.dockerignore. A .dockerignore only applies
-# at the context root, so this file replaces the never-effective
-# frontend/.dockerignore.
+# Both images build from the repo root as their context (docker-compose.yml,
+# e2e.yml, demo-smoke.yml and publish-images.yml all pass context "." with
+# frontend/Dockerfile or backend/Dockerfile respectively, the latter since
+# #896's opaa-api module split needs the sibling opaa-api/ directory in the
+# build context). A .dockerignore only applies at the context root, so this
+# single file replaces the never-effective frontend/.dockerignore and
+# backend/.dockerignore.
 #
 # Keep host-installed/generated trees out of the context: they are recreated
 # inside the image, and since the pnpm migration (#653) frontend/node_modules
@@ -13,8 +14,14 @@
 frontend/dist
 backend/build
 backend/.gradle
+opaa-api/build
+opaa-api/.gradle
 e2e/test-results
 e2e/playwright-report
 .git
+.claude/
+eval/
+page/
+demo/
 **/.env*
 **/*.md

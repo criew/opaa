@@ -1,11 +1,11 @@
 package io.opaa.api.types;
 
 /**
- * The graded asset role an {@link AssetGrant} carries - a ranking deliberately separate from {@code
- * io.opaa.space.SpaceRole} (see #202, docs/features/spaces-and-assets.md#asset-rollen). No role
- * name occurs in both role systems: the managing asset role is {@link #MANAGER}, not {@code ADMIN},
- * so "I have admin rights here" always refers to a space and "I have manager/owner rights" always
- * refers to an asset.
+ * The graded asset role an {@code AssetGrant} carries - a ranking deliberately separate from {@link
+ * SpaceRole} (see #202, docs/features/spaces-and-assets.md#asset-rollen). No role name occurs in
+ * both role systems: the managing asset role is {@link #MANAGER}, not {@code ADMIN}, so "I have
+ * admin rights here" always refers to a space and "I have manager/owner rights" always refers to an
+ * asset.
  *
  * <p>Declared in ascending order so {@link #atLeast(AssetRole)} can compare via {@link #ordinal()}.
  *

@@ -89,7 +89,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: backend-test-reports
-          path: backend/build/reports/tests/
+          path: |
+            backend/build/reports/tests/
+            opaa-api/build/reports/tests/
           retention-days: 14
 
   backend-integration:

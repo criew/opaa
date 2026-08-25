@@ -30,9 +30,15 @@ sourceSets {
 }
 
 dependencies {
+    // Version alignment only, not the Spring Boot plugin/autoconfiguration machinery: a plain
+    // platform import of the BOM keeps the annotation libraries below on the exact versions Spring
+    // Boot 4.1 resolves, instead of hand-pinned versions silently drifting out of sync on a future
+    // Spring Boot upgrade (issue #896 review).
+    implementation(platform(libs.spring.boot.dependencies))
+
     // The generated io.opaa.api.dto classes (spring generator) reference these annotation types
     // regardless of the domain enums themselves being Spring-free - see the version catalog
-    // comment on jackson-annotations for why this is not a Spring Boot dependency.
+    // comment above junit-jupiter for why the main sourceSet is not actually Spring-free.
     implementation(libs.bundles.opaa.api.generated.dto.deps)
 
     // Deliberately Spring-free (issue #896 leitplanke): plain JUnit Jupiter/AssertJ plus
@@ -41,10 +47,6 @@ dependencies {
     testImplementation(libs.bundles.opaa.api.test.deps)
     testRuntimeOnly(libs.junit.jupiter.engine)
     testRuntimeOnly(libs.opaa.api.junit.platform.launcher)
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
 }
 
 spotless {
@@ -68,6 +70,47 @@ spotless {
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
     options.compilerArgs.add("-parameters")
+}
+
+// Script-level val (not read inside a task action closure, so it stays configuration-cache-safe
+// as a plain data literal) instead of reading it back off the task's typeMappings property: the
+// :test task below passes its key set to SpecEnumParityTest as a system property, so that test's
+// hand-maintained enum list is checked against the actual typeMappings keys rather than able to
+// silently drift from them (issue #896 review) - a future typeMappings entry without a matching
+// parity test case now fails the build instead of going unnoticed.
+val typeMappingsConfig = mapOf(
+    "DateTime" to "Instant",
+    "SpaceRole" to "SpaceRole",
+    "SpaceVisibility" to "SpaceVisibility",
+    "SystemRole" to "SystemRole",
+    "GroupKind" to "GroupKind",
+    "DirectorySyncOutcome" to "DirectorySyncOutcome",
+    "LibraryOwnerType" to "LibraryOwnerType",
+    "LibraryVisibility" to "LibraryVisibility",
+    "DocumentStatus" to "DocumentStatus",
+    "DocumentSourceType" to "DocumentSourceType",
+    "AssetRole" to "AssetRole",
+    "PermissionSubjectType" to "PermissionSubjectType",
+    "AuditActorKind" to "ActorKind",
+    "AuditSubjectKind" to "AuditSubjectKind",
+    "AuditOutcome" to "AuditOutcome",
+    "AuditObjectType" to "AuditObjectType",
+    "AuditEventType" to "AuditEventType",
+    "AuditIncidentScopePurpose" to "AuditIncidentScopePurpose",
+    "AuditIncidentScopeStatus" to "AuditIncidentScopeStatus",
+    "ChatStatus" to "ChatStatus",
+    "ChatRole" to "ChatRole",
+    "ColorScheme" to "ColorScheme",
+    "NotificationType" to "NotificationType",
+)
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+    // See the comment on typeMappingsConfig above: SpecEnumParityTest cross-checks its own
+    // manually listed schema names against this key set. "DateTime" is excluded - it is a scalar
+    // substitution, not a domain enum mapped to an io.opaa.api.types class, so it has no parity
+    // test case to check against.
+    systemProperty("opaa.api.typeMappingsKeys", (typeMappingsConfig.keys - "DateTime").joinToString(","))
 }
 
 tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerate") {
@@ -100,31 +143,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         )
     )
 
-    typeMappings.set(mapOf(
-        "DateTime" to "Instant",
-        "SpaceRole" to "SpaceRole",
-        "SpaceVisibility" to "SpaceVisibility",
-        "SystemRole" to "SystemRole",
-        "GroupKind" to "GroupKind",
-        "DirectorySyncOutcome" to "DirectorySyncOutcome",
-        "LibraryOwnerType" to "LibraryOwnerType",
-        "LibraryVisibility" to "LibraryVisibility",
-        "DocumentStatus" to "DocumentStatus",
-        "DocumentSourceType" to "DocumentSourceType",
-        "AssetRole" to "AssetRole",
-        "PermissionSubjectType" to "PermissionSubjectType",
-        "AuditActorKind" to "ActorKind",
-        "AuditSubjectKind" to "AuditSubjectKind",
-        "AuditOutcome" to "AuditOutcome",
-        "AuditObjectType" to "AuditObjectType",
-        "AuditEventType" to "AuditEventType",
-        "AuditIncidentScopePurpose" to "AuditIncidentScopePurpose",
-        "AuditIncidentScopeStatus" to "AuditIncidentScopeStatus",
-        "ChatStatus" to "ChatStatus",
-        "ChatRole" to "ChatRole",
-        "ColorScheme" to "ColorScheme",
-        "NotificationType" to "NotificationType",
-    ))
+    typeMappings.set(typeMappingsConfig)
     importMappings.set(mapOf(
         "Instant" to "java.time.Instant",
         "SpaceRole" to "io.opaa.api.types.SpaceRole",
@@ -156,10 +175,18 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
     // Local copies inside the configure block on purpose: the doLast action must not reference
     // script-level members (layout, file(...), top-level vals - those are fields of the script
     // class), or the closure drags the whole build script into the configuration cache, which
-    // Gradle rejects ("cannot serialize Gradle script object references"). See issue #835/#857 for
-    // the mechanical derivation this replaced a hand-maintained list with; moved here unchanged as
-    // part of #896's module split.
+    // Gradle rejects ("cannot serialize Gradle script object references").
     val generatedDtoDir = project.layout.buildDirectory.dir("generated/openapi/src/main/java/io/opaa/api/dto")
+    // Candidate file names to remove are derived from typeMappings (issue #835) instead of a
+    // hand-maintained list. With the currently pinned generator version, a schema fully covered by
+    // typeMappings emits no model file at all, so this list is empty in practice - it is a safety
+    // net for a future generator version that goes back to emitting one (an earlier version of
+    // this plugin did; that mismatch is the whole reason this doLast block exists). Both the
+    // OpenAPI schema name (the typeMappings key, e.g. "AuditActorKind") and the mapped Java type
+    // name (the value, e.g. "ActorKind") are included defensively, since it is not contractually
+    // specified which one a future generator version would use for the file name. "DateTime"/
+    // "Instant" is excluded: it is a scalar substitution, not a domain enum, and names no
+    // generated model file.
     val generatedEnumFileNames =
         typeMappings.map { mappings ->
             (mappings.keys + mappings.values)

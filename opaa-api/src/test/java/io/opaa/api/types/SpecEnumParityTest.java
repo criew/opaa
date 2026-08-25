@@ -6,9 +6,11 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -25,6 +27,14 @@ import org.yaml.snakeyaml.Yaml;
  *
  * <p>Only "AuditActorKind" (the OpenAPI schema name) vs. {@link ActorKind} (the Java class name)
  * differ in name - every other mapping shares its name between spec schema and Java enum.
+ *
+ * <p>{@link #mappedEnums()} is a hand-maintained list of schema names and would silently miss a
+ * future {@code typeMappings} entry added without a matching parity case here. {@link
+ * #mappedEnumsCoverAllTypeMappingsKeys()} guards against exactly that: it reads the actual {@code
+ * typeMappings} key set from the {@code opaa.api.typeMappingsKeys} system property
+ * (opaa-api/build.gradle.kts passes it to every {@code Test} task from the same script-level map
+ * literal the {@code openApiGenerate} task itself configures) and fails if it and {@link
+ * #mappedEnums()}'s schema names diverge in either direction.
  */
 class SpecEnumParityTest {
 
@@ -89,5 +99,26 @@ class SpecEnumParityTest {
                 + "domain enum that has drifted from its OpenAPI schema",
             schemaName)
         .isEqualTo(specValues);
+  }
+
+  @Test
+  void mappedEnumsCoverAllTypeMappingsKeys() {
+    String rawKeys = System.getProperty("opaa.api.typeMappingsKeys");
+    assertThat(rawKeys)
+        .as(
+            "opaa.api.typeMappingsKeys system property must be set - see"
+                + " opaa-api/build.gradle.kts's tasks.withType<Test> block")
+        .isNotBlank();
+
+    Set<String> typeMappingsKeys = Set.of(rawKeys.split(","));
+    Set<String> parityTestSchemaNames =
+        mappedEnums().map(args -> (String) args.get()[0]).collect(Collectors.toSet());
+
+    assertThat(parityTestSchemaNames)
+        .as(
+            "mappedEnums() must cover exactly the typeMappings keys (minus \"DateTime\") - a"
+                + " mismatch means either a new typeMappings entry has no parity test case yet, or"
+                + " a parity test case survives after its typeMappings entry was removed")
+        .isEqualTo(typeMappingsKeys);
   }
 }

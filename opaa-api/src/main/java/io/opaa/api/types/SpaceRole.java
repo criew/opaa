@@ -16,7 +16,7 @@ package io.opaa.api.types;
  * administrator may delete a space or transfer that responsibility.
  *
  * <p>Declared in ascending order so {@link #atLeast(SpaceRole)} can compare via {@link #ordinal()}
- * - mirrors {@code io.opaa.library.AssetRole#atLeast}.
+ * - mirrors {@link AssetRole#atLeast}.
  */
 public enum SpaceRole {
   MEMBER,

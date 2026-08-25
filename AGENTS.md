@@ -244,7 +244,8 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 - `.github/PULL_REQUEST_TEMPLATE.md` — PR-Template
 - `CONTRIBUTING.md` — Leitfaden für Beitragende
 - `AGENTS.md` — Anweisungen für KI-Agenten
-- `backend/` — Spring Boot Backend (Gradle-Projekt)
+- `backend/` — Spring Boot Backend (Gradle-Projekt, Gradle-Root des Multi-Modul-Builds)
+- `opaa-api/` — Gradle-Modul mit OpenAPI-Spec, Generator-Konfiguration und geteilten Domain-Enums (`io.opaa.api.types`), siehe [ADR-0006](docs/decisions/0006-openapi-dto-generation.md) (#896)
 - `frontend/` — React-Frontend (Vite-Projekt)
 - `frontend/src/test/test-utils.tsx` — Gemeinsame Test-Render-Helfer
 - `e2e/` — Browserbasierte End-to-End-Tests (Playwright), siehe `e2e/README.md`

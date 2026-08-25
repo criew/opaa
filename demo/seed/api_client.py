@@ -1,6 +1,6 @@
 """Thin HTTP client for the seed script (Issue #712).
 
-Speaks only the public OPAA API (backend/src/main/resources/openapi/opaa-api.yaml) - no direct
+Speaks only the public OPAA API (opaa-api/src/main/resources/openapi/opaa-api.yaml) - no direct
 database access, per the issue's own "Technische Hinweise": direct writes would bypass Liquibase
 and domain logic (validation, audit events, quota checks, ...).
 """
