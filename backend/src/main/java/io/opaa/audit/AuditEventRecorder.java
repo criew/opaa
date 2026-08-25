@@ -48,6 +48,8 @@ public class AuditEventRecorder {
    */
   public void recordUserAction(AuditEvent event) {
     UUID actorUserId = requireUserActor(event);
+    requireNoSubject(event, "recordUserAction");
+    requireNoCorrelationRef(event, "recordUserAction");
     String actorRef = pseudonymService.pseudonymFor(actorUserId, event.organizationId()).toString();
     auditLogService.record(
         AuditLogEntry.withoutSubject(
@@ -76,6 +78,7 @@ public class AuditEventRecorder {
     UUID actorUserId = requireUserActor(event);
     UUID subjectId = Objects.requireNonNull(event.subjectId(), "subject");
     AuditSubjectKind subjectKind = Objects.requireNonNull(event.subjectKind(), "subject");
+    requireNoCorrelationRef(event, "recordUserActionOnSubject");
     String actorRef = pseudonymService.pseudonymFor(actorUserId, event.organizationId()).toString();
     String subjectRef =
         subjectKind == AuditSubjectKind.USER
@@ -151,6 +154,34 @@ public class AuditEventRecorder {
 
   private static UUID requireUserActor(AuditEvent event) {
     return Objects.requireNonNull(event.actorUserId(), "actor");
+  }
+
+  /**
+   * A subject silently dropped would be the compliance-log equivalent of a swallowed field: the
+   * caller believed it was recording who was affected, and nothing about the resulting row says
+   * otherwise. Rejects instead of ignoring so a caller that meant {@code recordUserActionOnSubject}
+   * finds out at the call it made, not by an absent column later.
+   */
+  private static void requireNoSubject(AuditEvent event, String methodName) {
+    if (event.subjectKind() != null || event.subjectId() != null) {
+      throw new IllegalArgumentException(
+          methodName
+              + " does not carry a subject - use recordUserActionOnSubject for an event built"
+              + " with AuditEvent.Builder#subject");
+    }
+  }
+
+  /**
+   * {@code correlationRef} only ever reaches a column via {@link #recordSystemProcessAction} - a
+   * caller setting it on a user-action event has almost always mixed up which of the two builder
+   * paths it meant, and silently ignoring the field would hide that mistake instead of failing the
+   * call that made it.
+   */
+  private static void requireNoCorrelationRef(AuditEvent event, String methodName) {
+    if (event.correlationRef() != null) {
+      throw new IllegalArgumentException(
+          methodName + " does not carry a correlationRef - only recordSystemProcessAction does");
+    }
   }
 
   /**

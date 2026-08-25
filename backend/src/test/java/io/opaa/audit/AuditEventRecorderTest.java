@@ -127,6 +127,118 @@ class AuditEventRecorderTest {
   }
 
   @Test
+  void recordSystemProcessActionWithAUserSubjectPseudonymisesIt() {
+    UUID organizationId = UUID.randomUUID();
+    UUID subjectUserId = UUID.randomUUID();
+    UUID subjectPseudonym = UUID.randomUUID();
+    when(pseudonymService.pseudonymFor(subjectUserId, organizationId)).thenReturn(subjectPseudonym);
+
+    recorder.recordSystemProcessAction(
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actorRef("directory-sync")
+            .type(AuditEventType.DIRECTORY_SYNC_CHANGE_APPLIED)
+            .object(AuditObjectType.GROUP, UUID.randomUUID(), "Referat 5")
+            .subject(AuditSubjectKind.USER, subjectUserId)
+            .outcome(AuditOutcome.SUCCESS)
+            .correlationRef("run-1")
+            .build());
+
+    ArgumentCaptor<AuditLogEntry> captor = ArgumentCaptor.forClass(AuditLogEntry.class);
+    verify(auditLogService).record(captor.capture());
+    AuditLogEntry entry = captor.getValue();
+    assertThat(entry.getSubjectKind()).isEqualTo(AuditSubjectKind.USER);
+    assertThat(entry.getSubjectRef()).isEqualTo(subjectPseudonym.toString());
+    assertThat(entry.getActorKind()).isEqualTo(ActorKind.SYSTEM_PROCESS);
+  }
+
+  @Test
+  void recordSystemProcessActionWithAGroupSubjectReferencesItByItsPlainId() {
+    UUID organizationId = UUID.randomUUID();
+    UUID subjectGroupId = UUID.randomUUID();
+
+    recorder.recordSystemProcessAction(
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actorRef("directory-sync")
+            .type(AuditEventType.DIRECTORY_SYNC_CHANGE_APPLIED)
+            .object(AuditObjectType.GROUP, UUID.randomUUID(), "Referat 5")
+            .subject(AuditSubjectKind.GROUP, subjectGroupId)
+            .outcome(AuditOutcome.SUCCESS)
+            .correlationRef("run-1")
+            .build());
+
+    ArgumentCaptor<AuditLogEntry> captor = ArgumentCaptor.forClass(AuditLogEntry.class);
+    verify(auditLogService).record(captor.capture());
+    assertThat(captor.getValue().getSubjectRef()).isEqualTo(subjectGroupId.toString());
+    verify(pseudonymService, never()).pseudonymFor(subjectGroupId, organizationId);
+  }
+
+  @Test
+  void recordUserActionRejectsAnEventBuiltWithASubject() {
+    UUID organizationId = UUID.randomUUID();
+    UUID actorUserId = UUID.randomUUID();
+    when(pseudonymService.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+    AuditEvent event =
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actor(actorUserId)
+            .type(AuditEventType.SPACE_CREATED)
+            .object(AuditObjectType.SPACE, UUID.randomUUID(), "Team Alpha")
+            .subject(AuditSubjectKind.USER, UUID.randomUUID())
+            .outcome(AuditOutcome.SUCCESS)
+            .build();
+
+    // A subject built into the event but silently dropped would be the compliance-log equivalent
+    // of a swallowed field - recordUserAction must fail loudly instead of writing a
+    // without-subject entry for a caller that plainly meant recordUserActionOnSubject.
+    assertThatThrownBy(() -> recorder.recordUserAction(event))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("recordUserActionOnSubject");
+  }
+
+  @Test
+  void recordUserActionRejectsAnEventBuiltWithACorrelationRef() {
+    UUID organizationId = UUID.randomUUID();
+    UUID actorUserId = UUID.randomUUID();
+    when(pseudonymService.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+    AuditEvent event =
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actor(actorUserId)
+            .type(AuditEventType.SPACE_CREATED)
+            .object(AuditObjectType.SPACE, UUID.randomUUID(), "Team Alpha")
+            .outcome(AuditOutcome.SUCCESS)
+            .correlationRef("run-1")
+            .build();
+
+    assertThatThrownBy(() -> recorder.recordUserAction(event))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("correlationRef");
+  }
+
+  @Test
+  void recordUserActionOnSubjectRejectsAnEventBuiltWithACorrelationRef() {
+    UUID organizationId = UUID.randomUUID();
+    UUID actorUserId = UUID.randomUUID();
+    when(pseudonymService.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+    AuditEvent event =
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actor(actorUserId)
+            .type(AuditEventType.SPACE_MEMBER_ADDED)
+            .object(AuditObjectType.SPACE, UUID.randomUUID(), "Team Alpha")
+            .subject(AuditSubjectKind.USER, UUID.randomUUID())
+            .outcome(AuditOutcome.SUCCESS)
+            .correlationRef("run-1")
+            .build();
+
+    assertThatThrownBy(() -> recorder.recordUserActionOnSubject(event))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("correlationRef");
+  }
+
+  @Test
   void recordSystemProcessActionUsesTheActorRefVerbatimAndCarriesTheCorrelationRef() {
     UUID organizationId = UUID.randomUUID();
     UUID objectId = UUID.randomUUID();

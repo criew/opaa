@@ -6,10 +6,13 @@ import java.util.UUID;
 
 /**
  * Parameter object for {@link AuditEventRecorder}'s three {@code recordXxx} methods, replacing
- * their previous 10-13 positional parameters with named builder calls (#892) - a swapped
- * before/after or objectId/subjectId no longer compiles silently. Carries every field any of the
- * three methods can use; each method validates only the subset it actually needs (see their
- * Javadoc). Immutable once built.
+ * their previous 10-13 positional parameters with named builder calls: a swapped before/after or
+ * objectId/subjectId becomes a visible, reorderable line in the diff instead of two adjacent
+ * positional arguments that compile either way round. Carries every field any of the three methods
+ * can use; each method validates only the subset it actually needs and rejects the fields it does
+ * not own being set (see their Javadoc). {@code before}/{@code after} are defensively copied in the
+ * constructor, so the instance stays immutable even if the caller mutates the map it passed in
+ * afterwards.
  */
 public final class AuditEvent {
 
@@ -38,8 +41,8 @@ public final class AuditEvent {
     this.objectLabel = builder.objectLabel;
     this.subjectKind = builder.subjectKind;
     this.subjectId = builder.subjectId;
-    this.before = builder.before;
-    this.after = builder.after;
+    this.before = copyOf(builder.before);
+    this.after = copyOf(builder.after);
     this.outcome = Objects.requireNonNull(builder.outcome, "outcome");
     this.reason = builder.reason;
     this.correlationRef = builder.correlationRef;
@@ -50,9 +53,19 @@ public final class AuditEvent {
   }
 
   /**
+   * {@code null} stays {@code null} (distinct from an empty map - see {@link AuditEventRecorder}'s
+   * {@code toJson}, which maps both to a {@code null} column but the distinction still matters for
+   * a caller inspecting the built event itself); a non-null map is defensively copied via {@link
+   * Map#copyOf}.
+   */
+  private static Map<String, Object> copyOf(Map<String, Object> value) {
+    return value == null ? null : Map.copyOf(value);
+  }
+
+  /**
    * Accessors below are public - besides {@link AuditEventRecorder}'s own use, tests pin an
-   * operation's audit fields via an {@code ArgumentCaptor<AuditEvent>} and these getters (#892),
-   * rather than reflection or a long chain of positional Mockito matchers.
+   * operation's audit fields via an {@code ArgumentCaptor<AuditEvent>} and these getters, rather
+   * than reflection or a long chain of positional Mockito matchers.
    */
   public UUID organizationId() {
     return organizationId;
