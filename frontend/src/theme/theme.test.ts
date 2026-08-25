@@ -14,6 +14,7 @@ import {
   white,
 } from './tokens'
 import { contrastRatio, TEXT_CONTRAST_MINIMUM } from '../utils/contrast'
+import { OPAA_BRANDING } from '../stores/brandingStore'
 
 describe('tokens', () => {
   test('light and dark schemes define the identical set of roles', () => {
@@ -167,6 +168,22 @@ describe('createAppTheme', () => {
 
   // #634: a light branding colour cannot carry white button text; the filled surface derives
   // as its bounded darkening while the accent itself stays the configured colour.
+  // #634 regression (found by the axe E2E run): the app always passes branding.primaryColor,
+  // and an unconfigured deployment gets the OPAA standard '#1292EE' from the backend's
+  // field-wise fallback - that must behave exactly like no branding, or the per-scheme accent
+  // split never takes effect anywhere.
+  test('the OPAA standard colour behaves like no branding at all (#634)', () => {
+    const light = createAppTheme('light', { primaryColor: OPAA_BRANDING.primaryColor })
+    const dark = createAppTheme('dark', { primaryColor: OPAA_BRANDING.primaryColor })
+
+    expect(light.palette.primary.main).toBe(blue[700])
+    expect(dark.palette.primary.main).toBe(blue[500])
+  })
+
+  test('the OPAA standard branding colour and the token accent are the same value', () => {
+    expect(OPAA_BRANDING.primaryColor.toUpperCase()).toBe(blue[500].toUpperCase())
+  })
+
   test('a light branding colour gets a darkened action surface (#634)', () => {
     const theme = createAppTheme('light', { primaryColor: '#61B5F6' })
 

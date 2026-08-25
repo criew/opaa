@@ -40,7 +40,12 @@ const CONTROL_HEIGHT_COMPACT = 28
  */
 function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
   const brandColor = branding?.primaryColor
-  if (!brandColor) {
+  // The OPAA standard colour counts as "not configured" (#634): the backend resolves branding
+  // field by field, so an unconfigured deployment still delivers '#1292EE' - but that value means
+  // "the tokens decide", and the tokens split the accent per scheme (blue-700 light, blue-500
+  // dark). Only a genuinely different operator colour overrides the roles.
+  // OPAA_BRANDING.primaryColor mirrors blue[500]; theme.test.ts pins that equivalence.
+  if (!brandColor || brandColor.toUpperCase() === blue[500].toUpperCase()) {
     return {
       accent: roles.accent,
       accentSurface: roles.accentSurface,
