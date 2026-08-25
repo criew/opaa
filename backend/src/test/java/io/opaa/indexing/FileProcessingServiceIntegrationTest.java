@@ -3,14 +3,14 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIndexingTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,16 +18,9 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
@@ -46,31 +39,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * request would land - genuinely racing the row's existence, not simulating a zero-rows-updated
  * result the way {@link FileProcessingServiceTest} does against a mocked repository.
  */
-// Own @DynamicPropertySource (below, indexing-specific paths/chunk sizing) means Spring's context
-// cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
-// documented exception per AGENTS.md.
-@OpaaIntegrationTest
+// Own @MockitoBean DocumentService below (needed to force the race window this class reproduces -
+// see the class Javadoc) means Spring's context cache still keys this to its own context
+// regardless of the shared @OpaaIndexingIntegrationTest base - documented exception per AGENTS.md.
+@OpaaIndexingIntegrationTest
 class FileProcessingServiceIntegrationTest {
 
-  @TempDir static Path sharedTempDir;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add(
-        "opaa.indexing.filesystem-allowlist", () -> sharedTempDir.toAbsolutePath().toString());
-    registry.add("opaa.indexing.chunk-size", () -> 100);
-    registry.add("opaa.indexing.chunk-overlap", () -> 10);
-    registry.add("opaa.indexing.batch-size", () -> 10);
-  }
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
+  private static final Path classTempDir =
+      OpaaIndexingTestDirectory.subdirectory("file-processing-service");
 
   @Autowired private FileProcessingService fileProcessingService;
   @Autowired private DocumentRepository documentRepository;
@@ -115,7 +91,7 @@ class FileProcessingServiceIntegrationTest {
   @Test
   void filesystemDocumentDeletedWhileBeingIndexedLeavesNoZombieRowOrOrphanedChunks()
       throws IOException {
-    Path file = sharedTempDir.resolve("race.txt");
+    Path file = classTempDir.resolve("race.txt");
     Files.writeString(file, "content that outlives its own document row");
 
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
@@ -145,7 +121,7 @@ class FileProcessingServiceIntegrationTest {
   void filesystemDocumentStillPresentIsIndexedNormally() throws IOException {
     // Control case: without the concurrent delete, the same file is indexed and left INDEXED -
     // proves the assertions above actually distinguish the race from ordinary success.
-    Path file = sharedTempDir.resolve("normal.txt");
+    Path file = classTempDir.resolve("normal.txt");
     Files.writeString(file, "content that is never deleted");
 
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));

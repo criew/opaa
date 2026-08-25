@@ -3,16 +3,15 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIndexingTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,53 +20,23 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * End-to-end coverage of #886: {@link StaleDocumentCleanupService}, wired into {@link
  * AsyncIndexingExecutor} (FILESYSTEM), removes a document - row and vector store chunks - that
  * vanished from the source, but only once a run finished successfully. Runs against the real
  * Liquibase schema and a real {@code vector_store} table (AGENTS.md "Reproduktionsnachweis"), the
- * same Testcontainers/{@link FakeEmbeddingModel} setup {@link DocumentIndexingIntegrationTest} uses
- * - the whole point of these tests is proving chunks are actually gone from pgvector, not just that
- * a repository method was called.
+ * same Testcontainers/fake-embedding-model setup every {@link
+ * io.opaa.test.OpaaIndexingIntegrationTest} class shares - the whole point of these tests is
+ * proving chunks are actually gone from pgvector, not just that a repository method was called.
  */
-// Own @DynamicPropertySource (below, indexing-specific paths/chunk sizing) means Spring's context
-// cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
-// documented exception per AGENTS.md.
-@OpaaIntegrationTest
+@OpaaIndexingIntegrationTest
 class StaleDocumentCleanupIntegrationTest {
 
-  @TempDir static Path sharedTempDir;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("opaa.indexing.document-path", () -> sharedTempDir.toAbsolutePath().toString());
-    registry.add(
-        "opaa.indexing.filesystem-allowlist", () -> sharedTempDir.toAbsolutePath().toString());
-    registry.add("opaa.indexing.chunk-size", () -> 100);
-    registry.add("opaa.indexing.chunk-overlap", () -> 10);
-    registry.add("opaa.indexing.batch-size", () -> 10);
-  }
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
+  private static final Path classTempDir =
+      OpaaIndexingTestDirectory.subdirectory("stale-document-cleanup");
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
@@ -75,8 +44,6 @@ class StaleDocumentCleanupIntegrationTest {
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private IndexingRunEventRepository indexingRunEventRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
-  @MockitoBean private ChatModel chatModel;
-  @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
 
   private UUID userId;
   private UUID targetLibraryId;
@@ -86,8 +53,8 @@ class StaleDocumentCleanupIntegrationTest {
     jdbcTemplate.execute("TRUNCATE TABLE vector_store");
     documentRepository.deleteAll();
     indexingJobRepository.deleteAll();
-    if (Files.exists(sharedTempDir)) {
-      try (var files = Files.list(sharedTempDir)) {
+    if (Files.exists(classTempDir)) {
+      try (var files = Files.list(classTempDir)) {
         files.forEach(
             f -> {
               try {
@@ -123,7 +90,7 @@ class StaleDocumentCleanupIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                sharedTempDir.toAbsolutePath().toString(),
+                classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
                 null,
@@ -186,8 +153,8 @@ class StaleDocumentCleanupIntegrationTest {
 
   @Test
   void aDocumentWhoseFileVanishedIsRemovedWithItsChunksAfterASuccessfulRun() throws IOException {
-    Files.writeString(sharedTempDir.resolve("keep.txt"), "This file stays.");
-    Files.writeString(sharedTempDir.resolve("vanishing.txt"), "This file will disappear.");
+    Files.writeString(classTempDir.resolve("keep.txt"), "This file stays.");
+    Files.writeString(classTempDir.resolve("vanishing.txt"), "This file will disappear.");
     // #886 review, ADR-0017 core rule: cleanup is scoped to (library, sourceType) - a document of
     // a different sourceType in the very same (nominally FILESYSTEM) library must survive
     // regardless of what the FILESYSTEM cleanup below does. Inserted directly, bypassing the
@@ -228,7 +195,7 @@ class StaleDocumentCleanupIntegrationTest {
             .orElseThrow()
             .getId();
 
-    Files.delete(sharedTempDir.resolve("vanishing.txt"));
+    Files.delete(classTempDir.resolve("vanishing.txt"));
 
     IndexingJob secondJob = triggerIndexing();
     awaitJobCompletion(secondJob);
@@ -268,10 +235,10 @@ class StaleDocumentCleanupIntegrationTest {
     // Sharpened per #886 review: the failure must come from within discoverFiles itself (the
     // production code path that can genuinely race a real source, e.g. an unmounted network
     // share), not from the allowlist pre-check that runs before discoverFiles is ever called -
-    // library.sourcePath points at its own dedicated subdirectory of sharedTempDir (still inside
-    // the configured allowlist) so only that subdirectory - never sharedTempDir itself - is
+    // library.sourcePath points at its own dedicated subdirectory of classTempDir (still inside
+    // the configured allowlist) so only that subdirectory - never classTempDir itself - is
     // removed between the two runs.
-    Path librarySourceDir = sharedTempDir.resolve("failed-run-source");
+    Path librarySourceDir = classTempDir.resolve("failed-run-source");
     Files.createDirectory(librarySourceDir);
     jdbcTemplate.update(
         "UPDATE knowledge_libraries SET source_path = ? WHERE id = ?",
@@ -314,7 +281,7 @@ class StaleDocumentCleanupIntegrationTest {
     // real content was synced). StaleDocumentCleanupService#cleanupVanished's own empty-set guard
     // must still refuse to delete the library's entire previously indexed bestand on that single
     // signal alone.
-    Files.writeString(sharedTempDir.resolve("only-file.txt"), "The only file, for now.");
+    Files.writeString(classTempDir.resolve("only-file.txt"), "The only file, for now.");
 
     IndexingJob firstJob = triggerIndexing();
     awaitJobCompletion(firstJob);
@@ -323,7 +290,7 @@ class StaleDocumentCleanupIntegrationTest {
     Document onlyDoc =
         documentRepository.findByLibraryId(targetLibraryId).stream().findFirst().orElseThrow();
 
-    Files.delete(sharedTempDir.resolve("only-file.txt"));
+    Files.delete(classTempDir.resolve("only-file.txt"));
 
     IndexingJob secondJob = triggerIndexing();
     awaitJobCompletion(secondJob);
