@@ -103,6 +103,18 @@ class RetrievalMetricsTest {
   }
 
   @Test
+  void allExpectedDocumentsHitAt10IsZeroWhenAnExpectedDocumentLandsJustOutsideTheTop10Window() {
+    // Issue #913 review, Nit 2: pins the k=10 cutoff itself — without it, removing the subList
+    // truncation in allExpectedDocumentsHitAtK would still leave this suite green.
+    GoldenCase goldenCase = caseWithExpected(List.of("e1", "e2"));
+    RetrievalMetrics.QueryResult result =
+        RetrievalMetrics.evaluate(
+            goldenCase, List.of("e1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "d10", "e2"));
+
+    assertThat(result.allExpectedDocumentsHitAt10()).isEqualTo(0.0);
+  }
+
+  @Test
   void twelveExpectedDocumentsHitAtRanksOneTwoFiveNine() {
     GoldenCase goldenCase =
         caseWithExpected(

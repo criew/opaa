@@ -95,17 +95,11 @@ public final class RetrievalMetrics {
   }
 
   /**
-   * "Recall pro Teilthema" (issue #913, following up on issue #912's topK-monoculture finding): 1.0
-   * only if <b>every</b> expected document is somewhere in the top-{@code k} ranked list, 0.0
-   * otherwise — as opposed to {@link #recallAtK}, which gives partial credit for a multi-document
-   * case (e.g. 0.5 when only one of two expected documents is retrieved). That partial credit is
-   * exactly the wrong shape for a {@code multi_topic} golden case: a query naming two entities from
-   * two different documents (e.g. "was kosten führerschein und personalausweis") is only actually
-   * answerable if the retrieved context covers both — a case where the dominant topic crowds out
-   * the other must score 0, not a comforting 0.5. An empty expected set (never produced by this
-   * harness's golden cases, but defensively handled the same way as the other metrics above) scores
-   * 0.0, matching {@link #recallAtK}'s convention rather than the vacuously-true "all zero elements
-   * are present".
+   * "Recall pro Teilthema" (issue #913): 1.0 only if <b>every</b> expected document is in the
+   * top-{@code k} ranked list, 0.0 otherwise — unlike {@link #recallAtK}, which gives partial
+   * credit for a multi-document case (e.g. 0.5 for one of two expected documents), the wrong shape
+   * for detecting a dominant topic crowding another out of the top-K (issue #912). Empty expected
+   * set scores 0.0, matching {@link #recallAtK}'s convention.
    */
   static double allExpectedDocumentsHitAtK(List<String> ranked, Set<String> expected, int k) {
     if (expected.isEmpty()) {

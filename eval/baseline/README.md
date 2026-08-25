@@ -43,11 +43,15 @@ Gruppennamen, Fallzahlen und Zahlenwerte unterscheiden sich zwischen den beiden 
   wäre (siehe ADR-0011, Konsequenzen; ADR-0012, Entscheidung 6).
 - **`groups`** enthält die vier Kernmetriken (`hitRateAt5`, `mrr`, `ndcgAt10`, `recallAt10`) plus
   `recallAt10Ceiling`, `distinctExpectedDocumentSets` (die Grundgröße der Toleranzformel unten,
-  `n_eff`) und `hitCountAt5`/`hitCountAt10` (Issue #306 — Zahl der Fälle mit einem Treffer in den
-  Top 5 bzw. Top 10, Grundgröße der fallzahlbasierten Prüfung weiter unten) für `overall` und jede
-  Ausprägung von Kategorie (`category:<name>`), Schwierigkeit (`difficulty:<name>`) und Sprache
-  (`language:<name>`) aus dem Golden Dataset — mit einer Ausnahme, siehe [Konsolidierung von
-  `language:de`](#konsolidierung-von-languagede-issue-304) unten.
+  `n_eff`), `hitCountAt5`/`hitCountAt10` (Issue #306 — Zahl der Fälle mit einem Treffer in den
+  Top 5 bzw. Top 10, Grundgröße der fallzahlbasierten Prüfung weiter unten) und
+  `allExpectedDocumentsHitAt10` (Issue #913 — „Recall pro Teilthema": Anteil der Fälle, in denen
+  *jedes* erwartete Dokument im Top-10-Fenster steht, nicht nur `recallAt10`s Teilkredit; wird von
+  `BaselineComparator` wie die vier Kernmetriken toleranzgeprüft, aber ohne harte Untergrenze) für
+  `overall` und jede Ausprägung von Kategorie (`category:<name>`), Schwierigkeit
+  (`difficulty:<name>`) und Sprache (`language:<name>`) aus dem Golden Dataset — mit einer
+  Ausnahme, siehe [Konsolidierung von `language:de`](#konsolidierung-von-languagede-issue-304)
+  unten.
 - **`measuredAt`**/**`provenance`**/**`notes`** sind rein dokumentarisch (nie Teil des Vergleichs):
   wann, mit welchem PR und welchem Report gemessen wurde, inklusive Verweis auf frühere, hinfällige
   Zahlen (siehe unten).
@@ -327,7 +331,13 @@ das die Änderung verursacht, damit Ursache und neue Zahl im selben Review sicht
    Vorbild). `hitCountAt5`/`hitCountAt10` (Issue #306) gehören für jede Gruppe dazu — sie stehen
    direkt im JSON-Report unter `allQueryResults` (Zahl der Fälle mit `hitRateAt5 > 0` bzw.
    `ndcgAt10 > 0`) und müssen aus demselben Lauf stammen wie die vier Mittelwerte, nicht separat
-   nachgerechnet werden.
+   nachgerechnet werden. `allExpectedDocumentsHitAt10` (Issue #913, „Recall pro Teilthema") gehört
+   für jede Gruppe ebenso dazu — fehlt es, wird es beim Laden stillschweigend als `0.0` normalisiert
+   (siehe `MetricsAggregate`s Javadoc) und `BaselineComparator` schützt dann nichts mehr gegen einen
+   Rückgang bei dieser Metrik; `Baseline.validate` prüft beim Laden zwei nachrechenbare
+   Invarianten (`allExpectedDocumentsHitAt10 <= recallAt10` und
+   `allExpectedDocumentsHitAt10 * n <= hitCountAt10`) gegen genau dieses stille Verschwinden, ersetzt
+   aber nicht das Eintragen des tatsächlich gemessenen Werts.
 
    **Verbindliche Rundungsregel (Issue #721 code review, Nit 5):** Die vier gerundeten Mittelwerte
    je Gruppe werden **wörtlich aus der `%.3f`-Textausgabe von `ReportWriter.renderSummary`**

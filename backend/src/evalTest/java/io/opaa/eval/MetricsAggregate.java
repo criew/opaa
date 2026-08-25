@@ -35,20 +35,15 @@ import java.util.function.Function;
  * pairs where the mean tolerance is tighter than one case's worth of shift — see its class Javadoc.
  *
  * <p><b>{@code allExpectedDocumentsHitAt10} (issue #913).</b> Mean of {@link
- * RetrievalMetrics#allExpectedDocumentsHitAtK} — "Recall pro Teilthema" — over the group: the
- * fraction of cases where <b>every</b> expected document was retrieved, not just the fraction of
- * expected documents retrieved on average (that is what {@code recallAt10} already measures). For a
- * single-expected-document case the two metrics coincide; they diverge exactly for multi-document
- * cases (e.g. the {@code multi_topic} category), which is the point — see the field's use in
- * detecting the topK-monoculture failure mode from issue #912.
+ * RetrievalMetrics#allExpectedDocumentsHitAtK} — "Recall pro Teilthema" — the fraction of cases
+ * where <b>every</b> expected document was retrieved, as opposed to {@code recallAt10}'s average
+ * fraction of expected documents retrieved. The two coincide for single-document cases and diverge
+ * for multi-document ones (e.g. {@code multi_topic}), which is the point (issue #912).
  *
- * <p>Deliberately typed {@link Double} rather than {@code double}, unlike every other metric field
- * here: a baseline file written before issue #913 (e.g. the committed {@code
- * comic-characters.json}, which this issue's scope does not require re-measuring) has no such
- * property. Jackson's record deserialization treats a missing *primitive* field as a hard error
- * (there is no sensible zero-arg default to fall back to), but tolerates a missing *reference-type*
- * field as {@code null} — the compact constructor below normalizes that {@code null} to {@code 0.0}
- * so every caller still sees a plain, never-null value.
+ * <p>Typed {@link Double}, unlike every other field here: a baseline written before issue #913
+ * (e.g. {@code comic-characters.json}) has no such property, and Jackson's record deserialization
+ * treats a missing *primitive* field as a hard error but a missing *reference-type* field as {@code
+ * null} — the compact constructor below normalizes that to {@code 0.0}.
  */
 public record MetricsAggregate(
     int n,
