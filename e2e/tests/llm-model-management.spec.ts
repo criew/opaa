@@ -349,6 +349,10 @@ test.describe('Modellverwaltung (#760) - unabhängige Szenarien', () => {
 
     await page.goto('/admin/models')
     await expect(page.getByText(/nicht freigegeben/i)).toBeVisible()
+    // #805 (Review zu #803): "Nicht-Admins sehen die Spalte nicht" (#800) war unzugesichert -
+    // die Seite ist hier gerendert (positiver Anker eine Zeile darüber), die Admin-Landmarke
+    // darf trotzdem nicht existieren.
+    await expect(page.getByRole('navigation', { name: 'Administration' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Neues Modell' })).toHaveCount(0)
 
     // Nicht nur die UI-Sperre - auch die serverseitige Schranke (PR #770 review, Befund 4b).

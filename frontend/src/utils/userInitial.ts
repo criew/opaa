@@ -11,5 +11,7 @@ interface InitialSource {
  */
 export function userInitial(user: InitialSource | null | undefined): string {
   const source = user?.displayName?.trim() || user?.email?.trim() || '?'
-  return source[0].toUpperCase()
+  // Spread iterates by code point: `source[0]` on a non-BMP first character (an emoji) would
+  // return half a surrogate pair and render as � (#805).
+  return [...source][0].toUpperCase()
 }

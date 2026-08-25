@@ -16,8 +16,10 @@ function renderShell(initialRoute = '/chat') {
     <Routes>
       <Route element={<AppShell />}>
         <Route path="/chat" element={<div>Chat-Inhalt</div>} />
-        <Route path="/settings" element={<PageHeading title="Einstellungen" />} />
         <Route element={<GlobalAreaLayout />}>
+          {/* #805: mirrors App.tsx - /settings renders inside the sectionless global frame,
+              the harness had drifted from the route table (#788). */}
+          <Route path="/settings" element={<PageHeading title="Einstellungen" />} />
           <Route path="/libraries" element={<div>Ohne Überschrift</div>} />
           <Route path="/spaces" element={<div>Spaces-Karten</div>} />
           <Route path="/spaces/new" element={<div>Space-Assistent</div>} />

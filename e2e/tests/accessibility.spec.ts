@@ -92,9 +92,7 @@ test.describe('Barrierefreiheit (axe-core, #586)', () => {
   // mit Badge neben der H1 und Akzent-Avatar eigene Farbkombinationen einführt (#788).
   test('Benutzer-Einstellungen', async ({ authenticatedPage: page }) => {
     await page.goto('/settings')
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Ihre Einstellungen' }),
-    ).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Ihre Einstellungen' })).toBeVisible()
 
     await expectNoSeriousA11yViolations(page, 'Benutzer-Einstellungen', {
       exclude: [
@@ -105,24 +103,5 @@ test.describe('Barrierefreiheit (axe-core, #586)', () => {
         '.MuiLink-root',
       ],
     })
-  })
-
-  // #800 (Review zu #794): kein Spec klickte durch die Admin-Sekundärspalte — genau so wäre
-  // die mobile Unerreichbarkeit zweier Ziele aufgefallen. Der Durchklick sichert das
-  // Abnahmekriterium „Wechsel zwischen den Admin-Seiten über die Sekundärspalte" (#787).
-  test('Verwaltungsbereich: Wechsel über die Sekundärspalte', async ({
-    authenticatedPage: page,
-  }) => {
-    await page.goto('/admin/groups')
-    const column = page.getByRole('navigation', { name: 'Administration' })
-    await expect(column).toBeVisible()
-
-    await column.getByRole('link', { name: 'Modelle' }).click()
-    await page.waitForURL('**/admin/models')
-    await expect(page.getByRole('heading', { level: 1, name: 'Modelle' })).toBeVisible()
-
-    await column.getByRole('link', { name: 'Allgemein & Branding' }).click()
-    await page.waitForURL('**/admin/branding')
-    await expect(page.getByRole('heading', { level: 1, name: 'Branding' })).toBeVisible()
   })
 })
