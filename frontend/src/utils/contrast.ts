@@ -51,6 +51,51 @@ export function contrastRatio(foreground: string, background: string): number | 
   return (lighter + 0.05) / (darker + 0.05)
 }
 
+/**
+ * Darkens a `#RRGGBB` colour like MUI's `darken` (channels scaled toward black), staying in hex
+ * so the result feeds back into {@link contrastRatio}. Null for anything unparseable.
+ */
+export function darkenHex(color: string, coefficient: number): string | null {
+  const channels = parseHexColor(color)
+  if (!channels) return null
+  const scaled = channels.map((value) => Math.round(value * (1 - coefficient)))
+  return `#${scaled.map((value) => value.toString(16).padStart(2, '0')).join('')}`
+}
+
+/** One darkening step of the surface derivation - matches the sampled -8% hover rhythm. */
+const ACCENT_SURFACE_DARKEN_STEP = 0.08
+
+/**
+ * Bounded on purpose (#634): a corporate colour is not this application's to repaint. Six steps
+ * rescue a moderately light accent; an extreme one (pale yellow) stays failing and triggers the
+ * contrast warning instead of being darkened beyond recognition.
+ */
+const ACCENT_SURFACE_MAX_STEPS = 6
+
+/**
+ * The filled-action surface for a configured accent colour (#634): the colour itself when white
+ * text already reaches 4.5:1 on it, otherwise darkened in -8% steps until it does - at most
+ * {@link ACCENT_SURFACE_MAX_STEPS} steps, after which the last attempt is returned even when it
+ * still fails (see {@link checkAccentContrast}, which then warns). Unparseable input is returned
+ * unchanged - there is nothing to derive from.
+ */
+export function deriveAccentSurface(accent: string): string {
+  let candidate = accent
+  for (let step = 0; step <= ACCENT_SURFACE_MAX_STEPS; step++) {
+    const ratio = contrastRatio('#FFFFFF', candidate)
+    if (ratio === null || ratio >= TEXT_CONTRAST_MINIMUM) {
+      return candidate
+    }
+    if (step === ACCENT_SURFACE_MAX_STEPS) {
+      break
+    }
+    const darker = darkenHex(candidate, ACCENT_SURFACE_DARKEN_STEP)
+    if (!darker) return candidate
+    candidate = darker
+  }
+  return candidate
+}
+
 export interface ContrastCheck {
   /** German label of what was compared, for the warning text. */
   label: string
@@ -63,8 +108,10 @@ export interface ContrastCheck {
  * The three checks that decide whether an accent colour is usable in this design system, both
  * schemes included (guidelines: "Beide Schemata sind gleichermaßen verbindlich"):
  *
- * 1. Button label on the accent surface - `accentFg` is white in both schemes, so a light accent
- *    makes every primary button unreadable. Text threshold.
+ * 1. Button label on the accent surface - `accentFg` is white in both schemes. Since #634 the
+ *    filled surface is {@link deriveAccentSurface}'s bounded darkening of the configured colour,
+ *    so this check evaluates what will actually render; it only fails when even the darkened
+ *    surface cannot carry white text. Text threshold.
  * 2. and 3. The accent against the base surface of each scheme - this is what a focus ring, a
  *    selected border or an icon has to stand out from. UI-component threshold.
  *
@@ -77,7 +124,7 @@ export function checkAccentContrast(accent: string): ContrastCheck[] {
       {
         label: 'Beschriftung auf Schaltflächen',
         foreground: lightRoles.accentFg,
-        background: accent,
+        background: deriveAccentSurface(accent),
         required: TEXT_CONTRAST_MINIMUM,
       },
       {

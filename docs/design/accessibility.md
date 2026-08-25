@@ -4,8 +4,8 @@ OPAA zielt auf die öffentliche Verwaltung — dort ist Barrierefreiheit nach **
 Kür, sondern Pflicht. Diese Richtlinie legt das Zielniveau fest und macht es prüfbar: Die
 Prüfliste in Abschnitt 2 ist für **jedes UI-Issue und jeden Frontend-PR verbindlich**; das
 PR-Template verweist hierher. Gestaltungsregeln (Farben, Fokusring, Zustände) stehen in den
-[Design-Guidelines](./guidelines.md) — diese Richtlinie regelt, *was nachgewiesen* wird und
-*wie geprüft* wird.
+[Design-Guidelines](./guidelines.md) — diese Richtlinie regelt, _was nachgewiesen_ wird und
+_wie geprüft_ wird.
 
 ---
 
@@ -111,15 +111,15 @@ Ausschnitt.
   Rückwechsel: #635) im Frontend-Lint, Regelset `recommended`, jeder Verstoß ein Lint-Fehler.
 - **axe-core** (`@axe-core/playwright`) in der Playwright-E2E-Suite
   (`e2e/tests/accessibility.spec.ts`, eingeführt mit #586): Anmeldung, Chat in beiden
-  Farbschemata, Space-Seite, Wissensbibliotheken, Verwaltungsbereich,
-  Benutzer-Einstellungen (dort mit seitenlokaler #634-Klammerung der Akzent-Links).
+  Farbschemata, Space-Seite, Wissensbibliotheken, Verwaltungsbereich, Benutzer-Einstellungen.
   Verstöße der Stufen
   „serious" und „critical" lassen die Prüfung fehlschlagen, „minor"/„moderate" erscheinen als
   Annotation im Report.
 - Ausnahmen werden einzeln im Code begründet und mit einem Issue verknüpft — nie pauschal
   abgeschaltet: im Lint als `// eslint-disable-next-line jsx-a11y-x/<regel>` mit Begründung und
-  Issue direkt darüber, in der E2E-Suite als Eintrag in `KNOWN_EXCEPTIONS` der Spec
-  (`exclude` für eine Komponente, `disableRules` für eine Regel). Wer eine Ausnahme hinzufügt,
+  Issue direkt darüber, in der E2E-Suite als dokumentierter `exclude`-/`disableRules`-Eintrag
+  am Aufrufort (`exclude` für eine Komponente, `disableRules` für eine Regel; derzeit gibt es
+  keine). Wer eine Ausnahme hinzufügt,
   legt das Issue an, das sie wieder entfernt.
 
 ### 3.2 Tastatur-Durchgang (jeder PR mit UI-Änderung)

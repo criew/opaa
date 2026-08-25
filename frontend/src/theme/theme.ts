@@ -1,6 +1,7 @@
 import { alpha, createTheme, darken } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import type { PaletteMode } from '@mui/material'
+import { deriveAccentSurface } from '../utils/contrast'
 import { deDE } from '@mui/material/locale'
 import type { BrandingOverrides, SchemeRoles } from './tokens'
 import {
@@ -39,17 +40,28 @@ const CONTROL_HEIGHT_COMPACT = 28
  */
 function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
   const brandColor = branding?.primaryColor
-  if (!brandColor) {
+  // The OPAA standard colour counts as "not configured" (#634): the backend resolves branding
+  // field by field, so an unconfigured deployment still delivers '#1292EE' - but that value means
+  // "the tokens decide", and the tokens split the accent per scheme (blue-700 light, blue-500
+  // dark). Only a genuinely different operator colour overrides the roles.
+  // OPAA_BRANDING.primaryColor mirrors blue[500]; theme.test.ts pins that equivalence.
+  if (!brandColor || brandColor.toUpperCase() === blue[500].toUpperCase()) {
     return {
       accent: roles.accent,
+      accentSurface: roles.accentSurface,
       accentHover: roles.accentHover,
       accentPress: roles.accentPress,
     }
   }
+  // #634: filled action surfaces must carry accentFg (white) at >= 4.5:1, so the surface is the
+  // bounded darkening of the configured colour - the colour itself where it is dark enough.
+  // Hover/press derive from that surface, keeping the sampled -8%/-16% rhythm.
+  const accentSurface = deriveAccentSurface(brandColor)
   return {
     accent: brandColor,
-    accentHover: darken(brandColor, 0.08),
-    accentPress: darken(brandColor, 0.16),
+    accentSurface,
+    accentHover: darken(accentSurface, 0.08),
+    accentPress: darken(accentSurface, 0.16),
   }
 }
 
@@ -82,7 +94,7 @@ export function createRailTheme(appMode: PaletteMode, branding?: BrandingOverrid
 
 function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOverrides): Theme {
   const isDark = mode === 'dark'
-  const { accent, accentHover, accentPress } = resolveAccent(roles, branding)
+  const { accent, accentSurface, accentHover, accentPress } = resolveAccent(roles, branding)
   const focusRing = alpha(accent, focusRingAlpha)
   // One focus ring for everything interactive, in both schemes (guidelines 4.4). Shared between
   // the global rule and MuiButtonBase, which resets `outline` itself and would otherwise win.
@@ -276,7 +288,9 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
                 {
                   props: { variant: 'contained', color: 'primary' },
                   style: {
-                    backgroundColor: accent,
+                    // #634: the filled surface is accentSurface, never the (possibly lighter)
+                    // accent - white label text needs 4.5:1.
+                    backgroundColor: accentSurface,
                     color: roles.accentFg,
                     '&:hover': {
                       backgroundColor: accentHover,
@@ -414,6 +428,17 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
               borderRadius: radius.pill,
               fontSize: 11,
               fontWeight: fontWeight.medium,
+              variants: [
+                {
+                  // #634: filled primary chips (search-scope chips, "Aktiv" badge) sit on the
+                  // accent surface for the same 4.5:1 reason as contained buttons.
+                  props: { variant: 'filled', color: 'primary' },
+                  style: {
+                    backgroundColor: accentSurface,
+                    color: roles.accentFg,
+                  },
+                },
+              ],
             },
             outlined: {
               borderColor: roles.borderStrong,

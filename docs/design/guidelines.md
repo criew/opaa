@@ -39,23 +39,23 @@ aufgezählt.
 
 **Blau** — Akzent- und Handlungsfarbe:
 
-| Stufe | Wert | Stufe | Wert |
-|---|---|---|---|
-| 50 | `#E7F4FE` | 500 | `#1292EE` *(Basis)* |
-| 100 | `#C6E3FC` | 600 | `#0F80D6` *(Hover, −8 % Helligkeit)* |
-| 200 | `#9BCEFA` | 700 | `#0B6FBC` *(Aktiv/Gedrückt, −16 %)* |
-| 300 | `#61B5F6` | 800 | `#085B9C` |
-| 400 | `#349EF2` | 900 | `#05447A` |
+| Stufe | Wert      | Stufe | Wert                                 |
+| ----- | --------- | ----- | ------------------------------------ |
+| 50    | `#E7F4FE` | 500   | `#1292EE` _(Basis)_                  |
+| 100   | `#C6E3FC` | 600   | `#0F80D6` _(Hover, −8 % Helligkeit)_ |
+| 200   | `#9BCEFA` | 700   | `#0B6FBC` _(Aktiv/Gedrückt, −16 %)_  |
+| 300   | `#61B5F6` | 800   | `#085B9C`                            |
+| 400   | `#349EF2` | 900   | `#05447A`                            |
 
 **Navy** — Struktur- und Textfarbe:
 
-| Name | Wert | Verwendung |
-|---|---|---|
-| Navy | `#012142` | Primärtext (hell), Seitenleiste, dunkle Grundfläche |
-| Navy-900 | `#00152D` | Überlagerungen, tiefste Fläche |
-| Navy-700 | `#02305E` | erhöhte Fläche im dunklen Schema |
-| Navy-600 | `#034079` | gedämpfte Fläche im dunklen Schema |
-| Navy-500 | `#055396` | Grenzfälle, Diagramme |
+| Name     | Wert      | Verwendung                                          |
+| -------- | --------- | --------------------------------------------------- |
+| Navy     | `#012142` | Primärtext (hell), Seitenleiste, dunkle Grundfläche |
+| Navy-900 | `#00152D` | Überlagerungen, tiefste Fläche                      |
+| Navy-700 | `#02305E` | erhöhte Fläche im dunklen Schema                    |
+| Navy-600 | `#034079` | gedämpfte Fläche im dunklen Schema                  |
+| Navy-500 | `#055396` | Grenzfälle, Diagramme                               |
 
 **Grau** (kühl, auf Navy abgestimmt): `#E6EBF1` (100), `#CBD4DF` (200), `#A4B1C1` (300),
 `#778797` (400), `#556473` (500), `#3B4958` (600), `#26323F` (700), `#162231` (800).
@@ -67,12 +67,12 @@ aufgezählt.
 der Claude-Docs-Website, erhoben am 20.08.2026). Navy bleibt der Seitenleisten-Block des
 hellen Schemas:
 
-| Name | Wert | Verwendung |
-|---|---|---|
-| Carbon-950 | `#09090B` | Seitengrund dunkel |
-| Carbon-900 | `#171717` | erhöhte Fläche dunkel |
-| Carbon-850 | `#1F1F1F` | gedämpfte Fläche dunkel |
-| Carbon-800 | `#252525` | Standardrahmen dunkel |
+| Name       | Wert      | Verwendung                      |
+| ---------- | --------- | ------------------------------- |
+| Carbon-950 | `#09090B` | Seitengrund dunkel              |
+| Carbon-900 | `#171717` | erhöhte Fläche dunkel           |
+| Carbon-850 | `#1F1F1F` | gedämpfte Fläche dunkel         |
+| Carbon-800 | `#252525` | Standardrahmen dunkel           |
 | Carbon-700 | `#333333` | betonter Rahmen, Tooltip dunkel |
 
 **Semantik:** Erfolg `#16B77B` · Warnung `#F5B83D` · Gefahr `#E5484D`. In beiden Schemata
@@ -82,18 +82,19 @@ identisch; Text auf diesen Flächen muss die Kontrastanforderung (2.4) erfüllen
 
 Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 
-| Rolle | Bedeutung | Hell | Dunkel |
-|---|---|---|---|
-| `bg-1` | Seitengrund | Weiß `#FFFFFF` | Carbon-950 `#09090B` |
-| `bg-2` | erhöhte Fläche (Karte, Kopfzeile) | Off-White `#F6F8FB` | Carbon-900 `#171717` |
-| `bg-3` | gedämpfte Fläche (Eingabefeld, Tabellenkopf) | Smoke `#EEF2F7` | Carbon-850 `#1F1F1F` |
-| `fg-1` | Primärtext | Navy `#012142` | `#DEDEDE` |
-| `fg-2` | Sekundärtext | Grau-600 `#3B4958` | `#9E9E9E` |
-| `fg-3` | Tertiärtext, Metadaten | Grau-500 `#556473` | `#8A8A8A` |
-| `accent` | Handlung, Bezug, aktiver Zustand | Blau-500 `#1292EE` | Blau-500 `#1292EE` |
-| `accent-fg` | Text auf Akzentfläche | Weiß | Weiß |
-| `border` | Standardrahmen | Grau-100 `#E6EBF1` | Carbon-800 `#252525` |
-| `border-strong` | betonter Rahmen (Eingaben, Tabellen) | Grau-200 `#CBD4DF` | Carbon-700 `#333333` |
+| Rolle            | Bedeutung                                                        | Hell                | Dunkel               |
+| ---------------- | ---------------------------------------------------------------- | ------------------- | -------------------- |
+| `bg-1`           | Seitengrund                                                      | Weiß `#FFFFFF`      | Carbon-950 `#09090B` |
+| `bg-2`           | erhöhte Fläche (Karte, Kopfzeile)                                | Off-White `#F6F8FB` | Carbon-900 `#171717` |
+| `bg-3`           | gedämpfte Fläche (Eingabefeld, Tabellenkopf)                     | Smoke `#EEF2F7`     | Carbon-850 `#1F1F1F` |
+| `fg-1`           | Primärtext                                                       | Navy `#012142`      | `#DEDEDE`            |
+| `fg-2`           | Sekundärtext                                                     | Grau-600 `#3B4958`  | `#9E9E9E`            |
+| `fg-3`           | Tertiärtext, Metadaten                                           | Grau-500 `#556473`  | `#8A8A8A`            |
+| `accent`         | Handlung, Bezug, aktiver Zustand (Text, Ziffern, Rahmen)         | Blau-700 `#0B6FBC`  | Blau-500 `#1292EE`   |
+| `accent-surface` | Fläche gefüllter Aktionen (primäre Schaltfläche, gefüllter Chip) | Blau-700 `#0B6FBC`  | Blau-700 `#0B6FBC`   |
+| `accent-fg`      | Text auf `accent-surface`                                        | Weiß                | Weiß                 |
+| `border`         | Standardrahmen                                                   | Grau-100 `#E6EBF1`  | Carbon-800 `#252525` |
+| `border-strong`  | betonter Rahmen (Eingaben, Tabellen)                             | Grau-200 `#CBD4DF`  | Carbon-700 `#333333` |
 
 `fg-3` im hellen Schema ist Grau-500, nicht Grau-400 (#725): Grau-400 (`#778797`) erreicht gegen
 Weiß nur 3,68:1 — unter der 4,5:1-Anforderung für Fließtext (2.4) — und lag als Tertiärtext in
@@ -161,8 +162,12 @@ braucht einen dunkleren Ton oder eine andere Rolle.
 
 Text mindestens 4,5:1 gegen seine Fläche, große Schrift (ab 24 px bzw. 19 px fett) und
 UI-Komponenten/Grafik mindestens 3:1 — in beiden Schemata. Die Rollen aus 2.2 erfüllen das in
-den vorgesehenen Kombinationen (`fg-*` auf `bg-*`, `accent-fg` auf `accent`); wer andere
-Kombinationen bildet, weist den Kontrast im PR nach. Ausnahme: `fg-3` in `navyRoles`/`railRoles`
+den vorgesehenen Kombinationen (`fg-*` auf `bg-*`, `accent-fg` auf `accent-surface`, `accent`
+als Text auf `bg-1..3` des eigenen Schemas); wer andere Kombinationen bildet, weist den
+Kontrast im PR nach. `accent-fg` auf `accent` ist seit #634 **keine** nachgewiesene Kombination
+mehr — Weiß erreichte auf Blau-500 nur 3,3:1; gefüllte Flächen liegen deshalb auf
+`accent-surface` (Blau-700, 5,2:1), und das helle Schema führt `accent` selbst als Blau-700,
+damit Akzent-Text auf Weiß 4,5:1 hält (dunkles Schema: Blau-500 auf Carbon-950 = 6,0:1). Ausnahme: `fg-3` in `navyRoles`/`railRoles`
 erfüllt das nicht gegen `bg-2`/`bg-3` (siehe 2.2) — dort ist `fg-3` als Text ausgeschlossen, nicht
 nachgewiesen. Details regelt die [Barrierefreiheits-Richtlinie](./accessibility.md).
 
@@ -172,11 +177,11 @@ nachgewiesen. Details regelt die [Barrierefreiheits-Richtlinie](./accessibility.
 
 ### 3.1 Schriftentscheidung
 
-| Rolle | Schrift | Lizenz |
-|---|---|---|
-| Fließtext & Überschriften | **Quicksand** | SIL Open Font License — im Repo via `@fontsource/quicksand` |
-| Rückfall im Stapel | Inter | SIL Open Font License |
-| Mono (Aktenzeichen, Werte, Code) | **JetBrains Mono** | SIL Open Font License |
+| Rolle                            | Schrift            | Lizenz                                                      |
+| -------------------------------- | ------------------ | ----------------------------------------------------------- |
+| Fließtext & Überschriften        | **Quicksand**      | SIL Open Font License — im Repo via `@fontsource/quicksand` |
+| Rückfall im Stapel               | Inter              | SIL Open Font License                                       |
+| Mono (Aktenzeichen, Werte, Code) | **JetBrains Mono** | SIL Open Font License                                       |
 
 Die Zielbild-Mockups verwenden „Sklow", eine Firmenschrift ohne freie Lizenz. **Sie wird nicht
 ins Repository aufgenommen.** Quicksand (#658) ist ihre freie Entsprechung — rund-geometrisch,
@@ -190,18 +195,18 @@ später über die Branding-Konfiguration nachladen; die Schriftstapel enden desh
 Feste Pixelstufen; die App nutzt im Alltag 11–30 px, die großen Stufen gehören Markenmomenten
 (Anmeldeseite, Leerzustände):
 
-| Stufe | Größe | Typische Verwendung |
-|---|---|---|
-| 2xs | 11 px | Versal-Etiketten, Tabellen-Metadaten |
-| xs | 12 px | Metadaten, Chips, Eyebrow |
-| sm | 14 px | Sekundärtext, Tabellen, Seitenleiste |
-| base | 16 px | Fließtext, Chat-Antworten |
-| md | 18 px | Chat-Titel, hervorgehobener Text |
-| lg | 20 px | h4-Äquivalent |
-| xl | 24 px | Abschnittsüberschriften (h3) |
-| 2xl | 30 px | Seitenüberschriften (h2) |
-| 3xl | 36 px | große Seitenköpfe |
-| 4xl–7xl | 48–104 px | Markenblock, nicht im Arbeits-UI |
+| Stufe   | Größe     | Typische Verwendung                  |
+| ------- | --------- | ------------------------------------ |
+| 2xs     | 11 px     | Versal-Etiketten, Tabellen-Metadaten |
+| xs      | 12 px     | Metadaten, Chips, Eyebrow            |
+| sm      | 14 px     | Sekundärtext, Tabellen, Seitenleiste |
+| base    | 16 px     | Fließtext, Chat-Antworten            |
+| md      | 18 px     | Chat-Titel, hervorgehobener Text     |
+| lg      | 20 px     | h4-Äquivalent                        |
+| xl      | 24 px     | Abschnittsüberschriften (h3)         |
+| 2xl     | 30 px     | Seitenüberschriften (h2)             |
+| 3xl     | 36 px     | große Seitenköpfe                    |
+| 4xl–7xl | 48–104 px | Markenblock, nicht im Arbeits-UI     |
 
 Die Arbeitsflächen folgen zusätzlich dem **Feinraster aus Mockup 1a** (#658): Fließtext
 14,5 px / 1.65, UI-Listen 13 px, Metadaten 11–12,5 px, Versal-Etiketten 9,5 px / +0.12em,
@@ -233,14 +238,14 @@ Gruppen deutlich getrennt (24–48).
 
 ### 4.2 Radien
 
-| Stufe | Wert | Verwendung |
-|---|---|---|
-| xs | 4 px | kleine Chips, Tastenkürzel |
-| sm | 6 px | Schaltflächen, Menüeinträge (#658, Mockup 1a) |
-| **md** | **10 px** | **Standard: Karten, Eingaben, Dialoge** |
-| lg | 16 px | große Karten, Nachrichtenblasen |
-| xl | 24 px | Bühnenflächen |
-| pill | 999 px | Rollen- und Statuschips |
+| Stufe  | Wert      | Verwendung                                    |
+| ------ | --------- | --------------------------------------------- |
+| xs     | 4 px      | kleine Chips, Tastenkürzel                    |
+| sm     | 6 px      | Schaltflächen, Menüeinträge (#658, Mockup 1a) |
+| **md** | **10 px** | **Standard: Karten, Eingaben, Dialoge**       |
+| lg     | 16 px     | große Karten, Nachrichtenblasen               |
+| xl     | 24 px     | Bühnenflächen                                 |
+| pill   | 999 px    | Rollen- und Statuschips                       |
 
 ### 4.3 Ebenen: Rahmen statt Schatten
 
@@ -272,11 +277,11 @@ Zustandswechsel.
 
 ### 5.1 Schaltflächen
 
-| Variante | Ruhe | Hover | Aktiv |
-|---|---|---|---|
-| Primär | `accent`-Fläche, `accent-fg`-Text | Blau-600 (−8 % Helligkeit) | Blau-700 (−16 %) |
-| Sekundär | `bg-1` mit `border-strong` | `bg-2` | `bg-3` |
-| Still (Text/Ghost) | transparent, `accent`-Text | `bg-2` | `bg-3` |
+| Variante           | Ruhe                                      | Hover                      | Aktiv            |
+| ------------------ | ----------------------------------------- | -------------------------- | ---------------- |
+| Primär             | `accent-surface`-Fläche, `accent-fg`-Text | Blau-800 (−8 % Helligkeit) | Blau-900 (−16 %) |
+| Sekundär           | `bg-1` mit `border-strong`                | `bg-2`                     | `bg-3`           |
+| Still (Text/Ghost) | transparent, `accent`-Text                | `bg-2`                     | `bg-3`           |
 
 Radius sm, Gewicht 500, 13,5 px, Höhe 34 px (kompakt 28 px), Beschriftung als Verb („Fragen",
 „Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche. Auf Navy-Flächen gilt die
@@ -352,20 +357,20 @@ kein Banner, keine Signalfarbe (Ausgestaltung: Issues #590/#592, Mockups 1a/1i).
 
 UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch. Verbindliche Begriffe:
 
-| Begriff | Bedeutung / Regel |
-|---|---|
-| **Space** | Arbeitsraum mit Datenquellen, Chats, Mitgliedern. Bleibt unübersetzt. |
-| **Chat** | in sich geschlossene Unterhaltung in einem Space; benennbar |
-| **Wissensbibliothek** | benannter Wissensbestand; kurz „Bibliothek", im Fließtext auch „Bestand" |
-| **Datenquellen** | die einem Space zugeordneten Bibliotheken |
-| **Herkunft** | woher eine Bibliothek ihre Dokumente bezieht (Upload, Dateisystem, Webverzeichnis, RSS-Feed) |
-| **Verteilungsstufe** | privat · geteilt · organisationsweit |
-| **Rolle** | Leser · Bearbeiter · Verwalter · Eigentümer |
-| **Fundstellen** | Belegblock unter einer Antwort |
-| **Belege / Belegfenster** | alle Fundstellen einer Antwort in der seitlichen Leiste |
-| **Systemverwaltung** | Admin-Bereich und -Rolle |
-| **Anmeldung / Kennung** | nie „Login"/„Username" in Nutzertexten |
-| Claim | „Fragen. Belegen. Entscheiden." |
+| Begriff                   | Bedeutung / Regel                                                                            |
+| ------------------------- | -------------------------------------------------------------------------------------------- |
+| **Space**                 | Arbeitsraum mit Datenquellen, Chats, Mitgliedern. Bleibt unübersetzt.                        |
+| **Chat**                  | in sich geschlossene Unterhaltung in einem Space; benennbar                                  |
+| **Wissensbibliothek**     | benannter Wissensbestand; kurz „Bibliothek", im Fließtext auch „Bestand"                     |
+| **Datenquellen**          | die einem Space zugeordneten Bibliotheken                                                    |
+| **Herkunft**              | woher eine Bibliothek ihre Dokumente bezieht (Upload, Dateisystem, Webverzeichnis, RSS-Feed) |
+| **Verteilungsstufe**      | privat · geteilt · organisationsweit                                                         |
+| **Rolle**                 | Leser · Bearbeiter · Verwalter · Eigentümer                                                  |
+| **Fundstellen**           | Belegblock unter einer Antwort                                                               |
+| **Belege / Belegfenster** | alle Fundstellen einer Antwort in der seitlichen Leiste                                      |
+| **Systemverwaltung**      | Admin-Bereich und -Rolle                                                                     |
+| **Anmeldung / Kennung**   | nie „Login"/„Username" in Nutzertexten                                                       |
+| Claim                     | „Fragen. Belegen. Entscheiden."                                                              |
 
 Nicht verwendet werden: „Workspace", „Library", „Datei-Upload" (stattdessen „Upload"),
 „User", englische Mischformen in Nutzertexten. Technische Enum-Werte und API-Felder bleiben
@@ -380,10 +385,12 @@ Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponent
 
 - Name, Claim und Logo werden nie hart eingebettet, sondern aus der Branding-Quelle bezogen
   (mit OPAA-Standard als Fallback).
-- Akzentfarbe nur über die Rolle `accent`; abgeleitete Zustände (Hover −8 %, Aktiv −16 %,
-  Fokusring 32 % Deckung) werden aus der konfigurierten Farbe berechnet, nicht aus Blau-600/700
-  fest verdrahtet.
-- Die Kontrastprüfung der konfigurierten Farbe warnt, blockiert aber nicht (#583).
+- Akzentfarbe nur über die Rollen `accent`/`accent-surface`; die Fläche gefüllter Aktionen wird
+  aus der konfigurierten Farbe abgeleitet (#634): unverändert, wenn Weiß darauf 4,5:1 erreicht,
+  sonst in −8-%-Schritten abgedunkelt (höchstens sechs Schritte). Hover (−8 %), Aktiv (−16 %)
+  und Fokusring (32 % Deckung) werden berechnet, nicht aus Blau-800/900 fest verdrahtet.
+- Die Kontrastprüfung der konfigurierten Farbe warnt, blockiert aber nicht (#583); sie prüft
+  die Beschriftung gegen die tatsächlich abgeleitete Fläche.
 
 ---
 

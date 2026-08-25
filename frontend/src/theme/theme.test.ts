@@ -14,16 +14,51 @@ import {
   white,
 } from './tokens'
 import { contrastRatio, TEXT_CONTRAST_MINIMUM } from '../utils/contrast'
+import { OPAA_BRANDING } from '../stores/brandingStore'
 
 describe('tokens', () => {
   test('light and dark schemes define the identical set of roles', () => {
     expect(Object.keys(darkRoles).sort()).toEqual(Object.keys(lightRoles).sort())
   })
 
-  test('accent states carry the sampled mockup values (hover -8%, press -16%)', () => {
-    expect(lightRoles.accent).toBe(blue[500])
-    expect(lightRoles.accentHover).toBe(blue[600])
-    expect(lightRoles.accentPress).toBe(blue[700])
+  test('accent surface states carry the sampled values (hover -8%, press -16%), #634', () => {
+    expect(lightRoles.accentSurface).toBe(blue[700])
+    expect(lightRoles.accentHover).toBe(blue[800])
+    expect(lightRoles.accentPress).toBe(blue[900])
+    expect(darkRoles.accentSurface).toBe(blue[700])
+  })
+
+  // #634: white on blue[500] only reached 3.3:1 - every filled action surface and every
+  // accent-as-text combination is proven here, so the guidelines' 2.4 claim and the tokens
+  // cannot drift apart again.
+  test('accentFg reaches 4.5:1 on the accent surface of every role set (#634)', () => {
+    for (const [label, roles] of [
+      ['light', lightRoles],
+      ['dark', darkRoles],
+      ['navy', navyRoles],
+      ['rail', railRoles],
+    ] as const) {
+      const ratio = contrastRatio(roles.accentFg, roles.accentSurface)
+      expect(ratio, `accentFg on accentSurface (${label})`).not.toBeNull()
+      expect(ratio, `accentFg on accentSurface (${label})`).toBeGreaterThanOrEqual(
+        TEXT_CONTRAST_MINIMUM,
+      )
+    }
+  })
+
+  test('accent works as text on every surface of its own scheme (#634)', () => {
+    for (const [label, roles] of [
+      ['light', lightRoles],
+      ['dark', darkRoles],
+    ] as const) {
+      for (const background of [roles.bg1, roles.bg2, roles.bg3]) {
+        const ratio = contrastRatio(roles.accent, background)
+        expect(ratio, `accent on ${background} (${label})`).not.toBeNull()
+        expect(ratio, `accent on ${background} (${label})`).toBeGreaterThanOrEqual(
+          TEXT_CONTRAST_MINIMUM,
+        )
+      }
+    }
   })
 
   test('the default radius is the 10px squircle from the guidelines', () => {
@@ -86,7 +121,7 @@ describe('createAppTheme', () => {
     expect(theme.palette.background.default).toBe(white)
     expect(theme.palette.text.primary).toBe(navy[800])
     expect(theme.palette.text.secondary).toBe(gray[600])
-    expect(theme.palette.primary.main).toBe(blue[500])
+    expect(theme.palette.primary.main).toBe(blue[700])
     expect(theme.palette.divider).toBe(lightRoles.border)
     expect(theme.palette.error.main).toBe(semanticColors.danger)
   })
@@ -128,7 +163,45 @@ describe('createAppTheme', () => {
   test('without branding the derived button states stay pixel-identical to the mockups', () => {
     const theme = createAppTheme('light')
 
-    expect(theme.palette.primary.dark).toBe(blue[700])
+    expect(theme.palette.primary.dark).toBe(blue[900])
+  })
+
+  // #634: a light branding colour cannot carry white button text; the filled surface derives
+  // as its bounded darkening while the accent itself stays the configured colour.
+  // #634 regression (found by the axe E2E run): the app always passes branding.primaryColor,
+  // and an unconfigured deployment gets the OPAA standard '#1292EE' from the backend's
+  // field-wise fallback - that must behave exactly like no branding, or the per-scheme accent
+  // split never takes effect anywhere.
+  test('the OPAA standard colour behaves like no branding at all (#634)', () => {
+    const light = createAppTheme('light', { primaryColor: OPAA_BRANDING.primaryColor })
+    const dark = createAppTheme('dark', { primaryColor: OPAA_BRANDING.primaryColor })
+
+    expect(light.palette.primary.main).toBe(blue[700])
+    expect(dark.palette.primary.main).toBe(blue[500])
+  })
+
+  test('the OPAA standard branding colour and the token accent are the same value', () => {
+    expect(OPAA_BRANDING.primaryColor.toUpperCase()).toBe(blue[500].toUpperCase())
+  })
+
+  test('a light branding colour gets a darkened action surface (#634)', () => {
+    const theme = createAppTheme('light', { primaryColor: '#61B5F6' })
+
+    expect(theme.palette.primary.main).toBe('#61B5F6')
+    const button = theme.components?.MuiButton?.styleOverrides?.root as {
+      variants: Array<{ style: { backgroundColor: string } }>
+    }
+    const surface = button.variants[0].style.backgroundColor
+    expect(surface).not.toBe('#61B5F6')
+    expect(contrastRatio('#FFFFFF', surface)).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+  })
+
+  test('a dark branding colour keeps its own colour as the action surface (#634)', () => {
+    const theme = createAppTheme('light', { primaryColor: '#7A1FA2' })
+    const button = theme.components?.MuiButton?.styleOverrides?.root as {
+      variants: Array<{ style: { backgroundColor: string } }>
+    }
+    expect(button.variants[0].style.backgroundColor).toBe('#7A1FA2')
   })
 
   test('the sidebar theme stays navy while the app is light (#654, mockup 1a)', () => {

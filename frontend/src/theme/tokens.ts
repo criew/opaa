@@ -85,13 +85,22 @@ export interface SchemeRoles {
   fg2: string
   /** Tertiary text and metadata. */
   fg3: string
-  /** Action, reference, active state. Replaceable via branding. */
+  /**
+   * Action, reference, active state - as text and indicator colour. Replaceable via branding.
+   * Proven >= 4.5:1 against bg-1..3 of its own scheme (#634): blue-700 in the light scheme,
+   * blue-500 in the dark ones.
+   */
   accent: string
   /** Text on accent surfaces. */
   accentFg: string
-  /** Accent hover state (-8% lightness, sampled). */
+  /**
+   * Filled action surfaces (contained buttons, filled primary chips), #634: blue-700 in every
+   * scheme, so accentFg (white) reaches >= 4.5:1 on it - blue-500 only managed 3.3:1.
+   */
+  accentSurface: string
+  /** Accent surface hover state (-8% lightness of the surface, sampled). */
   accentHover: string
-  /** Accent active/pressed state (-16% lightness, sampled). */
+  /** Accent surface active/pressed state (-16% lightness of the surface, sampled). */
   accentPress: string
   /** Standard border. */
   border: string
@@ -110,10 +119,13 @@ export const lightRoles: SchemeRoles = {
   // frontend/src/theme/theme.test.ts). gray[500] reaches 6.08:1 and keeps the gray scale itself
   // at its original, ordered values.
   fg3: gray[500],
-  accent: blue[500],
+  // blue[700], not blue[500] (#634): accent is also a text colour (links, footnote digits,
+  // ghost buttons) and blue[500] reaches only 3.3:1 on white - blue[700] reaches 5.2:1.
+  accent: blue[700],
   accentFg: white,
-  accentHover: blue[600],
-  accentPress: blue[700],
+  accentSurface: blue[700],
+  accentHover: blue[800],
+  accentPress: blue[900],
   border: gray[100],
   borderStrong: gray[200],
 }
@@ -127,8 +139,9 @@ export const darkRoles: SchemeRoles = {
   fg3: '#8A8A8A',
   accent: blue[500],
   accentFg: white,
-  accentHover: blue[600],
-  accentPress: blue[700],
+  accentSurface: blue[700],
+  accentHover: blue[800],
+  accentPress: blue[900],
   border: carbon[800],
   borderStrong: carbon[700],
 }
@@ -147,8 +160,9 @@ export const navyRoles: SchemeRoles = {
   fg3: '#7A8BA0',
   accent: blue[500],
   accentFg: white,
-  accentHover: blue[600],
-  accentPress: blue[700],
+  accentSurface: blue[700],
+  accentHover: blue[800],
+  accentPress: blue[900],
   border: navy[700],
   borderStrong: navy[600],
 }
@@ -171,8 +185,9 @@ export const railRoles: SchemeRoles = {
   fg3: '#7A8BA0',
   accent: blue[500],
   accentFg: white,
-  accentHover: blue[600],
-  accentPress: blue[700],
+  accentSurface: blue[700],
+  accentHover: blue[800],
+  accentPress: blue[900],
   border: navy[800],
   borderStrong: navy[600],
 }
