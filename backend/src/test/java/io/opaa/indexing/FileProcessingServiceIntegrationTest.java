@@ -56,7 +56,6 @@ class FileProcessingServiceIntegrationTest {
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("opaa.indexing.document-path", () -> sharedTempDir.toAbsolutePath().toString());
     registry.add(
         "opaa.indexing.filesystem-allowlist", () -> sharedTempDir.toAbsolutePath().toString());
     registry.add("opaa.indexing.chunk-size", () -> 100);

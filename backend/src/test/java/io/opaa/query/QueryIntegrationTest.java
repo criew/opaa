@@ -37,8 +37,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -48,15 +46,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * library_id} metadata points at, or {@link QueryService#query} never even calls {@link
  * VectorStore#similaritySearch} for it - see {@link #userWithoutAnyGrantSeesNothing}.
  */
-// Own @DynamicPropertySource (below) means Spring's context cache still keys this to its own
-// context regardless of the shared @OpaaIntegrationTest base - documented exception per AGENTS.md.
+// Own @TestConfiguration @Primary EmbeddingModel bean and @MockitoBean set below mean Spring's
+// context cache still keys this to its own context regardless of the shared @OpaaIntegrationTest
+// base - documented exception per AGENTS.md.
 @OpaaIntegrationTest
 class QueryIntegrationTest {
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("opaa.indexing.document-path", () -> "/tmp/opaa-test-docs");
-  }
 
   @TestConfiguration
   static class TestConfig {

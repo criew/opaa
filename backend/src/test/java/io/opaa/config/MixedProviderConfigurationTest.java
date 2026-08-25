@@ -15,8 +15,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -38,11 +36,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
 class MixedProviderConfigurationTest {
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("opaa.indexing.document-path", () -> "/tmp/opaa-mixed-config-test");
-  }
 
   @TestConfiguration
   static class TestConfig {

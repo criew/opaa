@@ -316,11 +316,9 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     registry.add("spring.ai.openai.embedding.base-url", () -> ollama.getEndpoint() + "/v1");
     registry.add("spring.ai.openai.embedding.model", () -> EMBEDDING_MODEL);
     registry.add("spring.ai.vectorstore.pgvector.dimensions", () -> EMBEDDING_DIMENSIONS);
-    registry.add("opaa.indexing.document-path", () -> corpusWorkingDir.toAbsolutePath().toString());
-    // #478/ADR-0018: a FILESYSTEM library now reads its own sourcePath instead of the
-    // application-wide document-path above (kept only because IndexingProperties still binds it,
-    // see its own Javadoc) - the eval library created in setUpIndexingTarget() below points
-    // sourcePath at this same corpusWorkingDir, so the allowlist must cover it or
+    // ADR-0018: a FILESYSTEM library reads its own sourcePath, not an application-wide path - the
+    // eval library created in setUpIndexingTarget() below points sourcePath at this same
+    // corpusWorkingDir, so the allowlist must cover it or
     // AsyncIndexingExecutor refuses the run outright (empty allowlist disables FILESYSTEM
     // entirely, see FilesystemPathAllowlist).
     registry.add(

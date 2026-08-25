@@ -77,7 +77,7 @@ class SourceConnectionTestServiceTest {
             filesystemAllowlist,
             libraryRepository,
             libraryAccessService,
-            new IndexingProperties(null, 1000, 0, 50, null, null, null, null, null, 0),
+            new IndexingProperties(1000, 0, 50, null, null, null, null, null, 0),
             TargetAddressValidator.disabled());
   }
 
@@ -453,7 +453,6 @@ class SourceConnectionTestServiceTest {
             libraryRepository,
             libraryAccessService,
             new IndexingProperties(
-                null,
                 1000,
                 0,
                 50,
@@ -593,7 +592,6 @@ class SourceConnectionTestServiceTest {
             libraryRepository,
             libraryAccessService,
             new IndexingProperties(
-                null,
                 1000,
                 0,
                 50,
@@ -649,7 +647,6 @@ class SourceConnectionTestServiceTest {
             libraryRepository,
             libraryAccessService,
             new IndexingProperties(
-                null,
                 1000,
                 0,
                 50,
