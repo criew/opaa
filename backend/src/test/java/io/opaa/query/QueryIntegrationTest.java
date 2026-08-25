@@ -361,16 +361,20 @@ class QueryIntegrationTest {
     // is part of the vector search rather than a post-filter, because an empty readable set short
     // -circuits before the vector store is ever called (see QueryService#query). This test instead
     // gives the user a real, non-empty readable set with a second, ungranted library present in
-    // the same store, and asserts on the *count* of results, not just their content: with 6 chunks
-    // in the granted library A and 6 in the ungranted library B, FakeEmbeddingModel returns an
-    // identical embedding for every text (see its Javadoc), so every one of the 12 chunks scores
-    // equally on similarity - a post-filter applied after retrieving topK=5 candidates would
-    // return however many of those 5 happened to come from A (typically 2-3 given 6-vs-6 odds,
-    // never reliably 5), while a filter that is genuinely part of the ANN search - the only way to
-    // guarantee 5 results out of 5 candidates that are all from a library with only 6 members
-    // total - always returns exactly topK results, all from A. See the PR description for the
-    // reproduction: reverting QueryService's filterExpression(...) call turns this test red while
-    // every other test in this class, QueryControllerTest and io.opaa.library.* stay green.
+    // the same store, and asserts on the *count* of results, not just their content. #914 raised
+    // similaritySearch's own request from topK (5) to fetchK (25, application.yml default), so both
+    // libraries now need more than 25 members each for the same distinguishing property to hold:
+    // with 30 chunks in the granted library A and 30 in the ungranted library B, FakeEmbeddingModel
+    // returns an identical embedding for every text (see its Javadoc), so every one of the 60
+    // chunks scores equally on similarity - a post-filter applied after retrieving fetchK=25
+    // candidates from the unfiltered 60 would return roughly half of those 25 from A (never
+    // reliably all 25), while a filter that is genuinely part of the ANN search - the only way to
+    // guarantee 25 candidates out of 25 requested that are all from a library with 30 members total
+    // - always returns exactly fetchK candidates, all from A; MmrSelector then narrows those 25
+    // down
+    // to topK (8). See the PR description for the reproduction: reverting QueryService's
+    // filterExpression(...) call turns this test red while every other test in this class,
+    // QueryControllerTest and io.opaa.library.* stay green.
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
@@ -382,7 +386,7 @@ class QueryIntegrationTest {
         userId);
 
     List<Document> chunks = new ArrayList<>();
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 30; i++) {
       chunks.add(
           new Document(
               "Granted content " + i,
@@ -396,7 +400,7 @@ class QueryIntegrationTest {
                   "library_id",
                   libraryId.toString())));
     }
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 30; i++) {
       chunks.add(
           new Document(
               "Unauthorized content " + i,
@@ -419,9 +423,9 @@ class QueryIntegrationTest {
       QueryResult response =
           queryService.query("Beliebige Frage", null, asCaller(userId), true, java.util.List.of());
 
-      // Exactly topK (5, application.yml default) results, every one of them from the granted
+      // Exactly topK (8, application.yml default) results, every one of them from the granted
       // library - the count itself is the assertion that matters (see the comment above).
-      assertThat(response.getSources()).hasSize(5);
+      assertThat(response.getSources()).hasSize(8);
       assertThat(response.getSources())
           .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
     } finally {

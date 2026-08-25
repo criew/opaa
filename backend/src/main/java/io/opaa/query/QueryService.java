@@ -213,18 +213,29 @@ public class QueryService {
                         && chat.map(c -> chatService.spaceHasLibraryAssociations(c.getSpaceId()))
                             .orElse(false);
 
-                List<Document> relevantChunks =
+                List<Document> candidateChunks =
                     searchScope.isEmpty()
                         ? List.of()
                         : vectorStore.similaritySearch(
                             SearchRequest.builder()
                                 .query(searchQuery)
-                                .topK(queryProperties.topK())
+                                .topK(queryProperties.fetchK())
                                 .similarityThreshold(queryProperties.similarityThreshold())
                                 .filterExpression(libraryFilter(searchScope))
                                 .build());
+                // MMR (#914) narrows fetchK candidates - already permission-scoped and
+                // threshold-filtered by the similaritySearch call above - down to topK. It is a
+                // post-selection within that already-authorized set, never an expansion of it (see
+                // this method's Javadoc's "Deliberately not @Transactional" section for the
+                // parallel invariant on the permission filter).
+                List<Document> relevantChunks =
+                    MmrSelector.select(
+                        candidateChunks, queryProperties.topK(), queryProperties.mmrLambda());
 
-                log.debug("Found {} relevant chunks for query", relevantChunks.size());
+                log.debug(
+                    "Found {} candidate chunks, MMR-selected {} for query",
+                    candidateChunks.size(),
+                    relevantChunks.size());
 
                 // --- LLM call: the slowest step, and the reason no phase in this method carries a
                 // transaction - see this method's Javadoc's "Deliberately not @Transactional".

@@ -91,7 +91,11 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(5, 0.3, 1.0),
+            // mmrLambda=1.0 (pure top-K by relevance): the tests in this class stub small,
+            // already-descending-score candidate lists and assert on their exact order/content -
+            // MmrSelector's own diversity behaviour (mmrLambda != 1.0) is covered separately by
+            // MmrSelectorTest.
+            new QueryProperties(8, 25, 1.0, 0.3, 1.0),
             knowledgeLibraryRepository);
 
     // lenient: not every test in this class exercises the full query() path (e.g. the
@@ -128,7 +132,7 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(5, 0.3, 0.0),
+            new QueryProperties(8, 25, 1.0, 0.3, 0.0),
             knowledgeLibraryRepository);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -846,7 +850,7 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(5, 0.3, 1.0),
+            new QueryProperties(8, 25, 1.0, 0.3, 1.0),
             knowledgeLibraryRepository);
 
     UUID otherUserId = UUID.randomUUID();
@@ -1233,6 +1237,11 @@ class QueryServiceTest {
     assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(0.9);
   }
 
+  /**
+   * #914: {@code similaritySearch} itself is called with {@code fetchK}, not {@code topK} - the
+   * larger candidate pool {@link MmrSelector} narrows down afterwards, in {@link
+   * QueryService#query} itself, not inside this mocked call.
+   */
   @Test
   void queryPassesSearchRequestWithCorrectParameters() {
     when(chatMemory.get(any())).thenReturn(List.of());
@@ -1248,7 +1257,7 @@ class QueryServiceTest {
     verify(vectorStore).similaritySearch(captor.capture());
     SearchRequest request = captor.getValue();
     assertThat(request.getQuery()).isEqualTo("Test query");
-    assertThat(request.getTopK()).isEqualTo(5);
+    assertThat(request.getTopK()).isEqualTo(25);
     assertThat(request.getSimilarityThreshold()).isEqualTo(0.3);
   }
 
