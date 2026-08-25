@@ -2,8 +2,10 @@
 
 OPAA nutzt [Renovate](https://docs.renovatebot.com/) für automatisierte Update-PRs — **selbst
 betrieben, ohne den Mend-Cloud-Service** (Issue #751): Es ist keine GitHub-App installiert,
-kein externer Dienst hat Zugriff auf das Repository. Ein Lauf wird bewusst von einem
-Maintainer angestoßen und läuft lokal im offiziellen Docker-Image.
+kein externer Dienst hat Zugriff auf das Repository. Der Lauf erfolgt **täglich als
+GitHub-Actions-Workflow** (`.github/workflows/renovate.yml`, 06:23 MESZ, zusätzlich manuell
+über *Run workflow* auslösbar) im offiziellen Docker-Image; dasselbe Kommando lässt sich
+jederzeit auch lokal ausführen (unten).
 
 ## Was Renovate hier aktualisiert
 
@@ -75,7 +77,25 @@ Lese-Lauf.
 Am Log-Ende fasst `packageFiles with updates` je Manager zusammen, was erkannt wurde und
 welche neuen Versionen anstehen.
 
-## Echter Lauf (erzeugt Branches und PRs)
+## Automatischer täglicher Lauf
+
+`.github/workflows/renovate.yml` führt täglich exakt das unten dokumentierte Docker-Kommando
+aus. Einzige Voraussetzung ist das Repository-Secret **`RENOVATE_TOKEN`** — ein PAT mit den
+oben beschriebenen Berechtigungen (Fine-grained inkl. *Workflows: Read and write* bzw.
+klassisch `repo` + `workflow`), hinterlegt von einem Maintainer:
+
+```bash
+gh secret set RENOVATE_TOKEN
+```
+
+Bewusst ein PAT und nicht der eingebaute `GITHUB_TOKEN` des Workflows: Mit dem
+`GITHUB_TOKEN` erstellte PRs lösen **keine** CI-Workflows aus (GitHubs Schutz vor rekursiven
+Triggern) — die Update-PRs stünden dauerhaft ohne Checks da — und Workflow-Dateien dürfte er
+auch nicht ändern. Fehlt das Secret, bricht der Lauf mit einer klaren Fehlermeldung ab.
+Token-Rotation: neues PAT erzeugen, `gh secret set RENOVATE_TOKEN` erneut ausführen, altes
+Token widerrufen.
+
+## Manueller Lauf (erzeugt Branches und PRs)
 
 Renovate liest die `renovate.json5` aus dem Default-Branch des Zielrepositories:
 

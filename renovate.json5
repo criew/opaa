@@ -39,8 +39,9 @@
   // die dokumentierte Bot-Ausnahme dort erlaubt den englischen Rest).
   prHeader: 'Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.',
 
-  // Der Lauf wird bewusst angestoßen (kein Dauerbetrieb): kein Stundenlimit, aber eine
-  // Obergrenze gleichzeitig offener Update-PRs, damit ein erster Lauf das Repo nicht flutet.
+  // Läuft täglich per .github/workflows/renovate.yml (zusätzlich manuell auslösbar): kein
+  // Stundenlimit, aber eine Obergrenze gleichzeitig offener Update-PRs, damit weder der
+  // Erstlauf noch ein Update-Schub das Repo flutet.
   prHourlyLimit: 0,
   prConcurrentLimit: 5,
 
