@@ -1,5 +1,6 @@
 package io.opaa.group.sync;
 
+import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -108,19 +109,19 @@ public class DirectorySyncService {
       // call outside a transaction.
       UUID correlationRef = UUID.randomUUID();
       auditEventRecorder.recordSystemProcessAction(
-          organizationId,
-          DIRECTORY_SYNC_ACTOR,
-          AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED,
-          AuditObjectType.DIRECTORY_SYNC_RUN,
-          correlationRef,
-          "Verzeichnisabgleich " + correlationRef,
-          null,
-          null,
-          null,
-          Map.of("outcome", DirectorySyncOutcome.UNREACHABLE.name()),
-          AuditOutcome.FAILURE,
-          message,
-          correlationRef.toString());
+          AuditEvent.builder()
+              .organizationId(organizationId)
+              .actorRef(DIRECTORY_SYNC_ACTOR)
+              .type(AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED)
+              .object(
+                  AuditObjectType.DIRECTORY_SYNC_RUN,
+                  correlationRef,
+                  "Verzeichnisabgleich " + correlationRef)
+              .after(Map.of("outcome", DirectorySyncOutcome.UNREACHABLE.name()))
+              .outcome(AuditOutcome.FAILURE)
+              .reason(message)
+              .correlationRef(correlationRef.toString())
+              .build());
       return new SyncReport(
           DirectorySyncOutcome.UNREACHABLE,
           now,

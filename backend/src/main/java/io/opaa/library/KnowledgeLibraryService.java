@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.dto.ScheduleFrequency;
+import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -246,18 +247,15 @@ public class KnowledgeLibraryService {
       // #392: mirrors AssetGrantService#upsertGrant's own ASSET_GRANT_GRANTED entry - this grant
       // is written directly here, not through that service, but is exactly the same kind of event.
       auditEventRecorder.recordUserActionOnSubject(
-          saved.getOrganizationId(),
-          currentUserId,
-          AuditEventType.ASSET_GRANT_GRANTED,
-          AuditObjectType.KNOWLEDGE_LIBRARY,
-          saved.getId(),
-          saved.getName(),
-          AuditSubjectKind.GROUP,
-          ownerGroup.getId(),
-          null,
-          Map.of("role", AssetRole.MANAGER.name()),
-          AuditOutcome.SUCCESS,
-          null);
+          AuditEvent.builder()
+              .organizationId(saved.getOrganizationId())
+              .actor(currentUserId)
+              .type(AuditEventType.ASSET_GRANT_GRANTED)
+              .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.getName())
+              .subject(AuditSubjectKind.GROUP, ownerGroup.getId())
+              .after(Map.of("role", AssetRole.MANAGER.name()))
+              .outcome(AuditOutcome.SUCCESS)
+              .build());
     }
     AssetGrant ownerGrant =
         grantRepository.save(
@@ -270,34 +268,29 @@ public class KnowledgeLibraryService {
                 currentUserId));
     permissionHistoryService.recordGrantCreated(ownerGrant, currentUserId);
     auditEventRecorder.recordUserActionOnSubject(
-        saved.getOrganizationId(),
-        currentUserId,
-        AuditEventType.ASSET_GRANT_GRANTED,
-        AuditObjectType.KNOWLEDGE_LIBRARY,
-        saved.getId(),
-        saved.getName(),
-        AuditSubjectKind.USER,
-        currentUserId,
-        null,
-        Map.of("role", AssetRole.OWNER.name()),
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(saved.getOrganizationId())
+            .actor(currentUserId)
+            .type(AuditEventType.ASSET_GRANT_GRANTED)
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.getName())
+            .subject(AuditSubjectKind.USER, currentUserId)
+            .after(Map.of("role", AssetRole.OWNER.name()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     // #238: the library's initial visibility/listed state is also historised, the third source
     // the readable-library formula depends on besides direct and group grants.
     permissionHistoryService.recordLibraryCreated(saved, currentUserId);
     // #392: the library-creation event itself, distinct from the grant events above - "Anlegen ...
     // von Wissensbibliotheken" (docs/features/security-and-compliance.md).
     auditEventRecorder.recordUserAction(
-        saved.getOrganizationId(),
-        currentUserId,
-        AuditEventType.LIBRARY_CREATED,
-        AuditObjectType.KNOWLEDGE_LIBRARY,
-        saved.getId(),
-        saved.getName(),
-        null,
-        libraryAuditPayload(saved),
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(saved.getOrganizationId())
+            .actor(currentUserId)
+            .type(AuditEventType.LIBRARY_CREATED)
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.getName())
+            .after(libraryAuditPayload(saved))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     return toLibraryDetail(saved, AssetRole.OWNER);
   }
 
@@ -488,16 +481,17 @@ public class KnowledgeLibraryService {
     // also changed.
     if (visibilityOrListedChanged) {
       auditEventRecorder.recordUserAction(
-          updated.getOrganizationId(),
-          currentUserId,
-          AuditEventType.ASSET_VISIBILITY_CHANGED,
-          AuditObjectType.KNOWLEDGE_LIBRARY,
-          updated.getId(),
-          updated.getName(),
-          Map.of("visibility", previousVisibility.name(), "listed", previousListed),
-          Map.of("visibility", updated.getVisibility().name(), "listed", updated.isListed()),
-          AuditOutcome.SUCCESS,
-          null);
+          AuditEvent.builder()
+              .organizationId(updated.getOrganizationId())
+              .actor(currentUserId)
+              .type(AuditEventType.ASSET_VISIBILITY_CHANGED)
+              .object(AuditObjectType.KNOWLEDGE_LIBRARY, updated.getId(), updated.getName())
+              .before(Map.of("visibility", previousVisibility.name(), "listed", previousListed))
+              .after(
+                  Map.of(
+                      "visibility", updated.getVisibility().name(), "listed", updated.isListed()))
+              .outcome(AuditOutcome.SUCCESS)
+              .build());
     }
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
@@ -514,16 +508,15 @@ public class KnowledgeLibraryService {
         changedFields.add("description");
       }
       auditEventRecorder.recordUserAction(
-          updated.getOrganizationId(),
-          currentUserId,
-          AuditEventType.LIBRARY_CHANGED,
-          AuditObjectType.KNOWLEDGE_LIBRARY,
-          updated.getId(),
-          updated.getName(),
-          Map.of("changedFields", changedFields),
-          Map.of("changedFields", changedFields),
-          AuditOutcome.SUCCESS,
-          null);
+          AuditEvent.builder()
+              .organizationId(updated.getOrganizationId())
+              .actor(currentUserId)
+              .type(AuditEventType.LIBRARY_CHANGED)
+              .object(AuditObjectType.KNOWLEDGE_LIBRARY, updated.getId(), updated.getName())
+              .before(Map.of("changedFields", changedFields))
+              .after(Map.of("changedFields", changedFields))
+              .outcome(AuditOutcome.SUCCESS)
+              .build());
     }
     // #545: a pure source-configuration change (e.g. rotating sourceCredentials or moving a
     // FILESYSTEM/HTTP_DIRECTORY/RSS_FEED crawl target) previously left no trace at all - neither
@@ -565,16 +558,15 @@ public class KnowledgeLibraryService {
       }
       if (!changedSourceFields.isEmpty()) {
         auditEventRecorder.recordUserAction(
-            updated.getOrganizationId(),
-            currentUserId,
-            AuditEventType.LIBRARY_SOURCE_UPDATED,
-            AuditObjectType.KNOWLEDGE_LIBRARY,
-            updated.getId(),
-            updated.getName(),
-            Map.of("changedFields", changedSourceFields),
-            Map.of("changedFields", changedSourceFields),
-            AuditOutcome.SUCCESS,
-            null);
+            AuditEvent.builder()
+                .organizationId(updated.getOrganizationId())
+                .actor(currentUserId)
+                .type(AuditEventType.LIBRARY_SOURCE_UPDATED)
+                .object(AuditObjectType.KNOWLEDGE_LIBRARY, updated.getId(), updated.getName())
+                .before(Map.of("changedFields", changedSourceFields))
+                .after(Map.of("changedFields", changedSourceFields))
+                .outcome(AuditOutcome.SUCCESS)
+                .build());
       }
     }
     return toLibraryDetail(
@@ -693,16 +685,14 @@ public class KnowledgeLibraryService {
       deletionPayload.put("documentsRemoved", documentsRemoved);
     }
     auditEventRecorder.recordUserAction(
-        library.getOrganizationId(),
-        currentUserId,
-        AuditEventType.LIBRARY_DELETED,
-        AuditObjectType.KNOWLEDGE_LIBRARY,
-        library.getId(),
-        library.getName(),
-        deletionPayload,
-        null,
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(library.getOrganizationId())
+            .actor(currentUserId)
+            .type(AuditEventType.LIBRARY_DELETED)
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+            .before(deletionPayload)
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     libraryRepository.delete(library);
   }
 

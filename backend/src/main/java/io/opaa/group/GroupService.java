@@ -1,5 +1,6 @@
 package io.opaa.group;
 
+import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -99,16 +100,13 @@ public class GroupService {
             null);
     Group saved = groupRepository.save(group);
     auditEventRecorder.recordUserAction(
-        saved.getOrganizationId(),
-        caller.id(),
-        AuditEventType.GROUP_CREATED,
-        AuditObjectType.GROUP,
-        saved.getId(),
-        saved.getName(),
-        null,
-        null,
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(saved.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.GROUP_CREATED)
+            .object(AuditObjectType.GROUP, saved.getId(), saved.getName())
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     return toGroupDetail(saved);
   }
 
@@ -184,16 +182,15 @@ public class GroupService {
         changedFields.add("description");
       }
       auditEventRecorder.recordUserAction(
-          updated.getOrganizationId(),
-          caller.id(),
-          AuditEventType.GROUP_CHANGED,
-          AuditObjectType.GROUP,
-          updated.getId(),
-          updated.getName(),
-          Map.of("changedFields", changedFields),
-          Map.of("changedFields", changedFields),
-          AuditOutcome.SUCCESS,
-          null);
+          AuditEvent.builder()
+              .organizationId(updated.getOrganizationId())
+              .actor(caller.id())
+              .type(AuditEventType.GROUP_CHANGED)
+              .object(AuditObjectType.GROUP, updated.getId(), updated.getName())
+              .before(Map.of("changedFields", changedFields))
+              .after(Map.of("changedFields", changedFields))
+              .outcome(AuditOutcome.SUCCESS)
+              .build());
     }
     return toGroupDetail(updated);
   }
@@ -242,16 +239,14 @@ public class GroupService {
     // entry for the group itself, not one per member removed above (those are already covered by
     // the group's own deletion, not a separate membership-removal action).
     auditEventRecorder.recordUserAction(
-        group.getOrganizationId(),
-        caller.id(),
-        AuditEventType.GROUP_DELETED,
-        AuditObjectType.GROUP,
-        group.getId(),
-        group.getName(),
-        Map.of("name", group.getName(), "memberCount", affectedUserIds.size()),
-        null,
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(group.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.GROUP_DELETED)
+            .object(AuditObjectType.GROUP, group.getId(), group.getName())
+            .before(Map.of("name", group.getName(), "memberCount", affectedUserIds.size()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     groupRepository.delete(group);
     invalidateAfterCommit(() -> membershipResolver.invalidateUsers(affectedUserIds));
   }
@@ -279,18 +274,14 @@ public class GroupService {
     permissionHistoryService.recordMembershipAdded(
         membership, GroupMembershipHistoryCause.ADDED, caller.id());
     auditEventRecorder.recordUserActionOnSubject(
-        group.getOrganizationId(),
-        caller.id(),
-        AuditEventType.GROUP_MEMBER_ADDED,
-        AuditObjectType.GROUP,
-        group.getId(),
-        group.getName(),
-        AuditSubjectKind.USER,
-        memberUserId,
-        null,
-        null,
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(group.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.GROUP_MEMBER_ADDED)
+            .object(AuditObjectType.GROUP, group.getId(), group.getName())
+            .subject(AuditSubjectKind.USER, memberUserId)
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     invalidateAfterCommit(() -> membershipResolver.invalidateUser(memberUserId));
 
     return new GroupMemberView(membership, resolveDisplayName(membership.getUserId()));
@@ -315,18 +306,14 @@ public class GroupService {
         GroupMembershipHistoryCause.REMOVED,
         caller.id());
     auditEventRecorder.recordUserActionOnSubject(
-        group.getOrganizationId(),
-        caller.id(),
-        AuditEventType.GROUP_MEMBER_REMOVED,
-        AuditObjectType.GROUP,
-        group.getId(),
-        group.getName(),
-        AuditSubjectKind.USER,
-        memberUserId,
-        null,
-        null,
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(group.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.GROUP_MEMBER_REMOVED)
+            .object(AuditObjectType.GROUP, group.getId(), group.getName())
+            .subject(AuditSubjectKind.USER, memberUserId)
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     invalidateAfterCommit(() -> membershipResolver.invalidateUser(memberUserId));
   }
 

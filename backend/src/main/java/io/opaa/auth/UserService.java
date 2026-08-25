@@ -1,5 +1,6 @@
 package io.opaa.auth;
 
+import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -396,18 +397,16 @@ public class UserService {
       SystemRole previousRole,
       SystemRole role) {
     auditEventRecorder.recordUserActionOnSubject(
-        saved.getOrganizationId(),
-        actorUserId,
-        eventType,
-        AuditObjectType.USER_ACCOUNT,
-        pseudonym,
-        null,
-        AuditSubjectKind.USER,
-        saved.getId(),
-        Map.of("role", previousRole.name()),
-        Map.of("role", role.name()),
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(saved.getOrganizationId())
+            .actor(actorUserId)
+            .type(eventType)
+            .object(AuditObjectType.USER_ACCOUNT, pseudonym, null)
+            .subject(AuditSubjectKind.USER, saved.getId())
+            .before(Map.of("role", previousRole.name()))
+            .after(Map.of("role", role.name()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
   }
 
   private boolean isInitialAdmin(String email) {

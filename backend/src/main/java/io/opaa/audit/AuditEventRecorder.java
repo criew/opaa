@@ -1,6 +1,7 @@
 package io.opaa.audit;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -40,136 +41,147 @@ public class AuditEventRecorder {
   }
 
   /**
-   * Records an event caused by a person ({@code actorUserId}), with no affected rights subject -
-   * e.g. a space or library being created. See {@link #recordUserActionOnSubject} for the sibling
-   * that carries one.
+   * Records an event caused by a person ({@link AuditEvent.Builder#actor}), with no affected rights
+   * subject - e.g. a space or library being created. See {@link #recordUserActionOnSubject} for the
+   * sibling that carries one. {@code event} must have been built with {@link
+   * AuditEvent.Builder#actor} and no {@link AuditEvent.Builder#subject}.
    */
-  public void recordUserAction(
-      UUID organizationId,
-      UUID actorUserId,
-      AuditEventType eventType,
-      AuditObjectType objectType,
-      UUID objectId,
-      String objectLabel,
-      Map<String, Object> before,
-      Map<String, Object> after,
-      AuditOutcome outcome,
-      String reason) {
-    String actorRef = pseudonymService.pseudonymFor(actorUserId, organizationId).toString();
+  public void recordUserAction(AuditEvent event) {
+    UUID actorUserId = requireUserActor(event);
+    requireNoSubject(event, "recordUserAction");
+    requireNoCorrelationRef(event, "recordUserAction");
+    String actorRef = pseudonymService.pseudonymFor(actorUserId, event.organizationId()).toString();
     auditLogService.record(
         AuditLogEntry.withoutSubject(
-            organizationId,
+            event.organizationId(),
             ActorKind.USER,
             actorRef,
-            eventType,
-            objectType,
-            objectId.toString(),
-            objectLabel,
-            toJson(before),
-            toJson(after),
-            outcome,
-            reason,
+            event.eventType(),
+            event.objectType(),
+            event.objectId().toString(),
+            event.objectLabel(),
+            toJson(event.before()),
+            toJson(event.after()),
+            event.outcome(),
+            event.reason(),
             null));
   }
 
   /**
-   * Records an event caused by a person ({@code actorUserId}) that additionally names the affected
-   * rights subject - a user (pseudonymised the same way the actor is) or a group (referenced by its
-   * plain id, since a group is not a person and needs no pseudonymisation).
+   * Records an event caused by a person ({@link AuditEvent.Builder#actor}) that additionally names
+   * the affected rights subject - a user (pseudonymised the same way the actor is) or a group
+   * (referenced by its plain id, since a group is not a person and needs no pseudonymisation).
+   * {@code event} must have been built with both {@link AuditEvent.Builder#actor} and {@link
+   * AuditEvent.Builder#subject}.
    */
-  public void recordUserActionOnSubject(
-      UUID organizationId,
-      UUID actorUserId,
-      AuditEventType eventType,
-      AuditObjectType objectType,
-      UUID objectId,
-      String objectLabel,
-      AuditSubjectKind subjectKind,
-      UUID subjectId,
-      Map<String, Object> before,
-      Map<String, Object> after,
-      AuditOutcome outcome,
-      String reason) {
-    String actorRef = pseudonymService.pseudonymFor(actorUserId, organizationId).toString();
+  public void recordUserActionOnSubject(AuditEvent event) {
+    UUID actorUserId = requireUserActor(event);
+    UUID subjectId = Objects.requireNonNull(event.subjectId(), "subject");
+    AuditSubjectKind subjectKind = Objects.requireNonNull(event.subjectKind(), "subject");
+    requireNoCorrelationRef(event, "recordUserActionOnSubject");
+    String actorRef = pseudonymService.pseudonymFor(actorUserId, event.organizationId()).toString();
     String subjectRef =
         subjectKind == AuditSubjectKind.USER
-            ? pseudonymService.pseudonymFor(subjectId, organizationId).toString()
+            ? pseudonymService.pseudonymFor(subjectId, event.organizationId()).toString()
             : subjectId.toString();
     auditLogService.record(
         AuditLogEntry.withSubject(
-            organizationId,
+            event.organizationId(),
             ActorKind.USER,
             actorRef,
-            eventType,
-            objectType,
-            objectId.toString(),
-            objectLabel,
+            event.eventType(),
+            event.objectType(),
+            event.objectId().toString(),
+            event.objectLabel(),
             subjectKind,
             subjectRef,
-            toJson(before),
-            toJson(after),
-            outcome,
-            reason,
+            toJson(event.before()),
+            toJson(event.after()),
+            event.outcome(),
+            event.reason(),
             null));
   }
 
   /**
    * Records an event with no acting person - a directory synchronisation run, which {@link
    * io.opaa.library.PermissionHistoryService}'s writers already treat the same way ("a sync run has
-   * no acting user"). {@code actorRef} is a fixed, non-pseudonymised label identifying the process,
-   * not a per-run or per-organization value - there is no person behind it to protect.
+   * no acting user"). {@link AuditEvent.Builder#actorRef} is a fixed, non-pseudonymised label
+   * identifying the process, not a per-run or per-organization value - there is no person behind it
+   * to protect. {@code event} must have been built with {@link AuditEvent.Builder#actorRef}; {@link
+   * AuditEvent.Builder#subject} is optional.
    */
-  public void recordSystemProcessAction(
-      UUID organizationId,
-      String actorRef,
-      AuditEventType eventType,
-      AuditObjectType objectType,
-      UUID objectId,
-      String objectLabel,
-      AuditSubjectKind subjectKind,
-      UUID subjectId,
-      Map<String, Object> before,
-      Map<String, Object> after,
-      AuditOutcome outcome,
-      String reason,
-      String correlationRef) {
-    if (subjectKind == null) {
+  public void recordSystemProcessAction(AuditEvent event) {
+    String actorRef = Objects.requireNonNull(event.actorRef(), "actorRef");
+    if (event.subjectKind() == null) {
       auditLogService.record(
           AuditLogEntry.withoutSubject(
-              organizationId,
+              event.organizationId(),
               ActorKind.SYSTEM_PROCESS,
               actorRef,
-              eventType,
-              objectType,
-              objectId.toString(),
-              objectLabel,
-              toJson(before),
-              toJson(after),
-              outcome,
-              reason,
-              correlationRef));
+              event.eventType(),
+              event.objectType(),
+              event.objectId().toString(),
+              event.objectLabel(),
+              toJson(event.before()),
+              toJson(event.after()),
+              event.outcome(),
+              event.reason(),
+              event.correlationRef()));
       return;
     }
+    UUID subjectId = Objects.requireNonNull(event.subjectId(), "subject");
     String subjectRef =
-        subjectKind == AuditSubjectKind.USER
-            ? pseudonymService.pseudonymFor(subjectId, organizationId).toString()
+        event.subjectKind() == AuditSubjectKind.USER
+            ? pseudonymService.pseudonymFor(subjectId, event.organizationId()).toString()
             : subjectId.toString();
     auditLogService.record(
         AuditLogEntry.withSubject(
-            organizationId,
+            event.organizationId(),
             ActorKind.SYSTEM_PROCESS,
             actorRef,
-            eventType,
-            objectType,
-            objectId.toString(),
-            objectLabel,
-            subjectKind,
+            event.eventType(),
+            event.objectType(),
+            event.objectId().toString(),
+            event.objectLabel(),
+            event.subjectKind(),
             subjectRef,
-            toJson(before),
-            toJson(after),
-            outcome,
-            reason,
-            correlationRef));
+            toJson(event.before()),
+            toJson(event.after()),
+            event.outcome(),
+            event.reason(),
+            event.correlationRef()));
+  }
+
+  private static UUID requireUserActor(AuditEvent event) {
+    return Objects.requireNonNull(event.actorUserId(), "actor");
+  }
+
+  /**
+   * A subject silently dropped would be the compliance-log equivalent of a swallowed field: the
+   * caller believed it was recording who was affected, and nothing about the resulting row says
+   * otherwise. Rejects instead of ignoring so a caller that meant {@code recordUserActionOnSubject}
+   * finds out at the call it made, not by an absent column later.
+   */
+  private static void requireNoSubject(AuditEvent event, String methodName) {
+    if (event.subjectKind() != null || event.subjectId() != null) {
+      throw new IllegalArgumentException(
+          methodName
+              + " does not carry a subject - use recordUserActionOnSubject for an event built"
+              + " with AuditEvent.Builder#subject");
+    }
+  }
+
+  /**
+   * {@code correlationRef} only ever reaches a column via {@link #recordSystemProcessAction} - a
+   * caller setting it on a user-action event has almost always mixed up which of the two builder
+   * paths it meant, and silently ignoring the field would hide that mistake instead of failing the
+   * call that made it.
+   */
+  private static void requireNoCorrelationRef(AuditEvent event, String methodName) {
+    if (event.correlationRef() != null) {
+      throw new IllegalArgumentException(
+          methodName + " does not carry a correlationRef - only recordSystemProcessAction does");
+    }
   }
 
   /**

@@ -87,17 +87,20 @@ public class AuditRetentionSettingsService {
     }
 
     auditEventRecorder.recordUserAction(
-        organizationId,
-        actorUserId,
-        AuditEventType.AUDIT_LOG_CONFIGURATION_CHANGED,
-        AuditObjectType.SYSTEM_SETTING,
-        UUID.nameUUIDFromBytes(
-            CONFIGURATION_OBJECT_ID.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-        "Aufbewahrungsfrist des Protokolls",
-        Map.of("retentionMonths", previousRetentionMonths),
-        Map.of("retentionMonths", newRetentionMonths),
-        AuditOutcome.SUCCESS,
-        reason);
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actor(actorUserId)
+            .type(AuditEventType.AUDIT_LOG_CONFIGURATION_CHANGED)
+            .object(
+                AuditObjectType.SYSTEM_SETTING,
+                UUID.nameUUIDFromBytes(
+                    CONFIGURATION_OBJECT_ID.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                "Aufbewahrungsfrist des Protokolls")
+            .before(Map.of("retentionMonths", previousRetentionMonths))
+            .after(Map.of("retentionMonths", newRetentionMonths))
+            .outcome(AuditOutcome.SUCCESS)
+            .reason(reason)
+            .build());
 
     // The cross-check against content retention (chats/artifacts/private content) has no data
     // source: always false until a content retention setting exists.

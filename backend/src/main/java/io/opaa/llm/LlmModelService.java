@@ -1,5 +1,6 @@
 package io.opaa.llm;
 
+import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -158,16 +159,14 @@ public class LlmModelService {
     Map<String, Object> before = auditState(model);
     repository.delete(model);
     auditEventRecorder.recordUserAction(
-        organizationId,
-        actorUserId,
-        AuditEventType.LLM_MODEL_DELETED,
-        AuditObjectType.SYSTEM_SETTING,
-        model.getId(),
-        objectLabel(model),
-        before,
-        null,
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actor(actorUserId)
+            .type(AuditEventType.LLM_MODEL_DELETED)
+            .object(AuditObjectType.SYSTEM_SETTING, model.getId(), objectLabel(model))
+            .before(before)
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
   }
 
   /**
@@ -229,16 +228,15 @@ public class LlmModelService {
       Map<String, Object> before,
       Map<String, Object> after) {
     auditEventRecorder.recordUserAction(
-        organizationId,
-        actorUserId,
-        eventType,
-        AuditObjectType.SYSTEM_SETTING,
-        model.getId(),
-        objectLabel(model),
-        before,
-        after,
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actor(actorUserId)
+            .type(eventType)
+            .object(AuditObjectType.SYSTEM_SETTING, model.getId(), objectLabel(model))
+            .before(before)
+            .after(after)
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
   }
 
   /**

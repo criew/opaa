@@ -2,6 +2,7 @@ package io.opaa.space;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -110,16 +111,14 @@ public class SpaceService {
 
     Space saved = spaceRepository.save(space);
     auditEventRecorder.recordUserAction(
-        saved.getOrganizationId(),
-        caller.id(),
-        AuditEventType.SPACE_CREATED,
-        AuditObjectType.SPACE,
-        saved.getId(),
-        saved.getName(),
-        null,
-        spaceAuditPayload(saved),
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(saved.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.SPACE_CREATED)
+            .object(AuditObjectType.SPACE, saved.getId(), saved.getName())
+            .after(spaceAuditPayload(saved))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
 
     // #686/#706 review: associated in the same transaction as the space itself, not in a
     // best-effort loop at the controller - a library that cannot be associated (not found, or not
@@ -238,18 +237,15 @@ public class SpaceService {
     space.addMembership(membership);
     spaceRepository.save(space);
     auditEventRecorder.recordUserActionOnSubject(
-        space.getOrganizationId(),
-        caller.id(),
-        AuditEventType.SPACE_MEMBER_ADDED,
-        AuditObjectType.SPACE,
-        space.getId(),
-        space.getName(),
-        AuditSubjectKind.USER,
-        memberUserId,
-        null,
-        Map.of("role", roleToAssign.name()),
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(space.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.SPACE_MEMBER_ADDED)
+            .object(AuditObjectType.SPACE, space.getId(), space.getName())
+            .subject(AuditSubjectKind.USER, memberUserId)
+            .after(Map.of("role", roleToAssign.name()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
 
     return new SpaceMemberView(membership, resolveDisplayName(membership.getUserId()));
   }
@@ -277,18 +273,16 @@ public class SpaceService {
     target.setRole(newRole);
     spaceRepository.save(space);
     auditEventRecorder.recordUserActionOnSubject(
-        space.getOrganizationId(),
-        caller.id(),
-        AuditEventType.SPACE_MEMBER_ROLE_CHANGED,
-        AuditObjectType.SPACE,
-        space.getId(),
-        space.getName(),
-        AuditSubjectKind.USER,
-        memberUserId,
-        Map.of("role", previousRole.name()),
-        Map.of("role", newRole.name()),
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(space.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.SPACE_MEMBER_ROLE_CHANGED)
+            .object(AuditObjectType.SPACE, space.getId(), space.getName())
+            .subject(AuditSubjectKind.USER, memberUserId)
+            .before(Map.of("role", previousRole.name()))
+            .after(Map.of("role", newRole.name()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     return new SpaceMemberView(target, resolveDisplayName(target.getUserId()));
   }
 
@@ -309,18 +303,15 @@ public class SpaceService {
     space.removeMembership(target);
     spaceRepository.save(space);
     auditEventRecorder.recordUserActionOnSubject(
-        space.getOrganizationId(),
-        caller.id(),
-        AuditEventType.SPACE_MEMBER_REMOVED,
-        AuditObjectType.SPACE,
-        space.getId(),
-        space.getName(),
-        AuditSubjectKind.USER,
-        memberUserId,
-        Map.of("role", target.getRole().name()),
-        null,
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(space.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.SPACE_MEMBER_REMOVED)
+            .object(AuditObjectType.SPACE, space.getId(), space.getName())
+            .subject(AuditSubjectKind.USER, memberUserId)
+            .before(Map.of("role", target.getRole().name()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
   }
 
   @Transactional
@@ -345,16 +336,15 @@ public class SpaceService {
     // event type, not the generic SPACE_CHANGED (which would hide it from a filter on
     // event_type = ASSET_OWNER_CHANGED).
     auditEventRecorder.recordUserAction(
-        space.getOrganizationId(),
-        caller.id(),
-        AuditEventType.ASSET_OWNER_CHANGED,
-        AuditObjectType.SPACE,
-        space.getId(),
-        space.getName(),
-        Map.of("ownerId", previousOwnerId.toString()),
-        Map.of("ownerId", newOwnerUserId.toString()),
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(space.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.ASSET_OWNER_CHANGED)
+            .object(AuditObjectType.SPACE, space.getId(), space.getName())
+            .before(Map.of("ownerId", previousOwnerId.toString()))
+            .after(Map.of("ownerId", newOwnerUserId.toString()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
   }
 
   @Transactional
@@ -403,16 +393,15 @@ public class SpaceService {
         after.put("visibility", updated.getVisibility().name());
       }
       auditEventRecorder.recordUserAction(
-          updated.getOrganizationId(),
-          caller.id(),
-          AuditEventType.SPACE_CHANGED,
-          AuditObjectType.SPACE,
-          updated.getId(),
-          updated.getName(),
-          before,
-          after,
-          AuditOutcome.SUCCESS,
-          null);
+          AuditEvent.builder()
+              .organizationId(updated.getOrganizationId())
+              .actor(caller.id())
+              .type(AuditEventType.SPACE_CHANGED)
+              .object(AuditObjectType.SPACE, updated.getId(), updated.getName())
+              .before(before)
+              .after(after)
+              .outcome(AuditOutcome.SUCCESS)
+              .build());
     }
     return updated;
   }
@@ -444,16 +433,14 @@ public class SpaceService {
     }
 
     auditEventRecorder.recordUserAction(
-        space.getOrganizationId(),
-        caller.id(),
-        AuditEventType.SPACE_DELETED,
-        AuditObjectType.SPACE,
-        space.getId(),
-        space.getName(),
-        spaceAuditPayload(space),
-        null,
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(space.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.SPACE_DELETED)
+            .object(AuditObjectType.SPACE, space.getId(), space.getName())
+            .before(spaceAuditPayload(space))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     spaceRepository.delete(space);
   }
 
@@ -498,16 +485,14 @@ public class SpaceService {
     space.archive();
     Space archived = spaceRepository.save(space);
     auditEventRecorder.recordUserAction(
-        archived.getOrganizationId(),
-        caller.id(),
-        AuditEventType.SPACE_ARCHIVED,
-        AuditObjectType.SPACE,
-        archived.getId(),
-        archived.getName(),
-        spaceAuditPayload(archived),
-        null,
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(archived.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.SPACE_ARCHIVED)
+            .object(AuditObjectType.SPACE, archived.getId(), archived.getName())
+            .before(spaceAuditPayload(archived))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     return archived;
   }
 
