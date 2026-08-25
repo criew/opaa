@@ -31,12 +31,9 @@ import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
 import io.opaa.group.GroupUpdate;
-import io.opaa.group.sync.DirectoryClient;
 import io.opaa.group.sync.DirectoryGroup;
-import io.opaa.group.sync.DirectorySnapshot;
 import io.opaa.group.sync.DirectorySyncService;
 import io.opaa.group.sync.DirectorySyncStatusRepository;
-import io.opaa.group.sync.DirectoryUnavailableException;
 import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.AssetGrantService;
@@ -52,8 +49,10 @@ import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
+import io.opaa.test.DirectorySyncMockConfiguration;
+import io.opaa.test.DirectorySyncMockResetListener;
+import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -62,12 +61,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
@@ -86,42 +83,15 @@ import org.springframework.transaction.support.TransactionTemplate;
  * audit_log.organization_id} is a plain {@code UUID} column with a real foreign key ({@code
  * fk_audit_log_organization}, migration 017) that only the versioned changelog creates.
  */
-// Own @Import (below) registers a FakeDirectoryClient not needed by the shared
-// @OpaaIntegrationTest group - documented exception per AGENTS.md.
+// Shares one context with
+// DirectorySyncServiceIntegrationTest/PermissionHistoryServiceIntegrationTest
+// via the identical DirectorySyncMockConfiguration import (#903).
 @OpaaIntegrationTest
-@Import(AuditEventRecordingIntegrationTest.TestConfig.class)
+@Import(DirectorySyncMockConfiguration.class)
+@TestExecutionListeners(
+    listeners = DirectorySyncMockResetListener.class,
+    mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class AuditEventRecordingIntegrationTest {
-
-  @TestConfiguration(proxyBeanMethods = false)
-  static class TestConfig {
-    @Bean
-    @Primary
-    FakeDirectoryClient fakeDirectoryClient() {
-      return new FakeDirectoryClient();
-    }
-  }
-
-  static class FakeDirectoryClient implements DirectoryClient {
-    private DirectorySnapshot snapshot = new DirectorySnapshot(Instant.now(), List.of());
-    private DirectoryUnavailableException failure;
-
-    void respondWith(DirectoryGroup... groups) {
-      this.failure = null;
-      this.snapshot = new DirectorySnapshot(Instant.now(), List.of(groups));
-    }
-
-    void failWith(String message) {
-      this.failure = new DirectoryUnavailableException(message);
-    }
-
-    @Override
-    public DirectorySnapshot fetchGroups(UUID organizationId) throws DirectoryUnavailableException {
-      if (failure != null) {
-        throw failure;
-      }
-      return snapshot;
-    }
-  }
 
   @Autowired private AssetGrantService grantService;
   @Autowired private AssetGrantRepository grantRepository;

@@ -13,6 +13,9 @@ import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupMembershipRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
+import io.opaa.test.DirectorySyncMockConfiguration;
+import io.opaa.test.DirectorySyncMockResetListener;
+import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -20,13 +23,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
+import org.springframework.test.context.TestExecutionListeners;
 
 /**
  * Exercises {@link DirectorySyncService} against a real Postgres database with the real, versioned
@@ -41,42 +43,15 @@ import org.springframework.context.annotation.Primary;
  * - the one seam between the synchronisation policy under test and an actual directory, per {@link
  * DirectoryClient}'s own javadoc.
  */
-// Own @Import (below) registers a FakeDirectoryClient not needed by the shared
-// @OpaaIntegrationTest group - documented exception per AGENTS.md.
+// Shares one context with
+// AuditEventRecordingIntegrationTest/PermissionHistoryServiceIntegrationTest
+// via the identical DirectorySyncMockConfiguration import (#903).
 @OpaaIntegrationTest
-@Import(DirectorySyncServiceIntegrationTest.TestConfig.class)
+@Import(DirectorySyncMockConfiguration.class)
+@TestExecutionListeners(
+    listeners = DirectorySyncMockResetListener.class,
+    mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class DirectorySyncServiceIntegrationTest {
-
-  @TestConfiguration(proxyBeanMethods = false)
-  static class TestConfig {
-    @Bean
-    @Primary
-    FakeDirectoryClient fakeDirectoryClient() {
-      return new FakeDirectoryClient();
-    }
-  }
-
-  static class FakeDirectoryClient implements DirectoryClient {
-    private DirectorySnapshot snapshot = new DirectorySnapshot(Instant.now(), List.of());
-    private DirectoryUnavailableException failure;
-
-    void respondWith(DirectoryGroup... groups) {
-      this.failure = null;
-      this.snapshot = new DirectorySnapshot(Instant.now(), List.of(groups));
-    }
-
-    void failWith(String message) {
-      this.failure = new DirectoryUnavailableException(message);
-    }
-
-    @Override
-    public DirectorySnapshot fetchGroups(UUID organizationId) throws DirectoryUnavailableException {
-      if (failure != null) {
-        throw failure;
-      }
-      return snapshot;
-    }
-  }
 
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private GroupRepository groupRepository;
@@ -93,18 +68,43 @@ class DirectorySyncServiceIntegrationTest {
   private UUID organizationId;
 
   @BeforeEach
-  void cleanUp() {
-    statusRepository.deleteAll();
-    // #238 code review, finding 2+4: a sync run now historises every membership change it applies,
-    // and group_membership_history.user_id is ON DELETE RESTRICT (see
-    // 018-permission-history.yaml's "Deletion survival" comment) - the blanket
-    // userRepository.deleteAll() below would otherwise fail from the second test method onward.
-    membershipHistoryRepository.deleteAll();
-    membershipRepository.deleteAll();
-    groupRepository.deleteAll();
-    userRepository.deleteAll();
+  void setUp() {
+    wipeOrganizationData();
     organizationId = Organization.DEFAULT_ID;
     directoryClient.respondWith();
+  }
+
+  // Scoped to Organization.DEFAULT_ID (the only organization this class ever uses), not a blanket
+  // deleteAll(): this class now shares its Spring context with AuditEventRecordingIntegrationTest
+  // and PermissionHistoryServiceIntegrationTest (#903), which create their own, randomly generated
+  // organizations - an unscoped wipe here would delete their still-in-use fixtures if a test run
+  // ever interleaved at the method level. Called from both @BeforeEach and @AfterEach so this
+  // class's own data neither survives into, nor depends on leftovers from, another test's run.
+  private void wipeOrganizationData() {
+    statusRepository
+        .findByOrganizationId(Organization.DEFAULT_ID)
+        .ifPresent(status -> statusRepository.deleteById(status.getId()));
+    List<Group> groups = groupRepository.findByOrganizationId(Organization.DEFAULT_ID);
+    // #238 code review, finding 2+4: a sync run now historises every membership change it applies,
+    // and group_membership_history.user_id is ON DELETE RESTRICT (see
+    // 018-permission-history.yaml's "Deletion survival" comment) - history must go before the
+    // users below.
+    List<UUID> userIds =
+        userRepository.findByOrganizationId(Organization.DEFAULT_ID).stream()
+            .map(User::getId)
+            .toList();
+    membershipHistoryRepository.deleteByUserIdIn(userIds);
+    membershipRepository.deleteAll(
+        groups.stream()
+            .flatMap(group -> membershipRepository.findByGroupId(group.getId()).stream())
+            .toList());
+    groupRepository.deleteAll(groups);
+    userRepository.deleteAll(userRepository.findByOrganizationId(Organization.DEFAULT_ID));
+  }
+
+  @AfterEach
+  void tearDown() {
+    wipeOrganizationData();
   }
 
   private UUID createUser(UUID organizationId, String subject) {

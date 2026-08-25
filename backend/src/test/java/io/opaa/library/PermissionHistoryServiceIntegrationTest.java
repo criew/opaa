@@ -18,14 +18,14 @@ import io.opaa.group.GroupMembershipHistoryCause;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
-import io.opaa.group.sync.DirectoryClient;
 import io.opaa.group.sync.DirectoryGroup;
-import io.opaa.group.sync.DirectorySnapshot;
 import io.opaa.group.sync.DirectorySyncService;
 import io.opaa.group.sync.DirectorySyncStatusRepository;
-import io.opaa.group.sync.DirectoryUnavailableException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.DirectorySyncMockConfiguration;
+import io.opaa.test.DirectorySyncMockResetListener;
+import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,11 +36,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestExecutionListeners;
 
 /**
  * Exercises #238's Stichtag reconstruction ({@link
@@ -53,33 +51,15 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * A") and the acceptance criteria's harder negative one ("prove they could not on day B") from the
  * same reconstruction.
  */
-// Own @Import (below) registers a FakeDirectoryClient not needed by the shared
-// @OpaaIntegrationTest group - documented exception per AGENTS.md.
+// Shares one context with AuditEventRecordingIntegrationTest/DirectorySyncServiceIntegrationTest
+// via
+// the identical DirectorySyncMockConfiguration import (#903).
 @OpaaIntegrationTest
-@Import(PermissionHistoryServiceIntegrationTest.TestConfig.class)
+@Import(DirectorySyncMockConfiguration.class)
+@TestExecutionListeners(
+    listeners = DirectorySyncMockResetListener.class,
+    mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class PermissionHistoryServiceIntegrationTest {
-
-  @TestConfiguration(proxyBeanMethods = false)
-  static class TestConfig {
-    @Bean
-    @Primary
-    FakeDirectoryClient fakeDirectoryClient() {
-      return new FakeDirectoryClient();
-    }
-  }
-
-  static class FakeDirectoryClient implements DirectoryClient {
-    private DirectorySnapshot snapshot = new DirectorySnapshot(Instant.now(), List.of());
-
-    void respondWith(DirectoryGroup... groups) {
-      this.snapshot = new DirectorySnapshot(Instant.now(), List.of(groups));
-    }
-
-    @Override
-    public DirectorySnapshot fetchGroups(UUID organizationId) throws DirectoryUnavailableException {
-      return snapshot;
-    }
-  }
 
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;

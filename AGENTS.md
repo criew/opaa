@@ -119,10 +119,18 @@ Neue Backend-Integrationstests verwenden eine der kanonischen Meta-Annotationen 
 
 Jede Klasse mit identischer Signatur teilt sich einen Spring-Kontext und einen Testcontainers-
 Postgres statt einen eigenen zu booten — Spring cached Kontexte anhand der exakten, zusammengeführten
-Konfiguration (Issue #843). Eine eigene `@DynamicPropertySource`, ein eigenes `@Import(...TestConfig)`
-oder ein eigener `@MockitoBean`-Satz erzwingt trotz gemeinsamer Meta-Annotation einen eigenen Kontext
-(Spring bezieht das in den Cache-Schlüssel ein) — das ist zulässig, wenn fachlich nötig, muss aber mit
-einem 1–2-zeiligen Kommentar über der Annotation begründet werden (Review-Flagge). In eine
+Konfiguration (Issue #843). Eine eigene `@DynamicPropertySource`, ein eigenes, **klassenlokales**
+(inneres) `@Import(...TestConfig)` oder ein eigener `@MockitoBean`-Satz erzwingt trotz gemeinsamer
+Meta-Annotation einen eigenen Kontext (Spring bezieht das in den Cache-Schlüssel ein) — das ist
+zulässig, wenn fachlich nötig, muss aber mit einem 1–2-zeiligen Kommentar über der Annotation
+begründet werden (Review-Flagge). Ein geteiltes `@Import` **derselben Top-Level-`@TestConfiguration`**
+in `io.opaa.test` ist dagegen cache-kompatibel, sofern die importierende Klasse sonst keine eigenen
+Differenzierer trägt — jede Klasse, die dieselbe Top-Level-Config importiert, teilt sich einen Kontext
+mit jeder anderen (Vorbild: `DirectorySyncMockConfiguration`, Issue #903); ein Mock, den mehr als eine
+Klasse braucht, gehört deshalb von Anfang an dorthin statt in eine klassenlokale `TestConfig`. Ein
+solcher geteilter Mock braucht denselben Reset-Mechanismus wie `OpaaIndexingMockResetListener` — ohne
+ihn vererbt eine künftige, weitere importierende Klasse stillschweigend den Zustand, den die vorherige
+Testmethode zuletzt hinterlassen hat. In eine
 `@DynamicPropertySource` gehört nur, was zur Laufzeit aus einer Ressource (z. B. einem Testcontainer)
 gelesen wird — ein konstanter Wert gehört stattdessen in `properties` auf der `@SpringBootTest`-Annotation
 selbst. Ein zur Laufzeit berechneter Wert, der über alle Klassen einer Signatur identisch sein muss
