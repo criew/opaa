@@ -16,6 +16,10 @@ describe('userInitial', () => {
     expect(userInitial({ displayName: '   ', email: 'x@y.de' })).toBe('X')
   })
 
+  it('keeps a non-BMP first character whole instead of splitting the surrogate pair (#805)', () => {
+    expect(userInitial({ displayName: '🦊 Fuchs', email: null })).toBe('🦊')
+  })
+
   it('renders a placeholder without any source', () => {
     expect(userInitial(null)).toBe('?')
     expect(userInitial({ displayName: '', email: '' })).toBe('?')

@@ -211,16 +211,19 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
 - `tests/smoke.spec.ts` — die Anwendung lädt und zeigt die Chat-Startseite (#231).
 - `tests/accessibility.spec.ts` (#586) — automatisierte Barrierefreiheitsprüfung mit axe-core
   (`@axe-core/playwright`, Helfer in `fixtures/a11y.ts`): Anmeldeseite, Chat in beiden
-  Farbschemata, Space-Seite, Wissensbibliotheken und Verwaltungsbereich (Gruppen) werden im
-  Ausgangszustand gegen WCAG 2.1 A/AA geprüft. Verstöße der Stufen „serious" und „critical"
+  Farbschemata, Space-Seite, Wissensbibliotheken, Verwaltungsbereich (Gruppen) und
+  Benutzer-Einstellungen werden im Ausgangszustand gegen WCAG 2.1 A/AA geprüft. Verstöße der Stufen „serious" und „critical"
   lassen den Test fehlschlagen; „minor"/„moderate" landen als Annotation im Playwright-Report.
   Ausnahmen stehen als `KNOWN_EXCEPTIONS` in der Spec, jede mit Begründung und Issue
-  (derzeit: Kontrast der Akzentfarbe, #634). Die Anmeldeseite ist im dev-Auth-Modus nur sichtbar,
+  (derzeit: Kontrast der Akzentfarbe, #634 — suite-weit für gefüllte primäre Buttons/Chips,
+  auf der Einstellungsseite zusätzlich seitenlokal für Akzent-Links). Die Anmeldeseite ist im dev-Auth-Modus nur sichtbar,
   wenn `/api/v1/auth/config` per `page.route` eine OIDC-Konfiguration zurückgibt — die
   erfundene Authority wird dabei nie kontaktiert. Das dunkle Farbschema wird über
   `page.emulateMedia({ colorScheme: 'dark' })` aktiviert (die Voreinstellung „System" folgt
   `prefers-color-scheme`). Die Szenarien verändern keinen geteilten Zustand und sind daher von
-  der Reihenfolge der Suite unabhängig.
+  der Reihenfolge der Suite unabhängig. Der Durchklick durch die Admin-Sekundärspalte liegt
+  seit #805 in `tests/admin-area-navigation.spec.ts` (mit 320-px-Geometrie-Zusicherung), weil
+  er keine axe-Analyse ausführt.
 - `tests/knowledge-libraries.spec.ts` (#424) — Wissensbibliotheken über den vollen Stack: Nutzer A
   legt eine Bibliothek an und lädt ein Dokument hoch, sieht es nach der Verarbeitung als indiziert,
   und die Suche findet den eigenen Inhalt mit Quellenangabe. A gibt die Bibliothek an Nutzer B frei

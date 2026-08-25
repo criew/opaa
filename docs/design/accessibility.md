@@ -111,7 +111,9 @@ Ausschnitt.
   Rückwechsel: #635) im Frontend-Lint, Regelset `recommended`, jeder Verstoß ein Lint-Fehler.
 - **axe-core** (`@axe-core/playwright`) in der Playwright-E2E-Suite
   (`e2e/tests/accessibility.spec.ts`, eingeführt mit #586): Anmeldung, Chat in beiden
-  Farbschemata, Space-Seite, Wissensbibliotheken, Verwaltungsbereich. Verstöße der Stufen
+  Farbschemata, Space-Seite, Wissensbibliotheken, Verwaltungsbereich,
+  Benutzer-Einstellungen (dort mit seitenlokaler #634-Klammerung der Akzent-Links).
+  Verstöße der Stufen
   „serious" und „critical" lassen die Prüfung fehlschlagen, „minor"/„moderate" erscheinen als
   Annotation im Report.
 - Ausnahmen werden einzeln im Code begründet und mit einem Issue verknüpft — nie pauschal

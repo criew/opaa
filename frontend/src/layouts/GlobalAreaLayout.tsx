@@ -100,7 +100,9 @@ export default function GlobalAreaLayout({ title, sections }: GlobalAreaLayoutPr
                   aria-current={active ? (exact ? 'page' : 'true') : undefined}
                   sx={{
                     display: 'block',
-                    flex: 'none',
+                    // xs: shrink-and-wrap so a single long label breaks inside its pill instead
+                    // of pushing the row past 320px (#805: a 47-char label measured 326px).
+                    flex: { xs: '0 1 auto', md: 'none' },
                     px: '10px',
                     py: '7px',
                     borderRadius: '6px',

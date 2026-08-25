@@ -32,6 +32,25 @@ describe('App', () => {
     })
   })
 
+  it('shows the administration column to a SYSTEM_ADMIN (#805)', async () => {
+    // Positive half of llm-model-management.spec.ts Szenario 3's landmark absence: the same
+    // role gate (AdminAreaLayout) must produce the named landmark for an admin.
+    useAuthStore.setState({
+      user: {
+        id: 'admin-1',
+        displayName: 'Dev Admin',
+        email: 'admin@opaa.local',
+        systemRole: 'SYSTEM_ADMIN',
+      },
+    })
+    window.history.pushState({}, '', '/admin/groups')
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByRole('navigation', { name: 'Administration' })).toBeInTheDocument()
+    })
+    window.history.pushState({}, '', '/')
+  })
+
   it('renders navigation links', async () => {
     render(<App />)
     await waitFor(() => {
