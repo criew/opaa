@@ -88,6 +88,17 @@ public class IndexingConfiguration {
         properties.targetValidation().enabled(), properties.targetValidation().allowlist());
   }
 
+  /**
+   * Shared by every {@link SourceIndexingExecutor} bean below that runs a full, "vollständig
+   * auflistend" crawl (FILESYSTEM, HTTP_DIRECTORY) - {@code RssFeedIndexingExecutor} deliberately
+   * does not depend on this (#886, ADR-0017 decision 5).
+   */
+  @Bean
+  StaleDocumentCleanupService staleDocumentCleanupService(
+      DocumentRepository documentRepository, VectorChunkStore vectorChunkStore) {
+    return new StaleDocumentCleanupService(documentRepository, vectorChunkStore);
+  }
+
   // Declared as SourceIndexingExecutor, not the concrete executor type: all three beans below
   // carry @Async and are therefore wrapped in a JDK dynamic proxy at runtime, which only
   // implements the interfaces the target class declares. Every consumer
@@ -100,7 +111,8 @@ public class IndexingConfiguration {
       FilesystemPathAllowlist filesystemPathAllowlist,
       IndexingRunEventRepository indexingRunEventRepository,
       LibraryStorageQuotaService libraryStorageQuotaService,
-      LibraryFolderService libraryFolderService) {
+      LibraryFolderService libraryFolderService,
+      StaleDocumentCleanupService staleDocumentCleanupService) {
     return new AsyncIndexingExecutor(
         documentService,
         fileProcessingService,
@@ -108,7 +120,8 @@ public class IndexingConfiguration {
         filesystemPathAllowlist,
         indexingRunEventRepository,
         libraryStorageQuotaService,
-        libraryFolderService);
+        libraryFolderService,
+        staleDocumentCleanupService);
   }
 
   @Bean
@@ -130,7 +143,8 @@ public class IndexingConfiguration {
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       IndexingRunEventRepository indexingRunEventRepository,
-      LibraryStorageQuotaService libraryStorageQuotaService) {
+      LibraryStorageQuotaService libraryStorageQuotaService,
+      StaleDocumentCleanupService staleDocumentCleanupService) {
     return new UrlIndexingExecutor(
         autoindexCrawlerService,
         boundedDownloader,
@@ -138,7 +152,8 @@ public class IndexingConfiguration {
         indexingJobService,
         documentRepository,
         indexingRunEventRepository,
-        libraryStorageQuotaService);
+        libraryStorageQuotaService,
+        staleDocumentCleanupService);
   }
 
   @Bean

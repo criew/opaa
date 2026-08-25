@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -207,6 +208,47 @@ class RssFeedIndexingExecutorTest {
             any(),
             eq(library));
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(2), eq(0), eq(0), eq(2));
+  }
+
+  @Test
+  void constructorNeverAcceptsAStaleDocumentCleanupService() {
+    // #886 review: RSS deliberately never cleans up by absence (ADR-0017, decision 5) - a
+    // constructor parameter for StaleDocumentCleanupService here would already be a structural
+    // regression before any test exercises behavior, so this guards the constructor's own shape
+    // rather than relying solely on a mocked-collaborator interaction test below.
+    boolean anyConstructorAcceptsCleanupService =
+        java.util.Arrays.stream(RssFeedIndexingExecutor.class.getDeclaredConstructors())
+            .flatMap(c -> java.util.Arrays.stream(c.getParameterTypes()))
+            .anyMatch(StaleDocumentCleanupService.class::equals);
+    assertThat(anyConstructorAcceptsCleanupService).isFalse();
+  }
+
+  @Test
+  void anEntryScrolledOutOfTheFeedWindowIsNeverDeleted() {
+    // #886: unlike AsyncIndexingExecutor/UrlIndexingExecutor, RSS never deletes by absence
+    // (ADR-0017, decision 5) - an entry missing from this run's own feed fetch only means it fell
+    // out of the feed's window, not that its source vanished. The feed shrinks from two entries to
+    // one between two runs; documentRepository.delete must never be called for the missing one (or
+    // at all).
+    String detailHtml = "<html><body><main>Inhalt.</main></body></html>";
+    serve(
+        "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serve("/b.html", 200, "text/html", detailHtml);
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    execute(baseUrl + "/feed.xml");
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(2), eq(0), eq(0), eq(2));
+
+    server.removeContext("/feed.xml");
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000).times(2))
+        .completeJob(any(), anyInt(), eq(0), anyInt(), anyInt());
+    verify(documentRepository, never()).delete(any());
   }
 
   @Test

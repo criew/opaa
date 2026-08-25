@@ -277,10 +277,9 @@ class FilesystemFolderMappingIntegrationTest {
     LibraryFolder temp = findFolder(null, "Temp").orElseThrow();
     LibraryFolder temp2025 = findFolder(temp.getId(), "2025").orElseThrow();
 
-    // #824's own scope: a FILESYSTEM run does not yet delete a document whose file disappeared
-    // (documented gap, see LibraryFolderService#pruneOrphanedFolders's own Javadoc) - the document
-    // row is removed here directly to isolate and exercise the folder-pruning behaviour on its
-    // own, independent of that still-open deletion-by-absence work.
+    // Since #886, AsyncIndexingExecutor's own StaleDocumentCleanupService call would remove this
+    // document automatically on the next run - deleted here directly instead, to isolate and
+    // exercise pruneOrphanedFolders's own folder-pruning behaviour on its own.
     Files.delete(sharedTempDir.resolve("Temp/2025/datei.txt"));
     Files.delete(sharedTempDir.resolve("Temp/2025"));
     Files.delete(sharedTempDir.resolve("Temp"));

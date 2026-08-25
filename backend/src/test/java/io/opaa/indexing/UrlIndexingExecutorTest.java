@@ -31,7 +31,8 @@ class UrlIndexingExecutorTest {
           mock(IndexingJobService.class),
           documentRepository,
           mock(IndexingRunEventRepository.class),
-          mock(LibraryStorageQuotaService.class));
+          mock(LibraryStorageQuotaService.class),
+          mock(StaleDocumentCleanupService.class));
 
   // --- #550 review: blank lastModified must never be treated as "unchanged" -----------------
 
@@ -159,7 +160,8 @@ class UrlIndexingExecutorTest {
             jobService,
             documentRepository,
             mock(IndexingRunEventRepository.class),
-            mock(LibraryStorageQuotaService.class));
+            mock(LibraryStorageQuotaService.class),
+            mock(StaleDocumentCleanupService.class));
     UUID jobId = UUID.randomUUID();
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(

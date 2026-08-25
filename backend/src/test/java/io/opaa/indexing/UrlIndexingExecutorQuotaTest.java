@@ -77,7 +77,7 @@ class UrlIndexingExecutorQuotaTest {
         new AutoindexCrawlerService.CrawledFileEntry(
             "over-quota.txt", "https://example.com/docs/over-quota.txt", null, "1", "FILE", 0);
     when(crawlerService.crawl(anyString(), any(), anyInt(), any(), any(), anyBoolean()))
-        .thenReturn(new AutoindexCrawlerService.CrawlResult(List.of(entry), false, false));
+        .thenReturn(new AutoindexCrawlerService.CrawlResult(List.of(entry), false, false, false));
 
     Path downloaded = tempDir.resolve("over-quota.txt");
     Files.writeString(downloaded, "content");
@@ -97,7 +97,8 @@ class UrlIndexingExecutorQuotaTest {
             indexingJobService,
             documentRepository,
             indexingRunEventRepository,
-            storageQuotaService);
+            storageQuotaService,
+            mock(StaleDocumentCleanupService.class));
   }
 
   @Test

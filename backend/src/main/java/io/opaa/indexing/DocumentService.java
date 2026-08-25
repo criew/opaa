@@ -25,10 +25,6 @@ public class DocumentService {
   public record DiscoveredFiles(
       List<Path> supported, List<Path> rejected, List<FormatMismatch> mismatches) {
 
-    static DiscoveredFiles empty() {
-      return new DiscoveredFiles(List.of(), List.of(), List.of());
-    }
-
     public int totalFound() {
       return supported.size() + rejected.size();
     }
@@ -42,14 +38,19 @@ public class DocumentService {
    */
   public record FormatMismatch(Path file, String detectedExtension) {}
 
+  /**
+   * @throws IOException if {@code directory} does not exist or is not a directory - a missing
+   *     source path (an unmounted network share, a moved/renamed directory) must fail this run, not
+   *     report an empty, successful bestand (#886 review): {@code AsyncIndexingExecutor}'s own
+   *     stale-document cleanup would otherwise read that empty bestand as "every previously indexed
+   *     document vanished" and delete the whole library's content.
+   */
   public DiscoveredFiles discoverFiles(Path directory) throws IOException {
     if (!Files.exists(directory)) {
-      log.warn("Document directory does not exist: {}", directory);
-      return DiscoveredFiles.empty();
+      throw new IOException("Document directory does not exist: " + directory);
     }
     if (!Files.isDirectory(directory)) {
-      log.warn("Path is not a directory: {}", directory);
-      return DiscoveredFiles.empty();
+      throw new IOException("Path is not a directory: " + directory);
     }
     List<Path> supported = new ArrayList<>();
     List<Path> rejected = new ArrayList<>();

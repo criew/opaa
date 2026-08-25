@@ -331,6 +331,7 @@ public class LibraryController {
       case ALLOWLIST -> IndexingRunEventCategory.ALLOWLIST;
       case ERROR -> IndexingRunEventCategory.ERROR;
       case FORMAT_MISMATCH -> IndexingRunEventCategory.FORMAT_MISMATCH;
+      case REMOVED -> IndexingRunEventCategory.REMOVED;
     };
   }
 
