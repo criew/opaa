@@ -10,6 +10,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -385,41 +386,32 @@ public class GroupService {
     }
   }
 
-  private User requireUser(UUID userId) {
-    return userRepository
-        .findById(userId)
-        .orElseThrow(() -> new NotFoundException("Benutzer nicht gefunden"));
-  }
-
   /**
-   * Resolves a user and enforces the organization boundary for it - mirrors {@code
-   * SpaceService#requireUserInOrganization}. Returns 404 rather than 403 both when the user does
-   * not exist and when it belongs to a different organization, so a caller cannot distinguish "no
-   * such user" from "user in another organization".
+   * Resolves a user and enforces the organization boundary for it via {@link
+   * OrganizationScopedLoader} - mirrors {@code SpaceService#requireUserInOrganization}. Returns 404
+   * rather than 403 both when the user does not exist and when it belongs to a different
+   * organization, so a caller cannot distinguish "no such user" from "user in another
+   * organization".
    */
   private User requireUserInOrganization(UUID userId, UUID organizationId) {
-    User user = requireUser(userId);
-    if (!user.getOrganizationId().equals(organizationId)) {
-      throw new NotFoundException("Benutzer nicht gefunden");
-    }
-    return user;
+    return OrganizationScopedLoader.load(
+        () -> userRepository.findById(userId),
+        User::getOrganizationId,
+        organizationId,
+        "Benutzer nicht gefunden");
   }
 
   /**
-   * Loads a group and enforces the organization boundary, treating a group from another
-   * organization as not found - mirrors {@code SpaceService#loadSpace}. Applies to system admins as
-   * well; the boundary is not overstepped even to reveal existence.
+   * Loads a group and enforces the organization boundary via {@link OrganizationScopedLoader},
+   * treating a group from another organization as not found. Applies to system admins as well; the
+   * boundary is not overstepped even to reveal existence.
    */
   private Group loadGroup(UUID groupId, CurrentUser caller) {
-    Group group =
-        groupRepository
-            .findByIdWithMemberships(groupId)
-            .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
-
-    if (!group.getOrganizationId().equals(caller.organizationId())) {
-      throw new NotFoundException("Gruppe nicht gefunden");
-    }
-    return group;
+    return OrganizationScopedLoader.load(
+        () -> groupRepository.findByIdWithMemberships(groupId),
+        Group::getOrganizationId,
+        caller.organizationId(),
+        "Gruppe nicht gefunden");
   }
 
   private GroupMembership userMembership(Group group, UUID userId) {
