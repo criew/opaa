@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -277,6 +278,7 @@ class UserServiceTest {
     when(userRepository.findByIdAndOrganizationId(userId, organizationId))
         .thenReturn(Optional.of(user));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
 
     User updated =
         userService.updateRole(
@@ -357,32 +359,10 @@ class UserServiceTest {
 
     verify(auditEventRecorder, times(1))
         .recordUserActionOnSubject(
-            any(),
-            any(),
-            eq(AuditEventType.AUDITOR_ROLE_GRANTED),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any());
+            argThat(event -> event.eventType() == AuditEventType.AUDITOR_ROLE_GRANTED));
     verify(auditEventRecorder, never())
         .recordUserActionOnSubject(
-            any(),
-            any(),
-            eq(AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any());
+            argThat(event -> event.eventType() == AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED));
   }
 
   @Test
@@ -401,18 +381,7 @@ class UserServiceTest {
 
     verify(auditEventRecorder, times(1))
         .recordUserActionOnSubject(
-            any(),
-            any(),
-            eq(AuditEventType.AUDITOR_ROLE_REVOKED),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any());
+            argThat(event -> event.eventType() == AuditEventType.AUDITOR_ROLE_REVOKED));
   }
 
   /**
@@ -435,32 +404,10 @@ class UserServiceTest {
 
     verify(auditEventRecorder, times(1))
         .recordUserActionOnSubject(
-            any(),
-            any(),
-            eq(AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any());
+            argThat(event -> event.eventType() == AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED));
     verify(auditEventRecorder, times(1))
         .recordUserActionOnSubject(
-            any(),
-            any(),
-            eq(AuditEventType.AUDITOR_ROLE_GRANTED),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any());
+            argThat(event -> event.eventType() == AuditEventType.AUDITOR_ROLE_GRANTED));
   }
 
   @Test

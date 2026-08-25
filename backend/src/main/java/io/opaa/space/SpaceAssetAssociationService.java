@@ -1,5 +1,6 @@
 package io.opaa.space;
 
+import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -195,16 +196,14 @@ public class SpaceAssetAssociationService {
     // grantees of a permission, see that enum's Javadoc) - the space id is carried in the payload
     // instead, mirroring how ASSET_OWNER_CHANGED carries ownerId in its own payload.
     auditEventRecorder.recordUserAction(
-        space.getOrganizationId(),
-        caller.id(),
-        AuditEventType.LIBRARY_SHARED_TO_SPACE,
-        AuditObjectType.KNOWLEDGE_LIBRARY,
-        library.getId(),
-        library.getName(),
-        null,
-        Map.of("spaceId", space.getId().toString()),
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(space.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.LIBRARY_SHARED_TO_SPACE)
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+            .after(Map.of("spaceId", space.getId().toString()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
 
     notifyOwnerIfMixedAudience(space, library, caller.id());
 
@@ -238,16 +237,14 @@ public class SpaceAssetAssociationService {
             association -> {
               associationRepository.delete(association);
               auditEventRecorder.recordUserAction(
-                  space.getOrganizationId(),
-                  caller.id(),
-                  AuditEventType.LIBRARY_DETACHED_FROM_SPACE,
-                  AuditObjectType.KNOWLEDGE_LIBRARY,
-                  library.getId(),
-                  library.getName(),
-                  Map.of("spaceId", space.getId().toString()),
-                  null,
-                  AuditOutcome.SUCCESS,
-                  null);
+                  AuditEvent.builder()
+                      .organizationId(space.getOrganizationId())
+                      .actor(caller.id())
+                      .type(AuditEventType.LIBRARY_DETACHED_FROM_SPACE)
+                      .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+                      .before(Map.of("spaceId", space.getId().toString()))
+                      .outcome(AuditOutcome.SUCCESS)
+                      .build());
             });
   }
 

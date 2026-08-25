@@ -1,5 +1,6 @@
 package io.opaa.branding;
 
+import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -245,16 +246,18 @@ public class BrandingSettingsService {
       Map<String, Object> before,
       Map<String, Object> after) {
     auditEventRecorder.recordUserAction(
-        organizationId,
-        actorUserId,
-        AuditEventType.BRANDING_SETTINGS_CHANGED,
-        AuditObjectType.SYSTEM_SETTING,
-        UUID.nameUUIDFromBytes(CONFIGURATION_OBJECT_ID.getBytes(StandardCharsets.UTF_8)),
-        OBJECT_LABEL,
-        before,
-        after,
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actor(actorUserId)
+            .type(AuditEventType.BRANDING_SETTINGS_CHANGED)
+            .object(
+                AuditObjectType.SYSTEM_SETTING,
+                UUID.nameUUIDFromBytes(CONFIGURATION_OBJECT_ID.getBytes(StandardCharsets.UTF_8)),
+                OBJECT_LABEL)
+            .before(before)
+            .after(after)
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
   }
 
   /** Never the logo's bytes - only that there is one, of what type, and in which version. */

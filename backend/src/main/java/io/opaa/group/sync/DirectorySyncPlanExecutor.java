@@ -1,5 +1,6 @@
 package io.opaa.group.sync;
 
+import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -255,19 +256,19 @@ class DirectorySyncPlanExecutor {
     after.put("membershipsAdded", report.membershipsAdded());
     after.put("membershipsRemoved", report.membershipsRemoved());
     auditEventRecorder.recordSystemProcessAction(
-        organizationId,
-        DIRECTORY_SYNC_ACTOR,
-        AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED,
-        AuditObjectType.DIRECTORY_SYNC_RUN,
-        correlationRef,
-        "Verzeichnisabgleich " + correlationRef,
-        null,
-        null,
-        null,
-        after,
-        toAuditOutcome(outcome),
-        message,
-        correlationRef.toString());
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actorRef(DIRECTORY_SYNC_ACTOR)
+            .type(AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED)
+            .object(
+                AuditObjectType.DIRECTORY_SYNC_RUN,
+                correlationRef,
+                "Verzeichnisabgleich " + correlationRef)
+            .after(after)
+            .outcome(toAuditOutcome(outcome))
+            .reason(message)
+            .correlationRef(correlationRef.toString())
+            .build());
     return report;
   }
 
@@ -685,35 +686,30 @@ class DirectorySyncPlanExecutor {
       Map<String, Object> after) {
     if (subjectKind == null) {
       auditEventRecorder.recordSystemProcessAction(
-          organizationId,
-          DIRECTORY_SYNC_ACTOR,
-          AuditEventType.DIRECTORY_SYNC_CHANGE_APPLIED,
-          AuditObjectType.GROUP,
-          group.getId(),
-          group.getName(),
-          null,
-          null,
-          before,
-          after,
-          AuditOutcome.SUCCESS,
-          null,
-          correlationRef.toString());
+          AuditEvent.builder()
+              .organizationId(organizationId)
+              .actorRef(DIRECTORY_SYNC_ACTOR)
+              .type(AuditEventType.DIRECTORY_SYNC_CHANGE_APPLIED)
+              .object(AuditObjectType.GROUP, group.getId(), group.getName())
+              .before(before)
+              .after(after)
+              .outcome(AuditOutcome.SUCCESS)
+              .correlationRef(correlationRef.toString())
+              .build());
       return;
     }
     auditEventRecorder.recordSystemProcessAction(
-        organizationId,
-        DIRECTORY_SYNC_ACTOR,
-        AuditEventType.DIRECTORY_SYNC_CHANGE_APPLIED,
-        AuditObjectType.GROUP,
-        group.getId(),
-        group.getName(),
-        subjectKind,
-        subjectId,
-        before,
-        after,
-        AuditOutcome.SUCCESS,
-        null,
-        correlationRef.toString());
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actorRef(DIRECTORY_SYNC_ACTOR)
+            .type(AuditEventType.DIRECTORY_SYNC_CHANGE_APPLIED)
+            .object(AuditObjectType.GROUP, group.getId(), group.getName())
+            .subject(subjectKind, subjectId)
+            .before(before)
+            .after(after)
+            .outcome(AuditOutcome.SUCCESS)
+            .correlationRef(correlationRef.toString())
+            .build());
   }
 
   /**

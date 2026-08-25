@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
@@ -171,20 +172,20 @@ public class AssetGrantService {
       // protocol-worthy - "der zurueckgewiesene Versuch, sich eine hoehere Rolle zu geben, ist fuer
       // eine Pruefung oft der interessantere Vorgang" (docs/features/security-and-compliance.md).
       auditEventRecorder.recordUserActionOnSubject(
-          library.getOrganizationId(),
-          currentUserId,
-          AuditEventType.ASSET_GRANT_GRANTED,
-          AuditObjectType.KNOWLEDGE_LIBRARY,
-          library.getId(),
-          library.getName(),
-          request.subjectType() == PermissionSubjectType.USER
-              ? AuditSubjectKind.USER
-              : AuditSubjectKind.GROUP,
-          request.subjectId(),
-          null,
-          Map.of("role", request.role().name()),
-          AuditOutcome.DENIED,
-          denied.getMessage());
+          AuditEvent.builder()
+              .organizationId(library.getOrganizationId())
+              .actor(currentUserId)
+              .type(AuditEventType.ASSET_GRANT_GRANTED)
+              .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+              .subject(
+                  request.subjectType() == PermissionSubjectType.USER
+                      ? AuditSubjectKind.USER
+                      : AuditSubjectKind.GROUP,
+                  request.subjectId())
+              .after(Map.of("role", request.role().name()))
+              .outcome(AuditOutcome.DENIED)
+              .reason(denied.getMessage())
+              .build());
       throw denied;
     }
 
@@ -261,33 +262,28 @@ public class AssetGrantService {
       // rights-state interval and the event log entry are written side by side, never merged (see
       // the class Javadoc's "verwandt, nicht ueberschneidend" note).
       auditEventRecorder.recordUserActionOnSubject(
-          library.getOrganizationId(),
-          currentUserId,
-          AuditEventType.ASSET_GRANT_GRANTED,
-          AuditObjectType.KNOWLEDGE_LIBRARY,
-          library.getId(),
-          library.getName(),
-          auditSubjectKind,
-          auditSubjectId,
-          null,
-          grantAuditPayload(saved.getRole(), saved.getExpiresAt()),
-          AuditOutcome.SUCCESS,
-          null);
+          AuditEvent.builder()
+              .organizationId(library.getOrganizationId())
+              .actor(currentUserId)
+              .type(AuditEventType.ASSET_GRANT_GRANTED)
+              .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+              .subject(auditSubjectKind, auditSubjectId)
+              .after(grantAuditPayload(saved.getRole(), saved.getExpiresAt()))
+              .outcome(AuditOutcome.SUCCESS)
+              .build());
     } else {
       permissionHistoryService.recordGrantRoleChanged(saved, currentUserId);
       auditEventRecorder.recordUserActionOnSubject(
-          library.getOrganizationId(),
-          currentUserId,
-          AuditEventType.ASSET_GRANT_CHANGED,
-          AuditObjectType.KNOWLEDGE_LIBRARY,
-          library.getId(),
-          library.getName(),
-          auditSubjectKind,
-          auditSubjectId,
-          grantAuditPayload(previousRole, previousExpiresAt),
-          grantAuditPayload(saved.getRole(), saved.getExpiresAt()),
-          AuditOutcome.SUCCESS,
-          null);
+          AuditEvent.builder()
+              .organizationId(library.getOrganizationId())
+              .actor(currentUserId)
+              .type(AuditEventType.ASSET_GRANT_CHANGED)
+              .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+              .subject(auditSubjectKind, auditSubjectId)
+              .before(grantAuditPayload(previousRole, previousExpiresAt))
+              .after(grantAuditPayload(saved.getRole(), saved.getExpiresAt()))
+              .outcome(AuditOutcome.SUCCESS)
+              .build());
     }
     invalidateAfterCommit(library.getId());
     return toViews(List.of(saved)).get(0);
@@ -340,22 +336,21 @@ public class AssetGrantService {
     permissionHistoryService.recordGrantRevoked(grant, currentUserId);
     // #392: same "before the row is gone" reasoning as the history call above.
     auditEventRecorder.recordUserActionOnSubject(
-        library.getOrganizationId(),
-        currentUserId,
-        AuditEventType.ASSET_GRANT_REVOKED,
-        AuditObjectType.KNOWLEDGE_LIBRARY,
-        library.getId(),
-        library.getName(),
-        grant.getSubjectType() == PermissionSubjectType.USER
-            ? AuditSubjectKind.USER
-            : AuditSubjectKind.GROUP,
-        grant.getSubjectType() == PermissionSubjectType.USER
-            ? grant.getSubjectUserId()
-            : grant.getSubjectGroupId(),
-        grantAuditPayload(grant.getRole(), grant.getExpiresAt()),
-        null,
-        AuditOutcome.SUCCESS,
-        null);
+        AuditEvent.builder()
+            .organizationId(library.getOrganizationId())
+            .actor(currentUserId)
+            .type(AuditEventType.ASSET_GRANT_REVOKED)
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+            .subject(
+                grant.getSubjectType() == PermissionSubjectType.USER
+                    ? AuditSubjectKind.USER
+                    : AuditSubjectKind.GROUP,
+                grant.getSubjectType() == PermissionSubjectType.USER
+                    ? grant.getSubjectUserId()
+                    : grant.getSubjectGroupId())
+            .before(grantAuditPayload(grant.getRole(), grant.getExpiresAt()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     grantRepository.delete(grant);
     invalidateAfterCommit(library.getId());
   }
