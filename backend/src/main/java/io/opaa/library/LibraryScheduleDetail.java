@@ -1,7 +1,7 @@
 package io.opaa.library;
 
-import io.opaa.api.dto.ScheduleFrequency;
-import io.opaa.api.dto.ScheduleWeekday;
+import io.opaa.api.types.ScheduleFrequency;
+import io.opaa.api.types.ScheduleWeekday;
 import java.time.Instant;
 
 /**
