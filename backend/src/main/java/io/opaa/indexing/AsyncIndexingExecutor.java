@@ -19,8 +19,7 @@ import org.springframework.scheduling.annotation.Async;
 /**
  * Executes indexing runs for {@link IndexingSourceType#FILESYSTEM} (ADR-0017). Since ADR-0018, the
  * directory to crawl is the library's own {@link KnowledgeLibrary#getSourcePath()} - not a single,
- * application-wide {@code IndexingProperties#documentPath()}, so different FILESYSTEM libraries can
- * watch different directories.
+ * application-wide path, so different FILESYSTEM libraries can watch different directories.
  *
  * <p>Every discovered file's directory under {@code sourcePath} is mirrored into {@code
  * library_folders} via {@link LibraryFolderService#materializeFolderPath} before it is handed to
