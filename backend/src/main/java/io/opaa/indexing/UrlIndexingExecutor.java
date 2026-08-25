@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -13,7 +14,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -21,6 +24,14 @@ import org.springframework.scheduling.annotation.Async;
 /**
  * Executes indexing runs for {@link IndexingSourceType#HTTP_DIRECTORY} via Apache mod_autoindex
  * crawling (ADR-0017).
+ *
+ * <p>Once every crawled entry has been processed, {@link
+ * StaleDocumentCleanupService#cleanupVanished} removes every {@code HTTP_DIRECTORY} document of
+ * this library whose URL was not in this run's own crawl result - it no longer exists at the source
+ * (#886). Skipped entirely when {@link AutoindexCrawlerService.CrawlResult#truncated()} is {@code
+ * true}: a depth/entry limit means this run's own {@code allFiles} is not the source's complete
+ * bestand, so anything beyond the cut would incorrectly look vanished. Also only reached on this
+ * method's own success path, so a failed or crashed run never deletes anything.
  */
 public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
@@ -33,6 +44,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   private final DocumentRepository documentRepository;
   private final IndexingRunEventRepository indexingRunEventRepository;
   private final LibraryStorageQuotaService storageQuotaService;
+  private final StaleDocumentCleanupService staleDocumentCleanupService;
 
   public UrlIndexingExecutor(
       AutoindexCrawlerService crawlerService,
@@ -41,7 +53,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       IndexingRunEventRepository indexingRunEventRepository,
-      LibraryStorageQuotaService storageQuotaService) {
+      LibraryStorageQuotaService storageQuotaService,
+      StaleDocumentCleanupService staleDocumentCleanupService) {
     this.crawlerService = crawlerService;
     this.downloader = downloader;
     this.fileProcessingService = fileProcessingService;
@@ -49,6 +62,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     this.documentRepository = documentRepository;
     this.indexingRunEventRepository = indexingRunEventRepository;
     this.storageQuotaService = storageQuotaService;
+    this.staleDocumentCleanupService = staleDocumentCleanupService;
   }
 
   @Override
@@ -216,6 +230,24 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
           }
         }
         progress.report();
+      }
+
+      // See this class' own Javadoc: skipped for a truncated crawl, only reached on the success
+      // path (#886).
+      if (!crawlResult.truncated()) {
+        try {
+          Set<String> currentUrls =
+              allFiles.stream()
+                  .map(AutoindexCrawlerService.CrawledFileEntry::url)
+                  .collect(Collectors.toSet());
+          staleDocumentCleanupService.cleanupVanished(
+              targetLibrary, DocumentSourceType.HTTP_DIRECTORY, currentUrls);
+        } catch (Exception e) {
+          log.warn(
+              "Failed to clean up vanished HTTP_DIRECTORY documents for library {}",
+              targetLibrary.getId(),
+              e);
+        }
       }
 
       events.finalizeRun();

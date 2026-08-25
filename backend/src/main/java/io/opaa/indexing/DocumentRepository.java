@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.api.types.DocumentSourceType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -34,6 +35,13 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
   List<Document> findByLibraryId(UUID libraryId);
+
+  /**
+   * Backs {@link StaleDocumentCleanupService#cleanupVanished}: every document of a single {@code
+   * (libraryId, sourceType)} pair, the candidate set a completed connector run checks against its
+   * own freshly discovered {@code filePath}s to find what vanished from the source.
+   */
+  List<Document> findByLibraryIdAndSourceType(UUID libraryId, DocumentSourceType sourceType);
 
   /**
    * Backs {@code io.opaa.library.LibraryFolderService#deleteFolder}: every document directly inside

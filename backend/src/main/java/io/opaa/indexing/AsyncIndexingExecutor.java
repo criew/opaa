@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.api.types.DocumentSourceType;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -25,9 +27,16 @@ import org.springframework.scheduling.annotation.Async;
  * <p>Every discovered file's directory under {@code sourcePath} is mirrored into {@code
  * library_folders} via {@link LibraryFolderService#materializeFolderPath} before it is handed to
  * {@link FileProcessingService#processFile(Path, KnowledgeLibrary, UUID)} (ADR-0020) - the
- * read-only counterpart to the CRUD-managed folders of an {@code UPLOAD} library. Once the run's
- * own discovery has finished, {@link LibraryFolderService#pruneOrphanedFolders} removes any folder
- * this run never touched and that holds no document, directly or transitively.
+ * read-only counterpart to the CRUD-managed folders of an {@code UPLOAD} library. Once every
+ * discovered file has been processed, {@link StaleDocumentCleanupService#cleanupVanished} removes
+ * every {@code FILESYSTEM} document of this library whose path was not rediscovered - it no longer
+ * exists under {@code sourcePath} (#886) - and only then does {@link
+ * LibraryFolderService#pruneOrphanedFolders} remove any folder this run never touched and that
+ * holds no document, directly or transitively: that order lets a folder emptied by the cleanup
+ * above be pruned in this same run instead of lagging one run behind. Both are only reached on this
+ * method's own success path (never from a {@code catch} block), so a failed or crashed run never
+ * deletes anything; {@code discoverFiles} walks the whole tree with no truncation limit, so -
+ * unlike {@link UrlIndexingExecutor} - there is no capped-run case to guard against here.
  */
 public class AsyncIndexingExecutor implements SourceIndexingExecutor {
 
@@ -40,6 +49,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   private final IndexingRunEventRepository indexingRunEventRepository;
   private final LibraryStorageQuotaService storageQuotaService;
   private final LibraryFolderService folderService;
+  private final StaleDocumentCleanupService staleDocumentCleanupService;
 
   public AsyncIndexingExecutor(
       DocumentService documentService,
@@ -48,7 +58,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       FilesystemPathAllowlist filesystemAllowlist,
       IndexingRunEventRepository indexingRunEventRepository,
       LibraryStorageQuotaService storageQuotaService,
-      LibraryFolderService folderService) {
+      LibraryFolderService folderService,
+      StaleDocumentCleanupService staleDocumentCleanupService) {
     this.documentService = documentService;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
@@ -56,6 +67,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     this.indexingRunEventRepository = indexingRunEventRepository;
     this.storageQuotaService = storageQuotaService;
     this.folderService = folderService;
+    this.staleDocumentCleanupService = staleDocumentCleanupService;
   }
 
   @Override
@@ -177,6 +189,22 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
           progress.recordFailed();
         }
         progress.report();
+      }
+
+      // Reached only once every discovered file has been accounted for above - see this class'
+      // own Javadoc on why that makes this call safe (#886). Runs before pruneOrphanedFolders
+      // below so a folder that only held a now-vanished document can already be pruned in this
+      // same run, instead of lagging one run behind.
+      try {
+        Set<String> currentFilePaths =
+            files.stream().map(f -> f.toAbsolutePath().toString()).collect(Collectors.toSet());
+        staleDocumentCleanupService.cleanupVanished(
+            targetLibrary, DocumentSourceType.FILESYSTEM, currentFilePaths);
+      } catch (Exception e) {
+        log.warn(
+            "Failed to clean up vanished FILESYSTEM documents for library {}",
+            targetLibrary.getId(),
+            e);
       }
 
       // Caught separately, not left to the outer catch below - a failure here must not turn an

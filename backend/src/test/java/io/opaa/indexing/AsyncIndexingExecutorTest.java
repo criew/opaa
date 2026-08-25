@@ -39,6 +39,7 @@ class AsyncIndexingExecutorTest {
   private IndexingRunEventRepository indexingRunEventRepository;
   private LibraryStorageQuotaService storageQuotaService;
   private LibraryFolderService folderService;
+  private StaleDocumentCleanupService staleDocumentCleanupService;
   private AsyncIndexingExecutor executor;
   private KnowledgeLibrary library;
 
@@ -49,6 +50,7 @@ class AsyncIndexingExecutorTest {
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
     folderService = mock(LibraryFolderService.class);
+    staleDocumentCleanupService = mock(StaleDocumentCleanupService.class);
     FilesystemPathAllowlist allowlist = mock(FilesystemPathAllowlist.class);
     when(allowlist.isAllowed(any())).thenReturn(true);
 
@@ -75,7 +77,8 @@ class AsyncIndexingExecutorTest {
             allowlist,
             indexingRunEventRepository,
             storageQuotaService,
-            folderService);
+            folderService,
+            staleDocumentCleanupService);
   }
 
   @Test

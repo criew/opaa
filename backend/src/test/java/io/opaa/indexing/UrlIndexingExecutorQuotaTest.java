@@ -97,7 +97,8 @@ class UrlIndexingExecutorQuotaTest {
             indexingJobService,
             documentRepository,
             indexingRunEventRepository,
-            storageQuotaService);
+            storageQuotaService,
+            mock(StaleDocumentCleanupService.class));
   }
 
   @Test

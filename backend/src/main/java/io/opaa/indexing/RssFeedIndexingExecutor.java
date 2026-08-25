@@ -40,7 +40,10 @@ import org.springframework.scheduling.annotation.Async;
  * against its stored {@code pubDate} before its detail page is requested; the SHA-256 checksum
  * inside {@link FileProcessingService#processRssEntry} is the final, content-based layer once a
  * page is fetched. No deletion by absence (ADR-0017, decision 5): an entry that has scrolled out of
- * the feed's window is not touched here.
+ * the feed's window is not touched here - re-confirmed by #886, which added deletion-by-absence for
+ * {@code FILESYSTEM}/{@code HTTP_DIRECTORY} but deliberately excludes RSS: a feed's window is a
+ * property of the feed, not of whether the entry's own source still exists, so "missing from this
+ * run's entries" is not evidence an entry is gone.
  *
  * <p>Entry- and byte-size limits, a link scheme check ({@code http}/{@code https} only), a minimum
  * delay between detail-page requests and a configurable {@code User-Agent} come from {@link

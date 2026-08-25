@@ -374,12 +374,10 @@ public class LibraryFolderService {
    * Removes every {@link LibraryFolder} of {@code libraryId} that is both absent from {@code
    * currentFolderIds} (this indexing run's own directory walk never touched it - its source
    * directory is gone) and empty, including transitively (#824, docs/features/knowledge-sources.md
-   * "Ordner in FILESYSTEM-Bibliotheken"). Deliberately conservative: a FILESYSTEM run does not yet
-   * delete a document whose backing file disappeared ("Löschung durch Abwesenheit" is decided by
-   * ADR-0017 but not yet built for documents) - so a folder that still holds such a stale document
-   * (directly, or in one of its own subfolders) is left standing rather than silently discarding
-   * it. Once document deletion-by-absence ships, this same check keeps working unchanged: an empty
-   * folder is empty regardless of why.
+   * "Ordner in FILESYSTEM-Bibliotheken"). {@code io.opaa.indexing.AsyncIndexingExecutor} calls
+   * {@code io.opaa.indexing.StaleDocumentCleanupService#cleanupVanished} before this method (#886):
+   * a document whose backing file disappeared is already gone by the time this runs, so a folder
+   * left holding only such a document is correctly treated as empty and pruned, not left standing.
    *
    * <p>Walked leaf-first (post-order): a folder only qualifies once every one of its own subfolders
    * has already either survived (still referenced, or non-empty) or been removed - mirroring {@link

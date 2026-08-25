@@ -93,6 +93,12 @@ public class IndexingConfiguration {
   // implements the interfaces the target class declares. Every consumer
   // (IndexingSourceExecutorRegistry) depends on SourceIndexingExecutor already.
   @Bean
+  StaleDocumentCleanupService staleDocumentCleanupService(
+      DocumentRepository documentRepository, VectorChunkStore vectorChunkStore) {
+    return new StaleDocumentCleanupService(documentRepository, vectorChunkStore);
+  }
+
+  @Bean
   SourceIndexingExecutor asyncIndexingExecutor(
       DocumentService documentService,
       FileProcessingService fileProcessingService,
@@ -100,7 +106,8 @@ public class IndexingConfiguration {
       FilesystemPathAllowlist filesystemPathAllowlist,
       IndexingRunEventRepository indexingRunEventRepository,
       LibraryStorageQuotaService libraryStorageQuotaService,
-      LibraryFolderService libraryFolderService) {
+      LibraryFolderService libraryFolderService,
+      StaleDocumentCleanupService staleDocumentCleanupService) {
     return new AsyncIndexingExecutor(
         documentService,
         fileProcessingService,
@@ -108,7 +115,8 @@ public class IndexingConfiguration {
         filesystemPathAllowlist,
         indexingRunEventRepository,
         libraryStorageQuotaService,
-        libraryFolderService);
+        libraryFolderService,
+        staleDocumentCleanupService);
   }
 
   @Bean
@@ -130,7 +138,8 @@ public class IndexingConfiguration {
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       IndexingRunEventRepository indexingRunEventRepository,
-      LibraryStorageQuotaService libraryStorageQuotaService) {
+      LibraryStorageQuotaService libraryStorageQuotaService,
+      StaleDocumentCleanupService staleDocumentCleanupService) {
     return new UrlIndexingExecutor(
         autoindexCrawlerService,
         boundedDownloader,
@@ -138,7 +147,8 @@ public class IndexingConfiguration {
         indexingJobService,
         documentRepository,
         indexingRunEventRepository,
-        libraryStorageQuotaService);
+        libraryStorageQuotaService,
+        staleDocumentCleanupService);
   }
 
   @Bean
