@@ -162,6 +162,11 @@ public record EvaluationReport(
       double hitRateAt5,
       double reciprocalRank,
       double recallAt10,
+      // Issue #913: "Recall pro Teilthema" — 1.0 only if every expected document was retrieved, see
+      // RetrievalMetrics#allExpectedDocumentsHitAtK. Carried per-query (not just per group) so
+      // allQueryResults lets a reader verify a multi_topic case's coverage without recomputing it
+      // from rankedFileNames/expectedDocuments.
+      double allExpectedDocumentsHitAt10,
       List<String> expectedDocuments,
       List<String> rankedFileNames) {}
 }

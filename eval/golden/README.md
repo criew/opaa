@@ -2,7 +2,7 @@
 
 ## Domäne `city-landmarks` (Issue #234)
 
-`city-landmarks.json` — 83 kuratierte Fälle, fünf Kategorien, alle Fragen auf Deutsch (siehe
+`city-landmarks.json` — 108 kuratierte Fälle, sechs Kategorien, alle Fragen auf Deutsch (siehe
 `eval/corpus/city-landmarks/`):
 
 | Kategorie | Anzahl | Ground Truth |
@@ -12,6 +12,7 @@
 | `boundary_span` | 20 | Dokument + `answer_span`, gezielt nahe einer Chunk-Grenze ausgewählt |
 | `cross_chunk` | 15 | Dokument + `answer_span` (Vergleichssatz zwischen zwei Sehenswürdigkeiten desselben Dokuments — siehe unten zur Schema-Einschränkung) |
 | `multi_city` | 8 | mehrere Dokumente (Einwohnervergleich zwischen zwei Städten) |
+| `multi_topic` | 20 | mehrere Dokumente (Frage nennt zwei Sehenswürdigkeiten aus zwei verschiedenen Stadtdokumenten, beide in `expected_documents` — Issue #913, Vorher-Messung für #912/#914). 15 Fälle `difficulty: medium`, 5 Tippfehler-Varianten in einer der beiden Entitäten mit `difficulty: hard` (analog zum realen Auslöser „perosonausweis" aus #912). Manuell kuratiert direkt gegen die generierten `.md`-Dateien, nicht über eines der beiden Generator-Skripte — die Fälle sind an dieser Stelle handgeschrieben, um gezielt Fakten aus zwei unterschiedlichen Dokumenten zu kombinieren, was keines der beiden bestehenden Skripte vorsieht. |
 
 **Erzeugung:** Nicht über `generate_golden_dataset.py` (das Skript ist an das Frontmatter-Schema
 von `comic-characters` gebunden), sondern über ein eigenständiges, ebenfalls deterministisches

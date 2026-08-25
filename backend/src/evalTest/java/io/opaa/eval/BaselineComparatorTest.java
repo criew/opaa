@@ -116,13 +116,13 @@ class BaselineComparatorTest {
     // because the case-count check correctly reads "no hit was actually lost" from
     // hitCountAt10 staying at 4.
     MetricsAggregate baselineNumericRange =
-        new MetricsAggregate(16, 0.188, 0.101, 0.063, 0.060, 0.9382, 15, 3, 4);
+        new MetricsAggregate(16, 0.188, 0.101, 0.063, 0.060, 0.9382, 15, 3, 4, 0.0);
     // Simulates exactly one case's ndcg dropping from 1.0 to 0.5 while remaining a hit
     // (hitCountAt10
     // unchanged at 4) — the other three metrics are left at their baseline value for this test's
     // focus on ndcgAt10, matching how a rank-only shift on a single case would only move ndcgAt10.
     MetricsAggregate currentNumericRange =
-        new MetricsAggregate(16, 0.188, 0.101, 0.063 - 0.5 / 16, 0.060, 0.9382, 15, 3, 4);
+        new MetricsAggregate(16, 0.188, 0.101, 0.063 - 0.5 / 16, 0.060, 0.9382, 15, 3, 4, 0.0);
 
     double oldTolerance = BaselineComparator.toleranceFor(0.063, 15);
     double actualDelta = currentNumericRange.ndcgAt10() - baselineNumericRange.ndcgAt10();
@@ -187,9 +187,9 @@ class BaselineComparatorTest {
     // (max(meanTolerance, 1/n) = max(0.0253, 1/16=0.0625) = 0.0625) catches it: the actual drop is
     // 0.076, above 0.0625.
     MetricsAggregate baselineNumericRange =
-        new MetricsAggregate(16, 0.188, 0.101, 0.063, 0.060, 0.9382, 15, 3, 4);
+        new MetricsAggregate(16, 0.188, 0.101, 0.063, 0.060, 0.9382, 15, 3, 4, 0.0);
     MetricsAggregate currentNumericRange =
-        new MetricsAggregate(16, 0.188, 0.025, 0.063, 0.060, 0.9382, 15, 3, 4);
+        new MetricsAggregate(16, 0.188, 0.025, 0.063, 0.060, 0.9382, 15, 3, 4, 0.0);
 
     Baseline baseline =
         new Baseline(
@@ -245,9 +245,9 @@ class BaselineComparatorTest {
     // group mean from 0.159 to 0.098 while hitCountAt10 (still >0 recall per hitting case) stays
     // at 10.
     MetricsAggregate baselineFilter =
-        new MetricsAggregate(21, 0.238, 0.206, 0.137, 0.159, 0.9331, 21, 5, 10);
+        new MetricsAggregate(21, 0.238, 0.206, 0.137, 0.159, 0.9331, 21, 5, 10, 0.0);
     MetricsAggregate currentFilter =
-        new MetricsAggregate(21, 0.238, 0.206, 0.137, 0.098, 0.9331, 21, 5, 10);
+        new MetricsAggregate(21, 0.238, 0.206, 0.137, 0.098, 0.9331, 21, 5, 10, 0.0);
 
     Baseline baseline =
         new Baseline(
@@ -299,10 +299,10 @@ class BaselineComparatorTest {
     // A real regression — more than MAX_CASE_COUNT_DROP (1) cases losing their only hit — must
     // still be caught, proving the fix for issue #306 does not simply loosen the check.
     MetricsAggregate baselineNumericRange =
-        new MetricsAggregate(16, 0.188, 0.101, 0.063, 0.060, 0.9382, 15, 3, 4);
+        new MetricsAggregate(16, 0.188, 0.101, 0.063, 0.060, 0.9382, 15, 3, 4, 0.0);
     // Two of the four previously-hitting cases now miss entirely (hitCountAt10 drops from 4 to 2).
     MetricsAggregate currentNumericRange =
-        new MetricsAggregate(16, 0.188, 0.101, 0.063 - 2.0 / 16, 0.060, 0.9382, 15, 3, 2);
+        new MetricsAggregate(16, 0.188, 0.101, 0.063 - 2.0 / 16, 0.060, 0.9382, 15, 3, 2, 0.0);
 
     Baseline baseline =
         new Baseline(
@@ -438,7 +438,7 @@ class BaselineComparatorTest {
     EvaluationReport report =
         reportWith(
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new MetricsAggregate(121, 0.10, 0.10, 0.10, 0.10, 1.0, 94, 12, 12));
+            new MetricsAggregate(121, 0.10, 0.10, 0.10, 0.10, 1.0, 94, 12, 12, 0.0));
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -458,7 +458,7 @@ class BaselineComparatorTest {
     EvaluationReport report =
         reportWith(
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new MetricsAggregate(121, 0.45, 0.45, 0.45, 0.45, 1.0, 94, 54, 54));
+            new MetricsAggregate(121, 0.45, 0.45, 0.45, 0.45, 1.0, 94, 54, 54, 0.0));
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -489,14 +489,14 @@ class BaselineComparatorTest {
             fixedPoints("m1", "d1", "corpus-a", "golden-a"),
             Map.of(
                 Baseline.OVERALL,
-                new MetricsAggregate(121, 0.30, 0.461, 0.445, 0.490, 1.0, 94, 36, 73)),
+                new MetricsAggregate(121, 0.30, 0.461, 0.445, 0.490, 1.0, 94, 36, 73, 0.0)),
             "2026-08-03",
             null,
             "eroded baseline fixture");
     EvaluationReport report =
         reportWith(
             runConfiguration("m1", "d1", "corpus-a", "golden-a"),
-            new MetricsAggregate(121, 0.25, 0.461, 0.445, 0.490, 1.0, 94, 30, 73));
+            new MetricsAggregate(121, 0.25, 0.461, 0.445, 0.490, 1.0, 94, 30, 73, 0.0));
 
     var result = BaselineComparator.compare(erodedBaseline, report);
 
@@ -653,7 +653,7 @@ class BaselineComparatorTest {
   // --- fixtures -----------------------------------------------------------------------------
 
   private static MetricsAggregate overallMetrics() {
-    return new MetricsAggregate(121, 0.521, 0.461, 0.445, 0.490, 0.9708, 94, 63, 73);
+    return new MetricsAggregate(121, 0.521, 0.461, 0.445, 0.490, 0.9708, 94, 63, 73, 0.0);
   }
 
   private static EvaluationReport.DocumentWindowCoverageResult fullDocumentWindowCoverage() {

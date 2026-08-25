@@ -27,14 +27,19 @@ public final class RetrievalMetrics {
 
   private RetrievalMetrics() {}
 
-  /** Per-query result: the four metrics plus the ranked list that produced them (for reporting). */
+  /**
+   * Per-query result: the four ranking metrics plus a fifth, binary field ({@code
+   * allExpectedDocumentsHitAt10}, issue #913) and the ranked list that produced them (for
+   * reporting).
+   */
   public record QueryResult(
       GoldenCase goldenCase,
       List<String> rankedFileNames,
       double hitRateAt5,
       double reciprocalRank,
       double ndcgAt10,
-      double recallAt10) {}
+      double recallAt10,
+      double allExpectedDocumentsHitAt10) {}
 
   public static QueryResult evaluate(GoldenCase goldenCase, List<String> rankedFileNames) {
     Set<String> expected = new LinkedHashSet<>(goldenCase.expectedDocuments());
@@ -44,7 +49,8 @@ public final class RetrievalMetrics {
         hitRateAtK(rankedFileNames, expected, HIT_RATE_K),
         reciprocalRank(rankedFileNames, expected),
         ndcgAtK(rankedFileNames, expected, NDCG_K),
-        recallAtK(rankedFileNames, expected, RECALL_K));
+        recallAtK(rankedFileNames, expected, RECALL_K),
+        allExpectedDocumentsHitAtK(rankedFileNames, expected, RECALL_K));
   }
 
   static double hitRateAtK(List<String> ranked, Set<String> expected, int k) {
@@ -86,6 +92,27 @@ public final class RetrievalMetrics {
     }
     long hits = ranked.stream().limit(k).filter(expected::contains).count();
     return (double) hits / expected.size();
+  }
+
+  /**
+   * "Recall pro Teilthema" (issue #913, following up on issue #912's topK-monoculture finding): 1.0
+   * only if <b>every</b> expected document is somewhere in the top-{@code k} ranked list, 0.0
+   * otherwise — as opposed to {@link #recallAtK}, which gives partial credit for a multi-document
+   * case (e.g. 0.5 when only one of two expected documents is retrieved). That partial credit is
+   * exactly the wrong shape for a {@code multi_topic} golden case: a query naming two entities from
+   * two different documents (e.g. "was kosten führerschein und personalausweis") is only actually
+   * answerable if the retrieved context covers both — a case where the dominant topic crowds out
+   * the other must score 0, not a comforting 0.5. An empty expected set (never produced by this
+   * harness's golden cases, but defensively handled the same way as the other metrics above) scores
+   * 0.0, matching {@link #recallAtK}'s convention rather than the vacuously-true "all zero elements
+   * are present".
+   */
+  static double allExpectedDocumentsHitAtK(List<String> ranked, Set<String> expected, int k) {
+    if (expected.isEmpty()) {
+      return 0.0;
+    }
+    Set<String> topK = new LinkedHashSet<>(ranked.subList(0, Math.min(k, ranked.size())));
+    return topK.containsAll(expected) ? 1.0 : 0.0;
   }
 
   /**

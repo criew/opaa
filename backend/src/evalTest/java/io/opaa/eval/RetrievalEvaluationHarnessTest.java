@@ -750,6 +750,7 @@ class RetrievalEvaluationHarnessTest {
         r.hitRateAt5(),
         r.reciprocalRank(),
         r.recallAt10(),
+        r.allExpectedDocumentsHitAt10(),
         r.goldenCase().expectedDocuments(),
         r.rankedFileNames());
   }

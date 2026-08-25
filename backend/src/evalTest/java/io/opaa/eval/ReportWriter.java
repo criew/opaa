@@ -156,13 +156,14 @@ public final class ReportWriter {
     sb.append(
         format(
             "HitRate@5=%.3f  MRR=%.3f  nDCG@10=%.3f  Recall@10=%.3f (Obergrenze=%.3f, "
-                + "distinct=%d)\n",
+                + "distinct=%d)  AlleThemenGetroffen@10=%.3f\n",
             a.hitRateAt5(),
             a.mrr(),
             a.ndcgAt10(),
             a.recallAt10(),
             a.recallAt10Ceiling(),
-            a.distinctExpectedDocumentSets()));
+            a.distinctExpectedDocumentSets(),
+            a.allExpectedDocumentsHitAt10()));
   }
 
   private static String shortHash(String hash) {
