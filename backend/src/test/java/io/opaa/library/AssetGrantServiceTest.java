@@ -30,6 +30,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 class AssetGrantServiceTest {
 
@@ -38,8 +39,8 @@ class AssetGrantServiceTest {
   private UserRepository userRepository;
   private GroupRepository groupRepository;
   private LibraryAccessService accessService;
-  private PermissionHistoryService permissionHistoryService;
   private AuditEventRecorder auditEventRecorder;
+  private ApplicationEventPublisher eventPublisher;
   private AssetGrantService grantService;
 
   private final UUID organizationId = UUID.randomUUID();
@@ -56,8 +57,8 @@ class AssetGrantServiceTest {
     userRepository = mock(UserRepository.class);
     groupRepository = mock(GroupRepository.class);
     accessService = mock(LibraryAccessService.class);
-    permissionHistoryService = mock(PermissionHistoryService.class);
     auditEventRecorder = mock(AuditEventRecorder.class);
+    eventPublisher = mock(ApplicationEventPublisher.class);
     grantService =
         new AssetGrantService(
             grantRepository,
@@ -65,8 +66,8 @@ class AssetGrantServiceTest {
             userRepository,
             groupRepository,
             accessService,
-            permissionHistoryService,
-            auditEventRecorder);
+            auditEventRecorder,
+            eventPublisher);
 
     // KnowledgeLibrary.ownedByUser always assigns its own random id (like every other factory
     // method on that entity) - libraryId is read back from the constructed instance rather than

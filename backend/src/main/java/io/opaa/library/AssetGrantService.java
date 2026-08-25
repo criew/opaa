@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -87,8 +88,8 @@ public class AssetGrantService {
   private final UserRepository userRepository;
   private final GroupRepository groupRepository;
   private final LibraryAccessService accessService;
-  private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
+  private final ApplicationEventPublisher eventPublisher;
 
   public AssetGrantService(
       AssetGrantRepository grantRepository,
@@ -96,15 +97,15 @@ public class AssetGrantService {
       UserRepository userRepository,
       GroupRepository groupRepository,
       LibraryAccessService accessService,
-      PermissionHistoryService permissionHistoryService,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      ApplicationEventPublisher eventPublisher) {
     this.grantRepository = grantRepository;
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
     this.accessService = accessService;
-    this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
+    this.eventPublisher = eventPublisher;
   }
 
   public List<AssetGrantView> listGrants(UUID libraryId, CurrentUser caller) {
@@ -248,42 +249,29 @@ public class AssetGrantService {
     AssetGrant saved = grantRepository.save(grant);
     // #238: every grant change is historised as its own interval, with the operation that caused
     // it - GRANTED for a new grant, ROLE_CHANGED for an update to an existing one.
-    AuditSubjectKind auditSubjectKind =
-        saved.getSubjectType() == PermissionSubjectType.USER
-            ? AuditSubjectKind.USER
-            : AuditSubjectKind.GROUP;
-    UUID auditSubjectId =
-        saved.getSubjectType() == PermissionSubjectType.USER
-            ? saved.getSubjectUserId()
-            : saved.getSubjectGroupId();
     if (isNewGrant) {
-      permissionHistoryService.recordGrantCreated(saved, currentUserId);
-      // #392: the counterpart event to PermissionHistoryService#recordGrantCreated above - the
-      // rights-state interval and the event log entry are written side by side, never merged (see
-      // the class Javadoc's "verwandt, nicht ueberschneidend" note).
-      auditEventRecorder.recordUserActionOnSubject(
-          AuditEvent.builder()
-              .organizationId(library.getOrganizationId())
-              .actor(currentUserId)
-              .type(AuditEventType.ASSET_GRANT_GRANTED)
-              .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
-              .subject(auditSubjectKind, auditSubjectId)
-              .after(grantAuditPayload(saved.getRole(), saved.getExpiresAt()))
-              .outcome(AuditOutcome.SUCCESS)
-              .build());
+      // #892: one event, not a hand-paired PermissionHistoryService + AuditEventRecorder call -
+      // GrantChanged's two listeners write the history interval and the audit entry, so forgetting
+      // one of the two writes is structurally impossible.
+      eventPublisher.publishEvent(
+          new GrantChanged(
+              library,
+              saved,
+              GrantChanged.Cause.GRANTED,
+              currentUserId,
+              AuditEventType.ASSET_GRANT_GRANTED,
+              null,
+              grantAuditPayload(saved.getRole(), saved.getExpiresAt())));
     } else {
-      permissionHistoryService.recordGrantRoleChanged(saved, currentUserId);
-      auditEventRecorder.recordUserActionOnSubject(
-          AuditEvent.builder()
-              .organizationId(library.getOrganizationId())
-              .actor(currentUserId)
-              .type(AuditEventType.ASSET_GRANT_CHANGED)
-              .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
-              .subject(auditSubjectKind, auditSubjectId)
-              .before(grantAuditPayload(previousRole, previousExpiresAt))
-              .after(grantAuditPayload(saved.getRole(), saved.getExpiresAt()))
-              .outcome(AuditOutcome.SUCCESS)
-              .build());
+      eventPublisher.publishEvent(
+          new GrantChanged(
+              library,
+              saved,
+              GrantChanged.Cause.ROLE_CHANGED,
+              currentUserId,
+              AuditEventType.ASSET_GRANT_CHANGED,
+              grantAuditPayload(previousRole, previousExpiresAt),
+              grantAuditPayload(saved.getRole(), saved.getExpiresAt())));
     }
     invalidateAfterCommit(library.getId());
     return toViews(List.of(saved)).get(0);
@@ -331,26 +319,17 @@ public class AssetGrantService {
               + " entfernt werden");
     }
 
-    // #238: record the revocation before the row is gone - recordGrantRevoked reads the grant's
-    // last-active role/expiresAt off this same entity.
-    permissionHistoryService.recordGrantRevoked(grant, currentUserId);
-    // #392: same "before the row is gone" reasoning as the history call above.
-    auditEventRecorder.recordUserActionOnSubject(
-        AuditEvent.builder()
-            .organizationId(library.getOrganizationId())
-            .actor(currentUserId)
-            .type(AuditEventType.ASSET_GRANT_REVOKED)
-            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
-            .subject(
-                grant.getSubjectType() == PermissionSubjectType.USER
-                    ? AuditSubjectKind.USER
-                    : AuditSubjectKind.GROUP,
-                grant.getSubjectType() == PermissionSubjectType.USER
-                    ? grant.getSubjectUserId()
-                    : grant.getSubjectGroupId())
-            .before(grantAuditPayload(grant.getRole(), grant.getExpiresAt()))
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
+    // #238/#892: published before the row is gone - GrantChanged's listeners read the grant's
+    // last-active role/expiresAt off this same entity for both the history and the audit write.
+    eventPublisher.publishEvent(
+        new GrantChanged(
+            library,
+            grant,
+            GrantChanged.Cause.REVOKED,
+            currentUserId,
+            AuditEventType.ASSET_GRANT_REVOKED,
+            grantAuditPayload(grant.getRole(), grant.getExpiresAt()),
+            null));
     grantRepository.delete(grant);
     invalidateAfterCommit(library.getId());
   }

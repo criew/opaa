@@ -34,6 +34,7 @@ import org.mockito.InOrder;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
@@ -93,6 +94,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     IndexingJobService indexingJobService = mock(IndexingJobService.class);
     LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
     LibraryFolderRepository folderRepository = mock(LibraryFolderRepository.class);
+    ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
     libraryService =
         new KnowledgeLibraryService(
@@ -113,7 +115,8 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
             rssFeedStateRepository,
             Clock.systemDefaultZone(),
             storageQuotaService,
-            folderRepository);
+            folderRepository,
+            eventPublisher);
 
     ownerId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
