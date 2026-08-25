@@ -61,10 +61,11 @@ class AuditLogServiceIntegrationTest {
     // property that keeps this repository "insert-only" at the Java layer, not only at the
     // database layer, would otherwise defeat this cleanup. This test's own Spring-managed
     // connection (Testcontainers' bootstrap account, a Postgres superuser - see
-    // TestcontainersConfiguration) is not subject to the DML restriction migration 017 applies to
-    // the real application account, so this cleanup call succeeds here even though it would not
-    // in production; the restriction itself is verified separately, against a real non-superuser
-    // role, by io.opaa.migration.Migration017AuditLogTest.
+    // TestcontainersConfiguration) is not subject to the DML restriction migration 017 (baseline
+    // group (f) as of #904) applies to the real application account, so this cleanup call succeeds
+    // here even though it would not in production; the restriction itself against a real,
+    // non-superuser role has no dedicated regression test after #904 (see that issue's pull
+    // request description).
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
   }

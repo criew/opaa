@@ -1,0 +1,10 @@
+# Starting point for the fixture chain used by io.opaa.migration delta tests (#904 replaced the 18
+# historical test-master-through-0NN.yaml files with this single one, after consolidating 134
+# changesets into the baseline it references). A future changeset's own delta test names this file
+# as its baseFixtureChangelogPath(), the same way e.g. Migration010SpaceUniquenessTest used to name
+# test-master-through-008.yaml - not a new test-master-through-baseline-plus-NNN.yaml per changeset;
+# only a changeset several other changesets already depend on earns its own fixture file, exactly
+# as the pre-#904 chain did.
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-baseline.yaml

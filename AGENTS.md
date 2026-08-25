@@ -137,6 +137,10 @@ Abweichung von dieser Regel. Passt keine der drei Signaturen, ist das ein Fall f
 kanonische Meta-Annotation statt einer weiteren Ad-hoc-Kombination — im Zweifel im PR begründen und
 dem Review überlassen.
 
+### Liquibase-Baseline (seit #904)
+
+Die Liquibase-Historie bis 08/2026 (134 Changesets) wurde einmalig zu `backend/src/main/resources/db/changelog/changes/001-baseline.yaml` zusammengefasst — ein bewusster Einmalvorgang vor Produktionsbetrieb, kein wiederkehrendes Muster. `db.changelog-master.yaml` referenziert nur noch diese eine Datei. **Ab der Baseline gilt wieder: ein Changeset pro Datenbankänderung**, jedes mit eigenem Delta-Test unter `backend/src/test/java/io/opaa/migration/` nach dem in `AbstractMigrationTest`/`package-info.java` beschriebenen Muster — die Fixture-Kette für Delta-Tests startet ab `backend/src/test/resources/db/changelog/test-master-through-baseline.yaml`. `MigrationBaselineTest` und `AuditPrivilegeModelTest` sind die einzigen verbleibenden Tests dieses Pakets aus der Zeit vor der Baseline; sie prüfen, dass die Baseline selbst auf einer leeren Datenbank die erwarteten Kerninvarianten herstellt (Tabellen, pgvector, Seed-Zeilen, Organisationsgrenzen-Regel, ausgewählte Zustandsinvarianten, Audit-Privilegienmodell nach ADR-0015) — keine Einzelmigration wird mehr gegen ihren Vorgängerzustand getestet; welche der ~40 historischen Prüfungen bewusst entfallen sind, steht in der Beschreibung von PR #906.
+
 ## Code-Konventionen
 
 ### Code-Kommentare
