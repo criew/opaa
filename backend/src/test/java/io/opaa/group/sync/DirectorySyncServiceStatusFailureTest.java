@@ -13,6 +13,8 @@ import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
+import io.opaa.test.DirectorySyncMockConfiguration;
+import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Set;
@@ -20,10 +22,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
@@ -39,26 +38,19 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * successful, already-committed apply into an error response with no report at all - that would
  * additionally invite an operator to retry a run that already took effect.
  */
-// Own @MockitoBean (below) and @Import registering a FakeDirectoryClient mean Spring's context
-// cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
-// documented exception per AGENTS.md.
+// Own @MockitoBean (below) means Spring's context cache still keys this to its own context
+// regardless of the shared DirectorySyncMockConfiguration import (see
+// AuditEventRecordingIntegrationTest,
+// DirectorySyncServiceIntegrationTest, PermissionHistoryServiceIntegrationTest) - documented
+// exception per AGENTS.md.
 @OpaaIntegrationTest
-@Import(DirectorySyncServiceStatusFailureTest.TestConfig.class)
+@Import(DirectorySyncMockConfiguration.class)
 class DirectorySyncServiceStatusFailureTest {
-
-  @TestConfiguration(proxyBeanMethods = false)
-  static class TestConfig {
-    @Bean
-    @Primary
-    DirectorySyncServiceIntegrationTest.FakeDirectoryClient fakeDirectoryClient() {
-      return new DirectorySyncServiceIntegrationTest.FakeDirectoryClient();
-    }
-  }
 
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private GroupRepository groupRepository;
   @Autowired private UserRepository userRepository;
-  @Autowired private DirectorySyncServiceIntegrationTest.FakeDirectoryClient directoryClient;
+  @Autowired private FakeDirectoryClient directoryClient;
   @MockitoBean private DirectorySyncStatusRecorder statusRecorder;
 
   private UUID organizationId;

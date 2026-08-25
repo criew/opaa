@@ -2,7 +2,6 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.GroupListResponse;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -14,6 +13,7 @@ import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -21,11 +21,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Exercises {@link GroupResponseMapper#toListResponses} the same way the controller does: called on
@@ -35,10 +31,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * {@link Group} entities whose {@code memberships} collection was not eagerly fetched, reading it
  * here throws {@code LazyInitializationException} instead of returning a response.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class GroupResponseMapperIntegrationTest {
 
   @Autowired private GroupService groupService;

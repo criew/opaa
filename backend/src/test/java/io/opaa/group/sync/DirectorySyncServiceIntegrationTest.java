@@ -13,6 +13,8 @@ import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupMembershipRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
+import io.opaa.test.DirectorySyncMockConfiguration;
+import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -23,10 +25,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 
 /**
  * Exercises {@link DirectorySyncService} against a real Postgres database with the real, versioned
@@ -41,42 +40,14 @@ import org.springframework.context.annotation.Primary;
  * - the one seam between the synchronisation policy under test and an actual directory, per {@link
  * DirectoryClient}'s own javadoc.
  */
-// Own @Import (below) registers a FakeDirectoryClient not needed by the shared
+// @Import (below) registers the shared FakeDirectoryClient (io.opaa.test), not needed by the plain
 // @OpaaIntegrationTest group - documented exception per AGENTS.md.
+// AuditEventRecordingIntegrationTest
+// and PermissionHistoryServiceIntegrationTest import the identical configuration class and share
+// this context (Issue #903).
 @OpaaIntegrationTest
-@Import(DirectorySyncServiceIntegrationTest.TestConfig.class)
+@Import(DirectorySyncMockConfiguration.class)
 class DirectorySyncServiceIntegrationTest {
-
-  @TestConfiguration(proxyBeanMethods = false)
-  static class TestConfig {
-    @Bean
-    @Primary
-    FakeDirectoryClient fakeDirectoryClient() {
-      return new FakeDirectoryClient();
-    }
-  }
-
-  static class FakeDirectoryClient implements DirectoryClient {
-    private DirectorySnapshot snapshot = new DirectorySnapshot(Instant.now(), List.of());
-    private DirectoryUnavailableException failure;
-
-    void respondWith(DirectoryGroup... groups) {
-      this.failure = null;
-      this.snapshot = new DirectorySnapshot(Instant.now(), List.of(groups));
-    }
-
-    void failWith(String message) {
-      this.failure = new DirectoryUnavailableException(message);
-    }
-
-    @Override
-    public DirectorySnapshot fetchGroups(UUID organizationId) throws DirectoryUnavailableException {
-      if (failure != null) {
-        throw failure;
-      }
-      return snapshot;
-    }
-  }
 
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private GroupRepository groupRepository;
