@@ -501,15 +501,20 @@ public class SpaceService {
    * no-ops - never a {@link DataIntegrityViolationException} to catch, and never a second query to
    * re-read the winner's row, because this method returns {@code void}. A genuinely unrelated
    * constraint violation (e.g. a dangling {@code ownerId}) still throws normally, because {@code ON
-   * CONFLICT} only ever suppresses the one named partial index, never any other constraint.
+   * CONFLICT} only ever suppresses the one named partial index, never any other constraint. The
+   * single {@code INSERT ... ON CONFLICT} is one round trip regardless of whether it wins or loses
+   * the race - confirmed by {@code UserServiceCreationRaceIntegrationTest} and {@code
+   * UserServiceConcurrentDistinctUserLoginIntegrationTest} passing repeatedly at the production
+   * default pool size of 10, not a raised test-only pool size (raising the pool was deliberately
+   * rejected as treating the symptom - see those tests' Javadoc).
    *
    * <p><b>Caller requirement:</b> because the insert runs on its own connection, {@code userId}
    * must already be committed and visible to other connections when this method is called - not
    * merely persisted in a still-open transaction. Calling this from inside the same transaction
-   * that first creates the user row will fail with a {@code fk_spaces_owner_organization} violation,
-   * because the {@code REQUIRES_NEW} connection cannot see the uncommitted row (see {@code
-   * UserService#ensurePersonalSpaceAfterCommit}, which defers this call to a post-commit hook for
-   * exactly this reason).
+   * that first creates the user row will fail with a {@code fk_spaces_owner_organization}
+   * violation, because the {@code REQUIRES_NEW} connection cannot see the uncommitted row (see
+   * {@code UserService#ensurePersonalSpaceAfterCommit}, which defers this call to a post-commit
+   * hook for exactly this reason).
    *
    * <p><b>{@code Propagation.NOT_SUPPORTED}, overriding the class-level
    * {@code @Transactional(readOnly = true)}:</b> without this override, calling this public method

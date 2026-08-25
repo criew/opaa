@@ -19,11 +19,12 @@ import org.springframework.stereotype.Component;
 
 /**
  * Resolves the {@link AssetRole} a user effectively holds on a {@link KnowledgeLibrary}, and the
- * set of libraries a user may read (docs/features/spaces-and-assets.md#rechte-an-einem-asset-
- * erhalten). Management rights come exclusively from an explicit {@link AssetGrant} (see {@code
- * KnowledgeLibraryService#createLibrary}, which grants the creator {@link AssetRole#OWNER} and,
- * for a group-owned library, additionally grants the owning group {@link AssetRole#MANAGER} -
- * never {@code OWNER} to the group, which would be an unbounded, non-downgradable grant) or from
+ * set of libraries a user may read (see {@code
+ * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten}). Management rights come
+ * exclusively from an explicit {@link AssetGrant} (see {@code
+ * KnowledgeLibraryService#createLibrary}, which grants the creator {@link AssetRole#OWNER} and, for
+ * a group-owned library, additionally grants the owning group {@link AssetRole#MANAGER} - never
+ * {@code OWNER} to the group, which would be an unbounded, non-downgradable grant) or from
  * organization-wide visibility.
  *
  * <p>Two access paths, deliberately not unified:
@@ -110,9 +111,9 @@ public class LibraryAccessService {
   /**
    * The highest {@link AssetRole} the user holds on the library, or {@code null} if none.
    * Organization-wide visibility grants {@link AssetRole#VIEWER} to every user of the same
-   * organization. Every library reaches this method through the same, single path the
-   * specification in docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten describes,
-   * with no exception.
+   * organization. Every library reaches this method through the same, single path the specification
+   * in docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten describes, with no
+   * exception.
    */
   public AssetRole effectiveRole(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
     if (systemAdmin) {
@@ -172,17 +173,18 @@ public class LibraryAccessService {
    *       grant for {@code libraries} in one query, giving the same freshness guarantee, and floors
    *       the result at {@link AssetRole#VIEWER}: every library in {@code libraries} is assumed to
    *       already be in the caller's {@link #readableLibraryIds}, which the formula guarantees is
-   *       reachable only at {@code VIEWER} or above.
+   *       reachable only at {@code VIEWER} or above - a {@code null} role would break the OpenAPI
+   *       specification, which declares {@code myRole} required.
    *   <li><b>Performance:</b> one query for N libraries instead of up to N queries on a cold cache.
    * </ul>
    *
    * <p><b>Never bypasses to {@link AssetRole#OWNER} for a system admin</b> - unlike {@link
    * #effectiveRole}. {@code listLibraries} membership itself never bypasses (see {@link
    * #readableLibraryIds}'s Javadoc), so a bypassed role here would mislabel an
-   * administratively-reached library as one the admin actually owns or manages. See {@code myRole}'s
-   * description in the OpenAPI specification for the caller-facing consequence: a system admin
-   * distinguishes "I own/manage this" from "I can see this because I administer everything" via
-   * their own known admin status, not via this field.
+   * administratively-reached library as one the admin actually owns or manages. See {@code
+   * myRole}'s description in the OpenAPI specification for the caller-facing consequence: a system
+   * admin distinguishes "I own/manage this" from "I can see this because I administer everything"
+   * via their own known admin status, not via this field.
    */
   public Map<UUID, AssetRole> effectiveRolesForReadableLibraries(
       List<KnowledgeLibrary> libraries, UUID userId) {

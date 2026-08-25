@@ -28,8 +28,9 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
 
   /**
    * A namespace for {@link #lockLibraryGrantsForMutation}'s Postgres advisory locks, arbitrary but
-   * fixed and documented so a future, unrelated advisory lock elsewhere in the codebase can pick a
-   * different one instead of colliding.
+   * fixed and documented so a future, unrelated advisory lock elsewhere in the codebase (e.g. the
+   * one sketched in {@code DirectorySyncService}'s Javadoc) can pick a different one instead of
+   * colliding.
    */
   int ASSET_GRANT_MUTATION_LOCK_NAMESPACE = 202;
 
@@ -45,10 +46,11 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * library, each trying to lock every grant row - even with a deterministic {@code ORDER BY id},
    * since Postgres executes the {@code Sort} before the {@code LockRows} step for that query shape.
    * A single advisory lock per library has only one lock to acquire, removing the whole class of
-   * deadlock. Automatically released at transaction end (commit or rollback), so it cannot be
-   * leaked like a {@code pg_advisory_lock}/{@code pg_advisory_unlock} pair would risk. This is a
-   * real database lock, not an in-process one - see {@code io.opaa.auth.UserService
-   * #provisioningLockFor} for why that distinction matters here (multiple application instances).
+   * deadlock. Automatically released at transaction end ({@code _xact_}, commit or rollback), so it
+   * cannot be leaked like a {@code pg_advisory_lock}/{@code pg_advisory_unlock} pair would risk.
+   * This is a real database lock, not an in-process one - see {@link
+   * io.opaa.auth.UserService#provisioningLockFor} for why that distinction matters here (multiple
+   * application instances).
    */
   @Query(
       value =

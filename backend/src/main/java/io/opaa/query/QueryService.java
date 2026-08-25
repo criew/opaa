@@ -398,11 +398,11 @@ public class QueryService {
 
   /**
    * Groups a chunk by its {@code document_id} metadata, falling back to {@code file_name} when that
-   * metadata is missing or empty - a chunk without {@code document_id} can only occur for
-   * pre-#739 index entries, since {@code FileProcessingService#storeChunks} now writes it on every
-   * chunk. Using the same {@code file_name} fallback consistently across {@link
-   * #countMatchesPerDocument} and {@link #mapSources} keeps two such chunks from <em>different</em>
-   * documents from collapsing into one merged entry via a shared empty-string key.
+   * metadata is missing or empty - a chunk without {@code document_id} can only occur for pre-#739
+   * index entries, since {@code FileProcessingService#storeChunks} now writes it on every chunk.
+   * Using the same {@code file_name} fallback consistently across {@link #countMatchesPerDocument}
+   * and {@link #mapSources} keeps two such chunks from <em>different</em> documents from collapsing
+   * into one merged entry via a shared empty-string key.
    */
   private static String chunkGroupingKey(Document chunk) {
     String documentId = chunk.getMetadata().getOrDefault("document_id", "").toString();
