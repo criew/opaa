@@ -45,6 +45,7 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.core.type.TypeReference;
@@ -637,6 +638,40 @@ class ChatServiceIntegrationTest {
     assertThat(messages).extracting(ChatMessage::getSequence).containsExactly(0, 1, 2);
     assertThat(messages.get(1).getContent()).isEqualTo("Meine Frage");
     assertThat(messages.get(2).getContent()).isEqualTo("Meine Antwort");
+  }
+
+  /**
+   * #889 reproduction: {@code nextSequenceFor} used to be a plain {@code COUNT(*)}, which
+   * undercounts the next free sequence the moment any non-trailing message of a chat is gone (e.g.
+   * a moderation/GDPR deletion) - the count no longer matches {@code MAX(sequence) + 1}, so the
+   * computed "next" sequence collides with a row that already exists. Unlike the transient race
+   * {@link #appendTurnRetriesPastASequenceCollisionInsteadOfFailing} covers, this collision is
+   * permanent: every retry recomputes the exact same {@code COUNT(*)}, so the retry loop is
+   * exhausted and {@code appendTurn} surfaces the {@link DataIntegrityViolationException} instead
+   * of recovering - discarding an already-generated, already-paid-for LLM answer. {@code
+   * MAX(sequence) + 1} does not have this failure mode: a gap left by a deleted message never
+   * collides with a still-existing row.
+   */
+  @Test
+  void appendTurnSucceedsAfterAnEarlierMessageWasDeleted() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+
+    chatService.appendTurn(chat, "Erste Frage", "Erste Antwort", List.of());
+    chatService.appendTurn(chat, "Zweite Frage", "Zweite Antwort", List.of());
+    // Leaves sequences {0, 2, 3} - COUNT(*) now returns 3, colliding with the still-existing row
+    // at sequence 3, while MAX(sequence) + 1 correctly continues at 4.
+    List<ChatMessage> messagesBeforeDeletion =
+        chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId());
+    chatMessageRepository.delete(messagesBeforeDeletion.get(1));
+
+    chatService.appendTurn(chat, "Dritte Frage", "Dritte Antwort", List.of());
+
+    List<ChatMessage> messages = chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId());
+    assertThat(messages).extracting(ChatMessage::getSequence).containsExactly(0, 2, 3, 4, 5);
+    assertThat(messages.get(3).getContent()).isEqualTo("Dritte Frage");
+    assertThat(messages.get(4).getContent()).isEqualTo("Dritte Antwort");
   }
 
   @Test
