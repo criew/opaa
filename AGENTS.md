@@ -137,6 +137,10 @@ Abweichung von dieser Regel. Passt keine der drei Signaturen, ist das ein Fall f
 kanonische Meta-Annotation statt einer weiteren Ad-hoc-Kombination — im Zweifel im PR begründen und
 dem Review überlassen.
 
+### Liquibase-Baseline (seit #904)
+
+Die Liquibase-Historie bis 08/2026 (134 Changesets) wurde einmalig zu `backend/src/main/resources/db/changelog/changes/001-baseline.yaml` zusammengefasst — ein bewusster Einmalvorgang vor Produktionsbetrieb, kein wiederkehrendes Muster. `db.changelog-master.yaml` referenziert nur noch diese eine Datei. **Ab der Baseline gilt wieder: ein Changeset pro Datenbankänderung**, jedes mit eigenem Delta-Test unter `backend/src/test/java/io/opaa/migration/` nach dem in `AbstractMigrationTest`/`package-info.java` beschriebenen Muster — die Fixture-Kette für Delta-Tests startet ab `backend/src/test/resources/db/changelog/test-master-through-baseline.yaml`. `MigrationBaselineTest` und `AuditPrivilegeModelTest` sind die einzigen verbleibenden Tests dieses Pakets aus der Zeit vor der Baseline; sie prüfen, dass die Baseline selbst auf einer leeren Datenbank die erwarteten Kerninvarianten herstellt (Tabellen, pgvector, Seed-Zeilen, Organisationsgrenzen-Regel, ausgewählte Zustandsinvarianten, Audit-Privilegienmodell nach ADR-0015) — keine Einzelmigration wird mehr gegen ihren Vorgängerzustand getestet; welche der ~40 historischen Prüfungen bewusst entfallen sind, steht in der Beschreibung von PR #906.
+
 ## Code-Konventionen
 
 ### Code-Kommentare
@@ -295,10 +299,6 @@ Typische Ursachen dafür, dass ein Test den Fehler verfehlt:
 - **Er läuft gegen ein anderes Schema als die Produktion.** Mit `ddl-auto=create-drop` erzeugt Hibernate keine Fremdschlüssel für einfache `UUID`-Spalten ohne `@ManyToOne`, Liquibase dagegen schon. Für alles FK-abhängige gehört `spring.liquibase.enabled=true` und `ddl-auto=none` in den Test.
 - **Er führt den geänderten Code gar nicht aus** — etwa Liquibase-Changelogs, die in den regulären Integrationstests nicht angewendet werden. Dafür gibt es das Muster in `backend/src/test/java/io/opaa/migration/`.
 - **Er mockt genau die Stelle weg, um die es geht** — ein gemockter `PlatformTransactionManager` führt keine Propagation aus, ein gemockter API-Client validiert keinen Request-Body.
-
-### Liquibase-Baseline (seit #904)
-
-Die Liquibase-Historie bis 08/2026 (257 Changesets) wurde einmalig zu `backend/src/main/resources/db/changelog/changes/001-baseline.yaml` zusammengefasst — ein bewusster Einmalvorgang vor Produktionsbetrieb, kein wiederkehrendes Muster. `db.changelog-master.yaml` referenziert nur noch diese eine Datei. **Ab der Baseline gilt wieder: ein Changeset pro Datenbankänderung**, jedes mit eigenem Delta-Test unter `backend/src/test/java/io/opaa/migration/` nach dem in `AbstractMigrationTest`/`package-info.java` beschriebenen Muster — die Fixture-Kette für Delta-Tests startet ab `backend/src/test/resources/db/changelog/test-master-through-baseline.yaml`. `MigrationBaselineTest` ist der einzige verbleibende Test dieses Pakets aus der Zeit vor der Baseline; er prüft nur noch, dass die Baseline selbst auf einer leeren Datenbank die erwarteten Kerninvarianten herstellt (Tabellen, pgvector, Seed-Zeilen, Organisationsgrenzen-Regel) — keine Einzelmigration wird mehr gegen ihren Vorgängerzustand getestet.
 
 ## Sicherheit
 

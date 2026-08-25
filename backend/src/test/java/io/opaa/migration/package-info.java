@@ -2,7 +2,7 @@
  * Tests that apply real, versioned Liquibase changelogs in isolation against a Postgres
  * Testcontainer - not against Hibernate-generated schema and not against an empty database.
  *
- * <p><b>Since #904:</b> the 257 changesets accumulated up to 08/2026 were consolidated into a
+ * <p><b>Since #904:</b> the 134 changesets accumulated up to 08/2026 were consolidated into a
  * single baseline ({@code db/changelog/changes/001-baseline.yaml}); {@link
  * io.opaa.migration.MigrationBaselineTest} applies it against an empty database and asserts the
  * handful of core invariants a broken baseline would violate - see that class's own Javadoc. From

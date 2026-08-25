@@ -8,14 +8,12 @@ databaseChangeLog:
             splitStatements: false
             sql: |
               CREATE EXTENSION IF NOT EXISTS vector;
-      rollback:
-        - sql:
-            sql: "DROP EXTENSION IF EXISTS vector;"
+      # No rollback: this baseline is never rolled back (#904) - a broken installation is discarded and re-run from an empty database instead.
 
   - changeSet:
       id: 001-baseline-b
       author: opaa
-      comment: "Auth / Nutzer / Organisationen: the tenant root (organizations) and the account table (users)."
+      comment: "Auth / users / organizations: the tenant root (organizations) and the account table (users)."
       changes:
         - sql:
             splitStatements: false
@@ -52,14 +50,12 @@ databaseChangeLog:
 
               ALTER TABLE ONLY public.users
                   ADD CONSTRAINT fk_users_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
-      rollback:
-        - sql:
-            sql: "DROP TABLE IF EXISTS users, organizations CASCADE;"
+      # No rollback: this baseline is never rolled back (#904) - a broken installation is discarded and re-run from an empty database instead.
 
   - changeSet:
       id: 001-baseline-c
       author: opaa
-      comment: "Spaces / Gruppen / Mitgliedschaften: workspaces, directory-synced groups and their memberships."
+      comment: "Spaces / groups / memberships: workspaces, directory-synced groups and their memberships."
       changes:
         - sql:
             splitStatements: false
@@ -187,14 +183,12 @@ databaseChangeLog:
 
               ALTER TABLE ONLY public.spaces
                   ADD CONSTRAINT fk_spaces_owner_organization FOREIGN KEY (owner_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
-      rollback:
-        - sql:
-            sql: "DROP TABLE IF EXISTS directory_sync_status, group_memberships, groups, space_memberships, spaces CASCADE;"
+      # No rollback: this baseline is never rolled back (#904) - a broken installation is discarded and re-run from an empty database instead.
 
   - changeSet:
       id: 001-baseline-d
       author: opaa
-      comment: "Bibliotheken / Dokumente / Indexing: knowledge_libraries and everything hung off it - documents, folders, indexing jobs/run events, asset grants, space associations, RSS feed state."
+      comment: "Libraries / documents / indexing: knowledge_libraries and everything hung off it - documents, folders, indexing jobs/run events, asset grants, space associations, RSS feed state."
       changes:
         - sql:
             splitStatements: false
@@ -444,14 +438,12 @@ databaseChangeLog:
 
               ALTER TABLE ONLY public.space_asset_associations
                   ADD CONSTRAINT fk_space_asset_associations_space_organization FOREIGN KEY (space_id, organization_id) REFERENCES public.spaces(id, organization_id) ON DELETE CASCADE;
-      rollback:
-        - sql:
-            sql: "DROP TABLE IF EXISTS asset_grants, documents, indexing_jobs, indexing_run_events, knowledge_libraries, library_folders, rss_feed_state, space_asset_associations CASCADE;"
+      # No rollback: this baseline is never rolled back (#904) - a broken installation is discarded and re-run from an empty database instead.
 
   - changeSet:
       id: 001-baseline-e
       author: opaa
-      comment: "Chat / Query: chats and their messages/library references, plus the configured LLM model catalogue."
+      comment: "Chat / query: chats and their messages/library references, plus the configured LLM model catalogue."
       changes:
         - sql:
             splitStatements: false
@@ -567,14 +559,12 @@ databaseChangeLog:
 
               ALTER TABLE ONLY public.chats
                   ADD CONSTRAINT fk_chats_space_organization FOREIGN KEY (space_id, organization_id) REFERENCES public.spaces(id, organization_id) ON DELETE RESTRICT;
-      rollback:
-        - sql:
-            sql: "DROP TABLE IF EXISTS chat_library_references, chat_messages, chats, llm_model_seed_marker, llm_models CASCADE;"
+      # No rollback: this baseline is never rolled back (#904) - a broken installation is discarded and re-run from an empty database instead.
 
   - changeSet:
       id: 001-baseline-f
       author: opaa
-      comment: "Audit / Permission-History: the append-only audit trail (partitioned by month, owned by the restricted opaa_audit_owner role - see ADR-0015), its retention deletion function, and the three permission-history tables (asset_grant_history, group_membership_history, library_visibility_history) plus the incident-scope-grant workflow."
+      comment: "Audit / permission history: the append-only audit trail (partitioned by month, owned by the restricted opaa_audit_owner role - see ADR-0015), its retention deletion function and retention-settings seed row (must be inserted here, before the privilege restriction below revokes INSERT on audit_retention_settings from the migration account - not deferred to group (h) with the other seed rows), and the three permission-history tables (asset_grant_history, group_membership_history, library_visibility_history) plus the incident-scope-grant workflow."
       changes:
         - sql:
             splitStatements: false
@@ -749,9 +739,9 @@ databaseChangeLog:
                   ADD CONSTRAINT fk_audit_log_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
 
               -- Long, fixed horizon of monthly partitions - three months back through 16 years forward from
-              -- the moment this migration runs (see 017-audit-log.yaml history for the full rationale); no
-              -- DEFAULT partition, so a write outside this horizon fails loudly instead of landing somewhere
-              -- retention deletion can never reclaim.
+              -- the moment this migration runs (see git history, pre-#904, for the original changeset's full
+              -- rationale); no DEFAULT partition, so a write outside this horizon fails loudly instead of
+              -- landing somewhere retention deletion can never reclaim.
               DO $$
               DECLARE
                 start_month date := date_trunc('month', now() - interval '3 months');
@@ -944,14 +934,12 @@ databaseChangeLog:
               BEGIN
                 EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
               END $$;
-      rollback:
-        - sql:
-            sql: "DROP TABLE IF EXISTS asset_grant_history, audit_actor_pseudonyms, audit_incident_scope_grants, audit_log, audit_retention_settings, group_membership_history, library_visibility_history CASCADE;"
+      # No rollback: this baseline is never rolled back (#904) - a broken installation is discarded and re-run from an empty database instead.
 
   - changeSet:
       id: 001-baseline-g
       author: opaa
-      comment: "Benachrichtigungen / Branding / Sonstiges: in-app notifications and the operator branding singleton."
+      comment: "Notifications / branding / other: in-app notifications and the operator branding singleton."
       changes:
         - sql:
             splitStatements: false
@@ -998,14 +986,12 @@ databaseChangeLog:
 
               ALTER TABLE ONLY public.notifications
                   ADD CONSTRAINT fk_notifications_recipient_organization FOREIGN KEY (recipient_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE CASCADE;
-      rollback:
-        - sql:
-            sql: "DROP TABLE IF EXISTS branding_settings, notifications CASCADE;"
+      # No rollback: this baseline is never rolled back (#904) - a broken installation is discarded and re-run from an empty database instead.
 
   - changeSet:
       id: 001-baseline-h
       author: opaa
-      comment: "Seed-Daten: the single default organization every row in this schema is scoped to, and the branding_settings singleton row (all-NULL, so BrandingSettingsService resolves every field against BrandingDefaults until an administrator configures one)."
+      comment: "Seed data: the single default organization every row in this schema is scoped to, and the branding_settings singleton row (all-NULL, so BrandingSettingsService resolves every field against BrandingDefaults until an administrator configures one). The third seed row, audit_retention_settings, lives in group (f) instead - see that group's own comment."
       changes:
         - sql:
             splitStatements: false
@@ -1015,9 +1001,5 @@ databaseChangeLog:
 
               INSERT INTO branding_settings (id, updated_at)
               VALUES (1, now());
-      rollback:
-        - sql:
-            sql: >
-              DELETE FROM branding_settings WHERE id = 1;
-              DELETE FROM organizations WHERE id = '00000000-0000-0000-0000-000000000001';
+      # No rollback: this baseline is never rolled back (#904) - a broken installation is discarded and re-run from an empty database instead.
 
