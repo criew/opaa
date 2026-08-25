@@ -6,7 +6,6 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryVisibility;
@@ -19,7 +18,8 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
-import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIndexingTestDirectory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -30,7 +30,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
@@ -40,47 +39,16 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-// Own @DynamicPropertySource (below, indexing-specific paths/chunk sizing) means Spring's context
-// cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
-// documented exception per AGENTS.md.
-@OpaaIntegrationTest
+@OpaaIndexingIntegrationTest
 class DocumentIndexingIntegrationTest {
 
-  @TempDir static Path sharedTempDir;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    // #484: overrides the dev profile's /data,/tmp default so this suite's own @TempDir (which is
-    // neither, on most platforms/CI runners) stays inside the allowlist.
-    registry.add(
-        "opaa.indexing.filesystem-allowlist", () -> sharedTempDir.toAbsolutePath().toString());
-    registry.add("opaa.indexing.chunk-size", () -> 100);
-    // The application default overlap (100) is not smaller than the chunk size this test pins, and
-    // IndexingProperties rejects that combination outright instead of clamping it silently.
-    registry.add("opaa.indexing.chunk-overlap", () -> 10);
-    registry.add("opaa.indexing.batch-size", () -> 10);
-  }
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
+  private static final Path classTempDir =
+      OpaaIndexingTestDirectory.subdirectory("document-indexing");
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
@@ -91,12 +59,12 @@ class DocumentIndexingIntegrationTest {
   @Autowired private IndexingRunEventRepository indexingRunEventRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private QueryService queryService;
-  @MockitoBean private ChatModel chatModel;
+  @Autowired private ChatModel chatModel;
 
   // #758: AnswerGenerationService now resolves its ChatClient via ActiveChatModelResolver on every
   // call rather than holding one built once at startup - stubbed below to always hand back a
   // ChatClient wrapping the chatModel mock above.
-  @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
+  @Autowired private ActiveChatModelResolver activeChatModelResolver;
 
   private UUID userId;
   private UUID targetLibraryId;
@@ -115,8 +83,8 @@ class DocumentIndexingIntegrationTest {
     documentRepository.deleteAll();
     indexingJobRepository.deleteAll();
     // Clean up any leftover files from previous tests
-    if (Files.exists(sharedTempDir)) {
-      try (var files = Files.list(sharedTempDir)) {
+    if (Files.exists(classTempDir)) {
+      try (var files = Files.list(classTempDir)) {
         files.forEach(
             f -> {
               try {
@@ -160,7 +128,7 @@ class DocumentIndexingIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                sharedTempDir.toAbsolutePath().toString(),
+                classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
                 null,
@@ -186,8 +154,8 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void indexesDocumentsEndToEnd() throws IOException {
-    Files.writeString(sharedTempDir.resolve("test.md"), "# Test Document\n\nThis is test content.");
-    Files.writeString(sharedTempDir.resolve("notes.txt"), "Some plain text notes for testing.");
+    Files.writeString(classTempDir.resolve("test.md"), "# Test Document\n\nThis is test content.");
+    Files.writeString(classTempDir.resolve("notes.txt"), "Some plain text notes for testing.");
 
     IndexingJob job = triggerIndexing();
     assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
@@ -229,8 +197,8 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void skipsUnsupportedFileFormatsAndContinues() throws IOException {
-    Files.writeString(sharedTempDir.resolve("good.txt"), "Valid content here.");
-    Files.writeString(sharedTempDir.resolve("bad.csv"), "a,b,c");
+    Files.writeString(classTempDir.resolve("good.txt"), "Valid content here.");
+    Files.writeString(classTempDir.resolve("bad.csv"), "a,b,c");
 
     IndexingJob job = triggerIndexing();
     assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
@@ -269,7 +237,7 @@ class DocumentIndexingIntegrationTest {
   void retainsOnlyTheLastTenRunsPerLibraryAndPrunesTheirEvents() throws IOException {
     // #513, Umfangserweiterung (Maintainer-Ergaenzung 20.08.2026): only the last 10 runs of a
     // library stay around - older ones, and their own events, are pruned once an 11th run starts.
-    Files.writeString(sharedTempDir.resolve("bad.csv"), "a,b,c");
+    Files.writeString(classTempDir.resolve("bad.csv"), "a,b,c");
 
     // #604 review, nit (d): a second library's own single run, untouched by the first library's
     // eleven-run pruning below - proves retention is scoped per library, not to the first 10 rows
@@ -286,7 +254,7 @@ class DocumentIndexingIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                sharedTempDir.toAbsolutePath().toString(),
+                classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
                 null,
@@ -360,7 +328,7 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void reindexingReplacesOldChunks() throws IOException {
-    Files.writeString(sharedTempDir.resolve("doc.txt"), "Original content.");
+    Files.writeString(classTempDir.resolve("doc.txt"), "Original content.");
 
     IndexingJob firstJob = triggerIndexing();
     awaitJobCompletion(firstJob);
@@ -380,7 +348,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(initialDoc.getLibraryId()).isEqualTo(targetLibraryId);
 
     // Update file and re-index
-    Files.writeString(sharedTempDir.resolve("doc.txt"), "Updated content with more text.");
+    Files.writeString(classTempDir.resolve("doc.txt"), "Updated content with more text.");
     IndexingJob secondJob = triggerIndexing();
     awaitJobCompletion(secondJob);
 
@@ -430,7 +398,7 @@ class DocumentIndexingIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                sharedTempDir.toAbsolutePath().toString(),
+                classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
                 null,
@@ -439,7 +407,7 @@ class DocumentIndexingIntegrationTest {
     grantOwner(otherLibraryId, userId);
 
     Files.writeString(
-        sharedTempDir.resolve("shared-source.txt"), "Content indexed into two libraries.");
+        classTempDir.resolve("shared-source.txt"), "Content indexed into two libraries.");
 
     IndexingJob firstJob = triggerIndexing();
     awaitJobCompletion(firstJob);
@@ -488,7 +456,7 @@ class DocumentIndexingIntegrationTest {
   }
 
   private String filePath(String fileName) {
-    return sharedTempDir.resolve(fileName).toAbsolutePath().toString();
+    return classTempDir.resolve(fileName).toAbsolutePath().toString();
   }
 
   @Test
@@ -526,7 +494,7 @@ class DocumentIndexingIntegrationTest {
             new ChatResponse(List.of(new Generation(assistantMessage)), chatResponseMetadata));
 
     Files.writeString(
-        sharedTempDir.resolve("findable.txt"), "A uniquely identifiable sentence about OPAA.");
+        classTempDir.resolve("findable.txt"), "A uniquely identifiable sentence about OPAA.");
     IndexingJob job = triggerIndexing();
     awaitJobCompletion(job);
     assertThat(indexingJobRepository.findById(job.getId()).orElseThrow().getStatus())
@@ -588,7 +556,7 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void skipsUnchangedDocumentsOnReindex() throws IOException {
-    Files.writeString(sharedTempDir.resolve("doc.txt"), "Same content.");
+    Files.writeString(classTempDir.resolve("doc.txt"), "Same content.");
 
     IndexingJob firstJob = triggerIndexing();
     awaitJobCompletion(firstJob);
@@ -622,9 +590,10 @@ class DocumentIndexingIntegrationTest {
     // allowlist no longer covers must not silently succeed. This library is created directly
     // against
     // the repository (bypassing KnowledgeLibraryService's own creation-time check) with a
-    // sourcePath
-    // outside this suite's configured allowlist (sharedTempDir), mirroring how such a library could
-    // exist if the allowlist were narrowed after it was created.
+    // sourcePath outside this suite's configured allowlist (OpaaIndexingTestDirectory.BASE_DIR,
+    // not just classTempDir - a sibling of classTempDir is still a subdirectory of BASE_DIR and
+    // therefore still inside the allowlist), mirroring how such a library could exist if the
+    // allowlist were narrowed after it was created.
     KnowledgeLibrary outsideAllowlistLibrary =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
@@ -635,7 +604,7 @@ class DocumentIndexingIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                sharedTempDir
+                OpaaIndexingTestDirectory.BASE_DIR
                     .resolveSibling("opaa-484-outside-allowlist")
                     .toAbsolutePath()
                     .toString(),
@@ -778,7 +747,7 @@ class DocumentIndexingIntegrationTest {
 
   private KnowledgeLibrary createLibraryAndGrantEditor(
       UUID organizationId, UUID ownerId, String subdirectoryName) throws IOException {
-    Path libraryDir = sharedTempDir.resolve(subdirectoryName);
+    Path libraryDir = classTempDir.resolve(subdirectoryName);
     Files.createDirectories(libraryDir);
     KnowledgeLibrary library =
         libraryRepository.save(
@@ -823,7 +792,7 @@ class DocumentIndexingIntegrationTest {
   private void copyTestResource(String resourcePath, String targetFileName) throws IOException {
     try (InputStream in = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
       assertThat(in).as("Test resource %s must exist", resourcePath).isNotNull();
-      Files.copy(in, sharedTempDir.resolve(targetFileName), StandardCopyOption.REPLACE_EXISTING);
+      Files.copy(in, classTempDir.resolve(targetFileName), StandardCopyOption.REPLACE_EXISTING);
     }
   }
 }

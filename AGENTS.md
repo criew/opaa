@@ -106,6 +106,16 @@ Neue Backend-Integrationstests verwenden eine der kanonischen Meta-Annotationen 
   gegen die eigene Anwendung nutzen.
 - `@OpaaMockMvcTest` — Controller-Ebene über MockMvc (`@AutoConfigureMockMvc`,
   `@ActiveProfiles("dev")`).
+- `@OpaaIndexingIntegrationTest` — dieselbe Basis wie `@OpaaIntegrationTest`, ergänzt um die feste
+  Chunking-Konfiguration (`opaa.indexing.chunk-size`/`-overlap`/`-batch-size` als `properties`) und
+  den kanonischen Mock-/Fake-LLM-Satz (`ChatModel`, `ActiveChatModelResolver`, `EmbeddingModel`) der
+  Indexing-Pipeline-Tests. `opaa.indexing.filesystem-allowlist` zeigt auf ein einziges,
+  prozessweites Basisverzeichnis (`OpaaIndexingTestDirectory.BASE_DIR`), einmalig über einen
+  `ApplicationContextInitializer` registriert statt über eine klassenlokale
+  `@DynamicPropertySource` — eine Testklasse legt sich darunter mit
+  `OpaaIndexingTestDirectory.subdirectory(name)` ihr eigenes Unterverzeichnis an.
+  `OpaaIndexingMockResetListener` setzt die beiden Mocks vor jeder Testmethode zurück, damit
+  Stubbing nicht zwischen Klassen im selben Kontext durchsickert.
 
 Jede Klasse mit identischer Signatur teilt sich einen Spring-Kontext und einen Testcontainers-
 Postgres statt einen eigenen zu booten — Spring cached Kontexte anhand der exakten, zusammengeführten
@@ -115,10 +125,15 @@ oder ein eigener `@MockitoBean`-Satz erzwingt trotz gemeinsamer Meta-Annotation 
 einem 1–2-zeiligen Kommentar über der Annotation begründet werden (Review-Flagge). In eine
 `@DynamicPropertySource` gehört nur, was zur Laufzeit aus einer Ressource (z. B. einem Testcontainer)
 gelesen wird — ein konstanter Wert gehört stattdessen in `properties` auf der `@SpringBootTest`-Annotation
-selbst. Ein neuer Postgres-Container wird nie manuell deklariert; `@ServiceConnection` kommt aus der
+selbst. Ein zur Laufzeit berechneter Wert, der über alle Klassen einer Signatur identisch sein muss
+(z. B. ein einmalig angelegtes, geteiltes Basisverzeichnis), gehört in einen geteilten
+`ApplicationContextInitializer` der Meta-Annotation selbst statt in eine klassenlokale
+`@DynamicPropertySource` — letztere spaltet den Kontext trotz identischen Werts, weil Spring die
+Methode selbst (nicht nur ihr Ergebnis) in den Cache-Schlüssel einbezieht (siehe
+`@OpaaIndexingIntegrationTest`). Ein neuer Postgres-Container wird nie manuell deklariert; `@ServiceConnection` kommt aus der
 Meta-Annotation. Ausnahme: `io.opaa.migration`-Tests booten bewusst einen eigenen Container mit
 Template-Datenbank pro Klasse (siehe `AbstractMigrationTest`) — das Muster ist dort nötig und keine
-Abweichung von dieser Regel. Passt keine der beiden Signaturen, ist das ein Fall für eine dritte
+Abweichung von dieser Regel. Passt keine der drei Signaturen, ist das ein Fall für eine weitere
 kanonische Meta-Annotation statt einer weiteren Ad-hoc-Kombination — im Zweifel im PR begründen und
 dem Review überlassen.
 

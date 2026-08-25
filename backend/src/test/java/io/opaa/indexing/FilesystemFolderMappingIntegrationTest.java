@@ -3,7 +3,6 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
@@ -12,9 +11,9 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryFolder;
 import io.opaa.library.LibraryFolderRepository;
-import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIndexingTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,17 +23,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * End-to-end coverage of #824 (Epic #520 Phase 4, ADR-0020): a FILESYSTEM library's real directory
@@ -43,33 +33,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * io.opaa.library.LibraryFolderService#pruneOrphanedFolders}. Runs against the real Liquibase
  * schema (AGENTS.md "Reproduktionsnachweis" - {@code fk_documents_folder}/{@code
  * fk_library_folders_parent} only exist there, not under {@code ddl-auto=create-drop}), the same
- * Testcontainers/{@code FakeEmbeddingModel} setup {@link DocumentIndexingIntegrationTest} uses.
+ * Testcontainers/fake-embedding-model setup every {@link io.opaa.test.OpaaIndexingIntegrationTest}
+ * class shares.
  */
-// Own @DynamicPropertySource (below, indexing-specific paths/chunk sizing) means Spring's context
-// cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
-// documented exception per AGENTS.md.
-@OpaaIntegrationTest
+@OpaaIndexingIntegrationTest
 class FilesystemFolderMappingIntegrationTest {
 
-  @TempDir static Path sharedTempDir;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add(
-        "opaa.indexing.filesystem-allowlist", () -> sharedTempDir.toAbsolutePath().toString());
-    registry.add("opaa.indexing.chunk-size", () -> 100);
-    registry.add("opaa.indexing.chunk-overlap", () -> 10);
-    registry.add("opaa.indexing.batch-size", () -> 10);
-  }
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
+  private static final Path classTempDir =
+      OpaaIndexingTestDirectory.subdirectory("filesystem-folder-mapping");
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
@@ -78,8 +49,6 @@ class FilesystemFolderMappingIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
-  @MockitoBean private ChatModel chatModel;
-  @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
 
   private UUID userId;
   private UUID targetLibraryId;
@@ -90,11 +59,11 @@ class FilesystemFolderMappingIntegrationTest {
     documentRepository.deleteAll();
     indexingJobRepository.deleteAll();
     jdbcTemplate.update("DELETE FROM library_folders");
-    if (Files.exists(sharedTempDir)) {
-      try (var files = Files.walk(sharedTempDir)) {
+    if (Files.exists(classTempDir)) {
+      try (var files = Files.walk(classTempDir)) {
         files
             .sorted((a, b) -> b.getNameCount() - a.getNameCount())
-            .filter(p -> !p.equals(sharedTempDir))
+            .filter(p -> !p.equals(classTempDir))
             .forEach(
                 p -> {
                   try {
@@ -130,7 +99,7 @@ class FilesystemFolderMappingIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                sharedTempDir.toAbsolutePath().toString(),
+                classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
                 null,
@@ -175,10 +144,10 @@ class FilesystemFolderMappingIntegrationTest {
 
   @Test
   void nestedDirectoryStructureIsMirroredAsFolders() throws IOException {
-    Files.createDirectories(sharedTempDir.resolve("Rechtsquellen/2026"));
-    Files.writeString(sharedTempDir.resolve("top.txt"), "Wurzeldokument.");
+    Files.createDirectories(classTempDir.resolve("Rechtsquellen/2026"));
+    Files.writeString(classTempDir.resolve("top.txt"), "Wurzeldokument.");
     Files.writeString(
-        sharedTempDir.resolve("Rechtsquellen/2026/januar.txt"), "Rechtsquelle Januar 2026.");
+        classTempDir.resolve("Rechtsquellen/2026/januar.txt"), "Rechtsquelle Januar 2026.");
 
     awaitJobCompletion(triggerIndexing());
 
@@ -202,8 +171,8 @@ class FilesystemFolderMappingIntegrationTest {
 
   @Test
   void repeatedRunsAreIdempotentAndDoNotDuplicateFolders() throws IOException {
-    Files.createDirectories(sharedTempDir.resolve("Archiv"));
-    Files.writeString(sharedTempDir.resolve("Archiv/protokoll.txt"), "Protokoll.");
+    Files.createDirectories(classTempDir.resolve("Archiv"));
+    Files.writeString(classTempDir.resolve("Archiv/protokoll.txt"), "Protokoll.");
 
     awaitJobCompletion(triggerIndexing());
     UUID firstFolderId = findFolder(null, "Archiv").orElseThrow().getId();
@@ -225,8 +194,8 @@ class FilesystemFolderMappingIntegrationTest {
     // not touch its content (same checksum, still INDEXED - a real re-index would be a regression
     // here) but must backfill folder_id, per docs/features/knowledge-sources.md's "Ordner in
     // FILESYSTEM-Bibliotheken".
-    Files.createDirectories(sharedTempDir.resolve("Archiv/2025"));
-    Path file = sharedTempDir.resolve("Archiv/2025/protokoll.txt");
+    Files.createDirectories(classTempDir.resolve("Archiv/2025"));
+    Path file = classTempDir.resolve("Archiv/2025/protokoll.txt");
     Files.writeString(file, "Protokoll aus 2025.");
     String checksum = checksumService.computeSha256(file);
 
@@ -270,8 +239,8 @@ class FilesystemFolderMappingIntegrationTest {
     // Hibernate actually flushes those deletes in that order within one transaction - a
     // parent-before-child flush would trip fk_library_folders_parent's RESTRICT (migration 062)
     // and fail the whole pruneOrphanedFolders call.
-    Files.createDirectories(sharedTempDir.resolve("Temp/2025"));
-    Files.writeString(sharedTempDir.resolve("Temp/2025/datei.txt"), "Wird bald geloescht.");
+    Files.createDirectories(classTempDir.resolve("Temp/2025"));
+    Files.writeString(classTempDir.resolve("Temp/2025/datei.txt"), "Wird bald geloescht.");
 
     awaitJobCompletion(triggerIndexing());
     LibraryFolder temp = findFolder(null, "Temp").orElseThrow();
@@ -280,9 +249,9 @@ class FilesystemFolderMappingIntegrationTest {
     // Since #886, AsyncIndexingExecutor's own StaleDocumentCleanupService call would remove this
     // document automatically on the next run - deleted here directly instead, to isolate and
     // exercise pruneOrphanedFolders's own folder-pruning behaviour on its own.
-    Files.delete(sharedTempDir.resolve("Temp/2025/datei.txt"));
-    Files.delete(sharedTempDir.resolve("Temp/2025"));
-    Files.delete(sharedTempDir.resolve("Temp"));
+    Files.delete(classTempDir.resolve("Temp/2025/datei.txt"));
+    Files.delete(classTempDir.resolve("Temp/2025"));
+    Files.delete(classTempDir.resolve("Temp"));
     documentRepository.deleteAll(
         documentRepository.findAll().stream()
             .filter(d -> d.getFileName().equals("datei.txt"))
@@ -298,10 +267,10 @@ class FilesystemFolderMappingIntegrationTest {
   void theSameContentInTwoSubdirectoriesRemainsTwoDistinctDocuments() throws IOException {
     // ADR-0020, Entscheidung 6: FILESYSTEM dedup is path-based, not checksum-based - two
     // identical files in different directories of the same source are two legitimate documents.
-    Files.createDirectories(sharedTempDir.resolve("A"));
-    Files.createDirectories(sharedTempDir.resolve("B"));
-    Files.writeString(sharedTempDir.resolve("A/gleich.txt"), "Identischer Inhalt.");
-    Files.writeString(sharedTempDir.resolve("B/gleich.txt"), "Identischer Inhalt.");
+    Files.createDirectories(classTempDir.resolve("A"));
+    Files.createDirectories(classTempDir.resolve("B"));
+    Files.writeString(classTempDir.resolve("A/gleich.txt"), "Identischer Inhalt.");
+    Files.writeString(classTempDir.resolve("B/gleich.txt"), "Identischer Inhalt.");
 
     IndexingJob job = triggerIndexing();
     awaitJobCompletion(job);

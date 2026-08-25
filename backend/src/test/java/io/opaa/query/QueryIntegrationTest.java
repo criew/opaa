@@ -4,11 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.llm.ActiveChatModelResolver;
-import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,17 +27,12 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.convention.TestBean;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * Exercises the permission-aware vector search (#202) end to end against a real Postgres schema:
@@ -46,56 +40,48 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * library_id} metadata points at, or {@link QueryService#query} never even calls {@link
  * VectorStore#similaritySearch} for it - see {@link #userWithoutAnyGrantSeesNothing}.
  */
-// Own @TestConfiguration @Primary EmbeddingModel bean and @MockitoBean set below mean Spring's
-// context cache still keys this to its own context regardless of the shared @OpaaIntegrationTest
-// base - documented exception per AGENTS.md.
-@OpaaIntegrationTest
+// Own @TestBean chatTitleTaskExecutor override below means Spring's context cache still keys this
+// to its own context regardless of the shared @OpaaIndexingIntegrationTest base - documented
+// exception per AGENTS.md.
+@OpaaIndexingIntegrationTest
 class QueryIntegrationTest {
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
 
   private static final UUID DEFAULT_ORGANIZATION_ID =
       UUID.fromString("00000000-0000-0000-0000-000000000001");
 
-  @MockitoBean private ChatModel chatModel;
+  @Autowired private ChatModel chatModel;
 
   // #758: AnswerGenerationService/ChatTitleGenerationService now resolve their ChatClient via
   // ActiveChatModelResolver on every call instead of holding one built once at startup - stubbed
   // once in setUp() below to always hand back a ChatClient wrapping the class-wide chatModel mock
   // above, so every existing when(chatModel...) stub in this class keeps working unchanged.
-  @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
+  @Autowired private ActiveChatModelResolver activeChatModelResolver;
 
   /**
    * #616: replaces {@code ChatConfiguration#chatTitleTaskExecutor} with a same-name, fully
    * synchronous executor for this test class only - the real one runs #557's chat-title LLM call on
    * a separate thread, racing this class's {@code when(chatModel...)} re-stubbing (see the {@code
-   * promptCaptor} usages below) against that async call landing on the very same
-   * {@code @MockitoBean chatModel} it stubs. Mockito's stubbing API is not thread-safe against a
-   * concurrent invocation of the mock being stubbed, which is exactly what corrupted CI runs with
-   * {@code MockitoException at QueryIntegrationTest.java:562} (#616) - a still-in-flight title job
-   * from an earlier {@code queryService.query(...)} call (in this test or, since {@code chatModel}
-   * is reused across every test method in this class's shared Spring context, an earlier test)
-   * invoking the mock exactly while a later {@code when(...)} call was mid-setup. {@link
-   * SyncTaskExecutor} runs the title job on the calling thread instead, so by the time {@code
-   * queryService.query(...)} returns, the title generation call has already completed (or failed) -
-   * never racing anything that runs after it.
+   * promptCaptor} usages below) against that async call landing on the very same, shared {@code
+   * chatModel} mock (from {@link io.opaa.test.OpaaIndexingMockConfiguration}) it stubs. Mockito's
+   * stubbing API is not thread-safe against a concurrent invocation of the mock being stubbed,
+   * which is exactly what corrupted CI runs with {@code MockitoException at
+   * QueryIntegrationTest.java:562} (#616) - a still-in-flight title job from an earlier {@code
+   * queryService.query(...)} call (in this test or, since {@code chatModel} is reused across every
+   * test method in this class's shared Spring context, an earlier test) invoking the mock exactly
+   * while a later {@code when(...)} call was mid-setup. {@link SyncTaskExecutor} runs the title job
+   * on the calling thread instead, so by the time {@code queryService.query(...)} returns, the
+   * title generation call has already completed (or failed) - never racing anything that runs after
+   * it.
    *
-   * <p>{@code @TestBean(enforceOverride = true)}, not a same-name {@code @Bean} in {@link
-   * TestConfig}: a plain {@code @Bean} with a name that no longer matches - after, say, a rename of
-   * {@code ChatConfiguration#chatTitleTaskExecutor} - would silently become an *additional* bean
-   * instead of replacing anything, and the flake this class exists to prevent would come back
-   * without a single test here failing loudly to say why. {@code enforceOverride = true} instead
-   * makes context startup itself fail if no bean named {@code chatTitleTaskExecutor} exists to
-   * replace. Not {@code @MockitoBean}: a mocked {@code TaskExecutor} would never actually run the
-   * submitted title-generation task at all, which would hide the very call this class stubs {@code
-   * chatModel} for instead of making it deterministic.
+   * <p>{@code @TestBean(enforceOverride = true)}, not a same-name {@code @Bean} in a
+   * {@code @TestConfiguration}: a plain {@code @Bean} with a name that no longer matches - after,
+   * say, a rename of {@code ChatConfiguration#chatTitleTaskExecutor} - would silently become an
+   * *additional* bean instead of replacing anything, and the flake this class exists to prevent
+   * would come back without a single test here failing loudly to say why. {@code enforceOverride =
+   * true} instead makes context startup itself fail if no bean named {@code chatTitleTaskExecutor}
+   * exists to replace. Not a mocked {@code TaskExecutor} (the way {@code chatModel} above is a
+   * mock): a mock would never actually run the submitted title-generation task at all, which would
+   * hide the very call this class stubs {@code chatModel} for instead of making it deterministic.
    */
   @TestBean(name = "chatTitleTaskExecutor", enforceOverride = true)
   private TaskExecutor chatTitleTaskExecutor;
