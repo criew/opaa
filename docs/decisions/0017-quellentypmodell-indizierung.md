@@ -2,7 +2,7 @@
 
 ## Status
 
-Vorgeschlagen
+Akzeptiert (25.08.2026) — Entscheidung 5 (Löschung durch Abwesenheit, RSS ausgenommen) ist mit PR #900 Produktivverhalten.
 
 ## Kontext
 
