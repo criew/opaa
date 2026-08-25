@@ -33,6 +33,17 @@ import java.util.function.Function;
  * ndcgAt10}/{@code recallAt10} positive) are the identical event, not merely correlated. {@code
  * BaselineComparator} uses these two counts, not the four continuous means, for the group/metric
  * pairs where the mean tolerance is tighter than one case's worth of shift — see its class Javadoc.
+ *
+ * <p><b>{@code allExpectedDocumentsHitAt10} (issue #913).</b> Mean of {@link
+ * RetrievalMetrics#allExpectedDocumentsHitAtK} — "Recall pro Teilthema" — the fraction of cases
+ * where <b>every</b> expected document was retrieved, as opposed to {@code recallAt10}'s average
+ * fraction of expected documents retrieved. The two coincide for single-document cases and diverge
+ * for multi-document ones (e.g. {@code multi_topic}), which is the point (issue #912).
+ *
+ * <p>Typed {@link Double}, unlike every other field here: a baseline written before issue #913
+ * (e.g. {@code comic-characters.json}) has no such property, and Jackson's record deserialization
+ * treats a missing *primitive* field as a hard error but a missing *reference-type* field as {@code
+ * null} — the compact constructor below normalizes that to {@code 0.0}.
  */
 public record MetricsAggregate(
     int n,
@@ -43,11 +54,18 @@ public record MetricsAggregate(
     double recallAt10Ceiling,
     int distinctExpectedDocumentSets,
     int hitCountAt5,
-    int hitCountAt10) {
+    int hitCountAt10,
+    Double allExpectedDocumentsHitAt10) {
+
+  public MetricsAggregate {
+    if (allExpectedDocumentsHitAt10 == null) {
+      allExpectedDocumentsHitAt10 = 0.0;
+    }
+  }
 
   public static MetricsAggregate of(List<RetrievalMetrics.QueryResult> results) {
     if (results.isEmpty()) {
-      return new MetricsAggregate(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0);
+      return new MetricsAggregate(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0.0);
     }
     int n = results.size();
     double hitRate =
@@ -75,6 +93,11 @@ public record MetricsAggregate(
     // ndcgAt10 > 0 iff recallAt10 > 0 iff reciprocalRank > 0 for this harness (see class Javadoc)
     // — ndcgAt10 is picked arbitrarily as the representative of the three.
     long hitCountAt10 = results.stream().filter(r -> r.ndcgAt10() > 0).count();
+    double allExpectedDocumentsHit =
+        results.stream()
+                .mapToDouble(RetrievalMetrics.QueryResult::allExpectedDocumentsHitAt10)
+                .sum()
+            / n;
     return new MetricsAggregate(
         n,
         hitRate,
@@ -84,7 +107,8 @@ public record MetricsAggregate(
         recallCeiling,
         (int) distinctExpectedSets,
         (int) hitCountAt5,
-        (int) hitCountAt10);
+        (int) hitCountAt10,
+        allExpectedDocumentsHit);
   }
 
   /**

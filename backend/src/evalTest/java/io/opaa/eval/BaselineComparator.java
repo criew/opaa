@@ -521,6 +521,23 @@ public final class BaselineComparator {
         MetricsAggregate::hitCountAt10,
         base,
         current);
+    // Issue #913 review: allExpectedDocumentsHitAt10 ("Recall pro Teilthema") was measured but not
+    // guarded — losing one of two expected documents only drops recallAt10 to 0.5, still within
+    // tolerance. No hard floor (not one of ADR-0013's four overall metrics); hitCountAt10 is a
+    // valid
+    // hit-count proxy here too, same reasoning as for mrr/ndcgAt10/recallAt10 above.
+    addMetricCheck(
+        checks,
+        groupKey,
+        "allExpectedDocumentsHitAt10",
+        current.n(),
+        base.allExpectedDocumentsHitAt10(),
+        current.allExpectedDocumentsHitAt10(),
+        nEff,
+        null,
+        MetricsAggregate::hitCountAt10,
+        base,
+        current);
   }
 
   private static void addMetricCheck(

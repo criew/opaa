@@ -20,7 +20,7 @@ import argparse
 import json
 import sys
 
-METRICS = ("hitRateAt5", "mrr", "ndcgAt10", "recallAt10")
+METRICS = ("hitRateAt5", "mrr", "ndcgAt10", "recallAt10", "allExpectedDocumentsHitAt10")
 
 # Issue #306: the two case counts BaselineComparator reads for the case-count check on
 # group/metric pairs whose mean tolerance is tighter than one case's worth of shift. They live in

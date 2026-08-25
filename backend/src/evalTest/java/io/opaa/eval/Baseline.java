@@ -149,6 +149,13 @@ public record Baseline(
    *       than any of the three means times {@code n}. A small epsilon absorbs the same 3-decimal
    *       rounding as above.
    * </ol>
+   *
+   * <p>Issue #913 review: two more invariants guard {@code allExpectedDocumentsHitAt10} — a
+   * dropped/stale field silently becomes {@code null} → {@code 0.0} (see {@link MetricsAggregate}'s
+   * compact constructor) and would otherwise pass every check above unnoticed: {@code
+   * allExpectedDocumentsHitAt10 <= recallAt10 + ε} (a case counting toward the former also fully
+   * counts toward the latter) and {@code allExpectedDocumentsHitAt10 * n <= hitCountAt10 + ε} (same
+   * reasoning as the {@code hitCountAt10} bound above).
    */
   private static void validateCaseCounts(String key, MetricsAggregate aggregate, Path file) {
     long expectedHitCountAt5 = Math.round(aggregate.hitRateAt5() * aggregate.n());
@@ -203,6 +210,41 @@ public record Baseline(
               + aggregate.n()
               + " (each case contributes at most 1.0 to every one of those three metrics, so their "
               + "sum can never exceed hitCountAt10) — fix the field(s) in the baseline file.");
+    }
+    // Issue #913 review: guards against a silently vanished allExpectedDocumentsHitAt10 (missing
+    // field deserializes as null, normalized to 0.0 by MetricsAggregate — see this method's
+    // Javadoc). A true 0.0 (e.g. a group with no multi-document cases) always satisfies both
+    // inequalities below, so neither check ever fires on a legitimately absent metric.
+    double allTopicsHit = aggregate.allExpectedDocumentsHitAt10();
+    double roundingEpsilon = 0.0005 * aggregate.n() + 1e-9;
+    if (allTopicsHit > aggregate.recallAt10() + roundingEpsilon) {
+      throw new IllegalStateException(
+          "Baseline group '"
+              + key
+              + "' in "
+              + file.toAbsolutePath()
+              + " has allExpectedDocumentsHitAt10="
+              + allTopicsHit
+              + " but recallAt10="
+              + aggregate.recallAt10()
+              + " — a case only counts toward the former if it also fully counts toward the "
+              + "latter (RetrievalMetrics#allExpectedDocumentsHitAtK), so the former can never "
+              + "exceed the latter. Fix the field(s) in the baseline file.");
+    }
+    if (allTopicsHit * aggregate.n() > aggregate.hitCountAt10() + roundingEpsilon) {
+      throw new IllegalStateException(
+          "Baseline group '"
+              + key
+              + "' in "
+              + file.toAbsolutePath()
+              + " has allExpectedDocumentsHitAt10="
+              + allTopicsHit
+              + " over n="
+              + aggregate.n()
+              + ", too large for hitCountAt10="
+              + aggregate.hitCountAt10()
+              + " (every case counted by allExpectedDocumentsHitAt10 also counts toward "
+              + "hitCountAt10) — fix the field(s) in the baseline file.");
     }
   }
 }

@@ -31,6 +31,7 @@ class MetricsAggregateTest {
     assertThat(aggregate.recallAt10Ceiling()).isEqualTo(0.0);
     assertThat(aggregate.hitCountAt5()).isZero();
     assertThat(aggregate.hitCountAt10()).isZero();
+    assertThat(aggregate.allExpectedDocumentsHitAt10()).isEqualTo(0.0);
   }
 
   @Test
@@ -86,6 +87,26 @@ class MetricsAggregateTest {
     // small: ceiling 1.0 (|E|=2 <= 10). large: ceiling 10/15. Mean of the two.
     double expectedCeiling = (1.0 + 10.0 / 15) / 2;
     assertThat(aggregate.recallAt10Ceiling()).isCloseTo(expectedCeiling, within(TOLERANCE));
+  }
+
+  @Test
+  void allExpectedDocumentsHitAt10RequiresEveryExpectedDocumentUnlikeRecallAt10() {
+    // Issue #913: a multi_topic-style case where only one of two expected documents is retrieved
+    // must count as a miss for "Recall pro Teilthema" even though recallAt10 still gives 0.5
+    // partial
+    // credit — that divergence is the whole point of this second metric.
+    RetrievalMetrics.QueryResult onlyOneTopicRetrieved =
+        RetrievalMetrics.evaluate(
+            goldenCase("multi_topic", List.of("e1", "e2")), List.of("e1", "d2", "d3"));
+    RetrievalMetrics.QueryResult bothTopicsRetrieved =
+        RetrievalMetrics.evaluate(
+            goldenCase("multi_topic", List.of("e1", "e2")), List.of("e1", "e2", "d3"));
+
+    MetricsAggregate aggregate =
+        MetricsAggregate.of(List.of(onlyOneTopicRetrieved, bothTopicsRetrieved));
+
+    assertThat(aggregate.recallAt10()).isCloseTo(0.75, within(TOLERANCE));
+    assertThat(aggregate.allExpectedDocumentsHitAt10()).isCloseTo(0.5, within(TOLERANCE));
   }
 
   @Test

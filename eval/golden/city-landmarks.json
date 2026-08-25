@@ -1150,5 +1150,285 @@
     "language": "de",
     "type": "factual",
     "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-001",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurden das Brandenburger Tor in Berlin und der Königspalast in Madrid erbaut?",
+    "expected_documents": [
+      "city-0005_berlin.md",
+      "city-0006_madrid.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-002",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurden der Crystal Palace in London und Schloss Belvedere in Wien erbaut?",
+    "expected_documents": [
+      "city-0003_london.md",
+      "city-0015_wien.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-003",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr entstanden die Bastille in Paris und das Tschechische Nationalmuseum in Prag?",
+    "expected_documents": [
+      "city-0009_paris.md",
+      "city-0022_prag.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-004",
+    "domain": "city-landmarks",
+    "query": "Welches Bauwerk ist älter — die Sophienkathedrale in Kiew oder der Kulturpalast in Warschau?",
+    "expected_documents": [
+      "city-0007_kiew.md",
+      "city-0014_warschau.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-005",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurden die Frauenkirche in Dresden und der Zoo Artis in Amsterdam gegründet?",
+    "expected_documents": [
+      "city-0063_dresden.md",
+      "city-0044_amsterdam.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-006",
+    "domain": "city-landmarks",
+    "query": "Welchen Schutzstatus haben das Brandenburger Tor in Berlin und die Platonische Akademie in Athen?",
+    "expected_documents": [
+      "city-0005_berlin.md",
+      "city-0050_athen.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-007",
+    "domain": "city-landmarks",
+    "query": "Wie hoch sind der Kulturpalast in Warschau und das Brandenburger Tor in Berlin?",
+    "expected_documents": [
+      "city-0014_warschau.md",
+      "city-0005_berlin.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-008",
+    "domain": "city-landmarks",
+    "query": "Wer entwarf den Königspalast in Madrid und die Burg Vajdahunyad in Budapest?",
+    "expected_documents": [
+      "city-0006_madrid.md",
+      "city-0013_budapest.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-009",
+    "domain": "city-landmarks",
+    "query": "Wie viele Besucher pro Jahr haben das Tschechische Nationalmuseum in Prag und Artis in Amsterdam?",
+    "expected_documents": [
+      "city-0022_prag.md",
+      "city-0044_amsterdam.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-010",
+    "domain": "city-landmarks",
+    "query": "Welchen Schutzstatus tragen die Sophienkathedrale in Kiew und das Forum Romanum in Rom?",
+    "expected_documents": [
+      "city-0007_kiew.md",
+      "city-0008_rom.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-011",
+    "domain": "city-landmarks",
+    "query": "Welches Bauwerk ist älter — der Crystal Palace in London oder die Bastille in Paris?",
+    "expected_documents": [
+      "city-0003_london.md",
+      "city-0009_paris.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-012",
+    "domain": "city-landmarks",
+    "query": "Welchem Baustil werden Schloss Belvedere in Wien und die Frauenkirche in Dresden zugeordnet?",
+    "expected_documents": [
+      "city-0015_wien.md",
+      "city-0063_dresden.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-013",
+    "domain": "city-landmarks",
+    "query": "In welchem Land liegen die Burg Vajdahunyad in Budapest und die Platonische Akademie in Athen?",
+    "expected_documents": [
+      "city-0013_budapest.md",
+      "city-0050_athen.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-014",
+    "domain": "city-landmarks",
+    "query": "In welchem Land befinden sich die Bastille in Paris und die Platonische Akademie in Athen?",
+    "expected_documents": [
+      "city-0009_paris.md",
+      "city-0050_athen.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-015",
+    "domain": "city-landmarks",
+    "query": "Welchen Schutzstatus tragen der Königspalast in Madrid und das Forum Romanum in Rom?",
+    "expected_documents": [
+      "city-0006_madrid.md",
+      "city-0008_rom.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-016",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurden das Brandenurger Tor in Berlin und der Königspalast in Madrid erbaut?",
+    "expected_documents": [
+      "city-0005_berlin.md",
+      "city-0006_madrid.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-017",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr wurden der Crystal Palace in London und Schloss Belvedre in Wien erbaut?",
+    "expected_documents": [
+      "city-0003_london.md",
+      "city-0015_wien.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-018",
+    "domain": "city-landmarks",
+    "query": "In welchem Jahr entstanden die Bastile in Paris und das Tschechische Nationalmuseum in Prag?",
+    "expected_documents": [
+      "city-0009_paris.md",
+      "city-0022_prag.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-019",
+    "domain": "city-landmarks",
+    "query": "Welches Bauwerk ist älter — die Sophienkathedrale in Kiew oder der Kulturpalst in Warschau?",
+    "expected_documents": [
+      "city-0007_kiew.md",
+      "city-0014_warschau.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
+  },
+  {
+    "id": "city-multi_topic-020",
+    "domain": "city-landmarks",
+    "query": "Wie hoch sind der Kulturpalast in Warschau und das Brandenburgertor in Berlin?",
+    "expected_documents": [
+      "city-0014_warschau.md",
+      "city-0005_berlin.md"
+    ],
+    "category": "multi_topic",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null
   }
 ]

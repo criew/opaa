@@ -74,6 +74,44 @@ class RetrievalMetricsTest {
     assertThat(result.reciprocalRank()).isEqualTo(1.0);
     assertThat(result.ndcgAt10()).isCloseTo(0.8772, within(1e-3));
     assertThat(result.recallAt10()).isEqualTo(1.0);
+    assertThat(result.allExpectedDocumentsHitAt10()).isEqualTo(1.0);
+  }
+
+  @Test
+  void allExpectedDocumentsHitAt10RequiresEveryExpectedDocumentUnlikePartialCreditRecall() {
+    // Issue #913 ("Recall pro Teilthema"): recallAt10 gives 0.5 partial credit for one of two
+    // expected documents retrieved — exactly the shape that would silently hide a topK-monoculture
+    // regression (issue #912). allExpectedDocumentsHitAt10 must score this case as a miss (0.0).
+    GoldenCase goldenCase = caseWithExpected(List.of("e1", "e2"));
+    RetrievalMetrics.QueryResult result =
+        RetrievalMetrics.evaluate(goldenCase, List.of("e1", "d2", "d3", "d4", "d5"));
+
+    assertThat(result.recallAt10()).isEqualTo(0.5);
+    assertThat(result.allExpectedDocumentsHitAt10()).isEqualTo(0.0);
+  }
+
+  @Test
+  void allExpectedDocumentsHitAt10IsOneOnlyWhenBothExpectedDocumentsAreInTheTop10Window() {
+    GoldenCase goldenCase = caseWithExpected(List.of("e1", "e2"));
+    // e2 lands at rank 9 — inside the top-10 recall window this metric shares with recallAt10, but
+    // outside the top-5 hitRateAt5 window.
+    RetrievalMetrics.QueryResult result =
+        RetrievalMetrics.evaluate(
+            goldenCase, List.of("e1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "e2", "d10"));
+
+    assertThat(result.allExpectedDocumentsHitAt10()).isEqualTo(1.0);
+  }
+
+  @Test
+  void allExpectedDocumentsHitAt10IsZeroWhenAnExpectedDocumentLandsJustOutsideTheTop10Window() {
+    // Issue #913 review, Nit 2: pins the k=10 cutoff itself — without it, removing the subList
+    // truncation in allExpectedDocumentsHitAtK would still leave this suite green.
+    GoldenCase goldenCase = caseWithExpected(List.of("e1", "e2"));
+    RetrievalMetrics.QueryResult result =
+        RetrievalMetrics.evaluate(
+            goldenCase, List.of("e1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "d10", "e2"));
+
+    assertThat(result.allExpectedDocumentsHitAt10()).isEqualTo(0.0);
   }
 
   @Test
@@ -117,6 +155,7 @@ class RetrievalMetricsTest {
     assertThat(result.reciprocalRank()).isEqualTo(0.0);
     assertThat(result.ndcgAt10()).isEqualTo(0.0);
     assertThat(result.recallAt10()).isEqualTo(0.0);
+    assertThat(result.allExpectedDocumentsHitAt10()).isEqualTo(0.0);
   }
 
   @Test
