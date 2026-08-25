@@ -522,6 +522,40 @@ class SpaceServiceIntegrationTest {
         .isInstanceOf(AccessDeniedException.class);
   }
 
+  /**
+   * #888 behavior change: before this ticket, {@code SpaceService.requireManager} checked only the
+   * caller's raw {@link SpaceMembership#getRole()}, never their ownership - unlike {@code
+   * SpaceAssetAssociationService.hasCuratorRole}, which already treated the owner as a curator
+   * regardless of their own membership role. {@code transferOwnership} never raises the new owner's
+   * own membership role (see that method's Javadoc), so "owner with a MEMBER membership" is a
+   * legal, persistent state - and on the pre-#888 code, such an owner got a 403 from {@code
+   * addMember}/{@code updateMemberRole}/{@code removeMember} despite being the space's owner.
+   * {@link SpaceAccessPolicy#effectiveRole} now unifies this: the owner is always at least ADMIN,
+   * so manager actions succeed here where they previously threw {@link AccessDeniedException}.
+   */
+  @Test
+  void ownerWithBelowAdminMembershipCanNowPerformManagerActions() {
+    UUID owner = createUser(organizationA);
+    UUID newOwner = createUser(organizationA);
+    Space space =
+        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    // transferOwnership only requires the target to already be a member, of any role - it never
+    // raises the new owner's own membership role (see that method's Javadoc), so a MEMBER can
+    // become owner while keeping their MEMBER membership.
+    space.addMembership(new SpaceMembership(newOwner, SpaceRole.MEMBER, organizationA));
+    Space saved = spaceRepository.save(space);
+    spaceService.transferOwnership(saved.getId(), newOwner, currentUserOf(owner));
+
+    UUID addedMember = createUser(organizationA);
+    spaceService.addMember(saved.getId(), addedMember, SpaceRole.MEMBER, currentUserOf(newOwner));
+
+    Space reloaded = spaceRepository.findByIdWithMemberships(saved.getId()).orElseThrow();
+    assertThat(reloaded.getOwnerId()).isEqualTo(newOwner);
+    assertThat(roleOf(reloaded, newOwner)).isEqualTo(SpaceRole.MEMBER);
+    assertThat(reloaded.getMemberships()).anyMatch(m -> m.getUserId().equals(addedMember));
+  }
+
   @Test
   void requestCrossingOrganizationBoundaryIsRejected() {
     UUID owner = createUser(organizationA);

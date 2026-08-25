@@ -14,9 +14,17 @@ package io.opaa.space;
  *
  * <p>The space owner is tracked separately via {@code Space.ownerId}; only the owner or a system
  * administrator may delete a space or transfer that responsibility.
+ *
+ * <p>Declared in ascending order so {@link #atLeast(SpaceRole)} can compare via {@link #ordinal()}
+ * - mirrors {@code io.opaa.library.AssetRole#atLeast}.
  */
 public enum SpaceRole {
   MEMBER,
   CURATOR,
-  ADMIN
+  ADMIN;
+
+  /** Whether this role is at least as privileged as {@code other}, per the declared ordering. */
+  public boolean atLeast(SpaceRole other) {
+    return this.ordinal() >= other.ordinal();
+  }
 }
