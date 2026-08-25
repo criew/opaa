@@ -8,7 +8,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
-import io.opaa.common.NotFoundException;
+import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.PermissionSubject;
 import io.opaa.library.AssetRole;
@@ -102,7 +102,7 @@ public class SpaceAssetAssociationService {
             association -> {
               Space space = spacesById.get(association.getSpaceId());
               return caller.isSystemAdmin()
-                  || hasCuratorRole(space, caller.id())
+                  || SpaceAccessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR)
                   || readable.contains(association.getLibraryId());
             })
         .collect(Collectors.groupingBy(SpaceAssetAssociation::getSpaceId, Collectors.counting()));
@@ -125,7 +125,7 @@ public class SpaceAssetAssociationService {
    */
   public SpaceLibraryLinks listForSpace(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    requireMember(space, caller.id(), caller.isSystemAdmin());
+    SpaceAccessPolicy.requireMember(space, caller);
 
     List<SpaceAssetAssociation> associations =
         associationRepository.findBySpaceIdOrderByCreatedAtAsc(space.getId());
@@ -133,7 +133,9 @@ public class SpaceAssetAssociationService {
     if (associations.isEmpty()) {
       return new SpaceLibraryLinks(hasAssociations, List.of());
     }
-    boolean unfiltered = hasCuratorRole(space, caller.id()) || caller.isSystemAdmin();
+    boolean unfiltered =
+        SpaceAccessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR)
+            || caller.isSystemAdmin();
     Set<UUID> readable =
         libraryAccessService.readableLibraryIds(caller.id(), space.getOrganizationId());
     Map<UUID, String> displayNames =
@@ -165,7 +167,7 @@ public class SpaceAssetAssociationService {
   @Transactional
   public SpaceLibraryLink associate(UUID spaceId, UUID libraryId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    requireCurator(space, caller.id(), caller.isSystemAdmin());
+    SpaceAccessPolicy.requireCurator(space, caller);
 
     KnowledgeLibrary library = requireLibrary(libraryId, space.getOrganizationId());
     // A CURATOR may only associate an asset they can themselves access - the same rule #203
@@ -220,7 +222,9 @@ public class SpaceAssetAssociationService {
     Space space = loadSpace(spaceId, caller);
     KnowledgeLibrary library = requireLibrary(libraryId, space.getOrganizationId());
 
-    boolean spaceCurator = hasCuratorRole(space, caller.id()) || caller.isSystemAdmin();
+    boolean spaceCurator =
+        SpaceAccessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR)
+            || caller.isSystemAdmin();
     boolean libraryManager =
         libraryAccessService.canManage(library, caller.id(), caller.isSystemAdmin());
     if (!spaceCurator && !libraryManager) {
@@ -254,11 +258,7 @@ public class SpaceAssetAssociationService {
    * to.
    */
   public List<LibrarySpaceLink> listForLibrary(UUID libraryId, CurrentUser caller) {
-    KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .filter(l -> l.getOrganizationId().equals(caller.organizationId()))
-            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
+    KnowledgeLibrary library = requireLibrary(libraryId, caller.organizationId());
     libraryAccessService.requireRole(
         library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
 
@@ -350,52 +350,20 @@ public class SpaceAssetAssociationService {
     return true;
   }
 
-  private boolean hasCuratorRole(Space space, UUID userId) {
-    if (space.getOwnerId().equals(userId)) {
-      return true;
-    }
-    return space.getMemberships().stream()
-        .filter(m -> m.getUserId().equals(userId))
-        .anyMatch(m -> m.getRole() == SpaceRole.CURATOR || m.getRole() == SpaceRole.ADMIN);
-  }
-
-  private void requireCurator(Space space, UUID userId, boolean systemAdmin) {
-    if (systemAdmin || hasCuratorRole(space, userId)) {
-      return;
-    }
-    throw new AccessDeniedException("Nur Kuratoren dieses Space können Bibliotheken zuordnen");
-  }
-
-  private void requireMember(Space space, UUID userId, boolean systemAdmin) {
-    if (systemAdmin) {
-      return;
-    }
-    boolean member = space.getMemberships().stream().anyMatch(m -> m.getUserId().equals(userId));
-    if (!member) {
-      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
-    }
-  }
-
   private Space loadSpace(UUID spaceId, CurrentUser caller) {
-    Space space =
-        spaceRepository
-            .findByIdWithMemberships(spaceId)
-            .orElseThrow(() -> new NotFoundException("Space nicht gefunden"));
-    if (!space.getOrganizationId().equals(caller.organizationId())) {
-      throw new NotFoundException("Space nicht gefunden");
-    }
-    return space;
+    return OrganizationScopedLoader.load(
+        () -> spaceRepository.findByIdWithMemberships(spaceId),
+        Space::getOrganizationId,
+        caller.organizationId(),
+        "Space nicht gefunden");
   }
 
   private KnowledgeLibrary requireLibrary(UUID libraryId, UUID organizationId) {
-    KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
-    if (!library.getOrganizationId().equals(organizationId)) {
-      throw new NotFoundException("Bibliothek nicht gefunden");
-    }
-    return library;
+    return OrganizationScopedLoader.load(
+        () -> libraryRepository.findById(libraryId),
+        KnowledgeLibrary::getOrganizationId,
+        organizationId,
+        "Bibliothek nicht gefunden");
   }
 
   private Map<UUID, KnowledgeLibrary> loadLibraries(List<SpaceAssetAssociation> associations) {

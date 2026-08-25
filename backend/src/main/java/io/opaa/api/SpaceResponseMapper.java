@@ -4,6 +4,7 @@ import io.opaa.api.dto.SpaceListResponse;
 import io.opaa.api.dto.SpaceMemberResponse;
 import io.opaa.api.dto.SpaceResponse;
 import io.opaa.space.Space;
+import io.opaa.space.SpaceAccessPolicy;
 import io.opaa.space.SpaceMemberView;
 import io.opaa.space.SpaceMembership;
 import io.opaa.space.SpaceOverview;
@@ -23,7 +24,6 @@ final class SpaceResponseMapper {
   private SpaceResponseMapper() {}
 
   static SpaceResponse toResponse(Space space, UUID currentUserId) {
-    SpaceMembership membership = userMembership(space, currentUserId);
     Map<String, Long> roleCounts = new HashMap<>();
     for (SpaceRole role : SpaceRole.values()) {
       roleCounts.put(role.name(), 0L);
@@ -33,6 +33,14 @@ final class SpaceResponseMapper {
     // #144: the aggregated roleCounts stay visible to every member ("how big is this room"), but
     // the full member list with identities and display names is not part of SpaceResponse anymore
     // - it is only available via listMembers, restricted to ADMIN, owner and system admins.
+    //
+    // #891 review: userRole is the caller's *effective* role (SpaceAccessPolicy#effectiveRole,
+    // owner ⇒ at least ADMIN) - not their raw SpaceMembership row. This is what lets a space
+    // owner whose own membership is still below ADMIN (transferOwnership never raises it) both
+    // see and use the manager UI (settings form, member management) the frontend gates on
+    // userRole==='ADMIN'. roleCounts and SpaceMemberResponse (see toMemberResponse below)
+    // deliberately keep showing the *raw* membership role of every member, including this
+    // caller's own row - only the caller's own userRole is ever adjusted for ownership.
     return new SpaceResponse(
             space.getId(),
             space.getName(),
@@ -45,12 +53,11 @@ final class SpaceResponseMapper {
             space.getUpdatedAt())
         .description(space.getDescription())
         .visibility(space.getVisibility())
-        .userRole(membership == null ? null : membership.getRole());
+        .userRole(SpaceAccessPolicy.effectiveRole(space, currentUserId));
   }
 
   static SpaceListResponse toListResponse(SpaceOverview overview, UUID currentUserId) {
     Space space = overview.space();
-    SpaceMembership membership = userMembership(space, currentUserId);
     return new SpaceListResponse(
             space.getId(),
             space.getName(),
@@ -61,7 +68,7 @@ final class SpaceResponseMapper {
             space.getUpdatedAt())
         .description(space.getDescription())
         .visibility(space.getVisibility())
-        .userRole(membership == null ? null : membership.getRole())
+        .userRole(SpaceAccessPolicy.effectiveRole(space, currentUserId))
         .libraryCount(overview.libraryCount())
         .chatCount(overview.chatCount());
   }
@@ -80,12 +87,5 @@ final class SpaceResponseMapper {
 
   static List<SpaceMemberResponse> toMemberResponses(List<SpaceMemberView> views) {
     return views.stream().map(SpaceResponseMapper::toMemberResponse).toList();
-  }
-
-  private static SpaceMembership userMembership(Space space, UUID userId) {
-    return space.getMemberships().stream()
-        .filter(membership -> membership.getUserId().equals(userId))
-        .findFirst()
-        .orElse(null);
   }
 }

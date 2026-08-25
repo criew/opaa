@@ -14,6 +14,7 @@ import io.opaa.chat.ChatRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -190,9 +191,7 @@ public class SpaceService {
   public Space getSpace(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
 
-    if (!caller.isSystemAdmin() && userMembership(space, caller.id()) == null) {
-      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
-    }
+    SpaceAccessPolicy.requireMember(space, caller);
 
     return space;
   }
@@ -201,11 +200,10 @@ public class SpaceService {
     Space space = loadSpace(spaceId, caller);
     // #144: the member list names every member of the space - who else works in "Disziplinar-
     // verfahren" or "Umstrukturierung Abteilung 3" is itself sensitive. Unlike getSpace, which only
-    // checks membership, this is restricted to ADMIN, the owner (checked explicitly by
-    // requireMemberListViewer - transferOwnership never changes the new owner's membership role,
-    // so the owner is not always ADMIN) and system admins.
+    // checks membership, this is restricted to ADMIN, the owner and system admins - see
+    // SpaceAccessPolicy#requireMemberListViewer.
     if (!caller.isSystemAdmin()) {
-      requireMemberListViewer(space, caller.id());
+      SpaceAccessPolicy.requireMemberListViewer(space, caller);
     }
 
     List<UUID> userIds = space.getMemberships().stream().map(SpaceMembership::getUserId).toList();
@@ -220,7 +218,7 @@ public class SpaceService {
   public SpaceMemberView addMember(
       UUID spaceId, UUID memberUserId, SpaceRole requestedRole, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    requireManager(space, caller.id());
+    SpaceAccessPolicy.requireManager(space, caller);
     // #613 review, finding 2: an archived space accepts no new content, and a new member is new
     // content in the sense the specification means - see docs/features/spaces-and-assets.md#einen-
     // space-stilllegen-archivieren-statt-löschen ("keine neuen Chats, Nachrichten, Umbenennungen
@@ -260,7 +258,7 @@ public class SpaceService {
   public SpaceMemberView updateMemberRole(
       UUID spaceId, UUID memberUserId, SpaceRole newRole, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    requireManager(space, caller.id());
+    SpaceAccessPolicy.requireManager(space, caller);
     if (newRole == null) {
       throw new ValidationException("role ist erforderlich");
     }
@@ -297,7 +295,7 @@ public class SpaceService {
   @Transactional
   public void removeMember(UUID spaceId, UUID memberUserId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    requireManager(space, caller.id());
+    SpaceAccessPolicy.requireManager(space, caller);
 
     SpaceMembership target = userMembership(space, memberUserId);
     if (target == null) {
@@ -646,75 +644,35 @@ public class SpaceService {
     }
   }
 
-  private User requireUser(UUID userId) {
-    return userRepository
-        .findById(userId)
-        .orElseThrow(() -> new NotFoundException("Benutzer nicht gefunden"));
-  }
-
   /**
-   * Resolves a user and enforces the organization boundary for it. Used for every foreign userId
-   * that a request body can supply (owner, initial members, added members) - without this, a
-   * request could reference a user from another organization and the resulting membership row would
-   * silently violate the organization invariant. Returns 404 rather than 403 both when the user
-   * does not exist and when it belongs to a different organization, so that a caller cannot
-   * distinguish "no such user" from "user in another organization".
+   * Resolves a user and enforces the organization boundary for it via {@link
+   * OrganizationScopedLoader}. Used for every foreign userId that a request body can supply (owner,
+   * initial members, added members) - without this, a request could reference a user from another
+   * organization and the resulting membership row would silently violate the organization
+   * invariant. Returns 404 rather than 403 both when the user does not exist and when it belongs to
+   * a different organization, so that a caller cannot distinguish "no such user" from "user in
+   * another organization".
    */
   private User requireUserInOrganization(UUID userId, UUID organizationId) {
-    User user = requireUser(userId);
-    if (!user.getOrganizationId().equals(organizationId)) {
-      throw new NotFoundException("Benutzer nicht gefunden");
-    }
-    return user;
+    return OrganizationScopedLoader.load(
+        () -> userRepository.findById(userId),
+        User::getOrganizationId,
+        organizationId,
+        "Benutzer nicht gefunden");
   }
 
   /**
-   * Loads a space and enforces the organization boundary. A space belonging to a different
-   * organization than the caller is treated as not found - the boundary is not overstepped even to
-   * reveal existence, and this applies to system administrators as well.
+   * Loads a space and enforces the organization boundary via {@link OrganizationScopedLoader}. A
+   * space belonging to a different organization than the caller is treated as not found - the
+   * boundary is not overstepped even to reveal existence, and this applies to system administrators
+   * as well.
    */
   private Space loadSpace(UUID spaceId, CurrentUser caller) {
-    Space space =
-        spaceRepository
-            .findByIdWithMemberships(spaceId)
-            .orElseThrow(() -> new NotFoundException("Space nicht gefunden"));
-
-    if (!space.getOrganizationId().equals(caller.organizationId())) {
-      throw new NotFoundException("Space nicht gefunden");
-    }
-    return space;
-  }
-
-  private SpaceMembership requireMembership(Space space, UUID userId) {
-    SpaceMembership membership = userMembership(space, userId);
-    if (membership == null) {
-      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
-    }
-    return membership;
-  }
-
-  private SpaceMembership requireManager(Space space, UUID userId) {
-    SpaceMembership membership = requireMembership(space, userId);
-    if (membership.getRole() != SpaceRole.ADMIN) {
-      throw new AccessDeniedException("Nur Administratoren können Mitglieder verwalten");
-    }
-    return membership;
-  }
-
-  /**
-   * #144: the member list is restricted to ADMIN, the owner and system admins. The owner check is
-   * explicit and not folded into "owner's membership is always ADMIN" - {@link #transferOwnership}
-   * only reassigns {@code Space.ownerId} and never touches the new owner's {@link SpaceMembership}
-   * role (review finding on #674), so a space can genuinely have an owner whose own membership is
-   * MEMBER or CURATOR.
-   */
-  private SpaceMembership requireMemberListViewer(Space space, UUID userId) {
-    SpaceMembership membership = requireMembership(space, userId);
-    if (membership.getRole() != SpaceRole.ADMIN && !space.getOwnerId().equals(userId)) {
-      throw new AccessDeniedException(
-          "Nur Administratoren oder der Eigentümer können die Mitgliederliste einsehen");
-    }
-    return membership;
+    return OrganizationScopedLoader.load(
+        () -> spaceRepository.findByIdWithMemberships(spaceId),
+        Space::getOrganizationId,
+        caller.organizationId(),
+        "Space nicht gefunden");
   }
 
   /**
