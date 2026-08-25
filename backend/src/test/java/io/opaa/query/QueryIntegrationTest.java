@@ -94,6 +94,7 @@ class QueryIntegrationTest {
   @Autowired private QueryService queryService;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ChatMemory chatMemory;
+  @Autowired private ChunkEmbeddingLookup chunkEmbeddingLookup;
 
   private UUID userId;
   private UUID libraryId;
@@ -363,19 +364,17 @@ class QueryIntegrationTest {
     // gives the user a real, non-empty readable set with a second, ungranted library present in
     // the same store, and asserts on the *count* of results, not just their content.
     //
-    // #914 code review, finding 5: the previous version of this test (30 granted / 30 ungranted,
-    // fetchK=25) lost its discriminating power once similaritySearch's own request moved from topK
-    // (5) to fetchK (25, application.yml default) - a *broken* post-filter would, on a 30-vs-30
-    // split, still recover close to fetchK=25 authorized candidates purely by chance, indistin-
-    // guishable in this test's assertions from the correct, pre-filtered result. The fix is a
-    // heavily lopsided split: 10 chunks in the granted library A, 250 in the ungranted library B -
-    // inserted *before* A (FakeEmbeddingModel gives every text an identical embedding, see its
-    // Javadoc, so all 260 chunks tie on similarity; a tied ANN scan returns ties in something close
-    // to insertion order). A correct, search-time filter only ever sees A's 10 members and returns
-    // all of them as candidates, however tied their order - MmrSelector then narrows those 10 down
-    // to topK (8), all "a"-prefixed. A post-filter instead requests the unfiltered top-25 of 260
-    // tied candidates first: with B outnumbering A 25:1 and ordered first, that top-25 is
-    // overwhelmingly (typically entirely) B, leaving far fewer than 8 - usually zero - authorized
+    // The granted library A (10 chunks) and ungranted library B (250 chunks, inserted first) are
+    // deliberately lopsided so a broken, post-hoc filter is distinguishable from the correct,
+    // search-time filter even at fetchK=25 candidates: FakeEmbeddingModel gives every text an
+    // identical embedding (see its Javadoc), so all 260 chunks tie on similarity, and a tied ANN
+    // scan returns ties in something close to insertion order. A correct, search-time filter only
+    // ever sees A's 10 members and returns all of them as candidates - MmrSelector then narrows
+    // those 10 down to topK (8), all "a"-prefixed. A post-filter instead requests the unfiltered
+    // top-25 of 260 tied candidates first: with B outnumbering A 25:1 and ordered first, that
+    // top-25
+    // is overwhelmingly (typically entirely) B, leaving far fewer than 8 - usually zero -
+    // authorized
     // candidates once filtered afterward. See the PR description for the reproduction: reverting
     // QueryService's filterExpression(...) call turns this test red while every other test in this
     // class, QueryControllerTest and io.opaa.library.* stay green.
@@ -435,6 +434,34 @@ class QueryIntegrationTest {
     } finally {
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
     }
+  }
+
+  /**
+   * {@link ChunkEmbeddingLookup} reads a chunk's embedding straight back out of the pgvector table
+   * it was written to - a real vector of the configured dimension for a known id, and simply no
+   * entry for an id that was never stored, never an exception.
+   */
+  @Test
+  void chunkEmbeddingLookupReturnsTheStoredVectorByIdAndOmitsAnUnknownId() {
+    var chunk =
+        new Document(
+            "Content to embed",
+            Map.of(
+                "file_name",
+                "embedded.md",
+                "document_id",
+                "doc-embedded",
+                "chunk_index",
+                0,
+                "library_id",
+                libraryId.toString()));
+    vectorStore.add(List.of(chunk));
+
+    Map<String, float[]> embeddings =
+        chunkEmbeddingLookup.findByIds(List.of(chunk.getId(), UUID.randomUUID().toString()));
+
+    assertThat(embeddings).containsOnlyKeys(chunk.getId());
+    assertThat(embeddings.get(chunk.getId())).hasSize(1536);
   }
 
   /**

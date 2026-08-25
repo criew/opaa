@@ -117,6 +117,60 @@ class QueryServiceTest {
   }
 
   /**
+   * At {@code mmrLambda = 1.0} the diversity term is always multiplied by zero (see {@link
+   * MmrSelector#select}'s Javadoc), so {@code query()} must skip the {@link ChunkEmbeddingLookup}
+   * round trip entirely rather than pay for a database call whose result could not affect the final
+   * selection - every test in this class relies on that (see {@link #setUp}'s comment), but none of
+   * them actually verifies it until now.
+   */
+  @Test
+  void queryNeverCallsChunkEmbeddingLookupWhenMmrLambdaIsOne() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query("Question", null, caller, true, List.of());
+
+    verifyNoInteractions(chunkEmbeddingLookup);
+  }
+
+  /** Below {@code mmrLambda = 1.0}, the diversity term is live and the lookup actually runs. */
+  @Test
+  void queryCallsChunkEmbeddingLookupWhenMmrLambdaIsBelowOne() {
+    QueryService serviceWithMmrEnabled =
+        new QueryService(
+            vectorStore,
+            answerGenerationService,
+            chatMemory,
+            new CitationParser(),
+            new CitationValidator(),
+            documentRepository,
+            libraryAccessService,
+            permissionHistoryService,
+            chatService,
+            new QueryMetrics(new SimpleMeterRegistry()),
+            new QueryProperties(8, 25, 0.5, 0.3, 1.0),
+            knowledgeLibraryRepository,
+            chunkEmbeddingLookup);
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(chunkEmbeddingLookup.findByIds(any())).thenReturn(Map.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    serviceWithMmrEnabled.query("Question", null, caller, true, List.of());
+
+    verify(chunkEmbeddingLookup).findByIds(List.of(chunk.getId()));
+  }
+
+  /**
    * #889 (O1): {@code permissionHistorySampleRate = 0.0} must skip the check entirely - the whole
    * point of sampling is to spare the reconstruction cost for queries it does not run for.
    */
@@ -1263,8 +1317,8 @@ class QueryServiceTest {
     assertThat(request.getQuery()).isEqualTo("Test query");
     assertThat(request.getTopK()).isEqualTo(25);
     assertThat(request.getSimilarityThreshold()).isEqualTo(0.3);
-    // #914 code review, finding 5: the permission filter is asserted here too, not only in the
-    // dedicated queryFiltersOnReadableLibraryIds test below - this test's job is exactly "every
+    // The permission filter is asserted here too, not only in the dedicated
+    // queryFiltersOnReadableLibraryIds test below - this test's job is exactly "every
     // SearchRequest parameter", and the filter is one of them.
     assertThat(request.getFilterExpression()).isNotNull();
     assertThat(request.getFilterExpression().toString()).contains(readableLibraryId.toString());

@@ -31,10 +31,9 @@ class QueryPropertiesTest {
   }
 
   /**
-   * #914 code review, finding 4: a deployment that already configured {@code topK} above 25 (legal
-   * before #914 raised the maximum consideration to include fetchK) must not fail startup just
-   * because it never set {@code fetchK} - the missing value normalizes to {@code max(25, topK)},
-   * not a flat 25.
+   * A deployment that already configured {@code topK} above 25 must not fail startup just because
+   * it never set {@code fetchK} - the missing value normalizes to {@code max(25, topK)}, not a flat
+   * 25.
    */
   @Test
   void nonPositiveFetchKNormalizesToTopKWhenTopKExceedsTwentyFive() {
@@ -58,9 +57,8 @@ class QueryPropertiesTest {
   }
 
   /**
-   * #914 code review, nit a: {@code mmrLambda = 0.0} is a legal boundary value (pure diversity, no
-   * relevance term), not an "unset" sentinel - it must be honored, not silently raised to the
-   * default.
+   * {@code mmrLambda = 0.0} is a legal boundary value (pure diversity, no relevance term), not an
+   * "unset" sentinel - it must be honored, not silently raised to the default.
    */
   @Test
   void mmrLambdaZeroIsAcceptedAsIs() {

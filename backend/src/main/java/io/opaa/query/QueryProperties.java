@@ -18,10 +18,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     dominant topic in a multi-topic question (the #912 failure mode), while staying a single
  *     {@code similaritySearch} call - no additional embedding or LLM API call per query. A missing
  *     configuration value (see the compact constructor) normalizes to {@code max(25, topK)}, not a
- *     flat 25 - a pre-#914 deployment that had already raised {@code topK} above 25 would otherwise
- *     fail {@link #fetchK} {@code < topK}'s validation below at every startup, from a property this
- *     deployment never touched at all (#914 code review, finding 4). See docs/deployment.md for the
- *     operator-facing version of this note.
+ *     flat 25, so a deployment that already configured {@code topK} above 25 does not fail {@link
+ *     #fetchK} {@code < topK}'s validation below on a property it never touched. See
+ *     docs/deployment.md for the operator-facing version of this note.
  * @param mmrLambda the relevance/diversity trade-off {@link MmrSelector} applies when narrowing
  *     {@link #fetchK} candidates down to {@link #topK} (#914): each candidate's selection score is
  *     {@code mmrLambda * relevance - (1 - mmrLambda) * maxSimilarityToAlreadySelected}, where the
@@ -34,23 +33,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     {@code @DefaultValue} (not the manual-default pattern {@link #topK}/{@link #fetchK} use
  *     below) so an explicitly configured {@code 0.0} is honored rather than silently raised -
  *     {@code 0.0} is a legal (if extreme) point on the range, not an "unset" sentinel the way a
- *     non-positive {@code topK}/ {@code fetchK} is (#914 code review, nit a).
- *     <p><b>Why {@code 1.0}, not {@code 0.7} (#914 code review, finding 1):</b> candidate relevance
- *     scores from {@code similaritySearch} typically differ by as little as ~0.02 between
- *     neighbors, while cosine similarities between candidates commonly span ~0.3-0.5 once real
- *     embeddings are used - the diversity term can dominate the relevance term even at a
- *     relevance-favoring {@code mmrLambda} unless that scale mismatch is accounted for. Measured
- *     against the 20 {@code multi_topic} golden cases from #915 (both erwartete Dokumente unter den
- *     zurückgegebenen Chunks vertreten - see the #914 PR description for the full numbers and the
- *     decision rule): the pre-#914 baseline (plain {@code topK=5}, no MMR) reached 17/20; raising
- *     {@code topK} to 8 alone (this PR's Maßnahme D, {@code mmrLambda=1.0}) reached 20/20; adding
- *     MMR with real embeddings ({@code mmrLambda=0.7}) reached 19/20 - one case worse than {@code
- *     topK} alone, even though clearly better than the superseded lexical-Jaccard approximation's
- *     15/20 at the same {@code mmrLambda}. Since {@code 0.7} underperformed the simpler {@code 1.0}
- *     configuration on this measurement, {@code topK}'s own increase (Maßnahme D) ships as the
- *     default and MMR (Maßnahme A) ships as an available, measured, but not yet default-enabled
- *     opt-in - revisit both this default and the {@code 0.7} starting point for the opt-in path if
- *     a future, larger or more heterogeneous multi-topic golden dataset gives a clearer signal.
+ *     non-positive {@code topK}/{@code fetchK} is. The measured numbers behind {@code 1.0}'s choice
+ *     over a lower value live in docs/deployment.md and docs/features/data-indexing-rag.md, not
+ *     here.
  * @param similarityThreshold minimum cosine-similarity score a chunk must reach to be included in
  *     results. Default 0.3: empirically tested — lower values surface too much noise, higher values
  *     miss relevant documents on imprecise user queries. Applied inside {@code similaritySearch}
@@ -85,8 +70,7 @@ public record QueryProperties(
       throw new IllegalArgumentException("topK must be at most 100, got " + topK);
     }
     if (fetchK <= 0) {
-      // See #fetchK's Javadoc: max(25, topK), not a flat 25, so a deployment with topK already
-      // configured above 25 does not fail the fetchK < topK check below on a property it never set.
+      // See #fetchK's Javadoc: max(25, topK), not a flat 25.
       fetchK = Math.max(25, topK);
     }
     if (fetchK > 200) {

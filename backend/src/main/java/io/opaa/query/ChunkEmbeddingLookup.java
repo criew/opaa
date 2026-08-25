@@ -7,12 +7,13 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Component;
 
 /**
- * Reads chunk embeddings straight out of the pgvector table by row id (#914 code review, finding 1)
- * - a single {@code SELECT ... WHERE id::text = ANY(?)} over the {@code fetchK} MMR candidate ids
- * per query, not an embedding-API call: {@code similaritySearch}'s own {@link
+ * Reads chunk embeddings straight out of the pgvector table by row id (#914) - a single {@code
+ * SELECT ... WHERE id::text = ANY(?)} over the {@code fetchK} MMR candidate ids per query, not an
+ * embedding-API call: {@code similaritySearch}'s own {@link
  * org.springframework.ai.document.Document} result never carries the stored vector (see {@link
  * MmrSelector}'s Javadoc for why), but the vector is sitting right there in the same table row
  * {@code similaritySearch} already read to compute the distance it did return. {@code id::text} on
@@ -54,14 +55,13 @@ class ChunkEmbeddingLookup {
     String sql =
         "SELECT id, embedding FROM " + schemaName + "." + tableName + " WHERE id::text = ANY(?)";
     Map<String, float[]> embeddingsById = new HashMap<>();
+    // RowCallbackHandler, not ResultSetExtractor: JdbcTemplate itself advances the cursor and
+    // invokes this once per row - a caller-side rs.next() loop here would silently skip rows.
     jdbcTemplate.query(
         sql,
         ps -> ps.setArray(1, ps.getConnection().createArrayOf("text", chunkIds.toArray())),
-        rs -> {
-          while (rs.next()) {
-            embeddingsById.put(rs.getString("id"), parseVector(rs.getString("embedding")));
-          }
-        });
+        (RowCallbackHandler)
+            rs -> embeddingsById.put(rs.getString("id"), parseVector(rs.getString("embedding"))));
     return embeddingsById;
   }
 

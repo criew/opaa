@@ -8,10 +8,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 
 /**
- * #914 code review, finding 1: deterministic unit tests for {@link MmrSelector} using hand-picked
- * embedding vectors (not real ones - {@link ChunkEmbeddingLookup} needs a database, deliberately
- * not exercised here) instead of a lexical proxy, so every candidate's pairwise cosine similarity
- * is known exactly in advance.
+ * Deterministic unit tests for {@link MmrSelector} using hand-picked embedding vectors (not real
+ * ones - {@link ChunkEmbeddingLookup} needs a database, exercised separately by {@code
+ * QueryIntegrationTest}), so every candidate's pairwise cosine similarity is known exactly in
+ * advance.
  */
 class MmrSelectorTest {
 

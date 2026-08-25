@@ -15,21 +15,21 @@ import org.springframework.ai.document.Document;
  * merely repeats an already-selected chunk's content loses ground to a less relevant but topically
  * distinct one.
  *
- * <p><b>Pairwise similarity is cosine similarity of the real chunk embeddings</b> (#914 code
- * review, finding 1), read back from the pgvector table by row id via {@link ChunkEmbeddingLookup}
- * - not an embedding-API call (the vector already sits in the row {@code similaritySearch} itself
- * read to compute its distance) and not a lexical approximation. A candidate whose id is missing
- * from {@code embeddingsByChunkId} (deleted between the search and this lookup, or simply never
- * resolved) contributes {@code 0.0} similarity to every comparison it takes part in - a defensive
- * fallback, not a claim that the chunk is actually dissimilar; it only ever matters for a race this
- * narrow a window makes exceedingly unlikely.
+ * <p><b>Pairwise similarity is cosine similarity of the real chunk embeddings</b>, read back from
+ * the pgvector table by row id via {@link ChunkEmbeddingLookup} - not an embedding-API call (the
+ * vector already sits in the row {@code similaritySearch} itself read to compute its distance) and
+ * not a lexical approximation. A candidate whose id is missing from {@code embeddingsByChunkId}
+ * (deleted between the search and this lookup, or simply never resolved) contributes {@code 0.0}
+ * similarity to every comparison it takes part in - a defensive fallback, not a claim that the
+ * chunk is actually dissimilar; it only ever matters for a race this narrow a window makes
+ * exceedingly unlikely.
  *
- * <p><b>Scale note</b> (#914 code review, finding 1): candidate relevance scores from {@code
- * similaritySearch} typically differ by as little as ~0.02 between neighbors, while cosine
- * similarities between candidates commonly span ~0.3-0.5 - the diversity term can therefore
- * dominate the relevance term even at a relevance-favoring {@code mmrLambda} unless the caller
- * accounts for that scale mismatch when choosing it. {@link QueryProperties#mmrLambda()}'s Javadoc
- * documents the measured effect this had on {@code mmrLambda}'s chosen default.
+ * <p><b>Scale note:</b> candidate relevance scores from {@code similaritySearch} typically differ
+ * by as little as ~0.02 between neighbors, while cosine similarities between candidates commonly
+ * span ~0.3-0.5 - the diversity term can therefore dominate the relevance term even at a
+ * relevance-favoring {@code mmrLambda} unless the caller accounts for that scale mismatch when
+ * choosing it. {@link QueryProperties#mmrLambda()}'s Javadoc documents the measured effect this had
+ * on {@code mmrLambda}'s chosen default.
  */
 final class MmrSelector {
 

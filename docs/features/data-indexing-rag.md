@@ -251,8 +251,8 @@ Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertba
 schrittweise `top-k` Fundstellen: Der erste Treffer ist stets der relevanteste; jeder weitere
 Treffer bekommt einen Abzug, wenn er inhaltlich zu nah an einer bereits gewählten Fundstelle liegt
 - ein etwas weniger relevanter, aber thematisch neuer Treffer gewinnt dann gegen eine Wiederholung.
-Ohne diese Auswahl konnte eine einzelne, im Bestand dominante Frage alle `top-k` Plätze mit
-untereinander redundanten Fundstellen füllen und eine zweite, in derselben Frage mitgemeinte Frage
+Ohne diese Auswahl konnte ein einzelnes, im Bestand dominantes Thema alle `top-k` Plätze mit
+untereinander redundanten Fundstellen füllen und ein zweites, in derselben Frage mitgemeintes Thema
 vollständig verdrängen. Die inhaltliche Nähe zwischen zwei Kandidaten wird über die Kosinus-Ähnlichkeit
 ihrer bereits vorhandenen Einbettungsvektoren berechnet - ein einziger, leichtgewichtiger
 Datenbank-Nachschlag über die `fetch-k` Kandidaten-Kennungen je Anfrage, kein zusätzlicher Aufruf
