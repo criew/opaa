@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "generate:api-types": "openapi-typescript ../backend/src/main/resources/openapi/opaa-api.yaml -o src/types/generated/api.ts && prettier --write src/types/generated/api.ts",
+    "generate:api-types": "openapi-typescript ../opaa-api/src/main/resources/openapi/opaa-api.yaml -o src/types/generated/api.ts && prettier --write src/types/generated/api.ts",
     "dev": "vite",
     "build": "pnpm run generate:api-types && tsc -b && vite build",
     "lint": "eslint .",

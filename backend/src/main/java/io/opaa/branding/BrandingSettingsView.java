@@ -1,5 +1,6 @@
 package io.opaa.branding;
 
+import io.opaa.api.types.ColorScheme;
 import java.time.Instant;
 
 /**

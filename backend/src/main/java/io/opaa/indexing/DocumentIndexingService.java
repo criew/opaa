@@ -1,11 +1,12 @@
 package io.opaa.indexing;
 
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ServiceUnavailableException;
-import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -138,7 +139,7 @@ public class DocumentIndexingService {
   /**
    * The last {@value IndexingJobService#MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId},
    * newest first, each with its own protocol - unlike {@link #getStatus}, this requires {@link
-   * io.opaa.library.AssetRole#MANAGER}, not just {@code canRead}.
+   * AssetRole#MANAGER}, not just {@code canRead}.
    *
    * <p>An {@link IndexingRunEvent#getReference()} routinely carries the library's own {@code
    * sourcePath}/{@code sourceUrl} (a rejected file's absolute server path, a skipped entry's source
@@ -181,10 +182,10 @@ public class DocumentIndexingService {
    * Resolves and authorizes the indexing run's target library: it must resolve to a library in the
    * caller's own organization (otherwise 404, indistinguishable from a library that does not exist
    * at all - the organization boundary must not leak even that much), and the caller must hold at
-   * least {@link io.opaa.library.AssetRole#EDITOR} on it (otherwise 403). No additional {@code
-   * SYSTEM_ADMIN} requirement, and no blanket system-admin bypass: {@link
-   * LibraryAccessService#requireRole} is always called with {@code systemAdmin = false}, so the
-   * real grant/visibility formula decides, unconditionally.
+   * least {@link AssetRole#EDITOR} on it (otherwise 403). No additional {@code SYSTEM_ADMIN}
+   * requirement, and no blanket system-admin bypass: {@link LibraryAccessService#requireRole} is
+   * always called with {@code systemAdmin = false}, so the real grant/visibility formula decides,
+   * unconditionally.
    *
    * <p>Uses {@link LibraryAccessService#requireRole} instead of a plain boolean role check/403 for
    * the same reason {@link #getStatus} does: "no access at all" must answer 404, not a 403 that

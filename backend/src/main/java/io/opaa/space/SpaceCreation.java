@@ -1,5 +1,6 @@
 package io.opaa.space;
 
+import io.opaa.api.types.SpaceVisibility;
 import java.util.List;
 import java.util.UUID;
 

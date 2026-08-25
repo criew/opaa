@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.api.types.LibraryVisibility;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

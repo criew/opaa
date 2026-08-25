@@ -1,6 +1,6 @@
 package io.opaa.library;
 
-import io.opaa.audit.AuditEventType;
+import io.opaa.api.types.AuditEventType;
 import java.util.Map;
 import java.util.UUID;
 

@@ -2,6 +2,8 @@ package io.opaa.space;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.SpaceRole;
+import io.opaa.api.types.SpaceVisibility;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;

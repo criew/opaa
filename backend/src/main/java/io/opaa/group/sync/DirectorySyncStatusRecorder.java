@@ -1,5 +1,6 @@
 package io.opaa.group.sync;
 
+import io.opaa.api.types.DirectorySyncOutcome;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;

@@ -7,8 +7,12 @@ import static org.awaitility.Awaitility.await;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
-import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -19,8 +23,6 @@ import io.opaa.common.ValidationException;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentSourceType;
-import io.opaa.indexing.DocumentStatus;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -160,7 +162,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var grantRequest =
         new AssetGrantUpsert(
-            io.opaa.group.PermissionSubjectType.USER, viewer.getId(), AssetRole.VIEWER);
+            io.opaa.api.types.PermissionSubjectType.USER, viewer.getId(), AssetRole.VIEWER);
     grantService.upsertGrant(libraryId, grantRequest, currentUserOf(editor, false));
   }
 

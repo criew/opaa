@@ -2,6 +2,11 @@ package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.ActorKind;
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;

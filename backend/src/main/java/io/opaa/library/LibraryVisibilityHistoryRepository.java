@@ -22,7 +22,7 @@ public interface LibraryVisibilityHistoryRepository
    */
   @Query(
       "select h.libraryId from LibraryVisibilityHistory h "
-          + "where h.organizationId = :organizationId and h.visibility = io.opaa.library.LibraryVisibility.ORGANIZATION "
+          + "where h.organizationId = :organizationId and h.visibility = io.opaa.api.types.LibraryVisibility.ORGANIZATION "
           + "and h.validFrom <= :asOf and (h.validTo is null or h.validTo > :asOf)")
   Set<UUID> findOrganizationWideLibraryIdsAsOf(
       @Param("organizationId") UUID organizationId, @Param("asOf") Instant asOf);

@@ -19,7 +19,10 @@ jobs:
         include:
           - name: backend
             dockerfile: backend/Dockerfile
-            context: backend
+            # Repo-root context (issue #896): backend's Gradle build depends on the sibling
+            # opaa-api/ module via settings.gradle.kts, so a context scoped to backend/ alone
+            # would not see it.
+            context: .
           - name: frontend
             dockerfile: frontend/Dockerfile
             context: .

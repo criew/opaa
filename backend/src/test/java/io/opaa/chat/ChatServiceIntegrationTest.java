@@ -9,6 +9,9 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
+import io.opaa.api.types.ChatRole;
+import io.opaa.api.types.SpaceRole;
+import io.opaa.api.types.SpaceVisibility;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -25,8 +28,6 @@ import io.opaa.space.Space;
 import io.opaa.space.SpaceMembership;
 import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
-import io.opaa.space.SpaceRole;
-import io.opaa.space.SpaceVisibility;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.util.List;
@@ -842,7 +843,7 @@ class ChatServiceIntegrationTest {
     assertThat(source.getCited()).isTrue();
     assertThat(source.getIndexedAt()).isEqualTo(Instant.parse("2025-01-15T10:30:00Z"));
     assertThat(source.getDocumentId()).isEqualTo(documentId);
-    assertThat(source.getSourceType()).isEqualTo(io.opaa.indexing.DocumentSourceType.UPLOAD);
+    assertThat(source.getSourceType()).isEqualTo(io.opaa.api.types.DocumentSourceType.UPLOAD);
     assertThat(source.getCitationValid()).isTrue();
     assertThat(source.getChunkLocations()).hasSize(1);
     assertThat(source.getChunkLocations().getFirst().getChunkIndex()).isEqualTo(3);

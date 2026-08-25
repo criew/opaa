@@ -1,5 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.api.types.AssetRole;
+
 /**
  * A {@link KnowledgeLibrary} enriched with the caller's effective role, its document count and its
  * {@link LibraryManagementDetail} - the domain counterpart of the generated {@code

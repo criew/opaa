@@ -1,5 +1,0 @@
-.git
-build/
-.gradle/
-*.md
-.env*

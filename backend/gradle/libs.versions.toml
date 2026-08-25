@@ -21,6 +21,20 @@ jsoup = "1.22.2"
 # transitively via spring-ai-tika-document-reader; declared explicitly because io.opaa now calls
 # org.apache.tika.Tika directly rather than only through Spring AI's TikaDocumentReader.
 tika-core = "3.3.1"
+# Parses the OpenAPI spec directly in opaa-api's parity tests (issue #896) - no Spring
+# dependency needed for that, so a lightweight YAML parser instead of pulling in a
+# spec-validation library.
+snakeyaml = "2.5"
+# opaa-api's tests are deliberately Spring-free (issue #896) and use plain JUnit Jupiter/AssertJ
+# instead of the Spring Boot-managed test-deps bundle below - these two versions are therefore
+# pinned explicitly rather than inherited from the Spring Boot BOM. The module's main sourceSet is
+# not Spring-free, though: the generated io.opaa.api.dto classes (spring generator) import
+# org.springframework.lang.Nullable/DateTimeFormat plus Jackson/Jakarta annotation types - see the
+# spring-boot-dependencies platform import in opaa-api/build.gradle.kts for how those versions
+# stay aligned with the Spring Boot BOM instead of being pinned here.
+junit-jupiter = "5.13.4"
+assertj-core = "3.27.6"
+junit-platform = "1.13.4"
 
 [libraries]
 # Spring Boot starters (versions managed by Spring Boot BOM)
@@ -50,6 +64,20 @@ spring-ai-spring-boot-testcontainers = { module = "org.springframework.ai:spring
 jtokkit = { module = "com.knuddels:jtokkit", version.ref = "jtokkit" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 tika-core = { module = "org.apache.tika:tika-core", version.ref = "tika-core" }
+snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj-core" }
+opaa-api-junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }
+# Version-less: constrained by the spring-boot-dependencies platform import in
+# opaa-api/build.gradle.kts, same mechanism backend/build.gradle.kts uses via the
+# io.spring.dependency-management plugin for the spring-boot-starter-* entries above.
+spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations" }
+spring-core = { module = "org.springframework:spring-core" }
+spring-context = { module = "org.springframework:spring-context" }
+jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api" }
+jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api" }
 
 # Infrastructure (versions managed by Spring Boot BOM)
 # Spring Boot 4 moved the Liquibase auto-configuration into its own starter module
@@ -98,6 +126,14 @@ test-deps = [
     "awaitility",
 ]
 test-runtime-deps = ["junit-platform-launcher"]
+opaa-api-test-deps = ["junit-jupiter", "assertj-core", "snakeyaml"]
+opaa-api-generated-dto-deps = [
+    "jackson-annotations",
+    "spring-core",
+    "spring-context",
+    "jakarta-validation-api",
+    "jakarta-annotation-api",
+]
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

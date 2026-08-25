@@ -1,6 +1,7 @@
 package io.opaa.library;
 
-import io.opaa.group.PermissionSubjectType;
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.PermissionSubjectType;
 import java.time.Instant;
 import java.util.UUID;
 

@@ -1,10 +1,11 @@
 package io.opaa.group.sync;
 
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
-import io.opaa.audit.AuditEventType;
-import io.opaa.audit.AuditObjectType;
-import io.opaa.audit.AuditOutcome;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;

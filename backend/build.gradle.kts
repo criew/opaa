@@ -2,7 +2,6 @@ plugins {
     java
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
-    alias(libs.plugins.openapi.generator)
     alias(libs.plugins.spotless)
 }
 
@@ -21,9 +20,6 @@ repositories {
 }
 
 sourceSets {
-    main {
-        java.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/java"))
-    }
     // Retrieval-quality evaluation harness (issue #227). Deliberately its own source set, not
     // part of `test`: it needs Docker (pgvector + Ollama Testcontainers), pulls a ~275 MB
     // embedding model and indexes ~1.450 corpus documents, which would slow down every
@@ -45,6 +41,10 @@ configurations.named("evalTestRuntimeOnly") {
 }
 
 dependencies {
+    // OpenAPI spec, generator config and shared domain enums (issue #896) - transitively brings
+    // the generated io.opaa.api.dto classes onto this module's compile classpath via
+    // opaa-api's own main sourceSet output, without recompiling them here.
+    implementation(project(":opaa-api"))
     implementation(libs.bundles.spring.boot)
     implementation(libs.bundles.spring.ai)
     implementation(libs.spring.boot.starter.liquibase)
@@ -291,124 +291,6 @@ tasks.named<Test>("test") {
     }
 }
 
-tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerate") {
-    generatorName.set("spring")
-    inputSpec.set(layout.projectDirectory.file("src/main/resources/openapi/opaa-api.yaml").asFile.absolutePath)
-    outputDir.set(layout.buildDirectory.dir("generated/openapi").get().asFile.absolutePath)
-    modelPackage.set("io.opaa.api.dto")
-
-    globalProperties.set(
-        mapOf(
-            "models" to "",
-            "apis" to "false",
-            "supportingFiles" to "false",
-            "modelDocs" to "false",
-            "modelTests" to "false",
-            "apiDocs" to "false",
-            "apiTests" to "false",
-        )
-    )
-
-    configOptions.set(
-        mapOf(
-            "useSpringBoot3" to "true",
-            "useJakartaEe" to "true",
-            "useBeanValidation" to "true",
-            "openApiNullable" to "false",
-            "documentationProvider" to "none",
-            "annotationLibrary" to "none",
-            "dateLibrary" to "custom",
-        )
-    )
-
-    typeMappings.set(mapOf(
-        "DateTime" to "Instant",
-        "SpaceRole" to "SpaceRole",
-        "SpaceKind" to "SpaceKind",
-        "SpaceVisibility" to "SpaceVisibility",
-        "SystemRole" to "SystemRole",
-        "GroupKind" to "GroupKind",
-        "DirectorySyncOutcome" to "DirectorySyncOutcome",
-        "LibraryOwnerType" to "LibraryOwnerType",
-        "LibraryVisibility" to "LibraryVisibility",
-        "DocumentStatus" to "DocumentStatus",
-        "DocumentSourceType" to "DocumentSourceType",
-        "AssetRole" to "AssetRole",
-        "PermissionSubjectType" to "PermissionSubjectType",
-        "AuditActorKind" to "ActorKind",
-        "AuditSubjectKind" to "AuditSubjectKind",
-        "AuditOutcome" to "AuditOutcome",
-        "AuditObjectType" to "AuditObjectType",
-        "AuditEventType" to "AuditEventType",
-        "AuditIncidentScopePurpose" to "AuditIncidentScopePurpose",
-        "AuditIncidentScopeStatus" to "AuditIncidentScopeStatus",
-        "ChatStatus" to "ChatStatus",
-        "ChatRole" to "ChatRole",
-        "ColorScheme" to "ColorScheme",
-        "NotificationType" to "NotificationType",
-    ))
-    importMappings.set(mapOf(
-        "Instant" to "java.time.Instant",
-        "SpaceRole" to "io.opaa.space.SpaceRole",
-        "SpaceKind" to "io.opaa.space.SpaceKind",
-        "SpaceVisibility" to "io.opaa.space.SpaceVisibility",
-        "SystemRole" to "io.opaa.auth.SystemRole",
-        "GroupKind" to "io.opaa.group.GroupKind",
-        "DirectorySyncOutcome" to "io.opaa.group.sync.DirectorySyncOutcome",
-        "LibraryOwnerType" to "io.opaa.library.LibraryOwnerType",
-        "LibraryVisibility" to "io.opaa.library.LibraryVisibility",
-        "DocumentStatus" to "io.opaa.indexing.DocumentStatus",
-        "DocumentSourceType" to "io.opaa.indexing.DocumentSourceType",
-        "AssetRole" to "io.opaa.library.AssetRole",
-        "PermissionSubjectType" to "io.opaa.group.PermissionSubjectType",
-        "ActorKind" to "io.opaa.audit.ActorKind",
-        "AuditSubjectKind" to "io.opaa.audit.AuditSubjectKind",
-        "AuditOutcome" to "io.opaa.audit.AuditOutcome",
-        "AuditObjectType" to "io.opaa.audit.AuditObjectType",
-        "AuditEventType" to "io.opaa.audit.AuditEventType",
-        "AuditIncidentScopePurpose" to "io.opaa.audit.AuditIncidentScopePurpose",
-        "AuditIncidentScopeStatus" to "io.opaa.audit.AuditIncidentScopeStatus",
-        "ChatStatus" to "io.opaa.chat.ChatStatus",
-        "ChatRole" to "io.opaa.chat.ChatRole",
-        "ColorScheme" to "io.opaa.branding.ColorScheme",
-        "NotificationType" to "io.opaa.notification.NotificationType",
-    ))
-}
-
-tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerate") {
-    // Local copies inside the configure block on purpose: the doLast action must not reference
-    // script-level members (layout, file(...), top-level vals — those are fields of the script
-    // class), or the closure drags the whole build script into the configuration cache, which
-    // Gradle rejects ("cannot serialize Gradle script object references").
-    val generatedDtoDir = project.layout.buildDirectory.dir("generated/openapi/src/main/java/io/opaa/api/dto")
-    // Candidate file names to remove are derived from typeMappings (issue #835) instead of a
-    // hand-maintained list. With the currently pinned generator version, a schema fully covered by
-    // typeMappings emits no model file at all, so this list is empty in practice — it is a safety
-    // net for a future generator version that goes back to emitting one (an earlier version of
-    // this plugin did; that mismatch is the whole reason this doLast block exists). Both the
-    // OpenAPI schema name (the typeMappings key, e.g. "AuditActorKind") and the mapped Java type
-    // name (the value, e.g. "ActorKind") are included defensively, since it is not contractually
-    // specified which one a future generator version would use for the file name. "DateTime"/
-    // "Instant" is excluded: it is a scalar substitution, not a domain enum, and names no
-    // generated model file. Adding a new domain enum therefore only needs an entry in
-    // typeMappings/importMappings; this list follows automatically. Built with `.map` rather than
-    // `.get()` here so the value is computed lazily from whatever this task's typeMappings holds
-    // at execution time, instead of taking a config-time snapshot that would silently depend on
-    // the registration order of this and the preceding tasks.named block.
-    val generatedEnumFileNames =
-        typeMappings.map { mappings ->
-            (mappings.keys + mappings.values)
-                .filter { it != "DateTime" && it != "Instant" }
-                .map { "$it.java" }
-        }
-    doLast {
-        // Remove generated enum files that are mapped to existing domain enums via typeMappings.
-        // See the comment above: currently a no-op safety net, kept for forward compatibility.
-        val generatedDir = generatedDtoDir.get().asFile
-        generatedEnumFileNames.get().forEach { fileName -> File(generatedDir, fileName).delete() }
-    }
-}
-
-tasks.named("compileJava") {
-    dependsOn("openApiGenerate")
-}
+// The OpenAPI spec, the generator config (typeMappings/importMappings/doLast cleanup) and the
+// generated io.opaa.api.dto classes all live in :opaa-api now (issue #896) - this module only
+// consumes that project's main sourceSet output via `implementation(project(":opaa-api"))` above.

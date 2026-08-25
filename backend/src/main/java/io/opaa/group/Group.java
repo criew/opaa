@@ -1,5 +1,6 @@
 package io.opaa.group;
 
+import io.opaa.api.types.GroupKind;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

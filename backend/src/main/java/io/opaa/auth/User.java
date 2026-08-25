@@ -1,5 +1,6 @@
 package io.opaa.auth;
 
+import io.opaa.api.types.SystemRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

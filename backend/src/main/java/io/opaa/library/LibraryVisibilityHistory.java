@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.api.types.LibraryVisibility;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

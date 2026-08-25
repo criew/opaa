@@ -183,7 +183,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Modifying
   @Transactional
   @Query(
-      "update Document d set d.status = io.opaa.indexing.DocumentStatus.FAILED, d.errorMessage ="
+      "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
           + " :errorMessage where d.id = :id")
   int markFailed(@Param("id") UUID id, @Param("errorMessage") String errorMessage);
 
@@ -194,7 +194,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Modifying
   @Transactional
   @Query(
-      "update Document d set d.status = io.opaa.indexing.DocumentStatus.INDEXED, d.chunkCount ="
+      "update Document d set d.status = io.opaa.api.types.DocumentStatus.INDEXED, d.chunkCount ="
           + " :chunkCount, d.indexedAt = :indexedAt, d.errorMessage = null where d.id = :id")
   int markIndexed(
       @Param("id") UUID id,
@@ -219,9 +219,9 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Modifying
   @Transactional
   @Query(
-      "update Document d set d.status = io.opaa.indexing.DocumentStatus.FAILED, d.errorMessage ="
-          + " :errorMessage where d.status = io.opaa.indexing.DocumentStatus.PENDING and"
-          + " d.sourceType = io.opaa.indexing.DocumentSourceType.UPLOAD and d.createdAt <"
+      "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
+          + " :errorMessage where d.status = io.opaa.api.types.DocumentStatus.PENDING and"
+          + " d.sourceType = io.opaa.api.types.DocumentSourceType.UPLOAD and d.createdAt <"
           + " :threshold")
   int failStalePending(
       @Param("errorMessage") String errorMessage, @Param("threshold") Instant threshold);
@@ -240,7 +240,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Modifying
   @Transactional
   @Query(
-      "update Document d set d.status = io.opaa.indexing.DocumentStatus.INDEXED, d.chunkCount ="
+      "update Document d set d.status = io.opaa.api.types.DocumentStatus.INDEXED, d.chunkCount ="
           + " :chunkCount, d.indexedAt = :indexedAt, d.checksum = :checksum, d.lastModifiedRemote ="
           + " :lastModifiedRemote, d.errorMessage = null where d.id = :id")
   int markIndexedFromSource(

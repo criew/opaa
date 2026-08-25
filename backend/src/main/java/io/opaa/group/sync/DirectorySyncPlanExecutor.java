@@ -1,15 +1,16 @@
 package io.opaa.group.sync;
 
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.api.types.DirectorySyncOutcome;
+import io.opaa.api.types.GroupKind;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
-import io.opaa.audit.AuditEventType;
-import io.opaa.audit.AuditObjectType;
-import io.opaa.audit.AuditOutcome;
-import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
-import io.opaa.group.GroupKind;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupMembershipHistoryCause;
 import io.opaa.group.GroupMembershipResolver;

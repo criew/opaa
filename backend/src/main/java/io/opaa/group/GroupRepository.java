@@ -1,5 +1,6 @@
 package io.opaa.group;
 
+import io.opaa.api.types.GroupKind;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,6 +38,6 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
    */
   @Query(
       "select distinct g from Group g left join fetch g.memberships "
-          + "where g.organizationId = :organizationId and g.kind = io.opaa.group.GroupKind.ORG_UNIT")
+          + "where g.organizationId = :organizationId and g.kind = io.opaa.api.types.GroupKind.ORG_UNIT")
   List<Group> findByOrganizationIdAndKindOrgUnit(@Param("organizationId") UUID organizationId);
 }

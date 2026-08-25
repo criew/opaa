@@ -1,10 +1,11 @@
 package io.opaa.branding;
 
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.ColorScheme;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
-import io.opaa.audit.AuditEventType;
-import io.opaa.audit.AuditObjectType;
-import io.opaa.audit.AuditOutcome;
 import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;

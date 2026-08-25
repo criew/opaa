@@ -1,5 +1,7 @@
 package io.opaa.audit;
 
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.data.domain.Page;

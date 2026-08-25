@@ -6,10 +6,11 @@ import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 
+import io.opaa.api.types.DirectorySyncOutcome;
+import io.opaa.api.types.GroupKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
-import io.opaa.group.GroupKind;
 import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;

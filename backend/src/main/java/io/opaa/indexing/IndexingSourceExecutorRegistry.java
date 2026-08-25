@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.api.types.DocumentSourceType;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;

@@ -1,6 +1,7 @@
 package io.opaa.notification;
 
-import io.opaa.audit.AuditObjectType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.NotificationType;
 import io.opaa.common.NotFoundException;
 import java.util.List;
 import java.util.UUID;

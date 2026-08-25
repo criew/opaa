@@ -1,6 +1,6 @@
 package io.opaa.library;
 
-import io.opaa.group.PermissionSubjectType;
+import io.opaa.api.types.PermissionSubjectType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Optional;
@@ -46,7 +46,7 @@ public interface AssetGrantHistoryRepository extends JpaRepository<AssetGrantHis
    */
   @Query(
       "select h.libraryId from AssetGrantHistory h "
-          + "where h.subjectType = io.opaa.group.PermissionSubjectType.USER "
+          + "where h.subjectType = io.opaa.api.types.PermissionSubjectType.USER "
           + "and h.subjectUserId = :userId and h.organizationId = :organizationId "
           + "and h.validFrom <= :asOf and (h.validTo is null or h.validTo > :asOf) "
           + "and (h.expiresAt is null or h.expiresAt > :asOf)")
@@ -58,7 +58,7 @@ public interface AssetGrantHistoryRepository extends JpaRepository<AssetGrantHis
   /** The group-grant counterpart of {@link #findReadableLibraryIdsByDirectGrantAsOf}. */
   @Query(
       "select h.libraryId from AssetGrantHistory h "
-          + "where h.subjectType = io.opaa.group.PermissionSubjectType.GROUP "
+          + "where h.subjectType = io.opaa.api.types.PermissionSubjectType.GROUP "
           + "and h.subjectGroupId in :groupIds and h.organizationId = :organizationId "
           + "and h.validFrom <= :asOf and (h.validTo is null or h.validTo > :asOf) "
           + "and (h.expiresAt is null or h.expiresAt > :asOf)")

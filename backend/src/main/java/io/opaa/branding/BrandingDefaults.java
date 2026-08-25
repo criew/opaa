@@ -1,5 +1,7 @@
 package io.opaa.branding;
 
+import io.opaa.api.types.ColorScheme;
+
 /**
  * The OPAA standard every unconfigured branding field falls back to (#582). Kept in one place, and
  * resolved per field rather than per row: an operator who only replaces the logo keeps the standard

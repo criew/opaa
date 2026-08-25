@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.api.types.DocumentSourceType;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;

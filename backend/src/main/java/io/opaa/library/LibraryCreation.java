@@ -1,6 +1,8 @@
 package io.opaa.library;
 
-import io.opaa.indexing.DocumentSourceType;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.LibraryOwnerType;
+import io.opaa.api.types.LibraryVisibility;
 import java.net.URI;
 import java.util.UUID;
 

@@ -4,11 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
-import io.opaa.group.PermissionSubjectType;
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.library.AssetGrant;
 import io.opaa.library.AssetGrantUpsert;
 import io.opaa.library.AssetGrantView;
-import io.opaa.library.AssetRole;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

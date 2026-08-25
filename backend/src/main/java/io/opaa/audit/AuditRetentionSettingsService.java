@@ -1,5 +1,8 @@
 package io.opaa.audit;
 
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.AuditOutcome;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;

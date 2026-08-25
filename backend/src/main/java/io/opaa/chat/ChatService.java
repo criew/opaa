@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import io.opaa.api.types.ChatRole;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;

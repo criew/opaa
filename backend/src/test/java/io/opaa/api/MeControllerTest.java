@@ -8,13 +8,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.CurrentUser;
-import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.group.Group;
-import io.opaa.group.GroupKind;
 import io.opaa.group.GroupService;
 import java.util.List;
 import java.util.UUID;

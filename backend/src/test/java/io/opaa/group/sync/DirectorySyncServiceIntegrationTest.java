@@ -3,10 +3,11 @@ package io.opaa.group.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.DirectorySyncOutcome;
+import io.opaa.api.types.GroupKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
-import io.opaa.group.GroupKind;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupMembershipRepository;
