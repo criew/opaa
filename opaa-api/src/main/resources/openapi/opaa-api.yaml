@@ -2449,11 +2449,11 @@ components:
     IndexingRunEventCategory:
       type: string
       description: >
-        Why a single item was skipped/rejected or failed during a run, or - for FORMAT_MISMATCH and
-        SCHEDULE_SKIPPED - a note that is not about the item's own outcome at all (#513, #404,
-        #485). Deliberately coarse (seven buckets, not one per exception type) so the category
-        stays a stable, translatable label rather than growing a new value with every executor
-        change:
+        Why a single item was skipped/rejected or failed during a run, or - for FORMAT_MISMATCH,
+        SCHEDULE_SKIPPED and REMOVED - a note that is not about the item's own outcome at all
+        (#513, #404, #485, #886). Deliberately coarse (eight buckets, not one per exception type)
+        so the category stays a stable, translatable label rather than growing a new value with
+        every executor change:
           * REJECTED - the source itself declined to hand the item over (HTTP 403/429, a redirect
             to a foreign host that looks like a bot-protection challenge, an unsupported link
             scheme) - not a failure of OPAA's own processing.
@@ -2464,13 +2464,16 @@ components:
           * ALLOWLIST - the run's own source configuration (e.g. a FILESYSTEM library's
             sourcePath) falls outside an operator-configured allowlist (#484).
           * ERROR - processing started but failed unexpectedly (parsing, chunking, embedding).
-          * FORMAT_MISMATCH - the only category besides SCHEDULE_SKIPPED that does not mean the
-            item was skipped, rejected or failed: the item's file extension did not match its
-            detected content, but it was indexed anyway (#404) - this is a note about an accepted
-            item, not a reason it was not counted among documentsSkipped/documentsFailed.
+          * FORMAT_MISMATCH - the item's file extension did not match its detected content, but it
+            was indexed anyway (#404) - a note about an accepted item, not a reason it was not
+            counted among documentsSkipped/documentsFailed.
           * SCHEDULE_SKIPPED - a scheduled run (#485) found the library still indexing from a
             previous run and did not start a second one; recorded against the still-running job's
             own protocol, not a new run of its own.
+          * REMOVED - a previously indexed document no longer exists at its source and was deleted
+            at the end of a successful, complete run (#886, ADR-0017 Entscheidung 5) - like
+            FORMAT_MISMATCH/SCHEDULE_SKIPPED, this does not count among documentsSkipped/
+            documentsFailed either.
       enum:
         [
           REJECTED,
@@ -2480,6 +2483,7 @@ components:
           ERROR,
           FORMAT_MISMATCH,
           SCHEDULE_SKIPPED,
+          REMOVED,
         ]
       example: REJECTED
 

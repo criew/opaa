@@ -181,4 +181,40 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
     // subdirectory (and therefore its three further files) is never even fetched.
     assertThat(subRequestCount.get()).isZero();
   }
+
+  @Test
+  void anUnreachableSubdirectoryMarksTheResultIncompleteWithoutFailingTheWholeCrawl()
+      throws IOException, InterruptedException {
+    // #886 review: distinct from depthLimitReached/entryLimitReached - neither limit is hit here,
+    // but "sub/" answering 500 still means entries is missing content this crawl never saw, which
+    // StaleDocumentCleanupService's caller must treat the same way as a limit (never delete by
+    // absence on an incomplete bestand).
+    server.createContext(
+        "/", exchange -> respond(exchange, directoryListing(baseUrl + "/sub/", "sub", "root.txt")));
+    server.createContext(
+        "/sub/",
+        exchange -> {
+          exchange.sendResponseHeaders(500, -1);
+          exchange.close();
+        });
+
+    AutoindexCrawlerService service =
+        new AutoindexCrawlerService(
+            TargetAddressValidator.disabled(), new CrawlProperties(10, 100));
+
+    AutoindexCrawlerService.CrawlResult result =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(10),
+            () -> service.crawl(baseUrl + "/", null, -1, null, null, false));
+
+    assertThat(result.entries())
+        .extracting(AutoindexCrawlerService.CrawledFileEntry::name)
+        .containsExactly("root.txt");
+    assertThat(result.incomplete()).isTrue();
+    assertThat(result.depthLimitReached()).isFalse();
+    assertThat(result.entryLimitReached()).isFalse();
+    assertThat(result.truncated())
+        .as("incomplete is tracked independently of truncated - callers must check both")
+        .isFalse();
+  }
 }

@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -51,11 +52,24 @@ class DocumentServiceTest {
   }
 
   @Test
-  void discoverFilesReturnsEmptyForNonexistentDir() throws IOException {
-    var discovered = service.discoverFiles(tempDir.resolve("nonexistent"));
+  void discoverFilesFailsInsteadOfSilentlyReportingAnEmptyBestandForANonexistentDir() {
+    // #886 review: a missing directory (unmounted network share, moved/renamed source) must fail
+    // the run, not look like a genuinely empty - but successful - source;
+    // StaleDocumentCleanupService
+    // would otherwise read that as "every document vanished" and delete the whole library.
+    Path nonexistent = tempDir.resolve("nonexistent");
 
-    assertThat(discovered.supported()).isEmpty();
-    assertThat(discovered.rejected()).isEmpty();
+    assertThatThrownBy(() -> service.discoverFiles(nonexistent))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining(nonexistent.toString());
+  }
+
+  @Test
+  void discoverFilesFailsWhenThePathIsAFileNotADirectory() throws IOException {
+    Path file = tempDir.resolve("not-a-directory.txt");
+    Files.writeString(file, "content");
+
+    assertThatThrownBy(() -> service.discoverFiles(file)).isInstanceOf(IOException.class);
   }
 
   @Test

@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -36,7 +37,15 @@ import org.springframework.scheduling.annotation.Async;
  * above be pruned in this same run instead of lagging one run behind. Both are only reached on this
  * method's own success path (never from a {@code catch} block), so a failed or crashed run never
  * deletes anything; {@code discoverFiles} walks the whole tree with no truncation limit, so -
- * unlike {@link UrlIndexingExecutor} - there is no capped-run case to guard against here.
+ * unlike {@link UrlIndexingExecutor} - there is no capped-run case to guard against here. It does,
+ * however, throw when {@code sourcePath} itself does not currently exist or is not a directory
+ * (#886 review) - an unmounted network share or a moved directory fails this run instead of
+ * silently reporting an empty, "successful" bestand that {@link
+ * StaleDocumentCleanupService#cleanupVanished} would otherwise read as "every document vanished".
+ * {@code cleanupVanished}'s own {@code currentFilePaths} is built from every physically found file,
+ * not only the indexable ones - an unreadable file ({@link
+ * DocumentService.DiscoveredFiles#rejected}) is still present at the source, just not indexable,
+ * and must not be treated as vanished either.
  */
 public class AsyncIndexingExecutor implements SourceIndexingExecutor {
 
@@ -196,10 +205,14 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       // below so a folder that only held a now-vanished document can already be pruned in this
       // same run, instead of lagging one run behind.
       try {
+        // #886 review: "physically found", not "indexable" - an unreadable/unsupported-format
+        // file is still present at the source and must not be treated as vanished.
         Set<String> currentFilePaths =
-            files.stream().map(f -> f.toAbsolutePath().toString()).collect(Collectors.toSet());
+            Stream.concat(files.stream(), discovered.rejected().stream())
+                .map(f -> f.toAbsolutePath().toString())
+                .collect(Collectors.toSet());
         staleDocumentCleanupService.cleanupVanished(
-            targetLibrary, DocumentSourceType.FILESYSTEM, currentFilePaths);
+            targetLibrary, DocumentSourceType.FILESYSTEM, currentFilePaths, events);
       } catch (Exception e) {
         log.warn(
             "Failed to clean up vanished FILESYSTEM documents for library {}",

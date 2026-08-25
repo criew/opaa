@@ -63,10 +63,19 @@ public class AutoindexCrawlerService {
   /**
    * The outcome of {@link #crawl}: {@code depthLimitReached}/{@code entryLimitReached} tell the
    * caller whether either of {@link CrawlProperties}'s limits actually cut the crawl short, so a
-   * capped run is distinguishable from a complete one in the UI instead of only in the log.
+   * capped run is distinguishable from a complete one in the UI instead of only in the log. {@code
+   * incomplete} is a distinct, non-limit reason a full bestand was not achieved: at least one
+   * subdirectory could not be fetched at all (network hiccup, transient 5xx) - {@code entries} is
+   * then missing everything under that subtree, exactly the way a limit-truncated crawl is missing
+   * everything past its cut. {@link #truncated()} intentionally does not fold this in: callers that
+   * only care about the UI-visible "capped by a configured limit" event (as opposed to the "safe to
+   * delete by absence" decision) must keep telling the two apart.
    */
   public record CrawlResult(
-      List<CrawledFileEntry> entries, boolean depthLimitReached, boolean entryLimitReached) {
+      List<CrawledFileEntry> entries,
+      boolean depthLimitReached,
+      boolean entryLimitReached,
+      boolean incomplete) {
 
     boolean truncated() {
       return depthLimitReached || entryLimitReached;
@@ -93,13 +102,15 @@ public class AutoindexCrawlerService {
     List<CrawledFileEntry> results = new ArrayList<>();
     TruncationTracker truncation = new TruncationTracker();
     crawlRecursive(httpClient, authHeader, baseUrl, 0, results, new HashSet<>(), truncation);
-    return new CrawlResult(results, truncation.depthLimitReached, truncation.entryLimitReached);
+    return new CrawlResult(
+        results, truncation.depthLimitReached, truncation.entryLimitReached, truncation.incomplete);
   }
 
   /** One log message per truncation reason, not per occurrence. */
   private static final class TruncationTracker {
     private boolean depthLimitReached;
     private boolean entryLimitReached;
+    private boolean incomplete;
 
     void logDepthLimitOnce(int maxDepth, String url) {
       if (!depthLimitReached) {
@@ -121,6 +132,17 @@ public class AutoindexCrawlerService {
             maxEntries,
             url);
       }
+    }
+
+    /**
+     * Marks the crawl as having skipped an entire subtree it could not fetch at all (#886 review):
+     * unlike {@link #logDepthLimitOnce}/{@link #logEntryLimitOnce}, this is never a configured
+     * limit doing its job - it means {@code entries} is missing content the crawl never even saw,
+     * so a caller deciding whether to delete-by-absence must treat this the same as a limit.
+     */
+    void markIncomplete(String url, IOException cause) {
+      incomplete = true;
+      log.warn("Failed to crawl directory {}: {}", url, cause.getMessage());
     }
   }
 
@@ -171,7 +193,7 @@ public class AutoindexCrawlerService {
           crawlRecursive(
               httpClient, authHeader, entry.url(), depth + 1, results, visited, truncation);
         } catch (IOException e) {
-          log.warn("Failed to crawl directory {}: {}", entry.url(), e.getMessage());
+          truncation.markIncomplete(entry.url(), e);
         }
       } else {
         results.add(entry);

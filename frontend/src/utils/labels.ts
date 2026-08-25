@@ -229,6 +229,9 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
   // content is reported here.
   FORMAT_MISMATCH: 'Endung weicht vom Inhalt ab',
   SCHEDULE_SKIPPED: 'Geplanter Lauf übersprungen',
+  // #886: the document no longer exists at its source and was removed at the end of a
+  // successful, complete run - a note about the removal, not a skip/reject/error of this run.
+  REMOVED: 'In der Quelle entfernt',
 }
 
 export function indexingRunEventCategoryLabel(

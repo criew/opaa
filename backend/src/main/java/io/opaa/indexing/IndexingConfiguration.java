@@ -88,16 +88,21 @@ public class IndexingConfiguration {
         properties.targetValidation().enabled(), properties.targetValidation().allowlist());
   }
 
-  // Declared as SourceIndexingExecutor, not the concrete executor type: all three beans below
-  // carry @Async and are therefore wrapped in a JDK dynamic proxy at runtime, which only
-  // implements the interfaces the target class declares. Every consumer
-  // (IndexingSourceExecutorRegistry) depends on SourceIndexingExecutor already.
+  /**
+   * Shared by every {@link SourceIndexingExecutor} bean below that runs a full, "vollständig
+   * auflistend" crawl (FILESYSTEM, HTTP_DIRECTORY) - {@code RssFeedIndexingExecutor} deliberately
+   * does not depend on this (#886, ADR-0017 decision 5).
+   */
   @Bean
   StaleDocumentCleanupService staleDocumentCleanupService(
       DocumentRepository documentRepository, VectorChunkStore vectorChunkStore) {
     return new StaleDocumentCleanupService(documentRepository, vectorChunkStore);
   }
 
+  // Declared as SourceIndexingExecutor, not the concrete executor type: all three beans below
+  // carry @Async and are therefore wrapped in a JDK dynamic proxy at runtime, which only
+  // implements the interfaces the target class declares. Every consumer
+  // (IndexingSourceExecutorRegistry) depends on SourceIndexingExecutor already.
   @Bean
   SourceIndexingExecutor asyncIndexingExecutor(
       DocumentService documentService,

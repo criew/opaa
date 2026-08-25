@@ -212,6 +212,19 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
+  void constructorNeverAcceptsAStaleDocumentCleanupService() {
+    // #886 review: RSS deliberately never cleans up by absence (ADR-0017, decision 5) - a
+    // constructor parameter for StaleDocumentCleanupService here would already be a structural
+    // regression before any test exercises behavior, so this guards the constructor's own shape
+    // rather than relying solely on a mocked-collaborator interaction test below.
+    boolean anyConstructorAcceptsCleanupService =
+        java.util.Arrays.stream(RssFeedIndexingExecutor.class.getDeclaredConstructors())
+            .flatMap(c -> java.util.Arrays.stream(c.getParameterTypes()))
+            .anyMatch(StaleDocumentCleanupService.class::equals);
+    assertThat(anyConstructorAcceptsCleanupService).isFalse();
+  }
+
+  @Test
   void anEntryScrolledOutOfTheFeedWindowIsNeverDeleted() {
     // #886: unlike AsyncIndexingExecutor/UrlIndexingExecutor, RSS never deletes by absence
     // (ADR-0017, decision 5) - an entry missing from this run's own feed fetch only means it fell

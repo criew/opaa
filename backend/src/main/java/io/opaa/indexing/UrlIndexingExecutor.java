@@ -28,10 +28,22 @@ import org.springframework.scheduling.annotation.Async;
  * <p>Once every crawled entry has been processed, {@link
  * StaleDocumentCleanupService#cleanupVanished} removes every {@code HTTP_DIRECTORY} document of
  * this library whose URL was not in this run's own crawl result - it no longer exists at the source
- * (#886). Skipped entirely when {@link AutoindexCrawlerService.CrawlResult#truncated()} is {@code
- * true}: a depth/entry limit means this run's own {@code allFiles} is not the source's complete
- * bestand, so anything beyond the cut would incorrectly look vanished. Also only reached on this
- * method's own success path, so a failed or crashed run never deletes anything.
+ * (#886). This method skips the call entirely when either of the following holds, since each one
+ * means {@code allFiles} is not a trustworthy stand-in for the source's complete bestand:
+ *
+ * <ul>
+ *   <li>{@link AutoindexCrawlerService.CrawlResult#truncated()} - a depth/entry limit cut the crawl
+ *       short, so anything beyond the cut would incorrectly look vanished.
+ *   <li>{@link AutoindexCrawlerService.CrawlResult#incomplete()} - at least one subdirectory could
+ *       not be fetched at all (#886 review); every document under that subtree would otherwise look
+ *       vanished even though the crawl simply never reached it.
+ * </ul>
+ *
+ * {@code cleanupVanished} itself additionally refuses an empty {@code currentUrls} (#886 review) -
+ * a root page answering with zero entries is indistinguishable here from an unreachable or
+ * misconfigured source (a maintenance page returning {@code 200}, a misconfigured redirect target),
+ * so this guard lives in the shared service rather than being duplicated per executor. Also only
+ * reached on this method's own success path, so a failed or crashed run never deletes anything.
  */
 public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
@@ -117,6 +129,16 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
         events.record(
             IndexingEventCategory.REJECTED,
             "Crawl wurde durch ein konfiguriertes Limit abgeschnitten (Tiefe oder Anzahl Einträge)",
+            url);
+      }
+      // #886 review: a subtree this run could not fetch at all is a different reason than a
+      // configured limit, but has the same consequence for stale-document cleanup below - the
+      // run's own bestand is incomplete either way.
+      if (crawlResult.incomplete()) {
+        events.record(
+            IndexingEventCategory.REJECTED,
+            "Mindestens ein Unterverzeichnis konnte nicht abgerufen werden - der Bestand dieses"
+                + " Laufs ist unvollständig",
             url);
       }
 
@@ -232,16 +254,17 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
         progress.report();
       }
 
-      // See this class' own Javadoc: skipped for a truncated crawl, only reached on the success
-      // path (#886).
-      if (!crawlResult.truncated()) {
+      // See this class' own Javadoc: skipped for a truncated or incomplete crawl (#886/#886
+      // review), only reached on the success path. An empty currentUrls is additionally guarded
+      // inside cleanupVanished itself, not duplicated here.
+      if (!crawlResult.truncated() && !crawlResult.incomplete()) {
         try {
           Set<String> currentUrls =
               allFiles.stream()
                   .map(AutoindexCrawlerService.CrawledFileEntry::url)
                   .collect(Collectors.toSet());
           staleDocumentCleanupService.cleanupVanished(
-              targetLibrary, DocumentSourceType.HTTP_DIRECTORY, currentUrls);
+              targetLibrary, DocumentSourceType.HTTP_DIRECTORY, currentUrls, events);
         } catch (Exception e) {
           log.warn(
               "Failed to clean up vanished HTTP_DIRECTORY documents for library {}",

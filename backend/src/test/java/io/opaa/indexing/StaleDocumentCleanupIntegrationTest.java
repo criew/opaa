@@ -73,6 +73,7 @@ class StaleDocumentCleanupIntegrationTest {
   @Autowired private DocumentRepository documentRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobRepository indexingJobRepository;
+  @Autowired private IndexingRunEventRepository indexingRunEventRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @MockitoBean private ChatModel chatModel;
   @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
@@ -167,16 +168,39 @@ class StaleDocumentCleanupIntegrationTest {
     return count == null ? 0 : count;
   }
 
+  private void insertDocument(UUID libraryId, String fileName, DocumentSourceType sourceType) {
+    UUID id = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO documents (id, file_name, file_path, content_type, file_size, chunk_count,"
+            + " indexed_at, checksum, status, source_type, library_id, organization_id,"
+            + " created_at) VALUES (?, ?, ?, 'text/plain', 1, 0, now(), ?, 'INDEXED', ?, ?, ?,"
+            + " now())",
+        id,
+        fileName,
+        "irrelevant-path-for-" + fileName,
+        "checksum-" + id,
+        sourceType.name(),
+        libraryId,
+        Organization.DEFAULT_ID);
+  }
+
   @Test
   void aDocumentWhoseFileVanishedIsRemovedWithItsChunksAfterASuccessfulRun() throws IOException {
     Files.writeString(sharedTempDir.resolve("keep.txt"), "This file stays.");
     Files.writeString(sharedTempDir.resolve("vanishing.txt"), "This file will disappear.");
+    // #886 review, ADR-0017 core rule: cleanup is scoped to (library, sourceType) - a document of
+    // a different sourceType in the very same (nominally FILESYSTEM) library must survive
+    // regardless of what the FILESYSTEM cleanup below does. Inserted directly, bypassing the
+    // "one source type per library" rule ADR-0018 normally enforces at creation time, to prove the
+    // cleanup query itself never crosses sourceType even if such a row exists.
+    insertDocument(targetLibraryId, "upload.txt", DocumentSourceType.UPLOAD);
+    insertDocument(targetLibraryId, "feed-entry.html", DocumentSourceType.RSS_FEED);
 
     IndexingJob firstJob = triggerIndexing();
     awaitJobCompletion(firstJob);
     assertThat(indexingJobRepository.findById(firstJob.getId()).orElseThrow().getStatus())
         .isEqualTo(JobStatus.COMPLETED);
-    assertThat(documentRepository.findByLibraryId(targetLibraryId)).hasSize(2);
+    assertThat(documentRepository.findByLibraryId(targetLibraryId)).hasSize(4);
 
     Document vanishingDoc =
         documentRepository.findByLibraryId(targetLibraryId).stream()
@@ -191,6 +215,18 @@ class StaleDocumentCleanupIntegrationTest {
             .filter(d -> d.getFileName().equals("keep.txt"))
             .findFirst()
             .orElseThrow();
+    UUID uploadDocId =
+        documentRepository.findByLibraryId(targetLibraryId).stream()
+            .filter(d -> d.getFileName().equals("upload.txt"))
+            .findFirst()
+            .orElseThrow()
+            .getId();
+    UUID rssDocId =
+        documentRepository.findByLibraryId(targetLibraryId).stream()
+            .filter(d -> d.getFileName().equals("feed-entry.html"))
+            .findFirst()
+            .orElseThrow()
+            .getId();
 
     Files.delete(sharedTempDir.resolve("vanishing.txt"));
 
@@ -205,15 +241,43 @@ class StaleDocumentCleanupIntegrationTest {
     assertThat(chunkCountFor(vanishingDocId))
         .as("its chunks must be removed from the vector store too")
         .isZero();
+    assertThat(documentRepository.findById(uploadDocId))
+        .as("an UPLOAD document in the same library is a different sourceType and must survive")
+        .isPresent();
+    assertThat(documentRepository.findById(rssDocId))
+        .as("an RSS_FEED document in the same library is a different sourceType and must survive")
+        .isPresent();
 
     List<Document> remaining = documentRepository.findByLibraryId(targetLibraryId);
-    assertThat(remaining).hasSize(1);
-    assertThat(remaining.getFirst().getId()).isEqualTo(keptDoc.getId());
+    assertThat(remaining)
+        .extracting(Document::getId)
+        .containsExactlyInAnyOrder(keptDoc.getId(), uploadDocId, rssDocId);
+
+    // #886 review (finding 5): the run's own protocol names what was removed and not just how many.
+    List<IndexingRunEvent> events =
+        indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(secondJob.getId());
+    assertThat(events)
+        .anyMatch(
+            e ->
+                e.getCategory() == IndexingEventCategory.REMOVED
+                    && vanishingDoc.getFilePath().equals(e.getReference()));
   }
 
   @Test
   void aFailedRunNeverDeletesADocumentEvenIfItsFileVanishedFromTheSource() throws IOException {
-    Files.writeString(sharedTempDir.resolve("survivor.txt"), "Must survive a failed run.");
+    // Sharpened per #886 review: the failure must come from within discoverFiles itself (the
+    // production code path that can genuinely race a real source, e.g. an unmounted network
+    // share), not from the allowlist pre-check that runs before discoverFiles is ever called -
+    // library.sourcePath points at its own dedicated subdirectory of sharedTempDir (still inside
+    // the configured allowlist) so only that subdirectory - never sharedTempDir itself - is
+    // removed between the two runs.
+    Path librarySourceDir = sharedTempDir.resolve("failed-run-source");
+    Files.createDirectory(librarySourceDir);
+    jdbcTemplate.update(
+        "UPDATE knowledge_libraries SET source_path = ? WHERE id = ?",
+        librarySourceDir.toAbsolutePath().toString(),
+        targetLibraryId);
+    Files.writeString(librarySourceDir.resolve("survivor.txt"), "Must survive a failed run.");
 
     IndexingJob firstJob = triggerIndexing();
     awaitJobCompletion(firstJob);
@@ -222,19 +286,12 @@ class StaleDocumentCleanupIntegrationTest {
     Document survivor =
         documentRepository.findByLibraryId(targetLibraryId).stream().findFirst().orElseThrow();
 
-    // The file "vanishes" (deleted, exactly like the successful-cleanup test above), but this
-    // time the library's own sourcePath is also narrowed outside the configured allowlist before
-    // the next run - AsyncIndexingExecutor rejects it before ever calling discoverFiles, and the
-    // job fails (ADR-0018 Entscheidung 6, mirrors
-    // triggerIndexingFailsTheJobWhenSourcePathIsOutsideTheConfiguredAllowlist in
-    // DocumentIndexingIntegrationTest). A capped/failed run's currentFilePaths would be incomplete
-    // - cleanupVanished must never run at all here.
-    Files.delete(sharedTempDir.resolve("survivor.txt"));
-    Path outsideAllowlist = sharedTempDir.resolveSibling("opaa-886-outside-allowlist");
-    jdbcTemplate.update(
-        "UPDATE knowledge_libraries SET source_path = ? WHERE id = ?",
-        outsideAllowlist.toAbsolutePath().toString(),
-        targetLibraryId);
+    // The source directory itself disappears entirely (not just the file in it) - the next run's
+    // own DocumentService#discoverFiles throws IOException (#886 fix), caught by
+    // AsyncIndexingExecutor's outer catch, which fails the job before cleanupVanished (or even
+    // pruneOrphanedFolders) is ever reached.
+    Files.delete(librarySourceDir.resolve("survivor.txt"));
+    Files.delete(librarySourceDir);
 
     IndexingJob secondJob = triggerIndexing();
     awaitJobCompletion(secondJob);
@@ -246,5 +303,36 @@ class StaleDocumentCleanupIntegrationTest {
         .as("a failed run must not delete a document, even though its file is gone too")
         .isPresent();
     assertThat(chunkCountFor(survivor.getId())).isPositive();
+  }
+
+  @Test
+  void aSuccessfulRunOverAGenuinelyEmptyDirectoryNeverDeletesTheExistingBestand()
+      throws IOException {
+    // #886 review, finding 1: the directory itself still exists (discoverFiles succeeds, the job
+    // COMPLETEs normally) but every file inside it is gone - indistinguishable here from an
+    // unreachable/misconfigured source (an empty maintenance mount, a listing OPAA read before the
+    // real content was synced). StaleDocumentCleanupService#cleanupVanished's own empty-set guard
+    // must still refuse to delete the library's entire previously indexed bestand on that single
+    // signal alone.
+    Files.writeString(sharedTempDir.resolve("only-file.txt"), "The only file, for now.");
+
+    IndexingJob firstJob = triggerIndexing();
+    awaitJobCompletion(firstJob);
+    assertThat(indexingJobRepository.findById(firstJob.getId()).orElseThrow().getStatus())
+        .isEqualTo(JobStatus.COMPLETED);
+    Document onlyDoc =
+        documentRepository.findByLibraryId(targetLibraryId).stream().findFirst().orElseThrow();
+
+    Files.delete(sharedTempDir.resolve("only-file.txt"));
+
+    IndexingJob secondJob = triggerIndexing();
+    awaitJobCompletion(secondJob);
+    assertThat(indexingJobRepository.findById(secondJob.getId()).orElseThrow().getStatus())
+        .isEqualTo(JobStatus.COMPLETED);
+
+    assertThat(documentRepository.findById(onlyDoc.getId()))
+        .as("an empty (but successful) run must not delete every previously indexed document")
+        .isPresent();
+    assertThat(chunkCountFor(onlyDoc.getId())).isPositive();
   }
 }

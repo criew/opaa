@@ -233,7 +233,8 @@ class UrlIndexingExecutorExecuteTest {
         .cleanupVanished(
             eq(library),
             eq(DocumentSourceType.HTTP_DIRECTORY),
-            eq(Set.of(baseUrl + "/files/bericht.txt")));
+            eq(Set.of(baseUrl + "/files/bericht.txt")),
+            any());
   }
 
   @Test
@@ -259,6 +260,57 @@ class UrlIndexingExecutorExecuteTest {
     execute();
 
     verifyNoInteractions(staleDocumentCleanupService);
+  }
+
+  @Test
+  void aCrawlWithAnUnreachableSubdirectoryNeverCallsStaleDocumentCleanup() throws IOException {
+    // #886 review: a subdirectory AutoindexCrawlerService could not fetch at all (transient 5xx)
+    // leaves the crawl's own entries incomplete, even though depthLimitReached/entryLimitReached
+    // both stay false - a distinct reason from truncation with the same consequence for cleanup.
+    serve(
+        "/files/",
+        "text/html",
+        ("<html><head><title>Index of /files/</title></head><body><ul>"
+                + "<li><a href=\"root.txt\">root.txt</a></li>"
+                + "<li><a href=\"sub/\">sub/</a></li>"
+                + "</ul></body></html>")
+            .getBytes(StandardCharsets.UTF_8));
+    serve("/files/root.txt", "text/plain", "Wurzel.".getBytes(StandardCharsets.UTF_8));
+    server.createContext(
+        "/files/sub/",
+        exchange -> {
+          exchange.sendResponseHeaders(500, -1);
+          exchange.close();
+        });
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute();
+
+    verify(indexingRunEventRepository, timeout(5000))
+        .save(argThat(categoryIs(IndexingEventCategory.REJECTED)));
+    verifyNoInteractions(staleDocumentCleanupService);
+  }
+
+  @Test
+  void aRootListingWithZeroEntriesStillCallsCleanupButWithAnEmptySet() throws IOException {
+    // #886 review: a root page answering with an empty (but genuinely 200, well-formed) listing -
+    // e.g. a maintenance page mistaken for the real directory - must not be read as "every
+    // document vanished". The guard against an empty currentUrls lives inside
+    // StaleDocumentCleanupService#cleanupVanished itself (see its own Javadoc), not in this
+    // executor - this proves the executor still hands the (empty) set through rather than
+    // special-casing it here too.
+    serve(
+        "/files/",
+        "text/html",
+        "<html><head><title>Index of /files/</title></head><body><ul></ul></body></html>"
+            .getBytes(StandardCharsets.UTF_8));
+
+    execute();
+
+    verify(staleDocumentCleanupService, timeout(5000))
+        .cleanupVanished(eq(library), eq(DocumentSourceType.HTTP_DIRECTORY), eq(Set.of()), any());
   }
 
   private static org.mockito.ArgumentMatcher<IndexingRunEvent> categoryIs(

@@ -242,8 +242,12 @@ Quellentyp `FILESYSTEM` vollständig deaktiviert** — die sichere Voreinstellun
 (siehe [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md), Entscheidung 6-Nachtrag,
 und die Javadoc von `FilesystemPathAllowlist`). Ablauf eines Laufs entspricht dem
 [Webverzeichnis](#webverzeichnis-gebaut): vollständige Auflistung bei jedem Lauf; die
-**Löschung durch Abwesenheit ist für diesen Typ entschieden, aber noch nicht gebaut** (ADR-0017,
-Entscheidung 5, siehe [ADR-0017](../decisions/0017-quellentypmodell-indizierung.md)).
+**Löschung durch Abwesenheit ist für diesen Typ gebaut** (ADR-0017, Entscheidung 5, siehe
+[ADR-0017](../decisions/0017-quellentypmodell-indizierung.md)) — am Ende eines erfolgreichen,
+nicht gekappten Laufs entfernt OPAA ein Dokument, dessen Datei im aktuellen Bestand fehlt, samt
+seiner Chunks; ein leerer oder fehlgeschlagener Lauf (z. B. ein nicht eingehängtes Netzlaufwerk)
+löscht dagegen nichts, um einen scheinbar leeren Bestand nicht mit einer echten Leerung zu
+verwechseln.
 
 ### Webverzeichnis (gebaut)
 
@@ -278,6 +282,13 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
    Änderungszeitpunkt ab.
 5. Die Datei durchläuft dieselbe Verarbeitungskette wie jedes andere Dokument.
 6. Der temporäre Bereich wird nach der Verarbeitung geräumt — auch bei einem Fehler.
+7. **Löschung durch Abwesenheit ist gebaut** (ADR-0017, Entscheidung 5): Ein Dokument, dessen URL
+   im aktuellen Abruf fehlt, wird am Ende eines erfolgreichen Laufs samt seiner Chunks entfernt.
+   Drei Fälle lösen das bewusst **nicht** aus, weil der jeweilige Bestand dann keine verlässliche
+   Aussage über ein Verschwinden ist: ein durch Tiefen-/Mengenlimit abgeschnittener Lauf (Schritt
+   1), ein Lauf, bei dem mindestens ein Unterverzeichnis nicht abgerufen werden konnte, und ein
+   Lauf, dessen Wurzelseite null Einträge lieferte (z. B. eine Wartungsseite anstelle der echten
+   Auflistung) oder der insgesamt fehlgeschlagen ist.
 
 **Was der Weg heute kann:** rekursives Durchlaufen, einfache Anmeldung mit Benutzername und Kennwort,
 Zugriff über einen Netzvermittler (Proxy), auf Wunsch das Aussetzen der Zertifikatsprüfung für
@@ -738,17 +749,17 @@ Pfad sich seither nicht geändert hat. Ein Verzeichnis ohne indexierbare Datei e
 eigener Ordner — Ordner entstehen nur entlang tatsächlich gefundener Dateien, es gibt (anders als bei
 `UPLOAD`) keinen Weg, einen leeren Ordner vorab anzulegen.
 
-**Die Quelle ist führend, mit einer Einschränkung:** Ein Ordner, den ein Lauf nicht mehr im
-Dateisystem sieht und der (auch transitiv über seine Unterordner) kein Dokument mehr enthält, wird am
-Ende desselben Laufs entfernt — das ist bereits mit diesem Issue gebaut. Ein Ordner, dessen
-Verzeichnis verschwunden ist, dessen Dokumentzeile aber noch existiert, bleibt dagegen vorerst stehen:
-Löschung durch Abwesenheit ist für Dokumente selbst laut
-[ADR-0017](../decisions/0017-quellentypmodell-indizierung.md), Entscheidung 5, zwar entschieden, aber
-noch nicht gebaut (siehe auch [Selbst aktualisierende
-Wissensblöcke](#selbst-aktualisierende-wissensblöcke)) — sobald das nachgezogen ist, verschwindet auch
-ein solcher Ordner automatisch, ohne dass diese Aufräumlogik sich ändern muss. Ein neu angelegtes
-Unterverzeichnis mit mindestens einer indexierbaren Datei erscheint mit dem nächsten Lauf als neuer
-Ordner. Das behebt nebenbei, dass gleichnamige Dateien aus verschiedenen Unterverzeichnissen heute in
+**Die Quelle ist führend.** Ein Ordner, den ein Lauf nicht mehr im Dateisystem sieht und der (auch
+transitiv über seine Unterordner) kein Dokument mehr enthält, wird am Ende desselben Laufs entfernt
+— das ist bereits mit diesem Issue gebaut. Löschung durch Abwesenheit ist inzwischen auch für
+Dokumente selbst gebaut ([ADR-0017](../decisions/0017-quellentypmodell-indizierung.md),
+Entscheidung 5, siehe auch [Selbst aktualisierende
+Wissensblöcke](#selbst-aktualisierende-wissensblöcke)) und läuft **vor** dieser Ordner-Aufräumung im
+selben Lauf: Ein Ordner, dessen Verzeichnis verschwunden ist und dessen letztes Dokument deshalb im
+selben Lauf gelöscht wird, ist damit bereits leer, wenn die Ordner-Aufräumung an die Reihe kommt, und
+verschwindet noch im selben Lauf statt erst im nächsten. Ein neu angelegtes Unterverzeichnis mit
+mindestens einer indexierbaren Datei erscheint mit dem nächsten Lauf als neuer Ordner. Das behebt
+nebenbei, dass gleichnamige Dateien aus verschiedenen Unterverzeichnissen heute in
 einer flachen Liste ununterscheidbar sind — jede Datei bekommt über ihren Ordner einen eindeutigen
 Platz.
 

@@ -18,5 +18,10 @@ public enum IndexingEventCategory {
    */
   FORMAT_MISMATCH,
   /** A scheduled run was skipped because the library was still indexing. */
-  SCHEDULE_SKIPPED
+  SCHEDULE_SKIPPED,
+  /**
+   * A previously indexed document no longer exists at its source and was removed at the end of a
+   * successful, complete run - see {@link StaleDocumentCleanupService} (#886).
+   */
+  REMOVED
 }
