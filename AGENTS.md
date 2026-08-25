@@ -125,7 +125,12 @@ oder ein eigener `@MockitoBean`-Satz erzwingt trotz gemeinsamer Meta-Annotation 
 einem 1–2-zeiligen Kommentar über der Annotation begründet werden (Review-Flagge). In eine
 `@DynamicPropertySource` gehört nur, was zur Laufzeit aus einer Ressource (z. B. einem Testcontainer)
 gelesen wird — ein konstanter Wert gehört stattdessen in `properties` auf der `@SpringBootTest`-Annotation
-selbst. Ein neuer Postgres-Container wird nie manuell deklariert; `@ServiceConnection` kommt aus der
+selbst. Ein zur Laufzeit berechneter Wert, der über alle Klassen einer Signatur identisch sein muss
+(z. B. ein einmalig angelegtes, geteiltes Basisverzeichnis), gehört in einen geteilten
+`ApplicationContextInitializer` der Meta-Annotation selbst statt in eine klassenlokale
+`@DynamicPropertySource` — letztere spaltet den Kontext trotz identischen Werts, weil Spring die
+Methode selbst (nicht nur ihr Ergebnis) in den Cache-Schlüssel einbezieht (siehe
+`@OpaaIndexingIntegrationTest`). Ein neuer Postgres-Container wird nie manuell deklariert; `@ServiceConnection` kommt aus der
 Meta-Annotation. Ausnahme: `io.opaa.migration`-Tests booten bewusst einen eigenen Container mit
 Template-Datenbank pro Klasse (siehe `AbstractMigrationTest`) — das Muster ist dort nötig und keine
 Abweichung von dieser Regel. Passt keine der drei Signaturen, ist das ein Fall für eine weitere

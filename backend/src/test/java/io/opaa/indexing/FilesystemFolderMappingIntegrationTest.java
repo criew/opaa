@@ -33,12 +33,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * io.opaa.library.LibraryFolderService#pruneOrphanedFolders}. Runs against the real Liquibase
  * schema (AGENTS.md "Reproduktionsnachweis" - {@code fk_documents_folder}/{@code
  * fk_library_folders_parent} only exist there, not under {@code ddl-auto=create-drop}), the same
- * Testcontainers/{@code FakeEmbeddingModel} setup {@link DocumentIndexingIntegrationTest} uses.
+ * Testcontainers/fake-embedding-model setup every {@link io.opaa.test.OpaaIndexingIntegrationTest}
+ * class shares.
  */
 @OpaaIndexingIntegrationTest
 class FilesystemFolderMappingIntegrationTest {
 
-  private static final Path sharedTempDir =
+  private static final Path classTempDir =
       OpaaIndexingTestDirectory.subdirectory("filesystem-folder-mapping");
 
   @Autowired private DocumentIndexingService documentIndexingService;
@@ -58,11 +59,11 @@ class FilesystemFolderMappingIntegrationTest {
     documentRepository.deleteAll();
     indexingJobRepository.deleteAll();
     jdbcTemplate.update("DELETE FROM library_folders");
-    if (Files.exists(sharedTempDir)) {
-      try (var files = Files.walk(sharedTempDir)) {
+    if (Files.exists(classTempDir)) {
+      try (var files = Files.walk(classTempDir)) {
         files
             .sorted((a, b) -> b.getNameCount() - a.getNameCount())
-            .filter(p -> !p.equals(sharedTempDir))
+            .filter(p -> !p.equals(classTempDir))
             .forEach(
                 p -> {
                   try {
@@ -98,7 +99,7 @@ class FilesystemFolderMappingIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                sharedTempDir.toAbsolutePath().toString(),
+                classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
                 null,
@@ -143,10 +144,10 @@ class FilesystemFolderMappingIntegrationTest {
 
   @Test
   void nestedDirectoryStructureIsMirroredAsFolders() throws IOException {
-    Files.createDirectories(sharedTempDir.resolve("Rechtsquellen/2026"));
-    Files.writeString(sharedTempDir.resolve("top.txt"), "Wurzeldokument.");
+    Files.createDirectories(classTempDir.resolve("Rechtsquellen/2026"));
+    Files.writeString(classTempDir.resolve("top.txt"), "Wurzeldokument.");
     Files.writeString(
-        sharedTempDir.resolve("Rechtsquellen/2026/januar.txt"), "Rechtsquelle Januar 2026.");
+        classTempDir.resolve("Rechtsquellen/2026/januar.txt"), "Rechtsquelle Januar 2026.");
 
     awaitJobCompletion(triggerIndexing());
 
@@ -170,8 +171,8 @@ class FilesystemFolderMappingIntegrationTest {
 
   @Test
   void repeatedRunsAreIdempotentAndDoNotDuplicateFolders() throws IOException {
-    Files.createDirectories(sharedTempDir.resolve("Archiv"));
-    Files.writeString(sharedTempDir.resolve("Archiv/protokoll.txt"), "Protokoll.");
+    Files.createDirectories(classTempDir.resolve("Archiv"));
+    Files.writeString(classTempDir.resolve("Archiv/protokoll.txt"), "Protokoll.");
 
     awaitJobCompletion(triggerIndexing());
     UUID firstFolderId = findFolder(null, "Archiv").orElseThrow().getId();
@@ -193,8 +194,8 @@ class FilesystemFolderMappingIntegrationTest {
     // not touch its content (same checksum, still INDEXED - a real re-index would be a regression
     // here) but must backfill folder_id, per docs/features/knowledge-sources.md's "Ordner in
     // FILESYSTEM-Bibliotheken".
-    Files.createDirectories(sharedTempDir.resolve("Archiv/2025"));
-    Path file = sharedTempDir.resolve("Archiv/2025/protokoll.txt");
+    Files.createDirectories(classTempDir.resolve("Archiv/2025"));
+    Path file = classTempDir.resolve("Archiv/2025/protokoll.txt");
     Files.writeString(file, "Protokoll aus 2025.");
     String checksum = checksumService.computeSha256(file);
 
@@ -238,8 +239,8 @@ class FilesystemFolderMappingIntegrationTest {
     // Hibernate actually flushes those deletes in that order within one transaction - a
     // parent-before-child flush would trip fk_library_folders_parent's RESTRICT (migration 062)
     // and fail the whole pruneOrphanedFolders call.
-    Files.createDirectories(sharedTempDir.resolve("Temp/2025"));
-    Files.writeString(sharedTempDir.resolve("Temp/2025/datei.txt"), "Wird bald geloescht.");
+    Files.createDirectories(classTempDir.resolve("Temp/2025"));
+    Files.writeString(classTempDir.resolve("Temp/2025/datei.txt"), "Wird bald geloescht.");
 
     awaitJobCompletion(triggerIndexing());
     LibraryFolder temp = findFolder(null, "Temp").orElseThrow();
@@ -248,9 +249,9 @@ class FilesystemFolderMappingIntegrationTest {
     // Since #886, AsyncIndexingExecutor's own StaleDocumentCleanupService call would remove this
     // document automatically on the next run - deleted here directly instead, to isolate and
     // exercise pruneOrphanedFolders's own folder-pruning behaviour on its own.
-    Files.delete(sharedTempDir.resolve("Temp/2025/datei.txt"));
-    Files.delete(sharedTempDir.resolve("Temp/2025"));
-    Files.delete(sharedTempDir.resolve("Temp"));
+    Files.delete(classTempDir.resolve("Temp/2025/datei.txt"));
+    Files.delete(classTempDir.resolve("Temp/2025"));
+    Files.delete(classTempDir.resolve("Temp"));
     documentRepository.deleteAll(
         documentRepository.findAll().stream()
             .filter(d -> d.getFileName().equals("datei.txt"))
@@ -266,10 +267,10 @@ class FilesystemFolderMappingIntegrationTest {
   void theSameContentInTwoSubdirectoriesRemainsTwoDistinctDocuments() throws IOException {
     // ADR-0020, Entscheidung 6: FILESYSTEM dedup is path-based, not checksum-based - two
     // identical files in different directories of the same source are two legitimate documents.
-    Files.createDirectories(sharedTempDir.resolve("A"));
-    Files.createDirectories(sharedTempDir.resolve("B"));
-    Files.writeString(sharedTempDir.resolve("A/gleich.txt"), "Identischer Inhalt.");
-    Files.writeString(sharedTempDir.resolve("B/gleich.txt"), "Identischer Inhalt.");
+    Files.createDirectories(classTempDir.resolve("A"));
+    Files.createDirectories(classTempDir.resolve("B"));
+    Files.writeString(classTempDir.resolve("A/gleich.txt"), "Identischer Inhalt.");
+    Files.writeString(classTempDir.resolve("B/gleich.txt"), "Identischer Inhalt.");
 
     IndexingJob job = triggerIndexing();
     awaitJobCompletion(job);

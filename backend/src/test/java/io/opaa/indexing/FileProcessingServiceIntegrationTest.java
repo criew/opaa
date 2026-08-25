@@ -45,7 +45,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @OpaaIndexingIntegrationTest
 class FileProcessingServiceIntegrationTest {
 
-  private static final Path sharedTempDir =
+  private static final Path classTempDir =
       OpaaIndexingTestDirectory.subdirectory("file-processing-service");
 
   @Autowired private FileProcessingService fileProcessingService;
@@ -91,7 +91,7 @@ class FileProcessingServiceIntegrationTest {
   @Test
   void filesystemDocumentDeletedWhileBeingIndexedLeavesNoZombieRowOrOrphanedChunks()
       throws IOException {
-    Path file = sharedTempDir.resolve("race.txt");
+    Path file = classTempDir.resolve("race.txt");
     Files.writeString(file, "content that outlives its own document row");
 
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
@@ -121,7 +121,7 @@ class FileProcessingServiceIntegrationTest {
   void filesystemDocumentStillPresentIsIndexedNormally() throws IOException {
     // Control case: without the concurrent delete, the same file is indexed and left INDEXED -
     // proves the assertions above actually distinguish the race from ordinary success.
-    Path file = sharedTempDir.resolve("normal.txt");
+    Path file = classTempDir.resolve("normal.txt");
     Files.writeString(file, "content that is never deleted");
 
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));

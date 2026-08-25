@@ -29,8 +29,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * {@code @TempDir}/{@code @DynamicPropertySource}, which would key each class to its own context
  * regardless of this shared meta-annotation (see {@link OpaaIntegrationTest}'s Javadoc). A test
  * creates its own subdirectory under that base via {@link
- * OpaaIndexingTestDirectory#subdirectory(String)} and is responsible for isolating/cleaning up its
- * own files there, exactly as it already isolates its own database rows.
+ * OpaaIndexingTestDirectory#subdirectory(String)}, but that subdirectory is a filesystem
+ * convenience, not a data-isolation boundary: every class carrying this signature shares one
+ * database against one Spring context, so a class's own {@code @BeforeEach} must wipe the shared
+ * tables it touches (e.g. {@code TRUNCATE TABLE vector_store}, {@code
+ * documentRepository.deleteAll()}) exactly as it already does today, and must never assert against
+ * an unfiltered table - only against rows scoped to the library/document ids it created itself.
  *
  * <p>{@link OpaaIndexingMockConfiguration} supplies the shared {@code ChatModel}/{@code
  * ActiveChatModelResolver}/{@code EmbeddingModel} beans; {@link OpaaIndexingMockResetListener}
@@ -39,6 +43,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * {@code @TestBean} override still gets its own context regardless (Spring's cache key includes
  * both) - such classes stay on this meta-annotation but keep a short comment explaining why they
  * cannot share, exactly as for {@link OpaaIntegrationTest}.
+ *
+ * <p>Deliberately no {@code properties()} attribute with {@code @AliasFor(annotation =
+ * SpringBootTest.class, attribute = "properties")} the way {@link OpaaMockMvcTest} has one:
+ * {@code @AliasFor} on an array attribute replaces the whole array rather than appending to it, so
+ * a class supplying its own {@code properties()} override would silently lose the three chunking
+ * properties this signature already fixes.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

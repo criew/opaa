@@ -61,26 +61,27 @@ class QueryIntegrationTest {
    * #616: replaces {@code ChatConfiguration#chatTitleTaskExecutor} with a same-name, fully
    * synchronous executor for this test class only - the real one runs #557's chat-title LLM call on
    * a separate thread, racing this class's {@code when(chatModel...)} re-stubbing (see the {@code
-   * promptCaptor} usages below) against that async call landing on the very same
-   * {@code @MockitoBean chatModel} it stubs. Mockito's stubbing API is not thread-safe against a
-   * concurrent invocation of the mock being stubbed, which is exactly what corrupted CI runs with
-   * {@code MockitoException at QueryIntegrationTest.java:562} (#616) - a still-in-flight title job
-   * from an earlier {@code queryService.query(...)} call (in this test or, since {@code chatModel}
-   * is reused across every test method in this class's shared Spring context, an earlier test)
-   * invoking the mock exactly while a later {@code when(...)} call was mid-setup. {@link
-   * SyncTaskExecutor} runs the title job on the calling thread instead, so by the time {@code
-   * queryService.query(...)} returns, the title generation call has already completed (or failed) -
-   * never racing anything that runs after it.
+   * promptCaptor} usages below) against that async call landing on the very same, shared {@code
+   * chatModel} mock (from {@link io.opaa.test.OpaaIndexingMockConfiguration}) it stubs. Mockito's
+   * stubbing API is not thread-safe against a concurrent invocation of the mock being stubbed,
+   * which is exactly what corrupted CI runs with {@code MockitoException at
+   * QueryIntegrationTest.java:562} (#616) - a still-in-flight title job from an earlier {@code
+   * queryService.query(...)} call (in this test or, since {@code chatModel} is reused across every
+   * test method in this class's shared Spring context, an earlier test) invoking the mock exactly
+   * while a later {@code when(...)} call was mid-setup. {@link SyncTaskExecutor} runs the title job
+   * on the calling thread instead, so by the time {@code queryService.query(...)} returns, the
+   * title generation call has already completed (or failed) - never racing anything that runs after
+   * it.
    *
-   * <p>{@code @TestBean(enforceOverride = true)}, not a same-name {@code @Bean} in {@link
-   * TestConfig}: a plain {@code @Bean} with a name that no longer matches - after, say, a rename of
-   * {@code ChatConfiguration#chatTitleTaskExecutor} - would silently become an *additional* bean
-   * instead of replacing anything, and the flake this class exists to prevent would come back
-   * without a single test here failing loudly to say why. {@code enforceOverride = true} instead
-   * makes context startup itself fail if no bean named {@code chatTitleTaskExecutor} exists to
-   * replace. Not {@code @MockitoBean}: a mocked {@code TaskExecutor} would never actually run the
-   * submitted title-generation task at all, which would hide the very call this class stubs {@code
-   * chatModel} for instead of making it deterministic.
+   * <p>{@code @TestBean(enforceOverride = true)}, not a same-name {@code @Bean} in a
+   * {@code @TestConfiguration}: a plain {@code @Bean} with a name that no longer matches - after,
+   * say, a rename of {@code ChatConfiguration#chatTitleTaskExecutor} - would silently become an
+   * *additional* bean instead of replacing anything, and the flake this class exists to prevent
+   * would come back without a single test here failing loudly to say why. {@code enforceOverride =
+   * true} instead makes context startup itself fail if no bean named {@code chatTitleTaskExecutor}
+   * exists to replace. Not a mocked {@code TaskExecutor} (the way {@code chatModel} above is a
+   * mock): a mock would never actually run the submitted title-generation task at all, which would
+   * hide the very call this class stubs {@code chatModel} for instead of making it deterministic.
    */
   @TestBean(name = "chatTitleTaskExecutor", enforceOverride = true)
   private TaskExecutor chatTitleTaskExecutor;

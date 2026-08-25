@@ -16,6 +16,11 @@ import org.springframework.context.annotation.Primary;
  * deterministic {@link FakeEmbeddingModel} - importing this class once, instead of each test class
  * declaring its own {@code @MockitoBean}/{@code @Primary} {@code TestConfiguration}, is what keeps
  * those classes' merged configuration - and therefore the Spring context cache key - identical.
+ *
+ * <p>{@code @Primary} is what actually displaces the real, autoconfigured beans of these types -
+ * not the bean method names, which are chosen to match the component's simple name (the Spring
+ * convention for an unnamed {@code @Bean}) purely for readability, not because a same-name override
+ * is relied upon here.
  */
 @TestConfiguration
 class OpaaIndexingMockConfiguration {

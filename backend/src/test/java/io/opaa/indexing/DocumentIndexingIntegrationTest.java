@@ -47,7 +47,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @OpaaIndexingIntegrationTest
 class DocumentIndexingIntegrationTest {
 
-  private static final Path sharedTempDir =
+  private static final Path classTempDir =
       OpaaIndexingTestDirectory.subdirectory("document-indexing");
 
   @Autowired private DocumentIndexingService documentIndexingService;
@@ -83,8 +83,8 @@ class DocumentIndexingIntegrationTest {
     documentRepository.deleteAll();
     indexingJobRepository.deleteAll();
     // Clean up any leftover files from previous tests
-    if (Files.exists(sharedTempDir)) {
-      try (var files = Files.list(sharedTempDir)) {
+    if (Files.exists(classTempDir)) {
+      try (var files = Files.list(classTempDir)) {
         files.forEach(
             f -> {
               try {
@@ -128,7 +128,7 @@ class DocumentIndexingIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                sharedTempDir.toAbsolutePath().toString(),
+                classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
                 null,
@@ -154,8 +154,8 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void indexesDocumentsEndToEnd() throws IOException {
-    Files.writeString(sharedTempDir.resolve("test.md"), "# Test Document\n\nThis is test content.");
-    Files.writeString(sharedTempDir.resolve("notes.txt"), "Some plain text notes for testing.");
+    Files.writeString(classTempDir.resolve("test.md"), "# Test Document\n\nThis is test content.");
+    Files.writeString(classTempDir.resolve("notes.txt"), "Some plain text notes for testing.");
 
     IndexingJob job = triggerIndexing();
     assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
@@ -197,8 +197,8 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void skipsUnsupportedFileFormatsAndContinues() throws IOException {
-    Files.writeString(sharedTempDir.resolve("good.txt"), "Valid content here.");
-    Files.writeString(sharedTempDir.resolve("bad.csv"), "a,b,c");
+    Files.writeString(classTempDir.resolve("good.txt"), "Valid content here.");
+    Files.writeString(classTempDir.resolve("bad.csv"), "a,b,c");
 
     IndexingJob job = triggerIndexing();
     assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
@@ -237,7 +237,7 @@ class DocumentIndexingIntegrationTest {
   void retainsOnlyTheLastTenRunsPerLibraryAndPrunesTheirEvents() throws IOException {
     // #513, Umfangserweiterung (Maintainer-Ergaenzung 20.08.2026): only the last 10 runs of a
     // library stay around - older ones, and their own events, are pruned once an 11th run starts.
-    Files.writeString(sharedTempDir.resolve("bad.csv"), "a,b,c");
+    Files.writeString(classTempDir.resolve("bad.csv"), "a,b,c");
 
     // #604 review, nit (d): a second library's own single run, untouched by the first library's
     // eleven-run pruning below - proves retention is scoped per library, not to the first 10 rows
@@ -254,7 +254,7 @@ class DocumentIndexingIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                sharedTempDir.toAbsolutePath().toString(),
+                classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
                 null,
@@ -328,7 +328,7 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void reindexingReplacesOldChunks() throws IOException {
-    Files.writeString(sharedTempDir.resolve("doc.txt"), "Original content.");
+    Files.writeString(classTempDir.resolve("doc.txt"), "Original content.");
 
     IndexingJob firstJob = triggerIndexing();
     awaitJobCompletion(firstJob);
@@ -348,7 +348,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(initialDoc.getLibraryId()).isEqualTo(targetLibraryId);
 
     // Update file and re-index
-    Files.writeString(sharedTempDir.resolve("doc.txt"), "Updated content with more text.");
+    Files.writeString(classTempDir.resolve("doc.txt"), "Updated content with more text.");
     IndexingJob secondJob = triggerIndexing();
     awaitJobCompletion(secondJob);
 
@@ -398,7 +398,7 @@ class DocumentIndexingIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                sharedTempDir.toAbsolutePath().toString(),
+                classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
                 null,
@@ -407,7 +407,7 @@ class DocumentIndexingIntegrationTest {
     grantOwner(otherLibraryId, userId);
 
     Files.writeString(
-        sharedTempDir.resolve("shared-source.txt"), "Content indexed into two libraries.");
+        classTempDir.resolve("shared-source.txt"), "Content indexed into two libraries.");
 
     IndexingJob firstJob = triggerIndexing();
     awaitJobCompletion(firstJob);
@@ -456,7 +456,7 @@ class DocumentIndexingIntegrationTest {
   }
 
   private String filePath(String fileName) {
-    return sharedTempDir.resolve(fileName).toAbsolutePath().toString();
+    return classTempDir.resolve(fileName).toAbsolutePath().toString();
   }
 
   @Test
@@ -494,7 +494,7 @@ class DocumentIndexingIntegrationTest {
             new ChatResponse(List.of(new Generation(assistantMessage)), chatResponseMetadata));
 
     Files.writeString(
-        sharedTempDir.resolve("findable.txt"), "A uniquely identifiable sentence about OPAA.");
+        classTempDir.resolve("findable.txt"), "A uniquely identifiable sentence about OPAA.");
     IndexingJob job = triggerIndexing();
     awaitJobCompletion(job);
     assertThat(indexingJobRepository.findById(job.getId()).orElseThrow().getStatus())
@@ -556,7 +556,7 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void skipsUnchangedDocumentsOnReindex() throws IOException {
-    Files.writeString(sharedTempDir.resolve("doc.txt"), "Same content.");
+    Files.writeString(classTempDir.resolve("doc.txt"), "Same content.");
 
     IndexingJob firstJob = triggerIndexing();
     awaitJobCompletion(firstJob);
@@ -591,7 +591,7 @@ class DocumentIndexingIntegrationTest {
     // against
     // the repository (bypassing KnowledgeLibraryService's own creation-time check) with a
     // sourcePath outside this suite's configured allowlist (OpaaIndexingTestDirectory.BASE_DIR,
-    // not just sharedTempDir - a sibling of sharedTempDir is still a subdirectory of BASE_DIR and
+    // not just classTempDir - a sibling of classTempDir is still a subdirectory of BASE_DIR and
     // therefore still inside the allowlist), mirroring how such a library could exist if the
     // allowlist were narrowed after it was created.
     KnowledgeLibrary outsideAllowlistLibrary =
@@ -747,7 +747,7 @@ class DocumentIndexingIntegrationTest {
 
   private KnowledgeLibrary createLibraryAndGrantEditor(
       UUID organizationId, UUID ownerId, String subdirectoryName) throws IOException {
-    Path libraryDir = sharedTempDir.resolve(subdirectoryName);
+    Path libraryDir = classTempDir.resolve(subdirectoryName);
     Files.createDirectories(libraryDir);
     KnowledgeLibrary library =
         libraryRepository.save(
@@ -792,7 +792,7 @@ class DocumentIndexingIntegrationTest {
   private void copyTestResource(String resourcePath, String targetFileName) throws IOException {
     try (InputStream in = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
       assertThat(in).as("Test resource %s must exist", resourcePath).isNotNull();
-      Files.copy(in, sharedTempDir.resolve(targetFileName), StandardCopyOption.REPLACE_EXISTING);
+      Files.copy(in, classTempDir.resolve(targetFileName), StandardCopyOption.REPLACE_EXISTING);
     }
   }
 }
