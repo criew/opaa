@@ -1,0 +1,1023 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-baseline-a
+      author: opaa
+      comment: "Extensions: pgvector, required by the vector_store table Spring AI creates at startup."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE EXTENSION IF NOT EXISTS vector;
+      rollback:
+        - sql:
+            sql: "DROP EXTENSION IF EXISTS vector;"
+
+  - changeSet:
+      id: 001-baseline-b
+      author: opaa
+      comment: "Auth / Nutzer / Organisationen: the tenant root (organizations) and the account table (users)."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.organizations (
+                  id uuid NOT NULL,
+                  name character varying(255) NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              CREATE TABLE public.users (
+                  id uuid DEFAULT gen_random_uuid() NOT NULL,
+                  subject character varying(255) NOT NULL,
+                  issuer character varying(500) NOT NULL,
+                  email character varying(320),
+                  display_name character varying(255),
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  last_login_at timestamp with time zone,
+                  system_role character varying(20) DEFAULT 'USER'::character varying NOT NULL,
+                  organization_id uuid NOT NULL
+              );
+
+              ALTER TABLE ONLY public.organizations
+                  ADD CONSTRAINT organizations_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.users
+                  ADD CONSTRAINT uk_users_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY public.users
+                  ADD CONSTRAINT uq_users_subject_issuer UNIQUE (subject, issuer);
+
+              ALTER TABLE ONLY public.users
+                  ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.users
+                  ADD CONSTRAINT fk_users_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+      rollback:
+        - sql:
+            sql: "DROP TABLE IF EXISTS users, organizations CASCADE;"
+
+  - changeSet:
+      id: 001-baseline-c
+      author: opaa
+      comment: "Spaces / Gruppen / Mitgliedschaften: workspaces, directory-synced groups and their memberships."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.directory_sync_status (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  last_run_at timestamp with time zone NOT NULL,
+                  last_outcome character varying(30) NOT NULL,
+                  last_message character varying(2000),
+                  last_changed_fraction double precision,
+                  last_applied_at timestamp with time zone
+              );
+
+              CREATE TABLE public.group_memberships (
+                  id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  group_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              CREATE TABLE public.groups (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  kind character varying(20) NOT NULL,
+                  name character varying(255) NOT NULL,
+                  description character varying(2000),
+                  external_id character varying(255),
+                  parent_group_id uuid,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  dissolved boolean DEFAULT false NOT NULL,
+                  dissolved_at timestamp with time zone,
+                  CONSTRAINT chk_groups_kind CHECK ((kind IN ('ORG_UNIT', 'AD_HOC')))
+              );
+
+              CREATE TABLE public.space_memberships (
+                  id uuid CONSTRAINT workspace_memberships_id_not_null NOT NULL,
+                  user_id uuid CONSTRAINT workspace_memberships_user_id_not_null NOT NULL,
+                  space_id uuid CONSTRAINT workspace_memberships_workspace_id_not_null NOT NULL,
+                  role character varying(20) CONSTRAINT workspace_memberships_role_not_null NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() CONSTRAINT workspace_memberships_created_at_not_null NOT NULL,
+                  organization_id uuid NOT NULL,
+                  CONSTRAINT chk_space_memberships_role CHECK ((role IN ('MEMBER', 'CURATOR', 'ADMIN')))
+              );
+
+              CREATE TABLE public.spaces (
+                  id uuid CONSTRAINT workspaces_id_not_null NOT NULL,
+                  name character varying(255) CONSTRAINT workspaces_name_not_null NOT NULL,
+                  description character varying(2000),
+                  owner_id uuid CONSTRAINT workspaces_owner_id_not_null NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() CONSTRAINT workspaces_created_at_not_null NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() CONSTRAINT workspaces_updated_at_not_null NOT NULL,
+                  visibility character varying(20) DEFAULT 'PRIVATE'::character varying NOT NULL,
+                  organization_id uuid NOT NULL,
+                  is_default boolean DEFAULT false NOT NULL,
+                  archived boolean DEFAULT false NOT NULL,
+                  CONSTRAINT chk_spaces_visibility CHECK ((visibility IN ('PRIVATE', 'DISCOVERABLE', 'OPEN')))
+              );
+
+              ALTER TABLE ONLY public.directory_sync_status
+                  ADD CONSTRAINT directory_sync_status_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.group_memberships
+                  ADD CONSTRAINT group_memberships_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.groups
+                  ADD CONSTRAINT groups_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.directory_sync_status
+                  ADD CONSTRAINT uk_directory_sync_status_organization UNIQUE (organization_id);
+
+              ALTER TABLE ONLY public.group_memberships
+                  ADD CONSTRAINT uk_group_memberships_user_group UNIQUE (user_id, group_id);
+
+              ALTER TABLE ONLY public.groups
+                  ADD CONSTRAINT uk_groups_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY public.groups
+                  ADD CONSTRAINT uk_groups_organization_external_id UNIQUE (organization_id, external_id);
+
+              ALTER TABLE ONLY public.space_memberships
+                  ADD CONSTRAINT uk_space_memberships_user_space UNIQUE (user_id, space_id);
+
+              ALTER TABLE ONLY public.spaces
+                  ADD CONSTRAINT uk_spaces_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY public.space_memberships
+                  ADD CONSTRAINT workspace_memberships_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.spaces
+                  ADD CONSTRAINT workspaces_pkey PRIMARY KEY (id);
+
+              CREATE INDEX idx_space_memberships_space_id ON public.space_memberships USING btree (space_id);
+
+              CREATE UNIQUE INDEX uk_spaces_default_owner ON public.spaces USING btree (owner_id) WHERE is_default;
+
+              ALTER TABLE ONLY public.directory_sync_status
+                  ADD CONSTRAINT fk_directory_sync_status_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.group_memberships
+                  ADD CONSTRAINT fk_group_memberships_group_organization FOREIGN KEY (group_id, organization_id) REFERENCES public.groups(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.group_memberships
+                  ADD CONSTRAINT fk_group_memberships_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.groups
+                  ADD CONSTRAINT fk_groups_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.groups
+                  ADD CONSTRAINT fk_groups_parent_group_organization FOREIGN KEY (parent_group_id, organization_id) REFERENCES public.groups(id, organization_id) ON DELETE SET NULL (parent_group_id);
+
+              ALTER TABLE ONLY public.space_memberships
+                  ADD CONSTRAINT fk_space_memberships_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.space_memberships
+                  ADD CONSTRAINT fk_space_memberships_space_organization FOREIGN KEY (space_id, organization_id) REFERENCES public.spaces(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.space_memberships
+                  ADD CONSTRAINT fk_space_memberships_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.spaces
+                  ADD CONSTRAINT fk_spaces_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.spaces
+                  ADD CONSTRAINT fk_spaces_owner_organization FOREIGN KEY (owner_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+      rollback:
+        - sql:
+            sql: "DROP TABLE IF EXISTS directory_sync_status, group_memberships, groups, space_memberships, spaces CASCADE;"
+
+  - changeSet:
+      id: 001-baseline-d
+      author: opaa
+      comment: "Bibliotheken / Dokumente / Indexing: knowledge_libraries and everything hung off it - documents, folders, indexing jobs/run events, asset grants, space associations, RSS feed state."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.asset_grants (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  subject_type character varying(20) NOT NULL,
+                  subject_user_id uuid,
+                  subject_group_id uuid,
+                  role character varying(20) NOT NULL,
+                  expires_at timestamp with time zone,
+                  granted_by_user_id uuid,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_asset_grants_role CHECK ((role IN ('VIEWER', 'EDITOR', 'MANAGER', 'OWNER'))),
+                  CONSTRAINT chk_asset_grants_subject CHECK (((((subject_type)::text = 'USER'::text) AND (subject_user_id IS NOT NULL) AND (subject_group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (subject_group_id IS NOT NULL) AND (subject_user_id IS NULL)))),
+                  CONSTRAINT chk_asset_grants_subject_type CHECK ((subject_type IN ('USER', 'GROUP')))
+              );
+
+              CREATE TABLE public.documents (
+                  id uuid DEFAULT gen_random_uuid() NOT NULL,
+                  file_name character varying(500) NOT NULL,
+                  file_path character varying(2000) NOT NULL,
+                  content_type character varying(255),
+                  file_size bigint,
+                  chunk_count integer DEFAULT 0,
+                  indexed_at timestamp with time zone,
+                  checksum character varying(64),
+                  status character varying(20) DEFAULT 'PENDING'::character varying NOT NULL,
+                  source_type character varying(20) DEFAULT 'FILESYSTEM'::character varying NOT NULL,
+                  last_modified_remote character varying(64),
+                  library_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  uploaded_by_user_id uuid,
+                  source_entry_url character varying(2000),
+                  error_message text,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  folder_id uuid,
+                  CONSTRAINT chk_documents_source_type CHECK ((source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED'))),
+                  CONSTRAINT chk_documents_status CHECK ((status IN ('PENDING', 'INDEXED', 'FAILED')))
+              );
+
+              CREATE TABLE public.indexing_jobs (
+                  id uuid DEFAULT gen_random_uuid() NOT NULL,
+                  status character varying(20) DEFAULT 'RUNNING'::character varying NOT NULL,
+                  documents_total integer DEFAULT 0,
+                  documents_processed integer DEFAULT 0,
+                  documents_failed integer DEFAULT 0,
+                  documents_skipped integer DEFAULT 0,
+                  started_at timestamp with time zone DEFAULT now() NOT NULL,
+                  completed_at timestamp with time zone,
+                  error_message text,
+                  library_id uuid,
+                  documents_indexed_total integer DEFAULT 0 NOT NULL,
+                  events_truncated_count integer DEFAULT 0 NOT NULL,
+                  last_progress_at timestamp with time zone NOT NULL,
+                  organization_id uuid NOT NULL,
+                  triggered_by character varying(20) DEFAULT 'MANUAL'::character varying NOT NULL,
+                  CONSTRAINT chk_indexing_jobs_status CHECK ((status IN ('RUNNING', 'COMPLETED', 'FAILED'))),
+                  CONSTRAINT chk_indexing_jobs_triggered_by CHECK ((triggered_by IN ('MANUAL', 'SCHEDULED')))
+              );
+
+              CREATE TABLE public.indexing_run_events (
+                  id uuid NOT NULL,
+                  job_id uuid NOT NULL,
+                  category character varying(30) NOT NULL,
+                  message text NOT NULL,
+                  reference text,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              CREATE TABLE public.knowledge_libraries (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  name character varying(255) NOT NULL,
+                  description character varying(2000),
+                  owner_type character varying(20) NOT NULL,
+                  owner_user_id uuid,
+                  owner_group_id uuid,
+                  visibility character varying(20) NOT NULL,
+                  listed boolean DEFAULT false NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  source_type character varying(20) NOT NULL,
+                  source_path character varying(2000),
+                  source_url character varying(2000),
+                  source_proxy character varying(255),
+                  source_credentials character varying(3000),
+                  source_insecure_ssl boolean DEFAULT false NOT NULL,
+                  schedule_enabled boolean DEFAULT false NOT NULL,
+                  schedule_cron character varying(100),
+                  CONSTRAINT chk_knowledge_libraries_owner CHECK (((((owner_type)::text = 'USER'::text) AND (owner_user_id IS NOT NULL) AND (owner_group_id IS NULL)) OR (((owner_type)::text = 'GROUP'::text) AND (owner_group_id IS NOT NULL) AND (owner_user_id IS NULL)))),
+                  CONSTRAINT chk_knowledge_libraries_owner_type CHECK ((owner_type IN ('USER', 'GROUP'))),
+                  CONSTRAINT chk_knowledge_libraries_schedule CHECK ((((schedule_enabled = false) AND (schedule_cron IS NULL)) OR ((schedule_enabled = true) AND (schedule_cron IS NOT NULL) AND ((source_type)::text <> 'UPLOAD'::text)))),
+                  CONSTRAINT chk_knowledge_libraries_source_configuration CHECK (((((source_type)::text = 'UPLOAD'::text) AND (source_path IS NULL) AND (source_url IS NULL) AND (source_proxy IS NULL) AND (source_credentials IS NULL) AND (source_insecure_ssl = false)) OR (((source_type)::text = 'FILESYSTEM'::text) AND (source_path IS NOT NULL) AND (source_url IS NULL) AND (source_proxy IS NULL) AND (source_credentials IS NULL) AND (source_insecure_ssl = false)) OR (((source_type)::text = 'HTTP_DIRECTORY'::text) AND (source_path IS NULL) AND (source_url IS NOT NULL)) OR (((source_type)::text = 'RSS_FEED'::text) AND (source_path IS NULL) AND (source_url IS NOT NULL)))),
+                  CONSTRAINT chk_knowledge_libraries_source_type CHECK ((source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED'))),
+                  CONSTRAINT chk_knowledge_libraries_visibility CHECK ((visibility IN ('PRIVATE', 'SHARED', 'ORGANIZATION')))
+              );
+
+              CREATE TABLE public.library_folders (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  parent_folder_id uuid,
+                  name character varying(255) NOT NULL,
+                  organization_id uuid NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              CREATE TABLE public.rss_feed_state (
+                  id uuid NOT NULL,
+                  feed_url character varying(2000) NOT NULL,
+                  etag character varying(500),
+                  last_modified character varying(200),
+                  updated_at timestamp with time zone NOT NULL,
+                  library_id uuid NOT NULL
+              );
+
+              CREATE TABLE public.space_asset_associations (
+                  id uuid NOT NULL,
+                  space_id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  created_by_user_id uuid NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              ALTER TABLE ONLY public.asset_grants
+                  ADD CONSTRAINT asset_grants_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.documents
+                  ADD CONSTRAINT documents_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.indexing_jobs
+                  ADD CONSTRAINT indexing_jobs_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.indexing_run_events
+                  ADD CONSTRAINT indexing_run_events_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.knowledge_libraries
+                  ADD CONSTRAINT knowledge_libraries_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.library_folders
+                  ADD CONSTRAINT library_folders_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.rss_feed_state
+                  ADD CONSTRAINT rss_feed_state_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.space_asset_associations
+                  ADD CONSTRAINT space_asset_associations_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.documents
+                  ADD CONSTRAINT uk_documents_library_path UNIQUE (library_id, file_path);
+
+              ALTER TABLE ONLY public.knowledge_libraries
+                  ADD CONSTRAINT uk_knowledge_libraries_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY public.library_folders
+                  ADD CONSTRAINT uk_library_folders_id_library_organization UNIQUE (id, library_id, organization_id);
+
+              ALTER TABLE ONLY public.rss_feed_state
+                  ADD CONSTRAINT uk_rss_feed_state_library_feed_url UNIQUE (library_id, feed_url);
+
+              ALTER TABLE ONLY public.space_asset_associations
+                  ADD CONSTRAINT uk_space_asset_associations_space_library UNIQUE (space_id, library_id);
+
+              CREATE INDEX idx_asset_grants_subject_group_organization ON public.asset_grants USING btree (subject_group_id, organization_id) WHERE ((subject_type)::text = 'GROUP'::text);
+
+              CREATE INDEX idx_asset_grants_subject_user_organization ON public.asset_grants USING btree (subject_user_id, organization_id) WHERE ((subject_type)::text = 'USER'::text);
+
+              CREATE INDEX idx_documents_folder ON public.documents USING btree (folder_id);
+
+              CREATE INDEX idx_indexing_jobs_organization_id ON public.indexing_jobs USING btree (organization_id);
+
+              CREATE INDEX idx_indexing_run_events_job_id ON public.indexing_run_events USING btree (job_id);
+
+              CREATE INDEX idx_library_folders_parent ON public.library_folders USING btree (parent_folder_id);
+
+              CREATE INDEX idx_space_asset_associations_library_organization ON public.space_asset_associations USING btree (library_id, organization_id);
+
+              CREATE UNIQUE INDEX uk_asset_grants_group_subject ON public.asset_grants USING btree (library_id, subject_group_id) WHERE ((subject_type)::text = 'GROUP'::text);
+
+              CREATE UNIQUE INDEX uk_asset_grants_user_subject ON public.asset_grants USING btree (library_id, subject_user_id) WHERE ((subject_type)::text = 'USER'::text);
+
+              CREATE UNIQUE INDEX uk_documents_library_checksum ON public.documents USING btree (library_id, checksum) WHERE ((checksum IS NOT NULL) AND ((source_type)::text = 'UPLOAD'::text));
+
+              CREATE UNIQUE INDEX uk_indexing_jobs_library_running ON public.indexing_jobs USING btree (library_id) WHERE ((status)::text = 'RUNNING'::text);
+
+              CREATE UNIQUE INDEX uk_library_folders_child_name ON public.library_folders USING btree (library_id, parent_folder_id, name) WHERE (parent_folder_id IS NOT NULL);
+
+              CREATE UNIQUE INDEX uk_library_folders_root_name ON public.library_folders USING btree (library_id, name) WHERE (parent_folder_id IS NULL);
+
+              ALTER TABLE ONLY public.asset_grants
+                  ADD CONSTRAINT fk_asset_grants_granted_by_user_organization FOREIGN KEY (granted_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.asset_grants
+                  ADD CONSTRAINT fk_asset_grants_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES public.knowledge_libraries(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.asset_grants
+                  ADD CONSTRAINT fk_asset_grants_subject_group_organization FOREIGN KEY (subject_group_id, organization_id) REFERENCES public.groups(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.asset_grants
+                  ADD CONSTRAINT fk_asset_grants_subject_user_organization FOREIGN KEY (subject_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.documents
+                  ADD CONSTRAINT fk_documents_folder FOREIGN KEY (folder_id, library_id, organization_id) REFERENCES public.library_folders(id, library_id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.documents
+                  ADD CONSTRAINT fk_documents_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES public.knowledge_libraries(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.documents
+                  ADD CONSTRAINT fk_documents_uploaded_by_user_organization FOREIGN KEY (uploaded_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE SET NULL (uploaded_by_user_id);
+
+              ALTER TABLE ONLY public.indexing_jobs
+                  ADD CONSTRAINT fk_indexing_jobs_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES public.knowledge_libraries(id, organization_id) ON DELETE SET NULL (library_id);
+
+              ALTER TABLE ONLY public.indexing_jobs
+                  ADD CONSTRAINT fk_indexing_jobs_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.indexing_run_events
+                  ADD CONSTRAINT fk_indexing_run_events_job FOREIGN KEY (job_id) REFERENCES public.indexing_jobs(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.knowledge_libraries
+                  ADD CONSTRAINT fk_knowledge_libraries_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.knowledge_libraries
+                  ADD CONSTRAINT fk_knowledge_libraries_owner_group_organization FOREIGN KEY (owner_group_id, organization_id) REFERENCES public.groups(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.knowledge_libraries
+                  ADD CONSTRAINT fk_knowledge_libraries_owner_user_organization FOREIGN KEY (owner_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.library_folders
+                  ADD CONSTRAINT fk_library_folders_library FOREIGN KEY (library_id, organization_id) REFERENCES public.knowledge_libraries(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.library_folders
+                  ADD CONSTRAINT fk_library_folders_parent FOREIGN KEY (parent_folder_id, library_id, organization_id) REFERENCES public.library_folders(id, library_id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.rss_feed_state
+                  ADD CONSTRAINT fk_rss_feed_state_library FOREIGN KEY (library_id) REFERENCES public.knowledge_libraries(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.space_asset_associations
+                  ADD CONSTRAINT fk_space_asset_associations_created_by_user_organization FOREIGN KEY (created_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.space_asset_associations
+                  ADD CONSTRAINT fk_space_asset_associations_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES public.knowledge_libraries(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.space_asset_associations
+                  ADD CONSTRAINT fk_space_asset_associations_space_organization FOREIGN KEY (space_id, organization_id) REFERENCES public.spaces(id, organization_id) ON DELETE CASCADE;
+      rollback:
+        - sql:
+            sql: "DROP TABLE IF EXISTS asset_grants, documents, indexing_jobs, indexing_run_events, knowledge_libraries, library_folders, rss_feed_state, space_asset_associations CASCADE;"
+
+  - changeSet:
+      id: 001-baseline-e
+      author: opaa
+      comment: "Chat / Query: chats and their messages/library references, plus the configured LLM model catalogue."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE FUNCTION public.chat_library_references_set_organization() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', 'public', 'pg_temp'
+                  AS $$ BEGIN
+                SELECT organization_id INTO STRICT NEW.organization_id
+                FROM chats
+                WHERE id = NEW.chat_id;
+                RETURN NEW;
+              END; $$;
+
+              CREATE TABLE public.chat_library_references (
+                  chat_id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  organization_id uuid NOT NULL
+              );
+
+              CREATE TABLE public.chat_messages (
+                  id uuid NOT NULL,
+                  chat_id uuid NOT NULL,
+                  sequence integer NOT NULL,
+                  role character varying(20) NOT NULL,
+                  content text NOT NULL,
+                  sources json,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_chat_messages_role CHECK ((role IN ('USER', 'ASSISTANT')))
+              );
+
+              CREATE TABLE public.chats (
+                  id uuid NOT NULL,
+                  space_id uuid NOT NULL,
+                  author_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  title character varying(255),
+                  use_knowledge boolean DEFAULT true NOT NULL,
+                  status character varying(20) DEFAULT 'PRIVATE'::character varying NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  title_source character varying(20) DEFAULT 'GENERATED'::character varying NOT NULL,
+                  CONSTRAINT chk_chats_status CHECK (((status)::text = 'PRIVATE'::text)),
+                  CONSTRAINT chk_chats_title_source CHECK ((title_source IN ('GENERATED', 'CUSTOM')))
+              );
+
+              CREATE TABLE public.llm_model_seed_marker (
+                  id integer NOT NULL,
+                  seeded_at timestamp with time zone NOT NULL,
+                  CONSTRAINT chk_llm_model_seed_marker_singleton CHECK ((id = 1))
+              );
+
+              CREATE TABLE public.llm_models (
+                  id uuid NOT NULL,
+                  display_name character varying(120) NOT NULL,
+                  base_url character varying(500) NOT NULL,
+                  model_identifier character varying(200) NOT NULL,
+                  temperature numeric(3,2) DEFAULT 0.7 NOT NULL,
+                  max_tokens integer DEFAULT 2000 NOT NULL,
+                  api_key_ciphertext text,
+                  active boolean DEFAULT false NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_llm_models_max_tokens CHECK ((max_tokens > 0)),
+                  CONSTRAINT chk_llm_models_temperature CHECK (((temperature >= (0)::numeric) AND (temperature <= (2)::numeric)))
+              );
+
+              ALTER TABLE ONLY public.chat_messages
+                  ADD CONSTRAINT chat_messages_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.chats
+                  ADD CONSTRAINT chats_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.llm_model_seed_marker
+                  ADD CONSTRAINT llm_model_seed_marker_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.llm_models
+                  ADD CONSTRAINT llm_models_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.chat_library_references
+                  ADD CONSTRAINT pk_chat_library_references PRIMARY KEY (chat_id, library_id);
+
+              ALTER TABLE ONLY public.chat_messages
+                  ADD CONSTRAINT uk_chat_messages_chat_sequence UNIQUE (chat_id, sequence);
+
+              ALTER TABLE ONLY public.chats
+                  ADD CONSTRAINT uk_chats_id_organization UNIQUE (id, organization_id);
+
+              CREATE INDEX idx_chat_messages_chat_id ON public.chat_messages USING btree (chat_id);
+
+              CREATE INDEX idx_chats_author_id ON public.chats USING btree (author_id);
+
+              CREATE INDEX idx_chats_space_id ON public.chats USING btree (space_id);
+
+              CREATE UNIQUE INDEX ux_llm_models_single_active ON public.llm_models USING btree (active) WHERE active;
+
+              CREATE TRIGGER trg_chat_library_references_set_organization BEFORE INSERT ON public.chat_library_references FOR EACH ROW EXECUTE FUNCTION public.chat_library_references_set_organization();
+
+              ALTER TABLE ONLY public.chat_library_references
+                  ADD CONSTRAINT fk_chat_library_references_chat_organization FOREIGN KEY (chat_id, organization_id) REFERENCES public.chats(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.chat_library_references
+                  ADD CONSTRAINT fk_chat_library_references_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES public.knowledge_libraries(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.chat_messages
+                  ADD CONSTRAINT fk_chat_messages_chat FOREIGN KEY (chat_id) REFERENCES public.chats(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.chats
+                  ADD CONSTRAINT fk_chats_author_organization FOREIGN KEY (author_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.chats
+                  ADD CONSTRAINT fk_chats_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.chats
+                  ADD CONSTRAINT fk_chats_space_organization FOREIGN KEY (space_id, organization_id) REFERENCES public.spaces(id, organization_id) ON DELETE RESTRICT;
+      rollback:
+        - sql:
+            sql: "DROP TABLE IF EXISTS chat_library_references, chat_messages, chats, llm_model_seed_marker, llm_models CASCADE;"
+
+  - changeSet:
+      id: 001-baseline-f
+      author: opaa
+      comment: "Audit / Permission-History: the append-only audit trail (partitioned by month, owned by the restricted opaa_audit_owner role - see ADR-0015), its retention deletion function, and the three permission-history tables (asset_grant_history, group_membership_history, library_visibility_history) plus the incident-scope-grant workflow."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.asset_grant_history (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  subject_type character varying(20) NOT NULL,
+                  subject_user_id uuid,
+                  subject_group_id uuid,
+                  role character varying(20) NOT NULL,
+                  expires_at timestamp with time zone,
+                  cause character varying(30) NOT NULL,
+                  actor_user_id uuid,
+                  valid_from timestamp with time zone NOT NULL,
+                  valid_to timestamp with time zone,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_asset_grant_history_cause CHECK ((cause IN ('GRANTED', 'ROLE_CHANGED', 'REVOKED', 'BACKFILL', 'LIBRARY_DELETED'))),
+                  CONSTRAINT chk_asset_grant_history_role CHECK ((role IN ('USER', 'VIEWER', 'EDITOR', 'MANAGER', 'OWNER'))),
+                  CONSTRAINT chk_asset_grant_history_subject CHECK (((((subject_type)::text = 'USER'::text) AND (subject_user_id IS NOT NULL) AND (subject_group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (subject_group_id IS NOT NULL) AND (subject_user_id IS NULL)))),
+                  CONSTRAINT chk_asset_grant_history_subject_type CHECK ((subject_type IN ('USER', 'GROUP')))
+              );
+
+              CREATE TABLE public.audit_incident_scope_grants (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  subject_user_id uuid NOT NULL,
+                  scope_start timestamp with time zone NOT NULL,
+                  scope_end timestamp with time zone NOT NULL,
+                  purpose character varying(40) NOT NULL,
+                  reason character varying(1000) NOT NULL,
+                  requested_by_user_id uuid NOT NULL,
+                  requested_at timestamp with time zone NOT NULL,
+                  approved_by_user_id uuid,
+                  approved_at timestamp with time zone,
+                  usable_until timestamp with time zone,
+                  status character varying(10) NOT NULL,
+                  CONSTRAINT chk_audit_incident_scope_grants_purpose CHECK ((purpose IN ('SECURITY_INCIDENT', 'UNAUTHORIZED_ACCESS_SUSPICION', 'DATA_BREACH_INVESTIGATION', 'EXTERNAL_AUDIT_OR_INSPECTION'))),
+                  CONSTRAINT chk_audit_incident_scope_grants_requester CHECK ((((approved_by_user_id IS NULL) AND (approved_at IS NULL)) OR ((approved_by_user_id IS NOT NULL) AND (approved_at IS NOT NULL) AND (approved_by_user_id <> requested_by_user_id)))),
+                  CONSTRAINT chk_audit_incident_scope_grants_scope CHECK ((scope_start <= scope_end)),
+                  CONSTRAINT chk_audit_incident_scope_grants_status CHECK ((status IN ('PENDING', 'APPROVED')))
+              );
+
+              CREATE TABLE public.group_membership_history (
+                  id uuid NOT NULL,
+                  group_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  cause character varying(30) NOT NULL,
+                  actor_user_id uuid,
+                  valid_from timestamp with time zone NOT NULL,
+                  valid_to timestamp with time zone,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_group_membership_history_cause CHECK ((cause IN ('ADDED', 'REMOVED', 'DIRECTORY_SYNC_ADDED', 'DIRECTORY_SYNC_REMOVED', 'BACKFILL', 'GROUP_DELETED')))
+              );
+
+              CREATE TABLE public.library_visibility_history (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  visibility character varying(20) NOT NULL,
+                  listed boolean NOT NULL,
+                  cause character varying(30) NOT NULL,
+                  actor_user_id uuid,
+                  valid_from timestamp with time zone NOT NULL,
+                  valid_to timestamp with time zone,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_library_visibility_history_cause CHECK ((cause IN ('CREATED', 'VISIBILITY_CHANGED', 'BACKFILL', 'LIBRARY_DELETED'))),
+                  CONSTRAINT chk_library_visibility_history_visibility CHECK ((visibility IN ('PRIVATE', 'SHARED', 'ORGANIZATION')))
+              );
+
+              ALTER TABLE ONLY public.asset_grant_history
+                  ADD CONSTRAINT asset_grant_history_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.audit_incident_scope_grants
+                  ADD CONSTRAINT audit_incident_scope_grants_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.group_membership_history
+                  ADD CONSTRAINT group_membership_history_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.library_visibility_history
+                  ADD CONSTRAINT library_visibility_history_pkey PRIMARY KEY (id);
+
+              CREATE INDEX idx_asset_grant_history_library ON public.asset_grant_history USING btree (library_id);
+
+              CREATE INDEX idx_asset_grant_history_subject_group_organization ON public.asset_grant_history USING btree (subject_group_id, organization_id, valid_from) WHERE ((subject_type)::text = 'GROUP'::text);
+
+              CREATE INDEX idx_asset_grant_history_subject_user_organization ON public.asset_grant_history USING btree (subject_user_id, organization_id, valid_from) WHERE ((subject_type)::text = 'USER'::text);
+
+              CREATE INDEX idx_audit_incident_scope_grants_org ON public.audit_incident_scope_grants USING btree (organization_id);
+
+              CREATE INDEX idx_group_membership_history_group ON public.group_membership_history USING btree (group_id);
+
+              CREATE INDEX idx_group_membership_history_user_organization ON public.group_membership_history USING btree (user_id, organization_id, valid_from);
+
+              CREATE INDEX idx_library_visibility_history_organization ON public.library_visibility_history USING btree (organization_id, valid_from);
+
+              CREATE UNIQUE INDEX uk_asset_grant_history_open_group ON public.asset_grant_history USING btree (library_id, subject_group_id) WHERE (((subject_type)::text = 'GROUP'::text) AND (valid_to IS NULL));
+
+              CREATE UNIQUE INDEX uk_asset_grant_history_open_user ON public.asset_grant_history USING btree (library_id, subject_user_id) WHERE (((subject_type)::text = 'USER'::text) AND (valid_to IS NULL));
+
+              CREATE UNIQUE INDEX uk_group_membership_history_open ON public.group_membership_history USING btree (group_id, user_id) WHERE (valid_to IS NULL);
+
+              CREATE UNIQUE INDEX uk_library_visibility_history_open ON public.library_visibility_history USING btree (library_id) WHERE (valid_to IS NULL);
+
+              ALTER TABLE ONLY public.asset_grant_history
+                  ADD CONSTRAINT fk_asset_grant_history_actor_user_organization FOREIGN KEY (actor_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE SET NULL (actor_user_id);
+
+              ALTER TABLE ONLY public.asset_grant_history
+                  ADD CONSTRAINT fk_asset_grant_history_subject_user_organization FOREIGN KEY (subject_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.audit_incident_scope_grants
+                  ADD CONSTRAINT fk_audit_incident_scope_grants_approver_organization FOREIGN KEY (approved_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.audit_incident_scope_grants
+                  ADD CONSTRAINT fk_audit_incident_scope_grants_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.audit_incident_scope_grants
+                  ADD CONSTRAINT fk_audit_incident_scope_grants_requester_organization FOREIGN KEY (requested_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.audit_incident_scope_grants
+                  ADD CONSTRAINT fk_audit_incident_scope_grants_subject_organization FOREIGN KEY (subject_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.group_membership_history
+                  ADD CONSTRAINT fk_group_membership_history_actor_user_organization FOREIGN KEY (actor_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE SET NULL (actor_user_id);
+
+              ALTER TABLE ONLY public.group_membership_history
+                  ADD CONSTRAINT fk_group_membership_history_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.library_visibility_history
+                  ADD CONSTRAINT fk_library_visibility_history_actor_user_organization FOREIGN KEY (actor_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE SET NULL (actor_user_id);
+
+              CREATE TABLE public.audit_log (
+                  event_id uuid NOT NULL,
+                  recorded_at timestamp with time zone NOT NULL,
+                  organization_id uuid NOT NULL,
+                  actor_kind character varying(30) NOT NULL,
+                  actor_ref character varying(255) NOT NULL,
+                  event_type character varying(60) NOT NULL,
+                  object_type character varying(30) NOT NULL,
+                  object_id character varying(255) NOT NULL,
+                  object_label character varying(500),
+                  subject_kind character varying(10),
+                  subject_ref character varying(255),
+                  before text,
+                  after text,
+                  outcome character varying(10) NOT NULL,
+                  reason character varying(1000),
+                  correlation_ref character varying(255),
+                  CONSTRAINT chk_audit_log_actor_kind CHECK ((actor_kind IN ('USER', 'SERVICE_ACCOUNT', 'SYSTEM_PROCESS'))),
+                  CONSTRAINT chk_audit_log_object_type CHECK ((object_type IN ('KNOWLEDGE_LIBRARY', 'SPACE', 'GROUP', 'ASSET_GRANT', 'USER_ACCOUNT', 'API_TOKEN', 'SYSTEM_SETTING', 'AUDIT_LOG', 'DIRECTORY_SYNC_RUN'))),
+                  CONSTRAINT chk_audit_log_outcome CHECK ((outcome IN ('SUCCESS', 'DENIED', 'FAILURE'))),
+                  CONSTRAINT chk_audit_log_subject CHECK ((((subject_kind IS NULL) AND (subject_ref IS NULL)) OR ((subject_kind IS NOT NULL) AND (subject_kind IN ('USER', 'GROUP')) AND (subject_ref IS NOT NULL))))
+              )
+              PARTITION BY RANGE (recorded_at);
+
+              ALTER TABLE ONLY public.audit_log
+                  ADD CONSTRAINT audit_log_pkey PRIMARY KEY (event_id, recorded_at);
+
+              CREATE INDEX idx_audit_log_object ON public.audit_log USING btree (organization_id, object_type, object_id, recorded_at);
+
+              CREATE INDEX idx_audit_log_event_type ON public.audit_log USING btree (organization_id, event_type, recorded_at);
+
+              CREATE INDEX idx_audit_log_correlation ON public.audit_log USING btree (organization_id, correlation_ref) WHERE (correlation_ref IS NOT NULL);
+
+              CREATE INDEX idx_audit_log_time_range ON public.audit_log USING btree (organization_id, recorded_at);
+
+              CREATE INDEX idx_audit_log_incident_scope ON public.audit_log USING btree (organization_id, actor_ref, recorded_at);
+
+              ALTER TABLE public.audit_log
+                  ADD CONSTRAINT fk_audit_log_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+
+              -- Long, fixed horizon of monthly partitions - three months back through 16 years forward from
+              -- the moment this migration runs (see 017-audit-log.yaml history for the full rationale); no
+              -- DEFAULT partition, so a write outside this horizon fails loudly instead of landing somewhere
+              -- retention deletion can never reclaim.
+              DO $$
+              DECLARE
+                start_month date := date_trunc('month', now() - interval '3 months');
+                i integer;
+                partition_start date;
+                partition_end date;
+                partition_name text;
+              BEGIN
+                FOR i IN 0..194 LOOP
+                  partition_start := (start_month + (i || ' months')::interval)::date;
+                  partition_end := (start_month + ((i + 1) || ' months')::interval)::date;
+                  partition_name := 'audit_log_' || to_char(partition_start, 'YYYY_MM');
+                  EXECUTE format(
+                    'CREATE TABLE IF NOT EXISTS %I PARTITION OF audit_log FOR VALUES FROM (%L) TO (%L)',
+                    partition_name, partition_start, partition_end
+                  );
+                END LOOP;
+              END $$;
+
+              CREATE TABLE public.audit_actor_pseudonyms (
+                  pseudonym_id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              ALTER TABLE ONLY public.audit_actor_pseudonyms
+                  ADD CONSTRAINT audit_actor_pseudonyms_pkey PRIMARY KEY (pseudonym_id);
+
+              ALTER TABLE ONLY public.audit_actor_pseudonyms
+                  ADD CONSTRAINT uk_audit_actor_pseudonyms_user UNIQUE (user_id);
+
+              ALTER TABLE ONLY public.audit_actor_pseudonyms
+                  ADD CONSTRAINT fk_audit_actor_pseudonyms_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.audit_actor_pseudonyms
+                  ADD CONSTRAINT fk_audit_actor_pseudonyms_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE CASCADE;
+
+              -- opaa_audit_owner: a dedicated, NOLOGIN role nothing ever authenticates as. Ownership of
+              -- audit_log, its partitions, audit_actor_pseudonyms, audit_retention_settings and the retention
+              -- deletion function moves to it below, so the application account (current_user) - which created
+              -- every object above as their owner - can never bypass the narrow INSERT/SELECT/EXECUTE grants it
+              -- keeps by dropping a CHECK constraint, rewriting a partition or deleting rows directly (an owner
+              -- always retains DDL on its own objects regardless of REVOKEs). See ADR-0015 for the full
+              -- reasoning, including the residual CREATEROLE-time membership this migration cannot close.
+              DO $$
+              BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opaa_audit_owner') THEN
+                  EXECUTE 'CREATE ROLE opaa_audit_owner NOLOGIN';
+                END IF;
+                EXECUTE format('GRANT opaa_audit_owner TO %I', current_user);
+              END $$;
+
+              GRANT CREATE ON SCHEMA public TO opaa_audit_owner;
+
+              ALTER TABLE audit_log OWNER TO opaa_audit_owner;
+              ALTER TABLE audit_actor_pseudonyms OWNER TO opaa_audit_owner;
+
+              -- Every partition of audit_log, whichever statement above created it.
+              DO $$
+              DECLARE
+                partition regclass;
+              BEGIN
+                FOR partition IN
+                  SELECT inhrelid::regclass FROM pg_inherits
+                  WHERE inhparent = 'audit_log'::regclass
+                LOOP
+                  EXECUTE format('ALTER TABLE %s OWNER TO opaa_audit_owner', partition);
+                END LOOP;
+              END $$;
+
+              REVOKE ALL ON TABLE audit_log, audit_actor_pseudonyms FROM PUBLIC;
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT INSERT, SELECT ON TABLE audit_log TO %I', current_user);
+                EXECUTE format('GRANT INSERT, SELECT ON TABLE audit_actor_pseudonyms TO %I', current_user);
+              END $$;
+              -- Future partitions opaa_audit_owner creates inherit exactly this grant automatically.
+              DO $$
+              BEGIN
+                EXECUTE format(
+                  'ALTER DEFAULT PRIVILEGES FOR ROLE opaa_audit_owner IN SCHEMA public'
+                  ' GRANT SELECT, INSERT ON TABLES TO %I',
+                  current_user);
+              END $$;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+
+              CREATE TABLE public.audit_retention_settings (
+                  id integer DEFAULT 1 NOT NULL,
+                  retention_months integer NOT NULL,
+                  last_cutoff timestamp with time zone,
+                  last_run_month date,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT chk_audit_retention_settings_months CHECK (((retention_months >= 12) AND (retention_months <= 120))),
+                  CONSTRAINT chk_audit_retention_settings_singleton CHECK ((id = 1))
+              );
+
+              ALTER TABLE ONLY public.audit_retention_settings
+                  ADD CONSTRAINT audit_retention_settings_pkey PRIMARY KEY (id);
+
+              INSERT INTO audit_retention_settings
+                (id, retention_months, last_cutoff, last_run_month, updated_at)
+              VALUES (
+                1, 36,
+                date_trunc('month', now()) - interval '36 months',
+                date_trunc('month', now())::date,
+                now()
+              );
+
+              REVOKE ALL ON TABLE audit_retention_settings FROM PUBLIC;
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+              ALTER TABLE audit_retention_settings OWNER TO opaa_audit_owner;
+              GRANT SELECT ON TABLE audit_retention_settings TO CURRENT_USER;
+              GRANT UPDATE (retention_months, updated_at) ON TABLE audit_retention_settings TO CURRENT_USER;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+
+              CREATE FUNCTION public.opaa_audit_delete_expired_partitions() RETURNS SETOF text
+                  LANGUAGE plpgsql SECURITY DEFINER
+                  SET search_path TO 'pg_catalog', 'public', 'pg_temp'
+                  AS $_$ DECLARE
+                cfg RECORD;
+                current_month date := date_trunc('month', now())::date;
+                candidate_cutoff timestamptz;
+                new_cutoff timestamptz;
+                elapsed_months integer;
+                rec RECORD;
+                partition_month date;
+              BEGIN
+                SELECT retention_months, last_cutoff, last_run_month INTO cfg
+                FROM public.audit_retention_settings WHERE id = 1 FOR UPDATE;
+
+                IF NOT FOUND THEN
+                  RAISE EXCEPTION 'audit_retention_settings has no row with id=1 - migration 023 should have seeded it; refusing to silently skip retention deletion';
+                END IF;
+
+                candidate_cutoff := current_month
+                  - (cfg.retention_months::text || ' months')::interval;
+
+                IF cfg.last_cutoff IS NULL OR cfg.last_run_month IS NULL THEN
+                  new_cutoff := candidate_cutoff;
+                ELSE
+                  elapsed_months := GREATEST(
+                    0,
+                    (extract(year FROM current_month) - extract(year FROM cfg.last_run_month)) * 12
+                      + (extract(month FROM current_month) - extract(month FROM cfg.last_run_month))
+                  );
+                  new_cutoff := LEAST(
+                    candidate_cutoff, cfg.last_cutoff + (elapsed_months || ' months')::interval);
+                END IF;
+
+                FOR rec IN
+                  SELECT inhrelid::regclass AS partition_rel,
+                         inhrelid::regclass::text AS partition_name
+                  FROM pg_catalog.pg_inherits
+                  WHERE inhparent = 'public.audit_log'::regclass
+                LOOP
+                  partition_month := to_date(
+                    substring(rec.partition_name from 'audit_log_(\d{4}_\d{2})$'), 'YYYY_MM');
+                  IF partition_month IS NOT NULL
+                     AND (partition_month + interval '1 month') <= new_cutoff THEN
+                    EXECUTE format('DROP TABLE %s', rec.partition_rel);
+                    RETURN NEXT rec.partition_name;
+                  END IF;
+                END LOOP;
+
+                UPDATE public.audit_retention_settings
+                SET last_cutoff = new_cutoff, last_run_month = current_month
+                WHERE id = 1;
+
+                RETURN;
+              END; $_$;
+
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+              ALTER FUNCTION opaa_audit_delete_expired_partitions() OWNER TO opaa_audit_owner;
+              GRANT EXECUTE ON FUNCTION opaa_audit_delete_expired_partitions() TO CURRENT_USER;
+              REVOKE EXECUTE ON FUNCTION opaa_audit_delete_expired_partitions() FROM PUBLIC;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+      rollback:
+        - sql:
+            sql: "DROP TABLE IF EXISTS asset_grant_history, audit_actor_pseudonyms, audit_incident_scope_grants, audit_log, audit_retention_settings, group_membership_history, library_visibility_history CASCADE;"
+
+  - changeSet:
+      id: 001-baseline-g
+      author: opaa
+      comment: "Benachrichtigungen / Branding / Sonstiges: in-app notifications and the operator branding singleton."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.branding_settings (
+                  id integer NOT NULL,
+                  product_name character varying(60),
+                  claim character varying(120),
+                  primary_color character varying(7),
+                  default_color_scheme character varying(10),
+                  logo_content bytea,
+                  logo_content_type character varying(50),
+                  logo_version character varying(16),
+                  logo_updated_at timestamp with time zone,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_branding_settings_color_scheme CHECK (((default_color_scheme IS NULL) OR (default_color_scheme IN ('LIGHT', 'DARK', 'SYSTEM')))),
+                  CONSTRAINT chk_branding_settings_logo_complete CHECK ((((logo_content IS NULL) AND (logo_content_type IS NULL) AND (logo_version IS NULL) AND (logo_updated_at IS NULL)) OR ((logo_content IS NOT NULL) AND (logo_content_type IS NOT NULL) AND (logo_version IS NOT NULL) AND (logo_updated_at IS NOT NULL)))),
+                  CONSTRAINT chk_branding_settings_logo_content_type CHECK (((logo_content_type IS NULL) OR (logo_content_type IN ('image/png', 'image/jpeg')))),
+                  CONSTRAINT chk_branding_settings_logo_size CHECK (((logo_content IS NULL) OR (octet_length(logo_content) <= 524288))),
+                  CONSTRAINT chk_branding_settings_primary_color CHECK (((primary_color IS NULL) OR ((primary_color)::text ~ '^#[0-9A-Fa-f]{6}$'::text))),
+                  CONSTRAINT chk_branding_settings_singleton CHECK ((id = 1))
+              );
+
+              CREATE TABLE public.notifications (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  recipient_user_id uuid NOT NULL,
+                  type character varying(50) NOT NULL,
+                  object_type character varying(30),
+                  object_id uuid,
+                  title character varying(255) NOT NULL,
+                  body character varying(2000),
+                  read_at timestamp with time zone,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              ALTER TABLE ONLY public.branding_settings
+                  ADD CONSTRAINT branding_settings_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.notifications
+                  ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
+
+              CREATE INDEX idx_notifications_recipient_read ON public.notifications USING btree (recipient_user_id, read_at);
+
+              ALTER TABLE ONLY public.notifications
+                  ADD CONSTRAINT fk_notifications_recipient_organization FOREIGN KEY (recipient_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE CASCADE;
+      rollback:
+        - sql:
+            sql: "DROP TABLE IF EXISTS branding_settings, notifications CASCADE;"
+
+  - changeSet:
+      id: 001-baseline-h
+      author: opaa
+      comment: "Seed-Daten: the single default organization every row in this schema is scoped to, and the branding_settings singleton row (all-NULL, so BrandingSettingsService resolves every field against BrandingDefaults until an administrator configures one)."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              INSERT INTO organizations (id, name)
+              VALUES ('00000000-0000-0000-0000-000000000001', 'Default');
+
+              INSERT INTO branding_settings (id, updated_at)
+              VALUES (1, now());
+      rollback:
+        - sql:
+            sql: >
+              DELETE FROM branding_settings WHERE id = 1;
+              DELETE FROM organizations WHERE id = '00000000-0000-0000-0000-000000000001';
+

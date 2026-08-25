@@ -38,10 +38,9 @@ import org.springframework.ai.chat.prompt.Prompt;
  * class's own load-check-{@code save()} cycle - they are one atomic {@code
  * ChatRepository#applyGeneratedTitleIfGenerated} {@code UPDATE}, so this class has nothing left to
  * unit-test about *whether* a CUSTOM title is protected (that guarantee now lives in the database
- * query itself, proved by {@code ChatServiceIntegrationTest}'s race tests and {@code
- * Migration034AddChatTitleSourceTest}) - only that it correctly calls that method with the
- * sanitized title, and handles "0 rows updated" (rejected, or the chat no longer exists) without
- * throwing.
+ * query itself, proved by {@code ChatServiceIntegrationTest}'s race tests) - only that it correctly
+ * calls that method with the sanitized title, and handles "0 rows updated" (rejected, or the chat
+ * no longer exists) without throwing.
  */
 @ExtendWith(MockitoExtension.class)
 class ChatTitleGenerationServiceTest {

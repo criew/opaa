@@ -35,12 +35,12 @@ import org.testcontainers.utility.DockerImageName;
  *       {@code @Container}, which would start one container per class). This alone replaces up to
  *       19 individual container starts with one.
  *   <li>A per-class <b>template database</b>: {@link #baseFixtureChangelogPath()} names the fixture
- *       changelog (e.g. {@code db/changelog/test-master-through-016.yaml}) that must be applied
- *       once, in full, before the changeSet under test runs. This base class applies it exactly
- *       once per class, in a database named {@code template_<simpleclassname>}, and then every
- *       {@code @Test} method gets its own fresh, fully-isolated database cloned from that template
- *       via {@code CREATE DATABASE ... TEMPLATE ...} (~0.1-0.2s) instead of re-running the whole
- *       fixture changelog again (~1-2s, growing with every migration added to the chain). The
+ *       changelog (e.g. {@code db/changelog/test-master-through-baseline.yaml}) that must be
+ *       applied once, in full, before the changeSet under test runs. This base class applies it
+ *       exactly once per class, in a database named {@code template_<simpleclassname>}, and then
+ *       every {@code @Test} method gets its own fresh, fully-isolated database cloned from that
+ *       template via {@code CREATE DATABASE ... TEMPLATE ...} (~0.1-0.2s) instead of re-running the
+ *       whole fixture changelog again (~1-2s, growing with every migration added to the chain). The
  *       changeSet(s) actually under test are deliberately <b>not</b> part of the template - each
  *       {@code @Test} still applies them itself, exactly as before, so every test still exercises a
  *       schema built from scratch by Liquibase for the one changeSet it is proving something about.
@@ -54,29 +54,24 @@ import org.testcontainers.utility.DockerImageName;
  * per-test database starts genuinely fresh from the template, complete with that implicit grant.
  *
  * <p><b>Cluster-wide roles are not part of this optimization and remain each subclass's own
- * responsibility.</b> {@code CREATE ROLE}/{@code DROP ROLE} (see {@code Migration017AuditLogTest},
- * {@code Migration022AuditorRoleEventTypesTest}, {@code Migration023AuditRetentionTest}) act on the
- * whole Postgres cluster, not on one database - they survive a {@code DROP DATABASE} exactly as
- * they survived the old {@code DROP SCHEMA CASCADE}. Subclasses that create such roles must keep
- * creating and dropping them per test method, and must never bake them into the template database:
- * a role dropped by one test would otherwise be missing for the next test cloned from the same
- * template.
+ * responsibility.</b> {@code CREATE ROLE}/{@code DROP ROLE} (e.g. for {@code opaa_audit_owner},
+ * created by the baseline's audit-log privilege restriction, see {@code
+ * db/changelog/changes/001-baseline.yaml}, group (f)) act on the whole Postgres cluster, not on one
+ * database - they survive a {@code DROP DATABASE} exactly as they survived the old {@code DROP
+ * SCHEMA CASCADE}. Subclasses that create such roles must keep creating and dropping them per test
+ * method, and must never bake them into the template database: a role dropped by one test would
+ * otherwise be missing for the next test cloned from the same template.
  *
  * <p><b>Important asymmetry a subclass must get right:</b> a role can only be dropped per test
  * method if the class's own fixture chain does not itself create that role at template-build time.
- * {@code Migration017AuditLogTest}/{@code Migration022AuditorRoleEventTypesTest}/{@code
- * Migration023AuditRetentionTest} all use {@code test-master-through-016.yaml} - which stops before
- * changelog 017, the one that creates {@code opaa_audit_owner} - so for them, role creation only
- * ever happens per test method, after cloning, and per-test {@code DROP ROLE} is safe. A class
- * whose fixture chain runs *past* changelog 017 (e.g. {@code test-master-through-020.yaml}, used by
- * {@code Migration021AuditIncidentScopeGrantsTest}/{@code
- * Migration024AllowRssFeedSourceTypeTest}/{@code Migration026AddSourceEntryUrlTest}) gets {@code
- * opaa_audit_owner} created once, at template-build time, as part of applying 017 into the template
- * database - and every per-test clone then owns objects (the {@code audit_log} table and its
- * partitions) under that role. Such a class must <b>not</b> attempt to {@code DROP ROLE
- * opaa_audit_owner} per test method: the role still owns objects in the template database itself
- * (which outlives every per-test clone), so the drop fails. Only a class whose own fixture chain
- * never applies the changelog that creates a given role may drop that role per test method.
+ * A class whose {@link #baseFixtureChangelogPath()} stops before the changeSet that creates a given
+ * role gets that role created fresh, per test method, after cloning - so per-test {@code DROP ROLE}
+ * is safe there. A class whose fixture chain runs *past* that changeSet instead gets the role
+ * created once, at template-build time - and every per-test clone then owns objects under that role
+ * that live in the template database itself (which outlives every per-test clone). Such a class
+ * must <b>not</b> attempt to {@code DROP ROLE} that role per test method: the role still owns
+ * objects in the template database, so the drop fails. Only a class whose own fixture chain never
+ * applies the changelog that creates a given role may drop that role per test method.
  *
  * <p><b>Why cloning needs an admin connection to a third, untouched database:</b> {@code CREATE
  * DATABASE ... TEMPLATE ...} fails if any connection is still open against the template database
@@ -115,8 +110,9 @@ abstract class AbstractMigrationTest {
   /**
    * The classpath path of the fixture changelog that builds the schema exactly as it existed
    * immediately before the changeSet(s) under test - e.g. {@code
-   * db/changelog/test-master-through-016.yaml}. Applied once per class, into the template database;
-   * never re-applied per test method.
+   * db/changelog/test-master-through-baseline.yaml} for a delta test of the first changeset added
+   * after the #904 baseline. Applied once per class, into the template database; never re-applied
+   * per test method.
    */
   protected abstract String baseFixtureChangelogPath();
 
@@ -162,8 +158,8 @@ abstract class AbstractMigrationTest {
   @AfterEach
   void dropTestDatabase() throws SQLException {
     // Idempotent safety net: subclasses that create cluster-wide roles owning objects in this
-    // database (e.g. Migration017AuditLogTest, Migration023AuditRetentionTest) must drop this
-    // database themselves, in their own @AfterEach, before dropping those roles - see {@link
+    // database must drop this database themselves, in their own @AfterEach, before dropping those
+    // roles - see {@link
     // #dropCurrentDatabaseNow()}. DROP DATABASE IF EXISTS makes calling it again here harmless.
     dropDatabase(currentDatabaseName);
   }
@@ -225,9 +221,7 @@ abstract class AbstractMigrationTest {
    * Defensively drops the given cluster-wide roles before (re-)creating them. Cluster-wide roles
    * (see this class's own Javadoc) are shared by every test class using this singleton container,
    * not scoped to one per-test database - so a role name reused by more than one migration test
-   * class (e.g. {@code audit_app_role}/{@code opaa_audit_owner}, used identically by {@code
-   * Migration017AuditLogTest}, {@code Migration022AuditorRoleEventTypesTest} and {@code
-   * Migration023AuditRetentionTest}) must never be assumed absent just because this test's own
+   * class (e.g. {@code opaa_audit_owner}) must never be assumed absent just because this test's own
    * previous {@code @AfterEach} dropped it - only a role that role itself created gets the
    * automatic {@code ADMIN OPTION} a later {@code CREATE ROLE ... IF NOT EXISTS}-style changeSet
    * step relies on, so even a role that still exists but was created by a different session breaks
