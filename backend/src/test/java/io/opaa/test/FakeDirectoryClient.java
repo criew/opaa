@@ -14,6 +14,10 @@ import java.util.UUID;
  * response instead of the production {@code NoOpDirectoryClient}, so those classes can carry an
  * identical {@link DirectorySyncMockConfiguration} import and therefore share one Spring context
  * (Issue #903).
+ *
+ * <p>{@link DirectorySyncMockResetListener} calls {@link #reset()} before every test method of a
+ * class carrying it, so no class relies on inheriting whatever the previous test (in this class or
+ * a sibling sharing the same context) last configured via {@link #respondWith}/{@link #failWith}.
  */
 public final class FakeDirectoryClient implements DirectoryClient {
 
@@ -27,6 +31,15 @@ public final class FakeDirectoryClient implements DirectoryClient {
 
   public void failWith(String message) {
     this.failure = new DirectoryUnavailableException(message);
+  }
+
+  /**
+   * Restores the empty-response, no-failure default {@link DirectorySyncMockResetListener} relies
+   * on.
+   */
+  public void reset() {
+    this.failure = null;
+    this.snapshot = new DirectorySnapshot(Instant.now(), List.of());
   }
 
   @Override

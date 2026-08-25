@@ -50,6 +50,7 @@ import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
 import io.opaa.test.DirectorySyncMockConfiguration;
+import io.opaa.test.DirectorySyncMockResetListener;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
@@ -63,6 +64,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
@@ -81,13 +83,14 @@ import org.springframework.transaction.support.TransactionTemplate;
  * audit_log.organization_id} is a plain {@code UUID} column with a real foreign key ({@code
  * fk_audit_log_organization}, migration 017) that only the versioned changelog creates.
  */
-// @Import (below) registers the shared FakeDirectoryClient (io.opaa.test), not needed by the
-// plain @OpaaIntegrationTest group - documented exception per AGENTS.md.
-// DirectorySyncServiceIntegrationTest
-// and PermissionHistoryServiceIntegrationTest import the identical configuration class and share
-// this context (Issue #903).
+// Shares one context with
+// DirectorySyncServiceIntegrationTest/PermissionHistoryServiceIntegrationTest
+// via the identical DirectorySyncMockConfiguration import (#903).
 @OpaaIntegrationTest
 @Import(DirectorySyncMockConfiguration.class)
+@TestExecutionListeners(
+    listeners = DirectorySyncMockResetListener.class,
+    mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class AuditEventRecordingIntegrationTest {
 
   @Autowired private AssetGrantService grantService;

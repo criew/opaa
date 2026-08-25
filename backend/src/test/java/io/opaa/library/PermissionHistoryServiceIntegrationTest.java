@@ -24,6 +24,7 @@ import io.opaa.group.sync.DirectorySyncStatusRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.DirectorySyncMockConfiguration;
+import io.opaa.test.DirectorySyncMockResetListener;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestExecutionListeners;
 
 /**
  * Exercises #238's Stichtag reconstruction ({@link
@@ -49,13 +51,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * A") and the acceptance criteria's harder negative one ("prove they could not on day B") from the
  * same reconstruction.
  */
-// @Import (below) registers the shared FakeDirectoryClient (io.opaa.test), not needed by the plain
-// @OpaaIntegrationTest group - documented exception per AGENTS.md.
-// AuditEventRecordingIntegrationTest
-// and DirectorySyncServiceIntegrationTest import the identical configuration class and share this
-// context (Issue #903).
+// Shares one context with AuditEventRecordingIntegrationTest/DirectorySyncServiceIntegrationTest
+// via
+// the identical DirectorySyncMockConfiguration import (#903).
 @OpaaIntegrationTest
 @Import(DirectorySyncMockConfiguration.class)
+@TestExecutionListeners(
+    listeners = DirectorySyncMockResetListener.class,
+    mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class PermissionHistoryServiceIntegrationTest {
 
   @Autowired private KnowledgeLibraryService libraryService;

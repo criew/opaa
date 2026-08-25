@@ -14,6 +14,7 @@ import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.DirectorySyncMockConfiguration;
+import io.opaa.test.DirectorySyncMockResetListener;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
@@ -38,13 +40,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * successful, already-committed apply into an error response with no report at all - that would
  * additionally invite an operator to retry a run that already took effect.
  */
-// Own @MockitoBean (below) means Spring's context cache still keys this to its own context
-// regardless of the shared DirectorySyncMockConfiguration import (see
-// AuditEventRecordingIntegrationTest,
-// DirectorySyncServiceIntegrationTest, PermissionHistoryServiceIntegrationTest) - documented
-// exception per AGENTS.md.
+// Own @MockitoBean (below) still keys this to its own context despite the shared
+// DirectorySyncMockConfiguration import - documented exception per AGENTS.md.
 @OpaaIntegrationTest
 @Import(DirectorySyncMockConfiguration.class)
+@TestExecutionListeners(
+    listeners = DirectorySyncMockResetListener.class,
+    mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class DirectorySyncServiceStatusFailureTest {
 
   @Autowired private DirectorySyncService directorySyncService;
