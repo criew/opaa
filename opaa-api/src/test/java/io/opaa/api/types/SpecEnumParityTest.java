@@ -75,7 +75,9 @@ class SpecEnumParityTest {
         Arguments.of("ChatStatus", ChatStatus.values()),
         Arguments.of("ChatRole", ChatRole.values()),
         Arguments.of("ColorScheme", ColorScheme.values()),
-        Arguments.of("NotificationType", NotificationType.values()));
+        Arguments.of("NotificationType", NotificationType.values()),
+        Arguments.of("ScheduleFrequency", ScheduleFrequency.values()),
+        Arguments.of("ScheduleWeekday", ScheduleWeekday.values()));
   }
 
   @ParameterizedTest(name = "{0}")

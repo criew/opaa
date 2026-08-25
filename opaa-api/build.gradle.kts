@@ -102,6 +102,8 @@ val typeMappingsConfig = mapOf(
     "ChatRole" to "ChatRole",
     "ColorScheme" to "ColorScheme",
     "NotificationType" to "NotificationType",
+    "ScheduleFrequency" to "ScheduleFrequency",
+    "ScheduleWeekday" to "ScheduleWeekday",
 )
 
 tasks.withType<Test> {
@@ -168,6 +170,8 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "ChatRole" to "io.opaa.api.types.ChatRole",
         "ColorScheme" to "io.opaa.api.types.ColorScheme",
         "NotificationType" to "io.opaa.api.types.NotificationType",
+        "ScheduleFrequency" to "io.opaa.api.types.ScheduleFrequency",
+        "ScheduleWeekday" to "io.opaa.api.types.ScheduleWeekday",
     ))
 }
 

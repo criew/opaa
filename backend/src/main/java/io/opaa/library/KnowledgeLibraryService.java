@@ -1,6 +1,5 @@
 package io.opaa.library;
 
-import io.opaa.api.dto.ScheduleFrequency;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
@@ -8,6 +7,7 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;

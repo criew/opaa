@@ -3,8 +3,8 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.dto.ScheduleFrequency;
-import io.opaa.api.dto.ScheduleWeekday;
+import io.opaa.api.types.ScheduleFrequency;
+import io.opaa.api.types.ScheduleWeekday;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
