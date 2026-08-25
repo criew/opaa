@@ -127,9 +127,10 @@ Die Wirklichkeit der Rechenzentren ist unterschiedlich: Das eine hat objektbasie
 nächste ein Netzlaufwerk, und die kleine Installation hat ein Verzeichnis. Der Weg dorthin führt
 jedoch nicht über eine Speicher-Abstraktion in der Anwendung.
 
-**Das Dateisystem ist der Vertrag.** OPAA schreibt und liest Quelldokumente gegen genau ein
-konfiguriertes Verzeichnis (`OPAA_INDEXING_DOCUMENT_PATH`, Standard `./documents`). Was hinter diesem
-Verzeichnis hängt, entscheidet der Betrieb durch Einhängen — nicht die Anwendung durch eine
+**Das Dateisystem ist der Vertrag.** OPAA liest Quelldokumente aus dem Verzeichnis, das eine
+FILESYSTEM-Bibliothek selbst als `sourcePath` konfiguriert (ADR-0018), begrenzt auf die über
+`OPAA_INDEXING_FILESYSTEM_ALLOWLIST` konfigurierten Basisverzeichnisse. Was hinter diesen
+Basisverzeichnissen hängt, entscheidet der Betrieb durch Einhängen — nicht die Anwendung durch eine
 Konfigurationsvariante. Eine Abstraktion über mehrere Speicherarten ist **nicht gebaut** und für die
 beiden dateibasierten Fälle auch nicht vorgesehen.
 

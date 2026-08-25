@@ -85,7 +85,8 @@ Drei Zustände werden unterschieden:
 ## B · Wissensquellen & Konnektoren
 
 **Gebaut**
-- Aufnahme aus einem konfigurierten Verzeichnis (`OPAA_INDEXING_DOCUMENT_PATH`)
+- Aufnahme aus dem von einer FILESYSTEM-Bibliothek konfigurierten Verzeichnis (`sourcePath`,
+  ADR-0018), begrenzt auf Basisverzeichnisse aus `OPAA_INDEXING_FILESYSTEM_ALLOWLIST`
 - Indizierung aus dem Netz über URL (`UrlIndexingExecutor`, `io.opaa.sourceaccess.BoundedDownloader`, `AutoindexCrawlerService`)
 - Formate: Markdown, Text, PDF, DOCX, DOC, PPTX — an einer Stelle festgelegt
   (`SupportedDocumentFormats`) und für alle Aufnahmewege verbindlich, seit #404 anhand des
@@ -340,9 +341,10 @@ nicht vertreten.
 - Docker Compose für den gesamten Stapel (`docker-compose.yml`, `keycloak/`)
 - PostgreSQL mit pgvector; Schemaverwaltung über Liquibase
 - Öffentliche Testinstanz (siehe [deployment.md](./deployment.md))
-- Dokumentenspeicher: **genau ein konfiguriertes Verzeichnis** (`OPAA_INDEXING_DOCUMENT_PATH`,
-  Standard `./documents`). Ein Netzlaufwerk wird dorthin eingehängt und braucht deshalb nichts
-  Zusätzliches im Code
+- Dokumentenspeicher: **das Dateisystem, kein Speicher-Backend.** Jede FILESYSTEM-Bibliothek nennt
+  ihr eigenes `sourcePath` (ADR-0018), begrenzt auf die über `OPAA_INDEXING_FILESYSTEM_ALLOWLIST`
+  konfigurierten Basisverzeichnisse. Ein Netzlaufwerk wird dort eingehängt und braucht deshalb
+  nichts Zusätzliches im Code
 
 **Nicht gebaut**
 - **Keine Speicher-Abstraktion.** Es gibt keine wählbaren Speicher-Backends, sondern das eine

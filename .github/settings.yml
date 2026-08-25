@@ -9,6 +9,8 @@ branches:
         strict: true
         contexts: []
         checks:
+          - context: changes
+            app_id: 15368
           - context: backend
             app_id: 15368
           - context: backend-integration

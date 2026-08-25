@@ -588,7 +588,6 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_QUERY_SIMILARITY_THRESHOLD` | `0.3` | `0.3` | Minimale Kosinus-Ähnlichkeit für Chunk-Aufnahme (0,0–1,0) |
 | `OPAA_QUERY_PERMISSION_HISTORY_SAMPLE_RATE` | `1.0` | `1.0` | Anteil der Abfragen, für die der Abgleich der Live-Rechte gegen die historisierte Rechteformel (#238) tatsächlich läuft, als Wahrscheinlichkeit zwischen `0,0` und `1,0` (#889). Standardmäßig läuft der Abgleich bei jeder Abfrage; drei Zusatz-Queries über wachsende Tabellen je Anfrage sind der Grund, den Wert für eine Betriebsumgebung mit hohem Abfrageaufkommen abzusenken |
 | **Indizierung** | | | |
-| `OPAA_INDEXING_DOCUMENT_PATH` | `./documents` | `./documents` | Dateisystempfad für Quelldokumente |
 | `OPAA_INDEXING_CHUNK_SIZE` | `1000` | `1000` | Ziel-Tokens pro Chunk (1–10.000) |
 | `OPAA_INDEXING_CHUNK_OVERLAP` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Anzahl der Tokens, die jeder Chunk vom Ende seines Vorgängers wiederholt, damit eine Aussage an einer Chunk-Grenze in mindestens einem Chunk vollständig erhalten bleibt (#374). Muss kleiner als `OPAA_INDEXING_CHUNK_SIZE` sein; `0` deaktiviert die Überlappung, ein negativer Wert wird auf `0` normalisiert |
 | `OPAA_INDEXING_BATCH_SIZE` | `50` | `50` | Chunks pro Embedding-API-Aufruf (1–1.000) |
