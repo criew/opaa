@@ -185,12 +185,12 @@ kein Ordner in einem Raum. Sie kann in mehreren Spaces verwendet werden.
 **Detailseite:** Stammdaten, Rechtevergabe, Bestand — und ein Bereich, der **je nach Herkunft anders
 aussieht**:
 
-| Herkunft | Was der Bereich zeigt |
-|---|---|
-| **Upload** | Dateien auswählen oder hineinziehen, Fortschritt, einzelne Dokumente löschen |
-| **Dateisystem** | Pfad, Lauf anstoßen, Stand verfolgen |
-| **Webverzeichnis** | Adresse, Zugangsdaten, Lauf anstoßen, Stand verfolgen |
-| **RSS-Feed** | Feed-Adresse, Zugangsdaten, Behandlung von Anhängen, Lauf verfolgen |
+| Herkunft           | Was der Bereich zeigt                                                        |
+| ------------------ | ---------------------------------------------------------------------------- |
+| **Upload**         | Dateien auswählen oder hineinziehen, Fortschritt, einzelne Dokumente löschen |
+| **Dateisystem**    | Pfad, Lauf anstoßen, Stand verfolgen                                         |
+| **Webverzeichnis** | Adresse, Zugangsdaten, Lauf anstoßen, Stand verfolgen                        |
+| **RSS-Feed**       | Feed-Adresse, Zugangsdaten, Behandlung von Anhängen, Lauf verfolgen          |
 
 Diese Seite trägt am meisten Information und braucht die klarste Ordnung der ganzen Anwendung.
 **Rechtevergabe** (Personen und Gruppen suchen, Rolle zuweisen, entziehen) erscheint nur, wer sie hat.
@@ -220,7 +220,7 @@ wo es entstanden ist.
 ### 4.7 Systemverwaltung
 
 Gruppen als Rechtesubjekt. **Abgleich mit dem Verzeichnisdienst mit Probelauf vor dem Vollzug** — der
-Probelauf zeigt als eigener Zustand, was geschehen *würde*, und wird dann bestätigt oder verworfen.
+Probelauf zeigt als eigener Zustand, was geschehen _würde_, und wird dann bestätigt oder verworfen.
 Dazu Modellvorgaben und der getrennte Zugriffsweg für die Revision auf die Protokolldaten.
 
 ### 4.8 Einstellungen und Anmeldung

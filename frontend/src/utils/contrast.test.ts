@@ -4,6 +4,7 @@ import {
   UI_CONTRAST_MINIMUM,
   checkAccentContrast,
   contrastRatio,
+  deriveAccentSurface,
   formatContrastRatio,
   parseHexColor,
 } from './contrast'
@@ -73,20 +74,23 @@ describe('checkAccentContrast', () => {
   })
 
   /**
-   * Documents a real finding, not a preference: the OPAA standard accent reaches only 3,3:1 behind
-   * white button text, below the 4,5:1 WCAG asks for normal text - even though
-   * docs/design/guidelines.md#24-kontrast claims the role pairs all satisfy their thresholds. This
-   * test exists so the claim and the arithmetic cannot drift apart silently; if the standard accent
-   * is ever corrected, this is the test that says so.
+   * #634 closed the finding this test used to document: white on the raw standard accent
+   * (blue-500) reaches only 3,3:1, but filled surfaces render on the derived accent surface -
+   * so the button-label check now evaluates that surface and passes.
    */
-  it('shows that the OPAA standard accent itself misses the text threshold', () => {
+  it('passes the button-label check for the OPAA standard accent via the derived surface', () => {
     const checks = checkAccentContrast(OPAA_BRANDING.primaryColor)
 
     const buttonLabel = checks.find((c) => c.label.includes('Schaltflächen'))
-    expect(buttonLabel?.ratio).toBeCloseTo(3.3, 1)
+    expect(buttonLabel?.ratio).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+    expect(checks.every((c) => c.passes)).toBe(true)
+  })
+
+  it('still flags an accent whose bounded darkening cannot rescue white text (#634)', () => {
+    const checks = checkAccentContrast('#FFF176')
+
+    const buttonLabel = checks.find((c) => c.label.includes('Schaltflächen'))
     expect(buttonLabel?.passes).toBe(false)
-    // Both surface checks do pass - the shortfall is specific to white-on-accent text.
-    expect(checks.filter((c) => !c.passes)).toHaveLength(1)
   })
 
   it('returns nothing to warn about for an unparseable colour', () => {
@@ -98,5 +102,28 @@ describe('formatContrastRatio', () => {
   it('writes the ratio the way WCAG tooling does, with a German decimal comma', () => {
     expect(formatContrastRatio(4.5)).toBe('4,5:1')
     expect(formatContrastRatio(21)).toBe('21,0:1')
+  })
+})
+
+describe('deriveAccentSurface', () => {
+  it('keeps a colour that already carries white text', () => {
+    expect(deriveAccentSurface('#0B6FBC')).toBe('#0B6FBC')
+  })
+
+  it('darkens a light colour until white text reaches 4.5:1', () => {
+    const surface = deriveAccentSurface('#61B5F6')
+
+    expect(surface).not.toBe('#61B5F6')
+    expect(contrastRatio('#FFFFFF', surface)).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+  })
+
+  it('stops after the bounded number of steps instead of repainting an extreme colour', () => {
+    const surface = deriveAccentSurface('#FFF176')
+
+    expect(contrastRatio('#FFFFFF', surface)).toBeLessThan(TEXT_CONTRAST_MINIMUM)
+  })
+
+  it('returns unparseable input unchanged', () => {
+    expect(deriveAccentSurface('blau')).toBe('blau')
   })
 })
