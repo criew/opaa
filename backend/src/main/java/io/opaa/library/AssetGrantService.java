@@ -259,7 +259,6 @@ public class AssetGrantService {
               saved,
               GrantChanged.Cause.GRANTED,
               currentUserId,
-              AuditEventType.ASSET_GRANT_GRANTED,
               null,
               grantAuditPayload(saved.getRole(), saved.getExpiresAt())));
     } else {
@@ -269,7 +268,6 @@ public class AssetGrantService {
               saved,
               GrantChanged.Cause.ROLE_CHANGED,
               currentUserId,
-              AuditEventType.ASSET_GRANT_CHANGED,
               grantAuditPayload(previousRole, previousExpiresAt),
               grantAuditPayload(saved.getRole(), saved.getExpiresAt())));
     }
@@ -327,7 +325,6 @@ public class AssetGrantService {
             grant,
             GrantChanged.Cause.REVOKED,
             currentUserId,
-            AuditEventType.ASSET_GRANT_REVOKED,
             grantAuditPayload(grant.getRole(), grant.getExpiresAt()),
             null));
     grantRepository.delete(grant);

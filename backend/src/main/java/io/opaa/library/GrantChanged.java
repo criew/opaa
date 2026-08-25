@@ -11,7 +11,15 @@ import java.util.UUID;
  * KnowledgeLibraryService} (the owner-grant it creates alongside a new library) publish exactly one
  * of these per operation instead of calling both writers by hand - forgetting one side is
  * structurally impossible once the publish call itself is present. {@link AuditListener} and {@link
- * PermissionHistoryListener} each react to it with their own half of the write.
+ * PermissionHistoryListener} each react to it with their own half of the write, in an intentionally
+ * unspecified order: the two writes touch disjoint tables ({@code asset_grant_history} vs {@code
+ * audit_log}) with no dependency between them, so neither listener needs to observe the other's
+ * effect.
+ *
+ * <p>{@link Cause} carries its {@link AuditEventType} directly rather than the caller supplying a
+ * separate field the two must agree on - {@code ROLE_CHANGED} paired with {@code
+ * ASSET_GRANT_GRANTED} would otherwise compile, a mismatch as silent as the positional-parameter
+ * bug this event exists to structurally rule out.
  *
  * <p>Published synchronously via the plain Spring {@code ApplicationEventPublisher} (not
  * {@code @TransactionalEventListener}) from within the publisher's own transaction, so both
@@ -30,14 +38,27 @@ public record GrantChanged(
     AssetGrant grant,
     Cause cause,
     UUID actorUserId,
-    AuditEventType auditEventType,
     Map<String, Object> auditBefore,
     Map<String, Object> auditAfter) {
 
-  /** Which {@link PermissionHistoryService} writer {@link PermissionHistoryListener} calls. */
+  /**
+   * Which {@link PermissionHistoryService} writer {@link PermissionHistoryListener} calls, paired
+   * 1:1 with the {@link AuditEventType} {@link AuditListener} writes for it - the two can never
+   * disagree, since there is only one {@link #auditEventType()} per {@link Cause} value.
+   */
   public enum Cause {
-    GRANTED,
-    ROLE_CHANGED,
-    REVOKED
+    GRANTED(AuditEventType.ASSET_GRANT_GRANTED),
+    ROLE_CHANGED(AuditEventType.ASSET_GRANT_CHANGED),
+    REVOKED(AuditEventType.ASSET_GRANT_REVOKED);
+
+    private final AuditEventType auditEventType;
+
+    Cause(AuditEventType auditEventType) {
+      this.auditEventType = auditEventType;
+    }
+
+    public AuditEventType auditEventType() {
+      return auditEventType;
+    }
   }
 }

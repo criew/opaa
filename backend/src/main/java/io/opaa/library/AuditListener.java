@@ -36,7 +36,7 @@ class AuditListener {
         AuditEvent.builder()
             .organizationId(event.library().getOrganizationId())
             .actor(event.actorUserId())
-            .type(event.auditEventType())
+            .type(event.cause().auditEventType())
             .object(
                 AuditObjectType.KNOWLEDGE_LIBRARY,
                 event.library().getId(),
@@ -54,7 +54,7 @@ class AuditListener {
         AuditEvent.builder()
             .organizationId(event.library().getOrganizationId())
             .actor(event.actorUserId())
-            .type(event.auditEventType())
+            .type(event.cause().auditEventType())
             .object(
                 AuditObjectType.KNOWLEDGE_LIBRARY,
                 event.library().getId(),

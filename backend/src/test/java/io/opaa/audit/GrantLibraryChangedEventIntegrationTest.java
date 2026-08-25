@@ -20,6 +20,7 @@ import io.opaa.library.PermissionHistoryService;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -66,9 +67,11 @@ class GrantLibraryChangedEventIntegrationTest {
   private UUID organizationId;
   private UUID actorUserId;
   private TransactionTemplate transactionTemplate;
+  private final List<UUID> createdLibraryIds = new ArrayList<>();
 
   @BeforeEach
   void setUp() {
+    createdLibraryIds.clear();
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Event Test Org")).getId();
     User actor =
@@ -80,21 +83,37 @@ class GrantLibraryChangedEventIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    // None of this test's libraries is ever persisted to knowledge_libraries (the events are
+    // published directly - see the class Javadoc), so the history/audit rows below reference a
+    // library_id/object_id with no row backing it, and no FK ties them to createdLibraryIds
+    // either (library_id carries no foreign key at all, per PermissionHistoryService's Javadoc) -
+    // they must be found and removed by that id explicitly, the same client-side-filter pattern
+    // AuditEventRecordingIntegrationTest's own teardown uses for ownLibraryIds. Every grant this
+    // class writes targets a GROUP subject (see newGrant), never a USER one, so
+    // deleteBySubjectUserIdIn would filter out none of these rows - subject-based cleanup does not
+    // apply here.
+    grantHistoryRepository.deleteAll(
+        grantHistoryRepository.findAll().stream()
+            .filter(h -> createdLibraryIds.contains(h.getLibraryId()))
+            .toList());
+    visibilityHistoryRepository.deleteAll(
+        visibilityHistoryRepository.findAll().stream()
+            .filter(v -> createdLibraryIds.contains(v.getLibraryId()))
+            .toList());
     // audit_log is insert-only at the application layer (see AuditLogServiceIntegrationTest's
     // teardown), so it needs the same JdbcTemplate cleanup before fk_audit_log_organization (ON
-    // DELETE RESTRICT) allows the organization itself to go. fk_asset_grant_history_actor_user/
-    // fk_library_visibility_history_actor_user are ON DELETE SET NULL, so those history rows would
-    // otherwise outlive the user - explicit cleanup keeps this test organization's footprint at
-    // zero, the same reasoning as AuditEventRecordingIntegrationTest's teardown.
+    // DELETE RESTRICT) allows the organization itself to go.
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
-    grantHistoryRepository.deleteBySubjectUserIdIn(List.of(actorUserId));
     userRepository.deleteById(actorUserId);
     organizationRepository.deleteById(organizationId);
   }
 
   private KnowledgeLibrary newLibrary() {
-    return KnowledgeLibrary.ownedByUser(
-        organizationId, "Bibliothek", null, actorUserId, LibraryVisibility.PRIVATE, false);
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationId, "Bibliothek", null, actorUserId, LibraryVisibility.PRIVATE, false);
+    createdLibraryIds.add(library.getId());
+    return library;
   }
 
   private AssetGrant newGrant(KnowledgeLibrary library, UUID subjectGroupId) {
@@ -114,7 +133,6 @@ class GrantLibraryChangedEventIntegrationTest {
             grant,
             GrantChanged.Cause.GRANTED,
             actorUserId,
-            AuditEventType.ASSET_GRANT_GRANTED,
             null,
             Map.of("role", "MANAGER")));
 
@@ -148,7 +166,6 @@ class GrantLibraryChangedEventIntegrationTest {
                                 grant,
                                 GrantChanged.Cause.GRANTED,
                                 actorUserId,
-                                AuditEventType.ASSET_GRANT_GRANTED,
                                 null,
                                 Map.of("role", "MANAGER")));
                         throw new RuntimeException(
@@ -177,7 +194,6 @@ class GrantLibraryChangedEventIntegrationTest {
             library,
             LibraryChanged.Cause.CREATED,
             actorUserId,
-            AuditEventType.LIBRARY_CREATED,
             null,
             Map.of("name", library.getName())));
 
@@ -206,7 +222,6 @@ class GrantLibraryChangedEventIntegrationTest {
                                 library,
                                 LibraryChanged.Cause.CREATED,
                                 actorUserId,
-                                AuditEventType.LIBRARY_CREATED,
                                 null,
                                 Map.of("name", library.getName())));
                         throw new RuntimeException(

@@ -254,7 +254,6 @@ public class KnowledgeLibraryService {
               groupGrant,
               GrantChanged.Cause.GRANTED,
               currentUserId,
-              AuditEventType.ASSET_GRANT_GRANTED,
               null,
               Map.of("role", AssetRole.MANAGER.name())));
     }
@@ -273,7 +272,6 @@ public class KnowledgeLibraryService {
             ownerGrant,
             GrantChanged.Cause.GRANTED,
             currentUserId,
-            AuditEventType.ASSET_GRANT_GRANTED,
             null,
             Map.of("role", AssetRole.OWNER.name())));
     // #238/#892: the library's initial visibility/listed state is also historised, the third
@@ -283,12 +281,7 @@ public class KnowledgeLibraryService {
     // docs/features/security-and-compliance.md).
     eventPublisher.publishEvent(
         new LibraryChanged(
-            saved,
-            LibraryChanged.Cause.CREATED,
-            currentUserId,
-            AuditEventType.LIBRARY_CREATED,
-            null,
-            libraryAuditPayload(saved)));
+            saved, LibraryChanged.Cause.CREATED, currentUserId, null, libraryAuditPayload(saved)));
     return toLibraryDetail(saved, AssetRole.OWNER);
   }
 
@@ -479,7 +472,6 @@ public class KnowledgeLibraryService {
               updated,
               LibraryChanged.Cause.VISIBILITY_CHANGED,
               currentUserId,
-              AuditEventType.ASSET_VISIBILITY_CHANGED,
               Map.of("visibility", previousVisibility.name(), "listed", previousListed),
               Map.of("visibility", updated.getVisibility().name(), "listed", updated.isListed())));
     }
