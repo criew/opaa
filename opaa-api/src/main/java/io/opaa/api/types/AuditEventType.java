@@ -15,12 +15,8 @@ public enum AuditEventType {
   ASSET_GRANT_GRANTED,
   ASSET_GRANT_CHANGED,
   ASSET_GRANT_REVOKED,
-  /** A time-limited grant expiring is itself an event, the moment it takes effect. */
-  ASSET_GRANT_EXPIRED,
   /** Change of an asset's visibility or listedness (visibility, listed). */
   ASSET_VISIBILITY_CHANGED,
-  /** Grants suspended by a subsequently lowered connector share ceiling. */
-  ASSET_GRANT_SUSPENDED,
 
   // Spaces, Bibliotheken und Gruppen
   SPACE_CREATED,
@@ -67,10 +63,6 @@ public enum AuditEventType {
   /** The reverse of {@link #LIBRARY_SHARED_TO_SPACE} - a library detached from a space. */
   LIBRARY_DETACHED_FROM_SPACE,
   ASSET_OWNER_CHANGED,
-  /** Taking over an asset left without a responsible owner. */
-  ASSET_OWNERSHIP_CLAIMED,
-  /** An asset entering the "Nachfolge offen" state. */
-  ASSET_SUCCESSION_OPENED,
 
   // Konten, Rollen und Verzeichnisabgleich
   SYSTEM_ADMIN_ROLE_GRANTED,
@@ -81,28 +73,17 @@ public enum AuditEventType {
    */
   AUDITOR_ROLE_GRANTED,
   AUDITOR_ROLE_REVOKED,
-  ACCOUNT_DEACTIVATED,
-  ACCOUNT_REAUTHENTICATION_FORCED,
-  API_TOKEN_ISSUED,
-  API_TOKEN_REVOKED,
   /** One entry per effected change from a directory sync run, linked via {@code correlationRef}. */
   DIRECTORY_SYNC_CHANGE_APPLIED,
   /** The header entry of a directory sync run, with its outcome. */
   DIRECTORY_SYNC_RUN_COMPLETED,
 
   // Systemeinstellungen
-  GOVERNANCE_SETTINGS_CHANGED,
   /** Includes enabling the network address field, per the specification's explicit requirement. */
   AUDIT_LOG_CONFIGURATION_CHANGED,
-  /** Covers both model defaults and the approval of external models. */
-  MODEL_POLICY_CHANGED,
-  CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
   /**
    * A change to the operator's branding - product name, claim, logo, accent colour or default
-   * colour scheme (docs/design/guidelines.md#7). Deliberately not folded into {@link
-   * #GOVERNANCE_SETTINGS_CHANGED}: branding decides what every user sees on every page, which is
-   * exactly the kind of change an auditor wants to find by its own name rather than inside a
-   * catch-all governance bucket.
+   * colour scheme (docs/design/guidelines.md#7).
    */
   BRANDING_SETTINGS_CHANGED,
   /** A managed chat model ({@code io.opaa.llm.LlmModel}) was created. */
