@@ -48,15 +48,10 @@ public class SpaceService {
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   /**
-   * #307: caches "this user already has a personal space" so that every login after the first no
-   * longer needs {@link SpaceRepository#existsByOwnerIdAndIsDefaultTrue} at all - not even one
-   * pooled connection, let alone the two a first login previously spent on {@code
-   * ensureDefaultSpace} alone (the exists check plus the {@code REQUIRES_NEW} insert attempt). A
-   * default space is never deleted (see {@link #deleteSpace}'s and {@link #archiveSpace}'s guard),
-   * so once true this fact never goes stale - no TTL needed, only a size bound against unbounded
-   * growth. This is the Caffeine-cache option #137's closing comment asked to weigh here rather
-   * than as its own change: this is the same request-path connection pressure #307 investigates, so
-   * a second, independent cache next to it would double the bookkeeping for one problem.
+   * Caches "this user already has a personal space" so that every login after the first no longer
+   * needs {@link SpaceRepository#existsByOwnerIdAndIsDefaultTrue} at all. A default space is never
+   * deleted (see {@link #deleteSpace}'s and {@link #archiveSpace}'s guard), so once true this fact
+   * never goes stale - no TTL needed, only a size bound against unbounded growth.
    */
   private final Cache<UUID, Boolean> personalSpaceProvisioned;
 
@@ -445,24 +440,22 @@ public class SpaceService {
   }
 
   /**
-   * Archives a space (#543, docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-
-   * statt-löschen) - the maintainer-decided way out of a space that {@code
-   * fk_chats_space_organization} (ON DELETE RESTRICT, migration 032, composite as of migration 047)
-   * makes permanently undeletable because it still contains a chat authored by someone other than
-   * the space owner, who cannot even see - let alone delete - that chat themselves. Archiving does
-   * not remove that guard or change {@link #deleteSpace}'s behaviour: a real delete remains
-   * possible once every chat is actually gone. What it does instead is stop the space from
-   * accepting new content ({@code ChatService#createChat}, {@code ChatService#appendTurn}, {@code
-   * ChatService#updateChat} and {@link #addMember} all reject with 409) and hide it from {@link
-   * #listSpaces} for members without a chat of their own in it - but never for the owner or a
-   * system admin, since there is no unarchive endpoint and the typical case (#613 review, finding
-   * 3) is exactly an owner with no chat of their own in the space they just archived - while every
-   * chat, including ones the owner cannot see, stays fully readable for its author.
+   * Archives a space (docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-
+   * löschen) - the maintainer-decided way out of a space that {@code fk_chats_space_organization}
+   * (ON DELETE RESTRICT) makes permanently undeletable because it still contains a chat authored by
+   * someone other than the space owner, who cannot even see - let alone delete - that chat
+   * themselves. Archiving does not remove that guard or change {@link #deleteSpace}'s behaviour: a
+   * real delete remains possible once every chat is actually gone. What it does instead is stop the
+   * space from accepting new content ({@code ChatService#createChat}, {@code
+   * ChatService#appendTurn}, {@code ChatService#updateChat} and {@link #addMember} all reject with
+   * 409) and hide it from {@link #listSpaces} for members without a chat of their own in it - but
+   * never for the owner or a system admin, since there is no unarchive endpoint - while every chat,
+   * including ones the owner cannot see, stays fully readable for its author.
    *
    * <p>Same permission bar as {@link #deleteSpace}: owner or system admin, and the default space
-   * cannot be archived either, for the same reason it cannot be deleted (#333 - it is not this
-   * user's to retire). Idempotent: archiving an already archived space is a no-op that simply
-   * returns its current state, not an error.
+   * cannot be archived either, for the same reason it cannot be deleted - it is not this user's to
+   * retire. Idempotent: archiving an already archived space is a no-op that simply returns its
+   * current state, not an error.
    */
   @Transactional
   public Space archiveSpace(UUID spaceId, CurrentUser caller) {
@@ -502,43 +495,26 @@ public class SpaceService {
    *
    * <p>Two concurrent first logins of the same user can both pass the {@code existsBy} check below
    * before either has inserted a row - the check alone cannot prevent that. The partial unique
-   * index {@code uk_spaces_default_owner} (migration 015) is the actual guard, enforced through
-   * {@link SpaceRepository#insertDefaultSpaceIfAbsent}'s {@code ON CONFLICT ... DO NOTHING}: at
-   * most one of several concurrent calls for the same owner actually inserts a row, the rest are
-   * silent no-ops - never a {@link DataIntegrityViolationException} to catch, and never a second
-   * query to re-read the winner's row, because this method returns {@code void} and the caller
-   * (idempotent by design - see {@code UserService#ensurePersonalSpace}) does not need it back. A
-   * genuinely unrelated constraint violation (e.g. a dangling {@code ownerId}) still throws
-   * normally, because {@code ON CONFLICT} only ever suppresses the one named partial index, never
-   * any other constraint.
-   *
-   * <p><b>Replaced the earlier catch-and-reread pattern</b> (#201/#305 code review): under the
-   * {@code UserServiceCreationRaceIntegrationTest} 12-concurrent-first-login load, the previous
-   * insert-then-catch-{@code DataIntegrityViolationException}-then-reread sequence needed up to two
-   * round trips per losing caller (the failed insert attempt, whose aborted transaction then had to
-   * be rolled back before the connection could be reused, plus the follow-up read); #201 had
-   * temporarily doubled the number of callers doing this in the same per-login sequence by adding a
-   * sibling personal-library provisioning call right after this method - since removed again by
-   * #522, which deleted the automatic personal library entirely. That doubling was enough
-   * additional connection-pool queueing to intermittently exceed Hikari's default 30-second {@code
-   * connectionTimeout} at the production default pool size of 10 - not a deadlock (each connection
-   * was still only held by one caller at a time; see the {@code Propagation.NOT_SUPPORTED} note
-   * below, which fixes a separate, real double-connection defect this method also had), just more
-   * total round trips than the pool could clear in time. The single {@code INSERT ... ON CONFLICT}
-   * below is one round trip regardless of whether it wins or loses the race, cutting that queueing
-   * roughly in half without weakening the guarantee - confirmed by {@code
-   * UserServiceCreationRaceIntegrationTest} passing repeatedly at the production default pool size
-   * of 10, not a raised test-only pool size (see that test's Javadoc for why raising the pool was
-   * rejected as treating the symptom).
+   * index {@code uk_spaces_default_owner} is the actual guard, enforced through {@link
+   * SpaceRepository#insertDefaultSpaceIfAbsent}'s {@code ON CONFLICT ... DO NOTHING}: at most one
+   * of several concurrent calls for the same owner actually inserts a row, the rest are silent
+   * no-ops - never a {@link DataIntegrityViolationException} to catch, and never a second query to
+   * re-read the winner's row, because this method returns {@code void}. A genuinely unrelated
+   * constraint violation (e.g. a dangling {@code ownerId}) still throws normally, because {@code ON
+   * CONFLICT} only ever suppresses the one named partial index, never any other constraint. The
+   * single {@code INSERT ... ON CONFLICT} is one round trip regardless of whether it wins or loses
+   * the race - confirmed by {@code UserServiceCreationRaceIntegrationTest} and {@code
+   * UserServiceConcurrentDistinctUserLoginIntegrationTest} passing repeatedly at the production
+   * default pool size of 10, not a raised test-only pool size (raising the pool was deliberately
+   * rejected as treating the symptom - see those tests' Javadoc).
    *
    * <p><b>Caller requirement:</b> because the insert runs on its own connection, {@code userId}
    * must already be committed and visible to other connections when this method is called - not
    * merely persisted in a still-open transaction. Calling this from inside the same transaction
-   * that first creates the user row will fail with a {@code fk_spaces_owner_organization} violation
-   * (composite as of migration 047), because the {@code REQUIRES_NEW} connection cannot see the
-   * uncommitted row (regression fixed as a follow-up to #265/#280; see {@code
-   * UserService#ensurePersonalSpaceAfterCommit}, which defers this call to a post-commit hook for
-   * exactly this reason).
+   * that first creates the user row will fail with a {@code fk_spaces_owner_organization}
+   * violation, because the {@code REQUIRES_NEW} connection cannot see the uncommitted row (see
+   * {@code UserService#ensurePersonalSpaceAfterCommit}, which defers this call to a post-commit
+   * hook for exactly this reason).
    *
    * <p><b>{@code Propagation.NOT_SUPPORTED}, overriding the class-level
    * {@code @Transactional(readOnly = true)}:</b> without this override, calling this public method
@@ -547,14 +523,13 @@ public class SpaceService {
    * <em>second</em>, independent connection for its {@code REQUIRES_NEW} transaction - two
    * connections held by one caller at once, the same class of bug #299 fixed in {@code
    * UserService.findOrCreateUser}. {@code NOT_SUPPORTED} suspends any ambient transaction for this
-   * method's duration (there normally is none, since {@code UserService.findOrCreateUser} itself is
-   * not {@code @Transactional} either - see #293/#299) and leaves only the one connection {@code
-   * requiresNewTransactionTemplate} actually needs.
+   * method's duration and leaves only the one connection {@code requiresNewTransactionTemplate}
+   * actually needs.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void ensureDefaultSpace(UUID userId, UUID organizationId) {
-    // #307: the common case - a returning user who already has a personal space - now costs zero
-    // pooled connections instead of one; see personalSpaceProvisioned's Javadoc.
+    // The common case - a returning user who already has a personal space - costs zero pooled
+    // connections; see personalSpaceProvisioned's Javadoc.
     if (Boolean.TRUE.equals(personalSpaceProvisioned.getIfPresent(userId))) {
       return;
     }
@@ -569,17 +544,12 @@ public class SpaceService {
   /**
    * Same guarantee as {@link #ensureDefaultSpace(UUID, UUID)}, but for a {@code userId} the caller
    * already knows to be brand new - {@code UserService.findOrCreateUser} calls this only for a
-   * subject/issuer pair its own insert (not a concurrent winner's) just created (#307). A user row
-   * that did not exist a moment ago cannot already own a personal space, so the {@code existsBy}
-   * check {@link #ensureDefaultSpace(UUID, UUID)} performs first is guaranteed to return {@code
-   * false} here - calling it anyway would spend a whole extra pooled connection confirming a fact
-   * already known, exactly the redundant round trip {@code
-   * UserServiceConcurrentDistinctUserLoginIntegrationTest} put under pressure: twelve concurrent
-   * first logins of twelve different users, all guaranteed-new, at Hikari's production default
-   * {@code maximum-pool-size} of 10. Skipping it here halves this method's connection consumption
-   * for exactly that scenario (one {@code REQUIRES_NEW} insert instead of an exists check plus an
-   * insert), the same one-round-trip-per-caller economy #201/#305's {@code ON CONFLICT ... DO
-   * NOTHING} rewrite already established for the insert itself - see this method's sibling Javadoc.
+   * subject/issuer pair its own insert (not a concurrent winner's) just created. A user row that
+   * did not exist a moment ago cannot already own a personal space, so the {@code existsBy} check
+   * {@link #ensureDefaultSpace(UUID, UUID)} performs first is guaranteed to return {@code false}
+   * here - calling it anyway would spend a whole extra pooled connection confirming a fact already
+   * known. Skipping it halves this method's connection consumption to one {@code REQUIRES_NEW}
+   * insert instead of an exists check plus an insert.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void ensureDefaultSpaceForNewUser(UUID userId, UUID organizationId) {
