@@ -220,6 +220,13 @@ Jeder Branch ist über seine ID mit einem GitHub-Issue verknüpft.
 - Immer die GitHub-Issue-ID im Branch-Namen angeben.
 - Keine generischen Namen wie `feature/workspace` ohne Issue-ID verwenden.
 
+**Ausnahme Renovate:** Von Renovate erzeugte Update-Branches heißen `renovate/<slug>` (ohne
+`feature/`-Präfix und ohne Issue-ID), und Renovate-PRs verwenden weder das PR-Template noch
+einen durchgehend deutschen Body (deutscher Titel und Kopfsatz, generierter englischer Rest).
+Das ist die einzige zugelassene Abweichung von den Branch- und PR-Regeln dieses Dokuments —
+sie gilt ausschließlich für den Bot (siehe `docs/renovate.md`, Issue #751); Menschen und
+Agenten bleiben an die Regeln gebunden.
+
 Die Art der Änderung wird über den Conventional-Commit-Typ ausgedrückt (`fix`, `docs`, `chore`, …), nicht über das Branch-Präfix — in der Commit-Nachricht und im PR-Titel. Ein Branch `feature/295_branch-regel-klarstellen` mit dem Commit `docs(agents): …` ist der Normalfall, kein Widerspruch.
 
 ### GitHub-Issues

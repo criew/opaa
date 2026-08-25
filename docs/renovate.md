@@ -15,6 +15,12 @@ Maintainer angestoßen und läuft lokal im offiziellen Docker-Image.
 | `e2e/package.json` + `pnpm-lock.yaml` | `npm` | `frontend` |
 | GitHub-Actions-Workflows (`.github/workflows/`) | `github-actions` | `ci` |
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
+| Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
+| Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
+
+Achtung bei den Demo-Requirements: Für Änderungen ausschließlich unter `demo/` läuft derzeit
+**kein** CI-Job (die Pfadfilter in `ci.yml` kennen `demo/` nicht) — solche Update-PRs vor dem
+Merge lokal gegen `demo/seed/seed.py` bzw. den Generator prüfen.
 
 Regeln in [`renovate.json5`](../renovate.json5) (kommentiert): deutsche Commit-/PR-Texte im
 Stil `chore(deps): <Paket> auf <Version> aktualisieren`, Labels je Bereich, höchstens fünf
@@ -31,24 +37,34 @@ siehe `e2e/docker-compose.e2e.yml`). Zusätzlich pflegt Renovate ein Übersichts
   - *Contents*: Read and write (Branches anlegen)
   - *Pull requests*: Read and write (PRs eröffnen/aktualisieren)
   - *Issues*: Read and write (Abhängigkeits-Übersicht)
+  - *Workflows*: Read and write — **ohne diese Berechtigung lehnt GitHub jeden Push ab, der
+    eine Datei unter `.github/workflows/` ändert**; der `github-actions`-Manager ist mit
+    Abstand der größte Update-Lieferant dieses Repos
   - *Metadata*: Read
 
-  Ein klassisches PAT mit `repo`-Scope funktioniert ebenfalls. Für den Alltag genügt auch das
-  CLI-Token eines angemeldeten Maintainers: `RENOVATE_TOKEN=$(gh auth token)`.
+  Ein klassisches PAT braucht entsprechend die Scopes `repo` **und** `workflow`. Für den
+  Alltag genügt das CLI-Token eines angemeldeten Maintainers (`RENOVATE_TOKEN=$(gh auth
+  token)`) — es bringt beide Scopes mit.
 
 ## Probelauf ohne Schreibzugriff (Dry-Run)
 
-Zeigt im Log, welche Updates ein echter Lauf anlegen würde — kein Token nötig, nichts wird
-geschrieben. Läuft gegen den lokalen Arbeitsstand (nützlich auch, um Änderungen an
-`renovate.json5` vor dem Merge zu prüfen):
+Zeigt im Log, welche Updates ein echter Lauf anlegen würde — nichts wird geschrieben. Läuft
+gegen den lokalen Arbeitsstand (nützlich auch, um Änderungen an `renovate.json5` vor dem
+Merge zu prüfen):
 
 ```bash
-docker run --rm \
+GITHUB_COM_TOKEN=$(gh auth token) docker run --rm \
   -v "$(pwd)":/usr/src/app -w /usr/src/app \
   -e RENOVATE_PLATFORM=local \
+  -e GITHUB_COM_TOKEN \
   -e LOG_LEVEL=info \
   renovate/renovate:latest
 ```
+
+Der Dry-Run funktioniert auch ganz ohne Token, endet dann aber mit `WARN: GitHub token is
+required for some dependencies` — die Lookups der GitHub-Datasource (alle Actions, `node`,
+`python`, …) bleiben dann aus bzw. rate-limitiert. Mit Token ist es weiterhin ein reiner
+Lese-Lauf.
 
 Am Log-Ende fasst `packageFiles with updates` je Manager zusammen, was erkannt wurde und
 welche neuen Versionen anstehen.
