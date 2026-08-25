@@ -9,7 +9,6 @@ import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationRepository;
 import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
-import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -22,11 +21,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -55,9 +50,13 @@ import tools.jackson.databind.ObjectMapper;
  * requires membership - a departed author must not be able to keep running new questions through a
  * space's knowledge scope after losing access to it, even though their existing chat and its
  * history remain theirs to read.
+ *
+ * <p>No class-level {@code @Transactional} (#889): every reading method carries its own explicit
+ * {@code @Transactional(readOnly = true)}. {@link #appendTurn} carries none at all and runs, like
+ * {@code QueryService#query} that calls it, with no ambient transaction of its own - only the
+ * isolated per-attempt write in {@link ChatMessageWriter#writeTurnOnce} actually opens one.
  */
 @Service
-@Transactional(readOnly = true)
 public class ChatService {
 
   private static final Logger log = LoggerFactory.getLogger(ChatService.class);
@@ -77,7 +76,7 @@ public class ChatService {
   private final SpaceAssetAssociationRepository spaceAssetAssociationRepository;
   private final LibraryAccessService libraryAccessService;
   private final ObjectMapper objectMapper;
-  private final TransactionTemplate requiresNewTransactionTemplate;
+  private final ChatMessageWriter chatMessageWriter;
   private final ChatTitleGenerationService chatTitleGenerationService;
 
   public ChatService(
@@ -88,7 +87,7 @@ public class ChatService {
       SpaceAssetAssociationRepository spaceAssetAssociationRepository,
       LibraryAccessService libraryAccessService,
       ObjectMapper objectMapper,
-      PlatformTransactionManager transactionManager,
+      ChatMessageWriter chatMessageWriter,
       ChatTitleGenerationService chatTitleGenerationService) {
     this.chatRepository = chatRepository;
     this.chatMessageRepository = chatMessageRepository;
@@ -97,9 +96,7 @@ public class ChatService {
     this.spaceAssetAssociationRepository = spaceAssetAssociationRepository;
     this.libraryAccessService = libraryAccessService;
     this.objectMapper = objectMapper;
-    this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
-    this.requiresNewTransactionTemplate.setPropagationBehavior(
-        TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    this.chatMessageWriter = chatMessageWriter;
     this.chatTitleGenerationService = chatTitleGenerationService;
   }
 
@@ -131,11 +128,13 @@ public class ChatService {
     return toConversation(saved);
   }
 
+  @Transactional(readOnly = true)
   public List<Chat> listChats(UUID spaceId, UUID authorId) {
     requireMembership(spaceId, authorId);
     return chatRepository.findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc(spaceId, authorId);
   }
 
+  @Transactional(readOnly = true)
   public ChatConversation getChat(UUID chatId, UUID authorId) {
     return toConversation(getOwnedChat(chatId, authorId));
   }
@@ -181,6 +180,7 @@ public class ChatService {
    * QueryService#query} for the optional {@code chatId} on a query request, where "no such owned
    * chat" and "no chatId given" are handled identically (an ephemeral, unpersisted query).
    */
+  @Transactional(readOnly = true)
   public Optional<Chat> findOwnedChat(UUID chatId, UUID authorId) {
     if (chatId == null) {
       return Optional.empty();
@@ -193,6 +193,7 @@ public class ChatService {
    * only the query path requires this and {@link #getChat}/{@link #updateChat}/{@link #deleteChat}
    * deliberately do not (#525 review, finding 4).
    */
+  @Transactional(readOnly = true)
   public void requireStillSpaceMember(Chat chat) {
     boolean member =
         spaceMembershipRepository
@@ -207,6 +208,7 @@ public class ChatService {
    * The persisted history as Spring AI messages, ordered by the application-assigned {@code
    * sequence} (see {@link ChatMessage}'s Javadoc), not {@code created_at}.
    */
+  @Transactional(readOnly = true)
   public List<Message> historyAsSpringAiMessages(UUID chatId) {
     return chatMessageRepository.findByChatIdOrderBySequenceAsc(chatId).stream()
         .<Message>map(
@@ -227,6 +229,7 @@ public class ChatService {
    * sticky @-references with the readable libraries. Neither branch is ever wider than {@code
    * readableLibraryIds}, regardless of what the chat references or the space associates.
    */
+  @Transactional(readOnly = true)
   public Set<UUID> effectiveLibraryScope(Chat chat, Set<UUID> readableLibraryIds) {
     if (chat.isUseKnowledge()) {
       Set<UUID> associatedLibraryIds =
@@ -253,6 +256,7 @@ public class ChatService {
    * (docs/features/spaces-and-assets.md#suchbereich-je-chatart, "In diesem Space ist für dich
    * derzeit kein Wissen verfügbar").
    */
+  @Transactional(readOnly = true)
   public boolean spaceHasLibraryAssociations(UUID spaceId) {
     return !spaceAssetAssociationRepository.findLibraryIdsBySpaceId(spaceId).isEmpty();
   }
@@ -261,36 +265,23 @@ public class ChatService {
    * Persists one question/answer turn and, if the chat never had a title set explicitly, derives
    * one from the question (#525's "Titel-Default aus der ersten Frage ableiten"). Called from
    * {@code QueryService#query} after generating the answer - the caller has already verified {@code
-   * chat} belongs to the requesting user via {@link #findOwnedChat}.
-   *
-   * <p><b>{@code Propagation.NOT_SUPPORTED}, overriding the class-level
-   * {@code @Transactional(readOnly = true)}</b> (#525 review round 2, finding A): {@code
-   * QueryService#query} deliberately runs with no ambient transaction of its own (see that method's
-   * Javadoc) precisely so that this method's writes never share a connection with the read-only
-   * work that precedes them - but without an explicit override here, calling this public method
-   * through the Spring proxy would still open an ambient read-only transaction for this method's
-   * entire duration (the class-level annotation applies to every public method unless overridden),
-   * and {@link #requiresNewTransactionTemplate} below would then need a <em>second</em>,
-   * independent connection for its own transaction - two connections held by one caller at once,
-   * the same class of bug #299 fixed in {@code UserService.findOrCreateUser} and {@code
-   * SpaceService#ensureDefaultSpace} (see that method's Javadoc for the identical pattern this one
-   * mirrors). {@code NOT_SUPPORTED} suspends any ambient transaction for this method's duration and
-   * leaves only the one connection each retry attempt below actually needs.
+   * chat} belongs to the requesting user via {@link #findOwnedChat}. This is the write phase of
+   * that pipeline (#889): carries no ambient transaction of its own, same as {@code
+   * QueryService#query}'s read phase and LLM call that precede it - only {@link
+   * ChatMessageWriter#writeTurnOnce}, called per retry attempt below, actually opens one.
    *
    * <p><b>Retries on a {@code sequence} collision</b> (#525 review round 2, finding/nit 2; #889:
-   * {@link #nextSequenceFor} is now {@code MAX(sequence) + 1}, not a plain {@code COUNT(*)} - see
-   * that method's Javadoc for why the count broke permanently once any non-trailing message was
-   * gone): {@link #nextSequenceFor} is not a locking read - two turns appended to the same chat at
-   * nearly the same instant (e.g. a user double-submitting, or two browser tabs on the same chat)
-   * can both compute the same next sequence and race to insert it, and {@code
-   * uk_chat_messages_chat_sequence} (migration 032) then rejects the loser with a {@link
-   * DataIntegrityViolationException} - after its answer had already been generated by the LLM call
-   * in {@code QueryService#query}, so simply failing the request would discard a real answer over a
-   * retriable persistence collision. Each attempt runs in its own fresh {@code REQUIRES_NEW}
-   * transaction (via {@link #requiresNewTransactionTemplate}, never a plain {@code @Transactional}
-   * on this method, precisely so a failed attempt's rollback cannot poison a subsequent one) and
-   * recomputes the sequence from scratch, so a retry after losing the race simply picks the number
-   * the winner just took.
+   * the sequence is now {@code MAX(sequence) + 1}, not a row count, so it tolerates a gap left by a
+   * deleted message - see {@code ChatMessageWriter#nextSequenceFor}): the sequence lookup is not a
+   * locking read - two turns appended to the same chat at nearly the same instant (e.g. a user
+   * double-submitting, or two browser tabs on the same chat) can both compute the same next
+   * sequence and race to insert it, and {@code uk_chat_messages_chat_sequence} (migration 032) then
+   * rejects the loser with a {@link DataIntegrityViolationException} - after its answer had already
+   * been generated by the LLM call in {@code QueryService#query}, so simply failing the request
+   * would discard a real answer over a retriable persistence collision. Each attempt calls {@link
+   * ChatMessageWriter#writeTurnOnce} fresh, isolated in its own transaction, and recomputes the
+   * sequence from scratch, so a retry after losing the race simply picks the number the winner just
+   * took.
    *
    * <p><b>#557 - asynchronous LLM title generation.</b> Once the retry loop above has committed the
    * turn and the synchronous prefix-derived fallback title, this method triggers {@link
@@ -305,14 +296,13 @@ public class ChatService {
    * is durably persisted keeps the ordering easy to reason about.
    *
    * <p><b>Return value</b> (#561 review, finding 2): the chat's title exactly as this method itself
-   * committed it - {@code chat.getTitle()} would not do, since {@code appendTurnOnce} below no
-   * longer mutates {@code chat} in place (see its Javadoc); a plain, read-only {@code findById}
-   * after the write is the only way to see what was actually written, and carries none of the
-   * merge-clobber risk a write via that same read would.
+   * committed it - {@code chat.getTitle()} would not do, since {@link
+   * ChatMessageWriter#writeTurnOnce} no longer mutates {@code chat} in place (see its Javadoc); a
+   * plain, read-only {@code findById} after the write is the only way to see what was actually
+   * written, and carries none of the merge-clobber risk a write via that same read would.
    *
    * @return the chat's current title after this turn, or {@code null} if it no longer exists
    */
-  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public String appendTurn(Chat chat, String question, String answer, List<ChatSource> sources) {
     // #613 review, finding 2 / #840: an archived space accepts no new content - including a new
     // turn in an existing chat, or the space could keep gaining fresh content forever and never
@@ -321,12 +311,14 @@ public class ChatService {
     // this call here is the race guard for the window between that early check and this method's
     // write - a space archived in between still must not be able to add a turn.
     requireSpaceNotArchived(chat.getSpaceId());
+    String serializedSources = serializeSources(sources);
+    String derivedTitle = deriveTitle(question);
     boolean firstTurn = false;
     for (int attempt = 1; attempt <= APPEND_TURN_MAX_ATTEMPTS; attempt++) {
       try {
         firstTurn =
-            requiresNewTransactionTemplate.execute(
-                status -> appendTurnOnce(chat.getId(), question, answer, sources));
+            chatMessageWriter.writeTurnOnce(
+                chat.getId(), question, answer, serializedSources, derivedTitle);
         break;
       } catch (DataIntegrityViolationException e) {
         if (attempt == APPEND_TURN_MAX_ATTEMPTS) {
@@ -345,46 +337,6 @@ public class ChatService {
       chatTitleGenerationService.generateTitleAsync(chat.getId(), question, answer);
     }
     return current != null ? current.getTitle() : null;
-  }
-
-  /**
-   * @return true if this turn was the chat's very first ({@code nextSequence == 0})
-   */
-  private boolean appendTurnOnce(
-      UUID chatId, String question, String answer, List<ChatSource> sources) {
-    int nextSequence = nextSequenceFor(chatId);
-    chatMessageRepository.save(
-        new ChatMessage(chatId, nextSequence, ChatRole.USER, question, null));
-    chatMessageRepository.save(
-        new ChatMessage(
-            chatId, nextSequence + 1, ChatRole.ASSISTANT, answer, serializeSources(sources)));
-    // #561 review, finding 2: atomic, targeted UPDATEs (see ChatRepository's Javadoc) instead of a
-    // full-entity merge save() of the Chat instance QueryService#query loaded before retrieval and
-    // LLM answer generation - that would write back a stale title/title_source/every-other-column
-    // snapshot and clobber a concurrent PATCH rename landing in between.
-    chatRepository.deriveTitleFromFirstQuestionIfAbsent(chatId, deriveTitle(question));
-    // #525 review, finding/nit d: bumps updated_at even when the title update above was a no-op
-    // (title already set) - without it, the chat list's "sorted by last use" ordering
-    // (findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc) goes stale after the first turn.
-    chatRepository.touch(chatId, Instant.now());
-    return nextSequence == 0;
-  }
-
-  /**
-   * #889: {@code MAX(sequence) + 1}, not a row count - a plain {@code COUNT(*)} undercounts the
-   * next free sequence the moment any non-trailing message of a chat is gone (a deletion leaves a
-   * gap the count does not account for), which then collides with a row that still exists at
-   * exactly that sequence. Unlike the transient race {@link #APPEND_TURN_MAX_ATTEMPTS}'s retry loop
-   * is built for, that collision is permanent: every retry recomputes the identical {@code
-   * COUNT(*)}, so the retry loop exhausts and the caller's already-generated LLM answer is
-   * discarded. {@code MAX(sequence) + 1} has no such failure mode - a gap is simply skipped, never
-   * collided with - and still needs the very same retry loop for the one race it cannot resolve on
-   * its own: two concurrent turns on the same chat computing the same {@code MAX} before either has
-   * committed its insert.
-   */
-  private int nextSequenceFor(UUID chatId) {
-    Integer maxSequence = chatMessageRepository.findMaxSequenceByChatId(chatId);
-    return maxSequence == null ? 0 : maxSequence + 1;
   }
 
   private ChatConversation toConversation(Chat chat) {
@@ -465,6 +417,7 @@ public class ChatService {
    * a space archived after this early check ran but before the turn was persisted (see that
    * method's Javadoc).
    */
+  @Transactional(readOnly = true)
   public void requireSpaceNotArchived(UUID spaceId) {
     Space space =
         spaceRepository

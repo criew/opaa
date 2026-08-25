@@ -4,7 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.stereotype.Service;
 
+/**
+ * Deterministic citation-marker extraction (#889, O2: {@code @Service}, previously wired manually
+ * in {@code QueryConfiguration}).
+ */
+@Service
 public class CitationParser {
 
   static final Pattern CITATION_PATTERN =

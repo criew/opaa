@@ -16,13 +16,9 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
   List<ChatMessage> findByChatIdOrderBySequenceAsc(UUID chatId);
 
   /**
-   * #889: the highest existing {@code sequence} for {@code chatId}, or {@code null} for a chat with
-   * no messages yet - {@link ChatService#nextSequenceFor} adds 1 to this, replacing a plain {@code
-   * COUNT(*)} (see that method's Javadoc for why counting rows breaks permanently once any
-   * non-trailing message of a chat is gone: the count then undercounts the next free sequence and
-   * collides with a row that still exists, on every retry, forever - not merely a transient race).
-   * {@code MAX(sequence)} has no such failure mode: a gap left by a deleted message is simply
-   * skipped, never collided with.
+   * The highest existing {@code sequence} for {@code chatId}, or {@code null} for a chat with no
+   * messages yet - {@code ChatMessageWriter#nextSequenceFor} adds 1 to this. Never undercounts
+   * after a gap, unlike a row count over a table a deletion can leave gaps in (#889).
    */
   @Query("select max(m.sequence) from ChatMessage m where m.chatId = :chatId")
   Integer findMaxSequenceByChatId(@Param("chatId") UUID chatId);

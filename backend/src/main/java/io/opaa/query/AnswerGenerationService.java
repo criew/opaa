@@ -13,6 +13,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
+import org.springframework.stereotype.Service;
 
 /**
  * Generates the RAG answer against the systemwide active chat model (#758,
@@ -24,7 +25,10 @@ import org.springframework.ai.document.Document;
  * when no model is active, which propagates through {@code io.opaa.query.QueryService#query}
  * exactly like any other domain error already does - {@code io.opaa.api.GlobalExceptionHandler}
  * turns it into a German, user-facing error response rather than an NPE or an opaque 500.
+ *
+ * <p>{@code @Service} (#889, O2): previously wired manually in {@code QueryConfiguration}.
  */
+@Service
 public class AnswerGenerationService {
 
   private static final Logger log = LoggerFactory.getLogger(AnswerGenerationService.class);

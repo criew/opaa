@@ -91,14 +91,12 @@ public class Chat {
    * second attribute for an unrelated reason, keep organization_id out of the Java model and let
    * the trigger keep owning it.
    *
-   * <p>{@code EAGER} (#525 review round 2, finding A): {@code QueryService#query} deliberately runs
-   * with no ambient transaction (see that method's Javadoc), so a {@link Chat} loaded by {@code
-   * ChatService#findOwnedChat} is detached by the time {@code QueryService} reads this collection a
-   * few lines later - the default {@code LAZY} fetch would throw {@code
-   * LazyInitializationException} there instead of a normal, harmless empty/small collection access.
-   * {@code EAGER} is safe to pay unconditionally here because the collection is small (a handful of
-   * sticky @-references at most) and read on essentially every load of a {@link Chat} anyway (
-   * {@code effectiveLibraryScope} needs it for every persisted-chat query).
+   * <p>{@code EAGER} (#525 review round 2, finding A; kept under #889's read phase/LLM call/write
+   * phase pipeline - {@code QueryService#effectiveLibraryScope} still reads this collection on a
+   * detached, untransacted {@link Chat} in the read phase, never inside the write phase's
+   * transaction): the default {@code LAZY} fetch would throw {@code LazyInitializationException}
+   * there. Safe to pay unconditionally - the collection is small and read on essentially every
+   * load.
    */
   @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "chat_library_references", joinColumns = @JoinColumn(name = "chat_id"))

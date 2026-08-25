@@ -1,38 +1,28 @@
 package io.opaa.query;
 
-import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.opaa.chat.ChatService;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.LibraryAccessService;
-import io.opaa.library.PermissionHistoryService;
-import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * The genuine configuration left in the query pipeline after #889 (O2) moved every other previously
+ * manually-wired bean here to an {@code @Service} on the class itself ({@link
+ * CaffeineChatMemoryRepository}, {@link AnswerGenerationService}, {@link CitationParser}, {@link
+ * CitationValidator}, {@link QueryService}) - see each class's own Javadoc. {@link #chatMemory}
+ * stays a {@code @Bean} factory method because {@link ChatMemory}/{@link MessageWindowChatMemory}
+ * are Spring AI framework types assembled via a builder, not application classes this codebase
+ * owns; {@link #queryMetrics} stays wired the same way {@code AuthMetrics}/{@code IndexingMetrics}
+ * are in their own {@code *Configuration} classes project-wide, a deliberate, consistent
+ * cross-cutting convention this issue did not change.
+ */
 @Configuration
 @EnableConfigurationProperties(QueryProperties.class)
 public class QueryConfiguration {
-
-  /**
-   * Maximum number of concurrent conversation caches. Default 50: moderate memory usage suitable
-   * for typical team sizes — each conversation holds up to {@link #MAX_MESSAGES_PER_CONVERSATION}
-   * messages in a Caffeine cache entry.
-   */
-  static final int MAX_CONVERSATIONS = 50;
-
-  /**
-   * Time-to-live in minutes for idle conversations. Default 60: one hour covers a typical user
-   * session; conversations are evicted after this period of inactivity to free memory.
-   */
-  static final int TTL_MINUTES = 60;
 
   /**
    * Maximum messages retained per conversation. Default 20: this corresponds to roughly 10
@@ -40,16 +30,6 @@ public class QueryConfiguration {
    * enough history for coherent multi-turn dialogues.
    */
   static final int MAX_MESSAGES_PER_CONVERSATION = 20;
-
-  @Bean
-  ChatMemoryRepository chatMemoryRepository(MeterRegistry meterRegistry) {
-    CaffeineChatMemoryRepository repository =
-        new CaffeineChatMemoryRepository(MAX_CONVERSATIONS, TTL_MINUTES);
-    Gauge.builder("opaa.conversations.active", repository, CaffeineChatMemoryRepository::size)
-        .description("Active conversations in memory")
-        .register(meterRegistry);
-    return repository;
-  }
 
   @Bean
   ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository) {
@@ -60,52 +40,7 @@ public class QueryConfiguration {
   }
 
   @Bean
-  AnswerGenerationService answerGenerationService(
-      ActiveChatModelResolver activeChatModelResolver, ChatMemory chatMemory) {
-    return new AnswerGenerationService(activeChatModelResolver, chatMemory);
-  }
-
-  @Bean
-  CitationParser citationParser() {
-    return new CitationParser();
-  }
-
-  @Bean
-  CitationValidator citationValidator() {
-    return new CitationValidator();
-  }
-
-  @Bean
   QueryMetrics queryMetrics(MeterRegistry meterRegistry) {
     return new QueryMetrics(meterRegistry);
-  }
-
-  @Bean
-  QueryService queryService(
-      VectorStore vectorStore,
-      AnswerGenerationService answerGenerationService,
-      ChatMemory chatMemory,
-      CitationParser citationParser,
-      CitationValidator citationValidator,
-      DocumentRepository documentRepository,
-      LibraryAccessService libraryAccessService,
-      PermissionHistoryService permissionHistoryService,
-      ChatService chatService,
-      QueryMetrics queryMetrics,
-      QueryProperties queryProperties,
-      KnowledgeLibraryRepository knowledgeLibraryRepository) {
-    return new QueryService(
-        vectorStore,
-        answerGenerationService,
-        chatMemory,
-        citationParser,
-        citationValidator,
-        documentRepository,
-        libraryAccessService,
-        permissionHistoryService,
-        chatService,
-        queryMetrics,
-        queryProperties,
-        knowledgeLibraryRepository);
   }
 }
