@@ -29,6 +29,12 @@ Digest-Pinning für Docker-Images (gleitende Tags sind eine dokumentierte Projek
 siehe `e2e/docker-compose.e2e.yml`). Zusätzlich pflegt Renovate ein Übersichts-Issue
 („Abhängigkeits-Übersicht (Renovate)") mit allen anstehenden Updates.
 
+**npm wird gepinnt** (`rangeStrategy: 'pin'` für `dependencies`/`devDependencies`):
+`frontend/` und `e2e/` sind Anwendungen — exakte Versionen in der `package.json` machen jeden
+Bump als PR sichtbar statt als stilles Lockfile-only-Update. Der allererste Lauf erzeugt dafür
+einmalig einen „Pin dependencies"-PR, der alle Caret-Ranges auf exakte Versionen umschreibt;
+`engines` bleibt bewusst eine Range, `packageManager` ist bereits exakt gepinnt.
+
 ## Voraussetzungen
 
 - Docker

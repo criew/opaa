@@ -59,6 +59,16 @@
       matchManagers: ['npm'],
       addLabels: ['frontend'],
     },
+    // npm-Abhängigkeiten werden GEPINNT (Maintainer-Entscheidung, 25.08.2026): frontend/ und
+    // e2e/ sind Anwendungen, keine Bibliotheken — exakte Versionen in der package.json machen
+    // jeden Bump als PR sichtbar, statt ihn als stilles Lockfile-only-Update zu verstecken.
+    // Bewusst auf dependencies/devDependencies begrenzt: engines bleibt eine Range (die
+    // zulässigen Node-Linien), packageManager ist ohnehin exakt (Corepack-Hash).
+    {
+      matchManagers: ['npm'],
+      matchDepTypes: ['dependencies', 'devDependencies'],
+      rangeStrategy: 'pin',
+    },
     {
       matchManagers: ['github-actions', 'dockerfile', 'docker-compose'],
       addLabels: ['ci'],
