@@ -69,6 +69,7 @@ class QueryServiceTest {
   @Mock private PermissionHistoryService permissionHistoryService;
   @Mock private ChatService chatService;
   @Mock private KnowledgeLibraryRepository knowledgeLibraryRepository;
+  @Mock private ChunkEmbeddingLookup chunkEmbeddingLookup;
   private QueryService queryService;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -96,7 +97,8 @@ class QueryServiceTest {
             // MmrSelector's own diversity behaviour (mmrLambda != 1.0) is covered separately by
             // MmrSelectorTest.
             new QueryProperties(8, 25, 1.0, 0.3, 1.0),
-            knowledgeLibraryRepository);
+            knowledgeLibraryRepository,
+            chunkEmbeddingLookup);
 
     // lenient: not every test in this class exercises the full query() path (e.g. the
     // mergeSourceReferences nested tests call other members directly), so MockitoExtension's
@@ -133,7 +135,8 @@ class QueryServiceTest {
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
             new QueryProperties(8, 25, 1.0, 0.3, 0.0),
-            knowledgeLibraryRepository);
+            knowledgeLibraryRepository,
+            chunkEmbeddingLookup);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
@@ -851,7 +854,8 @@ class QueryServiceTest {
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
             new QueryProperties(8, 25, 1.0, 0.3, 1.0),
-            knowledgeLibraryRepository);
+            knowledgeLibraryRepository,
+            chunkEmbeddingLookup);
 
     UUID otherUserId = UUID.randomUUID();
     CurrentUser otherCaller =
@@ -1259,6 +1263,11 @@ class QueryServiceTest {
     assertThat(request.getQuery()).isEqualTo("Test query");
     assertThat(request.getTopK()).isEqualTo(25);
     assertThat(request.getSimilarityThreshold()).isEqualTo(0.3);
+    // #914 code review, finding 5: the permission filter is asserted here too, not only in the
+    // dedicated queryFiltersOnReadableLibraryIds test below - this test's job is exactly "every
+    // SearchRequest parameter", and the filter is one of them.
+    assertThat(request.getFilterExpression()).isNotNull();
+    assertThat(request.getFilterExpression().toString()).contains(readableLibraryId.toString());
   }
 
   @Test

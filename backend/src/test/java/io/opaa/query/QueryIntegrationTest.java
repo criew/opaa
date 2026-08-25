@@ -361,20 +361,24 @@ class QueryIntegrationTest {
     // is part of the vector search rather than a post-filter, because an empty readable set short
     // -circuits before the vector store is ever called (see QueryService#query). This test instead
     // gives the user a real, non-empty readable set with a second, ungranted library present in
-    // the same store, and asserts on the *count* of results, not just their content. #914 raised
-    // similaritySearch's own request from topK (5) to fetchK (25, application.yml default), so both
-    // libraries now need more than 25 members each for the same distinguishing property to hold:
-    // with 30 chunks in the granted library A and 30 in the ungranted library B, FakeEmbeddingModel
-    // returns an identical embedding for every text (see its Javadoc), so every one of the 60
-    // chunks scores equally on similarity - a post-filter applied after retrieving fetchK=25
-    // candidates from the unfiltered 60 would return roughly half of those 25 from A (never
-    // reliably all 25), while a filter that is genuinely part of the ANN search - the only way to
-    // guarantee 25 candidates out of 25 requested that are all from a library with 30 members total
-    // - always returns exactly fetchK candidates, all from A; MmrSelector then narrows those 25
-    // down
-    // to topK (8). See the PR description for the reproduction: reverting QueryService's
-    // filterExpression(...) call turns this test red while every other test in this class,
-    // QueryControllerTest and io.opaa.library.* stay green.
+    // the same store, and asserts on the *count* of results, not just their content.
+    //
+    // #914 code review, finding 5: the previous version of this test (30 granted / 30 ungranted,
+    // fetchK=25) lost its discriminating power once similaritySearch's own request moved from topK
+    // (5) to fetchK (25, application.yml default) - a *broken* post-filter would, on a 30-vs-30
+    // split, still recover close to fetchK=25 authorized candidates purely by chance, indistin-
+    // guishable in this test's assertions from the correct, pre-filtered result. The fix is a
+    // heavily lopsided split: 10 chunks in the granted library A, 250 in the ungranted library B -
+    // inserted *before* A (FakeEmbeddingModel gives every text an identical embedding, see its
+    // Javadoc, so all 260 chunks tie on similarity; a tied ANN scan returns ties in something close
+    // to insertion order). A correct, search-time filter only ever sees A's 10 members and returns
+    // all of them as candidates, however tied their order - MmrSelector then narrows those 10 down
+    // to topK (8), all "a"-prefixed. A post-filter instead requests the unfiltered top-25 of 260
+    // tied candidates first: with B outnumbering A 25:1 and ordered first, that top-25 is
+    // overwhelmingly (typically entirely) B, leaving far fewer than 8 - usually zero - authorized
+    // candidates once filtered afterward. See the PR description for the reproduction: reverting
+    // QueryService's filterExpression(...) call turns this test red while every other test in this
+    // class, QueryControllerTest and io.opaa.library.* stay green.
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
@@ -386,21 +390,7 @@ class QueryIntegrationTest {
         userId);
 
     List<Document> chunks = new ArrayList<>();
-    for (int i = 0; i < 30; i++) {
-      chunks.add(
-          new Document(
-              "Granted content " + i,
-              Map.of(
-                  "file_name",
-                  "a" + i + ".md",
-                  "document_id",
-                  "doc-a-" + i,
-                  "chunk_index",
-                  0,
-                  "library_id",
-                  libraryId.toString())));
-    }
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < 250; i++) {
       chunks.add(
           new Document(
               "Unauthorized content " + i,
@@ -413,6 +403,20 @@ class QueryIntegrationTest {
                   0,
                   "library_id",
                   ungrantedLibraryId.toString())));
+    }
+    for (int i = 0; i < 10; i++) {
+      chunks.add(
+          new Document(
+              "Granted content " + i,
+              Map.of(
+                  "file_name",
+                  "a" + i + ".md",
+                  "document_id",
+                  "doc-a-" + i,
+                  "chunk_index",
+                  0,
+                  "library_id",
+                  libraryId.toString())));
     }
     vectorStore.add(chunks);
 

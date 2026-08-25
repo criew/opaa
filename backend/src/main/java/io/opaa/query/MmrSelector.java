@@ -1,10 +1,8 @@
 package io.opaa.query;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.Map;
 import org.springframework.ai.document.Document;
 
 /**
@@ -17,17 +15,21 @@ import org.springframework.ai.document.Document;
  * merely repeats an already-selected chunk's content loses ground to a less relevant but topically
  * distinct one.
  *
- * <p><b>Pairwise similarity is lexical, not vector-based</b> (#914 issue discussion): {@code
- * org.springframework.ai.vectorstore.pgvector.PgVectorStore} (spring-ai-pgvector-store 2.0.0) never
- * puts the stored embedding on the {@link Document} it returns from {@code similaritySearch} - its
- * {@code DocumentRowMapper} builds the result from only {@code id}/{@code content}/{@code
- * metadata}/{@code distance}, and {@link Document} itself carries no embedding field at all.
- * Re-embedding every candidate to get a real vector would mean an extra embedding-API call per
- * query, which #914 explicitly rules out. Instead, this class approximates similarity with the
- * Jaccard index over each chunk's lowercase word-token set - cheap, deterministic, and effective at
- * the redundancy this method exists to catch: two chunks that restate the same passage (the
- * near-duplicate case #912 observed within one dominant topic) share most of their vocabulary,
- * while chunks from genuinely different topics do not.
+ * <p><b>Pairwise similarity is cosine similarity of the real chunk embeddings</b> (#914 code
+ * review, finding 1), read back from the pgvector table by row id via {@link ChunkEmbeddingLookup}
+ * - not an embedding-API call (the vector already sits in the row {@code similaritySearch} itself
+ * read to compute its distance) and not a lexical approximation. A candidate whose id is missing
+ * from {@code embeddingsByChunkId} (deleted between the search and this lookup, or simply never
+ * resolved) contributes {@code 0.0} similarity to every comparison it takes part in - a defensive
+ * fallback, not a claim that the chunk is actually dissimilar; it only ever matters for a race this
+ * narrow a window makes exceedingly unlikely.
+ *
+ * <p><b>Scale note</b> (#914 code review, finding 1): candidate relevance scores from {@code
+ * similaritySearch} typically differ by as little as ~0.02 between neighbors, while cosine
+ * similarities between candidates commonly span ~0.3-0.5 - the diversity term can therefore
+ * dominate the relevance term even at a relevance-favoring {@code mmrLambda} unless the caller
+ * accounts for that scale mismatch when choosing it. {@link QueryProperties#mmrLambda()}'s Javadoc
+ * documents the measured effect this had on {@code mmrLambda}'s chosen default.
  */
 final class MmrSelector {
 
@@ -39,28 +41,30 @@ final class MmrSelector {
    * that set, never widens it). Returns fewer than {@code topK} entries when {@code candidates} is
    * smaller, and an empty list for an empty or non-positive-{@code topK} input. {@code mmrLambda =
    * 1.0} reproduces plain top-{@code topK}-by-{@link Document#getScore()} selection, since the
-   * diversity term is then always multiplied by zero.
+   * diversity term is then always multiplied by zero - callers are expected to skip the {@link
+   * ChunkEmbeddingLookup} round trip entirely in that case (see {@code QueryService#query}), so
+   * {@code embeddingsByChunkId} may legitimately be {@link Map#of()} whenever {@code mmrLambda ==
+   * 1.0}.
    */
-  static List<Document> select(List<Document> candidates, int topK, double mmrLambda) {
+  static List<Document> select(
+      List<Document> candidates,
+      int topK,
+      double mmrLambda,
+      Map<String, float[]> embeddingsByChunkId) {
     if (candidates.isEmpty() || topK <= 0) {
       return List.of();
     }
 
     List<Document> remaining = new ArrayList<>(candidates);
-    List<Set<String>> remainingTokens = new ArrayList<>(candidates.size());
-    for (Document candidate : candidates) {
-      remainingTokens.add(tokenize(candidate));
-    }
-
     List<Document> selected = new ArrayList<>(Math.min(topK, candidates.size()));
-    List<Set<String>> selectedTokens = new ArrayList<>(selected.size());
 
     while (!remaining.isEmpty() && selected.size() < topK) {
       int bestIndex = 0;
       double bestScore = Double.NEGATIVE_INFINITY;
       for (int i = 0; i < remaining.size(); i++) {
-        double relevance = relevanceOf(remaining.get(i));
-        double maxSimilarityToSelected = maxSimilarity(remainingTokens.get(i), selectedTokens);
+        Document candidate = remaining.get(i);
+        double relevance = relevanceOf(candidate);
+        double maxSimilarityToSelected = maxSimilarity(candidate, selected, embeddingsByChunkId);
         double mmrScore = mmrLambda * relevance - (1 - mmrLambda) * maxSimilarityToSelected;
         if (mmrScore > bestScore) {
           bestScore = mmrScore;
@@ -68,7 +72,6 @@ final class MmrSelector {
         }
       }
       selected.add(remaining.remove(bestIndex));
-      selectedTokens.add(remainingTokens.remove(bestIndex));
     }
     return selected;
   }
@@ -78,10 +81,19 @@ final class MmrSelector {
     return score != null ? score : 0.0;
   }
 
-  private static double maxSimilarity(Set<String> tokens, List<Set<String>> selectedTokens) {
+  private static double maxSimilarity(
+      Document candidate, List<Document> selected, Map<String, float[]> embeddingsByChunkId) {
+    float[] candidateEmbedding = embeddingsByChunkId.get(candidate.getId());
+    if (candidateEmbedding == null) {
+      return 0.0;
+    }
     double max = 0.0;
-    for (Set<String> other : selectedTokens) {
-      double similarity = jaccard(tokens, other);
+    for (Document other : selected) {
+      float[] otherEmbedding = embeddingsByChunkId.get(other.getId());
+      if (otherEmbedding == null) {
+        continue;
+      }
+      double similarity = cosineSimilarity(candidateEmbedding, otherEmbedding);
       if (similarity > max) {
         max = similarity;
       }
@@ -89,31 +101,21 @@ final class MmrSelector {
     return max;
   }
 
-  private static Set<String> tokenize(Document document) {
-    String text = document.getText();
-    if (text == null || text.isBlank()) {
-      return Set.of();
-    }
-    Set<String> tokens = new HashSet<>();
-    for (String token : text.toLowerCase(Locale.ROOT).split("\\W+")) {
-      if (!token.isBlank()) {
-        tokens.add(token);
-      }
-    }
-    return tokens;
-  }
-
-  private static double jaccard(Set<String> a, Set<String> b) {
-    if (a.isEmpty() || b.isEmpty()) {
+  private static double cosineSimilarity(float[] a, float[] b) {
+    if (a.length != b.length) {
       return 0.0;
     }
-    Set<String> intersection = new HashSet<>(a);
-    intersection.retainAll(b);
-    if (intersection.isEmpty()) {
+    double dot = 0.0;
+    double normA = 0.0;
+    double normB = 0.0;
+    for (int i = 0; i < a.length; i++) {
+      dot += (double) a[i] * b[i];
+      normA += (double) a[i] * a[i];
+      normB += (double) b[i] * b[i];
+    }
+    if (normA == 0.0 || normB == 0.0) {
       return 0.0;
     }
-    Set<String> union = new HashSet<>(a);
-    union.addAll(b);
-    return (double) intersection.size() / union.size();
+    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
   }
 }

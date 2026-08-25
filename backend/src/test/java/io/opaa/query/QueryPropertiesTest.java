@@ -1,0 +1,106 @@
+package io.opaa.query;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import org.junit.jupiter.api.Test;
+
+/** Unit tests for {@link QueryProperties}'s compact-constructor defaults and validation (#914). */
+class QueryPropertiesTest {
+
+  @Test
+  void nonPositiveTopKDefaultsToEight() {
+    QueryProperties properties = new QueryProperties(0, 25, 0.7, 0.3, 1.0);
+
+    assertThat(properties.topK()).isEqualTo(8);
+  }
+
+  @Test
+  void topKAboveTheMaximumIsRejected() {
+    assertThatThrownBy(() -> new QueryProperties(101, 200, 0.7, 0.3, 1.0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("topK");
+  }
+
+  /** Default fetchK is 25 when topK stays within the default range. */
+  @Test
+  void nonPositiveFetchKDefaultsToTwentyFiveWhenTopKIsSmall() {
+    QueryProperties properties = new QueryProperties(8, 0, 0.7, 0.3, 1.0);
+
+    assertThat(properties.fetchK()).isEqualTo(25);
+  }
+
+  /**
+   * #914 code review, finding 4: a deployment that already configured {@code topK} above 25 (legal
+   * before #914 raised the maximum consideration to include fetchK) must not fail startup just
+   * because it never set {@code fetchK} - the missing value normalizes to {@code max(25, topK)},
+   * not a flat 25.
+   */
+  @Test
+  void nonPositiveFetchKNormalizesToTopKWhenTopKExceedsTwentyFive() {
+    QueryProperties properties = new QueryProperties(30, 0, 0.7, 0.3, 1.0);
+
+    assertThat(properties.fetchK()).isEqualTo(30);
+  }
+
+  @Test
+  void fetchKAboveTheMaximumIsRejected() {
+    assertThatThrownBy(() -> new QueryProperties(8, 201, 0.7, 0.3, 1.0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("fetchK");
+  }
+
+  @Test
+  void fetchKBelowTopKIsRejected() {
+    assertThatThrownBy(() -> new QueryProperties(10, 5, 0.7, 0.3, 1.0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("fetchK");
+  }
+
+  /**
+   * #914 code review, nit a: {@code mmrLambda = 0.0} is a legal boundary value (pure diversity, no
+   * relevance term), not an "unset" sentinel - it must be honored, not silently raised to the
+   * default.
+   */
+  @Test
+  void mmrLambdaZeroIsAcceptedAsIs() {
+    QueryProperties properties = new QueryProperties(8, 25, 0.0, 0.3, 1.0);
+
+    assertThat(properties.mmrLambda()).isEqualTo(0.0);
+  }
+
+  @Test
+  void mmrLambdaOneIsAcceptedAsIs() {
+    QueryProperties properties = new QueryProperties(8, 25, 1.0, 0.3, 1.0);
+
+    assertThat(properties.mmrLambda()).isEqualTo(1.0);
+  }
+
+  @Test
+  void mmrLambdaBelowZeroIsRejected() {
+    assertThatThrownBy(() -> new QueryProperties(8, 25, -0.1, 0.3, 1.0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("mmrLambda");
+  }
+
+  @Test
+  void mmrLambdaAboveOneIsRejected() {
+    assertThatThrownBy(() -> new QueryProperties(8, 25, 1.1, 0.3, 1.0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("mmrLambda");
+  }
+
+  @Test
+  void similarityThresholdOutsideRangeIsRejected() {
+    assertThatThrownBy(() -> new QueryProperties(8, 25, 0.7, 1.5, 1.0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("similarityThreshold");
+  }
+
+  @Test
+  void permissionHistorySampleRateOutsideRangeIsRejected() {
+    assertThatThrownBy(() -> new QueryProperties(8, 25, 0.7, 0.3, 1.5))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("permissionHistorySampleRate");
+  }
+}

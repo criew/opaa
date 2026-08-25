@@ -234,7 +234,7 @@ Baseline, die Schwellenwerte und die CI-Anbindung aufgesetzt:
 
 Was genau gemessen wird — Gain-Funktion, IDCG-Basis, die ungleichen Fenster von Hit Rate@5 und
 nDCG@10, dass ohne Ähnlichkeitsschwelle gemessen wird statt mit der Produktionskonfiguration
-(`top-k=5`/`threshold=0,3`), wie die Recall-Obergrenze bei `|E|>k` gehandhabt wird, dass Mikro- statt
+(`top-k=8`/`threshold=0,3`, seit #914; zuvor `top-k=5`), wie die Recall-Obergrenze bei `|E|>k` gehandhabt wird, dass Mikro- statt
 Makro-Mittel gebildet wird, und (seit Messvertrag-Version 2, Issue #721) dass das k-Fenster
 ausdrücklich dokumentbezogen ist und eine zweite Metrikfamilie auf Chunkebene existiert — ist in
 [ADR-0012](../docs/decisions/0012-messvertrag-retrieval-harness.md) festgehalten, nicht nur im

@@ -113,7 +113,7 @@ opaa:
   query:
     top-k: ${OPAA_QUERY_TOP_K:8}
     fetch-k: ${OPAA_QUERY_FETCH_K:25}
-    mmr-lambda: ${OPAA_QUERY_MMR_LAMBDA:0.7}
+    mmr-lambda: ${OPAA_QUERY_MMR_LAMBDA:1.0}
     similarity-threshold: ${OPAA_QUERY_SIMILARITY_THRESHOLD:0.3}
     permission-history-sample-rate: ${OPAA_QUERY_PERMISSION_HISTORY_SAMPLE_RATE:1.0}
   indexing:
