@@ -28,6 +28,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.context.ApplicationEventPublisher;
 
 /**
  * Unit-level coverage of {@link KnowledgeLibraryService}'s FILESYSTEM allowlist enforcement (#484,
@@ -65,6 +66,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     IndexingJobService indexingJobService = mock(IndexingJobService.class);
     LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
     LibraryFolderRepository folderRepository = mock(LibraryFolderRepository.class);
+    ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
     libraryService =
         new KnowledgeLibraryService(
@@ -85,7 +87,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             rssFeedStateRepository,
             Clock.systemDefaultZone(),
             storageQuotaService,
-            folderRepository);
+            folderRepository,
+            eventPublisher);
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");
