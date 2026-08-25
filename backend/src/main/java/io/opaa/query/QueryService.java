@@ -91,73 +91,53 @@ public class QueryService {
 
   /**
    * Answers {@code question}, restricted to chunks from libraries {@code currentUserId} may read
-   * (#202 - the permission-aware vector search, the central gap the epic set out to close: before
-   * this, the similarity search ran with no metadata filter whatsoever). The filter is part of the
-   * {@link VectorStore#similaritySearch} call itself, not a post-filter applied to its result - an
-   * unauthorized chunk is never loaded or ranked, let alone returned. There is no bypass for a
-   * system admin here (unlike {@code LibraryAccessService#effectiveRole}, used for library
-   * administration): a query always reads with the calling user's own rights, with no second rights
-   * context (ADR-0008 §5).
+   * (#202). The filter is part of the {@link VectorStore#similaritySearch} call itself, not a
+   * post-filter - an unauthorized chunk is never loaded or ranked. No system-admin bypass here
+   * (unlike {@code LibraryAccessService#effectiveRole}): a query always reads with the calling
+   * user's own rights, with no second rights context (ADR-0008 §5).
    *
    * <p>An empty readable set short-circuits before the vector store is even called, skipping
-   * straight to answer generation with zero chunks - the same code path a query with genuinely no
-   * matching content takes, so the resulting message cannot be used to distinguish "no permission
-   * on anything" from "nothing matched" (#202 acceptance criteria).
+   * straight to answer generation with zero chunks - the same path a genuinely empty result takes,
+   * so the message cannot distinguish "no permission on anything" from "nothing matched" (#202
+   * acceptance criteria).
    *
-   * <p><b>#525 - persisted chats.</b> {@code chatId} is optional. When it names a chat {@code
+   * <p><b>Persisted chats (#525).</b> {@code chatId} is optional. When it names a chat {@code
    * currentUserId} authored (see {@link ChatService#findOwnedChat}), the query runs against that
    * chat: the search scope comes from the chat's own {@code useKnowledge}/{@code
-   * referencedLibraryIds} settings ({@link ChatService#effectiveLibraryScope}) - the {@code
-   * useKnowledge}/{@code requestedLibraryIds} parameters below are then ignored, not merely
-   * defaulted - the question and answer are persisted as {@link io.opaa.chat.ChatMessage}s, and the
-   * conversation-memory cache ({@link #chatMemory}, still Caffeine-backed - see {@code
-   * CaffeineChatMemoryRepository}) is seeded from the persisted history on a cache miss, so a
-   * restart or eviction never loses context for a persisted chat. When {@code chatId} is absent, or
-   * does not resolve to a chat the caller authored, the query runs ephemerally instead: not
-   * persisted, and the search scope is governed by {@code useKnowledge}/{@code requestedLibraryIds}
-   * exactly as #526 introduced them, remembered only in the in-memory cache under a key reused from
-   * a caller-supplied {@code chatId} when one was given, or freshly generated otherwise.
+   * referencedLibraryIds} ({@link ChatService#effectiveLibraryScope}) - the parameters below are
+   * then ignored, not merely defaulted - question and answer are persisted as {@link
+   * io.opaa.chat.ChatMessage}s, and the conversation-memory cache ({@link #chatMemory}) is seeded
+   * from the persisted history on a cache miss. When {@code chatId} is absent or does not resolve
+   * to an owned chat, the query runs ephemerally instead: not persisted, scope governed by {@code
+   * useKnowledge}/{@code requestedLibraryIds} (#526), keyed in the in-memory cache by the
+   * caller-supplied {@code chatId} when given, or a freshly generated one.
    *
-   * <p><b>#238's regression check</b> (#889, O1: now sampled - see {@link
-   * #maybeCheckAgainstPermissionHistory}): for {@link QueryProperties#permissionHistorySampleRate}
-   * of queries, the readable set ({@code readableLibraryIds} below, distinct from the narrower
-   * {@code searchScope} #525/#526 may derive from it) is compared against {@link
+   * <p><b>Permission-history regression check</b> (#238, sampled per {@link
+   * #maybeCheckAgainstPermissionHistory} at {@link QueryProperties#permissionHistorySampleRate}):
+   * the live readable set is compared against {@link
    * PermissionHistoryService#readableLibraryIdsAsOf}'s reconstruction for the same instant, logging
    * a warning if the live computation reaches a library the history would not - a beweisbarer
    * Durchsetzungsfehler per
-   * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten.
-   * Deliberately not a per-query log line of the full permission set itself: the feature spec
-   * rejects that as an unnecessary expansion of personal data (see the same section), so only a
-   * detected mismatch - not every sampled query - is written to the application log, and even then
-   * only the offending library id, not the caller's whole readable set.
+   * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten. Only a
+   * detected mismatch - not every sampled query - is logged, and only the offending library id,
+   * never the caller's whole readable set (personal-data minimization per the same section).
    *
-   * <p><b>#526's search-scope controls</b>, {@code useKnowledge} and {@code requestedLibraryIds}
-   * (only consulted for a query with no persisted chat, see above): {@code useKnowledge = true}
-   * preserves the behaviour above exactly - every library {@code currentUserId} may read, {@code
-   * requestedLibraryIds} ignored. {@code useKnowledge = false} narrows the scope to {@code
-   * requestedLibraryIds} intersected with the readable set - never widened beyond it, matching
-   * #526's acceptance criteria that a referenced but unreadable library yields no hits rather than
-   * being silently granted. An empty intersection in that mode also takes the empty-scope
-   * short-circuit above and additionally marks {@link QueryOutcome#getAnsweredWithoutKnowledge()}
-   * so the caller can distinguish "no knowledge base searched" from "searched but found nothing" -
-   * the same distinction applies to a persisted chat whose own {@code useKnowledge} is off with no
-   * (readable) sticky reference.
+   * <p><b>Search-scope controls</b> {@code useKnowledge}/{@code requestedLibraryIds} (#526,
+   * consulted only without a persisted chat): {@code useKnowledge = true} uses every library {@code
+   * currentUserId} may read; {@code useKnowledge = false} narrows to {@code requestedLibraryIds}
+   * intersected with the readable set - never widened beyond it, so a referenced but unreadable
+   * library yields no hits rather than being silently granted. An empty intersection also takes the
+   * empty-scope short-circuit above and marks {@link QueryOutcome#getAnsweredWithoutKnowledge()}.
    *
-   * <p><b>Deliberately <em>not</em> {@code @Transactional}</b> (#525 review round 2, finding A -
-   * the same reasoning {@code UserService#findOrCreateUser} documents, and the same class of bug
-   * #299 fixed there): this method used to carry {@code @Transactional(readOnly = true)}, which
-   * held one JDBC connection open for its entire duration - including the LLM call inside {@code
-   * answerGenerationService.generateAnswer}, easily the slowest step - while {@code
-   * ChatService#appendTurn} afterwards needed a <em>second</em>, independently held connection to
-   * write. Under N concurrent persisted-chat queries with Hikari's default pool size of 10, once N
-   * reached 10 every caller's outer transaction had claimed a connection and was waiting on the LLM
-   * response, and no {@code appendTurn} call could obtain the second connection it needed - a full
-   * pool deadlock, not merely contention, and reachable by ordinary chat traffic. Without an
-   * ambient transaction here, every repository/service call below (each individually
-   * {@code @Transactional} via Spring Data or its own explicit demarcation - see {@code
-   * ChatService#appendTurn}'s Javadoc for its own, retry-capable one) is a short-lived,
-   * independently connection-scoped call that releases its connection immediately, exactly like
-   * {@code UserService.findOrCreateUser}.
+   * <p><b>Deliberately <em>not</em> {@code @Transactional}</b> (same reasoning as {@code
+   * UserService#findOrCreateUser}, same class of bug #299 fixed there): an ambient transaction here
+   * would hold one JDBC connection open for the entire call, including the LLM call inside {@code
+   * answerGenerationService.generateAnswer}, while {@code ChatService#appendTurn} afterwards needs
+   * a second, independently held connection to write - under concurrent persisted-chat traffic this
+   * exhausts the pool (a full deadlock, not merely contention) once every caller's connection is
+   * claimed and waiting on the LLM response. Without an ambient transaction here, every
+   * repository/service call below is instead independently transactional and releases its
+   * connection immediately, exactly like {@code UserService.findOrCreateUser}.
    */
   public QueryResult query(
       String question,
@@ -176,36 +156,22 @@ public class QueryService {
                 // call opens and releases its own short-lived connection (see this method's
                 // Javadoc's "Deliberately not @Transactional" section).
                 Optional<Chat> chat = chatService.findOwnedChat(chatId, currentUserId);
-                // #525 review, finding 4: querying is chatting, and chatting requires space
-                // membership even for an author who already owns the chat - see
-                // ChatService#requireStillSpaceMember's Javadoc for why this check lives only on
-                // this path and not on getChat/updateChat/deleteChat.
+                // Querying is chatting: requires space membership even for an author who already
+                // owns the chat - see ChatService#requireStillSpaceMember's Javadoc for why this
+                // check lives only on this path and not on getChat/updateChat/deleteChat.
                 chat.ifPresent(chatService::requireStillSpaceMember);
-                // #840: an archived space accepts no new content (see
-                // ChatService#requireSpaceNotArchived's Javadoc) - checked here, before
-                // retrieval/the LLM call, so the ordinary case ("space was already archived")
-                // never pays for a paid LLM call whose answer appendTurn below would discard
-                // anyway. appendTurn's own call to the same guard stays in place as the race
-                // guard for a space archived after this point but before the turn is persisted.
+                // An archived space accepts no new content - checked here, before retrieval/the
+                // LLM call, so the ordinary case never pays for an LLM call whose answer appendTurn
+                // below would discard anyway. appendTurn's own call to the same guard stays in
+                // place as the race guard for a space archived after this point.
                 chat.ifPresent(c -> chatService.requireSpaceNotArchived(c.getSpaceId()));
                 // A chatId that does not resolve to an owned persisted chat (including "none
-                // given") still runs ephemerally rather than being rejected - the pre-#525
-                // behaviour, preserved for callers that have not moved to persisted chats yet
-                // (see #527). It is reused as the in-memory conversation-cache key when the
-                // caller supplied one, exactly as the old free-form conversationId was, so a
-                // client round-tripping the previous response's chatId still gets multi-turn
-                // continuity without ever persisting anything.
-                //
-                // #525 review, finding 3 (critical): always qualified with currentUserId. Without
-                // this, a chatId that does not resolve to an owned chat (a genuinely unknown id, or
-                // - the actual leak - another user's real chat id) would use the bare chatId as the
-                // cache key, which for a real chat is the exact key its owner's own persisted-chat
-                // path also uses (see below) - a second user supplying it would read the first
-                // user's conversation history straight into their own prompt, and their own message
-                // would then be appended into the first user's cache entry. Qualifying every key
-                // this way, not only the fallback branch, keeps the persisted-chat and ephemeral
-                // cases using the same key for the same (user, chat) pair while making it
-                // structurally impossible for two different users to ever collide on one key.
+                // given") runs ephemerally rather than being rejected, reused as the in-memory
+                // conversation-cache key when the caller supplied one, or freshly generated
+                // otherwise. Always qualified with currentUserId: without this, an unresolved
+                // chatId (unknown, or another user's real chat id) would collide with the cache
+                // key that chat's owner's own persisted-chat path uses, leaking one user's
+                // conversation history into another's prompt.
                 UUID effectiveChatId =
                     chat.map(Chat::getId)
                         .orElseGet(() -> chatId != null ? chatId : UUID.randomUUID());
@@ -222,9 +188,9 @@ public class QueryService {
                 maybeCheckAgainstPermissionHistory(
                     readableLibraryIds, currentUserId, caller.organizationId(), scopeComputedAt);
 
-                // A persisted chat's own settings govern the scope entirely (#525); only an
-                // ephemeral query (no owned chat) falls back to the request-level useKnowledge/
-                // requestedLibraryIds #526 introduced.
+                // A persisted chat's own settings govern the scope entirely; only an ephemeral
+                // query (no owned chat) falls back to the request-level useKnowledge/
+                // requestedLibraryIds (#526).
                 Set<UUID> searchScope =
                     chat.map(c -> chatService.effectiveLibraryScope(c, readableLibraryIds))
                         .orElseGet(
@@ -235,14 +201,12 @@ public class QueryService {
                                         requestedLibraryIds, readableLibraryIds));
                 boolean effectiveUseKnowledge = chat.map(Chat::isUseKnowledge).orElse(useKnowledge);
                 boolean answeredWithoutKnowledge = !effectiveUseKnowledge && searchScope.isEmpty();
-                // #706 review, finding 3: distinct from answeredWithoutKnowledge above - this is
-                // the #203 fail-open case where the chip stays on @Alles-Wissen (the caller never
-                // chose "ohne Wissen") but the chat's space is curated and none of its associated
-                // libraries are readable by this caller, so effectiveLibraryScope legitimately
-                // resolves to empty. Only meaningful for a persisted chat - an ephemeral query's
-                // empty searchScope instead means the caller simply has no readable library at
-                // all, unrelated to curation. See ChatService#spaceHasLibraryAssociations's own
-                // Javadoc.
+                // Distinct from answeredWithoutKnowledge above: the #203 fail-open case where the
+                // chip stays on @Alles-Wissen but the chat's space is curated and none of its
+                // associated libraries are readable by this caller, so effectiveLibraryScope
+                // legitimately resolves to empty. Only meaningful for a persisted chat - an
+                // ephemeral query's empty searchScope instead means the caller simply has no
+                // readable library at all. See ChatService#spaceHasLibraryAssociations's Javadoc.
                 boolean noKnowledgeAvailableInSpace =
                     effectiveUseKnowledge
                         && searchScope.isEmpty()
@@ -262,9 +226,8 @@ public class QueryService {
 
                 log.debug("Found {} relevant chunks for query", relevantChunks.size());
 
-                // --- LLM call (#889): the slowest step, and the reason no phase in this method
-                // carries a transaction - see this method's Javadoc's "Deliberately not
-                // @Transactional" section for the pool-deadlock history (#299/#525) this avoids.
+                // --- LLM call: the slowest step, and the reason no phase in this method carries a
+                // transaction - see this method's Javadoc's "Deliberately not @Transactional".
                 ChatResponse chatResponse =
                     answerGenerationService.generateAnswer(
                         question, relevantChunks, conversationKey);
@@ -292,15 +255,13 @@ public class QueryService {
 
                 metrics.recordSuccess(tokenCount);
 
-                // --- Write phase (#889): the one place this method's result is persisted, in
+                // --- Write phase: the one place this method's result is persisted, in
                 // ChatService#appendTurn's own transaction(s) - see that method's Javadoc.
-                // #561 review, finding 2: appendTurn no longer mutates the `chat` instance loaded
-                // above in place - its title/title_source writes go through atomic, targeted
-                // ChatRepository updates instead (see that method's Javadoc), so this `chat`
-                // reference would otherwise be stale here. appendTurn returns the chat's title as
-                // committed by its own atomic update - the fallback title on a first turn, never
-                // the LLM-derived title, which (deliberately, see ChatTitleGenerationService's
-                // Javadoc) generates asynchronously after this response is built.
+                // appendTurn's title/title_source writes go through atomic, targeted
+                // ChatRepository updates rather than mutating the `chat` instance loaded above, so
+                // its return value (not `chat`) is this method's source of truth for the title -
+                // the fallback title on a first turn, never the LLM-derived one, which generates
+                // asynchronously after this response is built (see ChatTitleGenerationService).
                 String chatTitle =
                     chat.map(c -> chatService.appendTurn(c, question, answer, sources))
                         .orElse(null);
@@ -358,14 +319,13 @@ public class QueryService {
   }
 
   /**
-   * #889 (O1): samples {@link #checkAgainstPermissionHistory} down to {@link
-   * QueryProperties#permissionHistorySampleRate} of queries instead of running it on every single
-   * one - see that field's Javadoc for why paying the reconstruction cost on every request is
-   * unnecessary for a drift signal that either never fires or, once introduced, keeps firing on
-   * every subsequent query until fixed. {@code sampleRate = 1.0} runs the check every time (the
-   * pre-#889 behaviour, e.g. for a deployment or a test that wants it); {@code sampleRate = 0.0}
-   * never runs it. The dice roll happens here, not inside {@link #checkAgainstPermissionHistory}
-   * itself, so that method stays a plain, deterministic, directly testable check.
+   * Samples {@link #checkAgainstPermissionHistory} down to {@link
+   * QueryProperties#permissionHistorySampleRate} of queries instead of running it on every one -
+   * see that field's Javadoc for why the reconstruction cost is unnecessary on every request for a
+   * drift signal that either never fires or keeps firing on every query until fixed. {@code
+   * sampleRate = 1.0} runs the check every time; {@code sampleRate = 0.0} never runs it. The dice
+   * roll happens here, not inside {@link #checkAgainstPermissionHistory} itself, which stays a
+   * plain, deterministic, directly testable check.
    */
   private void maybeCheckAgainstPermissionHistory(
       Set<UUID> readableScope, UUID currentUserId, UUID organizationId, Instant asOf) {
@@ -438,14 +398,11 @@ public class QueryService {
 
   /**
    * Groups a chunk by its {@code document_id} metadata, falling back to {@code file_name} when that
-   * metadata is missing or empty (PR #745 review, nit 1) - a chunk without {@code document_id} can
-   * only occur for pre-#739 index entries, since {@code FileProcessingService#storeChunks} now
-   * writes it on every chunk. {@link #countMatchesPerDocument} previously defaulted to the literal
-   * string {@code "unknown"} while {@link #mapSources} read the count back with {@code ""}, so the
-   * lookup always missed and {@code matchCount} silently fell back to {@code 1}. Falling back to
-   * the same {@code file_name} in both places also keeps two such chunks from <em>different</em>
-   * documents from collapsing into one merged entry, which the previous shared empty-string key
-   * did.
+   * metadata is missing or empty - a chunk without {@code document_id} can only occur for
+   * pre-#739 index entries, since {@code FileProcessingService#storeChunks} now writes it on every
+   * chunk. Using the same {@code file_name} fallback consistently across {@link
+   * #countMatchesPerDocument} and {@link #mapSources} keeps two such chunks from <em>different</em>
+   * documents from collapsing into one merged entry via a shared empty-string key.
    */
   private static String chunkGroupingKey(Document chunk) {
     String documentId = chunk.getMetadata().getOrDefault("document_id", "").toString();
@@ -509,38 +466,25 @@ public class QueryService {
    * Builds one {@link ChatSource} per retrieved file, plus a synthetic entry for every invalid
    * citation whose document id matches none of the retrieved chunks at all (#386) - the only case
    * where an invalid citation cannot attach to a real retrieved chunk's source entry, since it
-   * points at a document this answer never actually searched. {@code cited} now only reflects
-   * <em>valid</em> citations - an invalid one is never allowed to make an unrelated, merely
-   * pattern-matching citation count as a genuine one.
+   * points at a document this answer never actually searched. {@code cited} only reflects
+   * <em>valid</em> citations - an invalid one never makes an unrelated, merely pattern-matching
+   * citation count as genuine.
    *
-   * <p>#697 review, finding 4: the synthetic entries are deliberately <b>not</b> run through the
-   * same file-name merge as the real, retrieved-chunk entries. A fabricated citation can coincide
-   * in file name with a real, retrieved document (the model routinely copies the correct name even
-   * for a fabricated id), and merging would have let the fabricated citation's {@code cited =
-   * true}, relevance score and "open in document" link overwrite the real entry's own values - the
-   * real document then appeared cited, or more relevant than it is, for a citation it was never
-   * actually named in.
+   * <p>Synthetic entries deliberately do <b>not</b> go through the same file-name merge as the
+   * real, retrieved-chunk entries: a fabricated citation can coincide in file name with a real,
+   * retrieved document, and merging would let the fabricated citation's {@code cited = true},
+   * relevance score and document link overwrite the real entry's own values. A colliding synthetic
+   * entry instead folds into the matching real entry by flipping only its {@code citationValid} to
+   * {@code false} - {@code cited}, relevance score, match count and document link stay exactly as
+   * the real, retrieved chunk(s) determined them. A synthetic entry is appended as its own row only
+   * when no real entry shares its file name (avoiding two rows sharing one {@code fileName}, which
+   * {@code frontend/src/components/chat/citations.ts} would resolve last-wins).
    *
-   * <p>#697 second review round: dropping the synthetic entry silently on a collision (rather than
-   * merging it) traded that problem for another - two {@link ChatSource} rows sharing one {@code
-   * fileName} in the response, which {@code frontend/src/components/chat/citations.ts} joins to the
-   * answer text purely by file name and resolves last-wins, i.e. always to the synthetic,
-   * zero-relevance row. A genuinely, validly cited real source would then have displayed with "0%"
-   * relevance and no document link - the exact opposite failure from finding 4, now hitting a
-   * <em>valid</em> citation instead of an invalid one. The fix folds a colliding synthetic entry
-   * into the real one instead of adding a second row: only {@code citationValid} is set to {@code
-   * false} on the real entry; its {@code cited}, relevance score, match count and document link are
-   * left exactly as the real, retrieved chunk(s) determined them. A synthetic entry is only ever
-   * appended as an extra row when no real entry shares its file name.
-   *
-   * <p>#739: the real entries below are deduped by {@code document_id}, not {@code fileName} - two
-   * distinct documents that happen to share a file name (e.g. two RSS entries both attaching a
-   * same-named PDF) now each keep their own {@link ChatSource} row instead of collapsing into one,
-   * since {@code fileName} is no longer a reliable proxy for document identity now that every entry
-   * also carries its own {@code documentId} deep link. The orphan-collision check below still
-   * matches by {@code fileName} deliberately - a fabricated citation naming the right file name but
-   * the wrong document id must still flag every real entry sharing that file name, since there is
-   * no other signal to tell which one the model meant.
+   * <p>Real entries are deduped by {@code document_id}, not {@code fileName} (#739): two distinct
+   * documents sharing a file name each keep their own {@link ChatSource} row. The orphan-collision
+   * check below still matches by {@code fileName} deliberately - a fabricated citation naming the
+   * right file name but the wrong document id must still flag every real entry sharing that file
+   * name, since there is no other signal for which one the model meant.
    */
   private List<ChatSource> mapSources(
       List<Document> chunks,
@@ -562,11 +506,9 @@ public class QueryService {
             .map(CitationValidator.ValidatedCitation::documentId)
             .collect(Collectors.toSet());
 
-    // Keyed on #chunkGroupingKey, not the parsed ChatSource#getDocumentId() (which is null for
-    // a malformed/missing value, #739's parseDocumentId) - two chunks with the same unparseable id
-    // must still merge into one entry rather than every one of them colliding on a shared null key,
-    // and the file_name fallback (PR #745 review, nit 1) keeps two document_id-less chunks from
-    // different files from merging into one either.
+    // Keyed on #chunkGroupingKey, not the parsed ChatSource#getDocumentId() (null for a
+    // malformed/missing value) - two chunks with the same unparseable id must still merge into one
+    // entry rather than colliding on a shared null key.
     Map<String, ChatSource> fromChunksByDocumentId =
         chunks.stream()
             .map(
@@ -672,25 +614,16 @@ public class QueryService {
   }
 
   /**
-   * Merges duplicate source references for the same <b>document</b> (#739, previously the same file
-   * name - see below), keeping the one with the highest relevance score while preserving citation
-   * status. If either reference was cited in the answer, the merged result is marked as cited —
-   * because any chunk from that document being cited means the document as a whole contributed to
-   * the answer.
+   * Merges duplicate source references for the same <b>document</b> (dedupe key is {@code
+   * document_id}, not {@code fileName} - #739), keeping the one with the highest relevance score
+   * while preserving citation status. If either reference was cited in the answer, the merged
+   * result is marked as cited - any chunk from that document being cited means the document as a
+   * whole contributed to the answer.
    *
-   * <p>#739: the dedupe key is now {@code document_id}, not {@code fileName} (#639's original
-   * reasoning for the opposite choice, below, is why this needed to change deliberately rather than
-   * incidentally). Two distinct documents that happen to share a file name (e.g. two RSS entries
-   * both attaching a same-named PDF) no longer collapse into one {@link ChatSource} row at all -
-   * each keeps its own entry, since #739 needs every entry's own {@code documentId} for its deep
-   * link and folding two different documents together would have to pick (or drop) one arbitrarily.
-   * {@code a} and {@code b} passed to this method therefore always share the same {@code
-   * document_id}, hence the same underlying {@link io.opaa.indexing.Document} row - {@code
-   * documentId}, {@code sourceType}, {@code sourceUrl} and {@code sourceEntryUrl} are consequently
-   * always equal between them (unlike under the old fileName key, where two genuinely different
-   * documents could disagree on {@code sourceEntryUrl} - the reason #639 originally dropped it to
-   * {@code null} on any disagreement rather than picking either side). The merge below still reads
-   * whichever side happens to be {@code preferred}, since both sides agree anyway.
+   * <p>{@code a} and {@code b} always share the same {@code document_id} and therefore the same
+   * underlying {@link io.opaa.indexing.Document} row - {@code documentId}, {@code sourceType},
+   * {@code sourceUrl} and {@code sourceEntryUrl} are consequently always equal between them, unlike
+   * under a fileName key where two genuinely different documents could disagree.
    */
   static ChatSource mergeSourceReferences(ChatSource a, ChatSource b) {
     ChatSource preferred = a.getRelevanceScore() >= b.getRelevanceScore() ? a : b;
