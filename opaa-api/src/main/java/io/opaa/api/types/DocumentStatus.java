@@ -1,4 +1,4 @@
-package io.opaa.indexing;
+package io.opaa.api.types;
 
 public enum DocumentStatus {
   PENDING,

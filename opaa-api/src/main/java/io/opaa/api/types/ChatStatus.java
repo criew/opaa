@@ -1,4 +1,4 @@
-package io.opaa.chat;
+package io.opaa.api.types;
 
 /**
  * Single-value for now (#525) - the SHARED/WITHDRAWN axis from

@@ -52,7 +52,10 @@ jobs:
       - name: Build backend image
         uses: docker/build-push-action@v7
         with:
-          context: backend
+          # Repo-root context (issue #896): backend's Gradle build depends on the sibling
+          # opaa-api/ module via settings.gradle.kts, so a context scoped to backend/ alone would
+          # not see it.
+          context: .
           file: backend/Dockerfile
           tags: opaa-e2e-backend:latest
           load: true

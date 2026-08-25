@@ -1,5 +1,6 @@
 package io.opaa.group.sync;
 
+import io.opaa.api.types.DirectorySyncOutcome;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

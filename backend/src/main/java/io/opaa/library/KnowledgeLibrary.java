@@ -1,6 +1,8 @@
 package io.opaa.library;
 
-import io.opaa.indexing.DocumentSourceType;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.LibraryOwnerType;
+import io.opaa.api.types.LibraryVisibility;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;

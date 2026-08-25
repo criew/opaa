@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import io.opaa.api.types.ChatRole;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Service;

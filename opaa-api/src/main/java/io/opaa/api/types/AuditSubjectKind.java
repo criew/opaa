@@ -1,4 +1,4 @@
-package io.opaa.audit;
+package io.opaa.api.types;
 
 /**
  * The kind of the affected rights subject ({@link AuditLogEntry#getSubjectRef()}) - a person

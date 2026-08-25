@@ -1,4 +1,4 @@
-package io.opaa.audit;
+package io.opaa.api.types;
 
 /**
  * The result of the recorded action. Mirrored by the database check constraint {@code

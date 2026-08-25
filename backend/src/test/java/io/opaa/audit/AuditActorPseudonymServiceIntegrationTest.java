@@ -2,6 +2,9 @@ package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.ActorKind;
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditOutcome;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
@@ -79,7 +82,7 @@ class AuditActorPseudonymServiceIntegrationTest {
                 ActorKind.USER,
                 pseudonymId.toString(),
                 AuditEventType.SPACE_CREATED,
-                io.opaa.audit.AuditObjectType.SPACE,
+                io.opaa.api.types.AuditObjectType.SPACE,
                 "space-1",
                 "Space 1",
                 null,

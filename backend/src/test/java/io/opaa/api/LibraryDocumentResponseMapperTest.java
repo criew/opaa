@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
+import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentSourceType;
 import io.opaa.library.LibraryDocumentEntry;
 import io.opaa.library.LibraryDocumentPage;
 import io.opaa.library.LibraryFolder;

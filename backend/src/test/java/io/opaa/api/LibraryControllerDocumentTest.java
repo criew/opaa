@@ -12,16 +12,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
-import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIndexingService;
-import io.opaa.indexing.DocumentSourceType;
-import io.opaa.indexing.DocumentStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentEntry;

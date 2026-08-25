@@ -1,5 +1,6 @@
 package io.opaa.audit;
 
+import io.opaa.api.types.AuditOutcome;
 import org.springframework.stereotype.Service;
 
 /**

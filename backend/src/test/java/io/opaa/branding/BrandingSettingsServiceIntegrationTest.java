@@ -3,8 +3,9 @@ package io.opaa.branding;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.audit.AuditEventType;
-import io.opaa.audit.AuditObjectType;
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.ColorScheme;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ValidationException;

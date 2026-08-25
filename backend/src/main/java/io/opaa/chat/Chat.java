@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import io.opaa.api.types.ChatStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;

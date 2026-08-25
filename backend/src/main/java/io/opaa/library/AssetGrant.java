@@ -1,7 +1,8 @@
 package io.opaa.library;
 
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.group.PermissionSubject;
-import io.opaa.group.PermissionSubjectType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

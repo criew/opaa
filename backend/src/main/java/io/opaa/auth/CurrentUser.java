@@ -1,5 +1,6 @@
 package io.opaa.auth;
 
+import io.opaa.api.types.SystemRole;
 import java.util.Objects;
 import java.util.UUID;
 

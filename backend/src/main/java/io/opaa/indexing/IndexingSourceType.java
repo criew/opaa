@@ -1,5 +1,7 @@
 package io.opaa.indexing;
 
+import io.opaa.api.types.DocumentSourceType;
+
 /**
  * The set of source types an indexing run can actually execute (ADR-0017). Deliberately narrower
  * than {@link DocumentSourceType}: {@code UPLOAD} is a document's origin, not a run type - it has

@@ -1,4 +1,4 @@
-package io.opaa.branding;
+package io.opaa.api.types;
 
 /**
  * The colour scheme a deployment starts its users off in (#582, docs/design/guidelines.md#7).

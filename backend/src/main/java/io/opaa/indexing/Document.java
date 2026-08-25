@@ -1,5 +1,7 @@
 package io.opaa.indexing;
 
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

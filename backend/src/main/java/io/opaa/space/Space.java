@@ -1,5 +1,6 @@
 package io.opaa.space;
 
+import io.opaa.api.types.SpaceVisibility;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

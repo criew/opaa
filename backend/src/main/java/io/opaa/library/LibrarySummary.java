@@ -1,5 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.api.types.AssetRole;
+
 /**
  * A {@link KnowledgeLibrary} enriched with the caller's effective role, its document count and its
  * owner's resolved display name (#438), as returned by {@link

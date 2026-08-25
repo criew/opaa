@@ -1,11 +1,12 @@
 package io.opaa.auth;
 
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
-import io.opaa.audit.AuditEventType;
-import io.opaa.audit.AuditObjectType;
-import io.opaa.audit.AuditOutcome;
-import io.opaa.audit.AuditSubjectKind;
 import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;

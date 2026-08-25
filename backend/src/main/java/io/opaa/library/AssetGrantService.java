@@ -1,11 +1,13 @@
 package io.opaa.library;
 
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
-import io.opaa.audit.AuditEventType;
-import io.opaa.audit.AuditObjectType;
-import io.opaa.audit.AuditOutcome;
-import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -15,7 +17,6 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
-import io.opaa.group.PermissionSubjectType;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;

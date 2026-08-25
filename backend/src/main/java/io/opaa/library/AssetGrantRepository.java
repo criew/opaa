@@ -1,6 +1,6 @@
 package io.opaa.library;
 
-import io.opaa.group.PermissionSubjectType;
+import io.opaa.api.types.PermissionSubjectType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -116,7 +116,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    */
   @Query(
       "select g.libraryId from AssetGrant g "
-          + "where g.subjectType = io.opaa.group.PermissionSubjectType.USER "
+          + "where g.subjectType = io.opaa.api.types.PermissionSubjectType.USER "
           + "and g.subjectUserId = :userId and g.organizationId = :organizationId "
           + "and (g.expiresAt is null or g.expiresAt > :now)")
   Set<UUID> findReadableLibraryIdsByDirectGrant(
@@ -127,7 +127,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
   /** The group-grant counterpart of {@link #findReadableLibraryIdsByDirectGrant}. */
   @Query(
       "select g.libraryId from AssetGrant g "
-          + "where g.subjectType = io.opaa.group.PermissionSubjectType.GROUP "
+          + "where g.subjectType = io.opaa.api.types.PermissionSubjectType.GROUP "
           + "and g.subjectGroupId in :groupIds and g.organizationId = :organizationId "
           + "and (g.expiresAt is null or g.expiresAt > :now)")
   Set<UUID> findReadableLibraryIdsByGroupGrant(

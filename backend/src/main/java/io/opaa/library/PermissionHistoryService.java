@@ -1,10 +1,10 @@
 package io.opaa.library;
 
+import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupMembershipHistory;
 import io.opaa.group.GroupMembershipHistoryCause;
 import io.opaa.group.GroupMembershipHistoryRepository;
-import io.opaa.group.PermissionSubjectType;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;

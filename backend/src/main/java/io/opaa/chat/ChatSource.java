@@ -1,6 +1,6 @@
 package io.opaa.chat;
 
-import io.opaa.indexing.DocumentSourceType;
+import io.opaa.api.types.DocumentSourceType;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

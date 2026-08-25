@@ -1,4 +1,4 @@
-package io.opaa.notification;
+package io.opaa.api.types;
 
 /**
  * The closed vocabulary of {@link Notification#getType()}. This enum is the sole write guard since

@@ -1,11 +1,15 @@
 package io.opaa.library;
 
 import io.opaa.api.dto.ScheduleFrequency;
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.LibraryOwnerType;
+import io.opaa.api.types.LibraryVisibility;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
-import io.opaa.audit.AuditEventType;
-import io.opaa.audit.AuditObjectType;
-import io.opaa.audit.AuditOutcome;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -18,7 +22,6 @@ import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;

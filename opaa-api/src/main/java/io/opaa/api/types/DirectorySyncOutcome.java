@@ -1,4 +1,4 @@
-package io.opaa.group.sync;
+package io.opaa.api.types;
 
 /** What a directory synchronisation run did or did not do. See {@link DirectorySyncService}. */
 public enum DirectorySyncOutcome {

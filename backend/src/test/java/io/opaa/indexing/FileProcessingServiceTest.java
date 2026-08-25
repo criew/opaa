@@ -13,9 +13,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.LibraryVisibility;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
-import io.opaa.library.LibraryVisibility;
 import io.opaa.library.UploadProperties;
 import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;

@@ -1,5 +1,6 @@
 package io.opaa.group;
 
+import io.opaa.api.types.PermissionSubjectType;
 import java.util.Objects;
 import java.util.UUID;
 

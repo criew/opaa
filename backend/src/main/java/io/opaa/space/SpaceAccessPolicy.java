@@ -1,5 +1,6 @@
 package io.opaa.space;
 
+import io.opaa.api.types.SpaceRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import java.util.UUID;

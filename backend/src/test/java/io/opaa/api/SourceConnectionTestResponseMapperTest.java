@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
-import io.opaa.indexing.DocumentSourceType;
+import io.opaa.api.types.DocumentSourceType;
 import io.opaa.library.SourceConnectionTest;
 import io.opaa.library.SourceConnectionTestResult;
 import java.net.URI;

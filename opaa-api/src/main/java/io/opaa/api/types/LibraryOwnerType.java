@@ -1,4 +1,4 @@
-package io.opaa.library;
+package io.opaa.api.types;
 
 /**
  * Who owns a {@link KnowledgeLibrary}.

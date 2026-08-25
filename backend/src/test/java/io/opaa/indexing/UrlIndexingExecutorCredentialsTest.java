@@ -2,10 +2,11 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.auth.SystemRole;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.LibraryVisibility;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.UUID;

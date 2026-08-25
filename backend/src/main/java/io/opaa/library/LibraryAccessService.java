@@ -2,10 +2,12 @@ package io.opaa.library;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.group.GroupMembershipResolver;
-import io.opaa.group.PermissionSubjectType;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;

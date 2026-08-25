@@ -1,5 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.api.types.AssetRole;
+
 /**
  * The management-only half of a {@link LibraryDetail} - source configuration, schedule and storage
  * quota - always present, but with every field {@code null} unless the caller's {@code myRole} is

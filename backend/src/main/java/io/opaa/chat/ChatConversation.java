@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import io.opaa.api.types.ChatStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

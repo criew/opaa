@@ -1,4 +1,4 @@
-package io.opaa.audit;
+package io.opaa.api.types;
 
 /**
  * Who or what performed the action recorded by an {@link AuditLogEntry} - trennt Handeln von

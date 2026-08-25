@@ -14,8 +14,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
-import io.opaa.auth.SystemRole;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
@@ -340,7 +340,7 @@ class QueryServiceTest {
             "/data/upload.pdf",
             "application/pdf",
             100L,
-            io.opaa.indexing.DocumentSourceType.UPLOAD);
+            io.opaa.api.types.DocumentSourceType.UPLOAD);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -350,7 +350,7 @@ class QueryServiceTest {
 
     ChatSource source = response.getSources().getFirst();
     assertThat(source.getDocumentId()).isEqualTo(documentId);
-    assertThat(source.getSourceType()).isEqualTo(io.opaa.indexing.DocumentSourceType.UPLOAD);
+    assertThat(source.getSourceType()).isEqualTo(io.opaa.api.types.DocumentSourceType.UPLOAD);
     assertThat(source.getSourceUrl()).isNull();
   }
 
@@ -378,7 +378,7 @@ class QueryServiceTest {
             "https://example.gov/verzeichnis/dienstanweisung.pdf",
             "application/pdf",
             100L,
-            io.opaa.indexing.DocumentSourceType.HTTP_DIRECTORY);
+            io.opaa.api.types.DocumentSourceType.HTTP_DIRECTORY);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -389,7 +389,7 @@ class QueryServiceTest {
     ChatSource source = response.getSources().getFirst();
     assertThat(source.getDocumentId()).isEqualTo(documentId);
     assertThat(source.getSourceType())
-        .isEqualTo(io.opaa.indexing.DocumentSourceType.HTTP_DIRECTORY);
+        .isEqualTo(io.opaa.api.types.DocumentSourceType.HTTP_DIRECTORY);
     assertThat(source.getSourceUrl())
         .isEqualTo("https://example.gov/verzeichnis/dienstanweisung.pdf");
   }

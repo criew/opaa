@@ -1,4 +1,4 @@
-package io.opaa.space;
+package io.opaa.api.types;
 
 /**
  * Membership role within a space. This is a separate ranking from asset roles - no role name

@@ -1,4 +1,4 @@
-package io.opaa.audit;
+package io.opaa.api.types;
 
 /**
  * The closed list of purposes an anlassbezogene Klärung

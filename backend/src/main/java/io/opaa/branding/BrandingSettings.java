@@ -1,5 +1,6 @@
 package io.opaa.branding;
 
+import io.opaa.api.types.ColorScheme;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

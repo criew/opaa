@@ -3,10 +3,10 @@ package io.opaa.migration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.audit.ActorKind;
-import io.opaa.audit.AuditObjectType;
-import io.opaa.audit.AuditOutcome;
-import io.opaa.audit.AuditSubjectKind;
+import io.opaa.api.types.ActorKind;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.AuditSubjectKind;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;

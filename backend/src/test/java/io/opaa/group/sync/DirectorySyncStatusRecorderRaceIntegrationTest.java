@@ -2,6 +2,7 @@ package io.opaa.group.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;

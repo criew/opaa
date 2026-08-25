@@ -1,4 +1,4 @@
-package io.opaa.space;
+package io.opaa.api.types;
 
 /**
  * Discoverability of a space, independent of membership and asset access.

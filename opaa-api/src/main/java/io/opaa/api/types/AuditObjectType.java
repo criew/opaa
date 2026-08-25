@@ -1,4 +1,4 @@
-package io.opaa.audit;
+package io.opaa.api.types;
 
 /**
  * The kind of object an {@link AuditLogEntry} is about ({@link AuditLogEntry#getObjectType()}). A

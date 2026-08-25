@@ -6,7 +6,7 @@ RUN corepack enable
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY frontend/ .
-COPY backend/src/main/resources/openapi/opaa-api.yaml /backend/src/main/resources/openapi/opaa-api.yaml
+COPY opaa-api/src/main/resources/openapi/opaa-api.yaml /opaa-api/src/main/resources/openapi/opaa-api.yaml
 RUN pnpm run build
 
 FROM nginx:alpine

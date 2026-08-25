@@ -1,4 +1,4 @@
-package io.opaa.library;
+package io.opaa.api.types;
 
 /**
  * The graded asset role an {@link AssetGrant} carries - a ranking deliberately separate from {@code

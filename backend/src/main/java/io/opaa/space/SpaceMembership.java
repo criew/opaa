@@ -1,5 +1,6 @@
 package io.opaa.space;
 
+import io.opaa.api.types.SpaceRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

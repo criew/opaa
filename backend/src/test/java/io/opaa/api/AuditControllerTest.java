@@ -10,15 +10,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.audit.ActorKind;
-import io.opaa.audit.AuditEventType;
+import io.opaa.api.types.ActorKind;
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditIncidentScopeService;
 import io.opaa.audit.AuditLogEntry;
-import io.opaa.audit.AuditObjectType;
-import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditQueryService;
 import io.opaa.auth.AdminTestSecurityConfig;
-import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import java.lang.reflect.Method;

@@ -9,17 +9,18 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.LibraryVisibility;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ServiceUnavailableException;
-import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
-import io.opaa.library.LibraryVisibility;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -76,10 +77,13 @@ class DocumentIndexingServiceTest {
     currentUser.setOrganizationId(organizationId);
     caller =
         CurrentUser.of(
-            currentUser.getId(), organizationId, io.opaa.auth.SystemRole.USER, "Test User");
+            currentUser.getId(), organizationId, io.opaa.api.types.SystemRole.USER, "Test User");
     systemAdminCaller =
         CurrentUser.of(
-            currentUser.getId(), organizationId, io.opaa.auth.SystemRole.SYSTEM_ADMIN, "Test User");
+            currentUser.getId(),
+            organizationId,
+            io.opaa.api.types.SystemRole.SYSTEM_ADMIN,
+            "Test User");
     library =
         KnowledgeLibrary.ownedByUser(
             organizationId,

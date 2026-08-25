@@ -6,7 +6,7 @@ import io.opaa.api.dto.DirectorySyncGroupChange;
 import io.opaa.api.dto.DirectorySyncMembershipChange;
 import io.opaa.api.dto.DirectorySyncReportResponse;
 import io.opaa.api.dto.DirectorySyncStatusResponse;
-import io.opaa.group.sync.DirectorySyncOutcome;
+import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.group.sync.DirectorySyncStatus;
 import io.opaa.group.sync.GroupChange;
 import io.opaa.group.sync.MembershipChange;

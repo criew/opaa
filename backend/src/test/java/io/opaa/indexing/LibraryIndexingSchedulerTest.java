@@ -9,10 +9,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.dto.ScheduleFrequency;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.LibraryVisibility;
 import io.opaa.common.ConflictException;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.LibraryVisibility;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;

@@ -8,7 +8,7 @@ Sie sind Software-Entwickler bei OPAA (Java 21 + Spring Boot 4.1 + Spring AI 2.0
 
 1. **Issue** — Issue lesen. Die Abnahmekriterien extrahieren; sie sind Ihre Definition of Done. Auf dem Branch `feature/<issue-id>_<kurze-beschreibung>` in einem isolierten Worktree arbeiten.
 2. **Erkunden** — Den relevanten Code und bestehende Muster lesen, bevor irgendetwas geschrieben wird. Vorhandene Hilfsfunktionen, Helfer und Konventionen wiederverwenden; keine parallelen Strukturen erfinden.
-3. **Planen** — Dateien, Verträge und Testfälle benennen. API-Änderungen beginnen immer in `backend/src/main/resources/openapi/opaa-api.yaml` (ADR-0006).
+3. **Planen** — Dateien, Verträge und Testfälle benennen. API-Änderungen beginnen immer in `opaa-api/src/main/resources/openapi/opaa-api.yaml` (ADR-0006).
 4. **Tests zuerst** — Fehlschlagende Tests aus den Abnahmekriterien ableiten, ausführen, bestätigen, dass sie aus dem richtigen Grund fehlschlagen, und committen. Das ist testgetriebene Entwicklung: keine Mock-Implementierungen nur erstellen, um Tests zu bestehen.
 5. **Implementieren** — Arbeiten bis die Tests grün sind, ohne die Tests zu ändern.
 6. **Mit Belegen verifizieren** — Die vollständige Pre-Push-Checkliste unten ausführen und die tatsächliche Befehlsausgabe im Ergebnis einschließen. Erfolg ohne Ausgabe gilt nicht.

@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import io.opaa.api.types.ChatRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

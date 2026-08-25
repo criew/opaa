@@ -6,7 +6,7 @@ Akzeptiert
 
 ## Kontext
 
-OPAA stellt eine REST-API bereit, die durch eine OpenAPI-Spezifikation definiert ist (`backend/src/main/resources/openapi/opaa-api.yaml`). Anfangs wurden Backend-DTOs als handgeschriebene Java-Records in `io.opaa.api.dto` erstellt. Als die API wuchs (Abfrage-, Indizierungs-, Workspace-Endpunkte), wurde es fehleranfällig und duplizierte Aufwand, handgeschriebene DTOs mit der OpenAPI-Spezifikation synchron zu halten.
+OPAA stellt eine REST-API bereit, die durch eine OpenAPI-Spezifikation definiert ist (`opaa-api/src/main/resources/openapi/opaa-api.yaml`). Anfangs wurden Backend-DTOs als handgeschriebene Java-Records in `io.opaa.api.dto` erstellt. Als die API wuchs (Abfrage-, Indizierungs-, Workspace-Endpunkte), wurde es fehleranfällig und duplizierte Aufwand, handgeschriebene DTOs mit der OpenAPI-Spezifikation synchron zu halten.
 
 PR #134 führte OpenAPI-Code-Generierung für Nicht-Workspace-DTOs ein. Workspace-DTOs blieben handgeschrieben aufgrund ihrer Abhängigkeit von Domain-Enums (`WorkspaceRole`, `WorkspaceType`). Diese Inkonsistenz — einige DTOs generiert, einige handgeschrieben — schuf Verwirrung über die Quelle der Wahrheit.
 
@@ -26,12 +26,14 @@ Konkret:
 
 ### Konfiguration
 
-Der OpenAPI-Generator ist in `backend/build.gradle.kts` konfiguriert:
+Spec, OpenAPI-Generator und die von `typeMappings` referenzierten Domain-Enums leben im eigenen Gradle-Modul `opaa-api` (issue #896) — eine Spec-Änderung invalidiert dadurch nur dieses Modul, nicht das gesamte Backend-Sourceset. Der Generator ist in `opaa-api/build.gradle.kts` konfiguriert:
 
 - `models` auf `""` gesetzt (alle Schemas generieren)
-- `typeMappings` mappt Domain-Enums und benutzerdefinierte Typen zu vorhandenen Klassen
+- `typeMappings` mappt Domain-Enums und benutzerdefinierte Typen zu vorhandenen Klassen in `io.opaa.api.types`
 - `importMappings` liefert die vollqualifizierten Klassennamen für gemappte Typen
 - Ein `doLast`-Block entfernt generierte Enum-Dateien, die auf Domain-Enums gemappt sind (der Generator erstellt sie trotz `typeMappings`)
+
+Das Backend konsumiert die generierten DTOs transitiv über `implementation(project(":opaa-api"))`, ohne selbst einen OpenAPI-Generator-Task zu besitzen.
 
 ## Konsequenzen
 

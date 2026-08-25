@@ -1,5 +1,6 @@
 package io.opaa.audit;
 
+import io.opaa.api.types.AuditIncidentScopePurpose;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;

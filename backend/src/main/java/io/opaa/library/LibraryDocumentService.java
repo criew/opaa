@@ -1,5 +1,8 @@
 package io.opaa.library;
 
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
@@ -8,8 +11,6 @@ import io.opaa.common.ValidationException;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentSourceType;
-import io.opaa.indexing.DocumentStatus;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.SupportedDocumentFormats;

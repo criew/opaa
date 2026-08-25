@@ -1,4 +1,4 @@
-package io.opaa.library;
+package io.opaa.api.types;
 
 /**
  * How far a {@link KnowledgeLibrary}'s access reaches, independent of individual or group grants.

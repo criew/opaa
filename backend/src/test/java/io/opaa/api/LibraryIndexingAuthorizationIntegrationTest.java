@@ -6,19 +6,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.DevAuthFilter;
-import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.JobStatus;
 import io.opaa.library.AssetGrant;
 import io.opaa.library.AssetGrantRepository;
-import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.LibraryVisibility;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaMockMvcTest;
 import java.io.IOException;

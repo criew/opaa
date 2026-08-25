@@ -1,4 +1,4 @@
-package io.opaa.auth;
+package io.opaa.api.types;
 
 /**
  * {@code AUDITOR} is #393's revision role: it grants read access to the four bounded revision query

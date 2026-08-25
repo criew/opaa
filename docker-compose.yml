@@ -27,7 +27,12 @@ services:
       retries: 5
 
   backend:
-    build: ./backend
+    build:
+      # Repo-root context (issue #896): the backend Gradle build now depends on the sibling
+      # opaa-api/ module (settings.gradle.kts include), which a context scoped to ./backend alone
+      # would not see.
+      context: .
+      dockerfile: backend/Dockerfile
     env_file: ${OPAA_ENV_FILE:-.env.docker}
     extra_hosts:
       - "host.docker.internal:host-gateway"

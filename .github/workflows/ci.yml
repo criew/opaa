@@ -46,13 +46,14 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
+              - 'opaa-api/**'
               - '.github/workflows/ci.yml'
             # The frontend build regenerates its API types from the OpenAPI
-            # spec under backend/ on every pnpm run build/test (ADR-0006), so a
+            # spec under opaa-api/ on every pnpm run build/test (ADR-0006), so a
             # spec-only change must also run the frontend job.
             frontend:
               - 'frontend/**'
-              - 'backend/src/main/resources/openapi/opaa-api.yaml'
+              - 'opaa-api/src/main/resources/openapi/opaa-api.yaml'
               - '.github/workflows/ci.yml'
             scripts:
               - '.github/scripts/**'

@@ -14,8 +14,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
-import io.opaa.audit.AuditEventType;
 import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;

@@ -1,5 +1,7 @@
 package io.opaa.audit;
 
+import io.opaa.api.types.AuditIncidentScopePurpose;
+import io.opaa.api.types.AuditIncidentScopeStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

@@ -3,8 +3,10 @@ package io.opaa.space;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.SpaceRole;
+import io.opaa.api.types.SpaceVisibility;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
-import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.Chat;
@@ -124,7 +126,7 @@ class SpaceServiceIntegrationTest {
             "Bibliothek",
             null,
             ownerId,
-            io.opaa.library.LibraryVisibility.PRIVATE,
+            io.opaa.api.types.LibraryVisibility.PRIVATE,
             false);
     UUID libraryId = libraryRepository.save(library).getId();
     jdbcTemplate.update(

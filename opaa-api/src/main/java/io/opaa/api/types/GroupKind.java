@@ -1,4 +1,4 @@
-package io.opaa.group;
+package io.opaa.api.types;
 
 /**
  * What a group is for and where its membership comes from.

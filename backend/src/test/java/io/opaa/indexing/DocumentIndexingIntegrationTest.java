@@ -7,12 +7,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
-import io.opaa.auth.SystemRole;
 import io.opaa.common.NotFoundException;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.LibraryVisibility;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryResult;

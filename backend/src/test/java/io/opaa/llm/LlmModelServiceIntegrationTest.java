@@ -3,7 +3,7 @@ package io.opaa.llm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.audit.AuditEventType;
+import io.opaa.api.types.AuditEventType;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;

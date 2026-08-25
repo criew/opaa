@@ -1,4 +1,4 @@
-package io.opaa.audit;
+package io.opaa.api.types;
 
 /**
  * Lifecycle of an {@link AuditIncidentScopeGrant}. Mirrored by the database check constraint {@code
