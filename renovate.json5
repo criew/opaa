@@ -1,0 +1,115 @@
+// Renovate-Konfiguration für OPAA (Issue #751).
+//
+// Renovate läuft SELBST BETRIEBEN (lokal per Docker-Image oder als bewusst angestoßener
+// Lauf) — der Mend-Cloud-Service ist ausdrücklich nicht im Einsatz, es ist keine GitHub-App
+// installiert. Betriebsanleitung: docs/renovate.md
+//
+// Diese Datei ist Repository-Konfiguration; Laufzeitbelange (Token, Zielrepository,
+// Dry-Run) kommen beim Aufruf über Umgebungsvariablen dazu.
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    // Enthält u. a. die Monorepo-Gruppierungen (MUI, Vitest, testing-library, …) und
+    // vernünftige Defaults für alle hier relevanten Manager: gradle (inkl.
+    // libs.versions.toml), gradle-wrapper, npm/pnpm, github-actions, dockerfile,
+    // docker-compose.
+    'config:recommended',
+  ],
+  timezone: 'Europe/Berlin',
+
+  // Projektsprache (AGENTS.md): Conventional-Commit-Typ und -Scope englisch, Beschreibung
+  // deutsch. Ergibt z. B. "chore(deps): @mui/material auf 9.3.0 aktualisieren" — als
+  // Commit-Nachricht und PR-Titel.
+  semanticCommits: 'enabled',
+  semanticCommitType: 'chore',
+  semanticCommitScope: 'deps',
+  commitMessageAction: '',
+  commitMessageTopic: '{{depName}}',
+  commitMessageExtra: 'auf {{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{newValue}}{{/if}} aktualisieren',
+  // Gruppen-PRs (Spring-Plattform, MUI-/ESLint-Monorepos, …) ersetzen das Topic durch den
+  // Gruppennamen und verwerfen das Extra, sobald die Mitglieder verschiedene Zielversionen
+  // haben — ohne diesen Block bliebe der Titel verblos („chore(deps): spring-plattform").
+  // Extra wird hier immer geleert, damit das Suffix-Verb nie doppelt auftritt.
+  group: {
+    commitMessageTopic: '{{{groupName}}}',
+    commitMessageExtra: '',
+    commitMessageSuffix: 'aktualisieren',
+  },
+  // Deutscher Kopfsatz im sonst englischen Renovate-PR-Body (Projektsprache, AGENTS.md —
+  // die dokumentierte Bot-Ausnahme dort erlaubt den englischen Rest).
+  prHeader: 'Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.',
+
+  // Läuft täglich per .github/workflows/renovate.yml (zusätzlich manuell auslösbar): kein
+  // Stundenlimit, aber eine Obergrenze gleichzeitig offener Update-PRs, damit weder der
+  // Erstlauf noch ein Update-Schub das Repo flutet.
+  prHourlyLimit: 0,
+  prConcurrentLimit: 5,
+
+  // Jeder PR trägt Labels (AGENTS.md); die Bereichszuordnung ergänzen die packageRules.
+  labels: ['enhancement'],
+  dependencyDashboardTitle: 'Abhängigkeits-Übersicht (Renovate)',
+  dependencyDashboardLabels: ['ci'],
+
+  packageRules: [
+    // Bereichs-Labels nach Manager
+    {
+      matchManagers: ['gradle', 'gradle-wrapper'],
+      addLabels: ['backend'],
+    },
+    {
+      matchManagers: ['npm'],
+      addLabels: ['frontend'],
+    },
+    // npm-Abhängigkeiten werden GEPINNT (Maintainer-Entscheidung, 25.08.2026): frontend/ und
+    // e2e/ sind Anwendungen, keine Bibliotheken — exakte Versionen in der package.json machen
+    // jeden Bump als PR sichtbar, statt ihn als stilles Lockfile-only-Update zu verstecken.
+    // Bewusst auf dependencies/devDependencies begrenzt: engines bleibt eine Range (die
+    // zulässigen Node-Linien), packageManager ist ohnehin exakt (Corepack-Hash).
+    {
+      matchManagers: ['npm'],
+      matchDepTypes: ['dependencies', 'devDependencies'],
+      rangeStrategy: 'pin',
+    },
+    {
+      matchManagers: ['github-actions', 'dockerfile', 'docker-compose'],
+      addLabels: ['ci'],
+    },
+    // Nebenfunde der Erkennung: die Seed-/Generator-Requirements der Demo und frontend/.nvmrc
+    {
+      matchManagers: ['pip_requirements'],
+      addLabels: ['demo'],
+    },
+    {
+      matchManagers: ['nvm'],
+      addLabels: ['frontend'],
+    },
+    // Spring Boot, Spring Framework und Spring AI bewegen sich zusammen — ein PR statt
+    // dreier, die einzeln ohnehin nicht baubar wären (Issue #751). Trifft Koordinaten UND
+    // Plugin-IDs unter org.springframework.*; io.spring.dependency-management versioniert
+    // unabhängig und bleibt bewusst außen vor.
+    {
+      groupName: 'Spring-Plattform',
+      matchPackageNames: ['org.springframework{/,}**'],
+    },
+    // config:recommended zieht :semanticPrefixFixDepsChoreOthers nach, das produktive
+    // Abhängigkeiten (depType "dependencies" — darunter ALLE libs.versions.toml-Einträge)
+    // auf fix(deps) umstellt, und mergeConfidence-Badges, deren Spalten je Abhängigkeit
+    // Mend-URLs in den PR-Body einbetten. Beides hier bewusst zurückgedreht: einheitlich
+    // chore(deps) (Issue #751) und ein Body ohne Aufrufe an den Mend-Dienst.
+    {
+      matchPackageNames: ['*'],
+      semanticCommitType: 'chore',
+      prBodyColumns: ['Package', 'Type', 'Update', 'Change'],
+    },
+    // Docker-Basisimages sind im Projekt BEWUSST gleitende Tags (node:22-alpine,
+    // nginx:alpine, pgvector/pgvector:pg18, eclipse-temurin:21-jdk — siehe Kommentar in
+    // e2e/docker-compose.e2e.yml zu PR #453). pinDigests: false ist derzeit ohnehin der
+    // Default; die Regel schreibt die Entscheidung fest, damit ein künftiger Preset- oder
+    // Renovate-Wechsel sie nicht still kippt. Major-Tag-Wechsel (z. B. node 22 → 24)
+    // kommen weiterhin als PR.
+    {
+      matchDatasources: ['docker'],
+      pinDigests: false,
+    },
+  ],
+}

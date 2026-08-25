@@ -1,0 +1,43 @@
+name: Renovate
+
+# Self-hosted Renovate run (issue #751): the same docker invocation docs/renovate.md
+# documents for manual use, executed daily. Deliberately NOT the Mend cloud app - the run
+# happens entirely in this repository's own CI.
+on:
+  schedule:
+    # Daily, before the working day (06:23 MESZ). Offset from the nightly e2e run (03:17 UTC)
+    # so the two never compete for runners.
+    - cron: '23 4 * * *'
+  # Manual trigger for maintainers - e.g. right after merging a config change.
+  workflow_dispatch:
+
+# A second run started while one is still active would race it on the same branches.
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+# Renovate authenticates exclusively with the RENOVATE_TOKEN secret (a PAT with repo +
+# workflow scope, see docs/renovate.md). The workflow's own GITHUB_TOKEN gets no rights:
+# PRs created with it would not trigger CI, and the github-actions manager could not push
+# workflow file updates.
+permissions: {}
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Run Renovate
+        env:
+          RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+        run: |
+          if [ -z "$RENOVATE_TOKEN" ]; then
+            echo "::error::Secret RENOVATE_TOKEN fehlt - PAT mit repo+workflow-Scope hinterlegen (docs/renovate.md)."
+            exit 1
+          fi
+          docker run --rm \
+            -e RENOVATE_TOKEN \
+            -e RENOVATE_PLATFORM=github \
+            -e RENOVATE_REPOSITORIES=criew/opaa \
+            -e LOG_LEVEL=info \
+            renovate/renovate:latest

@@ -220,6 +220,13 @@ Jeder Branch ist über seine ID mit einem GitHub-Issue verknüpft.
 - Immer die GitHub-Issue-ID im Branch-Namen angeben.
 - Keine generischen Namen wie `feature/workspace` ohne Issue-ID verwenden.
 
+**Ausnahme Renovate:** Von Renovate erzeugte Update-Branches heißen `renovate/<slug>` (ohne
+`feature/`-Präfix und ohne Issue-ID), und Renovate-PRs verwenden weder das PR-Template noch
+einen durchgehend deutschen Body (deutscher Titel und Kopfsatz, generierter englischer Rest).
+Das ist die einzige zugelassene Abweichung von den Branch- und PR-Regeln dieses Dokuments —
+sie gilt ausschließlich für den Bot (siehe `docs/renovate.md`, Issue #751); Menschen und
+Agenten bleiben an die Regeln gebunden.
+
 Die Art der Änderung wird über den Conventional-Commit-Typ ausgedrückt (`fix`, `docs`, `chore`, …), nicht über das Branch-Präfix — in der Commit-Nachricht und im PR-Titel. Ein Branch `feature/295_branch-regel-klarstellen` mit dem Commit `docs(agents): …` ist der Normalfall, kein Widerspruch.
 
 ### GitHub-Issues
@@ -276,6 +283,7 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 - `frontend/` — React-Frontend (Vite-Projekt)
 - `frontend/src/test/test-utils.tsx` — Gemeinsame Test-Render-Helfer
 - `e2e/` — Browserbasierte End-to-End-Tests (Playwright), siehe `e2e/README.md`
+- `docs/renovate.md` — selbst betriebene Abhängigkeits-Updates (Renovate, Issue #751); Regeln in `renovate.json5`
 - `eval/` — Korpora, Golden Datasets und Generatoren der Suchqualitäts-Evaluierung, siehe `eval/README.md`. Liegt bewusst außerhalb von Gradle-Build und CI; die Generatoren laufen nur bei bewussten Korpus-Änderungen, nie automatisch. Der Metrik-Harness selbst ist ein Integrationstest im Backend
 
 ## Contributor License Agreement
