@@ -14,22 +14,26 @@ import org.springframework.ai.document.Document;
 
 /**
  * Completes a post-fusion/post-MMR chunk selection with sibling chunks of documents it already
- * represents (#932, Lösungsrichtung 1 of #912's follow-up): once a document has a chunk in {@code
- * selection}, up to {@link QueryProperties#maxChunksPerDocument} of its chunks from {@code
- * candidatePool} are preferred over a second, third, ... chunk of a <em>different</em> document
- * that would otherwise fill the remaining budget - the failure mode where a document's true-but-
- * lower-ranked answer (e.g. a fee table) loses its slot to an unrelated document's chunk merely
- * because RRF/MMR spread the budget across topics before completeness within one document was
- * considered. {@code candidatePool} must already be permission- and threshold-filtered (the same
- * pool {@code similaritySearch} produced for {@code selection} itself) - this class only ever
- * reorders/replaces within that set, never searches or admits anything beyond it.
+ * represents (#932): up to {@link QueryProperties#maxChunksPerDocument} chunks per document from
+ * the already permission/threshold-filtered {@code candidatePool} (the same pool {@code
+ * similaritySearch} produced for {@code selection}) are preferred over a chunk of a different
+ * document filling the remaining budget.
  *
- * <p>The set of documents represented in {@code selection} never shrinks: filling never grows
- * {@code selection} past {@code overallBudget}, and once full, a candidate can only be admitted by
- * evicting the weakest chunk of some <em>other, not-yet-completed</em> document that already holds
- * at least two chunks - a document is never evicted down to zero, and a document this same pass
- * already completed is never picked as an eviction source (see {@link #complete}), so a completion
- * can never undo an earlier one within the same call.
+ * <p>Tier 1 evicts the weakest chunk of some other, not-yet-completed document already holding at
+ * least two chunks - document diversity never drops below what fusion/MMR established.
+ *
+ * <p>Tier 2, tried only when tier 1 finds no source and capped at {@code max(1, overallBudget / 4)}
+ * evictions per call (#932 scope v2 - v1's tier-1-only rule was a no-op whenever every document
+ * held exactly one chunk, its own live-verification failure mode): evicts the lowest-ranked chunk
+ * of the whole selection, but only when the completing document's own best chunk ranks strictly
+ * better than that victim, the victim was not itself added this call, and it does not belong to the
+ * completing document. May drop a document out of the selection entirely - diversity is not
+ * protected here.
+ *
+ * <p>A document already completed this call is never a tier-1 source; a chunk either tier added is
+ * never a later victim in either tier, so a completion never undoes an earlier one. A completed
+ * document's own original chunk, unlike its just-added completion, stays eligible as a later tier-2
+ * victim. Filling never grows {@code selection} past {@code overallBudget}.
  */
 final class DocumentCompletion {
 
@@ -49,8 +53,11 @@ final class DocumentCompletion {
     // Document#getScore() directly, which is only comparable within a single search vector and is
     // exactly the cross-sub-query comparison ReciprocalRankFusion's Javadoc documents as invalid.
     Map<String, Integer> originalRankByChunkId = new HashMap<>();
+    Map<String, Integer> bestOriginalRankByDocument = new HashMap<>();
     for (int i = 0; i < selection.size(); i++) {
-      originalRankByChunkId.put(selection.get(i).getId(), i);
+      Document chunk = selection.get(i);
+      originalRankByChunkId.put(chunk.getId(), i);
+      bestOriginalRankByDocument.putIfAbsent(QueryService.chunkGroupingKey(chunk), i);
     }
 
     List<Document> result = new ArrayList<>(selection);
@@ -64,6 +71,11 @@ final class DocumentCompletion {
     // eviction source for any later document's completion, so a completion can never be undone by
     // a subsequent one within the same call (see this class's Javadoc).
     Set<String> completedDocumentKeys = new HashSet<>();
+
+    // Tier 2's per-call cap (#932 scope v2, Maintainer decision): unbounded tier-2 eviction could
+    // otherwise shrink an eight-topic answer down to a handful of documents in a single call.
+    int tier2EvictionCap = Math.max(1, overallBudget / 4);
+    int tier2EvictionsUsed = 0;
 
     for (String documentKey : documentOrder) {
       List<Document> unused = unusedCandidatesByDocument.get(documentKey);
@@ -81,11 +93,21 @@ final class DocumentCompletion {
             result, documentKey, completedDocumentKeys, originalRankByChunkId)) {
           result.add(candidate);
           completedDocumentKeys.add(documentKey);
+        } else if (tier2EvictionsUsed < tier2EvictionCap
+            && evictLastRankedChunkOfSelection(
+                result,
+                documentKey,
+                bestOriginalRankByDocument.get(documentKey),
+                originalRankByChunkId)) {
+          result.add(candidate);
+          completedDocumentKeys.add(documentKey);
+          tier2EvictionsUsed++;
         } else {
-          // No eviction source is available for this document right now - trying its remaining
-          // candidates would not change that. A later document may still succeed: a document that
-          // failed to receive a chunk here (unlike one in completedDocumentKeys) stays a valid
-          // eviction source for it.
+          // Neither tier found an eviction source for this document right now (or tier 2's cap is
+          // exhausted) - trying its remaining candidates would not change that. A later document
+          // may still succeed: a document that failed to receive a chunk here (unlike one in
+          // completedDocumentKeys) stays a valid tier-1 eviction source for it, and its own
+          // original chunk stays a valid tier-2 one.
           break;
         }
       }
@@ -113,20 +135,10 @@ final class DocumentCompletion {
 
   /**
    * Groups every candidate not already in {@code selection} by document, deduplicated by chunk id
-   * (the same chunk can appear once per sub-query in a pooled multi-query candidate list) and
-   * ordered by each chunk's own first-occurrence position in {@code candidatePool} - not {@link
-   * Document#getScore()}, which is only comparable within the single search vector that produced it
-   * (see this class's Javadoc). On the single-query path this position <em>is</em> that search's
-   * own rank, so the strongest sibling is tried first. On the multi-sub-query path {@code
-   * candidatePool} is the flat concatenation of every sub-query's own candidates (see {@code
-   * QueryService#retrieveRelevantChunks}), so this position is only rank-fair <em>within</em> one
-   * sub-query - a later-processed sub-query's own rank-1 candidate still sorts behind an
-   * earlier-processed sub-query's weaker one. That is a tie-break over an already
-   * permission/threshold-filtered, budget-capped set of alternatives, not a ranking decision that
-   * feeds {@link #evictWeakestFromAnOverrepresentedDocument}'s document-diversity guarantee (which
-   * uses {@code selection}'s own authoritative fused rank, see {@link #complete}) - trying a
-   * slightly less relevant sibling first before falling through to a stronger one is an accepted,
-   * minor imprecision, not a correctness or safety gap.
+   * (the same chunk can appear once per sub-query in a pooled multi-query candidate list, kept at
+   * its higher-scoring instance) and ordered by each chunk's own first-occurrence position in
+   * {@code candidatePool} - not {@link Document#getScore()}, which is only comparable within the
+   * single search vector that produced it (see this class's Javadoc).
    */
   private static Map<String, List<Document>> unusedCandidatesByDocument(
       List<Document> candidatePool, Set<String> selectedChunkIds) {
@@ -187,6 +199,41 @@ final class DocumentCompletion {
       }
     }
     if (weakest == null) {
+      return false;
+    }
+    result.remove(weakest);
+    return true;
+  }
+
+  /**
+   * Tier 2: evicts the lowest-ranked chunk of the whole selection - the entry in {@code
+   * originalRankByChunkId} with the highest rank, excluding {@code documentKey}'s own chunks - when
+   * {@code documentKey}'s own best original rank beats it strictly. Only chunks with an {@code
+   * originalRankByChunkId} entry are eligible at all, which structurally excludes any chunk a
+   * completion already added this call - a chunk from {@code candidatePool} never carries one -
+   * mirroring tier 1's {@code protectedDocumentKeys} exclusion without needing a second set.
+   * Returns {@code false}, leaving {@code result} unchanged, when no eligible victim exists or the
+   * strict-rank condition fails. The caller enforces the per-call tier-2 cap (see this class's
+   * Javadoc); this method has no cap awareness of its own.
+   */
+  private static boolean evictLastRankedChunkOfSelection(
+      List<Document> result,
+      String documentKey,
+      int documentBestRank,
+      Map<String, Integer> originalRankByChunkId) {
+    Document weakest = null;
+    int weakestRank = -1;
+    for (Document candidate : result) {
+      Integer rank = originalRankByChunkId.get(candidate.getId());
+      if (rank == null || QueryService.chunkGroupingKey(candidate).equals(documentKey)) {
+        continue;
+      }
+      if (rank > weakestRank) {
+        weakestRank = rank;
+        weakest = candidate;
+      }
+    }
+    if (weakest == null || documentBestRank >= weakestRank) {
       return false;
     }
     result.remove(weakest);

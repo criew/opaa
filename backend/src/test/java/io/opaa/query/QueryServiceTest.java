@@ -2114,6 +2114,44 @@ class QueryServiceTest {
           .extracting(ChatSource::getFileName)
           .containsExactlyInAnyOrder("x.md", "a.md", "f1.md", "g1.md", "g2.md", "g3.md", "g4.md");
     }
+
+    /**
+     * Tier 2 (#932 scope v2) - the exact live-verification shape: eight distinct documents, each
+     * contributing exactly one chunk to the topK=8 window, so tier 1 (which needs a document
+     * already holding two chunks) finds no source. {@code doc-3} (standing in for {@code
+     * 001_personalausweis.md}) recovers its detail chunk (ranked 9th, below the window) by evicting
+     * {@code doc-7} - the lowest-ranked of the eight - via tier 2.
+     */
+    @Test
+    void recoversADetailChunkByEvictingTheLowestRankedDocumentWhenEveryDocumentHoldsOnlyOneChunk() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      List<Document> candidates =
+          new ArrayList<>(
+              List.of(
+                  chunk("d0-0", "doc-0", "d0.md", 0.95),
+                  chunk("d1-0", "doc-1", "d1.md", 0.90),
+                  chunk("d2-0", "doc-2", "d2.md", 0.85),
+                  chunk("d3-0", "doc-3", "d3.md", 0.80),
+                  chunk("d4-0", "doc-4", "d4.md", 0.75),
+                  chunk("d5-0", "doc-5", "d5.md", 0.70),
+                  chunk("d6-0", "doc-6", "d6.md", 0.65),
+                  chunk("d7-0", "doc-7", "d7.md", 0.60)));
+      // Ranked 9th - below the topK=8 window, exactly like the fee chunk in the tests above, but
+      // here every one of the eight window slots is held by a single-chunk document.
+      candidates.add(chunk("d3-1", "doc-3", "d3.md", 0.10));
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      QueryResult response = queryService.query("Frage", null, caller, true, List.of());
+
+      assertThat(response.getSources()).hasSize(7);
+      assertThat(response.getSources()).extracting(ChatSource::getFileName).doesNotContain("d7.md");
+      assertThat(response.getSources())
+          .filteredOn(source -> source.getFileName().equals("d3.md"))
+          .hasSize(1)
+          .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(2));
+    }
   }
 
   private static ChatSource sourceReference(

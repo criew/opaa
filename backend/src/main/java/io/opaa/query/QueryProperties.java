@@ -71,13 +71,15 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     capped at {@link #topK} regardless of {@code maxSubQueries}.
  * @param maxChunksPerDocument the upper bound on how many chunks of one document {@link
  *     DocumentCompletion#complete} will pull into the final selection on top of whatever the
- *     fusion/MMR step already picked (#932). Default 2: the #912 failure mode this exists for - a
- *     document's own detail chunk (e.g. a fee table) losing its slot to an unrelated document's
- *     chunk purely because RRF/MMR spread {@link #topK} across topics before considering whether a
- *     document already represented in the selection has more relevant material still sitting in the
- *     candidate pool. {@code 1} disables completion entirely ({@link DocumentCompletion#complete}
- *     then returns its input unchanged) - the pre-#932 behaviour, an explicit opt-out rather than a
- *     separate flag.
+ *     fusion/MMR step already picked (#932 scope v2 - v1's single-tier eviction was a no-op
+ *     whenever every document held exactly one chunk, its own live-verification failure mode; see
+ *     {@link DocumentCompletion}'s Javadoc for the two eviction tiers this now applies). Default 2:
+ *     the #912 failure mode this exists for - a document's own detail chunk (e.g. a fee table)
+ *     losing its slot to an unrelated document's chunk purely because RRF/MMR spread {@link #topK}
+ *     across topics before considering whether a document already represented in the selection has
+ *     more relevant material still sitting in the candidate pool. {@code 1} disables completion
+ *     entirely ({@link DocumentCompletion#complete} then returns its input unchanged) - the
+ *     pre-#932 behaviour, an explicit opt-out rather than a separate flag.
  */
 @ConfigurationProperties(prefix = "opaa.query")
 public record QueryProperties(
