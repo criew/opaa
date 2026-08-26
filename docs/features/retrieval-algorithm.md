@@ -170,11 +170,24 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   Kostenfrage schwächer als der Einleitungs-Chunk desselben Dokuments, und ein einzelner
   Satzungs-Chunk mit sechs Paragraphen rankte in #938s Live-Diagnose so schwach, dass er selbst im
   echten Leserechte-Scope weit außerhalb jedes plausiblen Top-k-Fensters lag (Rang 50/97 bzw.
-  96/147). Umsetzung: `io.opaa.indexing.FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER`
-  stellt dem Chunk-Text vor dem Einbetten dessen `file_name` als Kontext-Präfix voran (`"[<file
-  name>]\n\n<content>"`) - ausschließlich für die `EMBED`-Formatierung der Einbettung, nicht für den
-  gespeicherten Chunk-Text (siehe die Klasse für die vollständige Begründung, inklusive der
-  Wechselwirkung mit `chunk-size`). Erfordert einen vollständigen Reindex jeder Bibliothek (siehe
+  96/147). Umsetzung: `io.opaa.indexing.FileProcessingService#storeChunks` stellt jedem Chunk eines
+  Dokuments, das beim Chunking in **2 oder mehr Chunks zerfiel**, vor dem Einbetten einen aus dem
+  Dateinamen abgeleiteten, bereinigten Titel voran (`ChunkContextTitle#deriveTitle`, z. B. `"[prag]"`
+  statt des rohen `"city-0022_prag.md"`) - ausschließlich für die `EMBED`-Formatierung der
+  Einbettung, nicht für den gespeicherten Chunk-Text (siehe
+  `CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX` für die vollständige Begründung, inklusive der
+  Wechselwirkung mit `chunk-size`). Ein Dokument, das **ein einziger Chunk** blieb, bekommt bewusst
+  **keinen** Präfix (`CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX`, bit-identisch zum Stand vor #933) -
+  ein Detail-Chunk verliert Kontext durch das Zerteilen, ein ungesplittetes Dokument trägt seinen
+  vollen Kontext bereits selbst. Diese Eingrenzung kam erst in einer zweiten Korrekturrunde: Ein
+  Präfix aus dem rohen Dateinamen auf *jeden* Chunk (auch ungesplitteter Dokumente) verbesserte die
+  einchunkige comic-characters-Domäne, regressierte aber die mehrchunkige city-landmarks-Domäne
+  (`multi_topic`/`allExpectedDocumentsHitAt10` 1,000→0,850); ein humanisierter Titel auf jeden Chunk
+  behob city-landmarks, regressierte aber stattdessen comic-characters (`hitRateAt5` 0,521→0,496) -
+  erst die Beschränkung auf mehrchunkige Dokumente hielt beide Domänen zugleich unauffällig
+  (comic-characters bit-identisch, city-landmarks vollständig erholt). Details und alle drei
+  Messreihen in der Beschreibung von PR [#933](https://github.com/criew/opaa/pull/933). Erfordert
+  einen vollständigen Reindex jeder Bibliothek (siehe
   [Deployment-Handbuch](../handbuch/deployment.md#was-ein-update-mit-dem-index-macht)) - Alt-Chunks
   ohne Präfix und Neu-Chunks mit Präfix ranken sonst inkonsistent gegeneinander.
 

@@ -105,15 +105,19 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 > Anschließend die Bibliothek regulär neu indizieren (`POST /api/v1/libraries/{libraryId}/indexing` bzw. der entsprechende Button in der Oberfläche). Es gibt keinen dedizierten „Nur-neu-einbetten"-Schalter, der die drei Tabellen automatisch zurücksetzt — dieser manuelle Weg ist der einzige. Betroffen ist jede Bibliothek, die zwischen dem #766- und dem #773-Deploy mindestens einmal indiziert wurde.
 
 > **Neuindizierung nach #933 (Contextual Chunking):** Anders als #773 ist das kein Fehler, sondern
-> eine Erweiterung dessen, was in die Einbettung eingeht (der Dateiname als Kontext-Präfix, siehe
-> `FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER`) — der gespeicherte Chunk-Text (`content` in
-> `vector_store`) und damit jedes Zitat bleiben unverändert, nur der Vektor selbst ändert sich. Vor
-> und nach #933 eingebettete Chunks liegen deshalb im selben pgvector-Suchraum nebeneinander, ranken
-> aber inkonsistent gegeneinander (ein Alt-Chunk konkurriert ohne das Präfix-Signal gegen
-> Neu-Chunks, die es haben) — ein **vollständiger Reindex jeder Bibliothek** ist nach diesem Update
-> erforderlich, unabhängig vom Quellentyp und unabhängig davon, ob eine Datei sich inhaltlich
-> geändert hat. Dieselbe SHA-256-/`INDEXED`-Falle wie oben gilt: Ein unveränderter Datensatz wird
-> ohne einen Rücksetzschritt übersprungen, obwohl sein Vektor kein Präfix trägt.
+> eine Erweiterung dessen, was in die Einbettung eingeht — ein aus dem Dateinamen abgeleiteter,
+> bereinigter Titel als Kontext-Präfix, aber nur für Chunks eines Dokuments, das beim Chunking in 2
+> oder mehr Chunks zerfiel (`FileProcessingService#storeChunks`; ein einchunkiges Dokument bleibt
+> bit-identisch zum Stand vor #933). Der gespeicherte Chunk-Text (`content` in `vector_store`) und
+> damit jedes Zitat bleiben in beiden Fällen unverändert, nur der Vektor selbst ändert sich, und auch
+> nur für mehrchunkige Dokumente. Vor und nach #933 eingebettete Chunks eines mehrchunkigen
+> Dokuments liegen deshalb im selben pgvector-Suchraum nebeneinander, ranken aber inkonsistent
+> gegeneinander (ein Alt-Chunk konkurriert ohne das Präfix-Signal gegen Neu-Chunks, die es haben) —
+> ein **vollständiger Reindex jeder Bibliothek** ist nach diesem Update erforderlich, unabhängig vom
+> Quellentyp und unabhängig davon, ob eine Datei sich inhaltlich geändert hat (die Split-Entscheidung
+> selbst lässt sich vorab nicht ohne einen Parse-/Chunking-Lauf feststellen). Dieselbe
+> SHA-256-/`INDEXED`-Falle wie oben gilt: Ein unveränderter Datensatz wird ohne einen Rücksetzschritt
+> übersprungen, obwohl sein Vektor (bei einem mehrchunkigen Dokument) kein Präfix trägt.
 >
 > ```sql
 > DELETE FROM vector_store WHERE metadata->>'library_id' = '<library-id>';
