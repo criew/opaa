@@ -180,6 +180,8 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 - **[`../AGENTS.md`](../AGENTS.md)** — Anweisungen für KI-Agenten
 - **[`tagesreport.md`](./tagesreport.md)** — täglicher Report über abgeschlossene Vorgänge, gemergte Pull
   Requests und neu angesetzte Arbeit; als Atom-Feed abonnierbar
+- **[`renovate.md`](./renovate.md)** — selbst betriebene Abhängigkeits-Updates: Betrieb, Token-Zuschnitt,
+  Dry-Run, Fehlerbilder
 
 ### Überholt
 
