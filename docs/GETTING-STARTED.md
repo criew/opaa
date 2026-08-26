@@ -186,7 +186,8 @@ Einstieg
 
 Stand und Nachweis (docs/fortschritt/)
 ├── gesamtstand.md         — was heute gebaut ist, inventurbelegt
-└── JJJJMMTT/              — Zeitraumsberichte mit Beleg-Bausteinen je Stichtag
+├── JJJJMMTT/              — Zeitraumsberichte mit Beleg-Bausteinen je Stichtag
+└── tagesreport.md         — ticketbasierter täglicher Report (GitHub Pages, Atom-Feed)
 
 Spezifikationen (docs/features/) — je Themenbereich
 ├── A  data-indexing-rag.md · search-quality-evaluation.md
@@ -211,8 +212,7 @@ Mitarbeit
 ├── CONTRIBUTING.md        — Leitfaden für Beitragende
 ├── CLA.md                 — Contributor License Agreement
 ├── AGENTS.md              — Konventionen und Befehle
-├── docs/AGENT-ORGANIZATION.md — Rollen und Workflow
-└── docs/tagesreport.md    — täglicher Projektbericht
+└── docs/AGENT-ORGANIZATION.md — Rollen und Workflow
 
 Handbuch (docs/handbuch/) — das gebaute Produkt benutzen
 └── deployment.md          — Installation und Betrieb
