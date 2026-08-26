@@ -10,8 +10,9 @@
 > stehen in [Suchqualität messbar machen](./search-quality-evaluation.md) — dessen Abschnitt
 > „Öffentliche Demo" beschreibt den bisherigen Superhelden-Stand und wird durch dieses Konzept
 > abgelöst. Die praktische Anwenderdokumentation — Installation mit einem Befehl, Nutzerkonten,
-> ausformuliertes Drehbuch mit acht Vorführfragen — steht in
-> [`../demo-walkthrough.md`](../handbuch/demo-walkthrough.md) und wiederholt dieses Konzept nicht.
+> öffentliche Instanz — steht in [`../../demo/README.md`](../../demo/README.md), das ausformulierte
+> Vorführ-Drehbuch mit acht Fragen in [`../market/demo-drehbuch.md`](../market/demo-drehbuch.md);
+> beide wiederholen dieses Konzept nicht.
 
 ## Motivation
 
@@ -136,61 +137,20 @@ Nachfilter, ist der unberechtigte Treffer bei Thomas nicht nur unterdrückt, son
 
 ## Demo-Drehbuch (Skizze)
 
-Etwa acht vorbereitete Fragen, dokumentiert mit erwartetem Antwortcharakter und Quellbibliothek:
-
-1. **Gebührenfrage** („Was kostet ein Personalausweis für eine 22-Jährige?") — Beleg aus Satzungs-PDF
-2. **Verfahrensfrage** („Welche Unterlagen brauche ich für die Ummeldung?") — Leistungsbeschreibung
-3. **Aktualitätsfrage** („Wann ist das Bürgerbüro wegen des Stadtfests geschlossen?") — RSS-Meldung
-4. **Kfz-Frage** („Kann ich mein Wunschkennzeichen online reservieren?") — Kfz-Bibliothek
-5. **Berechtigungs-Doppelfrage** (identische Frage als Maria und als Thomas, siehe oben) — Dienstanweisung
-6. **Quer-Bibliotheks-Frage** („Was gilt bei Gebührenbefreiung wegen Bedürftigkeit?") — Satzung +
-   Dienstanweisung, je nach Rechten unterschiedlich vollständig
-7. **Amtsleitungs-Frage** über beide Sachgebiete hinweg — nur Andrea bekommt die vollständige Antwort
-8. **Bewusst unbeantwortbare Frage** („Wie beantrage ich in Rheinfurt eine Fischereierlaubnis?") — zu
-   dieser Leistung liegt in keiner Bibliothek etwas vor: Die Antwort nennt keine Quelle und erfindet
-   auch keine. Einen eigenen Verweigerungsmodus gibt es dafür nicht (mit #697 verworfen); die
-   Belegvalidierung wird sichtbar, wenn ein Beleg tatsächlich ungültig ist — falls sich ein solches
-   Szenario reproduzierbar bauen lässt, kommt es als eigene Frage dazu
-
-Das ausformulierte Drehbuch mit allen acht Fragen (Konto, erwartete Antwort, Quellbibliothek) steht
-in [`../demo-walkthrough.md`](../handbuch/demo-walkthrough.md), zusammen mit der Installationsanleitung.
+Etwa acht vorbereitete Fragen, jede so gewählt, dass sie eine Eigenschaft der Rechtematrix oder der
+Konnektorvielfalt oben vorführt — von der einfachen belegten Auskunft (Frage 1) über die
+Berechtigungs-Doppelfrage (Frage 5, der stärkste Vorführ-Moment) bis zur bewusst unbeantwortbaren
+Frage (Frage 8). Das ausformulierte Drehbuch mit allen acht Fragen (Konto, erwartete Antwort,
+Quellbibliothek) steht in [`../market/demo-drehbuch.md`](../market/demo-drehbuch.md).
 
 ---
 
 ## Installation und Seed
 
-- **Anmeldung:** Die Demo läuft über **OIDC/Keycloak**, nicht über das dev-Auth-Profil. Sie soll das
-  realistische Anmeldemodell zeigen, und die Zielinstanz opaa.ewerlin.com nutzt ohnehin Keycloak. Die
-  Demo-Nutzer kommen über einen Realm-Import in den vorhandenen `keycloak`-Service.
-- **Startbefehl:** Entschieden in #712: Der `keycloak`-Service ist zusätzlich zu `oidc` auch dem
-  Compose-Profil `demo` zugeordnet (`docker-compose.yml`) — `docker compose --profile demo up`
-  genügt damit allein, kein zweiter, leicht vergessener `--profile oidc` auf jedem dokumentierten
-  Befehl. Ein reiner `--profile oidc`-Start (ohne `demo`) funktioniert unverändert weiter. Damit
-  beschreibt keine dokumentierte Anleitung mehr einen Stack ohne Anmeldung.
-- Der Stack bringt den Korpus-Webserver und den statischen RSS-Feed mit. Als Webserver ist Apache httpd
-  mit `IndexOptions FancyIndexing HTMLTable` eine naheliegende, gut erprobte Wahl, aber **keine
-  Notwendigkeit mehr**: Seit #550 versteht der `AutoindexCrawlerService` auch `<pre>`-Listings (nginx
-  `autoindex on`, Apache ohne `HTMLTable`) und `<ul>`-Layouts (`-FancyIndexing`, Python `http.server`).
-- Ein Seed-Skript legt Nutzer (Keycloak-Realm-Import), Spaces, Bibliotheken, Berechtigungen und die
-  Space↔Bibliothek-Zuordnungen an, lädt die Upload-Dokumente hoch und stößt die Indizierung je
-  Bibliothek an. Seit
-  [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) trägt die Bibliothek Quellentyp
-  und Quellkonfiguration selbst; der Seed legt also je Bibliothek einmalig die Quelle an und löst
-  anschließend deren Lauf aus.
-- Der Seed-Mechanismus ist als wiederverwendbarer Baustein mit zwei **Datenprofilen** geschnitten:
-  `demo` und `e2e`. E2E-Feature-Tests laufen ausschließlich gegen das minimale `e2e`-Profil; gegen das
-  `demo`-Profil läuft genau ein Smoke-Test (Setup läuft durch, eine Suche liefert eine belegte Antwort).
-- **Geteilt sind die Daten, nicht die Nutzerbereitstellung.** Wie die Konten entstehen, hängt am
-  Auth-Modus und ist austauschbar: `e2e` bleibt beim dev-Auth-Profil mit `OPAA_AUTH_DEV_USERS_*`
-  (`e2e/e2e.env`, `e2e/docker-compose.e2e.yml`), `demo` nutzt den Keycloak-Realm-Import. Beide Profile
-  legen anschließend über denselben Weg Spaces, Bibliotheken und Berechtigungen an.
-- Die Zielprüfung ausgehender Abrufe (`opaa.indexing.target-validation`, standardmäßig aktiv, #267)
-  lehnt Adressen in privaten und Loopback-Bereichen ab — genau dort liegen die Compose-internen Ziele
-  der Demo. Das ist gelöst und nicht offen: Die E2E-Suite zeigt das Muster mit
-  `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` (`e2e/docker-compose.e2e.yml`); das Demo-Profil braucht
-  denselben Allowlist-Eintrag für Korpus-Webserver und Feed.
-- Dokumentation: [`../demo-walkthrough.md`](../handbuch/demo-walkthrough.md) — Installation, Nutzerkonten mit
-  Passwörtern (Demo-Werte, keine Secrets), Korpus-Aktualisierung, Drehbuch.
+Anmeldung über OIDC/Keycloak (Realm-Import), Startbefehl, Seed-Mechanismus mit den beiden
+Datenprofilen `demo`/`e2e` und die Zielprüfung der Compose-internen Adressen sind in
+[`../../demo/README.md`](../../demo/README.md) beschrieben — Installation, Nutzerkonten mit
+Passwörtern (Demo-Werte, keine Secrets), öffentliche Instanz, Korpus-Aktualisierung.
 
 ---
 

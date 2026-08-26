@@ -180,6 +180,7 @@ Repository; Marketing-Material übernimmt ihn, statt einen eigenen zu behaupten.
 |---|---|---|
 | `page/index.html` | Erster Kontakt im Netz, Einstieg für Interessierte und Beitragende | Kernbotschaft, die drei Säulen, Souveränität, Verweis auf Demo und Quellcode |
 | `README.md` | Einstieg im Repository | Kurzfassung der Positionierung, dann technischer Einstieg |
+| [`demo-drehbuch.md`](./demo-drehbuch.md) | Ausformuliertes Vorführ-Drehbuch der Demo-Instanz „Stadt Rheinfurt" | Acht Fragen, jede einer der beiden Botschaften zugeordnet — der stärkste Moment (Berechtigungs-Doppelfrage) führt Belegbarkeit live vor |
 
 Der frühere One-Pager (`docs/onepager-de.html`) und das Pitch-Deck (`docs/OPAA-pitch-de.html`/`.pdf`)
 wurden entfernt (#927): Sie waren gegenüber dieser Wahrheitsquelle veraltet. Werden solche Unterlagen
