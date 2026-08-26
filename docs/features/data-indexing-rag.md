@@ -407,7 +407,9 @@ einzigen Chunk stellte — genau der Fall, den #912 beheben sollte):
    strikt besser rankt als dieser, das Opfer nicht selbst eine Ergänzung desselben Aufrufs ist und
    nicht zum selben Dokument gehört. Die Dokumentvielfalt der Fusion/MMR-Auswahl darf hier sinken
    — bewusste Abwägung: der zweite Chunk eines stark gerankten Dokuments ist mehr wert als der
-   einzige Chunk des Tabellenendes.
+   einzige Chunk des Tabellenendes. Auf `max(1, top-k / 4)` Stufe-2-Verdrängungen je Abfrage
+   gedeckelt (bei Default `top-k=8` also 2), damit eine einzelne Abfrage nicht mehrere Themen
+   zugunsten eines einzigen verdrängt.
 
 Das Gesamtbudget bleibt `top-k`, unverändert gegenüber dem Stand vor #932.
 

@@ -451,12 +451,12 @@ class QueryIntegrationTest {
    * ChatSource#getMatchCount()}) rather than the distinct <em>source</em> count, which would vary
    * with how many of {@code doc-a-multi}'s chunks happen to win the tie in a given run.
    *
-   * <p>Both assertions also tolerate {@code DocumentCompletion} (#932 Zuschnitt v2) firing either
-   * tier: tier 1 only ever swaps chunks within this same pool, and tier 2 may additionally drop a
-   * granted document out of the selection entirely - but neither ever grows the selection past
-   * {@code topK} or admits a chunk from outside this permission-filtered pool, so the summed match
-   * count stays exactly {@code topK} and every source stays "a"-prefixed regardless of which tier,
-   * if any, actually fires for a given run's tie-broken selection.
+   * <p>Both assertions also tolerate {@code DocumentCompletion} (#932 scope v2) firing either tier:
+   * tier 1 only ever swaps chunks within this same pool, and tier 2 may additionally drop a granted
+   * document out of the selection entirely - but neither ever grows the selection past {@code topK}
+   * or admits a chunk from outside this permission-filtered pool, so the summed match count stays
+   * exactly {@code topK} and every source stays "a"-prefixed regardless of which tier, if any,
+   * actually fires for a given run's tie-broken selection.
    */
   private List<Document> grantedChunksWithOneMultiChunkDocument() {
     List<Document> chunks = new ArrayList<>();

@@ -2116,15 +2116,14 @@ class QueryServiceTest {
     }
 
     /**
-     * Stufe 2 (#932 Zuschnitt v2) - the exact live-verification shape: eight distinct documents,
-     * each contributing exactly one chunk to the topK=8 window, so tier 1 (which needs a document
+     * Tier 2 (#932 scope v2) - the exact live-verification shape: eight distinct documents, each
+     * contributing exactly one chunk to the topK=8 window, so tier 1 (which needs a document
      * already holding two chunks) finds no source. {@code doc-3} (standing in for {@code
      * 001_personalausweis.md}) recovers its detail chunk (ranked 9th, below the window) by evicting
-     * {@code doc-7} - the auswahlrang-last of the eight - via tier 2.
+     * {@code doc-7} - the lowest-ranked of the eight - via tier 2.
      */
     @Test
-    void
-        recoversADetailChunkByEvictingTheAuswahlrangLastDocumentWhenEveryDocumentHoldsOnlyOneChunk() {
+    void recoversADetailChunkByEvictingTheLowestRankedDocumentWhenEveryDocumentHoldsOnlyOneChunk() {
       when(chatMemory.get(any())).thenReturn(List.of());
       List<Document> candidates =
           new ArrayList<>(
