@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.chat.ChatSource;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.ArrayList;
@@ -379,13 +380,14 @@ class QueryIntegrationTest {
     // QueryService's filterExpression(...) call turns this test red while every other test in this
     // class, QueryControllerTest and io.opaa.library.* stay green.
     //
-    // #932 review: doc-a-0 deliberately contributes three of the ten granted chunks (chunk_index
-    // 0-2) instead of one - the same total granted chunk count as before, spread over nine
-    // distinct documents instead of ten, so DocumentCompletion actually runs on this permission-
-    // filtered candidate pool rather than every granted document holding exactly one chunk (the
-    // pre-#932 shape, which DocumentCompletion is a no-op for). The hasSize(8)/allSatisfy
-    // assertions below hold regardless of exactly which chunks land in the top 8: completion only
-    // ever draws from this same permission-filtered pool, never a fresh, unfiltered search.
+    // #932 review: the granted set below includes one multi-chunk document (see
+    // #grantedChunksWithOneMultiChunkDocument's Javadoc for the exact shape and placement), so
+    // DocumentCompletion actually runs on this permission-filtered candidate pool rather than
+    // every granted document holding exactly one chunk (the pre-#932 shape, which
+    // DocumentCompletion is a no-op for). The retrieved-chunk-count/allSatisfy assertions below
+    // hold regardless of exactly which chunks land in the top 8 or whether completion changes
+    // anything: completion only ever draws from this same permission-filtered pool, never a
+    // fresh, unfiltered search.
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
@@ -421,39 +423,42 @@ class QueryIntegrationTest {
       QueryResult response =
           queryService.query("Beliebige Frage", null, asCaller(userId), true, java.util.List.of());
 
-      // Exactly topK (8, application.yml default) results, every one of them from the granted
-      // library - the count itself is the assertion that matters (see the comment above).
-      assertThat(response.getSources()).hasSize(8);
+      // Exactly topK (8, application.yml default) retrieved chunks, every one of them from the
+      // granted library - the count itself is the assertion that matters (see the comment above).
+      // Summed matchCount, not response.getSources().size(): with #grantedChunksWithOneMulti
+      // ChunkDocument's tied candidates, how many of doc-a-multi's chunks the ANN tie order keeps
+      // is unspecified, so the distinct-source count is not (see that method's Javadoc).
       assertThat(response.getSources())
           .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
+      assertThat(response.getSources().stream().mapToInt(ChatSource::getMatchCount).sum())
+          .isEqualTo(8);
     } finally {
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
     }
   }
 
   /**
-   * The ten granted chunks {@link
+   * The granted pool {@link
    * #queryOnlyReturnsChunksFromTheGrantedLibraryEvenWhenUnauthorizedChunksWouldOutscoreThem} and
-   * {@link #queryFiltersEveryDecomposedSubQuerysSimilaritySearchByTheSameGrantedLibrary} share,
-   * plus {@code doc-a-multi}'s three chunks, so {@code DocumentCompletion} (#932) actually runs
-   * against a document it could grow on this permission-filtered pool, not just single-chunk
-   * documents it can never touch (see the #932 review comment at the first caller). {@code
-   * hasSize(8)} pins the total chunk budget, and a single document holding two of those eight slots
-   * necessarily leaves only seven distinct sources - not eight - so only <em>one</em> of {@code
-   * doc-a-multi}'s three chunks (its first) is placed ahead of the ten single-chunk documents;
-   * under {@code FakeEmbeddingModel}'s ties (see the first caller's comment), a plain
-   * top-k-by-tied-score selection therefore keeps that one {@code doc-a-multi} chunk plus seven of
-   * the ten singles - eight distinct documents, matching {@code hasSize(8)} exactly, same as before
-   * this document existed. {@code doc-a-multi}'s other two chunks are placed last, on purpose:
-   * present in the permission-filtered candidate pool for completion to evaluate, but with every
-   * other represented document holding only one chunk, no eviction source exists, so completion
-   * correctly declines rather than reducing document diversity to grow {@code doc-a-multi} - the
-   * exact "kein Verdrängen ohne Kandidaten" rule {@link DocumentCompletionTest} covers in
-   * isolation, now also exercised on this real, permission-filtered pool.
+   * {@link #queryFiltersEveryDecomposedSubQuerysSimilaritySearchByTheSameGrantedLibrary} share: ten
+   * single-chunk documents ({@code doc-a-0}..{@code doc-a-9}) plus {@code doc-a-multi}'s three
+   * chunks - 13 granted chunks over 11 distinct documents - so {@code DocumentCompletion} (#932)
+   * actually runs against a document it could grow on this permission-filtered pool, not just
+   * single-chunk documents it can never touch.
+   *
+   * <p>All 13 tie under {@code FakeEmbeddingModel} (see the first caller's comment), so a plain
+   * top-k-by-tied-score selection's exact choice of 8 - and in particular how many of {@code
+   * doc-a-multi}'s three chunks land in that top 8 - is <b>not</b> pinned by this method's chunk
+   * placement; that ANN tie order is not something a test may assume. Both callers therefore assert
+   * on the retrieved <em>chunk</em> count (always exactly {@code topK}, summed via {@code
+   * ChatSource#getMatchCount()}) rather than the distinct <em>source</em> count, which would vary
+   * with how many of {@code doc-a-multi}'s chunks happen to win the tie in a given run.
    */
   private List<Document> grantedChunksWithOneMultiChunkDocument() {
     List<Document> chunks = new ArrayList<>();
-    chunks.add(multiChunkDocumentChunk(0));
+    for (int chunkIndex = 0; chunkIndex < 3; chunkIndex++) {
+      chunks.add(multiChunkDocumentChunk(chunkIndex));
+    }
     for (int i = 0; i < 10; i++) {
       chunks.add(
           new Document(
@@ -468,8 +473,6 @@ class QueryIntegrationTest {
                   "library_id",
                   libraryId.toString())));
     }
-    chunks.add(multiChunkDocumentChunk(1));
-    chunks.add(multiChunkDocumentChunk(2));
     return chunks;
   }
 
@@ -540,13 +543,16 @@ class QueryIntegrationTest {
           queryService.query(
               "Beliebige Mehrthemenfrage", null, asCaller(userId), true, java.util.List.of());
 
-      // Exactly topK (8): each sub-query is independently MMR-narrowed to the full topK before
-      // fusion (#923 review) - with both sub-queries returning the identical, fully-overlapping
-      // authorized candidate set (FakeEmbeddingModel ties every embedding), the fused result is
-      // exactly that same set of 8, not fewer.
-      assertThat(response.getSources()).hasSize(8);
+      // Exactly topK (8) retrieved chunks: each sub-query is independently MMR-narrowed to the
+      // full topK before fusion (#923 review) - with both sub-queries returning the identical,
+      // fully-overlapping authorized candidate set (FakeEmbeddingModel ties every embedding), the
+      // fused result is exactly that same set of 8, not fewer. Summed matchCount, not
+      // response.getSources().size() - see #grantedChunksWithOneMultiChunkDocument's Javadoc for
+      // why the distinct-source count is not pinned by this fixture.
       assertThat(response.getSources())
           .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
+      assertThat(response.getSources().stream().mapToInt(ChatSource::getMatchCount).sum())
+          .isEqualTo(8);
     } finally {
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
     }

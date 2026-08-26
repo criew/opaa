@@ -116,7 +116,17 @@ final class DocumentCompletion {
    * (the same chunk can appear once per sub-query in a pooled multi-query candidate list) and
    * ordered by each chunk's own first-occurrence position in {@code candidatePool} - not {@link
    * Document#getScore()}, which is only comparable within the single search vector that produced it
-   * (see this class's Javadoc) - so the strongest sibling by that pool's own rank is tried first.
+   * (see this class's Javadoc). On the single-query path this position <em>is</em> that search's
+   * own rank, so the strongest sibling is tried first. On the multi-sub-query path {@code
+   * candidatePool} is the flat concatenation of every sub-query's own candidates (see {@code
+   * QueryService#retrieveRelevantChunks}), so this position is only rank-fair <em>within</em> one
+   * sub-query - a later-processed sub-query's own rank-1 candidate still sorts behind an
+   * earlier-processed sub-query's weaker one. That is a tie-break over an already
+   * permission/threshold-filtered, budget-capped set of alternatives, not a ranking decision that
+   * feeds {@link #evictWeakestFromAnOverrepresentedDocument}'s document-diversity guarantee (which
+   * uses {@code selection}'s own authoritative fused rank, see {@link #complete}) - trying a
+   * slightly less relevant sibling first before falling through to a stronger one is an accepted,
+   * minor imprecision, not a correctness or safety gap.
    */
   private static Map<String, List<Document>> unusedCandidatesByDocument(
       List<Document> candidatePool, Set<String> selectedChunkIds) {
