@@ -124,7 +124,7 @@ Tiefe Anbindung an den souveränen Arbeitsplatz · behördenübergreifender Aust
 Assistent für Bürgerinnen und Bürger · Erweiterungen für Office und Browser · Anbindung an elektronische
 Akten und Dokumentenmanagement.
 
-Den tatsächlichen Umsetzungsstand gegen diese Phasen führt [STATUS.md](./STATUS.md).
+Den tatsächlichen Umsetzungsstand gegen diese Phasen führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 
 ---
 
@@ -145,7 +145,7 @@ müssen stehen:
 3. **Testsystem mit Testdatensätzen**, die über das bisherige Superhelden-Beispielkorpus hinausgehen.
 4. **Aufstellung der bisher implementierten Leistungen** — eine Bestandsaufnahme dessen, was zum
    Meilenstein tatsächlich steht, als Grundlage für die Abnahme und die nächste Priorisierung. Siehe
-   [STATUS.md](./STATUS.md) für den laufend gepflegten Umsetzungsstand.
+   [Gesamtstand](./fortschritt/gesamtstand.md) für den laufend gepflegten Umsetzungsstand.
 
 **Bewusste Einschränkung für diesen Meilenstein:** Das Konzept aus Assets und Spaces wird umgesetzt, aber
 die vollständige Berechtigungsproblematik (siehe [access-control.md](./features/access-control.md)) wird
@@ -274,5 +274,5 @@ Vorgabe der Systemverwaltung, keine Entscheidung der einzelnen Nutzerin.
 
 - [USE-CASES.md](./USE-CASES.md) — wie sich das im Arbeitsalltag anfühlt
 - [CONCEPTS.md](./CONCEPTS.md) — Begriffe und Glossar
-- [STATUS.md](./STATUS.md) — was davon heute gebaut ist
+- [Gesamtstand](./fortschritt/gesamtstand.md) — was davon heute gebaut ist
 - [decisions/](./decisions/) — die Architekturentscheidungen dahinter

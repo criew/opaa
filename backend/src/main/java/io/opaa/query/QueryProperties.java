@@ -20,7 +20,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     configuration value (see the compact constructor) normalizes to {@code max(25, topK)}, not a
  *     flat 25, so a deployment that already configured {@code topK} above 25 does not fail {@link
  *     #fetchK} {@code < topK}'s validation below on a property it never touched. See
- *     docs/deployment.md for the operator-facing version of this note.
+ *     docs/handbuch/deployment.md for the operator-facing version of this note.
  * @param mmrLambda the relevance/diversity trade-off {@link MmrSelector} applies when narrowing
  *     {@link #fetchK} candidates down to {@link #topK} (#914): each candidate's selection score is
  *     {@code mmrLambda * relevance - (1 - mmrLambda) * maxSimilarityToAlreadySelected}, where the
@@ -34,8 +34,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     below) so an explicitly configured {@code 0.0} is honored rather than silently raised -
  *     {@code 0.0} is a legal (if extreme) point on the range, not an "unset" sentinel the way a
  *     non-positive {@code topK}/{@code fetchK} is. The measured numbers behind {@code 1.0}'s choice
- *     over a lower value live in docs/deployment.md and docs/features/data-indexing-rag.md, not
- *     here.
+ *     over a lower value live in docs/handbuch/deployment.md and
+ *     docs/features/data-indexing-rag.md, not here.
  * @param similarityThreshold minimum cosine-similarity score a chunk must reach to be included in
  *     results. Default 0.3: empirically tested — lower values surface too much noise, higher values
  *     miss relevant documents on imprecise user queries. Applied inside {@code similaritySearch}

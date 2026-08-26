@@ -4,8 +4,8 @@ Dieses Dokument erläutert die Begriffe, die in der gesamten OPAA-Dokumentation 
 Beispiele sind der öffentlichen Verwaltung entnommen, weil OPAA für sie gebaut wird — siehe
 [VISION.md](./VISION.md) und [ADR-0014](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md).
 
-Das Glossar erklärt das **Zielbild**. Was davon heute tatsächlich im Code steht, führt allein
-[STATUS.md](./STATUS.md); ein Begriff in diesem Glossar ist keine Aussage über den Umsetzungsstand.
+Das Glossar erklärt das **Zielbild**. Was davon heute tatsächlich im Code steht, führt allein der
+[Gesamtstand](./fortschritt/gesamtstand.md); ein Begriff in diesem Glossar ist keine Aussage über den Umsetzungsstand.
 
 ---
 
@@ -960,7 +960,7 @@ Vorgang 32.1-114/2025
 ```
 
 **Stand in OPAA:** als Ergänzung des Vektor-Retrievals in Phase 3 vorgesehen, nicht im Fundament. Die
-Recherchegrundlage steht in [GraphRAG.md](./GraphRAG.md).
+Recherchegrundlage steht in [GraphRAG.md](./discussions/GraphRAG.md).
 
 ---
 
@@ -1011,6 +1011,6 @@ Recherchegrundlage steht in [GraphRAG.md](./GraphRAG.md).
 
 - [VISION.md](./VISION.md) — Nordstern, Leitprinzipien, Themenbereiche und Phasen
 - [USE-CASES.md](./USE-CASES.md) — wie sich das im Arbeitsalltag anfühlt
-- [STATUS.md](./STATUS.md) — was davon heute gebaut ist
+- [Gesamtstand](./fortschritt/gesamtstand.md) — was davon heute gebaut ist
 - [INDEX.md](./INDEX.md) — vollständiger Dokumentationsindex
 - [GETTING-STARTED.md](./GETTING-STARTED.md) — Lesepfade nach Publikum

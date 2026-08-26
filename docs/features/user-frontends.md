@@ -313,7 +313,7 @@ Wissensbibliothek erteilt, nicht am einzelnen Dokument — das Modell dahinter i
   Aufruf dort viel Arbeit auslöst; seit [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)
   gilt das Kontingent je Bibliothek, und es läuft höchstens ein Lauf gleichzeitig je Bibliothek. Alle
   Werte sind über Umgebungsvariablen einstellbar; die ausgelieferten Voreinstellungen und ihre Bedeutung
-  stehen in [deployment.md](../deployment.md). Ein überschrittenes Kontingent führt zu einer klaren
+  stehen in [deployment.md](../handbuch/deployment.md). Ein überschrittenes Kontingent führt zu einer klaren
   Ablehnung, nicht zu einer langsamen Antwort.
 
 **Zielbild:**

@@ -294,5 +294,5 @@ Datum,Issue#,Feature,Token,Status,Anmerkungen
 
 - `AGENTS.md` — Erwartungen an das Agentenverhalten
 - `CLAUDE.md` — Claude-spezifische Anweisungen
-- `STATUS.md` — Aktueller Umsetzungsstand je Themenbereich (löst das frühere `MVP-STATUS.md` ab)
+- `fortschritt/gesamtstand.md` — Aktueller Umsetzungsstand (löst das frühere `STATUS.md` ab)
 - `.claude/agent-memory/` — Persistente Wissensbasis
