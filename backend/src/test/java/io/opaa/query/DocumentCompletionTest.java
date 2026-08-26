@@ -74,18 +74,19 @@ class DocumentCompletionTest {
   }
 
   /**
-   * No document in {@code selection} holds a second chunk it could give up (every document has
-   * exactly one) - the budget stays exactly as fusion/MMR left it, document diversity is never
-   * reduced.
+   * No document in {@code selection} holds a second chunk tier 1 could give up (every document has
+   * exactly one), and the completing document (doc-c) ranks worse than every other chunk still
+   * present - tier 2 also has no eligible victim, so the budget stays exactly as fusion/MMR left
+   * it, document diversity is never reduced.
    */
   @Test
-  void doesNotEvictWhenNoDocumentHoldsASpareChunk() {
+  void doesNotEvictWhenNoDocumentHoldsASpareChunkAndTheCompletingDocumentOutranksNoOther() {
     Document docA = chunk("a-0", "doc-a", 0.9);
     Document docB = chunk("b-0", "doc-b", 0.8);
     Document docC = chunk("c-0", "doc-c", 0.7);
-    Document docASibling = chunk("a-1", "doc-a", 0.6);
+    Document docCSibling = chunk("c-1", "doc-c", 0.6);
     List<Document> selection = List.of(docA, docB, docC);
-    List<Document> candidatePool = List.of(docA, docB, docC, docASibling);
+    List<Document> candidatePool = List.of(docA, docB, docC, docCSibling);
 
     List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 3);
 
@@ -107,17 +108,19 @@ class DocumentCompletionTest {
 
   @Test
   void neverGrowsPastTheOverallBudgetEvenWithSpareCandidates() {
+    // doc-b (rank 1, worse than doc-a) is the one seeking completion - tier 1 finds no source
+    // (neither document holds a second chunk) and tier 2 also rejects, since the only other chunk
+    // present (doc-a) ranks better than doc-b, not worse (see
+    // #doesNotEvictWhenNoDocumentHoldsASpareChunkAndTheCompletingDocumentOutranksNoOther). The
+    // sibling therefore cannot be admitted either way; this test only pins the overall-budget cap.
     Document docA = chunk("a-0", "doc-a", 0.9);
     Document docB = chunk("b-0", "doc-b", 0.8);
-    Document sibling = chunk("a-1", "doc-a", 0.7);
+    Document sibling = chunk("b-1", "doc-b", 0.7);
     List<Document> selection = List.of(docA, docB);
     List<Document> candidatePool = List.of(docA, docB, sibling);
 
     List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 2);
 
-    // The budget is already exhausted by two distinct documents (each with one chunk) - neither
-    // holds a second chunk to give up, so the sibling cannot be admitted (see
-    // #doesNotEvictWhenNoDocumentHoldsASpareChunk).
     assertThat(result).hasSize(2);
   }
 
@@ -246,5 +249,120 @@ class DocumentCompletionTest {
     List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 5);
 
     assertThat(result).extracting(Document::getId).containsExactly("a-0", "a-1");
+  }
+
+  /**
+   * Stufe 2 (#932 Zuschnitt v2) - the exact live-verification shape that revealed tier 1 alone is a
+   * no-op: eight documents, each contributing exactly one chunk to the final selection, none
+   * holding a spare chunk tier 1 could evict. The well-ranked document (doc-3, standing in for
+   * {@code 001_personalausweis.md}) recovers its sibling (the fee chunk) by evicting the
+   * auswahlrang-last chunk of the whole selection (doc-7, standing in for the unrelated tail
+   * document {@code 012_eid-karte...}).
+   */
+  @Test
+  void evictsTheSelectionsAuswahlrangLastChunkWhenNoDocumentHoldsASpareChunkForTier1() {
+    Document doc0 = chunk("doc0-0", "doc-0", 0.95);
+    Document doc1 = chunk("doc1-0", "doc-1", 0.90);
+    Document doc2 = chunk("doc2-0", "doc-2", 0.85);
+    Document doc3 = chunk("doc3-0", "doc-3", 0.80);
+    Document doc4 = chunk("doc4-0", "doc-4", 0.75);
+    Document doc5 = chunk("doc5-0", "doc-5", 0.70);
+    Document doc6 = chunk("doc6-0", "doc-6", 0.65);
+    Document doc7 = chunk("doc7-0", "doc-7", 0.60);
+    Document doc3Sibling = chunk("doc3-1", "doc-3", 0.20);
+    List<Document> selection = List.of(doc0, doc1, doc2, doc3, doc4, doc5, doc6, doc7);
+    List<Document> candidatePool =
+        List.of(doc0, doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc3Sibling);
+
+    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 8);
+
+    assertThat(result).hasSize(8);
+    assertThat(result).extracting(Document::getId).doesNotContain("doc7-0");
+    assertThat(result)
+        .filteredOn(d -> QueryService.chunkGroupingKey(d).equals("doc-3"))
+        .extracting(Document::getId)
+        .containsExactlyInAnyOrder("doc3-0", "doc3-1");
+  }
+
+  /**
+   * Ablehnung (a): the only other chunk present ranks strictly better than the completing document
+   * (doc-b) - tier 2's strict-rank condition fails, so no eviction happens.
+   */
+  @Test
+  void doesNotEvictAtTier2WhenTheOnlyOtherChunkOutranksTheCompletingDocument() {
+    Document docA = chunk("a-0", "doc-a", 0.9);
+    Document docB = chunk("b-0", "doc-b", 0.8);
+    Document docBSibling = chunk("b-1", "doc-b", 0.5);
+    List<Document> selection = List.of(docA, docB);
+    List<Document> candidatePool = List.of(docA, docB, docBSibling);
+
+    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 2);
+
+    assertThat(result).extracting(Document::getId).containsExactly("a-0", "b-0");
+  }
+
+  /**
+   * Ablehnung (c): {@code selection} represents only a single document - there is no other
+   * document's chunk to evict at either tier, regardless of rank.
+   */
+  @Test
+  void doesNotEvictAtTier2WhenSelectionRepresentsOnlyOneDocument() {
+    Document docA = chunk("a-0", "doc-a", 0.9);
+    Document docASibling = chunk("a-1", "doc-a", 0.5);
+    List<Document> selection = List.of(docA);
+    List<Document> candidatePool = List.of(docA, docASibling);
+
+    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 1);
+
+    assertThat(result).extracting(Document::getId).containsExactly("a-0");
+  }
+
+  /**
+   * Ablehnung (b), mirroring {@link
+   * #aCompletionNeverEvictsAChunkAnEarlierCompletionInTheSameCallJustAdded} for tier 2: doc-0
+   * (processed first, per selection order) completes via tier 2, evicting doc-2 (the
+   * auswahlrang-last chunk) and gaining "d0-1". doc-1's own completion attempt then finds no
+   * eligible tier-2 victim - "d0-1" is never eligible (it was itself added this call), and the one
+   * remaining original chunk, "d0-0", ranks better than doc-1 - so doc-1 stays at its single chunk.
+   */
+  @Test
+  void aTier2CompletionNeverEvictsAChunkAnEarlierTier2CompletionJustAdded() {
+    Document d0 = chunk("d0-0", "doc-0", 0.9);
+    Document d1 = chunk("d1-0", "doc-1", 0.8);
+    Document d2 = chunk("d2-0", "doc-2", 0.7);
+    Document d0Sibling = chunk("d0-1", "doc-0", 0.1);
+    Document d1Sibling = chunk("d1-1", "doc-1", 0.6);
+    List<Document> selection = List.of(d0, d1, d2);
+    List<Document> candidatePool = List.of(d0, d1, d2, d0Sibling, d1Sibling);
+
+    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 3);
+
+    assertThat(result).extracting(Document::getId).containsExactly("d0-0", "d1-0", "d0-1");
+  }
+
+  /**
+   * Zusammenspiel: within one call, tier 1 completes doc-b (evicting the weaker of doc-a, which
+   * already held two chunks in the original selection) while doc-c, unable to find a tier-1 source
+   * of its own (doc-a is back down to one chunk, doc-b is protected as this call's own completion),
+   * still completes via tier 2 by evicting doc-d's single, auswahlrang-last chunk.
+   */
+  @Test
+  void tier1AndTier2BothCompleteWithinTheSameCall() {
+    Document docAStrong = chunk("a-0", "doc-a", 0.95);
+    Document docAWeak = chunk("a-1", "doc-a", 0.90);
+    Document docBFirst = chunk("b-0", "doc-b", 0.85);
+    Document docCFirst = chunk("c-0", "doc-c", 0.80);
+    Document docDFiller = chunk("d-0", "doc-d", 0.10);
+    Document docBSecond = chunk("b-1", "doc-b", 0.60);
+    Document docCSecond = chunk("c-1", "doc-c", 0.55);
+    List<Document> selection = List.of(docAStrong, docAWeak, docBFirst, docCFirst, docDFiller);
+    List<Document> candidatePool =
+        List.of(docAStrong, docAWeak, docBFirst, docCFirst, docDFiller, docBSecond, docCSecond);
+
+    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 5);
+
+    assertThat(result)
+        .extracting(Document::getId)
+        .containsExactlyInAnyOrder("a-0", "b-0", "b-1", "c-0", "c-1");
   }
 }

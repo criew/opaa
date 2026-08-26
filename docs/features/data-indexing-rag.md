@@ -395,10 +395,21 @@ Einleitungs-Chunk, siehe #912 in [Qualitätssicherung](#qualitätssicherung)).
 Nach der Fusion/MMR-Auswahl prüft `DocumentCompletion`, ob ein Dokument bereits in der Auswahl
 vertreten ist und weitere seiner Chunks in derselben Kandidatenmenge liegen, aus der die Auswahl
 selbst gezogen wurde — nie eine zweite, ungefilterte Suche. Bis zu `max-chunks-per-document`
-Chunks je Dokument werden so bevorzugt aufgenommen, indem der RRF/MMR-schwächste Chunk eines
-Dokuments verdrängt wird, das bereits mit mindestens zwei Chunks vertreten ist; existiert kein
-solches Dokument, wird nicht verdrängt — die Dokumentvielfalt der Fusion/MMR-Auswahl geht dadurch
-nie zurück. Das Gesamtbudget bleibt `top-k`, unverändert gegenüber dem Stand vor #932.
+Chunks je Dokument werden so bevorzugt aufgenommen, über eine zweistufige Verdrängung (Zuschnitt
+v2, nachgeschärft nach der Live-Verifikation: v1 verdrängte ausschließlich aus Dokumenten mit
+mindestens zwei Chunks und war damit ein No-op, sobald jedes Dokument der Auswahl nur einen
+einzigen Chunk stellte — genau der Fall, den #912 beheben sollte):
+
+1. **Stufe 1** (wie v1): der RRF/MMR-schwächste Chunk eines Dokuments, das bereits mit mindestens
+   zwei Chunks vertreten ist.
+2. **Stufe 2** (neu): existiert keine solche Quelle, der auswahlrang-letzte Chunk der
+   Gesamtauswahl — aber nur, wenn das zu vervollständigende Dokument mit seinem besten Chunk
+   strikt besser rankt als dieser, das Opfer nicht selbst eine Ergänzung desselben Aufrufs ist und
+   nicht zum selben Dokument gehört. Die Dokumentvielfalt der Fusion/MMR-Auswahl darf hier sinken
+   — bewusste Abwägung: der zweite Chunk eines stark gerankten Dokuments ist mehr wert als der
+   einzige Chunk des Tabellenendes.
+
+Das Gesamtbudget bleibt `top-k`, unverändert gegenüber dem Stand vor #932.
 
 ### Speicherung und Filterachse
 

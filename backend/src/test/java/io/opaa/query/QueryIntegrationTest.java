@@ -381,13 +381,10 @@ class QueryIntegrationTest {
     // class, QueryControllerTest and io.opaa.library.* stay green.
     //
     // #932 review: the granted set below includes one multi-chunk document (see
-    // #grantedChunksWithOneMultiChunkDocument's Javadoc for the exact shape and placement), so
-    // DocumentCompletion actually runs on this permission-filtered candidate pool rather than
-    // every granted document holding exactly one chunk (the pre-#932 shape, which
-    // DocumentCompletion is a no-op for). The retrieved-chunk-count/allSatisfy assertions below
-    // hold regardless of exactly which chunks land in the top 8 or whether completion changes
-    // anything: completion only ever draws from this same permission-filtered pool, never a
-    // fresh, unfiltered search.
+    // #grantedChunksWithOneMultiChunkDocument's Javadoc for the exact shape, placement, and why
+    // its assertions tolerate DocumentCompletion's tier 1 and tier 2 alike), so DocumentCompletion
+    // actually runs on this permission-filtered candidate pool rather than every granted document
+    // holding exactly one chunk (the pre-#932 shape, which DocumentCompletion is a no-op for).
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
@@ -443,8 +440,8 @@ class QueryIntegrationTest {
    * {@link #queryFiltersEveryDecomposedSubQuerysSimilaritySearchByTheSameGrantedLibrary} share: ten
    * single-chunk documents ({@code doc-a-0}..{@code doc-a-9}) plus {@code doc-a-multi}'s three
    * chunks - 13 granted chunks over 11 distinct documents - so {@code DocumentCompletion} (#932)
-   * actually runs against a document it could grow on this permission-filtered pool, not just
-   * single-chunk documents it can never touch.
+   * actually runs its tier-1 eviction (a document already holding two chunks) against this
+   * permission-filtered pool, not just single-chunk documents that only tier 2 can touch.
    *
    * <p>All 13 tie under {@code FakeEmbeddingModel} (see the first caller's comment), so a plain
    * top-k-by-tied-score selection's exact choice of 8 - and in particular how many of {@code
@@ -453,6 +450,13 @@ class QueryIntegrationTest {
    * on the retrieved <em>chunk</em> count (always exactly {@code topK}, summed via {@code
    * ChatSource#getMatchCount()}) rather than the distinct <em>source</em> count, which would vary
    * with how many of {@code doc-a-multi}'s chunks happen to win the tie in a given run.
+   *
+   * <p>Both assertions also tolerate {@code DocumentCompletion} (#932 Zuschnitt v2) firing either
+   * tier: tier 1 only ever swaps chunks within this same pool, and tier 2 may additionally drop a
+   * granted document out of the selection entirely - but neither ever grows the selection past
+   * {@code topK} or admits a chunk from outside this permission-filtered pool, so the summed match
+   * count stays exactly {@code topK} and every source stays "a"-prefixed regardless of which tier,
+   * if any, actually fires for a given run's tie-broken selection.
    */
   private List<Document> grantedChunksWithOneMultiChunkDocument() {
     List<Document> chunks = new ArrayList<>();
