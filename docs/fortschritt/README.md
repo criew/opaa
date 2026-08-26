@@ -10,6 +10,11 @@ Dieses Verzeichnis führt die Leistungsberichte des Projekts auf **zwei Ebenen**
   Stichtag aus dem Delta fortgeschrieben wird. Er beschreibt, was heute gebaut ist; jede
   Aussage ist über die Zeitraumsberichte auf Bausteine rückführbar.
 
+Daneben existiert der **[Tagesreport](./tagesreport.md)**: ein ticketbasierter, täglich per CI
+generierter Report über abgeschlossene Vorgänge und gemergte Pull Requests (GitHub Pages, als
+Atom-Feed abonnierbar). Er liefert den Tagestakt ohne den Beleg-Anspruch der Zeitraumsberichte;
+`tagesreport.md` beschreibt, wie er erzeugt wird und wo er erscheint.
+
 Erster Stichtag: [20260831](./20260831/) (Meilenstein 1, siehe [VISION.md](../VISION.md),
 Roadmap). Sonderfall: Sein Zeitraum reicht vom Projektstart bis zum Stichtag — Delta und
 Gesamtstand sind dort einmalig deckungsgleich.

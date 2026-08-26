@@ -37,6 +37,9 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 - **[CONCEPTS.md](./CONCEPTS.md)** — Glossar der tragenden Begriffe
 - **[Gesamtstand](./fortschritt/gesamtstand.md)** — inventurbelegter Umsetzungsstand; die
   Zeitraumsberichte unter [`fortschritt/`](./fortschritt/) liefern den Nachweis je Stichtag
+- **[`fortschritt/tagesreport.md`](./fortschritt/tagesreport.md)** — daneben der ticketbasierte
+  Tagestakt: täglich generierter Report über abgeschlossene Vorgänge und gemergte Pull Requests,
+  als Atom-Feed abonnierbar
 - **[decisions/0014-produktausrichtung-oeffentliche-verwaltung.md](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md)**
   — die Entscheidung, die die Ausrichtung trägt
 
@@ -178,8 +181,6 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
   Kollaborationsregeln
 - **[`../CONTRIBUTING.md`](../CONTRIBUTING.md)** — Leitfaden für Beitragende
 - **[`../AGENTS.md`](../AGENTS.md)** — Anweisungen für KI-Agenten
-- **[`tagesreport.md`](./tagesreport.md)** — täglicher Report über abgeschlossene Vorgänge, gemergte Pull
-  Requests und neu angesetzte Arbeit; als Atom-Feed abonnierbar
 - **[`renovate.md`](./renovate.md)** — selbst betriebene Abhängigkeits-Updates: Betrieb, Token-Zuschnitt,
   Dry-Run, Fehlerbilder
 
