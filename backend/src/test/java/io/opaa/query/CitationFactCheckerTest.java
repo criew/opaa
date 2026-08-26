@@ -156,4 +156,76 @@ class CitationFactCheckerTest {
 
     assertThat(supported).isFalse();
   }
+
+  /** #939 review, finding 2: a {@code null} chunk text must never be flagged. */
+  @Test
+  void neverFlagsWhenChunkTextIsNull() {
+    boolean supported = CitationFactChecker.isSupportedByChunk("Die Gebühr beträgt 27,20 €", null);
+
+    assertThat(supported).isTrue();
+  }
+
+  /**
+   * #939 review, finding 2: a fee table column headed "EUR" typically states the bare number
+   * underneath, without repeating the currency marker on every row - a money amount in the
+   * statement must still be recognised against such a bare number in the chunk.
+   */
+  @Test
+  void treatsAMoneyAmountAsEquivalentToTheSameBareNumberInAFeeTable() {
+    String chunkText = "| Leistung | Gebühr (EUR) |\n| Personalausweis | 37,00 |";
+
+    boolean supported =
+        CitationFactChecker.isSupportedByChunk("Der Personalausweis kostet 37,00 €", chunkText);
+
+    assertThat(supported).isTrue();
+  }
+
+  @Test
+  void treatsParagrafSpellingAsEquivalentToTheSectionSign() {
+    String chunkText = "Nach Paragraf 3 PAuswG gilt ...";
+
+    boolean supported =
+        CitationFactChecker.isSupportedByChunk("Grundlage ist § 3 PAuswG.", chunkText);
+
+    assertThat(supported).isTrue();
+  }
+
+  /**
+   * #939 review, finding 2: a bare integer percentage ("19 Prozent") carries no thousands separator
+   * or decimal comma and is therefore never extracted as a fact - the chunk then has no fact of the
+   * statement's category at all, which this class's conservative contract treats as "not
+   * confirmable here", not a contradiction.
+   */
+  @Test
+  void doesNotFlagWhenTheChunkHasNoFactOfTheStatementFactsCategoryAtAll() {
+    String chunkText = "Der Satz liegt bei 19 Prozent.";
+
+    boolean supported =
+        CitationFactChecker.isSupportedByChunk("Der Satz liegt bei 19,0 Prozent.", chunkText);
+
+    assertThat(supported).isTrue();
+  }
+
+  /**
+   * #939 review, finding 3(a): {@link CitationFactChecker#nearestFact} resolves to the last fact
+   * occurring in the text - the fact a trailing citation marker is taken to belong to.
+   */
+  @Test
+  void nearestFactResolvesToTheLastFactInTheText() {
+    var nearest =
+        CitationFactChecker.nearestFact("Der Ausweis kostet 37,00 €, der Reisepass 70,00 €");
+
+    assertThat(nearest).isPresent();
+    assertThat(nearest.get().forms()).contains("MONEY:7000");
+  }
+
+  @Test
+  void isNearestFactSupportedByChunkOnlyChecksTheLastFactInTheStatement() {
+    String statement = "Der Ausweis kostet 37,00 €, der Reisepass kostet 70,00 €";
+    String chunkText = "Der Reisepass kostet 70,00 €.";
+
+    boolean supported = CitationFactChecker.isNearestFactSupportedByChunk(statement, chunkText);
+
+    assertThat(supported).isTrue();
+  }
 }

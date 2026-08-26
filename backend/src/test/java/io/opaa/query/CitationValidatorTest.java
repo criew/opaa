@@ -232,4 +232,230 @@ class CitationValidatorTest {
     assertThat(result)
         .containsExactly(new ValidatedCitation("doc-1", 0, "001_personalausweis.md", true));
   }
+
+  /**
+   * #939 review, finding 1: a thousands-separator dot sits between two digits and must not end the
+   * statement early - a truncated statement ("234,50 €" instead of "1.234,50 €") would compare the
+   * wrong value.
+   */
+  @Test
+  void keepsValidAcrossAThousandsSeparatorInTheStatedAmount() {
+    String chunkText = "Für diesen Fall betragen die Kosten 1.234,50 € insgesamt.";
+    String answer = "Die Kosten betragen 1.234,50 € 【source: doc-1#0 | a.md】.";
+    List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "a.md"));
+    List<Document> retrievedChunks = List.of(chunkWithText("doc-1", 0, "a.md", chunkText));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "a.md", true));
+  }
+
+  /** #939 review, finding 1: a round-thousand amount ("1.000 €") must not be truncated either. */
+  @Test
+  void keepsValidForARoundThousandAmount() {
+    String chunkText = "Der Zuschuss beträgt 1.000 €.";
+    String answer = "Der Zuschuss beträgt 1.000 € 【source: doc-1#0 | a.md】.";
+    List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "a.md"));
+    List<Document> retrievedChunks = List.of(chunkWithText("doc-1", 0, "a.md", chunkText));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "a.md", true));
+  }
+
+  /**
+   * #939 review, finding 1: the statement-boundary bug also broke date extraction end-to-end, since
+   * every numeric date's dots ended the statement right after its own last digit group - this is
+   * the end-to-end date check the fix restores.
+   */
+  @Test
+  void keepsValidForADateMatchingTheCitedChunk() {
+    String chunkText = "Die Regel gilt ab dem 01.01.2027.";
+    String answer = "Die Regel gilt ab dem 01.01.2027 【source: doc-1#0 | a.md】.";
+    List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "a.md"));
+    List<Document> retrievedChunks = List.of(chunkWithText("doc-1", 0, "a.md", chunkText));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "a.md", true));
+  }
+
+  @Test
+  void flagsADateThatContradictsTheCitedChunk() {
+    String chunkText = "Die Regel gilt ab dem 01.01.2027.";
+    String answer = "Die Regel gilt ab dem 01.03.2027 【source: doc-1#0 | a.md】.";
+    List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "a.md"));
+    List<Document> retrievedChunks = List.of(chunkWithText("doc-1", 0, "a.md", chunkText));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "a.md", false));
+  }
+
+  /**
+   * #939 review, finding 3: a sentence enumerating two amounts from two different chunks of the
+   * <em>same</em> document, each named right before its own marker, must validate against the
+   * nearest fact and the document's full chunk set - not the whole sentence against a single chunk.
+   */
+  @Test
+  void keepsValidForAnEnumerationAcrossTwoChunksOfTheSameDocument() {
+    String answer =
+        "Der Ausweis kostet 37,00 €, der Reisepass kostet 70,00 € 【source: doc-1#1 | a.md】.";
+    List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 1, "a.md"));
+    List<Document> retrievedChunks =
+        List.of(
+            chunkWithText("doc-1", 0, "a.md", "Der Ausweis kostet 37,00 €."),
+            chunkWithText("doc-1", 1, "a.md", "Der Reisepass kostet 70,00 €."));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result).containsExactly(new ValidatedCitation("doc-1", 1, "a.md", true));
+  }
+
+  /**
+   * #939 review, finding 2: an amount stated with a currency marker in the answer must still be
+   * recognised against the same bare number in a fee table whose column header alone carries the
+   * currency.
+   */
+  @Test
+  void keepsValidForAnAmountWithoutACurrencyMarkerInTheCitedChunk() {
+    String chunkText = "| Leistung | Gebühr (EUR) |\n| Personalausweis | 37,00 |";
+    String answer = "Der Personalausweis kostet 37,00 € 【source: doc-1#0 | a.md】.";
+    List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "a.md"));
+    List<Document> retrievedChunks = List.of(chunkWithText("doc-1", 0, "a.md", chunkText));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "a.md", true));
+  }
+
+  /**
+   * #939 review, finding 4: a statement naming an approximation ("rund") skips the content check
+   * entirely - a model rounding a real figure is not a fabrication.
+   */
+  @Test
+  void keepsValidWhenTheStatementNamesAnApproximation() {
+    String chunkText = "Die Gebühr beträgt 27,20 €.";
+    String answer = "Die Gebühr beträgt rund 27 Euro 【source: doc-1#0 | a.md】.";
+    List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "a.md"));
+    List<Document> retrievedChunks = List.of(chunkWithText("doc-1", 0, "a.md", chunkText));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "a.md", true));
+  }
+
+  /**
+   * #939 review, finding 4: a statement naming a computed sum ("Zusammen sind das ...") skips the
+   * content check entirely - the sum need not appear verbatim in any single chunk.
+   */
+  @Test
+  void keepsValidWhenTheStatementNamesAComputedSum() {
+    String chunkText = "Der Ausweis kostet 37,00 €, der Reisepass kostet 70,00 €.";
+    String answer = "Zusammen sind das 107,00 € 【source: doc-1#0 | a.md】.";
+    List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "a.md"));
+    List<Document> retrievedChunks = List.of(chunkWithText("doc-1", 0, "a.md", chunkText));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "a.md", true));
+  }
+
+  /** #939 review, finding 2: "Paragraf" (without "h") is an equally correct German spelling. */
+  @Test
+  void keepsValidForTheParagrafSpellingWithoutH() {
+    String chunkText = "Nach Paragraf 3 PAuswG gilt ...";
+    String answer = "Grundlage ist § 3 PAuswG 【source: doc-1#0 | a.md】.";
+    List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "a.md"));
+    List<Document> retrievedChunks = List.of(chunkWithText("doc-1", 0, "a.md", chunkText));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "a.md", true));
+  }
+
+  /**
+   * #939 review, finding 5: two markers in one answer, each citing a different document, must each
+   * be checked against their own statement and their own cited document's chunks - this pins down
+   * the previously untested assumption that {@code citations.get(i)} lines up with the {@code i}-th
+   * marker actually found in {@code answer}.
+   */
+  @Test
+  void validatesMultipleMarkersInOneAnswerIndependentlyAndInOrder() {
+    String answer =
+        "Der Ausweis kostet 37,00 € 【source: doc-1#0 | a.md】 und der Pass kostet 999,00 €"
+            + " 【source: doc-2#0 | b.md】.";
+    List<ParsedCitation> citations =
+        List.of(new ParsedCitation("doc-1", 0, "a.md"), new ParsedCitation("doc-2", 0, "b.md"));
+    List<Document> retrievedChunks =
+        List.of(
+            chunkWithText("doc-1", 0, "a.md", "Der Ausweis kostet 37,00 €."),
+            chunkWithText("doc-2", 0, "b.md", "Der Pass kostet 70,00 €."));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result)
+        .containsExactly(
+            new ValidatedCitation("doc-1", 0, "a.md", true),
+            new ValidatedCitation("doc-2", 0, "b.md", false));
+  }
+
+  /**
+   * #939 review, finding 6: a Drehbuch-Frage-1-style answer citing the same amount from two
+   * different, independently retrieved documents - each marker's own document actually contains the
+   * value, so neither citation may be flagged.
+   */
+  @Test
+  void keepsValidWhenTheSameAmountIsDoubleCitedFromTwoDifferentDocuments() {
+    String answer =
+        "Die Gebühr beträgt 27,20 Euro 【source: doc-1#0 | 001_personalausweis.md】【source:"
+            + " doc-2#0 | 01_verwaltungsgebuehrensatzung.pdf】.";
+    List<ParsedCitation> citations =
+        List.of(
+            new ParsedCitation("doc-1", 0, "001_personalausweis.md"),
+            new ParsedCitation("doc-2", 0, "01_verwaltungsgebuehrensatzung.pdf"));
+    List<Document> retrievedChunks =
+        List.of(
+            chunkWithText(
+                "doc-1",
+                0,
+                "001_personalausweis.md",
+                "Die Gebühr für Personen unter 24 Jahren beträgt 27,20 Euro."),
+            chunkWithText(
+                "doc-2",
+                0,
+                "01_verwaltungsgebuehrensatzung.pdf",
+                "§ 3 VGS: Gebührenrahmen unter 24 Jahren 27,20 Euro."));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result)
+        .containsExactly(
+            new ValidatedCitation("doc-1", 0, "001_personalausweis.md", true),
+            new ValidatedCitation("doc-2", 0, "01_verwaltungsgebuehrensatzung.pdf", true));
+  }
+
+  /**
+   * #939 review, finding 6: a Drehbuch-Frage-4-style answer enumerating two fee variants in one
+   * sentence, cited once - only the nearer amount ("11,30 Euro") must be checked, and it is present
+   * in the cited chunk.
+   */
+  @Test
+  void keepsValidForATwoAmountEnumerationCitedOnce() {
+    String chunkText =
+        "Die Gebühr beträgt 14,10 Euro bzw. 11,30 Euro bei Zulassung am Tag der"
+            + " Online-Reservierung.";
+    String answer =
+        "Die Gebühr beträgt 14,10 Euro bzw. 11,30 Euro bei Zulassung am Tag der"
+            + " Online-Reservierung 【source: doc-1#0 | 008_wunschkennzeichen.txt】.";
+    List<ParsedCitation> citations =
+        List.of(new ParsedCitation("doc-1", 0, "008_wunschkennzeichen.txt"));
+    List<Document> retrievedChunks =
+        List.of(chunkWithText("doc-1", 0, "008_wunschkennzeichen.txt", chunkText));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result)
+        .containsExactly(new ValidatedCitation("doc-1", 0, "008_wunschkennzeichen.txt", true));
+  }
 }

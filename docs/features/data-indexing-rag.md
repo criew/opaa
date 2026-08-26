@@ -108,17 +108,24 @@ Drei Bedingungen, alle deterministisch, alle nach der Erzeugung und vor der Ausl
 `#n` oder mit einem Zeichen in der Kennung, das der Parser nicht zulässt —, wird gar nicht erst als Beleg
 erkannt und damit weder geprüft noch gekennzeichnet.
 
-**Ergänzt um eine deterministische Faktenprüfung** (#937): Ein formal gültiger Beleg wird zusätzlich
-gegen den Text des zitierten Chunks geprüft, für den Satz, der unmittelbar vor dem Zitatmarker steht.
-Extrahiert werden harte Fakten — Geldbeträge, Daten, Paragraphen-Referenzen, sonstige Zahlen mit
-Tausendertrennzeichen oder Dezimalkomma — und normalisiert verglichen (`CitationFactChecker`). Fehlt ein
-extrahierter Fakt im zitierten Chunk, wird der Beleg auf ungültig zurückgestuft. Ein Satz ohne
-extrahierbaren Fakt bleibt unangetastet: Ein fälschlich geflaggter korrekter Beleg wiegt schwerer als ein
-übersehener Fehler, deshalb prüft dieser Schritt nur, was sich eindeutig extrahieren lässt, und stuft nie
-ohne einen konkreten, fehlenden Fakt zurück. Das ist weiterhin keine allgemeine inhaltliche
-Stützungsprüfung: Ein Modell kann eine korrekt bestehende Fundstelle an einen Satz ohne harten Fakt hängen,
-mit dem sie inhaltlich nichts zu tun hat, und die Prüfung lässt das durch. Eine solche allgemeine
-Stützungsprüfung (Entailment) bräuchte einen zweiten Modelldurchlauf und ist bewusst nicht gebaut (siehe
+**Ergänzt um eine deterministische Faktenprüfung** (#937, geschärft im #939-Review): Ein formal gültiger
+Beleg wird zusätzlich gegen den Text aller abgerufenen Chunks des zitierten **Dokuments** geprüft — nicht
+nur des einen vom Marker genannten Chunks, da die #932-Dokumentvervollständigung mehrere Chunks desselben
+Dokuments abrufen kann. Geprüft wird nur der **nächstgelegene** harte Fakt vor dem Zitatmarker (Geldbetrag,
+Datum, Paragraphen-Referenz, sonstige Zahl mit Tausendertrennzeichen oder Dezimalkomma), nicht jeder Fakt
+des ganzen Satzes — sonst würde eine Aufzählung mit mehreren Werten und je einem eigenen Marker
+("Ausweis 37,00 €, Reisepass 70,00 € 【…】") fälschlich am falschen Wert scheitern. Ein Satz mit einer
+Näherung oder Summe ("rund", "etwa", "ca.", "circa", "knapp", "insgesamt", "zusammen") wird gar nicht erst
+geprüft. Verglichen wird nach Gattung (`CitationFactChecker`, Kategorie „AMOUNT" für Geldbeträge und
+sonstige Zahlen — ein Betrag in einer Gebührentabelle ohne Währungszeichen in der Zeile selbst ist dieselbe
+Aussage, nur ohne Formatierung; „DATE" und „PARA" bleiben eigene Kategorien): Enthält der geprüfte
+Chunk-Text **keinen** Fakt derselben Gattung, bleibt der Beleg unangetastet — nur ein Fakt derselben Gattung
+mit einem tatsächlich abweichenden Wert stuft zurück. Ein Satz ohne extrahierbaren Fakt bleibt ebenfalls
+unangetastet: Ein fälschlich geflaggter korrekter Beleg wiegt schwerer als ein übersehener Fehler. Das ist
+weiterhin keine allgemeine inhaltliche Stützungsprüfung: Ein Modell kann eine korrekt bestehende Fundstelle
+an einen Satz ohne harten Fakt hängen, mit dem sie inhaltlich nichts zu tun hat, und die Prüfung lässt das
+durch. Eine solche allgemeine Stützungsprüfung (Entailment) bräuchte einen zweiten Modelldurchlauf und ist
+bewusst nicht gebaut (siehe
 unten).
 
 #### Was mit einem ungültigen Beleg passiert

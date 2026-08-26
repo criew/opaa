@@ -121,14 +121,18 @@ mit der Zitierpflicht `【source: <document_id>#<chunk_index> | <file_name>】` 
 extrahiert `CitationParser` die im Antworttext vorkommenden Zitate, und `CitationValidator#validate` prüft
 deterministisch (kein zweiter Modellaufruf) für jedes Zitat, ob Dokument-Kennung, Abschnittsnummer und
 Dateiname zu ein und demselben tatsächlich abgerufenen Chunk passen. Ein so gültiges Zitat wird
-zusätzlich inhaltlich geprüft (Stufe 1, #937): `CitationFactChecker` extrahiert aus dem Satz vor dem
-Zitatmarker harte Fakten (Geldbeträge, Daten, Paragraphen-Referenzen, sonstige Zahlen mit
-Tausendertrennzeichen oder Dezimalkomma) und vergleicht sie normalisiert gegen den Text des zitierten
-Chunks — fehlt ein extrahierter Fakt dort, wird das Zitat auf ungültig zurückgestuft. Ein Satz ohne
-extrahierbaren Fakt bleibt unangetastet (bewusst konservativ: ein fälschlich geflaggtes korrektes
-Zitat wiegt schwerer als ein übersehener Fehler). Eine LLM-gestützte Stützungsprüfung (Stufe 2) ist als
-möglicher Folgeausbau denkbar, aber nicht Teil dieser Prüfung. Ungültige Zitate werden im Antworttext
-belassen, aber in der zugehörigen `ChatSource` als `citationValid = false` markiert
+zusätzlich inhaltlich geprüft (Stufe 1, #937, geschärft im #939-Review): `CitationFactChecker`
+extrahiert aus dem Satz vor dem Zitatmarker den nächstgelegenen harten Fakt (Geldbetrag, Datum,
+Paragraphen-Referenz, sonstige Zahl mit Tausendertrennzeichen oder Dezimalkomma) und vergleicht ihn
+nach Gattung normalisiert gegen den Text aller abgerufenen Chunks des zitierten Dokuments (nicht nur
+des einen vom Marker genannten Chunks, wegen der #932-Dokumentvervollständigung) — fehlt ein Fakt
+derselben Gattung dort völlig, bleibt das Zitat unangetastet; nur ein abweichender Wert derselben
+Gattung stuft zurück. Ein Satz mit einer Näherung oder Summe ("rund", "etwa", "zusammen" u. Ä.) sowie
+ein Satz ohne extrahierbaren Fakt bleiben ebenfalls unangetastet (bewusst konservativ: ein fälschlich
+geflaggtes korrektes Zitat wiegt schwerer als ein übersehener Fehler). Eine LLM-gestützte
+Stützungsprüfung (Stufe 2) ist als möglicher Folgeausbau denkbar, aber nicht Teil dieser Prüfung.
+Ungültige Zitate werden im Antworttext belassen, aber in der zugehörigen `ChatSource` als
+`citationValid = false` markiert
 (`QueryService#mapSources`). Details zur Belegvalidierung stehen unter
 [Zitierzwang](./data-indexing-rag.md#zitierzwang).
 
