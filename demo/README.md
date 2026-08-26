@@ -379,8 +379,13 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
   Erstanmeldung aus, die den zugehörigen OPAA-Datensatz anlegt. Sein Passwort ist nach jedem
   Seed-Lauf bewusst rotiert (siehe „Seed- und `opaa-seed`-Verfahren" unten) und weicht deshalb vom
   oben dokumentierten Demo-Passwort ab; die vier Fach-Demokonten behalten dieses dokumentierte
-  Passwort unverändert. Alle administrativen Vorgänge auf der Instanz führt `demo-admin` über den
-  Admin-Bereich der Oberfläche aus. Weitere Konten mit dieser Rolle gibt es derzeit nicht.
+  Passwort unverändert — sie sind für das Drehbuch vorführnotwendige `USER`-Konten ohne
+  Adminrechte, ihr offenes Demo-Passwort ist ein akzeptiertes Restrisiko. Begrenzt wird dieses
+  Risiko durch das je Konto greifende Rate Limiting (siehe [„Sicherheitshinweis"](../docs/handbuch/deployment.md#sicherheitshinweis-post-apiv1librarieslibraryidindexing-ist-von-außen-erreichbar))
+  und das monatliche Ausgabenlimit in der Anthropic-Console (siehe „Modellkonfiguration der
+  Instanz" unten) — beide setzen dem, was ein Fachkonto anrichten kann, eine feste Obergrenze.
+  Alle administrativen Vorgänge auf der Instanz führt `demo-admin` über den Admin-Bereich der
+  Oberfläche aus. Weitere Konten mit dieser Rolle gibt es derzeit nicht.
 - **Netzwerk:** Alle Container-Ports binden ausschließlich auf `127.0.0.1`. Nach außen führt
   ausschließlich ein nginx auf dem Host, der TLS terminiert und weiterleitet. Keycloak ist unter dem
   Pfad **`/idp`** eingehängt — ausdrücklich **nicht** unter `/auth`, weil das Frontend

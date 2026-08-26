@@ -32,7 +32,7 @@ docker compose pull && docker compose up -d
 Der Workflow [`publish-images.yml`](../../.github/workflows/publish-images.yml) baut bei jedem Push auf `main` neue `ghcr.io/criew/opaa-backend`- und `ghcr.io/criew/opaa-frontend`-Images und veröffentlicht sie mit den Tags `main` und `sha-<commit>` in der GHCR-Registry (siehe [Deployment aus vorgebauten Images](#deployment-aus-vorgebauten-images-ghcr) oben).
 
 Ein Deployment-Skript, das genau das tut — die aktuellen Images ziehen und den Stack auf den neuen
-Stand bringen —, ist eine naheliegende Automatisierung für eine reachable Instanz (Vorbild:
+Stand bringen —, ist eine naheliegende Automatisierung für eine erreichbare Instanz (Vorbild:
 [`demo/README.md`, „Öffentliche Instanz betreiben"](../../demo/README.md#öffentliche-instanz-betreiben-opaaewerlincom)).
 Ein solcher Wrapper sollte einen Schalter, der zusätzlich die Volumes verwirft, klar von der
 regulären Aktualisierung trennen — damit ist die Datenbank und mit ihr der gesamte Index weg, das ist
@@ -82,7 +82,7 @@ Eine Neuindizierung wird erst durch Änderungen nötig, die nichts mit dem Image
 | Update von einer Version **zwischen #766 und #773** (jede Version, die Vektoren über die OpenAI-kompatible Schicht indiziert hat, bevor #773 die Metadaten-Kontamination der Einbettung behoben hat) | In dieser Zeitspanne indizierte Vektoren tragen fünf Zeilen Metadaten-Rauschen (`document_id`/`chunk_index`/`file_name`/`library_id`/`organization_id`) vor dem eigentlichen Text mit eingebettet (Kosinus-Ähnlichkeit zum sauberen Vektor: rund 0.42) — **betroffene Bibliotheken müssen neu indiziert werden**, sonst liegen kontaminierte und saubere Vektoren nebeneinander im selben Suchraum. Siehe die eigene Anleitung dazu direkt unten |
 
 Wer ein Compose-Profil mit fest gekoppeltem Embedding-Modell und `OPAA_PGVECTOR_DIMENSIONS` betreibt
-(Vorbild: `demo/README.md`, „Öffentliche Instanz betreiben") muss bei einem Wechsel des
+(Vorbild: `demo/README.md`, „Öffentliche Instanz betreiben"), muss bei einem Wechsel des
 Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen. Ein Wechsel des
 **Chat**-Modells berührt den Index dagegen nicht, sofern Chat und Einbettung getrennte Anbieter sind.
 
@@ -790,7 +790,7 @@ scheitert weich (siehe oben), Schreiben hart.
 
 ### Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle (#756)
 
-Seit Stufe 1 der Modellverwaltung ([Modelle und zentrale Steuerung](../features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung))
+Seit Stufe 1 der Modellverwaltung ([Modelle und zentrale Steuerung](../features/llm-integration.md#stufe-1-verwaltete-chat-modelle-gebaut))
 liegen Chat-Modelle in der Tabelle `llm_models`, nicht mehr ausschließlich in
 Umgebungsvariablen. Ein hinterlegter Zugangsschlüssel (optional — ein lokal betriebener Endpunkt
 läuft regelmäßig ohne Authentifizierung) liegt **verschlüsselt** in der Datenbank (AES-256-GCM,
@@ -909,7 +909,7 @@ und folgt dessen jeweils eigenem Mechanismus:
 |--------|------------------|--------|
 | Entwicklungsnutzer des `dev`-Profils (`opaa.auth.dev.users`) | Lokale Entwicklung, `dev`-Auth-Modus (siehe [„Entwicklungsmodus (dev)"](#entwicklungsmodus-dev) oben) | `dev-admin` (`admin@opaa.local`, `SYSTEM_ADMIN`), `dev-user` (regulärer Nutzer) |
 | Keycloak-Realm-Nutzer (`keycloak/realm-export.json`) | `oidc`-Auth-Modus mit dem gebündelten Keycloak (siehe [„OIDC (Keycloak)"](#oidc-keycloak) oben) | `testuser`/`testpass` (E-Mail `test@opaa.local`) — wird zum `SYSTEM_ADMIN`, sobald `OPAA_INITIAL_ADMIN_EMAIL` in der lokalen `.env.docker` auf dieselbe Adresse gesetzt ist, sonst ein regulärer Nutzer |
-| Demo-Realm-Nutzer (`keycloak/realm-export.json`, Issue #712) | Demo-Instanz „Stadt Rheinfurt" (`--profile demo`, siehe [`demo/README.md`](../../demo/README.md), Abschnitt „Seed ausführen") | `demo-admin` (`admin@stadt-rheinfurt.example`, `SYSTEM_ADMIN` bei entsprechend gesetztem `OPAA_INITIAL_ADMIN_EMAIL`), `maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt` — alle mit dem offenen Demo-Passwort `RheinfurtDemo!2026`, siehe `demo/README.md`, Abschnitt „Demo-Zugangsdaten". Zusätzlich der Client `opaa-seed` (Resource Owner Password Grant, `directAccessGrantsEnabled: true`) — ausschließlich für `demo/seed/seed.py`, nie für eine reguläre Anmeldung |
+| Demo-Realm-Nutzer (`keycloak/realm-export.json`, Issue #712) | Demo-Instanz „Stadt Rheinfurt" (`--profile demo`, siehe [`demo/README.md`](../../demo/README.md), Abschnitt „Seed ausführen") | `demo-admin` (`admin@stadt-rheinfurt.example`, `SYSTEM_ADMIN` bei entsprechend gesetztem `OPAA_INITIAL_ADMIN_EMAIL`), `maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt` — alle mit dem offenen Demo-Passwort `RheinfurtDemo!2026`, siehe `demo/README.md`, Abschnitt „Nutzerkonten". Zusätzlich der Client `opaa-seed` (Resource Owner Password Grant, `directAccessGrantsEnabled: true`) — ausschließlich für `demo/seed/seed.py`, nie für eine reguläre Anmeldung |
 | E2E-Suite (`e2e/e2e.env`, `e2e/docker-compose.e2e.yml`) | Playwright-Suite (siehe [`e2e/README.md`](../../e2e/README.md), Abschnitt „Drei Testnutzer") | Wiederverwendet `dev-admin` und `dev-user` aus dem `dev`-Profil, ergänzt um `dev-outsider` (nur für diese Suite, über `OPAA_AUTH_DEV_USERS_*` hinzugefügt) |
 | Quellenzugangsdaten (`sourceCredentials`, siehe [„Zugangsdaten-Verschlüsselung"](#zugangsdaten-verschlüsselung-483) oben) | Kein Testkonto für OPAA selbst — Basic-Auth-Zugangsdaten (`user:password`), mit denen eine `HTTP_DIRECTORY`- oder `RSS_FEED`-Bibliothek eine *externe* Dokumentenquelle abruft | Kein fester Beispielwert; frei je Bibliothek |
 

@@ -16,7 +16,7 @@ import { askQuestion, expectAnyCitedSource, startFreshChat } from '../../fixture
  */
 
 const DEMO_USERNAME = 'maria.weber'
-// Documented demo value, not a secret (demo/README.md, "Demo-Zugangsdaten";
+// Documented demo value, not a secret (demo/README.md, "Nutzerkonten";
 // demo/seed/profiles.py's DEMO_PASSWORD) - shared by every account in the realm.
 const DEMO_PASSWORD = 'RheinfurtDemo!2026'
 
@@ -60,9 +60,8 @@ test.describe('Demo-Smoke (#232)', () => {
     ).toBeVisible()
 
     await startFreshChat(page)
-    // "Gebührenfrage" from docs/features/demo-instance.md's "Demo-Drehbuch (Skizze)", question 1
-    // (also ausformuliert in docs/market/demo-drehbuch.md, #713) - guaranteed to have an answer in the
-    // corpus (demo/generator, #711) and readable by every fach account, Maria included
+    // "Gebührenfrage" from docs/market/demo-drehbuch.md, question 1 (#713) - guaranteed to have an
+    // answer in the corpus (demo/generator, #711) and readable by every fach account, Maria included
     // (docs/features/demo-instance.md, "Nutzer, Spaces und Berechtigungen"). The concrete wording
     // is symbolic with ai-stub, though: every input gets the same embedding vector (see
     // e2e/README.md, "KI-Stub statt echtem Modell"), so which chunks reach this answer is decided

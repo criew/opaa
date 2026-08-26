@@ -99,7 +99,7 @@ const composeArgs = [
 
 // No auth secrets are needed for the "e2e" target: the stack runs in the "dev" auth profile,
 // which has neither credentials nor a signing key (see e2e/e2e.env). The "demo" target's Keycloak
-// realm carries only documented demo credentials (demo/README.md, "Demo-Zugangsdaten"), never a
+// realm carries only documented demo credentials (demo/README.md, "Nutzerkonten"), never a
 // real secret either.
 
 const composeEnv = {
