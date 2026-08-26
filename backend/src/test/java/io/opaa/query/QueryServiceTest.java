@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -70,6 +72,11 @@ class QueryServiceTest {
   @Mock private ChatService chatService;
   @Mock private KnowledgeLibraryRepository knowledgeLibraryRepository;
   @Mock private ChunkEmbeddingLookup chunkEmbeddingLookup;
+  // Unstubbed by default: Mockito returns an empty List for #decompose, which QueryService treats
+  // as a decomposition failure and falls back to the pre-#923 single-query path (see
+  // QueryService#effectiveSearchQueries) - every test in this class relies on that unless it
+  // explicitly stubs this mock (see the "Query decomposition (#923)" nested class below).
+  @Mock private QueryDecompositionService queryDecompositionService;
   private QueryService queryService;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -96,9 +103,10 @@ class QueryServiceTest {
             // already-descending-score candidate lists and assert on their exact order/content -
             // MmrSelector's own diversity behaviour (mmrLambda != 1.0) is covered separately by
             // MmrSelectorTest.
-            new QueryProperties(8, 25, 1.0, 0.3, 1.0),
+            new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3),
             knowledgeLibraryRepository,
-            chunkEmbeddingLookup);
+            chunkEmbeddingLookup,
+            queryDecompositionService);
 
     // lenient: not every test in this class exercises the full query() path (e.g. the
     // mergeSourceReferences nested tests call other members directly), so MockitoExtension's
@@ -150,9 +158,10 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(8, 25, 0.5, 0.3, 1.0),
+            new QueryProperties(8, 25, 0.5, 0.3, 1.0, true, 3),
             knowledgeLibraryRepository,
-            chunkEmbeddingLookup);
+            chunkEmbeddingLookup,
+            queryDecompositionService);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chunk =
         Document.builder()
@@ -188,9 +197,10 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(8, 25, 1.0, 0.3, 0.0),
+            new QueryProperties(8, 25, 1.0, 0.3, 0.0, true, 3),
             knowledgeLibraryRepository,
-            chunkEmbeddingLookup);
+            chunkEmbeddingLookup,
+            queryDecompositionService);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
@@ -907,9 +917,10 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(8, 25, 1.0, 0.3, 1.0),
+            new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3),
             knowledgeLibraryRepository,
-            chunkEmbeddingLookup);
+            chunkEmbeddingLookup,
+            queryDecompositionService);
 
     UUID otherUserId = UUID.randomUUID();
     CurrentUser otherCaller =
@@ -1744,6 +1755,165 @@ class QueryServiceTest {
       var result = QueryService.mergeSourceReferences(withUrl, withoutUrl);
 
       assertThat(result.getSourceEntryUrl()).isNull();
+    }
+  }
+
+  /**
+   * Query decomposition and multi-search retrieval fusion (#923). {@link
+   * #queryDecompositionService} is unstubbed (empty list) by every other test in this class - see
+   * that field's Javadoc - so these are the only tests here exercising the multi-sub-query path.
+   */
+  @Nested
+  class QueryDecomposition {
+
+    @Test
+    void aSingleSubQueryTakesTheUnfusedPreDecompositionPath() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(queryDecompositionService.decompose(eq("Question"), any(), eq(3)))
+          .thenReturn(List.of("Umformulierte Frage"));
+      var chunk =
+          Document.builder()
+              .text("Relevant content")
+              .metadata(Map.of("file_name", "readme.md", "document_id", "doc-1"))
+              .score(0.9)
+              .build();
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      queryService.query("Question", null, caller, true, List.of());
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(vectorStore, times(1)).similaritySearch(captor.capture());
+      assertThat(captor.getValue().getQuery()).isEqualTo("Umformulierte Frage");
+      // The single-search path uses fetchK (25), not the per-sub-query budget - unchanged from the
+      // pre-#923 behaviour MmrSelectorTest/this class's other tests already cover.
+      assertThat(captor.getValue().getTopK()).isEqualTo(25);
+    }
+
+    /**
+     * Two sub-queries each run their own {@code similaritySearch} against the identical
+     * permission/threshold filter, and the results are fused rather than either search's result
+     * simply winning - proven here by each sub-query contributing a chunk the other's search never
+     * returned at all.
+     */
+    @Test
+    void multipleSubQueriesRunSeparateSearchesAndFuseTheResults() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(queryDecompositionService.decompose(eq("Kombifrage"), any(), eq(3)))
+          .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
+      var chunkA =
+          Document.builder()
+              .id("chunk-a")
+              .text("Content A")
+              .metadata(Map.of("file_name", "a.md", "document_id", "doc-a"))
+              .score(0.9)
+              .build();
+      var chunkB =
+          Document.builder()
+              .id("chunk-b")
+              .text("Content B")
+              .metadata(Map.of("file_name", "b.md", "document_id", "doc-b"))
+              .score(0.9)
+              .build();
+      // Null-safe: registering the second argThat below re-evaluates the first stub's matcher
+      // against Mockito's internal null-argument probe call, which would otherwise NPE.
+      when(vectorStore.similaritySearch(
+              argThat(
+                  (SearchRequest request) ->
+                      request != null && "Teilfrage A".equals(request.getQuery()))))
+          .thenReturn(List.of(chunkA));
+      when(vectorStore.similaritySearch(
+              argThat(
+                  (SearchRequest request) ->
+                      request != null && "Teilfrage B".equals(request.getQuery()))))
+          .thenReturn(List.of(chunkB));
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
+
+      verify(vectorStore, times(2)).similaritySearch(any(SearchRequest.class));
+      assertThat(response.getSources())
+          .extracting(ChatSource::getFileName)
+          .containsExactlyInAnyOrder("a.md", "b.md");
+    }
+
+    /** Every sub-query's {@code similaritySearch} call carries the identical permission filter. */
+    @Test
+    void everySubQuerysSearchCarriesTheSamePermissionFilter() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(queryDecompositionService.decompose(eq("Kombifrage"), any(), eq(3)))
+          .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      queryService.query("Kombifrage", null, caller, true, List.of());
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(vectorStore, times(2)).similaritySearch(captor.capture());
+      List<SearchRequest> requests = captor.getAllValues();
+      assertThat(requests.get(0).getFilterExpression())
+          .isEqualTo(requests.get(1).getFilterExpression());
+    }
+
+    /**
+     * An empty decomposition result (LLM failure or unparsable output, {@code
+     * QueryDecompositionService#decompose}'s documented failure signal) falls back to {@link
+     * QueryService#buildSearchQuery}'s pre-#923 single-query behaviour unchanged.
+     */
+    @Test
+    void emptyDecompositionResultFallsBackToBuildSearchQuery() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(queryDecompositionService.decompose(eq("Question"), any(), eq(3))).thenReturn(List.of());
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      queryService.query("Question", null, caller, true, List.of());
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(vectorStore, times(1)).similaritySearch(captor.capture());
+      assertThat(captor.getValue().getQuery()).isEqualTo("Question");
+    }
+
+    /** {@code queryDecompositionEnabled = false} skips the decomposition call entirely. */
+    @Test
+    void decompositionDisabledSkipsTheDecompositionServiceEntirely() {
+      QueryService serviceWithDecompositionDisabled =
+          new QueryService(
+              vectorStore,
+              answerGenerationService,
+              chatMemory,
+              new CitationParser(),
+              new CitationValidator(),
+              documentRepository,
+              libraryAccessService,
+              permissionHistoryService,
+              chatService,
+              new QueryMetrics(new SimpleMeterRegistry()),
+              new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3),
+              knowledgeLibraryRepository,
+              chunkEmbeddingLookup,
+              queryDecompositionService);
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      serviceWithDecompositionDisabled.query("Question", null, caller, true, List.of());
+
+      verifyNoInteractions(queryDecompositionService);
+    }
+
+    @Test
+    void perSubQueryBudgetDividesTopKAcrossSubQueriesFlooredAtThree() {
+      assertThat(QueryService.perSubQueryBudget(8, 1)).isEqualTo(8);
+      assertThat(QueryService.perSubQueryBudget(8, 2)).isEqualTo(4);
+      assertThat(QueryService.perSubQueryBudget(8, 3)).isEqualTo(3);
+      // ceil(8/5) = 2, floored up to the minimum of 3.
+      assertThat(QueryService.perSubQueryBudget(8, 5)).isEqualTo(3);
     }
   }
 

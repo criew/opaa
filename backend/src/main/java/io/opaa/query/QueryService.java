@@ -62,6 +62,7 @@ public class QueryService {
   private final QueryProperties queryProperties;
   private final KnowledgeLibraryRepository knowledgeLibraryRepository;
   private final ChunkEmbeddingLookup chunkEmbeddingLookup;
+  private final QueryDecompositionService queryDecompositionService;
 
   public QueryService(
       VectorStore vectorStore,
@@ -76,7 +77,8 @@ public class QueryService {
       QueryMetrics metrics,
       QueryProperties queryProperties,
       KnowledgeLibraryRepository knowledgeLibraryRepository,
-      ChunkEmbeddingLookup chunkEmbeddingLookup) {
+      ChunkEmbeddingLookup chunkEmbeddingLookup,
+      QueryDecompositionService queryDecompositionService) {
     this.vectorStore = vectorStore;
     this.answerGenerationService = answerGenerationService;
     this.chatMemory = chatMemory;
@@ -90,6 +92,7 @@ public class QueryService {
     this.queryProperties = queryProperties;
     this.knowledgeLibraryRepository = knowledgeLibraryRepository;
     this.chunkEmbeddingLookup = chunkEmbeddingLookup;
+    this.queryDecompositionService = queryDecompositionService;
   }
 
   /**
@@ -181,7 +184,14 @@ public class QueryService {
                 String conversationKey = currentUserId + ":" + effectiveChatId;
                 seedConversationMemoryFromPersistedHistory(chat, conversationKey);
 
-                String searchQuery = buildSearchQuery(question, conversationKey);
+                // #923: fetched once and reused both for decomposition and (on decomposition
+                // failure) the buildSearchQuery fallback below - not a second chatMemory.get() call
+                // per path, which would fetch the same history twice for no reason. Computed
+                // unconditionally, exactly like the pre-#923 buildSearchQuery call it replaces,
+                // even
+                // though its result goes unused on the empty-readable-scope short-circuit below.
+                List<Message> conversationHistory = chatMemory.get(conversationKey);
+                List<String> searchQueries = effectiveSearchQueries(question, conversationHistory);
 
                 long startTime = System.currentTimeMillis();
 
@@ -216,40 +226,16 @@ public class QueryService {
                         && chat.map(c -> chatService.spaceHasLibraryAssociations(c.getSpaceId()))
                             .orElse(false);
 
-                List<Document> candidateChunks =
+                List<Document> relevantChunks =
                     searchScope.isEmpty()
                         ? List.of()
-                        : vectorStore.similaritySearch(
-                            SearchRequest.builder()
-                                .query(searchQuery)
-                                .topK(queryProperties.fetchK())
-                                .similarityThreshold(queryProperties.similarityThreshold())
-                                .filterExpression(libraryFilter(searchScope))
-                                .build());
-                // MMR (#914) narrows fetchK candidates - already permission-scoped and
-                // threshold-filtered by the similaritySearch call above - down to topK. It is a
-                // post-selection within that already-authorized set, never an expansion of it (see
-                // this method's Javadoc's "Deliberately not @Transactional" section for the
-                // parallel invariant on the permission filter). At mmrLambda=1.0 the diversity term
-                // is always multiplied by zero (see MmrSelector#select's Javadoc), so the embedding
-                // lookup's one extra round trip per query is skipped entirely - it could not affect
-                // the result.
-                Map<String, float[]> candidateEmbeddings =
-                    queryProperties.mmrLambda() >= 1.0
-                        ? Map.of()
-                        : chunkEmbeddingLookup.findByIds(
-                            candidateChunks.stream().map(Document::getId).toList());
-                List<Document> relevantChunks =
-                    MmrSelector.select(
-                        candidateChunks,
-                        queryProperties.topK(),
-                        queryProperties.mmrLambda(),
-                        candidateEmbeddings);
+                        : retrieveRelevantChunks(searchQueries, searchScope);
 
                 log.debug(
-                    "Found {} candidate chunks, MMR-selected {} for query",
-                    candidateChunks.size(),
-                    relevantChunks.size());
+                    "Retrieved {} relevant chunks across {} search quer{} for query",
+                    relevantChunks.size(),
+                    searchQueries.size(),
+                    searchQueries.size() == 1 ? "y" : "ies");
 
                 // --- LLM call: the slowest step, and the reason no phase in this method carries a
                 // transaction - see this method's Javadoc's "Deliberately not @Transactional".
@@ -395,6 +381,108 @@ public class QueryService {
           asOf,
           mismatched);
     }
+  }
+
+  /**
+   * The search queries {@link #retrieveRelevantChunks} runs, one {@code similaritySearch} call each
+   * (#923, Maßnahmen B+C aus #912). {@link QueryDecompositionService#decompose} either returns 1 to
+   * {@link QueryProperties#maxSubQueries} self-contained queries - a single-topic question without
+   * context dependence typically decomposes to exactly one, replacing {@link #buildSearchQuery}'s
+   * "prepend the first chat message" heuristic on this path too, not only for a genuine multi-topic
+   * question - or an empty list on any failure (LLM error, unparsable output), in which case this
+   * method falls back to {@link #buildSearchQuery}'s pre-#923 behaviour unchanged: a single query,
+   * the plain question enriched with the first chat message when a conversation is under way.
+   * Disabled entirely via {@link QueryProperties#queryDecompositionEnabled} {@code = false}, which
+   * skips the LLM call and always takes this same fallback.
+   */
+  private List<String> effectiveSearchQueries(String question, List<Message> conversationHistory) {
+    List<String> subQueries =
+        queryProperties.queryDecompositionEnabled()
+            ? queryDecompositionService.decompose(
+                question, conversationHistory, queryProperties.maxSubQueries())
+            : List.of();
+    return subQueries.isEmpty()
+        ? List.of(buildSearchQuery(question, conversationHistory))
+        : subQueries;
+  }
+
+  /**
+   * Runs one permission- and threshold-scoped {@code similaritySearch} per entry in {@code
+   * searchQueries} against the identical {@code searchScope} filter (#923) - the ADR-0008 §5
+   * invariant {@link #query}'s Javadoc documents for the single-query path applies unchanged to
+   * every one of these calls, not just the first.
+   *
+   * <p><b>A single search query</b> (the common case: no decomposition, or a single-topic question
+   * decomposed to exactly one self-contained query) takes the pre-#923 path unchanged - {@code
+   * fetchK} candidates narrowed to {@code topK} by {@link MmrSelector}, see {@link #mmrSelect}.
+   *
+   * <p><b>Multiple search queries</b> each get their own {@code fetchK} candidate pool, {@link
+   * MmrSelector}-narrowed to {@link #perSubQueryBudget} chunks - <b>MMR runs within each
+   * sub-query's own candidate pool, not on the pooled result</b>: a sub-query's candidates share
+   * one topic (they came from one search vector), which is exactly the setting {@link
+   * MmrSelector}'s diversity term was built for, whereas running it on the cross-topic pooled
+   * result would trade off relevance against similarity to chunks from an unrelated sub-query's
+   * topic - a comparison the {@code mmrLambda} default was never measured against (see {@link
+   * QueryProperties#mmrLambda}). The per-sub-query results are then merged by {@link
+   * ReciprocalRankFusion#fuse}, deduplicated by chunk id, and capped at the overall {@link
+   * QueryProperties#topK} budget - never score-merged, since scores from different search vectors
+   * are not comparable (see {@link ReciprocalRankFusion}'s Javadoc).
+   */
+  private List<Document> retrieveRelevantChunks(List<String> searchQueries, Set<UUID> searchScope) {
+    Filter.Expression filter = libraryFilter(searchScope);
+    if (searchQueries.size() == 1) {
+      List<Document> candidates =
+          similaritySearch(searchQueries.get(0), queryProperties.fetchK(), filter);
+      return mmrSelect(candidates, queryProperties.topK());
+    }
+
+    int perSubQueryBudget = perSubQueryBudget(queryProperties.topK(), searchQueries.size());
+    List<List<Document>> rankedResultsPerSubQuery = new ArrayList<>(searchQueries.size());
+    for (String subQuery : searchQueries) {
+      List<Document> candidates = similaritySearch(subQuery, queryProperties.fetchK(), filter);
+      rankedResultsPerSubQuery.add(mmrSelect(candidates, perSubQueryBudget));
+    }
+    return ReciprocalRankFusion.fuse(rankedResultsPerSubQuery, queryProperties.topK());
+  }
+
+  private List<Document> similaritySearch(String query, int topK, Filter.Expression filter) {
+    return vectorStore.similaritySearch(
+        SearchRequest.builder()
+            .query(query)
+            .topK(topK)
+            .similarityThreshold(queryProperties.similarityThreshold())
+            .filterExpression(filter)
+            .build());
+  }
+
+  /**
+   * Narrows {@code candidates} (already permission-scoped and threshold-filtered by the {@code
+   * similaritySearch} call that produced them) down to {@code budget} chunks via {@link
+   * MmrSelector} - a post-selection within that already-authorized set, never an expansion of it
+   * (see {@link #query}'s Javadoc's "Deliberately not @Transactional" section for the parallel
+   * invariant on the permission filter). At {@code mmrLambda=1.0} the diversity term is always
+   * multiplied by zero (see {@link MmrSelector#select}'s Javadoc), so the embedding lookup's one
+   * extra round trip is skipped entirely - it could not affect the result.
+   */
+  private List<Document> mmrSelect(List<Document> candidates, int budget) {
+    Map<String, float[]> candidateEmbeddings =
+        queryProperties.mmrLambda() >= 1.0
+            ? Map.of()
+            : chunkEmbeddingLookup.findByIds(candidates.stream().map(Document::getId).toList());
+    return MmrSelector.select(candidates, budget, queryProperties.mmrLambda(), candidateEmbeddings);
+  }
+
+  /**
+   * The chunk budget one sub-query's own {@link MmrSelector} narrowing gets, out of the overall
+   * {@code topK} (#923): {@code ceil(topK / subQueryCount)}, floored at 3 so a question that
+   * decomposes into many sub-queries never starves any single topic down to a sliver too thin to be
+   * useful on its own - the total across every sub-query can then exceed {@code topK} before {@link
+   * ReciprocalRankFusion#fuse} caps the final, deduplicated result back down to it (#923's "Gesamt-
+   * Chunk-Budget in der Größenordnung topK" leitplanke - the final result is capped exactly at
+   * {@code topK}, the per-sub-query intermediate budget merely feeds that cap enough candidates).
+   */
+  static int perSubQueryBudget(int topK, int subQueryCount) {
+    return Math.max(3, (int) Math.ceil((double) topK / subQueryCount));
   }
 
   /**
@@ -763,8 +851,15 @@ public class QueryService {
     return 0;
   }
 
-  String buildSearchQuery(String question, String conversationId) {
-    List<Message> history = chatMemory.get(conversationId);
+  /**
+   * The pre-#923 fallback search query: the plain {@code question}, or - when a conversation is
+   * under way - the first user message of {@code history} prepended to it. {@link
+   * #effectiveSearchQueries} is the only caller since #923; {@code history} is fetched once there
+   * and passed in rather than this method reading {@link #chatMemory} itself, so a caller that
+   * already holds the history (to also feed {@link QueryDecompositionService#decompose}) does not
+   * pay for a second, redundant {@code chatMemory.get} call.
+   */
+  String buildSearchQuery(String question, List<Message> history) {
     if (history.isEmpty()) {
       return question;
     }
