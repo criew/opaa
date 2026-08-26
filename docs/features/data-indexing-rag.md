@@ -247,8 +247,7 @@ Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertba
 | **Wiederholversuche je Dokument** | 3 **(gebaut)** | Zuverlässigkeit von Quelle und Modelldienst | Weniger verlorene Dokumente, aber längere Läufe bei dauerhaft defekten Dateien |
 | **Teilfragen-Zerlegung (`query-decomposition-enabled`)** | an **(gebaut, #923)** | Ob Mehrthemen-Fragen getrennte Suchvektoren je Thema bekommen sollen | Kein Regler im eigentlichen Sinn (An/Aus) — deaktiviert lässt jede Frage wie vor #923 als eine einzige Suche laufen |
 | **Max. Teilfragen (`max-sub-queries`)** | 3 **(gebaut, #923)** | Wie viele eigenständige Themen eine Frage realistisch mischt | Mehr mögliche Teilthemen je Frage, aber mehr `similaritySearch`-Aufrufe und damit höhere Retrieval-Latenz |
-| **Max. Chunks je Dokument (`max-chunks-per-document`)** | 2 **(gebaut, #932/#934/#935)** | Wie oft ein Dokument mehrere, für sich relevante Detail-Chunks (z. B. Einleitung *und* Gebührentabelle) zur selben Frage beiträgt | Höherer Wert lässt ein Dokument mehr Kontext-Chunks stellen, verdrängt dafür stärker andere Dokumente aus der `top-k`-Auswahl; `1` schaltet die Dokument-Vervollständigung ab (Verhalten von vor #932) |
-| **Max. Chunks je Dokument nach der Fusion (`max-chunks-per-document`)** | 2 **(gebaut, #932)** | Wie oft ein einzelnes Dokument seine relevante Information über mehrere Chunks verteilt (z. B. Einleitung und Gebührentabelle getrennt) | Höherer Wert nimmt mehr Chunks desselben, bereits ausgewählten Dokuments bevorzugt vor einem neuen Dokument auf — bei `1` bleibt die Dokument-Vervollständigung vollständig aus (Vorzustand vor #932) |
+| **Max. Chunks je Dokument nach der Fusion (`max-chunks-per-document`)** | 2 **(gebaut, #932/#934/#935)** | Wie oft ein einzelnes Dokument seine relevante Information über mehrere Chunks verteilt (z. B. Einleitung und Gebührentabelle getrennt) | Höherer Wert nimmt mehr Chunks desselben, bereits ausgewählten Dokuments bevorzugt vor einem neuen Dokument auf — bei `1` bleibt die Dokument-Vervollständigung vollständig aus (Vorzustand vor #932) |
 
 **`fetch-k`/`mmr-lambda` steuern gemeinsam die Vielfaltsauswahl (Maximal Marginal Relevance, MMR,
 #914).** Die Vektorsuche holt zunächst `fetch-k` Kandidaten statt nur `top-k`. Daraus wählt MMR
@@ -335,7 +334,8 @@ Frage + Gesprächsverlauf
 ```
 
 **Jede Teilsuche trägt denselben Rechtefilter und dieselbe Ähnlichkeitsschwelle** wie die
-Einzelsuche vorher — keine Teilsuche ist von diesem Filter ausgenommen (ADR-0008 §5). Das
+Einzelsuche vorher — keine Teilsuche ist von diesem Filter ausgenommen (siehe
+[Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit)). Das
 Chunk-Budget verteilt sich pro Teilfrage auf `ceil(top-k / Anzahl Teilfragen)`, mindestens 3, damit
 keine Teilfrage auf eine zu dünne Auswahl schrumpft; die zusammengeführte, deduplizierte Endauswahl
 bleibt dabei auf `top-k` gedeckelt.
@@ -414,21 +414,11 @@ einzigen Chunk stellte — genau der Fall, den #912 beheben sollte):
 
 Das Gesamtbudget bleibt `top-k`, unverändert gegenüber dem Stand vor #932.
 
-### Dokument-Vervollständigung (#932/#934/#935)
-
-Fusion und MMR wählen chunkweise, nicht dokumentweise: Ein Dokument, dessen Detail-Chunk (etwa eine
-Gebührentabelle) für die Frage eigentlich passt, kann trotzdem leer ausgehen, wenn der einleitende
-Chunk desselben Dokuments in der Rangliste vor ihm liegt und die `top-k`-Plätze bereits an andere Dokumente
-vergeben sind. `DocumentCompletion` läuft deshalb als letzter Schritt nach Fusion/MMR und lässt ein
-bereits vertretenes Dokument bis zu `max-chunks-per-document` Chunks aus dem ohnehin bereits
-berechtigungs- und schwellenwertgefilterten Kandidatenpool nachziehen, bevor ein weiteres, noch nicht
-vertretenes Dokument den letzten Platz bekommt. Der vollständige Ablauf mit beiden Verdrängungsstufen
-steht in [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md#6-dokument-vervollständigung).
-
-**Der komplette, aktuelle Ablauf einer Anfrage — jeder Schritt mit Klasse, Parametern und Defaults —
-steht in [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md).** Dieser Abschnitt und die
-Stellschrauben-Tabelle bleiben die Quelle der Wahrheit für die Parameter selbst; das verlinkte Dokument
-ordnet sie in den Ablauf ein.
+**Der komplette, aktuelle Ablauf einer Anfrage — jeder Schritt mit Klasse, Parametern und Defaults, samt
+beider Verdrängungsstufen dieses Abschnitts — steht in
+[Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md#6-dokument-vervollständigung).** Dieser
+Abschnitt und die Stellschrauben-Tabelle bleiben die Quelle der Wahrheit für die Parameter selbst; das
+verlinkte Dokument ordnet sie in den Ablauf ein.
 
 ### Speicherung und Filterachse
 

@@ -20,7 +20,8 @@ sie wird hier nicht dupliziert, nur je Schritt referenziert. Quelle des Codes is
 
 Eine Anfrage (`QueryService#query`) durchläuft die folgenden sieben Schritte der Reihe nach. Jeder Schritt
 arbeitet nur mit dem, was der vorherige ihm übergibt — kein Schritt weitet die Berechtigungs- oder
-Kandidatenmenge eines früheren wieder auf.
+Ähnlichkeitsschwellengrenze eines früheren wieder auf (die Kandidatenmenge selbst schöpft Schritt 6
+weiterhin aus dem in Schritt 3 gebildeten Pool, siehe dort).
 
 ### 1. Scope-Bestimmung
 
@@ -34,9 +35,11 @@ lesbaren Bibliotheken, `useKnowledge = false` → `requestedLibraryIds ∩ reada
 lesbare Menge hinaus erweitert). Die lesbaren Bibliotheken selbst liefert
 `LibraryAccessService#readableLibraryIds`; der resultierende Suchbereich (`searchScope`, eine Menge von
 Bibliotheks-Kennungen) wird als `library_id IN (...)`-Filter (`QueryService#libraryFilter`) **Teil des
-`similaritySearch`-Aufrufs selbst**, nicht ein Filter auf dessen Ergebnis (ADR-0008 §5 — siehe die
-Javadoc-Begründung an `QueryService#query`). Ein leerer Suchbereich beendet die Suche sofort mit null
-Chunks, ohne dass die folgenden Schritte überhaupt aufgerufen werden.
+`similaritySearch`-Aufrufs selbst**, nicht ein Filter auf dessen Ergebnis (siehe
+[Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit) sowie die
+Javadoc-Begründung an `QueryService#query`). Ein leerer Suchbereich überspringt die Schritte 2–6
+vollständig (`relevantChunks = List.of()`, keine der dortigen Aufrufe läuft) — Schritt 7 läuft trotzdem,
+mit null Chunks im Kontext, und markiert das Ergebnis über `QueryOutcome#answeredWithoutKnowledge`.
 
 ### 2. LLM-Teilfragen-Zerlegung/Reformulierung
 
@@ -95,14 +98,19 @@ aus den bereits berechtigungs- und schwellenwertgefilterten Kandidaten von Schri
 hinaus. Ziel: Ein Dokument, das mit einem Chunk bereits in der Auswahl vertreten ist, darf bis zu
 `opaa.query.max-chunks-per-document` (`OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT`, Default `2`) Chunks stellen,
 bevor ein Chunk eines anderen Dokuments den verbleibenden Platz bekommt — die Abhilfe für den Fall, dass
-RRF/MMR den Gebühren-Chunk eines Dokuments zugunsten der Einleitung desselben Dokuments verdrängt hatten
+der Gebühren-Chunk eines Dokuments in RRF/MMR gegen Chunks *anderer* Dokumente verlor, weil der
+Einleitungs-Chunk desselben Dokuments dort besser rankte und dessen Platz belegte
 (siehe [#932](https://github.com/criew/opaa/issues/932)). Zwei Verdrängungsstufen: **Stufe 1** entfernt den
 auswahlrang-schwächsten Chunk eines anderen, bereits mit ≥2 Chunks vertretenen Dokuments — die
 Dokumentvielfalt sinkt dabei nie unter das, was Fusion/MMR bereits hergestellt hatten. **Stufe 2** greift
 nur, wenn Stufe 1 keine Quelle findet: Sie darf den auswahlrang-letzten Chunk der Gesamtauswahl verdrängen,
 aber nur wenn das vervollständigende Dokument mit seinem besten Chunk strikt besser rankt als das Opfer,
 gedeckelt auf `max(1, top-k / 4)` Verdrängungen je Aufruf — ohne diesen Deckel könnte eine
-Acht-Themen-Auswahl in einem einzigen Aufruf auf eine Handvoll Dokumente schrumpfen. `max-chunks-per-document
+Acht-Themen-Auswahl in einem einzigen Aufruf auf eine Handvoll Dokumente schrumpfen. Zwei Schutzregeln
+gelten stufenübergreifend: Ein in diesem Aufruf bereits vervollständigtes Dokument scheidet für ein
+weiteres Dokument als Stufe-1-Quelle aus (`completedDocumentKeys`), und ein Chunk, den eine Vervollständigung
+in diesem Aufruf hinzugefügt hat, kann in keiner der beiden Stufen selbst zum Opfer werden — eine
+Vervollständigung kann eine frühere im selben Aufruf also nie rückgängig machen. `max-chunks-per-document
 = 1` schaltet die Vervollständigung vollständig ab (Verhalten von vor #932).
 
 ### 7. Antwortgenerierung, Zitatvalidierung, Quellen-Mapping
