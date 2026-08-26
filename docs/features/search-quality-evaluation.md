@@ -397,8 +397,9 @@ den Indextyp für die Evaluierung konfigurierbar zu machen und exakte Suche zu v
 > Konzept aus [`demo-instance.md`](./demo-instance.md) (Epic #708) abgelöst: Die Demo läuft heute mit
 > dem eigenständigen, synthetischen Verwaltungskorpus der fiktiven Stadt Rheinfurt, getrennt vom
 > Eval-Korpus, der ausschließlich Messartefakt bleibt (siehe `demo-instance.md`, „Motivation" und
-> „Integrationspunkte"). Installation, Nutzerkonten und Drehbuch dieser Demo-Instanz stehen in
-> [`../demo-walkthrough.md`](../handbuch/demo-walkthrough.md). Der Rest dieses Abschnitts bleibt als
+> „Integrationspunkte"). Installation und Nutzerkonten dieser Demo-Instanz stehen in
+> [`../../demo/README.md`](../../demo/README.md), das Drehbuch in
+> [`../market/demo-drehbuch.md`](../market/demo-drehbuch.md). Der Rest dieses Abschnitts bleibt als
 > historischer Kontext stehen.
 
 ### Ablauf

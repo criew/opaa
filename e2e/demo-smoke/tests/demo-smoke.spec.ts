@@ -10,13 +10,13 @@ import { askQuestion, expectAnyCitedSource, startFreshChat } from '../../fixture
  * By design there is exactly one scenario here, per the issue's own acceptance criteria: this
  * proves the chain Compose -> Seed -> Keycloak login -> connectors -> search works end to end,
  * nothing about the Rheinfurt corpus's actual content - assertions on demo content belong to
- * docs/handbuch/demo-walkthrough.md's manually verified drehbuch, not to a test that runs in CI against a
+ * docs/market/demo-drehbuch.md's manually verified drehbuch, not to a test that runs in CI against a
  * corpus that is explicitly allowed to keep evolving (docs/features/demo-instance.md, "Grund ist
  * Kopplung").
  */
 
 const DEMO_USERNAME = 'maria.weber'
-// Documented demo value, not a secret (demo/README.md, "Demo-Zugangsdaten";
+// Documented demo value, not a secret (demo/README.md, "Nutzerkonten";
 // demo/seed/profiles.py's DEMO_PASSWORD) - shared by every account in the realm.
 const DEMO_PASSWORD = 'RheinfurtDemo!2026'
 
@@ -60,9 +60,8 @@ test.describe('Demo-Smoke (#232)', () => {
     ).toBeVisible()
 
     await startFreshChat(page)
-    // "Gebührenfrage" from docs/features/demo-instance.md's "Demo-Drehbuch (Skizze)", question 1
-    // (also ausformuliert in docs/handbuch/demo-walkthrough.md, #713) - guaranteed to have an answer in the
-    // corpus (demo/generator, #711) and readable by every fach account, Maria included
+    // "Gebührenfrage" from docs/market/demo-drehbuch.md, question 1 (#713) - guaranteed to have an
+    // answer in the corpus (demo/generator, #711) and readable by every fach account, Maria included
     // (docs/features/demo-instance.md, "Nutzer, Spaces und Berechtigungen"). The concrete wording
     // is symbolic with ai-stub, though: every input gets the same embedding vector (see
     // e2e/README.md, "KI-Stub statt echtem Modell"), so which chunks reach this answer is decided

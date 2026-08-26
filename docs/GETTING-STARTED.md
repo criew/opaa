@@ -215,6 +215,9 @@ Mitarbeit
 └── docs/AGENT-ORGANIZATION.md — Rollen und Workflow
 
 Handbuch (docs/handbuch/) — das gebaute Produkt benutzen
-├── deployment.md          — Installation und Betrieb
-└── demo-walkthrough.md    — Demo-Instanz: Installation, Konten, Drehbuch
+└── deployment.md          — Installation und Betrieb
+
+Demo und Vorführung
+├── demo/README.md         — Demo-Instanz: Installation, Konten, öffentliche Instanz
+└── docs/market/demo-drehbuch.md — Vorführ-Drehbuch mit acht Fragen
 ```
