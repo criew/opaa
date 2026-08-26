@@ -289,24 +289,15 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void chunkMetadataIsCarriedForFilteringButOnlyContextTitleEnrichesWhatGetsEmbedded()
-      throws IOException {
-    // Issue #773 (and widened by #933, "Contextual Chunking"): EmbeddingModel#getEmbeddingContent
-    // (Document) - what actually gets sent to the embedding call for every document
-    // VectorStore#add batches - defaults to Document#getFormattedContent(MetadataMode), and
-    // org.springframework.ai.openai.OpenAiEmbeddingModel (the only embedding path since #762)
-    // defaults its own metadataMode to MetadataMode.EMBED. Without CHUNK_EMBED_CONTENT_FORMATTER
-    // excluding this chunk's bookkeeping keys, MetadataMode.EMBED would prepend all of them - two
-    // random UUIDs, an index, a filename, a second random UUID - ahead of the real chunk text,
-    // degrading retrieval quality (see FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER's own
-    // Javadoc for the measured effect: cosine similarity between a query and its correct document
-    // dropped from 0.698 to 0.357 with this contamination). #933 deliberately widens the whitelist
-    // by exactly one derived key (context_title, a humanized title - not the raw file_name, see
-    // ChunkContextTitle and the formatter's own Javadoc for why) to restore document-context signal
-    // a lone chunk otherwise loses. The metadata itself must still reach the vector store row - the
-    // permission-aware query filter (#202) and citations depend on it - so this is about what
-    // MetadataMode.EMBED formats into embeddable text, not about removing the metadata map itself
-    // (covered by the test directly above).
+  void aSingleChunkDocumentEmbedsByteIdenticalToBeforeIssue933() throws IOException {
+    // Issue #773 (whitelist itself) and #933 review ("gesplittet ja/nein"): a document
+    // ChunkingService left as a single chunk gets NO contextual-title prefix at all - see
+    // FileProcessingService#storeChunks's Javadoc for why (the comic-characters eval baseline
+    // regressed once every chunk, including whole unsplit documents, got prefixed). What actually
+    // gets sent to the embedding call (EmbeddingModel#getEmbeddingContent(Document), defaulting to
+    // Document#getFormattedContent(MetadataMode.EMBED) for org.springframework.ai.openai.
+    // OpenAiEmbeddingModel, the only embedding path since #762) must therefore be byte-identical to
+    // the plain chunk text, exactly as it was before #933 ever existed.
     Path file = tempDir.resolve("embed-content.txt");
     Files.writeString(file, "some content");
 
@@ -333,21 +324,70 @@ class FileProcessingServiceTest {
 
     // The metadata is still there for filtering/citation...
     assertThat(storedChunk.getMetadata()).containsKey("library_id");
-    // ...the stored content column (getText()) stays exactly the chunk text, unprefixed - only
-    // what is embedded changes (see the formatter's own Javadoc, "Embedding-only" section)...
+    // ...it deliberately carries no context_title at all for a single-chunk document (nothing to
+    // derive a prefix from that would ever be used)...
+    assertThat(storedChunk.getMetadata()).doesNotContainKey("context_title");
+    // ...the stored content column (getText()) stays exactly the chunk text, unprefixed...
     assertThat(storedChunk.getText()).isEqualTo("the real chunk text to embed");
-    // ...but MetadataMode.EMBED - what an OpenAiEmbeddingModel actually sends to be embedded -
-    // must be exactly "[<humanized title>]\n\n<chunk text>": CHUNK_EMBED_CONTENT_FORMATTER
-    // overrides both the excluded metadata keys AND the text template (see its own Javadoc for why
-    // the template override matters even with every other key excluded), so this is a real
-    // whitelist of the derived title plus content - not just "no bookkeeping-key substrings
-    // present" - and stays a guard against a seventh bookkeeping key ever being added to
-    // storeChunks's metadata map without also being added to the exclusion list above: an unlisted
-    // key would show up here as an unexpected third component, not as a silent, easy-to-miss
-    // near-miss. "embed-content.txt" has no structural index prefix to strip (see
-    // ChunkContextTitleTest), so its derived title is just its separators replaced with spaces.
+    // ...and MetadataMode.EMBED - what an OpenAiEmbeddingModel actually sends to be embedded -
+    // must be exactly the chunk text too, byte for byte: CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX
+    // is the unchanged #773 whitelist, so a single-chunk document's embedding input is
+    // bit-identical
+    // to before #933.
     assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
-        .isEqualTo("[embed content]\n\nthe real chunk text to embed");
+        .isEqualTo("the real chunk text to embed");
+  }
+
+  @Test
+  void aMultiChunkDocumentEmbedsWithAHumanizedContextTitlePrefix() throws IOException {
+    // The counterpart to the single-chunk test above: a document ChunkingService split into 2 or
+    // more chunks gets every chunk prefixed with a humanized title derived from file_name (#933,
+    // "Contextual Chunking") - see FileProcessingService#storeChunks's Javadoc for the split-count
+    // gate and ChunkContextTitle for the title-derivation contract.
+    Path file = tempDir.resolve("001_embed-content.txt");
+    Files.writeString(file, "some content");
+
+    when(checksumService.computeSha256(file)).thenReturn("abc123");
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks =
+        List.of(
+            new org.springframework.ai.document.Document("first chunk text"),
+            new org.springframework.ai.document.Document("second chunk text"));
+    when(chunkingService.chunkDocuments(eq("001_embed-content.txt"), eq(parsed)))
+        .thenReturn(chunks);
+
+    service.processFile(file, targetLibrary);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStore).add(chunkCaptor.capture());
+    List<org.springframework.ai.document.Document> storedChunks = chunkCaptor.getValue();
+
+    // The stored content column stays exactly the chunk text, unprefixed, for every chunk (see
+    // CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX's own Javadoc, "Embedding-only" section)...
+    assertThat(storedChunks.get(0).getText()).isEqualTo("first chunk text");
+    assertThat(storedChunks.get(1).getText()).isEqualTo("second chunk text");
+    // ...but MetadataMode.EMBED prefixes every one of this document's chunks identically with the
+    // humanized title - "001_embed-content.txt" strips its numeric index prefix (see
+    // ChunkContextTitleTest) to "embed content".
+    assertThat(
+            storedChunks
+                .get(0)
+                .getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
+        .isEqualTo("[embed content]\n\nfirst chunk text");
+    assertThat(
+            storedChunks
+                .get(1)
+                .getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
+        .isEqualTo("[embed content]\n\nsecond chunk text");
   }
 
   @Test

@@ -33,16 +33,39 @@ public class FileProcessingService {
   /**
    * The metadata key carrying the humanized title {@link ChunkContextTitle#deriveTitle} derives
    * from a chunk's {@code file_name} - embedding-only input for {@link
-   * #CHUNK_EMBED_CONTENT_FORMATTER}, never read for citations/filtering (those keep using {@code
-   * file_name} itself, unaffected by #933).
+   * #CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX}, never read for citations/filtering (those keep
+   * using {@code file_name} itself, unaffected by #933). Only ever populated on a chunk belonging
+   * to a document that split into 2 or more chunks - see {@link #storeChunks}'s Javadoc for why.
    */
   private static final String CONTEXT_TITLE_METADATA_KEY = "context_title";
 
   /**
+   * The #773 whitelist, unchanged since before #933: excludes every bookkeeping key from {@code
+   * EMBED} formatting and reduces the text template to the bare chunk content, so {@code
+   * getFormattedContent(EMBED)} is byte-identical to {@code getText()}. Applied to a chunk of a
+   * document {@link #storeChunks} determined split into exactly one chunk - see that method's
+   * Javadoc for why such a chunk gets no contextual prefix at all, not even the humanized-title one
+   * {@link #CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX} applies to multi-chunk documents.
+   */
+  private static final ContentFormatter CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX =
+      DefaultContentFormatter.builder()
+          .withExcludedEmbedMetadataKeys(
+              VectorChunkStore.DOCUMENT_ID_METADATA_KEY,
+              "chunk_index",
+              "file_name",
+              VectorChunkStore.LIBRARY_ID_METADATA_KEY,
+              "organization_id",
+              ChunkingService.LOCATION_METADATA_KEY)
+          .withTextTemplate("{content}")
+          .build();
+
+  /**
    * Whitelists exactly two inputs into {@link org.springframework.ai.document.MetadataMode#EMBED}
    * formatting: the chunk's own text, and a humanized document title as a contextual prefix (#933,
-   * "Contextual Chunking"). Every other bookkeeping key {@link #storeChunks} attaches to a chunk's
-   * {@code metadata} (permission-filter/citation plumbing, never semantic content) stays excluded.
+   * "Contextual Chunking"), applied only to chunks of a document {@link #storeChunks} split into 2
+   * or more chunks - see that method's Javadoc for the split-count gate and why it exists. Every
+   * other bookkeeping key {@link #storeChunks} attaches to a chunk's {@code metadata}
+   * (permission-filter/citation plumbing, never semantic content) stays excluded.
    *
    * <p>{@link org.springframework.ai.document.Document#getFormattedContent(
    * org.springframework.ai.document.MetadataMode)} is what {@code
@@ -96,7 +119,8 @@ public class FileProcessingService {
    * {@code chunk-size}'s configured budget plus a small, per-chunk constant (the derived title's
    * own token count, typically well under ten tokens, usually shorter than the raw file name it
    * came from) - negligible against every configured embedding backend's input limit, so no
-   * adjustment to {@code chunk-size} is needed or made.
+   * adjustment to {@code chunk-size} is needed or made. See {@link #storeChunks}'s Javadoc for why
+   * the split-count gate itself must never see this prefix (non-circularity).
    *
    * <p>{@link DefaultContentFormatter}'s {@code textTemplate} only recognizes the two placeholders
    * {@code {content}} and {@code {metadata_string}} - it has no per-key placeholder syntax, so a
@@ -111,7 +135,7 @@ public class FileProcessingService {
    * holds: only the derived title and the chunk text can ever appear in the formatted output,
    * regardless of which or how many keys a future change adds to the metadata map.
    */
-  private static final ContentFormatter CHUNK_EMBED_CONTENT_FORMATTER =
+  private static final ContentFormatter CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX =
       DefaultContentFormatter.builder()
           .withExcludedEmbedMetadataKeys(
               VectorChunkStore.DOCUMENT_ID_METADATA_KEY,
@@ -614,17 +638,40 @@ public class FileProcessingService {
     }
   }
 
+  /**
+   * Enriches {@code chunks} with permission-filter/citation metadata and, for a document that split
+   * into 2 or more chunks, the {@link #CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX} contextual title
+   * prefix (#933 review, "gesplittet ja/nein"). A document that {@link
+   * ChunkingService#chunkDocuments} left as a single chunk gets {@link
+   * #CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX} instead - byte-identical to the pre-#933 embedding
+   * input. Rationale: the prefix restores document context a chunk lost by being *split out* of its
+   * surroundings; a chunk that was never split still carries its full document as its own content,
+   * so the prefix would only dilute it, not add signal - exactly what the comic-characters eval
+   * baseline measured (#933 review: hitRateAt5 regressed 0.521 → 0.496 when every chunk, including
+   * whole, unsplit documents, got the prefix).
+   *
+   * <p><b>Non-circularity of the split-count gate.</b> {@code chunks} is {@link
+   * ChunkingService#chunkDocuments}'s own, already-final output - the gate below only reads {@code
+   * chunks.size()}, it never re-splits or re-measures anything itself. This is deliberate, not
+   * incidental: {@link ChunkingService#chunkDocuments} has no notion of a contextual prefix at all
+   * and only ever sees the parsed document text, so the split decision this method gates on is
+   * always made against prefix-free content. Were the gate instead based on a post-prefix token
+   * count, it would be circular - whether a document needs a prefix would depend on whether adding
+   * the prefix pushes it over the split threshold, which depends on whether it gets a prefix.
+   *
+   * <p>library_id and organization_id are the filter axis the permission-aware vector search
+   * filters on - carried on every chunk, not just the document row, so search can apply the filter
+   * directly in the VectorStore query without a join back to the relational model (see
+   * docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
+   *
+   * <p>Document#getSourceEntryUrl is deliberately NOT duplicated into chunk metadata here:
+   * document_id already rides on every chunk and QueryService#lookupSourceDocuments resolves both
+   * indexedAt and sourceEntryUrl via a single lookup by that id, avoiding a second copy per chunk
+   * that could drift from the document row.
+   */
   private void storeChunks(
       Document document, List<org.springframework.ai.document.Document> chunks) {
-    // library_id and organization_id are the filter axis the permission-aware vector search
-    // filters on - carried on every chunk, not just the document row, so search can apply the
-    // filter directly in the VectorStore query without a join back to the relational model (see
-    // docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
-    //
-    // Document#getSourceEntryUrl is deliberately NOT duplicated into chunk metadata here:
-    // document_id already rides on every chunk and QueryService#lookupSourceDocuments resolves
-    // both indexedAt and sourceEntryUrl via a single lookup by that id, avoiding a second copy per
-    // chunk that could drift from the document row.
+    boolean documentWasSplit = chunks.size() >= 2;
 
     List<org.springframework.ai.document.Document> enriched =
         chunks.stream()
@@ -639,9 +686,11 @@ public class FileProcessingService {
                   metadata.put(
                       VectorChunkStore.LIBRARY_ID_METADATA_KEY, document.getLibraryId().toString());
                   metadata.put("organization_id", document.getOrganizationId().toString());
-                  metadata.put(
-                      CONTEXT_TITLE_METADATA_KEY,
-                      ChunkContextTitle.deriveTitle(document.getFileName()));
+                  if (documentWasSplit) {
+                    metadata.put(
+                        CONTEXT_TITLE_METADATA_KEY,
+                        ChunkContextTitle.deriveTitle(document.getFileName()));
+                  }
                   // The chunk's Fundort, when ChunkingService could derive one.
                   Object location = chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
                   if (location != null) {
@@ -649,9 +698,14 @@ public class FileProcessingService {
                   }
                   org.springframework.ai.document.Document enrichedChunk =
                       new org.springframework.ai.document.Document(chunk.getText(), metadata);
-                  // Keep this bookkeeping metadata out of what actually gets embedded - see
-                  // CHUNK_EMBED_CONTENT_FORMATTER's own Javadoc.
-                  enrichedChunk.setContentFormatter(CHUNK_EMBED_CONTENT_FORMATTER);
+                  // Keep this bookkeeping metadata out of what actually gets embedded, and gate
+                  // the contextual-title prefix itself on the split-count decision above - see
+                  // this method's own Javadoc and the two formatters' Javadoc for the full
+                  // rationale.
+                  enrichedChunk.setContentFormatter(
+                      documentWasSplit
+                          ? CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX
+                          : CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX);
                   return enrichedChunk;
                 })
             .toList();

@@ -5,15 +5,17 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * Derives the human-readable title {@link FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER}
- * prepends to every chunk's embedding (#933, "Contextual Chunking"). Contract: strip the file
- * extension, strip a leading run of purely structural tokens (a numbering scheme like {@code
- * "001_"}, {@code "07_"}, or a short tag-plus-number pair like {@code "city-0022_"}), then replace
- * the remaining {@code _}/{@code -} separators with spaces. Deliberately filename-only - it does
- * not read document content (a first heading, Tika's {@code dc:title}) even though that would often
- * produce a better title, to keep the contract a pure, deterministic function of the file name
- * alone; see {@link FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER}'s Javadoc for why that
- * scope was chosen for #933.
+ * Derives the human-readable title {@link
+ * FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX} prepends to a multi-chunk
+ * document's chunk embeddings (#933, "Contextual Chunking"). Contract: strip the file extension,
+ * strip a leading run of purely structural tokens (a numbering scheme like {@code "001_"}, {@code
+ * "07_"}, or a short tag-plus-number pair like {@code "city-0022_"}), then replace the remaining
+ * {@code _}/{@code -} separators with spaces. Deliberately filename-only - it does not read
+ * document content (a first heading, Tika's {@code dc:title}) even though that would often produce
+ * a better title, to keep the contract a pure, deterministic function of the file name alone; see
+ * {@link FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX}'s Javadoc for why that
+ * scope was chosen for #933, and {@link FileProcessingService#storeChunks}'s Javadoc for why this
+ * title is only ever applied to a document that split into 2 or more chunks.
  *
  * <ul>
  *   <li>{@code "001_personalausweis.md"} → {@code "personalausweis"}
