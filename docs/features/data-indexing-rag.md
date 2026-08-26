@@ -108,11 +108,18 @@ Drei Bedingungen, alle deterministisch, alle nach der Erzeugung und vor der Ausl
 `#n` oder mit einem Zeichen in der Kennung, das der Parser nicht zulässt —, wird gar nicht erst als Beleg
 erkannt und damit weder geprüft noch gekennzeichnet.
 
-**Was die Prüfung ausdrücklich nicht prüft:** ob die zitierte Fundstelle die Aussage **inhaltlich trägt**.
-Ein formal gültiger Beleg ist der Nachweis, dass eine real abgerufene Passage benannt wurde — nicht der
-Nachweis, dass sie das Behauptete aussagt. Ein Modell kann eine korrekt bestehende Fundstelle an einen Satz
-hängen, mit dem sie nichts zu tun hat, und die Prüfung lässt das durch. Diese inhaltliche Deckungsprüfung
-bräuchte einen zweiten Modelldurchlauf und ist bewusst nicht gebaut (siehe unten).
+**Ergänzt um eine deterministische Faktenprüfung** (#937): Ein formal gültiger Beleg wird zusätzlich
+gegen den Text des zitierten Chunks geprüft, für den Satz, der unmittelbar vor dem Zitatmarker steht.
+Extrahiert werden harte Fakten — Geldbeträge, Daten, Paragraphen-Referenzen, sonstige Zahlen mit
+Tausendertrennzeichen oder Dezimalkomma — und normalisiert verglichen (`CitationFactChecker`). Fehlt ein
+extrahierter Fakt im zitierten Chunk, wird der Beleg auf ungültig zurückgestuft. Ein Satz ohne
+extrahierbaren Fakt bleibt unangetastet: Ein fälschlich geflaggter korrekter Beleg wiegt schwerer als ein
+übersehener Fehler, deshalb prüft dieser Schritt nur, was sich eindeutig extrahieren lässt, und stuft nie
+ohne einen konkreten, fehlenden Fakt zurück. Das ist weiterhin keine allgemeine inhaltliche
+Stützungsprüfung: Ein Modell kann eine korrekt bestehende Fundstelle an einen Satz ohne harten Fakt hängen,
+mit dem sie inhaltlich nichts zu tun hat, und die Prüfung lässt das durch. Eine solche allgemeine
+Stützungsprüfung (Entailment) bräuchte einen zweiten Modelldurchlauf und ist bewusst nicht gebaut (siehe
+unten).
 
 #### Was mit einem ungültigen Beleg passiert
 
@@ -147,8 +154,11 @@ Das Modell kommuniziert bereits selbst, wenn es nichts gefunden hat, und fehlend
 im Belegfenster unmittelbar sichtbar. Die Belegvalidierung stellt sicher, dass die vorhandenen Belege echt
 sind; ein Zwangs- und Verweigerungsapparat darüber — mit Abschnittszerlegung samt Negativliste, einer
 Formregel gegen Belegverdünnung und einem eigenen Schalter am Space — stünde in keinem Verhältnis zum
-Nutzen. Damit entfällt auch die inhaltliche Deckungsprüfung (Stufe 2): Ohne den Verweigerungsapparat, den
-sie hätte absichern sollen, fehlt ihr die Grundlage.
+Nutzen. Damit entfällt auch eine allgemeine, LLM-gestützte Stützungsprüfung (Entailment, historisch als
+„Stufe 2" bezeichnet): Ohne den Verweigerungsapparat, den sie hätte absichern sollen, fehlt ihr die
+Grundlage. Die enger gefasste, deterministische Faktenprüfung aus #937 (oben) fällt nicht unter diese
+Entscheidung — sie kommt ohne zweiten Modellaufruf und ohne Verweigerungsapparat aus und verschärft
+lediglich das bestehende `citationValid`-Signal.
 
 ### Konfidenz
 

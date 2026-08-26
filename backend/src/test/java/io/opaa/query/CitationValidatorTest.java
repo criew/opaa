@@ -148,4 +148,88 @@ class CitationValidatorTest {
   void returnsEmptyListWhenNoCitationsGiven() {
     assertThat(validator.validate(List.of(), List.of(chunk("doc-1", 0, "readme.md")))).isEmpty();
   }
+
+  private static Document chunkWithText(
+      String documentId, int chunkIndex, String fileName, String text) {
+    return Document.builder()
+        .text(text)
+        .metadata(
+            Map.of(
+                "document_id", documentId,
+                "chunk_index", String.valueOf(chunkIndex),
+                "file_name", fileName))
+        .build();
+  }
+
+  /**
+   * #937 regression: the Drehbuch-Frage-1 case - a fee retrieval-valid citation whose cited chunk
+   * does not actually contain the amount the answer names must be flagged invalid, even though it
+   * would pass the pre-#937 retrieval-only check.
+   */
+  @Test
+  void flagsARetrievalValidCitationWhoseCitedChunkDoesNotContainTheStatedAmount() {
+    String chunkText =
+        "Die Gebühr für einen Personalausweis beträgt 27,20 €. Bei Express-Bearbeitung fallen"
+            + " zusätzlich 44,20 € an. Kinder unter 12 Jahren zahlen 12 €.";
+    String answer = "Die Gebühr beträgt 25,70 € 【source: doc-1#0 | 001_personalausweis.md】.";
+    List<ParsedCitation> citations =
+        List.of(new ParsedCitation("doc-1", 0, "001_personalausweis.md"));
+    List<Document> retrievedChunks =
+        List.of(chunkWithText("doc-1", 0, "001_personalausweis.md", chunkText));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result)
+        .containsExactly(new ValidatedCitation("doc-1", 0, "001_personalausweis.md", false));
+  }
+
+  /** #937 regression: the same case's positive counterpart - the amount actually in the chunk. */
+  @Test
+  void keepsARetrievalValidCitationWhoseCitedChunkContainsTheStatedAmount() {
+    String chunkText = "Die Gebühr für einen Personalausweis beträgt 27,20 €.";
+    String answer = "Die Gebühr beträgt 27,20 € 【source: doc-1#0 | 001_personalausweis.md】.";
+    List<ParsedCitation> citations =
+        List.of(new ParsedCitation("doc-1", 0, "001_personalausweis.md"));
+    List<Document> retrievedChunks =
+        List.of(chunkWithText("doc-1", 0, "001_personalausweis.md", chunkText));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result)
+        .containsExactly(new ValidatedCitation("doc-1", 0, "001_personalausweis.md", true));
+  }
+
+  /**
+   * #937 conservativity contract at the {@link CitationValidator} layer: a citation whose statement
+   * carries no extractable hard fact stays at the retrieval-based verdict, unaffected by the
+   * content check.
+   */
+  @Test
+  void keepsARetrievalValidCitationWhenTheStatementHasNoExtractableFact() {
+    String answer = "Das Verfahren ist unkompliziert 【source: doc-1#0 | readme.md】.";
+    List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "readme.md"));
+    List<Document> retrievedChunks =
+        List.of(chunkWithText("doc-1", 0, "readme.md", "Völlig unabhängiger Text ohne Zahlen."));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, answer);
+
+    assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "readme.md", true));
+  }
+
+  /**
+   * #937: the 2-arg overload (no answer text) never runs the content check - a caller with no
+   * answer text available keeps exactly the pre-#937 retrieval-only behaviour.
+   */
+  @Test
+  void twoArgOverloadSkipsTheContentCheckEvenForAnUnsupportedAmount() {
+    List<ParsedCitation> citations =
+        List.of(new ParsedCitation("doc-1", 0, "001_personalausweis.md"));
+    List<Document> retrievedChunks =
+        List.of(chunkWithText("doc-1", 0, "001_personalausweis.md", "Die Gebühr beträgt 27,20 €."));
+
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks);
+
+    assertThat(result)
+        .containsExactly(new ValidatedCitation("doc-1", 0, "001_personalausweis.md", true));
+  }
 }
