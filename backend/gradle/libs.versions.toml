@@ -39,7 +39,7 @@ pgvector = "0.1.6"
 # spring-boot-dependencies platform import in opaa-api/build.gradle.kts for how those versions
 # stay aligned with the Spring Boot BOM instead of being pinned here.
 junit-jupiter = "5.13.4"
-assertj-core = "3.27.6"
+assertj-core = "3.27.7"
 junit-platform = "1.13.4"
 
 [libraries]
