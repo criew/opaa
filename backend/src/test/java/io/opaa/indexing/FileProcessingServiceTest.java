@@ -289,7 +289,7 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void chunkMetadataIsCarriedForFilteringButOnlyFileNameEnrichesWhatGetsEmbedded()
+  void chunkMetadataIsCarriedForFilteringButOnlyContextTitleEnrichesWhatGetsEmbedded()
       throws IOException {
     // Issue #773 (and widened by #933, "Contextual Chunking"): EmbeddingModel#getEmbeddingContent
     // (Document) - what actually gets sent to the embedding call for every document
@@ -297,15 +297,16 @@ class FileProcessingServiceTest {
     // org.springframework.ai.openai.OpenAiEmbeddingModel (the only embedding path since #762)
     // defaults its own metadataMode to MetadataMode.EMBED. Without CHUNK_EMBED_CONTENT_FORMATTER
     // excluding this chunk's bookkeeping keys, MetadataMode.EMBED would prepend all of them - two
-    // random UUIDs, an index, a second random UUID - ahead of the real chunk text, degrading
-    // retrieval quality (see FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER's own Javadoc for
-    // the measured effect: cosine similarity between a query and its correct document dropped from
-    // 0.698 to 0.357 with this contamination). #933 deliberately widens the whitelist by exactly
-    // one key (file_name) to restore document-context signal a lone chunk otherwise loses - see
-    // that Javadoc for why file_name and not another key. The metadata itself must still reach the
-    // vector store row - the permission-aware query filter (#202) and citations depend on it - so
-    // this is about what MetadataMode.EMBED formats into embeddable text, not about removing the
-    // metadata map itself (covered by the test directly above).
+    // random UUIDs, an index, a filename, a second random UUID - ahead of the real chunk text,
+    // degrading retrieval quality (see FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER's own
+    // Javadoc for the measured effect: cosine similarity between a query and its correct document
+    // dropped from 0.698 to 0.357 with this contamination). #933 deliberately widens the whitelist
+    // by exactly one derived key (context_title, a humanized title - not the raw file_name, see
+    // ChunkContextTitle and the formatter's own Javadoc for why) to restore document-context signal
+    // a lone chunk otherwise loses. The metadata itself must still reach the vector store row - the
+    // permission-aware query filter (#202) and citations depend on it - so this is about what
+    // MetadataMode.EMBED formats into embeddable text, not about removing the metadata map itself
+    // (covered by the test directly above).
     Path file = tempDir.resolve("embed-content.txt");
     Files.writeString(file, "some content");
 
@@ -336,15 +337,17 @@ class FileProcessingServiceTest {
     // what is embedded changes (see the formatter's own Javadoc, "Embedding-only" section)...
     assertThat(storedChunk.getText()).isEqualTo("the real chunk text to embed");
     // ...but MetadataMode.EMBED - what an OpenAiEmbeddingModel actually sends to be embedded -
-    // must be exactly "[<file_name>]\n\n<chunk text>": CHUNK_EMBED_CONTENT_FORMATTER overrides
-    // both the excluded metadata keys AND the text template (see its own Javadoc for why the
-    // template override matters even with every other key excluded), so this is a real whitelist
-    // of file_name plus content - not just "no bookkeeping-key substrings present" - and stays a
-    // guard against a sixth bookkeeping key ever being added to storeChunks's metadata map without
-    // also being added to the exclusion list above: an unlisted key would show up here as an
-    // unexpected third component, not as a silent, easy-to-miss near-miss.
+    // must be exactly "[<humanized title>]\n\n<chunk text>": CHUNK_EMBED_CONTENT_FORMATTER
+    // overrides both the excluded metadata keys AND the text template (see its own Javadoc for why
+    // the template override matters even with every other key excluded), so this is a real
+    // whitelist of the derived title plus content - not just "no bookkeeping-key substrings
+    // present" - and stays a guard against a seventh bookkeeping key ever being added to
+    // storeChunks's metadata map without also being added to the exclusion list above: an unlisted
+    // key would show up here as an unexpected third component, not as a silent, easy-to-miss
+    // near-miss. "embed-content.txt" has no structural index prefix to strip (see
+    // ChunkContextTitleTest), so its derived title is just its separators replaced with spaces.
     assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
-        .isEqualTo("[embed-content.txt]\n\nthe real chunk text to embed");
+        .isEqualTo("[embed content]\n\nthe real chunk text to embed");
   }
 
   @Test

@@ -31,8 +31,16 @@ public class FileProcessingService {
   private static final Logger log = LoggerFactory.getLogger(FileProcessingService.class);
 
   /**
+   * The metadata key carrying the humanized title {@link ChunkContextTitle#deriveTitle} derives
+   * from a chunk's {@code file_name} - embedding-only input for {@link
+   * #CHUNK_EMBED_CONTENT_FORMATTER}, never read for citations/filtering (those keep using {@code
+   * file_name} itself, unaffected by #933).
+   */
+  private static final String CONTEXT_TITLE_METADATA_KEY = "context_title";
+
+  /**
    * Whitelists exactly two inputs into {@link org.springframework.ai.document.MetadataMode#EMBED}
-   * formatting: the chunk's own text, and its {@code file_name} as a contextual prefix (#933,
+   * formatting: the chunk's own text, and a humanized document title as a contextual prefix (#933,
    * "Contextual Chunking"). Every other bookkeeping key {@link #storeChunks} attaches to a chunk's
    * {@code metadata} (permission-filter/citation plumbing, never semantic content) stays excluded.
    *
@@ -47,18 +55,24 @@ public class FileProcessingService {
    * chunks are, which is exactly what the contextual-chunking papers this issue follows call for:
    * the asymmetry between a short, specific query and a context-enriched passage is the point.
    *
-   * <p><b>Why {@code file_name}, not a friendlier derived title.</b> Issue #933's root cause: a
+   * <p><b>Humanized title, not the raw file name (#933 review).</b> Issue #933's root cause: a
    * detail-heavy chunk (a fee table, a paragraph deep in a statute) carries almost no signal of
    * *which* document it came from once split out of its surroundings, so it under-ranks against
-   * unrelated documents that happen to share more surface vocabulary with a query. Prepending
-   * {@code file_name} - already stored on every chunk, needing no new metadata field or
-   * per-document title extraction - restores exactly that missing signal cheaply. A friendlier,
-   * humanized title (per #933's own example, {@code "Personalausweis"} rather than {@code
-   * "001_personalausweis.md"}) or a library name prefix were considered and deliberately deferred:
-   * both need new plumbing (a title-derivation step, or threading the owning library's name into
-   * {@link ChunkingService}/this class) for a benefit the eval baselines below did not show to be
-   * necessary - the raw file name closed the #938 ranking gap on its own (see this class's
-   * package-info and the PR description for the measured before/after).
+   * unrelated documents that happen to share more surface vocabulary with a query. Prepending the
+   * raw {@code file_name} restored that signal for single-chunk corpora, but regressed a
+   * multi-chunk corpus with a generated, structurally-noisy naming scheme ({@code
+   * "city-0022_prag.md"}): every one of a document's several chunks then carried the identical
+   * {@code "city-NNNN_"} boilerplate token, which measurably pulled less-distinctive
+   * (introduction-style) chunks of *unrelated* documents together in embedding space instead of
+   * only adding a per-document identity signal. {@link ChunkContextTitle#deriveTitle} strips that
+   * structural noise deterministically (leading numbering tokens, extension) and keeps only the
+   * human-meaningful remainder (see its own Javadoc for the exact rule and examples) - a new
+   * metadata field ({@link #CONTEXT_TITLE_METADATA_KEY}) rather than reusing {@code file_name}
+   * itself, so citations/filtering (which do read {@code file_name}) are unaffected by this
+   * derivation. Preferring a richer title from the document's own content (a first heading, Tika's
+   * {@code dc:title}) was considered and deliberately deferred: it would need threading document
+   * metadata through {@link ChunkingService}/this class for a benefit not required to close #933's
+   * measured gap - a pure function of the file name already did.
    *
    * <p><b>Embedding-only, deliberately not also in the stored chunk text.</b> {@code
    * PgVectorStore#add} persists {@link org.springframework.ai.document.Document#getText()} (the raw
@@ -67,8 +81,8 @@ public class FileProcessingService {
    * embedding call, not what {@code QueryService#mapSources}/{@code
    * AnswerGenerationService#generateAnswer} later read back via {@code chunk.getText()}. Two
    * consumers of that raw text would otherwise be affected if the prefix were baked into the stored
-   * text instead: the answer-generation prompt (the LLM would see and could echo the bracketed file
-   * name inside a citation excerpt) and the citation location the frontend renders. Keeping the
+   * text instead: the answer-generation prompt (the LLM would see and could echo the bracketed
+   * title inside a citation excerpt) and the citation location the frontend renders. Keeping the
    * prefix embedding-only avoids both, at the cost of the answer LLM not receiving the extra
    * document-title signal the embedding call gets - acceptable, since {@code
    * AnswerGenerationService} already prefixes each chunk with a {@code document_id}/{@code
@@ -79,29 +93,30 @@ public class FileProcessingService {
    * ChunkingService#chunkDocuments} has already split the document under {@code
    * opaa.indexing.chunk-size}'s token budget - it does not compete with chunk content for that
    * budget the way a pre-split prefix would. The embedding call's actual token count is therefore
-   * {@code chunk-size}'s configured budget plus a small, per-chunk constant (the file name's own
-   * token count, typically well under ten tokens) - negligible against every configured embedding
-   * backend's input limit, so no adjustment to {@code chunk-size} is needed or made.
+   * {@code chunk-size}'s configured budget plus a small, per-chunk constant (the derived title's
+   * own token count, typically well under ten tokens, usually shorter than the raw file name it
+   * came from) - negligible against every configured embedding backend's input limit, so no
+   * adjustment to {@code chunk-size} is needed or made.
    *
    * <p>{@link DefaultContentFormatter}'s {@code textTemplate} only recognizes the two placeholders
    * {@code {content}} and {@code {metadata_string}} - it has no per-key placeholder syntax, so a
-   * literal {@code {file_name}} token would never be substituted. {@code {metadata_string}} is
+   * literal {@code {context_title}} token would never be substituted. {@code {metadata_string}} is
    * instead the join of every <em>non-excluded</em> metadata entry, each rendered through {@code
    * metadataTemplate} (default {@code "{key}: {value}"}) and joined with {@code metadataSeparator}.
-   * Excluding every key except {@code file_name} from {@code EMBED} mode and overriding {@code
-   * metadataTemplate} to the bare {@code "{value}"} (no separator concern, since exactly one key
-   * ever survives the exclusion filter) turns {@code {metadata_string}} into exactly the file name
-   * - the only way to reach a {@code "[<file name>]\n\n<content>"} shape with this formatter's own
-   * placeholder vocabulary, without excluding {@code file_name} itself. The whitelist invariant
-   * from before #933 still holds: only {@code file_name} and the chunk text can ever appear in the
-   * formatted output, regardless of which or how many keys a future change adds to the metadata
-   * map.
+   * Excluding every key except {@link #CONTEXT_TITLE_METADATA_KEY} from {@code EMBED} mode and
+   * overriding {@code metadataTemplate} to the bare {@code "{value}"} (no separator concern, since
+   * exactly one key ever survives the exclusion filter) turns {@code {metadata_string}} into
+   * exactly the derived title - the only way to reach a {@code "[<title>]\n\n<content>"} shape with
+   * this formatter's own placeholder vocabulary. The whitelist invariant from before #933 still
+   * holds: only the derived title and the chunk text can ever appear in the formatted output,
+   * regardless of which or how many keys a future change adds to the metadata map.
    */
   private static final ContentFormatter CHUNK_EMBED_CONTENT_FORMATTER =
       DefaultContentFormatter.builder()
           .withExcludedEmbedMetadataKeys(
               VectorChunkStore.DOCUMENT_ID_METADATA_KEY,
               "chunk_index",
+              "file_name",
               VectorChunkStore.LIBRARY_ID_METADATA_KEY,
               "organization_id",
               ChunkingService.LOCATION_METADATA_KEY)
@@ -624,6 +639,9 @@ public class FileProcessingService {
                   metadata.put(
                       VectorChunkStore.LIBRARY_ID_METADATA_KEY, document.getLibraryId().toString());
                   metadata.put("organization_id", document.getOrganizationId().toString());
+                  metadata.put(
+                      CONTEXT_TITLE_METADATA_KEY,
+                      ChunkContextTitle.deriveTitle(document.getFileName()));
                   // The chunk's Fundort, when ChunkingService could derive one.
                   Object location = chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
                   if (location != null) {
