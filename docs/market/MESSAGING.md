@@ -186,10 +186,6 @@ Der frühere One-Pager (`docs/onepager-de.html`) und das Pitch-Deck (`docs/OPAA-
 wurden entfernt (#927): Sie waren gegenüber dieser Wahrheitsquelle veraltet. Werden solche Unterlagen
 wieder gebraucht, entstehen sie neu aus diesem Dokument — unter `docs/market/`.
 
-Der frühere One-Pager (`docs/onepager-de.html`) und das Pitch-Deck (`docs/OPAA-pitch-de.html`/`.pdf`)
-wurden entfernt (#927): Sie waren gegenüber dieser Wahrheitsquelle veraltet. Werden solche Unterlagen
-wieder gebraucht, entstehen sie neu aus diesem Dokument — unter `docs/market/`.
-
 Jedes dieser Assets nennt dieselbe Kernbotschaft in denselben Worten. Abweichende Formulierungen für
 dieselbe Sache sind kein Stilmittel, sondern ein Fehler.
 
