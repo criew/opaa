@@ -2,6 +2,8 @@ package io.opaa.query;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -22,11 +24,12 @@ import org.springframework.ai.document.Document;
  * pool {@code similaritySearch} produced for {@code selection} itself) - this class only ever
  * reorders/replaces within that set, never searches or admits anything beyond it.
  *
- * <p>Filling never grows {@code selection} past {@code overallBudget}: once full, a candidate can
- * only be admitted by evicting the globally weakest chunk of some <em>other</em> document that
- * already holds at least two selected chunks - the diversity floor established by the fusion/MMR
- * step is never reduced below "at least two documents keep more than one chunk each" for the sake
- * of a third. No such eviction candidate leaves {@code selection} unchanged from that point on.
+ * <p>The set of documents represented in {@code selection} never shrinks: filling never grows
+ * {@code selection} past {@code overallBudget}, and once full, a candidate can only be admitted by
+ * evicting the weakest chunk of some <em>other, not-yet-completed</em> document that already holds
+ * at least two chunks - a document is never evicted down to zero, and a document this same pass
+ * already completed is never picked as an eviction source (see {@link #complete}), so a completion
+ * can never undo an earlier one within the same call.
  */
 final class DocumentCompletion {
 
@@ -41,12 +44,26 @@ final class DocumentCompletion {
       return selection;
     }
 
+    // The authoritative rank both paths agree on: selection's own order (fused-score descending
+    // on the multi-sub-query path, plain relevance descending on the single-query path) - never
+    // Document#getScore() directly, which is only comparable within a single search vector and is
+    // exactly the cross-sub-query comparison ReciprocalRankFusion's Javadoc documents as invalid.
+    Map<String, Integer> originalRankByChunkId = new HashMap<>();
+    for (int i = 0; i < selection.size(); i++) {
+      originalRankByChunkId.put(selection.get(i).getId(), i);
+    }
+
     List<Document> result = new ArrayList<>(selection);
     Set<String> selectedChunkIds =
         result.stream().map(Document::getId).collect(Collectors.toCollection(LinkedHashSet::new));
     Map<String, List<Document>> unusedCandidatesByDocument =
         unusedCandidatesByDocument(candidatePool, selectedChunkIds);
     List<String> documentOrder = distinctDocumentOrder(result);
+
+    // Documents that already received a completion chunk in this call - excluded from being an
+    // eviction source for any later document's completion, so a completion can never be undone by
+    // a subsequent one within the same call (see this class's Javadoc).
+    Set<String> completedDocumentKeys = new HashSet<>();
 
     for (String documentKey : documentOrder) {
       List<Document> unused = unusedCandidatesByDocument.get(documentKey);
@@ -59,13 +76,17 @@ final class DocumentCompletion {
         }
         if (result.size() < overallBudget) {
           result.add(candidate);
-        } else if (evictWeakestFromAnOverrepresentedDocument(result, documentKey)) {
+          completedDocumentKeys.add(documentKey);
+        } else if (evictWeakestFromAnOverrepresentedDocument(
+            result, documentKey, completedDocumentKeys, originalRankByChunkId)) {
           result.add(candidate);
+          completedDocumentKeys.add(documentKey);
         } else {
-          // No document currently holds a second chunk it could give up - the budget stays exactly
-          // as it is, and no further completion (for this or any later document) can succeed
-          // either.
-          return result;
+          // No eviction source is available for this document right now - trying its remaining
+          // candidates would not change that. A later document may still succeed: a document that
+          // failed to receive a chunk here (unlike one in completedDocumentKeys) stays a valid
+          // eviction source for it.
+          break;
         }
       }
     }
@@ -93,13 +114,17 @@ final class DocumentCompletion {
   /**
    * Groups every candidate not already in {@code selection} by document, deduplicated by chunk id
    * (the same chunk can appear once per sub-query in a pooled multi-query candidate list) and
-   * sorted by relevance score descending within each document, so the strongest sibling chunk is
-   * always tried first.
+   * ordered by each chunk's own first-occurrence position in {@code candidatePool} - not {@link
+   * Document#getScore()}, which is only comparable within the single search vector that produced it
+   * (see this class's Javadoc) - so the strongest sibling by that pool's own rank is tried first.
    */
   private static Map<String, List<Document>> unusedCandidatesByDocument(
       List<Document> candidatePool, Set<String> selectedChunkIds) {
     Map<String, Document> byChunkId = new LinkedHashMap<>();
+    Map<String, Integer> poolRankByChunkId = new HashMap<>();
+    int index = 0;
     for (Document candidate : candidatePool) {
+      poolRankByChunkId.putIfAbsent(candidate.getId(), index++);
       if (selectedChunkIds.contains(candidate.getId())) {
         continue;
       }
@@ -113,32 +138,40 @@ final class DocumentCompletion {
     byDocument.replaceAll(
         (documentKey, chunks) ->
             chunks.stream()
-                .sorted(Comparator.comparingDouble(DocumentCompletion::scoreOf).reversed())
+                .sorted(Comparator.comparingInt(c -> poolRankByChunkId.get(c.getId())))
                 .toList());
     return byDocument;
   }
 
   /**
-   * Removes the globally weakest chunk of some document other than {@code excludeDocumentKey} that
-   * currently holds at least two chunks in {@code result} - the eviction rule that keeps document
-   * diversity from ever shrinking below what fusion/MMR already established (see this class's
-   * Javadoc). Returns {@code false}, leaving {@code result} unchanged, when no such document
-   * exists.
+   * Removes the weakest (highest {@code originalRankByChunkId}) chunk of some document other than
+   * {@code excludeDocumentKey} or any key in {@code protectedDocumentKeys} that currently holds at
+   * least two chunks in {@code result} - the eviction rule that keeps document diversity from ever
+   * shrinking below what fusion/MMR already established (see this class's Javadoc). Returns {@code
+   * false}, leaving {@code result} unchanged, when no such document exists.
    */
   private static boolean evictWeakestFromAnOverrepresentedDocument(
-      List<Document> result, String excludeDocumentKey) {
+      List<Document> result,
+      String excludeDocumentKey,
+      Set<String> protectedDocumentKeys,
+      Map<String, Integer> originalRankByChunkId) {
     Map<String, List<Document>> byDocument =
         result.stream()
             .collect(
                 Collectors.groupingBy(
                     QueryService::chunkGroupingKey, LinkedHashMap::new, Collectors.toList()));
     Document weakest = null;
+    int weakestRank = -1;
     for (Map.Entry<String, List<Document>> entry : byDocument.entrySet()) {
-      if (entry.getKey().equals(excludeDocumentKey) || entry.getValue().size() < 2) {
+      if (entry.getKey().equals(excludeDocumentKey)
+          || protectedDocumentKeys.contains(entry.getKey())
+          || entry.getValue().size() < 2) {
         continue;
       }
       for (Document candidate : entry.getValue()) {
-        if (weakest == null || scoreOf(candidate) < scoreOf(weakest)) {
+        int rank = originalRankByChunkId.getOrDefault(candidate.getId(), Integer.MAX_VALUE);
+        if (rank > weakestRank) {
+          weakestRank = rank;
           weakest = candidate;
         }
       }
@@ -148,11 +181,6 @@ final class DocumentCompletion {
     }
     result.remove(weakest);
     return true;
-  }
-
-  private static double scoreOf(Document document) {
-    Double score = document.getScore();
-    return score != null ? score : 0.0;
   }
 
   /** {@code null} scores lose to any non-null one; between two non-null scores, the higher wins. */

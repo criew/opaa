@@ -378,6 +378,14 @@ class QueryIntegrationTest {
     // candidates once filtered afterward. See the PR description for the reproduction: reverting
     // QueryService's filterExpression(...) call turns this test red while every other test in this
     // class, QueryControllerTest and io.opaa.library.* stay green.
+    //
+    // #932 review: doc-a-0 deliberately contributes three of the ten granted chunks (chunk_index
+    // 0-2) instead of one - the same total granted chunk count as before, spread over nine
+    // distinct documents instead of ten, so DocumentCompletion actually runs on this permission-
+    // filtered candidate pool rather than every granted document holding exactly one chunk (the
+    // pre-#932 shape, which DocumentCompletion is a no-op for). The hasSize(8)/allSatisfy
+    // assertions below hold regardless of exactly which chunks land in the top 8: completion only
+    // ever draws from this same permission-filtered pool, never a fresh, unfiltered search.
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
@@ -403,20 +411,7 @@ class QueryIntegrationTest {
                   "library_id",
                   ungrantedLibraryId.toString())));
     }
-    for (int i = 0; i < 10; i++) {
-      chunks.add(
-          new Document(
-              "Granted content " + i,
-              Map.of(
-                  "file_name",
-                  "a" + i + ".md",
-                  "document_id",
-                  "doc-a-" + i,
-                  "chunk_index",
-                  0,
-                  "library_id",
-                  libraryId.toString())));
-    }
+    chunks.addAll(grantedChunksWithOneMultiChunkDocument());
     vectorStore.add(chunks);
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
@@ -434,6 +429,62 @@ class QueryIntegrationTest {
     } finally {
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
     }
+  }
+
+  /**
+   * The ten granted chunks {@link
+   * #queryOnlyReturnsChunksFromTheGrantedLibraryEvenWhenUnauthorizedChunksWouldOutscoreThem} and
+   * {@link #queryFiltersEveryDecomposedSubQuerysSimilaritySearchByTheSameGrantedLibrary} share,
+   * plus {@code doc-a-multi}'s three chunks, so {@code DocumentCompletion} (#932) actually runs
+   * against a document it could grow on this permission-filtered pool, not just single-chunk
+   * documents it can never touch (see the #932 review comment at the first caller). {@code
+   * hasSize(8)} pins the total chunk budget, and a single document holding two of those eight slots
+   * necessarily leaves only seven distinct sources - not eight - so only <em>one</em> of {@code
+   * doc-a-multi}'s three chunks (its first) is placed ahead of the ten single-chunk documents;
+   * under {@code FakeEmbeddingModel}'s ties (see the first caller's comment), a plain
+   * top-k-by-tied-score selection therefore keeps that one {@code doc-a-multi} chunk plus seven of
+   * the ten singles - eight distinct documents, matching {@code hasSize(8)} exactly, same as before
+   * this document existed. {@code doc-a-multi}'s other two chunks are placed last, on purpose:
+   * present in the permission-filtered candidate pool for completion to evaluate, but with every
+   * other represented document holding only one chunk, no eviction source exists, so completion
+   * correctly declines rather than reducing document diversity to grow {@code doc-a-multi} - the
+   * exact "kein Verdrängen ohne Kandidaten" rule {@link DocumentCompletionTest} covers in
+   * isolation, now also exercised on this real, permission-filtered pool.
+   */
+  private List<Document> grantedChunksWithOneMultiChunkDocument() {
+    List<Document> chunks = new ArrayList<>();
+    chunks.add(multiChunkDocumentChunk(0));
+    for (int i = 0; i < 10; i++) {
+      chunks.add(
+          new Document(
+              "Granted content " + i,
+              Map.of(
+                  "file_name",
+                  "a" + i + ".md",
+                  "document_id",
+                  "doc-a-" + i,
+                  "chunk_index",
+                  0,
+                  "library_id",
+                  libraryId.toString())));
+    }
+    chunks.add(multiChunkDocumentChunk(1));
+    chunks.add(multiChunkDocumentChunk(2));
+    return chunks;
+  }
+
+  private Document multiChunkDocumentChunk(int chunkIndex) {
+    return new Document(
+        "Granted content a-multi chunk " + chunkIndex,
+        Map.of(
+            "file_name",
+            "a-multi.md",
+            "document_id",
+            "doc-a-multi",
+            "chunk_index",
+            chunkIndex,
+            "library_id",
+            libraryId.toString()));
   }
 
   /**
@@ -473,20 +524,7 @@ class QueryIntegrationTest {
                   "library_id",
                   ungrantedLibraryId.toString())));
     }
-    for (int i = 0; i < 10; i++) {
-      chunks.add(
-          new Document(
-              "Granted content " + i,
-              Map.of(
-                  "file_name",
-                  "a" + i + ".md",
-                  "document_id",
-                  "doc-a-" + i,
-                  "chunk_index",
-                  0,
-                  "library_id",
-                  libraryId.toString())));
-    }
+    chunks.addAll(grantedChunksWithOneMultiChunkDocument());
     vectorStore.add(chunks);
 
     // First call is the decomposition step - two lines force the multi-sub-query path. Second call

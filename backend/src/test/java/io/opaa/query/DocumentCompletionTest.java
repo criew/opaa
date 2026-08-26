@@ -140,6 +140,100 @@ class DocumentCompletionTest {
     assertThat(result).isEmpty();
   }
 
+  /**
+   * Code review of #932's original PR: with two completable documents, an earlier completion must
+   * never be undone by a later one within the same call - the earlier completion's document is
+   * excluded as an eviction source once it has received a chunk, even though it now holds two
+   * chunks itself. Without that exclusion, doc-b's completion below would evict doc-a's just-added
+   * "a-1" right back out, leaving doc-a exactly where it started while doc-x permanently lost a
+   * chunk for no net gain - strictly worse than doing nothing.
+   */
+  @Test
+  void aCompletionNeverEvictsAChunkAnEarlierCompletionInTheSameCallJustAdded() {
+    Document x0 = chunk("x-0", "doc-x", 0.95);
+    Document x1 = chunk("x-1", "doc-x", 0.90);
+    Document a0 = chunk("a-0", "doc-a", 0.85);
+    Document b0 = chunk("b-0", "doc-b", 0.80);
+    Document a1 = chunk("a-1", "doc-a", 0.50);
+    Document b1 = chunk("b-1", "doc-b", 0.45);
+    List<Document> selection = List.of(x0, x1, a0, b0);
+    List<Document> candidatePool = List.of(x0, x1, a0, b0, a1, b1);
+
+    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 4);
+
+    // doc-a's completion (processed first, per selection order) evicts doc-x's weaker chunk and
+    // is then protected: doc-b's later completion attempt finds no eligible eviction source left
+    // (doc-x is down to one chunk, doc-a is protected) and simply does not complete - it must not
+    // claw the slot back from doc-a.
+    assertThat(result).extracting(Document::getId).containsExactly("x-0", "a-0", "b-0", "a-1");
+  }
+
+  /**
+   * Code review of #932's original PR: eviction must pick the weakest chunk by its position in the
+   * original, already-authoritative {@code selection} order - never by raw {@code
+   * Document#getScore()}, which is only comparable within a single search vector (see {@code
+   * ReciprocalRankFusion}'s Javadoc on why a cross-sub-query score comparison is exactly the #912
+   * failure mode). Here the later-ranked chunk of the over-represented document deliberately
+   * carries the higher raw score, so a score-based eviction would pick the wrong one.
+   */
+  @Test
+  void evictsByOriginalSelectionRankNotByRawScore() {
+    Document x0 = chunk("x-0", "doc-x", 0.50);
+    Document x1 = chunk("x-1", "doc-x", 0.95);
+    Document a0 = chunk("a-0", "doc-a", 0.90);
+    Document a1 = chunk("a-1", "doc-a", 0.10);
+    List<Document> selection = List.of(x0, x1, a0);
+    List<Document> candidatePool = List.of(x0, x1, a0, a1);
+
+    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 3);
+
+    // x1 is later in selection (weaker by rank) despite its higher score - it must be the one
+    // evicted, not x0.
+    assertThat(result).extracting(Document::getId).containsExactly("x-0", "a-0", "a-1");
+  }
+
+  /**
+   * Code review of #932's original PR: which unused sibling candidate is tried first must follow
+   * its position in {@code candidatePool} (the search's own rank), not raw {@code
+   * Document#getScore()} - the same cross-sub-query comparability concern as {@link
+   * #evictsByOriginalSelectionRankNotByRawScore}. The pool lists the low-scoring candidate before
+   * the high-scoring one; a score-based sort would try the high-scoring one first instead.
+   */
+  @Test
+  void prefersSiblingCandidateByPoolPositionNotByRawScore() {
+    Document a0 = chunk("a-0", "doc-a", 0.90);
+    Document aEarlyLowScore = chunk("a-early", "doc-a", 0.10);
+    Document aLateHighScore = chunk("a-late", "doc-a", 0.99);
+    List<Document> selection = List.of(a0);
+    List<Document> candidatePool = List.of(a0, aEarlyLowScore, aLateHighScore);
+
+    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 2);
+
+    assertThat(result).extracting(Document::getId).containsExactly("a-0", "a-early");
+  }
+
+  /**
+   * The same chunk id can appear once per sub-query in a pooled multi-query candidate list (#923),
+   * each instance carrying that sub-query's own raw score - deduped to the higher-scoring instance
+   * before it is offered as a completion candidate, mirroring {@code ReciprocalRankFusion}'s own
+   * duplicate-instance handling for the identical case.
+   */
+  @Test
+  void dedupesAPoolCandidateAppearingInMoreThanOneSubQueryKeepingTheHigherScoringInstance() {
+    Document a0 = chunk("a-0", "doc-a", 0.9);
+    Document siblingLowScoreInstance = chunk("a-1", "doc-a", 0.2);
+    Document siblingHighScoreInstance = chunk("a-1", "doc-a", 0.7);
+    List<Document> selection = List.of(a0);
+    List<Document> candidatePool = List.of(a0, siblingLowScoreInstance, siblingHighScoreInstance);
+
+    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 2);
+
+    assertThat(result).hasSize(2);
+    Document added = result.get(1);
+    assertThat(added.getId()).isEqualTo("a-1");
+    assertThat(added.getScore()).isEqualTo(0.7);
+  }
+
   @Test
   void ignoresCandidatesAlreadyInTheSelection() {
     Document docA = chunk("a-0", "doc-a", 0.9);

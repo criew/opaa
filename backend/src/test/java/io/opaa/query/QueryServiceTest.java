@@ -1961,8 +1961,8 @@ class QueryServiceTest {
      * Single-query path (no decomposition): {@code doc-x} occupies two of the eight slots MMR picks
      * by pure score, crowding {@code doc-a}'s fee chunk out of the {@code topK} = 8 window
      * entirely. Completion recovers the fee chunk by evicting {@code doc-x}'s weaker of its two
-     * chunks - document diversity (8 distinct documents) is unchanged, but {@code doc-a} now
-     * carries both its chunks instead of {@code doc-x}.
+     * chunks - document diversity (7 distinct documents: doc-x, doc-a, doc-f1..doc-f5) is
+     * unchanged, but {@code doc-a} now carries both its chunks instead of {@code doc-x}.
      */
     @Test
     void singleQueryPathRecoversAFeeChunkByEvictingAnOverrepresentedDocumentsWeakerChunk() {
@@ -2036,6 +2036,83 @@ class QueryServiceTest {
           .filteredOn(source -> source.getFileName().equals("x.md"))
           .hasSize(1)
           .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(1));
+    }
+
+    /**
+     * Code review of #932's original PR: the two tests above give both sub-queries the identical
+     * candidate set, which never exercises fusion with two genuinely different, disjoint result
+     * lists. Here sub-query A carries {@code doc-x}/{@code doc-a}/five fillers, and sub-query B
+     * returns an entirely disjoint set of eight documents at a much lower, unrelated score range -
+     * own topic, own search vector, no shared ids. {@code ReciprocalRankFusion} scores purely by
+     * rank, not by the underlying score (that comparison is exactly the #912 failure mode its own
+     * Javadoc documents) - a sub-query's rank-<i>k</i> item always contributes the identical amount
+     * regardless of which sub-query it came from, so A's and B's same-rank items tie and interleave
+     * by rank tier (rank 1 pair, then rank 2 pair, ...) once sorted by fused score. With {@code
+     * topK} = 8 that tier-by-tier cut lands after the rank-4 pair, well before sub-query A's own
+     * {@code doc-a}'s fee chunk (permanently excluded from every sub-query's own top-8 window,
+     * ranked 9th in sub-query A and absent from sub-query B entirely) ever has a chance to survive
+     * fusion on its own - completion is exactly what recovers it here, from the pooled raw
+     * candidates of <em>both</em> sub-queries.
+     */
+    @Test
+    void multiQueryPathRecoversAFeeChunkAcrossTwoDisjointSubQueryCandidateSets() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(queryDecompositionService.decompose(eq("Kombifrage"), any(), eq(3)))
+          .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
+      List<Document> candidatesA =
+          new ArrayList<>(
+              List.of(
+                  chunk("x-0", "doc-x", "x.md", 0.95),
+                  chunk("x-1", "doc-x", "x.md", 0.90),
+                  chunk("a-intro", "doc-a", "a.md", 0.85),
+                  chunk("f-1", "doc-f1", "f1.md", 0.80),
+                  chunk("f-2", "doc-f2", "f2.md", 0.75),
+                  chunk("f-3", "doc-f3", "f3.md", 0.70),
+                  chunk("f-4", "doc-f4", "f4.md", 0.65),
+                  chunk("f-5", "doc-f5", "f5.md", 0.60)));
+      candidatesA.add(chunk("a-fee", "doc-a", "a.md", 0.55));
+      List<Document> candidatesB =
+          List.of(
+              chunk("g-1", "doc-g1", "g1.md", 0.40),
+              chunk("g-2", "doc-g2", "g2.md", 0.35),
+              chunk("g-3", "doc-g3", "g3.md", 0.30),
+              chunk("g-4", "doc-g4", "g4.md", 0.25),
+              chunk("g-5", "doc-g5", "g5.md", 0.20),
+              chunk("g-6", "doc-g6", "g6.md", 0.15),
+              chunk("g-7", "doc-g7", "g7.md", 0.10),
+              chunk("g-8", "doc-g8", "g8.md", 0.05));
+      // Null-safe registration order, same reasoning as the #923 decomposition tests above.
+      when(vectorStore.similaritySearch(
+              argThat(
+                  (SearchRequest request) ->
+                      request != null && "Teilfrage A".equals(request.getQuery()))))
+          .thenReturn(candidatesA);
+      when(vectorStore.similaritySearch(
+              argThat(
+                  (SearchRequest request) ->
+                      request != null && "Teilfrage B".equals(request.getQuery()))))
+          .thenReturn(candidatesB);
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
+
+      assertThat(response.getSources()).hasSize(7);
+      assertThat(response.getSources())
+          .filteredOn(source -> source.getFileName().equals("a.md"))
+          .hasSize(1)
+          .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(2));
+      assertThat(response.getSources())
+          .filteredOn(source -> source.getFileName().equals("x.md"))
+          .hasSize(1)
+          .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(1));
+      // The rank-tiered fused cut (see this test's Javadoc) keeps only the rank-1..4 pair from
+      // each sub-query - sub-query A's f2..f5 (ranks 5-8) and sub-query B's g5..g8 never make it,
+      // pushed out by the interleave exactly as f5 alone was in the single-candidate-set tests
+      // above.
+      assertThat(response.getSources())
+          .extracting(ChatSource::getFileName)
+          .containsExactlyInAnyOrder("x.md", "a.md", "f1.md", "g1.md", "g2.md", "g3.md", "g4.md");
     }
   }
 
