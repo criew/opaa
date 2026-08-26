@@ -245,6 +245,8 @@ Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertba
 | **Ähnlichkeitsschwelle** | 0,3 **(gebaut)** | Wie umgangssprachlich gefragt wird und wie homogen der Bestand ist | Weniger unpassende Treffer, aber häufiger keine ausreichend ähnliche Fundstelle und damit eine Antwort ohne Beleg |
 | **Bündelgröße der Einbettung** | 50 Chunks je Aufruf **(gebaut)** | Belastbarkeit des Einbettungsdienstes | Schnellere Läufe, aber Lastspitzen und größerer Speicherbedarf |
 | **Wiederholversuche je Dokument** | 3 **(gebaut)** | Zuverlässigkeit von Quelle und Modelldienst | Weniger verlorene Dokumente, aber längere Läufe bei dauerhaft defekten Dateien |
+| **Teilfragen-Zerlegung (`query-decomposition-enabled`)** | an **(gebaut, #923)** | Ob Mehrthemen-Fragen getrennte Suchvektoren je Thema bekommen sollen | Kein Regler im eigentlichen Sinn (An/Aus) — deaktiviert lässt jede Frage wie vor #923 als eine einzige Suche laufen |
+| **Max. Teilfragen (`max-sub-queries`)** | 3 **(gebaut, #923)** | Wie viele eigenständige Themen eine Frage realistisch mischt | Mehr mögliche Teilthemen je Frage, aber mehr `similaritySearch`-Aufrufe und damit höhere Retrieval-Latenz |
 
 **`fetch-k`/`mmr-lambda` steuern gemeinsam die Vielfaltsauswahl (Maximal Marginal Relevance, MMR,
 #914).** Die Vektorsuche holt zunächst `fetch-k` Kandidaten statt nur `top-k`. Daraus wählt MMR
@@ -361,11 +363,21 @@ siehe [Qualitätssicherung](#qualitätssicherung)): Gegen die 20 `multi_topic`-G
 ("beide erwarteten Dokumente unter den zurückgegebenen Quellen") lieferten sowohl der Pfad ohne
 Zerlegung als auch mit Zerlegung 19 von 20 Fällen — ein Fall wechselte durch die Zerlegung von
 falsch zu richtig, ein anderer von richtig zu falsch, in Summe bei dieser kleinen Stichprobe neutral.
+Der 19/20-Wert ohne Zerlegung ist derselbe Konfigurationspunkt wie #922s 20/20 (`top-k=8`, MMR aus),
+aber ein anderer Messpunkt: #922 misst direkt gegen `VectorStore.similaritySearch`/`MmrSelector`,
+diese Messung dagegen über den vollständigen `QueryService`-Pfad (inklusive Berechtigungsfilter,
+Gesprächsverlauf-Anreicherung und der hier neuen Zerlegungslogik) — die Abweichung um einen Fall geht
+auf diesen Methodikunterschied zurück, nicht auf eine Regression von #922.
 Das city-landmarks-Korpus profitiert bereits stark von der `top-k`-Anhebung (#914); die strukturelle
 Score-Lücke aus dem #912-Beispiel (Personalausweis/Führerschein) tritt hier nicht in derselben Schärfe
 auf — die Live-Verifikation genau dieses Beispiels auf der Demo (siehe #923-Abnahmekriterien) bleibt
-der eigentliche Nachweis für den Fall, den Maßnahme B beheben soll. Gemessene Zusatzlatenz des
-Zerlegungsaufrufs: rund 183 ms im Mittel (GPU-beschleunigtes lokales Modell). Details siehe die
+der eigentliche Nachweis für den Fall, den Maßnahme B beheben soll. Nachmessung nach dem
+Budget-Review-Fix (jede Teilfrage wird auf das volle `top-k` MMR-ausgewählt statt `top-k` geteilt
+durch die Teilfragenzahl, siehe `QueryService#retrieveRelevantChunks`): weiterhin 19/20 zu 19/20 -
+der zuvor verlorene Fall (`city-multi_topic-012`) erreicht jetzt zwar wieder das volle
+Chunk-Budget, verfehlt aber inhaltlich weiterhin eines der beiden erwarteten Dokumente. Gemessene
+Zusatzlatenz des Zerlegungsaufrufs: rund 157 ms im Mittel (GPU-beschleunigtes lokales Modell).
+Details siehe die
 Beschreibung des #923-Pull-Requests.
 
 ### Speicherung und Filterachse

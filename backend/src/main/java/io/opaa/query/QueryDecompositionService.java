@@ -14,28 +14,14 @@ import org.springframework.stereotype.Service;
 
 /**
  * Splits a question into up to {@code maxSubQueries} independent, self-contained search queries
- * before retrieval (#923, Maßnahmen B+C aus #912): a multi-topic question ("Was kostet ein neuer
- * Personalausweis und ein Führerschein?") becomes one search query per topic instead of a single
- * search vector that structurally favors whichever topic scores highest, and a context-dependent
- * follow-up ("und was kostet das?") is resolved against the conversation history into a
- * self-contained question - replacing {@code QueryService}'s previous "always prepend the first
- * chat message" heuristic on every path that reaches this class successfully (see {@code
- * QueryService#query}'s Javadoc for the fallback that heuristic still serves).
- *
- * <p><b>Never throws and never blocks a query on a broken decomposition.</b> {@link #decompose}
- * returns an empty list - not an exception - for an LLM failure (timeout, no active model) or an
- * unparsable/empty response; {@code QueryService#query} treats an empty list as "run the fallback,
- * single-query path unchanged" (#923's explicit robustness requirement: "unparsebare Ausgabe =
- * Fallback, kein Fehler").
- *
- * <p><b>Uses the same systemwide active chat model as answer generation</b> ({@link
- * ActiveChatModelResolver#resolveChatClient()}, resolved fresh on every call, exactly like {@code
- * AnswerGenerationService}/{@code ChatTitleGenerationService} - see either's Javadoc for why a
- * cached {@link ChatClient} field would miss a model activation via the admin API). This is
- * deliberately the same model as answer generation, not a separately configured "small/fast" one:
- * the project has exactly one managed-model connection path
- * (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei), and introducing a second
- * configurable model slot for this one call is not justified before an operator actually needs it.
+ * before retrieval (#923), resolving a conversation-relative follow-up into a standalone question
+ * in the process - replacing {@code QueryService}'s previous "always prepend the first chat
+ * message" heuristic on every path that reaches this class successfully. {@link #decompose} never
+ * throws: any LLM failure or unparsable/empty response yields an empty list, which {@code
+ * QueryService} treats as "run the single-query fallback unchanged", never a user-facing error.
+ * Resolves the {@link ChatClient} fresh via {@link ActiveChatModelResolver#resolveChatClient()} on
+ * every call - the same systemwide active chat model {@code AnswerGenerationService} uses for the
+ * answer itself.
  */
 @Service
 class QueryDecompositionService {
@@ -119,9 +105,8 @@ class QueryDecompositionService {
   /**
    * Splits {@code rawText} into non-blank, deduplicated, bullet-stripped lines, capped at {@code
    * maxSubQueries} - never grows the number of sub-queries beyond that bound even if the model
-   * ignores the prompt's instruction and emits more (#923's "max. Teilfragen konfigurierbar"
-   * leitplanke). Returns an empty list for {@code null}, blank, or otherwise unusable input, which
-   * {@link #decompose} treats as a decomposition failure.
+   * ignores the prompt's instruction and emits more. Returns an empty list for {@code null}, blank,
+   * or otherwise unusable input, which {@link #decompose} treats as a decomposition failure.
    */
   private List<String> parse(String rawText, int maxSubQueries) {
     if (rawText == null || rawText.isBlank()) {

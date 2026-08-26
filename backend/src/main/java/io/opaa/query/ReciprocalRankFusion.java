@@ -11,16 +11,18 @@ import org.springframework.ai.document.Document;
  * different sub-queries' similarity scores are not comparable (a chunk's score reflects how well it
  * matches its own sub-query's embedding, not the original question), so ranking the merged pool by
  * raw score would systematically favor whichever sub-query's topic happens to score higher overall
- * - exactly the #912 failure mode Maßnahme B exists to fix. Reciprocal Rank Fusion instead scores
+ * - exactly the #912 failure mode this class exists to fix. Reciprocal Rank Fusion instead scores
  * each chunk by {@code 1 / (K + rank)} summed over every sub-query list it appears in (rank
  * 1-based), so a chunk ranked first in its own sub-query's results competes on equal footing with
  * the top chunk of every other sub-query, regardless of either list's absolute scores.
  *
  * <p>Deduplicated by {@link Document#getId()} (the chunk id, stable across sub-queries since the
  * same chunk can legitimately be a top candidate for more than one sub-query): a chunk's
- * contributions from every list it appears in are summed before ranking, and the first {@link
- * Document} instance encountered for a given id is the one kept in the result - reasonable since a
- * chunk's own content/metadata do not vary between sub-query result lists.
+ * contributions from every list it appears in are summed before ranking, and the {@link Document}
+ * instance with the higher {@link Document#getScore()} among duplicates is the one kept in the
+ * result - a chunk's own score is comparable across duplicates of the *same* chunk (unlike across
+ * different chunks from different sub-queries), so this keeps the more relevant of the two
+ * instances feeding {@code ChatSource#getRelevanceScore()} downstream.
  */
 final class ReciprocalRankFusion {
 
@@ -53,7 +55,8 @@ final class ReciprocalRankFusion {
         int rank = i + 1;
         double contribution = 1.0 / (RANK_DAMPING_CONSTANT + rank);
         fusedScoreByChunkId.merge(document.getId(), contribution, Double::sum);
-        documentByChunkId.putIfAbsent(document.getId(), document);
+        documentByChunkId.merge(
+            document.getId(), document, ReciprocalRankFusion::preferHigherScore);
       }
     }
 
@@ -62,5 +65,18 @@ final class ReciprocalRankFusion {
         .limit(overallBudget)
         .map(entry -> documentByChunkId.get(entry.getKey()))
         .toList();
+  }
+
+  /** {@code null} scores lose to any non-null one; between two non-null scores, the higher wins. */
+  private static Document preferHigherScore(Document a, Document b) {
+    Double scoreA = a.getScore();
+    Double scoreB = b.getScore();
+    if (scoreA == null) {
+      return b;
+    }
+    if (scoreB == null) {
+      return a;
+    }
+    return scoreA >= scoreB ? a : b;
   }
 }

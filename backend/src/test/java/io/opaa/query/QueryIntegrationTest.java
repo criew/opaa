@@ -437,7 +437,7 @@ class QueryIntegrationTest {
   }
 
   /**
-   * #923's ADR-0008 §5 wächter for the multi-sub-query path: the same 250-unauthorized-vs-10
+   * #923's ADR-0008 §5 guard for the multi-sub-query path: the same 250-unauthorized-vs-10
    * authorized setup as {@link
    * #queryOnlyReturnsChunksFromTheGrantedLibraryEvenWhenUnauthorizedChunksWouldOutscoreThem}, but
    * with query decomposition forced to two sub-queries (a two-line decomposition response) so every
@@ -502,8 +502,11 @@ class QueryIntegrationTest {
           queryService.query(
               "Beliebige Mehrthemenfrage", null, asCaller(userId), true, java.util.List.of());
 
-      assertThat(response.getSources()).isNotEmpty();
-      assertThat(response.getSources()).hasSizeLessThanOrEqualTo(8);
+      // Exactly topK (8): each sub-query is independently MMR-narrowed to the full topK before
+      // fusion (#923 review) - with both sub-queries returning the identical, fully-overlapping
+      // authorized candidate set (FakeEmbeddingModel ties every embedding), the fused result is
+      // exactly that same set of 8, not fewer.
+      assertThat(response.getSources()).hasSize(8);
       assertThat(response.getSources())
           .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
     } finally {

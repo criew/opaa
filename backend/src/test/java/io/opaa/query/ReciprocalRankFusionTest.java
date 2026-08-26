@@ -53,15 +53,16 @@ class ReciprocalRankFusionTest {
   }
 
   @Test
-  void dedupesByChunkIdKeepingTheFirstEncounteredDocumentInstance() {
-    Document firstInstance = chunk("dup", "first list's copy", 0.9);
-    Document secondInstance = chunk("dup", "second list's copy", 0.1);
+  void dedupesByChunkIdKeepingTheHigherScoringDocumentInstance() {
+    Document lowerScoreFirst = chunk("dup", "first list's copy", 0.1);
+    Document higherScoreSecond = chunk("dup", "second list's copy", 0.9);
 
     List<Document> fused =
-        ReciprocalRankFusion.fuse(List.of(List.of(firstInstance), List.of(secondInstance)), 10);
+        ReciprocalRankFusion.fuse(
+            List.of(List.of(lowerScoreFirst), List.of(higherScoreSecond)), 10);
 
     assertThat(fused).hasSize(1);
-    assertThat(fused.getFirst().getText()).isEqualTo("first list's copy");
+    assertThat(fused.getFirst().getText()).isEqualTo("second list's copy");
   }
 
   @Test

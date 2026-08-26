@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -351,7 +352,6 @@ class QueryServiceTest {
   /** #667: when no search ran, nothing was searched - the list is empty, not a guess. */
   @Test
   void queryListsNoSearchedLibrariesWhenNoSearchRan() {
-    when(chatMemory.get(any())).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
@@ -818,7 +818,6 @@ class QueryServiceTest {
   // only exists at the chat/space level.
   @Test
   void queryNeverMarksNoKnowledgeAvailableInSpaceForAnEphemeralQuery() {
-    when(chatMemory.get(any())).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
@@ -1353,7 +1352,6 @@ class QueryServiceTest {
 
   @Test
   void queryWithNoReadableLibrariesSkipsVectorStoreAndReturnsEmptySources() {
-    when(chatMemory.get(any())).thenReturn(List.of());
     when(libraryAccessService.readableLibraryIds(currentUserId, organizationId))
         .thenReturn(Set.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -1387,7 +1385,6 @@ class QueryServiceTest {
   @Test
   void queryWithUseKnowledgeFalseAndUnreadableLibrarySkipsVectorStoreAndReturnsEmptySources() {
     UUID unreadableLibraryId = UUID.randomUUID();
-    when(chatMemory.get(any())).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
@@ -1401,7 +1398,6 @@ class QueryServiceTest {
 
   @Test
   void queryWithUseKnowledgeFalseAndNoReferencesSkipsVectorStoreAndMarksAnsweredWithoutKnowledge() {
-    when(chatMemory.get(any())).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
@@ -1448,7 +1444,6 @@ class QueryServiceTest {
   @Test
   void
       queryWithUseKnowledgeFalseAndNullLibraryIdsSkipsVectorStoreAndMarksAnsweredWithoutKnowledge() {
-    when(chatMemory.get(any())).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
@@ -1907,13 +1902,36 @@ class QueryServiceTest {
       verifyNoInteractions(queryDecompositionService);
     }
 
+    /**
+     * #923 review: every sub-query is independently MMR-narrowed to the full {@code topK}, not
+     * {@code topK} divided across sub-queries - the fused, deduplicated result is capped at {@code
+     * topK} afterwards, so a full overlap between sub-queries' results still yields exactly {@code
+     * topK} chunks instead of an under-filled result.
+     */
     @Test
-    void perSubQueryBudgetDividesTopKAcrossSubQueriesFlooredAtThree() {
-      assertThat(QueryService.perSubQueryBudget(8, 1)).isEqualTo(8);
-      assertThat(QueryService.perSubQueryBudget(8, 2)).isEqualTo(4);
-      assertThat(QueryService.perSubQueryBudget(8, 3)).isEqualTo(3);
-      // ceil(8/5) = 2, floored up to the minimum of 3.
-      assertThat(QueryService.perSubQueryBudget(8, 5)).isEqualTo(3);
+    void eachSubQueryIsMmrNarrowedToTheFullTopKBeforeFusion() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(queryDecompositionService.decompose(eq("Kombifrage"), any(), eq(3)))
+          .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
+      List<Document> eightChunks =
+          IntStream.range(0, 8)
+              .mapToObj(
+                  i ->
+                      Document.builder()
+                          .id("chunk-" + i)
+                          .text("Content " + i)
+                          .metadata(Map.of("file_name", "f" + i + ".md", "document_id", "doc-" + i))
+                          .score(0.9 - i * 0.01)
+                          .build())
+              .toList();
+      // Both sub-queries return the identical, fully overlapping candidate set.
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(eightChunks);
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
+
+      assertThat(response.getSources()).hasSize(8);
     }
   }
 
