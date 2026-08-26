@@ -17,6 +17,14 @@
   ],
   timezone: 'Europe/Berlin',
 
+  // Commit-Autor der Update-Branches (#924): Renovates Standard-Autor ist keinem
+  // GitHub-Konto zugeordnet und fällt damit durch den CLA-Check (contributor-assistant
+  // findet weder Unterschrift noch Allowlist-Treffer — "*[bot]" matcht nur echte
+  // App-Bot-Logins). Die Noreply-Adresse ordnet die Commits dem PAT-Inhaber zu, der die
+  // PRs ohnehin eröffnet und dessen CLA-Unterschrift vorliegt; der Anzeigename bleibt
+  // ehrlich "Renovate Bot".
+  gitAuthor: 'Renovate Bot <1293732+bigpuritz@users.noreply.github.com>',
+
   // Projektsprache (AGENTS.md): Conventional-Commit-Typ und -Scope englisch, Beschreibung
   // deutsch. Ergibt z. B. "chore(deps): @mui/material auf 9.3.0 aktualisieren" — als
   // Commit-Nachricht und PR-Titel.
