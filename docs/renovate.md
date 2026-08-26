@@ -88,6 +88,10 @@ klassisch `repo` + `workflow`), hinterlegt von einem Maintainer:
 gh secret set RENOVATE_TOKEN
 ```
 
+Die Commits der Update-Branches tragen als Autor „Renovate Bot" mit der Noreply-Adresse des
+PAT-Inhabers (`gitAuthor` in `renovate.json5`) — so besteht der CLA-Check über dessen
+vorhandene Unterschrift (#924). Wechselt der Token-Inhaber, muss `gitAuthor` mitziehen.
+
 Bewusst ein PAT und nicht der eingebaute `GITHUB_TOKEN` des Workflows: Mit dem
 `GITHUB_TOKEN` erstellte PRs lösen **keine** CI-Workflows aus (GitHubs Schutz vor rekursiven
 Triggern) — die Update-PRs stünden dauerhaft ohne Checks da — und Workflow-Dateien dürfte er
