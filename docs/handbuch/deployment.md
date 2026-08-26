@@ -27,106 +27,19 @@ docker compose pull && docker compose up -d
 
 `main` folgt dem jeweils letzten Stand; für reproduzierbare Deployments stattdessen einen `sha-<commit>`-Tag pinnen.
 
-## Öffentliche Testinstanz
-
-Unter **https://opaa.ewerlin.com** betreibt der Maintainer eine öffentliche **Test-/Demo-Instanz** von OPAA. Es handelt sich ausdrücklich nicht um einen Produktivbetrieb — es gelten keine Verfügbarkeits- oder Datenerhaltungsgarantien.
-
-Seit dem 21.08.2026 ist die Instanz die Demo-Instanz **„Stadt Rheinfurt"** (#230, Epic #708): Der Stack wurde per Reset neu aufgesetzt (frische Datenbank, frischer Keycloak-Realm-Import mit den Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt. Konzept, Nutzerkonten und Drehbuch stehen in [`demo-walkthrough.md`](demo-walkthrough.md) und [`features/demo-instance.md`](../features/demo-instance.md); dieser Abschnitt beschreibt nur die instanzspezifischen Betriebsdetails, die dort nicht stehen.
-
-- **Betreiber:** Der Maintainer (`criew`), auf privater VPS-Infrastruktur außerhalb dieses Repositorys.
-- **Zweck:** Öffentlich erreichbare Vorführinstanz der Demo „Stadt Rheinfurt" auf dem aktuellen `main`-Stand.
-- **Zugriff:** Die Instanz läuft im Auth-Modus `oidc` hinter Keycloak (siehe [Authentifizierung](#authentifizierung)). Der Zugang ist bewusst account-gebunden — ein anonymer Zugang oder Gastzugang ist **nicht** vorgesehen; jede Nutzung erfordert eine Anmeldung mit einem der Rheinfurt-Demo-Konten (siehe [„Nutzerkonten"](demo-walkthrough.md#nutzerkonten)). Eine Konsequenz dieser Festlegung: Inhalte auf der Instanz — der Rheinfurt-Korpus — sind nur für angemeldete Nutzer sichtbar, nicht öffentlich ohne Anmeldung einsehbar.
-- **Administration:** Genau ein Konto trägt die Rolle `SYSTEM_ADMIN` — `OPAA_INITIAL_ADMIN_EMAIL` zeigt auf `admin@stadt-rheinfurt.example`, das Administrationskonto `demo-admin`, nicht mehr auf ein persönliches Konto des Maintainers. Das Keycloak-Konto `demo-admin` samt Passwort stammt bereits aus dem Realm-Import; der Seed-Lauf legt keinen neuen Keycloak-Nutzer an, sondern löst nur dessen Erstanmeldung aus, die den zugehörigen OPAA-Datensatz anlegt. Sein Passwort ist nach jedem Seed-Lauf bewusst rotiert (siehe [„Seed- und `opaa-seed`-Verfahren"](#seed--und-opaa-seed-verfahren) unten) und weicht deshalb vom in `demo-walkthrough.md` dokumentierten Demo-Passwort ab; die vier Fach-Demokonten behalten dieses dokumentierte Passwort unverändert. Alle administrativen Vorgänge auf der Instanz führt `demo-admin` über den Admin-Bereich der Oberfläche aus. Weitere Konten mit dieser Rolle gibt es derzeit nicht.
-- **Netzwerk:** Alle Container-Ports binden ausschließlich auf `127.0.0.1`. Nach außen führt ausschließlich ein nginx auf dem Host, der TLS terminiert und weiterleitet. Keycloak ist unter dem Pfad **`/idp`** eingehängt — ausdrücklich **nicht** unter `/auth`, weil das Frontend `/auth/callback` selbst als OIDC-Redirect verwendet und die beiden sich sonst überlagern. Dieser Host-nginx braucht **zusätzlich** zum `client_max_body_size` im Frontend-Container-nginx (siehe [`OPAA_UPLOAD_MAX_FILE_SIZE`](#alle-umgebungsvariablen)) ein ausreichendes eigenes `client_max_body_size` — sein Default liegt ebenfalls bei nur 1 MB und würde Uploads sonst schon vor dem Frontend-Container abweisen. Zusätzlich zu `postgres`/`backend`/`frontend`/`keycloak` laufen in der Instanz-Compose zwei schlanke httpd-Container, die den Rheinfurt-Korpus ausliefern — einer für die drei `HTTP_DIRECTORY`-Bibliotheken, einer unter dem Netzwerk-Alias `presse.stadt-rheinfurt.example` für die `RSS_FEED`-Bibliothek der Pressestelle (siehe „Korpus einspielen und indizieren" unten). Beide binden ihre Ports ebenfalls ausschließlich auf `127.0.0.1`.
-- **Betriebsart:** Die Instanz läuft ausschließlich aus vorgebauten GHCR-Images (`ghcr.io/criew/opaa-backend:main`, `ghcr.io/criew/opaa-frontend:main`). Auf dem Server gibt es **keinen Repository-Checkout** und keinen Build — nur eine `docker-compose.yml`, die `image:` statt `build:` verwendet.
-- **Daten:** Es dürfen dort **keine personenbezogenen, vertraulichen oder produktiven Organisationsdaten** abgelegt werden. Die Instanz ist ausschließlich für Demo- und Testzwecke mit dem synthetischen Rheinfurt-Korpus vorgesehen.
-- **Frontend-Modus:** `OPAA_DEMO_MODE=true` ist gesetzt — der Quellen- und Demo-Hinweis in der Fußzeile der Oberfläche ist damit sichtbar (siehe `OPAA_DEMO_MODE` in [„Alle Umgebungsvariablen"](#alle-umgebungsvariablen)).
-
-#### Modellkonfiguration der Instanz
-
-Hier ist eine Verwechslung angelegt, die bereits mehrfach zu falschen Aussagen geführt hat und deshalb ausdrücklich benannt wird:
-
-| | Anbieter | Modell | Anmerkung |
-|---|---|---|---|
-| **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht** — seit #762 ohnehin der einzige Anbindungsweg für beide Funktionen. `OPAA_OPENAI_CHAT_BASE_URL=https://api.anthropic.com/v1`, ein eigener `OPAA_OPENAI_CHAT_API_KEY` und `OPAA_OPENAI_CHAT_MODEL=claude-haiku-4-5` zeigen auf Anthropic; das gemeinsame `OPAA_OPENAI_BASE_URL` ist auf dieser Instanz **nicht** gesetzt. |
-| **Embedding** | Ollama, auf dem Host der VPS (nicht im Compose-Netz) | `nomic-embed-text` | Läuft über denselben Anbindungsweg, aber **nicht** über den Anwendungs-Default: `OPAA_OPENAI_EMBEDDING_BASE_URL=http://host.docker.internal:11434/v1` (Ollama läuft auf dem Host, nicht als Compose-Service `ollama` — der `docker`-Profil-Default `http://ollama:11434/v1` liefe hier ins Leere) und `OPAA_OPENAI_EMBEDDING_MODEL=nomic-embed-text` sind explizit gesetzt. 768 Dimensionen, entsprechend `OPAA_PGVECTOR_DIMENSIONS=768` statt des Stack-Defaults 1536. |
-
-Zwei Punkte dazu:
-
-- **`openai` bezeichnet hier das Protokoll, nicht den Anbieter.** Wer die Basis-Adresse als Anbieterangabe liest, kommt zu einem falschen Ergebnis — genau das ist in der Vergangenheit passiert. Bis #762 trug dazu bei, dass eine eigene Variable `OPAA_AI_CHAT_PROVIDER` formal auf `openai` stand; diese Variable ist inzwischen entfallen (siehe [„LLM-Anbieter"](#llm-anbieter) unten), die Verwechslungsgefahr bleibt aber an der Basis-Adresse selbst bestehen.
-- **Die Aufteilung Chat bei Anthropic, Embedding lokal ist dauerhaft, nicht provisorisch.** Anthropic bietet keine Embeddings-API an; ein einheitlicher Anbieter für beides ist mit dieser Wahl gar nicht möglich.
-- Anthropic bezeichnet die OpenAI-kompatible Schicht ausdrücklich als Werkzeug zum Testen und Vergleichen, nicht als produktionsreifen Zugang. Für eine Testinstanz ist das angemessen; für einen Dauerbetrieb wäre die native Anbindung zu wählen.
-
-**Kostenseite:** Token-Kosten entstehen ausschließlich beim Chat. Die Einbettung läuft lokal über Ollama und kostet nichts — eine Neuindizierung des Korpus ist deshalb kostenlos, unabhängig von seiner Größe. Eine grobe Messung im laufenden Betrieb der Rheinfurt-Demo: rund 5.000–7.000 Input- und rund 300 Output-Token je Chat-Frage, macht die Kosten pro Anfrage zu deutlich unter einem US-Cent. Das harte monatliche Ausgabenlimit für den verwendeten API-Schlüssel ist **in der Anthropic-Console hinterlegt** (Kontobereich für Nutzungslimits), nicht in OPAA selbst — OPAA kennt kein eigenes Budget-Limit für den Chat-Anbieter.
-
-Die Rate-Limit-Werte der Instanz sind hier nicht festgehalten.
-
-### Korpus einspielen und indizieren
-
-Der Rheinfurt-Korpus liegt **nicht** über einen Repository-Checkout auf dem Server (siehe „Betriebsart" oben), sondern wird als fertiges Verzeichnispaar übertragen: `demo/corpus/` (die Dokumente selbst, inklusive des Autoindex-Konfigurationsschnipsels, den der Korpus-httpd-Container einbindet) und `demo/webserver/` (das Compose-Fragment für die beiden httpd-Container aus „Netzwerk" oben — der Korpus-Container mountet `demo/corpus/`, `demo-presse` mountet direkt `demo/corpus/pressemitteilungen/`).
-
-1. Beide Verzeichnisse vom Arbeitsrechner auf den Server übertragen, per `rsync` oder `scp`:
-
-   ```bash
-   rsync -av --delete ./demo/corpus/ <benutzer>@<host>:<korpusverzeichnis>/
-   rsync -av --delete ./demo/webserver/ <benutzer>@<host>:<webserververzeichnis>/
-   ```
-
-   > **Bewusst ohne konkrete Angaben:** `criew/opaa` ist ein öffentliches Repository. Host, Benutzername und die Pfade auf dem Server stehen deshalb nicht hier, sondern in der Betriebsdokumentation des Maintainers. Wer den Rollout ausführen soll, bekommt sie von ihm. Beschrieben ist hier das Verfahren, nicht die Belegung.
-
-2. Die beiden httpd-Container binden das jeweilige Verzeichnis als Bind-Mount ein; ein Neustart des Backends ist für eine Korpus-Aktualisierung nicht nötig. Ob der jeweilige httpd-Container selbst neu erstellt werden muss, damit er neue Dateien ausliefert, hängt von seiner Bind-Mount-Konfiguration in der Instanz-Compose ab.
-3. Damit das Backend `demo-corpus` und `presse.stadt-rheinfurt.example` als Indizierungsziel akzeptiert, steht in der Instanz-Konfiguration `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example` — ohne diesen Eintrag lehnt die Zielprüfung (#267, siehe [„Sicherheitshinweis"](#sicherheitshinweis-post-apiv1librarieslibraryidindexing-ist-von-außen-erreichbar) unten) beide internen Hostnamen ab.
-4. Die Indizierung löst aus, wer mindestens `EDITOR` auf der Zielbibliothek hält (ADR-0018; `SYSTEM_ADMIN` ist dafür seit #478 nicht mehr erforderlich), über den **Admin-Bereich der Oberfläche** — für den Rheinfurt-Korpus die vier konnektorgespeisten Bibliotheken vom Typ `HTTP_DIRECTORY`/`RSS_FEED`, deren Quellkonfiguration bereits an der jeweiligen Bibliothek gespeichert ist (seit #478 nicht mehr Teil des Anstoß-Requests).
-5. Der Fortschritt ist im Admin-Bereich sichtbar (dahinter `GET /api/v1/libraries/{libraryId}/indexing/status`).
-
-**Deeplinks auf interne Quellen laufen über das Backend (#747).** `demo-corpus` und `presse.stadt-rheinfurt.example` sind nur im Docker-Netz der Instanz auflösbar, nicht vom Browser eines Nutzers aus — ein direkter Link auf die beim Indizieren gespeicherte Quell-URL lief deshalb vor #747 ins Leere. `GET /api/v1/documents/{documentId}/content` streamt das Original für `HTTP_DIRECTORY`/`RSS_FEED`-Dokumente seither serverseitig von dieser Quell-URL durch (mit derselben Ziel-Allowlist-Prüfung wie beim Indizieren, siehe #267) statt den Client dorthin zu verweisen — „Original öffnen" auf der Dokumentenübersicht und „Im Dokument öffnen" unter den Fundstellen funktionieren für den Rheinfurt-Korpus dadurch unverändert, obwohl seine Webserver von außen nicht erreichbar sind.
-
-Unveränderte Dateien werden anhand ihrer SHA-256-Prüfsumme übersprungen und ihr `documents`-Datensatz bleibt bei Status `INDEXED`; ein erneuter Lauf über denselben Bestand — etwa nach einer Korpus-Aktualisierung, bei der nur ein Teil der Dateien sich geändert hat — verarbeitet deshalb ausschließlich die geänderten oder neuen Dateien und ist gefahrlos wiederholbar.
-
-### Seed- und `opaa-seed`-Verfahren
-
-Der (erneute) Seed der Instanz läuft im Profil `demo` von einer Arbeitsstation gegen die öffentliche API und Keycloak, nicht auf dem Server selbst:
-
-```bash
-python seed.py --profile demo \
-  --base-url https://opaa.ewerlin.com/api \
-  --keycloak-url https://opaa.ewerlin.com/idp
-```
-
-Voraussetzung dafür ist der Keycloak-Client `opaa-seed` — siehe [„Härtung für erreichbare
-Deployments"](#härtung-für-erreichbare-deployments), Punkt 6 unten. Auf der Instanz ist er im
-Normalbetrieb **deaktiviert**, sowohl in der Realm-Anpassung beim Import als auch nachträglich per
-`kcadm`. Für einen Seed-Lauf wird er ausschließlich für dessen Dauer aktiviert und unmittelbar danach
-wieder deaktiviert — kein dauerhaft scharfer, passwortbasierter Tokenweg ohne Client-Secret auf einer
-erreichbaren Instanz.
-
-**Zweite Vorbedingung, symmetrisch zur ersten:** `seed.py` erwartet für `demo-admin` fest das in
-`demo-walkthrough.md` dokumentierte Demo-Passwort und kennt kein Override-Flag dafür. Weil dieses
-Passwort nach jedem Seed-Lauf rotiert wird (siehe unten), muss es vor einem erneuten Lauf für dessen
-Dauer per `kcadm set-password` auf den dokumentierten Demo-Wert zurückgesetzt und unmittelbar danach
-wieder rotiert werden — genau wie beim Client `opaa-seed` gilt: nur für die Dauer des Laufs scharf,
-sonst deaktiviert/rotiert. Ein `--admin-password`-Override-Flag für `seed.py` wäre die naheliegende
-Alternative, ist aber nicht Teil dieses Rollouts.
-
-Nach jedem Seed-Lauf wird das Passwort von `demo-admin` auf einen serverseitig verwahrten
-Zufallswert rotiert (siehe „Administration" oben); die vier Fach-Demokonten (`maria.weber`,
-`selin.kaya`, `thomas.klein`, `andrea.vogt`) behalten das in `demo-walkthrough.md` dokumentierte
-Demo-Passwort unverändert — sie sind fachliche Vorführkonten ohne administrative Rechte.
-
-**Entwicklungs-Nutzer `testuser`:** Der Realm-Import bringt neben den fünf Demo-Nutzern auch den in
-`keycloak/realm-export.json` mitgelieferten Entwicklungs-Nutzer `testuser`/`testpass` auf die
-Instanz. Er ist auf opaa.ewerlin.com per `kcadm` deaktiviert (`enabled: false`) — siehe die
-Härtungstabelle unten, Punkt 1.
-
-### Aktualisierung auf einen neuen `main`-Stand
+## Aktualisierung auf einen neuen `main`-Stand
 
 Der Workflow [`publish-images.yml`](../../.github/workflows/publish-images.yml) baut bei jedem Push auf `main` neue `ghcr.io/criew/opaa-backend`- und `ghcr.io/criew/opaa-frontend`-Images und veröffentlicht sie mit den Tags `main` und `sha-<commit>` in der GHCR-Registry (siehe [Deployment aus vorgebauten Images](#deployment-aus-vorgebauten-images-ghcr) oben).
 
-Auf dem Server liegt ein **Deployment-Skript**, das genau das tut: die aktuellen Images ziehen und den Stack auf den neuen Stand bringen. Es kennt zusätzlich einen Schalter, der auch die Volumes verwirft — damit ist die Datenbank und mit ihr der gesamte Index weg. Dieser Schalter ist deshalb kein Aktualisierungs-, sondern ein Neuaufsetzschritt; danach ist zwingend eine vollständige Neuindizierung nötig.
+Ein Deployment-Skript, das genau das tut — die aktuellen Images ziehen und den Stack auf den neuen
+Stand bringen —, ist eine naheliegende Automatisierung für eine reachable Instanz (Vorbild:
+[`demo/README.md`, „Öffentliche Instanz betreiben"](../../demo/README.md#öffentliche-instanz-betreiben-opaaewerlincom)).
+Ein solcher Wrapper sollte einen Schalter, der zusätzlich die Volumes verwirft, klar von der
+regulären Aktualisierung trennen — damit ist die Datenbank und mit ihr der gesamte Index weg, das ist
+also kein Aktualisierungs-, sondern ein Neuaufsetzschritt; danach ist zwingend eine vollständige
+Neuindizierung nötig.
 
-Ein **Cron-Job ruft dieses Skript täglich um 2 Uhr morgens auf** — ohne den zurücksetzenden Schalter, die Daten bleiben also erhalten. Die Ausgabe der Läufe wird protokolliert und wöchentlich rotiert. Die Instanz folgt dem `main`-Stand damit mit höchstens einem Tag Verzug; ein Push auf `main` erscheint nicht sofort, sondern beim nächsten nächtlichen Lauf. Wer schneller sein will, ruft das Skript von Hand auf.
-
-Ohne das Skript entspricht der Ablauf diesen Schritten, ausgeführt im Verzeichnis mit der `docker-compose.yml` der Instanz:
+Ohne ein solches Skript entspricht der Ablauf diesen Schritten, ausgeführt im Verzeichnis mit der `docker-compose.yml`:
 
 ```bash
 docker compose pull          # neue Images aus GHCR holen
@@ -168,7 +81,10 @@ Eine Neuindizierung wird erst durch Änderungen nötig, die nichts mit dem Image
 | PostgreSQL-Hauptversion gewechselt (Image-Tag von `pg18` auf eine höhere Version) | Das Datenverzeichnis im Volume ist nicht aufwärtskompatibel; ein solcher Wechsel ist ein eigener Migrationsvorgang, kein `docker compose pull` |
 | Update von einer Version **zwischen #766 und #773** (jede Version, die Vektoren über die OpenAI-kompatible Schicht indiziert hat, bevor #773 die Metadaten-Kontamination der Einbettung behoben hat) | In dieser Zeitspanne indizierte Vektoren tragen fünf Zeilen Metadaten-Rauschen (`document_id`/`chunk_index`/`file_name`/`library_id`/`organization_id`) vor dem eigentlichen Text mit eingebettet (Kosinus-Ähnlichkeit zum sauberen Vektor: rund 0.42) — **betroffene Bibliotheken müssen neu indiziert werden**, sonst liegen kontaminierte und saubere Vektoren nebeneinander im selben Suchraum. Siehe die eigene Anleitung dazu direkt unten |
 
-Auf der Testinstanz sind `nomic-embed-text` und `OPAA_PGVECTOR_DIMENSIONS=768` fest aneinander gekoppelt: Wer das Embedding-Modell wechselt, muss beide Werte gemeinsam ändern und die Datenbank zurücksetzen. Ein Wechsel des **Chat**-Modells berührt den Index dagegen nicht — Chat und Einbettung sind auf der Instanz ohnehin getrennte Anbieter.
+Wer ein Compose-Profil mit fest gekoppeltem Embedding-Modell und `OPAA_PGVECTOR_DIMENSIONS` betreibt
+(Vorbild: `demo/README.md`, „Öffentliche Instanz betreiben") muss bei einem Wechsel des
+Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen. Ein Wechsel des
+**Chat**-Modells berührt den Index dagegen nicht, sofern Chat und Einbettung getrennte Anbieter sind.
 
 > **Falle bei einer Neuindizierung:** OPAA überspringt Dateien, deren SHA-256-Prüfsumme unverändert ist **und** deren Datensatz in der Tabelle `documents` den Status `INDEXED` trägt. Wird die Vektortabelle geleert, ohne auch `documents` zu bereinigen, meldet ein neuer Lauf lauter übersprungene Dateien und der Index bleibt leer. Beide Tabellen liegen in derselben Datenbank — wer den Index verwirft, muss `documents` mitverwerfen.
 
@@ -185,11 +101,15 @@ Auf der Testinstanz sind `nomic-embed-text` und `OPAA_PGVECTOR_DIMENSIONS=768` f
 > DELETE FROM rss_feed_state WHERE library_id = '<library-id>';  -- nur bei RSS_FEED-Bibliotheken
 > ```
 >
-> Anschließend die Bibliothek regulär neu indizieren (`POST /api/v1/libraries/{libraryId}/indexing` bzw. der entsprechende Button in der Oberfläche). Es gibt keinen dedizierten „Nur-neu-einbetten"-Schalter, der die drei Tabellen automatisch zurücksetzt — dieser manuelle Weg ist der einzige. Auf der öffentlichen Testinstanz betrifft das jede Bibliothek, die zwischen dem #766- und dem #773-Deploy mindestens einmal indiziert wurde; siehe [„Korpus einspielen und indizieren"](#korpus-einspielen-und-indizieren) für den regulären Seed-Weg, der sich für einen kompletten Neuaufbau ebenfalls eignet.
+> Anschließend die Bibliothek regulär neu indizieren (`POST /api/v1/libraries/{libraryId}/indexing` bzw. der entsprechende Button in der Oberfläche). Es gibt keinen dedizierten „Nur-neu-einbetten"-Schalter, der die drei Tabellen automatisch zurücksetzt — dieser manuelle Weg ist der einzige. Betroffen ist jede Bibliothek, die zwischen dem #766- und dem #773-Deploy mindestens einmal indiziert wurde.
 
-### Sicherheitshinweis: `POST /api/v1/libraries/{libraryId}/indexing` ist von außen erreichbar
+## Sicherheitshinweis: `POST /api/v1/libraries/{libraryId}/indexing` ist von außen erreichbar
 
-Der Endpunkt ist auf der Testinstanz aus dem Internet erreichbar. Dass alle Container-Ports nur auf `127.0.0.1` binden, ändert daran nichts — der nach außen gerichtete nginx reicht die API-Pfade durch, und der Indizierungspfad ist davon nicht ausgenommen. Die Bindung auf `127.0.0.1` verhindert lediglich, dass jemand die Container unter Umgehung des nginx direkt anspricht.
+Bei jeder über einen Reverse-Proxy erreichbaren Installation ist dieser Endpunkt aus dem Internet
+erreichbar. Dass alle Container-Ports nur auf `127.0.0.1` binden (siehe „Härtung für erreichbare
+Deployments" unten), ändert daran nichts — der nach außen gerichtete Proxy reicht die API-Pfade
+durch, und der Indizierungspfad ist davon nicht ausgenommen. Die Bindung auf `127.0.0.1` verhindert
+lediglich, dass jemand die Container unter Umgehung des Proxys direkt anspricht.
 
 Er ist durch Keycloak authentifiziert und verlangt mindestens die Rolle `EDITOR` auf der Zielbibliothek (`DocumentIndexingService#requireEditableLibrary`); die frühere, zusätzliche `SYSTEM_ADMIN`-Schranke des alten `/api/v1/indexing/trigger`-Endpunkts ist mit #478/ADR-0018 bewusst entfallen — ein Anstoß-Knopf, den nur die Systemverwaltung drücken darf, wäre für jeden anderen Bibliothekseigentümer tot. Zusätzlich greift das Rate Limiting mit einem eigenen, engen Kontingent für diesen Pfad (`OPAA_RATE_LIMIT_INDEXING_*`, standardmäßig eine Anfrage pro IP und Minute).
 
@@ -218,9 +138,9 @@ die **lokale Entwicklung** gebaut, wie der Warnhinweis am Kopf von `docker-compo
 Vorgabewerte sind dafür richtig gewählt — bequem, ohne Ersteinrichtung nutzbar, mit einem funktionierenden
 OIDC-Realm ab dem ersten Start. Für eine **öffentlich oder auch nur aus einem größeren Netz erreichbare
 Instanz** ist jeder dieser Vorgabewerte ein Problem, und der Warnhinweis allein sagt nicht, was konkret zu
-tun ist. Dieser Abschnitt schließt genau diese Lücke — die Doku, nicht der Betrieb: Für die reale
-öffentliche Testinstanz siehe [„Öffentliche Testinstanz"](#öffentliche-testinstanz) oben, die vermutlich
-nicht den hier mitgelieferten Realm unverändert nutzt.
+tun ist. Dieser Abschnitt schließt genau diese Lücke — die Doku, nicht der Betrieb: Für ein reales
+Beispiel siehe [`demo/README.md`, „Öffentliche Instanz betreiben"](../../demo/README.md#öffentliche-instanz-betreiben-opaaewerlincom),
+die den hier mitgelieferten Realm nicht unverändert nutzt.
 
 Die folgende Liste geht die sechs tatsächlich im Repository liegenden Vorgabewerte durch. Wo eine
 Gegenmaßnahme **zwingend** ist, steht das dabei; alles andere ist eine Empfehlung, deren Unterlassung
@@ -228,18 +148,18 @@ begründet werden sollte, kein hartes Muss.
 
 | # | Fundstelle | Vorgabewert | Risiko bei erreichbarem Betrieb | Gegenmaßnahme |
 |---|---|---|---|---|
-| 1 | `keycloak/realm-export.json` | Realm-Benutzer `testuser`/`testpass` sowie, seit #712, die fünf Demo-Nutzer (`demo-admin`, `maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt`) mit dem gemeinsamen Passwort `RheinfurtDemo!2026`, alle `"temporary": false` | Bekannte, öffentlich im Repository stehende Zugangsdaten zu echten Konten — jeder, der das Repository kennt, kennt diese Logins | **Zwingend.** Diese Benutzer aus dem Realm-Export entfernen oder durch eigene, beim Import per Skript gesetzte Zufallspasswörter ersetzen, bevor der Realm importiert wird. Wer den mitgelieferten Realm unverändert importiert, importiert diese Konten mit. Für einen Rollout der Demo-Instanz selbst (opaa.ewerlin.com o. ä.) gilt grundsätzlich dieselbe Pflicht, mit einer bewussten, dokumentierten Ausnahme für die vier Fachkonten — siehe „Ist-Zustand" unten. **Ist-Zustand auf opaa.ewerlin.com** (seit dem Rheinfurt-Rollout #230): `testuser` ist per `kcadm` deaktiviert (`enabled: false`). `demo-admin` — das einzige Konto mit `SYSTEM_ADMIN` — wird nach jedem Seed-Lauf auf einen serverseitig verwahrten Zufallswert rotiert, siehe [„Seed- und `opaa-seed`-Verfahren"](#seed--und-opaa-seed-verfahren) oben. Die vier Fach-Demokonten (`maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt`) sind dagegen bewusst **nicht** rotiert oder entfernt: Sie sind für das Drehbuch vorführnotwendige `USER`-Konten ohne Adminrechte, ihr offenes Demo-Passwort ist ein akzeptiertes Restrisiko — jeder, der `demo-walkthrough.md` liest, kann sich mit ihnen anmelden. Begrenzt wird dieses Risiko durch das je Konto greifende Rate Limiting (siehe „Rate Limit" in `demo-walkthrough.md`) und das monatliche Ausgabenlimit in der Anthropic-Console (siehe „Modellkonfiguration der Instanz" oben) — beide setzen dem, was ein Fachkonto anrichten kann, eine feste Obergrenze |
-| 2 | `keycloak/realm-export.json:6` | `"sslRequired": "none"` | Keycloak nimmt Anmeldungen und Admin-Zugriffe auch unverschlüsselt an — in Kombination mit einer erreichbaren Instanz eine offene Tür für das Mitlesen von Zugangsdaten | **Zwingend**, sobald die Instanz nicht ausschließlich über eine als vertrauenswürdig geltende Loopback-/interne Verbindung erreicht wird: auf `external` (TLS für externe Zugriffe verpflichtend, intern optional) oder `all` (TLS immer verpflichtend) setzen. TLS selbst terminiert dabei **nicht** Keycloak, sondern der vorgelagerte Reverse-Proxy — siehe [„Netzwerkzugang"](#netzwerkzugang) unten und das reale Beispiel unter [„Öffentliche Testinstanz"](#öffentliche-testinstanz) (nginx terminiert TLS, Keycloak selbst bleibt intern auf HTTP). **Zur selben Maßnahme gehört zwingend `KC_PROXY_HEADERS=xforwarded`** (Keycloak-Umgebungsvariable, analog zum in [„Netzwerkzugang"](#netzwerkzugang) beschriebenen `server.forward-headers-strategy` des Backends) — ohne sie hält Keycloak eine über den Proxy per TLS ankommende Anfrage für unverschlüsselt und antwortet mit „HTTPS required", was einen Betreiber typischerweise dazu verleitet, `sslRequired` fälschlich wieder auf `none` zurückzustellen, statt die eigentliche Ursache zu beheben. Bei Einhängung unter einem Unterpfad (z. B. `/idp`, wie bei der öffentlichen Testinstanz) zusätzlich `KC_HTTP_RELATIVE_PATH` setzen. Wie beim Backend muss der vorgelagerte Proxy `X-Forwarded-Proto` dabei **autoritativ** setzen und den Wert nicht vom Client durchlassen |
-| 3 | `docker-compose.yml:59-60` | Keycloak-Bootstrap-Admin `KC_BOOTSTRAP_ADMIN_USERNAME`/`_PASSWORD` fest auf `admin`/`admin` | Voller administrativer Zugriff auf den Identitätsanbieter mit einem der bekanntesten Vorgabepasswörter überhaupt | **Zwingend.** Über eigene Umgebungsvariablen setzen und **nach der Ersteinrichtung ersetzen** — der Bootstrap-Admin legt beim allerersten Start einen administrativen Benutzer an; sein Passwort danach unverändert zu lassen, macht die einmalige Bootstrap-Vereinfachung zu einer dauerhaften Schwachstelle. **Nicht** über `.env.docker`: Der `keycloak`-Service hat kein `env_file` und liest `${...}`-Platzhalter in `docker-compose.yml` stattdessen aus der Shell-Umgebung bzw. einer `.env`-Datei (siehe die Erklärung unter [„Konfiguration"](#konfiguration) unten) — die beiden Werte gehören also in `.env` oder werden per `docker compose --env-file <datei>` übergeben, mit derselben Vorsicht wie dort beschrieben, damit sie keine lokalen Entwicklungseinstellungen überschreiben |
-| 4 | `docker-compose.yml:57` | `command: start-dev --import-realm` — kein persistentes Datenverzeichnis, nur der Realm-Export ist als Datei gemountet | Keycloaks eingebaute Entwicklungsdatenbank ist an den Container gebunden und geht bei jedem Neuerstellen verloren — ein rotiertes Bootstrap-Passwort (Punkt 3) und ein bereinigter Realm (Punkt 1) verschwinden damit beim nächsten `docker compose up -d`/Image-Update und `admin`/`admin` sowie `testuser` sind wieder da, ohne dass das auffällt | **Zwingend**, sonst wirken die Gegenmaßnahmen zu Punkt 1 und 3 nicht dauerhaft, sondern nur bis zum nächsten Container-Neustart. Für erreichbaren Betrieb `start` statt `start-dev` verwenden (das erzwingt ohnehin die übrigen Härtungspunkte dieser Zeile — Keycloak startet mit `start` ohne konfiguriertes TLS/Proxy-Setup gar nicht erst) und eine externe, persistente Datenbank anbinden (`KC_DB`, `KC_DB_URL` u. a.) statt der eingebauten Entwicklungsdatenbank. `--import-realm` importiert einen Realm dabei ohnehin nur, wenn er noch nicht existiert — nach der ersten, persistenten Einrichtung wirken spätere Realm-Änderungen über die Admin-Konsole oder einen erneuten, gezielten Import |
-| 5 | `docker-compose.yml:19-20`, `35`, `51`, `63` | Nur `postgres` bindet auf `127.0.0.1`; `backend` (8081), `frontend` (3000) und `keycloak` (8180) veröffentlichen ihre Ports ohne Adressangabe und binden damit auf allen Schnittstellen | `postgres` auf `127.0.0.1` gebunden schützt vor Zugriff aus dem Netz, aber nicht vor jedem anderen Prozess und Nutzerkonto auf demselben Host. Die übrigen drei Ports sind dagegen aus dem Netz erreichbar, sobald keine Firewall davorsteht — bei `keycloak` ist das der konkrete Ausnutzungsweg zu Punkt 3: Die Admin-Konsole wäre netzweit ansprechbar, unabhängig davon, ob ein vorgelagerter Reverse-Proxy nur bestimmte Pfade durchreicht | Hinter einem Reverse-Proxy alle vier Ports auf `127.0.0.1:` binden, so wie es `postgres` bereits vormacht — für `keycloak` **zwingend** (sonst bleibt die Admin-Konsole trotz Proxy direkt aus dem Netz erreichbar), für `backend`/`frontend` **empfohlen** (der Reverse-Proxy ist dann der einzige Weg zu beiden). Für `postgres` **empfohlen**, die `ports:`-Zuordnung für den erreichbaren Betrieb ganz zu entfernen statt sie nur auf Loopback zu binden — Backend und `postgres` erreichen sich ohnehin über das interne Compose-Netz (Servicename `postgres`), ein Host-Port wird dafür nicht gebraucht. Für lokale Entwicklung (Anschluss mit einem Datenbank-Client vom Host aus, direkter Aufruf der Admin-Konsole) bleiben die bisherigen Bindungen dagegen sinnvoll — deshalb sind sie dort nicht als Fehler markiert |
-| 6 | `keycloak/realm-export.json` (Client `opaa-seed`, seit #712) | Öffentlicher Client mit `directAccessGrantsEnabled: true` (Resource-Owner-Password-Grant) und ohne Client-Secret, ausschließlich für `demo/seed/seed.py` gedacht | Erlaubt einen passwortbasierten Tokenweg **ohne Secret** gegen jedes Realm-Konto — auf einer erreichbaren Instanz ein zusätzlicher, von der eigentlichen Anmeldung (`opaa-frontend`, `directAccessGrantsEnabled: false`, Authorization-Code + PKCE) unabhängiger Angriffsweg, unabhängig davon, wessen Passwort betroffen ist | **Zwingend.** Client `opaa-seed` aus dem Realm-Export entfernen oder auf `enabled: false` setzen, bevor der Realm auf einer erreichbaren Instanz importiert wird. Wer die Demo dort dennoch erneut seeden will, aktiviert den Client nur für die Dauer des Laufs wieder oder legt die Rechte direkt über die Keycloak-Admin-Konsole/API an, statt den Client dauerhaft scharf zu lassen. Siehe `demo/README.md`, Abschnitt „Seed ausführen". **Ist-Zustand auf opaa.ewerlin.com** (seit dem Rheinfurt-Rollout #230): umgesetzt — der Client ist im importierten Realm deaktiviert und wird für einen Seed-Lauf nur vorübergehend aktiviert, siehe [„Seed- und `opaa-seed`-Verfahren"](#seed--und-opaa-seed-verfahren) oben |
+| 1 | `keycloak/realm-export.json` | Realm-Benutzer `testuser`/`testpass` sowie, seit #712, die fünf Demo-Nutzer (`demo-admin`, `maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt`) mit dem gemeinsamen Passwort `RheinfurtDemo!2026`, alle `"temporary": false` | Bekannte, öffentlich im Repository stehende Zugangsdaten zu echten Konten — jeder, der das Repository kennt, kennt diese Logins | **Zwingend.** Diese Benutzer aus dem Realm-Export entfernen oder durch eigene, beim Import per Skript gesetzte Zufallspasswörter ersetzen, bevor der Realm importiert wird. Wer den mitgelieferten Realm unverändert importiert, importiert diese Konten mit. Für einen Rollout der Demo-Instanz selbst gilt grundsätzlich dieselbe Pflicht, mit einer bewussten, dokumentierten Ausnahme für die vier Fachkonten — siehe [`demo/README.md`, „Öffentliche Instanz betreiben"](../../demo/README.md#öffentliche-instanz-betreiben-opaaewerlincom) für ein reales, so gehärtetes Beispiel |
+| 2 | `keycloak/realm-export.json:6` | `"sslRequired": "none"` | Keycloak nimmt Anmeldungen und Admin-Zugriffe auch unverschlüsselt an — in Kombination mit einer erreichbaren Instanz eine offene Tür für das Mitlesen von Zugangsdaten | **Zwingend**, sobald die Instanz nicht ausschließlich über eine als vertrauenswürdig geltende Loopback-/interne Verbindung erreicht wird: auf `external` (TLS für externe Zugriffe verpflichtend, intern optional) oder `all` (TLS immer verpflichtend) setzen. TLS selbst terminiert dabei **nicht** Keycloak, sondern der vorgelagerte Reverse-Proxy — siehe [„Netzwerkzugang"](#netzwerkzugang) unten (nginx terminiert TLS, Keycloak selbst bleibt intern auf HTTP). **Zur selben Maßnahme gehört zwingend `KC_PROXY_HEADERS=xforwarded`** (Keycloak-Umgebungsvariable, analog zum in [„Netzwerkzugang"](#netzwerkzugang) beschriebenen `server.forward-headers-strategy` des Backends) — ohne sie hält Keycloak eine über den Proxy per TLS ankommende Anfrage für unverschlüsselt und antwortet mit „HTTPS required", was einen Betreiber typischerweise dazu verleitet, `sslRequired` fälschlich wieder auf `none` zurückzustellen, statt die eigentliche Ursache zu beheben. Bei Einhängung unter einem Unterpfad (z. B. `/idp`) zusätzlich `KC_HTTP_RELATIVE_PATH` setzen. Wie beim Backend muss der vorgelagerte Proxy `X-Forwarded-Proto` dabei **autoritativ** setzen und den Wert nicht vom Client durchlassen |
+| 3 | `docker-compose.yml:64-65` | Keycloak-Bootstrap-Admin `KC_BOOTSTRAP_ADMIN_USERNAME`/`_PASSWORD` fest auf `admin`/`admin` | Voller administrativer Zugriff auf den Identitätsanbieter mit einem der bekanntesten Vorgabepasswörter überhaupt | **Zwingend.** Über eigene Umgebungsvariablen setzen und **nach der Ersteinrichtung ersetzen** — der Bootstrap-Admin legt beim allerersten Start einen administrativen Benutzer an; sein Passwort danach unverändert zu lassen, macht die einmalige Bootstrap-Vereinfachung zu einer dauerhaften Schwachstelle. **Nicht** über `.env.docker`: Der `keycloak`-Service hat kein `env_file` und liest `${...}`-Platzhalter in `docker-compose.yml` stattdessen aus der Shell-Umgebung bzw. einer `.env`-Datei (siehe die Erklärung unter [„Konfiguration"](#konfiguration) unten) — die beiden Werte gehören also in `.env` oder werden per `docker compose --env-file <datei>` übergeben, mit derselben Vorsicht wie dort beschrieben, damit sie keine lokalen Entwicklungseinstellungen überschreiben |
+| 4 | `docker-compose.yml:62` | `command: start-dev --import-realm` — kein persistentes Datenverzeichnis, nur der Realm-Export ist als Datei gemountet | Keycloaks eingebaute Entwicklungsdatenbank ist an den Container gebunden und geht bei jedem Neuerstellen verloren — ein rotiertes Bootstrap-Passwort (Punkt 3) und ein bereinigter Realm (Punkt 1) verschwinden damit beim nächsten `docker compose up -d`/Image-Update und `admin`/`admin` sowie `testuser` sind wieder da, ohne dass das auffällt | **Zwingend**, sonst wirken die Gegenmaßnahmen zu Punkt 1 und 3 nicht dauerhaft, sondern nur bis zum nächsten Container-Neustart. Für erreichbaren Betrieb `start` statt `start-dev` verwenden (das erzwingt ohnehin die übrigen Härtungspunkte dieser Zeile — Keycloak startet mit `start` ohne konfiguriertes TLS/Proxy-Setup gar nicht erst) und eine externe, persistente Datenbank anbinden (`KC_DB`, `KC_DB_URL` u. a.) statt der eingebauten Entwicklungsdatenbank. `--import-realm` importiert einen Realm dabei ohnehin nur, wenn er noch nicht existiert — nach der ersten, persistenten Einrichtung wirken spätere Realm-Änderungen über die Admin-Konsole oder einen erneuten, gezielten Import |
+| 5 | `docker-compose.yml:19-20`, `40`, `56`, `68` | Nur `postgres` bindet auf `127.0.0.1`; `backend` (8081), `frontend` (3000) und `keycloak` (8180) veröffentlichen ihre Ports ohne Adressangabe und binden damit auf allen Schnittstellen | `postgres` auf `127.0.0.1` gebunden schützt vor Zugriff aus dem Netz, aber nicht vor jedem anderen Prozess und Nutzerkonto auf demselben Host. Die übrigen drei Ports sind dagegen aus dem Netz erreichbar, sobald keine Firewall davorsteht — bei `keycloak` ist das der konkrete Ausnutzungsweg zu Punkt 3: Die Admin-Konsole wäre netzweit ansprechbar, unabhängig davon, ob ein vorgelagerter Reverse-Proxy nur bestimmte Pfade durchreicht | Hinter einem Reverse-Proxy alle vier Ports auf `127.0.0.1:` binden, so wie es `postgres` bereits vormacht — für `keycloak` **zwingend** (sonst bleibt die Admin-Konsole trotz Proxy direkt aus dem Netz erreichbar), für `backend`/`frontend` **empfohlen** (der Reverse-Proxy ist dann der einzige Weg zu beiden). Für `postgres` **empfohlen**, die `ports:`-Zuordnung für den erreichbaren Betrieb ganz zu entfernen statt sie nur auf Loopback zu binden — Backend und `postgres` erreichen sich ohnehin über das interne Compose-Netz (Servicename `postgres`), ein Host-Port wird dafür nicht gebraucht. Für lokale Entwicklung (Anschluss mit einem Datenbank-Client vom Host aus, direkter Aufruf der Admin-Konsole) bleiben die bisherigen Bindungen dagegen sinnvoll — deshalb sind sie dort nicht als Fehler markiert |
+| 6 | `keycloak/realm-export.json` (Client `opaa-seed`, seit #712) | Öffentlicher Client mit `directAccessGrantsEnabled: true` (Resource-Owner-Password-Grant) und ohne Client-Secret, ausschließlich für `demo/seed/seed.py` gedacht | Erlaubt einen passwortbasierten Tokenweg **ohne Secret** gegen jedes Realm-Konto — auf einer erreichbaren Instanz ein zusätzlicher, von der eigentlichen Anmeldung (`opaa-frontend`, `directAccessGrantsEnabled: false`, Authorization-Code + PKCE) unabhängiger Angriffsweg, unabhängig davon, wessen Passwort betroffen ist | **Zwingend.** Client `opaa-seed` aus dem Realm-Export entfernen oder auf `enabled: false` setzen, bevor der Realm auf einer erreichbaren Instanz importiert wird. Wer die Demo dort dennoch erneut seeden will, aktiviert den Client nur für die Dauer des Laufs wieder oder legt die Rechte direkt über die Keycloak-Admin-Konsole/API an, statt den Client dauerhaft scharf zu lassen. Siehe `demo/README.md`, Abschnitt „Seed-Mechanismus (#712)" |
 
 **Realm-Lebensdauern auf einer bereits laufenden Instanz (#737):** `keycloak/realm-export.json`
 setzt `accessTokenLifespan`, `ssoSessionIdleTimeout` und `ssoSessionMaxLifespan` explizit. Wie
 bei Punkt 4 oben importiert `--import-realm` einen Realm dabei nur, wenn er noch nicht existiert
-— auf einer Instanz mit bereits importiertem Realm (etwa opaa.ewerlin.com) wirkt eine spätere
-Änderung dieser Werte im Repository also **nicht von selbst**. Ein erneuter, vollständiger Import
+— auf einer Instanz mit bereits importiertem Realm wirkt eine spätere Änderung dieser Werte im
+Repository also **nicht von selbst**. Ein erneuter, vollständiger Import
 würde außerdem die dokumentierte Härtung der Konten aus Punkt 1 zurückdrehen. Die Lebensdauern
 müssen stattdessen gezielt über `kcadm` (oder die Admin-Konsole) nachgezogen werden:
 
@@ -407,74 +327,38 @@ Guard noch abfängt.
 > (siehe [„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle-756))
 > — ohne ihn scheitert nur diese einmalige Übernahme, der Start selbst nicht.
 
-> **Update-Hinweis für Bestandsinstallationen (#762): der native Ollama-Anbindungsweg entfällt.**
-> Bis einschließlich der vorigen Version gab es zwei Anbindungswege — einen nativen für Ollama
-> (`OPAA_AI_CHAT_PROVIDER`/`OPAA_AI_EMBEDDING_PROVIDER=ollama`, mit eigenen `OPAA_OLLAMA_*`-Variablen)
-> und den openai-kompatiblen für alles andere. Seit #762 gibt es nur noch den zweiten — Ollama wird
-> darüber angesprochen wie jeder andere openai-kompatible Endpunkt, über seinen eigenen `/v1`-Pfad.
-> Folgende Variablen sind **ersatzlos entfallen**:
->
-> | Entfallene Variable | Ersatz |
-> |---|---|
-> | `OPAA_AI_CHAT_PROVIDER` | keiner nötig — der Anbindungsweg ist jetzt fest `openai` |
-> | `OPAA_AI_EMBEDDING_PROVIDER` | keiner nötig — der Anbindungsweg ist jetzt fest `openai` |
-> | `OPAA_OLLAMA_BASE_URL` | `OPAA_OPENAI_BASE_URL` (bzw. `OPAA_OPENAI_CHAT_BASE_URL`/`OPAA_OPENAI_EMBEDDING_BASE_URL` je Funktion) — **mit `/v1`-Suffix**, den die Ollama-Variable nicht brauchte |
-> | `OPAA_OLLAMA_CHAT_MODEL` | `OPAA_OPENAI_CHAT_MODEL` |
-> | `OPAA_OLLAMA_EMBEDDING_MODEL` | `OPAA_OPENAI_EMBEDDING_MODEL` |
->
-> **Verbindliche Migrationsregel, nicht nur ein Sonderfall:** War `OPAA_OLLAMA_BASE_URL` vor dem
-> Update **gesetzt** — mit einem beliebigen Wert, auch dem bloßen Platzhalter `http://ollama:11434`
-> —, **muss** dieser Wert (mit angehängtem `/v1`) vor dem Update als `OPAA_OPENAI_EMBEDDING_BASE_URL`
-> übernommen werden (und als `OPAA_OPENAI_CHAT_BASE_URL`, falls auch `OPAA_AI_CHAT_PROVIDER=ollama`
-> stand). Grund: Der neue Anwendungs-Default für `OPAA_OPENAI_BASE_URL` ist zwar ebenfalls ein lokal
-> betriebener Ollama-Server, aber nicht notwendigerweise **derselbe** — läuft Ollama etwa auf dem
-> Host statt als Compose-Service `ollama` (der Regelfall ohne das Compose-Profil `ollama`, #720 -
-> siehe [„Lokal betriebenes Ollama im Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack-720)
-> unten), zeigt der Default ins Leere, und Indizierung/Fragen schlagen nach dem Update ohne jede
-> Warnung fehl.
->
-> **Ebenso verbindlich, mit einem Datenabfluss-Risiko statt nur eines Ausfalls:** War stattdessen
-> `OPAA_OPENAI_BASE_URL` bereits auf einen **anderen** Anbieter als einen lokalen Ollama-Server
-> gesetzt (etwa einen Cloud-Endpunkt für den Chat), **muss** für die Einbettung ausdrücklich
-> `OPAA_OPENAI_EMBEDDING_BASE_URL` gesetzt werden. Ohne diese Trennung erbt die Einbettung nach dem
-> Update sonst dieselbe Adresse wie der Chat — und jeder indizierte Dokumentinhalt ginge an einen
-> Anbieter außerhalb des Hauses, den die bisherige Konfiguration dafür nie vorgesehen hatte.
->
-> **Nur wer beides nie gesetzt hatte** — weder `OPAA_OLLAMA_BASE_URL` noch ein `OPAA_OPENAI_BASE_URL`
-> auf einen Nicht-Ollama-Endpunkt, der übliche Fall für einen unveränderten lokalen Ollama-Betrieb —,
-> **muss nichts ändern**: `OPAA_OPENAI_BASE_URL` hat seit #762 denselben Default, den vorher
-> `OPAA_OLLAMA_BASE_URL` trug (`http://localhost:11434/v1` bzw., im Profil `docker`,
-> `http://ollama:11434/v1`), ebenso die Modell-Defaults (`phi3:mini`/`nomic-embed-text`). Übrig
-> gelassene, jetzt unbekannte Variablen (`OPAA_AI_CHAT_PROVIDER=ollama` allein, ohne weitere
-> `OPAA_OLLAMA_*`-Variablen) werden von Spring stillschweigend ignoriert — kein Fehler, aber auch
-> keine Wirkung mehr; sie sollten bei Gelegenheit aus der eigenen `.env`/`.env.docker` entfernt
-> werden. Beim Start protokolliert das Backend zusätzlich eine `WARN`-Zeile, falls eine der
-> entfallenen Variablen noch in der Umgebung liegt, damit ein übersehener Altwert nicht unbemerkt
-> bleibt.
->
-> **Wer eigene `OPAA_OLLAMA_*`-Werte gesetzt hatte** (abweichende Adresse und/oder anderes Modell),
-> muss diese vor dem Update auf die neuen Variablennamen übertragen — siehe Tabelle und die beiden
-> verbindlichen Regeln oben. Die einmalige Übernahme in `llm_models` (siehe Absatz zu #756 oben)
-> liest für den **Chat** dafür ohnehin **weiterhin** `OPAA_OLLAMA_BASE_URL`/`OPAA_OLLAMA_CHAT_MODEL`,
-> falls beim ersten Start nach dem Update sowohl `OPAA_AI_CHAT_PROVIDER=ollama` **als auch** eine
-> dieser beiden Variablen noch gesetzt ist (`io.opaa.llm.LlmModelSeeder`) — ein Update in einem
-> Schritt, ohne die `.env`-Datei vorher anzupassen, übernimmt die bisherige Chat-Konfiguration also
-> trotzdem korrekt. Das gilt **nicht** für die Einbettung: Für sie gibt es keine analoge Übernahme,
-> weil Einbettungsmodelle (anders als das Chat-Modell seit Stufe 1 der Modellverwaltung) noch nicht
-> verwaltete Objekte sind — die Werte müssen für die Einbettung deshalb **vor** dem Update in die
-> `.env`/`.env.docker`-Datei übertragen werden, sonst schlägt die Einbettung ab dem ersten Start nach
-> dem Update fehl. Für den **laufenden Betrieb** (jeder Aufruf nach dem ersten Start) zählt ohnehin
-> nur noch `OPAA_OPENAI_*` — die alten Variablen zu entfernen und durch die neuen zu ersetzen bleibt
-> deshalb so oder so nötig.
->
-> **Betroffen ist insbesondere die öffentliche Demo-Instanz** (siehe [„Modellkonfiguration der
-> Instanz"](#modellkonfiguration-der-instanz) oben): Sie lief mit `OPAA_AI_EMBEDDING_PROVIDER=ollama`
-> und `OPAA_OLLAMA_BASE_URL=http://host.docker.internal:11434` produktiv — Ollama läuft dort auf dem
-> Host, nicht als Compose-Service. Nach dem Update **muss** die Instanz-Konfiguration
-> `OPAA_OPENAI_EMBEDDING_BASE_URL=http://host.docker.internal:11434/v1` und
-> `OPAA_OPENAI_EMBEDDING_MODEL=nomic-embed-text` explizit setzen — der neue Default
-> (`http://ollama:11434/v1`) trifft hier nicht zu, weil es in dieser Instanz keinen Compose-Service
-> `ollama` gibt; ohne die Übertragung bricht die Einbettung nach dem Update ab.
+### Migrationen aus älteren Ständen
+
+**Der native Ollama-Anbindungsweg (vor #762) ist entfallen.** Bis einschließlich der vorigen Version
+gab es zwei Anbindungswege — einen nativen für Ollama (`OPAA_AI_CHAT_PROVIDER`/
+`OPAA_AI_EMBEDDING_PROVIDER=ollama`, mit eigenen `OPAA_OLLAMA_*`-Variablen) und den
+openai-kompatiblen für alles andere. Seit #762 gibt es nur noch den zweiten:
+
+| Entfallene Variable | Ersatz |
+|---|---|
+| `OPAA_AI_CHAT_PROVIDER` / `OPAA_AI_EMBEDDING_PROVIDER` | keiner nötig — der Anbindungsweg ist jetzt fest `openai` |
+| `OPAA_OLLAMA_BASE_URL` | `OPAA_OPENAI_BASE_URL` (bzw. `OPAA_OPENAI_CHAT_BASE_URL`/`OPAA_OPENAI_EMBEDDING_BASE_URL` je Funktion) — **mit `/v1`-Suffix**, den die Ollama-Variable nicht brauchte |
+| `OPAA_OLLAMA_CHAT_MODEL` | `OPAA_OPENAI_CHAT_MODEL` |
+| `OPAA_OLLAMA_EMBEDDING_MODEL` | `OPAA_OPENAI_EMBEDDING_MODEL` |
+
+Wer eine dieser Variablen gesetzt hatte, überträgt den Wert (mit angehängtem `/v1` bei der
+Basis-Adresse) vor dem Update auf den Ersatz — der neue `OPAA_OPENAI_BASE_URL`-Default zeigt zwar
+ebenfalls auf einen lokal betriebenen Ollama-Server, aber nicht notwendigerweise auf denselben (z. B.
+wenn Ollama auf dem Host statt als Compose-Service `ollama` läuft, siehe [„Lokal betriebenes Ollama im
+Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack-720)). War `OPAA_OPENAI_BASE_URL`
+zusätzlich bereits auf einen anderen Anbieter als Ollama gesetzt (z. B. einen Cloud-Endpunkt für den
+Chat), muss für die Einbettung ausdrücklich `OPAA_OPENAI_EMBEDDING_BASE_URL` gesetzt werden — sonst
+erbt die Einbettung nach dem Update dieselbe Adresse wie der Chat, und indizierter Dokumentinhalt
+ginge an einen dafür nie vorgesehenen Anbieter außerhalb des Hauses. Übrig gelassene, jetzt unbekannte
+Variablen werden von Spring stillschweigend ignoriert; das Backend protokolliert beim Start
+zusätzlich eine `WARN`-Zeile, falls eine der entfallenen Variablen noch in der Umgebung liegt. Für die
+**Chat**-Migration gibt es eine Erleichterung: `io.opaa.llm.LlmModelSeeder` liest beim ersten Start
+nach dem Update ohnehin noch `OPAA_OLLAMA_BASE_URL`/`OPAA_OLLAMA_CHAT_MODEL`, falls
+`OPAA_AI_CHAT_PROVIDER=ollama` zusammen mit einer der beiden noch gesetzt ist — ein Update in einem
+Schritt übernimmt die bisherige Chat-Konfiguration also auch ohne vorherige Anpassung korrekt. Für die
+**Einbettung** gibt es diese Erleichterung nicht (Einbettungsmodelle sind, anders als das Chat-Modell,
+keine verwalteten Objekte) — hier müssen die Werte vor dem Update in `.env`/`.env.docker` übertragen
+werden, sonst schlägt die Einbettung ab dem ersten Start nach dem Update fehl.
 
 ### Docker-spezifische Variablen
 
@@ -547,7 +431,7 @@ Ist eine Variable nirgends gesetzt, gilt in beiden Fällen der jeweilige Default
 Wirkung an- oder abschaltet: Chat und Einbettung laufen immer über diese eine, openai-kompatible
 Konfiguration. (Bis einschließlich der vorigen Version schalteten `OPAA_AI_CHAT_PROVIDER`/
 `OPAA_AI_EMBEDDING_PROVIDER` zwischen dieser Konfiguration und eigenen `OPAA_OLLAMA_*`-Variablen um
-— siehe [„Update-Hinweis für Bestandsinstallationen (#762)"](#erforderliche-variablen) oben für die
+— siehe [„Migrationen aus älteren Ständen"](#migrationen-aus-älteren-ständen) oben für die
 Migration.)
 
 Manche Variablen dieser Tabelle sind kein Spring-Property, sondern werden ausschließlich von Docker
@@ -681,9 +565,9 @@ Der nginx im Frontend-Container (`frontend/nginx.conf`) setzt seit [#409](https:
 
 Auf `/api/`-Antworten setzt zusätzlich Spring Security eigene `X-Content-Type-Options`/`X-Frame-Options`-Header; `proxy_hide_header` in `location /api/` entfernt diese, damit der Client nur die eine, am nginx gesetzte Kopie sieht statt beide Werte doppelt.
 
-**`Strict-Transport-Security` wird hier bewusst nicht gesetzt.** Der Frontend-Container terminiert im Compose-Betrieb kein TLS — er spricht selbst nur `http` (siehe Hinweis zu `X-Forwarded-Proto` oben). Diesen Header trotzdem hier zu setzen wäre wirkungslos für Installationen ohne vorgelagerten TLS-Weg und schädlich für solche mit einem: HSTS an zwei Stellen im selben Antwortpfad zu pflegen — hier und am vorgelagerten Proxy — schafft nur eine weitere Möglichkeit, dass beide auseinanderlaufen (z. B. unterschiedliches `max-age` oder `includeSubDomains`), ohne einen Sicherheitsgewinn gegenüber einer einzigen, korrekt gepflegten Stelle. Wer OPAA hinter einem TLS-terminierenden Proxy betreibt (siehe Hinweis oben und die öffentliche Testinstanz weiter unten), setzt `Strict-Transport-Security` an genau diesem äußeren Proxy — dort, wo TLS tatsächlich endet.
+**`Strict-Transport-Security` wird hier bewusst nicht gesetzt.** Der Frontend-Container terminiert im Compose-Betrieb kein TLS — er spricht selbst nur `http` (siehe Hinweis zu `X-Forwarded-Proto` oben). Diesen Header trotzdem hier zu setzen wäre wirkungslos für Installationen ohne vorgelagerten TLS-Weg und schädlich für solche mit einem: HSTS an zwei Stellen im selben Antwortpfad zu pflegen — hier und am vorgelagerten Proxy — schafft nur eine weitere Möglichkeit, dass beide auseinanderlaufen (z. B. unterschiedliches `max-age` oder `includeSubDomains`), ohne einen Sicherheitsgewinn gegenüber einer einzigen, korrekt gepflegten Stelle. Wer OPAA hinter einem TLS-terminierenden Proxy betreibt (siehe Hinweis oben), setzt `Strict-Transport-Security` an genau diesem äußeren Proxy — dort, wo TLS tatsächlich endet.
 
-**`connect-src` und ein OIDC-Anbieter auf fremdem Origin.** `oidc-client-ts` holt die OIDC-Discovery-Metadaten und tauscht später den Auth-Code gegen Tokens jeweils per `fetch` direkt aus dem Browser gegen die Authority — liegt die Authority nicht auf demselben Origin wie das Frontend, blockiert eine reine `connect-src 'self'`-Richtlinie diese Aufrufe **stillschweigend** (kein Fehler in der Oberfläche, die Anmeldung tut einfach nichts). `frontend/nginx.conf` ist deshalb kein fest gebackenes Ergebnis mehr, sondern ein `envsubst`-Template (`/etc/nginx/templates/default.conf.template`, siehe `frontend/Dockerfile`): Die Umgebungsvariable `OPAA_CSP_CONNECT_SRC_EXTRA` wird beim Containerstart in `connect-src 'self' ${OPAA_CSP_CONNECT_SRC_EXTRA}` eingesetzt (leer per Voreinstellung im Image, in `.env.docker.example`/`.env.docker` mit dem Origin des mitgelieferten Keycloak vorbelegt). `NGINX_ENVSUBST_FILTER=^OPAA_(CSP|DEMO)_` im Dockerfile begrenzt die Ersetzung auf `OPAA_CSP_*`- und `OPAA_DEMO_*`-Variablen (Letztere für den Demo-Hinweis, siehe `OPAA_DEMO_MODE` oben), damit `envsubst` nicht versehentlich echte nginx-Variablen (`$scheme`, `$host`, `$remote_addr`, …) in derselben Datei anfasst. Details zum Betrieb mit einem eigenen Behörden-Identitätsanbieter: Abschnitt „OIDC (Keycloak)" unten.
+**`connect-src` und ein OIDC-Anbieter auf fremdem Origin.** `oidc-client-ts` holt die OIDC-Discovery-Metadaten und tauscht später den Auth-Code gegen Tokens jeweils per `fetch` direkt aus dem Browser gegen die Authority — liegt die Authority nicht auf demselben Origin wie das Frontend, blockiert eine reine `connect-src 'self'`-Richtlinie diese Aufrufe **stillschweigend** (kein Fehler in der Oberfläche, die Anmeldung tut einfach nichts). `frontend/nginx.conf` ist deshalb kein fest gebackenes Ergebnis mehr, sondern ein `envsubst`-Template (`/etc/nginx/templates/default.conf.template`, siehe `frontend/Dockerfile`): Die Umgebungsvariable `OPAA_CSP_CONNECT_SRC_EXTRA` wird beim Containerstart in `connect-src 'self' ${OPAA_CSP_CONNECT_SRC_EXTRA}` eingesetzt (leer per Voreinstellung im Image; `.env.docker.example` führt den Origin des mitgelieferten Keycloak als auskommentiertes Beispiel, siehe [„OIDC (Keycloak)"](#oidc-keycloak) unten für den Fall, in dem er tatsächlich gebraucht wird). `NGINX_ENVSUBST_FILTER=^OPAA_(CSP|DEMO)_` im Dockerfile begrenzt die Ersetzung auf `OPAA_CSP_*`- und `OPAA_DEMO_*`-Variablen (Letztere für den Demo-Hinweis, siehe `OPAA_DEMO_MODE` oben), damit `envsubst` nicht versehentlich echte nginx-Variablen (`$scheme`, `$host`, `$remote_addr`, …) in derselben Datei anfasst. Details zum Betrieb mit einem eigenen Behörden-Identitätsanbieter: Abschnitt „OIDC (Keycloak)" unten.
 
 Die genannten Header sind gegen den Produktions-Build (`pnpm run build`) und das gebaute Docker-Image verprobt: `dist/index.html` referenziert ausschließlich selbst gehostete, gehashte `<script>`- und `<link>`-Dateien (keine Inline-Skripte), und ein Abruf des laufenden Containers zeigt alle Header sowohl auf `/` als auch auf `/api/`-Antworten (Vererbung über den `server`-Block, siehe Kommentare in `frontend/nginx.conf`).
 
@@ -1042,15 +926,6 @@ Warum keine Vereinheitlichung:
   beiden Auth-Modi oben.
 - Die E2E-Suite legt bewusst **kein** eigenes Kontoschema an, sondern läuft im `dev`-Auth-Modus und
   nutzt dessen Nutzer weiter (siehe [„Warum der `dev`-Auth-Modus?"](../../e2e/README.md#warum-der-dev-auth-modus) in `e2e/README.md`).
-- Ein früher skizziertes, separates `OPAA_AUTH_BASIC_USERNAME`/`OPAA_AUTH_BASIC_PASSWORD`/
-  `OPAA_AUTH_MODE`-Paar für eine app-globale Basic-Auth (Modi `mock`/`basic`) wurde mit
-  [`fd04246`](https://github.com/criew/opaa/commit/fd0424621874270a2be78f05bfee5c550945fd3f)
-  ersatzlos entfernt — die zugehörigen Konfigurationsschlüssel liest das Backend nicht mehr,
-  Authentifizierung läuft ausschließlich über einen der beiden Modi oben. Eine lokale,
-  eingerichtete `.env.docker` (gitignored, nicht Teil dieses Repositories) kann diesen Block aus
-  der Zeit vor `fd04246` noch enthalten; er ist dann wirkungsloser Altbestand, den ein
-  `docker compose up` stillschweigend ignoriert — löschen oder gegen die aktuelle
-  `.env.docker.example` abgleichen.
 
 ## Dokumente
 

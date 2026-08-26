@@ -394,7 +394,7 @@ echte Keycloak-Anmeldung an (Autorisierungscode-Flow, nicht der `dev`-Modus — 
 dieser Test zusätzlich zur restlichen Suite, siehe „Warum der `dev`-Auth-Modus?" oben), sieht den
 Demo-Hinweis (#230, `frontend/src/layouts/DemoNotice.tsx`, aktiviert über `OPAA_DEMO_MODE=true`
 in `demo-smoke.env` — eine echte Demo-Instanz setzt dieses Flag ebenfalls), stellt die erste
-Drehbuchfrage aus `docs/handbuch/demo-walkthrough.md` (Gebührenfrage, garantiert beantwortbar, #711) und
+Drehbuchfrage aus `docs/market/demo-drehbuch.md` (Gebührenfrage, garantiert beantwortbar, #711) und
 bekommt eine belegte Antwort mit mindestens einer zitierten Quelle (`expectAnyCitedSource`,
 dieselbe Prüfung wie in `space-chats.spec.ts` oben) — Verhalten und Vorhandensein eines Belegs,
 nie ein Wortlaut oder eine Dokumentanzahl, die sich mit dem nächsten Korpuslauf verschieben
@@ -402,7 +402,7 @@ könnte. Die konkrete Frage ist dabei mit `ai-stub` rein symbolisch: Wie in der 
 („KI-Stub statt echtem Modell" oben) liefert der Stub für jeden Text denselben Vektor, sodass die
 Trefferauswahl ausschließlich über den Rechtefilter läuft, nie über inhaltliche Relevanz — dieser
 Test behauptet keine Kopplung an den tatsächlichen Korpusinhalt, das bleibt Sache des manuell
-verifizierten Drehbuchs in `docs/handbuch/demo-walkthrough.md` (mit einem echten Modell) bzw. von Epic #224.
+verifizierten Drehbuchs in `docs/market/demo-drehbuch.md` (mit einem echten Modell) bzw. von Epic #224.
 
 **Isolation:** Die Keycloak-Realm des `demo`-Profils (`keycloak/realm-export.json`) trägt feste
 `redirectUris`/`webOrigins` für `http://localhost:3000` — anders als die `e2e`-Suite oben lässt

@@ -65,12 +65,13 @@ Vorgaben gelten — alle erben es, Änderungen wirken sofort überall.
 
 Eine öffentliche Instanz der Demo „Stadt Rheinfurt" läuft unter
 [opaa.ewerlin.com](https://opaa.ewerlin.com) — Anmeldung erforderlich, kein anonymer Zugang; die
-Demo-Konten stehen in [docs/handbuch/demo-walkthrough.md](docs/handbuch/demo-walkthrough.md#nutzerkonten). Details zum
-Betrieb in der [Deployment-Dokumentation](docs/handbuch/deployment.md#öffentliche-testinstanz).
+Demo-Konten stehen in [demo/README.md](demo/README.md#nutzerkonten). Details zum Betrieb der
+öffentlichen Instanz stehen ebenfalls dort, unter „Öffentliche Instanz betreiben".
 
 Die eigene, lokal installierbare Demo-Instanz „Stadt Rheinfurt" — fiktiver Verwaltungskorpus, vier
 Demo-Nutzer mit Berechtigungsgrenze, ein ausformuliertes Drehbuch mit acht Vorführfragen — startet mit
-einem Befehl: [docs/handbuch/demo-walkthrough.md](docs/handbuch/demo-walkthrough.md).
+einem Befehl: [demo/README.md](demo/README.md). Das Drehbuch selbst steht in
+[docs/market/demo-drehbuch.md](docs/market/demo-drehbuch.md).
 
 ## Stand
 
