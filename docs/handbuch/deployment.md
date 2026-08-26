@@ -80,6 +80,7 @@ Eine Neuindizierung wird erst durch Änderungen nötig, die nichts mit dem Image
 | `docker compose down -v` bzw. das Deployment-Skript mit zurücksetzendem Schalter ausgeführt | Datenbank inklusive Index ist weg — vollständige Neuindizierung nötig |
 | PostgreSQL-Hauptversion gewechselt (Image-Tag von `pg18` auf eine höhere Version) | Das Datenverzeichnis im Volume ist nicht aufwärtskompatibel; ein solcher Wechsel ist ein eigener Migrationsvorgang, kein `docker compose pull` |
 | Update von einer Version **zwischen #766 und #773** (jede Version, die Vektoren über die OpenAI-kompatible Schicht indiziert hat, bevor #773 die Metadaten-Kontamination der Einbettung behoben hat) | In dieser Zeitspanne indizierte Vektoren tragen fünf Zeilen Metadaten-Rauschen (`document_id`/`chunk_index`/`file_name`/`library_id`/`organization_id`) vor dem eigentlichen Text mit eingebettet (Kosinus-Ähnlichkeit zum sauberen Vektor: rund 0.42) — **betroffene Bibliotheken müssen neu indiziert werden**, sonst liegen kontaminierte und saubere Vektoren nebeneinander im selben Suchraum. Siehe die eigene Anleitung dazu direkt unten |
+| Update auf einen Stand **ab #933** (Contextual Chunking: der Dateiname wird jedem Chunk als Kontext-Präfix vorangestellt, nur für die Einbettung, siehe [Retrieval-Algorithmus](../features/retrieval-algorithm.md)) | Vor #933 eingebettete Vektoren tragen kein Präfix und ranken inkonsistent gegen neu eingebettete Vektoren mit Präfix im selben Suchraum — **jede Bibliothek muss vollständig neu indiziert werden**. Siehe die eigene Anleitung dazu direkt unten |
 
 Wer ein Compose-Profil mit fest gekoppeltem Embedding-Modell und `OPAA_PGVECTOR_DIMENSIONS` betreibt
 (Vorbild: `demo/README.md`, „Öffentliche Instanz betreiben"), muss bei einem Wechsel des
@@ -102,6 +103,27 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 > ```
 >
 > Anschließend die Bibliothek regulär neu indizieren (`POST /api/v1/libraries/{libraryId}/indexing` bzw. der entsprechende Button in der Oberfläche). Es gibt keinen dedizierten „Nur-neu-einbetten"-Schalter, der die drei Tabellen automatisch zurücksetzt — dieser manuelle Weg ist der einzige. Betroffen ist jede Bibliothek, die zwischen dem #766- und dem #773-Deploy mindestens einmal indiziert wurde.
+
+> **Neuindizierung nach #933 (Contextual Chunking):** Anders als #773 ist das kein Fehler, sondern
+> eine Erweiterung dessen, was in die Einbettung eingeht (der Dateiname als Kontext-Präfix, siehe
+> `FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER`) — der gespeicherte Chunk-Text (`content` in
+> `vector_store`) und damit jedes Zitat bleiben unverändert, nur der Vektor selbst ändert sich. Vor
+> und nach #933 eingebettete Chunks liegen deshalb im selben pgvector-Suchraum nebeneinander, ranken
+> aber inkonsistent gegeneinander (ein Alt-Chunk konkurriert ohne das Präfix-Signal gegen
+> Neu-Chunks, die es haben) — ein **vollständiger Reindex jeder Bibliothek** ist nach diesem Update
+> erforderlich, unabhängig vom Quellentyp und unabhängig davon, ob eine Datei sich inhaltlich
+> geändert hat. Dieselbe SHA-256-/`INDEXED`-Falle wie oben gilt: Ein unveränderter Datensatz wird
+> ohne einen Rücksetzschritt übersprungen, obwohl sein Vektor kein Präfix trägt.
+>
+> ```sql
+> DELETE FROM vector_store WHERE metadata->>'library_id' = '<library-id>';
+> DELETE FROM documents WHERE library_id = '<library-id>';
+> DELETE FROM rss_feed_state WHERE library_id = '<library-id>';  -- nur bei RSS_FEED-Bibliotheken
+> ```
+>
+> Anschließend die Bibliothek regulär neu indizieren. Für eine Demo-/Testinstanz mit überschaubarem
+> Korpus ist ein vollständiger Re-Seed (Datenbank-Volume verwerfen, Korpus neu einspielen) statt
+> eines gezielten Rücksetzens pro Bibliothek ebenfalls zulässig und oft einfacher.
 
 ## Sicherheitshinweis: `POST /api/v1/libraries/{libraryId}/indexing` ist von außen erreichbar
 

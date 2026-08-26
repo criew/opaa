@@ -154,14 +154,6 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
 
 ### Zurückgestellt, aber ausgearbeitet
 
-- **Contextual Chunking** ([#933](https://github.com/criew/opaa/issues/933), geplant, bewusst
-  zurückgestellt). Wurzelanalyse: Ein Detail-Chunk (Gebührentabelle, Fristen, Kontaktdaten) trägt im
-  Embedding kaum Signal, *wovon* er handelt, weil ihm der Dokumentkontext beim Zerteilen verloren geht —
-  ein Gebühren-Chunk für „Personalausweis" rankt deshalb für eine Kostenfrage schwächer als der
-  Einleitungs-Chunk desselben Dokuments. Der Ansatz: dem Chunk-Text vor dem Einbetten einen kurzen
-  Dokumentkontext voranstellen (z. B. Dokumenttitel). Zurückgestellt, weil das einen vollständigen Reindex
-  aller Bibliotheken und eine Neuziehung aller Eval-Baselines erfordert — Alt-Chunks ohne Präfix und
-  Neu-Chunks mit Präfix ranken sonst inkonsistent gegeneinander.
 - **MMR-Default-Aktivierung.** Gebaut, aber Opt-in (`mmr-lambda: 1,0`, siehe Schritt 4 oben). Gegen die 20
   `multi_topic`-Golden-Fälle aus #915 erreichte die reine `top-k`-Anhebung auf 8 ohne Vielfaltsauswahl
   20 von 20 Fällen, `mmr-lambda: 0,7` mit echten Chunk-Embeddings dagegen 19 von 20 — ein Fall schlechter.
@@ -169,14 +161,30 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   [MMR ist gebaut, aber per Voreinstellung deaktiviert](./data-indexing-rag.md#stellschrauben-und-ihre-wirkung).
   Eine künftige, größere oder heterogenere Mehrthemen-Stichprobe kann diese Einschätzung revidieren.
 
+### Umgesetzt
+
+- **Contextual Chunking** ([#933](https://github.com/criew/opaa/issues/933), umgesetzt). Wurzelanalyse
+  (#932/#938): Ein Detail-Chunk (Gebührentabelle, Fristen, Kontaktdaten, ein einzelner Paragraph einer
+  Satzung) trägt im Embedding kaum Signal, *wovon* er handelt, weil ihm der Dokumentkontext beim
+  Zerteilen verloren geht — ein Gebühren-Chunk für „Personalausweis" rankte deshalb für eine
+  Kostenfrage schwächer als der Einleitungs-Chunk desselben Dokuments, und ein einzelner
+  Satzungs-Chunk mit sechs Paragraphen rankte in #938s Live-Diagnose so schwach, dass er selbst im
+  echten Leserechte-Scope weit außerhalb jedes plausiblen Top-k-Fensters lag (Rang 50/97 bzw.
+  96/147). Umsetzung: `io.opaa.indexing.FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER`
+  stellt dem Chunk-Text vor dem Einbetten dessen `file_name` als Kontext-Präfix voran (`"[<file
+  name>]\n\n<content>"`) - ausschließlich für die `EMBED`-Formatierung der Einbettung, nicht für den
+  gespeicherten Chunk-Text (siehe die Klasse für die vollständige Begründung, inklusive der
+  Wechselwirkung mit `chunk-size`). Erfordert einen vollständigen Reindex jeder Bibliothek (siehe
+  [Deployment-Handbuch](../handbuch/deployment.md#was-ein-update-mit-dem-index-macht)) - Alt-Chunks
+  ohne Präfix und Neu-Chunks mit Präfix ranken sonst inkonsistent gegeneinander.
+
 ### Bekannte offene Schwächen (aus den #912-Verifikationen)
 
-- **Chunk-Granularität allgemein.** Die in #932 belegte Ursache — ein Detail-Chunk rankt für eine dazu
-  passende Frage schwächer als ein einleitender Chunk desselben Dokuments — ist kein Einzelfall, sondern
-  ein strukturelles Muster jeder Chunking-Strategie, die Text ohne Dokumentkontext einbettet.
-  Dokument-Vervollständigung (Schritt 6) behebt das Symptom (der richtige Chunk fällt nicht mehr aus der
-  Auswahl, sofern er unter den `fetch-k` Kandidaten war), nicht die Ursache — dafür siehe Contextual
-  Chunking oben.
+- **Chunk-Granularität allgemein.** Contextual Chunking (oben) mildert das Signalverlust-Problem für
+  den häufigsten Fall (Dateiname als Minimalsignal), löst es aber nicht vollständig - ein Chunk trägt
+  weiterhin keinen Abschnittstitel oder Bibliothekskontext. Dokument-Vervollständigung (Schritt 6)
+  behebt zusätzlich das Symptom bei Geschwister-Chunks desselben Dokuments (der richtige Chunk fällt
+  nicht mehr aus der Auswahl, sofern er unter den `fetch-k` Kandidaten war), nicht die Ursache.
 - **Nicht-rangfaire Geschwister-Sortierung über Teilfragen.** Bei mehreren Suchanfragen bestimmt
   `DocumentCompletion#complete`, welcher noch nicht ausgewählte Chunk eines zu vervollständigenden
   Dokuments als nächstes nachrückt, über die Reihenfolge in `pooledCandidates` — der schlichten

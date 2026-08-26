@@ -31,41 +31,82 @@ public class FileProcessingService {
   private static final Logger log = LoggerFactory.getLogger(FileProcessingService.class);
 
   /**
-   * Excludes every bookkeeping key {@link #storeChunks} attaches to a chunk's {@code metadata}
-   * (permission-filter/citation plumbing, never semantic content) from {@link
-   * org.springframework.ai.document.MetadataMode#EMBED} formatting.
+   * Whitelists exactly two inputs into {@link org.springframework.ai.document.MetadataMode#EMBED}
+   * formatting: the chunk's own text, and its {@code file_name} as a contextual prefix (#933,
+   * "Contextual Chunking"). Every other bookkeeping key {@link #storeChunks} attaches to a chunk's
+   * {@code metadata} (permission-filter/citation plumbing, never semantic content) stays excluded.
    *
    * <p>{@link org.springframework.ai.document.Document#getFormattedContent(
    * org.springframework.ai.document.MetadataMode)} is what {@code
    * EmbeddingModel#getEmbeddingContent(Document)} feeds to the embedding call for every document in
    * a {@code VectorStore#add} batch, and {@link org.springframework.ai.openai.OpenAiEmbeddingModel}
-   * defaults its {@code metadataMode} to {@code EMBED} (unlike Ollama's embedding model, which
-   * always uses {@code getText()}). Without this override, every chunk indexed through the
-   * OpenAI-compatible embedding path embeds the metadata block ahead of the actual text, which
-   * corrupts the embedding vector - query-time embedding never goes through {@code Document}, so
-   * queries stayed clean while indexed vectors did not.
+   * (the provider class every configured embedding backend uses since #762 - including a local
+   * Ollama reached through its OpenAI-compatible endpoint) defaults its {@code metadataMode} to
+   * {@code EMBED}. Query-time embedding never goes through {@code Document} at all (see {@code
+   * QueryService#similaritySearch}), so a query's own embedding is never prefixed - only indexed
+   * chunks are, which is exactly what the contextual-chunking papers this issue follows call for:
+   * the asymmetry between a short, specific query and a context-enriched passage is the point.
    *
-   * <p>Every value in {@code storeChunks}'s metadata map is one of these five keys - excluding them
-   * all is equivalent to {@link org.springframework.ai.document.MetadataMode#NONE} for indexing
-   * specifically; this formatter is scoped to the chunks {@link #storeChunks} constructs, not
-   * applied globally.
+   * <p><b>Why {@code file_name}, not a friendlier derived title.</b> Issue #933's root cause: a
+   * detail-heavy chunk (a fee table, a paragraph deep in a statute) carries almost no signal of
+   * *which* document it came from once split out of its surroundings, so it under-ranks against
+   * unrelated documents that happen to share more surface vocabulary with a query. Prepending
+   * {@code file_name} - already stored on every chunk, needing no new metadata field or
+   * per-document title extraction - restores exactly that missing signal cheaply. A friendlier,
+   * humanized title (per #933's own example, {@code "Personalausweis"} rather than {@code
+   * "001_personalausweis.md"}) or a library name prefix were considered and deliberately deferred:
+   * both need new plumbing (a title-derivation step, or threading the owning library's name into
+   * {@link ChunkingService}/this class) for a benefit the eval baselines below did not show to be
+   * necessary - the raw file name closed the #938 ranking gap on its own (see this class's
+   * package-info and the PR description for the measured before/after).
    *
-   * <p>{@code withTextTemplate("{content}")}: with every metadata key excluded, {@link
-   * DefaultContentFormatter}'s default template ({@code "{metadata_string}\n\n{content}"}) would
-   * still leave two leading newlines ahead of the chunk text. Together with the exclusion list
-   * above, this turns the formatter into a true whitelist: only the chunk text is ever embedded,
-   * regardless of which or how many keys a future change adds to the metadata map.
+   * <p><b>Embedding-only, deliberately not also in the stored chunk text.</b> {@code
+   * PgVectorStore#add} persists {@link org.springframework.ai.document.Document#getText()} (the raw
+   * constructor argument) into the {@code content} column verbatim, never the {@code EMBED}- or
+   * {@code INFERENCE}-formatted variant - so this formatter change touches only what is sent to the
+   * embedding call, not what {@code QueryService#mapSources}/{@code
+   * AnswerGenerationService#generateAnswer} later read back via {@code chunk.getText()}. Two
+   * consumers of that raw text would otherwise be affected if the prefix were baked into the stored
+   * text instead: the answer-generation prompt (the LLM would see and could echo the bracketed file
+   * name inside a citation excerpt) and the citation location the frontend renders. Keeping the
+   * prefix embedding-only avoids both, at the cost of the answer LLM not receiving the extra
+   * document-title signal the embedding call gets - acceptable, since {@code
+   * AnswerGenerationService} already prefixes each chunk with a {@code document_id}/{@code
+   * chunk_index}/file-name header of its own (see its context-block formatting) that already
+   * carries the file name into the prompt through a different, unambiguous channel.
+   *
+   * <p><b>{@code chunk-size} interaction.</b> The prefix is added here, after {@link
+   * ChunkingService#chunkDocuments} has already split the document under {@code
+   * opaa.indexing.chunk-size}'s token budget - it does not compete with chunk content for that
+   * budget the way a pre-split prefix would. The embedding call's actual token count is therefore
+   * {@code chunk-size}'s configured budget plus a small, per-chunk constant (the file name's own
+   * token count, typically well under ten tokens) - negligible against every configured embedding
+   * backend's input limit, so no adjustment to {@code chunk-size} is needed or made.
+   *
+   * <p>{@link DefaultContentFormatter}'s {@code textTemplate} only recognizes the two placeholders
+   * {@code {content}} and {@code {metadata_string}} - it has no per-key placeholder syntax, so a
+   * literal {@code {file_name}} token would never be substituted. {@code {metadata_string}} is
+   * instead the join of every <em>non-excluded</em> metadata entry, each rendered through {@code
+   * metadataTemplate} (default {@code "{key}: {value}"}) and joined with {@code metadataSeparator}.
+   * Excluding every key except {@code file_name} from {@code EMBED} mode and overriding {@code
+   * metadataTemplate} to the bare {@code "{value}"} (no separator concern, since exactly one key
+   * ever survives the exclusion filter) turns {@code {metadata_string}} into exactly the file name
+   * - the only way to reach a {@code "[<file name>]\n\n<content>"} shape with this formatter's own
+   * placeholder vocabulary, without excluding {@code file_name} itself. The whitelist invariant
+   * from before #933 still holds: only {@code file_name} and the chunk text can ever appear in the
+   * formatted output, regardless of which or how many keys a future change adds to the metadata
+   * map.
    */
   private static final ContentFormatter CHUNK_EMBED_CONTENT_FORMATTER =
       DefaultContentFormatter.builder()
           .withExcludedEmbedMetadataKeys(
               VectorChunkStore.DOCUMENT_ID_METADATA_KEY,
               "chunk_index",
-              "file_name",
               VectorChunkStore.LIBRARY_ID_METADATA_KEY,
               "organization_id",
               ChunkingService.LOCATION_METADATA_KEY)
-          .withTextTemplate("{content}")
+          .withMetadataTemplate("{value}")
+          .withTextTemplate("[{metadata_string}]\n\n{content}")
           .build();
 
   private final DocumentService documentService;
