@@ -104,7 +104,7 @@ class QueryServiceTest {
             // already-descending-score candidate lists and assert on their exact order/content -
             // MmrSelector's own diversity behaviour (mmrLambda != 1.0) is covered separately by
             // MmrSelectorTest.
-            new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3),
+            new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2),
             knowledgeLibraryRepository,
             chunkEmbeddingLookup,
             queryDecompositionService);
@@ -159,7 +159,7 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(8, 25, 0.5, 0.3, 1.0, true, 3),
+            new QueryProperties(8, 25, 0.5, 0.3, 1.0, true, 3, 2),
             knowledgeLibraryRepository,
             chunkEmbeddingLookup,
             queryDecompositionService);
@@ -198,7 +198,7 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(8, 25, 1.0, 0.3, 0.0, true, 3),
+            new QueryProperties(8, 25, 1.0, 0.3, 0.0, true, 3, 2),
             knowledgeLibraryRepository,
             chunkEmbeddingLookup,
             queryDecompositionService);
@@ -916,7 +916,7 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3),
+            new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2),
             knowledgeLibraryRepository,
             chunkEmbeddingLookup,
             queryDecompositionService);
@@ -1890,7 +1890,7 @@ class QueryServiceTest {
               permissionHistoryService,
               chatService,
               new QueryMetrics(new SimpleMeterRegistry()),
-              new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3),
+              new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2),
               knowledgeLibraryRepository,
               chunkEmbeddingLookup,
               queryDecompositionService);
@@ -1934,6 +1934,108 @@ class QueryServiceTest {
       QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
 
       assertThat(response.getSources()).hasSize(8);
+    }
+  }
+
+  /**
+   * Document completion after fusion (#932): a document already represented in the final selection
+   * preferably keeps up to {@code maxChunksPerDocument} of its chunks from the candidate pool,
+   * evicting the RRF/MMR-weakest chunk of an already-≥2-chunk document rather than losing a chunk
+   * to a completely unrelated document. Mirrors the #912 defect this fixes: a combined question
+   * retrieves a document's introduction chunk but not its fee-table chunk, even though the
+   * fee-table chunk was among the permission/threshold-filtered candidates all along.
+   */
+  @Nested
+  class DocumentCompletionAfterFusion {
+
+    private Document chunk(String id, String documentId, String fileName, double score) {
+      return Document.builder()
+          .id(id)
+          .text(id)
+          .metadata(Map.of("document_id", documentId, "file_name", fileName))
+          .score(score)
+          .build();
+    }
+
+    /**
+     * Single-query path (no decomposition): {@code doc-x} occupies two of the eight slots MMR picks
+     * by pure score, crowding {@code doc-a}'s fee chunk out of the {@code topK} = 8 window
+     * entirely. Completion recovers the fee chunk by evicting {@code doc-x}'s weaker of its two
+     * chunks - document diversity (8 distinct documents) is unchanged, but {@code doc-a} now
+     * carries both its chunks instead of {@code doc-x}.
+     */
+    @Test
+    void singleQueryPathRecoversAFeeChunkByEvictingAnOverrepresentedDocumentsWeakerChunk() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      List<Document> candidates =
+          new ArrayList<>(
+              List.of(
+                  chunk("x-0", "doc-x", "x.md", 0.95),
+                  chunk("x-1", "doc-x", "x.md", 0.90),
+                  chunk("a-intro", "doc-a", "a.md", 0.85),
+                  chunk("f-1", "doc-f1", "f1.md", 0.80),
+                  chunk("f-2", "doc-f2", "f2.md", 0.75),
+                  chunk("f-3", "doc-f3", "f3.md", 0.70),
+                  chunk("f-4", "doc-f4", "f4.md", 0.65),
+                  chunk("f-5", "doc-f5", "f5.md", 0.60)));
+      // Ranked 9th - below the topK=8 window MMR alone would keep, and thus excluded before
+      // completion recovers it.
+      candidates.add(chunk("a-fee", "doc-a", "a.md", 0.55));
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      QueryResult response = queryService.query("Frage", null, caller, true, List.of());
+
+      assertThat(response.getSources()).hasSize(7);
+      assertThat(response.getSources())
+          .filteredOn(source -> source.getFileName().equals("a.md"))
+          .hasSize(1)
+          .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(2));
+      assertThat(response.getSources())
+          .filteredOn(source -> source.getFileName().equals("x.md"))
+          .hasSize(1)
+          .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(1));
+    }
+
+    /**
+     * The identical scenario through the decomposed, multi-sub-query path (#923): both sub-queries
+     * return the same permission/threshold-filtered candidates, so each independently MMR-narrows
+     * to the same top-8 window and RRF-fuses back to that unchanged set - completion then runs on
+     * the fused result exactly as it does on the single-query path.
+     */
+    @Test
+    void multiQueryPathRecoversAFeeChunkByEvictingAnOverrepresentedDocumentsWeakerChunk() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(queryDecompositionService.decompose(eq("Kombifrage"), any(), eq(3)))
+          .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
+      List<Document> candidates =
+          new ArrayList<>(
+              List.of(
+                  chunk("x-0", "doc-x", "x.md", 0.95),
+                  chunk("x-1", "doc-x", "x.md", 0.90),
+                  chunk("a-intro", "doc-a", "a.md", 0.85),
+                  chunk("f-1", "doc-f1", "f1.md", 0.80),
+                  chunk("f-2", "doc-f2", "f2.md", 0.75),
+                  chunk("f-3", "doc-f3", "f3.md", 0.70),
+                  chunk("f-4", "doc-f4", "f4.md", 0.65),
+                  chunk("f-5", "doc-f5", "f5.md", 0.60)));
+      candidates.add(chunk("a-fee", "doc-a", "a.md", 0.55));
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
+
+      assertThat(response.getSources()).hasSize(7);
+      assertThat(response.getSources())
+          .filteredOn(source -> source.getFileName().equals("a.md"))
+          .hasSize(1)
+          .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(2));
+      assertThat(response.getSources())
+          .filteredOn(source -> source.getFileName().equals("x.md"))
+          .hasSize(1)
+          .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(1));
     }
   }
 

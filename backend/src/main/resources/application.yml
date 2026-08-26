@@ -118,6 +118,7 @@ opaa:
     permission-history-sample-rate: ${OPAA_QUERY_PERMISSION_HISTORY_SAMPLE_RATE:1.0}
     query-decomposition-enabled: ${OPAA_QUERY_DECOMPOSITION_ENABLED:true}
     max-sub-queries: ${OPAA_QUERY_MAX_SUB_QUERIES:3}
+    max-chunks-per-document: ${OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT:2}
   indexing:
     chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}
     chunk-overlap: ${OPAA_INDEXING_CHUNK_OVERLAP:100}
