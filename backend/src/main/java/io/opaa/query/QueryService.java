@@ -412,29 +412,42 @@ public class QueryService {
    * overall {@code topK} - never score-merged, since scores from different search vectors are not
    * comparable. A single search query (no decomposition, or exactly one sub-query) skips the fusion
    * step entirely, taking the pre-#923 path unchanged.
+   *
+   * <p><b>Document completion</b> (#932) runs last on both paths, narrowing neither the permission
+   * filter nor {@code topK}: {@link DocumentCompletion#complete} only ever draws from the
+   * candidates {@code similaritySearch} already returned for this same call - the single-search
+   * path's {@code fetchK} candidates, or the multi-sub-query path's candidates pooled across every
+   * sub-query - so the ADR-0008 §5 permission invariant this method's own Javadoc documents still
+   * holds after completion runs.
    */
   private List<Document> retrieveRelevantChunks(List<String> searchQueries, Set<UUID> searchScope) {
     Filter.Expression filter = libraryFilter(searchScope);
     if (searchQueries.size() == 1) {
       List<Document> candidates =
           similaritySearch(searchQueries.get(0), queryProperties.fetchK(), filter);
-      return mmrSelect(candidates, queryProperties.topK(), lookupEmbeddings(candidates));
+      List<Document> selection =
+          mmrSelect(candidates, queryProperties.topK(), lookupEmbeddings(candidates));
+      return DocumentCompletion.complete(
+          selection, candidates, queryProperties.maxChunksPerDocument(), queryProperties.topK());
     }
 
     List<List<Document>> candidatesPerSubQuery = new ArrayList<>(searchQueries.size());
     for (String subQuery : searchQueries) {
       candidatesPerSubQuery.add(similaritySearch(subQuery, queryProperties.fetchK(), filter));
     }
+    List<Document> pooledCandidates = candidatesPerSubQuery.stream().flatMap(List::stream).toList();
     // One shared lookup across every sub-query's candidates instead of one round trip per
     // sub-query (#923 review): the ids are simply pooled first, since ChunkEmbeddingLookup does
     // not care which sub-query a candidate came from.
-    Map<String, float[]> sharedEmbeddings =
-        lookupEmbeddings(candidatesPerSubQuery.stream().flatMap(List::stream).toList());
+    Map<String, float[]> sharedEmbeddings = lookupEmbeddings(pooledCandidates);
     List<List<Document>> rankedResultsPerSubQuery = new ArrayList<>(searchQueries.size());
     for (List<Document> candidates : candidatesPerSubQuery) {
       rankedResultsPerSubQuery.add(mmrSelect(candidates, queryProperties.topK(), sharedEmbeddings));
     }
-    return ReciprocalRankFusion.fuse(rankedResultsPerSubQuery, queryProperties.topK());
+    List<Document> fused =
+        ReciprocalRankFusion.fuse(rankedResultsPerSubQuery, queryProperties.topK());
+    return DocumentCompletion.complete(
+        fused, pooledCandidates, queryProperties.maxChunksPerDocument(), queryProperties.topK());
   }
 
   private List<Document> similaritySearch(String query, int topK, Filter.Expression filter) {
@@ -502,7 +515,7 @@ public class QueryService {
    * and {@link #mapSources} keeps two such chunks from <em>different</em> documents from collapsing
    * into one merged entry via a shared empty-string key.
    */
-  private static String chunkGroupingKey(Document chunk) {
+  static String chunkGroupingKey(Document chunk) {
     String documentId = chunk.getMetadata().getOrDefault("document_id", "").toString();
     if (!documentId.isEmpty()) {
       return documentId;

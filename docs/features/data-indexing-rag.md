@@ -247,6 +247,7 @@ Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertba
 | **Wiederholversuche je Dokument** | 3 **(gebaut)** | Zuverlässigkeit von Quelle und Modelldienst | Weniger verlorene Dokumente, aber längere Läufe bei dauerhaft defekten Dateien |
 | **Teilfragen-Zerlegung (`query-decomposition-enabled`)** | an **(gebaut, #923)** | Ob Mehrthemen-Fragen getrennte Suchvektoren je Thema bekommen sollen | Kein Regler im eigentlichen Sinn (An/Aus) — deaktiviert lässt jede Frage wie vor #923 als eine einzige Suche laufen |
 | **Max. Teilfragen (`max-sub-queries`)** | 3 **(gebaut, #923)** | Wie viele eigenständige Themen eine Frage realistisch mischt | Mehr mögliche Teilthemen je Frage, aber mehr `similaritySearch`-Aufrufe und damit höhere Retrieval-Latenz |
+| **Max. Chunks je Dokument nach der Fusion (`max-chunks-per-document`)** | 2 **(gebaut, #932)** | Wie oft ein einzelnes Dokument seine relevante Information über mehrere Chunks verteilt (z. B. Einleitung und Gebührentabelle getrennt) | Höherer Wert nimmt mehr Chunks desselben, bereits ausgewählten Dokuments bevorzugt vor einem neuen Dokument auf — bei `1` bleibt die Dokument-Vervollständigung vollständig aus (Vorzustand vor #932) |
 
 **`fetch-k`/`mmr-lambda` steuern gemeinsam die Vielfaltsauswahl (Maximal Marginal Relevance, MMR,
 #914).** Die Vektorsuche holt zunächst `fetch-k` Kandidaten statt nur `top-k`. Daraus wählt MMR
@@ -379,6 +380,25 @@ Chunk-Budget, verfehlt aber inhaltlich weiterhin eines der beiden erwarteten Dok
 Zusatzlatenz des Zerlegungsaufrufs: rund 157 ms im Mittel (GPU-beschleunigtes lokales Modell).
 Details siehe die
 Beschreibung des #923-Pull-Requests.
+
+### Dokument-Vervollständigung nach der Fusion (#932)
+
+Weder `top-k`/`fetch-k`/MMR noch die Teilfragen-Zerlegung lösen ein drittes, dokumentinternes
+Problem: Ein Dokument kann seine Antwort über mehrere Chunks verteilen (z. B. Antragsverfahren in
+einem, die Gebührentabelle im nächsten), deren Relevanz für eine konkrete Frage unterschiedlich
+eingebettet ist. Landet nur der Einleitungs-Chunk in der finalen Auswahl, verliert die eigentliche
+Antwort ihren Platz an einen Chunk eines *anderen* Dokuments — obwohl der fehlende Chunk in der
+bereits berechtigungs- und schwellenwertgefilterten Kandidatenmenge längst vorlag (die konkrete
+Live-Verifikation: `001_personalausweis.md`s Gebühren-Chunk gegen dessen eigenen
+Einleitungs-Chunk, siehe #912 in [Qualitätssicherung](#qualitätssicherung)).
+
+Nach der Fusion/MMR-Auswahl prüft `DocumentCompletion`, ob ein Dokument bereits in der Auswahl
+vertreten ist und weitere seiner Chunks in derselben Kandidatenmenge liegen, aus der die Auswahl
+selbst gezogen wurde — nie eine zweite, ungefilterte Suche. Bis zu `max-chunks-per-document`
+Chunks je Dokument werden so bevorzugt aufgenommen, indem der RRF/MMR-schwächste Chunk eines
+Dokuments verdrängt wird, das bereits mit mindestens zwei Chunks vertreten ist; existiert kein
+solches Dokument, wird nicht verdrängt — die Dokumentvielfalt der Fusion/MMR-Auswahl geht dadurch
+nie zurück. Das Gesamtbudget bleibt `top-k`, unverändert gegenüber dem Stand vor #932.
 
 ### Speicherung und Filterachse
 

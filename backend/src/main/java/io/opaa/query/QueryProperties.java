@@ -69,6 +69,15 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     confused decomposition response. Each sub-query is independently narrowed to the full {@link
  *     #topK} (see {@code QueryService#retrieveRelevantChunks}), so the overall chunk count stays
  *     capped at {@link #topK} regardless of {@code maxSubQueries}.
+ * @param maxChunksPerDocument the upper bound on how many chunks of one document {@link
+ *     DocumentCompletion#complete} will pull into the final selection on top of whatever the
+ *     fusion/MMR step already picked (#932). Default 2: the #912 failure mode this exists for - a
+ *     document's own detail chunk (e.g. a fee table) losing its slot to an unrelated document's
+ *     chunk purely because RRF/MMR spread {@link #topK} across topics before considering whether a
+ *     document already represented in the selection has more relevant material still sitting in the
+ *     candidate pool. {@code 1} disables completion entirely ({@link DocumentCompletion#complete}
+ *     then returns its input unchanged) - the pre-#932 behaviour, an explicit opt-out rather than a
+ *     separate flag.
  */
 @ConfigurationProperties(prefix = "opaa.query")
 public record QueryProperties(
@@ -78,7 +87,8 @@ public record QueryProperties(
     double similarityThreshold,
     @DefaultValue("1.0") double permissionHistorySampleRate,
     @DefaultValue("true") boolean queryDecompositionEnabled,
-    @DefaultValue("3") int maxSubQueries) {
+    @DefaultValue("3") int maxSubQueries,
+    @DefaultValue("2") int maxChunksPerDocument) {
 
   public QueryProperties {
     if (topK <= 0) {
@@ -113,6 +123,10 @@ public record QueryProperties(
     if (maxSubQueries <= 0 || maxSubQueries > 10) {
       throw new IllegalArgumentException(
           "maxSubQueries must be between 1 and 10, got " + maxSubQueries);
+    }
+    if (maxChunksPerDocument <= 0 || maxChunksPerDocument > 10) {
+      throw new IllegalArgumentException(
+          "maxChunksPerDocument must be between 1 and 10, got " + maxChunksPerDocument);
     }
   }
 }

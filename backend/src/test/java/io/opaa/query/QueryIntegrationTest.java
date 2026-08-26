@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.chat.ChatSource;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.ArrayList;
@@ -378,6 +379,15 @@ class QueryIntegrationTest {
     // candidates once filtered afterward. See the PR description for the reproduction: reverting
     // QueryService's filterExpression(...) call turns this test red while every other test in this
     // class, QueryControllerTest and io.opaa.library.* stay green.
+    //
+    // #932 review: the granted set below includes one multi-chunk document (see
+    // #grantedChunksWithOneMultiChunkDocument's Javadoc for the exact shape and placement), so
+    // DocumentCompletion actually runs on this permission-filtered candidate pool rather than
+    // every granted document holding exactly one chunk (the pre-#932 shape, which
+    // DocumentCompletion is a no-op for). The retrieved-chunk-count/allSatisfy assertions below
+    // hold regardless of exactly which chunks land in the top 8 or whether completion changes
+    // anything: completion only ever draws from this same permission-filtered pool, never a
+    // fresh, unfiltered search.
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
@@ -403,6 +413,52 @@ class QueryIntegrationTest {
                   "library_id",
                   ungrantedLibraryId.toString())));
     }
+    chunks.addAll(grantedChunksWithOneMultiChunkDocument());
+    vectorStore.add(chunks);
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+
+    try {
+      QueryResult response =
+          queryService.query("Beliebige Frage", null, asCaller(userId), true, java.util.List.of());
+
+      // Exactly topK (8, application.yml default) retrieved chunks, every one of them from the
+      // granted library - the count itself is the assertion that matters (see the comment above).
+      // Summed matchCount, not response.getSources().size(): with #grantedChunksWithOneMulti
+      // ChunkDocument's tied candidates, how many of doc-a-multi's chunks the ANN tie order keeps
+      // is unspecified, so the distinct-source count is not (see that method's Javadoc).
+      assertThat(response.getSources())
+          .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
+      assertThat(response.getSources().stream().mapToInt(ChatSource::getMatchCount).sum())
+          .isEqualTo(8);
+    } finally {
+      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
+    }
+  }
+
+  /**
+   * The granted pool {@link
+   * #queryOnlyReturnsChunksFromTheGrantedLibraryEvenWhenUnauthorizedChunksWouldOutscoreThem} and
+   * {@link #queryFiltersEveryDecomposedSubQuerysSimilaritySearchByTheSameGrantedLibrary} share: ten
+   * single-chunk documents ({@code doc-a-0}..{@code doc-a-9}) plus {@code doc-a-multi}'s three
+   * chunks - 13 granted chunks over 11 distinct documents - so {@code DocumentCompletion} (#932)
+   * actually runs against a document it could grow on this permission-filtered pool, not just
+   * single-chunk documents it can never touch.
+   *
+   * <p>All 13 tie under {@code FakeEmbeddingModel} (see the first caller's comment), so a plain
+   * top-k-by-tied-score selection's exact choice of 8 - and in particular how many of {@code
+   * doc-a-multi}'s three chunks land in that top 8 - is <b>not</b> pinned by this method's chunk
+   * placement; that ANN tie order is not something a test may assume. Both callers therefore assert
+   * on the retrieved <em>chunk</em> count (always exactly {@code topK}, summed via {@code
+   * ChatSource#getMatchCount()}) rather than the distinct <em>source</em> count, which would vary
+   * with how many of {@code doc-a-multi}'s chunks happen to win the tie in a given run.
+   */
+  private List<Document> grantedChunksWithOneMultiChunkDocument() {
+    List<Document> chunks = new ArrayList<>();
+    for (int chunkIndex = 0; chunkIndex < 3; chunkIndex++) {
+      chunks.add(multiChunkDocumentChunk(chunkIndex));
+    }
     for (int i = 0; i < 10; i++) {
       chunks.add(
           new Document(
@@ -417,23 +473,21 @@ class QueryIntegrationTest {
                   "library_id",
                   libraryId.toString())));
     }
-    vectorStore.add(chunks);
+    return chunks;
+  }
 
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
-    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
-
-    try {
-      QueryResult response =
-          queryService.query("Beliebige Frage", null, asCaller(userId), true, java.util.List.of());
-
-      // Exactly topK (8, application.yml default) results, every one of them from the granted
-      // library - the count itself is the assertion that matters (see the comment above).
-      assertThat(response.getSources()).hasSize(8);
-      assertThat(response.getSources())
-          .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
-    } finally {
-      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
-    }
+  private Document multiChunkDocumentChunk(int chunkIndex) {
+    return new Document(
+        "Granted content a-multi chunk " + chunkIndex,
+        Map.of(
+            "file_name",
+            "a-multi.md",
+            "document_id",
+            "doc-a-multi",
+            "chunk_index",
+            chunkIndex,
+            "library_id",
+            libraryId.toString()));
   }
 
   /**
@@ -473,20 +527,7 @@ class QueryIntegrationTest {
                   "library_id",
                   ungrantedLibraryId.toString())));
     }
-    for (int i = 0; i < 10; i++) {
-      chunks.add(
-          new Document(
-              "Granted content " + i,
-              Map.of(
-                  "file_name",
-                  "a" + i + ".md",
-                  "document_id",
-                  "doc-a-" + i,
-                  "chunk_index",
-                  0,
-                  "library_id",
-                  libraryId.toString())));
-    }
+    chunks.addAll(grantedChunksWithOneMultiChunkDocument());
     vectorStore.add(chunks);
 
     // First call is the decomposition step - two lines force the multi-sub-query path. Second call
@@ -502,13 +543,16 @@ class QueryIntegrationTest {
           queryService.query(
               "Beliebige Mehrthemenfrage", null, asCaller(userId), true, java.util.List.of());
 
-      // Exactly topK (8): each sub-query is independently MMR-narrowed to the full topK before
-      // fusion (#923 review) - with both sub-queries returning the identical, fully-overlapping
-      // authorized candidate set (FakeEmbeddingModel ties every embedding), the fused result is
-      // exactly that same set of 8, not fewer.
-      assertThat(response.getSources()).hasSize(8);
+      // Exactly topK (8) retrieved chunks: each sub-query is independently MMR-narrowed to the
+      // full topK before fusion (#923 review) - with both sub-queries returning the identical,
+      // fully-overlapping authorized candidate set (FakeEmbeddingModel ties every embedding), the
+      // fused result is exactly that same set of 8, not fewer. Summed matchCount, not
+      // response.getSources().size() - see #grantedChunksWithOneMultiChunkDocument's Javadoc for
+      // why the distinct-source count is not pinned by this fixture.
       assertThat(response.getSources())
           .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
+      assertThat(response.getSources().stream().mapToInt(ChatSource::getMatchCount).sum())
+          .isEqualTo(8);
     } finally {
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
     }
