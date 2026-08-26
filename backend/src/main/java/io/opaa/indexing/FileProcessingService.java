@@ -187,7 +187,7 @@ public class FileProcessingService {
       log.debug("File {} produced {} chunks", fileName, chunks.size());
 
       // Enrich chunks with metadata and store via VectorStore
-      storeChunks(doc, chunks);
+      storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(fileName));
 
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, null);
@@ -302,7 +302,12 @@ public class FileProcessingService {
           chunkingService.chunkDocuments(fileName, parsed);
       log.debug("URL file {} produced {} chunks", fileName, chunks.size());
 
-      storeChunks(doc, chunks);
+      // fileName is always a real file name here regardless of sourceType - both HTTP_DIRECTORY
+      // and an RSS_FEED entry's attachment (see this method's own Javadoc) go through this path,
+      // so ChunkContextTitle's filesystem-style-name assumption always applies; only
+      // processRssEntry's own entry-body document (never routed through processUrlFile) uses a
+      // headline instead - see storeChunks's Javadoc for why that distinction is call-site-bound.
+      storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(fileName));
 
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, lastModified);
@@ -336,7 +341,14 @@ public class FileProcessingService {
       String publishedAt,
       KnowledgeLibrary targetLibrary) {
 
-    String fileName = (entryTitle != null && !entryTitle.isBlank()) ? entryTitle : entryUrl;
+    boolean hasTitle = entryTitle != null && !entryTitle.isBlank();
+    String fileName = hasTitle ? entryTitle : entryUrl;
+    // The entry's own body document (unlike an attachment routed through processUrlFile) has no
+    // filesystem-style file_name to derive a title from - a headline is free text (used verbatim,
+    // never run through ChunkContextTitle's numbering-prefix heuristic), and a URL fallback shares
+    // a domain/path prefix across every entry of the same feed, so it gets no prefix at all - see
+    // storeChunks's Javadoc for why this is decided per call site, not per DocumentSourceType.
+    String contextTitle = hasTitle ? entryTitle : null;
     byte[] contentBytes = mainText.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     String checksum = checksumService.computeSha256(contentBytes);
 
@@ -384,7 +396,7 @@ public class FileProcessingService {
           chunkingService.chunkDocuments(fileName, parsed);
       log.debug("RSS entry {} produced {} chunks", entryUrl, chunks.size());
 
-      storeChunks(doc, chunks);
+      storeChunks(doc, chunks, contextTitle);
 
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, publishedAt);
@@ -453,7 +465,7 @@ public class FileProcessingService {
           chunkingService.chunkDocuments(doc.getFileName(), parsed);
       log.debug("Uploaded file {} produced {} chunks", doc.getFileName(), chunks.size());
 
-      storeChunks(doc, chunks);
+      storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(doc.getFileName()));
 
       int updated = documentRepository.markIndexed(doc.getId(), chunks.size(), Instant.now());
       if (updated == 0) {
@@ -559,10 +571,9 @@ public class FileProcessingService {
 
   /**
    * Enriches {@code chunks} with permission-filter/citation metadata and, for a document that split
-   * into 2 or more chunks, a contextual title prefix on the embedding input only (#933, "Contextual
-   * Chunking") - see {@link #chunkEmbedFormatterWithPrefix} for the prefix contract and {@link
-   * #deriveContextTitle} for how the title itself is derived. A document {@link
-   * ChunkingService#chunkDocuments} left as a single chunk gets {@link
+   * into 2 or more chunks, {@code contextTitle} as a prefix on the embedding input only (#933,
+   * "Contextual Chunking") - see {@link #chunkEmbedFormatterWithPrefix} for the prefix contract. A
+   * document {@link ChunkingService#chunkDocuments} left as a single chunk gets {@link
    * #CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX} instead (byte-identical to the pre-#933 embedding
    * input): a chunk that was never split still carries its full document as its own content, so a
    * prefix would only dilute it, not restore context lost to splitting.
@@ -571,13 +582,23 @@ public class FileProcessingService {
    * {@link ChunkingService#chunkDocuments} - which has no notion of a contextual prefix and only
    * ever sees the parsed document text - so the decision is always made against prefix-free
    * content, never circularly against a token count the prefix itself would change.
+   *
+   * @param contextTitle the candidate prefix, or {@code null} if this document type should never
+   *     get one (e.g. an RSS entry with no feed-supplied title - see {@code processRssEntry}).
+   *     Deliberately computed by each caller, not derived here from {@code document}: {@link
+   *     DocumentSourceType#RSS_FEED} covers both an RSS entry's own free-text-headline body
+   *     document ({@code processRssEntry}) and its filesystem-style-named attachments ({@code
+   *     processUrlFile}, routed there by {@code RssFeedIndexingExecutor}) - the title-derivation
+   *     rule depends on which of those this chunk set came from, not on {@code document}'s source
+   *     type alone (#940 review).
    */
   private void storeChunks(
-      Document document, List<org.springframework.ai.document.Document> chunks) {
+      Document document,
+      List<org.springframework.ai.document.Document> chunks,
+      String contextTitle) {
     boolean documentWasSplit = chunks.size() >= 2;
-    String contextTitle = documentWasSplit ? deriveContextTitle(document) : null;
     ContentFormatter embedFormatter =
-        contextTitle != null
+        documentWasSplit && contextTitle != null
             ? chunkEmbedFormatterWithPrefix(contextTitle)
             : CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX;
 
@@ -607,28 +628,6 @@ public class FileProcessingService {
             .toList();
 
     addToVectorStore(enriched);
-  }
-
-  /**
-   * The context-title prefix for {@code document}'s chunks, or {@code null} for no prefix at all.
-   * {@link ChunkContextTitle#deriveTitle}'s structural-numbering-prefix stripping assumes a
-   * filesystem-style name ({@code "NNN_slug.ext"}) and is only run for that shape of {@code
-   * file_name}. An {@link DocumentSourceType#RSS_FEED} entry's {@code file_name} is instead either
-   * its feed-supplied headline (used verbatim as the title - free text, not a structured file name)
-   * or, when the feed gave no title, the entry's own URL ({@code processRssEntry}) - every entry of
-   * one feed then shares a domain/path prefix, exactly the boilerplate-prefix pattern #933's review
-   * found harmful for city-landmarks, so a URL-shaped {@code file_name} gets no prefix at all.
-   */
-  private static String deriveContextTitle(Document document) {
-    if (document.getSourceType() == DocumentSourceType.RSS_FEED) {
-      String fileName = document.getFileName();
-      return isUrl(fileName) ? null : fileName;
-    }
-    return ChunkContextTitle.deriveTitle(document.getFileName());
-  }
-
-  private static boolean isUrl(String value) {
-    return value.startsWith("http://") || value.startsWith("https://");
   }
 
   /**

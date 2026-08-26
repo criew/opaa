@@ -389,14 +389,17 @@ class FileProcessingServiceTest {
 
   @Test
   void anUnknownMetadataKeyNeverReachesTheEmbeddingCall() throws IOException {
-    // #940 review, finding 1: the previous DefaultContentFormatter-based whitelist excluded a
-    // known list of bookkeeping keys from MetadataMode.EMBED - a *blacklist* under the hood
-    // (DefaultContentFormatter#metadataFilter does usableMetadataKeys.removeAll(excluded)), so a
-    // metadata key added later without also being added to the exclusion list would silently
+    // #940 review, finding 1 (and finding 2 of the follow-up review: the first version of this
+    // test was tautological - storeChunks builds its own metadata map from scratch and never
+    // copies a chunk's incoming metadata into it, so seeding the *input* chunk with an extra key
+    // proved nothing about the formatter). The previous DefaultContentFormatter-based whitelist
+    // excluded a known list of bookkeeping keys from MetadataMode.EMBED - a *blacklist* under the
+    // hood (DefaultContentFormatter#metadataFilter does usableMetadataKeys.removeAll(excluded)),
+    // so a metadata key added later without also being added to the exclusion list would silently
     // re-enter the embedding text (the #773 contamination this whitelist exists to prevent). The
-    // per-chunk lambda formatters never read Document#getMetadata() at all, so this can no longer
-    // happen regardless of what a future storeChunks change puts into the metadata map - proven
-    // here by adding a key the formatters have never heard of and asserting it never surfaces.
+    // per-chunk lambda formatters never read Document#getMetadata() at all - proven here by
+    // mutating the metadata of the already-captured, already-formatter-attached stored chunk and
+    // asserting the added key still never surfaces in getFormattedContent(EMBED).
     Path file = tempDir.resolve("001_embed-content.txt");
     Files.writeString(file, "some content");
 
@@ -409,12 +412,9 @@ class FileProcessingServiceTest {
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
 
-    var chunkWithExtraMetadata =
-        new org.springframework.ai.document.Document(
-            "first chunk text", Map.of("future_bookkeeping_key", "some-future-uuid"));
     var chunks =
         List.of(
-            chunkWithExtraMetadata,
+            new org.springframework.ai.document.Document("first chunk text"),
             new org.springframework.ai.document.Document("second chunk text"));
     when(chunkingService.chunkDocuments(eq("001_embed-content.txt"), eq(parsed)))
         .thenReturn(chunks);
@@ -426,6 +426,8 @@ class FileProcessingServiceTest {
         ArgumentCaptor.forClass(List.class);
     verify(vectorStore).add(chunkCaptor.capture());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
+
+    storedChunk.getMetadata().put("future_bookkeeping_key", "some-future-uuid");
 
     assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
         .isEqualTo("[embed content]\n\nfirst chunk text")
@@ -497,6 +499,54 @@ class FileProcessingServiceTest {
 
     assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
         .isEqualTo("first chunk text");
+  }
+
+  @Test
+  void anRssAttachmentGetsAHumanizedTitleNotItsRawFileName() throws IOException {
+    // #940 delta review, finding 1: an RSS entry's *attachment* also carries DocumentSourceType.
+    // RSS_FEED (routed through processUrlFile by RssFeedIndexingExecutor, same as
+    // processUrlFileRecordsSourceTypeAndOriginEntryForAnAttachment above), but unlike the entry's
+    // own body document (processRssEntry), its file_name is a real filesystem-style name, not a
+    // headline - deriving the title from source type alone would have used the raw file name
+    // verbatim here (extension and numbering prefix unstripped), exactly the measured-harmful
+    // pattern from #933's first measurement round. The title must therefore be humanized like any
+    // other file-name-bearing document, regardless of RSS_FEED as the source type.
+    Path file = tempDir.resolve("001_satzung.pdf");
+    Files.writeString(file, "pdf content");
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-attachment");
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://example.gov/downloads/001_satzung.pdf"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks =
+        List.of(
+            new org.springframework.ai.document.Document("first chunk text"),
+            new org.springframework.ai.document.Document("second chunk text"));
+    when(chunkingService.chunkDocuments(eq("001_satzung.pdf"), eq(parsed))).thenReturn(chunks);
+
+    service.processUrlFile(
+        file,
+        "001_satzung.pdf",
+        "https://example.gov/downloads/001_satzung.pdf",
+        null,
+        1024,
+        targetLibrary,
+        DocumentSourceType.RSS_FEED,
+        "https://example.gov/artikel/mein-artikel");
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStore).add(chunkCaptor.capture());
+    org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
+
+    assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
+        .isEqualTo("[satzung]\n\nfirst chunk text");
   }
 
   @Test
