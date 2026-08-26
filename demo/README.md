@@ -46,7 +46,7 @@ rein lesende Webserver-Services, über die **bestehende** Konnektoren (`Autoinde
 `HTTP_DIRECTORY`, der RSS-Konnektor für `RSS_FEED`) den Korpus indizieren, ohne eine Zeile neuen
 Ingestion-Codes.
 
-Voraussetzung wie für jeden Compose-Start (siehe [`docs/deployment.md`](../docs/deployment.md),
+Voraussetzung wie für jeden Compose-Start (siehe [`docs/handbuch/deployment.md`](../docs/handbuch/deployment.md),
 Abschnitt „Schnellstart"): eine eigene `.env.docker` aus der Vorlage:
 
 ```bash
@@ -69,11 +69,11 @@ synthetischer Korpus einer fiktiven Stadt, Rohmaterial LHM-Dienstleistungen-Corp
 Frontend-Container liest die Variable beim Start (`frontend/nginx.conf`, `envsubst`-Template); ein
 Rebuild ist dafür nicht nötig, ein Neustart des `frontend`-Containers genügt. Ohne diese Zeile
 bleibt der Hinweis aus (Image-Default `false`) — das ist der richtige Zustand für jede
-Nicht-Demo-Installation, siehe `docs/deployment.md`, Variablentabelle.
+Nicht-Demo-Installation, siehe `docs/handbuch/deployment.md`, Variablentabelle.
 
 > **Update-Hinweis (#756/#762):** Seit Stufe 1 der Modellverwaltung übernimmt das Backend beim
 > ersten Start nach einem Image-Update die bestehende `spring.ai.openai.chat.*`-Konfiguration
-> einmalig als verwaltetes Chat-Modell (siehe `docs/deployment.md`, Abschnitt „Verschlüsselung der
+> einmalig als verwaltetes Chat-Modell (siehe `docs/handbuch/deployment.md`, Abschnitt „Verschlüsselung der
 > Zugangsschlüssel verwalteter Chat-Modelle"). Diese Demo setzt keine der inzwischen entfallenen
 > `OPAA_AI_CHAT_PROVIDER`/`OPAA_AI_EMBEDDING_PROVIDER`-Variablen, läuft also über den
 > Anwendungs-Default der openai-kompatiblen Schicht ohne Zugangsschlüssel (Ollama-Server ohne
@@ -224,7 +224,7 @@ Dateiname und Status übersprungen (ein zuvor `FAILED`es Dokument wird dagegen e
 bestehender Zuordnung die vorhandene Assoziation unverändert zurück. Bricht der Seed beim `demo`-Profil mit „Die
 Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen." ab (die 26 sequentiellen
 Uploads der internen Bibliothek können `uploadTaskExecutor`s Warteschlange füllen, siehe
-[`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md), Abschnitt „Umgebung konfigurieren"),
+[`docs/handbuch/demo-walkthrough.md`](../docs/handbuch/demo-walkthrough.md), Abschnitt „Umgebung konfigurieren"),
 behebt genau diese Idempotenz das: Ein zweiter `python seed.py --profile demo`-Lauf lädt die als
 `FAILED` markierten Dokumente erneut hoch, ohne bereits erfolgreich indizierte Dokumente
 anzurühren.
@@ -241,20 +241,20 @@ wenn mehrere Seed-Läufe dieselbe IP teilen.
 `opaa-seed` (`keycloak/realm-export.json`, Resource Owner Password Grant, kein Client-Secret) an —
 bewusst getrennt vom `opaa-frontend`-Client, dessen `directAccessGrantsEnabled` aus gutem Grund
 `false` bleibt. **Dieser Client gehört vor jedem erreichbaren Deployment entfernt oder deaktiviert**
-(`docs/deployment.md`, Härtungstabelle, Punkt 6) — er ist ein passwortbasierter Tokenweg ohne
+(`docs/handbuch/deployment.md`, Härtungstabelle, Punkt 6) — er ist ein passwortbasierter Tokenweg ohne
 Secret gegen jedes Realm-Konto und darf nicht dauerhaft scharf bleiben.
 
 ## Demo-Zugangsdaten
 
 Alle Konten des Realms `opaa` sind offene **Demo-Werte**, keine Secrets — vor jedem erreichbaren
-Deployment gemäß `docs/deployment.md`, Abschnitt „Härtung für erreichbare Deployments" zu ersetzen.
+Deployment gemäß `docs/handbuch/deployment.md`, Abschnitt „Härtung für erreichbare Deployments" zu ersetzen.
 Die vollständige Konto-Tabelle mit Rollen, Spaces, lesbaren Bibliotheken und Passwörtern sowie das
 ausformulierte Vorführ-Drehbuch mit acht Fragen stehen an einer Stelle, nicht dupliziert:
-[`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md).
+[`docs/handbuch/demo-walkthrough.md`](../docs/handbuch/demo-walkthrough.md).
 
 ## Umfang außerhalb dieses Verzeichnisses
 
-- Demo-Drehbuch und Installationsanleitung — [`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md) (#713)
+- Demo-Drehbuch und Installationsanleitung — [`docs/handbuch/demo-walkthrough.md`](../docs/handbuch/demo-walkthrough.md) (#713)
 - Smoke-Test gegen das `demo`-Profil — #232 (`e2e/demo-smoke/`, `pnpm run test:demo-smoke` in
   `e2e/`, siehe [`e2e/README.md`, „Demo-Smoke (#232)"](../e2e/README.md#demo-smoke-232))
 - Rollout auf einen erreichbaren Host — #230

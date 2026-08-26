@@ -2,7 +2,7 @@
 # It contains insecure defaults (e.g., admin/admin and placeholder secrets)
 # and must not be used as-is for production deployments.
 # Before running this reachable from outside localhost, see
-# docs/deployment.md, section "Härtung für erreichbare Deployments".
+# docs/handbuch/deployment.md, section "Härtung für erreichbare Deployments".
 services:
   postgres:
     image: pgvector/pgvector:pg18
@@ -164,7 +164,7 @@ services:
   # started with `docker compose --profile ollama up`. Without the profile, this service does not
   # exist and the stack behaves exactly as before - the backend's own defaults still assume a
   # reachable Ollama server (application.yml, "docker" profile: OPAA_OPENAI_BASE_URL defaults to
-  # http://ollama:11434/v1), see docs/deployment.md, section "LLM-Anbieter", for the alternatives
+  # http://ollama:11434/v1), see docs/handbuch/deployment.md, section "LLM-Anbieter", for the alternatives
   # (an external Ollama, host.docker.internal, or a different openai-compatible provider).
   #
   # Serves both chat and embedding through Ollama's own OpenAI-compatible /v1 endpoint - no
@@ -178,7 +178,7 @@ services:
     # service over the Compose network under its service name ("ollama"), never through a host
     # port. Uncomment to additionally reach it directly from the host (e.g. to run `ollama` CLI
     # commands against it) - bind to 127.0.0.1 only, per the port-exposure rule this repository
-    # otherwise follows (see docs/deployment.md, "Härtung für erreichbare Deployments", Punkt 5).
+    # otherwise follows (see docs/handbuch/deployment.md, "Härtung für erreichbare Deployments", Punkt 5).
     # ports:
     #   - "127.0.0.1:11434:11434"
     healthcheck:

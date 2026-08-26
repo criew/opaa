@@ -398,7 +398,7 @@ den Indextyp für die Evaluierung konfigurierbar zu machen und exakte Suche zu v
 > dem eigenständigen, synthetischen Verwaltungskorpus der fiktiven Stadt Rheinfurt, getrennt vom
 > Eval-Korpus, der ausschließlich Messartefakt bleibt (siehe `demo-instance.md`, „Motivation" und
 > „Integrationspunkte"). Installation, Nutzerkonten und Drehbuch dieser Demo-Instanz stehen in
-> [`../demo-walkthrough.md`](../demo-walkthrough.md). Der Rest dieses Abschnitts bleibt als
+> [`../demo-walkthrough.md`](../handbuch/demo-walkthrough.md). Der Rest dieses Abschnitts bleibt als
 > historischer Kontext stehen.
 
 ### Ablauf
@@ -463,7 +463,7 @@ Drei Folgerungen:
 - **Der CI-Harness und die Instanz betten identisch ein.** Beide verwenden `nomic-embed-text` über
   Ollama. Ein grüner Regressionslauf misst damit dieselbe Retrieval-Konfiguration, die ein Besucher
   auf `opaa.ewerlin.com` erlebt — siehe den Nachtrag im ADR.
-- **Die Instanz ist inzwischen dokumentiert.** `docs/deployment.md` beschreibt sie seit #244; die
+- **Die Instanz ist inzwischen dokumentiert.** `docs/handbuch/deployment.md` beschreibt sie seit #244; die
   Betriebsdetails zu Korpus-Rollout, Indizierung und Aktualisierung sind dort ergänzt.
 
 ### Zugangsmodell: account-gebunden, kein Gastzugang
@@ -518,10 +518,10 @@ Phase 1 und 2 sind der Gegenstand der jetzt erstellten Issues.
   Diese Spezifikation wiederholt sie nicht, sondern setzt Phase 1 und 2 daraus um.
 - `docs/features/data-indexing-rag.md` — die Pipeline, die hier gemessen wird.
 - `docs/features/deployment-infrastructure.md` — der Compose-Stack, den die Demo erweitert.
-- `docs/GraphRAG.md` — die Tier-Domäne mit ihrer Taxonomie ist der natürliche Testfall, falls
+- `docs/discussions/GraphRAG.md` — die Tier-Domäne mit ihrer Taxonomie ist der natürliche Testfall, falls
   GraphRAG evaluiert wird.
 - Issues #115 und #117 — Voraussetzung für die Multi-Tenancy-Demonstration.
-- `docs/deployment.md` — beschreibt die bestehende öffentliche Instanz `opaa.ewerlin.com` noch
+- `docs/handbuch/deployment.md` — beschreibt die bestehende öffentliche Instanz `opaa.ewerlin.com` noch
   nicht; das ist Voraussetzung für den Korpus-Rollout.
 - `docs/AGENT-ORGANIZATION.md` — der QA Engineer ist Eigentümer der RAG-Evaluierung im laufenden
   Betrieb; dieses Feature liefert ihm das Werkzeug.

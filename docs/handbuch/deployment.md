@@ -31,7 +31,7 @@ docker compose pull && docker compose up -d
 
 Unter **https://opaa.ewerlin.com** betreibt der Maintainer eine öffentliche **Test-/Demo-Instanz** von OPAA. Es handelt sich ausdrücklich nicht um einen Produktivbetrieb — es gelten keine Verfügbarkeits- oder Datenerhaltungsgarantien.
 
-Seit dem 21.08.2026 ist die Instanz die Demo-Instanz **„Stadt Rheinfurt"** (#230, Epic #708): Der Stack wurde per Reset neu aufgesetzt (frische Datenbank, frischer Keycloak-Realm-Import mit den Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt. Konzept, Nutzerkonten und Drehbuch stehen in [`demo-walkthrough.md`](demo-walkthrough.md) und [`features/demo-instance.md`](features/demo-instance.md); dieser Abschnitt beschreibt nur die instanzspezifischen Betriebsdetails, die dort nicht stehen.
+Seit dem 21.08.2026 ist die Instanz die Demo-Instanz **„Stadt Rheinfurt"** (#230, Epic #708): Der Stack wurde per Reset neu aufgesetzt (frische Datenbank, frischer Keycloak-Realm-Import mit den Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt. Konzept, Nutzerkonten und Drehbuch stehen in [`demo-walkthrough.md`](demo-walkthrough.md) und [`features/demo-instance.md`](../features/demo-instance.md); dieser Abschnitt beschreibt nur die instanzspezifischen Betriebsdetails, die dort nicht stehen.
 
 - **Betreiber:** Der Maintainer (`criew`), auf privater VPS-Infrastruktur außerhalb dieses Repositorys.
 - **Zweck:** Öffentlich erreichbare Vorführinstanz der Demo „Stadt Rheinfurt" auf dem aktuellen `main`-Stand.
@@ -120,7 +120,7 @@ Härtungstabelle unten, Punkt 1.
 
 ### Aktualisierung auf einen neuen `main`-Stand
 
-Der Workflow [`publish-images.yml`](../.github/workflows/publish-images.yml) baut bei jedem Push auf `main` neue `ghcr.io/criew/opaa-backend`- und `ghcr.io/criew/opaa-frontend`-Images und veröffentlicht sie mit den Tags `main` und `sha-<commit>` in der GHCR-Registry (siehe [Deployment aus vorgebauten Images](#deployment-aus-vorgebauten-images-ghcr) oben).
+Der Workflow [`publish-images.yml`](../../.github/workflows/publish-images.yml) baut bei jedem Push auf `main` neue `ghcr.io/criew/opaa-backend`- und `ghcr.io/criew/opaa-frontend`-Images und veröffentlicht sie mit den Tags `main` und `sha-<commit>` in der GHCR-Registry (siehe [Deployment aus vorgebauten Images](#deployment-aus-vorgebauten-images-ghcr) oben).
 
 Auf dem Server liegt ein **Deployment-Skript**, das genau das tut: die aktuellen Images ziehen und den Stack auf den neuen Stand bringen. Es kennt zusätzlich einen Schalter, der auch die Volumes verwirft — damit ist die Datenbank und mit ihr der gesamte Index weg. Dieser Schalter ist deshalb kein Aktualisierungs-, sondern ein Neuaufsetzschritt; danach ist zwingend eine vollständige Neuindizierung nötig.
 
@@ -154,7 +154,7 @@ Kurz: Ein Update über `docker compose pull` + `docker compose up -d` **gefährd
 - **Liquibase** wendet beim Backend-Start ausschließlich noch nicht angewendete Changesets vorwärts an. Mit einer Ausnahme (siehe unten) löscht keines der Changesets Dokument- oder Vektordaten — die `dropTable`-Anweisungen in `db/changelog/changes/` stehen ausnahmslos in `rollback`-Blöcken und laufen im Normalbetrieb nie.
 - **Die Vektortabelle** wird nicht von Liquibase, sondern von Spring AI selbst angelegt (`spring.ai.vectorstore.pgvector.initialize-schema: true`). Sie wird nur erzeugt, wenn sie fehlt, und bei einem Update nicht verändert.
 
-> **Der Vektorspeicher ist nicht wählbar.** OPAA speichert Vektoren in PostgreSQL mit pgvector; das ist der einzige unterstützte Vektorspeicher. Der Zugriff läuft zwar über eine portable Schnittstelle von Spring AI, ein Wechsel wird aber nicht unterstützt, nicht geprüft und nicht dokumentiert. Begründung: [Daten-Indizierung & RAG](./features/data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner).
+> **Der Vektorspeicher ist nicht wählbar.** OPAA speichert Vektoren in PostgreSQL mit pgvector; das ist der einzige unterstützte Vektorspeicher. Der Zugriff läuft zwar über eine portable Schnittstelle von Spring AI, ein Wechsel wird aber nicht unterstützt, nicht geprüft und nicht dokumentiert. Begründung: [Daten-Indizierung & RAG](../features/data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner).
 
 > **Ausnahme: Migration `031-delete-system-library` (#521).** Diese Migration löscht bewusst Daten — die früher automatisch angelegte, nur für System-Admins lesbare System-Bibliothek samt ihrer Dokumente, Vektorspeicher-Chunks, Indizierungsaufträge und Grants. Es ist die erste und bislang einzige datenvernichtende Migration im Projekt; ihr Rollback ist bewusst ein No-op (die entfernten Zeilen ließen sich nicht von danach regulär geschriebenen unterscheiden). **Vor dem Update auf einen Stand mit dieser Migration einen Datenbank-Dump ziehen**, wer den Inhalt der System-Bibliothek noch braucht. Dateien, die ein Dokument der System-Bibliothek einst unter `opaa.upload.storage-path` abgelegt hatte, räumt die Migration nicht mit auf — nur die Datenbankzeilen verschwinden, verwaiste Dateien bleiben auf der Platte liegen und müssen bei Bedarf von Hand entfernt werden.
 
@@ -175,7 +175,7 @@ Auf der Testinstanz sind `nomic-embed-text` und `OPAA_PGVECTOR_DIMENSIONS=768` f
 > **Neuindizierung nach #773 (Metadaten-Kontamination der Einbettung):** Der Fix wirkt nur vorwärts — er ändert, was ab dem Update neu eingebettet wird, nicht die bereits gespeicherten Vektoren. Zwischen #766 (Umstellung auf die OpenAI-kompatible Einbettung) und #773 (dieser Fix) indizierte Chunks bleiben kontaminiert, bis sie explizit neu indiziert werden, und liegen bis dahin unbemerkt neben sauberen Vektoren im selben Suchraum — eine gemischte Suchqualität, kein Fehlschlag, der auffällt. Betroffen ist jede Bibliothek, die in diesem Zeitfenster (mindestens einmal) indiziert wurde, unabhängig vom Quellentyp. Eine reine `docker compose pull`/`up -d`-Aktualisierung erkennt das nicht automatisch — wer aus dieser Zeitspanne aktualisiert, muss selbst neu indizieren. Zwei bekannte Fallen dabei, zusätzlich zur SHA-256-/`INDEXED`-Falle oben:
 >
 > - **`FILESYSTEM`/`HTTP_DIRECTORY`:** Die SHA-256-Falle oben gilt unverändert — unveränderte Dateien mit Status `INDEXED` werden übersprungen, auch wenn ihr gespeicherter Vektor kontaminiert ist. Ohne einen Rücksetzschritt merkt ein neuer Lauf gar nichts an.
-> - **`RSS_FEED`:** Zusätzlich zur SHA-256-Falle greift hier der `rss_feed_state`-ETag/`Last-Modified` (siehe [„Feeds als Quelle"](features/knowledge-sources.md#feeds-als-quelle-gebaut), Abschnitt „Änderungserkennung"): Meldet der Feed „unverändert" (HTTP 304), endet der Lauf nach der ersten Anfrage, ohne dass auch nur ein Eintrag erneut betrachtet wird — unabhängig vom Zustand der bereits gespeicherten Vektoren.
+> - **`RSS_FEED`:** Zusätzlich zur SHA-256-Falle greift hier der `rss_feed_state`-ETag/`Last-Modified` (siehe [„Feeds als Quelle"](../features/knowledge-sources.md#feeds-als-quelle-gebaut), Abschnitt „Änderungserkennung"): Meldet der Feed „unverändert" (HTTP 304), endet der Lauf nach der ersten Anfrage, ohne dass auch nur ein Eintrag erneut betrachtet wird — unabhängig vom Zustand der bereits gespeicherten Vektoren.
 >
 > Für einen echten Neuaufbau einer betroffenen Bibliothek müssen **`documents`, die zugehörigen `vector_store`-Zeilen und (nur bei `RSS_FEED`) `rss_feed_state`** gemeinsam zurückgesetzt werden, gezielt für die betroffene `library_id` — nicht die ganze Datenbank:
 >
@@ -302,7 +302,7 @@ Eine Installation wird heute mit **genau einer** Organisation ausgeliefert. Sola
 
 **Mandantenfähiger Betrieb — mehr als eine Organisation auf derselben Installation — setzt zwei Vorgänge voraus, die heute offen sind:** die symmetrische Absicherung der Organisationsgrenze auf Datenbankebene ([#289](https://github.com/criew/opaa/issues/289)) und ihre Durchsetzung im Verwaltungspfad ([#271](https://github.com/criew/opaa/issues/271)). Beide Lücken sind bei einer Organisation nicht ausnutzbar und werden mit dem Anlegen der zweiten gleichzeitig scharf. Wer eine zweite Organisation anlegt, bevor beide erledigt sind, betreibt die Installation ohne durchgesetzte Mandantentrennung.
 
-Hintergrund und die drei Schichten, in denen die Grenze gehalten wird: [features/spaces-and-assets.md](./features/spaces-and-assets.md#wie-die-grenze-gehalten-wird).
+Hintergrund und die drei Schichten, in denen die Grenze gehalten wird: [features/spaces-and-assets.md](../features/spaces-and-assets.md#wie-die-grenze-gehalten-wird).
 
 ## Schnellstart
 
@@ -400,7 +400,7 @@ Guard noch abfängt.
 
 > **Update-Hinweis für Bestandsinstallationen (#756).** Seit Stufe 1 der Modellverwaltung
 > übernimmt das Backend beim ersten Start nach dem Update die obige Konfiguration einmalig als
-> verwaltetes Chat-Modell (siehe [„Übergang aus der heutigen Konfiguration"](features/llm-integration.md#übergang-aus-der-heutigen-konfiguration)).
+> verwaltetes Chat-Modell (siehe [„Übergang aus der heutigen Konfiguration"](../features/llm-integration.md#übergang-aus-der-heutigen-konfiguration)).
 > Das erfordert **keine** neue Variable für den Normalfall — auch nicht für `docker,oidc` oder eine
 > reine Ollama-Installation ohne jeden Zugangsschlüssel. Nur wer bereits mit gesetztem
 > `OPAA_OPENAI_API_KEY` betrieben wird, sollte vor dem Update `OPAA_SETTINGS_ENCRYPTION_KEY` setzen
@@ -610,7 +610,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` | `20971520` | `20971520` | Max. Größe einer einzelnen RSS-Anlage in Byte |
 | `OPAA_INDEXING_CRAWL_MAX_DEPTH` | `10` | `10` | Maximale Rekursionstiefe eines `HTTP_DIRECTORY`-Crawls (#836) — die Wurzel liegt auf Tiefe 0, ein Crawl besucht also die Tiefen 0 bis einschließlich `max-depth`. Bricht einen Zyklus, der nie dieselbe URL zweimal erzeugt (z. B. eine Symlink-Schleife mit wachsendem Pfad) |
 | `OPAA_INDEXING_CRAWL_MAX_ENTRIES` | `5000` | `5000` | Maximale Anzahl gesammelter Dateien **und** besuchter Verzeichnisse je `HTTP_DIRECTORY`-Crawl, bevor abgeschnitten wird (geloggt, kein Fehler) — begrenzt auch einen reinen Verzeichnis-Symlink-Zyklus, den die Tiefenbegrenzung allein nur mit bis zu `Verzweigungsfaktor^max-depth` Anfragen stoppen würde |
-| `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` | — (leer; Profil `dev`: `/data,/tmp`) | nicht gesetzt (auskommentiert; Beispielwert `/srv/opaa/documents`) | Absolute Basisverzeichnisse, unter denen der `sourcePath` einer FILESYSTEM-Bibliothek liegen muss (kommagetrennt, #484/[ADR-0018](decisions/0018-quellkonfiguration-in-der-bibliothek.md) Entscheidung 6). Eine leere Allowlist deaktiviert den Quellentyp FILESYSTEM vollständig — sie ist die eigentliche Sicherung, nicht die Anlage-Berechtigung. Wird bei Anlage, Änderung **und** jedem Lauf geprüft, da die Allowlist nachträglich verengt werden kann. URL-basierte Quellentypen (HTTP_DIRECTORY, RSS_FEED) sind hiervon nicht erfasst — dafür siehe `OPAA_INDEXING_TARGET_VALIDATION_*` unten. **Betriebsbedingung Symlinks:** Symlinks auf Dateien innerhalb eines freigegebenen Verzeichnisses werden mitindiziert (`Files::isRegularFile` folgt Links) — freigegebene Verzeichnisse dürfen deshalb nicht durch Endnutzer beschreibbar sein. |
+| `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` | — (leer; Profil `dev`: `/data,/tmp`) | nicht gesetzt (auskommentiert; Beispielwert `/srv/opaa/documents`) | Absolute Basisverzeichnisse, unter denen der `sourcePath` einer FILESYSTEM-Bibliothek liegen muss (kommagetrennt, #484/[ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) Entscheidung 6). Eine leere Allowlist deaktiviert den Quellentyp FILESYSTEM vollständig — sie ist die eigentliche Sicherung, nicht die Anlage-Berechtigung. Wird bei Anlage, Änderung **und** jedem Lauf geprüft, da die Allowlist nachträglich verengt werden kann. URL-basierte Quellentypen (HTTP_DIRECTORY, RSS_FEED) sind hiervon nicht erfasst — dafür siehe `OPAA_INDEXING_TARGET_VALIDATION_*` unten. **Betriebsbedingung Symlinks:** Symlinks auf Dateien innerhalb eines freigegebenen Verzeichnisses werden mitindiziert (`Files::isRegularFile` folgt Links) — freigegebene Verzeichnisse dürfen deshalb nicht durch Endnutzer beschreibbar sein. |
 | `OPAA_INDEXING_TARGET_VALIDATION_ENABLED` | `true` | `true` | Ob `HTTP_DIRECTORY`/`RSS_FEED`-Abrufe (Indizierungsläufe **und** der Verbindungstest) ein Ziel ablehnen, dessen aufgelöste Adresse Loopback, Link-Local, privat oder anderweitig nicht routbar ist (#267, SSRF-Härtung). Vor dem ersten Abruf **und** nach jeder Weiterleitung geprüft. Standardmäßig aktiv — ein Betrieb mit legitimer interner Dokumentenquelle schaltet bewusst ab, kein stillschweigender Permissiv-Modus. |
 | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | — (leer) | nicht gesetzt (auskommentiert; Beispielwert `intranet.example.org`) | Hostnamen (kommagetrennt, exakter Vergleich ohne Groß-/Kleinschreibung), die von der Zielprüfung oben ausgenommen sind, auch während sie aktiv ist — erlaubt konkrete interne Quellen zu benennen, ohne die Prüfung für jedes andere Ziel abzuschalten. |
 | `OPAA_INDEXING_STALE_JOB_TIMEOUT` | `4h` (als `${OPAA_INDEXING_STALE_JOB_TIMEOUT:4h}`-Platzhalter in `application.yml`, deckungsgleich mit dem Java-Default `PT4H` in `IndexingProperties`) | nicht gesetzt (Anwendungs-Default gilt) | Wie lange ein Lauf `RUNNING` bleiben darf, ohne dass sein Fortschritts-Heartbeat sich bewegt, bevor er als verwaist gilt und automatisch auf `FAILED` gesetzt wird (#501) — schützt vor Läufen, die durch eine verworfene `@Async`-Aufgabe oder einen abgestürzten Prozess dauerhaft `RUNNING` bleiben und damit ihre Bibliothek auf Dauer sperren würden (jeder weitere Anstoß derselben Bibliothek antwortet 409, solange die Zeile `RUNNING` ist). Ein tatsächlich aktiver Lauf eines großen Bestands bleibt unangetastet, solange er weiter Fortschritt meldet, auch über diese Zeitspanne hinaus. Wird beim Anwendungsstart (alle `RUNNING`-Zeilen gelten dann als verwaist) und danach periodisch geprüft. **Setzt genau eine Backend-Instanz voraus:** Startup-Recovery und periodischer Sweep kennen nur die `indexing_jobs`-Zeilen der eigenen Datenbank, nicht welcher Prozess sie tatsächlich noch bearbeitet — bei einem Rolling-Deployment oder einer zweiten Replik würde eine Instanz die noch laufenden Jobs der anderen als verwaist erkennen und abbrechen. |
@@ -679,7 +679,7 @@ OPAA_SERVER_ADDRESS=0.0.0.0
 
 #### Sicherheits-Header und `Strict-Transport-Security`
 
-Der nginx im Frontend-Container (`frontend/nginx.conf`) setzt seit [#409](https://github.com/criew/opaa/issues/409) `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` und `server_tokens off` auf jede Antwort (auch Fehlerantworten, über `add_header ... always;`). Die Content-Security-Policy setzt [ADR-0004](decisions/0004-self-hosted-frontend-resources.md) technisch durch: Skripte, Stile, Schriften und Verbindungen sind auf die eigene Herkunft begrenzt, keine externe Quelle ist erlaubt (bis auf die unten beschriebene, gezielte Ausnahme für den OIDC-Anbieter). `style-src` erlaubt zusätzlich `'unsafe-inline'`, weil MUIs Emotion-Engine Stile zur Laufzeit über eingebettete `<style>`-Tags einfügt — dafür gibt es ohne Nonce-Unterstützung in Emotion keinen strikteren Weg. `object-src 'none'` ist gesetzt, weil die Anwendung keine `<object>`/`<embed>`-Inhalte einbettet.
+Der nginx im Frontend-Container (`frontend/nginx.conf`) setzt seit [#409](https://github.com/criew/opaa/issues/409) `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` und `server_tokens off` auf jede Antwort (auch Fehlerantworten, über `add_header ... always;`). Die Content-Security-Policy setzt [ADR-0004](../decisions/0004-self-hosted-frontend-resources.md) technisch durch: Skripte, Stile, Schriften und Verbindungen sind auf die eigene Herkunft begrenzt, keine externe Quelle ist erlaubt (bis auf die unten beschriebene, gezielte Ausnahme für den OIDC-Anbieter). `style-src` erlaubt zusätzlich `'unsafe-inline'`, weil MUIs Emotion-Engine Stile zur Laufzeit über eingebettete `<style>`-Tags einfügt — dafür gibt es ohne Nonce-Unterstützung in Emotion keinen strikteren Weg. `object-src 'none'` ist gesetzt, weil die Anwendung keine `<object>`/`<embed>`-Inhalte einbettet.
 
 Auf `/api/`-Antworten setzt zusätzlich Spring Security eigene `X-Content-Type-Options`/`X-Frame-Options`-Header; `proxy_hide_header` in `location /api/` entfernt diese, damit der Client nur die eine, am nginx gesetzte Kopie sieht statt beide Werte doppelt.
 
@@ -723,7 +723,7 @@ Ollama gibt es deshalb nicht mehr.
 > **Die Einbettung ist von dieser Umstellung nicht betroffen**: `OPAA_OPENAI_EMBEDDING_*`/
 > `OPAA_OPENAI_BASE_URL` steuern das Embedding-Modell weiterhin unverändert und fortlaufend über die
 > native Spring-AI-Autoconfiguration — es gibt (bewusst) keine verwaltete Einbettungsmodell-Tabelle,
-> siehe [Modelle und zentrale Steuerung](features/llm-integration.md#eigene-modelle-zuerst).
+> siehe [Modelle und zentrale Steuerung](../features/llm-integration.md#eigene-modelle-zuerst).
 
 **Voreingestellt sind lokal betriebene Modelle** über genau diesen Weg, für Chat und für Einbettung.
 Eine Installation, an der niemand etwas konfiguriert, ruft kein Modell außerhalb des Hauses auf —
@@ -732,7 +732,7 @@ Eine Installation, an der niemand etwas konfiguriert, ruft kein Modell außerhal
 `phi3:mini`/`nomic-embed-text`, und Ollama braucht keinen Zugangsschlüssel (der voreingestellte
 `OPAA_OPENAI_API_KEY`-Platzhalter wird nie geprüft). Diese Voreinstellung ist so gewollt und bleibt
 (siehe
-[ADR-0014, Nachtrag vom 14.08.2026](decisions/0014-produktausrichtung-oeffentliche-verwaltung.md#nachträge-entschiedene-punkte)).
+[ADR-0014, Nachtrag vom 14.08.2026](../decisions/0014-produktausrichtung-oeffentliche-verwaltung.md#nachträge-entschiedene-punkte)).
 
 ```env
 # Kein Eintrag nötig - dies ist bereits der Anwendungs-Default.
@@ -752,7 +752,7 @@ Funktion; ohne sie gilt `OPAA_OPENAI_BASE_URL` für beide.
 > **Es gibt keine technische Sperre**, die einen Aufruf außerhalb festgelegter Netzbereiche
 > verhindert. Wer zusichern muss, dass keine Daten das Haus verlassen, weist die Konfiguration nach
 > und sichert den Netzweg außerhalb von OPAA ab — siehe
-> [Modelle und zentrale Steuerung](features/llm-integration.md#was-heute-gilt-und-was-nicht-gebaut).
+> [Modelle und zentrale Steuerung](../features/llm-integration.md#was-heute-gilt-und-was-nicht-gebaut).
 
 ### Lokal betriebenes Ollama im Compose-Stack (#720)
 
@@ -908,7 +908,7 @@ scheitert weich (siehe oben), Schreiben hart.
 
 ### Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle (#756)
 
-Seit Stufe 1 der Modellverwaltung ([Modelle und zentrale Steuerung](features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung))
+Seit Stufe 1 der Modellverwaltung ([Modelle und zentrale Steuerung](../features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung))
 liegen Chat-Modelle in der Tabelle `llm_models`, nicht mehr ausschließlich in
 Umgebungsvariablen. Ein hinterlegter Zugangsschlüssel (optional — ein lokal betriebener Endpunkt
 läuft regelmäßig ohne Authentifizierung) liegt **verschlüsselt** in der Datenbank (AES-256-GCM,
@@ -930,12 +930,12 @@ Rotation zu teilen.
 
 **Kein Zwang, keinen zu haben:** Ohne gesetzten Schlüssel startet das Backend normal — eine
 Installation, die ausschließlich lokale Modelle ohne Zugangsschlüssel führt (der Normalfall, siehe
-[„Eigene Modelle zuerst"](features/llm-integration.md#eigene-modelle-zuerst)), braucht ihn nie.
+[„Eigene Modelle zuerst"](../features/llm-integration.md#eigene-modelle-zuerst)), braucht ihn nie.
 Erst der Versuch, ein Chat-Modell **mit** Zugangsschlüssel anzulegen oder zu ändern, schlägt ohne
 gültigen Schlüssel mit einer klaren deutschen Meldung fehl (`io.opaa.security.SettingsEncryptor`),
 die die fehlende oder ungültige Variable benennt. Für die Seed-Migration, die beim ersten Start eine
 bestehende `openai`-Konfiguration samt Zugangsschlüssel übernimmt (siehe [„Übergang aus der heutigen
-Konfiguration"](features/llm-integration.md#übergang-aus-der-heutigen-konfiguration) oben), gilt das
+Konfiguration"](../features/llm-integration.md#übergang-aus-der-heutigen-konfiguration) oben), gilt das
 mit einer Einschränkung (#771): Dort führt derselbe fehlende oder ungültige Schlüssel **nicht** zum
 Startabbruch, sondern nur zu einer ERROR-Log-Zeile — siehe den Update-Hinweis unten. Für lokale
 Entwicklung und Tests (nur Profil `dev`, das jede Testsuite und `bootRun` aktivieren — nicht
@@ -965,7 +965,7 @@ den Zugangsschlüssel für das betroffene Modell über die Verwaltungsoberfläch
 
 ## Authentifizierung
 
-OPAA kennt genau zwei Auth-Modi ([ADR-0005](decisions/0005-authentication-strategy.md)). Der Modus
+OPAA kennt genau zwei Auth-Modi ([ADR-0005](../decisions/0005-authentication-strategy.md)). Der Modus
 wird über das aktive Spring-Profil gewählt; ist weder `oidc` noch `dev` gesetzt, **bricht das
 Backend den Start mit einer Fehlermeldung ab**.
 
@@ -1027,8 +1027,8 @@ und folgt dessen jeweils eigenem Mechanismus:
 |--------|------------------|--------|
 | Entwicklungsnutzer des `dev`-Profils (`opaa.auth.dev.users`) | Lokale Entwicklung, `dev`-Auth-Modus (siehe [„Entwicklungsmodus (dev)"](#entwicklungsmodus-dev) oben) | `dev-admin` (`admin@opaa.local`, `SYSTEM_ADMIN`), `dev-user` (regulärer Nutzer) |
 | Keycloak-Realm-Nutzer (`keycloak/realm-export.json`) | `oidc`-Auth-Modus mit dem gebündelten Keycloak (siehe [„OIDC (Keycloak)"](#oidc-keycloak) oben) | `testuser`/`testpass` (E-Mail `test@opaa.local`) — wird zum `SYSTEM_ADMIN`, sobald `OPAA_INITIAL_ADMIN_EMAIL` in der lokalen `.env.docker` auf dieselbe Adresse gesetzt ist, sonst ein regulärer Nutzer |
-| Demo-Realm-Nutzer (`keycloak/realm-export.json`, Issue #712) | Demo-Instanz „Stadt Rheinfurt" (`--profile demo`, siehe [`demo/README.md`](../demo/README.md), Abschnitt „Seed ausführen") | `demo-admin` (`admin@stadt-rheinfurt.example`, `SYSTEM_ADMIN` bei entsprechend gesetztem `OPAA_INITIAL_ADMIN_EMAIL`), `maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt` — alle mit dem offenen Demo-Passwort `RheinfurtDemo!2026`, siehe `demo/README.md`, Abschnitt „Demo-Zugangsdaten". Zusätzlich der Client `opaa-seed` (Resource Owner Password Grant, `directAccessGrantsEnabled: true`) — ausschließlich für `demo/seed/seed.py`, nie für eine reguläre Anmeldung |
-| E2E-Suite (`e2e/e2e.env`, `e2e/docker-compose.e2e.yml`) | Playwright-Suite (siehe [`e2e/README.md`](../e2e/README.md), Abschnitt „Drei Testnutzer") | Wiederverwendet `dev-admin` und `dev-user` aus dem `dev`-Profil, ergänzt um `dev-outsider` (nur für diese Suite, über `OPAA_AUTH_DEV_USERS_*` hinzugefügt) |
+| Demo-Realm-Nutzer (`keycloak/realm-export.json`, Issue #712) | Demo-Instanz „Stadt Rheinfurt" (`--profile demo`, siehe [`demo/README.md`](../../demo/README.md), Abschnitt „Seed ausführen") | `demo-admin` (`admin@stadt-rheinfurt.example`, `SYSTEM_ADMIN` bei entsprechend gesetztem `OPAA_INITIAL_ADMIN_EMAIL`), `maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt` — alle mit dem offenen Demo-Passwort `RheinfurtDemo!2026`, siehe `demo/README.md`, Abschnitt „Demo-Zugangsdaten". Zusätzlich der Client `opaa-seed` (Resource Owner Password Grant, `directAccessGrantsEnabled: true`) — ausschließlich für `demo/seed/seed.py`, nie für eine reguläre Anmeldung |
+| E2E-Suite (`e2e/e2e.env`, `e2e/docker-compose.e2e.yml`) | Playwright-Suite (siehe [`e2e/README.md`](../../e2e/README.md), Abschnitt „Drei Testnutzer") | Wiederverwendet `dev-admin` und `dev-user` aus dem `dev`-Profil, ergänzt um `dev-outsider` (nur für diese Suite, über `OPAA_AUTH_DEV_USERS_*` hinzugefügt) |
 | Quellenzugangsdaten (`sourceCredentials`, siehe [„Zugangsdaten-Verschlüsselung"](#zugangsdaten-verschlüsselung-483) oben) | Kein Testkonto für OPAA selbst — Basic-Auth-Zugangsdaten (`user:password`), mit denen eine `HTTP_DIRECTORY`- oder `RSS_FEED`-Bibliothek eine *externe* Dokumentenquelle abruft | Kein fester Beispielwert; frei je Bibliothek |
 
 Warum keine Vereinheitlichung:
@@ -1043,7 +1043,7 @@ Warum keine Vereinheitlichung:
   Backend selbst eine externe Quelle kontaktiert — fachlich und im Lebenszyklus unabhängig von den
   beiden Auth-Modi oben.
 - Die E2E-Suite legt bewusst **kein** eigenes Kontoschema an, sondern läuft im `dev`-Auth-Modus und
-  nutzt dessen Nutzer weiter (siehe [„Warum der `dev`-Auth-Modus?"](../e2e/README.md#warum-der-dev-auth-modus) in `e2e/README.md`).
+  nutzt dessen Nutzer weiter (siehe [„Warum der `dev`-Auth-Modus?"](../../e2e/README.md#warum-der-dev-auth-modus) in `e2e/README.md`).
 - Ein früher skizziertes, separates `OPAA_AUTH_BASIC_USERNAME`/`OPAA_AUTH_BASIC_PASSWORD`/
   `OPAA_AUTH_MODE`-Paar für eine app-globale Basic-Auth (Modi `mock`/`basic`) wurde mit
   [`fd04246`](https://github.com/criew/opaa/commit/fd0424621874270a2be78f05bfee5c550945fd3f)

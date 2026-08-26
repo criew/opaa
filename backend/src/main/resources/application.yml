@@ -3,7 +3,7 @@ server:
   # Honor X-Forwarded-* from the reverse proxy chain so that same-origin browser requests are
   # recognized as such behind a TLS-terminating proxy (#553). The outer proxy MUST set
   # X-Forwarded-Proto authoritatively (overwriting any client-supplied value) - see
-  # docs/deployment.md; a spoofed header would otherwise let a request bypass the CORS check.
+  # docs/handbuch/deployment.md; a spoofed header would otherwise let a request bypass the CORS check.
   forward-headers-strategy: framework
 
 spring:
@@ -214,7 +214,7 @@ opaa:
     credentials:
       # AES-256 key (Base64, 32 raw bytes) for encrypting knowledge_libraries.source_credentials at
       # rest (#483). No default here on purpose - a real deployment must set one before storing any
-      # library's credentials; see docs/deployment.md. The dev profile below (not local) sets an
+      # library's credentials; see docs/handbuch/deployment.md. The dev profile below (not local) sets an
       # explicitly-marked non-production default so bootRun and tests work without operator setup.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:}
     settings:
@@ -324,7 +324,7 @@ opaa:
       # every backend test (all activate "dev", see AGENTS.md) can create/rotate credentials
       # without operator setup (#483). Any deployment that does not activate the "dev" profile
       # falls back to the (empty) base value above and must set OPAA_CREDENTIALS_ENCRYPTION_KEY
-      # itself - see docs/deployment.md.
+      # itself - see docs/handbuch/deployment.md.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
     settings:
       # NICHT FUER DEN PRODUKTIVBETRIEB - the same reasoning as opaa.security.credentials above, a
@@ -332,5 +332,5 @@ opaa:
       # test-created model's API key without operator setup. Any deployment that does not activate
       # the "dev" profile falls back to the (empty) base value above and must set
       # OPAA_SETTINGS_ENCRYPTION_KEY itself before storing a model's API key - see
-      # docs/deployment.md.
+      # docs/handbuch/deployment.md.
       encryption-key: ${OPAA_SETTINGS_ENCRYPTION_KEY:c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE=}

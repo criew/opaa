@@ -53,7 +53,7 @@ offenes Issue gibt.
   Ausgangstext führt, trägt vor einem Prüfer nicht.
 - **Deep Research über mehrere Quellen.** Mehrstufige Recherchefragen sind der Alltag in Referaten
   und heute nicht abgebildet.
-- **Wissensgraph als Ergänzung des Vektor-Retrievals.** In `docs/GraphRAG.md` vorgedacht, in Phase 3
+- **Wissensgraph als Ergänzung des Vektor-Retrievals.** In `docs/discussions/GraphRAG.md` vorgedacht, in Phase 3
   benannt, ohne Vorgang.
 - **Bewertung der Antwortqualität, nicht nur des Rankings.** Die Regressionsprüfung misst Retrieval;
   ob die Antwort durch ihre Quellen gedeckt ist, misst nichts.

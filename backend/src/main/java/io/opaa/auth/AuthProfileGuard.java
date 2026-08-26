@@ -22,6 +22,6 @@ public class AuthProfileGuard {
     throw new IllegalStateException(
         """
         No authentication profile is active. Set SPRING_PROFILES_ACTIVE to include either \
-        "oidc" (production) or "dev" (local development and tests). See docs/deployment.md.""");
+        "oidc" (production) or "dev" (local development and tests). See docs/handbuch/deployment.md.""");
   }
 }

@@ -51,7 +51,7 @@ public class OpenAiBaseUrlGuard {
         not of a target: locally operated model servers speak it too, and application.yml's own \
         default already points at one (Ollama). This means the configured value is explicitly \
         blank rather than missing - check OPAA_OPENAI_BASE_URL (applies to chat and embedding) and \
-        %s (applies to %s only) for an empty override. See docs/deployment.md."""
+        %s (applies to %s only) for an empty override. See docs/handbuch/deployment.md."""
             .formatted(function, specificVariable, function));
   }
 }

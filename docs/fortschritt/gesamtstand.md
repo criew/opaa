@@ -12,7 +12,7 @@ von „wurde gebaut" auf „ist gebaut", je Abschnitt mit Stichtagsvermerk.
 Ab dem zweiten Stichtag gilt: Zeitraumsberichte bleiben unverändert stehen (historischer
 Nachweis), dieses Dokument wird fortgeschrieben (aktueller Zustand).
 
-**Offener Punkt (Maintainer-Entscheidung):** Dieses Dokument übernimmt perspektivisch die Rolle
-von [STATUS.md](../STATUS.md) — mit dem Unterschied, dass jede Aussage über die Inventur belegt
-ist. Ablösung oder Umleitung von STATUS.md entscheiden wir bei der Finalisierung des ersten
-Stichtags.
+**Entschieden (Maintainer, 26.08.2026, #927):** Dieses Dokument ist die einzige Quelle für den
+Umsetzungsstand. Das frühere `docs/STATUS.md` (handgepflegt, zuletzt veraltet) ist entfernt;
+alle Verweise zeigen hierher. Bis zur Konsolidierung des ersten Stichtags gilt der
+[Zeitraumsbericht 20260831](./20260831/report.md) als vollständiger Produktstand.

@@ -49,10 +49,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     (its embedding computation serializes), while a network-latency-bound API/GPU backend scales
  *     close to linearly with concurrency; 3 stays conservative for the former without giving up all
  *     of the latter's headroom. An operator fronting a GPU-backed or hosted embedding API can raise
- *     this (8-16 is a reasonable starting point - see docs/deployment.md). A value of 1 reproduces
- *     the exact sequential behaviour - {@code io.opaa.indexing.FileProcessingService#storeChunks}
- *     takes an entirely different code path in that case, not merely a pool of size one. Valid
- *     range: 1–32.
+ *     this (8-16 is a reasonable starting point - see docs/handbuch/deployment.md). A value of 1
+ *     reproduces the exact sequential behaviour - {@code
+ *     io.opaa.indexing.FileProcessingService#storeChunks} takes an entirely different code path in
+ *     that case, not merely a pool of size one. Valid range: 1–32.
  */
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record IndexingProperties(

@@ -17,7 +17,7 @@ Diesen Stack der Reihe nach, eine Ebene nach der anderen, durcharbeiten:
 
 `docs/market/MESSAGING.md` erstellen und pflegen: das Positionierungs-Canvas, die Moore-Aussage, das Messaging House, die Persona-Matrix und die Ton-Regeln. Jedes Asset — Landing Page, Pitch, One-Pager, README-Hero — leitet sich davon ab und muss damit konsistent sein. Bei jeder Änderung einen Konsistenz-Audit über alle Assets durchführen.
 
-`docs/market/MESSAGING.md` ist die Quelle der Wahrheit, aus der die Assets abgeleitet werden. Die laufende Konsolidierungsaufgabe ist deshalb der Abgleich von Drift zwischen `docs/market/MESSAGING.md`, `README.md`, `page/index.html` und den Pitch-Unterlagen (`docs/OPAA-pitch-de.html`, `docs/onepager-de.html`).
+`docs/market/MESSAGING.md` ist die Quelle der Wahrheit, aus der die Assets abgeleitet werden. Die laufende Konsolidierungsaufgabe ist deshalb der Abgleich von Drift zwischen `docs/market/MESSAGING.md`, `README.md` und `page/index.html`. Neue abgeleitete Unterlagen (One-Pager, Pitch) entstehen unter `docs/market/`.
 
 ## Arbeitsmodus: Phasen mit hartem Stopp
 

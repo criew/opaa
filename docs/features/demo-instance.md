@@ -11,7 +11,7 @@
 > „Öffentliche Demo" beschreibt den bisherigen Superhelden-Stand und wird durch dieses Konzept
 > abgelöst. Die praktische Anwenderdokumentation — Installation mit einem Befehl, Nutzerkonten,
 > ausformuliertes Drehbuch mit acht Vorführfragen — steht in
-> [`../demo-walkthrough.md`](../demo-walkthrough.md) und wiederholt dieses Konzept nicht.
+> [`../demo-walkthrough.md`](../handbuch/demo-walkthrough.md) und wiederholt dieses Konzept nicht.
 
 ## Motivation
 
@@ -153,7 +153,7 @@ Etwa acht vorbereitete Fragen, dokumentiert mit erwartetem Antwortcharakter und 
    Szenario reproduzierbar bauen lässt, kommt es als eigene Frage dazu
 
 Das ausformulierte Drehbuch mit allen acht Fragen (Konto, erwartete Antwort, Quellbibliothek) steht
-in [`../demo-walkthrough.md`](../demo-walkthrough.md), zusammen mit der Installationsanleitung.
+in [`../demo-walkthrough.md`](../handbuch/demo-walkthrough.md), zusammen mit der Installationsanleitung.
 
 ---
 
@@ -189,7 +189,7 @@ in [`../demo-walkthrough.md`](../demo-walkthrough.md), zusammen mit der Installa
   der Demo. Das ist gelöst und nicht offen: Die E2E-Suite zeigt das Muster mit
   `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` (`e2e/docker-compose.e2e.yml`); das Demo-Profil braucht
   denselben Allowlist-Eintrag für Korpus-Webserver und Feed.
-- Dokumentation: [`../demo-walkthrough.md`](../demo-walkthrough.md) — Installation, Nutzerkonten mit
+- Dokumentation: [`../demo-walkthrough.md`](../handbuch/demo-walkthrough.md) — Installation, Nutzerkonten mit
   Passwörtern (Demo-Werte, keine Secrets), Korpus-Aktualisierung, Drehbuch.
 
 ---

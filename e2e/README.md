@@ -157,8 +157,8 @@ jemandem landen, dem sie nie erteilt wurde), verwenden ihn statt `dev-user` — 
 Freigaben aus anderen Szenarien sonst das Ergebnis verfälschen könnten.
 
 Einordnung dieser drei Nutzer neben den übrigen Testkonto-Mustern des Repos (Keycloak-Realm-Nutzer,
-Quellenzugangsdaten): [`docs/deployment.md`, Abschnitt „Testkonten im
-Überblick"](../docs/deployment.md#testkonten-im-überblick).
+Quellenzugangsdaten): [`docs/handbuch/deployment.md`, Abschnitt „Testkonten im
+Überblick"](../docs/handbuch/deployment.md#testkonten-im-überblick).
 
 ### KI-Stub statt echtem Modell
 
@@ -302,7 +302,7 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   und löscht die selbst angelegten, damit kein späterer Chat-Test in dieser Suite (insbesondere
   `space-chats.spec.ts`) auf einem hier hinterlassenen Zwischenstand sitzt. Anders als das Issue
   ursprünglich annahm, läuft im Compose-Stack dieser Suite **kein** eigener `ollama`-Dienst (siehe
-  `docs/deployment.md`, `OPAA_OLLAMA_BASE_URL` - auch der reguläre `docker-compose.yml`-Stack
+  `docs/handbuch/deployment.md`, `OPAA_OLLAMA_BASE_URL` - auch der reguläre `docker-compose.yml`-Stack
   enthält keinen); der positive Verbindungstest zielt deshalb auf `ai-stub`, denselben
   OpenAI-kompatiblen Ersatz, den auch das vom Seed übernommene Modell schon verwendet.
 
@@ -394,7 +394,7 @@ echte Keycloak-Anmeldung an (Autorisierungscode-Flow, nicht der `dev`-Modus — 
 dieser Test zusätzlich zur restlichen Suite, siehe „Warum der `dev`-Auth-Modus?" oben), sieht den
 Demo-Hinweis (#230, `frontend/src/layouts/DemoNotice.tsx`, aktiviert über `OPAA_DEMO_MODE=true`
 in `demo-smoke.env` — eine echte Demo-Instanz setzt dieses Flag ebenfalls), stellt die erste
-Drehbuchfrage aus `docs/demo-walkthrough.md` (Gebührenfrage, garantiert beantwortbar, #711) und
+Drehbuchfrage aus `docs/handbuch/demo-walkthrough.md` (Gebührenfrage, garantiert beantwortbar, #711) und
 bekommt eine belegte Antwort mit mindestens einer zitierten Quelle (`expectAnyCitedSource`,
 dieselbe Prüfung wie in `space-chats.spec.ts` oben) — Verhalten und Vorhandensein eines Belegs,
 nie ein Wortlaut oder eine Dokumentanzahl, die sich mit dem nächsten Korpuslauf verschieben
@@ -402,7 +402,7 @@ könnte. Die konkrete Frage ist dabei mit `ai-stub` rein symbolisch: Wie in der 
 („KI-Stub statt echtem Modell" oben) liefert der Stub für jeden Text denselben Vektor, sodass die
 Trefferauswahl ausschließlich über den Rechtefilter läuft, nie über inhaltliche Relevanz — dieser
 Test behauptet keine Kopplung an den tatsächlichen Korpusinhalt, das bleibt Sache des manuell
-verifizierten Drehbuchs in `docs/demo-walkthrough.md` (mit einem echten Modell) bzw. von Epic #224.
+verifizierten Drehbuchs in `docs/handbuch/demo-walkthrough.md` (mit einem echten Modell) bzw. von Epic #224.
 
 **Isolation:** Die Keycloak-Realm des `demo`-Profils (`keycloak/realm-export.json`) trägt feste
 `redirectUris`/`webOrigins` für `http://localhost:3000` — anders als die `e2e`-Suite oben lässt

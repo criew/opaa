@@ -133,7 +133,7 @@ public class CredentialsEncryptor {
       throw new CredentialsEncryptionKeyMissingException(
           "Zugangsdaten können nicht gespeichert oder gelesen werden: "
               + "opaa.security.credentials.encryption-key (OPAA_CREDENTIALS_ENCRYPTION_KEY) ist"
-              + " nicht gesetzt. Siehe docs/deployment.md.");
+              + " nicht gesetzt. Siehe docs/handbuch/deployment.md.");
     }
     byte[] keyBytes;
     try {
@@ -141,13 +141,13 @@ public class CredentialsEncryptor {
     } catch (IllegalArgumentException e) {
       throw new CredentialsEncryptionKeyMissingException(
           "OPAA_CREDENTIALS_ENCRYPTION_KEY ist kein gültiger Base64-Wert. Siehe"
-              + " docs/deployment.md.",
+              + " docs/handbuch/deployment.md.",
           e);
     }
     if (keyBytes.length != REQUIRED_KEY_LENGTH_BYTES) {
       throw new CredentialsEncryptionKeyMissingException(
           "OPAA_CREDENTIALS_ENCRYPTION_KEY muss ein Base64-kodierter 256-Bit-Schlüssel (32 Byte)"
-              + " sein. Siehe docs/deployment.md.");
+              + " sein. Siehe docs/handbuch/deployment.md.");
     }
     return new SecretKeySpec(keyBytes, KEY_ALGORITHM);
   }

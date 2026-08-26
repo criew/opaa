@@ -3,11 +3,11 @@
 Anwenderdokumentation für Epic #708: mit einem Befehl installieren, sich anmelden, ein Drehbuch aus
 acht vorbereiteten Fragen abspielen. Das Konzept dahinter — Behördenlandschaft, Bibliotheken,
 Berechtigungsmatrix, Quellen und Lizenzen — steht in
-[`features/demo-instance.md`](./features/demo-instance.md) und wird hier **nicht wiederholt**. Diese
+[`features/demo-instance.md`](../features/demo-instance.md) und wird hier **nicht wiederholt**. Diese
 Seite ist die praktische Anleitung dafür: installieren, anmelden, fragen.
 
 Technische Details des Compose-Stacks und des Seed-Skripts (Ports, Idempotenz, Ratenbegrenzung,
-Zielprüfung ausgehender Abrufe) stehen in [`../demo/README.md`](../demo/README.md); diese Seite
+Zielprüfung ausgehender Abrufe) stehen in [`../demo/README.md`](../../demo/README.md); diese Seite
 verweist darauf, statt sie zu duplizieren.
 
 ---
@@ -24,7 +24,7 @@ cp .env.docker.example .env.docker
 ```
 
 In der eigenen `.env.docker` zusätzlich setzen (siehe [`../demo/README.md`, „Compose-Stack
-starten"](../demo/README.md#compose-stack-starten-229) für die Begründung jeder einzelnen Variable):
+starten"](../../demo/README.md#compose-stack-starten-229) für die Begründung jeder einzelnen Variable):
 
 ```env
 SPRING_PROFILES_ACTIVE=docker,oidc
@@ -45,7 +45,7 @@ der Bibliothek „Interne Dienstanweisungen Meldewesen" sequentiell und ohne Pau
 lokal betriebenen Ollama-Embeddings (langsamer als ein Cloud-Anbieter) füllt sich die Warteschlange
 eher als mit einem schnellen Anbieter — ohne die Anhebung kann der letzte Upload oder die letzten
 zwei mit „Die Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen." fehlschlagen
-(siehe [`../demo/README.md`, „Seed ausführen"](../demo/README.md#seed-ausführen-712) für den
+(siehe [`../demo/README.md`, „Seed ausführen"](../../demo/README.md#seed-ausführen-712) für den
 Umgang, falls das trotzdem passiert).
 
 `OPAA_PGVECTOR_DIMENSIONS=768` steht seit #720 bereits so in `.env.docker.example` (nicht mehr auf
@@ -83,7 +83,7 @@ auf Kosten eines mehrere Gigabyte großen Downloads beim allerersten Start.
 
 Startet zusätzlich zu `postgres`/`backend`/`frontend`: `keycloak` (Anmeldung, seit #712 auch ohne
 separates `--profile oidc`), `demo-corpus` (drei `HTTP_DIRECTORY`-Bibliotheken) und `demo-presse`
-(`RSS_FEED`-Bibliothek). Details je Service: [`../demo/README.md`](../demo/README.md).
+(`RSS_FEED`-Bibliothek). Details je Service: [`../demo/README.md`](../../demo/README.md).
 
 Warten, bis `backend` und `keycloak` bereit sind (`docker compose logs -f backend`, Zeile
 „Started OpaaApplication").
@@ -102,7 +102,7 @@ und Amtsleitungs-Spaces ihre Bibliotheken als Datenquellen zu (Assoziation als r
 #706 — Marias persönlicher Space bleibt bewusst ohne Zuordnung), lädt die 26 Dokumente der
 internen Upload-Bibliothek hoch und stößt die Indizierung der vier konnektorgespeisten Bibliotheken
 an. Vollständiger Ablauf, Idempotenz und Fehlerfälle:
-[`../demo/README.md`, „Seed ausführen (#712)"](../demo/README.md#seed-ausführen-712).
+[`../demo/README.md`, „Seed ausführen (#712)"](../../demo/README.md#seed-ausführen-712).
 
 **Wie lange dauert die Erstindizierung, und wie erkennt man, dass sie fertig ist?** Der Seed selbst
 wartet auf jede Indizierung und jeden Upload (Polling gegen `GET
@@ -143,7 +143,7 @@ zusätzlich als zugeordnete Datenquellen (Space↔Bibliothek-Assoziation, #706):
 durchsucht in diesen Spaces genau die zugeordneten Bibliotheken, geschnitten mit den Leserechten
 der fragenden Person. „Maria Weber – persönlich" bleibt bewusst ohne Zuordnung — dort greift
 `@Alles-Wissen` weiterhin auf alle für Maria lesbaren Bibliotheken zurück. Begründung der Matrix: [`features/demo-instance.md`, „Nutzer, Spaces und
-Berechtigungen"](./features/demo-instance.md#nutzer-spaces-und-berechtigungen).
+Berechtigungen"](../features/demo-instance.md#nutzer-spaces-und-berechtigungen).
 
 **Der Vorführ-Kern:** Weil die Berechtigungsprüfung Teil der Vektorsuche ist und nicht ein
 nachgeschalteter Filter, ist ein für einen Nutzer unzugänglicher Treffer nicht nur unterdrückt,
@@ -315,11 +315,11 @@ python generate_corpus.py
 
 Läuft erneut, wenn sich eine der fünf Bibliotheken inhaltlich ändern soll. Zwei Läufe erzeugen
 byte-identische Dateien (Prüfsumme in `demo/corpus/MANIFEST.sha256`) — allerdings nur unter den in
-[`generator/README.md`](../demo/generator/README.md) genannten Bedingungen: Netzzugriff auf den dort
+[`generator/README.md`](../../demo/generator/README.md) genannten Bedingungen: Netzzugriff auf den dort
 verankerten HuggingFace-Commit beim allerersten Lauf (danach lokal zwischengespeichert) und exakt die
 dort gepinnten Paketversionen. Details, Werkzeugwahl und Quellen:
-[`../demo/README.md`, „Korpus neu erzeugen"](../demo/README.md#korpus-neu-erzeugen) und
-[`../demo/corpus/SOURCE.md`](../demo/corpus/SOURCE.md).
+[`../demo/README.md`, „Korpus neu erzeugen"](../../demo/README.md#korpus-neu-erzeugen) und
+[`../demo/corpus/SOURCE.md`](../../demo/corpus/SOURCE.md).
 
 **Was danach neu indiziert werden muss:** Ein erneuter `python seed.py --profile demo`-Lauf gegen
 eine bereits laufende Instanz legt Nutzer, Spaces, Bibliotheken und Rechte nicht doppelt an
@@ -336,11 +336,11 @@ Drehbuchfrage oben gegenzuprüfen — Antworten, die auf konkreten Zahlen oder F
 
 ## Zugehörige Dokumentation
 
-- [`features/demo-instance.md`](./features/demo-instance.md) — Konzept: Behördenlandschaft,
+- [`features/demo-instance.md`](../features/demo-instance.md) — Konzept: Behördenlandschaft,
   Bibliotheken, Formate, Quellen und Lizenzen, Rechtemodell
-- [`../demo/README.md`](../demo/README.md) — Compose-Stack, Seed-Mechanismus, technische Details
+- [`../demo/README.md`](../../demo/README.md) — Compose-Stack, Seed-Mechanismus, technische Details
 - [`deployment.md`](./deployment.md), Abschnitt „Härtung für erreichbare Deployments" — zwingend vor
   jedem über `localhost` hinaus erreichbaren Rollout dieser Demo, einschließlich des dort separat
   behandelten `opaa-seed`-Clients
-- [`features/search-quality-evaluation.md`](./features/search-quality-evaluation.md), Abschnitt
+- [`features/search-quality-evaluation.md`](../features/search-quality-evaluation.md), Abschnitt
   „Öffentliche Demo" — der frühere Superhelden-Korpus, durch dieses Konzept abgelöst

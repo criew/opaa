@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures/auth'
 
 // #812: index.html kam ohne Cache-Control - Browser cachten sie heuristisch und zeigten nach
 // Deployments den alten Stand, bis hart neu geladen wurde. Läuft gegen den echten nginx des
-// Compose-Stacks, wie die Header-Zusicherungen aus docs/deployment.md.
+// Compose-Stacks, wie die Header-Zusicherungen aus docs/handbuch/deployment.md.
 test.describe('Auslieferungs-Caching (#812)', () => {
   test('index.html verlangt Revalidierung, gehashte Assets cachen unbegrenzt', async ({
     authenticatedPage: page,

@@ -63,7 +63,7 @@ import org.springframework.util.StringUtils;
  * non-default embedding address (e.g. {@code OPAA_OLLAMA_BASE_URL} pointing at a host-run Ollama
  * server rather than the new default's {@code ollama} Compose service name) must translate that
  * value into {@code OPAA_OPENAI_EMBEDDING_BASE_URL} itself, in the environment, before the update -
- * see docs/deployment.md's own migration note for #762.
+ * see docs/handbuch/deployment.md's own migration note for #762.
  *
  * <p>{@link #seedIfNeeded()} is called from {@link LlmModelSeedRunner}, a separate bean, rather
  * than being an {@code ApplicationRunner} itself: {@code @Transactional} only takes effect on a
@@ -177,7 +177,7 @@ class LlmModelSeeder {
           "Initiales Chat-Modell konnte nicht aus der Umgebungskonfiguration übernommen werden:"
               + " {} Variable setzen und neu starten, damit die Übernahme nachgeholt wird -"
               + " alternativ das Modell ohne Zugangsschlüssel über die Verwaltungsoberfläche"
-              + " anlegen. Siehe docs/deployment.md. Es wurde kein Seed-Marker geschrieben.",
+              + " anlegen. Siehe docs/handbuch/deployment.md. Es wurde kein Seed-Marker geschrieben.",
           e.getCause().getMessage());
       return;
     }
@@ -223,7 +223,7 @@ class LlmModelSeeder {
     if (!stillSet.isEmpty()) {
       log.warn(
           "Folgende Umgebungsvariablen sind seit #762 ohne Wirkung, aber noch gesetzt: {}. Siehe"
-              + " docs/deployment.md, Abschnitt \"LLM-Anbieter\".",
+              + " docs/handbuch/deployment.md, Abschnitt \"LLM-Anbieter\".",
           stillSet);
     }
   }

@@ -6,7 +6,7 @@
 > Speicher-Abstraktion für Dokumente ist entschieden (siehe [Speicher-Backends](#speicher-backends)).
 >
 > Diese Spezifikation beschreibt das **Zielbild**. Der tatsächlich verfügbare Betriebsweg ist in
-> [deployment.md](../deployment.md) beschrieben; wo beide auseinandergehen, gilt für den Betrieb
+> [deployment.md](../handbuch/deployment.md) beschrieben; wo beide auseinandergehen, gilt für den Betrieb
 > heute jenes Dokument.
 
 ## Motivation
@@ -60,7 +60,7 @@ kurzer Unterbrechung. Für eine Installation, deren Ausfall einen Fachbereich st
 nicht die richtige Form.
 
 Der heute tatsächlich unterstützte Weg, einschließlich Umgebungsvariablen, Aktualisierung und
-Datenhaltung, steht in [deployment.md](../deployment.md).
+Datenhaltung, steht in [deployment.md](../handbuch/deployment.md).
 
 ### Kubernetes mit Hochverfügbarkeit — große Installationen
 
@@ -352,7 +352,7 @@ Risiko genau des Ausfalls, den das Wartungsfenster verhindern sollte.
 Der Compose-Stapel wird aktualisiert, indem neue Abbilder bezogen und die betroffenen Container neu
 erstellt werden. Das ist eine **kurze Unterbrechung**, keine unterbrechungsfreie Umschaltung: Es gibt
 eine Instanz je Dienst, und während des Neustarts ist sie nicht erreichbar. Der genaue Ablauf und was
-er mit dem Index macht, steht in [deployment.md](../deployment.md).
+er mit dem Index macht, steht in [deployment.md](../handbuch/deployment.md).
 
 ### Zielbild für große Installationen
 
@@ -421,7 +421,7 @@ Spezifikation zu Sicherheit und Nachweisführung; die endgültige Zuordnung ist 
 - **Ein vorgelagerter Zugangsweg terminiert die Verschlüsselung** und reicht an die Anwendung weiter;
   die Anwendungscontainer binden nicht selbst nach außen. Genau so läuft es heute, einschließlich der
   Bindung aller Container ausschließlich auf die lokale Adresse (siehe
-  [deployment.md](../deployment.md)).
+  [deployment.md](../handbuch/deployment.md)).
 - **Zertifikate stammen aus der Verwaltung des Betreibers** — in einer abgeschotteten Umgebung
   regelmäßig aus einer eigenen Zertifizierungsstelle des Hauses. Eine Installation, die für ihr
   Zertifikat einen Dienst im Internet braucht, ist ohne Netzanbindung nicht betreibbar.
@@ -553,7 +553,7 @@ Installation berührt.
 
 ## Integrationspunkte
 
-- **[deployment.md](../deployment.md)** — der tatsächlich verfügbare Betriebsweg mit allen
+- **[deployment.md](../handbuch/deployment.md)** — der tatsächlich verfügbare Betriebsweg mit allen
   Umgebungsvariablen; diese Spezifikation beschreibt das Zielbild darüber hinaus
 - **[access-control.md](./access-control.md)** — Identität, Rollen und Mandantengrenze
 - **[spaces-and-assets.md](./spaces-and-assets.md)** — die Organisation als harte Trennung, auf der

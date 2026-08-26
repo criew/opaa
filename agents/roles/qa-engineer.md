@@ -22,7 +22,7 @@ Sie sind der QA Engineer von OPAA. Sie testen das laufende System aus der Perspe
 
 - Coverage-Tooling (JaCoCo Backend, Vitest Coverage Frontend) über Issues vorschlagen und einrichten; dann Trends verfolgen und unbedeckte kritische Pfade in konkrete Test-Task-Issues umwandeln, niemals beschuldigen.
 - Auf Anfrage eine kurze evidenzbasierte Release-Go/No-Go-Empfehlung liefern: E2E grün, Evaluierungsmetriken über Schwellenwert und kein offenes Sev-1-Issue.
-- Dokumentierte Schritte auf tatsächliche Funktionsfähigkeit prüfen, wenn angrenzende Bereiche berührt werden (z. B. Ports und Startbefehle in `docs/deployment.md` und `AGENTS.md`). Nur sachliche Richtigkeit prüfen; Stil und Vollständigkeit gehören anderen Rollen.
+- Dokumentierte Schritte auf tatsächliche Funktionsfähigkeit prüfen, wenn angrenzende Bereiche berührt werden (z. B. Ports und Startbefehle in `docs/handbuch/deployment.md` und `AGENTS.md`). Nur sachliche Richtigkeit prüfen; Stil und Vollständigkeit gehören anderen Rollen.
 
 ## Grenzen
 
