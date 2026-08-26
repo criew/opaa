@@ -186,7 +186,7 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   behob city-landmarks, regressierte aber stattdessen comic-characters (`hitRateAt5` 0,521→0,496) -
   erst die Beschränkung auf mehrchunkige Dokumente hielt beide Domänen zugleich unauffällig
   (comic-characters bit-identisch, city-landmarks vollständig erholt). Details und alle drei
-  Messreihen in der Beschreibung von PR [#933](https://github.com/criew/opaa/pull/933). Erfordert
+  Messreihen in der Beschreibung von PR [#940](https://github.com/criew/opaa/pull/940). Erfordert
   einen vollständigen Reindex jeder Bibliothek (siehe
   [Deployment-Handbuch](../handbuch/deployment.md#was-ein-update-mit-dem-index-macht)) - Alt-Chunks
   ohne Präfix und Neu-Chunks mit Präfix ranken sonst inkonsistent gegeneinander.
@@ -198,6 +198,14 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   weiterhin keinen Abschnittstitel oder Bibliothekskontext. Dokument-Vervollständigung (Schritt 6)
   behebt zusätzlich das Symptom bei Geschwister-Chunks desselben Dokuments (der richtige Chunk fällt
   nicht mehr aus der Auswahl, sofern er unter den `fetch-k` Kandidaten war), nicht die Ursache.
+- **Einchunkige Dokumente konkurrieren ohne Kontextsignal gegen präfixierte mehrchunkige.** Contextual
+  Chunking gibt nur mehrchunkigen Dokumenten ein Kontext-Präfix (siehe oben) - ein einchunkiges
+  Dokument in derselben Bibliothek rankt dadurch relativ zu einem thematisch verwandten, jetzt
+  präfixierten mehrchunkigen Dokument tendenziell schlechter als vor #933, selbst wenn es inhaltlich
+  ebenso einschlägig ist. Live im #938-Kontext beobachtet: `02_gebuehrenbefreiung-beduerftigkeit.docx`
+  (einchunkig) fällt für `maria.weber`s Leserechte-Scope von Rang 26/147 auf Rang 119/120 (siehe PR
+  [#940](https://github.com/criew/opaa/pull/940), Abschnitt „Offener Punkt gegen #938"). Kein
+  behobener Fall, sondern ein bekannter, noch offener Zielkonflikt dieses Ansatzes.
 - **Nicht-rangfaire Geschwister-Sortierung über Teilfragen.** Bei mehreren Suchanfragen bestimmt
   `DocumentCompletion#complete`, welcher noch nicht ausgewählte Chunk eines zu vervollständigenden
   Dokuments als nächstes nachrückt, über die Reihenfolge in `pooledCandidates` — der schlichten

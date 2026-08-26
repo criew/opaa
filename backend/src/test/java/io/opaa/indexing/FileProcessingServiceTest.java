@@ -324,9 +324,6 @@ class FileProcessingServiceTest {
 
     // The metadata is still there for filtering/citation...
     assertThat(storedChunk.getMetadata()).containsKey("library_id");
-    // ...it deliberately carries no context_title at all for a single-chunk document (nothing to
-    // derive a prefix from that would ever be used)...
-    assertThat(storedChunk.getMetadata()).doesNotContainKey("context_title");
     // ...the stored content column (getText()) stays exactly the chunk text, unprefixed...
     assertThat(storedChunk.getText()).isEqualTo("the real chunk text to embed");
     // ...and MetadataMode.EMBED - what an OpenAiEmbeddingModel actually sends to be embedded -
@@ -388,6 +385,118 @@ class FileProcessingServiceTest {
                 .get(1)
                 .getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
         .isEqualTo("[embed content]\n\nsecond chunk text");
+  }
+
+  @Test
+  void anUnknownMetadataKeyNeverReachesTheEmbeddingCall() throws IOException {
+    // #940 review, finding 1: the previous DefaultContentFormatter-based whitelist excluded a
+    // known list of bookkeeping keys from MetadataMode.EMBED - a *blacklist* under the hood
+    // (DefaultContentFormatter#metadataFilter does usableMetadataKeys.removeAll(excluded)), so a
+    // metadata key added later without also being added to the exclusion list would silently
+    // re-enter the embedding text (the #773 contamination this whitelist exists to prevent). The
+    // per-chunk lambda formatters never read Document#getMetadata() at all, so this can no longer
+    // happen regardless of what a future storeChunks change puts into the metadata map - proven
+    // here by adding a key the formatters have never heard of and asserting it never surfaces.
+    Path file = tempDir.resolve("001_embed-content.txt");
+    Files.writeString(file, "some content");
+
+    when(checksumService.computeSha256(file)).thenReturn("abc123");
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunkWithExtraMetadata =
+        new org.springframework.ai.document.Document(
+            "first chunk text", Map.of("future_bookkeeping_key", "some-future-uuid"));
+    var chunks =
+        List.of(
+            chunkWithExtraMetadata,
+            new org.springframework.ai.document.Document("second chunk text"));
+    when(chunkingService.chunkDocuments(eq("001_embed-content.txt"), eq(parsed)))
+        .thenReturn(chunks);
+
+    service.processFile(file, targetLibrary);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStore).add(chunkCaptor.capture());
+    org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
+
+    assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
+        .isEqualTo("[embed content]\n\nfirst chunk text")
+        .doesNotContain("future_bookkeeping_key", "some-future-uuid");
+  }
+
+  @Test
+  void anRssEntryEmbedsWithItsHeadlineVerbatimEvenWithAnInteriorPeriod() {
+    // #940 review, finding 2: file_name for an RSS entry is a free-text headline, not a
+    // filesystem-style "NNN_slug.ext" name - ChunkContextTitle#deriveTitle's extension-stripping
+    // (originally lastIndexOf('.')) would truncate a headline containing a sentence-internal
+    // period ("...zum 1. Januar" -> "...zum 1"). RSS entries use the headline verbatim instead of
+    // running it through ChunkContextTitle at all (FileProcessingService#deriveContextTitle).
+    String entryUrl = "https://example.gov/artikel/neue-regelung";
+    String headline = "Neue Regelung tritt zum 1. Januar in Kraft";
+
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var chunks =
+        List.of(
+            new org.springframework.ai.document.Document("first chunk text"),
+            new org.springframework.ai.document.Document("second chunk text"));
+    when(chunkingService.chunkDocuments(eq(headline), any())).thenReturn(chunks);
+
+    service.processRssEntry(
+        "entry main text", headline, entryUrl, "2025-06-15T10:30:00Z", targetLibrary);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStore).add(chunkCaptor.capture());
+    org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
+
+    assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
+        .isEqualTo("[" + headline + "]\n\nfirst chunk text");
+  }
+
+  @Test
+  void anRssEntryWithoutATitleGetsNoContextPrefixAtAll() {
+    // #940 review, finding 2: without a feed-supplied title, file_name falls back to the entry's
+    // own URL (processRssEntry) - every entry of one feed then shares a domain/path prefix, the
+    // exact boilerplate-prefix pattern the #933 review found harmful for city-landmarks. A
+    // URL-shaped file_name therefore gets no prefix at all, even though the document split into
+    // multiple chunks.
+    String entryUrl = "https://example.gov/artikel/ohne-titel";
+
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var chunks =
+        List.of(
+            new org.springframework.ai.document.Document("first chunk text"),
+            new org.springframework.ai.document.Document("second chunk text"));
+    when(chunkingService.chunkDocuments(eq(entryUrl), any())).thenReturn(chunks);
+
+    service.processRssEntry(
+        "entry main text", null, entryUrl, "2025-06-15T10:30:00Z", targetLibrary);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStore).add(chunkCaptor.capture());
+    org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
+
+    assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
+        .isEqualTo("first chunk text");
   }
 
   @Test

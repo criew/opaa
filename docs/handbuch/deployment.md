@@ -110,14 +110,19 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 > oder mehr Chunks zerfiel (`FileProcessingService#storeChunks`; ein einchunkiges Dokument bleibt
 > bit-identisch zum Stand vor #933). Der gespeicherte Chunk-Text (`content` in `vector_store`) und
 > damit jedes Zitat bleiben in beiden Fällen unverändert, nur der Vektor selbst ändert sich, und auch
-> nur für mehrchunkige Dokumente. Vor und nach #933 eingebettete Chunks eines mehrchunkigen
-> Dokuments liegen deshalb im selben pgvector-Suchraum nebeneinander, ranken aber inkonsistent
-> gegeneinander (ein Alt-Chunk konkurriert ohne das Präfix-Signal gegen Neu-Chunks, die es haben) —
-> ein **vollständiger Reindex jeder Bibliothek** ist nach diesem Update erforderlich, unabhängig vom
-> Quellentyp und unabhängig davon, ob eine Datei sich inhaltlich geändert hat (die Split-Entscheidung
-> selbst lässt sich vorab nicht ohne einen Parse-/Chunking-Lauf feststellen). Dieselbe
-> SHA-256-/`INDEXED`-Falle wie oben gilt: Ein unveränderter Datensatz wird ohne einen Rücksetzschritt
-> übersprungen, obwohl sein Vektor (bei einem mehrchunkigen Dokument) kein Präfix trägt.
+> nur für mehrchunkige Dokumente. **Das ist keine reine Verbesserung, sondern verschiebt auch das
+> relative Ranking innerhalb einer Bibliothek:** Ein einchunkiges Dokument bekommt selbst nie ein
+> Kontext-Präfix und kann deshalb nach dem Reindex relativ schlechter ranken als ein thematisch
+> verwandtes, jetzt präfixiertes mehrchunkiges Dokument in derselben Bibliothek — beobachtet im
+> #938-Kontext (siehe PR [#940](https://github.com/criew/opaa/pull/940), Abschnitt „Offener Punkt
+> gegen #938"). Vor und nach #933 eingebettete Chunks eines mehrchunkigen Dokuments liegen deshalb im
+> selben pgvector-Suchraum nebeneinander, ranken aber inkonsistent gegeneinander (ein Alt-Chunk
+> konkurriert ohne das Präfix-Signal gegen Neu-Chunks, die es haben) — ein **vollständiger Reindex
+> jeder Bibliothek** ist nach diesem Update erforderlich, unabhängig vom Quellentyp und unabhängig
+> davon, ob eine Datei sich inhaltlich geändert hat (die Split-Entscheidung selbst lässt sich vorab
+> nicht ohne einen Parse-/Chunking-Lauf feststellen). Dieselbe SHA-256-/`INDEXED`-Falle wie oben
+> gilt: Ein unveränderter Datensatz wird ohne einen Rücksetzschritt übersprungen, obwohl sein Vektor
+> (bei einem mehrchunkigen Dokument) kein Präfix trägt.
 >
 > ```sql
 > DELETE FROM vector_store WHERE metadata->>'library_id' = '<library-id>';

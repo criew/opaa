@@ -5,21 +5,18 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * Derives the human-readable title {@link
- * FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX} prepends to a multi-chunk
- * document's chunk embeddings (#933, "Contextual Chunking"). Contract: strip the file extension,
- * strip a leading run of purely structural tokens (a numbering scheme like {@code "001_"}, {@code
- * "07_"}, or a short tag-plus-number pair like {@code "city-0022_"}), then replace the remaining
- * {@code _}/{@code -} separators with spaces. Deliberately filename-only - it does not read
- * document content (a first heading, Tika's {@code dc:title}) even though that would often produce
- * a better title, to keep the contract a pure, deterministic function of the file name alone; see
- * {@link FileProcessingService#CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX}'s Javadoc for why that
- * scope was chosen for #933, and {@link FileProcessingService#storeChunks}'s Javadoc for why this
- * title is only ever applied to a document that split into 2 or more chunks.
+ * Derives the human-readable title {@link FileProcessingService#chunkEmbedFormatterWithPrefix}
+ * prepends to a multi-chunk document's chunk embeddings (#933, "Contextual Chunking"), for a
+ * filesystem-style {@code file_name} ({@code "NNN_slug.ext"} - see {@link
+ * FileProcessingService#deriveContextTitle} for the RSS-headline/URL exception). Contract: strip a
+ * trailing extension ({@code \.[A-Za-z0-9]{1,5}$} - only a suffix that actually looks like one, so
+ * a sentence-like name is never truncated at an unrelated period), strip a leading run of purely
+ * structural tokens (a numbering scheme like {@code "001_"}, or a short tag-plus-number pair like
+ * {@code "city-0022_"}), replace the remaining {@code _}/{@code -} separators with spaces, and cap
+ * the result at {@value #MAX_TITLE_TOKENS} tokens.
  *
  * <ul>
  *   <li>{@code "001_personalausweis.md"} → {@code "personalausweis"}
- *   <li>{@code "01_verwaltungsgebuehrensatzung.pdf"} → {@code "verwaltungsgebuehrensatzung"}
  *   <li>{@code "city-0022_prag.md"} → {@code "prag"}
  *   <li>{@code "report.pdf"} → {@code "report"} (nothing structural to strip)
  * </ul>
@@ -27,6 +24,7 @@ import java.util.regex.Pattern;
 final class ChunkContextTitle {
 
   private static final Pattern SEPARATOR = Pattern.compile("[-_]+");
+  private static final Pattern EXTENSION = Pattern.compile("\\.[A-Za-z0-9]{1,5}$");
 
   // A token is "structural" (part of a numbering scheme, not a word worth embedding) if it is
   // either pure digits, or a short (<=6 char) letters-then-digits run with no separator between
@@ -36,6 +34,11 @@ final class ChunkContextTitle {
   private static final Pattern PURE_DIGITS = Pattern.compile("\\d+");
   private static final Pattern SHORT_LETTERS_THEN_DIGITS = Pattern.compile("[A-Za-z]{1,6}\\d+");
   private static final Pattern SHORT_LETTERS_ONLY = Pattern.compile("[A-Za-z]{1,6}");
+
+  // Keeps the "well under ten tokens" per-chunk budget claim in
+  // FileProcessingService#chunkEmbedFormatterWithPrefix's Javadoc true regardless of how many
+  // words a file name happens to contain.
+  private static final int MAX_TITLE_TOKENS = 8;
 
   private ChunkContextTitle() {}
 
@@ -68,12 +71,16 @@ final class ChunkContextTitle {
       dropCount++;
     }
 
-    String title = String.join(" ", tokens.subList(dropCount, tokens.size()));
+    List<String> remaining = tokens.subList(dropCount, tokens.size());
+    if (remaining.size() > MAX_TITLE_TOKENS) {
+      remaining = remaining.subList(0, MAX_TITLE_TOKENS);
+    }
+    String title = String.join(" ", remaining);
     return title.isBlank() ? baseName : title;
   }
 
   private static String stripExtension(String fileName) {
-    int lastDot = fileName.lastIndexOf('.');
-    return lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
+    var matcher = EXTENSION.matcher(fileName);
+    return matcher.find() ? fileName.substring(0, matcher.start()) : fileName;
   }
 }
