@@ -165,7 +165,7 @@ Behauptungen brauchen einen Beleg im Repository. Diese Zuordnung hält das Mater
 | Rechte werden zur Abfragezeit geprüft | `docs/features/spaces-and-assets.md` |
 | Assets sind teilbar und versionierbar | `docs/features/spaces-and-assets.md` |
 | Kein personenbezogener Auswertungspfad | `docs/features/spaces-and-assets.md`, Issue #239 |
-| Betrieb im eigenen Haus | `docs/features/deployment-infrastructure.md`, `docs/deployment.md` |
+| Betrieb im eigenen Haus | `docs/features/deployment-infrastructure.md`, `docs/handbuch/deployment.md` |
 | Quelloffen unter AGPL-3.0 | `LICENSE` |
 | Suchqualität ist messbar | `docs/features/search-quality-evaluation.md` |
 
@@ -179,9 +179,11 @@ Repository; Marketing-Material übernimmt ihn, statt einen eigenen zu behaupten.
 | Asset | Zweck | Umfang |
 |---|---|---|
 | `page/index.html` | Erster Kontakt im Netz, Einstieg für Interessierte und Beitragende | Kernbotschaft, die drei Säulen, Souveränität, Verweis auf Demo und Quellcode |
-| `docs/onepager-de.html` | Eine Seite zum Weiterreichen im Haus | Problem, drei Säulen, Belegbarkeit und Verteilbarkeit, Souveränität, Phasenlage |
-| `docs/OPAA-pitch-de.html` | Ausführlichere Vorstellung | Wie der One-Pager, plus Anwendungsfälle und Themenbereiche |
 | `README.md` | Einstieg im Repository | Kurzfassung der Positionierung, dann technischer Einstieg |
+
+Der frühere One-Pager (`docs/onepager-de.html`) und das Pitch-Deck (`docs/OPAA-pitch-de.html`/`.pdf`)
+wurden entfernt (#927): Sie waren gegenüber dieser Wahrheitsquelle veraltet. Werden solche Unterlagen
+wieder gebraucht, entstehen sie neu aus diesem Dokument — unter `docs/market/`.
 
 Jedes dieser Assets nennt dieselbe Kernbotschaft in denselben Worten. Abweichende Formulierungen für
 dieselbe Sache sind kein Stilmittel, sondern ein Fehler.

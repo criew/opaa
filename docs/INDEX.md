@@ -3,6 +3,17 @@
 OPAA ist die souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung. Dieser Index führt durch
 die vollständige Dokumentation.
 
+Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu genau einer:
+
+| Achse | Ort | Frage, die sie beantwortet |
+|---|---|---|
+| **Vision & Plan** | [VISION.md](./VISION.md), [USE-CASES.md](./USE-CASES.md), [CONCEPTS.md](./CONCEPTS.md) | Wohin soll es gehen, in welchen Begriffen? |
+| **Spezifikation** | [`features/`](./features/) | Wie soll sich ein Bereich im Zielbild verhalten? |
+| **Entscheidungen** | [`decisions/`](./decisions/) | Was wurde verbindlich entschieden, und warum? |
+| **Ideen & Recherche** | [`discussions/`](./discussions/) | Was ist erst erörtert, noch nicht entschieden? |
+| **Stand & Nachweis** | [`fortschritt/`](./fortschritt/) | Was ist heute tatsächlich gebaut — belegt? |
+| **Handbuch** | [`handbuch/`](./handbuch/) | Wie installiere, betreibe und benutze ich das Gebaute? |
+
 ## Hier anfangen
 
 1. **[README](../README.md)** — was OPAA ist und für wen
@@ -10,11 +21,12 @@ die vollständige Dokumentation.
    Phasen
 3. **[USE-CASES.md](./USE-CASES.md)** — wie sich das im Arbeitsalltag anfühlt
 4. **[CONCEPTS.md](./CONCEPTS.md)** — Begriffe und Glossar
-5. **[STATUS.md](./STATUS.md)** — was davon heute tatsächlich gebaut ist
+5. **[Gesamtstand](./fortschritt/gesamtstand.md)** — was davon heute tatsächlich gebaut ist
 6. **[GETTING-STARTED.md](./GETTING-STARTED.md)** — welche Lesepfade es je Publikum gibt
 
-> **Vision und Stand nicht verwechseln.** VISION.md beschreibt das Zielbild, STATUS.md den Code. Wo eine
-> Feature-Spezifikation etwas beschreibt, heißt das nicht, dass es gebaut ist.
+> **Vision und Stand nicht verwechseln.** VISION.md beschreibt das Zielbild, der
+> [Gesamtstand](./fortschritt/gesamtstand.md) den Code. Wo eine Feature-Spezifikation etwas beschreibt,
+> heißt das nicht, dass es gebaut ist.
 
 ---
 
@@ -23,7 +35,8 @@ die vollständige Dokumentation.
 - **[VISION.md](./VISION.md)** — Produktvision: Wissen, Agenten, KI für Teams und Organisation
 - **[USE-CASES.md](./USE-CASES.md)** — Abläufe aus dem Verwaltungsalltag
 - **[CONCEPTS.md](./CONCEPTS.md)** — Glossar der tragenden Begriffe
-- **[STATUS.md](./STATUS.md)** — Umsetzungsstand je Themenbereich
+- **[Gesamtstand](./fortschritt/gesamtstand.md)** — inventurbelegter Umsetzungsstand; die
+  Zeitraumsberichte unter [`fortschritt/`](./fortschritt/) liefern den Nachweis je Stichtag
 - **[decisions/0014-produktausrichtung-oeffentliche-verwaltung.md](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md)**
   — die Entscheidung, die die Ausrichtung trägt
 
@@ -106,7 +119,7 @@ an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäl
 ### J · Betrieb & Deployment
 
 **[`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md)** ·
-ergänzend **[`deployment.md`](./deployment.md)**
+ergänzend **[`handbuch/deployment.md`](./handbuch/deployment.md)**
 
 Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
 durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
@@ -122,6 +135,13 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 
 ## Weitere Dokumentation
 
+### Handbuch — das gebaute Produkt benutzen
+
+- **[`handbuch/deployment.md`](./handbuch/deployment.md)** — Installation und Betrieb der vorhandenen
+  Software: Docker Compose, Umgebungsvariablen, Härtung, öffentliche Testinstanz
+- **[`handbuch/demo-walkthrough.md`](./handbuch/demo-walkthrough.md)** — Anwenderdokumentation der
+  Demo-Instanz: Installation mit einem Befehl, Nutzerkonten, Vorführ-Drehbuch
+
 ### Architekturentscheidungen
 
 - **[`decisions/`](./decisions/)** — alle ADRs. Einstiege:
@@ -134,19 +154,19 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 
 ### Demo und Vorführung
 
-- **[`demo-walkthrough.md`](./demo-walkthrough.md)** — Anwenderdokumentation: Installation mit einem
-  Befehl, Nutzerkonten mit Anmeldedaten, ausformuliertes Drehbuch mit acht Vorführfragen,
-  Korpus-Aktualisierung
+- **[`handbuch/demo-walkthrough.md`](./handbuch/demo-walkthrough.md)** — Anwenderdokumentation:
+  Installation mit einem Befehl, Nutzerkonten mit Anmeldedaten, ausformuliertes Drehbuch mit acht
+  Vorführfragen, Korpus-Aktualisierung
 - **[`features/demo-instance.md`](./features/demo-instance.md)** — Konzept: Demo-Instanz „Stadt
   Rheinfurt", fiktiver Verwaltungskorpus, Bibliotheken je Konnektortyp, Demo-Nutzer mit
   Berechtigungsgrenze, Seed-Mechanismus
 
-### Recherche
+### Ideen und Recherche
 
-- **[`GraphRAG.md`](./GraphRAG.md)** — Wissensgraph als Ergänzung des Vektor-Retrievals:
-  Funktionsweise, Vergleich quelloffener Implementierungen, Betriebsaspekte. Entscheidungsgrundlage, keine
-  getroffene Entscheidung
-- **[`discussions/`](./discussions/)** — offene Erörterungen
+- **[`discussions/`](./discussions/)** — offene Erörterungen und Recherchen, noch nicht entschieden;
+  darunter **[`discussions/GraphRAG.md`](./discussions/GraphRAG.md)** — Wissensgraph als Ergänzung des
+  Vektor-Retrievals: Funktionsweise, Vergleich quelloffener Implementierungen, Betriebsaspekte.
+  Entscheidungsgrundlage, keine getroffene Entscheidung
 
 ### Oberflächenentwürfe
 
@@ -200,7 +220,7 @@ J  Betrieb & Deployment    ── trägt alles übrige
 2. **F vor C.** Ohne Personen und Gruppen aus dem Verzeichnisdienst gibt es kein Rechtesubjekt.
 3. **A vor D.** Ein Agent ohne belegte Wissensbindung erfüllt keines der beiden Leitprinzipien.
 
-Den tatsächlichen Stand je Bereich führt [STATUS.md](./STATUS.md).
+Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 
 ---
 
@@ -213,7 +233,7 @@ Den tatsächlichen Stand je Bereich führt [STATUS.md](./STATUS.md).
 → [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Die beiden Leitbegriffe"
 
 **Was ist heute wirklich gebaut?**
-→ [STATUS.md](./STATUS.md) — und nur dort
+→ [Gesamtstand](./fortschritt/gesamtstand.md) — und nur dort
 
 **Wie stelle ich sicher, dass niemand sieht, was er nicht sehen darf?**
 → [`features/spaces-and-assets.md`](./features/spaces-and-assets.md) und

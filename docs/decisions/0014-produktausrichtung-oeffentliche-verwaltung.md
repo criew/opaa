@@ -91,7 +91,7 @@ alles bestehen.
 Umgekehrt entstehen Anforderungen, für die es heute nichts gibt: Zitierzwang, hybride Suche mit Reranking,
 Agenten-Onboarding und -Prüfstand, zentrale Modellvorgaben, SCIM-Lebenszyklus, revisionssicheres
 Protokoll, Leichte Sprache, Barrierefreiheit nach BITV. Der Abstand zwischen Anspruch und Stand wird damit
-sichtbar größer — das ist beabsichtigt und wird in [STATUS.md](../STATUS.md) offen geführt statt
+sichtbar größer — das ist beabsichtigt und wird im [Gesamtstand](../fortschritt/gesamtstand.md) offen geführt statt
 beschönigt.
 
 ### Was in der Dokumentation nicht vorkommt
@@ -177,7 +177,7 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   dieser Fall soll nicht mehr möglich sein.
 - **Verweis:** [#353](https://github.com/criew/opaa/issues/353) ·
   [features/llm-integration.md](../features/llm-integration.md#was-heute-gilt-und-was-nicht-gebaut) ·
-  [deployment.md](../deployment.md#llm-anbieter)
+  [deployment.md](../handbuch/deployment.md#llm-anbieter)
 
 ### 14.08.2026 — Assistent für Bürgerinnen und Bürger und öffentliches Widget
 

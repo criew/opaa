@@ -53,7 +53,7 @@ Vorgaben gelten — alle erben es, Änderungen wirken sofort überall.
 1. [GETTING-STARTED.md](docs/GETTING-STARTED.md) — welches Dokument für welche Rolle
 2. [CONCEPTS.md](docs/CONCEPTS.md) — Begriffe und Glossar
 3. [VISION.md](docs/VISION.md) — Nordstern, elf Themenbereiche, vier Phasen
-4. [STATUS.md](docs/STATUS.md) — was davon heute gebaut ist
+4. [Gesamtstand](docs/fortschritt/gesamtstand.md) — was davon heute gebaut ist
 5. [INDEX.md](docs/INDEX.md) — vollständiger Dokumentationsindex
 
 **Spezifikationen** — je Themenbereich eine, verlinkt aus der Übersichtstabelle in
@@ -65,12 +65,12 @@ Vorgaben gelten — alle erben es, Änderungen wirken sofort überall.
 
 Eine öffentliche Instanz der Demo „Stadt Rheinfurt" läuft unter
 [opaa.ewerlin.com](https://opaa.ewerlin.com) — Anmeldung erforderlich, kein anonymer Zugang; die
-Demo-Konten stehen in [docs/demo-walkthrough.md](docs/demo-walkthrough.md#nutzerkonten). Details zum
-Betrieb in der [Deployment-Dokumentation](docs/deployment.md#öffentliche-testinstanz).
+Demo-Konten stehen in [docs/handbuch/demo-walkthrough.md](docs/handbuch/demo-walkthrough.md#nutzerkonten). Details zum
+Betrieb in der [Deployment-Dokumentation](docs/handbuch/deployment.md#öffentliche-testinstanz).
 
 Die eigene, lokal installierbare Demo-Instanz „Stadt Rheinfurt" — fiktiver Verwaltungskorpus, vier
 Demo-Nutzer mit Berechtigungsgrenze, ein ausformuliertes Drehbuch mit acht Vorführfragen — startet mit
-einem Befehl: [docs/demo-walkthrough.md](docs/demo-walkthrough.md).
+einem Befehl: [docs/handbuch/demo-walkthrough.md](docs/handbuch/demo-walkthrough.md).
 
 ## Stand
 
@@ -79,7 +79,7 @@ Quellenangaben, Anmeldung über den Verzeichnisdienst, Spaces und Wissensbibliot
 Betrieb über Docker Compose. Das Space- und Asset-Modell und die Messbarkeit der Suchqualität sind im Bau.
 
 Tragende Teile der Vision sind noch nicht gebaut, darunter der Zitierzwang, die hybride Suche, die Agenten
-und das revisionssichere Protokoll. [STATUS.md](docs/STATUS.md) führt das je Themenbereich auf, ohne es zu
+und das revisionssichere Protokoll. [Gesamtstand](docs/fortschritt/gesamtstand.md) führt das je Themenbereich auf, ohne es zu
 beschönigen.
 
 ## Technologie

@@ -107,7 +107,7 @@ läuft. Die Fehlannahme entstand aus einer Verwechslung zweier Ebenen — der *A
 `backend/src/main/resources/application.yml` ist `${OPAA_AI_CHAT_PROVIDER:ollama}`, die
 *empfohlene Compose-Belegung* in `.env.example` dagegen `OPAA_AI_CHAT_PROVIDER=openai`. Die zweite
 Ebene beschreibt den tatsächlichen Betrieb, die erste nur das Verhalten ohne jede Konfiguration.
-Ein Folge-Issue klärt diese Zweideutigkeit auch in `docs/deployment.md`.
+Ein Folge-Issue klärt diese Zweideutigkeit auch in `docs/handbuch/deployment.md`.
 
 > **Zweite Berichtigung (2026-08-02).** Die daraus abgeleitete Aussage „Die Instanz nutzt
 > OpenAI" war ihrerseits ungenau und ist zurückgenommen. Die Betriebsdokumentation des Maintainers

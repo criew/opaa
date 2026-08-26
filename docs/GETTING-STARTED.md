@@ -14,7 +14,7 @@ verantworten.
 
 Danach in den Lesepfad wechseln, der zu Ihnen passt.
 
-> **Ein Hinweis vorweg.** [VISION.md](./VISION.md) beschreibt das Zielbild, [STATUS.md](./STATUS.md) den
+> **Ein Hinweis vorweg.** [VISION.md](./VISION.md) beschreibt das Zielbild, der [Gesamtstand](./fortschritt/gesamtstand.md) den
 > tatsächlich gebauten Stand. Wenn Sie eine Entscheidung auf eine Fähigkeit stützen wollen, prüfen Sie
 > beides. OPAA ist im Aufbau, und die Dokumentation sagt das an jeder Stelle.
 
@@ -34,7 +34,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
    Einzelfall zum geprüften Standard wird
 5. [`features/public-sector.md`](./features/public-sector.md) — Leichte Sprache, Amtssprache,
    Barrierefreiheit
-6. [STATUS.md](./STATUS.md) — was davon heute geht
+6. [Gesamtstand](./fortschritt/gesamtstand.md) — was davon heute geht
 
 **Worauf es dabei ankommt:**
 
@@ -55,7 +55,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
    **Retrieval und Belegbarkeit**
 2. [VISION.md](./VISION.md) — Abschnitt „Systemüberblick"
 3. [`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md) — **vertieft**;
-   ergänzend [deployment.md](./deployment.md) für die vorhandene Installation
+   ergänzend [deployment.md](./handbuch/deployment.md) für die vorhandene Installation
 4. [`features/llm-integration.md`](./features/llm-integration.md) — Modellverwaltung, Modell-Policy als
    Obergrenze, lokal betriebene Modelle
 5. [`features/access-control.md`](./features/access-control.md) — Anmeldung, Kontenlebenszyklus, Mandanten
@@ -63,7 +63,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
    Kostentransparenz
 7. [`features/data-indexing-rag.md`](./features/data-indexing-rag.md) und
    [`features/knowledge-sources.md`](./features/knowledge-sources.md) — was indiziert wird und wie oft
-8. [STATUS.md](./STATUS.md), Bereiche **J**, **E**, **F**, **H** — der ehrliche Stand
+8. [Gesamtstand](./fortschritt/gesamtstand.md) — der ehrliche Stand, belegt über die Inventur
 
 **Worauf es dabei ankommt:**
 
@@ -97,7 +97,8 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
    und in welcher Aggregation
 6. [`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md) — Verschlüsselung,
    Netztrennung, Sicherung
-7. [STATUS.md](./STATUS.md), Bereich **G** — die derzeit größte Lücke, offen benannt
+7. [Gesamtstand](./fortschritt/gesamtstand.md) — was zu Bereich **G** gebaut ist und was noch fehlt,
+   offen benannt
 
 **Worauf es dabei ankommt:**
 
@@ -121,8 +122,9 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 
 1. [CONCEPTS.md](./CONCEPTS.md) — vollständig, es ist die gemeinsame Sprache im Repository
 2. [VISION.md](./VISION.md) — besonders die elf Themenbereiche und die vier Phasen
-3. [STATUS.md](./STATUS.md) — **hier stehen die Lücken.** Die Bereiche **D** und **K** sind heute im Code
-   und im Backlog leer, Bereich **G** ist die größte Lücke gegenüber Phase 1
+3. [Gesamtstand](./fortschritt/gesamtstand.md) — **hier stehen die Lücken.** Die Bereiche **D** und **K**
+   sind noch nicht begonnen; die priorisierte Restliste für Phase 1 steht im aktuellen
+   [Zeitraumsbericht](./fortschritt/20260831/report.md)
 4. [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — Ablauf, Branch-Regel, Contributor License Agreement
 5. [`../AGENTS.md`](../AGENTS.md) — Konventionen, Build- und Testbefehle, Pre-Push-Checkliste
 6. [AGENT-ORGANIZATION.md](./AGENT-ORGANIZATION.md) — Rollen und der Weg von der Idee bis zum Merge
@@ -146,15 +148,16 @@ gezielt in eine Spezifikation.
 **Lernen während des Tuns** — für Beitragende: CONCEPTS.md, dann die eigene Spezifikation vollständig, dann
 die angrenzenden, sobald eine Abhängigkeit auftaucht.
 
-**Prüfen statt lesen** — für Datenschutz, Informationssicherheit und Prüfung: mit STATUS.md beginnen, nicht
-mit VISION.md. Was dort nicht als gebaut steht, ist ein Vorhaben.
+**Prüfen statt lesen** — für Datenschutz, Informationssicherheit und Prüfung: mit dem
+[Gesamtstand](./fortschritt/gesamtstand.md) beginnen, nicht mit VISION.md. Was dort nicht als gebaut
+steht, ist ein Vorhaben.
 
 ---
 
 ## Häufige Fragen
 
 **Woher weiß ich, ob eine beschriebene Fähigkeit existiert?**
-→ Aus [STATUS.md](./STATUS.md). Feature-Spezifikationen beschreiben das Zielbild.
+→ Aus [Gesamtstand](./fortschritt/gesamtstand.md). Feature-Spezifikationen beschreiben das Zielbild.
 
 **Kann ich nur eine Spezifikation lesen?**
 → Ja, aber lesen Sie zuvor „Systemüberblick" in [VISION.md](./VISION.md) für den Zusammenhang.
@@ -178,9 +181,12 @@ Einstieg
 ├── docs/VISION.md         — Zielbild: Prinzipien, elf Bereiche, vier Phasen
 ├── docs/USE-CASES.md      — Abläufe aus dem Verwaltungsalltag
 ├── docs/CONCEPTS.md       — Begriffe und Glossar
-├── docs/STATUS.md         — was heute gebaut ist
 ├── docs/INDEX.md          — vollständiger Index
 └── docs/GETTING-STARTED.md — diese Datei
+
+Stand und Nachweis (docs/fortschritt/)
+├── gesamtstand.md         — was heute gebaut ist, inventurbelegt
+└── JJJJMMTT/              — Zeitraumsberichte mit Beleg-Bausteinen je Stichtag
 
 Spezifikationen (docs/features/) — je Themenbereich
 ├── A  data-indexing-rag.md · search-quality-evaluation.md
@@ -198,8 +204,7 @@ Spezifikationen (docs/features/) — je Themenbereich
 
 Entscheidungen und Recherche
 ├── docs/decisions/        — ADRs, darunter 0014 zur Produktausrichtung
-├── docs/discussions/      — offene Erörterungen
-├── docs/GraphRAG.md       — Wissensgraph als Ergänzung des Vektor-Retrievals
+├── docs/discussions/      — offene Erörterungen und Recherchen (u. a. GraphRAG.md)
 └── docs/design/           — Oberflächenentwürfe
 
 Mitarbeit
@@ -209,6 +214,7 @@ Mitarbeit
 ├── docs/AGENT-ORGANIZATION.md — Rollen und Workflow
 └── docs/tagesreport.md    — täglicher Projektbericht
 
-Betrieb
-└── docs/deployment.md     — die vorhandene Installation
+Handbuch (docs/handbuch/) — das gebaute Produkt benutzen
+├── deployment.md          — Installation und Betrieb
+└── demo-walkthrough.md    — Demo-Instanz: Installation, Konten, Drehbuch
 ```

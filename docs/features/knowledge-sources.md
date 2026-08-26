@@ -180,7 +180,7 @@ auf der obersten Verzeichnisebene, `RSS_FEED` die Anzahl der Feed-Einträge. Der
 ersetzt weder die Ziel- noch die Formatprüfung des eigentlichen Laufs. Er nutzt für `HTTP_DIRECTORY`
 und `RSS_FEED` dieselben ausgehenden Verbindungen wie ein Lauf und unterliegt deshalb **derselben
 Zielprüfung (gebaut, #267)** — konfigurierbar über `opaa.indexing.target-validation`, siehe
-[deployment.md](../deployment.md). Er ist zusätzlich rate-limitiert (`opaa.rate-limit.source-test`),
+[deployment.md](../handbuch/deployment.md). Er ist zusätzlich rate-limitiert (`opaa.rate-limit.source-test`),
 damit er nicht als schneller interner Portscanner missbraucht werden kann.
 
 **Zugangsdaten-Fallback über `libraryId` (gebaut, #544/#617).** Testet der Dialog eine bereits
@@ -267,7 +267,7 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
 1. Die Verzeichnisliste unter der angegebenen Adresse wird abgerufen und **rekursiv** durch die
    Unterverzeichnisse verfolgt — begrenzt durch eine maximale Rekursionstiefe und eine Obergrenze
    für die Gesamtzahl gecrawlter Einträge (`OPAA_INDEXING_CRAWL_MAX_DEPTH`,
-   `OPAA_INDEXING_CRAWL_MAX_ENTRIES`, siehe [Umgebungsvariablen](../deployment.md#alle-umgebungsvariablen)),
+   `OPAA_INDEXING_CRAWL_MAX_ENTRIES`, siehe [Umgebungsvariablen](../handbuch/deployment.md#alle-umgebungsvariablen)),
    damit ein Zyklus auf dem Zielserver (z. B. eine Symlink-Schleife) nicht zu endloser Rekursion
    führt (#836). Ein durch eines dieser Limits abgeschnittener Lauf wird als solcher protokolliert,
    nicht als Fehler behandelt.
