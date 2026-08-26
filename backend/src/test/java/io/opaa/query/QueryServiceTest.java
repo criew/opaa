@@ -1406,6 +1406,8 @@ class QueryServiceTest {
     assertThat(response.getSources()).isEmpty();
     assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isTrue();
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
+    // An empty search scope must not pay for the decomposition LLM call either.
+    org.mockito.Mockito.verifyNoInteractions(queryDecompositionService);
   }
 
   @Test
