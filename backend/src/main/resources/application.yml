@@ -116,6 +116,8 @@ opaa:
     mmr-lambda: ${OPAA_QUERY_MMR_LAMBDA:1.0}
     similarity-threshold: ${OPAA_QUERY_SIMILARITY_THRESHOLD:0.3}
     permission-history-sample-rate: ${OPAA_QUERY_PERMISSION_HISTORY_SAMPLE_RATE:1.0}
+    query-decomposition-enabled: ${OPAA_QUERY_DECOMPOSITION_ENABLED:true}
+    max-sub-queries: ${OPAA_QUERY_MAX_SUB_QUERIES:3}
   indexing:
     chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}
     chunk-overlap: ${OPAA_INDEXING_CHUNK_OVERLAP:100}

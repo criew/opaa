@@ -245,6 +245,8 @@ Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertba
 | **Ähnlichkeitsschwelle** | 0,3 **(gebaut)** | Wie umgangssprachlich gefragt wird und wie homogen der Bestand ist | Weniger unpassende Treffer, aber häufiger keine ausreichend ähnliche Fundstelle und damit eine Antwort ohne Beleg |
 | **Bündelgröße der Einbettung** | 50 Chunks je Aufruf **(gebaut)** | Belastbarkeit des Einbettungsdienstes | Schnellere Läufe, aber Lastspitzen und größerer Speicherbedarf |
 | **Wiederholversuche je Dokument** | 3 **(gebaut)** | Zuverlässigkeit von Quelle und Modelldienst | Weniger verlorene Dokumente, aber längere Läufe bei dauerhaft defekten Dateien |
+| **Teilfragen-Zerlegung (`query-decomposition-enabled`)** | an **(gebaut, #923)** | Ob Mehrthemen-Fragen getrennte Suchvektoren je Thema bekommen sollen | Kein Regler im eigentlichen Sinn (An/Aus) — deaktiviert lässt jede Frage wie vor #923 als eine einzige Suche laufen |
+| **Max. Teilfragen (`max-sub-queries`)** | 3 **(gebaut, #923)** | Wie viele eigenständige Themen eine Frage realistisch mischt | Mehr mögliche Teilthemen je Frage, aber mehr `similaritySearch`-Aufrufe und damit höhere Retrieval-Latenz |
 
 **`fetch-k`/`mmr-lambda` steuern gemeinsam die Vielfaltsauswahl (Maximal Marginal Relevance, MMR,
 #914).** Die Vektorsuche holt zunächst `fetch-k` Kandidaten statt nur `top-k`. Daraus wählt MMR
@@ -297,6 +299,86 @@ Diese Werte sind **je Installation konfigurierbar**. Im Zielbild kommt eine Fest
 Wissensbibliothek hinzu: Rechtsquellen, Besprechungsnotizen und Tabellenwerke vertragen nicht dieselbe
 Zerlegung. Ob eine hausweite Voreinstellung dafür ausreicht, steht unter
 [Offene Fragen](#offene-fragen--zukünftige-erweiterungen).
+
+### Teilfragen-Zerlegung und Query-Reformulierung (Multi-Query-Retrieval, #923)
+
+`top-k`-Anhebung und MMR mildern Redundanz innerhalb *eines* Suchvektors, heilen aber nicht das
+strukturelle Problem einer Mehrthemen-Frage: Zwei Themen teilen sich einen einzigen Suchvektor, und
+liegt das bestmögliche Ergebnis eines Themas score-mäßig strukturell unter dem des anderen, kann kein
+Auswahlverfahren über der *einen* Rangliste das noch beheben (siehe die Live-Verifikation in #912 -
+das Personalausweis-Dokument einer Kombifrage erreichte selbst als reine Personalausweis-Frage nur
+Score 0,687, strukturell unter den Führerschein-Scores der Kombifrage von 0,70–0,72).
+
+OPAA setzt deshalb vor das Retrieval einen LLM-Vorverarbeitungsschritt: Die aktuelle Frage geht
+zusammen mit dem bisherigen Gesprächsverlauf an das systemweite aktive Chat-Modell (dieselbe
+Anbindung wie die Antwortgenerierung, kein zweiter Modell-Anbindungsweg), das 1 bis `max-sub-queries`
+eigenständige, vollständige Suchanfragen zurückgibt. Eine Einthemen-Frage ohne Kontextbezug
+decodiert typischerweise zu genau einer Suchanfrage — dieser Pfad ersetzt zugleich die zuvor feste
+"erste Chat-Nachricht voranstellen"-Heuristik der Kontext-Anreicherung durch eine kontextbewusste
+Reformulierung (echte Folgefragen wie "und was kostet das?" werden zu eigenständigen Fragen
+aufgelöst, Tippfehler nebenbei normalisiert).
+
+```
+Frage + Gesprächsverlauf
+        ↓
+  LLM-Zerlegung (1..max-sub-queries Suchanfragen)
+        ↓
+  Je Suchanfrage: similaritySearch (Rechtefilter + Schwelle, wie heute)
+        ↓
+  Je Suchanfrage: MMR-Auswahl innerhalb der eigenen Kandidaten
+        ↓
+  Reciprocal Rank Fusion (rangbasiert, Dedup per Chunk-Kennung)
+        ↓
+  Auswahl der Passagen für die Antwort (gedeckelt auf top-k)
+```
+
+**Jede Teilsuche trägt denselben Rechtefilter und dieselbe Ähnlichkeitsschwelle** wie die
+Einzelsuche vorher — keine Teilsuche ist von diesem Filter ausgenommen (ADR-0008 §5). Das
+Chunk-Budget verteilt sich pro Teilfrage auf `ceil(top-k / Anzahl Teilfragen)`, mindestens 3, damit
+keine Teilfrage auf eine zu dünne Auswahl schrumpft; die zusammengeführte, deduplizierte Endauswahl
+bleibt dabei auf `top-k` gedeckelt.
+
+**Zusammenführung ist rangbasiert (Reciprocal Rank Fusion), nie score-basiert:** Ähnlichkeitswerte
+verschiedener Suchvektoren sind nicht vergleichbar — genau das war die Wurzel des #912-Fehlerbilds.
+Ein Treffer, der in mehreren Teilfragen weit oben steht, gewinnt gegenüber einem, der nur in einer
+Teilfrage weit oben steht, unabhängig von den absoluten Ähnlichkeitswerten. Dedupliziert wird per
+Chunk-Kennung, nicht per Dokument — derselbe Textabschnitt darf nicht doppelt in den Kontext
+gelangen, auch wenn ihn mehrere Teilfragen unabhängig voneinander trafen.
+
+**Zusammenspiel mit MMR:** MMR läuft je Teilfrage innerhalb ihrer eigenen Kandidatenmenge, nicht auf
+der zusammengeführten Gesamtmenge. Die Kandidaten einer Teilfrage teilen sich ein Thema (sie stammen
+aus einem Suchvektor) — genau die Voraussetzung, für die MMRs Diversitätsterm gebaut ist. Auf der
+themenübergreifenden Gesamtmenge würde MMR dagegen Relevanz gegen Ähnlichkeit zu Treffern eines
+*fremden* Themas abwägen, ein Vergleich, gegen den `mmr-lambda`s Voreinstellung nie gemessen wurde.
+
+**Ausfallsicherheit:** Scheitert der Zerlegungsaufruf (Zeitüberschreitung, kein aktives Modell,
+unparsebare Antwort), fällt die Suche auf das Verhalten vor #923 zurück — eine Suche mit der
+heutigen `buildSearchQuery`-Logik (Frage, ggf. um die erste Chat-Nachricht ergänzt) — nie auf einen
+Fehler für den Nutzer, höchstens die alte Suchqualität.
+
+**Vorher/Nachher-Messung** (lokal, nicht committet, über den produktionsnahen `QueryService`-Pfad
+mit echten lokalen Embeddings statt des Harness-eigenen, dokumentbezogenen Fensters — der
+committete Harness misst `VectorStore.similaritySearch` direkt und läuft an diesem Feature vorbei,
+siehe [Qualitätssicherung](#qualitätssicherung)): Gegen die 20 `multi_topic`-Golden-Fälle aus #915
+("beide erwarteten Dokumente unter den zurückgegebenen Quellen") lieferten sowohl der Pfad ohne
+Zerlegung als auch mit Zerlegung 19 von 20 Fällen — ein Fall wechselte durch die Zerlegung von
+falsch zu richtig, ein anderer von richtig zu falsch, in Summe bei dieser kleinen Stichprobe neutral.
+Der 19/20-Wert ohne Zerlegung ist derselbe Konfigurationspunkt wie #922s 20/20 (`top-k=8`, MMR aus),
+aber ein anderer Messpunkt: #922 misst direkt gegen `VectorStore.similaritySearch`/`MmrSelector`,
+diese Messung dagegen über den vollständigen `QueryService`-Pfad (inklusive Berechtigungsfilter,
+Gesprächsverlauf-Anreicherung und der hier neuen Zerlegungslogik) — die Abweichung um einen Fall geht
+auf diesen Methodikunterschied zurück, nicht auf eine Regression von #922.
+Das city-landmarks-Korpus profitiert bereits stark von der `top-k`-Anhebung (#914); die strukturelle
+Score-Lücke aus dem #912-Beispiel (Personalausweis/Führerschein) tritt hier nicht in derselben Schärfe
+auf — die Live-Verifikation genau dieses Beispiels auf der Demo (siehe #923-Abnahmekriterien) bleibt
+der eigentliche Nachweis für den Fall, den Maßnahme B beheben soll. Nachmessung nach dem
+Budget-Review-Fix (jede Teilfrage wird auf das volle `top-k` MMR-ausgewählt statt `top-k` geteilt
+durch die Teilfragenzahl, siehe `QueryService#retrieveRelevantChunks`): weiterhin 19/20 zu 19/20 -
+der zuvor verlorene Fall (`city-multi_topic-012`) erreicht jetzt zwar wieder das volle
+Chunk-Budget, verfehlt aber inhaltlich weiterhin eines der beiden erwarteten Dokumente. Gemessene
+Zusatzlatenz des Zerlegungsaufrufs: rund 157 ms im Mittel (GPU-beschleunigtes lokales Modell).
+Details siehe die
+Beschreibung des #923-Pull-Requests.
 
 ### Speicherung und Filterachse
 

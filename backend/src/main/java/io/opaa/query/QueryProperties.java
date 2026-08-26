@@ -53,6 +53,22 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     Lowering it trades that guarantee for less load from the check's three additional queries
  *     against ever-growing tables per sampled query - an operator's explicit choice, not this
  *     project's default.
+ * @param queryDecompositionEnabled whether {@code QueryService#query} asks {@code
+ *     QueryDecompositionService} to split the question into up to {@link #maxSubQueries}
+ *     independent search queries before retrieval (#923) - each becomes its own permission- and
+ *     threshold-scoped {@code similaritySearch} call, fused by {@code ReciprocalRankFusion}.
+ *     Default {@code true}: on LLM failure or unparsable output {@code
+ *     QueryDecompositionService#decompose} returns an empty list and {@code QueryService#query}
+ *     falls back to today's single-query retrieval unchanged, so leaving this on costs at most one
+ *     extra LLM round trip per query, never a broken query. Set to {@code false} to skip that round
+ *     trip entirely (e.g. no query-decomposition-capable model configured).
+ * @param maxSubQueries the upper bound on how many independent search queries {@code
+ *     QueryDecompositionService#decompose} may return (#923). Default 3: beyond that, {@code
+ *     QueryDecompositionService} truncates rather than growing the number of {@code
+ *     similaritySearch} calls (and thus retrieval latency) without bound for an adversarial or
+ *     confused decomposition response. Each sub-query is independently narrowed to the full {@link
+ *     #topK} (see {@code QueryService#retrieveRelevantChunks}), so the overall chunk count stays
+ *     capped at {@link #topK} regardless of {@code maxSubQueries}.
  */
 @ConfigurationProperties(prefix = "opaa.query")
 public record QueryProperties(
@@ -60,7 +76,9 @@ public record QueryProperties(
     int fetchK,
     @DefaultValue("1.0") double mmrLambda,
     double similarityThreshold,
-    @DefaultValue("1.0") double permissionHistorySampleRate) {
+    @DefaultValue("1.0") double permissionHistorySampleRate,
+    @DefaultValue("true") boolean queryDecompositionEnabled,
+    @DefaultValue("3") int maxSubQueries) {
 
   public QueryProperties {
     if (topK <= 0) {
@@ -91,6 +109,10 @@ public record QueryProperties(
       throw new IllegalArgumentException(
           "permissionHistorySampleRate must be between 0.0 and 1.0, got "
               + permissionHistorySampleRate);
+    }
+    if (maxSubQueries <= 0 || maxSubQueries > 10) {
+      throw new IllegalArgumentException(
+          "maxSubQueries must be between 1 and 10, got " + maxSubQueries);
     }
   }
 }

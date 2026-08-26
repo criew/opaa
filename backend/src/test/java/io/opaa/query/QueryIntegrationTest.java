@@ -437,6 +437,84 @@ class QueryIntegrationTest {
   }
 
   /**
+   * #923's ADR-0008 §5 guard for the multi-sub-query path: the same 250-unauthorized-vs-10
+   * authorized setup as {@link
+   * #queryOnlyReturnsChunksFromTheGrantedLibraryEvenWhenUnauthorizedChunksWouldOutscoreThem}, but
+   * with query decomposition forced to two sub-queries (a two-line decomposition response) so every
+   * one of {@code QueryService#retrieveRelevantChunks}'s per-sub-query {@code similaritySearch}
+   * calls - not only the first - is exercised end to end. A hypothetical implementation that
+   * dropped the permission filter on any sub-query but the first would leak {@code b*.md} sources
+   * into the fused result; this test would then fail on the {@code allSatisfy} assertion below.
+   */
+  @Test
+  void queryFiltersEveryDecomposedSubQuerysSimilaritySearchByTheSameGrantedLibrary() {
+    UUID ungrantedLibraryId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
+            + " visibility, listed, source_type, created_at, updated_at)"
+            + " VALUES (?, ?, 'Fremde Bibliothek', 'USER', ?, 'PRIVATE', false, 'UPLOAD',"
+            + " now(), now())",
+        ungrantedLibraryId,
+        DEFAULT_ORGANIZATION_ID,
+        userId);
+
+    List<Document> chunks = new ArrayList<>();
+    for (int i = 0; i < 250; i++) {
+      chunks.add(
+          new Document(
+              "Unauthorized content " + i,
+              Map.of(
+                  "file_name",
+                  "b" + i + ".md",
+                  "document_id",
+                  "doc-b-" + i,
+                  "chunk_index",
+                  0,
+                  "library_id",
+                  ungrantedLibraryId.toString())));
+    }
+    for (int i = 0; i < 10; i++) {
+      chunks.add(
+          new Document(
+              "Granted content " + i,
+              Map.of(
+                  "file_name",
+                  "a" + i + ".md",
+                  "document_id",
+                  "doc-a-" + i,
+                  "chunk_index",
+                  0,
+                  "library_id",
+                  libraryId.toString())));
+    }
+    vectorStore.add(chunks);
+
+    // First call is the decomposition step - two lines force the multi-sub-query path. Second call
+    // answers the question.
+    var decompositionResponse =
+        new ChatResponse(
+            List.of(new Generation(new AssistantMessage("Erste Teilfrage\nZweite Teilfrage"))));
+    var answerResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+    when(chatModel.call(any(Prompt.class))).thenReturn(decompositionResponse, answerResponse);
+
+    try {
+      QueryResult response =
+          queryService.query(
+              "Beliebige Mehrthemenfrage", null, asCaller(userId), true, java.util.List.of());
+
+      // Exactly topK (8): each sub-query is independently MMR-narrowed to the full topK before
+      // fusion (#923 review) - with both sub-queries returning the identical, fully-overlapping
+      // authorized candidate set (FakeEmbeddingModel ties every embedding), the fused result is
+      // exactly that same set of 8, not fewer.
+      assertThat(response.getSources()).hasSize(8);
+      assertThat(response.getSources())
+          .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
+    } finally {
+      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
+    }
+  }
+
+  /**
    * {@link ChunkEmbeddingLookup} reads a chunk's embedding straight back out of the pgvector table
    * it was written to - a real vector of the configured dimension for a known id, and simply no
    * entry for an id that was never stored, never an exception.
@@ -682,8 +760,11 @@ class QueryIntegrationTest {
 
     var answerResponse =
         new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort trotz Fehler"))));
-    // First call answers the question; every call after that (title generation) fails.
+    // First call is #923's query-decomposition step (its single-line response content is
+    // irrelevant here - it parses to one sub-query, taking the pre-#923 single-search path); second
+    // call answers the question; every call after that (title generation) fails.
     when(chatModel.call(any(Prompt.class)))
+        .thenReturn(answerResponse)
         .thenReturn(answerResponse)
         .thenThrow(new RuntimeException("Titelmodell nicht erreichbar"));
 
