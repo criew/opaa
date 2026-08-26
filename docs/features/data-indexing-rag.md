@@ -108,11 +108,25 @@ Drei Bedingungen, alle deterministisch, alle nach der Erzeugung und vor der Ausl
 `#n` oder mit einem Zeichen in der Kennung, das der Parser nicht zulässt —, wird gar nicht erst als Beleg
 erkannt und damit weder geprüft noch gekennzeichnet.
 
-**Was die Prüfung ausdrücklich nicht prüft:** ob die zitierte Fundstelle die Aussage **inhaltlich trägt**.
-Ein formal gültiger Beleg ist der Nachweis, dass eine real abgerufene Passage benannt wurde — nicht der
-Nachweis, dass sie das Behauptete aussagt. Ein Modell kann eine korrekt bestehende Fundstelle an einen Satz
-hängen, mit dem sie nichts zu tun hat, und die Prüfung lässt das durch. Diese inhaltliche Deckungsprüfung
-bräuchte einen zweiten Modelldurchlauf und ist bewusst nicht gebaut (siehe unten).
+**Ergänzt um eine deterministische Faktenprüfung** (#937, geschärft im #939-Review): Ein formal gültiger
+Beleg wird zusätzlich gegen den Text aller abgerufenen Chunks des zitierten **Dokuments** geprüft — nicht
+nur des einen vom Marker genannten Chunks, da die #932-Dokumentvervollständigung mehrere Chunks desselben
+Dokuments abrufen kann. Geprüft wird nur der **nächstgelegene** harte Fakt vor dem Zitatmarker (Geldbetrag,
+Datum, Paragraphen-Referenz, sonstige Zahl mit Tausendertrennzeichen oder Dezimalkomma), nicht jeder Fakt
+des ganzen Satzes — sonst würde eine Aufzählung mit mehreren Werten und je einem eigenen Marker
+("Ausweis 37,00 €, Reisepass 70,00 € 【…】") fälschlich am falschen Wert scheitern. Ein Satz mit einer
+Näherung oder Summe ("rund", "etwa", "ca.", "circa", "knapp", "insgesamt", "zusammen") wird gar nicht erst
+geprüft. Verglichen wird nach Gattung (`CitationFactChecker`, Kategorie „AMOUNT" für Geldbeträge und
+sonstige Zahlen — ein Betrag in einer Gebührentabelle ohne Währungszeichen in der Zeile selbst ist dieselbe
+Aussage, nur ohne Formatierung; „DATE" und „PARA" bleiben eigene Kategorien): Enthält der geprüfte
+Chunk-Text **keinen** Fakt derselben Gattung, bleibt der Beleg unangetastet — nur ein Fakt derselben Gattung
+mit einem tatsächlich abweichenden Wert stuft zurück. Ein Satz ohne extrahierbaren Fakt bleibt ebenfalls
+unangetastet: Ein fälschlich geflaggter korrekter Beleg wiegt schwerer als ein übersehener Fehler. Das ist
+weiterhin keine allgemeine inhaltliche Stützungsprüfung: Ein Modell kann eine korrekt bestehende Fundstelle
+an einen Satz ohne harten Fakt hängen, mit dem sie inhaltlich nichts zu tun hat, und die Prüfung lässt das
+durch. Eine solche allgemeine Stützungsprüfung (Entailment) bräuchte einen zweiten Modelldurchlauf und ist
+bewusst nicht gebaut (siehe
+unten).
 
 #### Was mit einem ungültigen Beleg passiert
 
@@ -147,8 +161,11 @@ Das Modell kommuniziert bereits selbst, wenn es nichts gefunden hat, und fehlend
 im Belegfenster unmittelbar sichtbar. Die Belegvalidierung stellt sicher, dass die vorhandenen Belege echt
 sind; ein Zwangs- und Verweigerungsapparat darüber — mit Abschnittszerlegung samt Negativliste, einer
 Formregel gegen Belegverdünnung und einem eigenen Schalter am Space — stünde in keinem Verhältnis zum
-Nutzen. Damit entfällt auch die inhaltliche Deckungsprüfung (Stufe 2): Ohne den Verweigerungsapparat, den
-sie hätte absichern sollen, fehlt ihr die Grundlage.
+Nutzen. Damit entfällt auch eine allgemeine, LLM-gestützte Stützungsprüfung (Entailment, historisch als
+„Stufe 2" bezeichnet): Ohne den Verweigerungsapparat, den sie hätte absichern sollen, fehlt ihr die
+Grundlage. Die enger gefasste, deterministische Faktenprüfung aus #937 (oben) fällt nicht unter diese
+Entscheidung — sie kommt ohne zweiten Modellaufruf und ohne Verweigerungsapparat aus und verschärft
+lediglich das bestehende `citationValid`-Signal.
 
 ### Konfidenz
 

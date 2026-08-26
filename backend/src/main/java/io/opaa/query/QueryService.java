@@ -246,7 +246,7 @@ public class QueryService {
                 String answer = extractAnswer(chatResponse);
                 List<CitationValidator.ValidatedCitation> validatedCitations =
                     citationValidator.validate(
-                        citationParser.extractCitations(answer), relevantChunks);
+                        citationParser.extractCitations(answer), relevantChunks, answer);
                 logInvalidCitations(validatedCitations);
                 Map<String, Integer> matchCounts = countMatchesPerDocument(relevantChunks);
                 Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId =

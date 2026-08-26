@@ -1,10 +1,15 @@
 package io.opaa.query;
 
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +24,11 @@ import org.springframework.stereotype.Service;
  * that does not match the id it claims) produces a citation that <em>looks</em> correct but points
  * at nothing this answer was actually grounded in - this class is what turns that from an
  * unenforced request to the model into a checkable fact about the response.
+ *
+ * <p>Stufe 1 content check (#937): a citation that passes the check above is additionally checked
+ * against {@link CitationFactChecker} - see {@link #validate(List, List, String)}'s Javadoc. A
+ * citation can only be pushed from valid to invalid by this second check, never the other way
+ * round.
  */
 @Service
 public class CitationValidator {
@@ -26,6 +36,17 @@ public class CitationValidator {
   /** One citation together with the verdict {@link #validate} reached for it. */
   public record ValidatedCitation(
       String documentId, int chunkIndex, String fileName, boolean valid) {}
+
+  /**
+   * Retrieval-only convenience overload, without the Stufe 1 (#937) content check {@link
+   * #validate(List, List, String)} additionally applies - kept for callers with no answer text at
+   * hand (e.g. tests exercising retrieval-only behaviour); {@code QueryService} always calls the
+   * 3-arg overload (#939 review, finding 7).
+   */
+  public List<ValidatedCitation> validate(
+      List<CitationParser.ParsedCitation> citations, List<Document> retrievedChunks) {
+    return validate(citations, retrievedChunks, "");
+  }
 
   /**
    * Validates {@code citations} against {@code retrievedChunks} - the exact set handed to the
@@ -47,10 +68,28 @@ public class CitationValidator {
    * validation should not punish. No other leniency is applied - a truncated name, a path prefix or
    * a different extension still invalidates the citation, because those describe an actually
    * different reference, not the same one written differently.
+   *
+   * <p>Additionally tightened by a Stufe 1 (#937) content check: for a citation that is otherwise
+   * valid, the statement immediately preceding its marker in {@code answer} - the text back to the
+   * previous sentence boundary ({@code .}, {@code !}, {@code ?} or a newline), or the start of
+   * {@code answer} - is checked (only for its single nearest-to-the-marker fact, {@link
+   * CitationFactChecker#nearestFact}) for hard facts against the combined text of every retrieved
+   * chunk of the cited <b>document</b> - not only the one chunk the marker names (#939 review,
+   * finding 3): the #932 document-completion pass can retrieve several chunks of one document, and
+   * a value the model attributes to chunk 0 may actually live in chunk 1 of the same,
+   * still-retrieved document. A statement naming an approximation or a sum ("rund", "etwa", "ca.",
+   * "circa", "knapp", "insgesamt", "zusammen") skips the check entirely - a model computing or
+   * rounding a real figure is not a fabrication. A statement with no extractable fact, or a
+   * citation whose marker cannot be located in {@code answer} (e.g. {@code answer} is empty, as
+   * {@link #validate(List, List)} passes), is left at the retrieval-based verdict - this check only
+   * ever tightens, never loosens, the verdict the retrieval-based check alone would have reached.
    */
   public List<ValidatedCitation> validate(
-      List<CitationParser.ParsedCitation> citations, List<Document> retrievedChunks) {
+      List<CitationParser.ParsedCitation> citations,
+      List<Document> retrievedChunks,
+      String answer) {
     Map<String, Map<Integer, String>> sectionsByDocument = new HashMap<>();
+    Map<String, Map<Integer, Document>> chunksByDocument = new HashMap<>();
     for (Document chunk : retrievedChunks) {
       String documentId = chunk.getMetadata().getOrDefault("document_id", "").toString();
       String fileName = chunk.getMetadata().getOrDefault("file_name", "unknown").toString();
@@ -58,19 +97,114 @@ public class CitationValidator {
       sectionsByDocument
           .computeIfAbsent(documentId, id -> new HashMap<>())
           .put(chunkIndex, normalize(fileName));
+      chunksByDocument.computeIfAbsent(documentId, id -> new HashMap<>()).put(chunkIndex, chunk);
     }
 
-    return citations.stream()
-        .map(
-            citation -> {
-              Map<Integer, String> sections = sectionsByDocument.get(citation.documentId());
-              boolean valid =
-                  sections != null
-                      && normalize(citation.fileName()).equals(sections.get(citation.chunkIndex()));
-              return new ValidatedCitation(
-                  citation.documentId(), citation.chunkIndex(), citation.fileName(), valid);
-            })
-        .toList();
+    List<Integer> markerStarts = citationMarkerStarts(answer);
+    List<ValidatedCitation> result = new ArrayList<>(citations.size());
+    for (int i = 0; i < citations.size(); i++) {
+      CitationParser.ParsedCitation citation = citations.get(i);
+      Map<Integer, String> sections = sectionsByDocument.get(citation.documentId());
+      boolean retrievalValid =
+          sections != null
+              && normalize(citation.fileName()).equals(sections.get(citation.chunkIndex()));
+      boolean valid =
+          retrievalValid && contentPlausible(citation, chunksByDocument, answer, markerStarts, i);
+      result.add(
+          new ValidatedCitation(
+              citation.documentId(), citation.chunkIndex(), citation.fileName(), valid));
+    }
+    return result;
+  }
+
+  // #939 review, finding 4: a statement naming an approximation or a computed sum is not a
+  // fabrication, so the content check skips it entirely rather than flagging a rounded/summed
+  // figure the model derived correctly.
+  private static final Pattern APPROXIMATION_OR_SUM =
+      Pattern.compile(
+          "\\b(rund|etwa|ca\\.|circa|knapp|insgesamt|zusammen)\\b", Pattern.CASE_INSENSITIVE);
+
+  /**
+   * The Stufe 1 (#937) content check for one already retrieval-valid citation - see {@link
+   * #validate(List, List, String)}'s Javadoc for the statement boundary, the document-wide chunk
+   * scope, the approximation/sum skip, and the conservative fallback to {@code true} (never flag)
+   * whenever the marker position or the cited document's chunks cannot be resolved.
+   */
+  private boolean contentPlausible(
+      CitationParser.ParsedCitation citation,
+      Map<String, Map<Integer, Document>> chunksByDocument,
+      String answer,
+      List<Integer> markerStarts,
+      int citationIndex) {
+    if (citationIndex >= markerStarts.size()) {
+      return true;
+    }
+    Map<Integer, Document> documentChunks = chunksByDocument.get(citation.documentId());
+    if (documentChunks == null || documentChunks.isEmpty()) {
+      return true;
+    }
+    String statement = statementBefore(answer, markerStarts.get(citationIndex));
+    if (APPROXIMATION_OR_SUM.matcher(statement).find()) {
+      return true;
+    }
+    String combinedChunkText =
+        documentChunks.values().stream()
+            .map(Document::getText)
+            .filter(Objects::nonNull)
+            .collect(Collectors.joining("\n"));
+    return CitationFactChecker.isNearestFactSupportedByChunk(statement, combinedChunkText);
+  }
+
+  /**
+   * The text of {@code answer} from the previous sentence boundary up to {@code markerStart} - the
+   * pragmatic "statement" a citation marker is taken to belong to (#937). A sentence boundary is
+   * {@code !}, {@code ?}, a newline, or a {@code .} that is <b>not</b> sitting between two digits
+   * (#939 review, finding 1) - the latter exempts a thousands separator or a date's dots (e.g.
+   * {@code "1.234,50"}, {@code "01.01.2027"}) from ending the statement early, which would
+   * otherwise truncate the very fact this check is meant to compare. When two citation markers
+   * share one sentence, the statement of the later marker also contains the earlier marker's
+   * literal text; that marker syntax carries neither a decimal comma nor a thousands separator, so
+   * it does not itself produce a spurious fact for {@link CitationFactChecker} to compare.
+   */
+  private String statementBefore(String answer, int markerStart) {
+    int boundary = -1;
+    for (int i = markerStart - 1; i >= 0; i--) {
+      char c = answer.charAt(i);
+      if (c == '!' || c == '?' || c == '\n') {
+        boundary = i;
+        break;
+      }
+      if (c == '.' && !isDigitAdjacentDot(answer, i)) {
+        boundary = i;
+        break;
+      }
+    }
+    return answer.substring(boundary + 1, markerStart).trim();
+  }
+
+  private boolean isDigitAdjacentDot(String text, int dotIndex) {
+    boolean precededByDigit = dotIndex > 0 && Character.isDigit(text.charAt(dotIndex - 1));
+    boolean followedByDigit =
+        dotIndex + 1 < text.length() && Character.isDigit(text.charAt(dotIndex + 1));
+    return precededByDigit && followedByDigit;
+  }
+
+  /**
+   * The start offset of every citation marker in {@code answer}, in appearance order - the same
+   * order {@link CitationParser#extractCitations} returns its {@code ParsedCitation}s in, since
+   * both are produced by the same pattern over the same text. Empty when {@code answer} does not
+   * carry the literal marker text (e.g. {@link #validate(List, List)}'s {@code ""} placeholder).
+   */
+  private List<Integer> citationMarkerStarts(String answer) {
+    List<Integer> starts = new ArrayList<>();
+    if (answer == null || answer.isEmpty()) {
+      return starts;
+    }
+    Matcher matcher = CitationParser.CITATION_PATTERN.matcher(answer);
+    while (matcher.find()) {
+      starts.add(matcher.start());
+    }
+    return starts;
   }
 
   /**
