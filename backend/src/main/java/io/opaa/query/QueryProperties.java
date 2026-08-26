@@ -6,12 +6,41 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 /**
  * Configuration properties for the RAG query pipeline.
  *
- * @param topK number of most relevant document chunks to retrieve from the vector store per query.
- *     Default 5: a RAG best-practice value — 5 chunks of ~500 tokens each produce ~2 500 tokens of
- *     context, balancing relevance against noise and LLM context-window cost.
+ * @param topK number of chunks {@link MmrSelector} finally selects for the answer prompt, out of
+ *     the {@link #fetchK} candidates {@code similaritySearch} returns (#914). Default 8 (previously
+ *     5, raised as part of #914's Maßnahme D): 8 chunks of ~1 000 tokens each (see {@code
+ *     opaa.indexing.chunk-size}) produce ~8 000 tokens of context - the extra headroom MMR needs to
+ *     trade in a redundant top-relevance chunk for a less relevant but topically distinct one
+ *     without shrinking below the pre-#914 five-chunk floor for any single-topic question.
+ * @param fetchK number of candidates {@code similaritySearch} itself retrieves, before {@link
+ *     MmrSelector} narrows them down to {@link #topK} (#914). Default 25: large enough that a
+ *     dominant topic's redundant chunks do not crowd out every candidate from a second, less
+ *     dominant topic in a multi-topic question (the #912 failure mode), while staying a single
+ *     {@code similaritySearch} call - no additional embedding or LLM API call per query. A missing
+ *     configuration value (see the compact constructor) normalizes to {@code max(25, topK)}, not a
+ *     flat 25, so a deployment that already configured {@code topK} above 25 does not fail {@link
+ *     #fetchK} {@code < topK}'s validation below on a property it never touched. See
+ *     docs/deployment.md for the operator-facing version of this note.
+ * @param mmrLambda the relevance/diversity trade-off {@link MmrSelector} applies when narrowing
+ *     {@link #fetchK} candidates down to {@link #topK} (#914): each candidate's selection score is
+ *     {@code mmrLambda * relevance - (1 - mmrLambda) * maxSimilarityToAlreadySelected}, where the
+ *     similarity term is cosine similarity of the real chunk embeddings (see {@link
+ *     ChunkEmbeddingLookup}, {@link MmrSelector}). Default <b>{@code 1.0}</b> - diversity selection
+ *     is implemented but ships disabled, an explicit opt-in via a lower value, not a separate
+ *     on/off flag (plain top-{@code topK}-by-relevance selection, the pre-#914 behaviour, whenever
+ *     {@code mmrLambda == 1.0}; {@code QueryService#query} also then skips the {@link
+ *     ChunkEmbeddingLookup} round trip entirely, since it could not affect the result). Backed by
+ *     {@code @DefaultValue} (not the manual-default pattern {@link #topK}/{@link #fetchK} use
+ *     below) so an explicitly configured {@code 0.0} is honored rather than silently raised -
+ *     {@code 0.0} is a legal (if extreme) point on the range, not an "unset" sentinel the way a
+ *     non-positive {@code topK}/{@code fetchK} is. The measured numbers behind {@code 1.0}'s choice
+ *     over a lower value live in docs/deployment.md and docs/features/data-indexing-rag.md, not
+ *     here.
  * @param similarityThreshold minimum cosine-similarity score a chunk must reach to be included in
  *     results. Default 0.3: empirically tested — lower values surface too much noise, higher values
- *     miss relevant documents on imprecise user queries.
+ *     miss relevant documents on imprecise user queries. Applied inside {@code similaritySearch}
+ *     itself (#914): a chunk below the threshold never becomes an MMR candidate, so diversity can
+ *     never pull a below-threshold chunk into the final selection.
  * @param permissionHistorySampleRate the fraction of queries {@link
  *     QueryService#checkAgainstPermissionHistory} actually runs for, expressed as a probability in
  *     {@code [0.0, 1.0]} (#889, O1) - see
@@ -27,14 +56,32 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  */
 @ConfigurationProperties(prefix = "opaa.query")
 public record QueryProperties(
-    int topK, double similarityThreshold, @DefaultValue("1.0") double permissionHistorySampleRate) {
+    int topK,
+    int fetchK,
+    @DefaultValue("1.0") double mmrLambda,
+    double similarityThreshold,
+    @DefaultValue("1.0") double permissionHistorySampleRate) {
 
   public QueryProperties {
     if (topK <= 0) {
-      topK = 5;
+      topK = 8;
     }
     if (topK > 100) {
       throw new IllegalArgumentException("topK must be at most 100, got " + topK);
+    }
+    if (fetchK <= 0) {
+      // See #fetchK's Javadoc: max(25, topK), not a flat 25.
+      fetchK = Math.max(25, topK);
+    }
+    if (fetchK > 200) {
+      throw new IllegalArgumentException("fetchK must be at most 200, got " + fetchK);
+    }
+    if (fetchK < topK) {
+      throw new IllegalArgumentException(
+          "fetchK must be at least topK, got fetchK=" + fetchK + " topK=" + topK);
+    }
+    if (mmrLambda < 0.0 || mmrLambda > 1.0) {
+      throw new IllegalArgumentException("mmrLambda must be between 0.0 and 1.0, got " + mmrLambda);
     }
     if (similarityThreshold < 0.0 || similarityThreshold > 1.0) {
       throw new IllegalArgumentException(

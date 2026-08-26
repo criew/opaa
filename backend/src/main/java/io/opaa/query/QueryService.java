@@ -61,6 +61,7 @@ public class QueryService {
   private final QueryMetrics metrics;
   private final QueryProperties queryProperties;
   private final KnowledgeLibraryRepository knowledgeLibraryRepository;
+  private final ChunkEmbeddingLookup chunkEmbeddingLookup;
 
   public QueryService(
       VectorStore vectorStore,
@@ -74,7 +75,8 @@ public class QueryService {
       ChatService chatService,
       QueryMetrics metrics,
       QueryProperties queryProperties,
-      KnowledgeLibraryRepository knowledgeLibraryRepository) {
+      KnowledgeLibraryRepository knowledgeLibraryRepository,
+      ChunkEmbeddingLookup chunkEmbeddingLookup) {
     this.vectorStore = vectorStore;
     this.answerGenerationService = answerGenerationService;
     this.chatMemory = chatMemory;
@@ -87,6 +89,7 @@ public class QueryService {
     this.metrics = metrics;
     this.queryProperties = queryProperties;
     this.knowledgeLibraryRepository = knowledgeLibraryRepository;
+    this.chunkEmbeddingLookup = chunkEmbeddingLookup;
   }
 
   /**
@@ -213,18 +216,40 @@ public class QueryService {
                         && chat.map(c -> chatService.spaceHasLibraryAssociations(c.getSpaceId()))
                             .orElse(false);
 
-                List<Document> relevantChunks =
+                List<Document> candidateChunks =
                     searchScope.isEmpty()
                         ? List.of()
                         : vectorStore.similaritySearch(
                             SearchRequest.builder()
                                 .query(searchQuery)
-                                .topK(queryProperties.topK())
+                                .topK(queryProperties.fetchK())
                                 .similarityThreshold(queryProperties.similarityThreshold())
                                 .filterExpression(libraryFilter(searchScope))
                                 .build());
+                // MMR (#914) narrows fetchK candidates - already permission-scoped and
+                // threshold-filtered by the similaritySearch call above - down to topK. It is a
+                // post-selection within that already-authorized set, never an expansion of it (see
+                // this method's Javadoc's "Deliberately not @Transactional" section for the
+                // parallel invariant on the permission filter). At mmrLambda=1.0 the diversity term
+                // is always multiplied by zero (see MmrSelector#select's Javadoc), so the embedding
+                // lookup's one extra round trip per query is skipped entirely - it could not affect
+                // the result.
+                Map<String, float[]> candidateEmbeddings =
+                    queryProperties.mmrLambda() >= 1.0
+                        ? Map.of()
+                        : chunkEmbeddingLookup.findByIds(
+                            candidateChunks.stream().map(Document::getId).toList());
+                List<Document> relevantChunks =
+                    MmrSelector.select(
+                        candidateChunks,
+                        queryProperties.topK(),
+                        queryProperties.mmrLambda(),
+                        candidateEmbeddings);
 
-                log.debug("Found {} relevant chunks for query", relevantChunks.size());
+                log.debug(
+                    "Found {} candidate chunks, MMR-selected {} for query",
+                    candidateChunks.size(),
+                    relevantChunks.size());
 
                 // --- LLM call: the slowest step, and the reason no phase in this method carries a
                 // transaction - see this method's Javadoc's "Deliberately not @Transactional".

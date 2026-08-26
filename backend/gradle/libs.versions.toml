@@ -25,6 +25,12 @@ tika-core = "3.3.1"
 # dependency needed for that, so a lightweight YAML parser instead of pulling in a
 # spec-validation library.
 snakeyaml = "2.5"
+# JDBC binding for the pgvector column type (com.pgvector.PGvector), used directly by
+# io.opaa.query.ChunkEmbeddingLookup to read a chunk's stored embedding back for MMR (#914).
+# Already on the classpath transitively via spring-ai-pgvector-store; declared explicitly because
+# this module's own code now imports it directly rather than only through Spring AI's PgVectorStore.
+# Version pinned to what that transitive dependency resolves to today (`./gradlew dependencies`).
+pgvector = "0.1.6"
 # opaa-api's tests are deliberately Spring-free (issue #896) and use plain JUnit Jupiter/AssertJ
 # instead of the Spring Boot-managed test-deps bundle below - these two versions are therefore
 # pinned explicitly rather than inherited from the Spring Boot BOM. The module's main sourceSet is
@@ -65,6 +71,7 @@ jtokkit = { module = "com.knuddels:jtokkit", version.ref = "jtokkit" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 tika-core = { module = "org.apache.tika:tika-core", version.ref = "tika-core" }
 snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
+pgvector = { module = "com.pgvector:pgvector", version.ref = "pgvector" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }
 assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj-core" }

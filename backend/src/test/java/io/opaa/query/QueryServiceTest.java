@@ -69,6 +69,7 @@ class QueryServiceTest {
   @Mock private PermissionHistoryService permissionHistoryService;
   @Mock private ChatService chatService;
   @Mock private KnowledgeLibraryRepository knowledgeLibraryRepository;
+  @Mock private ChunkEmbeddingLookup chunkEmbeddingLookup;
   private QueryService queryService;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -91,8 +92,13 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(5, 0.3, 1.0),
-            knowledgeLibraryRepository);
+            // mmrLambda=1.0 (pure top-K by relevance): the tests in this class stub small,
+            // already-descending-score candidate lists and assert on their exact order/content -
+            // MmrSelector's own diversity behaviour (mmrLambda != 1.0) is covered separately by
+            // MmrSelectorTest.
+            new QueryProperties(8, 25, 1.0, 0.3, 1.0),
+            knowledgeLibraryRepository,
+            chunkEmbeddingLookup);
 
     // lenient: not every test in this class exercises the full query() path (e.g. the
     // mergeSourceReferences nested tests call other members directly), so MockitoExtension's
@@ -108,6 +114,60 @@ class QueryServiceTest {
     // #525 default: no chatId given (or it does not resolve to a chat the caller authored) runs
     // the query ephemerally, exactly as before persisted chats existed.
     lenient().when(chatService.findOwnedChat(any(), any())).thenReturn(Optional.empty());
+  }
+
+  /**
+   * At {@code mmrLambda = 1.0} the diversity term is always multiplied by zero (see {@link
+   * MmrSelector#select}'s Javadoc), so {@code query()} must skip the {@link ChunkEmbeddingLookup}
+   * round trip entirely rather than pay for a database call whose result could not affect the final
+   * selection - every test in this class relies on that (see {@link #setUp}'s comment), but none of
+   * them actually verifies it until now.
+   */
+  @Test
+  void queryNeverCallsChunkEmbeddingLookupWhenMmrLambdaIsOne() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query("Question", null, caller, true, List.of());
+
+    verifyNoInteractions(chunkEmbeddingLookup);
+  }
+
+  /** Below {@code mmrLambda = 1.0}, the diversity term is live and the lookup actually runs. */
+  @Test
+  void queryCallsChunkEmbeddingLookupWhenMmrLambdaIsBelowOne() {
+    QueryService serviceWithMmrEnabled =
+        new QueryService(
+            vectorStore,
+            answerGenerationService,
+            chatMemory,
+            new CitationParser(),
+            new CitationValidator(),
+            documentRepository,
+            libraryAccessService,
+            permissionHistoryService,
+            chatService,
+            new QueryMetrics(new SimpleMeterRegistry()),
+            new QueryProperties(8, 25, 0.5, 0.3, 1.0),
+            knowledgeLibraryRepository,
+            chunkEmbeddingLookup);
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Relevant content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
+            .score(0.85)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(chunkEmbeddingLookup.findByIds(any())).thenReturn(Map.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    serviceWithMmrEnabled.query("Question", null, caller, true, List.of());
+
+    verify(chunkEmbeddingLookup).findByIds(List.of(chunk.getId()));
   }
 
   /**
@@ -128,8 +188,9 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(5, 0.3, 0.0),
-            knowledgeLibraryRepository);
+            new QueryProperties(8, 25, 1.0, 0.3, 0.0),
+            knowledgeLibraryRepository,
+            chunkEmbeddingLookup);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
@@ -846,8 +907,9 @@ class QueryServiceTest {
             permissionHistoryService,
             chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(5, 0.3, 1.0),
-            knowledgeLibraryRepository);
+            new QueryProperties(8, 25, 1.0, 0.3, 1.0),
+            knowledgeLibraryRepository,
+            chunkEmbeddingLookup);
 
     UUID otherUserId = UUID.randomUUID();
     CurrentUser otherCaller =
@@ -1233,6 +1295,11 @@ class QueryServiceTest {
     assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(0.9);
   }
 
+  /**
+   * #914: {@code similaritySearch} itself is called with {@code fetchK}, not {@code topK} - the
+   * larger candidate pool {@link MmrSelector} narrows down afterwards, in {@link
+   * QueryService#query} itself, not inside this mocked call.
+   */
   @Test
   void queryPassesSearchRequestWithCorrectParameters() {
     when(chatMemory.get(any())).thenReturn(List.of());
@@ -1248,8 +1315,13 @@ class QueryServiceTest {
     verify(vectorStore).similaritySearch(captor.capture());
     SearchRequest request = captor.getValue();
     assertThat(request.getQuery()).isEqualTo("Test query");
-    assertThat(request.getTopK()).isEqualTo(5);
+    assertThat(request.getTopK()).isEqualTo(25);
     assertThat(request.getSimilarityThreshold()).isEqualTo(0.3);
+    // The permission filter is asserted here too, not only in the dedicated
+    // queryFiltersOnReadableLibraryIds test below - this test's job is exactly "every
+    // SearchRequest parameter", and the filter is one of them.
+    assertThat(request.getFilterExpression()).isNotNull();
+    assertThat(request.getFilterExpression().toString()).contains(readableLibraryId.toString());
   }
 
   @Test

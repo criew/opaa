@@ -239,10 +239,34 @@ Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertba
 | **Chunk-Größe** | 1000 Token **(gebaut)** | Wie lang eine in sich verständliche Sinneinheit im Bestand ist | Mehr Zusammenhang je Fundstelle, aber unschärfere Treffer und längere Belegauszüge |
 | **Mindestgröße eines Chunks** | 350 Zeichen **(gebaut)** | Wie stark der Bestand zu Kurzabschnitten neigt | Weniger inhaltsleere Splitter, aber Verlust kurzer, präziser Definitionen |
 | **Überlappung** | 100 Token **(gebaut)** | Ob Aussagen regelmäßig über Abschnittsgrenzen laufen | Weniger an der Grenze zerschnittene Aussagen, aber mehr Chunks, mehr Speicher und doppelte Treffer |
-| **`top-k`** | 5 **(gebaut)** | Wie viele Belegstellen eine typische Frage braucht | Höhere Trefferwahrscheinlichkeit, aber mehr Rauschen im Antwortkontext und höherer Verbrauch |
+| **`top-k`** | 8 **(gebaut)** | Wie viele Belegstellen eine typische Frage braucht | Höhere Trefferwahrscheinlichkeit, aber mehr Rauschen im Antwortkontext und höherer Verbrauch |
+| **`fetch-k`** | 25 **(gebaut)** | Wie viele Kandidaten die Vektorsuche liefert, bevor die Vielfaltsauswahl (MMR, siehe direkt unter der Tabelle) daraus `top-k` auswählt | Mehr Spielraum für Vielfalt bei Mehrthemen-Fragen, aber mehr Rechenaufwand für die Auswahl |
+| **MMR-λ (`mmr-lambda`)** | 1,0 **(gebaut, Vielfalt per Default deaktiviert)** | Abwägung zwischen Relevanz und Vielfalt bei der Auswahl aus `fetch-k` Kandidaten (Maximal Marginal Relevance) — `1,0` schaltet die Vielfalt ab und wählt reine Top-`k`-Relevanz | Höherer Wert bevorzugt Relevanz stärker, niedrigerer Wert verdrängt redundante Fundstellen zugunsten thematisch anderer stärker |
 | **Ähnlichkeitsschwelle** | 0,3 **(gebaut)** | Wie umgangssprachlich gefragt wird und wie homogen der Bestand ist | Weniger unpassende Treffer, aber häufiger keine ausreichend ähnliche Fundstelle und damit eine Antwort ohne Beleg |
 | **Bündelgröße der Einbettung** | 50 Chunks je Aufruf **(gebaut)** | Belastbarkeit des Einbettungsdienstes | Schnellere Läufe, aber Lastspitzen und größerer Speicherbedarf |
 | **Wiederholversuche je Dokument** | 3 **(gebaut)** | Zuverlässigkeit von Quelle und Modelldienst | Weniger verlorene Dokumente, aber längere Läufe bei dauerhaft defekten Dateien |
+
+**`fetch-k`/`mmr-lambda` steuern gemeinsam die Vielfaltsauswahl (Maximal Marginal Relevance, MMR,
+#914).** Die Vektorsuche holt zunächst `fetch-k` Kandidaten statt nur `top-k`. Daraus wählt MMR
+schrittweise `top-k` Fundstellen: Der erste Treffer ist stets der relevanteste; jeder weitere
+Treffer bekommt einen Abzug, wenn er inhaltlich zu nah an einer bereits gewählten Fundstelle liegt
+- ein etwas weniger relevanter, aber thematisch neuer Treffer gewinnt dann gegen eine Wiederholung.
+Ohne diese Auswahl konnte ein einzelnes, im Bestand dominantes Thema alle `top-k` Plätze mit
+untereinander redundanten Fundstellen füllen und ein zweites, in derselben Frage mitgemeintes Thema
+vollständig verdrängen. Die inhaltliche Nähe zwischen zwei Kandidaten wird über die Kosinus-Ähnlichkeit
+ihrer bereits vorhandenen Einbettungsvektoren berechnet - ein einziger, leichtgewichtiger
+Datenbank-Nachschlag über die `fetch-k` Kandidaten-Kennungen je Anfrage, kein zusätzlicher Aufruf
+beim Einbettungsdienst.
+
+**MMR ist gebaut, aber per Voreinstellung deaktiviert (`mmr-lambda: 1.0`).** Gegen die 20
+`multi_topic`-Golden-Fälle aus #915 gemessen (beide erwarteten Dokumente unter den zurückgegebenen
+Fundstellen vertreten) erreichte die reine `top-k`-Anhebung auf 8 ohne Vielfaltsauswahl 20 von 20
+Fällen, `mmr-lambda: 0,7` mit echten Chunk-Embeddings dagegen 19 von 20 - ein Fall schlechter, obwohl
+deutlich besser als die zuerst erprobte, inzwischen verworfene lexikalische Näherung (15 von 20, siehe
+PR zu #914). Die reine `top-k`-Anhebung liefert auf diesem Datensatz also das bessere Ergebnis; MMR
+bleibt als betreiberseitig aktivierbare Option bestehen (`opaa.query.mmr-lambda` unter 1,0 setzen),
+ohne bislang selbst als Standard zu überzeugen. Eine künftige, größere oder heterogenere
+Mehrthemen-Stichprobe kann diese Einschätzung revidieren.
 
 Drei Zusammenhänge sind dabei wesentlich:
 
