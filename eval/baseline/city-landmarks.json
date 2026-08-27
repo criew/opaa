@@ -21,14 +21,14 @@
   "groups": {
     "overall": {
       "n": 108,
-      "hitRateAt5": 0.972,
-      "mrr": 0.927,
-      "ndcgAt10": 0.935,
-      "recallAt10": 0.991,
+      "hitRateAt5": 0.991,
+      "mrr": 0.925,
+      "ndcgAt10": 0.931,
+      "recallAt10": 0.986,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 48,
-      "hitCountAt5": 105,
-      "hitCountAt10": 108,
+      "hitCountAt5": 107,
+      "hitCountAt10": 107,
       "allExpectedDocumentsHitAt10": 0.981
     },
     "category:boundary_span": {
@@ -45,21 +45,21 @@
     },
     "category:city_overview": {
       "n": 20,
-      "hitRateAt5": 0.900,
-      "mrr": 0.845,
-      "ndcgAt10": 0.881,
+      "hitRateAt5": 1.0,
+      "mrr": 0.775,
+      "ndcgAt10": 0.831,
       "recallAt10": 1.0,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 11,
-      "hitCountAt5": 18,
+      "hitCountAt5": 20,
       "hitCountAt10": 20,
       "allExpectedDocumentsHitAt10": 1.0
     },
     "category:cross_chunk": {
       "n": 15,
       "hitRateAt5": 1.0,
-      "mrr": 0.967,
-      "ndcgAt10": 0.975,
+      "mrr": 1.0,
+      "ndcgAt10": 1.0,
       "recallAt10": 1.0,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 15,
@@ -70,8 +70,8 @@
     "category:landmark_detail": {
       "n": 25,
       "hitRateAt5": 1.0,
-      "mrr": 0.973,
-      "ndcgAt10": 0.980,
+      "mrr": 1.0,
+      "ndcgAt10": 1.0,
       "recallAt10": 1.0,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 3,
@@ -82,20 +82,20 @@
     "category:multi_city": {
       "n": 8,
       "hitRateAt5": 0.875,
-      "mrr": 0.794,
-      "ndcgAt10": 0.772,
-      "recallAt10": 0.875,
+      "mrr": 0.781,
+      "ndcgAt10": 0.759,
+      "recallAt10": 0.813,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 8,
       "hitCountAt5": 7,
-      "hitCountAt10": 8,
+      "hitCountAt10": 7,
       "allExpectedDocumentsHitAt10": 0.750
     },
     "category:multi_topic": {
       "n": 20,
       "hitRateAt5": 1.0,
-      "mrr": 0.933,
-      "ndcgAt10": 0.925,
+      "mrr": 0.942,
+      "ndcgAt10": 0.917,
       "recallAt10": 1.0,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 15,
@@ -105,21 +105,21 @@
     },
     "difficulty:easy": {
       "n": 28,
-      "hitRateAt5": 0.893,
-      "mrr": 0.830,
-      "ndcgAt10": 0.850,
-      "recallAt10": 0.964,
+      "hitRateAt5": 0.964,
+      "mrr": 0.777,
+      "ndcgAt10": 0.810,
+      "recallAt10": 0.946,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 19,
-      "hitCountAt5": 25,
-      "hitCountAt10": 28,
+      "hitCountAt5": 27,
+      "hitCountAt10": 27,
       "allExpectedDocumentsHitAt10": 0.929
     },
     "difficulty:hard": {
       "n": 5,
       "hitRateAt5": 1.0,
       "mrr": 1.0,
-      "ndcgAt10": 0.947,
+      "ndcgAt10": 0.931,
       "recallAt10": 1.0,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 5,
@@ -130,8 +130,8 @@
     "difficulty:medium": {
       "n": 75,
       "hitRateAt5": 1.0,
-      "mrr": 0.958,
-      "ndcgAt10": 0.965,
+      "mrr": 0.976,
+      "ndcgAt10": 0.976,
       "recallAt10": 1.0,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 31,
@@ -141,21 +141,21 @@
     },
     "language:de": {
       "n": 108,
-      "hitRateAt5": 0.972,
-      "mrr": 0.927,
-      "ndcgAt10": 0.935,
-      "recallAt10": 0.991,
+      "hitRateAt5": 0.991,
+      "mrr": 0.925,
+      "ndcgAt10": 0.931,
+      "recallAt10": 0.986,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 48,
-      "hitCountAt5": 105,
-      "hitCountAt10": 108,
+      "hitCountAt5": 107,
+      "hitCountAt10": 107,
       "allExpectedDocumentsHitAt10": 0.981
     }
   },
-  "measuredAt": "2026-08-25",
+  "measuredAt": "2026-08-26",
   "provenance": {
-    "sourceReportRunStartedAt": "2026-08-25T15:43:22.537510800Z",
-    "sourcePullRequest": "#913"
+    "sourceReportRunStartedAt": "2026-08-26T19:44:00Z",
+    "sourcePullRequest": "#940"
   },
-  "notes": "Neuziehung fuer Issue #913 (Mehrthemen-Golden-Faelle und Recall pro Teilthema, Vorher-Messung fuer #912/#914): 20 neue city-landmarks-Faelle in der Kategorie multi_topic ergaenzt (15 Faelle Schwierigkeit medium, 5 Tippfehler-Varianten Schwierigkeit hard, analog zum realen Ausloeser 'perosonausweis' aus #912) - je Frage werden zwei Sehenswuerdigkeiten aus zwei verschiedenen Stadtdokumenten genannt, beide Dokumente stehen in expected_documents. Neue Metrik allExpectedDocumentsHitAt10 ('Recall pro Teilthema', RetrievalMetrics#allExpectedDocumentsHitAtK) ergaenzt MetricsAggregate: 1.0 nur wenn JEDES erwartete Dokument im Top-10-Dokumentfenster steht, 0.0 sonst - anders als das bestehende recallAt10, das bei einem von zwei erwarteten Dokumenten bereits 0.5 Teilkredit vergibt und damit eine Themenverdraengung (#912) verschleiern wuerde; per Unit-Test belegt (RetrievalMetricsTest, MetricsAggregateTest). Golden Dataset jetzt 108 statt 88 Faelle. Ergebnis weicht von der im Issue erwarteten 'erwartbar schlechten' multi_topic-Kategorie ab: Unter dem Messvertrag dieses Harness (documentTopK=10, chunkTopK=130) liegen fuer alle 20 multi_topic-Faelle beide erwarteten Dokumente im Top-10-Fenster (allExpectedDocumentsHitAt10=1.000 fuer die Kategorie) - die in #912 beschriebene Themenverdraengung trat dort bei Produktions-topK=5 auf, nicht bei dem hier gemessenen, bewusst grosszuegigeren dokumentbezogenen Fenster von 10 (ADR-0012). Diese Baseline ist damit die dokumentierte Vorher-Messung unter dem bestehenden Messvertrag, nicht ein Nachweis der in #912 beobachteten Monokultur - eine engere Messung (z. B. documentTopK=5) waere ein eigener, hier nicht umgesetzter Schritt. Kleine Verschlechterungen gegenueber der Vorgaenger-Baseline (difficulty:medium mrr 0.969->0.958, ndcgAt10 0.977->0.965; overall ndcgAt10 0.937->0.935) sind Verduennungseffekte durch die 15 neuen multi_topic-Faelle mit difficulty:medium (mrr=0.933, ndcgAt10=0.925, beide unter dem bisherigen medium-Mittel) - keine Regression im bestehenden Korpus: jede vorher schon vorhandene Gruppe (boundary_span, city_overview, cross_chunk, landmark_detail, multi_city, difficulty:easy, language:de) ist wertgleich mit der Vorgaenger-Baseline. Werte woertlich aus der %.3f-ReportWriter-Konsolenausgabe uebernommen (eval/baseline/README.md, verbindliche Rundungsregel). Laufzeit 2182.3s (~36.4 Minuten). Vorherige Baseline (88 Faelle, PR #730) ist hinfaellig, siehe Git-Historie dieser Datei."
+  "notes": "Neuziehung fuer Issue #933 (Contextual Chunking): Kontext-Praefix (humanisierter, aus dem Dateinamen abgeleiteter Titel) wird beim Einbetten vor jeden Chunk eines Dokuments gesetzt, das beim Chunking in 2 oder mehr Chunks zerfiel - city-landmarks ist als bewusst mehrchunkige Domaene davon vollstaendig betroffen (jedes der 200 Dokumente splittet). Vorgeschichte dieser Neuziehung (volle Messreihe in PR #940): eine erste Fassung mit dem rohen Dateinamen als Praefix (statt eines bereinigten Titels) regressierte category:multi_topic/allExpectedDocumentsHitAt10 von 1,000 auf 0,850 (3 von 20 Faellen gekippt, u. a. weil der wiederkehrende strukturelle Token 'city-NNNN_' generische Chunks fremder Dokumente einander annaeherte) - diese Baseline ist die Messung NACH der Korrektur auf einen bereinigten, humanisierten Titel (ChunkContextTitle#deriveTitle), bei der multi_topic wieder bei 1,000 liegt. overall verbessert sich bei hitRateAt5 (0,972->0,991) und bleibt bei allExpectedDocumentsHitAt10 unveraendert (0,981), faellt aber bei mrr (0,927->0,925), ndcgAt10 (0,935->0,931) und recallAt10 (0,991->0,986) leicht - jede dieser Verschlechterungen haelt ihre gruppenspezifische Toleranz ein (checkCityLandmarksRetrievalBaseline PASSED), ist aber real und wird hier benannt statt verschwiegen. Konkret gefallene Gruppenwerte: category:city_overview/mrr 0,845->0,775; difficulty:easy/mrr 0,830->0,777, /ndcgAt10 0,850->0,810, /recallAt10 0,964->0,946; category:multi_city/recallAt10 0,875->0,813. hitCountAt10 sinkt von 108 auf 107: city-multi_city-008 ('Welche Stadt hat mehr Einwohner - Rom oder Witebsk?', erwartet city-0008_rom.md und city-0110_witebsk.md) verfehlt beide erwarteten Dokumente im Top-10-Fenster komplett (rankedFileNames fuehrt stattdessen u. a. Woronesch, Luxemburg, Athen - thematisch benachbarte, aber falsche Grossstaedte); hinnehmbar, weil multi_city mit n=8 die kleinste, am grosszuegigsten tolerierte Gruppe des Golden-Datasets ist und der Fall die fuer diese Gruppe geltende Toleranz nicht reisst. Plausibelste gemeinsame Ursache der city_overview-/easy-Rueckgaenge: kurze, generische Einzelstadt-Fragen, bei denen das neu vorangestellte Kontext-Praefix (der Stadtname) einen thematisch benachbarten, aber falschen Konkurrenten gelegentlich etwas naeher an den Top-Rang schiebt, ohne den Top-5/Top-10-Treffer selbst zu gefaehrden (hitRateAt5 blieb bei city_overview sogar gleich oder besser) - eine Vermutung, keine abschliessend bewiesene Kausalitaet. Werte woertlich aus der %.3f-ReportWriter-Konsolenausgabe uebernommen (verbindliche Rundungsregel); der vollstaendige Report (retrieval-metrics-city-landmarks.json) ist in der Beschreibung von PR #940 als Gist verlinkt (https://gist.github.com/criew/bc9e0f3afef0eeb510172606cb0968ee). Vorherige Baseline (PR #913/#914) ist hinfaellig, siehe Git-Historie dieser Datei."
 }

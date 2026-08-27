@@ -165,14 +165,6 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
 
 ### Zurückgestellt, aber ausgearbeitet
 
-- **Contextual Chunking** ([#933](https://github.com/criew/opaa/issues/933), geplant, bewusst
-  zurückgestellt). Wurzelanalyse: Ein Detail-Chunk (Gebührentabelle, Fristen, Kontaktdaten) trägt im
-  Embedding kaum Signal, *wovon* er handelt, weil ihm der Dokumentkontext beim Zerteilen verloren geht —
-  ein Gebühren-Chunk für „Personalausweis" rankt deshalb für eine Kostenfrage schwächer als der
-  Einleitungs-Chunk desselben Dokuments. Der Ansatz: dem Chunk-Text vor dem Einbetten einen kurzen
-  Dokumentkontext voranstellen (z. B. Dokumenttitel). Zurückgestellt, weil das einen vollständigen Reindex
-  aller Bibliotheken und eine Neuziehung aller Eval-Baselines erfordert — Alt-Chunks ohne Präfix und
-  Neu-Chunks mit Präfix ranken sonst inkonsistent gegeneinander.
 - **MMR-Default-Aktivierung.** Gebaut, aber Opt-in (`mmr-lambda: 1,0`, siehe Schritt 4 oben). Gegen die 20
   `multi_topic`-Golden-Fälle aus #915 erreichte die reine `top-k`-Anhebung auf 8 ohne Vielfaltsauswahl
   20 von 20 Fällen, `mmr-lambda: 0,7` mit echten Chunk-Embeddings dagegen 19 von 20 — ein Fall schlechter.
@@ -180,14 +172,51 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   [MMR ist gebaut, aber per Voreinstellung deaktiviert](./data-indexing-rag.md#stellschrauben-und-ihre-wirkung).
   Eine künftige, größere oder heterogenere Mehrthemen-Stichprobe kann diese Einschätzung revidieren.
 
+### Umgesetzt
+
+- **Contextual Chunking** ([#933](https://github.com/criew/opaa/issues/933), umgesetzt). Wurzelanalyse
+  (#932/#938): Ein Detail-Chunk (Gebührentabelle, Fristen, Kontaktdaten, ein einzelner Paragraph einer
+  Satzung) trägt im Embedding kaum Signal, *wovon* er handelt, weil ihm der Dokumentkontext beim
+  Zerteilen verloren geht — ein Gebühren-Chunk für „Personalausweis" rankte deshalb für eine
+  Kostenfrage schwächer als der Einleitungs-Chunk desselben Dokuments, und ein einzelner
+  Satzungs-Chunk mit sechs Paragraphen rankte in #938s Live-Diagnose so schwach, dass er selbst im
+  echten Leserechte-Scope weit außerhalb jedes plausiblen Top-k-Fensters lag (Rang 50/97 bzw.
+  96/147). Umsetzung: `io.opaa.indexing.FileProcessingService#storeChunks` stellt jedem Chunk eines
+  Dokuments, das beim Chunking in **2 oder mehr Chunks zerfiel**, vor dem Einbetten einen aus dem
+  Dateinamen abgeleiteten, bereinigten Titel voran (`ChunkContextTitle#deriveTitle`, z. B. `"[prag]"`
+  statt des rohen `"city-0022_prag.md"`) - ausschließlich für die `EMBED`-Formatierung der
+  Einbettung, nicht für den gespeicherten Chunk-Text (siehe
+  `CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX` für die vollständige Begründung, inklusive der
+  Wechselwirkung mit `chunk-size`). Ein Dokument, das **ein einziger Chunk** blieb, bekommt bewusst
+  **keinen** Präfix (`CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX`, bit-identisch zum Stand vor #933) -
+  ein Detail-Chunk verliert Kontext durch das Zerteilen, ein ungesplittetes Dokument trägt seinen
+  vollen Kontext bereits selbst. Diese Eingrenzung kam erst in einer zweiten Korrekturrunde: Ein
+  Präfix aus dem rohen Dateinamen auf *jeden* Chunk (auch ungesplitteter Dokumente) verbesserte die
+  einchunkige comic-characters-Domäne, regressierte aber die mehrchunkige city-landmarks-Domäne
+  (`multi_topic`/`allExpectedDocumentsHitAt10` 1,000→0,850); ein humanisierter Titel auf jeden Chunk
+  behob city-landmarks, regressierte aber stattdessen comic-characters (`hitRateAt5` 0,521→0,496) -
+  erst die Beschränkung auf mehrchunkige Dokumente hielt beide Domänen zugleich unauffällig
+  (comic-characters bit-identisch, city-landmarks vollständig erholt). Details und alle drei
+  Messreihen in der Beschreibung von PR [#940](https://github.com/criew/opaa/pull/940). Erfordert
+  einen vollständigen Reindex jeder Bibliothek (siehe
+  [Deployment-Handbuch](../handbuch/deployment.md#was-ein-update-mit-dem-index-macht)) - Alt-Chunks
+  ohne Präfix und Neu-Chunks mit Präfix ranken sonst inkonsistent gegeneinander.
+
 ### Bekannte offene Schwächen (aus den #912-Verifikationen)
 
-- **Chunk-Granularität allgemein.** Die in #932 belegte Ursache — ein Detail-Chunk rankt für eine dazu
-  passende Frage schwächer als ein einleitender Chunk desselben Dokuments — ist kein Einzelfall, sondern
-  ein strukturelles Muster jeder Chunking-Strategie, die Text ohne Dokumentkontext einbettet.
-  Dokument-Vervollständigung (Schritt 6) behebt das Symptom (der richtige Chunk fällt nicht mehr aus der
-  Auswahl, sofern er unter den `fetch-k` Kandidaten war), nicht die Ursache — dafür siehe Contextual
-  Chunking oben.
+- **Chunk-Granularität allgemein.** Contextual Chunking (oben) mildert das Signalverlust-Problem für
+  den häufigsten Fall (Dateiname als Minimalsignal), löst es aber nicht vollständig - ein Chunk trägt
+  weiterhin keinen Abschnittstitel oder Bibliothekskontext. Dokument-Vervollständigung (Schritt 6)
+  behebt zusätzlich das Symptom bei Geschwister-Chunks desselben Dokuments (der richtige Chunk fällt
+  nicht mehr aus der Auswahl, sofern er unter den `fetch-k` Kandidaten war), nicht die Ursache.
+- **Einchunkige Dokumente konkurrieren ohne Kontextsignal gegen präfixierte mehrchunkige.** Contextual
+  Chunking gibt nur mehrchunkigen Dokumenten ein Kontext-Präfix (siehe oben) - ein einchunkiges
+  Dokument in derselben Bibliothek rankt dadurch relativ zu einem thematisch verwandten, jetzt
+  präfixierten mehrchunkigen Dokument tendenziell schlechter als vor #933, selbst wenn es inhaltlich
+  ebenso einschlägig ist. Live im #938-Kontext beobachtet: `02_gebuehrenbefreiung-beduerftigkeit.docx`
+  (einchunkig) fällt für `maria.weber`s Leserechte-Scope von Rang 26/147 auf Rang 119/120 (siehe PR
+  [#940](https://github.com/criew/opaa/pull/940), Abschnitt „Offener Punkt gegen #938"). Kein
+  behobener Fall, sondern ein bekannter, noch offener Zielkonflikt dieses Ansatzes.
 - **Nicht-rangfaire Geschwister-Sortierung über Teilfragen.** Bei mehreren Suchanfragen bestimmt
   `DocumentCompletion#complete`, welcher noch nicht ausgewählte Chunk eines zu vervollständigenden
   Dokuments als nächstes nachrückt, über die Reihenfolge in `pooledCandidates` — der schlichten
