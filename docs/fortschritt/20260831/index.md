@@ -1,6 +1,7 @@
 # Inventur-Index: geschlossene Issues und gemergte PRs
 
-Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferences bzw. Body-Referenzen verknüpfte, gemergte PRs.
+Automatisch erzeugt aus den GitHub-Dumps (Erstinventur 2026-08-22 + Nachzug 2026-08-27).
+Spalte PRs: über closingIssuesReferences bzw. Body-Referenzen verknüpfte, gemergte PRs.
 
 ## Geschlossene Issues
 
@@ -45,6 +46,7 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #65 | 🚨 [CRITICAL] No Observability (Metrics, Tracing, Health Checks) | 2026-03-01 | COMPLETED | #85 |
 | #66 | ⚠️ [HIGH] Missing Transaction Boundaries in QueryService | 2026-02-28 | COMPLETED | #81 |
 | #67 | ⚠️ [HIGH] Spotless Config Missing (ADR-0002 Violation) | 2026-02-28 | COMPLETED | — |
+| #68 | ⚠️ [HIGH] Docker Build Skips Tests | 2026-08-23 | COMPLETED | — |
 | #69 | 🟡 [MEDIUM] ChatMemory Lifecycle Management Unclear | 2026-02-28 | COMPLETED | #83 |
 | #70 | 🟡 [MEDIUM] Error Boundary Component Not Used | 2026-02-28 | COMPLETED | #82 |
 | #71 | 🟡 [MEDIUM] Sensitive Error Information in Logs | 2026-03-01 | COMPLETED | #89, #90 |
@@ -53,6 +55,8 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #74 | 🔵 [LOW] Complex Business Logic in Lambda Expression | 2026-03-01 | COMPLETED | #88 |
 | #75 | 🔵 [LOW] Axios Error Response Type Assertion Unsafe | 2026-03-03 | COMPLETED | #94 |
 | #76 | 🔵 [LOW] SQL Injection Risk in Future Migrations | 2026-08-15 | NOT_PLANNED | — |
+| #77 | 🔵 [LOW] Vector Store Index Type Hardcoded | 2026-08-23 | COMPLETED | — |
+| #78 | 🔵 [LOW] Silent Error Fallback for Invalid Document IDs | 2026-08-23 | COMPLETED | — |
 | #86 | chore: Liquibase Changesets konsolidieren (Pre-Production Cleanup) | 2026-03-01 | COMPLETED | #87 |
 | #95 | URL-based document indexing via Apache mod_autoindex crawling | 2026-03-06 | COMPLETED | #96 |
 | #98 | PostgreSQL 18 Docker container fails to start due to volume mount path change | 2026-03-06 | COMPLETED | #99 |
@@ -81,7 +85,9 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #137 | perf(auth): avoid DB round-trip on every request in UserProvisioningFilter | 2026-08-20 | COMPLETED | — |
 | #138 | feat(auth): rate limit /api/v1/auth/login to mitigate brute-force attempts | 2026-08-14 | NOT_PLANNED | — |
 | #139 | feat(auth): add basic-profile user management for system admins | 2026-08-14 | NOT_PLANNED | — |
+| #143 | feat(security): Vollständigkeit nach DSGVO — Löschung, Selbstauskunft und Datenschutzhinweis | 2026-08-24 | NOT_PLANNED | — |
 | #144 | security(space): Mitgliederliste eines Space nur für Space-Admins und Eigentümer | 2026-08-20 | COMPLETED | #674 |
+| #145 | feat(i18n): Sprachinfrastruktur mit Deutsch als Standard- und Ausgangssprache | 2026-08-24 | NOT_PLANNED | — |
 | #148 | feat: Dark/Light Mode Toggle in User Preferences | 2026-03-08 | COMPLETED | — |
 | #149 | fix(workspace-ui): state leak on logout, member display names, collapsible sections, remove redundant info alert | 2026-03-08 | COMPLETED | #151 |
 | #152 | refactor: Generate workspace DTOs from OpenAPI spec instead of handwriting them | 2026-03-08 | COMPLETED | #154, #159 |
@@ -101,15 +107,29 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #186 | Projektsprache auf Deutsch umstellen | 2026-08-01 | COMPLETED | #187 |
 | #188 | chore(backend): migrate to Spring Boot 4.1 and bump all backend dependencies | 2026-08-01 | COMPLETED | #190 |
 | #189 | chore(frontend): bump all frontend dependencies to latest stable (MUI 9, Vite 8, TypeScript 6, ESLint 10) | 2026-08-02 | COMPLETED | #191 |
+| #192 | chore(frontend): drop openapi-typescript peer override once upstream supports TypeScript 6 | 2026-08-24 | NOT_PLANNED | — |
 | #193 | fix(frontend): hamburger menu icon invisible in mobile header (white on white) | 2026-08-20 | COMPLETED | #669 |
 | #194 | docs: document git worktree usage for parallel agent sessions | 2026-08-02 | COMPLETED | #195 |
 | #196 | ci: publish backend and frontend Docker images to GHCR | 2026-08-02 | COMPLETED | #197 |
+| #198 | Epic: Space and asset model — replace the workspace model | 2026-08-24 | COMPLETED | — |
 | #199 | Rename workspace to space, add organization scope and reshape space roles | 2026-08-02 | COMPLETED | #254 |
 | #200 | Introduce groups as permission subjects | 2026-08-02 | COMPLETED | #283 |
 | #201 | Knowledge library as the document container, with data migration | 2026-08-03 | COMPLETED | #305 |
 | #202 | Asset permissions and permission-aware vector search | 2026-08-04 | COMPLETED | #309 |
 | #203 | Space-asset association as pure curation | 2026-08-21 | COMPLETED | #706 |
+| #204 | Strict mode for spaces | 2026-08-24 | NOT_PLANNED | — |
+| #205 | Persistent chats inside spaces | 2026-08-24 | NOT_PLANNED | — |
+| #206 | Artifacts in spaces with lifecycle and provenance-based release | 2026-08-24 | NOT_PLANNED | — |
+| #207 | Connector sources target exactly one knowledge library | 2026-08-23 | COMPLETED | — |
 | #208 | Stewards: group role for accepting shares | 2026-08-14 | COMPLETED | #331 |
+| #209 | Agent and prompt library assets with the knowledge share chain | 2026-08-24 | NOT_PLANNED | — |
+| #210 | Asset parameters: adapt without forking | 2026-08-24 | NOT_PLANNED | — |
+| #211 | Asset versioning with immediate propagation and rollback | 2026-08-24 | NOT_PLANNED | — |
+| #212 | Recall by deactivation, with warnings in existing transcripts | 2026-08-24 | NOT_PLANNED | — |
+| #213 | Derivatives with permanent provenance and drift protection | 2026-08-24 | NOT_PLANNED | — |
+| #214 | Built-in assets as a distinct origin type | 2026-08-24 | NOT_PLANNED | — |
+| #215 | Asset catalog: visibility, listed flag and space directory | 2026-08-24 | NOT_PLANNED | — |
+| #216 | Governance controls for co-determination | 2026-08-24 | NOT_PLANNED | — |
 | #218 | feat(agents): add six public-administration stakeholder agents for concept review | 2026-08-02 | COMPLETED | #220 |
 | #219 | docs: Projektsprache Deutsch für Issues und Pull Requests festlegen | 2026-08-02 | COMPLETED | #222 |
 | #221 | feat: Anwendungstexte auf Deutsch umstellen (Frontend und Backend) | 2026-08-02 | COMPLETED | #223, #286, #291 |
@@ -127,6 +147,11 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #235 | feat(demo): Demo-Domänen in getrennte Wissensbibliotheken legen (blockiert) | 2026-08-22 | NOT_PLANNED | — |
 | #237 | Verzeichnissynchronisation als Rechteereignis behandeln | 2026-08-03 | COMPLETED | #297 |
 | #238 | Historisierung von Rechten und Gruppenmitgliedschaften | 2026-08-17 | COMPLETED | #427 |
+| #239 | Audit-Governance: kein personenbezogener Auswertungspfad | 2026-08-23 | COMPLETED | — |
+| #240 | Nachfolge statt Sperre: Assets ausgeschiedener Eigentümer | 2026-08-24 | NOT_PLANNED | — |
+| #241 | Befristung und Rezertifizierung von Einzelgrants | 2026-08-24 | NOT_PLANNED | — |
+| #242 | Konsistenzprüflauf zwischen Vektorspeicher und Datenbank | 2026-08-24 | NOT_PLANNED | — |
+| #243 | Driftschutz für Abkömmlinge: Fristen und automatische Deaktivierung | 2026-08-24 | NOT_PLANNED | — |
 | #244 | docs: bestehende öffentliche Instanz opaa.ewerlin.com in der Deployment-Dokumentation beschreiben | 2026-08-02 | COMPLETED | #247 |
 | #245 | fix(ci): CLA-Workflow schlägt bei Kommentaren auf Issues fehl | 2026-08-02 | COMPLETED | #246 |
 | #248 | feat(ci): Täglichen Projektreport als GitHub-Pages-Seite mit Atom-Feed veröffentlichen | 2026-08-02 | COMPLETED | #259 |
@@ -184,6 +209,7 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #344 | Epic: Konzepte und Abstraktionen gegen die neue Produktausrichtung prüfen | 2026-08-15 | COMPLETED | — |
 | #346 | docs(agents): Sub-Issue-Regel für Epics in AGENTS.md aufnehmen | 2026-08-14 | COMPLETED | #347 |
 | #348 | Vektorspeicher-Austauschbarkeit: brauchen wir sie noch? | 2026-08-14 | COMPLETED | #377 |
+| #349 | Verhältnis von Plugin-Architektur und MCP klären | 2026-08-24 | NOT_PLANNED | — |
 | #350 | Cloud-Deployment und Managed Service gegen das Souveränitätsversprechen prüfen | 2026-08-14 | COMPLETED | #378 |
 | #351 | Umfang der Storage-Backend-Abstraktion festlegen | 2026-08-14 | COMPLETED | #380 |
 | #352 | Zielbild der Chat-Kanäle festlegen | 2026-08-14 | COMPLETED | #379 |
@@ -192,11 +218,13 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #355 | Umfang des revisionssicheren Audit-Loggings schneiden | 2026-08-14 | COMPLETED | #398 |
 | #356 | Organisationsgrenze über die Anwendungsschicht hinaus absichern | 2026-08-14 | COMPLETED | #397 |
 | #357 | Bürgerassistent und öffentliches Widget als Ausblick festhalten | 2026-08-14 | COMPLETED | #381 |
+| #358 | Gruppengebundene Spaces: Mitgliedschaft aus dem Verzeichnis ableiten | 2026-08-24 | NOT_PLANNED | — |
 | #360 | docs(features): Wissensschicht, Wissensquellen und Modellsteuerung neu fassen (A, B, E) | 2026-08-14 | COMPLETED | #368 |
 | #361 | docs(features): Verteilungsmodell ergänzen und Agentenspezifikation anlegen (C, D) | 2026-08-14 | COMPLETED | #365 |
 | #362 | docs(features): Identität, Nachweisbarkeit und Governance neu fassen (F, G, H) | 2026-08-14 | COMPLETED | #371 |
 | #363 | docs(features): Kanäle, Betrieb und Verwaltungs-Spezifika neu fassen (I, J, K) | 2026-08-14 | COMPLETED | #366 |
 | #367 | docs: Anbieternamen in der Vorbild-Analyse von spaces-and-assets.md klären | 2026-08-14 | COMPLETED | #382 |
+| #370 | docs(marketing): Screenshots der Landing-Page aus einem Verwaltungskorpus neu aufnehmen | 2026-08-23 | COMPLETED | #796 |
 | #373 | GitHub Pages: Landing-Page als Startseite, Tagesreport darunter verlinken | 2026-08-14 | COMPLETED | #376 |
 | #374 | fix(indexing): Chunking ohne Überlappung trennt Definitionen von ihrer Überschrift | 2026-08-14 | COMPLETED | #402 |
 | #375 | fix(indexing): Dateisystem- und Netzindizierung führen unterschiedliche Endungslisten | 2026-08-14 | COMPLETED | #405 |
@@ -228,6 +256,9 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #422 | feat(frontend): Dokumente je Wissensbibliothek anzeigen und hochladen | 2026-08-17 | COMPLETED | #442 |
 | #423 | feat(frontend): Rechte an einer Wissensbibliothek verwalten | 2026-08-17 | COMPLETED | #446 |
 | #424 | test(e2e): Wissensbibliotheken — Upload, Freigabe und rechtebewusste Suche | 2026-08-17 | COMPLETED | #453 |
+| #426 | chore(deployment): Anwendungs-Datenbankaccount nicht als Superuser betreiben, damit audit_log-Schreibschutz greift | 2026-08-24 | NOT_PLANNED | — |
+| #429 | Rechtehistorie: Aufbewahrungshöchstdauer und Pseudonymisierung des Personenbezugs | 2026-08-24 | NOT_PLANNED | — |
+| #430 | Rechtehistorie: Verzeichnislauf-Eintrag mit konkretem Sync-Lauf korrelieren | 2026-08-24 | NOT_PLANNED | — |
 | #433 | fix(indexing): Gelöschte Zielbibliothek mitten im Lauf sauber behandeln (Warnung statt failed) | 2026-08-20 | COMPLETED | #602 |
 | #434 | feat(upload): Rate-Limit und/oder asynchrone Verarbeitung für den Dokument-Upload-Endpunkt | 2026-08-20 | COMPLETED | #589 |
 | #435 | feat(upload): Inhaltsbasierte Formaterkennung für nutzerkontrollierte Uploads | 2026-08-20 | COMPLETED | #577 |
@@ -237,7 +268,15 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #440 | fix(frontend): Space-, Gruppen- und Bibliotheks-Store beim Logout zurücksetzen | 2026-08-20 | COMPLETED | #574 |
 | #441 | fix(library): createLibrary prüft Group#isDissolved() nicht vor dem Anlegen des Eigentümer-Grants | 2026-08-20 | COMPLETED | #599 |
 | #443 | fix(library): Löschen von FILESYSTEM-/HTTP_DIRECTORY-Dokumenten wirkt nur bis zum nächsten Indizierungslauf | 2026-08-20 | COMPLETED | — |
+| #445 | Berechtigungsunabhängige Nutzersuche für die Rechtevergabe (Grants) | 2026-08-23 | COMPLETED | — |
+| #447 | fix(audit): DENIED-Erfassung auf weitere Ablehnungspfade in AssetGrantService ausweiten | 2026-08-24 | NOT_PLANNED | — |
 | #448 | Deutsche Fehlermeldungen im Grants-Backend: rohe Enum-Namen und fehlende Umlaute | 2026-08-20 | COMPLETED | #576 |
+| #451 | fix(audit): Schutz gegen Fluten der Protokollablage durch wiederholte abgewiesene Audit-Zugriffe | 2026-08-24 | NOT_PLANNED | — |
+| #452 | fix(audit): Bindungsfehler an Audit-Endpunkten ebenfalls ueber den Selbstprotokoll-Trichter fuehren | 2026-08-24 | NOT_PLANNED | — |
+| #455 | chore(audit): Partitionshorizont von audit_log rechtzeitig verlängern | 2026-08-24 | NOT_PLANNED | — |
+| #456 | fix(api): Unbekannte Pfade liefern 500 statt 404 und erzeugen einen ERROR-Stacktrace | 2026-08-23 | COMPLETED | #802 |
+| #457 | Epic: Audit-Betriebshärtung — Nacharbeiten aus Stage A | 2026-08-24 | COMPLETED | — |
+| #458 | Epic: Nacharbeiten Wissensbibliotheken und Upload | 2026-08-23 | COMPLETED | — |
 | #459 | docs(agents): UX-Designer-Rolle in der Agenten-Organisation einführen | 2026-08-17 | COMPLETED | #460 |
 | #461 | Roadmap-Meilenstein 1 (31.08.2026) in Produktvision aufnehmen | 2026-08-18 | COMPLETED | #462 |
 | #463 | Epic: Quellentypen erweiterbar machen und RSS-Feeds erschließen | 2026-08-19 | COMPLETED | — |
@@ -276,6 +315,7 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #517 | feat(library): Indizierte Dokumente für alle Quellentypen anzeigen — mit Paging und Stichwortsuche | 2026-08-19 | COMPLETED | #540 |
 | #518 | fix(indexing): RSS-Läufe zählen Feed-Einträge statt indizierter Dokumente — Anhänge fehlen in der Anzeige | 2026-08-19 | COMPLETED | #534 |
 | #519 | fix(deployment): nginx-Limit von 1 MB verursacht 413 beim Dokument-Upload im Compose-Setup | 2026-08-19 | COMPLETED | #532 |
+| #520 | feat(library): Ordner in Dokumentbibliotheken | 2026-08-24 | COMPLETED | — |
 | #521 | chore(library): System-Wissensbibliothek entfernen | 2026-08-19 | COMPLETED | #536 |
 | #522 | chore(auth): Automatische persönliche Upload-Bibliothek beim Login entfernen | 2026-08-19 | COMPLETED | #546 |
 | #523 | Epic: Chats im Space und Suchbereich per @-Bibliotheksreferenzen | 2026-08-20 | COMPLETED | — |
@@ -331,6 +371,7 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #623 | test(chat): ChatServiceIntegrationTest hat dieselbe Stubbing-Race-Struktur wie #616 | 2026-08-20 | COMPLETED | #641 |
 | #625 | ci: Actions auf Node-24-Runtime aktualisieren (Node-20-Deprecation) | 2026-08-20 | COMPLETED | #627 |
 | #632 | fix(indexing): Konnektorpfade re-inserten gelöschte Dokumentzeilen (save statt bedingter Aktualisierung) | 2026-08-20 | COMPLETED | #633 |
+| #634 | fix(frontend): Akzentfarbe erreicht mit weißem Text nur 3,29:1 Kontrast (blue-500) | 2026-08-25 | COMPLETED | #909 |
 | #636 | fix(library): Verbleibende Chunk-/Zeilen-Restfenster nach #631/#633 schließen | 2026-08-20 | COMPLETED | #633 |
 | #637 | fix(indexing): RSS-Executor wendet sourceInsecureSsl nicht an | 2026-08-20 | COMPLETED | #663 |
 | #639 | feat(query): sourceEntryUrl in Belegangaben (SourceReference) durchreichen | 2026-08-20 | COMPLETED | #666 |
@@ -338,25 +379,116 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #646 | fix(indexing): Feed-Zustand pro Bibliothek führen bzw. beim Löschen zurücksetzen | 2026-08-20 | COMPLETED | #665 |
 | #650 | fix(library): deleteLibrary lehnt Löschung bei laufendem Indizierungsjob mit 409 ab | 2026-08-20 | NOT_PLANNED | — |
 | #651 | fix(indexing): Redirect-Härtung lässt Host==null als 'nicht fremd' durch und ein Lauf bricht bei ungültiger Eintrags-URL komplett ab | 2026-08-20 | COMPLETED | #664 |
+| #653 | Frontend auf pnpm umstellen (Worktree-Größe und Installationszeit) | 2026-08-23 | COMPLETED | #752 |
 | #654 | feat(frontend): Dunkles Farbschema an das dunkle Schema der Claude-Docs anlehnen | 2026-08-20 | COMPLETED | #656 |
 | #658 | feat(frontend): Typografie, Dichte und Komponentenmetrik an Mockup 1a angleichen (Quicksand, Feinraster, weiße Menüs) | 2026-08-20 | COMPLETED | #660 |
 | #659 | fix(indexing): Indizierungsfehlermeldung leakt internen Pfad/Host an VIEWER | 2026-08-20 | COMPLETED | #657 |
 | #661 | docs(agents): Umgang mit Review-Befunden — direkt beheben statt Folge-Issues | 2026-08-20 | COMPLETED | #662 |
+| #667 | feat(query): Fundort je Zitatstelle und durchsuchte Bestände in der Query-API ergänzen | 2026-08-23 | COMPLETED | #753 |
 | #677 | fix(db): Bibliotheksreferenzen eines Chats an die Organisation binden | 2026-08-20 | COMPLETED | #680 |
+| #682 | feat(space): Quellen- und Chatzahl in SpaceListResponse für die Übersichtskarten | 2026-08-23 | COMPLETED | #754 |
 | #686 | feat(space): Datenquellen-Zuordnung Space ↔ Wissensbibliothek (API und Retrieval) | 2026-08-21 | COMPLETED | #706 |
 | #693 | fix(indexing): Upgrade-Redirect http→https auf demselben Host wird fälschlich als fremder Host abgewiesen | 2026-08-21 | COMPLETED | #699 |
+| #707 | fix(frontend): CSP blockiert als data:-URI gebündelte Font-Subsets im Docker-Deployment | 2026-08-25 | COMPLETED | #910 |
 | #708 | feat: Demo-Instanz mit Verwaltungskorpus einer fiktiven Stadt | 2026-08-22 | COMPLETED | — |
 | #709 | docs(demo): Konzept und Quellenrecherche für den Verwaltungskorpus der Demo-Instanz | 2026-08-21 | COMPLETED | #710 |
 | #711 | feat(demo): Korpus-Generator für die fiktive Stadt Rheinfurt | 2026-08-21 | COMPLETED | #717 |
 | #712 | feat(demo): Seed-Mechanismus mit den Datenprofilen demo und e2e | 2026-08-21 | COMPLETED | #724 |
 | #713 | docs(demo): Installationsanleitung, Nutzerkonten und Drehbuch der Demo-Instanz | 2026-08-21 | COMPLETED | #727 |
 | #716 | fix(deployment): Schnellstart-Kopie von .env.example ergibt keinen startfähigen Compose-Stack | 2026-08-21 | COMPLETED | #719 |
+| #718 | feat(frontend): @Space-Chip für die Chip-Leiste (blockiert: offene Entscheidung zum @Alles-Wissen-Rückfall) | 2026-08-24 | NOT_PLANNED | — |
+| #720 | feat(deployment): Ollama als optionalen Compose-Service unter eigenem Profil bereitstellen | 2026-08-23 | COMPLETED | #801 |
 | #721 | feat(eval): Retrieval-Harness für mehrchunkige Dokumente ertüchtigen | 2026-08-21 | COMPLETED | #723 |
+| #725 | fix(a11y): Farbkontrast in der Wissensbibliotheken-Tabelle unzureichend | 2026-08-24 | COMPLETED | #852 |
 | #731 | fix(api): Rate-Limit-Meldung ist englisch statt deutsch | 2026-08-21 | COMPLETED | #733 |
 | #734 | Ollama-Embedding-Aufrufe in io.opaa.indexing parallelisieren (city-landmarks-Eval-CI zu langsam) | 2026-08-22 | COMPLETED | #735 |
 | #736 | feat(api): Download-Endpunkt für Originaldokumente | 2026-08-22 | COMPLETED | #742 |
 | #737 | fix(auth): Plötzlicher Logout — Silent-Token-Renew und 401-Retry statt Sofort-Logout | 2026-08-22 | COMPLETED | #741 |
 | #738 | feat(library): Deeplink auf das Originaldokument in der Wissensbibliothek | 2026-08-22 | COMPLETED | #743 |
+| #739 | feat(search): Deeplinks auf Originaldokumente in Fundstellen und Belegfenster | 2026-08-22 | COMPLETED | #745 |
+| #740 | feat: Deeplinks auf Originaldokumente & stabile Anmeldung | 2026-08-22 | COMPLETED | — |
+| #744 | Leistungsinventur: Bestandsaufnahme aller abgeschlossenen Issues und PRs für den Meilenstein-1-Report | 2026-08-23 | COMPLETED | #746 |
+| #747 | feat(api): Content-Endpunkt streamt Remote-Originale serverseitig durch (Proxy) | 2026-08-22 | COMPLETED | #748 |
+| #749 | fix(chat): Chat-Seite erzeugt äußere Scrollbar — Hauptbereich höher als der Viewport | 2026-08-22 | COMPLETED | #750 |
+| #751 | Renovate für automatisierte Abhängigkeits-Updates konfigurieren (lokale Ausführung, kein Cloud-Service) | 2026-08-25 | COMPLETED | #911 |
+| #755 | feat(models): Verwaltete Chat-Modelle in der Administrationsoberfläche (Stufe 1) | 2026-08-23 | COMPLETED | — |
+| #756 | feat(models): Datenmodell für verwaltete Chat-Modelle, verschlüsselte Zugangsdaten und Seed-Migration | 2026-08-22 | COMPLETED | #763 |
+| #757 | feat(models): Admin-API für Chat-Modelle (CRUD, Aktivierung, Verbindungstest) | 2026-08-22 | COMPLETED | #764 |
+| #758 | feat(models): Laufzeitauflösung des aktiven Chat-Modells statt fest gebundener Autoconfiguration | 2026-08-22 | COMPLETED | #767 |
+| #759 | feat(models): Administrationsseite Modellverwaltung mit schreibgeschützter Einbettungsübersicht | 2026-08-22 | COMPLETED | #765 |
+| #760 | test(e2e): Modellverwaltung — Anlegen, Aktivieren, Verbindungstest und Löschschutz | 2026-08-23 | COMPLETED | #770 |
+| #762 | refactor(ai): Nativen Ollama-Starter entfernen — Embedding über OpenAI-kompatible Schicht | 2026-08-22 | COMPLETED | #766 |
+| #768 | fix(api): OpenAI-SDK-Fehler (com.openai.errors.*) im GlobalExceptionHandler nutzerfreundlich mappen | 2026-08-23 | COMPLETED | #806 |
+| #769 | Retrieval-Regression erkannt (automatischer Lauf) | 2026-08-24 | COMPLETED | — |
+| #771 | fix(models): Fehlender OPAA_SETTINGS_ENCRYPTION_KEY bricht den Anwendungsstart ab statt nur die Seed-Übernahme | 2026-08-23 | COMPLETED | #772 |
+| #773 | fix(ai): Suchqualitäts-Regression durch Embedding über Ollamas /v1-Endpunkt (statt nativer API) | 2026-08-23 | COMPLETED | #779 |
+| #775 | Demo-Seed: Space↔Bibliothek-Zuordnungen mit ausliefern | 2026-08-23 | COMPLETED | #776 |
+| #777 | Mitglieder hinzufügen für normale Nutzer kaputt: Benutzersuche nutzt SYSTEM_ADMIN-Endpunkt; dazu zwei UI-Korrekturen der Mitgliederverwaltung | 2026-08-23 | COMPLETED | #778 |
+| #780 | Browservorschau für Markdown-, Text- und DOCX-Originale statt stillem Download | 2026-08-23 | COMPLETED | #781 |
+| #782 | Chat-Fußzeile zählt lesbare statt effektiv durchsuchte Bestände in Spaces mit Zuordnungen | 2026-08-23 | COMPLETED | #783 |
+| #784 | Englische MUI-Standardtexte („No options", „Loading…", aria-Labels) statt deutscher Lokalisierung | 2026-08-23 | COMPLETED | #785 |
+| #786 | feat(frontend): Globale Leiste (Rail) als immer sichtbare erste Navigationsebene | 2026-08-23 | COMPLETED | #791 |
+| #787 | feat(frontend): Globaler Verwaltungsrahmen — helle Fläche mit „Global“-Badge für die Administration | 2026-08-23 | COMPLETED | #794 |
+| #788 | feat(frontend): Benutzer-Einstellungen als globale Seite über den Avatar der Leiste | 2026-08-23 | COMPLETED | #795 |
+| #789 | feat(frontend): Wissensbibliotheken-Übersicht in den globalen Rahmen einbetten | 2026-08-23 | COMPLETED | #799 |
+| #792 | fix(frontend): Space-Navigation der Seitenleiste erzeugt axe-Verstoß — li ohne ul-Elternelement | 2026-08-23 | COMPLETED | #793 |
+| #798 | Selbstauskunft und Auskunftsexport für Audit-Daten | 2026-08-24 | NOT_PLANNED | — |
+| #800 | fix(frontend): Review-Nachbesserungen am globalen Rahmen — mobile Spalte, Rollenbindung, Profilblock, Testlücken | 2026-08-23 | COMPLETED | #803 |
+| #805 | test(frontend): Nachweis-Lücken aus dem Review zu #803 schließen — 320-px-Geometrie, Rollenbindung, Doku | 2026-08-25 | COMPLETED | #907 |
+| #807 | docs(marketing): Demo-Video auf der GitHub Page bereitstellen | 2026-08-23 | COMPLETED | #808 |
+| #809 | feat(frontend): Spaces-Übersicht ohne Space-Spalte — Navy-Spalte erst im gewählten Space | 2026-08-23 | COMPLETED | #811 |
+| #812 | fix(frontend): index.html ohne Cache-Control — Browser zeigen nach Deployments den alten Stand | 2026-08-23 | COMPLETED | #813 |
+| #814 | fix(frontend): isGlobalAreaPath normalisiert Trailing Slashes nicht — /spaces/ zeigt die Space-Spalte | 2026-08-24 | COMPLETED | #816 |
+| #817 | Backend-Review: toter Code, veraltete Referenzen und Javadoc-Hypertrophie bereinigen | 2026-08-25 | COMPLETED | — |
+| #819 | docs(library): ADR und Spezifikation für Ordner in Bibliotheken | 2026-08-23 | COMPLETED | #825 |
+| #820 | feat(library): Schema und CRUD-API für Bibliotheksordner | 2026-08-24 | COMPLETED | #827 |
+| #821 | feat(library): Dokumentliste und Upload ordner-bewusst machen | 2026-08-24 | COMPLETED | #828 |
+| #822 | feat(frontend): Ordner-Navigation in der Bibliotheksansicht | 2026-08-24 | COMPLETED | #830 |
+| #823 | feat(library): Ordner-Upload per Drag & Drop mit Strukturübernahme | 2026-08-24 | COMPLETED | #831 |
+| #824 | feat(indexing): FILESYSTEM-Verzeichnisstruktur als read-only Ordner abbilden | 2026-08-24 | COMPLETED | #829 |
+| #826 | refactor: Backend-Architekturreview 2026-08 — Befunde und Behebungsphasen | 2026-08-25 | COMPLETED | — |
+| #832 | ci: Gradle-Cache in der CI wird nie aktualisiert — auf setup-gradle umstellen | 2026-08-24 | COMPLETED | #841 |
+| #833 | fix(auth): lastLoginAt-Schreibzugriff pro Request drosseln | 2026-08-24 | COMPLETED | #856 |
+| #834 | feat(audit): Indizes für byTimeRange- und byIncidentScope-Abfragepfade ergänzen | 2026-08-24 | COMPLETED | #846 |
+| #835 | build: OpenAPI-doLast-Löschliste ableiten und Eval-Tasks deduplizieren | 2026-08-24 | COMPLETED | #857 |
+| #836 | fix(indexing): Autoindex-Crawler ohne Tiefen- und Besuchslimit — Zyklen terminieren nicht | 2026-08-24 | COMPLETED | #851 |
+| #837 | fix(indexing): storeChunks vergibt bei identischen Chunk-Texten doppelte chunk_index-Werte | 2026-08-24 | COMPLETED | — |
+| #838 | refactor(indexing): VectorStore-Delete-Filter über gemeinsamen Helfer statt String-Konkatenation | 2026-08-24 | COMPLETED | #849 |
+| #839 | fix(indexing): UrlIndexingExecutor parst Proxy inline — NumberFormatException bei ungültigem Port | 2026-08-24 | COMPLETED | #854 |
+| #840 | fix(chat): Archivierungsprüfung vor dem LLM-Aufruf statt erst beim Persistieren | 2026-08-24 | COMPLETED | #855 |
+| #842 | docs: Kommentar-Konvention — Vertrag statt PR-Historie, projektweit in AGENTS.md verankern | 2026-08-24 | COMPLETED | #858 |
+| #843 | test(backend): Test-Kontexte inventarisieren und auf kanonische Meta-Annotationen konsolidieren | 2026-08-24 | COMPLETED | #865 |
+| #844 | test(backend): Sonderkontexte auf kanonische Test-Signaturen zurückführen | 2026-08-24 | NOT_PLANNED | — |
+| #845 | docs: ADR Single-Instance-Betrieb — verstreute Annahmen bündeln | 2026-08-24 | COMPLETED | #859 |
+| #848 | docs: Koordinations-Betriebsregeln aus lokalem Memory ins Repo überführen | 2026-08-24 | COMPLETED | #850 |
+| #853 | fix(a11y): fg-3 in Sidebar- und Rail-Theme unterschreitet 4,5:1 auf Hover- und Aktiv-Flächen | 2026-08-24 | COMPLETED | #878 |
+| #860 | refactor(backend): DTO-Leak beheben — Services geben Domain-Typen zurück, Mapping in die API-Schicht | 2026-08-24 | COMPLETED | — |
+| #862 | refactor(db): CHECK-Constraints für Enum-Vokabulare ablösen — Enum-Erweiterungen ohne Migration | 2026-08-24 | COMPLETED | #868 |
+| #863 | ci: retrieval-regression.yml — Domänen-Jobs über Matrix statt Kopie | 2026-08-24 | COMPLETED | #866 |
+| #874 | fix(chat): SourceReference.spaceName wird vom Frontend gelesen, aber vom Backend nie befüllt | 2026-08-24 | COMPLETED | #880 |
+| #875 | refactor(backend): Domain-Exceptions statt ResponseStatusException in Services | 2026-08-24 | COMPLETED | #881 |
+| #876 | refactor(indexing): Quellenzugriff als eigenes Paket — eine Redirect-Policy, RssFeedIndexingExecutor zerlegen | 2026-08-24 | COMPLETED | #883 |
+| #877 | fix(indexing): Dokumentidentität auf (Bibliothek, Quelle) scopen — Dokument-Stehlen zwischen Bibliotheken beenden | 2026-08-24 | COMPLETED | #885 |
+| #884 | refactor(backend): Request-scoped CurrentUser — Aufrufer-Identität zentralisieren | 2026-08-24 | COMPLETED | #887 |
+| #886 | feat(indexing): Dokumente verschwundener Quellen aufräumen — veralteter Bestand wächst unbegrenzt | 2026-08-25 | COMPLETED | #900 |
+| #888 | refactor(space): Zentrale AccessPolicy und effectiveRole — Owner-Semantik vereinheitlichen | 2026-08-25 | COMPLETED | #891 |
+| #889 | refactor(chat): Chat-Pfad als explizite Pipeline — Transaktions-Kartenhaus und COUNT(*)-Sequenz ablösen | 2026-08-25 | COMPLETED | #890 |
+| #892 | refactor(audit): AuditEvent-Builder und Domain-Events — Doppelbuchführung strukturell absichern | 2026-08-25 | COMPLETED | #895 |
+| #896 | build: Gradle-Modul opaa-api — Spec, Generator und geteilte Enums herauslösen | 2026-08-25 | COMPLETED | #898 |
+| #903 | test(backend): Spring-Testkontexte konsolidieren (~19 → ≤10) — Meta-Annotation für Indexing, geteilte Mock-Configs | 2026-08-25 | COMPLETED | — |
+| #904 | chore(db): Liquibase-Historie zu einer Baseline zusammenfassen (257 Changesets → logisch gruppierte Baseline) | 2026-08-25 | COMPLETED | #906 |
+| #912 | Mehrthemen-Fragen: Retrieval verdrängt das schwächere Thema vollständig (topK-Monokultur) | 2026-08-27 | COMPLETED | — |
+| #913 | Eval: Mehrthemen-Golden-Fälle und Recall pro Teilthema | 2026-08-25 | COMPLETED | #915 |
+| #914 | Query: MMR-Diversität im Retrieval (fetchK, mmrLambda) und topK-Anhebung | 2026-08-26 | COMPLETED | #922 |
+| #923 | Query: Teilfragen-Zerlegung und kontextbewusste Reformulierung vor dem Retrieval (Multi-Query-RAG) | 2026-08-26 | COMPLETED | #926 |
+| #924 | fix(ci): Renovate-PRs scheitern am CLA-Check — gitAuthor ist keinem Konto zugeordnet | 2026-08-26 | COMPLETED | #925 |
+| #927 | docs: Doku-Struktur nach Achsen konsolidieren (Stand, Handbuch, Recherche) | 2026-08-26 | COMPLETED | #928 |
+| #929 | docs: Demo-Dokumentation konsolidieren und deployment.md zum allgemeinen Betriebshandbuch machen | 2026-08-26 | COMPLETED | #931 |
+| #932 | Query: Gebühren-Chunk verliert gegen Einleitungs-Chunk desselben Dokuments — Chunk-Auswahl nach der Fusion vervollständigen | 2026-08-26 | COMPLETED | #934, #935 |
+| #933 | Indexing: Contextual Chunking — Dokumentkontext in Chunk-Embeddings | 2026-08-27 | COMPLETED | #940 |
+| #937 | Query: Zitatvalidierung prüft nur Abruf, nicht Inhalt — falsche Zahl mit gültig wirkendem Zitat | 2026-08-26 | COMPLETED | — |
+| #938 | Query: Einschlägige Satzungs-PDF fehlt in den Top-8 — Drehbuch-Frage 6 wird als thomas.klein verweigert | 2026-08-27 | COMPLETED | — |
+| #941 | CI: Baseline-Absenkungs-Wächter prüft nur comic-characters — city-landmarks bekommt falschen Freispruch | 2026-08-27 | COMPLETED | #944 |
 
 ## Gemergte PRs ohne verknüpftes Issue
 
@@ -389,3 +521,31 @@ Automatisch erzeugt aus den GitHub-Dumps. Spalte PRs: über closingIssuesReferen
 | #698 | test(backend): letzte drei Migrationstests auf Template-DB umstellen | 2026-08-21 |
 | #728 | feat(demo): Quellen- und Demo-Hinweis der Demo-Instanz (Frontend) | 2026-08-21 |
 | #732 | docs(demo): Rollout der Demo-Instanz Stadt Rheinfurt dokumentieren | 2026-08-21 |
+| #761 | docs(features): Stufe 1 der Modellverwaltung in der LLM-Spezifikation | 2026-08-22 |
+| #790 | docs(design): Zielbild-Mockups um Abschnitt „Global vs. Space" erweitern | 2026-08-23 |
+| #804 | fix(backend): Ungültige Dokument-ID in Chunk-Metadaten auf WARN heben | 2026-08-23 |
+| #810 | ci(pages): Meilenstein-Ordner fortschritt/ statt *.mp4 vom Sync ausnehmen | 2026-08-23 |
+| #818 | chore(backend): tote Abhängigkeit, tote Konfiguration und deutsche Log-Meldungen entfernen | 2026-08-23 |
+| #847 | fix(backend): toten Code und veraltete Kommentare bereinigen (Runde 2) | 2026-08-24 |
+| #861 | docs(decisions): Review-Nachbesserungen zu ADR-0021 nachziehen | 2026-08-24 |
+| #864 | docs(indexing): Javadoc-Kommentare auf Vertrag und Invarianten kürzen | 2026-08-24 |
+| #867 | chore(backend): toten Code entfernen, Ablaufdaten setzen, pgvector-Dimensions-Guard ergaenzen | 2026-08-24 |
+| #869 | refactor(space): DTO-Leak beheben - Services geben Domain-Typen zurück | 2026-08-24 |
+| #870 | refactor(group): DTO-Leak beheben - GroupService/DirectorySync geben Domain-Typen zurück | 2026-08-24 |
+| #871 | refactor(library): DTO-Leak beheben - KnowledgeLibraryService/AssetGrantService geben Domain-Typen zurück | 2026-08-24 |
+| #872 | refactor(library): DTO-Leak beheben - LibraryFolderService/SourceConnectionTestService geben Domain-Typen zurück | 2026-08-24 |
+| #873 | refactor(chat,query): DTO-Leak beheben - ChatService/QueryService geben Domain-Typen zurück | 2026-08-24 |
+| #879 | docs(audit): Javadoc-Kommentare auf Vertrag und Invarianten kürzen | 2026-08-24 |
+| #882 | refactor(indexing): Quellenzugriff als eigenes Paket io.opaa.sourceaccess extrahieren | 2026-08-24 |
+| #893 | refactor(audit): AuditEvent-Builder statt Positionsargumenten | 2026-08-25 |
+| #897 | docs(library,chat,query,space): Javadoc-Kommentare auf Vertrag und Invarianten kuerzen | 2026-08-25 |
+| #899 | chore: Restposten aus #817 – documentPath, tote AuditEventType-Werte, CI-Required-Check | 2026-08-25 |
+| #901 | docs(decisions): ADR-0017 auf Akzeptiert setzen | 2026-08-25 |
+| #902 | refactor(api): ScheduleFrequency/ScheduleWeekday als geteilte Domain-Enums nach opaa-api umziehen | 2026-08-25 |
+| #905 | test(indexing): dritte kanonische Testkontext-Signatur @OpaaIndexingIntegrationTest | 2026-08-25 |
+| #908 | test(backend): Mock-Konsolidierung für Spring-Testkontexte (Schritte 2-4, Teil von #903) | 2026-08-25 |
+| #930 | docs(fortschritt): tagesreport.md zur Stand-und-Nachweis-Achse ziehen (Nachzügler zu #927) | 2026-08-26 |
+| #936 | docs(query): Ist-Stand-Spezifikation des Retrieval-Algorithmus | 2026-08-26 |
+| #939 | feat(query): Zitatvalidierung um deterministische Faktenprüfung ergänzen | 2026-08-26 |
+| #942 | fix(demo): Gebühren in Personalausweis/Reisepass-Abholung an Einzeldokumente angleichen | 2026-08-27 |
+| #943 | docs(query): akzeptierte Grenze der reinen Vektorsuche dokumentieren | 2026-08-27 |
