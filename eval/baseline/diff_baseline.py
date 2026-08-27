@@ -2,18 +2,19 @@
 """Diffs every committed retrieval baseline under `eval/baseline/*.json` and renders a Markdown
 section per file listing every metric that is lower on one side ("pr") than on the other ("main").
 
-Used by .github/workflows/baseline-diff.yml (issue #228, ADR-0013 decision 6; generalized to all
-baseline files in issue #941): the label-triggered run on a pull request compares the PR branch's
-own committed baselines against the ones on `main`, so a PR that quietly lowers any domain's
-baseline (making its own regression job pass against an already-weakened target) is visible in the
-PR comment instead of hidden behind a green check mark. Issue #941: the script originally only ever
-looked at `comic-characters.json`, so a PR that lowered `city-landmarks.json` (or any baseline added
-later) got a silent, false "no lowering" verdict — it now iterates every `*.json` file under the
-given directories, so a newly added domain's baseline is covered without a code change here.
+Used by .github/workflows/baseline-diff.yml (issue #228, ADR-0013 decision 6): runs on every pull
+request touching `eval/baseline/**` and compares the PR branch's own committed baselines against the
+ones on `main`, so a PR that quietly lowers any domain's baseline (making its own regression job pass
+against an already-weakened target) is visible in the PR comment instead of hidden behind a green
+check mark. Iterates the union of filenames present on either side, so a baseline file the PR branch
+deleted or renamed is reported as every one of its metrics being removed, instead of silently
+skipped because it is no longer on the PR side to iterate over.
 
-This is purely informational and always exits 0 — it never fails the job by itself. The actual gate
-against an unjustified baseline lowering is the review procedure in eval/baseline/README.md; this
-script only makes a silent lowering visible to the reviewer, it does not replace their judgment.
+This is purely informational and always exits 0 — it never fails the job by itself, even when a
+baseline file fails to parse (reported as a "nicht auswertbar" section instead of aborting the whole
+run). The actual gate against an unjustified baseline lowering is the review procedure in
+eval/baseline/README.md; this script only makes a silent lowering visible to the reviewer, it does
+not replace their judgment.
 
 Stdlib-only, no dependency on the Java harness or Gradle build — same rationale as the corpus and
 golden-dataset generators under eval/generator/ (ADR-0011, decision 2).
@@ -111,14 +112,19 @@ def render_table(lowered, main_ref, pr_ref):
 
 
 def render(results, main_ref, pr_ref):
-    """`results` is a list of (filename, lowered) pairs, one per baseline file — the report names
-    every file's verdict explicitly (issue #941), rather than a single verdict across all files
-    that would hide which domain's baseline actually regressed."""
+    """`results` is a list of (filename, outcome) pairs, one per baseline file present on either
+    side of the comparison. `outcome` is either `("ok", lowered)` or `("error", message)` — the
+    report names every file's verdict explicitly, including a parse failure, rather than a single
+    verdict across all files that would hide which file actually regressed or failed to load."""
     lines = ["### Baseline-Vergleich gegenüber `{}`".format(main_ref), ""]
-    for filename, lowered in results:
+    for filename, outcome in results:
         lines.append("#### `{}`".format(filename))
         lines.append("")
-        if not lowered:
+        kind = outcome[0]
+        if kind == "error":
+            lines.append("Nicht auswertbar: {}".format(outcome[1]))
+            lines.append("")
+        elif not outcome[1]:
             lines.append(
                 "Keine Gruppe/Metrik in diesem PR-Branch (`{}`) liegt unter dem auf `{}` "
                 "committeten Wert — keine stille Baseline-Absenkung erkennbar.".format(
@@ -127,8 +133,18 @@ def render(results, main_ref, pr_ref):
             )
             lines.append("")
         else:
-            lines.append(render_table(lowered, main_ref, pr_ref))
+            lines.append(render_table(outcome[1], main_ref, pr_ref))
     return "\n".join(lines)
+
+
+def load_or_empty(directory, filename):
+    """Loads `filename` from `directory`; a file missing on one side (a baseline deleted or
+    renamed on the other side) compares as an empty baseline instead of being skipped, so
+    `find_lowered` reports every metric of the other side's groups as removed."""
+    path = Path(directory) / filename
+    if not path.exists():
+        return {"groups": {}}
+    return load(path)
 
 
 def main(argv=None):
@@ -146,13 +162,20 @@ def main(argv=None):
 
     pr_dir = Path(args.pr_dir)
     main_dir = Path(args.main_dir)
+    filenames = {p.name for p in pr_dir.glob("*.json")} | {p.name for p in main_dir.glob("*.json")}
+
     results = []
-    for pr_path in sorted(pr_dir.glob("*.json")):
-        pr_baseline = load(pr_path)
-        main_path = main_dir / pr_path.name
-        main_baseline = load(main_path) if main_path.exists() else {"groups": {}}
+    for filename in sorted(filenames):
+        try:
+            pr_baseline = load_or_empty(pr_dir, filename)
+            main_baseline = load_or_empty(main_dir, filename)
+        except (OSError, json.JSONDecodeError) as exc:
+            # A single malformed file must not abort the whole comparison (module docstring: the
+            # script always exits 0) — every other file is still reported normally.
+            results.append((filename, ("error", str(exc))))
+            continue
         lowered = find_lowered(main_baseline, pr_baseline)
-        results.append((pr_path.name, lowered))
+        results.append((filename, ("ok", lowered)))
 
     markdown = render(results, args.main_ref, args.pr_ref)
 
