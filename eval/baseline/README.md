@@ -1,10 +1,10 @@
 # Retrieval-Baseline (Issue #228)
 
-`comic-characters.json` in diesem Verzeichnis ist die committete Baseline, gegen die der
-nächtliche Regressionsjob (`.github/workflows/retrieval-regression.yml`, Gradle-Task
-`checkRetrievalBaseline`) jeden neuen Lauf von `./gradlew evaluateRetrieval` vergleicht. Geladen und
-ausgewertet wird sie von `io.opaa.eval.Baseline`/`io.opaa.eval.BaselineComparator` im
-`evalTest`-Source-Set.
+`comic-characters.json` ist eine von mehreren committeten Baselines in diesem Verzeichnis (siehe die
+Domäne `city-landmarks` unten) — die, gegen die der nächtliche Regressionsjob
+(`.github/workflows/retrieval-regression.yml`, Gradle-Task `checkRetrievalBaseline`) jeden neuen Lauf
+von `./gradlew evaluateRetrieval` vergleicht. Geladen und ausgewertet wird sie von
+`io.opaa.eval.Baseline`/`io.opaa.eval.BaselineComparator` im `evalTest`-Source-Set.
 
 ## Domäne `city-landmarks` (Issue #234)
 
@@ -379,8 +379,21 @@ Job-Zusammenfassung. Der Grund für einen eigenen Workflow statt eines Schritts 
 Retrieval-Regressionsjob: Das Skript ist Standardbibliothek-only Python, braucht kein Docker und
 läuft in unter einer Minute — es gibt keinen Grund, es an das teure, gelabelte Verfahren zu koppeln.
 
-Das Skript ist rein informativ und schlägt nie fehl (Exit-Code immer 0) — es macht eine Absenkung im
-PR-Kommentar sichtbar, ersetzt aber nicht die Review-Pflicht aus dem Abschnitt oben. Es ist bewusst
-ein eigenständiges, Standardbibliothek-only Python-Skript (kein Java, kein Gradle-Task), aus
-demselben Grund wie die Korpus-/Golden-Dataset-Generatoren unter `eval/generator/` (ADR-0011,
-Entscheidung 2): Ein einfacher Zwei-Dateien-JSON-Vergleich braucht keine Backend-Infrastruktur.
+**Der Vergleich läuft über alle Baseline-Dateien, nicht nur über eine.** Workflow und Skript
+iterieren generisch über jede `eval/baseline/*.json`-Datei — heute `comic-characters.json` und
+`city-landmarks.json`, künftig jede weitere Domäne ohne Änderung an Workflow oder Skript. Verglichen
+wird jeweils gegen den Stand von `origin/main` zum Zeitpunkt des Laufs; liegt der PR-Branch hinter
+`main` zurück, kann deshalb auch eine im PR unangetastete Datei eine Tabelle erzeugen — das ist kein
+Fehlalarm des Skripts, sondern zeigt schlicht den auf `main` seither committeten Stand. Der
+PR-Kommentar enthält einen eigenen Abschnitt pro Datei mit ihrem eigenen Ergebnis ("keine Absenkung",
+die Tabelle der abgesenkten Metriken, oder "nicht auswertbar" bei einer nicht parsebaren Datei).
+Iteriert wird über die Vereinigung der Dateinamen aus PR-Branch und `main`: Eine auf dem PR-Branch
+gelöschte oder umbenannte Baseline-Datei erscheint dadurch als eigener Abschnitt, in dem jede Metrik
+der `main`-Version als entfernt gemeldet wird, statt beim Vergleich unterzugehen.
+
+Das Skript ist rein informativ und schlägt nie fehl (Exit-Code immer 0), auch wenn eine einzelne
+Baseline-Datei nicht als JSON lesbar ist — es macht eine Absenkung im PR-Kommentar sichtbar, ersetzt
+aber nicht die Review-Pflicht aus dem Abschnitt oben. Es ist bewusst ein eigenständiges,
+Standardbibliothek-only Python-Skript (kein Java, kein Gradle-Task), aus demselben Grund wie die
+Korpus-/Golden-Dataset-Generatoren unter `eval/generator/` (ADR-0011, Entscheidung 2): Ein einfacher
+JSON-Vergleich mehrerer kleiner Dateien braucht keine Backend-Infrastruktur.

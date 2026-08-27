@@ -31,20 +31,36 @@ jobs:
           # die ein flacher Checkout (Default fetch-depth: 1, nur der PR-Kopf) nicht auflösen kann.
           fetch-depth: 0
 
-      - name: Baseline von main laden
+      - name: Baseline-Dateien von main laden
         run: |
           git fetch origin main --depth=1
-          mkdir -p build
-          # Existiert die Datei auf main noch nicht (z. B. der allererste PR, der sie einführt),
+          mkdir -p build/main-baseline
+          # Vereinigung der Dateinamen aus PR-Branch und main, nicht nur der PR-Branch-Seite: sonst
+          # bliebe eine auf dem PR-Branch gelöschte oder umbenannte Baseline-Datei unentdeckt, weil
+          # niemand mehr nach ihr auf main sucht.
+          {
+            for f in eval/baseline/*.json; do
+              basename "$f"
+            done
+            git ls-tree --name-only origin/main -- eval/baseline \
+              | while read -r path; do
+                  case "$path" in
+                    *.json) basename "$path" ;;
+                  esac
+                done
+          } | sort -u > build/baseline-files.txt
+          # Existiert eine Datei auf main noch nicht (z. B. der allererste PR, der sie einführt),
           # ist das kein Fehler — es gibt dann schlicht nichts, wovon abgesenkt werden könnte.
-          git show origin/main:eval/baseline/comic-characters.json > build/main-baseline.json \
-            || echo '{"groups":{}}' > build/main-baseline.json
+          while read -r name; do
+            git show "origin/main:eval/baseline/$name" > "build/main-baseline/$name" \
+              || echo '{"groups":{}}' > "build/main-baseline/$name"
+          done < build/baseline-files.txt
 
       - name: Baseline-Absenkung gegenüber main prüfen
         run: |
           python3 eval/baseline/diff_baseline.py \
-            --main build/main-baseline.json \
-            --pr eval/baseline/comic-characters.json \
+            --main-dir build/main-baseline \
+            --pr-dir eval/baseline \
             --output build/baseline-diff-vs-main.md \
             --main-ref main \
             --pr-ref "${{ github.head_ref }}"
@@ -62,9 +78,28 @@ jobs:
           script: |
             const fs = require('fs');
             const body = fs.readFileSync('build/baseline-diff-vs-main.md', 'utf8');
-            await github.rest.issues.createComment({
+            // Marker identifiziert den eigenen Kommentar über mehrere Läufe desselben PRs hinweg —
+            // ein erneuter Push aktualisiert diesen einen Kommentar statt einen weiteren anzuhängen.
+            const marker = '<!-- baseline-diff-comment -->';
+            const taggedBody = `${marker}\n${body}`;
+            const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body,
             });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: taggedBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: taggedBody,
+              });
+            }
