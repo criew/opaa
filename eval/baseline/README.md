@@ -379,6 +379,13 @@ Job-Zusammenfassung. Der Grund für einen eigenen Workflow statt eines Schritts 
 Retrieval-Regressionsjob: Das Skript ist Standardbibliothek-only Python, braucht kein Docker und
 läuft in unter einer Minute — es gibt keinen Grund, es an das teure, gelabelte Verfahren zu koppeln.
 
+**Der Vergleich läuft über alle Baseline-Dateien, nicht nur über eine (Issue #941).** Workflow und
+Skript iterieren generisch über jede `eval/baseline/*.json`-Datei — heute `comic-characters.json`
+und `city-landmarks.json`, künftig jede weitere Domäne ohne Änderung an Workflow oder Skript. Der
+PR-Kommentar enthält einen eigenen Abschnitt pro Datei mit ihrem eigenen Ergebnis ("keine Absenkung"
+oder die Tabelle der abgesenkten Metriken); eine Datei, die niemand im PR ändert, hat dort schlicht
+keine Absenkung zu melden, weil PR-Branch und `main` für sie identisch sind.
+
 Das Skript ist rein informativ und schlägt nie fehl (Exit-Code immer 0) — es macht eine Absenkung im
 PR-Kommentar sichtbar, ersetzt aber nicht die Review-Pflicht aus dem Abschnitt oben. Es ist bewusst
 ein eigenständiges, Standardbibliothek-only Python-Skript (kein Java, kein Gradle-Task), aus

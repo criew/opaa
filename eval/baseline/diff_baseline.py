@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Diffs two committed retrieval baselines (eval/baseline/comic-characters.json) and renders a
-Markdown table of every metric that is lower on one side ("pr") than on the other ("main").
+"""Diffs every committed retrieval baseline under `eval/baseline/*.json` and renders a Markdown
+section per file listing every metric that is lower on one side ("pr") than on the other ("main").
 
-Used by .github/workflows/retrieval-regression.yml (issue #228, ADR-0013 decision 6): the
-label-triggered run on a pull request compares the PR branch's own committed baseline against the
-one on `main`, so a PR that quietly lowers the baseline (making its own regression job pass
-against an already-weakened target) is visible in the PR comment instead of hidden behind a green
-check mark.
+Used by .github/workflows/baseline-diff.yml (issue #228, ADR-0013 decision 6; generalized to all
+baseline files in issue #941): the label-triggered run on a pull request compares the PR branch's
+own committed baselines against the ones on `main`, so a PR that quietly lowers any domain's
+baseline (making its own regression job pass against an already-weakened target) is visible in the
+PR comment instead of hidden behind a green check mark. Issue #941: the script originally only ever
+looked at `comic-characters.json`, so a PR that lowered `city-landmarks.json` (or any baseline added
+later) got a silent, false "no lowering" verdict — it now iterates every `*.json` file under the
+given directories, so a newly added domain's baseline is covered without a code change here.
 
 This is purely informational and always exits 0 — it never fails the job by itself. The actual gate
 against an unjustified baseline lowering is the review procedure in eval/baseline/README.md; this
@@ -19,6 +22,7 @@ golden-dataset generators under eval/generator/ (ADR-0011, decision 2).
 import argparse
 import json
 import sys
+from pathlib import Path
 
 METRICS = ("hitRateAt5", "mrr", "ndcgAt10", "recallAt10", "allExpectedDocumentsHitAt10")
 
@@ -75,17 +79,8 @@ def find_lowered(main_baseline, pr_baseline):
     return lowered
 
 
-def render(lowered, main_ref, pr_ref):
-    if not lowered:
-        return (
-            "### Baseline-Vergleich gegenüber `{main_ref}`\n\n"
-            "Keine Gruppe/Metrik in diesem PR-Branch (`{pr_ref}`) liegt unter dem auf "
-            "`{main_ref}` committeten Wert — keine stille Baseline-Absenkung erkennbar.\n"
-        ).format(main_ref=main_ref, pr_ref=pr_ref)
-
+def render_table(lowered, main_ref, pr_ref):
     lines = [
-        "### Baseline-Vergleich gegenüber `{}`".format(main_ref),
-        "",
         "**Achtung: {} Metrik(en) in diesem PR-Branch liegen unter dem auf `{}` committeten "
         "Wert.** Das ist keine automatische Blockade — aber jede Absenkung muss im PR begründet "
         "sein (siehe `eval/baseline/README.md`), sonst besteht der Regressionsjob künftiger PRs "
@@ -115,19 +110,51 @@ def render(lowered, main_ref, pr_ref):
     return "\n".join(lines)
 
 
+def render(results, main_ref, pr_ref):
+    """`results` is a list of (filename, lowered) pairs, one per baseline file — the report names
+    every file's verdict explicitly (issue #941), rather than a single verdict across all files
+    that would hide which domain's baseline actually regressed."""
+    lines = ["### Baseline-Vergleich gegenüber `{}`".format(main_ref), ""]
+    for filename, lowered in results:
+        lines.append("#### `{}`".format(filename))
+        lines.append("")
+        if not lowered:
+            lines.append(
+                "Keine Gruppe/Metrik in diesem PR-Branch (`{}`) liegt unter dem auf `{}` "
+                "committeten Wert — keine stille Baseline-Absenkung erkennbar.".format(
+                    pr_ref, main_ref
+                )
+            )
+            lines.append("")
+        else:
+            lines.append(render_table(lowered, main_ref, pr_ref))
+    return "\n".join(lines)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--main", required=True, help="Path to main's baseline JSON")
-    parser.add_argument("--pr", required=True, help="Path to the PR branch's baseline JSON")
+    parser.add_argument(
+        "--main-dir", required=True, help="Directory with main's baseline JSON files"
+    )
+    parser.add_argument(
+        "--pr-dir", required=True, help="Directory with the PR branch's baseline JSON files"
+    )
     parser.add_argument("--output", required=True, help="Markdown output file")
     parser.add_argument("--main-ref", default="main")
     parser.add_argument("--pr-ref", default="PR-Branch")
     args = parser.parse_args(argv)
 
-    main_baseline = load(args.main)
-    pr_baseline = load(args.pr)
-    lowered = find_lowered(main_baseline, pr_baseline)
-    markdown = render(lowered, args.main_ref, args.pr_ref)
+    pr_dir = Path(args.pr_dir)
+    main_dir = Path(args.main_dir)
+    results = []
+    for pr_path in sorted(pr_dir.glob("*.json")):
+        pr_baseline = load(pr_path)
+        main_path = main_dir / pr_path.name
+        main_baseline = load(main_path) if main_path.exists() else {"groups": {}}
+        lowered = find_lowered(main_baseline, pr_baseline)
+        results.append((pr_path.name, lowered))
+
+    markdown = render(results, args.main_ref, args.pr_ref)
 
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(markdown)

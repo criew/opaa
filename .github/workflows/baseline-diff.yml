@@ -31,20 +31,26 @@ jobs:
           # die ein flacher Checkout (Default fetch-depth: 1, nur der PR-Kopf) nicht auflösen kann.
           fetch-depth: 0
 
-      - name: Baseline von main laden
+      - name: Baseline-Dateien von main laden
         run: |
           git fetch origin main --depth=1
-          mkdir -p build
-          # Existiert die Datei auf main noch nicht (z. B. der allererste PR, der sie einführt),
-          # ist das kein Fehler — es gibt dann schlicht nichts, wovon abgesenkt werden könnte.
-          git show origin/main:eval/baseline/comic-characters.json > build/main-baseline.json \
-            || echo '{"groups":{}}' > build/main-baseline.json
+          mkdir -p build/main-baseline
+          # Iteriert über alle Baseline-Dateien des PR-Branches, damit eine neu hinzukommende
+          # Domäne (Issue #941) automatisch mitgeprüft wird, statt einen einzelnen Dateinamen fest
+          # zu verdrahten. Existiert eine Datei auf main noch nicht (z. B. der allererste PR, der
+          # sie einführt), ist das kein Fehler — es gibt dann schlicht nichts, wovon abgesenkt
+          # werden könnte.
+          for f in eval/baseline/*.json; do
+            name="$(basename "$f")"
+            git show "origin/main:eval/baseline/$name" > "build/main-baseline/$name" \
+              || echo '{"groups":{}}' > "build/main-baseline/$name"
+          done
 
       - name: Baseline-Absenkung gegenüber main prüfen
         run: |
           python3 eval/baseline/diff_baseline.py \
-            --main build/main-baseline.json \
-            --pr eval/baseline/comic-characters.json \
+            --main-dir build/main-baseline \
+            --pr-dir eval/baseline \
             --output build/baseline-diff-vs-main.md \
             --main-ref main \
             --pr-ref "${{ github.head_ref }}"
