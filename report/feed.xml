@@ -5,8 +5,19 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-26T02:08:36Z</updated>
+  <updated>2026-08-27T10:06:29Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Mittwoch, 26. August 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-26.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-26.html</id>
+    <updated>2026-08-27T10:06:29Z</updated>
+    <summary type="text">Sonstiges:
+— Zitatvalidierung um deterministische Faktenprüfung ergänzt
+— Ist-Stand-Spezifikation des Retrieval-Algorithmus dokumentiert
+— DocumentCompletion um Stufe-2-Verdrängung nachgeschärft
+— Chunk-Auswahl nach Fusion um Dokument-Vervollständigung ergänzt</summary>
+  </entry>
   <entry>
     <title>Tagesreport Dienstag, 25. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-25.html"/>

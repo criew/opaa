@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-08-26</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Mittwoch, 26. August 2026</h1>
+<nav class="blaettern"><a href="2026-08-25.html" rel="prev" title="Dienstag, 25. August 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/33057501669" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">15</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+9</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">7</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">10</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/939">#939</a></span>Zitatvalidierung um deterministische Faktenprüfung ergänzt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/936">#936</a></span>Ist-Stand-Spezifikation des Retrieval-Algorithmus dokumentiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/935">#935</a></span>DocumentCompletion um Stufe-2-Verdrängung nachgeschärft</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/934">#934</a></span>Chunk-Auswahl nach Fusion um Dokument-Vervollständigung ergänzt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/939">#939</a></span>feat(query): Zitatvalidierung um deterministische Faktenprüfung ergänzen (+987/−22, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/936">#936</a></span>docs(query): Ist-Stand-Spezifikation des Retrieval-Algorithmus (+229/−3, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/935">#935</a></span>feat(query): DocumentCompletion um Stufe-2-Verdraengung nachschaerfen (#932 Zuschnitt v2) (+339/−78, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/934">#934</a></span>feat(query): Chunk-Auswahl nach der Fusion um Dokument-Vervollständigung ergänzen (+826/−62, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/931">#931</a></span>docs: Demo-Dokumentation konsolidieren und deployment.md zum Betriebshandbuch machen (+727/−748, 14 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/930">#930</a></span>docs(fortschritt): tagesreport.md zur Stand-und-Nachweis-Achse ziehen (Nachzügler zu #927) (+11/−5, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/928">#928</a></span>docs: Doku-Struktur nach Achsen konsolidieren (Stand, Handbuch, Recherche) (+203/−1690, 50 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/926">#926</a></span>feat(query): Teilfragen-Zerlegung und kontextbewusste Reformulierung vor dem Retrieval (Multi-Query-RAG) (+1001/−68, 14 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/925">#925</a></span>fix(ci): Renovate-Commits dem PAT-Inhaber zuordnen — CLA-Check der Update-PRs reparieren (+12/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/922">#922</a></span>feat(query): MMR-Diversität im Retrieval (fetchK, mmrLambda) und topK-Anhebung (+741/−47, 16 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-08-27 um 12:06 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-08-26T00:00:00 bis 2026-08-26T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
