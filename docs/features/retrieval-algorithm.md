@@ -227,6 +227,17 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   ersten, unabhängig vom tatsächlichen Relevanzunterschied. Betrifft nur die Auswahl **zwischen mehreren
   Kandidaten desselben zu vervollständigenden Dokuments** — der äußere `topK`-Wettbewerb zwischen
   verschiedenen Dokumenten läuft weiterhin über die rangfaire Reciprocal Rank Fusion (Schritt 5).
+- **Reine Vektorsuche verfehlt Dokumente, deren Embedding-Signal trotz wörtlicher Begriffstreffer zu
+  schwach ist — akzeptierte Grenze (Maintainer-Entscheidung in #938).** Der belegte Fall: Für „Was
+  gilt bei Gebührenbefreiung wegen Bedürftigkeit?" rankt `01_verwaltungsgebuehrensatzung.pdf` im
+  Leserechte-Scope eines Kfz-Kontos auf Rang 50 (Score 0,553 gegen 0,59–0,63 thematisch fremder
+  Konkurrenz), obwohl § 3 VGS die Anfragebegriffe („Befreiung", „Bedürftigkeit") wörtlich enthält.
+  Keine Auswahlmechanik dieses Dokuments (topK, MMR, Dokument-Vervollständigung,
+  Teilfragen-Zerlegung) kann einen solchen Rückstand überbrücken — sie ordnen nur, was die
+  Vektorsuche liefert. Der passende Mechanismus wäre eine lexikalische Suchkomponente
+  (Hybrid-Suche, siehe unten); ihre Umsetzung ist bewusst nicht beauftragt. Bis dahin gilt: Ein
+  Dokument, dessen Embedding die Anfrage nicht erreicht, bleibt für betroffene Konten unauffindbar,
+  auch wenn es die maßgebliche Quelle ist (Diagnose vollständig in #938).
 
 ### Etablierte Verfahren, die OPAA noch nicht nutzt
 
