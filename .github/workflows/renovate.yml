@@ -39,5 +39,6 @@ jobs:
             -e RENOVATE_TOKEN \
             -e RENOVATE_PLATFORM=github \
             -e RENOVATE_REPOSITORIES=criew/opaa \
+            -e RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper \
             -e LOG_LEVEL=info \
             renovate/renovate:latest
