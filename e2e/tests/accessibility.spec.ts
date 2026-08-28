@@ -64,13 +64,48 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Space-Seite");
   });
 
+  // #957: Die Rollen-Chips („Administrator", „Eigentümer") fielen im Abschluss-Audit (#598) nur
+  // im Dunkelschema durch color-contrast — beide Seiten deshalb in beiden Schemata, nach dem
+  // Muster des Chat-Szenarios oben.
+  test("Spaces-Übersicht in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/spaces");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Spaces" }),
+    ).toBeVisible();
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(
+      page,
+      "Spaces-Übersicht (helles Farbschema)",
+    );
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expectNoSeriousA11yViolations(
+      page,
+      "Spaces-Übersicht (dunkles Farbschema)",
+    );
+  });
+
   test("Wissensbibliotheken", async ({ authenticatedPage: page }) => {
     await gotoLibraries(page);
     await expect(
       page.getByRole("heading", { level: 1, name: "Wissensbibliotheken" }),
     ).toBeVisible();
 
-    await expectNoSeriousA11yViolations(page, "Wissensbibliotheken");
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(
+      page,
+      "Wissensbibliotheken (helles Farbschema)",
+    );
+
+    // #957: der „Eigentümer"-Chip fiel nur im Dunkelschema durch.
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expectNoSeriousA11yViolations(
+      page,
+      "Wissensbibliotheken (dunkles Farbschema)",
+    );
   });
 
   test("Verwaltungsbereich: Gruppen", async ({ authenticatedPage: page }) => {

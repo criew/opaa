@@ -6,6 +6,7 @@ import ButtonBase from '@mui/material/ButtonBase'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
+import MetaBadge from '../components/MetaBadge'
 import { Link as RouterLink, useNavigate } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -152,20 +153,9 @@ export default function SpacesOverviewPage() {
                 {spaceFigures(space)}
               </Typography>
               <Box sx={{ display: 'flex', gap: 0.75 }}>
-                <Typography
-                  component="span"
-                  sx={{
-                    fontSize: 10.5,
-                    color: blue[700],
-                    border: 1,
-                    borderColor: blue[300],
-                    borderRadius: '4px',
-                    px: 1,
-                    py: 0.25,
-                  }}
-                >
-                  {spaceRoleLabel(space.userRole)}
-                </Typography>
+                {/* #957: MetaBadge instead of a hand-rolled twin - same optics, and its accent
+                    colour is scheme-aware (blue[700] only reached 3.8:1 on the dark card). */}
+                <MetaBadge accent>{spaceRoleLabel(space.userRole)}</MetaBadge>
               </Box>
             </ButtonBase>
           ))}
