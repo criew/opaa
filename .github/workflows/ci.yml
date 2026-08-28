@@ -156,7 +156,7 @@ jobs:
 
       # Installs the pnpm version pinned in the "packageManager" field of
       # frontend/package.json.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: frontend/package.json
 
