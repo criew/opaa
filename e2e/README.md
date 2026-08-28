@@ -88,6 +88,18 @@ Um nur Playwright gegen einen bereits laufenden Stack auszuführen (z. B. währe
 eines neuen Tests): `pnpm run test:playwright` (kein Docker-Lifecycle, erwartet den Stack unter
 `http://localhost:3000`, überschreibbar via `E2E_BASE_URL`).
 
+### Lokale Läufe unter Last (#815)
+
+Die Budgets der Suite (30 s je Test, 10 s je Zusicherung) sind auf die CI zugeschnitten. Auf einem
+ausgelasteten Entwickler-Host (parallele Sessions, knapper Speicher neben Docker-Stack und
+Chromium) reißen einzelne, sonst sekundenschnelle Schritte diese Budgets — die Analyse zu #815
+zeigte über drei volle Läufe Timeouts an drei _verschiedenen_, jeweils trivialen Schritten,
+während dasselbe Szenario isoliert und in der CI stets grün blieb. Deshalb gilt `retries: 1`
+auch lokal (wie in der CI): Zusicherungen bleiben unverändert, eine echte Regression fällt auch
+im zweiten Versuch, und wiederholte Läufe erscheinen im Report als „flaky" statt zu verschwinden.
+Häufen sich Flaky-Markierungen lokal, ist der Host überlastet — Läufe entzerren statt Budgets
+weiter anheben.
+
 ### Isolation von einem laufenden Dev-Stack
 
 Der E2E-Stack läuft als **eigenes Compose-Projekt** (`COMPOSE_PROJECT_NAME=opaa-e2e`) auf **eigenen
