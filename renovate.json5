@@ -136,5 +136,16 @@
       matchDatasources: ['docker'],
       pinDigests: false,
     },
+    // Temurin-Major bleibt aus, bis die Projekt-Toolchain nachzieht (#1001): build.gradle.kts
+    // pinnt die Java-Toolchain auf 21, und im 25-jdk-Image findet Gradle kein JDK 21
+    // (Auto-Provisioning ist aus) — der Automerge von #988 hat den Backend-Image-Build und
+    // damit E2E/Publish Images auf main gebrochen. Der Wechsel auf Temurin 25 kommt als
+    // bewusste Toolchain-Migration (eigenes Issue), nicht als Dependency-Bump.
+    {
+      matchDatasources: ['docker'],
+      matchPackageNames: ['eclipse-temurin'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
   ],
 }

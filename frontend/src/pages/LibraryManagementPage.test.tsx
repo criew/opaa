@@ -49,6 +49,7 @@ const managerLibrary: LibraryListResponse = {
   listed: true,
   myRole: 'MANAGER',
   sourceType: 'FILESYSTEM',
+  lastIndexedAt: '2026-08-18T06:00:00Z',
   documentCount: 431,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
@@ -123,6 +124,31 @@ describe('LibraryManagementPage', () => {
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
     expect(await screen.findByText(/Lauf läuft · 62 %/)).toBeInTheDocument()
+  })
+
+  it('shows the last successful run in the Stand column without a live run (#684)', async () => {
+    // managerLibrary (FILESYSTEM): "indiziert" + date; an RSS library fetched today at 06:00
+    // local time reads "abgerufen heute 06:00" (mockup 1d); without any completed run: dash.
+    const today = new Date()
+    today.setHours(6, 0, 0, 0)
+    // The running-run test above leaves its RUNNING state in the module-global zustand store -
+    // without this reset the FILESYSTEM row would still show the live-run bar instead of the
+    // last successful run.
+    useIndexingStore.setState({ runsByLibrary: {} })
+    const rssLibrary: LibraryListResponse = {
+      ...viewerLibrary,
+      id: 'library-rss',
+      name: 'Amtsblatt-Feed',
+      sourceType: 'RSS_FEED',
+      lastIndexedAt: today.toISOString(),
+    }
+    setLibraryState([managerLibrary, rssLibrary, viewerLibrary])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText('indiziert 18.08.2026')).toBeInTheDocument()
+    expect(screen.getByText('abgerufen heute 06:00')).toBeInTheDocument()
+    // viewerLibrary carries no lastIndexedAt - its Stand cell stays a dash.
+    expect(screen.getAllByText('–')).toHaveLength(1)
   })
 
   it('lists libraries sorted alphabetically by name', async () => {

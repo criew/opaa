@@ -33,12 +33,25 @@ function documentCountSummary(documentCount: number): string {
   return `${documentCount.toLocaleString('de-DE')} ${documentCount === 1 ? 'Dokument' : 'Dokumente'}`
 }
 
-/** The Stand cell: a live run with mockup 1d's mini progress bar; a last-indexed date needs a
- *  field the list API does not carry yet (follow-up issue). */
-function StandCell({ libraryId }: { libraryId: string }) {
-  const run = useIndexingStore((s) => s.runsByLibrary[libraryId]) ?? IDLE_RUN_STATE
+/** Mockup 1d's Stand wording (#684): "abgerufen" for the continuously fetched RSS feed,
+ *  "indiziert" for everything else; today's runs show the local time instead of the date. */
+function lastRunLabel(library: LibraryListResponse): string {
+  if (!library.lastIndexedAt) return '–'
+  const at = new Date(library.lastIndexedAt)
+  const verb = library.sourceType === 'RSS_FEED' ? 'abgerufen' : 'indiziert'
+  const isToday = at.toDateString() === new Date().toDateString()
+  const when = isToday
+    ? `heute ${at.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
+    : at.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return `${verb} ${when}`
+}
+
+/** The Stand cell: a live run with mockup 1d's mini progress bar, otherwise the last
+ *  successful run from the list API (#684), or a dash before the first completed run. */
+function StandCell({ library }: { library: LibraryListResponse }) {
+  const run = useIndexingStore((s) => s.runsByLibrary[library.id]) ?? IDLE_RUN_STATE
   if (run.status !== 'RUNNING') {
-    return <>–</>
+    return <>{lastRunLabel(library)}</>
   }
   const percent =
     run.totalDocuments > 0 ? Math.round((run.documentCount / run.totalDocuments) * 100) : 0
@@ -128,7 +141,7 @@ function LibraryTable({ libraries }: { libraries: LibraryListResponse[] }) {
                 <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
               </TableCell>
               <TableCell sx={{ fontSize: '12px !important', color: 'text.secondary' }}>
-                <StandCell libraryId={library.id} />
+                <StandCell library={library} />
               </TableCell>
             </TableRow>
           ))}

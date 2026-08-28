@@ -351,6 +351,17 @@ public class KnowledgeLibraryService {
                     DocumentRepository.LibraryDocumentCount::getLibraryId,
                     DocumentRepository.LibraryDocumentCount::getDocumentCount));
     Map<UUID, String> ownerNames = resolveOwnerNames(libraries);
+    // #684: the "Stand" column's last successful run, one grouped query for the whole page
+    // (same shape as documentCounts above) - a library without any completed run stays null.
+    Map<UUID, Instant> lastIndexedAt =
+        indexingJobRepository
+            .findLastCompletedByLibraryIdIn(
+                libraries.stream().map(KnowledgeLibrary::getId).toList())
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    IndexingJobRepository.LibraryLastCompleted::getLibraryId,
+                    IndexingJobRepository.LibraryLastCompleted::getLastCompletedAt));
 
     return libraries.stream()
         .map(
@@ -359,7 +370,8 @@ public class KnowledgeLibraryService {
                     library,
                     roles.get(library.getId()),
                     documentCounts.getOrDefault(library.getId(), 0L),
-                    ownerNames.get(library.getOwnerId())))
+                    ownerNames.get(library.getOwnerId()),
+                    lastIndexedAt.get(library.getId())))
         .toList();
   }
 
