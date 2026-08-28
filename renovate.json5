@@ -157,5 +157,14 @@
       matchUpdateTypes: ['major'],
       enabled: false,
     },
+    // TypeScript-7-Major bleibt aus, bis typescript-eslint nachzieht (#1007): 8.68.0 bricht
+    // mit "typescript-eslint does not support TS 7.0" ab (Upstream-Tracking:
+    // typescript-eslint/typescript-eslint#10940, Support ab TS >= 7.1). 6.x-Updates laufen
+    // weiter; Regel entfernen, sobald Upstream TS 7 traegt.
+    {
+      matchPackageNames: ['typescript'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
   ],
 }
