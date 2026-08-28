@@ -14,3 +14,12 @@ allowBuilds:
 peerDependencyRules:
   allowedVersions:
     'openapi-typescript>typescript': '>=6.0.0'
+
+# #1013: Befristete, gezielte Ausnahme von pnpms 24-h-Mindestalter (Supply-Chain-Schutz,
+# #954) fuer die auf Maintainer-Anweisung vorgezogenen Renovate-Updates vom 28.08.2026
+# (#1009/#1010/#1011). NUR diese Pakete; der Rueckbau folgt als zweiter PR unter #1013,
+# sobald auch das juengste Release die Frist erfuellt (29.08. ~05:30 CEST).
+minimumReleaseAgeExclude:
+  - '@testing-library/react'
+  - '@vitejs/plugin-react'
+  - '@mui/*'
