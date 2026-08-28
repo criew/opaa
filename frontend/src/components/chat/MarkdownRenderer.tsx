@@ -11,6 +11,7 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import type { Components } from 'react-markdown'
+import rehypeNormalizeHeadings, { MD_LEVEL_PROPERTY } from './markdownHeadings'
 import type { CitationIndex } from './citations'
 import { CITATION_MARKER_RE, citationRowId } from './citations'
 import 'highlight.js/styles/github-dark.css'
@@ -184,22 +185,37 @@ function makeProcessChildren(
 function makeComponents(
   processChildren: (children: React.ReactNode) => React.ReactNode,
 ): Components {
+  // #1016: the element level comes from rehypeNormalizeHeadings (per-message rank compression
+  // starting at h2); the visual variant keeps following the ORIGINAL Markdown level, carried in
+  // MD_LEVEL_PROPERTY - "## Zusammenfassung" looks exactly as before, whatever element it gets.
+  const VARIANT_BY_MD_LEVEL: Record<string, React.ComponentProps<typeof Typography>['variant']> = {
+    '1': 'h5',
+    '2': 'h6',
+    '3': 'subtitle1',
+  }
+  const heading =
+    (tag: 'h2' | 'h3' | 'h4' | 'h5' | 'h6'): Components[typeof tag] =>
+    ({ children, node }) => {
+      const mdLevel = String(node?.properties?.[MD_LEVEL_PROPERTY] ?? '')
+      const variant = VARIANT_BY_MD_LEVEL[mdLevel] ?? 'subtitle2'
+      const bold = mdLevel === '' || Number(mdLevel) >= 3
+      return (
+        <Typography
+          component={tag}
+          variant={variant}
+          gutterBottom
+          sx={bold ? { fontWeight: 'bold' } : undefined}
+        >
+          {children}
+        </Typography>
+      )
+    }
   return {
-    h1: ({ children }) => (
-      <Typography variant="h5" gutterBottom>
-        {children}
-      </Typography>
-    ),
-    h2: ({ children }) => (
-      <Typography variant="h6" gutterBottom>
-        {children}
-      </Typography>
-    ),
-    h3: ({ children }) => (
-      <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-        {children}
-      </Typography>
-    ),
+    h2: heading('h2'),
+    h3: heading('h3'),
+    h4: heading('h4'),
+    h5: heading('h5'),
+    h6: heading('h6'),
     p: ({ children }) => (
       <Typography variant="body1" sx={{ mb: 1, '&:last-child': { mb: 0 } }}>
         {processChildren(children)}
@@ -296,7 +312,7 @@ export default function MarkdownRenderer({
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeHighlight]}
+      rehypePlugins={[rehypeHighlight, rehypeNormalizeHeadings]}
       components={components}
     >
       {content}
