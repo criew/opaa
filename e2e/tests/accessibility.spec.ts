@@ -82,6 +82,24 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Gruppen)");
   });
 
+  // #956: die Branding-Seite lag außerhalb der Suite, obwohl sie mit der aria-hidden-Vorschau
+  // als einzige Seite bewusst unsichtbare Interaktionsmuster rendert — genau dort saß der
+  // aria-hidden-focus-Befund des Abschluss-Audits (#598). Der Wartepunkt auf den Vorschau-Text
+  // stellt sicher, dass axe die Vorschau-Panels wirklich analysiert.
+  test("Verwaltungsbereich: Branding", async ({ authenticatedPage: page }) => {
+    await page.goto("/admin/branding");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Branding" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("So wirkt die Einstellung in beiden Farbschemata", {
+        exact: false,
+      }),
+    ).toBeVisible();
+
+    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Branding)");
+  });
+
   // #800: die Einstellungsseite lag als einzige globale Seite außerhalb der Suite, obwohl sie
   // mit Badge neben der H1 und Akzent-Avatar eigene Farbkombinationen einführt (#788).
   test("Benutzer-Einstellungen", async ({ authenticatedPage: page }) => {
