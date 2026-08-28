@@ -189,6 +189,9 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
       onChange={(_event, isExpanded) => setExpanded(isExpanded)}
       variant="outlined"
       disableGutters
+      // Level 2: the cards are the first headings after the page's h1 (the "Einbettungsmodell"
+      // h2 follows below them); MUI's default heading element is an h3, which skips a level.
+      slotProps={{ heading: { component: 'h2' } }}
       // e2e/README.md, "Selektor-Konvention" (#760): AccordionDetails stays mounted while
       // collapsed (only its height animates), so every card's own "API-Schlüssel" field etc. is
       // simultaneously present in the DOM - a page-wide role/label query cannot tell one model's

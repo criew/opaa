@@ -65,6 +65,18 @@ describe('BrandingSettingsPage', () => {
     expect(screen.getByLabelText('Primärfarbe')).toHaveValue(OPAA_BRANDING.primaryColor)
   })
 
+  // regression guard for #958: the section headings follow the page's h1 directly, so they must
+  // be level-2 headings - the subtitle2 look stays, only the semantic level is pinned here.
+  it('renders the section headings as level 2', () => {
+    signInAs('SYSTEM_ADMIN')
+
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
+
+    for (const name of ['Farbschema-Vorgabe', 'Logo', 'Vorschau']) {
+      expect(screen.getByRole('heading', { level: 2, name })).toBeInTheDocument()
+    }
+  })
+
   it('saves a change and puts it into effect immediately', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()

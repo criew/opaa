@@ -246,7 +246,9 @@ export default function BrandingSettingsPage() {
           )}
 
           <Box>
-            <Typography variant="subtitle2" gutterBottom>
+            {/* Level 2 (also below): these section headings follow the page's h1 directly;
+                the subtitle2 look is only visual. */}
+            <Typography variant="subtitle2" component="h2" gutterBottom>
               Farbschema-Vorgabe
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
@@ -275,7 +277,7 @@ export default function BrandingSettingsPage() {
           <Divider />
 
           <Box>
-            <Typography variant="subtitle2" gutterBottom>
+            <Typography variant="subtitle2" component="h2" gutterBottom>
               Logo
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
@@ -317,7 +319,7 @@ export default function BrandingSettingsPage() {
           <Divider />
 
           <Box>
-            <Typography variant="subtitle2" gutterBottom>
+            <Typography variant="subtitle2" component="h2" gutterBottom>
               Vorschau
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>

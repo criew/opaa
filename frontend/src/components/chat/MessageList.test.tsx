@@ -9,6 +9,15 @@ describe('MessageList', () => {
     expect(screen.getByText('Womit kann ich Ihnen heute helfen?')).toBeInTheDocument()
   })
 
+  // regression guard for #958: the empty-state heading follows the page's h1 directly, so it
+  // must be a level-2 heading - anything deeper skips a level for screen-reader navigation.
+  it('renders the empty-state heading as level 2', () => {
+    render(<MessageList messages={[]} isLoading={false} />)
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Womit kann ich Ihnen heute helfen?' }),
+    ).toBeInTheDocument()
+  })
+
   it('renders messages', () => {
     const messages: ChatMessage[] = [
       { id: '1', role: 'user', content: 'Hello', timestamp: new Date() },
