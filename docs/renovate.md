@@ -31,6 +31,11 @@ Digest-Pinning für Docker-Images (gleitende Tags sind eine dokumentierte Projek
 siehe `e2e/docker-compose.e2e.yml`). Zusätzlich pflegt Renovate ein Übersichts-Issue
 („Abhängigkeits-Übersicht (Renovate)") mit allen anstehenden Updates.
 
+**npm-Releases brauchen 24 h Reife** (`minimumReleaseAge: '1 day'`, #954): pnpm 11 lehnt
+jüngere Releases per Standard-Supply-Chain-Richtlinie ohnehin ab — Renovate schlägt deshalb
+erst vor, was pnpm auch installiert. Ein wegen dieser Frist noch zurückgehaltenes Update
+erscheint als „Pending" in der Abhängigkeits-Übersicht.
+
 **npm wird gepinnt** (`rangeStrategy: 'pin'` für `dependencies`/`devDependencies`):
 `frontend/` und `e2e/` sind Anwendungen — exakte Versionen in der `package.json` machen jeden
 Bump als PR sichtbar statt als stilles Lockfile-only-Update. Der allererste Lauf erzeugt dafür

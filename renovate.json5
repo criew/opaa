@@ -87,6 +87,14 @@
       matchDepTypes: ['dependencies', 'devDependencies'],
       rangeStrategy: 'pin',
     },
+    // pnpm 11 lehnt per Standard-Supply-Chain-Richtlinie npm-Releases ab, die jünger als
+    // 24 h sind (ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION, #954) — Renovate wartet dieselbe
+    // Frist ab, sonst sind PRs mit brandneuen Releases in CI und Docker-Build zwangsläufig
+    // rot. Wer den Sicherheitsabstand erhöht, zieht pnpm- und Renovate-Wert gemeinsam hoch.
+    {
+      matchManagers: ['npm'],
+      minimumReleaseAge: '1 day',
+    },
     {
       matchManagers: ['github-actions', 'dockerfile', 'docker-compose'],
       addLabels: ['ci'],
