@@ -147,5 +147,15 @@
       matchUpdateTypes: ['major'],
       enabled: false,
     },
+    // Tika-4-Major bleibt aus, bis Spring AI nachzieht (#1005): tika-core kommt hier nur als
+    // explizite Deklaration der ohnehin transitiven Version aus spring-ai-tika-document-reader.
+    // Ein isolierter Bump auf 4.x kombiniert tika-core 4 mit den Tika-3-Parsern der
+    // Spring-AI-BOM und bricht die Format-Erkennung breit (#992: backend/e2e rot). Tika 4
+    // kommt, wenn Spring AI seine Tika-Abhaengigkeit auf 4.x hebt - dann Regel entfernen.
+    {
+      matchPackageNames: ['org.apache.tika:tika-core'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
   ],
 }
