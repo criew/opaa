@@ -168,4 +168,4 @@ docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
   nacheinander per Auto-Merge gemergt, ohne dass die späteren gegen den neuen Stand rebased
   waren — die textuell konfliktfreie Git-Vereinigung der `pnpm-lock.yaml` ist dann semantisch
   inkonsistent (#996). Heilung: `pnpm install` auf `main`-Stand, Lockfile-Diff committen
-  (Vorbild: PR #999); Vorbeugung wird in #1000 verfolgt.
+  (Vorbild: PR #1003); Vorbeugung wird in #1000 verfolgt.

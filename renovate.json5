@@ -137,11 +137,13 @@
       matchDatasources: ['docker'],
       pinDigests: false,
     },
-    // Major-Updates mergen nicht automatisch (#1002): das auto-gemergte
-    // eclipse-temurin-v25-Major brach den Backend-Image-Build (Gradle-Toolchain verlangt
-    // Java 21), und e2e — der einzige Check, der das gezeigt hätte — ist kein Required
-    // Check. Majors bleiben als PR zur menschlichen Entscheidung offen; Ablehnung durch
-    // Schließen des PRs (Renovate merkt sich das).
+    // Major-Updates mergen generell nicht automatisch (#1002): Auto-Merge greift, sobald die
+    // Required Checks grün sind — Brüche, die nur ein Nicht-Required-Check (e2e) oder gar kein
+    // Check zeigt, rutschen bei Majors sonst unbeaufsichtigt durch (so geschehen mit
+    // eclipse-temurin v25, JUnit und pnpm/action-setup am 28.08.2026). Majors bleiben als PR
+    // zur menschlichen Entscheidung offen; Ablehnung durch Schließen des PRs (Renovate merkt
+    // sich das). Die folgenden enabled:false-Regeln setzen einzelne, aktuell bekannt
+    // inkompatible Majors darüber hinaus ganz aus.
     {
       matchUpdateTypes: ['major'],
       automerge: false,
