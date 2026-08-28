@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 # corepack ships with node:22 and installs the pnpm version pinned in the
 # "packageManager" field of package.json on first invocation.
