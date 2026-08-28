@@ -68,7 +68,10 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
         }}
       >
         <SmartToyIcon sx={{ fontSize: 48 }} />
-        <Typography variant="h6">Womit kann ich Ihnen heute helfen?</Typography>
+        {/* Level 2: this heading follows the page's h1 directly; the h6 look is only visual. */}
+        <Typography variant="h6" component="h2">
+          Womit kann ich Ihnen heute helfen?
+        </Typography>
         <Typography variant="body2">Stellen Sie eine Frage zu Ihren Projektdokumenten.</Typography>
         {liveRegion}
       </Box>

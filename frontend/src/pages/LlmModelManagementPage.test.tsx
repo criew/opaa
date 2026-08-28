@@ -56,6 +56,20 @@ describe('LlmModelManagementPage', () => {
     expect(screen.getByLabelText('Aktives Modell')).toBeInTheDocument()
   })
 
+  // regression guard for #958: the model cards are the first headings after the page's h1
+  // (the "Einbettungsmodell" h2 follows below them), so the accordion heading must be level 2 -
+  // MUI's default renders an h3 there, which skips a level.
+  it('renders the model card headings as level 2', async () => {
+    signInAs('SYSTEM_ADMIN')
+
+    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+
+    await waitFor(() => {
+      expect(screen.getByText('Ollama lokal')).toBeInTheDocument()
+    })
+    expect(screen.getByRole('heading', { level: 2, name: /Ollama lokal/ })).toBeInTheDocument()
+  })
+
   it('shows the read-only embedding block with provider, model and dimensions', async () => {
     signInAs('SYSTEM_ADMIN')
 
