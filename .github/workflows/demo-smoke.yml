@@ -76,7 +76,7 @@ jobs:
       # demo/seed/seed.py needs python3 + pip on the runner, same as e2e.yml.
       - uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: '3.14'
 
       - name: Install E2E dependencies
         working-directory: e2e
