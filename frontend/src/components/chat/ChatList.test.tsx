@@ -176,9 +176,13 @@ describe('ChatList', () => {
 
     await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
     await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ umbenennen'))
+    const field = screen.getByLabelText('Chat-Titel')
+    await user.clear(field)
+    await user.type(field, 'Neuer Titel')
     await user.click(screen.getByRole('button', { name: 'Neuer Chat' }))
 
-    await screen.findByLabelText('Aktionen für Chat „Architektur des Projekts“')
+    expect(await screen.findByText('Neuer Titel')).toBeInTheDocument()
+    await screen.findByLabelText('Aktionen für Chat „Neuer Titel“')
     expect(screen.getByRole('button', { name: 'Neuer Chat' })).toHaveFocus()
   })
 })

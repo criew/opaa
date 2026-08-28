@@ -64,14 +64,19 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
   // a ref and consumed once rename mode ends. Blur commits deliberately don't refocus: the
   // user moved focus elsewhere.
   const refocusChatIdRef = useRef<string | null>(null)
-  const actionButtonRefs = useRef(new Map<string, HTMLButtonElement>())
+  const actionButtonRefs = useRef<Map<string, HTMLButtonElement> | null>(null)
+
+  function getActionButtonRefs() {
+    actionButtonRefs.current ??= new Map()
+    return actionButtonRefs.current
+  }
 
   useEffect(() => {
     if (renamingChatId !== null) return
     const chatId = refocusChatIdRef.current
     if (chatId === null) return
     refocusChatIdRef.current = null
-    actionButtonRefs.current.get(chatId)?.focus()
+    actionButtonRefs.current?.get(chatId)?.focus()
   }, [renamingChatId])
 
   useEffect(() => {
@@ -187,8 +192,8 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
                     <IconButton
                       size="small"
                       ref={(el) => {
-                        if (el) actionButtonRefs.current.set(chat.id, el)
-                        else actionButtonRefs.current.delete(chat.id)
+                        if (el) getActionButtonRefs().set(chat.id, el)
+                        else getActionButtonRefs().delete(chat.id)
                       }}
                       aria-label={`Aktionen für Chat „${chatTitle(chat)}“`}
                       aria-haspopup="menu"
