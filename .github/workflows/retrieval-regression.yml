@@ -103,7 +103,7 @@ jobs:
       # actions/cache-Musters, das bei exaktem Key-Treffer nie neu speicherte
       # (#832). Configuration-Cache-Daten werden bewusst nicht persistiert
       # (braeuchte cache-encryption-key + build-root-directory).
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       # Named Docker volume that RetrievalEvaluationHarnessTest bind-mounts into the Ollama
       # container (see its OLLAMA_MODEL_VOLUME javadoc). On a developer machine this volume

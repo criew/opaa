@@ -79,7 +79,7 @@ jobs:
       # actions/cache-Musters, das bei exaktem Key-Treffer nie neu speicherte
       # (#832). Configuration-Cache-Daten werden bewusst nicht persistiert
       # (braeuchte cache-encryption-key + build-root-directory).
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Build & Test
         run: ./gradlew build
@@ -112,7 +112,7 @@ jobs:
           java-version: '21'
 
       # Cache-Verwaltung wie im backend-Job: read-only auf PRs, Schreiben nur auf main (#832).
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: OpenAI Integration Tests
         if: env.OPAA_OPENAI_API_KEY != ''
