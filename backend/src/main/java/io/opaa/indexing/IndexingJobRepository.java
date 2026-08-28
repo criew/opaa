@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,6 +44,26 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
    * already resolved and authorized, so every row this returns necessarily shares its organization.
    */
   List<IndexingJob> findByLibraryIdOrderByStartedAtDesc(UUID libraryId);
+
+  /**
+   * Latest successful completion per library in one grouped query (#684) - backs the library
+   * overview's "Stand" column the same way {@code DocumentRepository#countByLibraryIdIn} backs its
+   * documentCount (#477): one query for the whole page, never one per row. Only {@link
+   * JobStatus#COMPLETED} rows count; libraries without any completed run simply have no row here
+   * and stay {@code null} on the response.
+   */
+  @Query(
+      "select j.libraryId as libraryId, max(j.completedAt) as lastCompletedAt from IndexingJob j"
+          + " where j.libraryId in :libraryIds and j.status = io.opaa.indexing.JobStatus.COMPLETED"
+          + " group by j.libraryId")
+  List<LibraryLastCompleted> findLastCompletedByLibraryIdIn(
+      @Param("libraryIds") Collection<UUID> libraryIds);
+
+  interface LibraryLastCompleted {
+    UUID getLibraryId();
+
+    Instant getLastCompletedAt();
+  }
 
   /**
    * The last {@value IndexingJobService#MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId}
