@@ -1,0 +1,710 @@
+{
+  "repo": "criew/opaa",
+  "date": "2026-08-27",
+  "generated_at": "2026-08-28T13:37:36.231959+02:00",
+  "timezone": "Europe/Berlin",
+  "timezone_fallback": false,
+  "window_start": "2026-08-27T00:00:00+02:00",
+  "window_end": "2026-08-27T23:59:59+02:00",
+  "closed_issues": [
+    {
+      "number": 941,
+      "title": "CI: Baseline-Absenkungs-Wächter prüft nur comic-characters — city-landmarks bekommt falschen Freispruch",
+      "url": "https://github.com/criew/opaa/issues/941",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "size:S",
+        "ci",
+        "evaluation"
+      ],
+      "body": "Befund aus dem Review von PR #940 (vorbestehend, nicht durch #940 verursacht):\n\n`.github/workflows/baseline-diff.yml` (Z. 40/47) und `eval/baseline/diff_baseline.py` (Z. 2) sind fest auf `comic-characters.json` verdrahtet. Senkt ein PR nur `eval/baseline/city-landmarks.json` ab (wie #940 legitim tat), vergleicht der Wächter nichts und postet trotzdem „Keine Gruppe/Metrik in diesem PR-Branch liegt unter dem auf `main` committeten Wert\" — ein falscher Freispruch genau in dem Fall, für den der Wächter existiert. `eval/baseline/README.md` beschreibt den Wächter ohne diese Einschränkung.\n\n**Auftrag:** `diff_baseline.py` und den Workflow über alle `eval/baseline/*.json`-Dateien schleifen lassen; der Kommentartext nennt pro Datei das Ergebnis. Nachweis: Ein künstlich abgesenkter city-landmarks-Wert muss im Workflow-Kommentar auftauchen (Reproduktionsnachweis in der PR-Beschreibung).",
+      "closes": []
+    },
+    {
+      "number": 938,
+      "title": "Query: Einschlägige Satzungs-PDF fehlt in den Top-8 — Drehbuch-Frage 6 wird als thomas.klein verweigert",
+      "url": "https://github.com/criew/opaa/issues/938",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend",
+        "size:M",
+        "evaluation",
+        "demo"
+      ],
+      "body": "Teil von #912. Befund aus der fachlichen Regressionsprüfung der Demo (26.08.2026, nach #922/#926/#934/#935) gegen das Drehbuch `docs/market/demo-drehbuch.md`.\n\n## Befund (Drehbuch-Frage 6, Quer-Bibliotheks-Frage zur Gebührenbefreiung bei Bedürftigkeit)\n\n`01_verwaltungsgebuehrensatzung.pdf` (Bibliothek „Satzungen & Gebührenordnungen\") enthält in § 3 VGS die einschlägige Rechtsgrundlage — erscheint aber bei **keinem** Konto in den Top-8-Quellen; stattdessen rankt die thematisch fremde `16_personenstandsgebuehrensatzung.pdf`.\n\n- Als `maria.weber` ist die Antwort nur zufällig korrekt (die interne Dienstanweisung `02_gebuehrenbefreiung-beduerftigkeit.docx` zitiert § 3 VGS wörtlich).\n- Als `thomas.klein` (liest nur die Satzungsbibliothek, nicht die Dienstanweisungen) wird die Antwort komplett **verweigert** — klare Verletzung der Drehbuch-Erwartung, und der fachlich schlimmste Fall: Ein Nutzer mit legitimem Zugriff auf die maßgebliche Quelle bekommt „kann ich nicht beantworten\".\n\n## Auftrag\n\n1. **Diagnose zuerst:** Auf welchem Rang liegt `01_verwaltungsgebuehrensatzung.pdf` (bzw. ihr §-3-Chunk) für die Drehbuch-Frage tatsächlich — knapp hinter Platz 8 oder abgeschlagen? Kandidaten-Ranking über den produktionsnahen QueryService-Pfad ausleiten (fetchK-Kandidatenliste mit Scores). Dabei prüfen:\n   - Qualität der PDF-Textextraktion dieses Dokuments (kommt § 3 sauber im Chunk-Text an, oder ist der extrahierte Text verstümmelt?)\n   - Chunk-Zuschnitt (liegt § 3 mit seiner Überschrift in einem Chunk, oder zerrissen?)\n   - Wirkung der Teilfragen-Zerlegung auf diese Frage (welche Teilfragen entstehen, was rankt je Teilfrage?)\n2. **Fix nach Befund** — je nach Diagnose z. B.: Extraktions-/Chunking-Korrektur für dieses Muster von Satzungs-PDFs; oder, falls die Quelle knapp hinter der Deckelung liegt, eine datengetrieben begründete moderate `topK`-Anhebung (Maintainer-Rahmen: 10–12 ist diskutabel, 20 ist ausgeschlossen — Kontextkosten ~1000 Token/Chunk und erhöhtes Fakten-Vermischungsrisiko, siehe #937). Jede Stellschrauben-Änderung mit Vorher/Nachher auf den multi_topic-Golden-Fällen UND den acht Drehbuch-Fragen belegen.\n3. **Abnahmekriterium:** Drehbuch-Frage 6 liefert als `thomas.klein` eine Antwort mit Zitat von `01_verwaltungsgebuehrensatzung.pdf` (§ 3 VGS), und als `maria.weber` erscheint die Satzung in den Quellen. Alle übrigen Drehbuch-Fragen bleiben auf ihrem Stand (keine neue Regression).\n\n## Kontext\n\nDie Kausalität zu den Retrieval-Umbauten ist plausibel, aber nicht bewiesen (kein Vorher-Stand verfügbar). Die Diagnose soll auch klären, ob das Dokument schon immer schlecht rankte und nur früher zufällig sichtbar war.",
+      "closes": []
+    },
+    {
+      "number": 933,
+      "title": "Indexing: Contextual Chunking — Dokumentkontext in Chunk-Embeddings",
+      "url": "https://github.com/criew/opaa/issues/933",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:L",
+        "evaluation"
+      ],
+      "body": "Teil von #912. Ausgekoppelt aus #932 (dort Lösungsrichtung 3): Die Chunk-Auswahl-Verbesserungen (#914 MMR, #923 Teilfragen-Zerlegung, #932 Dokument-Vervollständigung) arbeiten alle *nach* dem Embedding — dieses Issue greift die Wurzel an: Chunks ohne Dokumentkontext ranken für spezifische Fragen falsch.\n\n## Problem\n\nBeleg aus der #932-Diagnose (Demo, 26.08.2026): Für die Teilfrage „Was kostet die Beantragung eines Personalausweises?\" rankt der Einleitungs-Chunk von `001_personalausweis.md` vor dem Gebühren-Chunk desselben Dokuments — der Gebühren-Chunk (eine Tabelle/Aufzählung von Beträgen) trägt im Embedding kaum Signal, *wovon* er die Gebühren auflistet. Das Muster ist generisch: Jeder Detail-Chunk (Tabellen, Fristen, Kontaktdaten) verliert seinen Dokumentbezug beim Zerteilen.\n\n## Ansatz: Contextual Chunking\n\nBeim Indexieren wird jedem Chunk vor dem Embedding ein kurzer Dokumentkontext in den **Chunk-Text** vorangestellt (z. B. Dokumenttitel/erste Überschrift, optional Bibliotheksname): `\"[Personalausweis] <chunk-text>\"` — die genaue Form ist Teil der Umsetzung. Wichtig aus dem Bestand:\n\n- Die Pipeline schließt Metadaten **bewusst** vom Embedding aus (`FileProcessingService`: Whitelist `withTextTemplate(\"{content}\")`, weil der OpenAI-kompatible Embedding-Pfad sonst den Metadatenblock ins Embedding mischt). Der Kontext muss also in den Text selbst, nicht in Metadaten — und die Whitelist-Invariante bleibt unangetastet.\n- Zu klären: Kontext nur ins Embedding oder auch in den gespeicherten Chunk-Text (beeinflusst, was das Antwort-LLM sieht und was Zitat-Fundorte anzeigen). Beides hat Vertreter; im PR begründen.\n- `chunk-size`/`overlap`-Budget: Der Kontext-Präfix verbraucht Tokens — Wechselwirkung mit `opaa.indexing.chunk-size` dokumentieren.\n\n## Konsequenzen (der Grund, warum das ein eigenes Issue ist)\n\n1. **Voll-Reindex aller Bibliotheken erforderlich** — bestehende Embeddings passen nicht mehr zu neuen Query-Embeddings desselben Raums? (Doch, der Raum bleibt gleich — aber Alt-Chunks ohne Präfix und Neu-Chunks mit Präfix ranken inkonsistent gegeneinander.) Migrationsstrategie festlegen: Big-Bang-Reindex pro Bibliothek (Statusverfolgung existiert) oder Checksummen-Trick; auf der Demo ist ein voller Re-Seed akzeptabel.\n2. **Alle Eval-Baselines müssen neu gezogen werden** (comic-characters, city-landmarks) — mit Vorher/Nachher-Vergleich als eigentlichem Nachweis: Erwartung ist eine messbare Verbesserung bei `multi_topic` und den Detail-Fragen, keine Verschlechterung global.\n3. E2E-/Integrationstests der Indexing-Pipeline betroffen (Chunk-Zählungen, Fundorte).\n\n## Nachweis\n\n- Eval: beide Domänen vorher/nachher (Baseline-Neuziehung mit Begründung nach `eval/baseline/README.md`), plus die `multi_topic`-Fälle über den produktionsnahen QueryService-Pfad (Muster #922/#926).\n- Live: Nach Reindex der Demo muss die Teilfrage „Was kostet die Beantragung eines Personalausweises?\" den Gebühren-Chunk vor dem Einleitungs-Chunk ranken; die Original-Kombifrage aus #912 bleibt korrekt (Regressionsschutz gegenüber #932).\n\n## Abnahmekriterien\n\n- [ ] Kontext-Präfix beim Chunking, Whitelist-Invariante des Embedding-Pfads unangetastet, Form/Umfang des Präfixes im Javadoc als Vertrag\n- [ ] Entscheidung Embedding-only vs. gespeicherter Text im PR begründet\n- [ ] Migrationsstrategie für Bestandsbibliotheken umgesetzt und dokumentiert\n- [ ] Eval-Baselines beider Domänen neu gezogen, Vorher/Nachher in der PR-Beschreibung, keine globale Verschlechterung\n- [ ] Live-Nachweis auf der Demo nach Reindex",
+      "closes": []
+    },
+    {
+      "number": 912,
+      "title": "Mehrthemen-Fragen: Retrieval verdrängt das schwächere Thema vollständig (topK-Monokultur)",
+      "url": "https://github.com/criew/opaa/issues/912",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "evaluation"
+      ],
+      "body": "# Mehrthemen-Fragen: Retrieval verdrängt das schwächere Thema vollständig (topK-Monokultur)\n\n## Problem\n\nBei Fragen, die zwei Themen gleichzeitig abfragen, füllt das dominantere Thema alle `topK`-Plätze des Retrievals. Das zweite Thema bekommt keinen einzigen Chunk in den Kontext, und das LLM antwortet wahrheitsgemäß, dazu lägen keine Informationen vor — obwohl die Dokumente indexiert und lesbar sind.\n\n## Konkretes Beispiel (Demo-Instanz, 25.08.2026)\n\nChat auf opaa.ewerlin.com, Space „Bürgerbüro“ (`ceb725b2-…/chats/60c8e904-…`):\n\n1. Erste Frage: *„wann ist bei der feuerwehr was los?“* → korrekt beantwortet (Pressemitteilung Tag der offenen Tür).\n2. Folgefrage: *„was kosten führerschein und perosonausweis bei beantragung?“* (sic, Tippfehler) → Antwort enthält Führerschein-Gebühren, aber: *„Leider habe ich keine Informationen zu den Kosten für die Beantragung eines Personalausweises in den verfügbaren Dokumenten.“*\n\nDabei ist `001_personalausweis.md` (Bibliothek „Leistungen Meldewesen & Ausweise“) mit den Gebühren indexiert (`INDEXED`, 3 Chunks) und für den Nutzer lesbar.\n\nDie in der Antwort persistierten Quellen zeigen die Ursache: Alle 5 abgerufenen Chunks (`topK = 5`, Demo nutzt die Defaults aus `QueryProperties`) stammen aus Führerschein-Dokumenten, Scores 0,69–0,71:\n\n| Dokument | Chunks | Score |\n|---|---|---|\n| `031_internationaler-fuehrerschein.md` | 2 | 0,711 |\n| `027_fahrerlaubnis-neuantrag-nach-entzug-oder-verzicht.md` | 1 | 0,703 |\n| `025_fuehrerschein-mit-17.md` | 1 | 0,698 |\n| `033_umschreibung-eu-ewr-fuehrerschein.md` | 1 | 0,691 |\n\nDie Personalausweis-Chunks lagen knapp unter dem fünften Platz und fielen heraus.\n\n## Ursachenanalyse\n\nDrei Faktoren wirken zusammen:\n\n1. **Ein Suchvektor für zwei Teilfragen.** Die Frage wird als eine einzige Einbettung gesucht. Bei `topK = 5` gewinnt das Thema, dem der kombinierte Vektor näher liegt, alle Plätze — es gibt keinen Mechanismus, der Treffer über Teilfragen verteilt (kein Query-Splitting, keine Diversität im Ranking).\n2. **Tippfehler verschiebt die Ähnlichkeit.** „führerschein“ ist korrekt geschrieben, „perosonausweis“ nicht — die Führerschein-Chunks gewinnen dadurch systematisch ein paar Hundertstel Score, was bei dem knappen Abstand entscheidet.\n3. **Query-Anreicherung mit der ersten Chat-Nachricht.** `QueryService#buildSearchQuery` stellt bei Folgefragen die *erste* Nutzernachricht voran. Die tatsächliche Suchanfrage war also *„wann ist bei der feuerwehr was los? was kosten führerschein und perosonausweis bei beantragung?“* — das Feuerwehr-Rauschen drückt die ohnehin knappen Personalausweis-Scores zusätzlich. Die Heuristik ignoriert Themenwechsel im Gesprächsverlauf vollständig.\n\n## Lösungsideen (ausgearbeitet, unabhängig voneinander umsetzbar)\n\n### A) Diversität im Ranking: MMR statt reinem Top-K (mittlerer Aufwand, hoher Nutzen)\n\nMehr Kandidaten holen (`fetchK` ≈ 20–30), dann per Maximal Marginal Relevance auf `topK` reduzieren: jeder weitere Chunk wird nach `λ·Relevanz − (1−λ)·max. Ähnlichkeit zu bereits gewählten Chunks` gewählt. Fünf nahezu redundante Führerschein-Chunks (zwei davon aus demselben Dokument!) würden so zugunsten des nächstbesten *anderen* Themas aufgebrochen.\n\n- Umsetzung in `QueryService`: `similaritySearch` mit `fetchK` aufrufen, MMR-Nachauswahl im Backend (die Chunk-Embeddings dafür liefert pgvector mit, oder Näherung über paarweise Dokument-/Text-Ähnlichkeit).\n- Trade-off: leicht schlechtere Präzision bei eng fokussierten Einthemen-Fragen; `λ` (typisch 0,5–0,7) konfigurierbar in `QueryProperties`.\n- Wirkt auch ohne LLM-Zusatzkosten und unabhängig von der Frageform — die robusteste Einzelmaßnahme gegen genau dieses Fehlerbild.\n\n### B) Teilfragen-Zerlegung (Multi-Query-Retrieval) (höherer Aufwand, größter Qualitätssprung)\n\nVor dem Retrieval per LLM-Aufruf die Frage in unabhängige Teilfragen zerlegen (*„Was kostet ein Führerschein?“*, *„Was kostet ein Personalausweis?“*), je Teilfrage eine Vektorsuche mit anteiligem Budget (z. B. `topK` pro Teilfrage, dann Zusammenführung per Reciprocal Rank Fusion und Dedup nach Chunk).\n\n- Nebeneffekt: Der LLM-Schritt korrigiert Tippfehler („perosonausweis“ → „Personalausweis“) gratis mit — adressiert Faktor 2 ohne eigene Rechtschreibkorrektur.\n- Trade-off: +1 LLM-Aufruf Latenz/Kosten pro Frage; für Einthemen-Fragen per Heuristik oder LLM-Antwort („keine Zerlegung nötig“) überspringbar.\n- Der Berechtigungsfilter (`libraryFilter`) muss unverändert in *jeder* Teilsuche stehen (ADR-0008 §5 — Filter in der Suche, nie Post-Filter).\n\n### C) Kontextbewusste Query-Reformulierung statt „erste Nachricht voranstellen“ (mittlerer Aufwand)\n\n`buildSearchQuery` ersetzt die starre Konkatenation durch eine LLM-basierte Umformulierung zur eigenständigen Suchanfrage („condense question“): Verlauf + neue Frage → eine in sich vollständige Frage. Bei Themenwechsel (wie hier Feuerwehr → Gebühren) fließt der alte Kontext dann gar nicht mehr ein; bei echten Folgefragen („und was kostet das?“) wird der Bezug korrekt aufgelöst — das kann die heutige Heuristik ebenfalls nicht, sie nimmt stur die *erste* Nachricht statt der relevanten.\n\n- Kombinierbar mit B in einem einzigen LLM-Aufruf (Reformulierung + Zerlegung in einem strukturierten Output).\n\n### D) Quick Win: `topK` erhöhen (klein, aber nur Symptomlinderung)\n\n`opaa.query.top-k` von 5 auf z. B. 8–10. Verschiebt die Grenze nur: Eine Frage mit stärkerem Ungleichgewicht oder drei Themen verdrängt wieder. Als alleinige Maßnahme nicht ausreichend, als Begleitmaßnahme zu A sinnvoll (mehr Kandidaten = mehr Spielraum für Diversität).\n\n### E) Absicherung im Eval-Harness (gehört zu jeder der Maßnahmen)\n\nDas Golden Dataset (`eval/golden/`, Harness unter `backend/src/evalTest/java/io/opaa/eval/`) enthält bisher keine Mehrthemen-Queries. Ergänzen:\n\n- Golden-Fälle der Form „Frage nennt zwei Entitäten aus verschiedenen Dokumenten, beide müssen in den Top-K vertreten sein“ (Metrik: Recall pro Teilthema, nicht nur global).\n- Optional Varianten mit Tippfehler in einer der beiden Entitäten.\n\nOhne diese Fälle lässt sich keine der Maßnahmen A–D belastbar bewerten — E sollte daher zuerst umgesetzt werden (Baseline vorher/nachher).\n\n## Vorschlag zur Reihenfolge\n\n1. **E** (Messbarkeit herstellen, Baseline festhalten)\n2. **A + D** (kein LLM-Zusatzaufruf, sofort wirksam)\n3. **B/C** (gemeinsamer LLM-Vorverarbeitungsschritt), Zuschnitt nach den Messergebnissen aus 1./2.\n\nJe nach Refinement kann daraus ein Epic mit Sub-Issues je Maßnahme werden.\n\n## Betroffene Stellen\n\n- `backend/src/main/java/io/opaa/query/QueryService.java` (`query`, `buildSearchQuery`, `libraryFilter`)\n- `backend/src/main/java/io/opaa/query/QueryProperties.java` (`topK`, ggf. neue Parameter `fetchK`, `mmrLambda`)\n- `eval/golden/` + `backend/src/evalTest/java/io/opaa/eval/` (neue Golden-Fälle/Metrik)",
+      "closes": []
+    }
+  ],
+  "opened_issues": [
+    {
+      "number": 945,
+      "title": "Meilenstein-1: Inventur-Nachzug, Report-Finalisierung und weitere Übergabeaufgaben",
+      "url": "https://github.com/criew/opaa/issues/945",
+      "author": "criew",
+      "labels": [
+        "documentation"
+      ],
+      "body": "## Kontext\n\nSammelticket für die Übergabe von Meilenstein 1 (31.08.2026, siehe docs/VISION.md, Roadmap). Die Leistungsinventur und die Berichtsstruktur sind mit #746 gemergt (Issue #744); dieses Ticket bündelt alles, was bis zur und für die Übergabe noch passieren muss.\n\n## Aufgaben (wächst bei Bedarf)\n\n- [ ] Inventur zum Stichtag nachziehen: neuer Anker, Delta-Bausteine, Index und Gruppierung ergänzen, Report aktualisieren (Vorgehen: docs/fortschritt/README.md)\n- [ ] Zur Abnahme: ENTWURF-Markierung entfernen, erste Fassung von docs/fortschritt/gesamtstand.md konsolidieren\n- [ ] Entscheidung STATUS.md: ablösen oder auf gesamtstand.md umleiten\n\nPRs zu diesem Ticket referenzieren es bitte ohne \"Closes\" — es bleibt bis zur abgeschlossenen Übergabe offen.",
+      "closes": []
+    }
+  ],
+  "merged_pull_requests": [
+    {
+      "number": 946,
+      "title": "docs(fortschritt): Inventur-Nachzug zum 27.08. — Delta-Bausteine, Gruppierung und Meilenstein-1-Bericht",
+      "url": "https://github.com/criew/opaa/pull/946",
+      "author": "criew",
+      "labels": [
+        "documentation"
+      ],
+      "body": "## Zusammenfassung\n\nErster Delta-Nachzug der Leistungsinventur nach dem in [docs/fortschritt/README.md](https://github.com/criew/opaa/blob/main/docs/fortschritt/README.md) beschriebenen Verfahren, als Teil der Meilenstein-Übergabe (#945 — bleibt offen, daher bewusst kein \"Closes\"):\n\n- **159 neue Bausteine** (131 Issues, 28 PRs ohne Closing-Referenz) für den Zeitraum 22.08.–27.08.; Anker fortgeschrieben (`99f61ee1` → `1c38b80d`), Index kumuliert (482 Issues, 433 PRs).\n- **Gruppierung** je Themenbereich um sichtbare Nachzug-Blöcke ergänzt.\n- **[Meilenstein-1-Bericht](https://github.com/criew/opaa/blob/feature/945_meilenstein-uebergabe-inventur-nachzug/docs/fortschritt/20260831/report.md)** (weiterhin ENTWURF) aktualisiert: Retrieval-Qualitätsoffensive (Epic #912), Modellverwaltung Stufe 1 (Epic #755), Ordner in Bibliotheken (Epic #520), globale Navigationsebene, Backend-Architekturreview (#826), Werkzeugkette (pnpm, Renovate, Liquibase-Baseline, opaa-api). Lücken/Restliste an die Backlog-Entscheidungen angepasst (DSGVO und Audit-Betriebshärtung bewusst zurückgestellt, deutsch-only entschieden, Modellverwaltung aus der Restliste gestrichen).\n\nNennenswerte Inventur-Befunde: Epic #457 (Audit-Betriebshärtung) und Epic #198 (Asset-Verteilung) wurden als Ticket-Hygiene geschlossen, nicht durch Lieferung — im Bericht entsprechend als zurückgestellt bzw. bereinigt ausgewiesen statt als erledigt.\n\n## Zugehörige Issues\n\nTeil von #945 (Meilenstein-1-Übergabe; bleibt offen).\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung — Pre-Push-Checkliste entfällt)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [ ] Barrierefreiheit nach `docs/design/accessibility.md` geprüft — entfällt (keine UI-Änderung)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Code / Fable 5, Vorgaben durch den Maintainer)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_016aduEKgcYh17FrmXBBBFtR",
+      "closes": [],
+      "additions": 2144,
+      "deletions": 47,
+      "changed_files": 163
+    },
+    {
+      "number": 944,
+      "title": "ci(baseline-diff): über alle eval/baseline/*.json-Dateien statt nur comic-characters prüfen",
+      "url": "https://github.com/criew/opaa/pull/944",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "ci",
+        "evaluation"
+      ],
+      "body": "## Zusammenfassung\n\n`.github/workflows/baseline-diff.yml` und `eval/baseline/diff_baseline.py` waren fest auf\n`eval/baseline/comic-characters.json` verdrahtet. Senkte ein PR nur `city-landmarks.json` ab (wie\nPR #940 legitim tat), verglich der Wächter nichts und postete trotzdem den Freispruch \"keine\nAbsenkung erkennbar\". Beide iterieren jetzt generisch über jede `eval/baseline/*.json`-Datei — der\nPR-Kommentar nennt das Ergebnis pro Datei einzeln, sodass jede aktuelle und künftige Domäne\nautomatisch erfasst wird.\n\n## Zugehörige Issues\n\nCloses #941\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [x] CI/Build\n\n## Reproduktionsnachweis\n\nDer Workflow läuft nur auf `pull_request`-Events; der Nachweis erfolgte deshalb lokal mit exakt den\nArgumenten, die der Workflow-Schritt \"Baseline-Absenkung gegenüber main prüfen\" verwendet (main- und\nPR-Baseline via `git show origin/main:...` bzw. Arbeitskopie, gleicher Aufruf von\n`diff_baseline.py`).\n\n**Vorbereitung:** `eval/baseline/city-landmarks.json`, Gruppe `overall`, `ndcgAt10` künstlich von\n`0.931` auf `0.900` abgesenkt (Zwischen-Commit lokal, nicht gepusht).\n\n**Rot — alter Stand (`comic-characters.json` fest verdrahtet, Argumente `--main`/`--pr` auf genau\ndiese eine Datei), city-landmarks-Absenkung rutscht durch:**\n\n```\n### Baseline-Vergleich gegenüber `main`\n\nKeine Gruppe/Metrik in diesem PR-Branch (`feature/941_baseline-diff-alle-domaenen`) liegt unter dem\nauf `main` committeten Wert — keine stille Baseline-Absenkung erkennbar.\n```\n\n**Grün — neuer Stand (`--main-dir`/`--pr-dir` über alle Dateien), Absenkung wird gemeldet:**\n\n```\n### Baseline-Vergleich gegenüber `main`\n\n#### `city-landmarks.json`\n\n**Achtung: 1 Metrik(en) in diesem PR-Branch liegen unter dem auf `main` committeten Wert.** Das ist\nkeine automatische Blockade — aber jede Absenkung muss im PR begründet sein (siehe\n`eval/baseline/README.md`), sonst besteht der Regressionsjob künftiger PRs nur noch gegen einen\nbereits abgesenkten Maßstab.\n\n| Gruppe | Metrik | main | feature/941_baseline-diff-alle-domaenen | Differenz |\n|---|---|---|---|---|\n| overall | ndcgAt10 | 0.931 | 0.900 | -0.031 |\n\n#### `comic-characters.json`\n\nKeine Gruppe/Metrik in diesem PR-Branch (`feature/941_baseline-diff-alle-domaenen`) liegt unter dem\nauf `main` committeten Wert — keine stille Baseline-Absenkung erkennbar.\n```\n\nDanach wurde `city-landmarks.json` per `git checkout --` exakt auf den committeten Stand\nzurückgesetzt (kein Diff verblieben).\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Skript mit beiden echten Baseline-Dateien lokal ausgeführt, siehe oben;\n  kein Backend berührt, verkürzte Prüfung genügt)\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht — siehe Abschnitt oben (roter vs. grüner Lauf,\n  lokal simuliert mit den Workflow-Argumenten, da der Workflow nur auf PR-Events läuft)\n- [x] Dokumentation aktualisiert (`eval/baseline/README.md`)\n- [ ] Barrierefreiheit nach `docs/design/accessibility.md` geprüft (bei UI-Änderungen; sonst entfällt) — entfällt, keine UI-Änderung\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Fable 5, Developer-Rolle)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+      "closes": [
+        941
+      ],
+      "additions": 142,
+      "deletions": 44,
+      "changed_files": 3
+    },
+    {
+      "number": 943,
+      "title": "docs(query): akzeptierte Grenze der reinen Vektorsuche dokumentieren",
+      "url": "https://github.com/criew/opaa/pull/943",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "backend"
+      ],
+      "body": "## Zusammenfassung\n\nDokumentiert die in #938 diagnostizierte und per Maintainer-Entscheidung akzeptierte Grenze der reinen Vektorsuche in `docs/features/retrieval-algorithm.md` (Abschnitt „Bekannte offene Schwächen\"): Ein Dokument, dessen Embedding-Signal die Anfrage nicht erreicht, bleibt unauffindbar, auch wenn es die Anfragebegriffe wörtlich enthält — belegt am Frage-6b-Fall (`01_verwaltungsgebuehrensatzung.pdf`, Rang 50 im thomas.klein-Scope). Der passende Mechanismus (Hybrid-Suche) bleibt bewusst unbeauftragt und ist im selben Dokument bereits als Idee gelistet.\n\n## Zugehörige Issues\n\nTeil von #912; dokumentiert den Abschluss von #938.\n\n## Art der Änderung\n\n- [x] Dokumentation\n\n## Checkliste\n\n- [x] Reine Doku-Änderung, keine Builds erforderlich\n- [x] Deutsche Projektsprache eingehalten\n\n## KI-Agenten-Offenlegung\n\n- [x] Dieser PR wurde vollständig von einem KI-Agenten (Koordinator-Session) erstellt.",
+      "closes": [],
+      "additions": 11,
+      "deletions": 0,
+      "changed_files": 1
+    },
+    {
+      "number": 942,
+      "title": "fix(demo): Gebühren in Personalausweis/Reisepass-Abholung an Einzeldokumente angleichen",
+      "url": "https://github.com/criew/opaa/pull/942",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "demo"
+      ],
+      "body": "## Zusammenfassung\n\n`002_personalausweis-oder-reisepass-abholen.md` nannte im Abschnitt „Gebührenrahmen\" veraltete\nBeträge (Personalausweis 25,70/41,70 €, Reisepass 42,20/67,60 €), die den maßgeblichen\nEinzeldokumenten widersprachen: `001_personalausweis.md` (27,20/44,20 €, vorläufig 12 €) und\n`003_reisepass.md` (44,50/71,20 €). Bei widersprüchlicher Quellenlage wählt das Antwort-LLM\nvertretbar die falsche Tabelle — genau der Live-Befund in Issue #938 zu Drehbuch-Frage 1. Eine\nGrep-Prüfung über den gesamten Korpus nach den veralteten Beträgen (25,70 / 41,70 / 42,20 / 67,60)\nergab keine weiteren Treffer — nur 002 war betroffen.\n\n`demo/corpus/MANIFEST.sha256` für die geänderte Datei nach dem in `demo/README.md` dokumentierten\nVerfahren aktualisiert (Prüfsumme verifiziert: `sha256sum -c MANIFEST.sha256` grün).\n\nDas Demo-Drehbuch (`docs/market/demo-drehbuch.md`) bleibt inhaltlich gültig — es erklärt 27,20 €\nbereits zur Invariante für Frage 1; diese Änderung stellt lediglich die Korpus-Konsistenz her,\nkein Anpassungsbedarf am Drehbuchtext selbst.\n\nReiner Datenfix am Demo-Korpus, kein Backend-Code betroffen; Pre-Push-Checkliste entfällt\nsinngemäß wie bei Dokumentationsänderungen.\n\n## Zugehörige Issues\n\nTeil von #938 (der zweite Teil des Issues — Drehbuch-Frage 6/thomas.klein — bleibt offen, siehe\nDiagnose-Kommentare dort)\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Prüfsumme via `sha256sum -c MANIFEST.sha256` verifiziert)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt, reine Korpus-Datenänderung ohne Code\n- [ ] Dokumentation aktualisiert (falls zutreffend) — entfällt, Drehbuch bleibt gültig (siehe Zusammenfassung)\n- [ ] Barrierefreiheit nach `docs/design/accessibility.md` geprüft (bei UI-Änderungen; sonst entfällt) — entfällt\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Fable 5, Entwickler-Rolle)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+      "closes": [],
+      "additions": 5,
+      "deletions": 5,
+      "changed_files": 2
+    },
+    {
+      "number": 940,
+      "title": "fix(indexing): Kontext-Präfix beim Chunk-Embedding für mehrchunkige Dokumente (Contextual Chunking)",
+      "url": "https://github.com/criew/opaa/pull/940",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "evaluation"
+      ],
+      "body": "## Zusammenfassung\n\nBehebt das in #932/#938 belegte Chunk-Granularitäts-Problem: Ein Chunk verliert beim Zerteilen eines Dokuments dessen Kontext und trägt dadurch kaum Signal, *wovon* er handelt — er rankt deshalb schwächer als thematisch fremde, aber lexikalisch nähere Dokumente. Für #938 konkret: Der §-3-Chunk der Verwaltungsgebührensatzung lag im echten Leserechte-Scope auf Rang 50/97 (`thomas.klein`) bzw. 96/147 (`maria.weber`) für die Drehbuch-Frage 6 — weit außerhalb jedes Top-k-Fensters.\n\n**Umsetzung:** `FileProcessingService#storeChunks` stellt jedem Chunk eines Dokuments, das beim Chunking in **2 oder mehr Chunks zerfiel**, vor dem Einbetten einen aus dem Dateinamen abgeleiteten, bereinigten Titel voran (`ChunkContextTitle#deriveTitle`, z. B. `01_verwaltungsgebuehrensatzung.pdf` → „verwaltungsgebuehrensatzung\"; `city-0022_prag.md` → „prag\"). Ein Dokument, das **ein einziger Chunk** blieb, bekommt bewusst **keinen** Präfix — es trägt seinen vollen Kontext bereits selbst, ein Präfix würde dort nur verdünnen, nicht Kontext wiederherstellen. Der Präfix wirkt ausschließlich auf die Embedding-Formatierung (`MetadataMode.EMBED`) über einen Lambda-`ContentFormatter`, der `Document#getMetadata()` nie liest — eine echte Whitelist, kein Ausschluss über eine bekannte Metadaten-Schlüsselliste; der gespeicherte Chunk-Text, Zitate und die Antwort-LLM-Eingabe bleiben unverändert. Der Kontext-Titel wird von jedem Aufrufer selbst bestimmt (nicht zentral aus `DocumentSourceType` abgeleitet): `processFile`/`processUrlFile`/`processUploadedFileAsync` leiten ihn immer aus einem echten Dateinamen ab, nur `processRssEntry` (der Freitext-Body eines RSS-Eintrags, nicht dessen Anhänge) verwendet die Schlagzeile verbatim oder gar keinen Präfix.\n\n### Warum diese Form (drei Messrunden, siehe unten)\n\n1. **Roher Dateiname auf jeden Chunk:** verbesserte comic-characters (einchunkig), regressierte city-landmarks (mehrchunkig) — der wiederkehrende strukturelle Token `city-NNNN_` auf jedem der 7–11 Chunks eines Dokuments zog generische Chunks fremder Dokumente einander an (`multi_topic`/`allExpectedDocumentsHitAt10` 1,000→0,850).\n2. **Humanisierter Titel auf jeden Chunk:** behob city-landmarks vollständig, regressierte stattdessen comic-characters weiter (`overall`/`hitRateAt5` 0,521→0,496; `numeric_range` kollabierte auf 1/16 Treffer) — ein einchunkiges Dokument trägt seinen Kontext schon selbst, der Präfix verdünnte nur.\n3. **Split-Gate (dieser PR):** beide Domänen zugleich unauffällig — comic-characters bit-identisch zum Ist-Stand, city-landmarks vollständig erholt.\n\n### Entscheidung Embedding-only vs. gespeicherter Text\n\nAusschließlich embedding-seitig, nicht im gespeicherten Chunk-Text: `PgVectorStore#add` persistiert `Document#getText()` unverändert in die `content`-Spalte, nie die formatierte Variante. Ein Präfix im gespeicherten Text hätte zwei Konsumenten betroffen, die bewusst unverändert bleiben sollen: die Antwort-LLM-Eingabe (das Modell hätte den eckig geklammerten Titel in einem Zitat-Exzerpt echoen können) und die vom Frontend gerenderte Zitat-Fundstelle. `AnswerGenerationService` trägt den Dateinamen bereits über einen eigenen, unzweideutigen Header in den Prompt — der Antwort-LLM entgeht dadurch kein Signal.\n\n### Migrationsstrategie\n\nVollständiger Reindex jeder Bibliothek erforderlich, dokumentiert in `docs/handbuch/deployment.md` (neuer Abschnitt „Neuindizierung nach #933\"): Alt-Chunks ohne Präfix und Neu-Chunks mit Präfix ranken sonst inkonsistent gegeneinander, auch wenn nur mehrchunkige Dokumente betroffen sind. Auf der Demo übernimmt der Koordinator nach dem Merge einen vollen Re-Seed.\n\n### Review-Nachbesserungen (zwei Runden nach der ersten Fassung dieses PRs)\n\n**Runde 1:**\n- **Echte Whitelist statt Ausschlussliste:** `DefaultContentFormatter#metadataFilter` entfernt intern nur die explizit ausgeschlossenen Metadaten-Schlüssel (`removeAll`) — ein künftiger, nicht ausgeschlossener Schlüssel wäre still mit eingebettet worden (die #773-Kontamination). Ersetzt durch einen Lambda-`ContentFormatter`, der Metadaten nie liest.\n- **RSS-Sonderfall (erste Fassung):** `file_name` ist für `RSS_FEED`-Dokumente eine freie Schlagzeile oder (ohne Feed-Titel) die Eintrags-URL. `stripExtension` prüft jetzt zusätzlich, ob das Suffix wie eine echte Dateiendung aussieht; `deriveTitle` kappt auf 8 Token.\n- `eval/baseline/city-landmarks.json`s `notes` benennen jetzt jede gefallene Gruppenmetrik einzeln (statt einer pauschalen „durchweg verbessert\"-Aussage) und erklären den verlorenen Volltreffer (`city-multi_city-008`, „Rom oder Witebsk\").\n\n**Runde 2 (Delta-Review):**\n- **RSS-Diskriminator korrigiert:** `DocumentSourceType.RSS_FEED` deckt sowohl den Freitext-Body eines RSS-Eintrags als auch dessen Anhänge mit echten Dateinamen ab (`processUrlFile`, von `RssFeedIndexingExecutor` aufgerufen) — ein sourceType-basierter Diskriminator hätte einem angehängten `01_verwaltungsgebuehrensatzung.pdf` den rohen, unbereinigten Dateinamen als Präfix gegeben (die in Messrunde 1 belegte schädliche Variante). `storeChunks` nimmt jetzt einen expliziten `contextTitle`-Parameter entgegen, den jeder Aufrufer selbst bestimmt. Neuer Test `anRssAttachmentGetsAHumanizedTitleNotItsRawFileName` wäre auf dem vorherigen Stand rot gewesen.\n- **Tautologischer Test korrigiert:** `anUnknownMetadataKeyNeverReachesTheEmbeddingCall` seedete ursprünglich nur den *Eingabe*-Chunk mit einem Zusatz-Schlüssel, den `storeChunks` nie in die neu aufgebaute Metadaten-Map übernimmt — der Test hätte jede Formatter-Implementierung bestanden. Fix: der Zusatz-Schlüssel wird jetzt auf dem bereits erfassten, bereits mit dem Formatter verknüpften `storedChunk` gesetzt.\n- `eval/baseline/city-landmarks.json`s `notes` verlinken jetzt den tatsächlichen Gist statt einer nicht existierenden PR-Anhang-Referenz (siehe Gist-Links unten).\n- Alle unten stehenden Messreihen wurden nach beiden Runden erneut gefahren (letzter Lauf gegen den finalen Commit `91abf9d5`): comic-characters weiterhin bit-identisch, city-landmarks weiterhin deckungsgleich mit der Baseline.\n\n**Volle Reports (finaler Commit `91abf9d5`):** [comic-characters](https://gist.github.com/criew/351308c0193d8795cef71a7f49a5b357) (bit-identisch, unabhängig vom Commit), [city-landmarks](https://gist.github.com/criew/a02175c834beb87f2b93a7bc355e3709).\n\n## Offener Punkt gegen #938\n\n**Für `maria.weber` liegen nach dem Reindex BEIDE einschlägigen Quellen außerhalb `topK=8`:** VGS-Chunk auf Rang 11, interne Dienstanweisung auf Rang 119 (siehe Tabelle unten). `thomas.klein` (heute Totalverweigerung laut #938) wird mit diesem PR klar besser — sein VGS-Rang landet innerhalb von `topK=8`. `maria.weber`s heute zufällig korrekte Antwort (weil die Dienstanweisung bislang mitgeliefert wurde) könnte dagegen schlechter werden, weil beide Quellen jetzt außerhalb des Fensters liegen. **Live-Verifikation beider Konten auf der Demo ist Merge-Nachbedingung** dieses PRs, nicht nur von #938 — sollte `maria.weber`s Antwort dadurch tatsächlich schlechter werden, folgt eine datengetriebene `topK`-Anpassung (10–12, siehe #937-Rahmen) als separater #938-Folge-PR, kein Blocker für diesen PR selbst.\n\n## Messreihen (alle drei Runden, `nomic-embed-text:v1.5`, produktionsidentisches Modell auf Demo und lokal)\n\n### comic-characters (einchunkig, `overall`, Baseline: hitRateAt5 0,521 / mrr 0,461 / ndcgAt10 0,445 / recallAt10 0,490)\n\n| Runde | hitRateAt5 | mrr | ndcgAt10 | recallAt10 | `numeric_range`/hitRateAt5 |\n|---|---|---|---|---|---|\n| roher Dateiname, alle Chunks | 0,537 ✅ | 0,469 ✅ | 0,449 ✅ | 0,492 ✅ | 0,125 (3→2 Treffer, ❌ knapp) |\n| humanisiert, alle Chunks | 0,496 ❌ | 0,451 ✅ | 0,440 ✅ | 0,486 ✅ | 0,063 (3→1 Treffer, ❌) |\n| Split-Gate (vor Review) | 0,521 | 0,461 | 0,445 | 0,490 | 0,188 (bit-identisch) |\n| Split-Gate (Review-Runde 1) | 0,521 | 0,461 | 0,445 | 0,490 | 0,188 (bit-identisch) |\n| **Split-Gate (finaler Commit `91abf9d5`, gemessen)** | **0,521** | **0,461** | **0,445** | **0,490** | **0,188** (bit-identisch) |\n\n`checkRetrievalBaseline` gegen den finalen Commit erneut ausgeführt und bestanden, alle Deltas ±0,000 — bit-identisch zum Ist-Stand. Keine Baseline-Änderung nötig.\n\n### city-landmarks (mehrchunkig, `overall`, Baseline: hitRateAt5 0,972 / mrr 0,927 / ndcgAt10 0,935 / recallAt10 0,991), `category:multi_topic`/`allExpectedDocumentsHitAt10` (Baseline 1,000)\n\n| Runde | overall hitRateAt5 | `multi_topic`/`allExpectedDocumentsHitAt10` |\n|---|---|---|\n| roher Dateiname, alle Chunks | 0,963 ✅ | **0,850 ❌** (3 von 20 Fällen gekippt, u. a. „Prag\"-Muster) |\n| humanisiert, alle Chunks | 0,991 ✅ | 1,000 ✅ |\n| Split-Gate (vor Review) | 0,991 ✅ | 1,000 ✅ |\n| Split-Gate (Review-Runde 1) | 0,991 ✅ | 1,000 ✅ |\n| **Split-Gate (finaler Commit `91abf9d5`, gemessen)** | **0,991** ✅ | **1,000** ✅ |\n\n`checkCityLandmarksRetrievalBaseline` gegen den finalen Commit erneut ausgeführt und bestanden, exakt deckungsgleich mit der neu gezogenen Baseline (city-landmarks ist vollständig mehrchunkig, das Split-Gate hat also nie Wirkung gegenüber der reinen Humanisierung gehabt). **Baseline neu gezogen** (`eval/baseline/city-landmarks.json`) — die `notes` benennen jede einzelne gefallene Gruppenmetrik (city_overview/mrr, difficulty:easy/mrr+ndcgAt10+recallAt10, multi_city/recallAt10) und den einen verlorenen Volltreffer explizit, siehe oben.\n\n### VGS-Rang im echten Leserechte-Scope (lokal nachgestellt: `thomas.klein` = Kfz-Zulassung + Satzungen + Presse, `maria.weber` = Satzungen + beide Meldewesen-Bibliotheken + Presse)\n\n| Runde | VGS, `thomas.klein` | VGS, `maria.weber` | Dienstanweisung-Docx, `maria.weber` |\n|---|---|---|---|\n| Live-Demo, kein Präfix (#938-Diagnose) | Rang 50/97 | Rang 96/147 | Rang 26/147 |\n| humanisiert, alle Chunks (lokal, 70/120 Chunks Korpus) | Rang 8/70 | Rang 18/120 | Rang 87/120 |\n| **Split-Gate (lokal, 70/120 Chunks Korpus)** | **Rang 6/70** | **Rang 11/120** | **Rang 119/120** |\n\nDiese VGS-Rang-Messung stammt aus der Review-Runde-1-Fassung des Split-Gates (identische Präfix-Logik für Dateisystem-Dokumente wie der finale Commit — die Runde-2-Korrektur betraf ausschließlich RSS-Aufrufpfade, die in diesem lokal nachgestellten Korpus nicht vorkommen, also unveränderte Zahlen). `thomas.klein`s Fall — der im Issue benannte Kernnutzen — landet mit dem Split-Gate innerhalb des produktiven `topK=8`-Fensters. `maria.weber`s VGS-Rang verbessert sich ebenfalls deutlich (96→11), bleibt aber knapp außerhalb eines Achter-Fensters; die interne Dienstanweisung (selbst einchunkig, bekommt unter dem Split-Gate keinen Präfix) verschlechtert sich gegenüber der Live-Baseline (26→119) — siehe „Offener Punkt gegen #938\" oben. Live-Verifikation auf der Demo nach Deploy folgt (Abnahmekriterium #938, zusätzlich Merge-Nachbedingung dieses PRs).\n\n## Zugehörige Issues\n\nCloses #933\nTeil von #912; Abnahmetest #938 folgt nach Deploy\n\n## Art der Änderung\n\n- [x] Bugfix\n- [x] Neues Feature\n\n## Checkliste\n\n- [x] Tests bestehen lokal (`./gradlew test` grün, inkl. neuer `ChunkContextTitleTest` und erweiterter `FileProcessingServiceTest`)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt, dies ist eine neue Fähigkeit (Contextual Chunking), kein Fix eines bestehenden Verhaltensvertrags; der Nachweis erfolgt stattdessen über die drei Eval-Messreihen oben\n- [x] Dokumentation aktualisiert (`docs/features/retrieval-algorithm.md`, `docs/handbuch/deployment.md`)\n- [ ] Barrierefreiheit — entfällt, keine UI-Änderung\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet — durch den menschlichen Betreiber zu bestätigen\n\n## KI-Agenten-Offenlegung\n\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Fable 5, Entwickler-Rolle, mit fortlaufender Anleitung durch den Koordinator)",
+      "closes": [
+        933
+      ],
+      "additions": 587,
+      "deletions": 127,
+      "changed_files": 7
+    },
+    {
+      "number": 920,
+      "title": "chore(deps): org.assertj:assertj-core auf v3.27.7 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/920",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "backend"
+      ],
+      "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [org.assertj:assertj-core](https://assertj.github.io/doc/#assertj-core) ([source](https://redirect.github.com/assertj/assertj)) | dependencies | patch | `3.27.6` → `3.27.7` |\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR becomes conflicted, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC40NS4wIiwidXBkYXRlZEluVmVyIjoiNDQuNDYuMCIsInRhcmdldEJyYW5jaCI6Im1haW4iLCJsYWJlbHMiOlsiYmFja2VuZCIsImVuaGFuY2VtZW50Il19-->",
+      "closes": [],
+      "additions": 1,
+      "deletions": 1,
+      "changed_files": 1
+    },
+    {
+      "number": 919,
+      "title": "chore(deps): org.apache.tika:tika-core auf v3.3.2 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/919",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "backend"
+      ],
+      "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [org.apache.tika:tika-core](https://tika.apache.org/) ([source](https://redirect.github.com/apache/tika)) | dependencies | patch | `3.3.1` → `3.3.2` |\n\n---\n\n### Release Notes\n\n<details>\n<summary>apache/tika (org.apache.tika:tika-core)</summary>\n\n### [`v3.3.2`](https://redirect.github.com/apache/tika/compare/3.3.1...3.3.2)\n\n[Compare Source](https://redirect.github.com/apache/tika/compare/3.3.1...3.3.2)\n\n</details>\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR becomes conflicted, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC40NS4wIiwidXBkYXRlZEluVmVyIjoiNDQuNDYuMCIsInRhcmdldEJyYW5jaCI6Im1haW4iLCJsYWJlbHMiOlsiYmFja2VuZCIsImVuaGFuY2VtZW50Il19-->",
+      "closes": [],
+      "additions": 1,
+      "deletions": 1,
+      "changed_files": 1
+    },
+    {
+      "number": 918,
+      "title": "chore(deps): pin dependencies aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/918",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [@types/react](https://redirect.github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react) ([source](https://redirect.github.com/DefinitelyTyped/DefinitelyTyped/tree/HEAD/types/react)) | devDependencies | pin | [`^19.2.18` → `19.2.18`](https://renovatebot.com/diffs/npm/@types%2freact/19.2.18/19.2.18) |\n| [@types/react-dom](https://redirect.github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom) ([source](https://redirect.github.com/DefinitelyTyped/DefinitelyTyped/tree/HEAD/types/react-dom)) | devDependencies | pin | [`^19.2.4` → `19.2.4`](https://renovatebot.com/diffs/npm/@types%2freact-dom/19.2.4/19.2.4) |\n\nAdd the preset `:preserveSemverRanges` to your config if you don't want to pin your dependencies.\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n👻 **Immortal**: This PR will be recreated if closed unmerged. Get [config help](https://redirect.github.com/renovatebot/renovate/discussions) if that's undesired.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC40NS4wIiwidXBkYXRlZEluVmVyIjoiNDQuNDYuMCIsInRhcmdldEJyYW5jaCI6Im1haW4iLCJsYWJlbHMiOlsiZW5oYW5jZW1lbnQiLCJmcm9udGVuZCJdfQ==-->",
+      "closes": [],
+      "additions": 4,
+      "deletions": 4,
+      "changed_files": 2
+    },
+    {
+      "number": 917,
+      "title": "chore(deps): pin dependencies aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/917",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [react-markdown](https://redirect.github.com/remarkjs/react-markdown) | dependencies | pin | [`^10.1.0` → `10.1.0`](https://renovatebot.com/diffs/npm/react-markdown/10.1.0/10.1.0) |\n| [remark-gfm](https://redirect.github.com/remarkjs/remark-gfm) | dependencies | pin | [`^4.0.1` → `4.0.1`](https://renovatebot.com/diffs/npm/remark-gfm/4.0.1/4.0.1) |\n\nAdd the preset `:preserveSemverRanges` to your config if you don't want to pin your dependencies.\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n👻 **Immortal**: This PR will be recreated if closed unmerged. Get [config help](https://redirect.github.com/renovatebot/renovate/discussions) if that's undesired.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC40NS4wIiwidXBkYXRlZEluVmVyIjoiNDQuNDYuMCIsInRhcmdldEJyYW5jaCI6Im1haW4iLCJsYWJlbHMiOlsiZW5oYW5jZW1lbnQiLCJmcm9udGVuZCJdfQ==-->",
+      "closes": [],
+      "additions": 4,
+      "deletions": 4,
+      "changed_files": 2
+    }
+  ],
+  "open_pull_requests": [
+    {
+      "number": 1003,
+      "title": "fix(build): main wiederherstellen — Temurin-21-Revert und pnpm-Lockfile-Reparatur",
+      "url": "https://github.com/criew/opaa/pull/1003",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "backend",
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 999,
+      "title": "fix(deps): pnpm-Lockfile nach Renovate-Auto-Merge-Serie heilen (#996)",
+      "url": "https://github.com/criew/opaa/pull/999",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "frontend",
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 998,
+      "title": "ci(renovate): Gradle-Wrapper-Befehl über allowedUnsafeExecutions freigeben",
+      "url": "https://github.com/criew/opaa/pull/998",
+      "author": "bigpuritz",
+      "labels": [
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 995,
+      "title": "chore(deps): typescript auf v7.0.2 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/995",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 993,
+      "title": "chore(deps): pnpm/action-setup action auf v6 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/993",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 992,
+      "title": "chore(deps): org.apache.tika:tika-core auf v4.0.0 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/992",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 991,
+      "title": "chore(deps): node.js",
+      "url": "https://github.com/criew/opaa/pull/991",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend",
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 990,
+      "title": "chore(deps): junit-framework monorepo aktualisieren (major)",
+      "url": "https://github.com/criew/opaa/pull/990",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 989,
+      "title": "chore(deps): gradle/actions action auf v6 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/989",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 987,
+      "title": "chore(deps): dorny/paths-filter action auf v4 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/987",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 986,
+      "title": "chore(deps): actions/setup-java action auf v6 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/986",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 985,
+      "title": "chore(deps): typescript-eslint auf v8.68.0 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/985",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 983,
+      "title": "chore(deps): python auf 3.14 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/983",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 982,
+      "title": "chore(deps): pnpm auf v11.24.0 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/982",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 976,
+      "title": "chore(deps): material-ui monorepo aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/976",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 974,
+      "title": "chore(deps): highlight.js auf v11.12.0 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/974",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 968,
+      "title": "fix(frontend): Fokus kehrt nach dem Inline-Umbenennen zur Aktionen-Schaltfläche zurück (#959)",
+      "url": "https://github.com/criew/opaa/pull/968",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "frontend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 965,
+      "title": "chore(deps): vitest auf v4.1.11 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/965",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 950,
+      "title": "chore(deps): @vitejs/plugin-react auf v6.1.0 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/950",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 161,
+      "title": "docs: plugin architecture deep dive for all three variants",
+      "url": "https://github.com/criew/opaa/pull/161",
+      "author": "bigpuritz",
+      "labels": [
+        "documentation",
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    }
+  ],
+  "open_issues_total": 22,
+  "ci": {
+    "conclusion": "failure",
+    "url": "https://github.com/criew/opaa/actions/runs/33167043053",
+    "title": "feat(library): Letzten Indexstand (lastIndexedAt) in LibraryListRespo…",
+    "finished_at": "2026-08-28T11:35:30Z"
+  },
+  "highlights": {
+    "sonstiges": [
+      {
+        "nummer": 941,
+        "text": "Baseline-Wächter prüft jetzt alle eval/baseline-Dateien, nicht nur comic-characters"
+      },
+      {
+        "nummer": 938,
+        "text": "Verwaltungsgebührensatzung-PDF in Query-Ranking verbessert, Dokumentkontext in Embeddings integriert"
+      },
+      {
+        "nummer": 912,
+        "text": "Mehrthemen-Fragen: Retrieval-Monokultur behoben, schwächeres Thema erhält Chunks"
+      },
+      {
+        "nummer": 946,
+        "text": "Leistungsinventur um 159 Bausteine nachgezogen, Meilenstein-1-Bericht aktualisiert"
+      }
+    ]
+  },
+  "epics": [],
+  "ohne_epic": {
+    "opened": [
+      {
+        "number": 945,
+        "title": "Meilenstein-1: Inventur-Nachzug, Report-Finalisierung und weitere Übergabeaufgaben",
+        "url": "https://github.com/criew/opaa/issues/945",
+        "author": "criew",
+        "labels": [
+          "documentation"
+        ],
+        "body": "## Kontext\n\nSammelticket für die Übergabe von Meilenstein 1 (31.08.2026, siehe docs/VISION.md, Roadmap). Die Leistungsinventur und die Berichtsstruktur sind mit #746 gemergt (Issue #744); dieses Ticket bündelt alles, was bis zur und für die Übergabe noch passieren muss.\n\n## Aufgaben (wächst bei Bedarf)\n\n- [ ] Inventur zum Stichtag nachziehen: neuer Anker, Delta-Bausteine, Index und Gruppierung ergänzen, Report aktualisieren (Vorgehen: docs/fortschritt/README.md)\n- [ ] Zur Abnahme: ENTWURF-Markierung entfernen, erste Fassung von docs/fortschritt/gesamtstand.md konsolidieren\n- [ ] Entscheidung STATUS.md: ablösen oder auf gesamtstand.md umleiten\n\nPRs zu diesem Ticket referenzieren es bitte ohne \"Closes\" — es bleibt bis zur abgeschlossenen Übergabe offen.",
+        "closes": []
+      }
+    ],
+    "closed": [
+      {
+        "number": 941,
+        "title": "CI: Baseline-Absenkungs-Wächter prüft nur comic-characters — city-landmarks bekommt falschen Freispruch",
+        "url": "https://github.com/criew/opaa/issues/941",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "size:S",
+          "ci",
+          "evaluation"
+        ],
+        "body": "Befund aus dem Review von PR #940 (vorbestehend, nicht durch #940 verursacht):\n\n`.github/workflows/baseline-diff.yml` (Z. 40/47) und `eval/baseline/diff_baseline.py` (Z. 2) sind fest auf `comic-characters.json` verdrahtet. Senkt ein PR nur `eval/baseline/city-landmarks.json` ab (wie #940 legitim tat), vergleicht der Wächter nichts und postet trotzdem „Keine Gruppe/Metrik in diesem PR-Branch liegt unter dem auf `main` committeten Wert\" — ein falscher Freispruch genau in dem Fall, für den der Wächter existiert. `eval/baseline/README.md` beschreibt den Wächter ohne diese Einschränkung.\n\n**Auftrag:** `diff_baseline.py` und den Workflow über alle `eval/baseline/*.json`-Dateien schleifen lassen; der Kommentartext nennt pro Datei das Ergebnis. Nachweis: Ein künstlich abgesenkter city-landmarks-Wert muss im Workflow-Kommentar auftauchen (Reproduktionsnachweis in der PR-Beschreibung).",
+        "closes": []
+      },
+      {
+        "number": 938,
+        "title": "Query: Einschlägige Satzungs-PDF fehlt in den Top-8 — Drehbuch-Frage 6 wird als thomas.klein verweigert",
+        "url": "https://github.com/criew/opaa/issues/938",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "backend",
+          "size:M",
+          "evaluation",
+          "demo"
+        ],
+        "body": "Teil von #912. Befund aus der fachlichen Regressionsprüfung der Demo (26.08.2026, nach #922/#926/#934/#935) gegen das Drehbuch `docs/market/demo-drehbuch.md`.\n\n## Befund (Drehbuch-Frage 6, Quer-Bibliotheks-Frage zur Gebührenbefreiung bei Bedürftigkeit)\n\n`01_verwaltungsgebuehrensatzung.pdf` (Bibliothek „Satzungen & Gebührenordnungen\") enthält in § 3 VGS die einschlägige Rechtsgrundlage — erscheint aber bei **keinem** Konto in den Top-8-Quellen; stattdessen rankt die thematisch fremde `16_personenstandsgebuehrensatzung.pdf`.\n\n- Als `maria.weber` ist die Antwort nur zufällig korrekt (die interne Dienstanweisung `02_gebuehrenbefreiung-beduerftigkeit.docx` zitiert § 3 VGS wörtlich).\n- Als `thomas.klein` (liest nur die Satzungsbibliothek, nicht die Dienstanweisungen) wird die Antwort komplett **verweigert** — klare Verletzung der Drehbuch-Erwartung, und der fachlich schlimmste Fall: Ein Nutzer mit legitimem Zugriff auf die maßgebliche Quelle bekommt „kann ich nicht beantworten\".\n\n## Auftrag\n\n1. **Diagnose zuerst:** Auf welchem Rang liegt `01_verwaltungsgebuehrensatzung.pdf` (bzw. ihr §-3-Chunk) für die Drehbuch-Frage tatsächlich — knapp hinter Platz 8 oder abgeschlagen? Kandidaten-Ranking über den produktionsnahen QueryService-Pfad ausleiten (fetchK-Kandidatenliste mit Scores). Dabei prüfen:\n   - Qualität der PDF-Textextraktion dieses Dokuments (kommt § 3 sauber im Chunk-Text an, oder ist der extrahierte Text verstümmelt?)\n   - Chunk-Zuschnitt (liegt § 3 mit seiner Überschrift in einem Chunk, oder zerrissen?)\n   - Wirkung der Teilfragen-Zerlegung auf diese Frage (welche Teilfragen entstehen, was rankt je Teilfrage?)\n2. **Fix nach Befund** — je nach Diagnose z. B.: Extraktions-/Chunking-Korrektur für dieses Muster von Satzungs-PDFs; oder, falls die Quelle knapp hinter der Deckelung liegt, eine datengetrieben begründete moderate `topK`-Anhebung (Maintainer-Rahmen: 10–12 ist diskutabel, 20 ist ausgeschlossen — Kontextkosten ~1000 Token/Chunk und erhöhtes Fakten-Vermischungsrisiko, siehe #937). Jede Stellschrauben-Änderung mit Vorher/Nachher auf den multi_topic-Golden-Fällen UND den acht Drehbuch-Fragen belegen.\n3. **Abnahmekriterium:** Drehbuch-Frage 6 liefert als `thomas.klein` eine Antwort mit Zitat von `01_verwaltungsgebuehrensatzung.pdf` (§ 3 VGS), und als `maria.weber` erscheint die Satzung in den Quellen. Alle übrigen Drehbuch-Fragen bleiben auf ihrem Stand (keine neue Regression).\n\n## Kontext\n\nDie Kausalität zu den Retrieval-Umbauten ist plausibel, aber nicht bewiesen (kein Vorher-Stand verfügbar). Die Diagnose soll auch klären, ob das Dokument schon immer schlecht rankte und nur früher zufällig sichtbar war.",
+        "closes": []
+      },
+      {
+        "number": 933,
+        "title": "Indexing: Contextual Chunking — Dokumentkontext in Chunk-Embeddings",
+        "url": "https://github.com/criew/opaa/issues/933",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "backend",
+          "size:L",
+          "evaluation"
+        ],
+        "body": "Teil von #912. Ausgekoppelt aus #932 (dort Lösungsrichtung 3): Die Chunk-Auswahl-Verbesserungen (#914 MMR, #923 Teilfragen-Zerlegung, #932 Dokument-Vervollständigung) arbeiten alle *nach* dem Embedding — dieses Issue greift die Wurzel an: Chunks ohne Dokumentkontext ranken für spezifische Fragen falsch.\n\n## Problem\n\nBeleg aus der #932-Diagnose (Demo, 26.08.2026): Für die Teilfrage „Was kostet die Beantragung eines Personalausweises?\" rankt der Einleitungs-Chunk von `001_personalausweis.md` vor dem Gebühren-Chunk desselben Dokuments — der Gebühren-Chunk (eine Tabelle/Aufzählung von Beträgen) trägt im Embedding kaum Signal, *wovon* er die Gebühren auflistet. Das Muster ist generisch: Jeder Detail-Chunk (Tabellen, Fristen, Kontaktdaten) verliert seinen Dokumentbezug beim Zerteilen.\n\n## Ansatz: Contextual Chunking\n\nBeim Indexieren wird jedem Chunk vor dem Embedding ein kurzer Dokumentkontext in den **Chunk-Text** vorangestellt (z. B. Dokumenttitel/erste Überschrift, optional Bibliotheksname): `\"[Personalausweis] <chunk-text>\"` — die genaue Form ist Teil der Umsetzung. Wichtig aus dem Bestand:\n\n- Die Pipeline schließt Metadaten **bewusst** vom Embedding aus (`FileProcessingService`: Whitelist `withTextTemplate(\"{content}\")`, weil der OpenAI-kompatible Embedding-Pfad sonst den Metadatenblock ins Embedding mischt). Der Kontext muss also in den Text selbst, nicht in Metadaten — und die Whitelist-Invariante bleibt unangetastet.\n- Zu klären: Kontext nur ins Embedding oder auch in den gespeicherten Chunk-Text (beeinflusst, was das Antwort-LLM sieht und was Zitat-Fundorte anzeigen). Beides hat Vertreter; im PR begründen.\n- `chunk-size`/`overlap`-Budget: Der Kontext-Präfix verbraucht Tokens — Wechselwirkung mit `opaa.indexing.chunk-size` dokumentieren.\n\n## Konsequenzen (der Grund, warum das ein eigenes Issue ist)\n\n1. **Voll-Reindex aller Bibliotheken erforderlich** — bestehende Embeddings passen nicht mehr zu neuen Query-Embeddings desselben Raums? (Doch, der Raum bleibt gleich — aber Alt-Chunks ohne Präfix und Neu-Chunks mit Präfix ranken inkonsistent gegeneinander.) Migrationsstrategie festlegen: Big-Bang-Reindex pro Bibliothek (Statusverfolgung existiert) oder Checksummen-Trick; auf der Demo ist ein voller Re-Seed akzeptabel.\n2. **Alle Eval-Baselines müssen neu gezogen werden** (comic-characters, city-landmarks) — mit Vorher/Nachher-Vergleich als eigentlichem Nachweis: Erwartung ist eine messbare Verbesserung bei `multi_topic` und den Detail-Fragen, keine Verschlechterung global.\n3. E2E-/Integrationstests der Indexing-Pipeline betroffen (Chunk-Zählungen, Fundorte).\n\n## Nachweis\n\n- Eval: beide Domänen vorher/nachher (Baseline-Neuziehung mit Begründung nach `eval/baseline/README.md`), plus die `multi_topic`-Fälle über den produktionsnahen QueryService-Pfad (Muster #922/#926).\n- Live: Nach Reindex der Demo muss die Teilfrage „Was kostet die Beantragung eines Personalausweises?\" den Gebühren-Chunk vor dem Einleitungs-Chunk ranken; die Original-Kombifrage aus #912 bleibt korrekt (Regressionsschutz gegenüber #932).\n\n## Abnahmekriterien\n\n- [ ] Kontext-Präfix beim Chunking, Whitelist-Invariante des Embedding-Pfads unangetastet, Form/Umfang des Präfixes im Javadoc als Vertrag\n- [ ] Entscheidung Embedding-only vs. gespeicherter Text im PR begründet\n- [ ] Migrationsstrategie für Bestandsbibliotheken umgesetzt und dokumentiert\n- [ ] Eval-Baselines beider Domänen neu gezogen, Vorher/Nachher in der PR-Beschreibung, keine globale Verschlechterung\n- [ ] Live-Nachweis auf der Demo nach Reindex",
+        "closes": []
+      },
+      {
+        "number": 912,
+        "title": "Mehrthemen-Fragen: Retrieval verdrängt das schwächere Thema vollständig (topK-Monokultur)",
+        "url": "https://github.com/criew/opaa/issues/912",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "backend",
+          "evaluation"
+        ],
+        "body": "# Mehrthemen-Fragen: Retrieval verdrängt das schwächere Thema vollständig (topK-Monokultur)\n\n## Problem\n\nBei Fragen, die zwei Themen gleichzeitig abfragen, füllt das dominantere Thema alle `topK`-Plätze des Retrievals. Das zweite Thema bekommt keinen einzigen Chunk in den Kontext, und das LLM antwortet wahrheitsgemäß, dazu lägen keine Informationen vor — obwohl die Dokumente indexiert und lesbar sind.\n\n## Konkretes Beispiel (Demo-Instanz, 25.08.2026)\n\nChat auf opaa.ewerlin.com, Space „Bürgerbüro“ (`ceb725b2-…/chats/60c8e904-…`):\n\n1. Erste Frage: *„wann ist bei der feuerwehr was los?“* → korrekt beantwortet (Pressemitteilung Tag der offenen Tür).\n2. Folgefrage: *„was kosten führerschein und perosonausweis bei beantragung?“* (sic, Tippfehler) → Antwort enthält Führerschein-Gebühren, aber: *„Leider habe ich keine Informationen zu den Kosten für die Beantragung eines Personalausweises in den verfügbaren Dokumenten.“*\n\nDabei ist `001_personalausweis.md` (Bibliothek „Leistungen Meldewesen & Ausweise“) mit den Gebühren indexiert (`INDEXED`, 3 Chunks) und für den Nutzer lesbar.\n\nDie in der Antwort persistierten Quellen zeigen die Ursache: Alle 5 abgerufenen Chunks (`topK = 5`, Demo nutzt die Defaults aus `QueryProperties`) stammen aus Führerschein-Dokumenten, Scores 0,69–0,71:\n\n| Dokument | Chunks | Score |\n|---|---|---|\n| `031_internationaler-fuehrerschein.md` | 2 | 0,711 |\n| `027_fahrerlaubnis-neuantrag-nach-entzug-oder-verzicht.md` | 1 | 0,703 |\n| `025_fuehrerschein-mit-17.md` | 1 | 0,698 |\n| `033_umschreibung-eu-ewr-fuehrerschein.md` | 1 | 0,691 |\n\nDie Personalausweis-Chunks lagen knapp unter dem fünften Platz und fielen heraus.\n\n## Ursachenanalyse\n\nDrei Faktoren wirken zusammen:\n\n1. **Ein Suchvektor für zwei Teilfragen.** Die Frage wird als eine einzige Einbettung gesucht. Bei `topK = 5` gewinnt das Thema, dem der kombinierte Vektor näher liegt, alle Plätze — es gibt keinen Mechanismus, der Treffer über Teilfragen verteilt (kein Query-Splitting, keine Diversität im Ranking).\n2. **Tippfehler verschiebt die Ähnlichkeit.** „führerschein“ ist korrekt geschrieben, „perosonausweis“ nicht — die Führerschein-Chunks gewinnen dadurch systematisch ein paar Hundertstel Score, was bei dem knappen Abstand entscheidet.\n3. **Query-Anreicherung mit der ersten Chat-Nachricht.** `QueryService#buildSearchQuery` stellt bei Folgefragen die *erste* Nutzernachricht voran. Die tatsächliche Suchanfrage war also *„wann ist bei der feuerwehr was los? was kosten führerschein und perosonausweis bei beantragung?“* — das Feuerwehr-Rauschen drückt die ohnehin knappen Personalausweis-Scores zusätzlich. Die Heuristik ignoriert Themenwechsel im Gesprächsverlauf vollständig.\n\n## Lösungsideen (ausgearbeitet, unabhängig voneinander umsetzbar)\n\n### A) Diversität im Ranking: MMR statt reinem Top-K (mittlerer Aufwand, hoher Nutzen)\n\nMehr Kandidaten holen (`fetchK` ≈ 20–30), dann per Maximal Marginal Relevance auf `topK` reduzieren: jeder weitere Chunk wird nach `λ·Relevanz − (1−λ)·max. Ähnlichkeit zu bereits gewählten Chunks` gewählt. Fünf nahezu redundante Führerschein-Chunks (zwei davon aus demselben Dokument!) würden so zugunsten des nächstbesten *anderen* Themas aufgebrochen.\n\n- Umsetzung in `QueryService`: `similaritySearch` mit `fetchK` aufrufen, MMR-Nachauswahl im Backend (die Chunk-Embeddings dafür liefert pgvector mit, oder Näherung über paarweise Dokument-/Text-Ähnlichkeit).\n- Trade-off: leicht schlechtere Präzision bei eng fokussierten Einthemen-Fragen; `λ` (typisch 0,5–0,7) konfigurierbar in `QueryProperties`.\n- Wirkt auch ohne LLM-Zusatzkosten und unabhängig von der Frageform — die robusteste Einzelmaßnahme gegen genau dieses Fehlerbild.\n\n### B) Teilfragen-Zerlegung (Multi-Query-Retrieval) (höherer Aufwand, größter Qualitätssprung)\n\nVor dem Retrieval per LLM-Aufruf die Frage in unabhängige Teilfragen zerlegen (*„Was kostet ein Führerschein?“*, *„Was kostet ein Personalausweis?“*), je Teilfrage eine Vektorsuche mit anteiligem Budget (z. B. `topK` pro Teilfrage, dann Zusammenführung per Reciprocal Rank Fusion und Dedup nach Chunk).\n\n- Nebeneffekt: Der LLM-Schritt korrigiert Tippfehler („perosonausweis“ → „Personalausweis“) gratis mit — adressiert Faktor 2 ohne eigene Rechtschreibkorrektur.\n- Trade-off: +1 LLM-Aufruf Latenz/Kosten pro Frage; für Einthemen-Fragen per Heuristik oder LLM-Antwort („keine Zerlegung nötig“) überspringbar.\n- Der Berechtigungsfilter (`libraryFilter`) muss unverändert in *jeder* Teilsuche stehen (ADR-0008 §5 — Filter in der Suche, nie Post-Filter).\n\n### C) Kontextbewusste Query-Reformulierung statt „erste Nachricht voranstellen“ (mittlerer Aufwand)\n\n`buildSearchQuery` ersetzt die starre Konkatenation durch eine LLM-basierte Umformulierung zur eigenständigen Suchanfrage („condense question“): Verlauf + neue Frage → eine in sich vollständige Frage. Bei Themenwechsel (wie hier Feuerwehr → Gebühren) fließt der alte Kontext dann gar nicht mehr ein; bei echten Folgefragen („und was kostet das?“) wird der Bezug korrekt aufgelöst — das kann die heutige Heuristik ebenfalls nicht, sie nimmt stur die *erste* Nachricht statt der relevanten.\n\n- Kombinierbar mit B in einem einzigen LLM-Aufruf (Reformulierung + Zerlegung in einem strukturierten Output).\n\n### D) Quick Win: `topK` erhöhen (klein, aber nur Symptomlinderung)\n\n`opaa.query.top-k` von 5 auf z. B. 8–10. Verschiebt die Grenze nur: Eine Frage mit stärkerem Ungleichgewicht oder drei Themen verdrängt wieder. Als alleinige Maßnahme nicht ausreichend, als Begleitmaßnahme zu A sinnvoll (mehr Kandidaten = mehr Spielraum für Diversität).\n\n### E) Absicherung im Eval-Harness (gehört zu jeder der Maßnahmen)\n\nDas Golden Dataset (`eval/golden/`, Harness unter `backend/src/evalTest/java/io/opaa/eval/`) enthält bisher keine Mehrthemen-Queries. Ergänzen:\n\n- Golden-Fälle der Form „Frage nennt zwei Entitäten aus verschiedenen Dokumenten, beide müssen in den Top-K vertreten sein“ (Metrik: Recall pro Teilthema, nicht nur global).\n- Optional Varianten mit Tippfehler in einer der beiden Entitäten.\n\nOhne diese Fälle lässt sich keine der Maßnahmen A–D belastbar bewerten — E sollte daher zuerst umgesetzt werden (Baseline vorher/nachher).\n\n## Vorschlag zur Reihenfolge\n\n1. **E** (Messbarkeit herstellen, Baseline festhalten)\n2. **A + D** (kein LLM-Zusatzaufruf, sofort wirksam)\n3. **B/C** (gemeinsamer LLM-Vorverarbeitungsschritt), Zuschnitt nach den Messergebnissen aus 1./2.\n\nJe nach Refinement kann daraus ein Epic mit Sub-Issues je Maßnahme werden.\n\n## Betroffene Stellen\n\n- `backend/src/main/java/io/opaa/query/QueryService.java` (`query`, `buildSearchQuery`, `libraryFilter`)\n- `backend/src/main/java/io/opaa/query/QueryProperties.java` (`topK`, ggf. neue Parameter `fetchK`, `mmrLambda`)\n- `eval/golden/` + `backend/src/evalTest/java/io/opaa/eval/` (neue Golden-Fälle/Metrik)",
+        "closes": []
+      }
+    ],
+    "merged": [
+      {
+        "number": 946,
+        "title": "docs(fortschritt): Inventur-Nachzug zum 27.08. — Delta-Bausteine, Gruppierung und Meilenstein-1-Bericht",
+        "url": "https://github.com/criew/opaa/pull/946",
+        "author": "criew",
+        "labels": [
+          "documentation"
+        ],
+        "body": "## Zusammenfassung\n\nErster Delta-Nachzug der Leistungsinventur nach dem in [docs/fortschritt/README.md](https://github.com/criew/opaa/blob/main/docs/fortschritt/README.md) beschriebenen Verfahren, als Teil der Meilenstein-Übergabe (#945 — bleibt offen, daher bewusst kein \"Closes\"):\n\n- **159 neue Bausteine** (131 Issues, 28 PRs ohne Closing-Referenz) für den Zeitraum 22.08.–27.08.; Anker fortgeschrieben (`99f61ee1` → `1c38b80d`), Index kumuliert (482 Issues, 433 PRs).\n- **Gruppierung** je Themenbereich um sichtbare Nachzug-Blöcke ergänzt.\n- **[Meilenstein-1-Bericht](https://github.com/criew/opaa/blob/feature/945_meilenstein-uebergabe-inventur-nachzug/docs/fortschritt/20260831/report.md)** (weiterhin ENTWURF) aktualisiert: Retrieval-Qualitätsoffensive (Epic #912), Modellverwaltung Stufe 1 (Epic #755), Ordner in Bibliotheken (Epic #520), globale Navigationsebene, Backend-Architekturreview (#826), Werkzeugkette (pnpm, Renovate, Liquibase-Baseline, opaa-api). Lücken/Restliste an die Backlog-Entscheidungen angepasst (DSGVO und Audit-Betriebshärtung bewusst zurückgestellt, deutsch-only entschieden, Modellverwaltung aus der Restliste gestrichen).\n\nNennenswerte Inventur-Befunde: Epic #457 (Audit-Betriebshärtung) und Epic #198 (Asset-Verteilung) wurden als Ticket-Hygiene geschlossen, nicht durch Lieferung — im Bericht entsprechend als zurückgestellt bzw. bereinigt ausgewiesen statt als erledigt.\n\n## Zugehörige Issues\n\nTeil von #945 (Meilenstein-1-Übergabe; bleibt offen).\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung — Pre-Push-Checkliste entfällt)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [ ] Barrierefreiheit nach `docs/design/accessibility.md` geprüft — entfällt (keine UI-Änderung)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Code / Fable 5, Vorgaben durch den Maintainer)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_016aduEKgcYh17FrmXBBBFtR",
+        "closes": [],
+        "additions": 2144,
+        "deletions": 47,
+        "changed_files": 163
+      },
+      {
+        "number": 944,
+        "title": "ci(baseline-diff): über alle eval/baseline/*.json-Dateien statt nur comic-characters prüfen",
+        "url": "https://github.com/criew/opaa/pull/944",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "ci",
+          "evaluation"
+        ],
+        "body": "## Zusammenfassung\n\n`.github/workflows/baseline-diff.yml` und `eval/baseline/diff_baseline.py` waren fest auf\n`eval/baseline/comic-characters.json` verdrahtet. Senkte ein PR nur `city-landmarks.json` ab (wie\nPR #940 legitim tat), verglich der Wächter nichts und postete trotzdem den Freispruch \"keine\nAbsenkung erkennbar\". Beide iterieren jetzt generisch über jede `eval/baseline/*.json`-Datei — der\nPR-Kommentar nennt das Ergebnis pro Datei einzeln, sodass jede aktuelle und künftige Domäne\nautomatisch erfasst wird.\n\n## Zugehörige Issues\n\nCloses #941\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [x] CI/Build\n\n## Reproduktionsnachweis\n\nDer Workflow läuft nur auf `pull_request`-Events; der Nachweis erfolgte deshalb lokal mit exakt den\nArgumenten, die der Workflow-Schritt \"Baseline-Absenkung gegenüber main prüfen\" verwendet (main- und\nPR-Baseline via `git show origin/main:...` bzw. Arbeitskopie, gleicher Aufruf von\n`diff_baseline.py`).\n\n**Vorbereitung:** `eval/baseline/city-landmarks.json`, Gruppe `overall`, `ndcgAt10` künstlich von\n`0.931` auf `0.900` abgesenkt (Zwischen-Commit lokal, nicht gepusht).\n\n**Rot — alter Stand (`comic-characters.json` fest verdrahtet, Argumente `--main`/`--pr` auf genau\ndiese eine Datei), city-landmarks-Absenkung rutscht durch:**\n\n```\n### Baseline-Vergleich gegenüber `main`\n\nKeine Gruppe/Metrik in diesem PR-Branch (`feature/941_baseline-diff-alle-domaenen`) liegt unter dem\nauf `main` committeten Wert — keine stille Baseline-Absenkung erkennbar.\n```\n\n**Grün — neuer Stand (`--main-dir`/`--pr-dir` über alle Dateien), Absenkung wird gemeldet:**\n\n```\n### Baseline-Vergleich gegenüber `main`\n\n#### `city-landmarks.json`\n\n**Achtung: 1 Metrik(en) in diesem PR-Branch liegen unter dem auf `main` committeten Wert.** Das ist\nkeine automatische Blockade — aber jede Absenkung muss im PR begründet sein (siehe\n`eval/baseline/README.md`), sonst besteht der Regressionsjob künftiger PRs nur noch gegen einen\nbereits abgesenkten Maßstab.\n\n| Gruppe | Metrik | main | feature/941_baseline-diff-alle-domaenen | Differenz |\n|---|---|---|---|---|\n| overall | ndcgAt10 | 0.931 | 0.900 | -0.031 |\n\n#### `comic-characters.json`\n\nKeine Gruppe/Metrik in diesem PR-Branch (`feature/941_baseline-diff-alle-domaenen`) liegt unter dem\nauf `main` committeten Wert — keine stille Baseline-Absenkung erkennbar.\n```\n\nDanach wurde `city-landmarks.json` per `git checkout --` exakt auf den committeten Stand\nzurückgesetzt (kein Diff verblieben).\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Skript mit beiden echten Baseline-Dateien lokal ausgeführt, siehe oben;\n  kein Backend berührt, verkürzte Prüfung genügt)\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht — siehe Abschnitt oben (roter vs. grüner Lauf,\n  lokal simuliert mit den Workflow-Argumenten, da der Workflow nur auf PR-Events läuft)\n- [x] Dokumentation aktualisiert (`eval/baseline/README.md`)\n- [ ] Barrierefreiheit nach `docs/design/accessibility.md` geprüft (bei UI-Änderungen; sonst entfällt) — entfällt, keine UI-Änderung\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Fable 5, Developer-Rolle)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+        "closes": [
+          941
+        ],
+        "additions": 142,
+        "deletions": 44,
+        "changed_files": 3
+      },
+      {
+        "number": 943,
+        "title": "docs(query): akzeptierte Grenze der reinen Vektorsuche dokumentieren",
+        "url": "https://github.com/criew/opaa/pull/943",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "backend"
+        ],
+        "body": "## Zusammenfassung\n\nDokumentiert die in #938 diagnostizierte und per Maintainer-Entscheidung akzeptierte Grenze der reinen Vektorsuche in `docs/features/retrieval-algorithm.md` (Abschnitt „Bekannte offene Schwächen\"): Ein Dokument, dessen Embedding-Signal die Anfrage nicht erreicht, bleibt unauffindbar, auch wenn es die Anfragebegriffe wörtlich enthält — belegt am Frage-6b-Fall (`01_verwaltungsgebuehrensatzung.pdf`, Rang 50 im thomas.klein-Scope). Der passende Mechanismus (Hybrid-Suche) bleibt bewusst unbeauftragt und ist im selben Dokument bereits als Idee gelistet.\n\n## Zugehörige Issues\n\nTeil von #912; dokumentiert den Abschluss von #938.\n\n## Art der Änderung\n\n- [x] Dokumentation\n\n## Checkliste\n\n- [x] Reine Doku-Änderung, keine Builds erforderlich\n- [x] Deutsche Projektsprache eingehalten\n\n## KI-Agenten-Offenlegung\n\n- [x] Dieser PR wurde vollständig von einem KI-Agenten (Koordinator-Session) erstellt.",
+        "closes": [],
+        "additions": 11,
+        "deletions": 0,
+        "changed_files": 1
+      },
+      {
+        "number": 942,
+        "title": "fix(demo): Gebühren in Personalausweis/Reisepass-Abholung an Einzeldokumente angleichen",
+        "url": "https://github.com/criew/opaa/pull/942",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "demo"
+        ],
+        "body": "## Zusammenfassung\n\n`002_personalausweis-oder-reisepass-abholen.md` nannte im Abschnitt „Gebührenrahmen\" veraltete\nBeträge (Personalausweis 25,70/41,70 €, Reisepass 42,20/67,60 €), die den maßgeblichen\nEinzeldokumenten widersprachen: `001_personalausweis.md` (27,20/44,20 €, vorläufig 12 €) und\n`003_reisepass.md` (44,50/71,20 €). Bei widersprüchlicher Quellenlage wählt das Antwort-LLM\nvertretbar die falsche Tabelle — genau der Live-Befund in Issue #938 zu Drehbuch-Frage 1. Eine\nGrep-Prüfung über den gesamten Korpus nach den veralteten Beträgen (25,70 / 41,70 / 42,20 / 67,60)\nergab keine weiteren Treffer — nur 002 war betroffen.\n\n`demo/corpus/MANIFEST.sha256` für die geänderte Datei nach dem in `demo/README.md` dokumentierten\nVerfahren aktualisiert (Prüfsumme verifiziert: `sha256sum -c MANIFEST.sha256` grün).\n\nDas Demo-Drehbuch (`docs/market/demo-drehbuch.md`) bleibt inhaltlich gültig — es erklärt 27,20 €\nbereits zur Invariante für Frage 1; diese Änderung stellt lediglich die Korpus-Konsistenz her,\nkein Anpassungsbedarf am Drehbuchtext selbst.\n\nReiner Datenfix am Demo-Korpus, kein Backend-Code betroffen; Pre-Push-Checkliste entfällt\nsinngemäß wie bei Dokumentationsänderungen.\n\n## Zugehörige Issues\n\nTeil von #938 (der zweite Teil des Issues — Drehbuch-Frage 6/thomas.klein — bleibt offen, siehe\nDiagnose-Kommentare dort)\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Prüfsumme via `sha256sum -c MANIFEST.sha256` verifiziert)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt, reine Korpus-Datenänderung ohne Code\n- [ ] Dokumentation aktualisiert (falls zutreffend) — entfällt, Drehbuch bleibt gültig (siehe Zusammenfassung)\n- [ ] Barrierefreiheit nach `docs/design/accessibility.md` geprüft (bei UI-Änderungen; sonst entfällt) — entfällt\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Fable 5, Entwickler-Rolle)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+        "closes": [],
+        "additions": 5,
+        "deletions": 5,
+        "changed_files": 2
+      },
+      {
+        "number": 940,
+        "title": "fix(indexing): Kontext-Präfix beim Chunk-Embedding für mehrchunkige Dokumente (Contextual Chunking)",
+        "url": "https://github.com/criew/opaa/pull/940",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "backend",
+          "evaluation"
+        ],
+        "body": "## Zusammenfassung\n\nBehebt das in #932/#938 belegte Chunk-Granularitäts-Problem: Ein Chunk verliert beim Zerteilen eines Dokuments dessen Kontext und trägt dadurch kaum Signal, *wovon* er handelt — er rankt deshalb schwächer als thematisch fremde, aber lexikalisch nähere Dokumente. Für #938 konkret: Der §-3-Chunk der Verwaltungsgebührensatzung lag im echten Leserechte-Scope auf Rang 50/97 (`thomas.klein`) bzw. 96/147 (`maria.weber`) für die Drehbuch-Frage 6 — weit außerhalb jedes Top-k-Fensters.\n\n**Umsetzung:** `FileProcessingService#storeChunks` stellt jedem Chunk eines Dokuments, das beim Chunking in **2 oder mehr Chunks zerfiel**, vor dem Einbetten einen aus dem Dateinamen abgeleiteten, bereinigten Titel voran (`ChunkContextTitle#deriveTitle`, z. B. `01_verwaltungsgebuehrensatzung.pdf` → „verwaltungsgebuehrensatzung\"; `city-0022_prag.md` → „prag\"). Ein Dokument, das **ein einziger Chunk** blieb, bekommt bewusst **keinen** Präfix — es trägt seinen vollen Kontext bereits selbst, ein Präfix würde dort nur verdünnen, nicht Kontext wiederherstellen. Der Präfix wirkt ausschließlich auf die Embedding-Formatierung (`MetadataMode.EMBED`) über einen Lambda-`ContentFormatter`, der `Document#getMetadata()` nie liest — eine echte Whitelist, kein Ausschluss über eine bekannte Metadaten-Schlüsselliste; der gespeicherte Chunk-Text, Zitate und die Antwort-LLM-Eingabe bleiben unverändert. Der Kontext-Titel wird von jedem Aufrufer selbst bestimmt (nicht zentral aus `DocumentSourceType` abgeleitet): `processFile`/`processUrlFile`/`processUploadedFileAsync` leiten ihn immer aus einem echten Dateinamen ab, nur `processRssEntry` (der Freitext-Body eines RSS-Eintrags, nicht dessen Anhänge) verwendet die Schlagzeile verbatim oder gar keinen Präfix.\n\n### Warum diese Form (drei Messrunden, siehe unten)\n\n1. **Roher Dateiname auf jeden Chunk:** verbesserte comic-characters (einchunkig), regressierte city-landmarks (mehrchunkig) — der wiederkehrende strukturelle Token `city-NNNN_` auf jedem der 7–11 Chunks eines Dokuments zog generische Chunks fremder Dokumente einander an (`multi_topic`/`allExpectedDocumentsHitAt10` 1,000→0,850).\n2. **Humanisierter Titel auf jeden Chunk:** behob city-landmarks vollständig, regressierte stattdessen comic-characters weiter (`overall`/`hitRateAt5` 0,521→0,496; `numeric_range` kollabierte auf 1/16 Treffer) — ein einchunkiges Dokument trägt seinen Kontext schon selbst, der Präfix verdünnte nur.\n3. **Split-Gate (dieser PR):** beide Domänen zugleich unauffällig — comic-characters bit-identisch zum Ist-Stand, city-landmarks vollständig erholt.\n\n### Entscheidung Embedding-only vs. gespeicherter Text\n\nAusschließlich embedding-seitig, nicht im gespeicherten Chunk-Text: `PgVectorStore#add` persistiert `Document#getText()` unverändert in die `content`-Spalte, nie die formatierte Variante. Ein Präfix im gespeicherten Text hätte zwei Konsumenten betroffen, die bewusst unverändert bleiben sollen: die Antwort-LLM-Eingabe (das Modell hätte den eckig geklammerten Titel in einem Zitat-Exzerpt echoen können) und die vom Frontend gerenderte Zitat-Fundstelle. `AnswerGenerationService` trägt den Dateinamen bereits über einen eigenen, unzweideutigen Header in den Prompt — der Antwort-LLM entgeht dadurch kein Signal.\n\n### Migrationsstrategie\n\nVollständiger Reindex jeder Bibliothek erforderlich, dokumentiert in `docs/handbuch/deployment.md` (neuer Abschnitt „Neuindizierung nach #933\"): Alt-Chunks ohne Präfix und Neu-Chunks mit Präfix ranken sonst inkonsistent gegeneinander, auch wenn nur mehrchunkige Dokumente betroffen sind. Auf der Demo übernimmt der Koordinator nach dem Merge einen vollen Re-Seed.\n\n### Review-Nachbesserungen (zwei Runden nach der ersten Fassung dieses PRs)\n\n**Runde 1:**\n- **Echte Whitelist statt Ausschlussliste:** `DefaultContentFormatter#metadataFilter` entfernt intern nur die explizit ausgeschlossenen Metadaten-Schlüssel (`removeAll`) — ein künftiger, nicht ausgeschlossener Schlüssel wäre still mit eingebettet worden (die #773-Kontamination). Ersetzt durch einen Lambda-`ContentFormatter`, der Metadaten nie liest.\n- **RSS-Sonderfall (erste Fassung):** `file_name` ist für `RSS_FEED`-Dokumente eine freie Schlagzeile oder (ohne Feed-Titel) die Eintrags-URL. `stripExtension` prüft jetzt zusätzlich, ob das Suffix wie eine echte Dateiendung aussieht; `deriveTitle` kappt auf 8 Token.\n- `eval/baseline/city-landmarks.json`s `notes` benennen jetzt jede gefallene Gruppenmetrik einzeln (statt einer pauschalen „durchweg verbessert\"-Aussage) und erklären den verlorenen Volltreffer (`city-multi_city-008`, „Rom oder Witebsk\").\n\n**Runde 2 (Delta-Review):**\n- **RSS-Diskriminator korrigiert:** `DocumentSourceType.RSS_FEED` deckt sowohl den Freitext-Body eines RSS-Eintrags als auch dessen Anhänge mit echten Dateinamen ab (`processUrlFile`, von `RssFeedIndexingExecutor` aufgerufen) — ein sourceType-basierter Diskriminator hätte einem angehängten `01_verwaltungsgebuehrensatzung.pdf` den rohen, unbereinigten Dateinamen als Präfix gegeben (die in Messrunde 1 belegte schädliche Variante). `storeChunks` nimmt jetzt einen expliziten `contextTitle`-Parameter entgegen, den jeder Aufrufer selbst bestimmt. Neuer Test `anRssAttachmentGetsAHumanizedTitleNotItsRawFileName` wäre auf dem vorherigen Stand rot gewesen.\n- **Tautologischer Test korrigiert:** `anUnknownMetadataKeyNeverReachesTheEmbeddingCall` seedete ursprünglich nur den *Eingabe*-Chunk mit einem Zusatz-Schlüssel, den `storeChunks` nie in die neu aufgebaute Metadaten-Map übernimmt — der Test hätte jede Formatter-Implementierung bestanden. Fix: der Zusatz-Schlüssel wird jetzt auf dem bereits erfassten, bereits mit dem Formatter verknüpften `storedChunk` gesetzt.\n- `eval/baseline/city-landmarks.json`s `notes` verlinken jetzt den tatsächlichen Gist statt einer nicht existierenden PR-Anhang-Referenz (siehe Gist-Links unten).\n- Alle unten stehenden Messreihen wurden nach beiden Runden erneut gefahren (letzter Lauf gegen den finalen Commit `91abf9d5`): comic-characters weiterhin bit-identisch, city-landmarks weiterhin deckungsgleich mit der Baseline.\n\n**Volle Reports (finaler Commit `91abf9d5`):** [comic-characters](https://gist.github.com/criew/351308c0193d8795cef71a7f49a5b357) (bit-identisch, unabhängig vom Commit), [city-landmarks](https://gist.github.com/criew/a02175c834beb87f2b93a7bc355e3709).\n\n## Offener Punkt gegen #938\n\n**Für `maria.weber` liegen nach dem Reindex BEIDE einschlägigen Quellen außerhalb `topK=8`:** VGS-Chunk auf Rang 11, interne Dienstanweisung auf Rang 119 (siehe Tabelle unten). `thomas.klein` (heute Totalverweigerung laut #938) wird mit diesem PR klar besser — sein VGS-Rang landet innerhalb von `topK=8`. `maria.weber`s heute zufällig korrekte Antwort (weil die Dienstanweisung bislang mitgeliefert wurde) könnte dagegen schlechter werden, weil beide Quellen jetzt außerhalb des Fensters liegen. **Live-Verifikation beider Konten auf der Demo ist Merge-Nachbedingung** dieses PRs, nicht nur von #938 — sollte `maria.weber`s Antwort dadurch tatsächlich schlechter werden, folgt eine datengetriebene `topK`-Anpassung (10–12, siehe #937-Rahmen) als separater #938-Folge-PR, kein Blocker für diesen PR selbst.\n\n## Messreihen (alle drei Runden, `nomic-embed-text:v1.5`, produktionsidentisches Modell auf Demo und lokal)\n\n### comic-characters (einchunkig, `overall`, Baseline: hitRateAt5 0,521 / mrr 0,461 / ndcgAt10 0,445 / recallAt10 0,490)\n\n| Runde | hitRateAt5 | mrr | ndcgAt10 | recallAt10 | `numeric_range`/hitRateAt5 |\n|---|---|---|---|---|---|\n| roher Dateiname, alle Chunks | 0,537 ✅ | 0,469 ✅ | 0,449 ✅ | 0,492 ✅ | 0,125 (3→2 Treffer, ❌ knapp) |\n| humanisiert, alle Chunks | 0,496 ❌ | 0,451 ✅ | 0,440 ✅ | 0,486 ✅ | 0,063 (3→1 Treffer, ❌) |\n| Split-Gate (vor Review) | 0,521 | 0,461 | 0,445 | 0,490 | 0,188 (bit-identisch) |\n| Split-Gate (Review-Runde 1) | 0,521 | 0,461 | 0,445 | 0,490 | 0,188 (bit-identisch) |\n| **Split-Gate (finaler Commit `91abf9d5`, gemessen)** | **0,521** | **0,461** | **0,445** | **0,490** | **0,188** (bit-identisch) |\n\n`checkRetrievalBaseline` gegen den finalen Commit erneut ausgeführt und bestanden, alle Deltas ±0,000 — bit-identisch zum Ist-Stand. Keine Baseline-Änderung nötig.\n\n### city-landmarks (mehrchunkig, `overall`, Baseline: hitRateAt5 0,972 / mrr 0,927 / ndcgAt10 0,935 / recallAt10 0,991), `category:multi_topic`/`allExpectedDocumentsHitAt10` (Baseline 1,000)\n\n| Runde | overall hitRateAt5 | `multi_topic`/`allExpectedDocumentsHitAt10` |\n|---|---|---|\n| roher Dateiname, alle Chunks | 0,963 ✅ | **0,850 ❌** (3 von 20 Fällen gekippt, u. a. „Prag\"-Muster) |\n| humanisiert, alle Chunks | 0,991 ✅ | 1,000 ✅ |\n| Split-Gate (vor Review) | 0,991 ✅ | 1,000 ✅ |\n| Split-Gate (Review-Runde 1) | 0,991 ✅ | 1,000 ✅ |\n| **Split-Gate (finaler Commit `91abf9d5`, gemessen)** | **0,991** ✅ | **1,000** ✅ |\n\n`checkCityLandmarksRetrievalBaseline` gegen den finalen Commit erneut ausgeführt und bestanden, exakt deckungsgleich mit der neu gezogenen Baseline (city-landmarks ist vollständig mehrchunkig, das Split-Gate hat also nie Wirkung gegenüber der reinen Humanisierung gehabt). **Baseline neu gezogen** (`eval/baseline/city-landmarks.json`) — die `notes` benennen jede einzelne gefallene Gruppenmetrik (city_overview/mrr, difficulty:easy/mrr+ndcgAt10+recallAt10, multi_city/recallAt10) und den einen verlorenen Volltreffer explizit, siehe oben.\n\n### VGS-Rang im echten Leserechte-Scope (lokal nachgestellt: `thomas.klein` = Kfz-Zulassung + Satzungen + Presse, `maria.weber` = Satzungen + beide Meldewesen-Bibliotheken + Presse)\n\n| Runde | VGS, `thomas.klein` | VGS, `maria.weber` | Dienstanweisung-Docx, `maria.weber` |\n|---|---|---|---|\n| Live-Demo, kein Präfix (#938-Diagnose) | Rang 50/97 | Rang 96/147 | Rang 26/147 |\n| humanisiert, alle Chunks (lokal, 70/120 Chunks Korpus) | Rang 8/70 | Rang 18/120 | Rang 87/120 |\n| **Split-Gate (lokal, 70/120 Chunks Korpus)** | **Rang 6/70** | **Rang 11/120** | **Rang 119/120** |\n\nDiese VGS-Rang-Messung stammt aus der Review-Runde-1-Fassung des Split-Gates (identische Präfix-Logik für Dateisystem-Dokumente wie der finale Commit — die Runde-2-Korrektur betraf ausschließlich RSS-Aufrufpfade, die in diesem lokal nachgestellten Korpus nicht vorkommen, also unveränderte Zahlen). `thomas.klein`s Fall — der im Issue benannte Kernnutzen — landet mit dem Split-Gate innerhalb des produktiven `topK=8`-Fensters. `maria.weber`s VGS-Rang verbessert sich ebenfalls deutlich (96→11), bleibt aber knapp außerhalb eines Achter-Fensters; die interne Dienstanweisung (selbst einchunkig, bekommt unter dem Split-Gate keinen Präfix) verschlechtert sich gegenüber der Live-Baseline (26→119) — siehe „Offener Punkt gegen #938\" oben. Live-Verifikation auf der Demo nach Deploy folgt (Abnahmekriterium #938, zusätzlich Merge-Nachbedingung dieses PRs).\n\n## Zugehörige Issues\n\nCloses #933\nTeil von #912; Abnahmetest #938 folgt nach Deploy\n\n## Art der Änderung\n\n- [x] Bugfix\n- [x] Neues Feature\n\n## Checkliste\n\n- [x] Tests bestehen lokal (`./gradlew test` grün, inkl. neuer `ChunkContextTitleTest` und erweiterter `FileProcessingServiceTest`)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt, dies ist eine neue Fähigkeit (Contextual Chunking), kein Fix eines bestehenden Verhaltensvertrags; der Nachweis erfolgt stattdessen über die drei Eval-Messreihen oben\n- [x] Dokumentation aktualisiert (`docs/features/retrieval-algorithm.md`, `docs/handbuch/deployment.md`)\n- [ ] Barrierefreiheit — entfällt, keine UI-Änderung\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet — durch den menschlichen Betreiber zu bestätigen\n\n## KI-Agenten-Offenlegung\n\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Fable 5, Entwickler-Rolle, mit fortlaufender Anleitung durch den Koordinator)",
+        "closes": [
+          933
+        ],
+        "additions": 587,
+        "deletions": 127,
+        "changed_files": 7
+      },
+      {
+        "number": 920,
+        "title": "chore(deps): org.assertj:assertj-core auf v3.27.7 aktualisieren",
+        "url": "https://github.com/criew/opaa/pull/920",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "backend"
+        ],
+        "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [org.assertj:assertj-core](https://assertj.github.io/doc/#assertj-core) ([source](https://redirect.github.com/assertj/assertj)) | dependencies | patch | `3.27.6` → `3.27.7` |\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR becomes conflicted, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC40NS4wIiwidXBkYXRlZEluVmVyIjoiNDQuNDYuMCIsInRhcmdldEJyYW5jaCI6Im1haW4iLCJsYWJlbHMiOlsiYmFja2VuZCIsImVuaGFuY2VtZW50Il19-->",
+        "closes": [],
+        "additions": 1,
+        "deletions": 1,
+        "changed_files": 1
+      },
+      {
+        "number": 919,
+        "title": "chore(deps): org.apache.tika:tika-core auf v3.3.2 aktualisieren",
+        "url": "https://github.com/criew/opaa/pull/919",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "backend"
+        ],
+        "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [org.apache.tika:tika-core](https://tika.apache.org/) ([source](https://redirect.github.com/apache/tika)) | dependencies | patch | `3.3.1` → `3.3.2` |\n\n---\n\n### Release Notes\n\n<details>\n<summary>apache/tika (org.apache.tika:tika-core)</summary>\n\n### [`v3.3.2`](https://redirect.github.com/apache/tika/compare/3.3.1...3.3.2)\n\n[Compare Source](https://redirect.github.com/apache/tika/compare/3.3.1...3.3.2)\n\n</details>\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR becomes conflicted, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC40NS4wIiwidXBkYXRlZEluVmVyIjoiNDQuNDYuMCIsInRhcmdldEJyYW5jaCI6Im1haW4iLCJsYWJlbHMiOlsiYmFja2VuZCIsImVuaGFuY2VtZW50Il19-->",
+        "closes": [],
+        "additions": 1,
+        "deletions": 1,
+        "changed_files": 1
+      },
+      {
+        "number": 918,
+        "title": "chore(deps): pin dependencies aktualisieren",
+        "url": "https://github.com/criew/opaa/pull/918",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "frontend"
+        ],
+        "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [@types/react](https://redirect.github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react) ([source](https://redirect.github.com/DefinitelyTyped/DefinitelyTyped/tree/HEAD/types/react)) | devDependencies | pin | [`^19.2.18` → `19.2.18`](https://renovatebot.com/diffs/npm/@types%2freact/19.2.18/19.2.18) |\n| [@types/react-dom](https://redirect.github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom) ([source](https://redirect.github.com/DefinitelyTyped/DefinitelyTyped/tree/HEAD/types/react-dom)) | devDependencies | pin | [`^19.2.4` → `19.2.4`](https://renovatebot.com/diffs/npm/@types%2freact-dom/19.2.4/19.2.4) |\n\nAdd the preset `:preserveSemverRanges` to your config if you don't want to pin your dependencies.\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n👻 **Immortal**: This PR will be recreated if closed unmerged. Get [config help](https://redirect.github.com/renovatebot/renovate/discussions) if that's undesired.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC40NS4wIiwidXBkYXRlZEluVmVyIjoiNDQuNDYuMCIsInRhcmdldEJyYW5jaCI6Im1haW4iLCJsYWJlbHMiOlsiZW5oYW5jZW1lbnQiLCJmcm9udGVuZCJdfQ==-->",
+        "closes": [],
+        "additions": 4,
+        "deletions": 4,
+        "changed_files": 2
+      },
+      {
+        "number": 917,
+        "title": "chore(deps): pin dependencies aktualisieren",
+        "url": "https://github.com/criew/opaa/pull/917",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "frontend"
+        ],
+        "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [react-markdown](https://redirect.github.com/remarkjs/react-markdown) | dependencies | pin | [`^10.1.0` → `10.1.0`](https://renovatebot.com/diffs/npm/react-markdown/10.1.0/10.1.0) |\n| [remark-gfm](https://redirect.github.com/remarkjs/remark-gfm) | dependencies | pin | [`^4.0.1` → `4.0.1`](https://renovatebot.com/diffs/npm/remark-gfm/4.0.1/4.0.1) |\n\nAdd the preset `:preserveSemverRanges` to your config if you don't want to pin your dependencies.\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n👻 **Immortal**: This PR will be recreated if closed unmerged. Get [config help](https://redirect.github.com/renovatebot/renovate/discussions) if that's undesired.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC40NS4wIiwidXBkYXRlZEluVmVyIjoiNDQuNDYuMCIsInRhcmdldEJyYW5jaCI6Im1haW4iLCJsYWJlbHMiOlsiZW5oYW5jZW1lbnQiLCJmcm9udGVuZCJdfQ==-->",
+        "closes": [],
+        "additions": 4,
+        "deletions": 4,
+        "changed_files": 2
+      }
+    ]
+  }
+}
