@@ -3928,6 +3928,16 @@ components:
         documentCount:
           type: integer
           format: int64
+        lastIndexedAt:
+          type: string
+          format: date-time
+          description: >
+            #684: completion time of the library's most recent successful indexing run
+            (JobStatus COMPLETED) - the "Stand" column of the overview table. Absent when the
+            library has never completed a run; failed or still-running runs never move it. The
+            wording base ("indiziert" vs. "abgerufen") follows the library's sourceType already
+            present on this response, so no separate field carries it. Optional so older
+            clients keep working.
         createdAt:
           type: string
           format: date-time

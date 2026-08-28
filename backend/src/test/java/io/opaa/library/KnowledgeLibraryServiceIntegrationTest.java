@@ -134,6 +134,12 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    // #684: indexing_jobs rows saved by listLibrariesReportsLastCompletedRunPerLibrary reference
+    // this class's throwaway organizations (fk_indexing_jobs_organization, RESTRICT) - purge them
+    // first, scoped to those organizations so rows of other classes sharing the context stay
+    // untouched (same precision rule as the rest of this teardown).
+    jdbcTemplate.update(
+        "DELETE FROM indexing_jobs WHERE organization_id IN (?, ?)", organizationA, organizationB);
     // Documents first (fk_documents_library_organization is RESTRICT - a library a test left
     // non-empty, e.g. after an assertion failure before its own cleanup ran, would otherwise block
     // the library delete below), then libraries (they reference users/groups, not the other way
@@ -2177,6 +2183,47 @@ class KnowledgeLibraryServiceIntegrationTest {
         List.of(zebra.library().getId(), apple.library().getId(), mango.library().getId());
     assertThat(firstCall.stream().filter(testLibraryIds::contains).toList())
         .containsExactly(apple.library().getId(), mango.library().getId(), zebra.library().getId());
+  }
+
+  @Test
+  void listLibrariesReportsLastCompletedRunPerLibrary() {
+    // #684: the "Stand" column's lastIndexedAt is the newest COMPLETED run's completion time -
+    // a newer FAILED run and a still-running one must not move it, and a library without any
+    // run at all stays null instead of missing or throwing.
+    UUID owner = createUser(organizationA);
+    LibraryDetail indexed =
+        libraryService.createLibrary(
+            libraryCreation("Indexed", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
+    LibraryDetail untouched =
+        libraryService.createLibrary(
+            libraryCreation("Untouched", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
+
+    Instant older = Instant.parse("2026-08-10T06:00:00Z");
+    Instant newest = Instant.parse("2026-08-18T06:00:00Z");
+    Instant failedLater = Instant.parse("2026-08-19T06:00:00Z");
+    saveJob(indexed.library().getId(), JobStatus.COMPLETED, older);
+    saveJob(indexed.library().getId(), JobStatus.COMPLETED, newest);
+    saveJob(indexed.library().getId(), JobStatus.FAILED, failedLater);
+    saveJob(indexed.library().getId(), JobStatus.RUNNING, null);
+
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(owner, false));
+
+    assertThat(listed)
+        .filteredOn(entry -> entry.library().getId().equals(indexed.library().getId()))
+        .extracting(LibrarySummary::lastIndexedAt)
+        .containsExactly(newest);
+    assertThat(listed)
+        .filteredOn(entry -> entry.library().getId().equals(untouched.library().getId()))
+        .extracting(LibrarySummary::lastIndexedAt)
+        .containsExactly((Instant) null);
+  }
+
+  private void saveJob(UUID libraryId, JobStatus status, Instant completedAt) {
+    IndexingJob job = new IndexingJob(status);
+    job.setLibraryId(libraryId);
+    job.setOrganizationId(organizationA);
+    job.setCompletedAt(completedAt);
+    indexingJobRepository.save(job);
   }
 
   @Test
