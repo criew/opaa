@@ -110,9 +110,12 @@ class BoundedDownloaderTest {
     // #538 reproduction: the production client from SourceHttpClientFactory.buildHttpClient (not
     // this test's own NORMAL client above, which mirrors the JDK's own leaking behaviour) must not
     // replay Authorization to a redirect target on a different host than baseUrl.
-    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    // "localhost", not a 127/8 alias like 127.0.0.2: macOS binds only 127.0.0.1 by default
+    // (#966), and the foreign-host checks compare host STRINGS, so a different literal on the
+    // same loopback carries the same meaning as a second address.
+    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     foreignServer.start();
-    String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
+    String foreignBaseUrl = "http://localhost:" + foreignServer.getAddress().getPort();
     AtomicReference<String> receivedAuthorization = new AtomicReference<>("(never contacted)");
     try {
       foreignServer.createContext(
@@ -189,9 +192,10 @@ class BoundedDownloaderTest {
     // #538: exercises the proactive redirect loop downloadBounded now needs of its own, since the
     // production client (SourceHttpClientFactory.buildHttpClient) no longer auto-follows and never
     // reaches the pre-existing post-hoc foreign-host check the test above exercises.
-    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    // "localhost" as the foreign host string - see downloadDoesNotLeakAuthorization above.
+    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     foreignServer.start();
-    String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
+    String foreignBaseUrl = "http://localhost:" + foreignServer.getAddress().getPort();
     try {
       foreignServer.createContext(
           "/anlage.pdf",
@@ -364,7 +368,7 @@ class BoundedDownloaderTest {
 
   @Test
   void downloadBoundedThrowsWhenRedirectedToAForeignHost() throws IOException {
-    // Same host (127.0.0.1), two different ports - not a second host string like 127.0.0.2 (#538
+    // Same host (127.0.0.1), two different ports - not a second host string like "localhost" (#538
     // follow-up review, finding 1): the foreign-host check originally compared hosts only, so two
     // servers on the same host at different ports would have looked identical to it and missed
     // the redirect entirely. It now delegates to RedirectFollowingFetcher.sameOrigin, which
@@ -678,8 +682,8 @@ class BoundedDownloaderTest {
     server.createContext(
         "/anlage.pdf",
         exchange -> {
-          // A different loopback address than the allowlisted one - not itself allowlisted.
-          exchange.getResponseHeaders().set("Location", "http://127.0.0.2:1/anlage.pdf");
+          // A different loopback host string than the allowlisted one - not itself allowlisted.
+          exchange.getResponseHeaders().set("Location", "http://localhost:1/anlage.pdf");
           exchange.sendResponseHeaders(302, -1);
           exchange.close();
         });
