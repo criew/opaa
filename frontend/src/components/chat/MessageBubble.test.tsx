@@ -357,7 +357,11 @@ describe('MessageBubble', () => {
       await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
 
       expect(await screen.findByRole('dialog')).toBeInTheDocument()
-      expect(screen.getByText('Personalausweis').closest('h5')).toBeInTheDocument()
+      // #1016: heading elements are normalised per rendered content (rank compression from h2);
+      // the h5 LOOK of "#" survives as the Typography variant.
+      const previewHeading = screen.getByText('Personalausweis').closest('h2')
+      expect(previewHeading).toBeInTheDocument()
+      expect(previewHeading).toHaveClass('MuiTypography-h5')
       expect(screen.getByText(/Ausgestellt am 1\. März\./)).toBeInTheDocument()
     })
 

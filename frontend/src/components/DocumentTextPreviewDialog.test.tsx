@@ -28,7 +28,11 @@ describe('DocumentTextPreviewDialog', () => {
     )
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('001_personalausweis.md')).toBeInTheDocument()
-    expect(screen.getByText('Titel').closest('h5')).toBeInTheDocument()
+    // #1016: heading elements are normalised per rendered content (rank compression from h2);
+    // the h5 LOOK of "#" survives as the Typography variant.
+    const heading1016 = screen.getByText('Titel').closest('h2')
+    expect(heading1016).toBeInTheDocument()
+    expect(heading1016).toHaveClass('MuiTypography-h5')
     expect(screen.getByText('Ein Absatz.')).toBeInTheDocument()
   })
 

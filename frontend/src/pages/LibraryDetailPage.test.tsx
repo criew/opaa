@@ -1213,7 +1213,11 @@ describe('LibraryDetailPage', () => {
       await user.click(button)
 
       expect(await screen.findByRole('dialog')).toBeInTheDocument()
-      expect(screen.getByText('Personalausweis').closest('h5')).toBeInTheDocument()
+      // #1016: heading elements are normalised per rendered content (rank compression from h2);
+      // the h5 LOOK of "#" survives as the Typography variant.
+      const heading1016 = screen.getByText('Personalausweis').closest('h2')
+      expect(heading1016).toBeInTheDocument()
+      expect(heading1016).toHaveClass('MuiTypography-h5')
       expect(screen.getByText(/Ausgestellt am 1\. März\./)).toBeInTheDocument()
     })
 
