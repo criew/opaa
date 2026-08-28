@@ -134,4 +134,55 @@ describe('ChatList', () => {
     expect(await screen.findByText('Umbenennen fehlgeschlagen')).toBeInTheDocument()
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
   })
+
+  // regression guard for #959: leaving the inline rename must not drop focus to <body> -
+  // keyboard users would have to tab through the whole page again.
+  it('returns focus to the row actions button after cancelling the rename with Escape', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+    await screen.findByText('Architektur des Projekts')
+
+    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
+    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ umbenennen'))
+    await user.keyboard('{Escape}')
+
+    const actions = await screen.findByLabelText('Aktionen für Chat „Architektur des Projekts“')
+    await waitFor(() => expect(actions).toHaveFocus())
+  })
+
+  // regression guard for #959: same for the Enter commit - the button re-mounts under the
+  // chat's new title, focus must land on it.
+  it('returns focus to the row actions button after committing the rename with Enter', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+    await screen.findByText('Architektur des Projekts')
+
+    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
+    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ umbenennen'))
+    const field = screen.getByLabelText('Chat-Titel')
+    await user.clear(field)
+    await user.type(field, 'Neuer Titel{Enter}')
+
+    const actions = await screen.findByLabelText('Aktionen für Chat „Neuer Titel“')
+    await waitFor(() => expect(actions).toHaveFocus())
+  })
+
+  // A commit via blur means the user deliberately moved focus elsewhere (e.g. a mouse click) -
+  // pulling focus back to the actions button would fight that choice.
+  it('keeps focus where the user clicked when the rename commits via blur', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+    await screen.findByText('Architektur des Projekts')
+
+    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
+    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ umbenennen'))
+    const field = screen.getByLabelText('Chat-Titel')
+    await user.clear(field)
+    await user.type(field, 'Neuer Titel')
+    await user.click(screen.getByRole('button', { name: 'Neuer Chat' }))
+
+    expect(await screen.findByText('Neuer Titel')).toBeInTheDocument()
+    await screen.findByLabelText('Aktionen für Chat „Neuer Titel“')
+    expect(screen.getByRole('button', { name: 'Neuer Chat' })).toHaveFocus()
+  })
 })

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -59,6 +59,25 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [menuAnchor, setMenuAnchor] = useState<{ chatId: string; el: HTMLElement } | null>(null)
+  // A row's actions button is unmounted while the row is in rename mode, so focus can only
+  // return to it after the re-render that brings it back - hence the pending id is stashed in
+  // a ref and consumed once rename mode ends. Blur commits deliberately don't refocus: the
+  // user moved focus elsewhere.
+  const refocusChatIdRef = useRef<string | null>(null)
+  const actionButtonRefs = useRef<Map<string, HTMLButtonElement> | null>(null)
+
+  function getActionButtonRefs() {
+    actionButtonRefs.current ??= new Map()
+    return actionButtonRefs.current
+  }
+
+  useEffect(() => {
+    if (renamingChatId !== null) return
+    const chatId = refocusChatIdRef.current
+    if (chatId === null) return
+    refocusChatIdRef.current = null
+    actionButtonRefs.current?.get(chatId)?.focus()
+  }, [renamingChatId])
 
   useEffect(() => {
     if (chats === undefined) {
@@ -172,6 +191,10 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
                     // light dropdown (#658 Nachbesserung).
                     <IconButton
                       size="small"
+                      ref={(el) => {
+                        if (el) getActionButtonRefs().set(chat.id, el)
+                        else getActionButtonRefs().delete(chat.id)
+                      }}
                       aria-label={`Aktionen für Chat „${chatTitle(chat)}“`}
                       aria-haspopup="menu"
                       aria-expanded={menuAnchor?.chatId === chat.id ? 'true' : undefined}
@@ -207,9 +230,11 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault()
+                          refocusChatIdRef.current = chat.id
                           void commitRename(chat.id)
                         } else if (e.key === 'Escape') {
                           e.preventDefault()
+                          refocusChatIdRef.current = chat.id
                           setRenamingChatId(null)
                         }
                       }}
