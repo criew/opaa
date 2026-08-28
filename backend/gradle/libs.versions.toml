@@ -15,7 +15,7 @@ jtokkit = "1.1.0"
 # transitively via spring-ai-tika-document-reader, so a Spring AI version bump could have silently
 # dropped it - now declared explicitly, version pinned to what that transitive dependency resolves
 # to today (`./gradlew dependencies`).
-jsoup = "1.22.2"
+jsoup = "1.23.2"
 # Magic-byte content detection for the upload endpoint (#435, io.opaa.library.LibraryDocumentService
 # / io.opaa.indexing.SupportedDocumentFormats#contentMatchesExtension). Already on the classpath
 # transitively via spring-ai-tika-document-reader; declared explicitly because io.opaa now calls
