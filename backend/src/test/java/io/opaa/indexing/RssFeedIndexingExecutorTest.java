@@ -1539,10 +1539,10 @@ class RssFeedIndexingExecutorTest {
     // #492 review, finding 4: a same-host link a profile already vetted must not silently end up
     // downloading from, and being recorded as originating from, an address the profile never
     // approved - mirrors fetchDetailPage's own isForeignHostRedirect check.
-    // 127.0.0.2, not 127.0.0.1 - see BoundedDownloaderTest's identical comment.
-    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    // "localhost", not 127.0.0.1 - see BoundedDownloaderTest's identical comment.
+    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     foreignServer.start();
-    String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
+    String foreignBaseUrl = "http://localhost:" + foreignServer.getAddress().getPort();
     try {
       foreignServer.createContext(
           "/anlage.pdf",
@@ -1751,14 +1751,14 @@ class RssFeedIndexingExecutorTest {
   @Test
   void aFeedEntryOnAForeignHostNeverReceivesTheAuthorizationHeader() throws IOException {
     // Unlike every foreign-host-redirect test above, nothing here goes through a redirect at all -
-    // the feed's own <link> names a foreign address directly (127.0.0.2, not 127.0.0.1 - see
+    // the feed's own <link> names a foreign address directly ("localhost", not 127.0.0.1 - see
     // BoundedDownloaderTest's identical comment), the way a malicious or careless feed operator
     // could write <link>https://angreifer.example/x</link>. Credentials configured for the feed's
     // own host (baseUrl) must never reach it - the entry itself is still processed normally, only
     // the header is withheld, so an aggregator feed without its own credentials keeps working.
-    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     foreignServer.start();
-    String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
+    String foreignBaseUrl = "http://localhost:" + foreignServer.getAddress().getPort();
     AtomicReference<String> authorization = new AtomicReference<>("(never contacted)");
     try {
       foreignServer.createContext(
@@ -1798,9 +1798,9 @@ class RssFeedIndexingExecutorTest {
         newExecutor(
             new IndexingProperties.Rss(
                 200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
-    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     foreignServer.start();
-    String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
+    String foreignBaseUrl = "http://localhost:" + foreignServer.getAddress().getPort();
     AtomicReference<String> authorization = new AtomicReference<>("(never contacted)");
     try {
       String detailHtml =
@@ -1857,9 +1857,9 @@ class RssFeedIndexingExecutorTest {
     // redirect to the foreign host is rejected outright before it is ever followed (ADR-0017), so
     // the foreign server is never contacted at all - the strongest possible proof that no header
     // (or anything else) reaches it.
-    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     foreignServer.start();
-    String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
+    String foreignBaseUrl = "http://localhost:" + foreignServer.getAddress().getPort();
     AtomicReference<String> authorization = new AtomicReference<>("(never contacted)");
     try {
       foreignServer.createContext(

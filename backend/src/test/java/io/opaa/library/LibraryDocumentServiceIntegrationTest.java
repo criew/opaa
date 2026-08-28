@@ -819,13 +819,14 @@ class LibraryDocumentServiceIntegrationTest {
     // "http://169.254.169.254/original.pdf" - never reachable in CI either, so it stayed green
     // even with the allowlist re-check removed entirely (the request would simply time out/refuse
     // the connection either way, producing the identical 404). This version instead binds a real,
-    // listening HttpServer on 127.0.0.2 - loopback (always blocked once target validation is
-    // enabled), but a different literal host string than the "127.0.0.1" this suite's own
-    // configureProperties allowlists for its other local test servers, so it is neither allowlisted
-    // nor unreachable. requestsReceived proves the request never left this process when the
-    // re-check is in place; with it removed, the request would succeed and both assertions below
-    // would fail.
-    HttpServer blockedServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    // listening HttpServer addressed as "localhost" - loopback (always blocked once target
+    // validation is enabled), but a different literal host string than the "127.0.0.1" this
+    // suite's own configureProperties allowlists for its other local test servers (the allowlist
+    // matches literally, not by resolved address), so it is neither allowlisted nor unreachable.
+    // Not a 127/8 alias like 127.0.0.2: macOS binds only 127.0.0.1 by default (#966).
+    // requestsReceived proves the request never left this process when the re-check is in place;
+    // with it removed, the request would succeed and both assertions below would fail.
+    HttpServer blockedServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     blockedServer.start();
     AtomicInteger requestsReceived = new AtomicInteger();
     blockedServer.createContext(
@@ -837,7 +838,7 @@ class LibraryDocumentServiceIntegrationTest {
           exchange.getResponseBody().write(bytes);
           exchange.close();
         });
-    String blockedBaseUrl = "http://127.0.0.2:" + blockedServer.getAddress().getPort();
+    String blockedBaseUrl = "http://localhost:" + blockedServer.getAddress().getPort();
     KnowledgeLibrary remoteLibrary =
         KnowledgeLibrary.ownedByUser(
             organizationId,

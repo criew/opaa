@@ -49,9 +49,12 @@ class RedirectFollowingFetcherTest {
     origin.start();
     originUrl = "http://127.0.0.1:" + origin.getAddress().getPort();
 
-    foreign = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    // "localhost", not a 127/8 alias like 127.0.0.2: macOS binds only 127.0.0.1 by default
+    // (#966), and every foreign-host check under test compares host STRINGS, so a different
+    // literal on the same loopback carries the same meaning as a second address.
+    foreign = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     foreign.start();
-    foreignUrl = "http://127.0.0.2:" + foreign.getAddress().getPort();
+    foreignUrl = "http://localhost:" + foreign.getAddress().getPort();
   }
 
   @AfterEach
