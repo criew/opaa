@@ -41,10 +41,12 @@ export default function BrandingPreview({
     <ThemeProvider theme={theme}>
       <Paper
         variant="outlined"
-        // aria-hidden: everything in here is a rendering of values the form already exposes as
-        // labelled fields. Announcing the same product name, claim and button a second time would
-        // add noise, not information, for a screen reader user filling the form.
+        // aria-hidden + inert: everything in here is a rendering of values the form already
+        // exposes as labelled fields - announcing them a second time would add noise, not
+        // information. inert also removes the preview's buttons from the tab order; without it,
+        // keyboard users land on focus stops that screen readers cannot see (#956).
         aria-hidden
+        inert
         sx={{
           p: 2.5,
           bgcolor: 'background.default',
