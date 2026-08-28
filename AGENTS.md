@@ -223,9 +223,11 @@ Jeder Branch ist über seine ID mit einem GitHub-Issue verknüpft.
 **Ausnahme Renovate:** Von Renovate erzeugte Update-Branches heißen `renovate/<slug>` (ohne
 `feature/`-Präfix und ohne Issue-ID), und Renovate-PRs verwenden weder das PR-Template noch
 einen durchgehend deutschen Body (deutscher Titel und Kopfsatz, generierter englischer Rest).
-Das ist die einzige zugelassene Abweichung von den Branch- und PR-Regeln dieses Dokuments —
-sie gilt ausschließlich für den Bot (siehe `docs/renovate.md`, Issue #751); Menschen und
-Agenten bleiben an die Regeln gebunden.
+Renovate-PRs werden zudem mit aktiviertem GitHub-Auto-Merge eröffnet (stehende
+Maintainer-Anweisung, Issue #951) — sie mergen automatisch, sobald die Required Checks grün
+sind. Das ist die einzige zugelassene Abweichung von den Branch-, PR- und Auto-Merge-Regeln
+dieses Dokuments — sie gilt ausschließlich für den Bot (siehe `docs/renovate.md`,
+Issues #751/#951); Menschen und Agenten bleiben an die Regeln gebunden.
 
 Die Art der Änderung wird über den Conventional-Commit-Typ ausgedrückt (`fix`, `docs`, `chore`, …), nicht über das Branch-Präfix — in der Commit-Nachricht und im PR-Titel. Ein Branch `feature/295_branch-regel-klarstellen` mit dem Commit `docs(agents): …` ist der Normalfall, kein Widerspruch.
 

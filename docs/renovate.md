@@ -113,8 +113,14 @@ RENOVATE_TOKEN=$(gh auth token) docker run --rm \
 ```
 
 Der Lauf ist idempotent: erneutes Ausführen aktualisiert bestehende Update-Branches (Rebase
-bei Bedarf), schließt Überholtes und legt nur Neues an. Die Update-PRs durchlaufen die normale
-CI und den normalen Review-/Merge-Weg (AGENTS.md) — Renovate merged nichts selbst.
+bei Bedarf), schließt Überholtes und legt nur Neues an.
+
+**Auto-Merge (#951):** Renovate eröffnet seine PRs mit aktiviertem GitHub-Auto-Merge
+(Squash) — gemergt wird automatisch, sobald die **Required Checks** grün sind. Das gilt für
+alle Updates einschließlich Major; ein unerwünschtes Update lehnt man durch Schließen des PRs
+ab (Renovate legt es dann nicht erneut vor). Zu beachten: `e2e` ist kein Required Check und
+hält den Auto-Merge nicht auf — die nächtliche E2E-Suite auf `main` bleibt das Sicherheitsnetz
+(bewusste Repo-Entscheidung, vgl. #792).
 
 ## Konfiguration validieren
 

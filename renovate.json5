@@ -25,6 +25,15 @@
   // ehrlich "Renovate Bot".
   gitAuthor: 'Renovate Bot <1293732+bigpuritz@users.noreply.github.com>',
 
+  // Auto-Merge auf stehende Maintainer-Anweisung (#951): Renovate aktiviert beim Eröffnen
+  // GitHubs nativen Auto-Merge (Squash) — gemergt wird erst, wenn die Required Checks grün
+  // sind. Gilt bewusst für ALLE Updates inkl. Major; ein unerwünschter Major wird durch
+  // Schließen des PRs abgelehnt (Renovate merkt sich das). Achtung, bekannte Repo-Lage:
+  // e2e ist KEIN Required Check und hält den Merge daher nicht auf (siehe #792).
+  automerge: true,
+  platformAutomerge: true,
+  automergeStrategy: 'squash',
+
   // Projektsprache (AGENTS.md): Conventional-Commit-Typ und -Scope englisch, Beschreibung
   // deutsch. Ergibt z. B. "chore(deps): @mui/material auf 9.3.0 aktualisieren" — als
   // Commit-Nachricht und PR-Titel.
