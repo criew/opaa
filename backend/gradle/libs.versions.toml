@@ -2,9 +2,9 @@
 spring-boot = "4.1.1"
 spring-dependency-management = "1.1.7"
 spring-ai = "2.0.1"
-spotless = "8.9.0"
+spotless = "8.10.1"
 caffeine = "3.2.4"
-openapi-generator = "7.24.0"
+openapi-generator = "7.25.0"
 # Tokenizer used by Spring AI's TokenTextSplitter (CL100K_BASE). Referenced directly by
 # io.opaa.indexing.OverlappingTokenTextSplitter, so it is declared explicitly instead of being
 # relied on transitively. Must stay in sync with the version spring-ai-commons resolves to,
@@ -15,7 +15,7 @@ jtokkit = "1.1.0"
 # transitively via spring-ai-tika-document-reader, so a Spring AI version bump could have silently
 # dropped it - now declared explicitly, version pinned to what that transitive dependency resolves
 # to today (`./gradlew dependencies`).
-jsoup = "1.22.2"
+jsoup = "1.23.2"
 # Magic-byte content detection for the upload endpoint (#435, io.opaa.library.LibraryDocumentService
 # / io.opaa.indexing.SupportedDocumentFormats#contentMatchesExtension). Already on the classpath
 # transitively via spring-ai-tika-document-reader; declared explicitly because io.opaa now calls
@@ -24,7 +24,7 @@ tika-core = "3.3.2"
 # Parses the OpenAPI spec directly in opaa-api's parity tests (issue #896) - no Spring
 # dependency needed for that, so a lightweight YAML parser instead of pulling in a
 # spec-validation library.
-snakeyaml = "2.5"
+snakeyaml = "2.6"
 # JDBC binding for the pgvector column type (com.pgvector.PGvector), used directly by
 # io.opaa.query.ChunkEmbeddingLookup to read a chunk's stored embedding back for MMR (#914).
 # Already on the classpath transitively via spring-ai-pgvector-store; declared explicitly because
@@ -38,9 +38,9 @@ pgvector = "0.1.6"
 # org.springframework.lang.Nullable/DateTimeFormat plus Jackson/Jakarta annotation types - see the
 # spring-boot-dependencies platform import in opaa-api/build.gradle.kts for how those versions
 # stay aligned with the Spring Boot BOM instead of being pinned here.
-junit-jupiter = "5.13.4"
+junit-jupiter = "5.14.4"
 assertj-core = "3.27.7"
-junit-platform = "1.13.4"
+junit-platform = "1.14.4"
 
 [libraries]
 # Spring Boot starters (versions managed by Spring Boot BOM)

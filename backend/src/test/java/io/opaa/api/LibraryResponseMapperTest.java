@@ -146,7 +146,9 @@ class LibraryResponseMapperTest {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
             UUID.randomUUID(), "Team-Bibliothek", null, owner, LibraryVisibility.SHARED, true);
-    LibrarySummary summary = new LibrarySummary(library, AssetRole.EDITOR, 4L, "Referat 50");
+    LibrarySummary summary =
+        new LibrarySummary(
+            library, AssetRole.EDITOR, 4L, "Referat 50", Instant.parse("2026-08-18T06:00:00Z"));
 
     var response = LibraryResponseMapper.toListResponse(summary);
 
@@ -167,8 +169,8 @@ class LibraryResponseMapperTest {
             UUID.randomUUID(), "B", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
     List<LibrarySummary> summaries =
         List.of(
-            new LibrarySummary(first, AssetRole.VIEWER, 0L, null),
-            new LibrarySummary(second, AssetRole.OWNER, 1L, null));
+            new LibrarySummary(first, AssetRole.VIEWER, 0L, null, null),
+            new LibrarySummary(second, AssetRole.OWNER, 1L, null, null));
 
     var responses = LibraryResponseMapper.toListResponses(summaries);
 

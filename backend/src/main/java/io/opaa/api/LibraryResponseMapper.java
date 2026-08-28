@@ -120,7 +120,8 @@ final class LibraryResponseMapper {
             library.getCreatedAt(),
             library.getUpdatedAt())
         .description(library.getDescription())
-        .ownerName(summary.ownerName());
+        .ownerName(summary.ownerName())
+        .lastIndexedAt(summary.lastIndexedAt());
   }
 
   static List<LibraryListResponse> toListResponses(List<LibrarySummary> summaries) {
