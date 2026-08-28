@@ -27,9 +27,10 @@
 
   // Auto-Merge auf stehende Maintainer-Anweisung (#951): Renovate aktiviert beim Eröffnen
   // GitHubs nativen Auto-Merge (Squash) — gemergt wird erst, wenn die Required Checks grün
-  // sind. Gilt bewusst für ALLE Updates inkl. Major; ein unerwünschter Major wird durch
-  // Schließen des PRs abgelehnt (Renovate merkt sich das). Achtung, bekannte Repo-Lage:
-  // e2e ist KEIN Required Check und hält den Merge daher nicht auf (siehe #792).
+  // sind. Gilt für minor/patch/pin/digest; MAJOR-Updates sind seit #1002 ausgenommen (siehe
+  // packageRule unten) und warten als normale PRs auf eine menschliche Entscheidung.
+  // Achtung, bekannte Repo-Lage: e2e ist KEIN Required Check und hält den Merge daher
+  // nicht auf (siehe #792).
   automerge: true,
   platformAutomerge: true,
   automergeStrategy: 'squash',
@@ -135,6 +136,17 @@
     {
       matchDatasources: ['docker'],
       pinDigests: false,
+    },
+    // Major-Updates mergen generell nicht automatisch (#1002): Auto-Merge greift, sobald die
+    // Required Checks grün sind — Brüche, die nur ein Nicht-Required-Check (e2e) oder gar kein
+    // Check zeigt, rutschen bei Majors sonst unbeaufsichtigt durch (so geschehen mit
+    // eclipse-temurin v25, JUnit und pnpm/action-setup am 28.08.2026). Majors bleiben als PR
+    // zur menschlichen Entscheidung offen; Ablehnung durch Schließen des PRs (Renovate merkt
+    // sich das). Die folgenden enabled:false-Regeln setzen einzelne, aktuell bekannt
+    // inkompatible Majors darüber hinaus ganz aus.
+    {
+      matchUpdateTypes: ['major'],
+      automerge: false,
     },
     // Temurin-Major bleibt aus, bis die Projekt-Toolchain nachzieht (#1001): build.gradle.kts
     // pinnt die Java-Toolchain auf 21, und im 25-jdk-Image findet Gradle kein JDK 21

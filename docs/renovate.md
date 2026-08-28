@@ -126,12 +126,15 @@ Dependency-Dashboard. Bewusst nur dieser eine Befehl, keine weiteren unsicheren 
 Der Lauf ist idempotent: erneutes Ausführen aktualisiert bestehende Update-Branches (Rebase
 bei Bedarf), schließt Überholtes und legt nur Neues an.
 
-**Auto-Merge (#951):** Renovate eröffnet seine PRs mit aktiviertem GitHub-Auto-Merge
-(Squash) — gemergt wird automatisch, sobald die **Required Checks** grün sind. Das gilt für
-alle Updates einschließlich Major; ein unerwünschtes Update lehnt man durch Schließen des PRs
-ab (Renovate legt es dann nicht erneut vor). Zu beachten: `e2e` ist kein Required Check und
-hält den Auto-Merge nicht auf — die nächtliche E2E-Suite auf `main` bleibt das Sicherheitsnetz
-(bewusste Repo-Entscheidung, vgl. #792).
+**Auto-Merge (#951, eingeschränkt durch #1002):** Renovate eröffnet seine PRs mit aktiviertem
+GitHub-Auto-Merge (Squash) — gemergt wird automatisch, sobald die **Required Checks** grün
+sind. Das gilt für minor/patch/pin/digest; **Major-Updates sind ausgenommen** und bleiben als
+normale PRs zur menschlichen Entscheidung offen (Hintergrund: das auto-gemergte
+`eclipse-temurin`-v25-Major brach den Backend-Image-Build, siehe #1002 und „Typische
+Fehlerbilder"). Ein unerwünschtes Update lehnt man durch Schließen des PRs ab (Renovate legt
+es dann nicht erneut vor). Zu beachten: `e2e` ist kein Required Check und hält den Auto-Merge
+nicht auf — die nächtliche E2E-Suite auf `main` bleibt das Sicherheitsnetz (bewusste
+Repo-Entscheidung, vgl. #792).
 
 ## Konfiguration validieren
 
@@ -154,3 +157,15 @@ docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
   direkt in `build.gradle.kts` eingetragene Versionen sind ohnehin verboten (AGENTS.md).
 - **Docker-Hub-Rate-Limit im Dry-Run:** kurz warten und wiederholen; der Lauf cached nichts
   zwischen Containern.
+- **Major-Update eines Basisimages bricht einen Build, obwohl der Update-PR grün war:** Der
+  brechende Job (z. B. `e2e`, das den Backend-Image-Build enthält) ist kein Required Check und
+  hielt den Auto-Merge nicht auf. Seit #1002 mergen Majors deshalb nicht mehr automatisch;
+  passiert es doch (z. B. manuell gemergt), Basisimage-Tag zurücksetzen und den erneut
+  aufschlagenden Renovate-PR bewusst entscheiden (Vorfall: `eclipse-temurin` 21 → 25 bei
+  Gradle-Toolchain `languageVersion = 21`).
+- **`pnpm install --frozen-lockfile` bricht nach einem Renovate-Tag mit
+  `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY`:** Mehrere Lockfile-ändernde Update-PRs sind
+  nacheinander per Auto-Merge gemergt, ohne dass die späteren gegen den neuen Stand rebased
+  waren — die textuell konfliktfreie Git-Vereinigung der `pnpm-lock.yaml` ist dann semantisch
+  inkonsistent (#996). Heilung: `pnpm install` auf `main`-Stand, Lockfile-Diff committen
+  (Vorbild: PR #1003); Vorbeugung wird in #1000 verfolgt.
