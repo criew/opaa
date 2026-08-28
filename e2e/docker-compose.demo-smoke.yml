@@ -31,7 +31,7 @@ services:
   # stub has no dependency on which Compose profile or data set is running against it. No
   # Dockerfile, no build: the script is mounted straight into the stock node image.
   ai-stub:
-    image: node:22-alpine
+    image: node:24-alpine
     working_dir: /app
     volumes:
       - ./e2e/ai-stub:/app:ro

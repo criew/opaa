@@ -86,7 +86,7 @@ services:
     # image landing between runs), which is real but not specific to this service: pinning only
     # ai-stub, and to what would then be the only digest-pinned image in the whole stack, would
     # be an inconsistency of its own without actually closing that gap anywhere else.
-    image: node:22-alpine
+    image: node:24-alpine
     working_dir: /app
     volumes:
       - ./e2e/ai-stub:/app:ro

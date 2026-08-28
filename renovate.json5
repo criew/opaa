@@ -136,5 +136,35 @@
       matchDatasources: ['docker'],
       pinDigests: false,
     },
+    // Temurin-Major bleibt aus, bis die Projekt-Toolchain nachzieht (#1001): build.gradle.kts
+    // pinnt die Java-Toolchain auf 21, und im 25-jdk-Image findet Gradle kein JDK 21
+    // (Auto-Provisioning ist aus) — der Automerge von #988 hat den Backend-Image-Build und
+    // damit E2E/Publish Images auf main gebrochen. Der Wechsel auf Temurin 25 kommt als
+    // bewusste Toolchain-Migration (eigenes Issue), nicht als Dependency-Bump.
+    {
+      matchDatasources: ['docker'],
+      matchPackageNames: ['eclipse-temurin'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
+    // Tika-4-Major bleibt aus, bis Spring AI nachzieht (#1005): tika-core kommt hier nur als
+    // explizite Deklaration der ohnehin transitiven Version aus spring-ai-tika-document-reader.
+    // Ein isolierter Bump auf 4.x kombiniert tika-core 4 mit den Tika-3-Parsern der
+    // Spring-AI-BOM und bricht die Format-Erkennung breit (#992: backend/e2e rot). Tika 4
+    // kommt, wenn Spring AI seine Tika-Abhaengigkeit auf 4.x hebt - dann Regel entfernen.
+    {
+      matchPackageNames: ['org.apache.tika:tika-core'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
+    // TypeScript-7-Major bleibt aus, bis typescript-eslint nachzieht (#1007): 8.68.0 bricht
+    // mit "typescript-eslint does not support TS 7.0" ab (Upstream-Tracking:
+    // typescript-eslint/typescript-eslint#10940, Support ab TS >= 7.1). 6.x-Updates laufen
+    // weiter; Regel entfernen, sobald Upstream TS 7 traegt.
+    {
+      matchPackageNames: ['typescript'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
   ],
 }
