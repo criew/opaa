@@ -593,6 +593,7 @@ export const mockLibraries: LibraryListResponse[] = [
     listed: false,
     myRole: 'OWNER',
     sourceType: 'UPLOAD',
+    lastIndexedAt: '2026-08-25T09:30:00Z',
     documentCount: 12,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
@@ -608,6 +609,7 @@ export const mockLibraries: LibraryListResponse[] = [
     // #500 review, finding 5: unlike the other fixtures, this one is deliberately not UPLOAD - it
     // is the fixture the indexing-trigger tests use to exercise a successful run.
     sourceType: 'FILESYSTEM',
+    lastIndexedAt: '2026-08-18T06:00:00Z',
     documentCount: 431,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
