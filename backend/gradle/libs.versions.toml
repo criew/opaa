@@ -20,7 +20,7 @@ jsoup = "1.23.2"
 # / io.opaa.indexing.SupportedDocumentFormats#contentMatchesExtension). Already on the classpath
 # transitively via spring-ai-tika-document-reader; declared explicitly because io.opaa now calls
 # org.apache.tika.Tika directly rather than only through Spring AI's TikaDocumentReader.
-tika-core = "3.3.2"
+tika-core = "4.0.0"
 # Parses the OpenAPI spec directly in opaa-api's parity tests (issue #896) - no Spring
 # dependency needed for that, so a lightweight YAML parser instead of pulling in a
 # spec-validation library.
