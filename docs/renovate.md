@@ -155,6 +155,16 @@ docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
 - **Gradle-Updates fehlen im Log:** Der `gradle`-Manager braucht die
   `libs.versions.toml`-Einträge in Standardform (`[versions]`/`[libraries]`-Referenzen) —
   direkt in `build.gradle.kts` eingetragene Versionen sind ohnehin verboten (AGENTS.md).
+- **`pnpm install --frozen-lockfile` bricht nach einem Renovate-Tag mit
+  `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY` (#996):** Mehrere Lockfile-ändernde npm-PRs mergten
+  nacheinander, ohne dass die späteren gegen den neuen Stand rebased waren — die textuell
+  konfliktfreie Git-Vereinigung der `pnpm-lock.yaml` ist dann semantisch inkonsistent.
+  Vorbeugung seit #1000: Non-Major-npm-Updates laufen als **ein Sammel-PR** je Lauf
+  (`groupName: 'npm (non-major)'`), und npm-Branches mergen **Renovate-seitig** statt über
+  GitHubs nativen Auto-Merge (`rebaseWhen: 'behind-base-branch'` + `platformAutomerge: false`)
+  — gemergt wird nur ein Branch, der aktuell hinter `main` steht und grün ist; das passiert
+  folglich nur während eines Renovate-Laufs. Heilung, falls es doch passiert: `pnpm install`
+  auf `main`-Stand, Lockfile-Diff committen.
 - **Docker-Hub-Rate-Limit im Dry-Run:** kurz warten und wiederholen; der Lauf cached nichts
   zwischen Containern.
 - **Major-Update eines Basisimages bricht einen Build, obwohl der Update-PR grün war:** Der

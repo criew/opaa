@@ -96,6 +96,31 @@
       matchManagers: ['npm'],
       minimumReleaseAge: '1 day',
     },
+    // Gleichzeitige Lockfile-Updates gegen semantische Merge-Brueche absichern (#1000,
+    // Fehlerbild #996): Am 28.08.2026 mergten mehrere npm-Update-PRs per Auto-Merge
+    // nacheinander, jeder auf dem Stand VOR den jeweils anderen gruen - die textuell
+    // konfliktfreie Vereinigung der pnpm-lock.yaml war semantisch inkonsistent und brach
+    // jeden folgenden "pnpm install --frozen-lockfile". Zwei Mechanismen zusammen:
+    //
+    // 1. Non-Major-npm-Updates laufen als EIN Sammel-PR je Lauf - eine Lockfile-Aenderung,
+    //    nichts zu verschraenken. Majors bleiben einzelne PRs (und mergen ohnehin nicht
+    //    automatisch, #1002).
+    {
+      matchManagers: ['npm'],
+      matchUpdateTypes: ['minor', 'patch', 'pin', 'digest'],
+      groupName: 'npm (non-major)',
+    },
+    // 2. Der Merge selbst passiert Renovate-seitig statt ueber GitHubs nativen Auto-Merge:
+    //    GitHub merged auch einen hinter main liegenden Branch, sobald dessen (alte) Checks
+    //    gruen sind - genau die #996-Luecke. Renovate dagegen rebased einen Branch, sobald
+    //    er hinter main liegt (rebaseWhen), und merged erst im Folgelauf, wenn der Branch
+    //    aktuell UND gruen ist. npm-Merges passieren dadurch nur waehrend Renovate-Laeufen
+    //    (taeglich 06:23 bzw. manuell) - der bewusste Preis fuer einen konsistenten Lockfile.
+    {
+      matchManagers: ['npm'],
+      rebaseWhen: 'behind-base-branch',
+      platformAutomerge: false,
+    },
     {
       matchManagers: ['github-actions', 'dockerfile', 'docker-compose'],
       addLabels: ['ci'],
