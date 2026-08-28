@@ -113,8 +113,14 @@ RENOVATE_TOKEN=$(gh auth token) docker run --rm \
   -e RENOVATE_TOKEN \
   -e RENOVATE_PLATFORM=github \
   -e RENOVATE_REPOSITORIES=criew/opaa \
+  -e RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper \
   -e LOG_LEVEL=info \
   renovate/renovate:latest
+
+`RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper` erlaubt Renovate, bei einem Gradle-Update den
+Wrapper-Befehl auszuführen (#997) — ohne die Freigabe aktualisiert es nur
+`gradle-wrapper.properties`, nicht die Wrapper-Skripte/JAR, und der Lauf meldet eine WARN-Zeile im
+Dependency-Dashboard. Bewusst nur dieser eine Befehl, keine weiteren unsicheren Ausführungen.
 ```
 
 Der Lauf ist idempotent: erneutes Ausführen aktualisiert bestehende Update-Branches (Rebase
