@@ -2,7 +2,7 @@
 spring-boot = "4.1.1"
 spring-dependency-management = "1.1.7"
 spring-ai = "2.0.1"
-spotless = "8.9.0"
+spotless = "8.10.1"
 caffeine = "3.2.4"
 openapi-generator = "7.24.0"
 # Tokenizer used by Spring AI's TokenTextSplitter (CL100K_BASE). Referenced directly by
