@@ -5,8 +5,22 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-28T11:37:36Z</updated>
+  <updated>2026-08-29T07:16:01Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Freitag, 28. August 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-28.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-28.html</id>
+    <updated>2026-08-29T07:16:01Z</updated>
+    <summary type="text">feat(frontend): Redesign der Weboberfläche nach dem Zielbild-Designsystem:
+— Barrierefreiheits-Audit nach Design-Migration abgeschlossen
+— Prüfprotokoll des Barrierefreiheits-Audits dokumentiert
+Sonstiges:
+— Markdown-Überschriften in Chat-Antworten normalisiert
+— Fremdhost-Tests portabel für macOS gemacht
+— Barrierefreiheits-Audit-Befunde behoben: Fokus, Überschriftenebenen, Kontrast, Screenreader
+— Renovate-Infrastruktur stabilisiert: Auto-Merge, Lockfile-Schutz, Major-Aussetzungen</summary>
+  </entry>
   <entry>
     <title>Tagesreport Donnerstag, 27. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-27.html"/>

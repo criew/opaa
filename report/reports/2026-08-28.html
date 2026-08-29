@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-08-28</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Freitag, 28. August 2026</h1>
+<nav class="blaettern"><a href="2026-08-27.html" rel="prev" title="Donnerstag, 27. August 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/33186967258" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">11</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+16</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">20</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">55</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/600">#600</a> feat(frontend): Redesign der Weboberfläche nach dem Zielbild-Designsystem</span>
+<span class="epic-progress">27 / 28 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 96%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/598">#598</a></span>Barrierefreiheits-Audit nach Design-Migration abgeschlossen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/960">#960</a></span>Prüfprotokoll des Barrierefreiheits-Audits dokumentiert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/960">#960</a></span>docs(design): Prüfprotokoll des Barrierefreiheits-Abschluss-Audits (#598) (+84/−0, 1 Datei)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li>Markdown-Überschriften in Chat-Antworten normalisiert</li><li>Fremdhost-Tests portabel für macOS gemacht</li><li>Barrierefreiheits-Audit-Befunde behoben: Fokus, Überschriftenebenen, Kontrast, Screenreader</li><li>Renovate-Infrastruktur stabilisiert: Auto-Merge, Lockfile-Schutz, Major-Aussetzungen</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1019">#1019</a></span>fix(frontend): Markdown-Überschriften je Nachricht auf gültige Ebenen normalisieren (+161/−22, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1018">#1018</a></span>test(backend): Fremdhost-Testserver portabel als localhost binden (#966) (+35/−27, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1017">#1017</a></span>fix(frontend): Rollen-Badges schemafest — primary.main statt hartem blue[700] (+46/−18, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1015">#1015</a></span>fix(frontend): Übersprungene Überschriftenebenen auf Chat-, Branding- und Modelle-Seite (#958) (+47/−4, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1014">#1014</a></span>chore(ci): Befristete pnpm-Mindestalter-Ausnahme für die vorgezogenen Renovate-Updates (+9/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1012">#1012</a></span>fix(frontend): Branding-Vorschau per inert aus der Tab-Reihenfolge nehmen (#956) (+45/−3, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1011">#1011</a></span>chore(deps): material-ui monorepo aktualisieren (+46/−46, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1010">#1010</a></span>chore(deps): @vitejs/plugin-react auf v6.1.1 aktualisieren (+6/−6, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1009">#1009</a></span>chore(deps): @testing-library/react auf v16.3.3 aktualisieren (+6/−6, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1008">#1008</a></span>ci(renovate): npm-Updates gruppieren und Renovate-seitig mergen (Lockfile-Schutz) (+35/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1006">#1006</a></span>ci(renovate): Verfrühte Majors aussetzen — Tika 4 (Spring-AI-Parser) und TypeScript 7 (typescript-eslint) (+19/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1004">#1004</a></span>ci(renovate): Major-Updates nicht mehr auto-mergen (#1002) (+36/−9, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1003">#1003</a></span>fix(build): main wiederherstellen — Temurin-21-Revert und pnpm-Lockfile-Reparatur (+16/−5, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/998">#998</a></span>ci(renovate): Gradle-Wrapper-Befehl über allowedUnsafeExecutions freigeben (+7/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/994">#994</a></span>chore(deps): reportlab auf v5.0.1 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/993">#993</a></span>chore(deps): pnpm/action-setup action auf v6 aktualisieren (+3/−3, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/991">#991</a></span>chore(deps): node.js (+7/−7, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/990">#990</a></span>chore(deps): junit-framework monorepo aktualisieren (major) (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/989">#989</a></span>chore(deps): gradle/actions action auf v6 aktualisieren (+3/−3, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/988">#988</a></span>chore(deps): eclipse-temurin docker tag to v25 (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/987">#987</a></span>chore(deps): dorny/paths-filter action auf v4 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/986">#986</a></span>chore(deps): actions/setup-java action auf v6 aktualisieren (+3/−3, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/985">#985</a></span>chore(deps): typescript-eslint auf v8.68.0 aktualisieren (+65/−65, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/984">#984</a></span>chore(deps): quay.io/keycloak/keycloak docker tag to v26.7 (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/983">#983</a></span>chore(deps): python auf 3.14 aktualisieren (+3/−3, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/982">#982</a></span>chore(deps): pnpm auf v11.24.0 aktualisieren (+2/−2, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/981">#981</a></span>chore(deps): org.yaml:snakeyaml auf v2.6 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/980">#980</a></span>chore(deps): org.openapi.generator auf v7.25.0 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/979">#979</a></span>chore(deps): org.jsoup:jsoup auf v1.23.2 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/978">#978</a></span>chore(deps): ollama/ollama docker tag to v0.33.1 (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/977">#977</a></span>chore(deps): node.js auf v22.23.2 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/976">#976</a></span>chore(deps): material-ui monorepo aktualisieren (+46/−46, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/975">#975</a></span>chore(deps): junit-framework monorepo aktualisieren (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/974">#974</a></span>chore(deps): highlight.js auf v11.12.0 aktualisieren (+9/−3, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/973">#973</a></span>chore(deps): gradle auf v9.7.1 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/972">#972</a></span>chore(deps): globals auf v17.11.0 aktualisieren (+6/−6, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/971">#971</a></span>chore(deps): eslint auf v10.9.1 aktualisieren (+43/−43, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/970">#970</a></span>chore(deps): com.diffplug.spotless auf v8.10.1 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/969">#969</a></span>chore(deps): axios auf v1.20.0 aktualisieren (+6/−6, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/968">#968</a></span>fix(frontend): Fokus kehrt nach dem Inline-Umbenennen zur Aktionen-Schaltfläche zurück (#959) (+77/−1, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/967">#967</a></span>chore(deps): zustand auf v5.0.15 aktualisieren (+6/−6, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/965">#965</a></span>chore(deps): vitest auf v4.1.11 aktualisieren (+50/−50, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/964">#964</a></span>chore(deps): vite auf v8.2.2 aktualisieren (+96/−151, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/963">#963</a></span>chore(deps): testing-library monorepo aktualisieren (+18/−12, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/962">#962</a></span>feat(library): Letzten Indexstand (lastIndexedAt) in LibraryListResponse für die Stand-Spalte (+157/−16, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/961">#961</a></span>test(e2e): Lokalen Retry wie in der CI aktivieren, Lastbefund zu #815 dokumentieren (+31/−10, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/955">#955</a></span>fix(ci): Renovate wartet pnpms minimumReleaseAge ab — keine PRs mit noch abgelehnten Releases (+13/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/953">#953</a></span>chore(deps): eslint-plugin-react-refresh auf v0.5.5 aktualisieren (+6/−6, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/952">#952</a></span>feat(ci): Renovate-PRs mit aktiviertem GitHub-Auto-Merge eröffnen (+22/−5, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/950">#950</a></span>chore(deps): @vitejs/plugin-react auf v6.1.0 aktualisieren (+9/−6, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/949">#949</a></span>chore(deps): @types/node auf v26.4.0 aktualisieren (+39/−39, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/948">#948</a></span>chore(deps): spring-plattform aktualisieren (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/947">#947</a></span>chore(deps): @types/react-dom auf v19.2.5 aktualisieren (+9/−9, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/916">#916</a></span>chore(deps): pin dependencies aktualisieren (+82/−82, 4 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-08-29 um 09:16 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-08-28T00:00:00 bis 2026-08-28T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
