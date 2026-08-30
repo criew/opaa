@@ -1,27 +1,29 @@
-# Meilenstein 1 — Zeitraumsbericht (ENTWURF)
+# Meilenstein 1 — Zeitraumsbericht
 
 **Zeitraum: Projektstart (Februar 2026) bis 31.08.2026.** Dieser Bericht belegt, was in diesem
 Zeitraum getan wurde; künftige Berichte enthalten nur noch das Delta zum vorigen Stichtag
 (siehe [../README.md](../README.md)).
 
-> **Arbeitsstand, nicht veröffentlicht.** Stichtag des Meilensteins ist der 31.08.2026; dieser
-> Entwurf basiert auf dem Inventurstand vom 27.08.2026 (`main@1c38b80d`, 482 geschlossene Issues,
-> 433 gemergte PRs — siehe [anker.md](./anker.md)). Vor der Abnahme wird das Restdelta bis zum
-> Stichtag nachgezogen. Jede Aussage ist über die [Bausteine](./bausteine/) auf Issue, PR und
-> Code rückführbar.
+> **Finaler Bericht zur Abnahme am Stichtag 31.08.2026.** Er beruht auf der Leistungsinventur
+> mit Datenstand 30.08.2026
+> (`main@a51e6b8c`, 504 geschlossene Issues, 496 gemergte PRs — siehe [anker.md](./anker.md)).
+> Der Commit, der diesen Berichtsstand einführt, trägt das Git-Tag
+> `inventur-20260830`; der getaggte Stand umfasst damit Datenstand und Bericht
+> gemeinsam. Jede Aussage ist über die [Bausteine](./bausteine/) auf Issue, PR und Code
+> rückführbar.
 
 ## Management Summary
 
 OPAA ist in sechs Monaten von einer leeren Projektidee zu einem lauffähigen, öffentlich
 demonstrierbaren Wissensassistenten für die öffentliche Verwaltung gewachsen — mit belegten
 Antworten, echtem Rechtemodell, eigener Demo-Instanz und einer Arbeitsweise, in der Menschen
-und KI-Agenten gemeinsam über 430 Pull Requests geliefert haben.
+und KI-Agenten gemeinsam knapp 500 Pull Requests geliefert haben.
 
 **Phase 1 der Produktvision („Souveräner Wissensassistent") ist zu geschätzt rund 80 %
-umgesetzt.** Das Fundament — Wissensquellen, Bibliotheken, Rechtemodell, belegte Antworten,
-Audit-Grundstufe, Oberfläche, Deployment — steht vollständig und trägt das Hauptgewicht der
-Phase; in der Schlussphase kamen Modellverwaltung, Ordnerstrukturen und eine deutliche
-Anhebung der Retrieval-Qualität hinzu. Offen sind vor allem hybride Suche mit Reranking und
+umgesetzt.** Das Fundament — Wissensquellen, Bibliotheken, Rechtemodell, belegte Antworten mit
+mehrstufig angehobener Retrieval-Qualität, Modellverwaltung, Audit-Grundstufe, Oberfläche
+samt Ordnerstrukturen, Deployment — steht vollständig und trägt das Hauptgewicht der
+Phase. Offen sind vor allem hybride Suche mit Reranking und
 Konfidenz, Streaming-Antworten, der echte Verzeichnisanschluss, die bewusst zurückgestellte
 DSGVO-Vollständigkeit und die Betriebsreife jenseits von Docker Compose (Details in Abschnitt 6).
 
@@ -45,7 +47,8 @@ DSGVO-Vollständigkeit und die Betriebsreife jenseits von Docker Compose (Detail
   vollständig über die Oberfläche verwaltbar; jede Rechteänderung historisiert und im
   Audit-Protokoll nachweisbar.
 - **Moderne, barrierefreie Oberfläche:** eigenes Designsystem mit konfigurierbarem Branding,
-  Dunkelmodus und automatisiert geprüfter Barrierefreiheit (BITV/WCAG) — durchgängig deutsch.
+  Dunkelmodus und Barrierefreiheit (BITV/WCAG), automatisiert geprüft und per manuellem
+  Abschluss-Audit abgenommen — durchgängig deutsch.
 - **Vorführen:** Demo-Installation „Stadt Rheinfurt" mit umfangreichem fiktivem
   Verwaltungskorpus, mehreren Nutzerkonten und Drehbuch für verschiedene Szenarien.
 
@@ -69,7 +72,9 @@ Das Projekt hat nicht nur Software geliefert, sondern eine funktionierende Organ
   Epic-Zuordnung (#248, #285, #321, #373) — Projektsteuerung als Nebenprodukt der CI.
 - **CI/CD:** GitHub-Actions-Pipeline mit Backend-/Frontend-Builds, Lint, Tests, E2E, Docker-Images
   nach GHCR, Branch-Schutz, Auto-Merge und Build-Cache-Optimierung (#23, #102, #196, #625, #644,
-  #832); selbst betriebene Abhängigkeits-Updates über Renovate (#751).
+  #832); selbst betriebene Abhängigkeits-Updates über Renovate mit Auto-Merge und im Betrieb
+  gehärteten Schutzregeln — gruppierte Lockfile-Updates, Majors nur mit Freigabe,
+  Mindestalter für Releases (#751, #951, #1000, #1002).
 
 ## 2 · Technische Grundlagen
 
@@ -85,8 +90,9 @@ Das Projekt hat nicht nur Software geliefert, sondern eine funktionierende Organ
   und behobenen Sicherheitsbefunds (#884).
 - **Testfundament:** Unit-, Integrations- und Migrationstests, E2E-Suite mit Playwright gegen den
   echten Compose-Stack (#231–#233), Testcontainer-Infrastruktur mit Template-DB und
-  Kontext-Konsolidierung — die Backend-Suite lief zuletzt in 3:13 statt 9:53 Minuten
-  (#497, #903, PR#499, PR#648, PR#698).
+  Kontext-Konsolidierung — die Backend-Suite läuft in 3:13 statt 9:53 Minuten
+  (#497, #903, PR#499, PR#648, PR#698) und ist plattformübergreifend lauffähig,
+  einschließlich macOS-Arbeitsplätzen (#611, #966).
 - **Werkzeugkette modernisiert:** Frontend auf pnpm umgestellt (#653), Liquibase-Historie vor
   Produktionsbetrieb zu einer Baseline konsolidiert (#904).
 - **Suchqualität ist messbar:** eigene Eval-Korpora (Comichelden, 200 europäische Großstädte),
@@ -104,6 +110,9 @@ Das Projekt hat nicht nur Software geliefert, sondern eine funktionierende Organ
   (#354/#386), Umfang des Audit-Protokolls (#355), Storage-Zielbild (#351), Mandantengrenze (#356);
   dazu eine dokumentierte GraphRAG-Recherche als Entscheidungsgrundlage für den Wissensgraphen (#317).
 - **Roadmap mit datiertem Meilenstein** und Arbeitsteilung (#461).
+- **Entscheidungsgrundlagen für die nächsten Ausbaustufen** liegen als dokumentierte
+  Recherchen vor: Retrieval-Strategien mit Roadmap und Dateityp-/Metadaten-Konzept (#1023)
+  sowie Agent-Loop, Frameworks und Laufzeitumgebung für die Phase-2-Agenten (#1022).
 
 ## 4 · Implementierte Features (gegen Phase 1 der Vision)
 
@@ -116,7 +125,7 @@ bei Feed-Anlagen samt Herkunfts-Link auf den Feed-Eintrag (#493); jede Zitatstel
 Fundort und die durchsuchten Bestände (#667). Suchbereichssteuerung per @-Bibliotheksreferenzen
 im Chat (#526, #560).
 
-**Retrieval-Qualitätsoffensive zum Meilensteinende** (Epic #912): Teilfragen-Zerlegung und
+**Mehrstufig angehobene Retrieval-Qualität** (Epic #912): Teilfragen-Zerlegung und
 kontextbewusste Reformulierung vor dem Retrieval (Multi-Query-RAG, #923), MMR-Diversität mit
 angehobenem topK (#914), Dokument-Vervollständigung nach der Fusion (#932), Contextual Chunking —
 Dokumentkontext im Chunk-Embedding (#933) — und eine deterministische **Faktenprüfung der
@@ -132,7 +141,8 @@ Anlage per Template, Verbindungstest, Zeitplan je Bibliothek, sichere Zugangsdat
 Pfad-Allowlist. Formaterkennung anhand des Inhalts statt der Endung (#404), Prüfsummen-Skip,
 asynchrone Verarbeitung, **Speicherkontingent je Bibliothek** (#119). **Dokumentenverwaltung in
 der Oberfläche**: Dokumentliste mit Paging und Stichwortsuche, Upload per Drag-and-drop, Löschen,
-Statusanzeige, übersprungene Dokumente mit Grund (#422, #513, #517). **Ordner in Bibliotheken**
+Statusanzeige, übersprungene Dokumente mit Grund, letzter Indexstand je Bibliothek in der
+Übersicht (#422, #513, #517, #684). **Ordner in Bibliotheken**
 (Epic #520): Ordnerstruktur mit Navigation, ordner-bewusster Upload samt Drag-and-drop ganzer
 Verzeichnisse, FILESYSTEM-Quellen als read-only-Ordnerbaum (#819–#824). Dokumente verschwundener
 Quellen werden aufgeräumt (#886), die Dokumentidentität ist je (Bibliothek, Quelle) gescoped
@@ -166,8 +176,11 @@ Belegfenster, Dunkelmodus (#580–#597, #654, #658). **Globale Navigationsebene*
 Leiste (Rail) mit abgesetztem Verwaltungsrahmen und globalen Einstellungen (#786–#789).
 **Browservorschau für Originaldokumente** statt stillem Download (#780), durchgängig deutsche
 Oberfläche inklusive MUI-Standardtexten (#784). Barrierefreiheit als Richtlinie (BITV/WCAG)
-mit automatisierten Prüfungen in Lint und E2E (#584–#586) und nachgezogenen Kontrast-Korrekturen
-(#634, #725, #853).
+mit automatisierten Prüfungen in Lint und E2E (#584–#586), Kontrast-Korrekturen
+(#634, #725, #853) und einem **manuellen Abschluss-Audit** — Tastatur-Durchgänge,
+Screenreader-Stichproben, Kontrastprüfung in beiden Farbschemata — mit abgelegtem
+Prüfprotokoll und sämtlich behobenen Befunden (#598, #956–#959, #1016). Das Redesign-Epic
+ist damit vollständig abgeschlossen (#600).
 
 ### Modelle & zentrale Steuerung (E)
 Austauschbare, **OpenAI-kompatible Modellanbieter**, für Chat und Einbettung getrennt
@@ -258,8 +271,8 @@ Was zur Phase-1-Definition der Vision („Souveräner Wissensassistent") noch fe
 
 | | |
 |---|---|
-| Gemergte Pull Requests | 433 |
-| Geschlossene Issues | 482 (davon ~15 % bewusst „not planned") |
+| Gemergte Pull Requests | 496 |
+| Geschlossene Issues | 504 (davon ~15 % bewusst „not planned") |
 | Architecture Decision Records | 19 gepflegt |
 | Datenbank-Migrationen | Liquibase mit konsolidierter Baseline (#904) und strukturellem Schema-Prüflauf |
 | Backend-Testsuite | 3:13 Minuten (vorher 9:53) nach Testkontext-Konsolidierung (#903) |
@@ -268,5 +281,6 @@ Was zur Phase-1-Definition der Vision („Souveräner Wissensassistent") noch fe
 ---
 
 *Erstellt aus der Leistungsinventur (Issues #744/#945, Vorgehen siehe [../README.md](../README.md)).
-Fortschreibung zum Stichtag:
-Delta ab `1c38b80d` bzw. Issues geschlossen nach 2026-08-27, siehe [anker.md](./anker.md).*
+Datenstand: `main@a51e6b8c`, GitHub-Abfrage vom 30.08.2026; dieser Berichtsstand ist im
+Repository als Tag `inventur-20260830` verankert. Künftige Fortschreibungen erheben
+das Delta ab den Marken in [anker.md](./anker.md).*
