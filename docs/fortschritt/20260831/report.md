@@ -1,11 +1,11 @@
-# Meilenstein 1 — Zeitraumsbericht (ENTWURF)
+# Meilenstein 1 — Zeitraumsbericht
 
 **Zeitraum: Projektstart (Februar 2026) bis 31.08.2026.** Dieser Bericht belegt, was in diesem
 Zeitraum getan wurde; künftige Berichte enthalten nur noch das Delta zum vorigen Stichtag
 (siehe [../README.md](../README.md)).
 
-> **Entwurfs-Baseline, bis zur Abnahme nicht veröffentlicht.** Stichtag des Meilensteins ist
-> der 31.08.2026; dieser Bericht beruht auf der Leistungsinventur mit Datenstand 30.08.2026
+> **Finaler Bericht zur Abnahme am Stichtag 31.08.2026.** Er beruht auf der Leistungsinventur
+> mit Datenstand 30.08.2026
 > (`main@a51e6b8c`, 504 geschlossene Issues, 496 gemergte PRs — siehe [anker.md](./anker.md)).
 > Der Commit, der diesen Berichtsstand einführt, trägt das Git-Tag
 > `inventur-20260830`; der getaggte Stand umfasst damit Datenstand und Bericht
