@@ -8,7 +8,7 @@ Zeitraum getan wurde; künftige Berichte enthalten nur noch das Delta zum vorige
 > der 31.08.2026; dieser Bericht beruht auf der Leistungsinventur mit Datenstand 30.08.2026
 > (`main@a51e6b8c`, 504 geschlossene Issues, 496 gemergte PRs — siehe [anker.md](./anker.md)).
 > Der Commit, der diesen Berichtsstand einführt, trägt das Git-Tag
-> `fortschritt-20260831-entwurf`; der getaggte Stand umfasst damit Datenstand und Bericht
+> `inventur-20260830`; der getaggte Stand umfasst damit Datenstand und Bericht
 > gemeinsam. Jede Aussage ist über die [Bausteine](./bausteine/) auf Issue, PR und Code
 > rückführbar.
 
@@ -282,5 +282,5 @@ Was zur Phase-1-Definition der Vision („Souveräner Wissensassistent") noch fe
 
 *Erstellt aus der Leistungsinventur (Issues #744/#945, Vorgehen siehe [../README.md](../README.md)).
 Datenstand: `main@a51e6b8c`, GitHub-Abfrage vom 30.08.2026; dieser Berichtsstand ist im
-Repository als Tag `fortschritt-20260831-entwurf` verankert. Künftige Fortschreibungen erheben
+Repository als Tag `inventur-20260830` verankert. Künftige Fortschreibungen erheben
 das Delta ab den Marken in [anker.md](./anker.md).*
