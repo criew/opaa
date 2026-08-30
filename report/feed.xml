@@ -5,8 +5,16 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-29T07:16:01Z</updated>
+  <updated>2026-08-30T05:38:58Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Samstag, 29. August 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-29.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-29.html</id>
+    <updated>2026-08-30T05:38:58Z</updated>
+    <summary type="text">Sonstiges:
+— ollama/ollama Docker-Image auf v0.33.2 aktualisiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Freitag, 28. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-28.html"/>
