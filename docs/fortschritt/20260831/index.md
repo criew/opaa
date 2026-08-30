@@ -1,6 +1,6 @@
 # Inventur-Index: geschlossene Issues und gemergte PRs
 
-Automatisch erzeugt aus den GitHub-Dumps (Erstinventur 2026-08-22 + Nachzug 2026-08-27).
+Automatisch erzeugt aus den GitHub-Dumps; Stand der Erhebung: 2026-08-30.
 Spalte PRs: über closingIssuesReferences bzw. Body-Referenzen verknüpfte, gemergte PRs.
 
 ## Geschlossene Issues
@@ -362,8 +362,11 @@ Spalte PRs: über closingIssuesReferences bzw. Body-Referenzen verknüpfte, geme
 | #595 | feat(frontend): Wissensbibliotheken-Übersicht als Tabelle mit Herkunft, Verteilungsstufe und Stand | 2026-08-20 | COMPLETED | #685 |
 | #596 | feat(frontend): Bibliothek-Anlage als Assistent mit Herkunfts-Auswahl | 2026-08-21 | COMPLETED | #696 |
 | #597 | feat(frontend): Übrige Seiten und Dialoge an das neue Design angleichen | 2026-08-21 | COMPLETED | #701 |
+| #598 | test(frontend): Barrierefreiheits-Audit nach Abschluss der Design-Migration | 2026-08-28 | COMPLETED | #960 |
+| #600 | feat(frontend): Redesign der Weboberfläche nach dem Zielbild-Designsystem | 2026-08-28 | COMPLETED | — |
 | #606 | main-Build rot: KnowledgeLibraryServiceDeleteLockTest passt nicht zum erweiterten Konstruktor | 2026-08-20 | COMPLETED | #607 |
 | #609 | fix(library): CI auf main rot — KnowledgeLibraryServiceDeleteLockTest passt nicht zur neuen KnowledgeLibraryService-Signatur | 2026-08-20 | COMPLETED | — |
+| #611 | test(indexing): Fremd-Host-Tests scheitern auf macOS — 127.0.0.2 ist auf lo0 nicht konfiguriert | 2026-08-28 | COMPLETED | #1018 |
 | #614 | Nacharbeiten zum asynchronen Upload: Pool-Konfiguration, Lösch-Restfenster, PENDING-Recovery | 2026-08-20 | COMPLETED | #631 |
 | #616 | test(query): QueryIntegrationTest flaky — MockitoException durch Stubbing-Race mit asynchronem Chat-Titel-Job | 2026-08-20 | COMPLETED | #621 |
 | #617 | Zugangsdaten-Exfiltration über aufrufergesetzten Proxy/insecureSsl beim Verbindungstest und Indizierungslauf | 2026-08-21 | COMPLETED | #699 |
@@ -387,6 +390,7 @@ Spalte PRs: über closingIssuesReferences bzw. Body-Referenzen verknüpfte, geme
 | #667 | feat(query): Fundort je Zitatstelle und durchsuchte Bestände in der Query-API ergänzen | 2026-08-23 | COMPLETED | #753 |
 | #677 | fix(db): Bibliotheksreferenzen eines Chats an die Organisation binden | 2026-08-20 | COMPLETED | #680 |
 | #682 | feat(space): Quellen- und Chatzahl in SpaceListResponse für die Übersichtskarten | 2026-08-23 | COMPLETED | #754 |
+| #684 | feat(library): Letzten Indexstand (lastIndexedAt) in LibraryListResponse für die Stand-Spalte | 2026-08-28 | COMPLETED | #962 |
 | #686 | feat(space): Datenquellen-Zuordnung Space ↔ Wissensbibliothek (API und Retrieval) | 2026-08-21 | COMPLETED | #706 |
 | #693 | fix(indexing): Upgrade-Redirect http→https auf demselben Host wird fälschlich als fremder Host abgewiesen | 2026-08-21 | COMPLETED | #699 |
 | #707 | fix(frontend): CSP blockiert als data:-URI gebündelte Font-Subsets im Docker-Deployment | 2026-08-25 | COMPLETED | #910 |
@@ -439,6 +443,7 @@ Spalte PRs: über closingIssuesReferences bzw. Body-Referenzen verknüpfte, geme
 | #809 | feat(frontend): Spaces-Übersicht ohne Space-Spalte — Navy-Spalte erst im gewählten Space | 2026-08-23 | COMPLETED | #811 |
 | #812 | fix(frontend): index.html ohne Cache-Control — Browser zeigen nach Deployments den alten Stand | 2026-08-23 | COMPLETED | #813 |
 | #814 | fix(frontend): isGlobalAreaPath normalisiert Trailing Slashes nicht — /spaces/ zeigt die Space-Spalte | 2026-08-24 | COMPLETED | #816 |
+| #815 | test(e2e): space-chats Szenario 1 flaky im Gesamtlauf — zitierte Quelle erscheint nach Reload nicht | 2026-08-28 | COMPLETED | #961 |
 | #817 | Backend-Review: toter Code, veraltete Referenzen und Javadoc-Hypertrophie bereinigen | 2026-08-25 | COMPLETED | — |
 | #819 | docs(library): ADR und Spezifikation für Ordner in Bibliotheken | 2026-08-23 | COMPLETED | #825 |
 | #820 | feat(library): Schema und CRUD-API für Bibliotheksordner | 2026-08-24 | COMPLETED | #827 |
@@ -489,6 +494,23 @@ Spalte PRs: über closingIssuesReferences bzw. Body-Referenzen verknüpfte, geme
 | #937 | Query: Zitatvalidierung prüft nur Abruf, nicht Inhalt — falsche Zahl mit gültig wirkendem Zitat | 2026-08-26 | COMPLETED | — |
 | #938 | Query: Einschlägige Satzungs-PDF fehlt in den Top-8 — Drehbuch-Frage 6 wird als thomas.klein verweigert | 2026-08-27 | COMPLETED | — |
 | #941 | CI: Baseline-Absenkungs-Wächter prüft nur comic-characters — city-landmarks bekommt falschen Freispruch | 2026-08-27 | COMPLETED | #944 |
+| #951 | feat(ci): Renovate-PRs mit aktiviertem GitHub-Auto-Merge eröffnen | 2026-08-28 | COMPLETED | #952 |
+| #954 | fix(ci): Renovate schlägt npm-Releases vor, die pnpms minimumReleaseAge noch ablehnt | 2026-08-28 | COMPLETED | #955 |
+| #956 | fix(frontend): Branding-Vorschau versteckt fokussierbare Elemente vor Screenreadern | 2026-08-28 | COMPLETED | #1012 |
+| #957 | fix(frontend): Rollen-Chips unterschreiten im Dunkelschema den Mindestkontrast | 2026-08-28 | COMPLETED | #1017 |
+| #958 | fix(frontend): Übersprungene Überschriftenebenen auf Chat-, Branding- und Modelle-Seite | 2026-08-28 | COMPLETED | #1015 |
+| #959 | fix(frontend): Fokus geht nach Escape beim Inline-Umbenennen eines Chats verloren | 2026-08-28 | COMPLETED | #968 |
+| #966 | test(backend): Redirect-/Downloader-Tests binden 127.0.0.2 und scheitern auf macOS | 2026-08-28 | COMPLETED | #1018 |
+| #996 | fix(deps): pnpm-Lockfile auf main nach Renovate-Auto-Merge-Serie gebrochen — Frontend-CI komplett rot | 2026-08-28 | COMPLETED | #1003 |
+| #997 | chore(ci): Renovate den Gradle-Wrapper-Befehl erlauben (allowedUnsafeExecutions) | 2026-08-28 | COMPLETED | #998 |
+| #1000 | ci(renovate): Gleichzeitige Lockfile-Updates gegen semantische Merge-Brüche absichern | 2026-08-28 | COMPLETED | #1008 |
+| #1001 | fix(build): Backend-Dockerfile zurück auf Temurin 21 — Renovate-Major #988 bricht Image-Build | 2026-08-28 | COMPLETED | #1003 |
+| #1002 | fix(ci): Auto-gemergtes temurin-v25-Major bricht Backend-Image-Build — Majors vom Auto-Merge ausnehmen | 2026-08-28 | COMPLETED | #1004 |
+| #1005 | chore(ci): Tika-4-Major in Renovate aussetzen — inkompatibel zu Spring AIs Tika-3-Parsern | 2026-08-28 | COMPLETED | #1006 |
+| #1007 | chore(ci): TypeScript-7-Major in Renovate aussetzen — typescript-eslint unterstützt TS 7.0 nicht | 2026-08-28 | COMPLETED | #1006 |
+| #1016 | fix(frontend): Markdown-Überschriften in Chat-Antworten pro Nachricht auf gültige Ebenen normalisieren | 2026-08-28 | COMPLETED | #1019 |
+| #1022 | Recherche: Agent-Loop, Frameworks und Laufzeitumgebung für Phase-2-Agenten dokumentieren | 2026-08-30 | COMPLETED | #1024 |
+| #1023 | Recherche: Retrieval-Strategien für OPAA — Tech-Report, Roadmap und Dateityp-/Metadaten-Konzept | 2026-08-30 | COMPLETED | #1025 |
 
 ## Gemergte PRs ohne verknüpftes Issue
 
@@ -549,3 +571,8 @@ Spalte PRs: über closingIssuesReferences bzw. Body-Referenzen verknüpfte, geme
 | #939 | feat(query): Zitatvalidierung um deterministische Faktenprüfung ergänzen | 2026-08-26 |
 | #942 | fix(demo): Gebühren in Personalausweis/Reisepass-Abholung an Einzeldokumente angleichen | 2026-08-27 |
 | #943 | docs(query): akzeptierte Grenze der reinen Vektorsuche dokumentieren | 2026-08-27 |
+| #946 | docs(fortschritt): Inventur-Nachzug zum 27.08. — Delta-Bausteine, Gruppierung und Meilenstein-1-Bericht | 2026-08-27 |
+| #1014 | chore(ci): Befristete Mindestalter-Ausnahme für die vorgezogenen Renovate-Updates | 2026-08-28 |
+
+Renovate-Abhängigkeits-Updates (43 PRs, 2026-08-27 bis 2026-08-29) sind gesammelt im Baustein
+[pr-renovate-updates.md](./bausteine/pr-renovate-updates.md) geführt statt je PR einzeln.
