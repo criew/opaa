@@ -92,6 +92,16 @@ public final class GoldenCaseCuration {
    * matches what {@code city-landmarks} already does in practice (no {@code answer_span} on {@code
    * multi_city}/{@code multi_topic}); this class turns that practice into a checked rule.
    */
+  /**
+   * An {@code expected_state_exception} is only meaningful on a {@code known_gap} case: it explains
+   * why that case deviates from its declared state on purpose. On a {@code solved} case the only
+   * possible deviation is "no longer solved" — a regression — and an exception there would silence
+   * that finding before it ever occurs.
+   */
+  public static final String EXCEPTION_ONLY_ON_KNOWN_GAP_RULE =
+      "expected_state_exception is only allowed on a known_gap case — on a solved case it could "
+          + "only ever excuse a regression";
+
   public static final String SINGLE_DOCUMENT_ANSWER_SPAN_RULE =
       "answer_span is defined per case and only for cases with exactly one expected document "
           + "(issue #1043, ADR-0012 Nachtrag zu offenem Punkt 4)";
@@ -202,6 +212,13 @@ public final class GoldenCaseCuration {
         && goldenCase.expectedStateException().isBlank()) {
       violations.add(
           new Violation(goldenCase.id(), "expected_state_exception is present but blank"));
+    }
+    // An exception describes why a *known_gap* case deviates. On a solved case there is nothing it
+    // could excuse — a solved case that stops being solved is a regression, and an exception there
+    // would pre-silence exactly that finding.
+    if (goldenCase.expectedStateException() != null
+        && goldenCase.expectedState() == GoldenCase.ExpectedState.SOLVED) {
+      violations.add(new Violation(goldenCase.id(), EXCEPTION_ONLY_ON_KNOWN_GAP_RULE));
     }
     if (goldenCase.expectedStateReason() == null || goldenCase.expectedStateReason().isBlank()) {
       violations.add(new Violation(goldenCase.id(), "expected_state_reason is missing or blank"));

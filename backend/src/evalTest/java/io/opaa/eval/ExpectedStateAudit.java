@@ -105,6 +105,11 @@ public final class ExpectedStateAudit {
    * @param unexpectedlyUnsolved ids of {@code solved} cases this run did not solve. The baseline
    *     diff judges whether that is a regression; this list says which cases carry it.
    * @param acceptedDeviations deviations the dataset declares as expected (see the class Javadoc).
+   * @param exceptionsWithoutDeviation ids of cases that carry an exception although this path
+   *     measured no deviation at all — an exception that silences nothing today but would silence a
+   *     genuine finding tomorrow. Reported rather than treated as a finding: for a case whose
+   *     exception describes a path asymmetry, having no deviation on exactly one of the two paths
+   *     is the normal, expected state.
    */
   public record Result(
       int casesWithDeclaredState,
@@ -114,6 +119,7 @@ public final class ExpectedStateAudit {
       List<String> unexpectedlySolved,
       List<String> unexpectedlyUnsolved,
       List<AcceptedDeviation> acceptedDeviations,
+      List<String> exceptionsWithoutDeviation,
       Map<String, ClassResult> byCaseClass) {
 
     public boolean matchesDeclaredStates() {
@@ -138,6 +144,7 @@ public final class ExpectedStateAudit {
     List<String> unexpectedlySolved = new ArrayList<>();
     List<String> unexpectedlyUnsolved = new ArrayList<>();
     List<AcceptedDeviation> acceptedDeviations = new ArrayList<>();
+    List<String> exceptionsWithoutDeviation = new ArrayList<>();
     Map<String, int[]> perClass = new TreeMap<>();
     int declaredSolved = 0;
     int declaredKnownGap = 0;
@@ -160,6 +167,8 @@ public final class ExpectedStateAudit {
         unexpectedlySolved.add(state.id());
       } else if (deviates) {
         unexpectedlyUnsolved.add(state.id());
+      } else if (state.acceptedDeviationReason() != null) {
+        exceptionsWithoutDeviation.add(state.id());
       }
       // [cases, declaredSolved, declaredKnownGap, measuredSolved]
       int[] counts = perClass.computeIfAbsent(String.valueOf(state.caseClass()), k -> new int[4]);
@@ -181,6 +190,7 @@ public final class ExpectedStateAudit {
         List.copyOf(unexpectedlySolved),
         List.copyOf(unexpectedlyUnsolved),
         List.copyOf(acceptedDeviations),
+        List.copyOf(exceptionsWithoutDeviation),
         // Unmodifiable *sorted* map, not Map.copyOf: the report is written to JSON and compared by
         // eye across runs, so the class order must not depend on hashing.
         java.util.Collections.unmodifiableMap(byCaseClass));
@@ -244,6 +254,14 @@ public final class ExpectedStateAudit {
               "  Erwartete Abweichung: %s — %s\n",
               deviation.id(),
               deviation.reason()));
+    }
+    if (!result.exceptionsWithoutDeviation().isEmpty()) {
+      sb.append(
+          "  Ausnahme deklariert, in diesem Pfad keine Abweichung gemessen: "
+              + result.exceptionsWithoutDeviation()
+              + " — prüfen, ob sie noch gilt; bei einer Pfad-Asymmetrie ist genau ein Pfad ohne "
+              + "Abweichung normal, sonst ist die Ausnahme veraltet und stellt den Fall dauerhaft "
+              + "stumm.\n");
     }
     sb.append('\n');
     return sb.toString();
@@ -309,6 +327,14 @@ public final class ExpectedStateAudit {
       for (AcceptedDeviation deviation : result.acceptedDeviations()) {
         sb.append(String.format(Locale.ROOT, "- `%s` — %s\n", deviation.id(), deviation.reason()));
       }
+    }
+    if (!result.exceptionsWithoutDeviation().isEmpty()) {
+      sb.append(
+          "\n_Ausnahme deklariert, in diesem Pfad keine Abweichung gemessen:_ "
+              + inlineCode(result.exceptionsWithoutDeviation())
+              + ". Prüfen, ob die Ausnahme noch gilt: Bei einer Pfad-Asymmetrie ist genau ein Pfad "
+              + "ohne Abweichung normal, sonst ist sie veraltet und stellt den Fall dauerhaft "
+              + "stumm.\n");
     }
     return sb.toString();
   }

@@ -358,6 +358,31 @@ class GoldenCaseCurationTest {
         .contains("expected_state_exception is present but blank");
   }
 
+  @Test
+  void rejectsAnExpectedStateExceptionOnASolvedCase() {
+    GoldenCase solvedWithException =
+        new GoldenCase(
+            "a",
+            "test-domain",
+            "frage",
+            List.of("a.md"),
+            "multi_hop",
+            "medium",
+            "de",
+            "f",
+            null,
+            GoldenCase.ExpectedState.SOLVED,
+            "2026-09-01",
+            "Grund",
+            "vorsorgliche Ausnahme");
+
+    assertThat(
+            GoldenCaseCuration.validate(
+                List.of(solvedWithException), "test-domain", Set.of("a.md")))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .contains(GoldenCaseCuration.EXCEPTION_ONLY_ON_KNOWN_GAP_RULE);
+  }
+
   /** The state enum's JSON spelling is part of the committed dataset's schema, not an internal. */
   @Test
   void statesDeserializeFromTheirJsonSpelling() throws IOException {

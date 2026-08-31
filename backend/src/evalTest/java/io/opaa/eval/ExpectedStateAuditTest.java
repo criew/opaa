@@ -74,9 +74,14 @@ class ExpectedStateAuditTest {
         .contains("known-but-solved");
   }
 
-  /** An exception only applies while the case actually deviates — it never hides agreement. */
+  /**
+   * An exception on a case that does not deviate is named rather than passed over: it silences
+   * nothing today, but it would silence a genuine finding tomorrow. Not a failure — for a case
+   * whose exception describes a path asymmetry, exactly one of the two paths legitimately sees no
+   * deviation.
+   */
   @Test
-  void doesNotListAnExceptionWhenTheCaseBehavesAsDeclared() {
+  void namesAnExceptionOnACaseThatDoesNotDeviate() {
     var result =
         ExpectedStateAudit.evaluate(
             List.of(
@@ -84,7 +89,29 @@ class ExpectedStateAuditTest {
                     "gap", "metadata_filter", ExpectedState.KNOWN_GAP, false, "Ausnahmegrund")));
 
     assertThat(result.acceptedDeviations()).isEmpty();
+    assertThat(result.exceptionsWithoutDeviation()).containsExactly("gap");
     assertThat(result.matchesDeclaredStates()).isTrue();
+    assertThat(ExpectedStateAudit.renderSummary(result))
+        .contains("Ausnahme deklariert, in diesem Pfad keine Abweichung gemessen")
+        .contains("gap");
+    assertThat(ExpectedStateAudit.renderMarkdown(result))
+        .contains("Ausnahme deklariert, in diesem Pfad keine Abweichung gemessen")
+        .contains("`gap`");
+  }
+
+  /** A deviating exception is an accepted deviation, never a stale one. */
+  @Test
+  void doesNotCallADeviatingExceptionStale() {
+    var result =
+        ExpectedStateAudit.evaluate(
+            List.of(
+                stateWithException(
+                    "gap", "metadata_filter", ExpectedState.KNOWN_GAP, true, "Ausnahmegrund")));
+
+    assertThat(result.exceptionsWithoutDeviation()).isEmpty();
+    assertThat(result.acceptedDeviations())
+        .extracting(ExpectedStateAudit.AcceptedDeviation::id)
+        .containsExactly("gap");
   }
 
   /** The Markdown block is what reaches the job summary, PR comment and alert issue (§5). */
