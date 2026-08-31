@@ -159,7 +159,7 @@ direkt, ohne Ähnlichkeitsschwelle, Fenster `documentTopK=10`. Seit #1039 misst 
 zusätzlich einen zweiten Pfad — auf demselben, bereits indizierten und manifest-geprüften Korpus,
 also ohne zweiten Indizierungslauf:
 
-6. Führt jeden Fall desselben Golden Datasets durch `QueryService#retrieveRelevantChunks`, also
+6. Führt jeden Fall desselben Golden Datasets durch `QueryService#retrieveRelevantChunksInGivenScope`, also
    durch **dieselbe Kette, die eine echte Anfrage durchläuft** — Teilfragen-Zerlegung, Vektorsuche
    je Teilfrage, MMR, Reciprocal Rank Fusion, Dokument-Vervollständigung (Schritte 2 bis 6 aus
    [`docs/features/retrieval-algorithm.md`](../docs/features/retrieval-algorithm.md)). Die
@@ -238,12 +238,18 @@ tatsächlich lieferte und bei wie vielen Anfragen die Schwelle **alles** herausf
 Gruppen- und Einzelfallzahlen unter den fenstertragenden Namen `hitRateAt5`/`mrrAt8`/`ndcgAt8`/
 `recallAt8`.
 
-`recallAt8Ceiling` wird dabei **nicht** gegen acht Dokumentplätze gerechnet, sondern gegen die Zahl
-der Dokumente, die eine Anfrage tatsächlich zutage gefördert hat: Das Fenster des Pipeline-Pfads
-zählt Chunks, und bei `max-chunks-per-document > 1` fallen acht Chunks auf entsprechend weniger
-Dokumente zusammen. Eine Obergrenze über acht Plätze wäre in einer mehrchunkigen Domäne
-unerreichbar optimistisch. Die Konsolenzusammenfassung nennt den Mittelwert dieser Zahl als
-„effektives Dokumentfenster".
+Ein Punkt, der beim Lesen mitgedacht werden muss: **Das Fenster des Pipeline-Pfads zählt Chunks,
+die Metriken zählen Dokumente.** Bei `max-chunks-per-document = 2` können acht Chunks auf so wenige
+wie vier Dokumente zusammenfallen — die Rangliste, über die gemessen wird, ist dann entsprechend
+kürzer als acht. Die Konsolenzusammenfassung weist deshalb das **effektive Dokumentfenster** aus
+(unterschiedliche Dokumente je Anfrage im Mittel, gegen die nominal acht Chunk-Plätze), und der
+JSON-Report führt dieselbe Zahl je Anfrage als `distinctDocumentsReturned`.
+
+`recallAt8Ceiling` bleibt davon bewusst unberührt: Es ist die **strukturelle** Obergrenze
+`min(8, |erwartete Dokumente|) / |erwartete Dokumente|` — dieselbe Definition wie
+`recallAt10Ceiling` im Rohvektor-Pfad. Eine aus dem Messergebnis abgeleitete Obergrenze könnte
+nie verfehlt werden: Filterte die Schwelle alles bis auf einen Chunk weg, meldete der Report
+„Recall am Maximum des Erreichbaren", obwohl fast alle erwarteten Dokumente verfehlt wurden.
 
 ### Was dieser Korpus nicht messen kann
 

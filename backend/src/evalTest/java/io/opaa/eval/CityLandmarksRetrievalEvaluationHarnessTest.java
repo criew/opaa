@@ -434,6 +434,11 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   void evaluatesRetrievalQualityAgainstTheGoldenDataset() throws Exception {
     Instant runStart = Instant.now();
 
+    // Decided up front although the pipeline path (step 6 below) only runs at the very end: the
+    // check reads nothing but the query configuration, which is fixed from context startup. Failing
+    // it after the hour-long raw-vector path would cost that path its baseline verdict for nothing.
+    PipelineHarnessSupport.requireMeasurableConfiguration(queryProperties);
+
     Path evalDir = RepoPaths.evalDir();
     Path corpusDir = evalDir.resolve("corpus").resolve(DOMAIN.name());
     Path manifestFile = corpusDir.resolve("MANIFEST.sha256");

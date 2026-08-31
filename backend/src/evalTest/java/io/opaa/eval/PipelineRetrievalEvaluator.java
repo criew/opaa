@@ -14,8 +14,8 @@ import java.util.function.Function;
  *
  * <p>Takes the pipeline itself as a function from a query to the selected chunks' file names in
  * selection order, rather than depending on {@code QueryService} directly: the harness supplies
- * {@code QueryService#retrieveRelevantChunks} (steps 2–6, no answer generation), while this class
- * stays a pure, Docker- and Spring-free unit and is exercised by {@code
+ * {@code QueryService#retrieveRelevantChunksInGivenScope} (steps 2–6, no answer generation), while
+ * this class stays a pure, Docker- and Spring-free unit and is exercised by {@code
  * PipelineRetrievalEvaluatorTest} in the {@code evalUnitTest} task.
  *
  * <p>The chunk list is deduplicated to documents by {@link DocumentRanking} exactly as the
@@ -72,6 +72,9 @@ public final class PipelineRetrievalEvaluator {
   /** Assembles the report from already-computed outcomes. */
   public static PipelineEvaluationReport report(
       List<CaseOutcome> outcomes, PipelineRunConfiguration runConfiguration) {
+    List<RetrievalMetrics.WindowedQueryResult> results =
+        outcomes.stream().map(CaseOutcome::metrics).toList();
+
     List<PipelineQueryResult> allQueryResults =
         outcomes.stream()
             .sorted(
@@ -85,10 +88,10 @@ public final class PipelineRetrievalEvaluator {
         PipelineMetricsAggregate.METRIC_WINDOW_NOTE,
         runConfiguration,
         selectionCoverage(outcomes),
-        PipelineMetricsAggregate.of(outcomes),
-        PipelineMetricsAggregate.groupBy(outcomes, GoldenCase::category),
-        PipelineMetricsAggregate.groupBy(outcomes, GoldenCase::difficulty),
-        PipelineMetricsAggregate.groupBy(outcomes, GoldenCase::language),
+        PipelineMetricsAggregate.of(results),
+        PipelineMetricsAggregate.groupBy(results, GoldenCase::category),
+        PipelineMetricsAggregate.groupBy(results, GoldenCase::difficulty),
+        PipelineMetricsAggregate.groupBy(results, GoldenCase::language),
         allQueryResults.stream().limit(10).toList(),
         allQueryResults);
   }

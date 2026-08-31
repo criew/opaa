@@ -32,12 +32,6 @@ class PipelineMetricsAggregateTest {
         PipelineMetricsAggregate.RANKING_K);
   }
 
-  /** One outcome whose chunk list happens to be one chunk per document. */
-  private static PipelineRetrievalEvaluator.CaseOutcome outcome(
-      GoldenCase goldenCase, List<String> ranked) {
-    return PipelineRetrievalEvaluator.evaluateCase(goldenCase, ranked);
-  }
-
   @Test
   void windowIsTheProductionTopK() {
     assertThat(PipelineMetricsAggregate.RANKING_K).isEqualTo(8);
@@ -104,8 +98,8 @@ class PipelineMetricsAggregateTest {
 
   @Test
   void aggregatesAsAMicroMeanOverCases() {
-    var hit = outcome(goldenCase("a", "c1", List.of("e")), List.of("e"));
-    var miss = outcome(goldenCase("b", "c1", List.of("x")), List.of("e"));
+    var hit = at8(goldenCase("a", "c1", List.of("e")), List.of("e"));
+    var miss = at8(goldenCase("b", "c1", List.of("x")), List.of("e"));
 
     PipelineMetricsAggregate aggregate = PipelineMetricsAggregate.of(List.of(hit, miss));
 
@@ -120,49 +114,39 @@ class PipelineMetricsAggregateTest {
   }
 
   @Test
-  void recallCeilingReflectsCasesExpectingMoreDocumentsThanTheWindowHolds() {
+  void recallCeilingReflectsCasesExpectingMoreThanEightDocuments() {
     List<String> twelveExpected =
         List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12");
-    // Eight chunks from eight distinct documents: the effective document window is the full eight.
-    List<String> eightDistinctChunks = List.of("d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8");
     PipelineMetricsAggregate aggregate =
-        PipelineMetricsAggregate.of(
-            List.of(outcome(goldenCase("a", "c", twelveExpected), eightDistinctChunks)));
+        PipelineMetricsAggregate.of(List.of(at8(goldenCase("a", "c", twelveExpected), List.of())));
 
     assertThat(aggregate.recallAt8Ceiling()).isCloseTo(8.0 / 12.0, within(TOLERANCE));
   }
 
   /**
-   * The window counts chunks, not documents: with {@code max-chunks-per-document > 1} eight chunks
-   * can collapse to four documents, and a ceiling assuming eight document slots would claim a
-   * Recall was reachable that no ranking could have produced.
+   * The ceiling is the structural bound of the window, never a property of what a run happened to
+   * return: a ceiling derived from the measurement could never be missed, so a run whose threshold
+   * filtered nearly everything away would report Recall "at the maximum achievable".
    */
   @Test
-  void recallCeilingUsesTheEffectiveDocumentWindowNotTheNominalEightChunks() {
-    List<String> sixExpected = List.of("1", "2", "3", "4", "5", "6");
-    // Eight chunks, two per document — four distinct documents reach the ranking.
-    List<String> eightChunksFourDocuments = List.of("d1", "d1", "d2", "d2", "d3", "d3", "d4", "d4");
+  void recallCeilingIsStructuralAndUnaffectedByWhatTheRunReturned() {
+    GoldenCase goldenCase = goldenCase("a", "c", List.of("1", "2", "3", "4", "5", "6"));
 
-    PipelineMetricsAggregate aggregate =
+    double withEightDocumentsReturned =
         PipelineMetricsAggregate.of(
-            List.of(outcome(goldenCase("a", "c", sixExpected), eightChunksFourDocuments)));
+                List.of(at8(goldenCase, List.of("1", "2", "3", "4", "5", "6", "d7", "d8"))))
+            .recallAt8Ceiling();
+    double withNothingReturned =
+        PipelineMetricsAggregate.of(List.of(at8(goldenCase, List.of()))).recallAt8Ceiling();
 
-    assertThat(aggregate.recallAt8Ceiling()).isCloseTo(4.0 / 6.0, within(TOLERANCE));
-  }
-
-  @Test
-  void recallCeilingIsZeroWhenTheThresholdFilteredEverythingOut() {
-    PipelineMetricsAggregate aggregate =
-        PipelineMetricsAggregate.of(
-            List.of(outcome(goldenCase("a", "c", List.of("e1", "e2")), List.of())));
-
-    assertThat(aggregate.recallAt8Ceiling()).isZero();
+    assertThat(withEightDocumentsReturned).isEqualTo(1.0);
+    assertThat(withNothingReturned).isEqualTo(withEightDocumentsReturned);
   }
 
   @Test
   void groupsByAnArbitraryKey() {
-    var a = outcome(goldenCase("a", "alpha", List.of("e")), List.of("e"));
-    var b = outcome(goldenCase("b", "beta", List.of("e")), List.of("x"));
+    var a = at8(goldenCase("a", "alpha", List.of("e")), List.of("e"));
+    var b = at8(goldenCase("b", "beta", List.of("e")), List.of("x"));
 
     var grouped = PipelineMetricsAggregate.groupBy(List.of(a, b), GoldenCase::category);
 
@@ -175,10 +159,7 @@ class PipelineMetricsAggregateTest {
   @Test
   void refusesResultsMeasuredAtAnotherWindow() {
     var atTen =
-        new PipelineRetrievalEvaluator.CaseOutcome(
-            RetrievalMetrics.evaluateAt(goldenCase("a", "c", List.of("e")), List.of("e"), 5, 10),
-            1,
-            1);
+        RetrievalMetrics.evaluateAt(goldenCase("a", "c", List.of("e")), List.of("e"), 5, 10);
 
     assertThatThrownBy(() -> PipelineMetricsAggregate.of(List.of(atTen)))
         .isInstanceOf(IllegalArgumentException.class)

@@ -209,7 +209,7 @@ Der Harness misst ab #1039 zweimal auf demselben, einmal indizierten und manifes
 
 | | Rohvektor-Pfad | Pipeline-Pfad |
 |---|---|---|
-| Gemessen wird | `VectorStore#similaritySearch` direkt | `QueryService#retrieveRelevantChunks`, also Schritte 2–6 aus `retrieval-algorithm.md` |
+| Gemessen wird | `VectorStore#similaritySearch` direkt | `QueryService#retrieveRelevantChunksInGivenScope`, also Schritte 2–6 aus `retrieval-algorithm.md` |
 | Ähnlichkeitsschwelle | ausgewiesen, **nicht** angewandt (Entscheidung 3) | **angewandt**, nicht nur ausgewiesen |
 | Fenster | `documentTopK = 10` | `top-k = 8` (die tatsächliche Trefferzahl der Produktion) |
 | Metriken | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | Hit Rate@5, MRR@8, nDCG@8, Recall@8 |
@@ -249,7 +249,7 @@ Harness gesetzt; Ausnahme ist `query-decomposition-enabled` (siehe 15.).
 
 Schritt 1 der Pipeline (Scope-Bestimmung) wird nicht mitgemessen. Der Harness übergibt einen festen
 Suchbereich, der genau die eine Eval-Bibliothek mit dem gesamten Korpus umfasst.
-`QueryService#retrieveRelevantChunks` wendet ihn als denselben `library_id`-Filter innerhalb des
+`QueryService#retrieveRelevantChunksInGivenScope` wendet ihn als denselben `library_id`-Filter innerhalb des
 `similaritySearch`-Aufrufs an, den eine echte Anfrage verwendet — er löst nur keine Berechtigungen
 selbst auf. Rechtedurchsetzung ist über die Backend-Integrationstests abgedeckt; sie hier
 mitzumessen würde die Metriken um einen Faktor verschieben, der mit Suchqualität nichts zu tun hat.

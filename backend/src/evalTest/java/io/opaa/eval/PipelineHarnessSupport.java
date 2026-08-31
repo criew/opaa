@@ -88,7 +88,8 @@ public final class PipelineHarnessSupport {
    * <p>{@link #requireMeasurableConfiguration} is the deliberate exception and runs <b>before</b>
    * the guarded section: a configuration under which the reported numbers would not mean what their
    * names say is a setup error the run must not paper over, and it is decided before any
-   * measurement happens.
+   * measurement happens. Callers are expected to have invoked it at the very start of their run
+   * already (see its own Javadoc); the call here is the second line of defence, not the first.
    *
    * <p>{@code pipelineRunStart} is the start of this measurement phase, not of the whole harness
    * run — the reported duration is the cost of the queries alone, since indexing was already paid
@@ -179,6 +180,14 @@ public final class PipelineHarnessSupport {
   /**
    * Refuses to measure a configuration whose numbers would not mean what the report says they mean.
    *
+   * <p><b>Call this at the very start of a harness run, not only through {@link
+   * #runAndWriteGuarded}.</b> It reads nothing but {@link QueryProperties}, which is fixed from
+   * context startup, so it can decide immediately — whereas the pipeline path itself runs after the
+   * raw-vector path, which takes tens of minutes to hours. Failing only there would turn a
+   * configuration mistake into a red job that never got to hear {@code BaselineRegressionTest}'s
+   * verdict, the very outcome {@link #runAndWriteGuarded} exists to prevent. Idempotent and free:
+   * calling it twice costs nothing.
+   *
    * <ul>
    *   <li><b>{@code top-k} must equal {@link PipelineMetricsAggregate#RANKING_K}</b>, because the
    *       report's metric names state that window literally. A changed production default is a
@@ -192,7 +201,7 @@ public final class PipelineHarnessSupport {
    *       (docs/features/retrieval-benchmark.md, "Offene Punkte" 3).
    * </ul>
    */
-  private static void requireMeasurableConfiguration(QueryProperties queryProperties) {
+  public static void requireMeasurableConfiguration(QueryProperties queryProperties) {
     if (queryProperties.topK() != PipelineMetricsAggregate.RANKING_K) {
       throw new IllegalStateException(
           "opaa.query.top-k is "
