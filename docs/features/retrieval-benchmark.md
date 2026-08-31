@@ -125,10 +125,19 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 > [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md), Nachtrag „Pipeline-Messpfad",
 > Entscheidungen 11–16 — mit **eigener** Vertragsversion für den Pipeline-Pfad statt einer Erhöhung
 > der bestehenden (Begründung dort unter 16.: der Rohvektor-Vertrag ändert sich nicht, und seine
-> Version ist ein Gültigkeitsfeld jeder committeten Baseline). Noch offen und Gegenstand der
-> Folgearbeit: die getrennten **Baseline-Dateien** je Pfad und Domäne samt Aufnahme in
-> `BaselineComparator` und den nächtlichen Job, sowie die Entscheidung über das Chat-Modell — bis
-> dahin misst der Pipeline-Pfad die Variante `decomposition-off`.
+> Version ist ein Gültigkeitsfeld jeder committeten Baseline).
+>
+> **Umsetzungsstand (Issue #1040, 08/2026):** Die getrennten Baseline-Dateien je Pfad und Domäne
+> sind gebaut — `eval/baseline/pipeline-<domäne>.json`, eigener Typ (`PipelineBaseline`), eigener
+> Vergleicher (`PipelineBaselineComparator`), eigenes Urteil im nächtlichen Job neben dem des
+> Rohvektor-Pfads. Die Fixpunkte des Pipeline-Pfads werden jetzt geprüft statt nur ausgewiesen; die
+> Pipeline-Vertragsversion steht dadurch bei 2 (ADR-0012, Nachtrag „Baselines des Pipeline-Pfads",
+> Entscheidungen 17–20). Gezogen ist bisher die Baseline von `comic-characters`; die von
+> `city-landmarks` folgt aus dem CPU-Artefakt des nächtlichen Laufs (Issue #1081), bis dahin bleibt
+> der Pipeline-Pfad dieser Domäne ungegated statt gegen eine nicht existierende Baseline zu laufen.
+> Offen bleibt außerdem die Entscheidung über das Chat-Modell — bis dahin misst der Pipeline-Pfad
+> die Variante `decomposition-off`, und dass keines beteiligt war, ist als geprüfter Fixpunkt
+> (`chatModel = null`) festgehalten.
 
 ### Was gemessen wird
 

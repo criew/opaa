@@ -48,6 +48,17 @@ public record EvalDomainConfig(
   }
 
   /**
+   * This domain's pipeline-path baseline file under {@code eval/baseline/} (issue #1040). Derived
+   * from {@link #baselineFileName()} with a fixed prefix rather than declared separately: the two
+   * paths are not interconvertible, so a pipeline baseline must never be able to land on a
+   * raw-vector baseline's name — deriving it makes that collision impossible to introduce by a typo
+   * in a future domain declaration. Guarded by {@code PipelinePathIsolationTest}.
+   */
+  public String pipelineBaselineFileName() {
+    return "pipeline-" + baselineFileName;
+  }
+
+  /**
    * The frozen comic-characters domain (issues #225–#228): one chunk per document, unchanged from
    * before #721 in every observable way.
    */

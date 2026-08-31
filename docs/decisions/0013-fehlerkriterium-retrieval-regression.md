@@ -8,6 +8,20 @@ für zwei Korrekturen gegenüber diesem Entwurf und den Umsetzungsstand. Der urs
 des Abschnitts „Offen" (sechs zu enge Metrik/Gruppen-Paare) ist mit dem
 [Nachtrag zu Issue #306](#nachtrag-fallzahlbasierte-prüfung-für-zu-enge-paare-issue-306) gelöst.
 
+> **Geltungsbereich seit Issue #1040:** Dieses Fehlerkriterium beschreibt den **Rohvektor-Pfad** und
+> gilt für ihn unverändert — Formel, fallzahlbasierte Prüfung und die Kombination aus
+> baseline-relativer und absoluter harter Untergrenze sind durch #1040 an keiner Stelle geändert
+> worden. Der mit Issue #1039 hinzugekommene **Pipeline-Messpfad** wird nach **demselben** Kriterium
+> geprüft (beide Vergleicher erzeugen ihre Prüfungen über dieselbe Methode
+> `BaselineComparator.metricCheck`), verwendet aber **eigene feste Anker der harten Untergrenze**
+> (Hit Rate@5 ≥ 0,15, MRR@8/nDCG@8/Recall@8 ≥ 0,125). Diese Werte sind in
+> [ADR-0012, Nachtrag „Baselines des Pipeline-Pfads", Entscheidung 19](./0012-messvertrag-retrieval-harness.md#19-getrenntes-urteil-je-pfad-unverändertes-fehlerkriterium)
+> definiert und begründet — dort, weil sie eine Eigenschaft des Pipeline-**Messvertrags** sind (anderes
+> Fenster, angewandte Ähnlichkeitsschwelle) und nicht eine Änderung des Fehlerkriteriums. Entscheidung 1
+> unten („jede Änderung an den Untergrenzen ist eine ADR-0013-Änderung") gilt weiterhin für die Anker
+> des Rohvektor-Pfads; für die des Pipeline-Pfads ist ADR-0012 die zuständige Stelle. Diese Aufteilung
+> ist hier vermerkt, damit sie nicht nur in ADR-0012 steht.
+
 ## Kontext
 
 ADR-0011 (Entscheidung 5) legt fest, **dass** der Regressionsjob fehlschlägt, wenn eine Primärmetrik

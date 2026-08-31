@@ -6,6 +6,42 @@ Domäne `city-landmarks` unten) — die, gegen die der nächtliche Regressionsjo
 von `./gradlew evaluateRetrieval` vergleicht. Geladen und ausgewertet wird sie von
 `io.opaa.eval.Baseline`/`io.opaa.eval.BaselineComparator` im `evalTest`-Source-Set.
 
+## Eine Baseline je Messpfad und Domäne (Issue #1040)
+
+Seit Issue #1039 misst der Harness auf **zwei** Pfaden, und seit Issue #1040 hat jeder seine eigenen
+Baselines:
+
+| Datei | Pfad | Fenster | Vertragsversion im Feld |
+|---|---|---|---|
+| `comic-characters.json` | Rohvektor (`similaritySearch` direkt) | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | `measurementContractVersion` |
+| `city-landmarks.json` | Rohvektor | dieselben | `measurementContractVersion` |
+| `pipeline-comic-characters.json` | Pipeline (Schritte 2–6 der Produktion) | Hit Rate@5, MRR@8, nDCG@8, Recall@8 | `pipelineMeasurementContractVersion` |
+| `pipeline-city-landmarks.json` | Pipeline | dieselben | noch nicht gezogen, siehe Issue #1081 |
+
+Die Pipeline-Baseline von `city-landmarks` fehlt noch: Ihre Ziehung braucht einen ungestörten
+Zwei-Stunden-Lauf und erfolgt aus dem CPU-Artefakt des nächtlichen Laufs (Issue #1081). Bis dahin
+schreibt der Lauf dieser Domäne seinen Pipeline-Report wie gehabt, wird aber nicht dagegen geprüft —
+sichtbar am `pipelineBaselineTestClass = null` in `backend/build.gradle.kts`, nicht durch einen
+stillen Sonderfall im Vergleichscode.
+
+**Die beiden Pfade sind nicht ineinander umrechenbar** (ADR-0012, Nachtrag „Pipeline-Messpfad",
+Entscheidung 12): Der Pipeline-Pfad wendet die Produktionsschwelle tatsächlich an und misst am
+engeren Fenster, seine Recall-Werte liegen deshalb systematisch niedriger. Eine Zahl aus einer
+`pipeline-*.json` neben einer aus der gleichnamigen Rohvektor-Datei zu stellen, ohne das Fenster zu
+nennen, ist ein Auswertungsfehler — deshalb tragen die Feldnamen ihr Fenster selbst
+(`mrrAt8`/`ndcgAt8`/`recallAt8`/`hitCountAt8`/`allExpectedDocumentsHitAt8` gegen `mrr`/`ndcgAt10`/…).
+
+**Eine Pipeline-Baseline überschreibt nie eine Rohvektor-Baseline.** Der Dateiname wird in
+`EvalDomainConfig.pipelineBaselineFileName()` aus dem Rohvektor-Namen mit festem `pipeline-`-Präfix
+abgeleitet, nicht je Domäne getippt; `PipelinePathIsolationTest` prüft das zusammen mit der
+Ladbarkeit und Gültigkeit der bestehenden Rohvektor-Baselines aus #228/#234, die von dieser
+Erweiterung unverändert bleiben.
+
+Alles Weitere in diesem README — Toleranzformel, Rundungsregel, Trennung „Baseline ungültig" vs.
+„Regression", Aktualisierungsverfahren, Absenkungsvergleich gegenüber `main` — gilt für **beide**
+Pfade. Wo der Pipeline-Pfad abweicht, steht es unter
+[Besonderheiten der Pipeline-Baselines](#besonderheiten-der-pipeline-baselines-issue-1040).
+
 ## Domäne `city-landmarks` (Issue #234)
 
 `city-landmarks.json` ist die separate Baseline für die zweite Domäne — eigene Gruppen, eigene
@@ -300,6 +336,97 @@ Unabhängig von Toleranzen: Verletzt der Lauf die Ein-Chunk-Invariante (ADR-0010
 `oneChunkInvariant.violations` im Report nicht leer), schlägt der Job **immer** fehl — das ist kein
 Toleranzfall. Eine verletzte Invariante bedeutet, dass "ein Treffer = eine Entität" nicht mehr gilt,
 wodurch jede Metrik bedeutungslos wird.
+
+## Besonderheiten der Pipeline-Baselines (Issue #1040)
+
+### Aufbau
+
+```json
+{
+  "pipelineMeasurementContractVersion": 2,
+  "fixedPoints": { ... },
+  "groups": { "overall": { ... }, "category:attribute_lookup": { ... }, ... },
+  "measuredAt": "...",
+  "provenance": { ... },
+  "notes": "..."
+}
+```
+
+Gleiche Gliederung wie oben, mit drei Unterschieden:
+
+- **`fixedPoints` führt zusätzlich die Produktionsparameter der Pipeline**: `fetchK`, `topK`,
+  `similarityThreshold`, `maxChunksPerDocument`, `mmrLambda`, `queryDecompositionEnabled`,
+  `maxSubQueries`, `chatModel` sowie die beiden Fenster `hitRateK`/`rankingK`. Diese Werte waren
+  unter Pipeline-Vertragsversion 1 (#1039) nur ausgewiesen; seit der ersten committeten Baseline
+  werden sie geprüft, weil eine unbemerkte Änderung — etwa an `mmrLambda` — sonst still verändern
+  würde, was die committeten Zahlen beschreiben. Genau das erhöht die Vertragsversion auf **2**
+  (ADR-0012, Nachtrag „Baselines des Pipeline-Pfads", Entscheidung 18). Die Rohvektor-Version bleibt
+  bei 2 und die bestehenden Rohvektor-Baselines damit gültig.
+- **`chatModel` ist heute `null`** und wird als solcher geprüft: Der Harness misst die Variante
+  `decomposition-off`, weil sein Kontext kein Chat-Modell hat. Ein Modellname auf nur einer der
+  beiden Seiten macht die Baseline ungültig, statt einen Lauf „mit Zerlegung" gegen einen ohne zu
+  vergleichen.
+- **`groups` führt die Metriken am @8-Fenster**: `hitRateAt5`, `mrrAt8`, `ndcgAt8`, `recallAt8`,
+  `recallAt8Ceiling`, `distinctExpectedDocumentSets`, `hitCountAt5`, `hitCountAt8`,
+  `allExpectedDocumentsHitAt8`.
+
+### Erstziehung (2026-08-31)
+
+`pipeline-comic-characters.json` entstand im selben `evaluateRetrieval`-Lauf wie der Rohvektor-Report
+des Tages — derselbe Index, derselbe geprüfte Korpus, keine zweite Indizierung. Gesamtwerte:
+Hit Rate@5 0,521, MRR@8 0,458, nDCG@8 0,440, Recall@8 0,477 über 121 Fälle; reine Messzeit des
+Pipeline-Pfads 14,4 s.
+
+**Die Nähe zu den @10-Zahlen des Rohvektor-Pfads (nDCG@10 0,445) ist keine Umrechenbarkeit.** Sie ist
+eine Eigenschaft dieser Domäne: Bei einchunkigen Dokumenten lieferte die Pipeline in jeder der 121
+Anfragen genau acht Chunks aus acht unterschiedlichen Dokumenten, die Ähnlichkeitsschwelle filterte
+also keine einzige Anfrage leer. In einer mehrchunkigen Domäne (und erst recht in einer, in der die
+Schwelle greift) fallen die beiden Pfade auseinander — genau deshalb sind es zwei Baselines und nicht
+eine.
+
+Der Rohvektor-Lauf desselben Tages traf die committete Baseline aus #228 auf jeder Gruppe und jeder
+Metrik im Rahmen der Rundung (größtes Delta 0,001, keine Prüfung verletzt) — die Erweiterung hat an
+dieser Messung nichts verändert.
+
+### Fehlerkriterium: unverändert ADR-0013
+
+Toleranzformel, fallzahlbasierte Konjunktion (#306) und die Kombination aus baseline-relativer und
+absoluter harter Untergrenze gelten unverändert. Das ist keine Zusage, sondern gemeinsamer Code:
+Beide Vergleicher erzeugen ihre Prüfungen über dieselbe Methode
+(`BaselineComparator.metricCheck`), können also nicht auseinanderlaufen.
+
+**Eine Abweichung, bewusst und vorab festgelegt:** die *festen* Anker der harten Untergrenze. Der
+Pipeline-Pfad misst am engeren Fenster und mit angewandter Schwelle und liegt aus diesen Gründen
+systematisch niedriger als der Rohvektor-Pfad, an dessen Zahlen ADR-0013s Anker kalibriert sind.
+Für den Pipeline-Pfad gelten deshalb Hit Rate@5 ≥ 0,15 und MRR@8/nDCG@8/Recall@8 ≥ 0,125 — die
+Hälfte der jeweiligen ADR-0013-Werte, **vor** der ersten Messung festgelegt, damit die Untergrenze
+nicht am Ergebnis entlang gewählt wird. Die relative Komponente (0,8 · Baselinewert) ist unverändert
+und dominiert wie beim Rohvektor-Pfad im Regelfall.
+
+### Zwei Urteile im nächtlichen Job
+
+`check<Domäne>RetrievalBaseline` führt beide Baseline-Vergleiche als eigene Testklassen aus
+(`BaselineRegressionTest` und `PipelineBaselineRegressionTest`). Jeder Pfad liefert seine eigene
+Delta-Tabelle (`baseline-comparison*.md` bzw. `pipeline-baseline-comparison-<domäne>.md`) und sein
+eigenes Ja/Nein; ein roter Pfad verhindert nie das Urteil des anderen. Das Alarm-Issue des
+nächtlichen Laufs trägt beide Tabellen und sagt ausdrücklich, dass der jeweils andere Pfad grün sein
+kann.
+
+Scheitert der **Messlauf** des Pipeline-Pfads (nicht sein Ergebnis), bleibt `evaluateRetrieval`
+grün, damit der Rohvektor-Vergleich überhaupt stattfindet — der fehlende Pipeline-Report lässt
+stattdessen `PipelineBaselineRegressionTest` fehlschlagen. Ein Pipeline-Fehler ist damit genau
+einmal rot, unter dem Urteil des Pipeline-Pfads.
+
+### Aktualisieren
+
+Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
+
+- Quelle der gerundeten Mittelwerte ist die `%.3f`-Textausgabe von
+  `PipelineReportWriter.renderSummary` (Konsolen-Log des Laufs), nie eine eigene Nachrundung — die
+  Rundungsregel unten gilt hier wortgleich.
+- `hitCountAt5`/`hitCountAt8` stehen nicht in der Textausgabe; sie werden aus `allQueryResults` des
+  Pipeline-Reports (`build/eval-reports/pipeline-metrics-<domäne>.json`) desselben Laufs gezählt
+  (`hitRateAt5 > 0` bzw. `ndcgAt8 > 0`) — nicht aus den Mittelwerten zurückgerechnet.
 
 ## Baseline aktualisieren
 

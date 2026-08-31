@@ -353,7 +353,7 @@ JUnit-Test
        ├─ pro Golden-Query: QueryService#retrieveRelevantChunksInGivenScope
        │    (Zerlegung → Suche je Teilfrage → MMR → RRF → Dokument-Vervollständigung,
        │     Produktionskonfiguration inkl. angewandter Ähnlichkeitsschwelle)
-       └─ Hit Rate@5, MRR@8, nDCG@8, Recall@8 → eigener Report
+       └─ Hit Rate@5, MRR@8, nDCG@8, Recall@8 → eigener Report + eigener Baseline-Vergleich (#1040)
 ```
 
 Kein LLM ist beteiligt. Retrieval-Metriken sind reine Ranking-Metriken; die Generationsmetriken
@@ -364,10 +364,13 @@ Teilfragen-Zerlegung, weil der Harness kein Chat-Modell hat.
 
 **Die beiden Pfade sind nicht ineinander umrechenbar** und werden nie ohne Fensterangabe
 nebeneinandergestellt: Der Pipeline-Pfad wendet die Ähnlichkeitsschwelle tatsächlich an und misst
-im Produktionsfenster `top-k=8`, der Rohvektor-Pfad misst ungefiltert bei `documentTopK=10`.
+im Produktionsfenster `top-k=8`, der Rohvektor-Pfad misst ungefiltert bei `documentTopK=10`. Jeder
+Pfad hat deshalb seit Issue #1040 **eigene Baseline-Dateien je Domäne**
+(`eval/baseline/pipeline-<domäne>.json`) und ein eigenes Urteil im nächtlichen Job — nach dem
+unveränderten Fehlerkriterium aus [ADR-0013](../decisions/0013-fehlerkriterium-retrieval-regression.md).
 Details, Fixpunkte und Begründung: [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md),
-Nachtrag „Pipeline-Messpfad", und [`retrieval-benchmark.md`](./retrieval-benchmark.md),
-Abschnitt 1.
+Nachträge „Pipeline-Messpfad" und „Baselines des Pipeline-Pfads", und
+[`retrieval-benchmark.md`](./retrieval-benchmark.md), Abschnitt 1.
 
 ### Einbettungsmodell in CI — Optionen
 

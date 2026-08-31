@@ -167,7 +167,11 @@ lokale Iterationszeit spürbar.
   GPU-Embedding-Kernel liefern nicht notwendigerweise bitgleiche Vektoren, und ein natives
   Host-Ollama ist ohnehin nicht dieselbe, reproduzierbare Umgebung wie der gepinnte
   `ollama/ollama:0.6.5`-Testcontainer. `checkRetrievalBaseline`/`checkCityLandmarksRetrievalBaseline`
-  gegen einen solchen Lauf laufen zu lassen ist ohne Aussagekraft.
+  gegen einen solchen Lauf laufen zu lassen ist ohne Aussagekraft; beide Baseline-Vergleiche brechen
+  deshalb hart ab, wenn der Report von einem externen Endpunkt stammt — der Rohvektor-Pfad über
+  `BaselineComparator.requireBaselineComparable`, der Pipeline-Pfad über
+  `PipelineBaselineComparator.requireBaselineComparable` (beide Pfade teilen sich denselben Lauf und
+  denselben Index, also gilt der Vorbehalt für beide).
 - Ohne die Property ist das Verhalten byte-identisch zum bisherigen Stand (Testcontainer, CPU) — CI
   setzt die Property nie, bleibt also unberührt.
 
@@ -224,7 +228,8 @@ Die beiden Pfade messen **unterschiedliche Dinge und sind nicht ineinander umrec
 | Fenster | `documentTopK=10` | `opaa.query.top-k=8` |
 | Metriken | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | **Hit Rate@5, MRR@8, nDCG@8, Recall@8** |
 | Report | `build/eval-reports/retrieval-metrics[-<domäne>].json` | `build/eval-reports/pipeline-metrics-<domäne>.json` |
-| Baseline | `eval/baseline/<domäne>.json` | noch keine (Folgearbeit desselben Epics) |
+| Baseline | `eval/baseline/<domäne>.json` | `eval/baseline/pipeline-<domäne>.json` (city-landmarks: noch nicht gezogen, Issue #1081) |
+| Vergleich im nächtlichen Job | `BaselineRegressionTest` | `PipelineBaselineRegressionTest` |
 
 Weil die Schwelle im Pipeline-Pfad tatsächlich greift, kann ein Dokument dort ganz aus der
 Rangliste verschwinden statt nur zurückzufallen — Recall-Werte liegen systematisch niedriger. Das
@@ -247,13 +252,21 @@ Weitere Festlegungen des Pipeline-Pfads:
 - **Alle übrigen Parameter kommen aus der Produktionskonfiguration** und werden zur Laufzeit
   gelesen: `fetch-k`, `top-k`, `similarity-threshold`, `max-chunks-per-document`, `mmr-lambda`,
   `max-sub-queries`. Ein geändertes `top-k` lässt den Lauf mit einer benannten Fehlermeldung
-  abbrechen, weil die Metriknamen dieses Fenster wörtlich führen.
+  abbrechen, weil die Metriknamen dieses Fenster wörtlich führen; alle übrigen sind seit Issue #1040
+  geprüfte Fixpunkte der Pipeline-Baseline — eine Änderung macht diese Baseline ausdrücklich
+  ungültig, statt still in den Vergleich einzufließen.
 - **Der Rohvektor-Pfad ist unverändert.** Er läuft zuerst, schreibt seinen Report wie bisher und
   wird wie bisher gegen seine Baseline verglichen; der Pipeline-Pfad schreibt ausschließlich in
   seine eigene Datei.
+- **Zwei Urteile, nicht eines** (Issue #1040). `check<Domäne>RetrievalBaseline` führt beide
+  Baseline-Vergleiche als eigene Testklassen aus. Jeder Pfad liefert seine eigene Delta-Tabelle und
+  sein eigenes Ja/Nein; ein roter Pipeline-Pfad verhindert nie das Urteil des Rohvektor-Pfads und
+  umgekehrt. Scheitert der Pipeline-Messlauf selbst, bleibt der Messlauf grün (damit der
+  Rohvektor-Vergleich stattfindet) und der fehlende Pipeline-Report lässt stattdessen
+  `PipelineBaselineRegressionTest` fehlschlagen.
 
 Messvertrag beider Pfade: [ADR-0012](../docs/decisions/0012-messvertrag-retrieval-harness.md),
-Nachtrag „Pipeline-Messpfad".
+Nachträge „Pipeline-Messpfad" (#1039) und „Baselines des Pipeline-Pfads" (#1040).
 
 ### Variantenvergleiche (Issue #1041)
 
@@ -377,6 +390,9 @@ Baseline, die Schwellenwerte und die CI-Anbindung aufgesetzt:
 - Vergleichslogik: `io.opaa.eval.BaselineComparator`, ausgeführt über den Gradle-Task
   `checkRetrievalBaseline` (führt `evaluateRetrieval` aus und vergleicht das Ergebnis anschließend
   gegen `eval/baseline/comic-characters.json`).
+- Seit Issue #1040 vergleicht derselbe Task zusätzlich den Pipeline-Messpfad gegen seine eigene
+  Baseline (`eval/baseline/pipeline-comic-characters.json`, `io.opaa.eval.PipelineBaselineComparator`)
+  — getrennte Dateien, getrennte Urteile, dasselbe Fehlerkriterium aus ADR-0013.
 
 ### Messvertrag
 
@@ -395,3 +411,8 @@ Der Pipeline-Pfad (#1039) hat seinen **eigenen**, getrennt gezählten Messvertra
 11–16). Getrennt gezählt, weil der Rohvektor-Vertrag sich durch die Erweiterung an keiner Stelle
 ändert und eine Erhöhung seiner Nummer jede committete Rohvektor-Baseline ungültig machen würde —
 für eine Messung, deren Zahlen sich nicht bewegt haben.
+
+Mit Issue #1040 steht dieser Pipeline-Vertrag bei Version 2 (ADR-0012 Nachtrag „Baselines des
+Pipeline-Pfads", Entscheidungen 17–20): Die fünf zuvor nur ausgewiesenen Query-Parameter
+(`fetch-k`, `similarity-threshold`, `max-chunks-per-document`, `mmr-lambda`, `max-sub-queries`) sind
+jetzt geprüfte Fixpunkte der Pipeline-Baseline. Die Rohvektor-Version bleibt davon unberührt bei 2.

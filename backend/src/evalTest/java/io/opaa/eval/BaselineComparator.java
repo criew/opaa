@@ -83,11 +83,10 @@ import java.util.function.ToIntFunction;
  * drop from rank 1 to rank 3 — no lost hit required — to breach the mean tolerance more than twice
  * over.
  *
- * <p><b>Fix (issue #306, ADR-0013 Nachtrag):</b> {@link #addMetricCheck} determines, per
- * group/metric pair and dynamically (not from a hardcoded pair list — see {@link
- * #usesCaseBasedCheck}), whether {@code toleranceFor(baselineValue, nEff) < 1.0 / n}. Where that
- * holds, the pair must clear <b>both</b> of the following (a conjunction, not a replacement — see
- * "Review correction" below):
+ * <p><b>Fix (issue #306, ADR-0013 Nachtrag):</b> {@link #metricCheck} determines, per group/metric
+ * pair and dynamically (not from a hardcoded pair list — see {@link #usesCaseBasedCheck}), whether
+ * {@code toleranceFor(baselineValue, nEff) < 1.0 / n}. Where that holds, the pair must clear
+ * <b>both</b> of the following (a conjunction, not a replacement — see "Review correction" below):
  *
  * <ol>
  *   <li>A case-count test: the number of cases in the group scoring above zero ({@link
@@ -568,16 +567,47 @@ public final class BaselineComparator {
       ToIntFunction<MetricsAggregate> hitCountFn,
       MetricsAggregate base,
       MetricsAggregate current) {
+    checks.add(
+        metricCheck(
+            group,
+            metric,
+            n,
+            baselineValue,
+            currentValue,
+            nEff,
+            absoluteHardFloor,
+            base.n(),
+            hitCountFn.applyAsInt(base),
+            hitCountFn.applyAsInt(current)));
+  }
+
+  /**
+   * ADR-0013's error criterion itself, independent of which path's aggregate the numbers came from
+   * — tolerance formula, case-based conjunction, and hard floor in one place. Issue #1040 gave the
+   * pipeline path its own baselines; sharing this method rather than copying it is what makes
+   * "beide Pfade nach dem unveränderten Fehlerkriterium aus ADR-0013" a structural fact instead of
+   * a claim two implementations could drift apart on.
+   *
+   * @param baseN the baseline's own, frozen case count — used for both the {@code 1/n} switch
+   *     condition and the widened tolerance (issue #306 review, Befund 4): the baseline is what the
+   *     tolerance and "affected pair" status are defined against, and the two sides must not
+   *     silently mix.
+   * @param absoluteHardFloor {@code null} for a metric without a hard floor (every group other than
+   *     {@code overall}, and {@code allExpectedDocumentsHit…} everywhere).
+   */
+  static MetricCheck metricCheck(
+      String group,
+      String metric,
+      int n,
+      double baselineValue,
+      double currentValue,
+      int nEff,
+      Double absoluteHardFloor,
+      int baseN,
+      int baselineHitCount,
+      int currentHitCount) {
     double delta = currentValue - baselineValue;
     double meanTolerance = toleranceFor(baselineValue, nEff);
-    // Issue #306 review, Befund 4: both the "1/n" switch condition and the widened tolerance below
-    // deliberately use base.n() (the baseline's own, frozen case count), not current.n() — the
-    // baseline is what the tolerance and "affected pair" status are defined against, and the two
-    // should not silently mix sides. Harmless in practice today (a report with a different case
-    // count than the baseline already aborts earlier via the goldenCaseCount fixed point, before
-    // this method ever runs), but this keeps the two reads from the two objects intentional rather
-    // than incidental.
-    int baseN = base.n();
     boolean caseBasedCheck = usesCaseBasedCheck(meanTolerance, baseN);
     // Issue #306 review, Befund 1: the case-count check alone caught only *lost hits*, not a
     // severe rank or partial-recall degradation that leaves hitCountAt5/hitCountAt10 unchanged
@@ -593,8 +623,6 @@ public final class BaselineComparator {
     boolean meanWithinTolerance = delta >= -tolerance - EPSILON;
     boolean withinTolerance;
     if (caseBasedCheck) {
-      int baselineHitCount = hitCountFn.applyAsInt(base);
-      int currentHitCount = hitCountFn.applyAsInt(current);
       boolean caseCountWithinTolerance = currentHitCount >= baselineHitCount - MAX_CASE_COUNT_DROP;
       withinTolerance = caseCountWithinTolerance && meanWithinTolerance;
     } else {
@@ -608,19 +636,18 @@ public final class BaselineComparator {
             ? Double.NEGATIVE_INFINITY
             : Math.max(HARD_FLOOR_FRACTION_OF_BASELINE * baselineValue, absoluteHardFloor);
     boolean passesHardFloor = currentValue >= hardFloor - EPSILON;
-    checks.add(
-        new MetricCheck(
-            group,
-            metric,
-            n,
-            baselineValue,
-            currentValue,
-            delta,
-            tolerance,
-            withinTolerance,
-            hardFloor,
-            passesHardFloor,
-            caseBasedCheck));
+    return new MetricCheck(
+        group,
+        metric,
+        n,
+        baselineValue,
+        currentValue,
+        delta,
+        tolerance,
+        withinTolerance,
+        hardFloor,
+        passesHardFloor,
+        caseBasedCheck);
   }
 
   /** The tolerance formula documented in the class Javadoc (ADR-0013), exposed for unit testing. */
@@ -632,14 +659,14 @@ public final class BaselineComparator {
 
   /**
    * Issue #306: whether {@code meanTolerance} is tighter than the shift one flipped case causes
-   * ({@code 1/n}) — the condition under which {@link #addMetricCheck} additionally requires the
+   * ({@code 1/n}) — the condition under which {@link #metricCheck} additionally requires the
    * case-count test (see class Javadoc) to pass, on top of the (widened) mean-tolerance test.
    * Deliberately computed from the *current* {@code toleranceFor(...)} result and a raw case count
    * rather than a hardcoded pair list, so it self-adjusts to whichever pairs qualify under a future
    * baseline re-measurement — see the class Javadoc. The case count passed in is always the
-   * baseline's own {@code n} (issue #306 review, Befund 4) — see the call site in {@link
-   * #addMetricCheck} — matching the "1/n" wording in ADR-0013's "Offen" section and README table:
-   * it is the raw case count the *baseline's* mean was actually divided by.
+   * baseline's own {@code n} (issue #306 review, Befund 4) — see the {@code baseN} parameter of
+   * {@link #metricCheck} — matching the "1/n" wording in ADR-0013's "Offen" section and README
+   * table: it is the raw case count the *baseline's* mean was actually divided by.
    */
   static boolean usesCaseBasedCheck(double meanTolerance, int n) {
     return n > 0 && meanTolerance < (1.0 / n) - EPSILON;
