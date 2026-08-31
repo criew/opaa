@@ -1,3 +1,31 @@
+# Korpus-Generator: Verwaltung (Issue #1042)
+
+Erzeugt den Evaluierungskorpus unter `eval/corpus/verwaltung/` — vollständig synthetisch, ohne
+Fremdquelle (siehe [`../corpus/verwaltung/SOURCE.md`](../corpus/verwaltung/SOURCE.md)). Details
+zum Gesamtvorhaben stehen in
+[`docs/features/retrieval-benchmark.md`](../../docs/features/retrieval-benchmark.md), Abschnitt 4
+„Verwaltungs-Evaldomäne".
+
+```bash
+cd eval/generator
+python generate_verwaltung_corpus.py
+```
+
+Kein Netzzugriff und kein Rohdaten-Snapshot: Das Skript liest ausschließlich seine eigenen, im
+Quelltext hinterlegten Daten (`AEMTER`, Textbausteine je Dokumenttyp). Zwei Läufe erzeugen
+byte-identische Ausgabe.
+
+Chunk-Zahl-Verifikation ohne Docker: `io.opaa.eval.VerwaltungChunkSizeDryRunTest`
+(`backend/src/evalTest/java/io/opaa/eval/`) chunked den generierten Korpus mit der echten,
+produktiven `ChunkingService` (kein Testcontainers nötig) und schlägt fehl, sobald ein Dokument
+unter die Mindestzahl von 3 Chunks fällt — siehe `eval/corpus/verwaltung/SOURCE.md` für die
+zuletzt gemessenen Werte und [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)
+für Pflegeverantwortung und das Verfahren bei einer Korpus-Neuziehung. Golden Dataset, Baseline
+und die Registrierung im Retrieval-Harness (`EvalDomainConfig`) sind **nicht** Teil dieses
+Issues — siehe `MAINTENANCE.md`, Abschnitt „Stand dieser Domäne".
+
+---
+
 # Korpus-Generator: Sehenswürdigkeiten in europäischen Großstädten (Issue #234)
 
 Erzeugt den Evaluierungskorpus unter `eval/corpus/city-landmarks/` ausschließlich aus den

@@ -12,6 +12,7 @@ eval/
 │   ├── generate_corpus.py                    Domäne Comichelden (Issue #225)
 │   ├── generate_golden_dataset.py            Golden Dataset für dieselbe Domäne (Issue #226)
 │   ├── generate_city_landmarks_corpus.py     Domäne Sehenswürdigkeiten (Issue #234)
+│   ├── generate_verwaltung_corpus.py         Domäne Verwaltung (Issue #1042)
 │   ├── frozen/                                eingefrorene Wikidata-SPARQL-Rohdaten, committet (Issue #234)
 │   ├── README.md                    Reproduktionsanleitung
 │   └── raw-source/                  gecachte Rohdaten, gitignored
@@ -20,10 +21,15 @@ eval/
 │   │   ├── *.md                     ein Dokument je Entität
 │   │   ├── MANIFEST.sha256          SHA-256 über alle Dokumente dieser Domäne
 │   │   └── SOURCE.md                Quelle, Lizenz, Abrufdatum
-│   └── city-landmarks/
-│       ├── *.md                     ein Dokument je Stadt (mehrchunkig, deutsch)
+│   ├── city-landmarks/
+│   │   ├── *.md                     ein Dokument je Stadt (mehrchunkig, deutsch)
+│   │   ├── MANIFEST.sha256
+│   │   └── SOURCE.md
+│   └── verwaltung/
+│       ├── *.md                     ein Dokument je Verwaltungsvorgang (mehrchunkig, deutsch, synthetisch)
 │       ├── MANIFEST.sha256
-│       └── SOURCE.md
+│       ├── SOURCE.md
+│       └── MAINTENANCE.md           Pflegeverantwortung, Baseline-Neuziehung, known_gap-Fälle
 └── golden/                          Golden-Query-Datasets, committet (siehe eval/golden/README.md)
     ├── comic-characters.json
     └── city-landmarks.json
@@ -34,6 +40,15 @@ in europäischen Großstädten** (Issue #234, bewusst mehrchunkig, deutschsprach
 Phase 2 vorgesehenen weiteren Domänen (Filme, Reiseziele, Tiere) sind gestrichen (Maintainer-
 Entscheidung vom 21.08.2026, Issue #234) — Begründung siehe
 `docs/features/search-quality-evaluation.md`, Abschnitt „Domänen und was sie prüfen sollen".
+
+Eine dritte Domäne, **Verwaltung** (Issue #1042, Abschnitt 4 von
+`docs/features/retrieval-benchmark.md`), liefert seither Generator, Korpus und Manifest für einen
+vollständig synthetischen, deutschsprachigen Amtssprache-Korpus (Satzungen, Gebührenordnungen,
+Dienstanweisungen, Formularhinweise sowie eine organisationsweite Vertretungsregelung und einen
+Geschäftsverteilungsplan). Golden Dataset, Baseline und die Registrierung im Retrieval-Harness
+(`EvalDomainConfig`) sind ein eigenes, späteres Issue (siehe
+`eval/corpus/verwaltung/MAINTENANCE.md`, Abschnitt „Stand dieser Domäne") — es gibt deshalb noch
+keinen `./gradlew evaluateVerwaltungRetrieval`-Task.
 
 ## Retrieval-Evaluation ausführen (Issue #227)
 
