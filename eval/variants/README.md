@@ -45,7 +45,34 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
   gegen den falschen Index gemessen (Abnahmekriterium des Issues).
 - Eine Variante, deren effektive Konfiguration `queryDecompositionEnabled=true` ergibt, wird
   ebenfalls als „nicht ausgeführt“ gemeldet: Der Harness-Kontext hat kein Chat-Modell (siehe
-  `PipelineHarnessSupport#requireMeasurableConfiguration`).
+  `PipelineHarnessSupport#requireMeasurableConfiguration`). Sobald ein Chat-Modell verfügbar ist
+  (Issue #1085), greift für eine solche Variante automatisch die Mehrfachlauf-Regel unten.
+
+## Mehrfachlauf-Regel für Varianten mit LLM-Anteil
+
+Issue #1044, [`docs/features/retrieval-benchmark.md`](../../docs/features/retrieval-benchmark.md),
+Abschnitt 3 „Schlanke Statistik": Eine Variante mit effektiv aktivierter Teilfragen-Zerlegung ist
+nichtdeterministisch und läuft deshalb dreimal statt einmal (`io.opaa.eval.VariantRunner`,
+`io.opaa.eval.MultiRunAggregator`). Der Bericht führt je Metrik Minimum, Median und Maximum sowie
+die Zahl der Golden-Fälle, bei denen sich die von der Zerlegung erzeugten Teilfragen zwischen den
+drei Läufen unterschieden haben — die eigentliche Kennzahl der Instabilität. Für den Delta-Vergleich
+gegen die Referenzvariante zählt der **Median-Lauf**, keine Mittelwertbildung über die drei Läufe.
+Jede Variante ohne LLM-Anteil bleibt bei einem Lauf; ein abweichender zweiter Lauf wäre dort ein
+Befund, kein Anlass für Statistik. Solange keine Zerlegungsvariante ausführbar ist (siehe oben), ist
+diese Regel über `MultiRunAggregatorTest` mit synthetischen Reports abgesichert statt über einen
+echten Lauf.
+
+## Nächtlich vs. manuell
+
+Variantenvergleiche laufen **nicht** im nächtlichen Regressionsjob
+(`.github/workflows/retrieval-regression.yml`) — nur die beiden Regressionspfade (Rohvektor,
+Pipeline) tun das, mit fester, committeter Baseline. Diese Aufteilung ist mit Issue #1044 anhand
+gemessener Laufzeiten des nächtlichen Jobs bewusst getroffen worden (Details:
+`docs/features/retrieval-benchmark.md`, „Offene Punkte" 2): Der `city-landmarks`-Regressionslauf
+nutzt im ungünstigsten beobachteten Fall bereits rund drei Viertel seines Zeitbudgets, und ein
+Variantenvergleich mit mehreren Varianten — dazu die Verdreifachung jeder Zerlegungsvariante durch
+die Mehrfachlauf-Regel — würde dieses Budget beliebig vervielfachen. Ein Variantenvergleich läuft
+deshalb ausschließlich manuell aus, wie im Abschnitt „Ausführen" oben beschrieben.
 
 ## Ausführen
 

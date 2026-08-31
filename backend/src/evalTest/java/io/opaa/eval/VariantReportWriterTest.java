@@ -27,7 +27,8 @@ class VariantReportWriterTest {
         new GoldenCase("a", "test", "frage", List.of("a.md"), "cat", "easy", "de", "t", null);
     return PipelineRetrievalEvaluator.report(
         PipelineRetrievalEvaluator.evaluateAll(
-            List.of(goldenCase), Map.of("frage", List.of("a.md"))::get),
+            List.of(goldenCase),
+            VariantComparisonRunnerTest.toPipeline(Map.of("frage", List.of("a.md")))),
         VariantComparisonRunnerTest.runConfiguration());
   }
 

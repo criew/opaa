@@ -63,7 +63,9 @@ class PipelineRetrievalEvaluatorTest {
   void deduplicatesChunksToDocumentsKeepingTheBestRank() {
     var outcome =
         PipelineRetrievalEvaluator.evaluateCase(
-            goldenCase("a", List.of("b.md")), List.of("a.md", "a.md", "b.md", "b.md"));
+            goldenCase("a", List.of("b.md")),
+            List.of("a.md", "a.md", "b.md", "b.md"),
+            List.of("frage a"));
 
     assertThat(outcome.chunksReturned()).isEqualTo(4);
     assertThat(outcome.distinctDocumentsReturned()).isEqualTo(2);
@@ -78,7 +80,8 @@ class PipelineRetrievalEvaluatorTest {
   @Test
   void anEmptySelectionIsAMeasurableOutcome() {
     var outcome =
-        PipelineRetrievalEvaluator.evaluateCase(goldenCase("a", List.of("b.md")), List.of());
+        PipelineRetrievalEvaluator.evaluateCase(
+            goldenCase("a", List.of("b.md")), List.of(), List.of("frage a"));
 
     assertThat(outcome.chunksReturned()).isZero();
     assertThat(outcome.distinctDocumentsReturned()).isZero();
@@ -89,7 +92,9 @@ class PipelineRetrievalEvaluatorTest {
   void chunksWithoutFileNameMetadataAreDropped() {
     var outcome =
         PipelineRetrievalEvaluator.evaluateCase(
-            goldenCase("a", List.of("b.md")), java.util.Arrays.asList(null, "b.md"));
+            goldenCase("a", List.of("b.md")),
+            java.util.Arrays.asList(null, "b.md"),
+            List.of("frage a"));
 
     assertThat(outcome.metrics().rankedFileNames()).containsExactly("b.md");
     assertThat(outcome.metrics().reciprocalRank()).isEqualTo(1.0);
@@ -106,7 +111,9 @@ class PipelineRetrievalEvaluatorTest {
         PipelineRetrievalEvaluator.report(
             PipelineRetrievalEvaluator.evaluateAll(
                 List.of(goldenCase("a", List.of("a.md")), goldenCase("b", List.of("b.md"))),
-                pipeline::get),
+                query ->
+                    new PipelineRetrievalEvaluator.PipelineInvocationResult(
+                        pipeline.get(query), List.of(query))),
             runConfiguration());
 
     assertThat(report.pipelineMeasurementContractVersion())
@@ -123,9 +130,11 @@ class PipelineRetrievalEvaluatorTest {
   @Test
   void selectionCoverageCountsQueriesThatReturnedNothing() {
     var withChunks =
-        PipelineRetrievalEvaluator.evaluateCase(goldenCase("a", List.of("a.md")), List.of("a.md"));
+        PipelineRetrievalEvaluator.evaluateCase(
+            goldenCase("a", List.of("a.md")), List.of("a.md"), List.of("frage a"));
     var empty =
-        PipelineRetrievalEvaluator.evaluateCase(goldenCase("b", List.of("b.md")), List.of());
+        PipelineRetrievalEvaluator.evaluateCase(
+            goldenCase("b", List.of("b.md")), List.of(), List.of("frage b"));
 
     var coverage = PipelineRetrievalEvaluator.selectionCoverage(List.of(withChunks, empty));
 

@@ -19,7 +19,7 @@ class VariantOutcomeTest {
             List.of(
                 new GoldenCase(
                     "a", "test", "frage", List.of("a.md"), "cat", "easy", "de", "t", null)),
-            Map.of("frage", List.of("a.md"))::get),
+            VariantComparisonRunnerTest.toPipeline(Map.of("frage", List.of("a.md")))),
         VariantComparisonRunnerTest.runConfiguration());
   }
 
@@ -43,13 +43,31 @@ class VariantOutcomeTest {
 
   @Test
   void anExecutedOutcomeMustNotCarryASkipReason() {
-    assertThatThrownBy(() -> new VariantOutcome(variant(), true, "reason", report()))
+    assertThatThrownBy(() -> new VariantOutcome(variant(), true, "reason", report(), null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void aSkippedOutcomeMustCarryANonBlankReason() {
-    assertThatThrownBy(() -> new VariantOutcome(variant(), false, " ", null))
+    assertThatThrownBy(() -> new VariantOutcome(variant(), false, " ", null, null))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void aSkippedOutcomeMustNotCarryAMultiRunSummary() {
+    var summary =
+        new MultiRunSummary(
+            3,
+            new MultiRunSummary.MetricRange(0, 0, 0),
+            new MultiRunSummary.MetricRange(0, 0, 0),
+            new MultiRunSummary.MetricRange(0, 0, 0),
+            new MultiRunSummary.MetricRange(0, 0, 0),
+            0,
+            0,
+            List.of());
+
+    assertThatThrownBy(
+            () -> new VariantOutcome(variant(), false, "requires reindex", null, summary))
         .isInstanceOf(IllegalArgumentException.class);
   }
 }

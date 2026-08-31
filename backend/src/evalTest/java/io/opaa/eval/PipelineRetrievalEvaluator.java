@@ -12,11 +12,12 @@ import java.util.function.Function;
  * Runs a golden dataset through the pipeline measurement path and assembles a {@link
  * PipelineEvaluationReport} (issue #1039, docs/features/retrieval-benchmark.md §1).
  *
- * <p>Takes the pipeline itself as a function from a query to the selected chunks' file names in
- * selection order, rather than depending on {@code QueryService} directly: the harness supplies
- * {@code QueryService#retrieveRelevantChunksInGivenScope} (steps 2–6, no answer generation), while
- * this class stays a pure, Docker- and Spring-free unit and is exercised by {@code
- * PipelineRetrievalEvaluatorTest} in the {@code evalUnitTest} task.
+ * <p>Takes the pipeline itself as a function from a query to a {@link PipelineInvocationResult}
+ * (the selected chunks' file names in selection order, plus the search queries decomposition
+ * produced), rather than depending on {@code QueryService} directly: the harness supplies {@code
+ * QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition} (steps 2–6, no answer
+ * generation), while this class stays a pure, Docker- and Spring-free unit and is exercised by
+ * {@code PipelineRetrievalEvaluatorTest} in the {@code evalUnitTest} task.
  *
  * <p>The chunk list is deduplicated to documents by {@link DocumentRanking} exactly as the
  * raw-vector path does — a document's rank is the rank of its best-placed chunk — and truncated at
@@ -34,14 +35,23 @@ public final class PipelineRetrievalEvaluator {
   public record CaseOutcome(
       RetrievalMetrics.WindowedQueryResult metrics,
       int chunksReturned,
-      int distinctDocumentsReturned) {}
+      int distinctDocumentsReturned,
+      List<String> subQueries) {}
+
+  /**
+   * What one call into the pipeline (steps 2–6) produced for a case: the selected chunks' file
+   * names in selection order, and the search queries decomposition (or its single-query fallback)
+   * actually ran — see {@link io.opaa.query.QueryService.RetrievalWithDecomposition}.
+   */
+  public record PipelineInvocationResult(List<String> rankedFileNames, List<String> subQueries) {}
 
   /**
    * Evaluates a single case from the chunk file names the pipeline selected for it, in selection
    * order. {@code null} entries (a chunk without {@code file_name} metadata) are dropped by {@link
    * DocumentRanking#dedupeToDocuments}, the same handling the raw-vector path applies.
    */
-  public static CaseOutcome evaluateCase(GoldenCase goldenCase, List<String> rankedChunkFileNames) {
+  public static CaseOutcome evaluateCase(
+      GoldenCase goldenCase, List<String> rankedChunkFileNames, List<String> subQueries) {
     DocumentRanking.DocumentWindowResult window =
         DocumentRanking.applyDocumentWindow(
             rankedChunkFileNames, PipelineMetricsAggregate.RANKING_K);
@@ -52,7 +62,8 @@ public final class PipelineRetrievalEvaluator {
             PipelineMetricsAggregate.HIT_RATE_K,
             PipelineMetricsAggregate.RANKING_K),
         rankedChunkFileNames.size(),
-        window.distinctDocumentsReached());
+        window.distinctDocumentsReached(),
+        subQueries);
   }
 
   /**
@@ -61,10 +72,11 @@ public final class PipelineRetrievalEvaluator {
    * be determined after this method has returned.
    */
   public static List<CaseOutcome> evaluateAll(
-      List<GoldenCase> goldenCases, Function<String, List<String>> pipeline) {
+      List<GoldenCase> goldenCases, Function<String, PipelineInvocationResult> pipeline) {
     List<CaseOutcome> outcomes = new ArrayList<>(goldenCases.size());
     for (GoldenCase goldenCase : goldenCases) {
-      outcomes.add(evaluateCase(goldenCase, pipeline.apply(goldenCase.query())));
+      PipelineInvocationResult invocation = pipeline.apply(goldenCase.query());
+      outcomes.add(evaluateCase(goldenCase, invocation.rankedFileNames(), invocation.subQueries()));
     }
     return List.copyOf(outcomes);
   }
@@ -126,6 +138,7 @@ public final class PipelineRetrievalEvaluator {
         outcome.chunksReturned(),
         outcome.distinctDocumentsReturned(),
         m.goldenCase().expectedDocuments(),
-        m.rankedFileNames());
+        m.rankedFileNames(),
+        outcome.subQueries());
   }
 }

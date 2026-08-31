@@ -416,11 +416,40 @@ public class QueryService {
    */
   public List<Document> retrieveRelevantChunksInGivenScope(
       String question, List<Message> conversationHistory, Set<UUID> searchScope) {
+    return retrieveRelevantChunksInGivenScopeWithDecomposition(
+            question, conversationHistory, searchScope)
+        .chunks();
+  }
+
+  /**
+   * Chunks and the search queries the decomposition step (or its single-query fallback) actually
+   * produced for them, one call each.
+   *
+   * @param chunks identical to what {@link #retrieveRelevantChunksInGivenScope} returns.
+   * @param searchQueries the queries {@link #retrieveRelevantChunks} ran, in the order they were
+   *     run — one entry when decomposition is disabled, off, or fails; 1 to {@link
+   *     QueryProperties#maxSubQueries} entries when it succeeds. Empty only when {@code
+   *     searchScope} was empty and no search ran at all.
+   */
+  public record RetrievalWithDecomposition(List<Document> chunks, List<String> searchQueries) {}
+
+  /**
+   * The same retrieval as {@link #retrieveRelevantChunksInGivenScope}, additionally exposing the
+   * search queries decomposition produced — needed by the pipeline measurement path (issue #1044,
+   * docs/features/retrieval-benchmark.md §3) to detect, across repeated runs of the same question,
+   * whether decomposition produced a different set of sub-queries. A separate method rather than
+   * changing {@link #retrieveRelevantChunksInGivenScope}'s return type: that method's single
+   * callers ({@link #query} and most of the eval harness) have no use for the search queries and
+   * would only gain call-site noise from unpacking a record they discard.
+   */
+  public RetrievalWithDecomposition retrieveRelevantChunksInGivenScopeWithDecomposition(
+      String question, List<Message> conversationHistory, Set<UUID> searchScope) {
     if (searchScope.isEmpty()) {
-      return List.of();
+      return new RetrievalWithDecomposition(List.of(), List.of());
     }
-    return retrieveRelevantChunks(
-        effectiveSearchQueries(question, conversationHistory), searchScope);
+    List<String> searchQueries = effectiveSearchQueries(question, conversationHistory);
+    return new RetrievalWithDecomposition(
+        retrieveRelevantChunks(searchQueries, searchScope), searchQueries);
   }
 
   /**
