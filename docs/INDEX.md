@@ -144,6 +144,8 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 
 - **[`handbuch/deployment.md`](./handbuch/deployment.md)** — Installation und Betrieb der vorhandenen
   Software: Docker Compose, Umgebungsvariablen, Härtung
+- **[`sbom.md`](./sbom.md)** — Software Bill of Materials: Image-Attestierungen und
+  CycloneDX-CI-Artefakte für Backend und Frontend
 
 ### Architekturentscheidungen
 

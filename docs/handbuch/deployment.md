@@ -27,6 +27,9 @@ docker compose pull && docker compose up -d
 
 `main` folgt dem jeweils letzten Stand; für reproduzierbare Deployments stattdessen einen `sha-<commit>`-Tag pinnen.
 
+Jedes Image trägt eine SBOM- und eine Provenance-Attestierung; Abruf und die zusätzlichen
+CycloneDX-CI-Artefakte für Backend und Frontend stehen in [`../sbom.md`](../sbom.md).
+
 ## Aktualisierung auf einen neuen `main`-Stand
 
 Der Workflow [`publish-images.yml`](../../.github/workflows/publish-images.yml) baut bei jedem Push auf `main` neue `ghcr.io/criew/opaa-backend`- und `ghcr.io/criew/opaa-frontend`-Images und veröffentlicht sie mit den Tags `main` und `sha-<commit>` in der GHCR-Registry (siehe [Deployment aus vorgebauten Images](#deployment-aus-vorgebauten-images-ghcr) oben).

@@ -68,6 +68,19 @@
   dependencyDashboardTitle: 'Abhängigkeits-Übersicht (Renovate)',
   dependencyDashboardLabels: ['ci'],
 
+  // Der cdxgen-Aufruf in sbom.yml läuft über "pnpm dlx" statt über eine Manifestdatei — für den
+  // github-actions-Manager unsichtbar. Der Regex-Manager liest die Pin-Version stattdessen aus dem
+  // "# renovate:"-Kommentar direkt über der Zeile (übliches Renovate-Muster).
+  customManagers: [
+    {
+      customType: 'regex',
+      managerFilePatterns: ['.github/workflows/sbom.yml'],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)[\\s\\S]*?cdxgen@(?<currentValue>[^\\s]+)',
+      ],
+    },
+  ],
+
   packageRules: [
     // Bereichs-Labels nach Manager
     {

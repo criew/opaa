@@ -9,8 +9,20 @@ on:
     paths:
       - ".github/workflows/sbom.yml"
 
+# Runs pnpm dlx (third-party code) and gradle plugin code; no write access needed.
+permissions:
+  contents: read
+
+# Same rationale as ci.yml: a new push makes the previous run's result irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  backend:
+  # Job IDs are the branch protection's required-check names (GitHub Actions app-bound, not
+  # workflow-scoped) - "backend"/"frontend" would collide with ci.yml's same-named jobs, letting a
+  # green SBOM job mask a red or skipped CI job of the same name.
+  sbom-backend:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,7 +48,7 @@ jobs:
           path: backend/build/reports/cyclonedx/
           retention-days: 90
 
-  frontend:
+  sbom-frontend:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -58,12 +70,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # cdxgen reads the pnpm lockfile directly; version pinned rather than
-      # "latest" for reproducible output. --no-babel skips its optional JS/TS
-      # source-code usage analysis, which needs babel packages this repo does
-      # not depend on. Retrieval: docs/sbom.md.
+      # cdxgen reads the pnpm lockfile directly. --no-babel skips its optional
+      # source-code usage analysis. --required-only limits the SBOM to what
+      # ships at runtime (excludes devDependencies), matching the backend's
+      # runtime-only scope - see docs/sbom.md.
+      # renovate: datasource=npm depName=@cyclonedx/cdxgen
       - name: Generate frontend SBOM
-        run: pnpm dlx @cyclonedx/cdxgen@11.11.0 -t pnpm --no-babel -o bom.json .
+        run: pnpm dlx @cyclonedx/cdxgen@11.11.0 -t pnpm --no-babel --required-only --project-name opaa-frontend -o bom.json .
 
       - uses: actions/upload-artifact@v7
         with:

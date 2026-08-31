@@ -15,6 +15,10 @@ Abrufen:
 ```bash
 docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main --format '{{ json .SBOM }}'
 docker buildx imagetools inspect ghcr.io/criew/opaa-frontend:main --format '{{ json .SBOM }}'
+
+# Provenance-Attestierung (Build-Herkunft, Quell-Commit, Build-Parameter)
+docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main --format '{{ json .Provenance }}'
+docker buildx imagetools inspect ghcr.io/criew/opaa-frontend:main --format '{{ json .Provenance }}'
 ```
 
 ## Ebene 2 — Ökosystem-SBOMs (CycloneDX, CI-Artefakte)
@@ -23,11 +27,14 @@ Der Workflow `.github/workflows/sbom.yml` erzeugt bei jedem Push auf `main` (und
 `workflow_dispatch`) je ein CycloneDX-JSON pro Ökosystem und lädt sie als GitHub-Actions-Artefakte
 hoch (`sbom-backend`, `sbom-frontend`, 90 Tage Aufbewahrung):
 
+Beide SBOMs sind auf das beschränkt, was tatsächlich ausgeliefert wird — keine Test-/Lint-/Build-Toolchain:
+
 - **Backend:** `./gradlew cyclonedxBom` aggregiert die Laufzeit-Abhängigkeiten von `backend` und
-  `opaa-api` (nur `runtimeClasspath`, keine Test-/Build-Toolchain) zu einer SBOM mit
-  Komponentenname `opaa-backend`. Ergebnis: `backend/build/reports/cyclonedx/application.cdx.json`.
-- **Frontend:** [cdxgen](https://github.com/CycloneDX/cdxgen) liest `frontend/pnpm-lock.yaml` und
-  erzeugt `frontend/bom.json`.
+  `opaa-api` (nur `runtimeClasspath`) zu einer SBOM mit Komponentenname `opaa-backend`. Ergebnis:
+  `backend/build/reports/cyclonedx/application.cdx.json`.
+- **Frontend:** [cdxgen](https://github.com/CycloneDX/cdxgen) liest `frontend/pnpm-lock.yaml` mit
+  `--required-only` (ohne `devDependencies` wie `eslint`/`vitest`) und erzeugt `frontend/bom.json`
+  (nicht committet, siehe `.gitignore`).
 
 ## Lokal erzeugen
 
@@ -37,5 +44,5 @@ hoch (`sbom-backend`, `sbom-frontend`, 90 Tage Aufbewahrung):
 
 # Frontend (aus frontend/)
 pnpm install --frozen-lockfile
-pnpm dlx @cyclonedx/cdxgen@11.11.0 -t pnpm --no-babel -o bom.json .
+pnpm dlx @cyclonedx/cdxgen@11.11.0 -t pnpm --no-babel --required-only --project-name opaa-frontend -o bom.json .
 ```
