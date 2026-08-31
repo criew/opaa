@@ -117,6 +117,19 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 
 ## 1. Messpfad durch die produktive Pipeline
 
+> **Umsetzungsstand (Issue #1039, 08/2026):** Der Messpfad ist gebaut. `QueryService` bietet mit
+> `retrieveRelevantChunksInGivenScope(question, history, searchScope)` die Schritte 2–6 als eigenen Einstieg an;
+> `io.opaa.eval.PipelineHarnessSupport` fährt darüber beide Domänen im selben Harness-Lauf und
+> schreibt `build/eval-reports/pipeline-metrics-<domäne>.json` mit fenstertragenden Feldnamen
+> (`hitRateAt5`, `mrrAt8`, `ndcgAt8`, `recallAt8`). Fortgeschrieben ist der Messvertrag in
+> [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md), Nachtrag „Pipeline-Messpfad",
+> Entscheidungen 11–16 — mit **eigener** Vertragsversion für den Pipeline-Pfad statt einer Erhöhung
+> der bestehenden (Begründung dort unter 16.: der Rohvektor-Vertrag ändert sich nicht, und seine
+> Version ist ein Gültigkeitsfeld jeder committeten Baseline). Noch offen und Gegenstand der
+> Folgearbeit: die getrennten **Baseline-Dateien** je Pfad und Domäne samt Aufnahme in
+> `BaselineComparator` und den nächtlichen Job, sowie die Entscheidung über das Chat-Modell — bis
+> dahin misst der Pipeline-Pfad die Variante `decomposition-off`.
+
 ### Was gemessen wird
 
 Ein zweiter Messpfad ruft dieselbe Kette auf, die eine echte Anfrage durchläuft — bis

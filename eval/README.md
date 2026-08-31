@@ -152,7 +152,8 @@ wieder aktivierte GPU-Anforderung nicht unbemerkt durchlässt.
    unverändert). Das ist die beweiskräftige Prüfung, die die Byte-Vorabprüfung im Generator
    (`MAX_DOCUMENT_BYTES`) nicht liefern kann — siehe ADR-0010.
 4. Führt jeden Fall aus `eval/golden/comic-characters.json` direkt gegen `VectorStore.similaritySearch`
-   aus — kein LLM, keine `QueryService`-Anbindung. Das Suchfenster ist ausdrücklich
+   aus — kein LLM, keine `QueryService`-Anbindung (das ist der **Rohvektor-Pfad**; der seit #1039
+   zusätzlich laufende Pipeline-Pfad steht weiter unten). Das Suchfenster ist ausdrücklich
    **dokumentbezogen** (ADR-0012 Nachtrag, Issue #721): `io.opaa.eval.DocumentRanking` dedupliziert
    die Chunk-Treffer zu Dokumenten (Rang eines Dokuments = Rang seines bestplatzierten Chunks —
    vormals die private `dedupeByFileName`, jetzt explizit gemacht) und stellt sicher, dass
@@ -165,6 +166,59 @@ wieder aktivierte GPU-Anforderung nicht unbemerkt durchlässt.
    Treffer-Chunks). Der Lauf schreibt außerdem eine Chunk-Map
    (`build/eval-reports/chunk-map-<domäne>.json`, nicht committet): welches Dokument in wie viele
    Chunks zerfiel und an welchen Zeichenpositionen die Grenzen lagen.
+
+### Zweiter Messpfad: durch die produktive Pipeline (Issue #1039)
+
+Die Schritte 1 bis 5 oben beschreiben den **Rohvektor-Pfad**: `VectorStore.similaritySearch`
+direkt, ohne Ähnlichkeitsschwelle, Fenster `documentTopK=10`. Seit #1039 misst derselbe Lauf
+zusätzlich einen zweiten Pfad — auf demselben, bereits indizierten und manifest-geprüften Korpus,
+also ohne zweiten Indizierungslauf:
+
+6. Führt jeden Fall desselben Golden Datasets durch `QueryService#retrieveRelevantChunksInGivenScope`, also
+   durch **dieselbe Kette, die eine echte Anfrage durchläuft** — Teilfragen-Zerlegung, Vektorsuche
+   je Teilfrage, MMR, Reciprocal Rank Fusion, Dokument-Vervollständigung (Schritte 2 bis 6 aus
+   [`docs/features/retrieval-algorithm.md`](../docs/features/retrieval-algorithm.md)). Die
+   Antwortgenerierung (Schritt 7) bleibt außen vor: Sie ist kein Retrieval und mit Ranking-Metriken
+   nicht bewertbar.
+
+Die beiden Pfade messen **unterschiedliche Dinge und sind nicht ineinander umrechenbar**:
+
+| | Rohvektor-Pfad | Pipeline-Pfad |
+|---|---|---|
+| Ähnlichkeitsschwelle | ausgewiesen, nicht angewandt | **angewandt** (`opaa.query.similarity-threshold`) |
+| Fenster | `documentTopK=10` | `opaa.query.top-k=8` |
+| Metriken | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | **Hit Rate@5, MRR@8, nDCG@8, Recall@8** |
+| Report | `build/eval-reports/retrieval-metrics[-<domäne>].json` | `build/eval-reports/pipeline-metrics-<domäne>.json` |
+| Baseline | `eval/baseline/<domäne>.json` | noch keine (Folgearbeit desselben Epics) |
+
+Weil die Schwelle im Pipeline-Pfad tatsächlich greift, kann ein Dokument dort ganz aus der
+Rangliste verschwinden statt nur zurückzufallen — Recall-Werte liegen systematisch niedriger. Das
+ist kein Fehler, sondern die gemessene Realität. **Eine nDCG@8-Zahl neben einer nDCG@10-Zahl ohne
+Kennzeichnung ist ein Auswertungsfehler**; deshalb tragen die Feldnamen des Pipeline-Reports ihr
+Fenster selbst (`ndcgAt8`, `recallAt8`, `mrrAt8`), und der Report führt zusätzlich einen
+`metricWindowNote`.
+
+Weitere Festlegungen des Pipeline-Pfads:
+
+- **Fester, vollständiger Suchbereich.** Gesucht wird in genau der einen Eval-Bibliothek, die den
+  gesamten Korpus enthält. Die Rechtedurchsetzung aus Schritt 1 der Pipeline ist ausdrücklich nicht
+  Messgegenstand — sie ist über die Backend-Integrationstests abgedeckt.
+- **Teilfragen-Zerlegung ist abgeschaltet** (`query-decomposition-enabled=false`), weil der
+  Harness-Kontext kein aktives Chat-Modell hat. Der Harness bricht ab, statt mit eingeschalteter
+  Zerlegung stillschweigend auf Einzelanfragen-Retrieval zurückzufallen und das Ergebnis als „mit
+  Zerlegung" auszuweisen. Welches Modell hier künftig laufen soll, ist offen (siehe
+  [`docs/features/retrieval-benchmark.md`](../docs/features/retrieval-benchmark.md), „Offene
+  Punkte" 3).
+- **Alle übrigen Parameter kommen aus der Produktionskonfiguration** und werden zur Laufzeit
+  gelesen: `fetch-k`, `top-k`, `similarity-threshold`, `max-chunks-per-document`, `mmr-lambda`,
+  `max-sub-queries`. Ein geändertes `top-k` lässt den Lauf mit einer benannten Fehlermeldung
+  abbrechen, weil die Metriknamen dieses Fenster wörtlich führen.
+- **Der Rohvektor-Pfad ist unverändert.** Er läuft zuerst, schreibt seinen Report wie bisher und
+  wird wie bisher gegen seine Baseline verglichen; der Pipeline-Pfad schreibt ausschließlich in
+  seine eigene Datei.
+
+Messvertrag beider Pfade: [ADR-0012](../docs/decisions/0012-messvertrag-retrieval-harness.md),
+Nachtrag „Pipeline-Messpfad".
 
 ### Report lesen
 
@@ -187,8 +241,30 @@ Dokumente haben (dort ist Recall@10=1,0 selbst bei perfektem Ranking unerreichba
 Recall@10 ohne diese Obergrenze verzerrt jede Schwellensetzung in #228.
 
 Die `similarityThreshold` aus der Produktivkonfiguration (`opaa.query.similarity-threshold`) wird im
-Report nur informativ ausgewiesen — die Suchen im Lauf selbst verwenden `threshold=0.0`, weil die
-Ranking-Metriken die vollständige, ungefilterte Top-k-Reihenfolge brauchen.
+Report des **Rohvektor-Pfads** nur informativ ausgewiesen — dessen Suchen verwenden
+`threshold=0.0`, weil die Ranking-Metriken dort die vollständige, ungefilterte Top-k-Reihenfolge
+brauchen. Der Pipeline-Pfad wendet dieselbe Schwelle dagegen tatsächlich an; sein Report sagt das
+in `similarityThresholdNote` ausdrücklich.
+
+Der Pipeline-Report (`pipeline-metrics-<domäne>.json`) hat dieselbe Grundstruktur, aber ein eigenes
+Schema: `pipelineMeasurementContractVersion`, `metricWindowNote`, die Produktionsparameter in
+`runConfiguration`, ein `selectionCoverage`-Block (wie viele Chunks die Pipeline je Anfrage
+tatsächlich lieferte und bei wie vielen Anfragen die Schwelle **alles** herausfilterte) sowie
+Gruppen- und Einzelfallzahlen unter den fenstertragenden Namen `hitRateAt5`/`mrrAt8`/`ndcgAt8`/
+`recallAt8`.
+
+Ein Punkt, der beim Lesen mitgedacht werden muss: **Das Fenster des Pipeline-Pfads zählt Chunks,
+die Metriken zählen Dokumente.** Bei `max-chunks-per-document = 2` können acht Chunks auf so wenige
+wie vier Dokumente zusammenfallen — die Rangliste, über die gemessen wird, ist dann entsprechend
+kürzer als acht. Die Konsolenzusammenfassung weist deshalb das **effektive Dokumentfenster** aus
+(unterschiedliche Dokumente je Anfrage im Mittel, gegen die nominal acht Chunk-Plätze), und der
+JSON-Report führt dieselbe Zahl je Anfrage als `distinctDocumentsReturned`.
+
+`recallAt8Ceiling` bleibt davon bewusst unberührt: Es ist die **strukturelle** Obergrenze
+`min(8, |erwartete Dokumente|) / |erwartete Dokumente|` — dieselbe Definition wie
+`recallAt10Ceiling` im Rohvektor-Pfad. Eine aus dem Messergebnis abgeleitete Obergrenze könnte
+nie verfehlt werden: Filterte die Schwelle alles bis auf einen Chunk weg, meldete der Report
+„Recall am Maximum des Erreichbaren", obwohl fast alle erwarteten Dokumente verfehlt wurden.
 
 ### Was dieser Korpus nicht messen kann
 
@@ -256,3 +332,9 @@ ausdrücklich dokumentbezogen ist und eine zweite Metrikfamilie auf Chunkebene e
 Code. Jeder Report führt die Version dieses Messvertrags (`measurementContractVersion`); eine
 künftige Änderung an einer dieser Festlegungen muss die Version erhöhen, damit historische Reports
 nicht stillschweigend unvergleichbar werden.
+
+Der Pipeline-Pfad (#1039) hat seinen **eigenen**, getrennt gezählten Messvertrag
+(`pipelineMeasurementContractVersion`, ADR-0012 Nachtrag „Pipeline-Messpfad", Entscheidungen
+11–16). Getrennt gezählt, weil der Rohvektor-Vertrag sich durch die Erweiterung an keiner Stelle
+ändert und eine Erhöhung seiner Nummer jede committete Rohvektor-Baseline ungültig machen würde —
+für eine Messung, deren Zahlen sich nicht bewegt haben.
