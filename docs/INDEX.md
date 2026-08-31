@@ -146,6 +146,8 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
   Software: Docker Compose, Umgebungsvariablen, Härtung
 - **[`sbom.md`](./sbom.md)** — Software Bill of Materials: Image-Attestierungen und
   CycloneDX-CI-Artefakte für Backend und Frontend
+- **[`cve-scanning.md`](./cve-scanning.md)** — CVE-Erkennung: Dependency Graph, Dependabot-Alerts
+  und geplanter Image-Scan mit Trivy
 
 ### Architekturentscheidungen
 
