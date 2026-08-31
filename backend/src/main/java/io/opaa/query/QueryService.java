@@ -438,9 +438,13 @@ public class QueryService {
    * search queries decomposition produced — needed by the pipeline measurement path (issue #1044,
    * docs/features/retrieval-benchmark.md §3) to detect, across repeated runs of the same question,
    * whether decomposition produced a different set of sub-queries. A separate method rather than
-   * changing {@link #retrieveRelevantChunksInGivenScope}'s return type: that method's single
-   * callers ({@link #query} and most of the eval harness) have no use for the search queries and
-   * would only gain call-site noise from unpacking a record they discard.
+   * changing {@link #retrieveRelevantChunksInGivenScope}'s return type: that method's one remaining
+   * caller, {@link #query}, has no use for the search queries and would only gain call-site noise
+   * from unpacking a record it discards.
+   *
+   * <p>Applies the same {@code searchScope}-taken-as-given contract as {@link
+   * #retrieveRelevantChunksInGivenScope} — see that method's Javadoc for the ADR-0008 §5 permission
+   * invariant this method's callers are responsible for.
    */
   public RetrievalWithDecomposition retrieveRelevantChunksInGivenScopeWithDecomposition(
       String question, List<Message> conversationHistory, Set<UUID> searchScope) {

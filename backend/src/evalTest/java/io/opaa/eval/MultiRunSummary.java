@@ -22,12 +22,18 @@ import java.util.List;
  *     only {@link MultiRunAggregator} needs the raw list) whose nDCG@8 is the median value; that
  *     run is what {@link VariantOutcome#report()} returns for a multi-run outcome, so every
  *     per-case delta and every other field of the report is the median run's, not an average.
- * @param decompositionDeviatingCaseCount how many golden cases got a different sub-query set from
- *     decomposition in at least one of the runs — the specification's own "eigentliche Kennzahl der
- *     Instabilität", more informative than any spread on the metrics themselves.
+ * @param decompositionDeviatingCaseCount how many golden cases got a different ordered list of
+ *     sub-queries from decomposition in at least one of the runs, compared to the first run's list
+ *     for that case ({@link MultiRunAggregator#summarize}'s {@code List#equals} comparison is
+ *     order-sensitive) — the specification's own "eigentliche Kennzahl der Instabilität", more
+ *     informative than any spread on the metrics themselves. Deliberately conservative: a run that
+ *     produced the identical sub-queries in a different order counts as deviating too, since a
+ *     reordering can still change which candidates {@link
+ *     io.opaa.query.QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition} pools first
+ *     for Reciprocal Rank Fusion.
  * @param decompositionDeviatingCaseIds the ids of those cases, worst-informative first is not
  *     defined here (unlike {@link VariantReport.CaseDelta}, there is no single ordering metric for
- *     "how different" a sub-query set is) — kept in dataset order instead.
+ *     "how different" a sub-query list is) — kept in dataset order instead.
  */
 public record MultiRunSummary(
     int runCount,

@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * Measures one {@link PipelineVariant} against the golden dataset (issue #1041,
@@ -47,52 +48,44 @@ public final class VariantRunner {
     }
 
     QueryService queryService = dependencies.buildQueryService(effective);
+    return run(
+        variant,
+        effective,
+        () ->
+            PipelineHarnessSupport.measure(
+                domain,
+                identity,
+                queryService,
+                effective,
+                indexingProperties,
+                evalLibraryId,
+                goldenCases,
+                Instant.now()));
+  }
+
+  /**
+   * The Mehrfachlauf-Regel's decision logic itself, split out from the public overload above (issue
+   * #1044 review, Befund 1) so it is Docker-free testable: {@code measure} stands in for one {@link
+   * PipelineHarnessSupport#measure} call, letting {@code VariantRunnerTest} exercise the run count
+   * (one vs. {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT}), the median-run selection and the
+   * resulting {@link VariantOutcome} without a real {@code QueryService} or corpus. The public
+   * overload's prerequisite check is deliberately <b>not</b> repeated here: by the time this method
+   * is reached, {@code effective} is already known to be measurable.
+   */
+  static VariantOutcome run(
+      PipelineVariant variant,
+      QueryProperties effective,
+      Supplier<PipelineEvaluationReport> measure) {
     if (!effective.queryDecompositionEnabled()) {
-      PipelineEvaluationReport report =
-          measureOnce(
-              domain,
-              identity,
-              queryService,
-              effective,
-              indexingProperties,
-              evalLibraryId,
-              goldenCases);
-      return VariantOutcome.executed(variant, report);
+      return VariantOutcome.executed(variant, measure.get());
     }
 
     List<PipelineEvaluationReport> runs =
         new ArrayList<>(MultiRunAggregator.DECOMPOSITION_RUN_COUNT);
     for (int i = 0; i < MultiRunAggregator.DECOMPOSITION_RUN_COUNT; i++) {
-      runs.add(
-          measureOnce(
-              domain,
-              identity,
-              queryService,
-              effective,
-              indexingProperties,
-              evalLibraryId,
-              goldenCases));
+      runs.add(measure.get());
     }
     MultiRunSummary summary = MultiRunAggregator.summarize(runs);
     return VariantOutcome.executedMultiRun(variant, runs.get(summary.medianRunIndex()), summary);
-  }
-
-  private static PipelineEvaluationReport measureOnce(
-      EvalDomainConfig domain,
-      PipelineHarnessSupport.RunIdentity identity,
-      QueryService queryService,
-      QueryProperties effective,
-      IndexingProperties indexingProperties,
-      UUID evalLibraryId,
-      List<GoldenCase> goldenCases) {
-    return PipelineHarnessSupport.measure(
-        domain,
-        identity,
-        queryService,
-        effective,
-        indexingProperties,
-        evalLibraryId,
-        goldenCases,
-        Instant.now());
   }
 }

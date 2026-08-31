@@ -140,24 +140,29 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 > (`chatModel = null`) festgehalten.
 >
 > **Umsetzungsstand (Issue #1044, 08/2026):** Beide Messpfade liefen mit #1039/#1040 bereits im
-> nächtlichen Job je Domäne; offen war nur, ob das gemessene Zeitbudget das dauerhaft trägt. Gemessen
-> an vier realen `checkRetrievalBaseline`/`checkCityLandmarksRetrievalBaseline`-Läufen der letzten
-> Feature-PRs (GitHub-Actions-Runs 33412876752/33412877826/33429049024/33414091586/33431667972, alle
-> auf CI-Hardware, beide Pfade in einem Lauf): `comic-characters` liegt konstant bei rund 42–43
-> Minuten (70-Minuten-Budget, ~40 % Reserve), `city-landmarks` schwankt je nach Ollama-Cache-Treffer
-> zwischen rund 77 und 133 Minuten (180-Minuten-Budget, mindestens ~26 % Reserve im schlechtesten
-> beobachteten Fall). Beide Matrixeinträge laufen parallel, das Gesamtbudget der Nacht ist also durch
-> `city-landmarks` begrenzt, nicht durch die Summe. Entscheidung: Beide Regressionspfade bleiben
-> nächtlich, wie bereits umgesetzt; **Variantenvergleiche (Issue #1041) einschließlich der
-> Mehrfachlauf-Regel oben bleiben ausschließlich manuell** (`-Dopaa.eval.runVariantComparison=true`,
-> lokal oder über `workflow_dispatch`) und werden nicht in den nächtlichen Job aufgenommen. Begründung:
-> Ein Vergleich mit mehreren Varianten multipliziert die ohnehin knapp bemessene `city-landmarks`-Zeit
-> unmittelbar (jede zusätzliche Variante ein weiterer Pipeline-Lauf über das Golden Dataset, jede
-> Zerlegungsvariante zusätzlich verdreifacht durch die Mehrfachlauf-Regel), während
-> Variantenvergleiche laut Abschnitt 2 ohnehin Artefakte für punktuelle Roadmap-Entscheidungen sind,
-> keine laufende Regressionsprüfung — sie gehören damit fachlich zum manuellen, gezielt ausgelösten
-> Werkzeug, nicht zur nächtlichen Routine. Sollte sich das Zeitbudget durch künftige Domänen (etwa die
-> Verwaltungsdomäne aus Abschnitt 4) spürbar verengen, ist diese Aufteilung neu zu prüfen.
+> nächtlichen Job je Domäne — für `city-landmarks` misst der Pipeline-Pfad dabei mit, bleibt aber
+> bewusst unbeurteilt, bis Issue #1081 seine Baseline zieht (siehe die Matrix-Spalte
+> `pipeline_gated` in `retrieval-regression.yml`); offen war nur, ob das gemessene Zeitbudget das
+> dauerhaft trägt. Gemessen an fünf realen `checkRetrievalBaseline`/
+> `checkCityLandmarksRetrievalBaseline`-Läufen der letzten Feature-PRs (GitHub-Actions-Runs
+> 33412876752/33412877826/33429049024/33414091586/33431667972, alle auf CI-Hardware, beide Pfade in
+> einem Lauf): `comic-characters` liegt zwischen rund 28 und 43 Minuten (70-Minuten-Budget, der
+> 28-Minuten-Ausreißer eines Laufs vermutlich ein besonders warmer Ollama-Modell-Cache, die übrigen
+> vier Läufe liegen dicht bei 42–43 Minuten), `city-landmarks` schwankt je nach
+> Ollama-Cache-Treffer zwischen rund 77 und 133 Minuten (180-Minuten-Budget, mindestens ~26 %
+> Reserve im schlechtesten beobachteten Fall). Beide Matrixeinträge laufen parallel, das
+> Gesamtbudget der Nacht ist also durch `city-landmarks` begrenzt, nicht durch die Summe.
+> Entscheidung: Beide Regressionspfade bleiben nächtlich, wie bereits umgesetzt; **Variantenvergleiche
+> (Issue #1041) einschließlich der Mehrfachlauf-Regel oben bleiben ausschließlich manuell**
+> (`-Dopaa.eval.runVariantComparison=true`, lokal oder über `workflow_dispatch`) und werden nicht in
+> den nächtlichen Job aufgenommen. Begründung: Ein Vergleich mit mehreren Varianten multipliziert die
+> ohnehin knapp bemessene `city-landmarks`-Zeit unmittelbar (jede zusätzliche Variante ein weiterer
+> Pipeline-Lauf über das Golden Dataset, jede Zerlegungsvariante zusätzlich verdreifacht durch die
+> Mehrfachlauf-Regel), während Variantenvergleiche laut Abschnitt 2 ohnehin Artefakte für punktuelle
+> Roadmap-Entscheidungen sind, keine laufende Regressionsprüfung — sie gehören damit fachlich zum
+> manuellen, gezielt ausgelösten Werkzeug, nicht zur nächtlichen Routine. Sollte sich das Zeitbudget
+> durch künftige Domänen (etwa die Verwaltungsdomäne aus Abschnitt 4) spürbar verengen, ist diese
+> Aufteilung neu zu prüfen.
 
 ### Was gemessen wird
 
@@ -337,9 +342,22 @@ Variantenvergleich formulieren lässt. Genau das ist der Zweck des Aufbaus.
 > mit `queryDecompositionEnabled=true` wird von `VariantPrerequisites` weiterhin als „nicht
 > ausgeführt“ gemeldet, weil der Harness-Kontext noch kein Chat-Modell hat (siehe „Offene Punkte“ 3
 > unten). Die Regel selbst — Ausführungszahl, Aggregation, Median-Auswahl, Abweichungszählung — ist
-> deshalb über `MultiRunAggregatorTest` mit synthetischen Reports abgesichert, nicht über einen
-> echten Zerlegungslauf; sie greift automatisch, sobald eine Variante das Chat-Modell bekommt, ohne
-> weitere Codeänderung an dieser Stelle.
+> deshalb über `MultiRunAggregatorTest`/`VariantRunnerTest` mit synthetischen Reports und einem
+> injizierten Mess-Supplier abgesichert (issue #1044 review, Befund 1: `VariantRunner` trennt die
+> Regel selbst von der Docker-gebundenen `QueryService`-Beschaffung genau dafür), nicht über einen
+> echten Zerlegungslauf.
+>
+> **Sie greift automatisch, sobald eine Variante das Chat-Modell bekommt — mit einer offenen Folge,
+> die #1085 mitlösen muss.** Wird dabei die Referenzvariante selbst (keine Parameteränderung)
+> zerlegungsfähig — etwa weil `queryDecompositionEnabled` in der Produktionskonfiguration auf
+> `true` wechselt —, wird sie bei ihrem nächsten Lauf ebenfalls zur Mehrfachlauf-Variante: drei
+> Läufe, Median-Auswahl. Die Referenzvarianten-Selbstprüfung
+> (`RetrievalEvaluationHarnessTest`, siehe `eval/variants/README.md`) vergleicht die
+> Referenzvariante bisher aber bitgleich gegen genau **einen** unabhängigen Direktaufruf desselben
+> `QueryService`-Beans — ein Median aus drei nichtdeterministischen Läufen kann mit einem einzelnen
+> Direktaufruf strukturell nicht mehr bitgleich sein. Diese Prüfung muss #1085 deshalb mitlösen
+> (z. B. durch drei Direktaufrufe und denselben Median-Vergleich auf beiden Seiten), nicht als
+> Nebeneffekt der Chat-Modell-Anbindung entdecken.
 
 ### Entscheidung
 
@@ -733,7 +751,9 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
    Konkurrenzbedarf den Rest bestimmt.
 2. **Laufzeitbudget des nächtlichen Jobs — entschieden mit Issue #1044 (08/2026).** Gemessen an
    realen CI-Läufen (siehe die Umsetzungsstand-Notiz zu Issue #1044 in Abschnitt 1): Beide
-   Regressionspfade bleiben nächtlich für beide Domänen, wie bereits durch #1039/#1040 umgesetzt.
+   Regressionspfade bleiben nächtlich für beide Domänen, wie bereits durch #1039/#1040 umgesetzt —
+   für `city-landmarks` läuft der Pipeline-Pfad dabei bis zur Baseline-Ziehung in Issue #1081
+   bewusst unbeurteilt mit (misst und schreibt seinen Report, ohne dass ein Urteil gefällt wird).
    Variantenvergleiche (Abschnitt 2), einschließlich der Mehrfachlauf-Regel aus Abschnitt 3, bleiben
    ausschließlich manuell ausgelöst (`-Dopaa.eval.runVariantComparison=true`) und werden nicht Teil
    des nächtlichen Jobs — das gemessene Zeitbudget des `city-landmarks`-Regressionslaufs (bis zu ~133

@@ -106,8 +106,16 @@ public final class VariantReportWriter {
    */
   private static String renderMultiRun(MultiRunSummary summary) {
     StringBuilder sb = new StringBuilder();
+    // The "median=" figure below is the median VALUE of that one metric across the runs, computed
+    // independently per metric — it can therefore come from a different run than the "Median-Lauf"
+    // named here, which is chosen once, by nDCG@8 (see MultiRunAggregator#medianIndexByNdcg), and
+    // is what the delta against the reference variant above this block actually compares. Reading
+    // every "median=" figure as if it came from that same single run is the apparent contradiction
+    // this note heads off.
     sb.append(
-        format("      %d Läufe (Median-Lauf gegen Referenz verglichen):\n", summary.runCount()));
+        format(
+            "      %d Läufe (Median-Lauf, gewählt nach nDCG@8, gegen Referenz verglichen):\n",
+            summary.runCount()));
     sb.append(format("        HitRate@5: %s\n", renderRange(summary.hitRateAt5())));
     sb.append(format("        MRR@8:     %s\n", renderRange(summary.mrrAt8())));
     sb.append(format("        nDCG@8:    %s\n", renderRange(summary.ndcgAt8())));
