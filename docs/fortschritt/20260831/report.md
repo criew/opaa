@@ -9,8 +9,8 @@ Zeitraum getan wurde; künftige Berichte enthalten nur noch das Delta zum vorige
 > (`main@a51e6b8c`, 504 geschlossene Issues, 496 gemergte PRs — siehe [anker.md](./anker.md)).
 > Der Commit, der diesen Berichtsstand einführt, trägt das Git-Tag
 > `inventur-20260830`; der getaggte Stand umfasst damit Datenstand und Bericht
-> gemeinsam. Jede Aussage ist über die [Bausteine](./bausteine.md) auf Issue, PR und Code
-> rückführbar.
+> gemeinsam. Jede Aussage ist über Issue- und PR-Nummer auf Code rückführbar; wo Lieferung und
+> Vorgang auseinanderfallen, trägt der [Baustein mit Befund](./bausteine.md) die Begründung.
 
 ## Management Summary
 
@@ -234,7 +234,7 @@ Nichts davon ist verschwiegen — alles ist als Entscheidung oder offenes Issue 
 
 Der Report nennt durchgängig nur den Endzustand. Zwischenstände, die gebaut und wieder
 zurückgebaut wurden, sind keine Leistungsposten; sie bleiben ausschließlich in den
-[Bausteinen](./bausteine.md) dokumentiert.
+[Bausteinen mit Befund](./bausteine.md) dokumentiert.
 
 ## 6 · Offen für Phase 1 — priorisierte Restliste
 

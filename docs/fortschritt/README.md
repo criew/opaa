@@ -24,17 +24,18 @@ Gesamtstand sind dort einmalig deckungsgleich.
 ```
 JJJJMMTT/
 ├── anker.md         Diff-Anker: Commit-Stand von main und Abfragezeitpunkt der Issues/PRs
-├── bausteine.md     alle Bausteine des Zeitraums in einer Datei: je Issue einer,
-│                    je unverknüpftem PR einer — mit Anker `#issue-NNN` bzw. `#pr-NNN`
+├── bausteine.md     die Bausteine **mit Befund** in einer Datei, mit Anker `#issue-NNN`
+│                    bzw. `#pr-NNN`; im Anhang die Nummern der geprüften Vorgänge ohne Befund
 ├── gruppierung.md   Zuordnung jedes Bausteins zu genau einem Themenbereich
 └── report.md        der Bericht — bis zur Abnahme als ENTWURF markiert
 ```
 
 **Nur nicht Reproduzierbares wird committet.** Rohdaten-Dumps (Issue-/PR-JSON) und ein
 Issue↔PR-Index sind jederzeit per `gh` erneut abzurufen und gehören deshalb nicht ins
-Repository, sondern in ein Arbeitsverzeichnis außerhalb. Committet wird, was nur einmal
-entsteht: die Anker, die Bausteine (Abweichungsanalyse und Realitätscheck gegen den
-Code-Stand des Stichtags), die Gruppierung und der Bericht.
+Repository, sondern in ein Arbeitsverzeichnis außerhalb. Aus demselben Grund trägt
+`bausteine.md` nur die Bausteine **mit Befund**: Ein Vorgang, der geliefert wurde wie
+beschrieben und dessen Lieferung noch steht, ist aus GitHub und `git log` jederzeit
+nachvollziehbar — seine Nummer im Anhang genügt. Erkenntnis steckt in der Abweichung.
 
 ## Wie ein Bericht entsteht
 
@@ -80,9 +81,12 @@ Neues Verzeichnis anlegen und **nur das Delta** erheben:
 
 - **Code:** `git log <alter-anker-hash>..main` — jeder Squash-Commit auf `main` ist genau ein PR.
 - **Issues:** `gh issue list --state closed --search "closed:><alter-abfragezeitpunkt>"`.
-- Für das Delta eine neue `bausteine.md` schreiben, die **nur die Bausteine des Zeitraums**
-  enthält; die des Vorgängers bleiben in seinem Verzeichnis und werden nicht kopiert.
-  Gruppierung und Report fortschreiben. Der alte Bericht bleibt als historisches Dokument stehen.
+- Für das Delta eine neue `bausteine.md` schreiben, die **nur die Befunde des Zeitraums** enthält;
+  die des Vorgängers bleiben in seinem Verzeichnis und werden nicht kopiert. Gruppierung und Report
+  fortschreiben. Der alte Bericht bleibt als historisches Dokument stehen.
+- Ein Vorgang, der im Vorgängerzeitraum ohne Befund war und dessen Lieferung jetzt zurückgebaut
+  wurde, wird im neuen Zeitraum **dort** als Befund geführt, wo der Rückbau stattfand — nicht
+  rückwirkend im alten Verzeichnis.
 
 ## Baustein-Format
 
