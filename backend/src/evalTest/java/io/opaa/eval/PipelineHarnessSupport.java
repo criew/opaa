@@ -15,9 +15,9 @@ import org.slf4j.Logger;
 /**
  * The pipeline measurement path's harness half (issue #1039): everything the two domain harnesses
  * need to run their golden dataset through {@link
- * QueryService#retrieveRelevantChunksInGivenScope(String, List, Set)} and write the resulting
- * {@link PipelineEvaluationReport}, in one place instead of copied into both near-duplicate harness
- * classes.
+ * QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition(String, List, Set)} and write
+ * the resulting {@link PipelineEvaluationReport}, in one place instead of copied into both
+ * near-duplicate harness classes.
  *
  * <p>Runs on the corpus the calling harness has already indexed and manifest-verified — the
  * pipeline path costs a second pass of queries, never a second indexing run, and therefore measures
@@ -161,13 +161,18 @@ public final class PipelineHarnessSupport {
             goldenCases,
             // No conversation history: a golden case is a standalone question, and the harness has
             // no chat to resolve a follow-up against.
-            query ->
-                queryService
-                    .retrieveRelevantChunksInGivenScope(query, List.of(), searchScope)
-                    .stream()
-                    .map(chunk -> chunk.getMetadata().get("file_name"))
-                    .map(value -> value == null ? null : value.toString())
-                    .toList());
+            query -> {
+              QueryService.RetrievalWithDecomposition retrieval =
+                  queryService.retrieveRelevantChunksInGivenScopeWithDecomposition(
+                      query, List.of(), searchScope);
+              List<String> rankedFileNames =
+                  retrieval.chunks().stream()
+                      .map(chunk -> chunk.getMetadata().get("file_name"))
+                      .map(value -> value == null ? null : value.toString())
+                      .toList();
+              return new PipelineRetrievalEvaluator.PipelineInvocationResult(
+                  rankedFileNames, retrieval.searchQueries());
+            });
 
     // Built after the run, not before: runDurationSeconds must cover the queries above.
     return PipelineRetrievalEvaluator.report(

@@ -138,6 +138,31 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 > Offen bleibt außerdem die Entscheidung über das Chat-Modell — bis dahin misst der Pipeline-Pfad
 > die Variante `decomposition-off`, und dass keines beteiligt war, ist als geprüfter Fixpunkt
 > (`chatModel = null`) festgehalten.
+>
+> **Umsetzungsstand (Issue #1044, 08/2026):** Beide Messpfade liefen mit #1039/#1040 bereits im
+> nächtlichen Job je Domäne — für `city-landmarks` misst der Pipeline-Pfad dabei mit, bleibt aber
+> bewusst unbeurteilt, bis Issue #1081 seine Baseline zieht (siehe die Matrix-Spalte
+> `pipeline_gated` in `retrieval-regression.yml`); offen war nur, ob das gemessene Zeitbudget das
+> dauerhaft trägt. Gemessen an fünf realen `checkRetrievalBaseline`/
+> `checkCityLandmarksRetrievalBaseline`-Läufen der letzten Feature-PRs (GitHub-Actions-Runs
+> 33412876752/33412877826/33429049024/33414091586/33431667972, alle auf CI-Hardware, beide Pfade in
+> einem Lauf): `comic-characters` liegt zwischen rund 28 und 43 Minuten (70-Minuten-Budget, der
+> 28-Minuten-Ausreißer eines Laufs vermutlich ein besonders warmer Ollama-Modell-Cache, die übrigen
+> vier Läufe liegen dicht bei 42–43 Minuten), `city-landmarks` schwankt je nach
+> Ollama-Cache-Treffer zwischen rund 77 und 133 Minuten (180-Minuten-Budget, mindestens ~26 %
+> Reserve im schlechtesten beobachteten Fall). Beide Matrixeinträge laufen parallel, das
+> Gesamtbudget der Nacht ist also durch `city-landmarks` begrenzt, nicht durch die Summe.
+> Entscheidung: Beide Regressionspfade bleiben nächtlich, wie bereits umgesetzt; **Variantenvergleiche
+> (Issue #1041) einschließlich der Mehrfachlauf-Regel oben bleiben ausschließlich manuell**
+> (`-Dopaa.eval.runVariantComparison=true`, lokal oder über `workflow_dispatch`) und werden nicht in
+> den nächtlichen Job aufgenommen. Begründung: Ein Vergleich mit mehreren Varianten multipliziert die
+> ohnehin knapp bemessene `city-landmarks`-Zeit unmittelbar (jede zusätzliche Variante ein weiterer
+> Pipeline-Lauf über das Golden Dataset, jede Zerlegungsvariante zusätzlich verdreifacht durch die
+> Mehrfachlauf-Regel), während Variantenvergleiche laut Abschnitt 2 ohnehin Artefakte für punktuelle
+> Roadmap-Entscheidungen sind, keine laufende Regressionsprüfung — sie gehören damit fachlich zum
+> manuellen, gezielt ausgelösten Werkzeug, nicht zur nächtlichen Routine. Sollte sich das Zeitbudget
+> durch künftige Domänen (etwa die Verwaltungsdomäne aus Abschnitt 4) spürbar verengen, ist diese
+> Aufteilung neu zu prüfen.
 
 ### Was gemessen wird
 
@@ -295,6 +320,44 @@ Variantenvergleich formulieren lässt. Genau das ist der Zweck des Aufbaus.
 ---
 
 ## 3. Schlanke Statistik
+
+> **Umsetzungsstand (Issue #1044, 08/2026):** Die Mehrfachlauf-Regel ist als Mechanismus gebaut.
+> `io.opaa.eval.VariantRunner` erkennt eine Variante mit effektiv aktivierter
+> Teilfragen-Zerlegung an `QueryProperties#queryDecompositionEnabled` und führt sie
+> `MultiRunAggregator.DECOMPOSITION_RUN_COUNT` (3) statt einmal aus; jede andere Variante bleibt bei
+> einem Lauf. `io.opaa.eval.MultiRunAggregator` bildet daraus einen `MultiRunSummary`:
+> Minimum/Median/Maximum je Metrik (Hit Rate@5, MRR@8, nDCG@8, Recall@8) und die Zahl der Fälle,
+> bei denen sich die von der Zerlegung erzeugten Teilfragen zwischen den drei Läufen unterschieden.
+> Der Baseline-/Referenzvergleich verwendet dafür den **Median-Lauf** (den Lauf, dessen nDCG@8 der
+> Median der drei Werte ist) — `VariantOutcome#report()` liefert für eine Mehrfachlauf-Variante genau
+> diesen Lauf, sodass `VariantComparisonRunner#delta` unverändert bleibt und trotzdem den Median
+> vergleicht, nicht einen beliebigen Einzellauf. `VariantReportWriter` gibt die drei Zahlen je Metrik
+> und die Abweichungszahl zusätzlich zur bestehenden Delta-Ausgabe aus. Um die Teilfragen einer
+> Anfrage über Läufe hinweg vergleichen zu können, liefert `QueryService` jetzt zusätzlich
+> `retrieveRelevantChunksInGivenScopeWithDecomposition`, additiv neben der bestehenden Methode, die
+> neben den Chunks auch die tatsächlich gestellten Suchanfragen zurückgibt; jeder Pipeline-Report
+> führt sie seither je Fall mit (`PipelineQueryResult#subQueries`).
+>
+> **Der Mechanismus ist heute nicht scharf geschaltet**, weil er es nicht sein kann: Jede Variante
+> mit `queryDecompositionEnabled=true` wird von `VariantPrerequisites` weiterhin als „nicht
+> ausgeführt“ gemeldet, weil der Harness-Kontext noch kein Chat-Modell hat (siehe „Offene Punkte“ 3
+> unten). Die Regel selbst — Ausführungszahl, Aggregation, Median-Auswahl, Abweichungszählung — ist
+> deshalb über `MultiRunAggregatorTest`/`VariantRunnerTest` mit synthetischen Reports und einem
+> injizierten Mess-Supplier abgesichert (issue #1044 review, Befund 1: `VariantRunner` trennt die
+> Regel selbst von der Docker-gebundenen `QueryService`-Beschaffung genau dafür), nicht über einen
+> echten Zerlegungslauf.
+>
+> **Sie greift automatisch, sobald eine Variante das Chat-Modell bekommt — mit einer offenen Folge,
+> die #1085 mitlösen muss.** Wird dabei die Referenzvariante selbst (keine Parameteränderung)
+> zerlegungsfähig — etwa weil `queryDecompositionEnabled` in der Produktionskonfiguration auf
+> `true` wechselt —, wird sie bei ihrem nächsten Lauf ebenfalls zur Mehrfachlauf-Variante: drei
+> Läufe, Median-Auswahl. Die Referenzvarianten-Selbstprüfung
+> (`RetrievalEvaluationHarnessTest`, siehe `eval/variants/README.md`) vergleicht die
+> Referenzvariante bisher aber bitgleich gegen genau **einen** unabhängigen Direktaufruf desselben
+> `QueryService`-Beans — ein Median aus drei nichtdeterministischen Läufen kann mit einem einzelnen
+> Direktaufruf strukturell nicht mehr bitgleich sein. Diese Prüfung muss #1085 deshalb mitlösen
+> (z. B. durch drei Direktaufrufe und denselben Median-Vergleich auf beiden Seiten), nicht als
+> Nebeneffekt der Chat-Modell-Anbindung entdecken.
 
 ### Entscheidung
 
@@ -686,16 +749,32 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
    Fall — ein Korpus ohne thematisch nahe Konkurrenz macht jeden Fall trivial. Größenordnung erst
    nach den ersten konstruierten Fällen der Klasse (a) belastbar schätzbar, weil deren
    Konkurrenzbedarf den Rest bestimmt.
-2. **Laufzeitbudget des nächtlichen Jobs.** Zwei Messpfade × drei Domänen, dazu Mehrfachläufe für
-   LLM-behaftete Varianten. Der heutige Lauf braucht schon mehrere Minuten je Domäne. Offen, ob
-   nächtlich weiterhin alles läuft oder nur die Regressionspfade, während Variantenvergleiche
-   ausschließlich manuell ausgelöst werden. Erst messen, dann festlegen.
-3. **Chat-Modell für den Pipeline-Pfad mit aktiver Zerlegung.** Der Regressionslauf braucht dafür ein
-   Modell. Ein lokales über Ollama ist mit dem Einbettungsmodell-Ansatz konsistent und
-   secret-frei, aber langsam und in der Zerlegequalität nicht mit dem Produktionsmodell vergleichbar;
-   ein gehostetes bringt Secret, Kosten und Driftrisiko zurück. Eine dritte Möglichkeit ist ein
-   eingefrorener Zerlegungs-Cache (Frage → Teilfragen, einmal committet), der die Nichtdeterminismus-
-   Frage vollständig auflöst, dafür aber die Zerlegung selbst nicht mehr misst. Entscheidung steht aus.
+2. **Laufzeitbudget des nächtlichen Jobs — entschieden mit Issue #1044 (08/2026).** Gemessen an
+   realen CI-Läufen (siehe die Umsetzungsstand-Notiz zu Issue #1044 in Abschnitt 1): Beide
+   Regressionspfade bleiben nächtlich für beide Domänen, wie bereits durch #1039/#1040 umgesetzt —
+   für `city-landmarks` läuft der Pipeline-Pfad dabei bis zur Baseline-Ziehung in Issue #1081
+   bewusst unbeurteilt mit (misst und schreibt seinen Report, ohne dass ein Urteil gefällt wird).
+   Variantenvergleiche (Abschnitt 2), einschließlich der Mehrfachlauf-Regel aus Abschnitt 3, bleiben
+   ausschließlich manuell ausgelöst (`-Dopaa.eval.runVariantComparison=true`) und werden nicht Teil
+   des nächtlichen Jobs — das gemessene Zeitbudget des `city-landmarks`-Regressionslaufs (bis zu ~133
+   von 180 Minuten in der langsamsten beobachteten Messung) verträgt die Vervielfachung durch mehrere
+   Varianten und dreifache Zerlegungsläufe nicht risikofrei, und Variantenvergleiche sind laut
+   Abschnitt 2 ohnehin punktuelle Belege für Roadmap-Entscheidungen, keine laufende Prüfung.
+3. **Chat-Modell für den Pipeline-Pfad mit aktiver Zerlegung — Empfehlung mit Issue #1044 (08/2026),
+   Umsetzung als Folge-Issue #1085.** Empfehlung: ein lokales, über den bestehenden
+   Ollama-Mechanismus bereitgestelltes Instruct-Modell, wie das Einbettungsmodell per Tag **und**
+   Content-Digest gepinnt, Temperatur 0 — konsistent mit dem übrigen Determinismus-/Pinning-Ansatz
+   dieses Harness (ADR-0011, Entscheidung 4) und ohne neues Secret. Kandidat: ein kleines Modell in
+   der Größenordnung von `qwen2.5:1.5b-instruct` oder `llama3.2:3b-instruct`, endgültige Auswahl
+   anhand tatsächlicher Zerlegungsqualität an Golden-Fällen. Akzeptierte Nachteile: zusätzliche
+   Laufzeit (durch die Mehrfachlauf-Regel aus Abschnitt 3 je Zerlegungsvariante verdreifacht) und eine
+   Zerlegungsqualität, die nicht repräsentativ für das tatsächliche Produktionsmodell ist — der
+   Benchmark misst dann die Zerlegungs**mechanik**, nicht die Zerlegungs**güte** des
+   Produktionsmodells. Ein gehostetes Modell (Secret, Kosten, Driftrisiko) und ein eingefrorener
+   Zerlegungs-Cache (vollständig deterministisch, misst Zerlegung aber gar nicht mehr) wurden
+   erwogen und zugunsten des lokalen Modells zurückgestellt. Die formale Freigabe dieser Empfehlung
+   und ihre Umsetzung (Chat-Modell-Bean im Eval-Kontext, Modell-Cache in der Workflow-Datei,
+   Prerequisite-Lockerung, erste Baseline mit aktiver Zerlegung) sind Gegenstand von Issue #1085.
 4. **Umgang mit `answer_span` bei Fallklassen mit mehreren Zieldokumenten.** Multi-Hop-Fälle haben
    pro Dokument eine Fundstelle. Ob die Chunkebenen-Metrik dafür je Dokument oder je Fall gebildet
    wird, ist eine Messvertragsfrage und mit Schritt D zu klären.

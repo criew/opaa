@@ -393,6 +393,10 @@ Baseline, die Schwellenwerte und die CI-Anbindung aufgesetzt:
 - Seit Issue #1040 vergleicht derselbe Task zusätzlich den Pipeline-Messpfad gegen seine eigene
   Baseline (`eval/baseline/pipeline-comic-characters.json`, `io.opaa.eval.PipelineBaselineComparator`)
   — getrennte Dateien, getrennte Urteile, dasselbe Fehlerkriterium aus ADR-0013.
+- Mit Issue #1044 anhand gemessener Laufzeiten bewusst entschieden: Beide Regressionspfade laufen
+  nächtlich für beide Domänen; Variantenvergleiche (`eval/variants/`), einschließlich der
+  Mehrfachlauf-Regel für Varianten mit LLM-Anteil, bleiben ausschließlich manuell ausgelöst — Details
+  in [`eval/variants/README.md`](variants/README.md#nächtlich-vs-manuell).
 
 ### Messvertrag
 

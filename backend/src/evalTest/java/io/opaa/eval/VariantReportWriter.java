@@ -54,6 +54,9 @@ public final class VariantReportWriter {
                 a.mrrAt8(),
                 a.ndcgAt8(),
                 a.recallAt8()));
+        if (outcome.multiRun() != null) {
+          sb.append(renderMultiRun(outcome.multiRun()));
+        }
       } else {
         sb.append(
             format(
@@ -93,6 +96,42 @@ public final class VariantReportWriter {
                           c.category(), c.ndcgAt8Delta(), c.query())));
     }
     return sb.toString();
+  }
+
+  /**
+   * The Mehrfachlauf-Regel's own reporting requirement (issue #1044,
+   * docs/features/retrieval-benchmark.md §3): minimum, median and maximum per metric, plus the
+   * deviation count that is "die eigentliche Kennzahl der Instabilität" — never a significance
+   * claim, only the three numbers and a count.
+   */
+  private static String renderMultiRun(MultiRunSummary summary) {
+    StringBuilder sb = new StringBuilder();
+    // The "median=" figure below is the median VALUE of that one metric across the runs, computed
+    // independently per metric — it can therefore come from a different run than the "Median-Lauf"
+    // named here, which is chosen once, by nDCG@8 (see MultiRunAggregator#medianIndexByNdcg), and
+    // is what the delta against the reference variant above this block actually compares. Reading
+    // every "median=" figure as if it came from that same single run is the apparent contradiction
+    // this note heads off.
+    sb.append(
+        format(
+            "      %d Läufe (Median-Lauf, gewählt nach nDCG@8, gegen Referenz verglichen):\n",
+            summary.runCount()));
+    sb.append(format("        HitRate@5: %s\n", renderRange(summary.hitRateAt5())));
+    sb.append(format("        MRR@8:     %s\n", renderRange(summary.mrrAt8())));
+    sb.append(format("        nDCG@8:    %s\n", renderRange(summary.ndcgAt8())));
+    sb.append(format("        Recall@8:  %s\n", renderRange(summary.recallAt8())));
+    sb.append(
+        format(
+            "        Zerlegung wich bei %d Fällen zwischen den Läufen ab%s\n",
+            summary.decompositionDeviatingCaseCount(),
+            summary.decompositionDeviatingCaseIds().isEmpty()
+                ? ""
+                : ": " + String.join(", ", summary.decompositionDeviatingCaseIds())));
+    return sb.toString();
+  }
+
+  private static String renderRange(MultiRunSummary.MetricRange range) {
+    return format("min=%.3f median=%.3f max=%.3f", range.min(), range.median(), range.max());
   }
 
   private static String pad(String value, int width) {

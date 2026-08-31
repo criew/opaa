@@ -64,7 +64,21 @@ class VariantComparisonRunnerTest {
             new GoldenCase(
                 "b", "test", "frage b", List.of("b.md"), "cat", "easy", "de", "t", null));
     return PipelineRetrievalEvaluator.report(
-        PipelineRetrievalEvaluator.evaluateAll(goldenCases, pipeline::get), runConfiguration());
+        PipelineRetrievalEvaluator.evaluateAll(goldenCases, toPipeline(pipeline)),
+        runConfiguration());
+  }
+
+  /**
+   * Wraps a {@code query -> ranked file names} map into the {@code Function<String,
+   * PipelineInvocationResult>} {@link PipelineRetrievalEvaluator#evaluateAll} expects, using the
+   * query itself as its own single-entry sub-query list — these tests are not exercising
+   * decomposition, so any deterministic, non-null sub-query list is sufficient.
+   */
+  static java.util.function.Function<String, PipelineRetrievalEvaluator.PipelineInvocationResult>
+      toPipeline(Map<String, List<String>> pipeline) {
+    return query ->
+        new PipelineRetrievalEvaluator.PipelineInvocationResult(
+            pipeline.get(query), List.of(query));
   }
 
   @Test
@@ -137,7 +151,7 @@ class VariantComparisonRunnerTest {
     PipelineEvaluationReport strayReport =
         PipelineRetrievalEvaluator.report(
             PipelineRetrievalEvaluator.evaluateAll(
-                List.of(strayCase), Map.of("frage c", List.of("c.md"))::get),
+                List.of(strayCase), toPipeline(Map.of("frage c", List.of("c.md")))),
             runConfiguration());
     var stray = VariantOutcome.executed(variant("stray"), strayReport);
 

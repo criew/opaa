@@ -43,7 +43,7 @@ class PipelineHarnessSupportTest {
   @Test
   void aFailingPipelineDoesNotFailTheHarnessRun() {
     QueryService failing = mock(QueryService.class);
-    when(failing.retrieveRelevantChunksInGivenScope(anyString(), any(), any()))
+    when(failing.retrieveRelevantChunksInGivenScopeWithDecomposition(anyString(), any(), any()))
         .thenThrow(new IllegalStateException("vector store exploded"));
 
     assertThatCode(

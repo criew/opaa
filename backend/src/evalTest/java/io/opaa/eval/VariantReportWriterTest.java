@@ -27,7 +27,8 @@ class VariantReportWriterTest {
         new GoldenCase("a", "test", "frage", List.of("a.md"), "cat", "easy", "de", "t", null);
     return PipelineRetrievalEvaluator.report(
         PipelineRetrievalEvaluator.evaluateAll(
-            List.of(goldenCase), Map.of("frage", List.of("a.md"))::get),
+            List.of(goldenCase),
+            VariantComparisonRunnerTest.toPipeline(Map.of("frage", List.of("a.md")))),
         VariantComparisonRunnerTest.runConfiguration());
   }
 
@@ -78,6 +79,54 @@ class VariantReportWriterTest {
 
     assertThat(summary).contains("keine Änderung");
     assertThat(summary).contains("mmrLambda=0.7");
+  }
+
+  /**
+   * Issue #1044 review, Befund 1(c): a multi-run variant's summary must show the min/median/max
+   * lines and the deviation line, and the deviation count must reflect a fixture where only the
+   * third of three runs actually differs — not "any pair differs" or an off-by-one over the runs.
+   */
+  @Test
+  void rendersMultiRunMinMedianMaxAndTheDeviationLine() {
+    var reference = VariantOutcome.executed(variant("reference"), report());
+    var goldenCase =
+        new GoldenCase("a", "test", "frage", List.of("a.md"), "cat", "easy", "de", "t", null);
+    List<List<String>> subQueriesPerRun =
+        List.of(List.of("teilfrage 1"), List.of("teilfrage 1"), List.of("andere teilfrage"));
+    List<PipelineEvaluationReport> runs =
+        subQueriesPerRun.stream()
+            .map(
+                subQueries ->
+                    PipelineRetrievalEvaluator.report(
+                        PipelineRetrievalEvaluator.evaluateAll(
+                            List.of(goldenCase),
+                            query ->
+                                new PipelineRetrievalEvaluator.PipelineInvocationResult(
+                                    List.of("a.md"), subQueries)),
+                        VariantComparisonRunnerTest.runConfiguration()))
+            .toList();
+    MultiRunSummary summary = MultiRunAggregator.summarize(runs);
+    var decompositionOn = new PipelineVariant.QueryOverrides(null, null, null, true, null, null);
+    var multiRunOutcome =
+        VariantOutcome.executedMultiRun(
+            variantWithOverrides("decomposition-on", decompositionOn),
+            runs.get(summary.medianRunIndex()),
+            summary);
+    var comparisonAgainstReference = VariantComparisonRunner.delta(multiRunOutcome, reference);
+    var report =
+        new VariantReport(
+            "c",
+            "desc",
+            "comic-characters",
+            "reference",
+            List.of(reference, multiRunOutcome),
+            List.of(comparisonAgainstReference));
+
+    String rendered = VariantReportWriter.renderSummary(report);
+
+    assertThat(rendered).contains("3 Läufe");
+    assertThat(rendered).contains("HitRate@5: min=").contains("median=").contains("max=");
+    assertThat(rendered).contains("Zerlegung wich bei 1 Fällen zwischen den Läufen ab: a");
   }
 
   @Test
