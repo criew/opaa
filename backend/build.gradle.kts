@@ -109,6 +109,18 @@ fun registerEvalDomain(
         outputs.upToDateWhen { false }
         jvmArgs("-XX:+EnableDynamicAgentLoading")
         systemProperty("file.encoding", "UTF-8")
+        // Gradle does not forward -D command-line system properties into a forked Test JVM on its
+        // own (they stay properties of the Gradle daemon process that evaluates this build script) —
+        // every property a harness class reads via System.getProperty/Boolean.getBoolean at runtime
+        // needs an explicit systemProperty() call here, read from this daemon-process property at
+        // configuration time. opaa.eval.allowGpu (RetrievalEvaluationHarnessTest, local GPU opt-out)
+        // and the issue #1041 variant-comparison opt-in share this list because both are optional,
+        // manually-invoked knobs rather than something every eval domain always needs.
+        listOf(
+            "opaa.eval.allowGpu",
+            "opaa.eval.runVariantComparison",
+            "opaa.eval.variantComparisonFile",
+        ).forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
         testLogging {
             events("passed", "skipped", "failed", "standard_out")
             showStandardStreams = true

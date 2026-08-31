@@ -30,9 +30,11 @@ eval/
 │       ├── MANIFEST.sha256
 │       ├── SOURCE.md
 │       └── MAINTENANCE.md           Pflegeverantwortung, Baseline-Neuziehung, known_gap-Fälle
-└── golden/                          Golden-Query-Datasets, committet (siehe eval/golden/README.md)
-    ├── comic-characters.json
-    └── city-landmarks.json
+├── golden/                          Golden-Query-Datasets, committet (siehe eval/golden/README.md)
+│   ├── comic-characters.json
+│   └── city-landmarks.json
+└── variants/                        Variantenvergleiche, committet (siehe eval/variants/README.md, Issue #1041)
+    └── comic-characters-selection-mechanics.json
 ```
 
 Aktuell umgesetzt: die Domänen **Comichelden** (Issue #225/#226, einchunkig) und **Sehenswürdigkeiten
@@ -228,6 +230,28 @@ Weitere Festlegungen des Pipeline-Pfads:
 
 Messvertrag beider Pfade: [ADR-0012](../docs/decisions/0012-messvertrag-retrieval-harness.md),
 Nachträge „Pipeline-Messpfad" (#1039) und „Baselines des Pipeline-Pfads" (#1040).
+
+### Variantenvergleiche (Issue #1041)
+
+Ein dritter, **standardmäßig abgeschalteter** Schritt am Ende desselben Testlaufs misst eine
+deklarative Liste von Pipeline-Varianten gegen dasselbe, bereits indizierte Korpus und Golden
+Dataset — kein zweiter Indizierungslauf. Eine Variante ist Daten (eine JSON-Datei unter
+`eval/variants/`, siehe [`eval/variants/README.md`](variants/README.md)), keine neue Testklasse:
+
+```bash
+./gradlew evaluateRetrieval \
+  -Dopaa.eval.runVariantComparison=true \
+  -Dopaa.eval.variantComparisonFile=eval/variants/comic-characters-selection-mechanics.json
+```
+
+Der Bericht (`build/eval-reports/variant-report-<comparisonName>.json`, nicht committet) weist für
+jede Variante entweder ein `PipelineEvaluationReport` (ausgeführt) oder einen Skip-Grund (nicht
+ausgeführt — Reindex-Voraussetzung nicht erfüllt oder Teilfragen-Zerlegung ohne Chat-Modell) aus,
+plus für jede ausgeführte, nicht-referenzielle Variante ein Delta gegen die Referenzvariante,
+aggregiert **und** je Golden-Fall (docs/features/retrieval-benchmark.md, Abschnitt 2, „gepaarte
+Messung"). Die Referenzvariante (keine Parameteränderung) wird zusätzlich gegen einen zweiten,
+unabhängigen direkten Pipeline-Aufruf desselben Laufs geprüft — bitgleiche Zahlen sind eine
+harte Assertion, keine Beobachtung (Referenzvarianten-Selbstprüfung).
 
 ### Report lesen
 
