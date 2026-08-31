@@ -1,6 +1,7 @@
 package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
@@ -117,7 +118,67 @@ class PipelineBaselineComparatorTest {
         1,
         PipelineHarnessSupport.SEARCH_SCOPE_NOTE,
         "2026-08-31T00:00:00Z",
-        1.0);
+        1.0,
+        false);
+  }
+
+  private static PipelineEvaluationReport.PipelineRunConfiguration externalEndpointRunConfiguration(
+      PipelineEvaluationReport.PipelineRunConfiguration cfg) {
+    return new PipelineEvaluationReport.PipelineRunConfiguration(
+        cfg.domain(),
+        cfg.embeddingProvider(),
+        cfg.embeddingModel(),
+        cfg.embeddingModelDigest(),
+        cfg.ollamaImage(),
+        cfg.embeddingDimensions(),
+        cfg.chunkSize(),
+        cfg.chunkSizeMatchesApplicationDefault(),
+        cfg.chunkOverlap(),
+        cfg.fetchK(),
+        cfg.topK(),
+        cfg.similarityThreshold(),
+        cfg.similarityThresholdNote(),
+        cfg.maxChunksPerDocument(),
+        cfg.mmrLambda(),
+        cfg.queryDecompositionEnabled(),
+        cfg.maxSubQueries(),
+        cfg.chatModel(),
+        cfg.hitRateK(),
+        cfg.rankingK(),
+        cfg.pgvectorIndexType(),
+        cfg.corpusManifestSha256(),
+        cfg.corpusDocumentCount(),
+        cfg.goldenDatasetFile(),
+        cfg.goldenDatasetSha256(),
+        cfg.goldenCaseCount(),
+        cfg.searchScopeLibraryCount(),
+        cfg.searchScopeNote(),
+        cfg.runStartedAt(),
+        cfg.runDurationSeconds(),
+        true);
+  }
+
+  /**
+   * Issue #1076: a run against an external Ollama endpoint may have embedded on a GPU, whose
+   * kernels are not guaranteed bit-identical to the CPU Testcontainer the baselines were drawn on —
+   * the pipeline path needs the same hard stop the raw-vector path has, not a silent comparison.
+   */
+  @Test
+  void refusesToCompareAReportFromAnExternalOllamaEndpoint() {
+    PipelineEvaluationReport report =
+        report(0.5, 20, externalEndpointRunConfiguration(matchingRunConfiguration()));
+
+    assertThatThrownBy(() -> PipelineBaselineComparator.requireBaselineComparable(report))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("opaa.eval.ollamaBaseUrl");
+  }
+
+  @Test
+  void allowsAComparisonOfATestcontainerRun() {
+    PipelineEvaluationReport report = report(0.5, 20, matchingRunConfiguration());
+
+    assertThatCode(() -> PipelineBaselineComparator.requireBaselineComparable(report))
+        .doesNotThrowAnyException();
   }
 
   private static PipelineEvaluationReport.PipelineRunConfiguration matchingRunConfiguration() {

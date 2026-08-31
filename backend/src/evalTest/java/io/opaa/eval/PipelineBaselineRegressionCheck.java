@@ -52,6 +52,8 @@ final class PipelineBaselineRegressionCheck {
             .readValue(Files.readString(reportFile), PipelineEvaluationReport.class);
     Path baselineFile =
         RepoPaths.evalDir().resolve("baseline").resolve(domain.pipelineBaselineFileName());
+    PipelineBaselineComparator.requireBaselineComparable(report);
+
     PipelineBaseline baseline = PipelineBaseline.load(baselineFile);
 
     PipelineBaselineComparator.ComparisonResult result =

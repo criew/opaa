@@ -78,6 +78,22 @@ public final class PipelineBaselineComparator {
     }
   }
 
+  /**
+   * The pipeline path's counterpart of {@link BaselineComparator#requireBaselineComparable} (issue
+   * #1076): a report measured against an external Ollama endpoint ({@code opaa.eval.ollamaBaseUrl})
+   * is never baseline-comparable, because CPU and GPU embedding kernels are not guaranteed
+   * bit-identical. Both paths share the same run and the same index, so the flag means the same
+   * thing here — and this path needs its own call, since it compares its own report against its own
+   * baseline.
+   */
+  public static void requireBaselineComparable(PipelineEvaluationReport report) {
+    if (report.runConfiguration().externalOllamaEndpoint()) {
+      throw new IllegalStateException(
+          "Pipeline-Report stammt von einem externen Ollama-Endpunkt (opaa.eval.ollamaBaseUrl) — "
+              + "nicht baseline-vergleichbar. Siehe eval/README.md, \"Externer Ollama-Endpunkt\".");
+    }
+  }
+
   public static ComparisonResult compare(
       PipelineBaseline baseline, PipelineEvaluationReport report) {
     List<BaselineComparator.FixedPointMismatch> mismatches = fixedPointMismatches(baseline, report);

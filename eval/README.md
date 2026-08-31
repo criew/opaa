@@ -167,7 +167,11 @@ lokale Iterationszeit spürbar.
   GPU-Embedding-Kernel liefern nicht notwendigerweise bitgleiche Vektoren, und ein natives
   Host-Ollama ist ohnehin nicht dieselbe, reproduzierbare Umgebung wie der gepinnte
   `ollama/ollama:0.6.5`-Testcontainer. `checkRetrievalBaseline`/`checkCityLandmarksRetrievalBaseline`
-  gegen einen solchen Lauf laufen zu lassen ist ohne Aussagekraft.
+  gegen einen solchen Lauf laufen zu lassen ist ohne Aussagekraft; beide Baseline-Vergleiche brechen
+  deshalb hart ab, wenn der Report von einem externen Endpunkt stammt — der Rohvektor-Pfad über
+  `BaselineComparator.requireBaselineComparable`, der Pipeline-Pfad über
+  `PipelineBaselineComparator.requireBaselineComparable` (beide Pfade teilen sich denselben Lauf und
+  denselben Index, also gilt der Vorbehalt für beide).
 - Ohne die Property ist das Verhalten byte-identisch zum bisherigen Stand (Testcontainer, CPU) — CI
   setzt die Property nie, bleibt also unberührt.
 
