@@ -4,11 +4,25 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Self-validates this workflow file itself inside a PR that touches it -
+  # resolution only, never submitted (see dependency-graph input below).
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/dependency-graph.yml"
 
 # Submits the resolved dependency graph to GitHub's Dependency Graph API,
 # which requires write access to Dependency Graph snapshots.
 permissions:
   contents: write
+
+# A new push to main or a new push to this workflow's own PR makes the
+# previous run's result irrelevant - without the SHA in the non-PR group, a
+# fast second main push could finish submitting after a first, in-flight run
+# and leave a stale graph as the most recently submitted one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   submit:
@@ -21,10 +35,14 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      # Resolves and submits the Gradle dependency graph for backend + opaa-api
-      # (single multi-module build rooted at backend/) so Dependabot alerts
-      # cover the JVM dependency tree; the pnpm lockfile is read by GitHub
-      # itself without a submission step.
+      # Resolves the Gradle dependency graph for backend + opaa-api (single
+      # multi-module build rooted at backend/) so Dependabot alerts cover the
+      # JVM dependency tree; the pnpm lockfiles (frontend/, e2e/) are read by
+      # GitHub itself without a submission step. On pull_request the graph is
+      # only generated and uploaded as a workflow artifact for inspection,
+      # never submitted to the Dependency Submission API - that only happens
+      # on push to main.
       - uses: gradle/actions/dependency-submission@v6
         with:
           build-root-directory: backend
+          dependency-graph: ${{ github.event_name == 'pull_request' && 'generate-and-upload' || 'generate-and-submit' }}
