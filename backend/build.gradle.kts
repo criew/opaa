@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.spotless)
+    alias(libs.plugins.cyclonedx.bom)
 }
 
 group = "io.opaa"
@@ -56,6 +57,25 @@ dependencies {
     runtimeOnly(libs.bundles.runtime)
     testImplementation(libs.bundles.test.deps)
     testRuntimeOnly(libs.bundles.test.runtime.deps)
+}
+
+// CycloneDX plugin 3.x splits SBOM generation into a per-project "cyclonedxDirectBom" task
+// (scans that project's own dependency configurations) and one root-level "cyclonedxBom"
+// aggregate task that merges every project's direct BOM. Applying the plugin here (the root
+// project) registers "cyclonedxDirectBom" on both this project and :opaa-api automatically —
+// no per-subproject plugin application needed.
+//
+// The aggregated SBOM (backend + opaa-api) describes what ships at runtime, not the
+// test/build toolchain, so every project's direct task is restricted to runtimeClasspath.
+// Retrieval: docs/sbom.md.
+allprojects {
+    tasks.withType<org.cyclonedx.gradle.CyclonedxDirectTask>().configureEach {
+        includeConfigs.set(listOf("runtimeClasspath"))
+    }
+}
+
+tasks.cyclonedxBom {
+    componentName.set("opaa-backend")
 }
 
 // Registers the evaluateXRetrieval/checkXRetrievalBaseline task pair for one eval domain (issue
