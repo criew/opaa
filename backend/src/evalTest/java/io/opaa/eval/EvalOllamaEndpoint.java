@@ -33,4 +33,13 @@ final class EvalOllamaEndpoint {
   static boolean isExternal() {
     return externalBaseUrl() != null;
   }
+
+  /**
+   * The value a report's "ollamaImage" field should carry: the pinned Testcontainer image when not
+   * external, or a marker naming the external endpoint otherwise — a report must never claim the
+   * pinned image ran when no container was ever started (issue #1076 review).
+   */
+  static String describeImageOrEndpoint(String pinnedImage) {
+    return isExternal() ? "extern: " + externalBaseUrl() : pinnedImage;
+  }
 }

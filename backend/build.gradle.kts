@@ -98,6 +98,17 @@ fun registerEvalDomain(
         outputs.upToDateWhen { false }
         jvmArgs("-XX:+EnableDynamicAgentLoading")
         systemProperty("file.encoding", "UTF-8")
+        // Gradle does not forward -D command-line system properties to forked test JVMs on its
+        // own; each opt-in eval property the harness reads (issue #1076's external Ollama
+        // endpoint, the pre-existing GPU opt-out) needs an explicit systemProperty() call here,
+        // read via providers.systemProperty() so the configuration cache captures the dependency
+        // correctly instead of just baking in whatever value happened to be present at
+        // configuration time. TODO(#1077 review, Befund 1): fold into the shared opaa.eval
+        // passthrough list #1077 introduces once that PR is merged, instead of keeping a second
+        // list here.
+        listOf("opaa.eval.ollamaBaseUrl", "opaa.eval.allowGpu").forEach { key ->
+            providers.systemProperty(key).orNull?.let { systemProperty(key, it) }
+        }
         testLogging {
             events("passed", "skipped", "failed", "standard_out")
             showStandardStreams = true

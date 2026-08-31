@@ -82,7 +82,13 @@ public record PipelineEvaluationReport(
       int searchScopeLibraryCount,
       String searchScopeNote,
       String runStartedAt,
-      double runDurationSeconds) {}
+      double runDurationSeconds,
+      // Issue #1076: true when this run's underlying index/queries talked to an external Ollama
+      // endpoint (opaa.eval.ollamaBaseUrl) instead of the Testcontainer — see
+      // EvaluationReport.RunConfiguration#externalOllamaEndpoint, which the raw-vector path already
+      // carries; the pipeline path shares the same run and is therefore equally not
+      // baseline-comparable.
+      boolean externalOllamaEndpoint) {}
 
   /**
    * How much the pipeline actually returned, per run. Unlike the raw-vector path's {@link

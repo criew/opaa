@@ -1,6 +1,8 @@
 package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import io.opaa.eval.EvaluationReport.ChunkCountInvariantResult;
@@ -377,6 +379,47 @@ class BaselineComparatorTest {
     assertThat(result.fixedPointMismatches())
         .extracting(BaselineComparator.FixedPointMismatch::field)
         .containsExactly("embeddingModelDigest");
+  }
+
+  @Test
+  void requireBaselineComparableAllowsATestcontainerRun() {
+    EvaluationReport report = reportWith(runConfiguration("m1", "d1", "corpus-a", "golden-a"));
+
+    assertThatCode(() -> BaselineComparator.requireBaselineComparable(report)).doesNotThrowAnyException();
+  }
+
+  @Test
+  void requireBaselineComparableRejectsAnExternalOllamaEndpointRun() {
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    RunConfiguration withExternalEndpoint =
+        new RunConfiguration(
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
+            cfg.documentTopK(),
+            cfg.chunkTopK(),
+            cfg.searchTopK(),
+            cfg.productionSimilarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds(),
+            true);
+    EvaluationReport report = reportWith(withExternalEndpoint);
+
+    assertThatThrownBy(() -> BaselineComparator.requireBaselineComparable(report))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("externen Ollama-Endpunkt");
   }
 
   @Test
