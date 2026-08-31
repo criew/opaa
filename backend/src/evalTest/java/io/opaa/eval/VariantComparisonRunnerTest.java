@@ -1,6 +1,7 @@
 package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import java.util.List;
@@ -116,5 +117,32 @@ class VariantComparisonRunnerTest {
 
     assertThat(comparison.caseDeltas().get(0).caseId()).isEqualTo("a");
     assertThat(comparison.caseDeltas().get(0).ndcgAt8Delta()).isLessThan(0.0);
+  }
+
+  /**
+   * Issue #1041 review, Befund 7: a variant that (through a bug elsewhere, since {@link
+   * VariantRunner} always passes the same golden cases to every variant) evaluated a case the
+   * reference variant never saw must fail loudly — "gepaarte Messung" is the mechanism's whole
+   * premise, and silently skipping the stray case would hide exactly that breakage.
+   */
+  @Test
+  void aCaseMissingFromTheReferenceFailsLoudly() {
+    var reference =
+        VariantOutcome.executed(
+            variant("reference"),
+            report(Map.of("frage a", List.of("a.md"), "frage b", List.of("b.md"))));
+    var strayCase =
+        new GoldenCase("c", "test", "frage c", List.of("c.md"), "cat", "easy", "de", "t", null);
+    PipelineEvaluationReport strayReport =
+        PipelineRetrievalEvaluator.report(
+            PipelineRetrievalEvaluator.evaluateAll(
+                List.of(strayCase), Map.of("frage c", List.of("c.md"))::get),
+            runConfiguration());
+    var stray = VariantOutcome.executed(variant("stray"), strayReport);
+
+    assertThatThrownBy(() -> VariantComparisonRunner.delta(stray, reference))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("stray")
+        .hasMessageContaining("'c'");
   }
 }

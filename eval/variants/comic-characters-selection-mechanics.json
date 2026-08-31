@@ -1,6 +1,6 @@
 {
   "name": "comic-characters-selection-mechanics",
-  "description": "Vergleich der Auswahlmechanik (MMR-Lambda, max-chunks-per-document, Ähnlichkeitsschwelle) und ein Beleg für die 'nicht ausgeführt'-Meldung bei fehlender Voraussetzung (Teilfragen-Zerlegung ohne Chat-Modell) auf dem Pipeline-Pfad der eingefrorenen comic-characters-Domäne (docs/features/retrieval-benchmark.md, Abschnitt 2, Zeile 'Auswahlmechanik').",
+  "description": "Vergleich der Auswahlmechanik (MMR-Lambda, Ähnlichkeitsschwelle) auf dem Pipeline-Pfad der eingefrorenen comic-characters-Domäne (docs/features/retrieval-benchmark.md, Abschnitt 2, Zeile 'Auswahlmechanik'), plus zwei bewusst als wirkungslos erwartete max-chunks-per-document-Varianten (siehe deren description) und ein Beleg für die 'nicht ausgeführt'-Meldung bei fehlender Voraussetzung (Teilfragen-Zerlegung ohne Chat-Modell).",
   "domain": "comic-characters",
   "referenceVariant": "production",
   "variants": [
@@ -18,13 +18,13 @@
     },
     {
       "name": "max-chunks-per-document-1",
-      "description": "Dokument-Vervollständigung abgeschaltet (max-chunks-per-document=1 statt Produktionsdefault 2) — die Vor-#932-Konfiguration, als expliziter Vergleichspunkt.",
+      "description": "Dokument-Vervollständigung abgeschaltet (max-chunks-per-document=1 statt Produktionsdefault 2) — die Vor-#932-Konfiguration. Auf comic-characters konstruktionsbedingt wirkungslos (Δ0.000 erwartet): die Ein-Chunk-Invariante (ADR-0010) hält jedes Dokument auf genau einen Chunk, DocumentCompletion hat also nie ein zweites Chunk desselben Dokuments zu ergänzen. Als Vergleichspunkt trotzdem sinnvoll, weil er die Variantenmechanik selbst an einem bekannten Null-Ergebnis prüft; ein Beleg für tatsächliche Wirkung braucht eine mehrchunkige Domäne wie city-landmarks.",
       "requiresReindex": false,
       "queryOverrides": { "maxChunksPerDocument": 1 }
     },
     {
       "name": "max-chunks-per-document-3",
-      "description": "Dokument-Vervollständigung großzügiger (max-chunks-per-document=3 statt Produktionsdefault 2) — ob ein drittes Chunk-Slot je Dokument den #912-Fehlerfall weiter verringert.",
+      "description": "Dokument-Vervollständigung großzügiger (max-chunks-per-document=3 statt Produktionsdefault 2). Auf comic-characters aus demselben Grund wie max-chunks-per-document-1 konstruktionsbedingt wirkungslos (Δ0.000 erwartet) — siehe dessen description.",
       "requiresReindex": false,
       "queryOverrides": { "maxChunksPerDocument": 3 }
     },

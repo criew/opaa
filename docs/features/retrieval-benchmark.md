@@ -220,9 +220,19 @@ gilt zusätzlich die Mehrfachlauf-Regel aus [Abschnitt 3](#3-schlanke-statistik)
 > Teilfragen-Zerlegung wird als „nicht ausgeführt" gemeldet (`VariantPrerequisites`), nicht
 > stillschweigend gegen den falschen Index bzw. ohne Chat-Modell gemessen. Die
 > Referenzvarianten-Selbstprüfung vergleicht die Referenzvariante gegen einen zweiten, unabhängigen
-> direkten Pipeline-Aufruf desselben Laufs (harte Assertion, bitgleich) — eine committete
-> Pipeline-Baseline zum Abgleich existiert noch nicht (Folgearbeit von Issue #1040). Standardmäßig
-> abgeschaltet (`-Dopaa.eval.runVariantComparison=true`), damit ein normaler
+> direkten Aufruf desselben produktiv verdrahteten `QueryService`-Beans im selben Lauf — Metriken
+> und Laufkonfiguration, harte Assertion, bitgleich — nicht gegen eine zweite, handgebaute
+> `QueryService`-Instanz, damit die Prüfung tatsächlich die produktiv verdrahtete Pipeline trifft
+> und nicht nur die Determinismus der Mechanik selbst. Eine committete Pipeline-Baseline zum
+> zusätzlichen Abgleich existiert noch nicht (Folgearbeit von Issue #1040). Die Vergleichsdatei wird
+> geladen und die Ausführbarkeit der Referenzvariante geprüft, sobald das Opt-in erkannt ist — vor
+> der Korpus-Indizierung, nicht erst nach ihr; danach ist der eigentliche Vergleichslauf wie der
+> Pipeline-Pfad selbst geschützt (`PipelineHarnessSupport#runAndWriteGuarded`-Muster), sodass ein
+> Fehler dort nie das bereits erarbeitete Rohvektor- oder Pipeline-Urteil kostet. Das
+> Variantenschema verzichtet bewusst auf `@JsonIgnoreProperties(ignoreUnknown = true)`, damit ein
+> Tippfehler in einem Override-Feldnamen den Lauf abbricht statt als stillschweigend wirkungslose,
+> legitim aussehende Δ0.000-Variante zu erscheinen. Standardmäßig abgeschaltet
+> (`-Dopaa.eval.runVariantComparison=true`), damit ein normaler
 > `evaluateRetrieval`/`checkRetrievalBaseline`-Lauf unverändert bleibt. Noch offen: Reindex-fähige
 > Varianten (Embedding-Modell, Chunking) — `requiresReindex` ist als Feld bereits vorgesehen, der
 > Reindex-Pfad selbst ist Folgearbeit. Details: [`eval/variants/README.md`](../../eval/variants/README.md).

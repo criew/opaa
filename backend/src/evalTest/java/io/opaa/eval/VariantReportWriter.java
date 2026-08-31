@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -32,18 +34,33 @@ public final class VariantReportWriter {
     sb.append(format("%s\n", report.comparisonDescription()));
     sb.append(format("Referenzvariante: %s\n\n", report.referenceVariant()));
 
+    // Column width sized to the actual variant names in this report (issue #1041 review, Befund
+    // 10) rather than a fixed guess: a name longer than a fixed width would not misalign the
+    // columns of every *other* row the way a too-narrow fixed width otherwise would.
+    int nameWidth =
+        report.outcomes().stream().mapToInt(o -> o.variant().name().length()).max().orElse(0) + 2;
+
     sb.append("Varianten:\n");
     for (VariantOutcome outcome : report.outcomes()) {
+      String paddedName = pad(outcome.variant().name(), nameWidth);
       if (outcome.executed()) {
         var a = outcome.report().overall();
         sb.append(
             format(
-                "  %-32s ausgeführt  HitRate@5=%.3f MRR@8=%.3f nDCG@8=%.3f Recall@8=%.3f\n",
-                outcome.variant().name(), a.hitRateAt5(), a.mrrAt8(), a.ndcgAt8(), a.recallAt8()));
+                "  %s (%s)\n      ausgeführt  HitRate@5=%.3f MRR@8=%.3f nDCG@8=%.3f Recall@8=%.3f\n",
+                paddedName,
+                describeOverrides(outcome.variant().queryOverrides()),
+                a.hitRateAt5(),
+                a.mrrAt8(),
+                a.ndcgAt8(),
+                a.recallAt8()));
       } else {
         sb.append(
             format(
-                "  %-32s nicht ausgeführt — %s\n", outcome.variant().name(), outcome.skipReason()));
+                "  %s (%s)\n      nicht ausgeführt — %s\n",
+                paddedName,
+                describeOverrides(outcome.variant().queryOverrides()),
+                outcome.skipReason()));
       }
     }
     sb.append('\n');
@@ -76,6 +93,39 @@ public final class VariantReportWriter {
                           c.category(), c.ndcgAt8Delta(), c.query())));
     }
     return sb.toString();
+  }
+
+  private static String pad(String value, int width) {
+    return format("%-" + width + "s", value);
+  }
+
+  /**
+   * Lists a variant's effectively changed parameters, or states there are none — a Δ0.000 line for
+   * a variant with no listed parameter is then indistinguishable from one whose override happened
+   * to have no measurable effect (issue #1041 review, Befund 5), which the reader must be able to
+   * tell apart without opening the JSON report.
+   */
+  private static String describeOverrides(PipelineVariant.QueryOverrides overrides) {
+    List<String> parts = new ArrayList<>();
+    if (overrides.fetchK() != null) {
+      parts.add("fetchK=" + overrides.fetchK());
+    }
+    if (overrides.mmrLambda() != null) {
+      parts.add("mmrLambda=" + overrides.mmrLambda());
+    }
+    if (overrides.similarityThreshold() != null) {
+      parts.add("similarityThreshold=" + overrides.similarityThreshold());
+    }
+    if (overrides.queryDecompositionEnabled() != null) {
+      parts.add("queryDecompositionEnabled=" + overrides.queryDecompositionEnabled());
+    }
+    if (overrides.maxSubQueries() != null) {
+      parts.add("maxSubQueries=" + overrides.maxSubQueries());
+    }
+    if (overrides.maxChunksPerDocument() != null) {
+      parts.add("maxChunksPerDocument=" + overrides.maxChunksPerDocument());
+    }
+    return parts.isEmpty() ? "keine Änderung" : String.join(", ", parts);
   }
 
   // Explicit Locale.ROOT per call, deliberately not a JVM-wide Locale.setDefault(Locale.ROOT) —

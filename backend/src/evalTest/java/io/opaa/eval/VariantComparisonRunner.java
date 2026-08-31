@@ -28,6 +28,12 @@ public final class VariantComparisonRunner {
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
       List<GoldenCase> goldenCases) {
+    // Defense in depth: the harness already calls this before indexing (issue #1041 review, Befund
+    // 3), but this method has its own callers (VariantComparisonRunnerTest exercises #delta
+    // directly, not this method, so this is not redundant with that) and must not silently produce
+    // a reference-less report if invoked without that earlier check.
+    comparison.requireExecutableReference(productionQueryProperties);
+
     List<VariantOutcome> outcomes = new ArrayList<>(comparison.variants().size());
     for (PipelineVariant variant : comparison.variants()) {
       outcomes.add(

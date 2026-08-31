@@ -3,6 +3,7 @@ package io.opaa.eval;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -14,10 +15,17 @@ import tools.jackson.databind.json.JsonMapper;
  */
 public final class VariantComparisonDataset {
 
+  // Explicit, not relied on as a default (issue #1041 review, Befund 2): whatever this project's
+  // other JsonMapper.builder().build() call sites end up defaulting to, a typo in a hand-authored
+  // comparison file must fail the load here — see PipelineVariant's Javadoc for why a dropped
+  // field is worse than a loud crash on this particular schema.
+  private static final JsonMapper MAPPER =
+      JsonMapper.builder().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();
+
   private VariantComparisonDataset() {}
 
   public static VariantComparison load(Path jsonFile) throws IOException {
     byte[] bytes = Files.readAllBytes(jsonFile);
-    return JsonMapper.builder().build().readValue(bytes, VariantComparison.class);
+    return MAPPER.readValue(bytes, VariantComparison.class);
   }
 }

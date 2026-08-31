@@ -1,6 +1,6 @@
 package io.opaa.eval;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import io.opaa.query.QueryProperties;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -11,15 +11,18 @@ import java.util.Set;
  * the same, already-indexed corpus, with one of them designated the reference variant every other
  * variant's delta is computed against.
  *
+ * <p><b>Deliberately no {@code @JsonIgnoreProperties(ignoreUnknown = true)}</b> — see {@link
+ * PipelineVariant}'s Javadoc for why a typo in a hand-authored comparison file must fail the load
+ * rather than silently produce a comparison that never differs from production.
+ *
+ * @param name stable identifier; also used verbatim as part of the variant report's file name
+ *     ({@code variant-report-<name>.json}), so it must not contain a path separator.
  * @param domain the {@link EvalDomainConfig#name()} this comparison runs against — the corpus and
  *     golden dataset the harness has already indexed and loaded when it runs a comparison.
  * @param referenceVariant the {@link PipelineVariant#name()} of the comparison's reference variant.
- *     Must be present among {@link #variants()} and must be executable (not declare {@link
- *     PipelineVariant#requiresReindex()} and not enable query decomposition) — every delta in the
- *     report is paired against it, so a skipped reference variant would leave every other variant's
- *     delta undefined.
+ *     Must be present among {@link #variants()}; {@link #requireExecutableReference} additionally
+ *     checks that it would actually run under a given production configuration.
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
 public record VariantComparison(
     String name,
     String description,
@@ -30,6 +33,13 @@ public record VariantComparison(
   public VariantComparison {
     if (name == null || name.isBlank()) {
       throw new IllegalArgumentException("a variant comparison must have a non-blank name");
+    }
+    if (name.contains("/") || name.contains("\\")) {
+      throw new IllegalArgumentException(
+          "variant comparison name '"
+              + name
+              + "' must not contain a path separator — it becomes part of the report file name"
+              + " (build/eval-reports/variant-report-<name>.json)");
     }
     if (variants == null || variants.isEmpty()) {
       throw new IllegalArgumentException("variant comparison '" + name + "' declares no variants");
@@ -65,5 +75,33 @@ public record VariantComparison(
         .filter(v -> v.name().equals(referenceVariant))
         .findFirst()
         .orElseThrow();
+  }
+
+  /**
+   * Fails fast if {@link #reference()} would not actually run under {@code
+   * productionQueryProperties} — every prerequisite {@link VariantPrerequisites} checks (issue
+   * #1041 review, Befund 3/9). Cannot be enforced in the compact constructor above: the check needs
+   * the harness's production {@link QueryProperties}, which is not known when a comparison is
+   * merely parsed from its JSON file. Callers invoke this immediately after loading, before paying
+   * for the (tens-of-minutes) corpus indexing the comparison would otherwise only fail after — the
+   * same reasoning as {@code PipelineHarnessSupport#requireMeasurableConfiguration}.
+   */
+  public void requireExecutableReference(QueryProperties productionQueryProperties) {
+    PipelineVariant reference = reference();
+    QueryProperties effective =
+        VariantQueryProperties.apply(productionQueryProperties, reference.queryOverrides());
+    VariantPrerequisites.unmetReason(reference, effective)
+        .ifPresent(
+            reason -> {
+              throw new IllegalStateException(
+                  "Referenzvariante '"
+                      + referenceVariant
+                      + "' des Variantenvergleichs '"
+                      + name
+                      + "' ist nicht ausführbar: "
+                      + reason
+                      + " Jedes Delta dieses Berichts ist gegen sie gepaart, ein Bericht ohne "
+                      + "ausführbare Referenzvariante ist sinnlos.");
+            });
   }
 }

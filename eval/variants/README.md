@@ -73,8 +73,26 @@ ein Artefakt, keine Baseline“).
 ## Referenzvarianten-Selbstprüfung
 
 Die Referenzvariante (keine Parameteränderung) wird im selben Testlauf sowohl über die
-Variantenmechanik als auch direkt über `PipelineHarnessSupport` gemessen; der Harness assertiert,
-dass beide Messungen bitgleiche Zahlen liefern (Abnahmekriterium des Issues). Das ist die stärkste
-heute mögliche Ausprägung dieser Prüfung: Für den Pipeline-Pfad existiert noch keine committete
-Baseline-Datei (das ist Gegenstand von Issue #1040); sobald sie vorliegt, kann derselbe
-Referenzvarianten-Bericht zusätzlich gegen sie geprüft werden.
+Variantenmechanik als auch direkt über das produktiv verdrahtete, `@Autowired` `QueryService`-Bean
+gemessen (dasselbe Bean, mit dem der Pipeline-Pfad in Schritt 6 bereits misst) — nicht über eine
+zweite, handgebaute `QueryService`-Instanz, denn das würde nur Determinismus belegen, nicht dass
+die Variantenmechanik dieselbe Pipeline trifft wie die Produktion. Der Harness assertiert, dass
+beide Messungen bitgleiche Zahlen liefern — Metriken (`overall()`, `allQueryResults()`) **und**
+die Laufkonfiguration (`runConfiguration()`, ohne die naturgemäß unterschiedlichen Zeitstempel-
+und Laufzeitfelder) —, damit auch eine rangfolge-neutrale, versehentlich angewandte Override
+auffällt (Abnahmekriterium des Issues). Das ist die stärkste heute mögliche Ausprägung dieser
+Prüfung: Für den Pipeline-Pfad existiert noch keine committete Baseline-Datei (das ist Gegenstand
+von Issue #1040); sobald sie vorliegt, kann derselbe Referenzvarianten-Bericht zusätzlich gegen sie
+geprüft werden.
+
+## Fail-Fast und Fehlerbehandlung
+
+Eine kaputte Vergleichsdatei (fehlende Datei, unbekanntes Feld, ungültige Parameterkombination wie
+`fetchK < topK`, eine nicht ausführbare Referenzvariante) lässt den Lauf **vor** der Indizierung
+abbrechen, nicht erst nach der teuren Korpus-Indizierung und den beiden vorangehenden Messpfaden.
+Ist die Datei einmal geladen und die Referenzvariante ausführbar, ist ein Fehler beim eigentlichen
+Vergleichslauf (Laden, Ausführen, Schreiben des Berichts) dagegen wie der Pipeline-Pfad selbst
+geschützt (`PipelineHarnessSupport#runAndWriteGuarded`): Er kostet nur den Variantenbericht, nie
+das bereits erarbeitete Urteil des Rohvektor- oder Pipeline-Pfads. Einzige Ausnahme ist die
+Referenzvarianten-Selbstprüfung selbst — ihr Fehlschlagen bleibt ein harter Testfehler, weil er
+einen Fehler in der Variantenmechanik selbst anzeigt, keinen kaputten Input.
