@@ -53,6 +53,60 @@ public final class RetrievalMetrics {
         allExpectedDocumentsHitAtK(rankedFileNames, expected, RECALL_K));
   }
 
+  /**
+   * Per-query result whose k-window is carried as data rather than baked into field names (issue
+   * #1039) — the shape the pipeline measurement path needs, which measures at the production {@code
+   * top-k}, not at the raw-vector path's {@code documentTopK=10}. Deliberately a second record next
+   * to {@link QueryResult} instead of a generalization of it: {@link QueryResult}'s {@code
+   * ndcgAt10}/{@code recallAt10} component names are part of the raw-vector path's report and
+   * baseline schema, and renaming them would invalidate every committed baseline for a measurement
+   * whose values did not change at all.
+   *
+   * @param hitRateK the window Hit Rate was computed at.
+   * @param rankingK the window MRR, nDCG, Recall and {@code allExpectedDocumentsHit} were computed
+   *     at.
+   */
+  public record WindowedQueryResult(
+      GoldenCase goldenCase,
+      List<String> rankedFileNames,
+      int hitRateK,
+      int rankingK,
+      double hitRate,
+      double reciprocalRank,
+      double ndcg,
+      double recall,
+      double allExpectedDocumentsHit) {}
+
+  /**
+   * Evaluates one case at explicitly given windows, unlike {@link #evaluate} which pins the
+   * raw-vector path's 5/10/10. Identical metric mathematics — the same package-private helpers
+   * below serve both — with one deliberate difference: {@link #reciprocalRankAtK} truncates at
+   * {@code rankingK}, whereas {@link #reciprocalRank} scans the whole ranked list. The two coincide
+   * whenever the ranked list is no longer than {@code rankingK}, which is always the case on the
+   * pipeline path (its list is the production selection itself, capped at {@code top-k}).
+   */
+  public static WindowedQueryResult evaluateAt(
+      GoldenCase goldenCase, List<String> rankedFileNames, int hitRateK, int rankingK) {
+    if (hitRateK <= 0 || rankingK <= 0) {
+      throw new IllegalArgumentException(
+          "hitRateK and rankingK must be positive, got hitRateK="
+              + hitRateK
+              + " rankingK="
+              + rankingK);
+    }
+    Set<String> expected = new LinkedHashSet<>(goldenCase.expectedDocuments());
+    return new WindowedQueryResult(
+        goldenCase,
+        rankedFileNames,
+        hitRateK,
+        rankingK,
+        hitRateAtK(rankedFileNames, expected, hitRateK),
+        reciprocalRankAtK(rankedFileNames, expected, rankingK),
+        ndcgAtK(rankedFileNames, expected, rankingK),
+        recallAtK(rankedFileNames, expected, rankingK),
+        allExpectedDocumentsHitAtK(rankedFileNames, expected, rankingK));
+  }
+
   static double hitRateAtK(List<String> ranked, Set<String> expected, int k) {
     return ranked.stream().limit(k).anyMatch(expected::contains) ? 1.0 : 0.0;
   }
@@ -60,6 +114,22 @@ public final class RetrievalMetrics {
   /** Reciprocal rank of the first relevant hit anywhere in the (fully) ranked list; 0 if none. */
   static double reciprocalRank(List<String> ranked, Set<String> expected) {
     for (int i = 0; i < ranked.size(); i++) {
+      if (expected.contains(ranked.get(i))) {
+        return 1.0 / (i + 1);
+      }
+    }
+    return 0.0;
+  }
+
+  /**
+   * Reciprocal rank of the first relevant hit within the top-{@code k} of the ranked list; 0 if
+   * none. Unlike {@link #reciprocalRank}, which deliberately scans the whole list (ADR-0012
+   * decision 1 and 2, where the list is itself the window), this bounds the scan — the honest
+   * definition of "MRR@k" for a path whose ranked list can be longer than the window it reports.
+   */
+  static double reciprocalRankAtK(List<String> ranked, Set<String> expected, int k) {
+    int depth = Math.min(k, ranked.size());
+    for (int i = 0; i < depth; i++) {
       if (expected.contains(ranked.get(i))) {
         return 1.0 / (i + 1);
       }

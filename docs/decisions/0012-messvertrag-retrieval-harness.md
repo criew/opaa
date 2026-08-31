@@ -4,7 +4,11 @@
 
 Akzeptiert — ergänzt um den [Nachtrag vom 2026-08-21](#nachtrag-dokumentbezogenes-k-fenster-und-chunkebene-issue-721)
 (Maintainer-Entscheidung zu Issue #721/#234: Messvertrag-Version 2, dokumentbezogenes k-Fenster,
-zweite Metrikfamilie auf Chunkebene; die Entscheidungen 1–7 unten bleiben unverändert in Kraft).
+zweite Metrikfamilie auf Chunkebene; die Entscheidungen 1–7 unten bleiben unverändert in Kraft)
+sowie um den [Nachtrag vom 2026-08-31](#nachtrag-pipeline-messpfad-issue-1039) (Issue #1039: ein
+zweiter Messpfad durch die produktive Query-Pipeline mit **eigenem**, getrennt gezähltem
+Messvertrag; der hier festgehaltene Vertrag beschreibt weiterhin ausschließlich den
+Rohvektor-Pfad und bleibt bei Version 2).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -183,3 +187,100 @@ Chunkebene liefert `NOT_APPLICABLE` — die neue Fassung des Harnesses berechnet
 dieselbe Rangliste wie die alte. **Erwartung: bitgleiche Zahlen** gegenüber der unter
 Messvertrag-Version 1 gemessenen Baseline; die PR-Beschreibung zu Issue #721 enthält den
 Vorher/Nachher-Vergleich als Beleg.
+
+---
+
+## Nachtrag: Pipeline-Messpfad (Issue #1039)
+
+> **Nachtrag vom 2026-08-31, Umsetzung von `docs/features/retrieval-benchmark.md`, Abschnitt 1
+> („Messpfad durch die produktive Pipeline"), Issue #1039.** Dieser Abschnitt schreibt den
+> Messvertrag fort, statt ihn umzuschreiben: Die Entscheidungen 1–10 oben gelten unverändert und
+> beschreiben ab hier ausdrücklich den **Rohvektor-Pfad**.
+
+### 11. Zwei Messpfade, getrennt ausgewiesen
+
+Der Harness misst ab #1039 zweimal auf demselben, einmal indizierten und manifest-geprüften Korpus:
+
+| | Rohvektor-Pfad | Pipeline-Pfad |
+|---|---|---|
+| Gemessen wird | `VectorStore#similaritySearch` direkt | `QueryService#retrieveRelevantChunks`, also Schritte 2–6 aus `retrieval-algorithm.md` |
+| Ähnlichkeitsschwelle | ausgewiesen, **nicht** angewandt (Entscheidung 3) | **angewandt**, nicht nur ausgewiesen |
+| Fenster | `documentTopK = 10` | `top-k = 8` (die tatsächliche Trefferzahl der Produktion) |
+| Metriken | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | Hit Rate@5, MRR@8, nDCG@8, Recall@8 |
+| Report | `retrieval-metrics[-<domäne>].json` | `pipeline-metrics-<domäne>.json` |
+| Vertragsversion | `EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` | `PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` |
+
+Der Rohvektor-Pfad wird **nicht ersetzt**. Er misst die Qualität der Vektorsuche selbst,
+unvermischt mit allem, was danach umsortiert — der aussagekräftigere Pfad für Vergleiche von
+Einbettungsmodellen und Chunking-Varianten. Der Pipeline-Pfad ist der einzige, der Aussagen über
+die Nutzererfahrung erlaubt. Beide gehören in den Bericht, nebeneinander und getrennt.
+
+### 12. Die Metriken tragen ihr Fenster an jeder Zahl
+
+Die beiden Pfade sind **nicht ineinander umrechenbar**. Weil die Schwelle im Pipeline-Pfad
+tatsächlich greift, kann ein Dokument dort ganz aus der Rangliste verschwinden statt nur
+zurückzufallen; Recall-Werte liegen systematisch niedriger. Das ist kein Fehler, sondern die
+gemessene Realität — und ein nDCG@8 neben einem nDCG@10 in einer Tabelle ohne Kennzeichnung ist
+ein Auswertungsfehler.
+
+Deshalb ist die Fensterangabe im Pipeline-Pfad nicht Konvention, sondern Schema: Die
+Report-Felder heißen `hitRateAt5`, `mrrAt8`, `ndcgAt8`, `recallAt8`, `recallAt8Ceiling`,
+`hitCountAt8`, `allExpectedDocumentsHitAt8` (`io.opaa.eval.PipelineMetricsAggregate`), jede
+Textausgabe beschriftet dieselben Zahlen genauso, und jeder Report führt zusätzlich einen
+`metricWindowNote`. `PipelineMetricsAggregate.of` weist Ergebnisse zurück, die an einem anderen
+Fenster gemessen wurden, statt sie unter einem Feldnamen abzulegen, der sie falsch beschreibt.
+
+### 13. Fixpunkte des Pipeline-Pfads
+
+Zusätzlich zu den gemeinsamen Fixpunkten (Einbettungsmodell samt Digest, Dimensionen, `chunk-size`,
+`chunk-overlap`, `pgvectorIndexType`, Korpus-Manifest, Golden Dataset) sind für den Pipeline-Pfad
+festgeschrieben: `fetch-k`, `top-k`, `similarity-threshold`, `max-chunks-per-document`,
+`mmr-lambda`, `query-decomposition-enabled`, `max-sub-queries` und — bei aktiver Zerlegung — das
+verwendete Chat-Modell. Alle werden aus der laufenden Anwendungskonfiguration gelesen, nicht im
+Harness gesetzt; Ausnahme ist `query-decomposition-enabled` (siehe 15.).
+
+### 14. Der Suchbereich ist fest und vollständig; Rechtefilterung ist nicht Messgegenstand
+
+Schritt 1 der Pipeline (Scope-Bestimmung) wird nicht mitgemessen. Der Harness übergibt einen festen
+Suchbereich, der genau die eine Eval-Bibliothek mit dem gesamten Korpus umfasst.
+`QueryService#retrieveRelevantChunks` wendet ihn als denselben `library_id`-Filter innerhalb des
+`similaritySearch`-Aufrufs an, den eine echte Anfrage verwendet — er löst nur keine Berechtigungen
+selbst auf. Rechtedurchsetzung ist über die Backend-Integrationstests abgedeckt; sie hier
+mitzumessen würde die Metriken um einen Faktor verschieben, der mit Suchqualität nichts zu tun hat.
+
+### 15. Teilfragen-Zerlegung: vorerst abgeschaltet, nie stillschweigend degradiert
+
+Der Harness-Kontext hat kein aktives Chat-Modell. Bliebe die Zerlegung eingeschaltet, würde
+`QueryDecompositionService#decompose` je Anfrage fehlschlagen und auf Einzelanfragen-Retrieval
+zurückfallen — ein Lauf, der „mit Zerlegung" ausweist, was ohne Zerlegung gemessen wurde. Der
+Harness misst deshalb die Variante `decomposition-off` (`query-decomposition-enabled = false`,
+im Report als Fixpunkt geführt, `chatModel = null`) und **bricht ab**, wenn er mit eingeschalteter
+Zerlegung ohne Modell laufen soll (`PipelineHarnessSupport`). Welches Chat-Modell der Pipeline-Pfad
+mit aktiver Zerlegung verwenden soll, ist eine offene Entscheidung
+(`docs/features/retrieval-benchmark.md`, „Offene Punkte" 3).
+
+### 16. Eigene Vertragsversion statt Erhöhung der bestehenden
+
+`docs/features/retrieval-benchmark.md` schlägt vor, die Fortschreibung „mit erhöhter
+`measurementContractVersion`" vorzunehmen. Umgesetzt ist stattdessen eine **eigene**, bei 1
+beginnende Zählung für den Pipeline-Pfad. Begründung:
+
+- Der Rohvektor-Vertrag (Entscheidungen 1–10) ändert sich durch diese Erweiterung an keiner Stelle
+  — weder Gain-Funktion noch IDCG-Basis, Fenster, Schwellenbehandlung oder Mittelungsart.
+- `measurementContractVersion` ist ein Gültigkeitsfeld von `BaselineComparator`. Eine Erhöhung
+  würde jede committete Rohvektor-Baseline ungültig machen und einen mehrstündigen
+  Neuziehungs-Lauf erzwingen — für eine Messung, deren Definitionen und Zahlen sich nicht bewegt
+  haben. Genau das verbietet Abnahmekriterium 4 von #1039 dem Sinn nach.
+- Zwei Verträge, die verschiedene Dinge beschreiben, unter einer Nummer zu führen, hieße, jede
+  künftige Änderung an einem Pfad als Änderung des anderen auszuweisen.
+
+Entscheidung 6 gilt für beide Zählungen unverändert: Jede Änderung an den Festlegungen eines Pfads
+erhöht dessen Versionsnummer und macht dessen Baselines ungültig.
+
+### Was dieser Nachtrag noch nicht festlegt
+
+Baselines und Toleranzen des Pipeline-Pfads. #1039 liefert den Messpfad und seinen Report; die
+getrennten Baseline-Dateien je Pfad und Domäne, ihre Aufnahme in `BaselineComparator` und in den
+nächtlichen Job sind Gegenstand der Folgearbeit desselben Epics (Umsetzungsschnitt A/E in
+`docs/features/retrieval-benchmark.md`). Bis dahin ist der Pipeline-Report ein Beobachtungs-,
+kein Wächterartefakt.

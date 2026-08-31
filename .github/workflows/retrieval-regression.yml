@@ -49,11 +49,15 @@ jobs:
             # aktuell 45 min) liegen, sonst endet eine hängende Indizierung als abgebrochener Job statt
             # als diagnostizierbarer Testfehlschlag. Wer eines der beiden Limits anfasst, prüft das
             # andere mit.
-            timeout_minutes: 60
+            # 60 -> 70 mit #1039: der Lauf führt nach dem Rohvektor-Pfad zusätzlich den
+            # Pipeline-Messpfad über dieselben Golden-Fälle aus (eine Einbettung je Anfrage, keine
+            # zweite Indizierung).
+            timeout_minutes: 70
             exec_step_name: 'Retrieval-Regression ausführen'
             report_file: baseline-comparison.md
             artifact_name: retrieval-metrics
             metrics_file: retrieval-metrics.json
+            pipeline_metrics_file: pipeline-metrics-comic-characters.json
             chunk_map_file: chunk-map-comic-characters.json
             marker: '<!-- retrieval-regression-alert -->'
             pr_fallback_heading: '## Retrieval-Regression gegen Baseline'
@@ -68,11 +72,13 @@ jobs:
             # (CityLandmarksRetrievalEvaluationHarnessTest) liegen. Zwei unabhängig gemessene volle
             # Läufe lagen bei ~124 bzw. ~132 Minuten (GitHub-Actions-Runs 32524864494, 32550844537),
             # beide deutlich unter dem 170-Minuten-Budget.
-            timeout_minutes: 170
+            # 170 -> 180 mit #1039, siehe die Begründung beim comic-characters-Eintrag oben.
+            timeout_minutes: 180
             exec_step_name: 'Retrieval-Regression (city-landmarks) ausführen'
             report_file: baseline-comparison-city-landmarks.md
             artifact_name: retrieval-metrics-city-landmarks
             metrics_file: retrieval-metrics-city-landmarks.json
+            pipeline_metrics_file: pipeline-metrics-city-landmarks.json
             chunk_map_file: chunk-map-city-landmarks.json
             marker: '<!-- retrieval-regression-alert-city-landmarks -->'
             pr_fallback_heading: '## Retrieval-Regression gegen Baseline (city-landmarks)'
@@ -225,6 +231,7 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: |
             backend/build/eval-reports/${{ matrix.metrics_file }}
+            backend/build/eval-reports/${{ matrix.pipeline_metrics_file }}
             backend/build/eval-reports/${{ matrix.report_file }}
             backend/build/eval-reports/${{ matrix.chunk_map_file }}
           if-no-files-found: warn

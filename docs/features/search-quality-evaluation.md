@@ -345,13 +345,29 @@ JUnit-Test
   ├─ Testcontainers: pgvector/pgvector:pg18
   ├─ Testcontainers: Ollama mit nomic-embed-text
   ├─ Korpus aus eval/corpus/ indizieren (Manifest vorher prüfen)
-  ├─ pro Golden-Query: VectorStore.similaritySearch(topK=10)
-  ├─ Treffer über Chunk-Metadatum file_name auf Entitäten abbilden
-  └─ Hit Rate@5, MRR, nDCG@10, Recall@10 berechnen → Report + Baseline-Vergleich
+  ├─ Rohvektor-Pfad
+  │    ├─ pro Golden-Query: VectorStore.similaritySearch(topK=10, threshold=0.0)
+  │    ├─ Treffer über Chunk-Metadatum file_name auf Entitäten abbilden
+  │    └─ Hit Rate@5, MRR@10, nDCG@10, Recall@10 → Report + Baseline-Vergleich
+  └─ Pipeline-Pfad (#1039, derselbe Index, keine zweite Indizierung)
+       ├─ pro Golden-Query: QueryService#retrieveRelevantChunks
+       │    (Zerlegung → Suche je Teilfrage → MMR → RRF → Dokument-Vervollständigung,
+       │     Produktionskonfiguration inkl. angewandter Ähnlichkeitsschwelle)
+       └─ Hit Rate@5, MRR@8, nDCG@8, Recall@8 → eigener Report
 ```
 
 Kein LLM ist beteiligt. Retrieval-Metriken sind reine Ranking-Metriken; die Generationsmetriken
-(`RelevancyEvaluator`, `FactCheckingEvaluator`) folgen in einer späteren Phase.
+(`RelevancyEvaluator`, `FactCheckingEvaluator`) folgen in einer späteren Phase. Der Pipeline-Pfad
+endet bewusst vor der Antwortgenerierung (Schritt 7 in
+[`retrieval-algorithm.md`](./retrieval-algorithm.md)) und läuft vorerst mit abgeschalteter
+Teilfragen-Zerlegung, weil der Harness kein Chat-Modell hat.
+
+**Die beiden Pfade sind nicht ineinander umrechenbar** und werden nie ohne Fensterangabe
+nebeneinandergestellt: Der Pipeline-Pfad wendet die Ähnlichkeitsschwelle tatsächlich an und misst
+im Produktionsfenster `top-k=8`, der Rohvektor-Pfad misst ungefiltert bei `documentTopK=10`.
+Details, Fixpunkte und Begründung: [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md),
+Nachtrag „Pipeline-Messpfad", und [`retrieval-benchmark.md`](./retrieval-benchmark.md),
+Abschnitt 1.
 
 ### Einbettungsmodell in CI — Optionen
 

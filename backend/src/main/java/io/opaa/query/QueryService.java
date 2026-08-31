@@ -226,15 +226,9 @@ public class QueryService {
                 if (searchScope.isEmpty()) {
                   relevantChunks = List.of();
                 } else {
-                  List<Message> conversationHistory = chatMemory.get(conversationKey);
-                  List<String> searchQueries =
-                      effectiveSearchQueries(question, conversationHistory);
-                  relevantChunks = retrieveRelevantChunks(searchQueries, searchScope);
-                  log.debug(
-                      "Retrieved {} relevant chunks across {} search quer{} for query",
-                      relevantChunks.size(),
-                      searchQueries.size(),
-                      searchQueries.size() == 1 ? "y" : "ies");
+                  relevantChunks =
+                      retrieveRelevantChunks(
+                          question, chatMemory.get(conversationKey), searchScope);
                 }
 
                 // --- LLM call: the slowest step, and the reason no phase in this method carries a
@@ -402,6 +396,34 @@ public class QueryService {
   }
 
   /**
+   * The retrieval half of {@link #query}: steps 2 to 6 of the pipeline documented in
+   * docs/features/retrieval-algorithm.md — decomposition, one vector search per sub-query, MMR,
+   * Reciprocal Rank Fusion and document completion — stopping before step 7 (answer generation,
+   * citation validation, source mapping). Returns the chunks in the exact order and count the
+   * answer prompt would have been built from, using the configured {@link QueryProperties} for
+   * every parameter, {@code similarityThreshold} included.
+   *
+   * <p><b>{@code searchScope} is taken as given.</b> This method applies it as the {@code
+   * library_id} filter of every search exactly as {@link #query} does, but resolves no permissions
+   * of its own — a caller other than {@link #query} is responsible for establishing that the scope
+   * it passes is one the acting user may read (ADR-0008 §5). The retrieval-evaluation harness
+   * ({@code io.opaa.eval}) is such a caller: it deliberately measures a fixed, complete scope over
+   * its own eval library, since permission enforcement is covered by the backend's integration
+   * tests and is not a measurement subject.
+   *
+   * <p>An empty {@code searchScope} short-circuits to an empty result without any search, LLM call
+   * or embedding lookup — the same short-circuit {@link #query} takes.
+   */
+  public List<Document> retrieveRelevantChunks(
+      String question, List<Message> conversationHistory, Set<UUID> searchScope) {
+    if (searchScope.isEmpty()) {
+      return List.of();
+    }
+    return retrieveRelevantChunks(
+        effectiveSearchQueries(question, conversationHistory), searchScope);
+  }
+
+  /**
    * Runs one permission- and threshold-scoped {@code similaritySearch} per entry in {@code
    * searchQueries} against the identical {@code searchScope} filter (#923) - the ADR-0008 §5
    * invariant {@link #query}'s Javadoc documents applies to every one of these calls, not just the
@@ -421,6 +443,16 @@ public class QueryService {
    * holds after completion runs.
    */
   private List<Document> retrieveRelevantChunks(List<String> searchQueries, Set<UUID> searchScope) {
+    List<Document> relevantChunks = retrieveAndSelect(searchQueries, searchScope);
+    log.debug(
+        "Retrieved {} relevant chunks across {} search quer{} for query",
+        relevantChunks.size(),
+        searchQueries.size(),
+        searchQueries.size() == 1 ? "y" : "ies");
+    return relevantChunks;
+  }
+
+  private List<Document> retrieveAndSelect(List<String> searchQueries, Set<UUID> searchScope) {
     Filter.Expression filter = libraryFilter(searchScope);
     if (searchQueries.size() == 1) {
       List<Document> candidates =

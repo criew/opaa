@@ -26,6 +26,8 @@ import io.opaa.indexing.JobStatus;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
+import io.opaa.query.QueryProperties;
+import io.opaa.query.QueryService;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -72,8 +74,13 @@ import tools.jackson.databind.json.JsonMapper;
  * frozen `eval/corpus/city-landmarks` corpus through the production pipeline ({@link
  * io.opaa.indexing.FileProcessingService} / {@link io.opaa.indexing.ChunkingService}), then runs
  * every case from {@code eval/golden/city-landmarks.json} directly against {@link
- * VectorStore#similaritySearch}. No LLM, no {@code QueryService} — retrieval-only, per ADR-0011
- * decision 3.
+ * VectorStore#similaritySearch}. No LLM — retrieval-only, per ADR-0011 decision 3.
+ *
+ * <p>Like {@link RetrievalEvaluationHarnessTest}, it additionally runs the <b>pipeline measurement
+ * path</b> (issue #1039, {@link PipelineHarnessSupport}) on the same index afterwards: the same
+ * golden cases through {@code QueryService}'s production retrieval chain, at the production
+ * configuration including the applied similarity threshold, reported separately at its own window.
+ * The raw-vector path's numbers, report file and baseline are untouched by it.
  *
  * <p>This class is a deliberate near-duplicate of {@link RetrievalEvaluationHarnessTest} rather
  * than a parameterization of it (see issue #721 PR #723, "Umfang-Entscheidungen": a second domain
@@ -327,6 +334,16 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     // EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE javadoc and ADR-0010: the harness measures whatever
     // chunk-size production is actually configured with (application.yml's own default).
     registry.add("opaa.indexing.batch-size", () -> 50);
+    // #1039: the only opaa.query.* value this harness overrides — the pipeline measurement path
+    // measures the decomposition-off variant. This context has no active chat model, so leaving
+    // decomposition on would make QueryDecompositionService fail per query and fall back to
+    // single-query retrieval: a run labelled "with decomposition" that measured without it. Which
+    // chat model the pipeline path should use is still an open decision
+    // (docs/features/retrieval-benchmark.md, "Offene Punkte" 3). PipelineHarnessSupport refuses to
+    // measure without this override rather than accepting the degradation. Every other query
+    // parameter (fetch-k, top-k, similarity-threshold, max-chunks-per-document, mmr-lambda) is
+    // deliberately left at its production default and read from the running context.
+    registry.add("opaa.query.query-decomposition-enabled", () -> false);
     // Single-threaded on purpose (unlike the production default of core=2/max=4): with more than
     // one worker thread, the order in which chunks are inserted into pgvector — and therefore the
     // shape of the HNSW graph the approximate search walks — becomes nondeterministic across runs.
@@ -350,6 +367,10 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   // exactly what was actually indexed, not a second, potentially drifting re-implementation.
   @Autowired private DocumentService documentService;
   @Autowired private ChunkingService chunkingService;
+  // #1039: the production query pipeline itself, for the second (pipeline) measurement path — the
+  // very beans a real request runs through, not a re-implementation of steps 2 to 6.
+  @Autowired private QueryService queryService;
+  @Autowired private QueryProperties queryProperties;
 
   // #419: triggerIndexing needs a caller-chosen target library and an authorized caller -
   // set up once per run, not pinned to a well-known system library id, since #419 already stopped
@@ -743,6 +764,36 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     String summary = ReportWriter.renderSummary(report);
     log.info(summary);
     System.out.println("Report written to " + reportFile.toAbsolutePath());
+
+    // 6. Second measurement path (#1039): the same golden cases, the same index, but through the
+    //    production query pipeline (steps 2 to 6 of docs/features/retrieval-algorithm.md) instead
+    //    of similaritySearch directly. Runs after — never instead of — the raw-vector path above,
+    //    whose numbers, report file and baseline are untouched by this block.
+    Instant pipelineRunStart = Instant.now();
+    PipelineEvaluationReport pipelineReport =
+        PipelineHarnessSupport.runAndWrite(
+            DOMAIN,
+            new PipelineHarnessSupport.RunIdentity(
+                "ollama",
+                EMBEDDING_MODEL,
+                actualEmbeddingModelDigest,
+                OLLAMA_IMAGE,
+                EMBEDDING_DIMENSIONS,
+                actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
+                PGVECTOR_INDEX_TYPE,
+                CorpusManifest.sha256Hex(manifestFile),
+                manifest.fileNames().size(),
+                "eval/golden/" + DOMAIN.goldenDatasetFileName(),
+                GoldenDataset.sha256(goldenFile)),
+            queryService,
+            queryProperties,
+            indexingProperties,
+            evalLibraryId,
+            goldenCases,
+            pipelineRunStart);
+    log.info(PipelineReportWriter.renderSummary(pipelineReport));
+    System.out.println(
+        "Pipeline report written to " + PipelineHarnessSupport.reportFile(DOMAIN).toAbsolutePath());
   }
 
   private static WorstQuery toWorstQuery(RetrievalMetrics.QueryResult r) {
