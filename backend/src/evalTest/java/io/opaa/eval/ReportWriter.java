@@ -22,9 +22,15 @@ public final class ReportWriter {
         StandardCharsets.UTF_8);
   }
 
-  public static String renderSummary(EvaluationReport report) {
+  /**
+   * Renders the summary of a raw-vector run. The domain is passed in rather than read from the
+   * report: {@link EvaluationReport.RunConfiguration} does not carry it (unlike the pipeline path's
+   * counterpart), and this heading used to be the literal string {@code comic-characters} for every
+   * domain that reused this writer.
+   */
+  public static String renderSummary(EvaluationReport report, String domain) {
     StringBuilder sb = new StringBuilder();
-    sb.append("\n=== Retrieval-Evaluation: comic-characters ===\n\n");
+    sb.append(format("\n=== Retrieval-Evaluation: %s ===\n\n", domain));
     sb.append(
         format(
             "Messvertrag-Version: %d (siehe ADR-0012)\n\n", report.measurementContractVersion()));
@@ -124,6 +130,7 @@ public final class ReportWriter {
     appendGroup(sb, "Je Kategorie", report.byCategory());
     appendGroup(sb, "Je Schwierigkeit", report.byDifficulty());
     appendGroup(sb, "Je Sprache", report.byLanguage());
+    sb.append(ExpectedStateAudit.renderSummary(report.expectedStateAudit()));
 
     sb.append("Schlechteste 10 Anfragen (nach nDCG@10):\n");
     for (var q : report.worstQueries()) {

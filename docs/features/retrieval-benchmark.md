@@ -495,6 +495,34 @@ Drei Milderungen, keine Lösungen:
 
 ## 5. Neue Golden-Fall-Klassen
 
+> **Umsetzungsstand (Issue #1043, 08/2026):** Die fünf Fallklassen sind gebaut, kuratiert und
+> gemessen. `eval/golden/verwaltung.json` führt 46 von Hand kuratierte Fälle (9–10 je Klasse, über
+> dem Minimum von acht), jeder mit seiner Klasse als `category` und den drei Zustandsfeldern — ab
+> dem ersten Commit im Schema, nicht nachgerüstet. Beide Messpfade werten je Klasse aus
+> (`byCategory` in beiden Reports, je Klasse eine eigene Gruppe in beiden Baselines), und beide
+> Baselines der Domäne sind aus demselben CPU-Testcontainer-Lauf gezogen
+> (`eval/baseline/verwaltung.json`, `eval/baseline/pipeline-verwaltung.json`).
+>
+> **Was der erste Lauf zeigt** (2026-08-31, Pipeline-Pfad): 33 der 46 Fälle sind als `known_gap`
+> geführt. `literal_term_weak_embedding` ist vollständig ungelöst (0 von 9) — der Anfragebegriff
+> steht wörtlich im Zieldokument, und dieses liegt in mehreren Fällen nicht einmal im
+> Trefferfenster; `compound_word` ebenfalls (0 von 9); `multi_hop` 1 von 9; `metadata_filter` 4 von
+> 9; `exact_identifier` dagegen 8 von 10. Die Domäne ist damit nicht pauschal schwer, sondern
+> klassenspezifisch — genau die Voraussetzung, die Abschnitt 6 an eine Eintrittsbedingung stellt.
+> Die vollständige Liste mit Begründung je Fall: `eval/corpus/verwaltung/MAINTENANCE.md`.
+>
+> **Zustandsfelder-Audit statt stiller Baseline-Verbesserung:** Jeder Lauf hält in beiden Reports
+> die deklarierten Zustände gegen die gemessenen und nennt beide Abweichungsrichtungen namentlich
+> (`io.opaa.eval.ExpectedStateAudit`). „Gelöst" ist dabei einheitlich definiert: alle erwarteten
+> Dokumente im Fenster **und** ein erwartetes Dokument auf Rang 1, auf beiden Messpfaden — ohne die
+> Rang-1-Bedingung gälten alle neun `metadata_filter`-Fälle als gelöst, obwohl in fünf davon die
+> falsche Fassung obenauf liegt. Das Audit meldet, es lässt den Lauf nicht fehlschlagen: Ein
+> Zustandswechsel bleibt eine bewusste, datierte Entscheidung.
+>
+> **Nicht mit umgesetzt:** die Aufnahme der Klassen in die bestehenden Domänen (offener Punkt 5) —
+> unverändert offen, weil sie dort eine Baseline-Neuziehung kostet.
+
+
 Fünf Kategorien kommen hinzu. Jede hat ein benanntes Fehlerbild, eine überprüfbare Ground Truth und
 einen Adressaten in der Roadmap. Sie werden primär in der Verwaltungsdomäne umgesetzt; wo eine
 bestehende Domäne sie trägt, dürfen sie auch dort ergänzt werden — jede Ergänzung an einem
@@ -679,7 +707,7 @@ Schritt die Grundlage des nächsten legt.
 | A | Pipeline-Messpfad, eigene Baseline-Dateien, ADR-0012-Nachtrag mit neuer Messvertrag-Version | Der Harness misst, was Nutzer erleben |
 | B | Variantenmechanik (deklarative Varianten, Variantenbericht, Referenzvarianten-Selbstprüfung) | Konfigurationsvergleiche ohne Handarbeit |
 | C | Verwaltungs-Evaldomäne: Generator, Korpus, Manifest, Chunk-Zahl-Erwartung, `MAINTENANCE.md` | Deutschsprachige Amtssprache im Messmaterial, mit benannter Pflegezuständigkeit |
-| D | Golden-Fälle der fünf neuen Klassen samt Zustandsfeldern, Kuratierung, erste Baseline der Domäne | Die bekannten Lücken sind beziffert und als `known_gap` benannt |
+| D | Golden-Fälle der fünf neuen Klassen samt Zustandsfeldern, Kuratierung, erste Baseline der Domäne | **Geliefert (Issue #1043).** Die bekannten Lücken sind beziffert und als `known_gap` benannt |
 | E | Mehrfachlauf-Regel für LLM-behaftete Varianten, Aufnahme beider Pfade in den nächtlichen Job | Der Benchmark ist Routine statt Sonderveranstaltung |
 
 Schritt A und B sind unabhängig von C und D und können parallel laufen. Erst nach D ist die
@@ -743,12 +771,16 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
 
 ## Offene Punkte
 
-1. **Umfang der Verwaltungs-Evaldomäne.** Wie viele Dokumente und wie viele Golden-Fälle? Die
-   bestehenden Domänen liegen bei ~1.450 Dokumenten/121 Fällen und 200 Dokumenten. Für die
-   Verwaltungsdomäne zählt nicht die Menge, sondern die Zahl glaubwürdiger Verwechslungspartner je
-   Fall — ein Korpus ohne thematisch nahe Konkurrenz macht jeden Fall trivial. Größenordnung erst
-   nach den ersten konstruierten Fällen der Klasse (a) belastbar schätzbar, weil deren
-   Konkurrenzbedarf den Rest bestimmt.
+1. **Umfang der Verwaltungs-Evaldomäne — beantwortet mit den Issues #1042/#1043 (08/2026).** 70
+   Dokumente, 46 Golden-Fälle. Die Größe ist damit um mehr als eine Größenordnung kleiner als bei
+   den beiden anderen Domänen, und das ist die belegte Antwort auf die ursprüngliche Frage: Für
+   diese Klassen zählt nicht die Menge, sondern die Zahl glaubwürdiger Verwechslungspartner je
+   Fall — 62 thematisch nahe, begriffsfreie Konkurrenzdokumente genügen, um
+   `literal_term_weak_embedding` vollständig scheitern zu lassen. Offen bleibt nur der
+   Nachschärfungsvorbehalt in `eval/corpus/verwaltung/SOURCE.md`: Sollte ein künftiger Baustein
+   diese Klasse lösen und der Verdacht aufkommen, die Schlagwort-Verstärkung in
+   `verwaltung-0038` habe dabei geholfen, wird der Korpus dort nachgeschärft — mit Neuziehung
+   beider Baselines.
 2. **Laufzeitbudget des nächtlichen Jobs — entschieden mit Issue #1044 (08/2026).** Gemessen an
    realen CI-Läufen (siehe die Umsetzungsstand-Notiz zu Issue #1044 in Abschnitt 1): Beide
    Regressionspfade bleiben nächtlich für beide Domänen, wie bereits durch #1039/#1040 umgesetzt —
@@ -775,9 +807,20 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
    erwogen und zugunsten des lokalen Modells zurückgestellt. Die formale Freigabe dieser Empfehlung
    und ihre Umsetzung (Chat-Modell-Bean im Eval-Kontext, Modell-Cache in der Workflow-Datei,
    Prerequisite-Lockerung, erste Baseline mit aktiver Zerlegung) sind Gegenstand von Issue #1085.
-4. **Umgang mit `answer_span` bei Fallklassen mit mehreren Zieldokumenten.** Multi-Hop-Fälle haben
-   pro Dokument eine Fundstelle. Ob die Chunkebenen-Metrik dafür je Dokument oder je Fall gebildet
-   wird, ist eine Messvertragsfrage und mit Schritt D zu klären.
+4. **Umgang mit `answer_span` bei Fallklassen mit mehreren Zieldokumenten — entschieden mit Issue
+   #1043 (08/2026).** Die Chunkebenen-Metrik wird **je Fall** gebildet, und ein `answer_span` ist
+   nur bei Fällen mit **genau einem** erwarteten Dokument zulässig; mehrdokumentige Fälle
+   (`multi_hop` und die mehrdokumentigen `compound_word`-Fälle) tragen keinen. Begründung: Ein
+   einzelner Span auf einem Fall, dessen Antwort über zwei Dokumente verteilt ist, misst eine
+   Hälfte und meldet sie als Ergebnis des ganzen Falls — ein Fall, den die Dokumentebene zu Recht
+   als Fehlschlag führt, sähe auf Chunkebene erfolgreich aus. Die Alternative (eine Span-Liste je
+   Dokument) wäre eine neue Metrik mit eigener Aggregation über Dokumente innerhalb eines Falls,
+   eigener Trefferdefinition und einer Erhöhung beider Vertragsversionen; kein heutiger
+   Messgegenstand braucht sie, weil die Chunkebene für Chunking-Vergleiche existiert und
+   Einzeldokument-Fälle das bereits bedienen. Die Regel entspricht dem, was `city-landmarks`
+   bereits praktiziert, ist aber jetzt geprüft (`GoldenCaseCuration`) statt Gewohnheit;
+   festgeschrieben im Nachtrag zu [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md).
+   Da sich an keiner gemessenen Größe etwas ändert, bleiben beide Vertragsversionen unverändert.
 5. **Aufnahme der neuen Fallklassen in bestehende Domänen.** Fachlich naheliegend für Kennungen und
    Komposita in `city-landmarks`; kostet aber eine Baseline-Neuziehung dort. Offen, ob dieser Preis
    sich lohnt oder die Klassen der Verwaltungsdomäne vorbehalten bleiben.

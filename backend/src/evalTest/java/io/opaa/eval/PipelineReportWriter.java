@@ -107,6 +107,7 @@ public final class PipelineReportWriter {
     appendGroup(sb, "Je Kategorie", report.byCategory());
     appendGroup(sb, "Je Schwierigkeit", report.byDifficulty());
     appendGroup(sb, "Je Sprache", report.byLanguage());
+    sb.append(ExpectedStateAudit.renderSummary(report.expectedStateAudit()));
 
     sb.append("Schlechteste 10 Anfragen (nach nDCG@8):\n");
     for (var q : report.worstQueries()) {

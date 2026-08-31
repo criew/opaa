@@ -84,6 +84,8 @@ class PipelineBaselineComparatorTest {
         Map.of("cat", aggregate(value, n)),
         Map.of("easy", aggregate(value, n)),
         Map.of("de", aggregate(value, n)),
+        // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+        null,
         List.of(),
         List.of());
   }

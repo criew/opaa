@@ -207,6 +207,23 @@ registerEvalDomain(
     pipelineBaselineTestClass = null,
 )
 
+// verwaltung domain (issues #1042/#1043): third domain, the one that carries the five named
+// Golden-Fall-Klassen of docs/features/retrieval-benchmark.md §5. Both paths are gated from the
+// start — this domain's raw-vector and pipeline baselines were drawn in the same run as part of
+// #1043, so neither path needs the ungated interim state city-landmarks is still in.
+registerEvalDomain(
+    name = "Verwaltung",
+    evaluateDescription = "Runs the retrieval-quality evaluation harness for the verwaltung domain " +
+        "against eval/corpus/verwaltung using Testcontainers (pgvector + Ollama). Not part of " +
+        "build/check.",
+    checkDescription = "Runs evaluateVerwaltungRetrieval, then fails if the result regresses beyond " +
+        "tolerance against eval/baseline/verwaltung.json (raw-vector path) or " +
+        "eval/baseline/pipeline-verwaltung.json (pipeline path), issue #1043. Needs Docker.",
+    harnessTestClass = "io.opaa.eval.VerwaltungRetrievalEvaluationHarnessTest",
+    baselineTestClass = "io.opaa.eval.VerwaltungBaselineRegressionTest",
+    pipelineBaselineTestClass = "io.opaa.eval.VerwaltungPipelineBaselineRegressionTest",
+)
+
 // Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
 // CorpusManifest, BaselineComparator — see their Javadoc). Lives in the evalTest source set (not
 // `main`/`test`) so the classes under test never ship in the production jar, but still runs as

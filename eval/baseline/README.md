@@ -17,6 +17,8 @@ Baselines:
 | `city-landmarks.json` | Rohvektor | dieselben | `measurementContractVersion` |
 | `pipeline-comic-characters.json` | Pipeline (Schritte 2–6 der Produktion) | Hit Rate@5, MRR@8, nDCG@8, Recall@8 | `pipelineMeasurementContractVersion` |
 | `pipeline-city-landmarks.json` | Pipeline | dieselben | noch nicht gezogen, siehe Issue #1081 |
+| `verwaltung.json` | Rohvektor | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | `measurementContractVersion` |
+| `pipeline-verwaltung.json` | Pipeline | Hit Rate@5, MRR@8, nDCG@8, Recall@8 | `pipelineMeasurementContractVersion` |
 
 Die Pipeline-Baseline von `city-landmarks` fehlt noch: Ihre Ziehung braucht einen ungestörten
 Zwei-Stunden-Lauf und erfolgt aus dem CPU-Artefakt des nächtlichen Laufs (Issue #1081). Bis dahin
@@ -41,6 +43,35 @@ Alles Weitere in diesem README — Toleranzformel, Rundungsregel, Trennung „Ba
 „Regression", Aktualisierungsverfahren, Absenkungsvergleich gegenüber `main` — gilt für **beide**
 Pfade. Wo der Pipeline-Pfad abweicht, steht es unter
 [Besonderheiten der Pipeline-Baselines](#besonderheiten-der-pipeline-baselines-issue-1040).
+
+## Domäne `verwaltung` (Issue #1043)
+
+`verwaltung.json` und `pipeline-verwaltung.json` sind die beiden Baselines der dritten Domäne,
+beide im selben CPU-Testcontainer-Lauf vom 2026-08-31 gezogen — anders als bei `city-landmarks`
+gibt es hier von Anfang an für **beide** Pfade ein Urteil (`checkVerwaltungRetrievalBaseline` führt
+beide Vergleiche aus). Drei Besonderheiten, alle in den `notes` der Dateien selbst festgehalten:
+
+- **Die Zahlen sind bewusst niedrig** (Gesamt-nDCG@10 0,553 / nDCG@8 0,536). Diese Domäne misst
+  benannte Fehlerbilder, nicht Abdeckung: 33 der 46 Fälle sind als `known_gap` geführt (siehe
+  [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)). Eine spätere
+  Verbesserung dieser Zahlen ist der erwartete Nutzen eines Retrieval-Bausteins — sie ist der
+  Grund, warum die Baseline **jetzt** gezogen wurde und nicht danach.
+- **Die Gruppen sind die fünf Fallklassen.** `category:literal_term_weak_embedding`,
+  `category:exact_identifier`, `category:compound_word`, `category:multi_hop` und
+  `category:metadata_filter` werden einzeln gegen die Baseline geprüft. Genau das ist der Zweck:
+  Eine Verbesserung, die nur im Gesamtmittel sichtbar ist, sagt über den adressierten Fehler nichts
+  (Spezifikation, Abschnitt 5).
+- **Keine Gruppe `language:de`.** In dieser einsprachigen Domäne wäre sie fallgleich mit `overall`
+  — ein zweiter Vergleich derselben Daten ohne zusätzliche Aussage. `BaselineComparator`
+  überspringt `language:de`, solange die Baseline sie nicht führt (dieselbe Mechanik wie bei
+  `comic-characters`, Issue #304); sobald eine künftige Neuziehung sie aufnimmt, wird sie wieder
+  verglichen.
+
+Ein Zustandswechsel eines Falls (`expected_state`) ändert die Golden-Dataset-Datei und damit deren
+SHA-256 — einen Fixpunkt beider Baselines. Eine Zustandspflege ist deshalb **immer** auch eine
+Baseline-Neuziehung, nach dem Verfahren unten; das ist gewollt und kein Nebeneffekt: Ein
+Zustandswechsel behauptet, dass sich das Messergebnis geändert hat, also muss das gemessene
+Ergebnis mitkommen.
 
 ## Domäne `city-landmarks` (Issue #234)
 

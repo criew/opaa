@@ -103,6 +103,7 @@ nicht.
 |---|---|---|
 | Comichelden | viele numerische und kategoriale Attribute, kaum Prosa — hier bricht reine Vektorsuche; Dokumente absichtlich einchunkig (Ein-Chunk-Invariante, ADR-0010) | HuggingFace `jrtec/Superheroes`, **CC0-1.0** (Phase 1) |
 | Sehenswürdigkeiten in europäischen Großstädten | mehrchunkige Dokumente — ob die richtige Stelle **innerhalb** eines Dokuments gefunden wird, nicht nur das richtige Dokument; durchgängig deutschsprachiger Korpus | Wikidata (SPARQL), **CC0-1.0** (Phase 2, Issue #234) |
+| Verwaltung | **benannte Fehlerbilder statt Abdeckung**: wörtlich auffindbare, aber embeddingschwache Passagen (#938-Klasse), Kennungen mit Verwechslungspartner, Komposita, zweigliedrige Ketten, Fassungsfilter — deutschsprachige Amtssprache mit Registerbruch zur Bürgersprache | vollständig synthetisch, **CC0-1.0** (Issues #1042/#1043, `docs/features/retrieval-benchmark.md`, Abschnitte 4 und 5) |
 
 **Comichelden zuerst**, weil die Domäne den härtesten Fall für kategoriale Attribut-Fragen abbildet
 („welche Marvel-Figuren sind böse und haben rote Haare?") — reines Vektor-Retrieval scheitert daran
@@ -312,6 +313,14 @@ nicht als ungeprüft gilt. Die Domäne `city-landmarks` (#234) führt keine auto
 `numeric_range`-artigen Fragen mit Schwellenwerten — ihr Golden Dataset ist stattdessen manuell aus
 den generierten Dokumenten und der Chunk-Map kuratiert (siehe `eval/golden/README.md`) — und hat
 damit keine eigene Zeile in dieser Tabelle.
+
+Für die Domäne `verwaltung` (#1042/#1043) lautet das geprüfte Ergebnis ebenfalls **keine**: Ihr
+einziges numerisch verwendbares Feld ist der Gebührenbetrag, der vom Generator deterministisch für
+**jedes** Dokument berechnet wird (`compute_fee()`, siehe `eval/corpus/verwaltung/SOURCE.md`) —
+es gibt keinen Platzhalter für „kein echter Wert" und kein Dokument ohne Betrag. Ihr Golden Dataset
+enthält zudem, wie das von `city-landmarks`, keine schwellenwertbasierten Mengenfragen; die
+Treffermengen sind je Fall von Hand bestimmt und liegen zwischen einem und drei Dokumenten, also
+innerhalb des Fensters [2, 15] für Mengenfragen bzw. darunter für die Einzeldokument-Fälle.
 
 Die Regel bleibt bewusst in dieser Spezifikation und bekommt keinen eigenen ADR: Ablage,
 Versionierung und Einfrieren des Golden Dataset sind bereits im ADR zur Suchqualitäts-Evaluierung

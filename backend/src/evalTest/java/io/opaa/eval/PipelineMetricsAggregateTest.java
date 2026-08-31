@@ -20,7 +20,8 @@ class PipelineMetricsAggregateTest {
   private static final double TOLERANCE = 1e-4;
 
   private static GoldenCase goldenCase(String id, String category, List<String> expected) {
-    return new GoldenCase(id, "test", "query " + id, expected, category, "easy", "de", "t", null);
+    return new GoldenCase(
+        id, "test", "query " + id, expected, category, "easy", "de", "t", null, null, null, null);
   }
 
   private static RetrievalMetrics.WindowedQueryResult at8(

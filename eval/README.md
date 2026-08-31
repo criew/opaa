@@ -32,7 +32,8 @@ eval/
 │       └── MAINTENANCE.md           Pflegeverantwortung, Baseline-Neuziehung, known_gap-Fälle
 ├── golden/                          Golden-Query-Datasets, committet (siehe eval/golden/README.md)
 │   ├── comic-characters.json
-│   └── city-landmarks.json
+│   ├── city-landmarks.json
+│   └── verwaltung.json               fünf Fallklassen mit Zustandsfeldern (Issue #1043)
 └── variants/                        Variantenvergleiche, committet (siehe eval/variants/README.md, Issue #1041)
     └── comic-characters-selection-mechanics.json
 ```
@@ -43,14 +44,16 @@ Phase 2 vorgesehenen weiteren Domänen (Filme, Reiseziele, Tiere) sind gestriche
 Entscheidung vom 21.08.2026, Issue #234) — Begründung siehe
 `docs/features/search-quality-evaluation.md`, Abschnitt „Domänen und was sie prüfen sollen".
 
-Eine dritte Domäne, **Verwaltung** (Issue #1042, Abschnitt 4 von
-`docs/features/retrieval-benchmark.md`), liefert seither Generator, Korpus und Manifest für einen
-vollständig synthetischen, deutschsprachigen Amtssprache-Korpus (Satzungen, Gebührenordnungen,
-Dienstanweisungen, Formularhinweise sowie eine organisationsweite Vertretungsregelung und einen
-Geschäftsverteilungsplan). Golden Dataset, Baseline und die Registrierung im Retrieval-Harness
-(`EvalDomainConfig`) sind ein eigenes, späteres Issue (siehe
-`eval/corpus/verwaltung/MAINTENANCE.md`, Abschnitt „Stand dieser Domäne") — es gibt deshalb noch
-keinen `./gradlew evaluateVerwaltungRetrieval`-Task.
+Eine dritte Domäne, **Verwaltung** (Issues #1042/#1043, Abschnitte 4 und 5 von
+`docs/features/retrieval-benchmark.md`), misst deutschsprachige Amtssprache an einem vollständig
+synthetischen Korpus (Satzungen, Gebührenordnungen, Dienstanweisungen, Formularhinweise sowie eine
+organisationsweite Vertretungsregelung und einen Geschäftsverteilungsplan). Sie ist die erste
+Domäne, die nicht Abdeckung, sondern **benannte Fehlerbilder** misst: Ihre 46 Golden-Fälle tragen
+je eine der fünf Fallklassen `literal_term_weak_embedding`, `exact_identifier`, `compound_word`,
+`multi_hop` und `metadata_filter` als `category`, und jeder Fall führt seinen zuletzt bewusst
+akzeptierten Zustand (`expected_state`) mit Datum und Begründung. 33 der 46 Fälle sind heute als
+`known_gap` geführt — das ist der Zweck der Domäne, kein Mangel; die Liste steht in
+`eval/corpus/verwaltung/MAINTENANCE.md`.
 
 ## Retrieval-Evaluation ausführen (Issue #227)
 
@@ -63,17 +66,18 @@ Dieses Verzeichnis liefert ihm nur die Eingaben: Korpus, Manifest, Golden Datase
 cd backend
 ./gradlew evaluateRetrieval               # comic-characters
 ./gradlew evaluateCityLandmarksRetrieval  # city-landmarks (Issue #234)
+./gradlew evaluateVerwaltungRetrieval     # verwaltung (Issue #1043)
 ```
 
-Beide sind eigenständige Tasks mit eigenem Report, eigener Baseline-Datei
-(`eval/baseline/comic-characters.json` bzw. `eval/baseline/city-landmarks.json`) und eigener
-Testklasse (`RetrievalEvaluationHarnessTest` bzw. `CityLandmarksRetrievalEvaluationHarnessTest`) —
+Jeder dieser Tasks ist eigenständig, mit eigenem Report, eigener Baseline-Datei
+(`eval/baseline/<domäne>.json`) und eigener Testklasse (`RetrievalEvaluationHarnessTest`,
+`CityLandmarksRetrievalEvaluationHarnessTest`, `VerwaltungRetrievalEvaluationHarnessTest`) —
 bewusst kein parametrisierter, gemeinsamer Lauf (siehe Javadoc von
 `CityLandmarksRetrievalEvaluationHarnessTest`): Ein Fehlschlag ist damit immer eindeutig einer
-Domäne zugeordnet, und die comic-characters-Baseline bleibt von der zweiten Domäne unberührt.
-Analog dazu `checkRetrievalBaseline`/`checkCityLandmarksRetrievalBaseline`.
+Domäne zugeordnet, und die Baseline einer Domäne bleibt von jeder anderen unberührt. Analog dazu
+`checkRetrievalBaseline`/`checkCityLandmarksRetrievalBaseline`/`checkVerwaltungRetrievalBaseline`.
 
-Beide sind ein **eigener Gradle-Task, nicht Teil von `./gradlew build`/`test`**. Er läuft in
+Alle drei sind ein **eigener Gradle-Task, nicht Teil von `./gradlew build`/`test`**. Er läuft in
 einem eigenen Source-Set (`src/evalTest/`), das an keiner Stelle in `build`/`test` verdrahtet ist
 — ein normaler Entwicklerlauf wird dadurch nicht langsamer. Grund für den eigenen Task: Der Lauf
 braucht Docker, zieht zwei Testcontainer (`pgvector/pgvector:pg18`, `ollama/ollama:0.6.5`), lädt
@@ -140,12 +144,15 @@ wieder aktivierte GPU-Anforderung nicht unbemerkt durchlässt.
 
 ### Externer Ollama-Endpunkt (Issue #1076)
 
-Beide Harnesse akzeptieren optional `-Dopaa.eval.ollamaBaseUrl=http://localhost:11434`: Statt den
+Alle drei Harnesse akzeptieren optional `-Dopaa.eval.ollamaBaseUrl=http://localhost:11434`: Statt den
 Ollama-Testcontainer zu starten, sprechen sie dann direkt mit dem angegebenen, bereits laufenden
 Ollama-Endpunkt. Gedacht für Entwicklungsmaschinen, auf denen Docker/WSL2 keine GPU-Passthrough für
 den Testcontainer erlaubt (z. B. AMD-GPUs — nur NVIDIA wird durchgereicht), ein nativ auf dem Host
 laufendes Ollama die GPU aber nutzen kann. Auf `city-landmarks` (~2 h auf CPU) verkürzt das die
-lokale Iterationszeit spürbar.
+lokale Iterationszeit spürbar; auf `verwaltung` sinkt ein vollständiger Lauf von rund 7 Minuten auf
+rund 1,5 Minuten. Für eine **committete Baseline** ist ein solcher Lauf nie zulässig — der Report
+trägt dafür `externalOllamaEndpoint: true`, und `requireBaselineComparable` bricht den
+Baseline-Vergleich damit ab.
 
 ```bash
 ./gradlew evaluateRetrieval -Dopaa.eval.ollamaBaseUrl=http://localhost:11434
@@ -229,6 +236,7 @@ Die beiden Pfade messen **unterschiedliche Dinge und sind nicht ineinander umrec
 | Metriken | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | **Hit Rate@5, MRR@8, nDCG@8, Recall@8** |
 | Report | `build/eval-reports/retrieval-metrics[-<domäne>].json` | `build/eval-reports/pipeline-metrics-<domäne>.json` |
 | Baseline | `eval/baseline/<domäne>.json` | `eval/baseline/pipeline-<domäne>.json` (city-landmarks: noch nicht gezogen, Issue #1081) |
+| Zustandsfelder-Audit | Abschnitt „Zustandsfelder" im Report (nur `verwaltung`) | ebenso, am Fenster dieses Pfads |
 | Vergleich im nächtlichen Job | `BaselineRegressionTest` | `PipelineBaselineRegressionTest` |
 
 Weil die Schwelle im Pipeline-Pfad tatsächlich greift, kann ein Dokument dort ganz aus der

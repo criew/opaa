@@ -426,3 +426,40 @@ aktiver Zerlegung verwenden soll, bleibt offen
 (`docs/features/retrieval-benchmark.md`, „Offene Punkte" 3); die Entscheidung wird die
 Pipeline-Vertragsversion erneut erhöhen und eine Neuziehung der Pipeline-Baselines erfordern — dann
 zusammen mit der Mehrfachlauf-Regel aus Abschnitt 3 derselben Spezifikation.
+
+---
+
+## Nachtrag: `answer_span` bei mehreren Zieldokumenten (Issue #1043)
+
+`docs/features/retrieval-benchmark.md` führte als offenen Punkt 4, ob die mit Entscheidung 9
+eingeführte Chunkebenen-Metrik bei Fällen mit mehreren Zieldokumenten **je Dokument** oder **je
+Fall** gebildet wird. Mit der ersten Domäne, die solche Fälle in Serie führt (`verwaltung`,
+Fallklassen `multi_hop` und `compound_word`), ist die Frage zu entscheiden.
+
+### 21. Ein `answer_span` je Fall, und nur bei genau einem erwarteten Dokument
+
+`answer_span` bleibt genau ein Feld je Golden-Fall. Ein Fall mit mehr als einem erwarteten Dokument
+trägt **keinen** — nicht einen für eines der Dokumente, und keine Liste.
+
+Begründung: Ein einzelner Span auf einem Fall, dessen Antwort über zwei Dokumente verteilt ist,
+misst nachweislich eine Hälfte der Antwort und meldet das Ergebnis als das des ganzen Falls. Ein
+`multi_hop`-Fall, den die Dokumentebene zu Recht als Fehlschlag führt (das zweite Belegdokument
+fehlt), sähe auf Chunkebene erfolgreich aus, sobald der Chunk des ersten Dokuments zurückkam — die
+beiden Metrikfamilien widersprächen sich, ohne dass eine von beiden falsch rechnet.
+
+Die naheliegende Alternative — eine Span-Liste je Dokument mit einer Aggregation über die Dokumente
+eines Falls — ist keine Erweiterung dieses Vertrags, sondern eine **neue Metrik**: Sie braucht eine
+eigene Trefferdefinition („alle Spans gefunden" oder „mindestens einer"), eine eigene
+Mittelungsebene und damit eine Erhöhung beider Vertragsversionen samt Neuziehung aller Baselines.
+Sie wird zurückgestellt, weil kein heutiger Messgegenstand sie braucht: Die Chunkebene existiert
+für Chunking-Vergleiche (Spezifikation, Abschnitt 2), und die tragen Einzeldokument-Fälle bereits
+vollständig.
+
+**Keine Vertragsversion wird erhöht.** Die Regel schreibt fest, was die bestehende Implementierung
+ohnehin tut (ein Feld, ein Span, geprüft gegen die erwarteten Dokumente) und was
+`city-landmarks` bereits praktiziert — `multi_city` und `multi_topic` tragen dort keinen
+`answer_span`. Es ändert sich keine gemessene Größe, also auch keine Vergleichbarkeit
+bestehender Baselines. Neu ist allein, dass die Regel **geprüft** wird statt Gewohnheit zu sein:
+`io.opaa.eval.GoldenCaseCuration` lehnt einen `answer_span` auf einem mehrdokumentigen Fall ab,
+`GoldenCaseCurationTest` wendet das Docker-frei auf jeden committeten Datensatz der betroffenen
+Domäne an.

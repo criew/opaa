@@ -60,9 +60,32 @@ class VariantComparisonRunnerTest {
   private static PipelineEvaluationReport report(Map<String, List<String>> pipeline) {
     var goldenCases =
         List.of(
-            new GoldenCase("a", "test", "frage a", List.of("a.md"), "cat", "easy", "de", "t", null),
             new GoldenCase(
-                "b", "test", "frage b", List.of("b.md"), "cat", "easy", "de", "t", null));
+                "a",
+                "test",
+                "frage a",
+                List.of("a.md"),
+                "cat",
+                "easy",
+                "de",
+                "t",
+                null,
+                null,
+                null,
+                null),
+            new GoldenCase(
+                "b",
+                "test",
+                "frage b",
+                List.of("b.md"),
+                "cat",
+                "easy",
+                "de",
+                "t",
+                null,
+                null,
+                null,
+                null));
     return PipelineRetrievalEvaluator.report(
         PipelineRetrievalEvaluator.evaluateAll(goldenCases, toPipeline(pipeline)),
         runConfiguration());
@@ -147,7 +170,19 @@ class VariantComparisonRunnerTest {
             variant("reference"),
             report(Map.of("frage a", List.of("a.md"), "frage b", List.of("b.md"))));
     var strayCase =
-        new GoldenCase("c", "test", "frage c", List.of("c.md"), "cat", "easy", "de", "t", null);
+        new GoldenCase(
+            "c",
+            "test",
+            "frage c",
+            List.of("c.md"),
+            "cat",
+            "easy",
+            "de",
+            "t",
+            null,
+            null,
+            null,
+            null);
     PipelineEvaluationReport strayReport =
         PipelineRetrievalEvaluator.report(
             PipelineRetrievalEvaluator.evaluateAll(

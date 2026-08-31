@@ -1,0 +1,766 @@
+[
+  {
+    "id": "verw-lit-001",
+    "domain": "verwaltung",
+    "query": "Wer wird von der Gebühr befreit, wenn er bedürftig ist?",
+    "expected_documents": [
+      "verwaltung-0038_verwaltungsgebuehrensatzung.md"
+    ],
+    "category": "literal_term_weak_embedding",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "(1) Von der Erhebung der in dieser Satzung festgelegten Gebühren für allgemeine Amtshandlungen der Stadtverwaltung wird auf schriftlichen Antrag ganz oder teilweise befreit, wer nachweislich bedürftig im Sinne des Zwölften Buches Sozialgesetzbuch (SGB XII) ist oder laufende Leistungen nach dem Zweiten Buch Sozialgesetzbuch (SGB II, umgangssprachlich Bürgergeld) bezieht.",
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md)"
+  },
+  {
+    "id": "verw-lit-002",
+    "domain": "verwaltung",
+    "query": "Welchen Nachweis muss ich einreichen, wenn ich wegen Bedürftigkeit keine Gebühr zahlen kann?",
+    "expected_documents": [
+      "verwaltung-0038_verwaltungsgebuehrensatzung.md",
+      "verwaltung-0043_formularhinweis-kaemmerei-8.md"
+    ],
+    "category": "literal_term_weak_embedding",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0043_formularhinweis-kaemmerei-8.md)"
+  },
+  {
+    "id": "verw-lit-003",
+    "domain": "verwaltung",
+    "query": "Wie alt darf der Leistungsbescheid sein, den ich als Nachweis einreiche?",
+    "expected_documents": [
+      "verwaltung-0042_formularhinweis-kaemmerei-7.md",
+      "verwaltung-0043_formularhinweis-kaemmerei-8.md"
+    ],
+    "category": "literal_term_weak_embedding",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0042_formularhinweis-kaemmerei-7.md, verwaltung-0043_formularhinweis-kaemmerei-8.md)"
+  },
+  {
+    "id": "verw-lit-004",
+    "domain": "verwaltung",
+    "query": "Was passiert, wenn der eingereichte Leistungsbescheid abgelaufen ist?",
+    "expected_documents": [
+      "verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md",
+      "verwaltung-0041_dienstanweisung-kaemmerei-2-2024.md"
+    ],
+    "category": "literal_term_weak_embedding",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md, verwaltung-0041_dienstanweisung-kaemmerei-2-2024.md)"
+  },
+  {
+    "id": "verw-lit-005",
+    "domain": "verwaltung",
+    "query": "Muss die geprüfte Bedürftigkeit in der Vorgangsakte vermerkt werden?",
+    "expected_documents": [
+      "verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md",
+      "verwaltung-0041_dienstanweisung-kaemmerei-2-2024.md"
+    ],
+    "category": "literal_term_weak_embedding",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-08-31: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-vertretungsregelung.md"
+  },
+  {
+    "id": "verw-lit-006",
+    "domain": "verwaltung",
+    "query": "Gilt die Befreiung wegen Bedürftigkeit auch für eine Eilbearbeitung?",
+    "expected_documents": [
+      "verwaltung-0039_gebuehrenordnung-kaemmerei.md"
+    ],
+    "category": "literal_term_weak_embedding",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Die Gebührenposition 7 unterliegt unverändert der Gebührenbefreiung wegen Bedürftigkeit nach § 3 und der Gebührenermäßigung für eingetragene Vereine nach § 13 der Verwaltungsgebührensatzung.",
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-08-31: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-geschaeftsverteilungsplan.md"
+  },
+  {
+    "id": "verw-lit-007",
+    "domain": "verwaltung",
+    "query": "Was gilt bei einer wirtschaftlichen Notlage, die keine Bedürftigkeit im Sinne der Befreiung ist?",
+    "expected_documents": [
+      "verwaltung-0038_verwaltungsgebuehrensatzung.md"
+    ],
+    "category": "literal_term_weak_embedding",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "(1) In Fällen, die von § 3 nicht erfasst sind, aber eine vergleichbare wirtschaftliche Notlage begründen, kann die Kämmerei auf begründeten Antrag eine Stundung oder eine anteilige Gebührenermäßigung gewähren.\n\n(2) Über den Härtefallantrag entscheidet die Amtsleitung der Kämmerei, nicht die für den Regelfall zuständige Sachbearbeitung.\n\n## § 13 Gebührenermäßigung für eingetragene Vereine\n\n(1) Eingetragene, gemeinnützige Vereine mit Sitz in der Stadt Kalkstadt erhalten auf schriftlichen Antrag eine Ermäßigung von 50 Prozent auf die nach dieser Satzung für allgemeine Amtshandlungen der Stadtverwaltung zu entrichtenden Gebühren.\n\n(2) Der Nachweis der Gemeinnützigkeit erfolgt durch Vorlage des aktuellen Freistellungsbescheids des Finanzamts.",
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md)"
+  },
+  {
+    "id": "verw-lit-008",
+    "domain": "verwaltung",
+    "query": "Kann ich die Befreiung wegen Bedürftigkeit und die Vereinsermäßigung gleichzeitig bekommen?",
+    "expected_documents": [
+      "verwaltung-0038_verwaltungsgebuehrensatzung.md"
+    ],
+    "category": "literal_term_weak_embedding",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "(3) Diese Ermäßigung ist unabhängig von der Gebührenbefreiung wegen Bedürftigkeit nach § 3 dieser Satzung zu beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 für dieselbe Amtshandlung besteht nicht, da § 3 natürliche Personen in einer persönlichen Notlage betrifft und § 13 juristische Personen in Vereinsform unabhängig von deren wirtschaftlicher Lage.\n\n## § 14 Übergangsregelung und Inkrafttreten\n\n(1) Diese Satzung in der Fassung 2024 tritt am 1.",
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-08-31: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0045_gebuehrenordnung-personalamt.md"
+  },
+  {
+    "id": "verw-lit-009",
+    "domain": "verwaltung",
+    "query": "Bis wann muss der Antrag auf Befreiung wegen Bedürftigkeit gestellt werden?",
+    "expected_documents": [
+      "verwaltung-0038_verwaltungsgebuehrensatzung.md"
+    ],
+    "category": "literal_term_weak_embedding",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "(3) Der Antrag auf Befreiung ist vor Fälligkeit der Gebühr bei der Kämmerei der Stadt Kalkstadt einzureichen.",
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md)"
+  },
+  {
+    "id": "verw-id-001",
+    "domain": "verwaltung",
+    "query": "Was regelt die Dienstanweisung mit dem Aktenzeichen SOZ-DA-1/2023?",
+    "expected_documents": [
+      "verwaltung-0004_dienstanweisung-sozialamt-1-2023.md"
+    ],
+    "category": "exact_identifier",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Dienstanweisung des Sozialamts der Stadt Kalkstadt, Aktenzeichen SOZ-DA-1/2023, gültig ab dem 1.",
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche"
+  },
+  {
+    "id": "verw-id-002",
+    "domain": "verwaltung",
+    "query": "Was regelt die Dienstanweisung mit dem Aktenzeichen SOZ-DA-1/2024?",
+    "expected_documents": [
+      "verwaltung-0005_dienstanweisung-sozialamt-1-2024.md"
+    ],
+    "category": "exact_identifier",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Dienstanweisung des Sozialamts der Stadt Kalkstadt, Aktenzeichen SOZ-DA-1/2024, gültig ab dem 1.",
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kennungen werden als bedeutungsarme Tokens eingebettet (Roadmap 1a, Schutz unzerlegter Kennungs-Tokens): der benachbarte Jahrgang bzw. Paragraph ist nicht unterscheidbar; gemessen am 2026-08-31: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md"
+  },
+  {
+    "id": "verw-id-003",
+    "domain": "verwaltung",
+    "query": "Was regelt die Dienstanweisung BAU-DA-2/2024?",
+    "expected_documents": [
+      "verwaltung-0014_dienstanweisung-bauamt-2-2024.md"
+    ],
+    "category": "exact_identifier",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Dienstanweisung des Bauamts der Stadt Kalkstadt, Aktenzeichen BAU-DA-2/2024, gültig ab dem 1.",
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche"
+  },
+  {
+    "id": "verw-id-004",
+    "domain": "verwaltung",
+    "query": "Welches Dokument trägt das Aktenzeichen BAU-DA-1/2023?",
+    "expected_documents": [
+      "verwaltung-0012_dienstanweisung-bauamt-1-2023.md"
+    ],
+    "category": "exact_identifier",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Dienstanweisung des Bauamts der Stadt Kalkstadt, Aktenzeichen BAU-DA-1/2023, gültig ab dem 1.",
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche"
+  },
+  {
+    "id": "verw-id-005",
+    "domain": "verwaltung",
+    "query": "Was regelt die Dienstanweisung ORD-DA-1/2023?",
+    "expected_documents": [
+      "verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md"
+    ],
+    "category": "exact_identifier",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Dienstanweisung des Ordnungsamts der Stadt Kalkstadt, Aktenzeichen ORD-DA-1/2023, gültig ab dem 1.",
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kennungen werden als bedeutungsarme Tokens eingebettet (Roadmap 1a, Schutz unzerlegter Kennungs-Tokens): der benachbarte Jahrgang bzw. Paragraph ist nicht unterscheidbar; gemessen am 2026-08-31: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md"
+  },
+  {
+    "id": "verw-id-006",
+    "domain": "verwaltung",
+    "query": "Wofür wird Formular KAE-07 verwendet?",
+    "expected_documents": [
+      "verwaltung-0042_formularhinweis-kaemmerei-7.md"
+    ],
+    "category": "exact_identifier",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Hinweise der Kämmerei der Stadt Kalkstadt zum Ausfüllen von Formular KAE-07, das für den regulären Antrag auf eine Amtshandlung verwendet wird.",
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche"
+  },
+  {
+    "id": "verw-id-007",
+    "domain": "verwaltung",
+    "query": "Wofür wird Formular KAE-08 verwendet?",
+    "expected_documents": [
+      "verwaltung-0043_formularhinweis-kaemmerei-8.md"
+    ],
+    "category": "exact_identifier",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Hinweise der Kämmerei der Stadt Kalkstadt zum Ausfüllen von Formular KAE-08, das für den Antrag auf Gebührenbefreiung nach § 3 oder Gebührenermäßigung nach § 13 verwendet wird.",
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche"
+  },
+  {
+    "id": "verw-id-008",
+    "domain": "verwaltung",
+    "query": "Wofür wird Formular BUE-08 verwendet?",
+    "expected_documents": [
+      "verwaltung-0037_formularhinweis-buergeramt-8.md"
+    ],
+    "category": "exact_identifier",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Hinweise des Bürgeramts der Stadt Kalkstadt zum Ausfüllen von Formular BUE-08, das für den Antrag auf eine nachträgliche Änderung der Antragsdaten oder auf Gebührenermäßigung nach § 13 verwendet wird.",
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche"
+  },
+  {
+    "id": "verw-id-009",
+    "domain": "verwaltung",
+    "query": "Was regelt § 13 der Verwaltungsgebührensatzung?",
+    "expected_documents": [
+      "verwaltung-0038_verwaltungsgebuehrensatzung.md"
+    ],
+    "category": "exact_identifier",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "(1) Eingetragene, gemeinnützige Vereine mit Sitz in der Stadt Kalkstadt erhalten auf schriftlichen Antrag eine Ermäßigung von 50 Prozent auf die nach dieser Satzung für allgemeine Amtshandlungen der Stadtverwaltung zu entrichtenden Gebühren.\n\n(2) Der Nachweis der Gemeinnützigkeit erfolgt durch Vorlage des aktuellen Freistellungsbescheids des Finanzamts.",
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche"
+  },
+  {
+    "id": "verw-id-010",
+    "domain": "verwaltung",
+    "query": "Was regelt § 3 der Personalausweisgebührensatzung?",
+    "expected_documents": [
+      "verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md",
+      "verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md"
+    ],
+    "category": "exact_identifier",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche"
+  },
+  {
+    "id": "verw-comp-001",
+    "domain": "verwaltung",
+    "query": "Welche Gebühren fallen für einen Ausweis an?",
+    "expected_documents": [
+      "verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md",
+      "verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md",
+      "verwaltung-0033_gebuehrenordnung-buergeramt.md"
+    ],
+    "category": "compound_word",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md, verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md, verwaltung-0033_gebuehrenordnung-buergeramt.md)"
+  },
+  {
+    "id": "verw-comp-002",
+    "domain": "verwaltung",
+    "query": "Was kostet die Entsorgung von Abfall?",
+    "expected_documents": [
+      "verwaltung-0057_abfallgebuehrensatzung.md",
+      "verwaltung-0058_gebuehrenordnung-umweltamt.md"
+    ],
+    "category": "compound_word",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0057_abfallgebuehrensatzung.md)"
+  },
+  {
+    "id": "verw-comp-003",
+    "domain": "verwaltung",
+    "query": "Welche Gebühren gelten für die Benutzung der Bibliothek?",
+    "expected_documents": [
+      "verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md",
+      "verwaltung-0064_gebuehrenordnung-kulturamt.md"
+    ],
+    "category": "compound_word",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md)"
+  },
+  {
+    "id": "verw-comp-004",
+    "domain": "verwaltung",
+    "query": "Was kostet die Anmeldung eines Gewerbes?",
+    "expected_documents": [
+      "verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md",
+      "verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md",
+      "verwaltung-0019_gebuehrenordnung-ordnungsamt.md"
+    ],
+    "category": "compound_word",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md, verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md)"
+  },
+  {
+    "id": "verw-comp-005",
+    "domain": "verwaltung",
+    "query": "Welche Gebühr fällt für eine Genehmigung zum Bauen an?",
+    "expected_documents": [
+      "verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md",
+      "verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md",
+      "verwaltung-0011_gebuehrenordnung-bauamt.md"
+    ],
+    "category": "compound_word",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md, verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md)"
+  },
+  {
+    "id": "verw-comp-006",
+    "domain": "verwaltung",
+    "query": "Welcher Beitrag ist für die Betreuung in einer Kindertagesstätte zu zahlen?",
+    "expected_documents": [
+      "verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md",
+      "verwaltung-0051_kindertagesstaettenbeitragssatzung-fassung-2024.md",
+      "verwaltung-0052_gebuehrenordnung-jugendamt.md"
+    ],
+    "category": "compound_word",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md)"
+  },
+  {
+    "id": "verw-comp-007",
+    "domain": "verwaltung",
+    "query": "Was kostet eine Urkunde aus dem Personenstandsregister?",
+    "expected_documents": [
+      "verwaltung-0025_personenstandsurkundengebuehrensatzung.md",
+      "verwaltung-0026_gebuehrenordnung-standesamt.md"
+    ],
+    "category": "compound_word",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0025_personenstandsurkundengebuehrensatzung.md)"
+  },
+  {
+    "id": "verw-comp-008",
+    "domain": "verwaltung",
+    "query": "Was kostet eine Auskunft aus der Personalakte?",
+    "expected_documents": [
+      "verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md",
+      "verwaltung-0045_gebuehrenordnung-personalamt.md"
+    ],
+    "category": "compound_word",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md)"
+  },
+  {
+    "id": "verw-comp-009",
+    "domain": "verwaltung",
+    "query": "Welche Gebühren gelten für eine Bescheinigung des Sozialamts?",
+    "expected_documents": [
+      "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md",
+      "verwaltung-0002_sozialgebuehrenbefreiungssatzung-fassung-2024.md",
+      "verwaltung-0003_gebuehrenordnung-sozialamt.md"
+    ],
+    "category": "compound_word",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md)"
+  },
+  {
+    "id": "verw-hop-001",
+    "domain": "verwaltung",
+    "query": "Wer entscheidet über meinen Antrag auf Gebührenbefreiung, wenn die zuständige Sachbearbeitung der Kämmerei im Urlaub ist?",
+    "expected_documents": [
+      "verwaltung-0038_verwaltungsgebuehrensatzung.md",
+      "verwaltung-vertretungsregelung.md"
+    ],
+    "category": "multi_hop",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "procedural",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md, verwaltung-vertretungsregelung.md)"
+  },
+  {
+    "id": "verw-hop-002",
+    "domain": "verwaltung",
+    "query": "Wer entscheidet ersatzweise über einen Antrag nach der Baugenehmigungsgebührensatzung, wenn die Sachbearbeitung des Bauamts erkrankt ist?",
+    "expected_documents": [
+      "verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md",
+      "verwaltung-vertretungsregelung.md"
+    ],
+    "category": "multi_hop",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "procedural",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-vertretungsregelung.md)"
+  },
+  {
+    "id": "verw-hop-003",
+    "domain": "verwaltung",
+    "query": "Welches Amt ist für Personenstandsurkunden zuständig und wer vertritt dessen Sachbearbeitung im Abwesenheitsfall?",
+    "expected_documents": [
+      "verwaltung-geschaeftsverteilungsplan.md",
+      "verwaltung-vertretungsregelung.md"
+    ],
+    "category": "multi_hop",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "procedural",
+    "answer_span": null,
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: beide Belegdokumente liegen im Fenster, ein erwartetes auf Rang 1"
+  },
+  {
+    "id": "verw-hop-004",
+    "domain": "verwaltung",
+    "query": "Welches Amt ist für die Gewerbeanmeldung zuständig und nach welcher Satzung wird dort die Gebühr erhoben?",
+    "expected_documents": [
+      "verwaltung-geschaeftsverteilungsplan.md",
+      "verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md"
+    ],
+    "category": "multi_hop",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "procedural",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md)"
+  },
+  {
+    "id": "verw-hop-005",
+    "domain": "verwaltung",
+    "query": "Wer entscheidet über Anträge des Kulturamts bei Abwesenheit der Sachbearbeitung, und welche Satzung regelt dessen Gebühren?",
+    "expected_documents": [
+      "verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md",
+      "verwaltung-vertretungsregelung.md"
+    ],
+    "category": "multi_hop",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "procedural",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-08-31: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0064_gebuehrenordnung-kulturamt.md"
+  },
+  {
+    "id": "verw-hop-006",
+    "domain": "verwaltung",
+    "query": "Welche Dienstanweisung regelt die Aktenführung im Umweltamt und wer übernimmt sie im Vertretungsfall?",
+    "expected_documents": [
+      "verwaltung-0060_dienstanweisung-umweltamt-2-2024.md",
+      "verwaltung-vertretungsregelung.md"
+    ],
+    "category": "multi_hop",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "procedural",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-vertretungsregelung.md)"
+  },
+  {
+    "id": "verw-hop-007",
+    "domain": "verwaltung",
+    "query": "Wer ist für Bibliotheksausweise fachlich zuständig und wer übernimmt, wenn diese Stelle nicht erreichbar ist?",
+    "expected_documents": [
+      "verwaltung-geschaeftsverteilungsplan.md",
+      "verwaltung-vertretungsregelung.md"
+    ],
+    "category": "multi_hop",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "procedural",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-08-31: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0064_gebuehrenordnung-kulturamt.md"
+  },
+  {
+    "id": "verw-hop-008",
+    "domain": "verwaltung",
+    "query": "Wer entscheidet über einen Antrag nach § 3 der Personalaktenauskunftsgebührensatzung, wenn die Sachbearbeitung des Personalamts im Urlaub ist?",
+    "expected_documents": [
+      "verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md",
+      "verwaltung-vertretungsregelung.md"
+    ],
+    "category": "multi_hop",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "procedural",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-vertretungsregelung.md)"
+  },
+  {
+    "id": "verw-hop-009",
+    "domain": "verwaltung",
+    "query": "Wer entscheidet nach der Dienstanweisung KAE-DA-1/2024, wenn die zuständige Sachbearbeitung nicht erreichbar ist?",
+    "expected_documents": [
+      "verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md",
+      "verwaltung-vertretungsregelung.md"
+    ],
+    "category": "multi_hop",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "procedural",
+    "answer_span": null,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-vertretungsregelung.md)"
+  },
+  {
+    "id": "verw-meta-001",
+    "domain": "verwaltung",
+    "query": "Welche Fassung der Sozialgebührenbefreiungssatzung gilt seit dem 1. Januar 2024?",
+    "expected_documents": [
+      "verwaltung-0002_sozialgebuehrenbefreiungssatzung-fassung-2024.md"
+    ],
+    "category": "metadata_filter",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Satzung des Sozialamts der Stadt Kalkstadt über die Erhebung von Gebühren für Bescheinigungen und Leistungen der sozialen Unterstützung (Fassung 2024), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-08-31: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md"
+  },
+  {
+    "id": "verw-meta-002",
+    "domain": "verwaltung",
+    "query": "Welche Fassung der Baugenehmigungsgebührensatzung galt im Jahr 2023?",
+    "expected_documents": [
+      "verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md"
+    ],
+    "category": "metadata_filter",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Satzung des Bauamts der Stadt Kalkstadt über die Erhebung von Gebühren für die Erteilung von Baugenehmigungen (Fassung 2023), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md)"
+  },
+  {
+    "id": "verw-meta-003",
+    "domain": "verwaltung",
+    "query": "Welche Fassung der Gewerbeanmeldegebührensatzung ist derzeit gültig?",
+    "expected_documents": [
+      "verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md"
+    ],
+    "category": "metadata_filter",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Satzung des Ordnungsamts der Stadt Kalkstadt über die Erhebung von Gebühren für die Anmeldung eines Gewerbes (Fassung 2024), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: die richtige Fassung steht auf Rang 1, ohne dass ein Metadatenfilter beteiligt war"
+  },
+  {
+    "id": "verw-meta-004",
+    "domain": "verwaltung",
+    "query": "Welche Fassung der Personalausweisgebührensatzung wurde zum 31. Dezember 2023 abgelöst?",
+    "expected_documents": [
+      "verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md"
+    ],
+    "category": "metadata_filter",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Satzung des Bürgeramts der Stadt Kalkstadt über die Erhebung von Gebühren für die Ausstellung eines Personalausweises (Fassung 2023), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-08-31: erwartetes Dokument außerhalb des Fensters (verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md)"
+  },
+  {
+    "id": "verw-meta-005",
+    "domain": "verwaltung",
+    "query": "Welche Fassung der Kindertagesstättenbeitragssatzung gilt heute?",
+    "expected_documents": [
+      "verwaltung-0051_kindertagesstaettenbeitragssatzung-fassung-2024.md"
+    ],
+    "category": "metadata_filter",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Satzung des Jugendamts der Stadt Kalkstadt über die Erhebung von Gebühren für die Betreuung in städtischen Kindertagesstätten (Fassung 2024), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: die richtige Fassung steht auf Rang 1, ohne dass ein Metadatenfilter beteiligt war"
+  },
+  {
+    "id": "verw-meta-006",
+    "domain": "verwaltung",
+    "query": "Welche Dienstanweisung des Sozialamts gilt in der Fassung 2024?",
+    "expected_documents": [
+      "verwaltung-0005_dienstanweisung-sozialamt-1-2024.md"
+    ],
+    "category": "metadata_filter",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Diese Fassung ersetzt die Dienstanweisung SOZ-DA-1/2023, deren Regelungen für bereits abgeschlossene Vorgänge unberührt bleiben.",
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-08-31: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md"
+  },
+  {
+    "id": "verw-meta-007",
+    "domain": "verwaltung",
+    "query": "Welche Dienstanweisung des Bauamts galt im Jahr 2023?",
+    "expected_documents": [
+      "verwaltung-0012_dienstanweisung-bauamt-1-2023.md"
+    ],
+    "category": "metadata_filter",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Dienstanweisung des Bauamts der Stadt Kalkstadt, Aktenzeichen BAU-DA-1/2023, gültig ab dem 1.",
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: die richtige Fassung steht auf Rang 1, ohne dass ein Metadatenfilter beteiligt war"
+  },
+  {
+    "id": "verw-meta-008",
+    "domain": "verwaltung",
+    "query": "Welche Dienstanweisung des Ordnungsamts wurde durch die Fassung 2024 ersetzt?",
+    "expected_documents": [
+      "verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md"
+    ],
+    "category": "metadata_filter",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Dienstanweisung des Ordnungsamts der Stadt Kalkstadt, Aktenzeichen ORD-DA-1/2023, gültig ab dem 1.",
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-08-31: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md"
+  },
+  {
+    "id": "verw-meta-009",
+    "domain": "verwaltung",
+    "query": "Nur Dienstanweisungen, keine Satzungen: welche Regelung der Kämmerei betrifft Anträge auf Gebührenbefreiung?",
+    "expected_documents": [
+      "verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md"
+    ],
+    "category": "metadata_filter",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Dienstanweisung der Kämmerei der Stadt Kalkstadt, Aktenzeichen KAE-DA-1/2024, gültig ab dem 1.",
+    "expected_state": "solved",
+    "expected_state_since": "2026-08-31",
+    "expected_state_reason": "Beim ersten Messlauf der Domäne gelöst: die richtige Fassung steht auf Rang 1, ohne dass ein Metadatenfilter beteiligt war"
+  }
+]

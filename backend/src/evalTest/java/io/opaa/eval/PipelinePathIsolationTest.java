@@ -19,7 +19,8 @@ import org.junit.jupiter.api.Test;
 class PipelinePathIsolationTest {
 
   private static GoldenCase goldenCase(List<String> expected) {
-    return new GoldenCase("a", "test", "frage", expected, "cat", "easy", "de", "t", null);
+    return new GoldenCase(
+        "a", "test", "frage", expected, "cat", "easy", "de", "t", null, null, null, null);
   }
 
   @Test
@@ -75,6 +76,8 @@ class PipelinePathIsolationTest {
         .hasFileName("pipeline-metrics-comic-characters.json");
     assertThat(PipelineHarnessSupport.reportFile(EvalDomainConfig.CITY_LANDMARKS))
         .hasFileName("pipeline-metrics-city-landmarks.json");
+    assertThat(PipelineHarnessSupport.reportFile(EvalDomainConfig.VERWALTUNG))
+        .hasFileName("pipeline-metrics-verwaltung.json");
   }
 
   /**
@@ -90,12 +93,17 @@ class PipelinePathIsolationTest {
     assertThat(EvalDomainConfig.CITY_LANDMARKS.pipelineBaselineFileName())
         .isEqualTo("pipeline-city-landmarks.json")
         .isNotEqualTo(EvalDomainConfig.CITY_LANDMARKS.baselineFileName());
+    assertThat(EvalDomainConfig.VERWALTUNG.pipelineBaselineFileName())
+        .isEqualTo("pipeline-verwaltung.json")
+        .isNotEqualTo(EvalDomainConfig.VERWALTUNG.baselineFileName());
     assertThat(
             List.of(
                 EvalDomainConfig.COMIC_CHARACTERS.baselineFileName(),
                 EvalDomainConfig.CITY_LANDMARKS.baselineFileName(),
+                EvalDomainConfig.VERWALTUNG.baselineFileName(),
                 EvalDomainConfig.COMIC_CHARACTERS.pipelineBaselineFileName(),
-                EvalDomainConfig.CITY_LANDMARKS.pipelineBaselineFileName()))
+                EvalDomainConfig.CITY_LANDMARKS.pipelineBaselineFileName(),
+                EvalDomainConfig.VERWALTUNG.pipelineBaselineFileName()))
         .doesNotHaveDuplicates();
   }
 
@@ -107,7 +115,10 @@ class PipelinePathIsolationTest {
   @Test
   void committedRawVectorBaselinesStayLoadableAndValid() throws java.io.IOException {
     for (EvalDomainConfig domain :
-        List.of(EvalDomainConfig.COMIC_CHARACTERS, EvalDomainConfig.CITY_LANDMARKS)) {
+        List.of(
+            EvalDomainConfig.COMIC_CHARACTERS,
+            EvalDomainConfig.CITY_LANDMARKS,
+            EvalDomainConfig.VERWALTUNG)) {
       Baseline baseline =
           Baseline.load(RepoPaths.evalDir().resolve("baseline").resolve(domain.baselineFileName()));
       assertThat(baseline.measurementContractVersion())

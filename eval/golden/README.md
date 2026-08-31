@@ -1,4 +1,68 @@
-# Golden Dataset: Domänen Comichelden und Sehenswürdigkeiten in europäischen Großstädten
+# Golden Datasets: Comichelden, Sehenswürdigkeiten in europäischen Großstädten, Verwaltung
+
+## Domäne `verwaltung` (Issue #1043)
+
+`verwaltung.json` — 46 kuratierte, deutschsprachige Fälle über
+[`eval/corpus/verwaltung/`](../corpus/verwaltung/). Anders als die beiden anderen Datasets misst
+dieses keine Abdeckung, sondern **fünf benannte Fehlerbilder**
+(`docs/features/retrieval-benchmark.md`, Abschnitt 5). Jeder Fall trägt seine Klasse als
+`category`, sodass beide Messpfade sie als eigene Gruppe auswerten und jede Baseline sie einzeln
+absichert.
+
+| Klasse (`category`) | Anzahl | Was sie misst | Ground Truth |
+|---|---|---|---|
+| `literal_term_weak_embedding` | 9 | die #938-Klasse: „Gebührenbefreiung wegen Bedürftigkeit" steht wörtlich nur in den sechs Kämmerei-Dokumenten, die Frage ist in Bürgersprache formuliert | 1–2 Dokumente |
+| `exact_identifier` | 10 | Aktenzeichen, Formularnummern, Paragraphen mit Verwechslungspartner (`SOZ-DA-1/2023` vs. `…/2024`, `§ 3` vs. `§ 13`) | 1–2 Dokumente |
+| `compound_word` | 9 | die Frage nennt einen Wortbestandteil („Ausweis"), das Dokument das Kompositum („Personalausweisgebührensatzung") | 2–3 Dokumente |
+| `multi_hop` | 9 | zweistufige Ketten: Sachregelung **und** Vertretungsregelung/Geschäftsverteilungsplan | genau 2 Dokumente |
+| `metadata_filter` | 9 | Fassungs- und Dokumentart-Fragen; der Verwechslungspartner ist die inhaltsgleiche andere Fassung | 1 Dokument |
+
+**Erzeugung:** keine. Diese Fälle sind **von Hand gegen den Korpus kuratiert** — es gibt bewusst
+kein Generatorskript, weil die Fälle laut Spezifikation „aus den Dokumenten heraus formuliert"
+werden und ein Generator nur die mechanische Hälfte davon reproduzieren könnte. Abgesichert ist
+das Ergebnis stattdessen durch Regeln statt durch einen Erzeugungsweg:
+`io.opaa.eval.GoldenCaseCuration` (mindestens acht Fälle je Klasse, vollständige Zustandsfelder mit
+ISO-Datum, Treffermenge im Fenster [1, 15], eindeutige `id`/`query`, jedes erwartete Dokument im
+Manifest) und `GoldenCaseCurationTest`, das diese Regeln Docker-frei auf die committete Datei
+anwendet und zusätzlich jeden `answer_span` durch die produktive `ChunkingService` auflöst.
+
+### Zustandsfelder (Issue #1043)
+
+Jeder Fall führt drei Pflichtfelder — ab dem ersten committeten Fall, nicht nachgerüstet:
+
+```json
+"expected_state": "known_gap",
+"expected_state_since": "2026-08-31",
+"expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): …; gemessen am 2026-08-31: …"
+```
+
+**Wann ein Fall als `solved` gilt** (`io.opaa.eval.ExpectedStateAudit#isSolved`): alle erwarteten
+Dokumente im Fenster **und** ein erwartetes Dokument auf Rang 1 — und zwar auf **beiden**
+Messpfaden. Die Rang-1-Bedingung ist nicht Kosmetik: Beide Fassungen einer Satzung sind inhaltlich
+nahezu identisch und ranken deshalb nebeneinander, sodass „die richtige Fassung liegt irgendwo im
+Fenster" auch dann erfüllt ist, wenn die falsche obenauf steht — genau die Fähigkeit, die
+`metadata_filter` messen soll. Ohne die Zusatzbedingung wären 9 von 9 Fällen dieser Klasse
+„gelöst", mit ihr sind es 4.
+
+Der Bericht beider Pfade führt in jedem Lauf einen Abschnitt „Zustandsfelder", der die deklarierten
+Zustände gegen die gemessenen hält und beide Abweichungsrichtungen namentlich nennt. Ein
+`known_gap`-Fall, den ein neuer Baustein löst, wird damit sichtbar, statt als stillschweigende
+Baseline-Verbesserung durchzugehen; das Nachziehen der Felder bleibt ein bewusster,
+dokumentierter Schritt (Verfahren: [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)).
+
+### `answer_span` bei mehreren Zieldokumenten — entschieden (offener Punkt 4)
+
+`docs/features/retrieval-benchmark.md` ließ offen, ob die Chunkebenen-Metrik bei Fällen mit mehreren
+Zieldokumenten **je Dokument** oder **je Fall** gebildet wird. Entschieden mit diesem Datensatz:
+**je Fall — und nur für Fälle mit genau einem erwarteten Dokument.** 23 der 46 Fälle tragen deshalb
+einen `answer_span`, die 23 mehrdokumentigen keinen. Begründung, Alternative und Durchsetzung stehen
+bei `GoldenCaseCuration.SINGLE_DOCUMENT_ANSWER_SPAN_RULE` und im Nachtrag zu
+[ADR-0012](../../docs/decisions/0012-messvertrag-retrieval-harness.md); kurz: ein einzelner Span auf
+einem Fall, dessen Antwort über zwei Dokumente verteilt ist, misst eine Hälfte und meldet sie als
+Ergebnis des ganzen Falls. Die Regel entspricht dem, was `city-landmarks` bereits praktiziert
+(`multi_city`/`multi_topic` ohne `answer_span`), nur ist sie jetzt geprüft statt Gewohnheit.
+
+---
 
 ## Domäne `city-landmarks` (Issue #234)
 

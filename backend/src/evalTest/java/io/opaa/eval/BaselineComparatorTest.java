@@ -157,6 +157,8 @@ class BaselineComparatorTest {
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             fullDocumentWindowCoverage(),
             noApplicableAnswerSpans(),
+            // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+            null,
             List.of(),
             List.of());
 
@@ -218,6 +220,8 @@ class BaselineComparatorTest {
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             fullDocumentWindowCoverage(),
             noApplicableAnswerSpans(),
+            // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+            null,
             List.of(),
             List.of());
 
@@ -276,6 +280,8 @@ class BaselineComparatorTest {
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             fullDocumentWindowCoverage(),
             noApplicableAnswerSpans(),
+            // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+            null,
             List.of(),
             List.of());
 
@@ -331,6 +337,8 @@ class BaselineComparatorTest {
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             fullDocumentWindowCoverage(),
             noApplicableAnswerSpans(),
+            // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+            null,
             List.of(),
             List.of());
 
@@ -613,6 +621,8 @@ class BaselineComparatorTest {
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             fullDocumentWindowCoverage(),
             noApplicableAnswerSpans(),
+            // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+            null,
             List.of(),
             List.of());
 
@@ -655,6 +665,8 @@ class BaselineComparatorTest {
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             fullDocumentWindowCoverage(),
             noApplicableAnswerSpans(),
+            // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+            null,
             List.of(),
             List.of());
 
@@ -790,6 +802,7 @@ class BaselineComparatorTest {
         ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
         fullDocumentWindowCoverage(),
         noApplicableAnswerSpans(),
+        null,
         List.of(),
         List.of());
   }

@@ -17,7 +17,8 @@ class PipelineRetrievalEvaluatorTest {
   private static final double TOLERANCE = 1e-4;
 
   private static GoldenCase goldenCase(String id, List<String> expected) {
-    return new GoldenCase(id, "test", "frage " + id, expected, "cat", "easy", "de", "t", null);
+    return new GoldenCase(
+        id, "test", "frage " + id, expected, "cat", "easy", "de", "t", null, null, null, null);
   }
 
   private static PipelineEvaluationReport.PipelineRunConfiguration runConfiguration() {

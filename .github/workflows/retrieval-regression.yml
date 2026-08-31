@@ -98,6 +98,32 @@ jobs:
             issue_intro: '**Automatischer nächtlicher Retrieval-Regressionslauf (city-landmarks) fehlgeschlagen.**'
             issue_title: 'Retrieval-Regression erkannt (automatischer Lauf, city-landmarks)'
             success_comment: 'Der nächtliche Retrieval-Regressionslauf (city-landmarks) ist wieder grün:'
+          - domain: verwaltung
+            task: checkVerwaltungRetrievalBaseline
+            # Muss über dem Awaitility-Timeout in awaitJobCompletion
+            # (VerwaltungRetrievalEvaluationHarnessTest, 60 min) liegen. Der Korpus ist mit 70
+            # Dokumenten der kleinste der drei Domänen; ein vollständiger lokaler CPU-Lauf
+            # (Indizierung, Rohvektor- und Pipeline-Pfad, Baseline-Vergleich) lag bei rund
+            # 7 Minuten. 75 Minuten decken die deutlich langsamere Einbettungsrate eines
+            # GitHub-Actions-Runners mit Abstand ab.
+            timeout_minutes: 75
+            exec_step_name: 'Retrieval-Regression (verwaltung) ausführen'
+            report_file: baseline-comparison-verwaltung.md
+            pipeline_report_file: pipeline-baseline-comparison-verwaltung.md
+            # Beide Pfade dieser Domäne sind von Anfang an beurteilt: ihre Rohvektor- und ihre
+            # Pipeline-Baseline wurden zusammen in Issue #1043 gezogen.
+            pipeline_gated: true
+            pipeline_state_note: ''
+            artifact_name: retrieval-metrics-verwaltung
+            metrics_file: retrieval-metrics-verwaltung.json
+            pipeline_metrics_file: pipeline-metrics-verwaltung.json
+            chunk_map_file: chunk-map-verwaltung.json
+            marker: '<!-- retrieval-regression-alert-verwaltung -->'
+            invariant_hint: Mehr-Chunk-Invariante-Verletzung
+            failure_prefix: 'Erneut fehlgeschlagen (verwaltung):'
+            issue_intro: '**Automatischer nächtlicher Retrieval-Regressionslauf (verwaltung) fehlgeschlagen.**'
+            issue_title: 'Retrieval-Regression erkannt (automatischer Lauf, verwaltung)'
+            success_comment: 'Der nächtliche Retrieval-Regressionslauf (verwaltung) ist wieder grün:'
     # Bei PR-Auslösung nur reagieren, wenn das Label tatsächlich 'evaluation' ist (jedes andere
     # Label auf demselben PR löst sonst ebenfalls "labeled" aus und würde den teuren Job unnötig
     # starten). Läuft dank der eindeutigen Concurrency-Gruppe oben unabhängig von anderen
