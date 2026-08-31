@@ -77,13 +77,17 @@ public final class PipelineHarnessSupport {
    * Runs the pipeline measurement path and writes its report — <b>without ever failing the harness
    * run it is invoked from</b>.
    *
-   * <p>This split is the point of the method. The pipeline path is an observation artifact, not a
-   * watchdog: it has no baseline and no verdict. It runs at the end of the same {@code @Test}
-   * method as the raw-vector path, so a {@link RuntimeException} escaping it would fail {@code
-   * evaluateRetrieval}, which means {@code BaselineRegressionTest} never runs, which means the
-   * nightly job produces <b>no verdict at all on the raw-vector path</b> and files an alert issue
-   * whose stock wording blames a regression that was never measured. A failing observation must
-   * never silence the watchdog.
+   * <p>This split is the point of the method, and it survived the pipeline path becoming a watchdog
+   * of its own (issue #1040). It runs at the end of the same {@code @Test} method as the raw-vector
+   * path, so a {@link RuntimeException} escaping it would fail {@code evaluateRetrieval}, which
+   * means <b>neither</b> baseline test runs, which means the nightly job produces no verdict at all
+   * on the raw-vector path and files an alert issue whose stock wording blames a regression that
+   * was never measured. A failing pipeline path must never silence the raw-vector path's judgment.
+   *
+   * <p><b>The guard hides the failure from this run, not from the verdict.</b> {@code
+   * PipelineBaselineRegressionTest} runs afterwards against the committed pipeline baseline and
+   * fails on a missing report — so a pipeline failure is red exactly once, under the pipeline
+   * path's own verdict, while the raw-vector path is judged normally in the same job.
    *
    * <p>{@link #requireMeasurableConfiguration} is the deliberate exception and runs <b>before</b>
    * the guarded section: a configuration under which the reported numbers would not mean what their
@@ -125,7 +129,9 @@ public final class PipelineHarnessSupport {
       log.error(
           "Pipeline-Messpfad fehlgeschlagen, Rohvektor-Pfad unberührt — dessen Messung und "
               + "Baseline-Vergleich sind zu diesem Zeitpunkt bereits abgeschlossen und von diesem "
-              + "Fehler nicht betroffen. Für diesen Lauf fehlt nur der Pipeline-Report ({}).",
+              + "Fehler nicht betroffen. Der fehlende Pipeline-Report ({}) lässt anschließend "
+              + "PipelineBaselineRegressionTest fehlschlagen — der Fehler ist damit genau einmal "
+              + "rot, unter dem Urteil des Pipeline-Pfads.",
           reportFile(domain),
           e);
     }

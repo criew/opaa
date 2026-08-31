@@ -78,12 +78,18 @@ dependencies {
 // wildcard like "*RetrievalEvaluationHarnessTest" also matches
 // "CityLandmarksRetrievalEvaluationHarnessTest" because it ends with that suffix, which would
 // silently double the runtime and couple both domains' runs together.
+//
+// The check task runs BOTH baseline tests of the domain (raw-vector and pipeline path, issue
+// #1040). JUnit runs both classes regardless of the other's outcome, so each path gets its own
+// verdict and its own delta table — a red pipeline path never suppresses the raw-vector judgment
+// and vice versa, which is the reason they are two test classes rather than one.
 fun registerEvalDomain(
     name: String,
     evaluateDescription: String,
     checkDescription: String,
     harnessTestClass: String,
     baselineTestClass: String,
+    pipelineBaselineTestClass: String,
 ) {
     val evaluateTaskName = "evaluate${name}Retrieval"
     tasks.register<Test>(evaluateTaskName) {
@@ -119,6 +125,7 @@ fun registerEvalDomain(
         outputs.upToDateWhen { false }
         filter {
             includeTestsMatching(baselineTestClass)
+            includeTestsMatching(pipelineBaselineTestClass)
         }
         testLogging {
             events("passed", "skipped", "failed", "standard_out")
@@ -133,9 +140,11 @@ registerEvalDomain(
     evaluateDescription = "Runs the retrieval-quality evaluation harness (Hit Rate, MRR, nDCG, Recall) " +
         "against eval/corpus using Testcontainers (pgvector + Ollama). Not part of build/check.",
     checkDescription = "Runs evaluateRetrieval, then fails if the result regresses beyond tolerance " +
-        "against eval/baseline/comic-characters.json (issue #228). Needs Docker.",
+        "against eval/baseline/comic-characters.json (raw-vector path, issue #228) or " +
+        "eval/baseline/pipeline-comic-characters.json (pipeline path, issue #1040). Needs Docker.",
     harnessTestClass = "io.opaa.eval.RetrievalEvaluationHarnessTest",
     baselineTestClass = "io.opaa.eval.BaselineRegressionTest",
+    pipelineBaselineTestClass = "io.opaa.eval.PipelineBaselineRegressionTest",
 )
 
 // city-landmarks domain (issue #234): second domain, second test class pair — see
@@ -149,9 +158,11 @@ registerEvalDomain(
         "against eval/corpus/city-landmarks using Testcontainers (pgvector + Ollama). Not part " +
         "of build/check.",
     checkDescription = "Runs evaluateCityLandmarksRetrieval, then fails if the result regresses " +
-        "beyond tolerance against eval/baseline/city-landmarks.json (issue #234). Needs Docker.",
+        "beyond tolerance against eval/baseline/city-landmarks.json (raw-vector path, issue #234) " +
+        "or eval/baseline/pipeline-city-landmarks.json (pipeline path, issue #1040). Needs Docker.",
     harnessTestClass = "io.opaa.eval.CityLandmarksRetrievalEvaluationHarnessTest",
     baselineTestClass = "io.opaa.eval.CityLandmarksBaselineRegressionTest",
+    pipelineBaselineTestClass = "io.opaa.eval.CityLandmarksPipelineBaselineRegressionTest",
 )
 
 // Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
@@ -162,7 +173,9 @@ registerEvalDomain(
 // Testcontainers, stays exclusive to `evaluateRetrieval`) and BaselineRegressionTest (needs a
 // report file that only exists after a real `evaluateRetrieval` run, stays exclusive to
 // `checkRetrievalBaseline` below) — issue #227/#228's exclusion criterion is about those two
-// specific test classes, not about the evalTest source set as a whole.
+// specific test classes, not about the evalTest source set as a whole. The `*BaselineRegressionTest`
+// pattern covers the pipeline path's baseline tests (issue #1040) for the identical reason: they
+// consume a report file no Docker-free build produces.
 tasks.register<Test>("evalUnitTest") {
     description = "Docker-free unit tests for the eval metric math (RetrievalMetrics, " +
         "MetricsAggregate, CorpusManifest, BaselineComparator). Part of check; no Testcontainers, " +

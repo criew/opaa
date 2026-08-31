@@ -35,8 +35,15 @@ public record PipelineEvaluationReport(
    * every committed raw-vector baseline (it is a {@code BaselineComparator} fixed point) for a
    * measurement whose definitions and values did not move at all. Bump this constant whenever a
    * pipeline-path fixed point, window or metric definition changes.
+   *
+   * <p>Version 2 (issue #1040, ADR-0012 Nachtrag zu den Pipeline-Baselines): the five query
+   * parameters that version 1 reported but left unchecked — {@code fetch-k}, {@code
+   * similarity-threshold}, {@code max-chunks-per-document}, {@code mmr-lambda}, {@code
+   * max-sub-queries} — became enforced fixed points of the baseline validity check. That widens
+   * what "the same measurement" means, so it is a contract change by decision 6 of this ADR; it
+   * costs nothing here because no pipeline baseline existed under version 1.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 1;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 2;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be

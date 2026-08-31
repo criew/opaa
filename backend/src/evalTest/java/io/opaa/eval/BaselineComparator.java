@@ -552,16 +552,47 @@ public final class BaselineComparator {
       ToIntFunction<MetricsAggregate> hitCountFn,
       MetricsAggregate base,
       MetricsAggregate current) {
+    checks.add(
+        metricCheck(
+            group,
+            metric,
+            n,
+            baselineValue,
+            currentValue,
+            nEff,
+            absoluteHardFloor,
+            base.n(),
+            hitCountFn.applyAsInt(base),
+            hitCountFn.applyAsInt(current)));
+  }
+
+  /**
+   * ADR-0013's error criterion itself, independent of which path's aggregate the numbers came from
+   * — tolerance formula, case-based conjunction, and hard floor in one place. Issue #1040 gave the
+   * pipeline path its own baselines; sharing this method rather than copying it is what makes
+   * "beide Pfade nach dem unveränderten Fehlerkriterium aus ADR-0013" a structural fact instead of
+   * a claim two implementations could drift apart on.
+   *
+   * @param baseN the baseline's own, frozen case count — used for both the {@code 1/n} switch
+   *     condition and the widened tolerance (issue #306 review, Befund 4): the baseline is what the
+   *     tolerance and "affected pair" status are defined against, and the two sides must not
+   *     silently mix.
+   * @param absoluteHardFloor {@code null} for a metric without a hard floor (every group other than
+   *     {@code overall}, and {@code allExpectedDocumentsHit…} everywhere).
+   */
+  static MetricCheck metricCheck(
+      String group,
+      String metric,
+      int n,
+      double baselineValue,
+      double currentValue,
+      int nEff,
+      Double absoluteHardFloor,
+      int baseN,
+      int baselineHitCount,
+      int currentHitCount) {
     double delta = currentValue - baselineValue;
     double meanTolerance = toleranceFor(baselineValue, nEff);
-    // Issue #306 review, Befund 4: both the "1/n" switch condition and the widened tolerance below
-    // deliberately use base.n() (the baseline's own, frozen case count), not current.n() — the
-    // baseline is what the tolerance and "affected pair" status are defined against, and the two
-    // should not silently mix sides. Harmless in practice today (a report with a different case
-    // count than the baseline already aborts earlier via the goldenCaseCount fixed point, before
-    // this method ever runs), but this keeps the two reads from the two objects intentional rather
-    // than incidental.
-    int baseN = base.n();
     boolean caseBasedCheck = usesCaseBasedCheck(meanTolerance, baseN);
     // Issue #306 review, Befund 1: the case-count check alone caught only *lost hits*, not a
     // severe rank or partial-recall degradation that leaves hitCountAt5/hitCountAt10 unchanged
@@ -577,8 +608,6 @@ public final class BaselineComparator {
     boolean meanWithinTolerance = delta >= -tolerance - EPSILON;
     boolean withinTolerance;
     if (caseBasedCheck) {
-      int baselineHitCount = hitCountFn.applyAsInt(base);
-      int currentHitCount = hitCountFn.applyAsInt(current);
       boolean caseCountWithinTolerance = currentHitCount >= baselineHitCount - MAX_CASE_COUNT_DROP;
       withinTolerance = caseCountWithinTolerance && meanWithinTolerance;
     } else {
@@ -592,19 +621,18 @@ public final class BaselineComparator {
             ? Double.NEGATIVE_INFINITY
             : Math.max(HARD_FLOOR_FRACTION_OF_BASELINE * baselineValue, absoluteHardFloor);
     boolean passesHardFloor = currentValue >= hardFloor - EPSILON;
-    checks.add(
-        new MetricCheck(
-            group,
-            metric,
-            n,
-            baselineValue,
-            currentValue,
-            delta,
-            tolerance,
-            withinTolerance,
-            hardFloor,
-            passesHardFloor,
-            caseBasedCheck));
+    return new MetricCheck(
+        group,
+        metric,
+        n,
+        baselineValue,
+        currentValue,
+        delta,
+        tolerance,
+        withinTolerance,
+        hardFloor,
+        passesHardFloor,
+        caseBasedCheck);
   }
 
   /** The tolerance formula documented in the class Javadoc (ADR-0013), exposed for unit testing. */

@@ -34,7 +34,9 @@ class PipelinePathIsolationTest {
 
   @Test
   void pipelinePathCountsItsOwnContractVersionSeparately() {
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(1);
+    // Version 2 since issue #1040 made the five previously unchecked query parameters enforced
+    // fixed points; the raw-vector path's version above stays at 2 for its own, unrelated reasons.
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(2);
   }
 
   @Test
@@ -73,5 +75,44 @@ class PipelinePathIsolationTest {
         .hasFileName("pipeline-metrics-comic-characters.json");
     assertThat(PipelineHarnessSupport.reportFile(EvalDomainConfig.CITY_LANDMARKS))
         .hasFileName("pipeline-metrics-city-landmarks.json");
+  }
+
+  /**
+   * Issue #1040's first acceptance criterion, as an assertion: one baseline file per path and
+   * domain, and a pipeline baseline can never carry a raw-vector baseline's name — the committed
+   * numbers from #228/#234 stay where they are.
+   */
+  @Test
+  void pipelineBaselinesGoToTheirOwnFilePerDomain() {
+    assertThat(EvalDomainConfig.COMIC_CHARACTERS.pipelineBaselineFileName())
+        .isEqualTo("pipeline-comic-characters.json")
+        .isNotEqualTo(EvalDomainConfig.COMIC_CHARACTERS.baselineFileName());
+    assertThat(EvalDomainConfig.CITY_LANDMARKS.pipelineBaselineFileName())
+        .isEqualTo("pipeline-city-landmarks.json")
+        .isNotEqualTo(EvalDomainConfig.CITY_LANDMARKS.baselineFileName());
+    assertThat(
+            List.of(
+                EvalDomainConfig.COMIC_CHARACTERS.baselineFileName(),
+                EvalDomainConfig.CITY_LANDMARKS.baselineFileName(),
+                EvalDomainConfig.COMIC_CHARACTERS.pipelineBaselineFileName(),
+                EvalDomainConfig.CITY_LANDMARKS.pipelineBaselineFileName()))
+        .doesNotHaveDuplicates();
+  }
+
+  /**
+   * The committed raw-vector baselines of #228/#234 must stay loadable and valid under everything
+   * this issue changed — the cheap, Docker-free half of "die bestehenden Baselines bleiben
+   * unangetastet und gültig".
+   */
+  @Test
+  void committedRawVectorBaselinesStayLoadableAndValid() throws java.io.IOException {
+    for (EvalDomainConfig domain :
+        List.of(EvalDomainConfig.COMIC_CHARACTERS, EvalDomainConfig.CITY_LANDMARKS)) {
+      Baseline baseline =
+          Baseline.load(RepoPaths.evalDir().resolve("baseline").resolve(domain.baselineFileName()));
+      assertThat(baseline.measurementContractVersion())
+          .isEqualTo(EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION);
+      assertThat(baseline.groups()).containsKey(Baseline.OVERALL);
+    }
   }
 }

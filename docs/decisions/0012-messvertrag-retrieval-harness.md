@@ -8,7 +8,11 @@ zweite Metrikfamilie auf Chunkebene; die Entscheidungen 1–7 unten bleiben unve
 sowie um den [Nachtrag vom 2026-08-31](#nachtrag-pipeline-messpfad-issue-1039) (Issue #1039: ein
 zweiter Messpfad durch die produktive Query-Pipeline mit **eigenem**, getrennt gezähltem
 Messvertrag; der hier festgehaltene Vertrag beschreibt weiterhin ausschließlich den
-Rohvektor-Pfad und bleibt bei Version 2).
+Rohvektor-Pfad und bleibt bei Version 2) und den
+[Nachtrag zu den Pipeline-Baselines](#nachtrag-baselines-des-pipeline-pfads-issue-1040)
+(Issue #1040: getrennte Baseline-Dateien je Pfad und Domäne, durchgesetzte Fixpunkte des
+Pipeline-Pfads, Pipeline-Messvertrag-Version 2 — die Rohvektor-Version bleibt auch dadurch
+unberührt bei 2).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -285,6 +289,10 @@ erhöht dessen Versionsnummer und macht dessen Baselines ungültig.
 
 ### Was dieser Nachtrag noch nicht festlegt
 
+> **Erledigt mit Issue #1040** — beide hier offen gelassenen Punkte sind im
+> [Nachtrag zu den Pipeline-Baselines](#nachtrag-baselines-des-pipeline-pfads-issue-1040)
+> entschieden. Der folgende Abschnitt bleibt als Zustandsbeschreibung von #1039 stehen.
+
 Baselines und Toleranzen des Pipeline-Pfads. #1039 liefert den Messpfad und seinen Report; die
 getrennten Baseline-Dateien je Pfad und Domäne, ihre Aufnahme in `BaselineComparator` und in den
 nächtlichen Job sind Gegenstand der Folgearbeit desselben Epics (Umsetzungsschnitt A/E in
@@ -302,3 +310,101 @@ unbemerkt in einen Pipeline-Report einfließen. Das ist bis zur Baseline folgenl
 gibt, wogegen verglichen würde; **mit der ersten Pipeline-Baseline muss die Prüfung dieser Werte
 Teil der Gültigkeitsprüfung werden** (dieselbe Rolle, die `Baseline.FixedPoints` für den
 Rohvektor-Pfad spielt). Gehört zur Baseline-Folgearbeit, nicht zu #1039.
+
+---
+
+## Nachtrag: Baselines des Pipeline-Pfads (Issue #1040)
+
+> **Nachtrag vom 2026-08-31, Umsetzung von `docs/features/retrieval-benchmark.md`, Abschnitt 1
+> („Folgen für Messvertrag und Baselines"), Issue #1040.** Fortschreibung, keine Umschreibung: Die
+> Entscheidungen 1–10 (Rohvektor-Pfad) und 11–16 (Pipeline-Messpfad) gelten unverändert. Was hier
+> hinzukommt, betrifft ausschließlich den Pipeline-Pfad — **die committeten Rohvektor-Baselines aus
+> #228/#234 bleiben unangetastet und gültig**, ihre `measurementContractVersion` bleibt bei 2.
+
+### 17. Eine Baseline-Datei je Pfad und Domäne
+
+Die beiden Pfade messen unterschiedliche Dinge und sind nicht ineinander umrechenbar
+(Entscheidung 12). Eine gemeinsame Baseline-Datei wäre deshalb nicht nur unhandlich, sondern
+gefährlich: Sie machte es möglich, eine Pipeline-Neuziehung über die Zahlen des Rohvektor-Pfads zu
+schreiben.
+
+- Ablage flach unter `eval/baseline/`, Rohvektor-Baseline `<domäne>.json`, Pipeline-Baseline
+  **`pipeline-<domäne>.json`**. Der Name wird in `EvalDomainConfig` aus dem Rohvektor-Namen mit
+  festem Präfix abgeleitet, nicht je Domäne eigenständig deklariert — eine Namenskollision ist damit
+  nicht per Tippfehler erreichbar (`PipelinePathIsolationTest`).
+- Eigener Typ (`PipelineBaseline`) mit eigenen Fixpunkten und den Gruppenwerten am @8-Fenster
+  (`PipelineMetricsAggregate`), eigener Vergleicher (`PipelineBaselineComparator`), eigene
+  Delta-Tabelle. Kein gemeinsames Schema, in das eine @10-Zahl unter einem @8-Feldnamen geraten
+  könnte.
+- Flach statt in einem Unterverzeichnis, damit der Absenkungsvergleich gegenüber `main`
+  (`eval/baseline/diff_baseline.py`, `.github/workflows/baseline-diff.yml`, Entscheidung 6 in
+  ADR-0013) die Pipeline-Baselines ohne jede Pfad-Fallunterscheidung mitnimmt — er iteriert über
+  `eval/baseline/*.json`.
+
+### 18. Die Fixpunkte aus Entscheidung 13 werden durchgesetzt; Pipeline-Messvertrag-Version 2
+
+Der Nachtrag zu #1039 ließ `fetch-k`, `similarity-threshold`, `max-chunks-per-document`,
+`mmr-lambda` und `max-sub-queries` ausgewiesen, aber ungeprüft — ausdrücklich nur deshalb, weil es
+nichts gab, wogegen verglichen wurde. Mit der ersten committeten Pipeline-Baseline endet dieser
+Grund: Eine unbemerkte `mmr-lambda`-Änderung würde sonst still verändern, was die committeten Zahlen
+beschreiben, und der Vergleich meldete „Regression", wo die Messgrundlage gewechselt hat.
+
+Alle Fixpunkte aus Entscheidung 13 sind deshalb Gültigkeitsfelder von `PipelineBaseline.FixedPoints`
+und werden gegen die Laufkonfiguration geprüft: `fetch-k`, `top-k`, `similarity-threshold`,
+`max-chunks-per-document`, `mmr-lambda`, `query-decomposition-enabled`, `max-sub-queries`, das
+Chat-Modell (heute `null`, siehe 20.) sowie die beiden Fenster `hitRateK`/`rankingK` — dazu die
+gemeinsamen Fixpunkte (Einbettungsmodell samt Digest und Dimensionen, `chunk-size`, `chunk-overlap`,
+`pgvectorIndexType`, Korpus-Manifest, Golden Dataset). Weicht eines ab, ist die **Pipeline**-Baseline
+ungültig und es wird auf diesem Pfad keine Metrik verglichen; die Rohvektor-Baseline ist davon nicht
+berührt.
+
+Das erweitert, was „dieselbe Messung" heißt, und ist damit nach Entscheidung 6 eine
+Vertragsänderung: `PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` steigt von 1 auf
+**2**. Die Erhöhung kostet nichts, weil unter Version 1 keine Pipeline-Baseline existierte — genau
+deshalb ist sie jetzt und nicht später fällig. Die Rohvektor-Zählung bleibt unberührt; das ist der
+Zweck der getrennten Zählung aus Entscheidung 16.
+
+### 19. Getrenntes Urteil je Pfad, unverändertes Fehlerkriterium
+
+Der nächtliche Job prüft beide Pfade, jeden gegen seine eigene Baseline, mit dem **unveränderten**
+Fehlerkriterium aus ADR-0013: dieselbe Toleranzformel, dieselbe fallzahlbasierte Konjunktion aus
+#306, dieselbe Kombination aus baseline-relativer und absoluter harter Untergrenze. Das ist
+strukturell abgesichert und nicht nur behauptet: Beide Vergleicher erzeugen ihre Prüfungen über
+dieselbe Methode (`BaselineComparator.metricCheck`), sodass die beiden Implementierungen nicht
+auseinanderlaufen können.
+
+**Zwei Urteile, nicht eines.** Rohvektor- und Pipeline-Vergleich sind zwei JUnit-Testklassen im
+selben Gradle-Task. JUnit führt beide unabhängig vom Ausgang der jeweils anderen aus, sodass jeder
+Pfad seine eigene Delta-Tabelle und sein eigenes Ja/Nein liefert. Das löst die in #1039 offene Frage,
+wie ein Pipeline-Fehler künftig gatet, ohne das Rohvektor-Urteil zu verhindern:
+
+- `PipelineHarnessSupport.runAndWriteGuarded` fängt einen Fehler des Pipeline-Pfads weiterhin ab,
+  damit der Messlauf selbst grün bleibt und der Baseline-Vergleich des Rohvektor-Pfads überhaupt
+  stattfindet. Der Guard verbirgt den Fehler vor dem *Messlauf*, nicht vor dem *Urteil*.
+- Ein fehlender Pipeline-Report lässt `PipelineBaselineRegressionTest` fehlschlagen. Ein
+  Pipeline-Fehler ist damit genau einmal rot — unter dem Urteil des Pipeline-Pfads.
+- Das Alarm-Issue des nächtlichen Laufs trägt beide Delta-Tabellen mit eigener Überschrift und sagt
+  ausdrücklich, dass der jeweils andere Pfad im selben Lauf grün sein kann. Die frühere,
+  pauschale „Retrieval-Regression"-Begründung wäre mit zwei Urteilen irreführend gewesen.
+
+**Eigene absolute Anker der harten Untergrenze.** Die *Formel* ist unverändert
+(`max(0,8 · Baselinewert, feste Untergrenze)`); die festen Untergrenzen des Pipeline-Pfads sind
+eigene Werte: Hit Rate@5 ≥ 0,15, MRR@8/nDCG@8/Recall@8 ≥ 0,125 — die Hälfte der ADR-0013-Werte. Die
+ADR-0013-Anker sind an @10-Messungen ohne Ähnlichkeitsschwelle kalibriert; der Pipeline-Pfad misst
+am engeren Fenster und mit angewandter Schwelle und liegt aus Gründen niedriger, die mit
+Retrieval-Qualität nichts zu tun haben (Entscheidung 12). Die Werte sind **vor** der ersten Messung
+festgelegt worden, damit die Untergrenze nicht nachträglich am Ergebnis entlang gewählt wird, und
+sie behalten ihre Rolle: ein zweites, baselineunabhängiges Netz gegen katastrophales Versagen (leerer
+oder falsch konfigurierter Vektor-Store), kein Qualitätsziel. Sobald mehrere Pipeline-Baselines über
+mehrere Domänen vorliegen, sind sie erneut zu bewerten.
+
+### 20. Das Chat-Modell bleibt ein Fixpunkt mit dem Wert „keines"
+
+Entscheidung 15 gilt unverändert: Der Harness misst die Variante `decomposition-off`. Die Baseline
+führt `queryDecompositionEnabled = false`, `maxSubQueries` und `chatModel = null` als geprüfte
+Fixpunkte — ein Modellname auf einer der beiden Seiten allein bedeutet, dass die beiden Läufe nicht
+dasselbe gemessen haben, und macht die Baseline ungültig. Welches Chat-Modell der Pipeline-Pfad mit
+aktiver Zerlegung verwenden soll, bleibt offen
+(`docs/features/retrieval-benchmark.md`, „Offene Punkte" 3); die Entscheidung wird die
+Pipeline-Vertragsversion erneut erhöhen und eine Neuziehung der Pipeline-Baselines erfordern — dann
+zusammen mit der Mehrfachlauf-Regel aus Abschnitt 3 derselben Spezifikation.

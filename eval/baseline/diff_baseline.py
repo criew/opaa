@@ -2,6 +2,11 @@
 """Diffs every committed retrieval baseline under `eval/baseline/*.json` and renders a Markdown
 section per file listing every metric that is lower on one side ("pr") than on the other ("main").
 
+Deckt seit Issue #1040 beide Messpfade ab: die Rohvektor-Baselines (`<domäne>.json`) und die
+Pipeline-Baselines (`pipeline-<domäne>.json`). Beide liegen flach im selben Verzeichnis, sodass
+weder dieser Vergleich noch der Workflow eine Pfad-Fallunterscheidung braucht — verglichen wird je
+Dateiname, und ein Dateiname gehört immer zu genau einem Pfad und einer Domäne.
+
 Used by .github/workflows/baseline-diff.yml (issue #228, ADR-0013 decision 6): runs on every pull
 request touching `eval/baseline/**` and compares the PR branch's own committed baselines against the
 ones on `main`, so a PR that quietly lowers any domain's baseline (making its own regression job pass
@@ -25,14 +30,29 @@ import json
 import sys
 from pathlib import Path
 
-METRICS = ("hitRateAt5", "mrr", "ndcgAt10", "recallAt10", "allExpectedDocumentsHitAt10")
+# Beide Messpfade in einer Liste (Issue #1040): der Rohvektor-Pfad führt seine Metriken am
+# @10-Fenster, der Pipeline-Pfad am @8-Fenster der Produktion. Eine Baseline-Datei enthält immer nur
+# die Felder ihres eigenen Pfades; die des jeweils anderen fehlen und werden unten übersprungen
+# (`main_value is None`). Verglichen wird deshalb nie über Pfadgrenzen hinweg — der Vergleich läuft
+# ohnehin je Dateiname, und die Dateinamen sind je Pfad und Domäne verschieden.
+METRICS = (
+    "hitRateAt5",
+    "mrr",
+    "ndcgAt10",
+    "recallAt10",
+    "allExpectedDocumentsHitAt10",
+    "mrrAt8",
+    "ndcgAt8",
+    "recallAt8",
+    "allExpectedDocumentsHitAt8",
+)
 
 # Issue #306: the two case counts BaselineComparator reads for the case-count check on
 # group/metric pairs whose mean tolerance is tighter than one case's worth of shift. They live in
 # the same "groups" object as METRICS above, so a PR that lowers one silently narrows a group's
 # protection the same way a lowered mean would — worth surfacing here for the same reason, even
 # though this script never gates anything (see module docstring).
-CASE_COUNT_FIELDS = ("hitCountAt5", "hitCountAt10")
+CASE_COUNT_FIELDS = ("hitCountAt5", "hitCountAt10", "hitCountAt8")
 
 
 def load(path):
