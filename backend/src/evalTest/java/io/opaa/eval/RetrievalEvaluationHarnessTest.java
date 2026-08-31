@@ -28,6 +28,7 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;
+import io.opaa.query.QueryServiceDependencies;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -776,8 +777,7 @@ class RetrievalEvaluationHarnessTest {
     //    at its own window, in its own file, and guarded so a failure here cannot fail this test
     //    and thereby rob the nightly job of its raw-vector verdict (see PipelineHarnessSupport).
     Instant pipelineRunStart = Instant.now();
-    PipelineHarnessSupport.runAndWriteGuarded(
-        DOMAIN,
+    PipelineHarnessSupport.RunIdentity identity =
         new PipelineHarnessSupport.RunIdentity(
             "ollama",
             EMBEDDING_MODEL,
@@ -789,7 +789,10 @@ class RetrievalEvaluationHarnessTest {
             CorpusManifest.sha256Hex(manifestFile),
             manifest.fileNames().size(),
             "eval/golden/" + DOMAIN.goldenDatasetFileName(),
-            GoldenDataset.sha256(goldenFile)),
+            GoldenDataset.sha256(goldenFile));
+    PipelineHarnessSupport.runAndWriteGuarded(
+        DOMAIN,
+        identity,
         queryService,
         queryProperties,
         indexingProperties,
@@ -797,6 +800,96 @@ class RetrievalEvaluationHarnessTest {
         goldenCases,
         pipelineRunStart,
         log);
+
+    // 7. Variant comparison (#1041, docs/features/retrieval-benchmark.md §2): an opt-in step,
+    //    off by default so a normal evaluateRetrieval/checkRetrievalBaseline run is unaffected —
+    //    see eval/variants/README.md for how to opt in and how to point at a different comparison
+    //    file without any code change (issue #1041 acceptance criteria).
+    if (Boolean.getBoolean(RUN_VARIANT_COMPARISON_PROPERTY)) {
+      runVariantComparison(identity, queryProperties, goldenCases, evalLibraryId);
+    }
+  }
+
+  // System properties for the opt-in variant-comparison step (#1041) — see eval/variants/README.md.
+  private static final String RUN_VARIANT_COMPARISON_PROPERTY = "opaa.eval.runVariantComparison";
+  private static final String VARIANT_COMPARISON_FILE_PROPERTY = "opaa.eval.variantComparisonFile";
+  private static final String DEFAULT_VARIANT_COMPARISON_FILE =
+      "eval/variants/comic-characters-selection-mechanics.json";
+
+  // Not the individual QueryService collaborators: two of them (ChunkEmbeddingLookup,
+  // QueryDecompositionService) are package-private in io.opaa.query and cannot be named from this
+  // package at all. QueryServiceDependencies#fromContext is the seam that crosses that boundary
+  // via bean lookups instead.
+  @Autowired private org.springframework.context.ApplicationContext applicationContext;
+
+  /**
+   * Loads the declarative comparison, runs it, asserts the reference-variant self-check, and writes
+   * the report — never a reason for {@link #evaluatesRetrievalQualityAgainstTheGoldenDataset}
+   * itself to fail on a measurement problem outside the variant mechanism; a failure here is one
+   * this test's own assertions, not a guarded observation like step 6.
+   */
+  private void runVariantComparison(
+      PipelineHarnessSupport.RunIdentity identity,
+      QueryProperties queryProperties,
+      List<GoldenCase> goldenCases,
+      UUID evalLibraryId)
+      throws IOException {
+    Path repoRoot = RepoPaths.evalDir().getParent();
+    Path comparisonFile =
+        repoRoot.resolve(
+            System.getProperty(VARIANT_COMPARISON_FILE_PROPERTY, DEFAULT_VARIANT_COMPARISON_FILE));
+    VariantComparison comparison = VariantComparisonDataset.load(comparisonFile);
+
+    QueryServiceDependencies dependencies =
+        QueryServiceDependencies.fromContext(applicationContext);
+
+    VariantReport report =
+        VariantComparisonRunner.run(
+            comparison,
+            dependencies,
+            queryProperties,
+            DOMAIN,
+            identity,
+            indexingProperties,
+            evalLibraryId,
+            goldenCases);
+
+    // Referenzvarianten-Selbstprüfung (issue #1041 acceptance criteria): the reference variant
+    // (no parameter override) must reproduce, field for field, what a second, independent direct
+    // call into the same measurement computes for the unchanged production configuration —
+    // running through this comparison's mechanism must not perturb the numbers.
+    PipelineEvaluationReport directReferenceMeasurement =
+        PipelineHarnessSupport.measure(
+            DOMAIN,
+            identity,
+            dependencies.buildQueryService(queryProperties),
+            queryProperties,
+            indexingProperties,
+            evalLibraryId,
+            goldenCases,
+            Instant.now());
+    PipelineEvaluationReport referenceReport =
+        report.outcomes().stream()
+            .filter(o -> o.variant().name().equals(report.referenceVariant()))
+            .findFirst()
+            .orElseThrow()
+            .report();
+    assertThat(referenceReport.overall())
+        .as(
+            "reference variant must be bit-identical to a direct pipeline measurement of the "
+                + "unchanged production configuration (Referenzvarianten-Selbstprüfung, issue #1041)")
+        .isEqualTo(directReferenceMeasurement.overall());
+    assertThat(referenceReport.allQueryResults())
+        .as("reference variant's per-case results must be bit-identical to the direct measurement")
+        .isEqualTo(directReferenceMeasurement.allQueryResults());
+    log.info(
+        "Referenzvarianten-Selbstprüfung bestanden: bitgleiche Zahlen zum direkten Pipeline-Lauf.");
+
+    Path reportFile =
+        Path.of("build", "eval-reports", "variant-report-" + comparison.name() + ".json");
+    VariantReportWriter.writeJson(report, reportFile);
+    log.info(VariantReportWriter.renderSummary(report));
+    System.out.println("Variant report written to " + reportFile.toAbsolutePath());
   }
 
   private static WorstQuery toWorstQuery(RetrievalMetrics.QueryResult r) {

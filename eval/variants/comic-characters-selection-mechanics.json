@@ -1,0 +1,44 @@
+{
+  "name": "comic-characters-selection-mechanics",
+  "description": "Vergleich der Auswahlmechanik (MMR-Lambda, max-chunks-per-document, Ähnlichkeitsschwelle) und ein Beleg für die 'nicht ausgeführt'-Meldung bei fehlender Voraussetzung (Teilfragen-Zerlegung ohne Chat-Modell) auf dem Pipeline-Pfad der eingefrorenen comic-characters-Domäne (docs/features/retrieval-benchmark.md, Abschnitt 2, Zeile 'Auswahlmechanik').",
+  "domain": "comic-characters",
+  "referenceVariant": "production",
+  "variants": [
+    {
+      "name": "production",
+      "description": "Unveränderte Produktionskonfiguration — die Referenzvariante. Muss bitgleiche Zahlen zum direkten Pipeline-Lauf desselben Harness-Laufs liefern (Selbstprüfung, docs/features/retrieval-benchmark.md, Abschnitt 2).",
+      "requiresReindex": false,
+      "queryOverrides": {}
+    },
+    {
+      "name": "mmr-0.7",
+      "description": "Diversitätsauswahl aktiviert (mmr-lambda=0.7 statt Produktionsdefault 1.0) — misst, ob MMR die #912-Redundanz spürbar reduziert, ohne Recall zu kosten.",
+      "requiresReindex": false,
+      "queryOverrides": { "mmrLambda": 0.7 }
+    },
+    {
+      "name": "max-chunks-per-document-1",
+      "description": "Dokument-Vervollständigung abgeschaltet (max-chunks-per-document=1 statt Produktionsdefault 2) — die Vor-#932-Konfiguration, als expliziter Vergleichspunkt.",
+      "requiresReindex": false,
+      "queryOverrides": { "maxChunksPerDocument": 1 }
+    },
+    {
+      "name": "max-chunks-per-document-3",
+      "description": "Dokument-Vervollständigung großzügiger (max-chunks-per-document=3 statt Produktionsdefault 2) — ob ein drittes Chunk-Slot je Dokument den #912-Fehlerfall weiter verringert.",
+      "requiresReindex": false,
+      "queryOverrides": { "maxChunksPerDocument": 3 }
+    },
+    {
+      "name": "similarity-threshold-0.2",
+      "description": "Niedrigere Ähnlichkeitsschwelle (0.2 statt Produktionsdefault 0.3) — ob mehr Kandidaten vor MMR/RRF den Recall auf Kosten der Präzision anhebt.",
+      "requiresReindex": false,
+      "queryOverrides": { "similarityThreshold": 0.2 }
+    },
+    {
+      "name": "decomposition-on",
+      "description": "Teilfragen-Zerlegung aktiviert (docs/features/retrieval-benchmark.md, Vergleichszeile 'Fragezerlegung') — dieser Harness-Kontext hat kein Chat-Modell, die Variante muss deshalb als 'nicht ausgeführt' gemeldet werden, nicht als Einzelanfragen-Retrieval unter falschem Namen.",
+      "requiresReindex": false,
+      "queryOverrides": { "queryDecompositionEnabled": true }
+    }
+  ]
+}
