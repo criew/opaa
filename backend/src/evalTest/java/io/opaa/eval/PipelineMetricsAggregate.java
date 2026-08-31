@@ -28,9 +28,13 @@ import java.util.function.Function;
  * raw path uses. What is duplicated is only the aggregation shape, deliberately, so the raw path's
  * report and baseline schema stay byte-for-byte what they were.
  *
- * @param recallAt8Ceiling the highest Recall@8 this group could reach, given how many cases expect
- *     more than eight documents — same purpose as {@link MetricsAggregate#recallAt10Ceiling()}, at
- *     this path's window.
+ * @param recallAt8Ceiling the highest Recall@8 this group could actually reach. Same purpose as
+ *     {@link MetricsAggregate#recallAt10Ceiling()}, but computed against the number of <b>distinct
+ *     documents</b> a case's selection really surfaced, not against the raw window of eight: the
+ *     pipeline path's window counts <em>chunks</em>, and with {@code max-chunks-per-document > 1}
+ *     eight chunks can collapse to as few as four documents. Assuming eight document slots would
+ *     make the ceiling unreachably optimistic for a multi-chunk domain and let a Recall figure look
+ *     worse than the best any ranking could have achieved.
  * @param hitCountAt8 the number of cases with a relevant document anywhere in the (at most
  *     eight-entry) ranked list, i.e. the identical per-case event behind {@code mrrAt8 > 0}, {@code
  *     ndcgAt8 > 0} and {@code recallAt8 > 0}.
@@ -69,12 +73,19 @@ public record PipelineMetricsAggregate(
           + "vergleichbar und dürfen nicht ohne Fensterangabe nebeneinandergestellt werden "
           + "(docs/features/retrieval-benchmark.md, Abschnitt 1).";
 
-  public static PipelineMetricsAggregate of(List<RetrievalMetrics.WindowedQueryResult> results) {
-    requireExpectedWindows(results);
-    if (results.isEmpty()) {
+  /**
+   * Aggregates whole {@link PipelineRetrievalEvaluator.CaseOutcome}s rather than bare metric
+   * results, because {@code recallAt8Ceiling} needs each case's {@code distinctDocumentsReturned} —
+   * see this record's Javadoc for why the ceiling cannot be derived from the window alone.
+   */
+  public static PipelineMetricsAggregate of(List<PipelineRetrievalEvaluator.CaseOutcome> outcomes) {
+    requireExpectedWindows(outcomes);
+    if (outcomes.isEmpty()) {
       return new PipelineMetricsAggregate(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0.0);
     }
-    int n = results.size();
+    int n = outcomes.size();
+    List<RetrievalMetrics.WindowedQueryResult> results =
+        outcomes.stream().map(PipelineRetrievalEvaluator.CaseOutcome::metrics).toList();
     double hitRate =
         results.stream().mapToDouble(RetrievalMetrics.WindowedQueryResult::hitRate).sum() / n;
     double mrr =
@@ -85,14 +96,7 @@ public record PipelineMetricsAggregate(
     double recall =
         results.stream().mapToDouble(RetrievalMetrics.WindowedQueryResult::recall).sum() / n;
     double recallCeiling =
-        results.stream()
-                .mapToDouble(
-                    r -> {
-                      Set<String> expected = new HashSet<>(r.goldenCase().expectedDocuments());
-                      return RetrievalMetrics.recallCeilingAtK(expected, RANKING_K);
-                    })
-                .sum()
-            / n;
+        outcomes.stream().mapToDouble(PipelineMetricsAggregate::recallCeilingOf).sum() / n;
     long distinctExpectedSets =
         results.stream()
             .map(r -> new TreeSet<>(r.goldenCase().expectedDocuments()))
@@ -118,12 +122,27 @@ public record PipelineMetricsAggregate(
         allExpectedDocumentsHit);
   }
 
-  /** Groups results by an arbitrary key (category, difficulty, language, …) and aggregates each. */
+  /**
+   * The highest Recall this one case could have reached: the effective document window is the
+   * number of distinct documents its selection surfaced, never the nominal eight chunks. Reuses
+   * {@link RetrievalMetrics#recallCeilingAtK} with that effective window, so the ceiling definition
+   * itself stays in one place.
+   */
+  private static double recallCeilingOf(PipelineRetrievalEvaluator.CaseOutcome outcome) {
+    Set<String> expected = new HashSet<>(outcome.metrics().goldenCase().expectedDocuments());
+    return RetrievalMetrics.recallCeilingAtK(expected, outcome.distinctDocumentsReturned());
+  }
+
+  /**
+   * Groups outcomes by an arbitrary key (category, difficulty, language, …) and aggregates each.
+   */
   public static Map<String, PipelineMetricsAggregate> groupBy(
-      List<RetrievalMetrics.WindowedQueryResult> results, Function<GoldenCase, String> keyFn) {
-    Map<String, List<RetrievalMetrics.WindowedQueryResult>> grouped = new TreeMap<>();
-    for (RetrievalMetrics.WindowedQueryResult result : results) {
-      grouped.computeIfAbsent(keyFn.apply(result.goldenCase()), k -> new ArrayList<>()).add(result);
+      List<PipelineRetrievalEvaluator.CaseOutcome> outcomes, Function<GoldenCase, String> keyFn) {
+    Map<String, List<PipelineRetrievalEvaluator.CaseOutcome>> grouped = new TreeMap<>();
+    for (PipelineRetrievalEvaluator.CaseOutcome outcome : outcomes) {
+      grouped
+          .computeIfAbsent(keyFn.apply(outcome.metrics().goldenCase()), k -> new ArrayList<>())
+          .add(outcome);
     }
     Map<String, PipelineMetricsAggregate> aggregated = new TreeMap<>(Comparator.naturalOrder());
     grouped.forEach((key, group) -> aggregated.put(key, of(group)));
@@ -134,8 +153,10 @@ public record PipelineMetricsAggregate(
    * Guards the promise this record's component names make: a result measured at any other window
    * would be reported under an {@code …At8}/{@code …At5} name that does not describe it.
    */
-  private static void requireExpectedWindows(List<RetrievalMetrics.WindowedQueryResult> results) {
-    for (RetrievalMetrics.WindowedQueryResult result : results) {
+  private static void requireExpectedWindows(
+      List<PipelineRetrievalEvaluator.CaseOutcome> outcomes) {
+    for (PipelineRetrievalEvaluator.CaseOutcome outcome : outcomes) {
+      RetrievalMetrics.WindowedQueryResult result = outcome.metrics();
       if (result.hitRateK() != HIT_RATE_K || result.rankingK() != RANKING_K) {
         throw new IllegalArgumentException(
             "PipelineMetricsAggregate names its components after the windows "

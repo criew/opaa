@@ -227,7 +227,7 @@ public class QueryService {
                   relevantChunks = List.of();
                 } else {
                   relevantChunks =
-                      retrieveRelevantChunks(
+                      retrieveRelevantChunksInGivenScope(
                           question, chatMemory.get(conversationKey), searchScope);
                 }
 
@@ -403,18 +403,18 @@ public class QueryService {
    * answer prompt would have been built from, using the configured {@link QueryProperties} for
    * every parameter, {@code similarityThreshold} included.
    *
-   * <p><b>{@code searchScope} is taken as given.</b> This method applies it as the {@code
-   * library_id} filter of every search exactly as {@link #query} does, but resolves no permissions
-   * of its own — a caller other than {@link #query} is responsible for establishing that the scope
-   * it passes is one the acting user may read (ADR-0008 §5). The retrieval-evaluation harness
-   * ({@code io.opaa.eval}) is such a caller: it deliberately measures a fixed, complete scope over
-   * its own eval library, since permission enforcement is covered by the backend's integration
-   * tests and is not a measurement subject.
+   * <p><b>{@code searchScope} is taken as given — hence the name.</b> This method applies it as the
+   * {@code library_id} filter of every search exactly as {@link #query} does, but resolves no
+   * permissions of its own: a caller other than {@link #query} is responsible for establishing that
+   * the scope it passes is one the acting user may read (ADR-0008 §5). The retrieval-evaluation
+   * harness ({@code io.opaa.eval}) is such a caller: it deliberately measures a fixed, complete
+   * scope over its own eval library, since permission enforcement is covered by the backend's
+   * integration tests and is not a measurement subject.
    *
    * <p>An empty {@code searchScope} short-circuits to an empty result without any search, LLM call
    * or embedding lookup — the same short-circuit {@link #query} takes.
    */
-  public List<Document> retrieveRelevantChunks(
+  public List<Document> retrieveRelevantChunksInGivenScope(
       String question, List<Message> conversationHistory, Set<UUID> searchScope) {
     if (searchScope.isEmpty()) {
       return List.of();

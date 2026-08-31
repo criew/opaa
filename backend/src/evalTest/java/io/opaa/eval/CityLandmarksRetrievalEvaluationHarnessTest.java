@@ -334,15 +334,11 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     // EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE javadoc and ADR-0010: the harness measures whatever
     // chunk-size production is actually configured with (application.yml's own default).
     registry.add("opaa.indexing.batch-size", () -> 50);
-    // #1039: the only opaa.query.* value this harness overrides — the pipeline measurement path
-    // measures the decomposition-off variant. This context has no active chat model, so leaving
-    // decomposition on would make QueryDecompositionService fail per query and fall back to
-    // single-query retrieval: a run labelled "with decomposition" that measured without it. Which
-    // chat model the pipeline path should use is still an open decision
-    // (docs/features/retrieval-benchmark.md, "Offene Punkte" 3). PipelineHarnessSupport refuses to
-    // measure without this override rather than accepting the degradation. Every other query
-    // parameter (fetch-k, top-k, similarity-threshold, max-chunks-per-document, mmr-lambda) is
-    // deliberately left at its production default and read from the running context.
+    // The only opaa.query.* override: the pipeline path measures the decomposition-off variant,
+    // because this context has no chat model and a failing decomposition would silently degrade to
+    // single-query retrieval (ADR-0012, Nachtrag Pipeline-Messpfad, Entscheidung 15 — where the
+    // open model decision is recorded). Every other query parameter stays at its production
+    // default and is read from the running context.
     registry.add("opaa.query.query-decomposition-enabled", () -> false);
     // Single-threaded on purpose (unlike the production default of core=2/max=4): with more than
     // one worker thread, the order in which chunks are inserted into pgvector — and therefore the
@@ -768,32 +764,31 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     // 6. Second measurement path (#1039): the same golden cases, the same index, but through the
     //    production query pipeline (steps 2 to 6 of docs/features/retrieval-algorithm.md) instead
     //    of similaritySearch directly. Runs after — never instead of — the raw-vector path above,
-    //    whose numbers, report file and baseline are untouched by this block.
+    //    whose numbers, report file and baseline are untouched by this block, and guarded so a
+    //    failure here cannot fail this test and thereby rob the nightly job of its raw-vector
+    //    verdict (see PipelineHarnessSupport).
     Instant pipelineRunStart = Instant.now();
-    PipelineEvaluationReport pipelineReport =
-        PipelineHarnessSupport.runAndWrite(
-            DOMAIN,
-            new PipelineHarnessSupport.RunIdentity(
-                "ollama",
-                EMBEDDING_MODEL,
-                actualEmbeddingModelDigest,
-                OLLAMA_IMAGE,
-                EMBEDDING_DIMENSIONS,
-                actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
-                PGVECTOR_INDEX_TYPE,
-                CorpusManifest.sha256Hex(manifestFile),
-                manifest.fileNames().size(),
-                "eval/golden/" + DOMAIN.goldenDatasetFileName(),
-                GoldenDataset.sha256(goldenFile)),
-            queryService,
-            queryProperties,
-            indexingProperties,
-            evalLibraryId,
-            goldenCases,
-            pipelineRunStart);
-    log.info(PipelineReportWriter.renderSummary(pipelineReport));
-    System.out.println(
-        "Pipeline report written to " + PipelineHarnessSupport.reportFile(DOMAIN).toAbsolutePath());
+    PipelineHarnessSupport.runAndWriteGuarded(
+        DOMAIN,
+        new PipelineHarnessSupport.RunIdentity(
+            "ollama",
+            EMBEDDING_MODEL,
+            actualEmbeddingModelDigest,
+            OLLAMA_IMAGE,
+            EMBEDDING_DIMENSIONS,
+            actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
+            PGVECTOR_INDEX_TYPE,
+            CorpusManifest.sha256Hex(manifestFile),
+            manifest.fileNames().size(),
+            "eval/golden/" + DOMAIN.goldenDatasetFileName(),
+            GoldenDataset.sha256(goldenFile)),
+        queryService,
+        queryProperties,
+        indexingProperties,
+        evalLibraryId,
+        goldenCases,
+        pipelineRunStart,
+        log);
   }
 
   private static WorstQuery toWorstQuery(RetrievalMetrics.QueryResult r) {

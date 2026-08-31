@@ -72,9 +72,6 @@ public final class PipelineRetrievalEvaluator {
   /** Assembles the report from already-computed outcomes. */
   public static PipelineEvaluationReport report(
       List<CaseOutcome> outcomes, PipelineRunConfiguration runConfiguration) {
-    List<RetrievalMetrics.WindowedQueryResult> results =
-        outcomes.stream().map(CaseOutcome::metrics).toList();
-
     List<PipelineQueryResult> allQueryResults =
         outcomes.stream()
             .sorted(
@@ -88,10 +85,10 @@ public final class PipelineRetrievalEvaluator {
         PipelineMetricsAggregate.METRIC_WINDOW_NOTE,
         runConfiguration,
         selectionCoverage(outcomes),
-        PipelineMetricsAggregate.of(results),
-        PipelineMetricsAggregate.groupBy(results, GoldenCase::category),
-        PipelineMetricsAggregate.groupBy(results, GoldenCase::difficulty),
-        PipelineMetricsAggregate.groupBy(results, GoldenCase::language),
+        PipelineMetricsAggregate.of(outcomes),
+        PipelineMetricsAggregate.groupBy(outcomes, GoldenCase::category),
+        PipelineMetricsAggregate.groupBy(outcomes, GoldenCase::difficulty),
+        PipelineMetricsAggregate.groupBy(outcomes, GoldenCase::language),
         allQueryResults.stream().limit(10).toList(),
         allQueryResults);
   }

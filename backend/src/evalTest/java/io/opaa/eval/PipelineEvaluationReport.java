@@ -102,7 +102,9 @@ public record PipelineEvaluationReport(
 
   /**
    * One golden case's pipeline result. Metric components carry their window in their name for the
-   * same reason {@link PipelineMetricsAggregate}'s do.
+   * same reason {@link PipelineMetricsAggregate}'s do. {@code reciprocalRankAt8} is the per-case
+   * value MRR@8 averages — named like the raw-vector path's per-case {@code reciprocalRank}, since
+   * "mean reciprocal rank" of a single case would be a contradiction.
    *
    * @param chunksReturned how many chunks the pipeline selected for this query (at most {@code
    *     top-k}, possibly fewer or zero once the similarity threshold applies).
@@ -116,7 +118,7 @@ public record PipelineEvaluationReport(
       String difficulty,
       String language,
       double hitRateAt5,
-      double mrrAt8,
+      double reciprocalRankAt8,
       double ndcgAt8,
       double recallAt8,
       double allExpectedDocumentsHitAt8,

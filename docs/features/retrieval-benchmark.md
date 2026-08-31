@@ -118,7 +118,7 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 ## 1. Messpfad durch die produktive Pipeline
 
 > **Umsetzungsstand (Issue #1039, 08/2026):** Der Messpfad ist gebaut. `QueryService` bietet mit
-> `retrieveRelevantChunks(question, history, searchScope)` die Schritte 2–6 als eigenen Einstieg an;
+> `retrieveRelevantChunksInGivenScope(question, history, searchScope)` die Schritte 2–6 als eigenen Einstieg an;
 > `io.opaa.eval.PipelineHarnessSupport` fährt darüber beide Domänen im selben Harness-Lauf und
 > schreibt `build/eval-reports/pipeline-metrics-<domäne>.json` mit fenstertragenden Feldnamen
 > (`hitRateAt5`, `mrrAt8`, `ndcgAt8`, `recallAt8`). Fortgeschrieben ist der Messvertrag in

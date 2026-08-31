@@ -156,7 +156,7 @@ Frage + Gesprächsverlauf
 7. Antwortgenerierung, Zitatvalidierung, Quellen-Mapping
 ```
 
-Die Schritte 2 bis 6 sind über `QueryService#retrieveRelevantChunks(question, history, searchScope)`
+Die Schritte 2 bis 6 sind über `QueryService#retrieveRelevantChunksInGivenScope(question, history, searchScope)`
 auch einzeln aufrufbar — der Einstieg, über den der Pipeline-Messpfad des Retrieval-Harness genau
 diese Kette misst, ohne Schritt 7 (siehe
 [Retrieval-Benchmark](./retrieval-benchmark.md#1-messpfad-durch-die-produktive-pipeline)). Der

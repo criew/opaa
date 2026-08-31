@@ -346,7 +346,7 @@ JUnit-Test
   ├─ Testcontainers: Ollama mit nomic-embed-text
   ├─ Korpus aus eval/corpus/ indizieren (Manifest vorher prüfen)
   ├─ Rohvektor-Pfad
-  │    ├─ pro Golden-Query: VectorStore.similaritySearch(topK=10, threshold=0.0)
+  │    ├─ pro Golden-Query: VectorStore.similaritySearch(topK=chunkTopK, threshold=0.0)
   │    ├─ Treffer über Chunk-Metadatum file_name auf Entitäten abbilden
   │    └─ Hit Rate@5, MRR@10, nDCG@10, Recall@10 → Report + Baseline-Vergleich
   └─ Pipeline-Pfad (#1039, derselbe Index, keine zweite Indizierung)

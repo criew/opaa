@@ -83,13 +83,15 @@ public final class PipelineReportWriter {
     sb.append(
         format(
             "Auswahlumfang: %d Anfragen, Chunks je Anfrage min=%d, max=%d, Mittel=%.2f; "
-                + "unterschiedliche Dokumente im Mittel=%.2f; %d Anfrage(n) ohne jeden Chunk "
+                + "effektives Dokumentfenster (unterschiedliche Dokumente je Anfrage) im "
+                + "Mittel=%.2f von nominal %d Chunk-Plätzen; %d Anfrage(n) ohne jeden Chunk "
                 + "(Ähnlichkeitsschwelle angewandt)\n\n",
             coverage.queriesEvaluated(),
             coverage.minChunksReturned(),
             coverage.maxChunksReturned(),
             coverage.meanChunksReturned(),
             coverage.meanDistinctDocumentsReturned(),
+            PipelineMetricsAggregate.RANKING_K,
             coverage.queriesWithNoChunks()));
 
     sb.append(format("Gesamt (n=%d):\n", report.overall().n()));
@@ -139,8 +141,9 @@ public final class PipelineReportWriter {
   private static void appendMetricLine(StringBuilder sb, PipelineMetricsAggregate a) {
     sb.append(
         format(
-            "HitRate@5=%.3f  MRR@8=%.3f  nDCG@8=%.3f  Recall@8=%.3f (Obergrenze@8=%.3f, "
-                + "distinct=%d)  AlleThemenGetroffen@8=%.3f\n",
+            "HitRate@5=%.3f  MRR@8=%.3f  nDCG@8=%.3f  Recall@8=%.3f "
+                + "(Obergrenze am effektiven Dokumentfenster=%.3f, distinct=%d)  "
+                + "AlleThemenGetroffen@8=%.3f\n",
             a.hitRateAt5(),
             a.mrrAt8(),
             a.ndcgAt8(),

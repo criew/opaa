@@ -238,6 +238,13 @@ tatsächlich lieferte und bei wie vielen Anfragen die Schwelle **alles** herausf
 Gruppen- und Einzelfallzahlen unter den fenstertragenden Namen `hitRateAt5`/`mrrAt8`/`ndcgAt8`/
 `recallAt8`.
 
+`recallAt8Ceiling` wird dabei **nicht** gegen acht Dokumentplätze gerechnet, sondern gegen die Zahl
+der Dokumente, die eine Anfrage tatsächlich zutage gefördert hat: Das Fenster des Pipeline-Pfads
+zählt Chunks, und bei `max-chunks-per-document > 1` fallen acht Chunks auf entsprechend weniger
+Dokumente zusammen. Eine Obergrenze über acht Plätze wäre in einer mehrchunkigen Domäne
+unerreichbar optimistisch. Die Konsolenzusammenfassung nennt den Mittelwert dieser Zahl als
+„effektives Dokumentfenster".
+
 ### Was dieser Korpus nicht messen kann
 
 Die Ein-Chunk-Invariante hat eine Kehrseite, die bei jeder Auswertung mitgedacht werden muss: **Alles,

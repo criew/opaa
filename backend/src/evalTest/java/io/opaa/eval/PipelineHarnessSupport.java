@@ -10,12 +10,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
 
 /**
  * The pipeline measurement path's harness half (issue #1039): everything the two domain harnesses
- * need to run their golden dataset through {@link QueryService#retrieveRelevantChunks(String, List,
- * Set)} and write the resulting {@link PipelineEvaluationReport}, in one place instead of copied
- * into both near-duplicate harness classes.
+ * need to run their golden dataset through {@link
+ * QueryService#retrieveRelevantChunksInGivenScope(String, List, Set)} and write the resulting
+ * {@link PipelineEvaluationReport}, in one place instead of copied into both near-duplicate harness
+ * classes.
  *
  * <p>Runs on the corpus the calling harness has already indexed and manifest-verified — the
  * pipeline path costs a second pass of queries, never a second indexing run, and therefore measures
@@ -72,15 +74,63 @@ public final class PipelineHarnessSupport {
       String goldenDatasetSha256) {}
 
   /**
-   * Runs every golden case through the production retrieval chain against {@code evalLibraryId},
-   * writes {@code build/eval-reports/pipeline-metrics-<domain>.json} and returns the report. The
-   * caller logs {@link PipelineReportWriter#renderSummary}.
+   * Runs the pipeline measurement path and writes its report — <b>without ever failing the harness
+   * run it is invoked from</b>.
+   *
+   * <p>This split is the point of the method. The pipeline path is an observation artifact, not a
+   * watchdog: it has no baseline and no verdict. It runs at the end of the same {@code @Test}
+   * method as the raw-vector path, so a {@link RuntimeException} escaping it would fail {@code
+   * evaluateRetrieval}, which means {@code BaselineRegressionTest} never runs, which means the
+   * nightly job produces <b>no verdict at all on the raw-vector path</b> and files an alert issue
+   * whose stock wording blames a regression that was never measured. A failing observation must
+   * never silence the watchdog.
+   *
+   * <p>{@link #requireMeasurableConfiguration} is the deliberate exception and runs <b>before</b>
+   * the guarded section: a configuration under which the reported numbers would not mean what their
+   * names say is a setup error the run must not paper over, and it is decided before any
+   * measurement happens.
    *
    * <p>{@code pipelineRunStart} is the start of this measurement phase, not of the whole harness
    * run — the reported duration is the cost of the queries alone, since indexing was already paid
    * for by the raw-vector path.
    */
-  public static PipelineEvaluationReport runAndWrite(
+  public static void runAndWriteGuarded(
+      EvalDomainConfig domain,
+      RunIdentity identity,
+      QueryService queryService,
+      QueryProperties queryProperties,
+      IndexingProperties indexingProperties,
+      UUID evalLibraryId,
+      List<GoldenCase> goldenCases,
+      Instant pipelineRunStart,
+      Logger log) {
+    requireMeasurableConfiguration(queryProperties);
+    try {
+      PipelineEvaluationReport report =
+          runAndWrite(
+              domain,
+              identity,
+              queryService,
+              queryProperties,
+              indexingProperties,
+              evalLibraryId,
+              goldenCases,
+              pipelineRunStart);
+      log.info(PipelineReportWriter.renderSummary(report));
+      System.out.println("Pipeline report written to " + reportFile(domain).toAbsolutePath());
+    } catch (RuntimeException | IOException e) {
+      // IOException as well as RuntimeException: failing to *write* the observation artifact is no
+      // more a reason to fail the run than failing to produce it.
+      log.error(
+          "Pipeline-Messpfad fehlgeschlagen, Rohvektor-Pfad unberührt — dessen Messung und "
+              + "Baseline-Vergleich sind zu diesem Zeitpunkt bereits abgeschlossen und von diesem "
+              + "Fehler nicht betroffen. Für diesen Lauf fehlt nur der Pipeline-Report ({}).",
+          reportFile(domain),
+          e);
+    }
+  }
+
+  private static PipelineEvaluationReport runAndWrite(
       EvalDomainConfig domain,
       RunIdentity identity,
       QueryService queryService,
@@ -90,8 +140,6 @@ public final class PipelineHarnessSupport {
       List<GoldenCase> goldenCases,
       Instant pipelineRunStart)
       throws IOException {
-    requireMeasurableConfiguration(queryProperties);
-
     Set<UUID> searchScope = Set.of(evalLibraryId);
     List<PipelineRetrievalEvaluator.CaseOutcome> outcomes =
         PipelineRetrievalEvaluator.evaluateAll(
@@ -99,7 +147,9 @@ public final class PipelineHarnessSupport {
             // No conversation history: a golden case is a standalone question, and the harness has
             // no chat to resolve a follow-up against.
             query ->
-                queryService.retrieveRelevantChunks(query, List.of(), searchScope).stream()
+                queryService
+                    .retrieveRelevantChunksInGivenScope(query, List.of(), searchScope)
+                    .stream()
                     .map(chunk -> chunk.getMetadata().get("file_name"))
                     .map(value -> value == null ? null : value.toString())
                     .toList());

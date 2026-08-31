@@ -196,6 +196,12 @@ Vorher/Nachher-Vergleich als Beleg.
 > („Messpfad durch die produktive Pipeline"), Issue #1039.** Dieser Abschnitt schreibt den
 > Messvertrag fort, statt ihn umzuschreiben: Die Entscheidungen 1–10 oben gelten unverändert und
 > beschreiben ab hier ausdrücklich den **Rohvektor-Pfad**.
+>
+> **Herkunft der Abweichung (Entscheidung 16):** Die eigene, getrennt gezählte
+> `PIPELINE_MEASUREMENT_CONTRACT_VERSION` weicht von `retrieval-benchmark.md` §1, Konsequenz 2 ab,
+> die eine Erhöhung der bestehenden `measurementContractVersion` vorsieht. Freigegeben vom
+> Koordinator unter delegierter Maintainer-Autorität am 2026-08-31; Begründung in Entscheidung 16.
+> Die Freigabe wird dem Maintainer im Abschlussbericht des Epics gemeldet.
 
 ### 11. Zwei Messpfade, getrennt ausgewiesen
 
@@ -283,4 +289,16 @@ Baselines und Toleranzen des Pipeline-Pfads. #1039 liefert den Messpfad und sein
 getrennten Baseline-Dateien je Pfad und Domäne, ihre Aufnahme in `BaselineComparator` und in den
 nächtlichen Job sind Gegenstand der Folgearbeit desselben Epics (Umsetzungsschnitt A/E in
 `docs/features/retrieval-benchmark.md`). Bis dahin ist der Pipeline-Report ein Beobachtungs-,
-kein Wächterartefakt.
+kein Wächterartefakt — er läuft entsprechend abgesichert und lässt den Harness-Lauf grün, wenn er
+selbst scheitert, damit ein Fehler in der Beobachtung nie das Urteil des Rohvektor-Pfads verhindert.
+
+**Ebenfalls offen: die Durchsetzung der Fixpunkte aus Entscheidung 13.** Der Harness prüft heute
+nur zwei davon aktiv (`top-k`, weil die Metriknamen dieses Fenster wörtlich führen, und
+`query-decomposition-enabled`, weil eine stille Degradierung sonst als „mit Zerlegung" gemessen
+würde). Die übrigen — `fetch-k`, `similarity-threshold`, `max-chunks-per-document`, `mmr-lambda`,
+`max-sub-queries` — werden ausgewiesen, aber nicht geprüft: Sie stehen im Report, und eine Änderung
+ist dort nachlesbar, führt aber zu keinem Abbruch. Eine `mmr-lambda`-Änderung könnte damit heute
+unbemerkt in einen Pipeline-Report einfließen. Das ist bis zur Baseline folgenlos, weil es nichts
+gibt, wogegen verglichen würde; **mit der ersten Pipeline-Baseline muss die Prüfung dieser Werte
+Teil der Gültigkeitsprüfung werden** (dieselbe Rolle, die `Baseline.FixedPoints` für den
+Rohvektor-Pfad spielt). Gehört zur Baseline-Folgearbeit, nicht zu #1039.
