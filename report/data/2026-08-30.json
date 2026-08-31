@@ -1,0 +1,310 @@
+{
+  "repo": "criew/opaa",
+  "date": "2026-08-30",
+  "generated_at": "2026-08-31T07:53:52.750827+02:00",
+  "timezone": "Europe/Berlin",
+  "timezone_fallback": false,
+  "window_start": "2026-08-30T00:00:00+02:00",
+  "window_end": "2026-08-30T23:59:59+02:00",
+  "closed_issues": [
+    {
+      "number": 1023,
+      "title": "Recherche: Retrieval-Strategien für OPAA — Tech-Report, Roadmap und Dateityp-/Metadaten-Konzept",
+      "url": "https://github.com/criew/opaa/issues/1023",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:M",
+        "evaluation"
+      ],
+      "body": "## Ziel\n\nDas Retrieval von OPAA soll auf das nächste Level gehoben werden. Dafür braucht es eine fundierte Entscheidungsgrundlage: eine systematische Recherche über den aktuellen Stand der Retrieval-/RAG-Strategien (2025/2026), einen Abgleich mit Konkurrenz- und Referenzsystemen (Microsoft GraphRAG/LazyGraphRAG, Azure AI Search, RAGFlow, Onyx, LightRAG u. a.) und die Herunterbrechung auf Einsatzszenarien der öffentlichen Verwaltung.\n\n## Umfang\n\n1. **Tech-Report** (`docs/discussions/discussion-retrieval-strategien.md`): Grundkonzepte für Einsteiger, Strategie-Familien im technischen Detail mit Benchmark-Evidenz (Chunking, Hybrid BM25+Vektor, Reranking, Query-Transformation, GraphRAG-Familie, Agentic RAG, ColBERT, Long Context), Systemvergleich, neun Verwaltungs-Use-Cases mit Erfolgs- und Limitationsanalyse, Gesamtvergleichstabelle.\n2. **Roadmap-Ableitung** (`docs/discussions/discussion-retrieval-roadmap-opaa.md`): Phasenvorschlag (Messbarkeit → Hybrid+Reranking → Kontextqualität → bedingte erweiterte Frageklassen) und bewusst nicht verfolgte Strategien mit Begründung; offene Maintainer-Fragen (u. a. Aufhebung der #938-Zurückstellung).\n3. **Dateitypen und Metadaten** (`docs/discussions/discussion-dateitypen-und-metadaten.md`): Ist-Stand der unterstützten Formate, verwaltungsspezifische Dateityp-Tabelle mit Parsing-/Chunking-Empfehlung und Metadaten-Kandidaten pro Typ, Konzeptvorschlag geführter Bibliotheks-Assistent mit LLM-Metadaten-Vorklassifikation inkl. Leitplanken.\n\n## Bezug\n\nBaut auf #317 (GraphRAG-Recherche), #936 (Ist-Stand-Spezifikation), #938 (Grenze der reinen Vektorsuche) und den bestehenden Diskussionen zu Embeddings, Dokument-Pipelines und RAG-Evaluation auf.\n\n## Abnahmekriterien\n\n- Die drei Diskussionsdokumente liegen unter `docs/discussions/` und sind untereinander sowie mit den bestehenden Dokumenten verlinkt.\n- Kernaussagen sind mit Quellen (Papers, Benchmarks, Produktdokumentation) belegt.",
+      "closes": []
+    },
+    {
+      "number": 1022,
+      "title": "Recherche: Agent-Loop, Frameworks und Laufzeitumgebung für Phase-2-Agenten dokumentieren",
+      "url": "https://github.com/criew/opaa/issues/1022",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:M"
+      ],
+      "body": "## Kontext\n\nFür Phase 2 (nutzerdefinierte Agenten und Skills als teilbare Assets, siehe `docs/features/agents-and-tools.md`) fehlte bislang eine technische Grundlagenrecherche: Wie implementieren führende Agentensysteme (Claude Code / Agent SDK, OpenAI Codex und Agents SDK, Google Gemini CLI / ADK) ihren Agent Loop und ihre Ausführungsumgebung, was bietet das Java-/Spring-Ökosystem (Spring AI 2.0, Embabel, LangGraph4j, MCP), und welche Laufzeit-/Sandbox-Architektur ist für den On-Prem-Docker-Compose-Betrieb realistisch?\n\n## Aufgabe\n\nRechercheergebnisse als Diskussionsdokumente in `docs/discussions/` ablegen:\n\n1. **Tech-Report Agentensysteme und Frameworks** — kanonischer Agent Loop, Vergleich der großen Systeme, Spring AI 2.0 (`ToolCallingAdvisor`, MCP-Support), Framework-Optionen im JVM-Ökosystem.\n2. **Tech-Report Laufzeitumgebung und Sandboxing** — Sandbox-Technologien im Vergleich, Runner-Sidecar-Muster (n8n-Vorbild), Lehren aus Low-Code-Plattformen (inkl. CVEs bei Flowise/OpenWebUI), Agent-Skills-Standard, Checkpoint-basierte langlebige Ausführung.\n3. **Architektur-/Phasenvorschlag für OPAA** — Ist-Stand-Analyse (Andockpunkte: Indexing-Job-Muster, Asset-/Grant-Modell, `ActiveChatModelResolver`), sechs Architektur-Grundentscheidungen, Phasen A/B/C, bewusste Nicht-Entscheidungen, offene Fragen für den Maintainer (u. a. #349).\n\n## Abnahmekriterien\n\n- [ ] Drei Diskussionsdokumente liegen unter `docs/discussions/` und verweisen aufeinander sowie auf `docs/features/agents-and-tools.md`\n- [ ] Quellenangaben (URLs) sind in den Tech-Reports enthalten\n- [ ] Keine Entscheidungen vorweggenommen — Status „Diskussionsvorschlag\" bzw. „Rechercheergebnis\"",
+      "closes": []
+    },
+    {
+      "number": 945,
+      "title": "Meilenstein-1: Inventur-Nachzug, Report-Finalisierung und weitere Übergabeaufgaben",
+      "url": "https://github.com/criew/opaa/issues/945",
+      "author": "criew",
+      "labels": [
+        "documentation"
+      ],
+      "body": "## Kontext\n\nSammelticket für die Übergabe von Meilenstein 1 (31.08.2026, siehe docs/VISION.md, Roadmap). Die Leistungsinventur und die Berichtsstruktur sind mit #746 gemergt (Issue #744); dieses Ticket bündelt alles, was bis zur und für die Übergabe noch passieren muss.\n\n## Aufgaben (wächst bei Bedarf)\n\n- [ ] Inventur zum Stichtag nachziehen: neuer Anker, Delta-Bausteine, Index und Gruppierung ergänzen, Report aktualisieren (Vorgehen: docs/fortschritt/README.md)\n- [ ] Zur Abnahme: ENTWURF-Markierung entfernen, erste Fassung von docs/fortschritt/gesamtstand.md konsolidieren\n- [ ] Entscheidung STATUS.md: ablösen oder auf gesamtstand.md umleiten\n\nPRs zu diesem Ticket referenzieren es bitte ohne \"Closes\" — es bleibt bis zur abgeschlossenen Übergabe offen.",
+      "closes": []
+    }
+  ],
+  "opened_issues": [
+    {
+      "number": 1023,
+      "title": "Recherche: Retrieval-Strategien für OPAA — Tech-Report, Roadmap und Dateityp-/Metadaten-Konzept",
+      "url": "https://github.com/criew/opaa/issues/1023",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:M",
+        "evaluation"
+      ],
+      "body": "## Ziel\n\nDas Retrieval von OPAA soll auf das nächste Level gehoben werden. Dafür braucht es eine fundierte Entscheidungsgrundlage: eine systematische Recherche über den aktuellen Stand der Retrieval-/RAG-Strategien (2025/2026), einen Abgleich mit Konkurrenz- und Referenzsystemen (Microsoft GraphRAG/LazyGraphRAG, Azure AI Search, RAGFlow, Onyx, LightRAG u. a.) und die Herunterbrechung auf Einsatzszenarien der öffentlichen Verwaltung.\n\n## Umfang\n\n1. **Tech-Report** (`docs/discussions/discussion-retrieval-strategien.md`): Grundkonzepte für Einsteiger, Strategie-Familien im technischen Detail mit Benchmark-Evidenz (Chunking, Hybrid BM25+Vektor, Reranking, Query-Transformation, GraphRAG-Familie, Agentic RAG, ColBERT, Long Context), Systemvergleich, neun Verwaltungs-Use-Cases mit Erfolgs- und Limitationsanalyse, Gesamtvergleichstabelle.\n2. **Roadmap-Ableitung** (`docs/discussions/discussion-retrieval-roadmap-opaa.md`): Phasenvorschlag (Messbarkeit → Hybrid+Reranking → Kontextqualität → bedingte erweiterte Frageklassen) und bewusst nicht verfolgte Strategien mit Begründung; offene Maintainer-Fragen (u. a. Aufhebung der #938-Zurückstellung).\n3. **Dateitypen und Metadaten** (`docs/discussions/discussion-dateitypen-und-metadaten.md`): Ist-Stand der unterstützten Formate, verwaltungsspezifische Dateityp-Tabelle mit Parsing-/Chunking-Empfehlung und Metadaten-Kandidaten pro Typ, Konzeptvorschlag geführter Bibliotheks-Assistent mit LLM-Metadaten-Vorklassifikation inkl. Leitplanken.\n\n## Bezug\n\nBaut auf #317 (GraphRAG-Recherche), #936 (Ist-Stand-Spezifikation), #938 (Grenze der reinen Vektorsuche) und den bestehenden Diskussionen zu Embeddings, Dokument-Pipelines und RAG-Evaluation auf.\n\n## Abnahmekriterien\n\n- Die drei Diskussionsdokumente liegen unter `docs/discussions/` und sind untereinander sowie mit den bestehenden Dokumenten verlinkt.\n- Kernaussagen sind mit Quellen (Papers, Benchmarks, Produktdokumentation) belegt.",
+      "closes": []
+    },
+    {
+      "number": 1022,
+      "title": "Recherche: Agent-Loop, Frameworks und Laufzeitumgebung für Phase-2-Agenten dokumentieren",
+      "url": "https://github.com/criew/opaa/issues/1022",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:M"
+      ],
+      "body": "## Kontext\n\nFür Phase 2 (nutzerdefinierte Agenten und Skills als teilbare Assets, siehe `docs/features/agents-and-tools.md`) fehlte bislang eine technische Grundlagenrecherche: Wie implementieren führende Agentensysteme (Claude Code / Agent SDK, OpenAI Codex und Agents SDK, Google Gemini CLI / ADK) ihren Agent Loop und ihre Ausführungsumgebung, was bietet das Java-/Spring-Ökosystem (Spring AI 2.0, Embabel, LangGraph4j, MCP), und welche Laufzeit-/Sandbox-Architektur ist für den On-Prem-Docker-Compose-Betrieb realistisch?\n\n## Aufgabe\n\nRechercheergebnisse als Diskussionsdokumente in `docs/discussions/` ablegen:\n\n1. **Tech-Report Agentensysteme und Frameworks** — kanonischer Agent Loop, Vergleich der großen Systeme, Spring AI 2.0 (`ToolCallingAdvisor`, MCP-Support), Framework-Optionen im JVM-Ökosystem.\n2. **Tech-Report Laufzeitumgebung und Sandboxing** — Sandbox-Technologien im Vergleich, Runner-Sidecar-Muster (n8n-Vorbild), Lehren aus Low-Code-Plattformen (inkl. CVEs bei Flowise/OpenWebUI), Agent-Skills-Standard, Checkpoint-basierte langlebige Ausführung.\n3. **Architektur-/Phasenvorschlag für OPAA** — Ist-Stand-Analyse (Andockpunkte: Indexing-Job-Muster, Asset-/Grant-Modell, `ActiveChatModelResolver`), sechs Architektur-Grundentscheidungen, Phasen A/B/C, bewusste Nicht-Entscheidungen, offene Fragen für den Maintainer (u. a. #349).\n\n## Abnahmekriterien\n\n- [ ] Drei Diskussionsdokumente liegen unter `docs/discussions/` und verweisen aufeinander sowie auf `docs/features/agents-and-tools.md`\n- [ ] Quellenangaben (URLs) sind in den Tech-Reports enthalten\n- [ ] Keine Entscheidungen vorweggenommen — Status „Diskussionsvorschlag\" bzw. „Rechercheergebnis\"",
+      "closes": []
+    }
+  ],
+  "merged_pull_requests": [
+    {
+      "number": 1026,
+      "title": "docs(fortschritt): Meilenstein-1-Bericht finalisieren und Gesamtstand konsolidieren (Stichtag 31.08.)",
+      "url": "https://github.com/criew/opaa/pull/1026",
+      "author": "criew",
+      "labels": [
+        "documentation"
+      ],
+      "body": "## Zusammenfassung\n\nFinalisiert den **Meilenstein-1-Bericht zur Abnahme am Stichtag 31.08.2026** auf dem Datenstand vom 30.08.2026:\n\n- **Delta erhoben** ab dem bisherigen Anker `1c38b80d` (27.08.): 22 geschlossene Issues, 63 gemergte PRs. Neue Bausteine für alle Delta-Issues sowie PR#946 und PR#1014; die 43 Renovate-Abhängigkeits-Updates sind bewusst in einem **Sammelbaustein** (`pr-renovate-updates.md`) geführt statt je PR einzeln — mechanische Versionshebungen ohne eigenständigen Feature-Gehalt, die PR-Nummern sind dort vollständig gelistet.\n- **Anker fortgeschrieben** auf `main@a51e6b8c` (504 Issues, 496 PRs kumuliert); die Erhebungsschritte bleiben in `anker.md` nachvollziehbar.\n- **Gruppierung konsolidiert:** die „Nachzug 27.08.\"-Absätze sind in die Themenlisten eingearbeitet, Delta-Bausteine zugeordnet (u. a. Barrierefreiheits-Abschluss-Audit → K/I, Renovate-Härtung → T1, Phase-2-Recherchen → V).\n- **Bericht umformuliert**, sodass er sich als **einmalige Erhebung seit Projektstart** liest — keine „zum Meilensteinende kam noch …\"-Erzählung mehr. Inhaltlich ergänzt: Abschluss-Audit der Barrierefreiheit samt behobener Befunde und Epic-Abschluss #600, Renovate-Betriebshärtung, Recherchen #1022/#1023, Indexstand-Spalte (#684), aktualisierte Kennzahlen.\n- **Tag als Anker:** Der Bericht nennt das Git-Tag `inventur-20260830`; es wird **nach dem Merge auf den Squash-Commit dieses PRs** gesetzt. Das ist konsistent möglich, weil der Tag-Name (anders als ein Commit-Hash) vorab feststeht — der getaggte Stand umfasst damit Datenstand und Bericht gemeinsam.\n- **Bericht als final ausgewiesen** (ENTWURF-Marker entfernt) und der **Gesamtstand erstmals konsolidiert:** `gesamtstand.md` beschreibt den Produktstand je Themenbereich in „ist gebaut\"-Formulierung samt bewusst nicht Gebautem und ist die führende Quelle für den Umsetzungsstand (`docs/STATUS.md` ist bereits seit #927 entfernt). Die Erhebungsschritte-Tabelle in `anker.md` ist entfernt; es bleibt der aktuelle Anker samt Fortschreibungs-Anleitung.\n\n## Zugehörige Issues\n\nCloses #945\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung, Pre-Push-Checkliste entfällt)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [ ] Barrierefreiheit geprüft — entfällt (keine UI-Änderung)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code / Claude Fable 5, beauftragt und geprüft durch den Maintainer)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01LARhz4xPqvSzj32KFhBACo",
+      "closes": [
+        945
+      ],
+      "additions": 771,
+      "deletions": 165,
+      "changed_files": 30
+    },
+    {
+      "number": 1025,
+      "title": "docs(discussions): Retrieval-Strategien-Recherche mit Roadmap und Dateityp-/Metadaten-Konzept",
+      "url": "https://github.com/criew/opaa/pull/1025",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "evaluation"
+      ],
+      "body": "## Zusammenfassung\n\nDrei neue Diskussionsdokumente unter `docs/discussions/` als Entscheidungsgrundlage für den Retrieval-Ausbau:\n\n- **`discussion-retrieval-strategien.md`** — ausführlicher Tech-Report: Grundkonzepte für Einsteiger, Strategie-Familien im Detail mit Benchmark-Evidenz (Chunking, Hybrid BM25+Vektor, Reranking, Query-Transformation, GraphRAG-Familie inkl. LazyGraphRAG, Agentic RAG, ColBERT, Long Context), Systemvergleich (Microsoft, RAGFlow, Onyx, deutsche Verwaltungsprojekte), neun Verwaltungs-Use-Cases mit Erfolgs-/Limitationsanalyse, Gesamtvergleichstabelle.\n- **`discussion-retrieval-roadmap-opaa.md`** — Phasenvorschlag (Phase 0 Messbarkeit → Phase 1 Hybrid+Reranking → Phase 2 Kontextqualität → Phase 3 bedingte erweiterte Frageklassen), zehn bewusst nicht verfolgte Strategien mit Begründung, offene Maintainer-Fragen (u. a. Aufhebung der #938-Zurückstellung).\n- **`discussion-dateitypen-und-metadaten.md`** — Ist-Stand der Formatunterstützung, verwaltungsspezifische Dateityp-Tabelle (ODF, XLSX/CSV, Scan-PDF/OCR, E-Mail, LegalDocML …) mit Parsing-/Chunking-Empfehlung und Metadaten-Kandidaten pro Typ, Konzept eines geführten Bibliotheks-Assistenten mit LLM-Metadaten-Vorklassifikation inkl. Leitplanken.\n\nBestehende Dokumente (`discussion-retrieval-document-pipelines.md`, Tech-Report ↔ Roadmap) sind wechselseitig verlinkt.\n\n## Zugehörige Issues\n\nCloses #1023\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung, Pre-Push-Checkliste entfällt)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [ ] Barrierefreiheit geprüft — entfällt (keine UI-Änderung)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code / Claude Fable 5, beauftragt und geprüft durch den Maintainer)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01Kg6erLJNpHKTZThXmcA447",
+      "closes": [
+        1023
+      ],
+      "additions": 794,
+      "deletions": 0,
+      "changed_files": 6
+    },
+    {
+      "number": 1024,
+      "title": "docs(discussions): Recherche zu Agent-Loop, Frameworks und Laufzeitumgebung für Phase-2-Agenten",
+      "url": "https://github.com/criew/opaa/pull/1024",
+      "author": "criew",
+      "labels": [
+        "documentation"
+      ],
+      "body": "## Zusammenfassung\n\nLegt die Ergebnisse der Grundlagenrecherche zu Phase-2-Agenten als drei Diskussionsdokumente in `docs/discussions/` ab:\n\n- **`discussion-agentensysteme-und-frameworks.md`** — Tech-Report: kanonischer Agent Loop, Vergleich Claude Code / Agent SDK, OpenAI Codex / Agents SDK, Google Gemini CLI / ADK; Spring AI 2.0 (`ToolCallingAdvisor`, MCP-Support), Embabel, LangGraph4j, LangChain4j als JVM-Optionen.\n- **`discussion-agenten-laufzeitumgebung-und-sandboxing.md`** — Tech-Report: Sandbox-Technologien im Vergleich, Runner-Sidecar-Muster (n8n-Vorbild), Lehren aus Low-Code-Plattformen (inkl. CVEs bei Flowise und OpenWebUI), Agent-Skills-Standard, Checkpoint-basierte langlebige Ausführung.\n- **`discussion-agenten-architektur-opaa.md`** — Diskussionsvorschlag: Ist-Stand-Analyse der Andockpunkte, sechs Architektur-Grundentscheidungen, Phasenvorschlag A/B/C, bewusste Nicht-Entscheidungen und offene Fragen für den Maintainer (u. a. #349).\n\nReine Dokumentation, keine Entscheidungen vorweggenommen.\n\n## Zugehörige Issues\n\nCloses #1022\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung, Pre-Push-Checkliste entfällt)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [ ] Barrierefreiheit geprüft — entfällt (keine UI-Änderung)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Fable 5 via Claude Code; Recherche und Texte vom Agenten, Auftrag und Review durch den Maintainer)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01LARhz4xPqvSzj32KFhBACo",
+      "closes": [
+        1022
+      ],
+      "additions": 299,
+      "deletions": 0,
+      "changed_files": 3
+    }
+  ],
+  "open_pull_requests": [
+    {
+      "number": 1027,
+      "title": "chore(deps): react-router auf v8.3.1 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/1027",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 1020,
+      "title": "chore(ci): pnpm-Mindestalter-Ausnahme für die vorgezogenen Updates zurückbauen",
+      "url": "https://github.com/criew/opaa/pull/1020",
+      "author": "bigpuritz",
+      "labels": [
+        "frontend",
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 161,
+      "title": "docs: plugin architecture deep dive for all three variants",
+      "url": "https://github.com/criew/opaa/pull/161",
+      "author": "bigpuritz",
+      "labels": [
+        "documentation",
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    }
+  ],
+  "open_issues_total": 10,
+  "ci": {
+    "conclusion": "success",
+    "url": "https://github.com/criew/opaa/actions/runs/33304286669",
+    "title": "docs(fortschritt): Meilenstein-1-Bericht finalisieren und Gesamtstand…",
+    "finished_at": "2026-08-30T09:34:10Z"
+  },
+  "highlights": {
+    "sonstiges": [
+      {
+        "nummer": 1023,
+        "text": "Retrieval-Strategien für OPAA recherchiert und dokumentiert"
+      },
+      {
+        "nummer": 1022,
+        "text": "Agent-Loop, Frameworks und Laufzeitumgebung für Phase-2-Agenten recherchiert"
+      },
+      {
+        "nummer": 945,
+        "text": "Meilenstein-1-Übergabe finalisiert"
+      },
+      {
+        "nummer": 1026,
+        "text": "Meilenstein-1-Bericht mit Delta konsolidiert und gemergt"
+      }
+    ]
+  },
+  "epics": [],
+  "ohne_epic": {
+    "opened": [
+      {
+        "number": 1023,
+        "title": "Recherche: Retrieval-Strategien für OPAA — Tech-Report, Roadmap und Dateityp-/Metadaten-Konzept",
+        "url": "https://github.com/criew/opaa/issues/1023",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "size:M",
+          "evaluation"
+        ],
+        "body": "## Ziel\n\nDas Retrieval von OPAA soll auf das nächste Level gehoben werden. Dafür braucht es eine fundierte Entscheidungsgrundlage: eine systematische Recherche über den aktuellen Stand der Retrieval-/RAG-Strategien (2025/2026), einen Abgleich mit Konkurrenz- und Referenzsystemen (Microsoft GraphRAG/LazyGraphRAG, Azure AI Search, RAGFlow, Onyx, LightRAG u. a.) und die Herunterbrechung auf Einsatzszenarien der öffentlichen Verwaltung.\n\n## Umfang\n\n1. **Tech-Report** (`docs/discussions/discussion-retrieval-strategien.md`): Grundkonzepte für Einsteiger, Strategie-Familien im technischen Detail mit Benchmark-Evidenz (Chunking, Hybrid BM25+Vektor, Reranking, Query-Transformation, GraphRAG-Familie, Agentic RAG, ColBERT, Long Context), Systemvergleich, neun Verwaltungs-Use-Cases mit Erfolgs- und Limitationsanalyse, Gesamtvergleichstabelle.\n2. **Roadmap-Ableitung** (`docs/discussions/discussion-retrieval-roadmap-opaa.md`): Phasenvorschlag (Messbarkeit → Hybrid+Reranking → Kontextqualität → bedingte erweiterte Frageklassen) und bewusst nicht verfolgte Strategien mit Begründung; offene Maintainer-Fragen (u. a. Aufhebung der #938-Zurückstellung).\n3. **Dateitypen und Metadaten** (`docs/discussions/discussion-dateitypen-und-metadaten.md`): Ist-Stand der unterstützten Formate, verwaltungsspezifische Dateityp-Tabelle mit Parsing-/Chunking-Empfehlung und Metadaten-Kandidaten pro Typ, Konzeptvorschlag geführter Bibliotheks-Assistent mit LLM-Metadaten-Vorklassifikation inkl. Leitplanken.\n\n## Bezug\n\nBaut auf #317 (GraphRAG-Recherche), #936 (Ist-Stand-Spezifikation), #938 (Grenze der reinen Vektorsuche) und den bestehenden Diskussionen zu Embeddings, Dokument-Pipelines und RAG-Evaluation auf.\n\n## Abnahmekriterien\n\n- Die drei Diskussionsdokumente liegen unter `docs/discussions/` und sind untereinander sowie mit den bestehenden Dokumenten verlinkt.\n- Kernaussagen sind mit Quellen (Papers, Benchmarks, Produktdokumentation) belegt.",
+        "closes": []
+      },
+      {
+        "number": 1022,
+        "title": "Recherche: Agent-Loop, Frameworks und Laufzeitumgebung für Phase-2-Agenten dokumentieren",
+        "url": "https://github.com/criew/opaa/issues/1022",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "size:M"
+        ],
+        "body": "## Kontext\n\nFür Phase 2 (nutzerdefinierte Agenten und Skills als teilbare Assets, siehe `docs/features/agents-and-tools.md`) fehlte bislang eine technische Grundlagenrecherche: Wie implementieren führende Agentensysteme (Claude Code / Agent SDK, OpenAI Codex und Agents SDK, Google Gemini CLI / ADK) ihren Agent Loop und ihre Ausführungsumgebung, was bietet das Java-/Spring-Ökosystem (Spring AI 2.0, Embabel, LangGraph4j, MCP), und welche Laufzeit-/Sandbox-Architektur ist für den On-Prem-Docker-Compose-Betrieb realistisch?\n\n## Aufgabe\n\nRechercheergebnisse als Diskussionsdokumente in `docs/discussions/` ablegen:\n\n1. **Tech-Report Agentensysteme und Frameworks** — kanonischer Agent Loop, Vergleich der großen Systeme, Spring AI 2.0 (`ToolCallingAdvisor`, MCP-Support), Framework-Optionen im JVM-Ökosystem.\n2. **Tech-Report Laufzeitumgebung und Sandboxing** — Sandbox-Technologien im Vergleich, Runner-Sidecar-Muster (n8n-Vorbild), Lehren aus Low-Code-Plattformen (inkl. CVEs bei Flowise/OpenWebUI), Agent-Skills-Standard, Checkpoint-basierte langlebige Ausführung.\n3. **Architektur-/Phasenvorschlag für OPAA** — Ist-Stand-Analyse (Andockpunkte: Indexing-Job-Muster, Asset-/Grant-Modell, `ActiveChatModelResolver`), sechs Architektur-Grundentscheidungen, Phasen A/B/C, bewusste Nicht-Entscheidungen, offene Fragen für den Maintainer (u. a. #349).\n\n## Abnahmekriterien\n\n- [ ] Drei Diskussionsdokumente liegen unter `docs/discussions/` und verweisen aufeinander sowie auf `docs/features/agents-and-tools.md`\n- [ ] Quellenangaben (URLs) sind in den Tech-Reports enthalten\n- [ ] Keine Entscheidungen vorweggenommen — Status „Diskussionsvorschlag\" bzw. „Rechercheergebnis\"",
+        "closes": []
+      }
+    ],
+    "closed": [
+      {
+        "number": 1023,
+        "title": "Recherche: Retrieval-Strategien für OPAA — Tech-Report, Roadmap und Dateityp-/Metadaten-Konzept",
+        "url": "https://github.com/criew/opaa/issues/1023",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "size:M",
+          "evaluation"
+        ],
+        "body": "## Ziel\n\nDas Retrieval von OPAA soll auf das nächste Level gehoben werden. Dafür braucht es eine fundierte Entscheidungsgrundlage: eine systematische Recherche über den aktuellen Stand der Retrieval-/RAG-Strategien (2025/2026), einen Abgleich mit Konkurrenz- und Referenzsystemen (Microsoft GraphRAG/LazyGraphRAG, Azure AI Search, RAGFlow, Onyx, LightRAG u. a.) und die Herunterbrechung auf Einsatzszenarien der öffentlichen Verwaltung.\n\n## Umfang\n\n1. **Tech-Report** (`docs/discussions/discussion-retrieval-strategien.md`): Grundkonzepte für Einsteiger, Strategie-Familien im technischen Detail mit Benchmark-Evidenz (Chunking, Hybrid BM25+Vektor, Reranking, Query-Transformation, GraphRAG-Familie, Agentic RAG, ColBERT, Long Context), Systemvergleich, neun Verwaltungs-Use-Cases mit Erfolgs- und Limitationsanalyse, Gesamtvergleichstabelle.\n2. **Roadmap-Ableitung** (`docs/discussions/discussion-retrieval-roadmap-opaa.md`): Phasenvorschlag (Messbarkeit → Hybrid+Reranking → Kontextqualität → bedingte erweiterte Frageklassen) und bewusst nicht verfolgte Strategien mit Begründung; offene Maintainer-Fragen (u. a. Aufhebung der #938-Zurückstellung).\n3. **Dateitypen und Metadaten** (`docs/discussions/discussion-dateitypen-und-metadaten.md`): Ist-Stand der unterstützten Formate, verwaltungsspezifische Dateityp-Tabelle mit Parsing-/Chunking-Empfehlung und Metadaten-Kandidaten pro Typ, Konzeptvorschlag geführter Bibliotheks-Assistent mit LLM-Metadaten-Vorklassifikation inkl. Leitplanken.\n\n## Bezug\n\nBaut auf #317 (GraphRAG-Recherche), #936 (Ist-Stand-Spezifikation), #938 (Grenze der reinen Vektorsuche) und den bestehenden Diskussionen zu Embeddings, Dokument-Pipelines und RAG-Evaluation auf.\n\n## Abnahmekriterien\n\n- Die drei Diskussionsdokumente liegen unter `docs/discussions/` und sind untereinander sowie mit den bestehenden Dokumenten verlinkt.\n- Kernaussagen sind mit Quellen (Papers, Benchmarks, Produktdokumentation) belegt.",
+        "closes": []
+      },
+      {
+        "number": 1022,
+        "title": "Recherche: Agent-Loop, Frameworks und Laufzeitumgebung für Phase-2-Agenten dokumentieren",
+        "url": "https://github.com/criew/opaa/issues/1022",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "size:M"
+        ],
+        "body": "## Kontext\n\nFür Phase 2 (nutzerdefinierte Agenten und Skills als teilbare Assets, siehe `docs/features/agents-and-tools.md`) fehlte bislang eine technische Grundlagenrecherche: Wie implementieren führende Agentensysteme (Claude Code / Agent SDK, OpenAI Codex und Agents SDK, Google Gemini CLI / ADK) ihren Agent Loop und ihre Ausführungsumgebung, was bietet das Java-/Spring-Ökosystem (Spring AI 2.0, Embabel, LangGraph4j, MCP), und welche Laufzeit-/Sandbox-Architektur ist für den On-Prem-Docker-Compose-Betrieb realistisch?\n\n## Aufgabe\n\nRechercheergebnisse als Diskussionsdokumente in `docs/discussions/` ablegen:\n\n1. **Tech-Report Agentensysteme und Frameworks** — kanonischer Agent Loop, Vergleich der großen Systeme, Spring AI 2.0 (`ToolCallingAdvisor`, MCP-Support), Framework-Optionen im JVM-Ökosystem.\n2. **Tech-Report Laufzeitumgebung und Sandboxing** — Sandbox-Technologien im Vergleich, Runner-Sidecar-Muster (n8n-Vorbild), Lehren aus Low-Code-Plattformen (inkl. CVEs bei Flowise/OpenWebUI), Agent-Skills-Standard, Checkpoint-basierte langlebige Ausführung.\n3. **Architektur-/Phasenvorschlag für OPAA** — Ist-Stand-Analyse (Andockpunkte: Indexing-Job-Muster, Asset-/Grant-Modell, `ActiveChatModelResolver`), sechs Architektur-Grundentscheidungen, Phasen A/B/C, bewusste Nicht-Entscheidungen, offene Fragen für den Maintainer (u. a. #349).\n\n## Abnahmekriterien\n\n- [ ] Drei Diskussionsdokumente liegen unter `docs/discussions/` und verweisen aufeinander sowie auf `docs/features/agents-and-tools.md`\n- [ ] Quellenangaben (URLs) sind in den Tech-Reports enthalten\n- [ ] Keine Entscheidungen vorweggenommen — Status „Diskussionsvorschlag\" bzw. „Rechercheergebnis\"",
+        "closes": []
+      },
+      {
+        "number": 945,
+        "title": "Meilenstein-1: Inventur-Nachzug, Report-Finalisierung und weitere Übergabeaufgaben",
+        "url": "https://github.com/criew/opaa/issues/945",
+        "author": "criew",
+        "labels": [
+          "documentation"
+        ],
+        "body": "## Kontext\n\nSammelticket für die Übergabe von Meilenstein 1 (31.08.2026, siehe docs/VISION.md, Roadmap). Die Leistungsinventur und die Berichtsstruktur sind mit #746 gemergt (Issue #744); dieses Ticket bündelt alles, was bis zur und für die Übergabe noch passieren muss.\n\n## Aufgaben (wächst bei Bedarf)\n\n- [ ] Inventur zum Stichtag nachziehen: neuer Anker, Delta-Bausteine, Index und Gruppierung ergänzen, Report aktualisieren (Vorgehen: docs/fortschritt/README.md)\n- [ ] Zur Abnahme: ENTWURF-Markierung entfernen, erste Fassung von docs/fortschritt/gesamtstand.md konsolidieren\n- [ ] Entscheidung STATUS.md: ablösen oder auf gesamtstand.md umleiten\n\nPRs zu diesem Ticket referenzieren es bitte ohne \"Closes\" — es bleibt bis zur abgeschlossenen Übergabe offen.",
+        "closes": []
+      }
+    ],
+    "merged": [
+      {
+        "number": 1026,
+        "title": "docs(fortschritt): Meilenstein-1-Bericht finalisieren und Gesamtstand konsolidieren (Stichtag 31.08.)",
+        "url": "https://github.com/criew/opaa/pull/1026",
+        "author": "criew",
+        "labels": [
+          "documentation"
+        ],
+        "body": "## Zusammenfassung\n\nFinalisiert den **Meilenstein-1-Bericht zur Abnahme am Stichtag 31.08.2026** auf dem Datenstand vom 30.08.2026:\n\n- **Delta erhoben** ab dem bisherigen Anker `1c38b80d` (27.08.): 22 geschlossene Issues, 63 gemergte PRs. Neue Bausteine für alle Delta-Issues sowie PR#946 und PR#1014; die 43 Renovate-Abhängigkeits-Updates sind bewusst in einem **Sammelbaustein** (`pr-renovate-updates.md`) geführt statt je PR einzeln — mechanische Versionshebungen ohne eigenständigen Feature-Gehalt, die PR-Nummern sind dort vollständig gelistet.\n- **Anker fortgeschrieben** auf `main@a51e6b8c` (504 Issues, 496 PRs kumuliert); die Erhebungsschritte bleiben in `anker.md` nachvollziehbar.\n- **Gruppierung konsolidiert:** die „Nachzug 27.08.\"-Absätze sind in die Themenlisten eingearbeitet, Delta-Bausteine zugeordnet (u. a. Barrierefreiheits-Abschluss-Audit → K/I, Renovate-Härtung → T1, Phase-2-Recherchen → V).\n- **Bericht umformuliert**, sodass er sich als **einmalige Erhebung seit Projektstart** liest — keine „zum Meilensteinende kam noch …\"-Erzählung mehr. Inhaltlich ergänzt: Abschluss-Audit der Barrierefreiheit samt behobener Befunde und Epic-Abschluss #600, Renovate-Betriebshärtung, Recherchen #1022/#1023, Indexstand-Spalte (#684), aktualisierte Kennzahlen.\n- **Tag als Anker:** Der Bericht nennt das Git-Tag `inventur-20260830`; es wird **nach dem Merge auf den Squash-Commit dieses PRs** gesetzt. Das ist konsistent möglich, weil der Tag-Name (anders als ein Commit-Hash) vorab feststeht — der getaggte Stand umfasst damit Datenstand und Bericht gemeinsam.\n- **Bericht als final ausgewiesen** (ENTWURF-Marker entfernt) und der **Gesamtstand erstmals konsolidiert:** `gesamtstand.md` beschreibt den Produktstand je Themenbereich in „ist gebaut\"-Formulierung samt bewusst nicht Gebautem und ist die führende Quelle für den Umsetzungsstand (`docs/STATUS.md` ist bereits seit #927 entfernt). Die Erhebungsschritte-Tabelle in `anker.md` ist entfernt; es bleibt der aktuelle Anker samt Fortschreibungs-Anleitung.\n\n## Zugehörige Issues\n\nCloses #945\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung, Pre-Push-Checkliste entfällt)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [ ] Barrierefreiheit geprüft — entfällt (keine UI-Änderung)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code / Claude Fable 5, beauftragt und geprüft durch den Maintainer)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01LARhz4xPqvSzj32KFhBACo",
+        "closes": [
+          945
+        ],
+        "additions": 771,
+        "deletions": 165,
+        "changed_files": 30
+      },
+      {
+        "number": 1025,
+        "title": "docs(discussions): Retrieval-Strategien-Recherche mit Roadmap und Dateityp-/Metadaten-Konzept",
+        "url": "https://github.com/criew/opaa/pull/1025",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "evaluation"
+        ],
+        "body": "## Zusammenfassung\n\nDrei neue Diskussionsdokumente unter `docs/discussions/` als Entscheidungsgrundlage für den Retrieval-Ausbau:\n\n- **`discussion-retrieval-strategien.md`** — ausführlicher Tech-Report: Grundkonzepte für Einsteiger, Strategie-Familien im Detail mit Benchmark-Evidenz (Chunking, Hybrid BM25+Vektor, Reranking, Query-Transformation, GraphRAG-Familie inkl. LazyGraphRAG, Agentic RAG, ColBERT, Long Context), Systemvergleich (Microsoft, RAGFlow, Onyx, deutsche Verwaltungsprojekte), neun Verwaltungs-Use-Cases mit Erfolgs-/Limitationsanalyse, Gesamtvergleichstabelle.\n- **`discussion-retrieval-roadmap-opaa.md`** — Phasenvorschlag (Phase 0 Messbarkeit → Phase 1 Hybrid+Reranking → Phase 2 Kontextqualität → Phase 3 bedingte erweiterte Frageklassen), zehn bewusst nicht verfolgte Strategien mit Begründung, offene Maintainer-Fragen (u. a. Aufhebung der #938-Zurückstellung).\n- **`discussion-dateitypen-und-metadaten.md`** — Ist-Stand der Formatunterstützung, verwaltungsspezifische Dateityp-Tabelle (ODF, XLSX/CSV, Scan-PDF/OCR, E-Mail, LegalDocML …) mit Parsing-/Chunking-Empfehlung und Metadaten-Kandidaten pro Typ, Konzept eines geführten Bibliotheks-Assistenten mit LLM-Metadaten-Vorklassifikation inkl. Leitplanken.\n\nBestehende Dokumente (`discussion-retrieval-document-pipelines.md`, Tech-Report ↔ Roadmap) sind wechselseitig verlinkt.\n\n## Zugehörige Issues\n\nCloses #1023\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung, Pre-Push-Checkliste entfällt)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [ ] Barrierefreiheit geprüft — entfällt (keine UI-Änderung)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code / Claude Fable 5, beauftragt und geprüft durch den Maintainer)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01Kg6erLJNpHKTZThXmcA447",
+        "closes": [
+          1023
+        ],
+        "additions": 794,
+        "deletions": 0,
+        "changed_files": 6
+      },
+      {
+        "number": 1024,
+        "title": "docs(discussions): Recherche zu Agent-Loop, Frameworks und Laufzeitumgebung für Phase-2-Agenten",
+        "url": "https://github.com/criew/opaa/pull/1024",
+        "author": "criew",
+        "labels": [
+          "documentation"
+        ],
+        "body": "## Zusammenfassung\n\nLegt die Ergebnisse der Grundlagenrecherche zu Phase-2-Agenten als drei Diskussionsdokumente in `docs/discussions/` ab:\n\n- **`discussion-agentensysteme-und-frameworks.md`** — Tech-Report: kanonischer Agent Loop, Vergleich Claude Code / Agent SDK, OpenAI Codex / Agents SDK, Google Gemini CLI / ADK; Spring AI 2.0 (`ToolCallingAdvisor`, MCP-Support), Embabel, LangGraph4j, LangChain4j als JVM-Optionen.\n- **`discussion-agenten-laufzeitumgebung-und-sandboxing.md`** — Tech-Report: Sandbox-Technologien im Vergleich, Runner-Sidecar-Muster (n8n-Vorbild), Lehren aus Low-Code-Plattformen (inkl. CVEs bei Flowise und OpenWebUI), Agent-Skills-Standard, Checkpoint-basierte langlebige Ausführung.\n- **`discussion-agenten-architektur-opaa.md`** — Diskussionsvorschlag: Ist-Stand-Analyse der Andockpunkte, sechs Architektur-Grundentscheidungen, Phasenvorschlag A/B/C, bewusste Nicht-Entscheidungen und offene Fragen für den Maintainer (u. a. #349).\n\nReine Dokumentation, keine Entscheidungen vorweggenommen.\n\n## Zugehörige Issues\n\nCloses #1022\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung, Pre-Push-Checkliste entfällt)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [ ] Barrierefreiheit geprüft — entfällt (keine UI-Änderung)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Fable 5 via Claude Code; Recherche und Texte vom Agenten, Auftrag und Review durch den Maintainer)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01LARhz4xPqvSzj32KFhBACo",
+        "closes": [
+          1022
+        ],
+        "additions": 299,
+        "deletions": 0,
+        "changed_files": 3
+      }
+    ]
+  }
+}
