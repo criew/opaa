@@ -519,8 +519,8 @@ Phase 1 und 2 sind der Gegenstand der jetzt erstellten Issues.
   Diese Spezifikation wiederholt sie nicht, sondern setzt Phase 1 und 2 daraus um.
 - `docs/features/data-indexing-rag.md` — die Pipeline, die hier gemessen wird.
 - `docs/features/deployment-infrastructure.md` — der Compose-Stack, den die Demo erweitert.
-- `docs/discussions/GraphRAG.md` — die Tier-Domäne mit ihrer Taxonomie ist der natürliche Testfall, falls
-  GraphRAG evaluiert wird.
+- `docs/discussions/discussion-retrieval-strategien.md` (Abschnitt 9, GraphRAG) — die Tier-Domäne mit
+  ihrer Taxonomie ist der natürliche Testfall, falls GraphRAG evaluiert wird.
 - Issues #115 und #117 — Voraussetzung für die Multi-Tenancy-Demonstration.
 - `docs/handbuch/deployment.md` — beschreibt die bestehende öffentliche Instanz `opaa.ewerlin.com` noch
   nicht; das ist Voraussetzung für den Korpus-Rollout.

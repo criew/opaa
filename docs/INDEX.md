@@ -168,9 +168,9 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 ### Ideen und Recherche
 
 - **[`discussions/`](./discussions/)** — offene Erörterungen und Recherchen, noch nicht entschieden;
-  darunter **[`discussions/GraphRAG.md`](./discussions/GraphRAG.md)** — Wissensgraph als Ergänzung des
-  Vektor-Retrievals: Funktionsweise, Vergleich quelloffener Implementierungen, Betriebsaspekte.
-  Entscheidungsgrundlage, keine getroffene Entscheidung
+  darunter **[`discussions/discussion-retrieval-strategien.md`](./discussions/discussion-retrieval-strategien.md)** —
+  Tech-Report zu Retrieval-/RAG-Strategien inkl. Wissensgraph/GraphRAG (Abschnitt 9, konsolidiert die
+  frühere GraphRAG-Recherche #317). Entscheidungsgrundlage, keine getroffene Entscheidung
 
 ### Oberflächenentwürfe
 

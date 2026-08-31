@@ -2,7 +2,9 @@
 
 **Thema:** Wie misst man die Qualität eines RAG-Systems? Welche Metriken, Frameworks, Benchmarks und Best Practices gibt es?
 
-**Kontext:** Aufbauend auf den Diskussionen zu [Embedding-Modellen](discussion-embeddings.md) und [Retrieval-Pipelines](discussion-retrieval-document-pipelines.md). Ziel ist es, Aussagen wie *"Modell X mit Embedding Y liefert N% bessere Antworten als Modell Z mit Embedding W"* fundiert treffen zu können.
+**Status (31.08.2026):** Referenzdokument. Die Retrieval-Teile sind in die Spezifikation [Suchqualitäts-Benchmark](../features/retrieval-benchmark.md) eingeflossen — diese weicht bewusst in einem Punkt ab (schlanker Baseline-Diff statt des Statistik-Apparats aus Abschnitt 7, Begründung dort). Die Abschnitte zu Generations-Metriken, LLM-as-a-Judge und RAGAS bleiben unentschiedene Optionen für eine spätere Antwortqualitäts-Messung.
+
+**Kontext:** Ziel ist es, Aussagen wie *"Modell X mit Embedding Y liefert N% bessere Antworten als Modell Z mit Embedding W"* fundiert treffen zu können.
 
 **Bezug zum Projekt:** OPAA nutzt Spring AI 1.1.2, pgvector, Ollama/OpenAI
 

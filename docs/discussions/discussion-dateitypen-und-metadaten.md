@@ -2,7 +2,9 @@
 
 **Thema:** (1) Welche Dateitypen OPAA heute versteht, welche im Verwaltungskontext dazukommen müssen und wie pro Typ sinnvoll geparst und gechunkt wird. (2) Konzeptvorschlag: ein geführter Bibliotheks-Assistent („Wizard"), der beim Anlegen einer Wissensbibliothek per LLM-Vorklassifikation ein Metadatenschema vorschlägt.
 
-**Kontext:** Konkretisiert Abschnitt 5.2 (strukturbasiertes Chunking) und Szenario 9 (Metadaten-Probleme) des [Retrieval-Tech-Reports](discussion-retrieval-strategien.md) sowie Phase 2a/2b der [Retrieval-Roadmap](discussion-retrieval-roadmap-opaa.md). Baut auf der älteren [Pipeline-pro-Dokumenttyp-Diskussion](discussion-retrieval-document-pipelines.md) auf und erweitert sie um die Verwaltungsperspektive.
+**Status (31.08.2026):** Die Dateityp-Tabelle (Abschnitt 2) ist in die Spezifikation [Ingestion-Pipelines](../features/ingestion-pipelines.md) überführt; verbindlich ist dort. Das Metadaten-Konzept (Abschnitt 3) ist die Grundlage der in Arbeit befindlichen Metadaten-Spezifikation und gilt bis dahin als Diskussionsstand.
+
+**Kontext:** Konkretisiert Abschnitt 5.2 (strukturbasiertes Chunking) und Szenario 9 (Metadaten-Probleme) des [Retrieval-Tech-Reports](discussion-retrieval-strategien.md) sowie Phase 2a/2b der [Retrieval-Roadmap](discussion-retrieval-roadmap-opaa.md). Baut auf der älteren Pipeline-pro-Dokumenttyp-Diskussion auf (inzwischen aufgegangen in der Spezifikation [Ingestion-Pipelines](../features/ingestion-pipelines.md)) und erweitert sie um die Verwaltungsperspektive.
 
 ---
 
