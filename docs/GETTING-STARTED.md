@@ -205,7 +205,7 @@ Spezifikationen (docs/features/) — je Themenbereich
 
 Entscheidungen und Recherche
 ├── docs/decisions/        — ADRs, darunter 0014 zur Produktausrichtung
-├── docs/discussions/      — offene Erörterungen und Recherchen (u. a. GraphRAG.md)
+├── docs/discussions/      — offene Erörterungen und Recherchen (u. a. discussion-retrieval-strategien.md)
 └── docs/design/           — Oberflächenentwürfe
 
 Mitarbeit

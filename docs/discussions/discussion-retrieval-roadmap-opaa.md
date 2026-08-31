@@ -2,7 +2,15 @@
 
 **Thema:** Ableitung konkreter Ausbauphasen des OPAA-Retrievals aus dem [Tech-Report zu Retrieval-Strategien](discussion-retrieval-strategien.md), einschließlich der Strategien, die bewusst **nicht** verfolgt werden sollten — mit Begründung.
 
-**Status:** Diskussionsvorschlag. Entscheidungen (insbesondere die Aufhebung der #938-Zurückstellung der Hybrid-Suche und jede Phase-3-Wette) liegen beim Maintainer.
+**Status:** Entschieden am 31.08.2026 (Maintainer-Abstimmung); die Phasen 0–2b sind in Spezifikationen überführt. Dieses Dokument bleibt als Begründungs- und Nachschlagewerk stehen — verbindlich sind ab jetzt die Spezifikationen:
+
+- Phase 0 → [Suchqualitäts-Benchmark](../features/retrieval-benchmark.md)
+- Phase 1 → [Hybride Suche mit Reranking](../features/hybrid-retrieval.md)
+- Phase 2b (+ Formatzulassung) → [Ingestion-Pipelines](../features/ingestion-pipelines.md)
+- Phase 2f (Metadatenschema) → eigene Spezifikation in Vorbereitung
+- Phase 3 bleibt unverändert bedingt (Eintrittsbedingungen, siehe unten)
+
+**Entscheidungen und Präzisierungen gegenüber diesem Vorschlag:** Die #938-Zurückstellung ist aufgehoben. Der lexikalische Pfad startet Postgres-nativ wie in 1a vorgeschlagen; neu ist eine **Zwischenstufe vor der zweiten Suchengine**: BM25-Extensions im selben Postgres (pgroonga bevorzugt, pg_search/ParadeDB mit AGPL-Vorbehalt) als messbar begründete Eskalation. Reranking wird eine **konfigurierbare Modellrolle** im Schichtenmodell (Hardware ist Deployment-, nicht Architekturentscheidung); Aktivierung nur mit Benchmark-Nachweis. Für das Parsing gilt ein Hybridmodell: Tika/POI bleibt für Office/HTML/Markdown, **Docling (docling-serve, MIT) ist als Option für PDF/Scan vermerkt** und Grundlage des OCR-Epics — nicht Tika+Tesseract. Die Verwaltungs-Evaldomäne wird ein eigener eingefrorener Korpus (getrennt von der Rheinfurt-Demo). pg_trgm ist zurückgestellt. Details und Begründungen in den Spezifikationen.
 
 **Rahmenbedingungen, die jede Phase einhalten muss:**
 
@@ -39,7 +47,7 @@ Das Zielbild ([data-indexing-rag.md](../features/data-indexing-rag.md)) hat beid
 Nach dem Fundament die gezielten Verbesserungen, jede einzeln messbar:
 
 - **2a — Contextual Chunking ausbauen (#933-Folgearbeit):** Abschnittstitel und Bibliothekskontext in den Embedding-Präfix; die dokumentierte Benachteiligung einchunkiger Dokumente auflösen. Mit Phase 1 gewinnt das doppelt: Der Kontextpräfix speist dann auch den Volltextindex (Anthropics „contextual BM25").
-- **2b — Strukturbewusstes Chunking pro Dokumenttyp:** Umsetzung der [Pipeline-pro-Dokumenttyp-Diskussion](discussion-retrieval-document-pipelines.md), konkretisiert durch die verwaltungsspezifische Dateityp-Tabelle in [discussion-dateitypen-und-metadaten.md](discussion-dateitypen-und-metadaten.md) — §/Absatz-Schnitt für Satzungen, Folien-Schnitt für PPTX, Überschriften für Markdown; Formatzulassung erweitern (ODF als Quick Win, XLSX/CSV, Scan-PDF/OCR als eigenes Epic). Chunk-Größen dabei erstmals messen statt setzen (Evidenz spricht für kleinere Chunks als die heutigen 1000 Token, mit Parent-Kontext ausgleichen).
+- **2b — Strukturbewusstes Chunking pro Dokumenttyp:** Umsetzung der Pipeline-pro-Dokumenttyp-Diskussion (aufgegangen in [ingestion-pipelines.md](../features/ingestion-pipelines.md)), konkretisiert durch die verwaltungsspezifische Dateityp-Tabelle in [discussion-dateitypen-und-metadaten.md](discussion-dateitypen-und-metadaten.md) — §/Absatz-Schnitt für Satzungen, Folien-Schnitt für PPTX, Überschriften für Markdown; Formatzulassung erweitern (ODF als Quick Win, XLSX/CSV, Scan-PDF/OCR als eigenes Epic). Chunk-Größen dabei erstmals messen statt setzen (Evidenz spricht für kleinere Chunks als die heutigen 1000 Token, mit Parent-Kontext ausgleichen).
 - **2f — Metadatenschema pro Bibliothek mit geführtem Assistenten:** LLM-Vorklassifikation schlägt beim Anlegen einer Bibliothek Typ-Pipelines und ein Metadatenschema vor (Fassung, Rechtsebene, §, Projekt …), der Nutzer beschließt; Felder wirken als Filter, Kontextpräfix und Beleg-Anzeige. Konzept und Leitplanken: [discussion-dateitypen-und-metadaten.md](discussion-dateitypen-und-metadaten.md).
 - **2c — Parent-Document/Small-to-Big:** Kleinere Chunks fürs Matching, größerer Elternabschnitt in den LLM-Kontext. Ergänzt DocumentCompletion; behebt zugleich die dokumentierte nicht-rangfaire Geschwister-Sortierung.
 - **2d — Embedding-Modellwechsel evaluieren:** `nomic-embed-text` ist die gemessene Schwachstelle in #938. Kandidaten mit deutscher Evidenz: BGE-M3, Qwen3-Embedding (beide offen, on-prem). Voll-Reindex ist eingepreist (Modell bewusst nicht zur Laufzeit wechselbar); Entscheidung ausschließlich per Eval auf der Verwaltungsdomäne — nach Phase 1, weil Hybrid die Modellwahl entlastet und die Messung sonst zwei Variablen mischt.
@@ -51,7 +59,7 @@ Jeder Baustein dieser Phase hat eine **Eintrittsbedingung**, die Phase 0 messbar
 
 - **3a — Deep-Research-Modus** (im Zielbild bereits vorgesehen): eigener, sichtbar langsamer Recherche-Modus für Berichtsaufträge und Überblicksfragen (Szenario 6). Eintrittsbedingung: Nutzerbedarf an Berichtsaufträgen; Technik: iterative Suche über die Phase-1-Pipeline, keine neue Infrastruktur.
 - **3b — Leichter Korrektur-Loop (CRAG-Muster):** Bewerter prüft das Retrieval-Ergebnis, bei Unbrauchbarkeit eine Umformulierungs-/Nachsuch-Runde, hartes Stoppkriterium. Eintrittsbedingung: messbarer Anteil an Fragen, die erst im zweiten Anlauf treffen.
-- **3c — Wissensgraph:** Eintrittsbedingung: Die Multi-Hop-Golden-Fälle aus Phase 0 zeigen eine relevante, mit Phase 1+2 nicht schließbare Lücke, **und** solche Fragen kommen im realen Nutzungsprofil vor. Dann in dieser Reihenfolge prüfen: (1) **kuratierter Fachgraph** (Zuständigkeiten, Normverweise — deterministisch, rechtssicher, aber Pflegeaufwand beim Fachbereich ehrlich benennen); (2) automatische Extraktion nach HippoRAG-2-/LightRAG-Muster als PoC gemäß der offenen Empfehlung aus [GraphRAG.md](GraphRAG.md) (#317). Harte Auflage: Rechteprüfung im Graphen zur Abfragezeit (Kanten zu unlesbaren Dokumenten dürfen nicht existieren/sichtbar sein) — ungelöst in allen Frameworks, also Eigenbau-Anteil.
+- **3c — Wissensgraph:** Eintrittsbedingung: Die Multi-Hop-Golden-Fälle aus Phase 0 zeigen eine relevante, mit Phase 1+2 nicht schließbare Lücke, **und** solche Fragen kommen im realen Nutzungsprofil vor. Dann in dieser Reihenfolge prüfen: (1) **kuratierter Fachgraph** (Zuständigkeiten, Normverweise — deterministisch, rechtssicher, aber Pflegeaufwand beim Fachbereich ehrlich benennen); (2) automatische Extraktion nach HippoRAG-2-/LightRAG-Muster als PoC gemäß der Empfehlung der GraphRAG-Recherche (#317, konsolidiert in [Abschnitt 9 des Tech-Reports](discussion-retrieval-strategien.md)). Harte Auflage: Rechteprüfung im Graphen zur Abfragezeit (Kanten zu unlesbaren Dokumenten dürfen nicht existieren/sichtbar sein) — ungelöst in allen Frameworks, also Eigenbau-Anteil.
 - **3d — Long-Context-Dokumentmodus:** „Nimm dieses eine Dokument ganz in den Kontext" für Zusammenfassungs-/Analyseaufträge auf ein per Retrieval oder Auswahl bestimmtes Dokument. Kein Ersatz für Retrieval (Rechte, Kosten, Context Rot), sondern ein expliziter Werkzeugwechsel.
 
 ---
@@ -75,9 +83,9 @@ Jede Nicht-Entscheidung mit Begründung; „nicht verfolgen" heißt: kein Issue,
 
 ---
 
-## Offene Fragen für die Maintainer-Entscheidung
+## Ehemals offene Fragen — Entscheidungen vom 31.08.2026
 
-1. **#938-Zurückstellung aufheben?** Die dortige Entscheidung („bekannte Grenze dokumentieren, Hybrid nicht beauftragen") stammt aus dem Demo-Kontext. Dieser Vorschlag macht Hybrid zum Fundament von Phase 1 — das ist eine Umkehr, die bewusst getroffen werden sollte.
-2. **Latenz- vs. Qualitätsbudget für Reranking on-prem:** GPU-Annahme für Behörden-Installationen ja/nein? Das entscheidet über die Modellklasse (bge-v2-m3 auf CPU vs. Qwen3-4B auf GPU).
-3. **Verwaltungs-Evaldomäne:** eigener eingefrorener Korpus (Aufwand) vs. Wiederverwendung des Rheinfurt-Korpus als Messartefakt (Kopplungsrisiko Demo↔Eval)?
-4. **Phasen-Zuschnitt in Issues:** Phase 0+1 sind nach diesem Vorschlag issue-reif; Phase 2 nach ersten Messergebnissen; Phase 3 ausdrücklich nicht vor Eintrittsbedingung.
+1. **#938-Zurückstellung aufheben?** → **Ja.** Hybrid ist das Fundament von Phase 1 ([hybrid-retrieval.md](../features/hybrid-retrieval.md)).
+2. **Latenz- vs. Qualitätsbudget für Reranking on-prem:** → **Weder-noch als Festlegung.** Reranking ist eine konfigurierbare Modellrolle; die Hardware-Empfehlung liefert ein eigenes Arbeitspaket „Latenz-/Hardwareprofil" auf Referenzhardware, keine Vorab-Annahme.
+3. **Verwaltungs-Evaldomäne:** → **Eigener eingefrorener Korpus**, getrennt von der Rheinfurt-Demo ([retrieval-benchmark.md](../features/retrieval-benchmark.md)).
+4. **Phasen-Zuschnitt in Issues:** → Bestätigt: Phase 0+1 issue-reif (Epics folgen aus den Spezifikationen), Formatzulassung/2b parallel als eigener Strang, Phase 3 nicht vor Eintrittsbedingung.

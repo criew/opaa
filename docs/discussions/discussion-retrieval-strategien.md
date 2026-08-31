@@ -2,7 +2,9 @@
 
 **Thema:** Systematische Übersicht moderner Retrieval-/RAG-Strategien (Stand 2025/2026) mit Vor- und Nachteilen, heruntergebrochen auf Einsatzszenarien der öffentlichen Verwaltung.
 
-**Kontext:** Aufbauend auf der [Ist-Stand-Spezifikation des Retrieval-Algorithmus](../features/retrieval-algorithm.md) (#936), der [GraphRAG-Recherche](GraphRAG.md) (#317), den Diskussionen zu [Embeddings](discussion-embeddings.md), [Dokument-Pipelines](discussion-retrieval-document-pipelines.md) und [RAG-Evaluation](discussion-rag-evaluation.md) sowie dem Zielbild in [data-indexing-rag.md](../features/data-indexing-rag.md). Die Roadmap-Ableitung für OPAA steht separat in [discussion-retrieval-roadmap-opaa.md](discussion-retrieval-roadmap-opaa.md).
+**Status (31.08.2026):** Referenz- und Evidenzdokument — bleibt vollständig erhalten, die Spezifikationen verweisen für Begründungen hierher. Die Entscheidungen daraus sind gefallen (siehe [Roadmap](discussion-retrieval-roadmap-opaa.md)) und in Spezifikationen überführt: Hybrid/Reranking (Abschnitte 6–7) → [hybrid-retrieval.md](../features/hybrid-retrieval.md), Chunking/Pipelines (Abschnitt 5) → [ingestion-pipelines.md](../features/ingestion-pipelines.md), Evaluierung (Abschnitt 13) → [retrieval-benchmark.md](../features/retrieval-benchmark.md). Die früheren Einzeldiskussionen zu Embeddings und Dokument-Pipelines sind in diesem Report bzw. den Spezifikationen aufgegangen und entfernt.
+
+**Kontext:** Aufbauend auf der [Ist-Stand-Spezifikation des Retrieval-Algorithmus](../features/retrieval-algorithm.md) (#936), der GraphRAG-Recherche (#317, konsolidiert in Abschnitt 9), der Diskussion zu [RAG-Evaluation](discussion-rag-evaluation.md) sowie dem Zielbild in [data-indexing-rag.md](../features/data-indexing-rag.md). Die Roadmap-Ableitung für OPAA steht separat in [discussion-retrieval-roadmap-opaa.md](discussion-retrieval-roadmap-opaa.md).
 
 **Leseanleitung:** Teil I erklärt die Grundkonzepte für Einsteiger. Teil II behandelt jede Strategie-Familie im Detail (Funktionsweise → Evidenz → Verwaltungsbezug). Teil III vergleicht real existierende Systeme. Teil IV bricht alles auf konkrete Verwaltungs-Use-Cases herunter. Wer nur die Essenz will: Abschnitt 14 (Gesamtvergleichstabelle) und Abschnitt 16 (Synthese).
 
@@ -79,7 +81,7 @@ Feste Token-Fenster mit Überlappung. Chromas Messreihe: Optimum ~200–512 Toke
 
 ### 5.2 Strukturbasiertes Chunking (nach Überschriften, Paragrafen, Folien)
 
-Schneiden entlang der Dokumentstruktur statt Token-Zählung: bei Satzungen und Gesetzen auf §/Absatz-Ebene, bei Präsentationen pro Folie, bei Markdown pro Überschriftenabschnitt. Für Rechtstexte Stand der Technik — naives Chunking zerschneidet Tatbestand und Rechtsfolge. Eine klinische Studie misst 50 % vs. 87 % Antwortgenauigkeit für fixed vs. strukturadaptives Chunking ([PMC](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12649634/)). Die Umsetzungsideen pro Dokumenttyp stehen in [discussion-retrieval-document-pipelines.md](discussion-retrieval-document-pipelines.md); die verwaltungsspezifische Dateityp-Tabelle (inkl. ODF, XLSX, Scan-PDF/OCR, E-Mail, LegalDocML) und das Metadaten-Wizard-Konzept in [discussion-dateitypen-und-metadaten.md](discussion-dateitypen-und-metadaten.md).
+Schneiden entlang der Dokumentstruktur statt Token-Zählung: bei Satzungen und Gesetzen auf §/Absatz-Ebene, bei Präsentationen pro Folie, bei Markdown pro Überschriftenabschnitt. Für Rechtstexte Stand der Technik — naives Chunking zerschneidet Tatbestand und Rechtsfolge. Eine klinische Studie misst 50 % vs. 87 % Antwortgenauigkeit für fixed vs. strukturadaptives Chunking ([PMC](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12649634/)). Die Umsetzung pro Dokumenttyp ist in der Spezifikation [ingestion-pipelines.md](../features/ingestion-pipelines.md) beschrieben; die verwaltungsspezifische Dateityp-Tabelle (inkl. ODF, XLSX, Scan-PDF/OCR, E-Mail, LegalDocML) und das Metadaten-Wizard-Konzept in [discussion-dateitypen-und-metadaten.md](discussion-dateitypen-und-metadaten.md).
 
 - **Trägt:** Satzungen, Dienstanweisungen, Formulare — genau der OPAA-Korpus. Ein §-genauer Chunk ist zugleich die zitierfähige Fundstelle.
 - **Scheitert:** unstrukturierte Alttexte, OCR-Rohtext ohne erkennbare Gliederung → Fallback auf 5.1 nötig.
@@ -188,6 +190,26 @@ Klassisches RAG findet nur, was in wenigen, lokal ähnlichen Chunks steht. Zwei 
 ### 9.4 Einordnung
 
 Für den Verwaltungs-Normalfall „Frage → Fundstelle" ist Hybrid+Reranking gleich gut oder besser, um Größenordnungen billiger und ohne Update-Problem. Der Graph lohnt für zwei echte Bedarfe: nachgewiesenes Multi-Hop (Zuständigkeits-/Verweisketten) und korpusweite Überblicksfragen. Und es gibt einen dritten, oft übersehenen Weg: einen **kuratierten Fachgraphen** (Zuständigkeiten, Normverweise, Organigramm) statt automatischer Extraktion aus Fließtext — deterministisch, pflegbar, rechtssicher, aber Pflegeaufwand beim Fachbereich.
+
+### 9.5 Anhang: Funktionsweise und Werkzeuglandschaft (konsolidiert aus der GraphRAG-Recherche, #317)
+
+Dieser Abschnitt übernimmt die bleibenden Inhalte der eigenständigen GraphRAG-Recherche vom Juni 2026 (ehemals `GraphRAG.md`, #317); deren damalige Empfehlung (LightRAG-/nano-graphrag-PoC nach Freigabe) ist durch die kritische Evidenz in 9.2/9.3 und die Eintrittsbedingung in [Roadmap-Phase 3c](discussion-retrieval-roadmap-opaa.md) abgelöst.
+
+**Funktionsweise (Microsoft-GraphRAG-Muster).** Die Indexierung läuft in fünf Schritten: (1) Chunking wie bei klassischem RAG; (2) ein LLM extrahiert pro Chunk Entitäten (Knoten) und Beziehungen (Kanten) samt Beschreibungen, jeder Knoten bleibt mit seinem Quell-Chunk verknüpft (Provenienz); (3) Graph-Konstruktion mit Entity Resolution (gleiche Entitäten aus verschiedenen Chunks werden zusammengeführt); (4) hierarchische Community-Erkennung per Leiden-Algorithmus; (5) LLM-Zusammenfassungen pro Community auf jeder Ebene — der Schlüssel für globale Fragen. Zur Abfragezeit gibt es drei Modi: **Local Search** (Start bei relevanten Knoten, Traversierung der Nachbarschaft, für Entitätsfragen), **Global Search** (Map-Reduce über Community-Summaries, für Überblicksfragen) und **DRIFT** (Hybrid: erst Community-Kontext, dann lokale Verfeinerung).
+
+**Werkzeuglandschaft über die in 9.2 bewerteten Verfahren hinaus:**
+
+| Implementierung | Charakteristik | Einordnung |
+|---|---|---|
+| **nano-graphrag** (Community) | ~1.100 Zeilen, leicht lesbar; Faiss, Neo4j, Ollama | Zum Verstehen/Prototyping der Mechanik, kein Produktionsbaustein |
+| **Neo4j-GraphRAG-Ökosystem** | Cypher-Queries + Chunk-Retrieval + Vektor-Recall | Relevant nur, wenn ohnehin eine Graph-DB betrieben würde — für OPAA ein zweiter Datenspeicher (vgl. ADR-0014-Argumentation) |
+| **Graphiti** (Zep) | temporaler, inkrementell aktualisierbarer Wissensgraph | Fokus Agenten-Memory/Echtzeit, nicht Dokument-Retrieval |
+
+Alle genannten Werkzeuge sind grundsätzlich selbst hostbar und mit lokalen Modellen (Ollama) betreibbar.
+
+**Kosten- und Betriebsnotizen aus der Recherche:** Die Indexierungskosten sind 2024–2026 dramatisch gefallen (Größenordnung ~33.000 $ → Bruchteil, getrieben durch LazyGraphRAG, Dynamic Community Selection — Jan-2025-Update senkt den Token-Verbrauch der Referenzimplementierung um ~79 % — und lokale Modelle). Die produktiven Kernprobleme bleiben davon unberührt: Embedding-/Community-Drift bei inkrementellen Updates, Re-Indexing bei kontinuierlichen Datenströmen, Latenz und Mandantentrennung.
+
+**Weiterführende Quellen der ursprünglichen Recherche:** [Microsoft-Research-Ankündigung](https://www.microsoft.com/en-us/research/blog/graphrag-unlocking-llm-discovery-on-narrative-private-data/) · [GraphRAG-Doku](https://microsoft.github.io/graphrag/) · [DRIFT Search](https://microsoft.github.io/graphrag/query/drift_search/) · [nano-graphrag](https://github.com/gusye1234/nano-graphrag) · [Neo4j-GraphRAG-Ökosystem](https://neo4j.com/blog/news/graphrag-ecosystem-tools/) · [GraphRAG-Kosten-Cliff](https://medium.com/graph-praxis/the-graphrag-cost-cliff-how-33-000-became-33-in-eighteen-months-be1b0fbe37e4) (die Kernpapiere stehen bereits im Quellenverzeichnis unten).
 
 ## 10. Hierarchische und strukturierte Indizes
 
@@ -333,7 +355,7 @@ Die konkrete Phasen-Ableitung mit Begründungen der bewussten Nicht-Entscheidung
 
 ## Quellen (Auswahl, thematisch)
 
-- **OPAA-intern:** [retrieval-algorithm.md](../features/retrieval-algorithm.md), [data-indexing-rag.md](../features/data-indexing-rag.md), [GraphRAG.md](GraphRAG.md), Issues #912–#942 (Retrieval-Härtung), #938 (Hybrid-Grenzfall), #317 (GraphRAG-Recherche)
+- **OPAA-intern:** [retrieval-algorithm.md](../features/retrieval-algorithm.md), [data-indexing-rag.md](../features/data-indexing-rag.md), Issues #912–#942 (Retrieval-Härtung), #938 (Hybrid-Grenzfall), #317 (GraphRAG-Recherche)
 - **Hybrid/Reranking:** [Azure-Benchmark](https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/azure-ai-search-outperforming-vector-search-with-hybrid-retrieval-and-reranking/3929167) · [RRF (Cormack 2009)](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf) · [Bruch et al., TOIS 2023](https://arxiv.org/abs/2210.11934) · [Blended RAG](https://arxiv.org/pdf/2404.07220) · [kapa.ai Best Practices](https://www.kapa.ai/blog/rag-best-practices)
 - **Chunking:** [Chroma: Evaluating Chunking](https://www.trychroma.com/research/evaluating-chunking) · [Anthropic Contextual Retrieval](https://www.anthropic.com/engineering/contextual-retrieval) · [Late Chunking](https://arxiv.org/abs/2409.04701) · [Semantic-Chunking-Kritik](https://arxiv.org/abs/2410.13070)
 - **GraphRAG:** [Edge et al.](https://arxiv.org/abs/2404.16130) · [LazyGraphRAG](https://www.microsoft.com/en-us/research/blog/lazygraphrag-setting-a-new-standard-for-quality-and-cost/) · [LightRAG](https://arxiv.org/abs/2410.05779) · [Unverzerrte Re-Evaluation](https://arxiv.org/pdf/2506.06331) · [HippoRAG 2](https://arxiv.org/abs/2502.14802) · [RAG vs. GraphRAG](https://arxiv.org/pdf/2502.11371) · [GraphRAG-Bench](https://arxiv.org/pdf/2506.05690) · [GraphRAG under Fire](https://arxiv.org/abs/2501.14050)

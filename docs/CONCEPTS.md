@@ -960,7 +960,7 @@ Vorgang 32.1-114/2025
 ```
 
 **Stand in OPAA:** als Ergänzung des Vektor-Retrievals in Phase 3 vorgesehen, nicht im Fundament. Die
-Recherchegrundlage steht in [GraphRAG.md](./discussions/GraphRAG.md).
+Recherchegrundlage steht in [discussion-retrieval-strategien.md, Abschnitt 9](./discussions/discussion-retrieval-strategien.md).
 
 ---
 
