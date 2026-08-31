@@ -17,6 +17,9 @@ dist-ssr
 *.local
 frontend/src/types/generated/
 
+# cdxgen output (docs/sbom.md) — generated, not committed
+frontend/bom.json
+
 # Logs
 logs
 *.log

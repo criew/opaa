@@ -5,6 +5,7 @@ spring-ai = "2.0.1"
 spotless = "8.10.1"
 caffeine = "3.2.4"
 openapi-generator = "7.25.0"
+cyclonedx-bom = "3.4.1"
 # Tokenizer used by Spring AI's TokenTextSplitter (CL100K_BASE). Referenced directly by
 # io.opaa.indexing.OverlappingTokenTextSplitter, so it is declared explicitly instead of being
 # relied on transitively. Must stay in sync with the version spring-ai-commons resolves to,
@@ -147,3 +148,4 @@ spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 openapi-generator = { id = "org.openapi.generator", version.ref = "openapi-generator" }
+cyclonedx-bom = { id = "org.cyclonedx.bom", version.ref = "cyclonedx-bom" }

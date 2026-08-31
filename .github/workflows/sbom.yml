@@ -1,0 +1,85 @@
+name: SBOM
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  # Self-validates this workflow file itself inside a PR that touches it.
+  pull_request:
+    paths:
+      - ".github/workflows/sbom.yml"
+
+# Runs pnpm dlx (third-party code) and gradle plugin code; no write access needed.
+permissions:
+  contents: read
+
+# Same rationale as ci.yml: a new push makes the previous run's result irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Job IDs are the branch protection's required-check names (GitHub Actions app-bound, not
+  # workflow-scoped) - "backend"/"frontend" would collide with ci.yml's same-named jobs, letting a
+  # green SBOM job mask a red or skipped CI job of the same name.
+  sbom-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # Aggregates backend + opaa-api into one runtime-scope CycloneDX SBOM
+      # (config: backend/build.gradle.kts). Retrieval: docs/sbom.md.
+      - name: Generate backend SBOM
+        run: ./gradlew cyclonedxBom
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom-backend
+          path: backend/build/reports/cyclonedx/
+          retention-days: 90
+
+  sbom-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/
+    steps:
+      - uses: actions/checkout@v7
+
+      # Installs the pnpm version pinned in the "packageManager" field of
+      # frontend/package.json.
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      # cdxgen reads the pnpm lockfile directly. --no-babel skips its optional
+      # source-code usage analysis. --required-only limits the SBOM to what
+      # ships at runtime (excludes devDependencies), matching the backend's
+      # runtime-only scope - see docs/sbom.md.
+      # renovate: datasource=npm depName=@cyclonedx/cdxgen
+      - name: Generate frontend SBOM
+        run: pnpm dlx @cyclonedx/cdxgen@11.11.0 -t pnpm --no-babel --required-only --project-name opaa-frontend -o bom.json .
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom-frontend
+          path: frontend/bom.json
+          retention-days: 90
