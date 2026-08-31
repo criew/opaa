@@ -1,0 +1,30 @@
+name: Dependency Graph
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Submits the resolved dependency graph to GitHub's Dependency Graph API,
+# which requires write access to Dependency Graph snapshots.
+permissions:
+  contents: write
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # Resolves and submits the Gradle dependency graph for backend + opaa-api
+      # (single multi-module build rooted at backend/) so Dependabot alerts
+      # cover the JVM dependency tree; the pnpm lockfile is read by GitHub
+      # itself without a submission step.
+      - uses: gradle/actions/dependency-submission@v6
+        with:
+          build-root-directory: backend
