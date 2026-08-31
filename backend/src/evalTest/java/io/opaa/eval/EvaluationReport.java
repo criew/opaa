@@ -82,7 +82,12 @@ public record EvaluationReport(
       String goldenDatasetSha256,
       int goldenCaseCount,
       String runStartedAt,
-      double runDurationSeconds) {}
+      double runDurationSeconds,
+      // Issue #1076: true when this run talked to an external Ollama endpoint
+      // (opaa.eval.ollamaBaseUrl) instead of the Testcontainer — such a run is not
+      // baseline-comparable (CPU/GPU embedding kernels are not guaranteed bit-identical, analogous
+      // to the -Dopaa.eval.allowGpu opt-out), see eval/README.md, "Externer Ollama-Endpunkt".
+      boolean externalOllamaEndpoint) {}
 
   /**
    * The chunk-count invariant check (ADR-0010, made a per-domain property by its #721 Nachtrag):

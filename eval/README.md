@@ -138,6 +138,39 @@ auf anderen Maschinen vergleichbar. Für lokale Experimente mit GPU-Embeddings g
 `DeviceRequests`-Liste abgesichert, damit ein künftiges Testcontainers-Upgrade eine stillschweigend
 wieder aktivierte GPU-Anforderung nicht unbemerkt durchlässt.
 
+### Externer Ollama-Endpunkt (Issue #1076)
+
+Beide Harnesse akzeptieren optional `-Dopaa.eval.ollamaBaseUrl=http://localhost:11434`: Statt den
+Ollama-Testcontainer zu starten, sprechen sie dann direkt mit dem angegebenen, bereits laufenden
+Ollama-Endpunkt. Gedacht für Entwicklungsmaschinen, auf denen Docker/WSL2 keine GPU-Passthrough für
+den Testcontainer erlaubt (z. B. AMD-GPUs — nur NVIDIA wird durchgereicht), ein nativ auf dem Host
+laufendes Ollama die GPU aber nutzen kann. Auf `city-landmarks` (~2 h auf CPU) verkürzt das die
+lokale Iterationszeit spürbar.
+
+```bash
+./gradlew evaluateRetrieval -Dopaa.eval.ollamaBaseUrl=http://localhost:11434
+```
+
+- Ist die Property gesetzt, wird **kein Testcontainer gestartet** — der Modell-Pull (falls nötig)
+  läuft über Ollamas `POST /api/pull`-HTTP-API statt über `docker exec`, sonst unverändert. Das
+  schreibt das Modell in den Modellspeicher des angegebenen Host-Ollama (nicht in das
+  Testcontainer-Docker-Volume `opaa-eval-ollama-models`) — ein Modell, das dort schon vorhanden ist
+  (z. B. per `ollama pull nomic-embed-text:v1.5` auf dem Host), wird über die Digest-Prüfung erkannt
+  und nicht erneut gezogen.
+- Die Modell-Digest-Prüfung (`EXPECTED_EMBEDDING_MODEL_DIGEST`) läuft unverändert auch gegen den
+  externen Endpunkt — ein Host-Ollama mit abweichendem Modellstand bricht mit derselben benannten
+  Drift-Fehlermeldung ab wie ein abweichender Testcontainer-Pull.
+- Der Lauf weist das deutlich aus: eine Warnung im Log beim Start (`startOllamaIfNeeded()`) und
+  `runConfiguration.externalOllamaEndpoint=true` im JSON-Report sowie eine ACHTUNG-Zeile in der
+  Konsolen-Zusammenfassung.
+- **Ein solcher Lauf ist nicht baseline-tauglich** — analog zum GPU-Opt-out oben: CPU- und
+  GPU-Embedding-Kernel liefern nicht notwendigerweise bitgleiche Vektoren, und ein natives
+  Host-Ollama ist ohnehin nicht dieselbe, reproduzierbare Umgebung wie der gepinnte
+  `ollama/ollama:0.6.5`-Testcontainer. `checkRetrievalBaseline`/`checkCityLandmarksRetrievalBaseline`
+  gegen einen solchen Lauf laufen zu lassen ist ohne Aussagekraft.
+- Ohne die Property ist das Verhalten byte-identisch zum bisherigen Stand (Testcontainer, CPU) — CI
+  setzt die Property nie, bleibt also unberührt.
+
 ### Was der Lauf tut
 
 1. Prüft `eval/corpus/comic-characters/MANIFEST.sha256` gegen die tatsächlichen Korpusdateien und

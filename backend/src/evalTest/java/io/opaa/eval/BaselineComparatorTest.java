@@ -1,6 +1,8 @@
 package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import io.opaa.eval.EvaluationReport.ChunkCountInvariantResult;
@@ -380,6 +382,48 @@ class BaselineComparatorTest {
   }
 
   @Test
+  void requireBaselineComparableAllowsATestcontainerRun() {
+    EvaluationReport report = reportWith(runConfiguration("m1", "d1", "corpus-a", "golden-a"));
+
+    assertThatCode(() -> BaselineComparator.requireBaselineComparable(report))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void requireBaselineComparableRejectsAnExternalOllamaEndpointRun() {
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    RunConfiguration withExternalEndpoint =
+        new RunConfiguration(
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
+            cfg.documentTopK(),
+            cfg.chunkTopK(),
+            cfg.searchTopK(),
+            cfg.productionSimilarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds(),
+            true);
+    EvaluationReport report = reportWith(withExternalEndpoint);
+
+    assertThatThrownBy(() -> BaselineComparator.requireBaselineComparable(report))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("externen Ollama-Endpunkt");
+  }
+
+  @Test
   void detectsSearchTopKDrift() {
     // ADR-0012 decision 3 / PR #301 review, Befund 4: searchTopK is part of the measurement
     // contract, not just run metadata — a topK change must invalidate the baseline, not be silently
@@ -408,7 +452,8 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.runStartedAt(),
-            cfg.runDurationSeconds());
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
     EvaluationReport report = reportWith(withDifferentTopK);
 
     var result = BaselineComparator.compare(baseline, report);
@@ -708,7 +753,8 @@ class BaselineComparatorTest {
         goldenSha,
         121,
         "2026-08-03T00:00:00Z",
-        1004.0);
+        1004.0,
+        false);
   }
 
   private static Baseline baselineWith(Baseline.FixedPoints fixedPoints) {
@@ -776,7 +822,8 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.runStartedAt(),
-            cfg.runDurationSeconds());
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
     EvaluationReport report = reportWith(withDifferentChunkOverlap);
 
     var result = BaselineComparator.compare(baseline, report);
@@ -813,7 +860,8 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.runStartedAt(),
-            cfg.runDurationSeconds());
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
     EvaluationReport report = reportWith(withDifferentDocumentTopK);
 
     var result = BaselineComparator.compare(baseline, report);
@@ -850,7 +898,8 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.runStartedAt(),
-            cfg.runDurationSeconds());
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
     EvaluationReport report = reportWith(withDifferentChunkTopK);
 
     var result = BaselineComparator.compare(baseline, report);

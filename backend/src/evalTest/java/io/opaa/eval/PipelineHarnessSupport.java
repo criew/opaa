@@ -278,6 +278,7 @@ public final class PipelineHarnessSupport {
         searchScopeLibraryCount,
         SEARCH_SCOPE_NOTE,
         pipelineRunStart.toString(),
-        Duration.between(pipelineRunStart, Instant.now()).toMillis() / 1000.0);
+        Duration.between(pipelineRunStart, Instant.now()).toMillis() / 1000.0,
+        EvalOllamaEndpoint.isExternal());
   }
 }

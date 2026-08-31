@@ -77,7 +77,13 @@ public final class PipelineReportWriter {
             "  Golden Dataset: %s, %d Fälle, Hash %s\n",
             cfg.goldenDatasetFile(), cfg.goldenCaseCount(), shortHash(cfg.goldenDatasetSha256())));
     sb.append(format("  Suchbereich: %s\n", cfg.searchScopeNote()));
-    sb.append(format("  Laufzeit: %.1f s\n\n", cfg.runDurationSeconds()));
+    sb.append(format("  Laufzeit: %.1f s\n", cfg.runDurationSeconds()));
+    if (cfg.externalOllamaEndpoint()) {
+      sb.append(
+          "  ACHTUNG: externer Ollama-Endpunkt verwendet (opaa.eval.ollamaBaseUrl) — dieser Lauf "
+              + "ist NICHT baseline-tauglich, siehe eval/README.md\n");
+    }
+    sb.append('\n');
 
     var coverage = report.selectionCoverage();
     sb.append(

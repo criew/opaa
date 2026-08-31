@@ -102,11 +102,13 @@ fun registerEvalDomain(
         // own (they stay properties of the Gradle daemon process that evaluates this build script) —
         // every property a harness class reads via System.getProperty/Boolean.getBoolean at runtime
         // needs an explicit systemProperty() call here, read from this daemon-process property at
-        // configuration time. opaa.eval.allowGpu (RetrievalEvaluationHarnessTest, local GPU opt-out)
-        // and the issue #1041 variant-comparison opt-in share this list because both are optional,
-        // manually-invoked knobs rather than something every eval domain always needs.
+        // configuration time. opaa.eval.allowGpu (RetrievalEvaluationHarnessTest, local GPU opt-out),
+        // opaa.eval.ollamaBaseUrl (issue #1076, external Ollama endpoint) and the issue #1041
+        // variant-comparison opt-in share this list because all three are optional, manually-invoked
+        // knobs rather than something every eval domain always needs.
         listOf(
             "opaa.eval.allowGpu",
+            "opaa.eval.ollamaBaseUrl",
             "opaa.eval.runVariantComparison",
             "opaa.eval.variantComparisonFile",
         ).forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
