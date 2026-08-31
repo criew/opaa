@@ -24,7 +24,7 @@ tika-core = "3.3.2"
 # Parses the OpenAPI spec directly in opaa-api's parity tests (issue #896) - no Spring
 # dependency needed for that, so a lightweight YAML parser instead of pulling in a
 # spec-validation library.
-snakeyaml = "2.6"
+snakeyaml = "2.7"
 # JDBC binding for the pgvector column type (com.pgvector.PGvector), used directly by
 # io.opaa.query.ChunkEmbeddingLookup to read a chunk's stored embedding back for MMR (#914).
 # Already on the classpath transitively via spring-ai-pgvector-store; declared explicitly because
