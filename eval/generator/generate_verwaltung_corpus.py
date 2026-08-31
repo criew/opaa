@@ -19,9 +19,13 @@ Design goals (see docs/features/retrieval-benchmark.md, Abschnitt 4):
   `VerwaltungChunkSizeDryRunTest`, docker-freier Nachweis).
 - Enthält konstruktiv die Fehlerbilder aus Abschnitt 5 der Spezifikation: eine wörtlich
   auffindbare, aber embeddingschwache Passage (`§ 3 Gebührenbefreiung wegen Bedürftigkeit`,
-  eingebettet in ein Dokument, dessen Gesamtthema woanders liegt, umgeben von mehreren
-  thematisch nahen, aber für die jeweilige Frage sachlich falschen Konkurrenzdokumenten);
-  konfusionsfähige Kennungen (Aktenzeichen mit benachbarten Nummern/Jahren, § 3 vs. § 13);
+  eingebettet in ein Dokument, dessen Gesamtthema woanders liegt) — bewusst nur bei einem
+  einzigen Amt (Kämmerei, `Amt.traegt_gebuehrenbefreiung`), umgeben von neun thematisch nahen,
+  aber begriffsfrei formulierten Konkurrenzdokumenten (`paragraph_auskunftsrecht`); wäre der
+  Begriff in allen zehn Ämtern vorhanden, läge seine Dokumenthäufigkeit bei 100 % und der Fall
+  wäre nicht mehr konstruierbar (siehe `eval/corpus/verwaltung/SOURCE.md`, "Begriffs- und
+  Kennungshäufigkeit im Korpus"); konfusionsfähige Kennungen (Aktenzeichen mit benachbarten
+  Nummern/Jahren, § 3 vs. § 13, über alle zehn Ämter hinweg erhalten);
   Komposita (Satzungstitel wie "Personalausweisgebührensatzung"); eine organisationsweite
   Vertretungsregelung, die eine Mehrfach-Dokument-Kette für Multi-Hop-Fragen trägt; und
   Fassungspaare (identische Satzung/Dienstanweisung in zwei Ständen) für Metadaten-Filterfragen.
@@ -69,6 +73,13 @@ class Amt:
     hauptleistung: str
     alltagsfrage: str
     kennung_praefix: str
+    # True for exactly one Amt (Kämmerei/KAE, see AEMTER below): only this Amt's documents carry
+    # the literal "Gebührenbefreiung wegen Bedürftigkeit" passage (Abschnitt 5a der Spezifikation,
+    # the #938-class). Code-Review-Befund (PR #1074): mit dem Begriff in allen zehn Ämtern hatte
+    # jedes Dokument dieselbe IDF ≈ 0 und der Fall war nicht mehr konstruierbar — die Spezifikation
+    # verlangt einen seltenen, wörtlich auffindbaren Begriff in einem Dokument, umgeben von
+    # thematisch nahen, aber sachlich falschen Konkurrenzdokumenten ohne den Begriff.
+    traegt_gebuehrenbefreiung: bool = False
 
     @property
     def amt_mit_artikel(self) -> str:
@@ -159,8 +170,11 @@ AEMTER: list[Amt] = [
         "Verwaltungsgebührensatzung",
         "allgemeine Amtshandlungen der Stadtverwaltung",
         "allgemeine Amtshandlung",
-        "Warum wird für ein einfaches Schreiben des Rathauses überhaupt eine Gebühr verlangt?",
+        # Matches wörtlich den in der Spezifikation zitierten belegten Produktionsfall (#938):
+        # "§ 3 der Verwaltungsgebührensatzung enthält 'Befreiung' und 'Bedürftigkeit' im Klartext".
+        "Muss ich das bezahlen, wenn ich Bürgergeld bekomme?",
         "KAE",
+        traegt_gebuehrenbefreiung=True,
     ),
     Amt(
         "PER",
@@ -343,15 +357,17 @@ class IdAllocator:
 
 # --- Satzung: gemeinsame §§-Bausteine ----------------------------------------------------
 
-# § 3 und § 13 sind bewusst über *alle* Satzungen hinweg an denselben Nummern und mit
-# strukturell ähnlichem Regelungsgegenstand (Gebührennachlass) verankert — das ist die
-# Kennungs-Verwechslungsgefahr, die die exact_identifier-Fallklasse (Abschnitt 5b der
-# Spezifikation) braucht: "§ 3" trifft ohne Amtsbezug auf zehn verschiedene Dokumente, nur
-# eines davon ist für eine konkrete Gebühr die richtige Fundstelle. Gleichzeitig ist § 3 der
-# beleghafte #938-Fall (Abschnitt 5a): ein wörtlich auffindbarer Begriff ("Befreiung",
-# "Bedürftigkeit") in einem Dokument, dessen Gesamtthema (die jeweilige Amtsgebühr) woanders
-# liegt, umgeben von neun thematisch nahen, für die konkrete Frage aber sachlich falschen
-# Konkurrenzdokumenten (den § 3-Absätzen der anderen neun Satzungen).
+# § 3 und § 13 sind über *alle* Satzungen hinweg an denselben Nummern verankert, aber mit
+# unterschiedlichem Regelungsgegenstand — das ist die Kennungs-Verwechslungsgefahr, die die
+# exact_identifier-Fallklasse (Abschnitt 5b der Spezifikation) braucht: "§ 3" trifft ohne
+# Amtsbezug auf zehn verschiedene Dokumente, nur eines davon behandelt für eine konkrete
+# Gebühr tatsächlich eine Befreiung. Der wörtlich auffindbare, aber embeddingschwache Begriff
+# aus dem #938-Fall (Abschnitt 5a: "Befreiung", "Bedürftigkeit") steht dagegen **nur** in
+# einem einzigen Dokument (Kämmerei/`Verwaltungsgebührensatzung`, `Amt.traegt_gebuehrenbefreiung`)
+# — die übrigen neun Satzungen haben an derselben Stelle (§ 3) einen anderen, thematisch nahen,
+# aber für den Begriff sachlich falschen Regelungsgegenstand (`paragraph_auskunftsrecht`). Ohne
+# diese Seltenheit wäre der Begriff in jedem der 70 Dokumente auffindbar (IDF ≈ 0) und der Fall
+# nicht konstruierbar (Code-Review-Befund, PR #1074).
 
 
 def paragraph_geltungsbereich(amt: Amt) -> str:
@@ -408,6 +424,31 @@ def paragraph_gebuehrenbefreiung(amt: Amt) -> str:
         "gemeinnützige Vereine unabhängig von deren wirtschaftlicher Lage. Beide Regelungen "
         "schließen sich nicht gegenseitig aus, begründen aber unterschiedliche "
         "Anspruchsvoraussetzungen und dürfen nicht verwechselt werden."
+    )
+
+
+def paragraph_auskunftsrecht(amt: Amt) -> str:
+    """§ 3 für alle Ämter außer der Kämmerei (`amt.traegt_gebuehrenbefreiung`): dieselbe
+    Paragraphennummer wie `paragraph_gebuehrenbefreiung`, aber ein anderer Regelungsgegenstand
+    ohne die Begriffe "Bedürftigkeit"/"Befreiung"/"Bürgergeld" — der thematisch nahe, aber für
+    den #938-Fall (Abschnitt 5a der Spezifikation) sachlich falsche Konkurrenzparagraph.
+    """
+    return (
+        "§ 3 Auskunftsrecht und Akteneinsicht\n\n"
+        "(1) Antragstellende haben das Recht, jederzeit über den Bearbeitungsstand ihres "
+        f"Vorgangs bei {amt.dativ} Auskunft zu erhalten. Die Auskunft wird formlos, in der Regel "
+        "telefonisch oder per E-Mail, innerhalb von drei Werktagen erteilt.\n\n"
+        "(2) Auf schriftlichen Antrag kann Einsicht in die eigene Vorgangsakte gewährt werden, "
+        "soweit dem keine schutzwürdigen Interessen Dritter entgegenstehen. Über den Antrag "
+        f"entscheidet die zuständige Sachbearbeitung {amt.genitiv}; ist diese Sachbearbeitung "
+        "nicht erreichbar, etwa wegen Urlaub oder Krankheit, richtet sich die Zuständigkeit nach "
+        f"der Vertretungsregelung der Stadtverwaltung {GEMEINDE} (siehe "
+        f"{VERTRETUNGSREGELUNG_FILENAME}).\n\n"
+        "(3) Das Auskunftsrecht nach Absatz 1 ist von der Gebührenermäßigung für eingetragene "
+        "Vereine nach § 13 dieser Satzung zu unterscheiden: Während § 3 den Zugang zu "
+        "Informationen über den eigenen Vorgang betrifft, regelt § 13 eine pauschale Ermäßigung "
+        "für eingetragene, gemeinnützige Vereine unabhängig von einer Auskunftsanfrage. Beide "
+        "Regelungen stehen unabhängig nebeneinander und dürfen nicht verwechselt werden."
     )
 
 
@@ -505,10 +546,21 @@ def paragraph_datenschutz(amt: Amt) -> str:
 
 
 def paragraph_haertefall(amt: Amt) -> str:
+    if amt.traegt_gebuehrenbefreiung:
+        einleitung = (
+            "(1) In Fällen, die von § 3 nicht erfasst sind, aber eine vergleichbare "
+            "wirtschaftliche Notlage begründen, kann "
+        )
+    else:
+        # Für die neun Ämter ohne die #938-Bedürftigkeitsklausel (siehe paragraph_auskunftsrecht)
+        # darf § 12 nicht mehr voraussetzen, dass § 3 eine Bedürftigkeitsprüfung regelt.
+        einleitung = (
+            "(1) In besonderen Härtefällen, die über das Auskunftsrecht nach § 3 und die "
+            "Gebührenermäßigung für eingetragene Vereine nach § 13 hinausgehen, kann "
+        )
     return (
         "§ 12 Sonderregelungen für Härtefälle\n\n"
-        "(1) In Fällen, die von § 3 nicht erfasst sind, aber eine vergleichbare wirtschaftliche "
-        f"Notlage begründen, kann {amt.amt_mit_artikel} auf begründeten Antrag eine Stundung oder "
+        f"{einleitung}{amt.amt_mit_artikel} auf begründeten Antrag eine Stundung oder "
         "eine anteilige Gebührenermäßigung gewähren.\n\n"
         "(2) Über den Härtefallantrag entscheidet die Amtsleitung "
         f"{amt.genitiv}, nicht die für den Regelfall zuständige Sachbearbeitung."
@@ -516,6 +568,24 @@ def paragraph_haertefall(amt: Amt) -> str:
 
 
 def paragraph_vereinsermaessigung(amt: Amt) -> str:
+    if amt.traegt_gebuehrenbefreiung:
+        abgrenzung = (
+            "(3) Diese Ermäßigung ist unabhängig von der Gebührenbefreiung wegen Bedürftigkeit "
+            "nach § 3 dieser Satzung zu beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 "
+            "für dieselbe Amtshandlung besteht nicht, da § 3 natürliche Personen in einer "
+            "persönlichen Notlage betrifft und § 13 juristische Personen in Vereinsform "
+            "unabhängig von deren wirtschaftlicher Lage."
+        )
+    else:
+        # Für die neun Ämter ohne die #938-Bedürftigkeitsklausel verweist § 13 stattdessen auf
+        # das Auskunftsrecht aus paragraph_auskunftsrecht, nicht auf eine Bedürftigkeitsprüfung.
+        abgrenzung = (
+            "(3) Diese Ermäßigung ist unabhängig vom Auskunftsrecht nach § 3 dieser Satzung zu "
+            "beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 für dieselbe Amtshandlung "
+            "besteht nicht, da § 3 den Zugang zu Informationen über einen eigenen Vorgang "
+            "betrifft und § 13 eine pauschale Gebührenermäßigung für Vereine regelt, unabhängig "
+            "von einer Auskunftsanfrage."
+        )
     return (
         "§ 13 Gebührenermäßigung für eingetragene Vereine\n\n"
         f"(1) Eingetragene, gemeinnützige Vereine mit Sitz in der Stadt {GEMEINDE} erhalten auf "
@@ -524,11 +594,7 @@ def paragraph_vereinsermaessigung(amt: Amt) -> str:
         "(2) Der Nachweis der Gemeinnützigkeit erfolgt durch Vorlage des aktuellen "
         "Freistellungsbescheids des Finanzamts. Die Ermäßigung gilt nicht rückwirkend für bereits "
         "bestandskräftig festgesetzte Gebühren.\n\n"
-        "(3) Diese Ermäßigung ist unabhängig von der Gebührenbefreiung wegen Bedürftigkeit nach § 3 "
-        "dieser Satzung zu beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 für dieselbe "
-        "Amtshandlung besteht nicht, da § 3 natürliche Personen in einer persönlichen Notlage "
-        "betrifft und § 13 juristische Personen in Vereinsform unabhängig von deren wirtschaftlicher "
-        "Lage."
+        f"{abgrenzung}"
     )
 
 
@@ -552,19 +618,34 @@ def paragraph_uebergang(amt: Amt, fassung: int, vorgaenger_fassung: int | None) 
 
 
 def satzung_zusammenfassung(amt: Amt, fassung: int) -> str:
+    if amt.traegt_gebuehrenbefreiung:
+        paragraphen_hinweis = (
+            "einschließlich der Gebührenbefreiung wegen Bedürftigkeit nach § 3, der "
+            "Gebührenermäßigung für eingetragene Vereine nach § 13 sowie Verfahren, Zuständigkeit "
+            "und Rechtsmittel"
+        )
+    else:
+        paragraphen_hinweis = (
+            "einschließlich des Auskunftsrechts nach § 3, der Gebührenermäßigung für "
+            "eingetragene Vereine nach § 13 sowie Verfahren, Zuständigkeit und Rechtsmittel"
+        )
     return (
         "## Zusammenfassung\n\n"
         f"Die {amt.satzungstitel} der Stadt {GEMEINDE} in der Fassung {fassung} regelt die "
-        f"Gebühren {amt.genitiv} für {amt.gebuehr_gegenstand}, einschließlich der "
-        "Gebührenbefreiung wegen Bedürftigkeit nach § 3, der Gebührenermäßigung für eingetragene "
-        "Vereine nach § 13 sowie Verfahren, Zuständigkeit und Rechtsmittel. Die Zuständigkeit im "
-        f"Vertretungsfall regelt die Vertretungsregelung der Stadtverwaltung {GEMEINDE} "
-        f"({VERTRETUNGSREGELUNG_FILENAME})."
+        f"Gebühren {amt.genitiv} für {amt.gebuehr_gegenstand}, {paragraphen_hinweis}. Die "
+        f"Zuständigkeit im Vertretungsfall regelt die Vertretungsregelung der Stadtverwaltung "
+        f"{GEMEINDE} ({VERTRETUNGSREGELUNG_FILENAME})."
     )
 
 
 def compute_fee(amt: Amt, index: int) -> int:
-    """Deterministic, non-random per-Amt fee schedule (no external source to draw from)."""
+    """Deterministic, non-random fee schedule (no real fee data exists to draw from — see
+    SOURCE.md, "Gebührenbeträge sind deterministisch, aber nicht real"). Two illustrative,
+    plausibility-motivated factors, both fixed and reproducible: the fee rises with `index`
+    (later `AKTIONEN` entries — e.g. "Eilbearbeitung", "Bearbeitung eines Widerspruchs" — are
+    plausibly costlier than a routine "Erteilung"), and a per-Amt offset derived from the Amt's
+    Kürzel gives each Amt a distinct, stable base level instead of all ten sharing one schedule.
+    """
     return 12 + index * 5 + (sum(ord(c) for c in amt.kuerzel) % 17)
 
 
@@ -585,10 +666,15 @@ def build_satzung_body(amt: Amt, fassung: int, vorgaenger_fassung: int | None) -
         (f"{aktion} ({amt.hauptleistung})", compute_fee(amt, index))
         for index, aktion in enumerate(AKTIONEN[:4], start=1)
     ]
+    paragraph_3 = (
+        paragraph_gebuehrenbefreiung(amt)
+        if amt.traegt_gebuehrenbefreiung
+        else paragraph_auskunftsrecht(amt)
+    )
     paragraphen = [
         paragraph_geltungsbereich(amt),
         paragraph_begriffsbestimmungen(amt),
-        paragraph_gebuehrenbefreiung(amt),
+        paragraph_3,
         paragraph_gebuehrenschuldner(amt),
         paragraph_gebuehrenhoehe(amt, betraege),
         paragraph_faelligkeit(amt),
@@ -621,6 +707,16 @@ def build_gebuehrenordnung_body(amt: Amt) -> str:
         f"{amt.gebuehr_gegenstand} fest. Sie wird jährlich von der Kämmerei der Stadt {GEMEINDE} "
         "auf ihre Kostendeckung hin überprüft."
     )
+    if amt.traegt_gebuehrenbefreiung:
+        ausnahme_satz = (
+            "unterliegt unverändert der Gebührenbefreiung wegen Bedürftigkeit nach § 3 und der "
+            f"Gebührenermäßigung für eingetragene Vereine nach § 13 der {amt.satzungstitel}"
+        )
+    else:
+        ausnahme_satz = (
+            f"unterliegt unverändert den in § 3 und § 13 der {amt.satzungstitel} geregelten "
+            "Ausnahmen"
+        )
     positionen = []
     for index, aktion in enumerate(AKTIONEN, start=1):
         fee = compute_fee(amt, index)
@@ -633,11 +729,9 @@ def build_gebuehrenordnung_body(amt: Amt) -> str:
             f"{amt.amt_mit_artikel} wird eine Gebühr in Höhe von {fee},00 Euro erhoben. Die "
             f"Berechnungsgrundlage ist der durchschnittliche Bearbeitungsaufwand {amt.genitiv} "
             f"für diese Amtshandlung, ermittelt durch eine Zeit- und Kostenerfassung der Kämmerei. "
-            f"Die Gebührenposition {index} unterliegt unverändert der Gebührenbefreiung wegen "
-            "Bedürftigkeit nach § 3 und der Gebührenermäßigung für eingetragene Vereine nach § 13 "
-            f"der {amt.satzungstitel}. Bei mehrfacher Inanspruchnahme derselben Amtshandlung "
-            f"innerhalb eines Kalenderjahres wird die Gebühr für jede einzelne Amtshandlung erneut "
-            "fällig; eine Sammelrechnung ist auf Antrag möglich."
+            f"Die Gebührenposition {index} {ausnahme_satz}. Bei mehrfacher Inanspruchnahme "
+            f"derselben Amtshandlung innerhalb eines Kalenderjahres wird die Gebühr für jede "
+            "einzelne Amtshandlung erneut fällig; eine Sammelrechnung ist auf Antrag möglich."
         )
     schluss = (
         "## Änderungen dieser Gebührenordnung\n\n"
@@ -652,11 +746,11 @@ def build_gebuehrenordnung_body(amt: Amt) -> str:
 # --- Dienstanweisung ----------------------------------------------------------------------
 
 
-DIENSTANWEISUNGS_THEMEN = [
+DIENSTANWEISUNGS_THEMEN_STANDARD = [
     (
-        "Bearbeitung von Anträgen auf Gebührenbefreiung",
-        "die Prüfung und Entscheidung über Anträge nach § 3 der jeweils einschlägigen "
-        "Gebührensatzung",
+        "Bearbeitung von Amtshandlungsanträgen",
+        "die Prüfung und Entscheidung über eingehende Anträge im Zuständigkeitsbereich des "
+        "Amtes",
     ),
     (
         "Aktenführung und Fristenkontrolle",
@@ -664,6 +758,25 @@ DIENSTANWEISUNGS_THEMEN = [
         "satzungsrechtlicher Bearbeitungsfristen",
     ),
 ]
+
+# Nur für die Kämmerei (`amt.traegt_gebuehrenbefreiung`) — sonst stünde "Bedürftigkeit"/
+# "Gebührenbefreiung" in allen zehn Ämtern und der #938-Fall wäre nicht konstruierbar (siehe
+# Kommentar über `paragraph_gebuehrenbefreiung`).
+DIENSTANWEISUNGS_THEMEN_GEBUEHRENBEFREIUNG = [
+    (
+        "Bearbeitung von Anträgen auf Gebührenbefreiung",
+        "die Prüfung und Entscheidung über Anträge nach § 3 der Verwaltungsgebührensatzung",
+    ),
+    DIENSTANWEISUNGS_THEMEN_STANDARD[1],
+]
+
+
+def dienstanweisungs_themen(amt: Amt) -> list[tuple[str, str]]:
+    return (
+        DIENSTANWEISUNGS_THEMEN_GEBUEHRENBEFREIUNG
+        if amt.traegt_gebuehrenbefreiung
+        else DIENSTANWEISUNGS_THEMEN_STANDARD
+    )
 
 
 def build_dienstanweisung_body(
@@ -675,6 +788,36 @@ def build_dienstanweisung_body(
         vorgaenger_satz = (
             f" Diese Fassung ersetzt die Dienstanweisung {vorgaenger_az}, deren Regelungen für "
             "bereits abgeschlossene Vorgänge unberührt bleiben."
+        )
+    if amt.traegt_gebuehrenbefreiung:
+        pruefung_zusatz = (
+            " Bei Anträgen, die sich auf § 3 oder § 13 der jeweils einschlägigen "
+            "Gebührensatzung berufen, ist zusätzlich zu prüfen, ob die vorgelegten Nachweise "
+            "noch innerhalb ihrer Gültigkeitsdauer liegen; ein abgelaufener Leistungsbescheid "
+            "gilt nicht als ausreichender Nachweis der Bedürftigkeit."
+        )
+        entscheidung_satz = (
+            "Bei Anträgen auf Gebührenbefreiung nach § 3 ist die geprüfte Bedürftigkeit "
+            "ausdrücklich in der Akte zu vermerken, ebenso das Ergebnis eines etwaigen "
+            "Härtefallantrags nach § 12. Bei Anträgen auf Gebührenermäßigung nach § 13 ist der "
+            "vorgelegte Freistellungsbescheid des Finanzamts in Kopie zur Akte zu nehmen, damit "
+            "eine spätere Prüfung durch die Kämmerei möglich ist."
+        )
+    else:
+        # Für die neun Ämter ohne die #938-Bedürftigkeitsklausel referenzieren § 5/§ 6 dasselbe
+        # § 3/§ 13-Zahlenpaar wie bei der Kämmerei (exact_identifier-Fallklasse bleibt erhalten),
+        # aber ohne die Begriffe "Bedürftigkeit"/"Gebührenbefreiung" (literal_term-Fallklasse).
+        pruefung_zusatz = (
+            " Bei Anträgen, die sich auf § 3 oder § 13 der jeweils einschlägigen "
+            "Gebührensatzung berufen, ist zusätzlich zu prüfen, ob die vorgelegten Nachweise "
+            "noch innerhalb ihrer Gültigkeitsdauer liegen."
+        )
+        entscheidung_satz = (
+            "Bei Anträgen auf Auskunft nach § 3 ist der geprüfte Sachverhalt ausdrücklich in "
+            "der Akte zu vermerken, ebenso das Ergebnis eines etwaigen Härtefallantrags nach "
+            "§ 12. Bei Anträgen auf Gebührenermäßigung nach § 13 ist der vorgelegte "
+            "Freistellungsbescheid des Finanzamts in Kopie zur Akte zu nehmen, damit eine "
+            "spätere Prüfung durch die Kämmerei möglich ist."
         )
     abschnitte = [
         f"# Dienstanweisung {aktenzeichen}: {thema_titel}\n\n"
@@ -714,17 +857,10 @@ def build_dienstanweisung_body(
         "## 5. Verfahrensschritt: Prüfung\n\n"
         f"Die Sachbearbeitung {amt.genitiv} prüft den Vorgang auf Vollständigkeit der "
         "Nachweise. Fehlen Unterlagen, wird eine Nachfrist von zwei Wochen gesetzt; nach "
-        "fruchtlosem Ablauf wird nach Aktenlage entschieden. Bei Anträgen, die sich auf § 3 oder "
-        "§ 13 der jeweils einschlägigen Gebührensatzung berufen, ist zusätzlich zu prüfen, ob die "
-        "vorgelegten Nachweise noch innerhalb ihrer Gültigkeitsdauer liegen; ein abgelaufener "
-        "Leistungsbescheid gilt nicht als ausreichender Nachweis der Bedürftigkeit.",
-        "## 6. Verfahrensschritt: Entscheidung und Dokumentation\n\n"
-        "Die Entscheidung wird schriftlich begründet und in der Vorgangsakte dokumentiert. Bei "
-        "Anträgen auf Gebührenbefreiung nach § 3 ist die geprüfte Bedürftigkeit ausdrücklich in "
-        "der Akte zu vermerken, ebenso das Ergebnis eines etwaigen Härtefallantrags nach § 12. Bei "
-        "Anträgen auf Gebührenermäßigung nach § 13 ist der vorgelegte Freistellungsbescheid des "
-        "Finanzamts in Kopie zur Akte zu nehmen, damit eine spätere Prüfung durch die Kämmerei "
-        "möglich ist.",
+        f"fruchtlosem Ablauf wird nach Aktenlage entschieden.{pruefung_zusatz}",
+        f"## 6. Verfahrensschritt: Entscheidung und Dokumentation\n\n"
+        f"Die Entscheidung wird schriftlich begründet und in der Vorgangsakte dokumentiert. "
+        f"{entscheidung_satz}",
         "## 7. Vertretungsfall und Eskalation\n\n"
         "Kann eine Entscheidung wegen Abwesenheit der zuständigen Sachbearbeitung nicht fristgemäß "
         "getroffen werden, entscheidet die nach der Vertretungsregelung zuständige Vertretung. "
@@ -777,15 +913,95 @@ def build_dienstanweisung_body(
 # --- Formularhinweis ----------------------------------------------------------------------
 
 
-FORMULARHINWEIS_THEMEN = [
+FORMULARHINWEIS_THEMEN_STANDARD = [
     ("Antragsformular", "den regulären Antrag auf eine Amtshandlung"),
-    ("Befreiungs- und Ermäßigungsformular", "den Antrag auf Gebührenbefreiung nach § 3 oder "
-     "Gebührenermäßigung nach § 13"),
+    (
+        "Änderungs- und Ermäßigungsformular",
+        "den Antrag auf eine nachträgliche Änderung der Antragsdaten oder auf "
+        "Gebührenermäßigung nach § 13",
+    ),
 ]
+
+# Nur für die Kämmerei (`amt.traegt_gebuehrenbefreiung`) — siehe Kommentar über
+# `paragraph_gebuehrenbefreiung`.
+FORMULARHINWEIS_THEMEN_GEBUEHRENBEFREIUNG = [
+    FORMULARHINWEIS_THEMEN_STANDARD[0],
+    (
+        "Befreiungs- und Ermäßigungsformular",
+        "den Antrag auf Gebührenbefreiung nach § 3 oder Gebührenermäßigung nach § 13",
+    ),
+]
+
+
+def formularhinweis_themen(amt: Amt) -> list[tuple[str, str]]:
+    return (
+        FORMULARHINWEIS_THEMEN_GEBUEHRENBEFREIUNG
+        if amt.traegt_gebuehrenbefreiung
+        else FORMULARHINWEIS_THEMEN_STANDARD
+    )
 
 
 def build_formularhinweis_body(amt: Amt, nr: int, thema_titel: str, thema_beschreibung: str) -> str:
     formularnummer = f"Formular {amt.kennung_praefix}-{nr:02d}"
+    if amt.traegt_gebuehrenbefreiung:
+        angaben_satz = (
+            "Bei Anträgen auf Gebührenbefreiung ist zusätzlich der aktuelle Leistungsbescheid "
+            "nach § 3 der einschlägigen Gebührensatzung beizufügen; bei Anträgen auf "
+            "Gebührenermäßigung nach § 13 ist stattdessen der Freistellungsbescheid des "
+            "Finanzamts anzugeben."
+        )
+        nachweis_satz = (
+            f"Je nach Anliegen sind Identitätsnachweis, Nachweis der Bedürftigkeit oder Nachweis "
+            f"der Gemeinnützigkeit beizufügen. {amt.amt_mit_artikel_grossgeschrieben} akzeptiert "
+            "sowohl beglaubigte Kopien als auch das Original zur Einsichtnahme vor Ort."
+        )
+        rueckfrage_satz = (
+            f'"{amt.alltagsfrage}" — die Antwort richtet sich nach § 3 der {amt.satzungstitel} '
+            'und wird im Formular unter „Gebührenbefreiung“ abgefragt.'
+        )
+        rechtsgrundlage_satz = (
+            "insbesondere die dortigen Regelungen zu Gebührenbefreiung (§ 3) und "
+            "Gebührenermäßigung (§ 13)"
+        )
+        aufbewahrung_satz = (
+            "abschließend beschieden und die Gebühr, sofern keine Befreiung nach § 3 oder "
+            "Ermäßigung nach § 13 greift, beglichen wurde."
+        )
+        widerruf_satz = (
+            "Eine bereits getroffene Entscheidung über die Gebührenbefreiung nach § 3 wird durch "
+            "einen Widerruf nachfolgender, davon unabhängiger Angaben nicht berührt."
+        )
+    else:
+        # Für die neun Ämter ohne die #938-Bedürftigkeitsklausel referenzieren §§ 2/3/6/9/11
+        # dasselbe § 3/§ 13-Zahlenpaar (exact_identifier bleibt erhalten), aber ohne die Begriffe
+        # "Bedürftigkeit"/"Gebührenbefreiung" (literal_term-Fallklasse, siehe Kommentar über
+        # `paragraph_gebuehrenbefreiung`).
+        angaben_satz = (
+            "Bei Anträgen auf Auskunft nach § 3 ist kein zusätzlicher Nachweis erforderlich; bei "
+            "Anträgen auf Gebührenermäßigung nach § 13 ist der Freistellungsbescheid des "
+            "Finanzamts anzugeben."
+        )
+        nachweis_satz = (
+            f"Je nach Anliegen ist ein Identitätsnachweis oder ein Nachweis der Gemeinnützigkeit "
+            f"beizufügen. {amt.amt_mit_artikel_grossgeschrieben} akzeptiert sowohl beglaubigte "
+            "Kopien als auch das Original zur Einsichtnahme vor Ort."
+        )
+        rueckfrage_satz = (
+            f'"{amt.alltagsfrage}" — Auskunft dazu erteilt die Sachbearbeitung {amt.genitiv} im '
+            "Rahmen des Auskunftsrechts nach § 3."
+        )
+        rechtsgrundlage_satz = (
+            "insbesondere die dortigen Regelungen zum Auskunftsrecht (§ 3) und zur "
+            "Gebührenermäßigung (§ 13)"
+        )
+        aufbewahrung_satz = (
+            "abschließend beschieden und die Gebühr, sofern keine Ermäßigung nach § 13 greift, "
+            "beglichen wurde."
+        )
+        widerruf_satz = (
+            "Eine bereits erteilte Auskunft nach § 3 wird durch einen Widerruf nachfolgender, "
+            "davon unabhängiger Angaben nicht berührt."
+        )
     abschnitte = [
         f"# Formularhinweis: {formularnummer} — {thema_titel}\n\n"
         f"Hinweise {amt.genitiv} der Stadt {GEMEINDE} zum Ausfüllen von "
@@ -801,21 +1017,16 @@ def build_formularhinweis_body(amt: Amt, nr: int, thema_titel: str, thema_beschr
         "zurückgesandt, was die Bearbeitungsdauer erfahrungsgemäß um mehrere Wochen verlängert.",
         "## 2. Erforderliche Angaben\n\n"
         "Anzugeben sind Name, Anschrift, Geburtsdatum und, sofern zutreffend, das Aktenzeichen "
-        "eines bereits laufenden Vorgangs. Bei Anträgen auf Gebührenbefreiung ist zusätzlich der "
-        "aktuelle Leistungsbescheid nach § 3 der einschlägigen Gebührensatzung beizufügen; bei "
-        "Anträgen auf Gebührenermäßigung nach § 13 ist stattdessen der Freistellungsbescheid des "
-        "Finanzamts anzugeben. Beide Angaben schließen sich gegenseitig nicht aus, betreffen aber "
-        "unterschiedliche Anspruchsgrundlagen. Ergänzend ist eine gültige Telefonnummer oder "
-        "E-Mail-Adresse anzugeben, unter der bei Rückfragen zum Vorgang eine Erreichbarkeit "
-        "innerhalb der üblichen Bearbeitungsdauer sichergestellt ist; fehlt eine solche Angabe, "
-        "erfolgt jede Rückfrage ausschließlich auf dem Postweg, was die Bearbeitung verzögert.",
+        f"eines bereits laufenden Vorgangs. {angaben_satz} Beide Angaben schließen sich "
+        "gegenseitig nicht aus, betreffen aber unterschiedliche Anspruchsgrundlagen. Ergänzend "
+        "ist eine gültige Telefonnummer oder E-Mail-Adresse anzugeben, unter der bei Rückfragen "
+        "zum Vorgang eine Erreichbarkeit innerhalb der üblichen Bearbeitungsdauer sichergestellt "
+        "ist; fehlt eine solche Angabe, erfolgt jede Rückfrage ausschließlich auf dem Postweg, "
+        "was die Bearbeitung verzögert.",
         "## 3. Erforderliche Nachweise\n\n"
-        f"Je nach Anliegen sind Identitätsnachweis, Nachweis der Bedürftigkeit oder Nachweis der "
-        f"Gemeinnützigkeit beizufügen. {amt.amt_mit_artikel_grossgeschrieben} akzeptiert sowohl "
-        "beglaubigte Kopien als auch das Original zur Einsichtnahme vor Ort. Fremdsprachige "
-        "Nachweise sind mit einer amtlich beglaubigten Übersetzung ins Deutsche einzureichen, "
-        "sofern der Inhalt nicht ohnehin standardisierten Formularen einer deutschen Behörde "
-        "entspricht.",
+        f"{nachweis_satz} Fremdsprachige Nachweise sind mit einer amtlich beglaubigten "
+        "Übersetzung ins Deutsche einzureichen, sofern der Inhalt nicht ohnehin standardisierten "
+        "Formularen einer deutschen Behörde entspricht.",
         "## 4. Einreichung\n\n"
         f"{formularnummer} kann persönlich, postalisch oder über das Online-Formularportal der "
         f"Stadt {GEMEINDE} eingereicht werden. Bei postalischer Einreichung ist das Aktenzeichen "
@@ -829,16 +1040,15 @@ def build_formularhinweis_body(amt: Amt, nr: int, thema_titel: str, thema_beschr
         "auf drei bis fünf Werktage. Während gesetzlicher Feiertage und in der Zeit zwischen "
         "Weihnachten und Neujahr kann sich die Bearbeitungsdauer verlängern.",
         "## 6. Häufige Rückfragen\n\n"
-        f"Häufig gestellte Frage im Zusammenhang mit {formularnummer}: "
-        f'"{amt.alltagsfrage}" — die Antwort richtet sich nach § 3 der {amt.satzungstitel} und '
-        "wird im Formular unter „Gebührenbefreiung“ abgefragt. Eine weitere häufige Frage betrifft "
-        "die Gültigkeitsdauer eingereichter Nachweise: Ein Leistungsbescheid darf zum Zeitpunkt "
-        "der Antragstellung nicht älter als drei Monate sein.",
+        f"Häufig gestellte Frage im Zusammenhang mit {formularnummer}: {rueckfrage_satz} Eine "
+        "weitere häufige Frage betrifft die Gültigkeitsdauer eingereichter Nachweise: Ein "
+        "Leistungsbescheid darf zum Zeitpunkt der Antragstellung nicht älter als drei Monate "
+        "sein.",
         "## 7. Rechtsgrundlage\n\n"
         f"Rechtsgrundlage für {formularnummer} ist die {amt.satzungstitel} der Stadt {GEMEINDE} "
-        "in der jeweils aktuell gültigen Fassung, insbesondere die dortigen Regelungen zu "
-        "Gebührenbefreiung (§ 3) und Gebührenermäßigung (§ 13). Ergänzend gilt die Gebührenordnung "
-        f"{amt.genitiv} für die konkrete Gebührenhöhe der jeweiligen Amtshandlung.",
+        f"in der jeweils aktuell gültigen Fassung, {rechtsgrundlage_satz}. Ergänzend gilt die "
+        f"Gebührenordnung {amt.genitiv} für die konkrete Gebührenhöhe der jeweiligen "
+        "Amtshandlung.",
         "## 8. Kontakt\n\n"
         f"Bei Rückfragen zu {formularnummer} steht die Sachbearbeitung {amt.genitiv} "
         f"während der Öffnungszeiten der Stadtverwaltung {GEMEINDE} zur Verfügung; im "
@@ -849,8 +1059,7 @@ def build_formularhinweis_body(amt: Amt, nr: int, thema_titel: str, thema_beschr
         "## 9. Aufbewahrung durch die Antragstellenden\n\n"
         f"Antragstellenden wird empfohlen, eine Kopie des ausgefüllten {formularnummer} sowie "
         "aller eingereichten Nachweise für die eigenen Unterlagen aufzubewahren, bis der Vorgang "
-        f"abschließend beschieden und die Gebühr, sofern keine Befreiung nach § 3 oder "
-        "Ermäßigung nach § 13 greift, beglichen wurde.",
+        f"{aufbewahrung_satz}",
         "## 10. Barrierefreiheit und Unterstützung beim Ausfüllen\n\n"
         f"{amt.amt_mit_artikel_grossgeschrieben} bietet auf Anfrage eine persönliche "
         f"Ausfüllhilfe für {formularnummer} an, insbesondere für Personen mit "
@@ -859,9 +1068,8 @@ def build_formularhinweis_body(amt: Amt, nr: int, thema_titel: str, thema_beschr
         f"Formularportal der Stadt {GEMEINDE} zur Verfügung.",
         "## 11. Widerruf und Änderung eines bereits gestellten Antrags\n\n"
         f"Ein über {formularnummer} gestellter Antrag kann bis zur abschließenden Entscheidung "
-        f"{amt.genitiv} formlos schriftlich widerrufen oder in einzelnen Angaben "
-        "berichtigt werden. Eine bereits getroffene Entscheidung über die Gebührenbefreiung nach "
-        "§ 3 wird durch einen Widerruf nachfolgender, davon unabhängiger Angaben nicht berührt.",
+        f"{amt.genitiv} formlos schriftlich widerrufen oder in einzelnen Angaben berichtigt "
+        f"werden. {widerruf_satz}",
         "## 12. Verweis auf verwandte Formulare\n\n"
         f"Für Anliegen, die nicht unmittelbar {amt.gebuehr_gegenstand} betreffen, aber im "
         f"Rahmen desselben Vorgangs entstehen können, verweist {amt.amt_mit_artikel} auf die "
@@ -888,14 +1096,21 @@ def build_formularhinweis_body(amt: Amt, nr: int, thema_titel: str, thema_beschr
 
 
 def build_vertretungsregelung_body() -> str:
+    # Code-Review-Befund (PR #1074): Diese beiden Organisationsdokumente dürfen ausschließlich
+    # die Vertretungs-/Zuständigkeitshälfte der multi_hop-Fallklasse (Abschnitt 5d der
+    # Spezifikation) tragen — keine Aussage darüber, WORÜBER ein Amt in der Sache entscheidet
+    # (das steht in der jeweiligen Satzung). Andernfalls wäre die dortige Beispielfrage ("Wer
+    # entscheidet über die Gebührenbefreiung, wenn die zuständige Sachbearbeitung im Urlaub
+    # ist?") aus diesem einen Dokument allein beantwortbar, und die Kette über zwei Dokumente
+    # entfiele.
     abschnitte = [
         f"# Vertretungsregelung der Stadtverwaltung {GEMEINDE}\n\n"
         f"Diese Vertretungsregelung legt fest, wer die Sachbearbeitung eines Amtes der "
         f"Stadtverwaltung {GEMEINDE} vertritt, wenn diese wegen Urlaub, Krankheit, Fortbildung "
-        "oder aus anderen Gründen nicht erreichbar ist. Sie gilt amtsübergreifend für alle "
-        "Satzungen, Gebührenordnungen und Dienstanweisungen dieser Stadtverwaltung, die auf sie "
-        "verweisen — insbesondere für Entscheidungen über Gebührenbefreiungen nach § 3 der "
-        "jeweiligen Gebührensatzung.",
+        "oder aus anderen Gründen nicht erreichbar ist. Sie gilt amtsübergreifend und "
+        "unabhängig vom fachlichen Gegenstand einer Entscheidung — welches Amt wofür fachlich "
+        f"zuständig ist, regelt ausschließlich der Geschäftsverteilungsplan der Stadtverwaltung "
+        f"{GEMEINDE} ({GESCHAEFTSVERTEILUNGSPLAN_FILENAME}) sowie die jeweilige Satzung.",
     ]
     for index, amt in enumerate(AEMTER):
         vertreter = AEMTER[(index + 1) % len(AEMTER)]
@@ -903,12 +1118,14 @@ def build_vertretungsregelung_body() -> str:
             f"## Vertretung für {amt.name}\n\n"
             f"Ist die zuständige Sachbearbeitung {amt.genitiv} der Stadt {GEMEINDE} nicht "
             f"erreichbar, entscheidet ersatzweise die Sachbearbeitung {vertreter.genitiv}. "
-            f"Diese Vertretung gilt für alle Amtshandlungen {amt.genitiv}, einschließlich "
-            "Entscheidungen über Gebührenbefreiung wegen Bedürftigkeit nach § 3 und "
-            f"Gebührenermäßigung für eingetragene Vereine nach § 13 der {amt.satzungstitel}. Ist "
-            f"auch die Vertretung {vertreter.genitiv} nicht erreichbar, entscheidet die "
-            f"Amtsleitung {amt.genitiv} persönlich oder benennt eine weitere Vertretung "
-            "aus dem eigenen Amt."
+            f"Diese Vertretung gilt ausnahmslos für alle Amtshandlungen {amt.genitiv}, ohne "
+            "Rücksicht darauf, welchen konkreten Antrag oder welche konkrete Gebühr die "
+            f"Amtshandlung betrifft. Ist auch die Vertretung {vertreter.genitiv} nicht "
+            f"erreichbar, entscheidet die Amtsleitung {amt.genitiv} persönlich oder benennt eine "
+            "weitere Vertretung aus dem eigenen Amt. Der Vertretungsfall ist von der "
+            "übernehmenden Sachbearbeitung im Vorgangsverzeichnis zu vermerken, damit "
+            "nachvollziehbar bleibt, wer anstelle der eigentlich zuständigen Person entschieden "
+            "hat."
         )
     abschnitte.append(
         "## Geltungsdauer\n\n"
@@ -919,29 +1136,31 @@ def build_vertretungsregelung_body() -> str:
 
 
 def build_geschaeftsverteilungsplan_body() -> str:
+    # Siehe Kommentar über build_vertretungsregelung_body: auch dieses Dokument trägt nur die
+    # Zuständigkeitshälfte (welches Amt ist wofür allgemein zuständig), keine Sachaussage über
+    # § 3/§ 13 einer konkreten Satzung.
     abschnitte = [
         f"# Geschäftsverteilungsplan der Stadtverwaltung {GEMEINDE}\n\n"
         f"Dieser Geschäftsverteilungsplan weist jedem Amt der Stadtverwaltung {GEMEINDE} seine "
         "Zuständigkeiten sowie die für die einzelnen Aufgabenbereiche verantwortliche "
         "Sachbearbeitung zu. Er ist die Grundlage dafür, welche Stelle für welche Entscheidung "
-        "innerhalb der Stadtverwaltung zuständig ist, einschließlich der Entscheidung über "
-        "Gebührenbefreiungen nach § 3 der jeweiligen Gebührensatzung.",
+        "innerhalb der Stadtverwaltung fachlich zuständig ist; wer eine konkrete Sachbearbeitung "
+        f"im Abwesenheitsfall vertritt, regelt ausschließlich die Vertretungsregelung der "
+        f"Stadtverwaltung {GEMEINDE} ({VERTRETUNGSREGELUNG_FILENAME}).",
     ]
     for amt in AEMTER:
         abschnitte.append(
             f"## Zuständigkeit {amt.genitiv}\n\n"
             f"{amt.amt_mit_artikel_grossgeschrieben} der Stadt {GEMEINDE} ist zuständig für "
-            f"{amt.gebuehr_gegenstand}, einschließlich der Entscheidung über Anträge auf "
-            "Gebührenbefreiung wegen Bedürftigkeit (§ 3) und Gebührenermäßigung für eingetragene "
-            f"Vereine (§ 13) der {amt.satzungstitel}. Innerhalb {amt.genitiv} liegt die "
-            "Entscheidung bei der jeweils benannten Sachbearbeitung; im Vertretungsfall gilt die "
-            f"Vertretungsregelung der Stadtverwaltung {GEMEINDE} ({VERTRETUNGSREGELUNG_FILENAME}). "
-            f"Grundlage der Gebührenerhebung {amt.genitiv} ist die {amt.satzungstitel} in "
-            "Verbindung mit der zugehörigen Gebührenordnung, in der die Gebührenhöhe je "
-            f"Amtshandlung ({amt.hauptleistung}) im Einzelnen festgelegt ist. Ansprechpartnerin "
-            f"oder Ansprechpartner für die konkrete Zuordnung eines Vorgangs innerhalb "
-            f"{amt.genitiv} ist die Amtsleitung, die die Verteilung auf die einzelnen "
-            "Sachbearbeitungen selbst festlegt und bei Bedarf anpasst."
+            f"{amt.gebuehr_gegenstand}. Innerhalb {amt.genitiv} liegt die Entscheidung bei der "
+            "jeweils benannten Sachbearbeitung; im Vertretungsfall gilt die Vertretungsregelung "
+            f"der Stadtverwaltung {GEMEINDE} ({VERTRETUNGSREGELUNG_FILENAME}). Grundlage der "
+            f"Gebührenerhebung {amt.genitiv} ist die {amt.satzungstitel} in Verbindung mit der "
+            "zugehörigen Gebührenordnung, in der die Gebührenhöhe je Amtshandlung "
+            f"({amt.hauptleistung}) im Einzelnen festgelegt ist. Ansprechpartnerin oder "
+            f"Ansprechpartner für die konkrete Zuordnung eines Vorgangs innerhalb {amt.genitiv} "
+            "ist die Amtsleitung, die die Verteilung auf die einzelnen Sachbearbeitungen selbst "
+            "festlegt und bei Bedarf anpasst."
         )
     abschnitte.append(
         "## Änderungen\n\n"
@@ -954,6 +1173,15 @@ def build_geschaeftsverteilungsplan_body() -> str:
 
 
 # --- Orchestrierung: Dokumentliste in fester, deterministischer Reihenfolge ----------------
+
+
+def satzung_schlagworte(amt: Amt) -> list[str]:
+    if amt.traegt_gebuehrenbefreiung:
+        return [amt.name, "Satzung", "Gebühren", "Gebührenbefreiung", "Bedürftigkeit"]
+    # Code-Review-Befund (PR #1074): "Gebührenbefreiung"/"Bedürftigkeit" nur bei der Kämmerei —
+    # sonst tragen alle zehn Satzungen dieselben Schlagworte und der #938-Fall (Abschnitt 5a)
+    # verliert seine Seltenheit (IDF ≈ 0).
+    return [amt.name, "Satzung", "Gebühren", "Auskunftsrecht"]
 
 
 def build_documents() -> list[GeneratedDocument]:
@@ -978,11 +1206,14 @@ def build_documents() -> list[GeneratedDocument]:
                     aktenzeichen=f"{amt.kennung_praefix}-S-2023",
                     fassung=2023,
                     stand_datum="2023-01-01",
-                    gueltig_ab="2020-01-01",
+                    # Code-Review-Befund (PR #1074): muss mit § 14 im Fließtext übereinstimmen
+                    # ("tritt am 1. Januar 2023 in Kraft", siehe paragraph_uebergang) — die
+                    # vorherige Fassung widersprach dem mit gueltig_ab=2020-01-01.
+                    gueltig_ab="2023-01-01",
                     gueltig_bis="2023-12-31",
                     ersetzt=None,
                     ersetzt_durch=neu_filename,
-                    schlagworte=[amt.name, "Satzung", "Gebühren", "Gebührenbefreiung", "Bedürftigkeit"],
+                    schlagworte=satzung_schlagworte(amt),
                     body=build_satzung_body(amt, 2023, None),
                 )
             )
@@ -1000,7 +1231,7 @@ def build_documents() -> list[GeneratedDocument]:
                     gueltig_bis=None,
                     ersetzt=alt_filename,
                     ersetzt_durch=None,
-                    schlagworte=[amt.name, "Satzung", "Gebühren", "Gebührenbefreiung", "Bedürftigkeit"],
+                    schlagworte=satzung_schlagworte(amt),
                     body=build_satzung_body(amt, 2024, 2023),
                 )
             )
@@ -1021,7 +1252,7 @@ def build_documents() -> list[GeneratedDocument]:
                     gueltig_bis=None,
                     ersetzt=None,
                     ersetzt_durch=None,
-                    schlagworte=[amt.name, "Satzung", "Gebühren", "Gebührenbefreiung", "Bedürftigkeit"],
+                    schlagworte=satzung_schlagworte(amt),
                     body=build_satzung_body(amt, 2024, None),
                 )
             )
@@ -1050,7 +1281,7 @@ def build_documents() -> list[GeneratedDocument]:
 
         # Dienstanweisungen — zwei Nummern je Amt; Nr. 1 als Fassungspaar für ausgewählte Ämter
         # (exact_identifier-Fallklasse: benachbarte Aktenzeichen über zwei Jahre, Abschnitt 5b).
-        for nr, (thema_titel, thema_beschreibung) in enumerate(DIENSTANWEISUNGS_THEMEN, start=1):
+        for nr, (thema_titel, thema_beschreibung) in enumerate(dienstanweisungs_themen(amt), start=1):
             if nr == 1 and amt.kuerzel in DIENSTANWEISUNG_FASSUNGSPAAR_KUERZEL:
                 alt_az = f"{amt.kennung_praefix}-DA-{nr}/2023"
                 neu_az = f"{amt.kennung_praefix}-DA-{nr}/2024"
@@ -1090,7 +1321,11 @@ def build_documents() -> list[GeneratedDocument]:
                         stand_datum="2024-01-01",
                         gueltig_ab="2024-01-01",
                         gueltig_bis=None,
-                        ersetzt=alt_az,
+                        # ersetzt/ersetzt_durch referenzieren immer Dateinamen (wie bei der
+                        # Satzung), nicht das Aktenzeichen — Code-Review-Befund (PR #1074): die
+                        # frühere Fassung mischte hier alt_az (Aktenzeichen) mit alt_filename
+                        # (Dateiname) an anderer Stelle.
+                        ersetzt=alt_filename,
                         ersetzt_durch=None,
                         schlagworte=[amt.name, "Dienstanweisung", thema_titel],
                         body=build_dienstanweisung_body(amt, nr, 2024, thema_titel, thema_beschreibung, alt_az),
@@ -1121,7 +1356,7 @@ def build_documents() -> list[GeneratedDocument]:
                 )
 
         # Formularhinweise — zwei benachbarte Formularnummern je Amt (exact_identifier).
-        for nr, (thema_titel, thema_beschreibung) in enumerate(FORMULARHINWEIS_THEMEN, start=7):
+        for nr, (thema_titel, thema_beschreibung) in enumerate(formularhinweis_themen(amt), start=7):
             doc_id = allocator.next_id()
             slug = slugify(f"Formularhinweis {amt.name} {nr}")
             filename = f"{doc_id}_{slug}.md"

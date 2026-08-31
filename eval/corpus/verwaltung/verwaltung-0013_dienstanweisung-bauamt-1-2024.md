@@ -2,7 +2,7 @@
 id: "verwaltung-0013"
 domain: "verwaltung"
 dokumentart: "dienstanweisung"
-titel: "Dienstanweisung BAU-DA-1/2024: Bearbeitung von Anträgen auf Gebührenbefreiung"
+titel: "Dienstanweisung BAU-DA-1/2024: Bearbeitung von Amtshandlungsanträgen"
 amt: "Bauamt"
 amt_kuerzel: "BAU"
 aktenzeichen: "BAU-DA-1/2024"
@@ -10,20 +10,20 @@ fassung: 2024
 stand_datum: "2024-01-01"
 gueltig_ab: "2024-01-01"
 gueltig_bis: null
-ersetzt: "BAU-DA-1/2023"
+ersetzt: "verwaltung-0012_dienstanweisung-bauamt-1-2023.md"
 ersetzt_durch: null
-schlagworte: ["Bauamt", "Dienstanweisung", "Bearbeitung von Anträgen auf Gebührenbefreiung"]
+schlagworte: ["Bauamt", "Dienstanweisung", "Bearbeitung von Amtshandlungsanträgen"]
 source: "synthetic/opaa-eval-verwaltung"
 license: "CC0-1.0"
 ---
 
-# Dienstanweisung BAU-DA-1/2024: Bearbeitung von Anträgen auf Gebührenbefreiung
+# Dienstanweisung BAU-DA-1/2024: Bearbeitung von Amtshandlungsanträgen
 
 Dienstanweisung des Bauamts der Stadt Kalkstadt, Aktenzeichen BAU-DA-1/2024, gültig ab dem 1. Januar 2024. Diese Fassung ersetzt die Dienstanweisung BAU-DA-1/2023, deren Regelungen für bereits abgeschlossene Vorgänge unberührt bleiben. Diese Dienstanweisung ist ausschließlich für den internen Dienstgebrauch des Bauamts bestimmt und ergänzt, ohne sie zu ersetzen, die Baugenehmigungsgebührensatzung sowie die zugehörige Gebührenordnung.
 
 ## 1. Zweck
 
-Diese Dienstanweisung regelt die Prüfung und Entscheidung über Anträge nach § 3 der jeweils einschlägigen Gebührensatzung innerhalb des Bauamts der Stadt Kalkstadt und stellt eine einheitliche Bearbeitung sicher, unabhängig davon, welche Sachbearbeitung einen Vorgang bearbeitet. Ziel ist es, dass zwei unterschiedliche Sachbearbeitungen bei identischer Ausgangslage zum selben Ergebnis kommen, und dass ein Wechsel der zuständigen Person keine Auswirkung auf die Bearbeitungsdauer oder das Ergebnis eines Vorgangs hat.
+Diese Dienstanweisung regelt die Prüfung und Entscheidung über eingehende Anträge im Zuständigkeitsbereich des Amtes innerhalb des Bauamts der Stadt Kalkstadt und stellt eine einheitliche Bearbeitung sicher, unabhängig davon, welche Sachbearbeitung einen Vorgang bearbeitet. Ziel ist es, dass zwei unterschiedliche Sachbearbeitungen bei identischer Ausgangslage zum selben Ergebnis kommen, und dass ein Wechsel der zuständigen Person keine Auswirkung auf die Bearbeitungsdauer oder das Ergebnis eines Vorgangs hat.
 
 ## 2. Anwendungsbereich
 
@@ -39,11 +39,11 @@ Jeder eingehende Vorgang des Bauamts wird am Tag des Eingangs im Vorgangsverzeic
 
 ## 5. Verfahrensschritt: Prüfung
 
-Die Sachbearbeitung des Bauamts prüft den Vorgang auf Vollständigkeit der Nachweise. Fehlen Unterlagen, wird eine Nachfrist von zwei Wochen gesetzt; nach fruchtlosem Ablauf wird nach Aktenlage entschieden. Bei Anträgen, die sich auf § 3 oder § 13 der jeweils einschlägigen Gebührensatzung berufen, ist zusätzlich zu prüfen, ob die vorgelegten Nachweise noch innerhalb ihrer Gültigkeitsdauer liegen; ein abgelaufener Leistungsbescheid gilt nicht als ausreichender Nachweis der Bedürftigkeit.
+Die Sachbearbeitung des Bauamts prüft den Vorgang auf Vollständigkeit der Nachweise. Fehlen Unterlagen, wird eine Nachfrist von zwei Wochen gesetzt; nach fruchtlosem Ablauf wird nach Aktenlage entschieden. Bei Anträgen, die sich auf § 3 oder § 13 der jeweils einschlägigen Gebührensatzung berufen, ist zusätzlich zu prüfen, ob die vorgelegten Nachweise noch innerhalb ihrer Gültigkeitsdauer liegen.
 
 ## 6. Verfahrensschritt: Entscheidung und Dokumentation
 
-Die Entscheidung wird schriftlich begründet und in der Vorgangsakte dokumentiert. Bei Anträgen auf Gebührenbefreiung nach § 3 ist die geprüfte Bedürftigkeit ausdrücklich in der Akte zu vermerken, ebenso das Ergebnis eines etwaigen Härtefallantrags nach § 12. Bei Anträgen auf Gebührenermäßigung nach § 13 ist der vorgelegte Freistellungsbescheid des Finanzamts in Kopie zur Akte zu nehmen, damit eine spätere Prüfung durch die Kämmerei möglich ist.
+Die Entscheidung wird schriftlich begründet und in der Vorgangsakte dokumentiert. Bei Anträgen auf Auskunft nach § 3 ist der geprüfte Sachverhalt ausdrücklich in der Akte zu vermerken, ebenso das Ergebnis eines etwaigen Härtefallantrags nach § 12. Bei Anträgen auf Gebührenermäßigung nach § 13 ist der vorgelegte Freistellungsbescheid des Finanzamts in Kopie zur Akte zu nehmen, damit eine spätere Prüfung durch die Kämmerei möglich ist.
 
 ## 7. Vertretungsfall und Eskalation
 

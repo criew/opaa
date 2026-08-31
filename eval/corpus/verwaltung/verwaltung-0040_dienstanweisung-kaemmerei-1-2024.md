@@ -23,7 +23,7 @@ Dienstanweisung der Kämmerei der Stadt Kalkstadt, Aktenzeichen KAE-DA-1/2024, g
 
 ## 1. Zweck
 
-Diese Dienstanweisung regelt die Prüfung und Entscheidung über Anträge nach § 3 der jeweils einschlägigen Gebührensatzung innerhalb der Kämmerei der Stadt Kalkstadt und stellt eine einheitliche Bearbeitung sicher, unabhängig davon, welche Sachbearbeitung einen Vorgang bearbeitet. Ziel ist es, dass zwei unterschiedliche Sachbearbeitungen bei identischer Ausgangslage zum selben Ergebnis kommen, und dass ein Wechsel der zuständigen Person keine Auswirkung auf die Bearbeitungsdauer oder das Ergebnis eines Vorgangs hat.
+Diese Dienstanweisung regelt die Prüfung und Entscheidung über Anträge nach § 3 der Verwaltungsgebührensatzung innerhalb der Kämmerei der Stadt Kalkstadt und stellt eine einheitliche Bearbeitung sicher, unabhängig davon, welche Sachbearbeitung einen Vorgang bearbeitet. Ziel ist es, dass zwei unterschiedliche Sachbearbeitungen bei identischer Ausgangslage zum selben Ergebnis kommen, und dass ein Wechsel der zuständigen Person keine Auswirkung auf die Bearbeitungsdauer oder das Ergebnis eines Vorgangs hat.
 
 ## 2. Anwendungsbereich
 

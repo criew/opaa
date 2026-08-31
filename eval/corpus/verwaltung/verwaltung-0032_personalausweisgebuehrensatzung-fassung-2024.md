@@ -12,7 +12,7 @@ gueltig_ab: "2024-01-01"
 gueltig_bis: null
 ersetzt: "verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md"
 ersetzt_durch: null
-schlagworte: ["Bürgeramt", "Satzung", "Gebühren", "Gebührenbefreiung", "Bedürftigkeit"]
+schlagworte: ["Bürgeramt", "Satzung", "Gebühren", "Auskunftsrecht"]
 source: "synthetic/opaa-eval-verwaltung"
 license: "CC0-1.0"
 ---
@@ -37,15 +37,13 @@ Satzung des Bürgeramts der Stadt Kalkstadt über die Erhebung von Gebühren fü
 
 (3) Amtshandlung im Sinne dieser Satzung ist jede Tätigkeit des Bürgeramts, die auf Antrag oder von Amts wegen für die Ausstellung eines Personalausweises vorgenommen wird, einschließlich Auskünften, Bescheinigungen und Bescheiden.
 
-## § 3 Gebührenbefreiung wegen Bedürftigkeit
+## § 3 Auskunftsrecht und Akteneinsicht
 
-(1) Von der Erhebung der in dieser Satzung festgelegten Gebühren für die Ausstellung eines Personalausweises wird auf schriftlichen Antrag ganz oder teilweise befreit, wer nachweislich bedürftig im Sinne des Zwölften Buches Sozialgesetzbuch (SGB XII) ist oder laufende Leistungen nach dem Zweiten Buch Sozialgesetzbuch (SGB II, umgangssprachlich Bürgergeld) bezieht. Die Bedürftigkeit ist durch Vorlage des aktuellen Leistungsbescheids der zuständigen Behörde nachzuweisen.
+(1) Antragstellende haben das Recht, jederzeit über den Bearbeitungsstand ihres Vorgangs bei dem Bürgeramt Auskunft zu erhalten. Die Auskunft wird formlos, in der Regel telefonisch oder per E-Mail, innerhalb von drei Werktagen erteilt.
 
-(2) Im Alltag wird diese Regelung häufig als die Frage formuliert: "Muss ich das bezahlen, wenn ich Bürgergeld bekomme?" Die Antwort des Bürgeramts lautet in diesen Fällen: ja, eine vollständige oder anteilige Befreiung von der Gebühr ist möglich, sofern der Nachweis der Bedürftigkeit erbracht wird.
+(2) Auf schriftlichen Antrag kann Einsicht in die eigene Vorgangsakte gewährt werden, soweit dem keine schutzwürdigen Interessen Dritter entgegenstehen. Über den Antrag entscheidet die zuständige Sachbearbeitung des Bürgeramts; ist diese Sachbearbeitung nicht erreichbar, etwa wegen Urlaub oder Krankheit, richtet sich die Zuständigkeit nach der Vertretungsregelung der Stadtverwaltung Kalkstadt (siehe verwaltung-vertretungsregelung.md).
 
-(3) Der Antrag auf Befreiung ist vor Fälligkeit der Gebühr bei dem Bürgeramt der Stadt Kalkstadt einzureichen. Über den Antrag entscheidet die zuständige Sachbearbeitung des Bürgeramts; ist diese Sachbearbeitung nicht erreichbar, etwa wegen Urlaub oder Krankheit, richtet sich die Zuständigkeit nach der Vertretungsregelung der Stadtverwaltung Kalkstadt (siehe verwaltung-vertretungsregelung.md).
-
-(4) Die Befreiung nach Absatz 1 ist von der Gebührenermäßigung für eingetragene Vereine nach § 13 dieser Satzung zu unterscheiden: Während § 3 die persönliche Bedürftigkeit einer natürlichen Person betrifft, regelt § 13 eine pauschale Ermäßigung für eingetragene, gemeinnützige Vereine unabhängig von deren wirtschaftlicher Lage. Beide Regelungen schließen sich nicht gegenseitig aus, begründen aber unterschiedliche Anspruchsvoraussetzungen und dürfen nicht verwechselt werden.
+(3) Das Auskunftsrecht nach Absatz 1 ist von der Gebührenermäßigung für eingetragene Vereine nach § 13 dieser Satzung zu unterscheiden: Während § 3 den Zugang zu Informationen über den eigenen Vorgang betrifft, regelt § 13 eine pauschale Ermäßigung für eingetragene, gemeinnützige Vereine unabhängig von einer Auskunftsanfrage. Beide Regelungen stehen unabhängig nebeneinander und dürfen nicht verwechselt werden.
 
 ## § 4 Gebührenschuldnerschaft
 
@@ -97,7 +95,7 @@ Satzung des Bürgeramts der Stadt Kalkstadt über die Erhebung von Gebühren fü
 
 ## § 12 Sonderregelungen für Härtefälle
 
-(1) In Fällen, die von § 3 nicht erfasst sind, aber eine vergleichbare wirtschaftliche Notlage begründen, kann das Bürgeramt auf begründeten Antrag eine Stundung oder eine anteilige Gebührenermäßigung gewähren.
+(1) In besonderen Härtefällen, die über das Auskunftsrecht nach § 3 und die Gebührenermäßigung für eingetragene Vereine nach § 13 hinausgehen, kann das Bürgeramt auf begründeten Antrag eine Stundung oder eine anteilige Gebührenermäßigung gewähren.
 
 (2) Über den Härtefallantrag entscheidet die Amtsleitung des Bürgeramts, nicht die für den Regelfall zuständige Sachbearbeitung.
 
@@ -107,7 +105,7 @@ Satzung des Bürgeramts der Stadt Kalkstadt über die Erhebung von Gebühren fü
 
 (2) Der Nachweis der Gemeinnützigkeit erfolgt durch Vorlage des aktuellen Freistellungsbescheids des Finanzamts. Die Ermäßigung gilt nicht rückwirkend für bereits bestandskräftig festgesetzte Gebühren.
 
-(3) Diese Ermäßigung ist unabhängig von der Gebührenbefreiung wegen Bedürftigkeit nach § 3 dieser Satzung zu beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 für dieselbe Amtshandlung besteht nicht, da § 3 natürliche Personen in einer persönlichen Notlage betrifft und § 13 juristische Personen in Vereinsform unabhängig von deren wirtschaftlicher Lage.
+(3) Diese Ermäßigung ist unabhängig vom Auskunftsrecht nach § 3 dieser Satzung zu beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 für dieselbe Amtshandlung besteht nicht, da § 3 den Zugang zu Informationen über einen eigenen Vorgang betrifft und § 13 eine pauschale Gebührenermäßigung für Vereine regelt, unabhängig von einer Auskunftsanfrage.
 
 ## § 14 Übergangsregelung und Inkrafttreten
 
@@ -117,4 +115,4 @@ Satzung des Bürgeramts der Stadt Kalkstadt über die Erhebung von Gebühren fü
 
 ## Zusammenfassung
 
-Die Personalausweisgebührensatzung der Stadt Kalkstadt in der Fassung 2024 regelt die Gebühren des Bürgeramts für die Ausstellung eines Personalausweises, einschließlich der Gebührenbefreiung wegen Bedürftigkeit nach § 3, der Gebührenermäßigung für eingetragene Vereine nach § 13 sowie Verfahren, Zuständigkeit und Rechtsmittel. Die Zuständigkeit im Vertretungsfall regelt die Vertretungsregelung der Stadtverwaltung Kalkstadt (verwaltung-vertretungsregelung.md).
+Die Personalausweisgebührensatzung der Stadt Kalkstadt in der Fassung 2024 regelt die Gebühren des Bürgeramts für die Ausstellung eines Personalausweises, einschließlich des Auskunftsrechts nach § 3, der Gebührenermäßigung für eingetragene Vereine nach § 13 sowie Verfahren, Zuständigkeit und Rechtsmittel. Die Zuständigkeit im Vertretungsfall regelt die Vertretungsregelung der Stadtverwaltung Kalkstadt (verwaltung-vertretungsregelung.md).

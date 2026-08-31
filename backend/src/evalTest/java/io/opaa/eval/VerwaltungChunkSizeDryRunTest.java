@@ -10,53 +10,61 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
  * Docker-free dry run (issue #1042): chunks the generated {@code verwaltung} corpus through the
- * real, production {@link ChunkingService} (same {@code chunkSize}/{@code chunkOverlap} defaults as
- * {@code application.yml}) without needing Testcontainers, Postgres or Ollama — mirrors {@link
- * CityLandmarksChunkSizeDryRunTest} for the third eval domain. Used during corpus generation to
- * verify the domain's "at least 3 chunks per document" property (ADR-0010 Nachtrag,
+ * real, production {@link ChunkingService} without needing Testcontainers, Postgres or Ollama —
+ * mirrors {@link CityLandmarksChunkSizeDryRunTest} for the third eval domain. Used during corpus
+ * generation to verify the domain's "at least 3 chunks per document" property (ADR-0010 Nachtrag,
  * docs/features/retrieval-benchmark.md Abschnitt 4 "Anforderungen an den Korpus") before a golden
  * dataset and a full {@code EvalDomainConfig} registration exist for this domain (issue #1042 is
  * corpus-only; golden dataset and baseline are a separate, later issue per the Umsetzungsschnitt in
  * retrieval-benchmark.md).
+ *
+ * <p>{@code CHUNK_SIZE}/{@code CHUNK_OVERLAP} below are pinned to the same values as {@code
+ * opaa.indexing.chunk-size}/{@code chunk-overlap} in {@code application.yml} (defaults {@code
+ * OPAA_INDEXING_CHUNK_SIZE:1000}/{@code OPAA_INDEXING_CHUNK_OVERLAP:100}) — this dry run has no
+ * Spring context to read them from live, so drift between the two is only caught by the full,
+ * Docker-requiring harness once one exists for this domain (which does assert against the live
+ * {@code IndexingProperties}, see {@code eval/README.md}, "Was der Lauf tut").
  */
 class VerwaltungChunkSizeDryRunTest {
 
+  private static final int CHUNK_SIZE = 1000;
+  private static final int CHUNK_OVERLAP = 100;
   private static final int MIN_CHUNKS_PER_DOCUMENT = 3;
+  private static final int EXPECTED_DOCUMENT_COUNT = 70;
 
   @Test
   void reportsChunkCountsForTheGeneratedCorpus() throws IOException {
     Path corpusDir = RepoPaths.evalDir().resolve("corpus").resolve("verwaltung");
+    CorpusManifest.VerificationResult manifestResult =
+        CorpusManifest.verify(corpusDir, corpusDir.resolve("MANIFEST.sha256"));
+    assertThat(manifestResult.isValid())
+        .withFailMessage("MANIFEST.sha256 violations: %s", manifestResult.violations())
+        .isTrue();
+    assertThat(manifestResult.fileNames()).hasSize(EXPECTED_DOCUMENT_COUNT);
+
     IndexingProperties properties =
-        new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, 0);
+        new IndexingProperties(CHUNK_SIZE, CHUNK_OVERLAP, 50, null, null, List.of(), null, null, 0);
     DocumentService documentService = new DocumentService();
     ChunkingService chunkingService = new ChunkingService(properties);
 
     List<Integer> chunkCounts = new ArrayList<>();
     List<Integer> byteSizes = new ArrayList<>();
     int belowMinimum = 0;
-    try (Stream<Path> files = Files.list(corpusDir)) {
-      List<Path> mdFiles =
-          // "verwaltung-" prefix, not just ".md": the corpus directory also holds
-          // MANIFEST.sha256 and SOURCE.md, not corpus entities (same exclusion the real harness
-          // applies via MANIFEST.sha256's file list — see CorpusManifest).
-          files
-              .filter(p -> p.getFileName().toString().startsWith("verwaltung-"))
-              .filter(p -> p.getFileName().toString().endsWith(".md"))
-              .sorted()
-              .toList();
-      for (Path file : mdFiles) {
-        var parsed = documentService.parseDocument(file);
-        var chunks = chunkingService.chunkDocuments(file.getFileName().toString(), parsed);
-        chunkCounts.add(chunks.size());
-        byteSizes.add((int) Files.size(file));
-        if (chunks.size() < MIN_CHUNKS_PER_DOCUMENT) {
-          belowMinimum++;
-        }
+    // Iterate the manifest's file list, not a directory listing filtered by a naming
+    // convention — the manifest is the authoritative document list (see CorpusManifest), so a
+    // future non-"verwaltung-"-prefixed corpus entity is still covered.
+    for (String fileName : manifestResult.fileNames()) {
+      Path file = corpusDir.resolve(fileName);
+      var parsed = documentService.parseDocument(file);
+      var chunks = chunkingService.chunkDocuments(fileName, parsed);
+      chunkCounts.add(chunks.size());
+      byteSizes.add((int) Files.size(file));
+      if (chunks.size() < MIN_CHUNKS_PER_DOCUMENT) {
+        belowMinimum++;
       }
     }
     List<Integer> sortedCounts = chunkCounts.stream().sorted().toList();
@@ -81,9 +89,7 @@ class VerwaltungChunkSizeDryRunTest {
             + " chunks="
             + belowMinimum);
     // Fast, Docker-free guard against a generator regression that pushes documents back below
-    // the domain's multi-chunk floor — mirrors CityLandmarksChunkSizeDryRunTest (PR #730 review,
-    // Nit 10): a print-only check would only ever be caught by the much slower, Docker-requiring
-    // full harness run once one exists for this domain.
+    // the domain's multi-chunk floor.
     assertThat(belowMinimum).isZero();
   }
 }

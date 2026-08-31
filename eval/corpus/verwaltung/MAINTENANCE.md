@@ -70,9 +70,10 @@ festgehalten").
 also existiert noch kein einziger Fall, der als `solved` oder `known_gap` klassifiziert sein
 könnte. Diese Zeile ist absichtlich nicht gelöscht, sondern wird beim Schritt-D-Issue durch die
 tatsächliche Liste ersetzt — eine leere `known_gap`-Liste ist ein geprüfter Zustand, kein
-vergessener Abschnitt (Spezifikation, Abschnitt 5: „auch das Ergebnis „keine" gehört
-festgehalten, damit es später nicht als ungeprüft gilt", dort zwar für Sentinel-Werte formuliert,
-gilt hier sinngemäß für `known_gap`).
+vergessener Abschnitt (`docs/features/search-quality-evaluation.md`, Abschnitt „Sentinel-Werte:
+Entitäten außerhalb der Skala ausschließen": „auch das Ergebnis „keine" gehört festgehalten,
+damit es später nicht als ungeprüft gilt", dort für Sentinel-Werte formuliert, gilt hier
+sinngemäß für `known_gap`).
 
 Erwartbar bei der ersten Kuratierung (nicht bindend, nur eine Einschätzung für Schritt D): Die
 `metadata_filter`-Fallklasse (Abschnitt 5e der Spezifikation) misst eine heute nicht vorhandene

@@ -43,7 +43,7 @@ Die reguläre Bearbeitungsdauer der Kämmerei beträgt zwei bis vier Wochen ab v
 
 ## 6. Häufige Rückfragen
 
-Häufig gestellte Frage im Zusammenhang mit Formular KAE-07: "Warum wird für ein einfaches Schreiben des Rathauses überhaupt eine Gebühr verlangt?" — die Antwort richtet sich nach § 3 der Verwaltungsgebührensatzung und wird im Formular unter „Gebührenbefreiung“ abgefragt. Eine weitere häufige Frage betrifft die Gültigkeitsdauer eingereichter Nachweise: Ein Leistungsbescheid darf zum Zeitpunkt der Antragstellung nicht älter als drei Monate sein.
+Häufig gestellte Frage im Zusammenhang mit Formular KAE-07: "Muss ich das bezahlen, wenn ich Bürgergeld bekomme?" — die Antwort richtet sich nach § 3 der Verwaltungsgebührensatzung und wird im Formular unter „Gebührenbefreiung“ abgefragt. Eine weitere häufige Frage betrifft die Gültigkeitsdauer eingereichter Nachweise: Ein Leistungsbescheid darf zum Zeitpunkt der Antragstellung nicht älter als drei Monate sein.
 
 ## 7. Rechtsgrundlage
 

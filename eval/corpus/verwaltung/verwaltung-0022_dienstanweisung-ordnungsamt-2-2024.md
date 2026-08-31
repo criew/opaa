@@ -39,11 +39,11 @@ Jeder eingehende Vorgang des Ordnungsamts wird am Tag des Eingangs im Vorgangsve
 
 ## 5. Verfahrensschritt: Prüfung
 
-Die Sachbearbeitung des Ordnungsamts prüft den Vorgang auf Vollständigkeit der Nachweise. Fehlen Unterlagen, wird eine Nachfrist von zwei Wochen gesetzt; nach fruchtlosem Ablauf wird nach Aktenlage entschieden. Bei Anträgen, die sich auf § 3 oder § 13 der jeweils einschlägigen Gebührensatzung berufen, ist zusätzlich zu prüfen, ob die vorgelegten Nachweise noch innerhalb ihrer Gültigkeitsdauer liegen; ein abgelaufener Leistungsbescheid gilt nicht als ausreichender Nachweis der Bedürftigkeit.
+Die Sachbearbeitung des Ordnungsamts prüft den Vorgang auf Vollständigkeit der Nachweise. Fehlen Unterlagen, wird eine Nachfrist von zwei Wochen gesetzt; nach fruchtlosem Ablauf wird nach Aktenlage entschieden. Bei Anträgen, die sich auf § 3 oder § 13 der jeweils einschlägigen Gebührensatzung berufen, ist zusätzlich zu prüfen, ob die vorgelegten Nachweise noch innerhalb ihrer Gültigkeitsdauer liegen.
 
 ## 6. Verfahrensschritt: Entscheidung und Dokumentation
 
-Die Entscheidung wird schriftlich begründet und in der Vorgangsakte dokumentiert. Bei Anträgen auf Gebührenbefreiung nach § 3 ist die geprüfte Bedürftigkeit ausdrücklich in der Akte zu vermerken, ebenso das Ergebnis eines etwaigen Härtefallantrags nach § 12. Bei Anträgen auf Gebührenermäßigung nach § 13 ist der vorgelegte Freistellungsbescheid des Finanzamts in Kopie zur Akte zu nehmen, damit eine spätere Prüfung durch die Kämmerei möglich ist.
+Die Entscheidung wird schriftlich begründet und in der Vorgangsakte dokumentiert. Bei Anträgen auf Auskunft nach § 3 ist der geprüfte Sachverhalt ausdrücklich in der Akte zu vermerken, ebenso das Ergebnis eines etwaigen Härtefallantrags nach § 12. Bei Anträgen auf Gebührenermäßigung nach § 13 ist der vorgelegte Freistellungsbescheid des Finanzamts in Kopie zur Akte zu nehmen, damit eine spätere Prüfung durch die Kämmerei möglich ist.
 
 ## 7. Vertretungsfall und Eskalation
 

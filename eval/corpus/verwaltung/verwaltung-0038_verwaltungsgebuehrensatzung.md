@@ -41,7 +41,7 @@ Satzung der Kämmerei der Stadt Kalkstadt über die Erhebung von Gebühren für 
 
 (1) Von der Erhebung der in dieser Satzung festgelegten Gebühren für allgemeine Amtshandlungen der Stadtverwaltung wird auf schriftlichen Antrag ganz oder teilweise befreit, wer nachweislich bedürftig im Sinne des Zwölften Buches Sozialgesetzbuch (SGB XII) ist oder laufende Leistungen nach dem Zweiten Buch Sozialgesetzbuch (SGB II, umgangssprachlich Bürgergeld) bezieht. Die Bedürftigkeit ist durch Vorlage des aktuellen Leistungsbescheids der zuständigen Behörde nachzuweisen.
 
-(2) Im Alltag wird diese Regelung häufig als die Frage formuliert: "Warum wird für ein einfaches Schreiben des Rathauses überhaupt eine Gebühr verlangt?" Die Antwort der Kämmerei lautet in diesen Fällen: ja, eine vollständige oder anteilige Befreiung von der Gebühr ist möglich, sofern der Nachweis der Bedürftigkeit erbracht wird.
+(2) Im Alltag wird diese Regelung häufig als die Frage formuliert: "Muss ich das bezahlen, wenn ich Bürgergeld bekomme?" Die Antwort der Kämmerei lautet in diesen Fällen: ja, eine vollständige oder anteilige Befreiung von der Gebühr ist möglich, sofern der Nachweis der Bedürftigkeit erbracht wird.
 
 (3) Der Antrag auf Befreiung ist vor Fälligkeit der Gebühr bei der Kämmerei der Stadt Kalkstadt einzureichen. Über den Antrag entscheidet die zuständige Sachbearbeitung der Kämmerei; ist diese Sachbearbeitung nicht erreichbar, etwa wegen Urlaub oder Krankheit, richtet sich die Zuständigkeit nach der Vertretungsregelung der Stadtverwaltung Kalkstadt (siehe verwaltung-vertretungsregelung.md).
 
