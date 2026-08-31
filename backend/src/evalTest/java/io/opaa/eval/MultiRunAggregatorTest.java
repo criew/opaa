@@ -30,6 +30,7 @@ class MultiRunAggregatorTest {
                 null,
                 null,
                 null,
+                null,
                 null),
             new GoldenCase(
                 "b",
@@ -40,6 +41,7 @@ class MultiRunAggregatorTest {
                 "easy",
                 "de",
                 "t",
+                null,
                 null,
                 null,
                 null,
@@ -158,6 +160,7 @@ class MultiRunAggregatorTest {
                 "easy",
                 "de",
                 "t",
+                null,
                 null,
                 null,
                 null,

@@ -15,21 +15,21 @@
     "corpusManifestSha256": "e63f373f658aa2627cee5a9753526b7e5b4c56027b9c80de048466a2dc8c398d",
     "corpusDocumentCount": 70,
     "goldenDatasetFile": "eval/golden/verwaltung.json",
-    "goldenDatasetSha256": "0f552b2fffecf1d655053a5e11066fbd51d434ce965dbf2782539011ac1480d1",
+    "goldenDatasetSha256": "a373effbb52889c5471c3a3963f489d6a72702c13942f196f90a4c30460c8f24",
     "goldenCaseCount": 46
   },
   "groups": {
     "overall": {
       "n": 46,
-      "hitRateAt5": 0.739,
-      "mrr": 0.567,
-      "ndcgAt10": 0.553,
-      "recallAt10": 0.699,
+      "hitRateAt5": 0.783,
+      "mrr": 0.581,
+      "ndcgAt10": 0.575,
+      "recallAt10": 0.743,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 37,
-      "hitCountAt5": 34,
-      "hitCountAt10": 39,
-      "allExpectedDocumentsHitAt10": 0.565
+      "distinctExpectedDocumentSets": 36,
+      "hitCountAt5": 36,
+      "hitCountAt10": 41,
+      "allExpectedDocumentsHitAt10": 0.609
     },
     "category:compound_word": {
       "n": 9,
@@ -57,21 +57,21 @@
     },
     "category:literal_term_weak_embedding": {
       "n": 9,
-      "hitRateAt5": 0.333,
-      "mrr": 0.144,
-      "ndcgAt10": 0.231,
-      "recallAt10": 0.5,
+      "hitRateAt5": 0.556,
+      "mrr": 0.237,
+      "ndcgAt10": 0.356,
+      "recallAt10": 0.722,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 5,
-      "hitCountAt5": 3,
-      "hitCountAt10": 5,
-      "allExpectedDocumentsHitAt10": 0.444
+      "distinctExpectedDocumentSets": 6,
+      "hitCountAt5": 5,
+      "hitCountAt10": 7,
+      "allExpectedDocumentsHitAt10": 0.667
     },
     "category:metadata_filter": {
       "n": 9,
       "hitRateAt5": 0.667,
-      "mrr": 0.556,
-      "ndcgAt10": 0.61,
+      "mrr": 0.537,
+      "ndcgAt10": 0.595,
       "recallAt10": 0.778,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 9,
@@ -105,33 +105,33 @@
     },
     "difficulty:hard": {
       "n": 34,
-      "hitRateAt5": 0.706,
-      "mrr": 0.512,
-      "ndcgAt10": 0.474,
-      "recallAt10": 0.623,
+      "hitRateAt5": 0.735,
+      "mrr": 0.521,
+      "ndcgAt10": 0.489,
+      "recallAt10": 0.652,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 32,
-      "hitCountAt5": 24,
-      "hitCountAt10": 28,
-      "allExpectedDocumentsHitAt10": 0.441
+      "hitCountAt5": 25,
+      "hitCountAt10": 29,
+      "allExpectedDocumentsHitAt10": 0.471
     },
     "difficulty:medium": {
       "n": 9,
-      "hitRateAt5": 0.778,
-      "mrr": 0.63,
-      "ndcgAt10": 0.701,
-      "recallAt10": 0.889,
+      "hitRateAt5": 0.889,
+      "mrr": 0.667,
+      "ndcgAt10": 0.757,
+      "recallAt10": 1.0,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 7,
-      "hitCountAt5": 7,
-      "hitCountAt10": 8,
-      "allExpectedDocumentsHitAt10": 0.889
+      "distinctExpectedDocumentSets": 8,
+      "hitCountAt5": 8,
+      "hitCountAt10": 9,
+      "allExpectedDocumentsHitAt10": 1.0
     }
   },
-  "measuredAt": "2026-08-31",
+  "measuredAt": "2026-09-01",
   "provenance": {
-    "sourceReportRunStartedAt": "2026-08-31T21:47:42.143007Z",
+    "sourceReportRunStartedAt": "2026-08-31T23:08:21.516122500Z",
     "sourcePullRequest": "PR zu Issue #1043 (erste Baseline der Verwaltungsdomäne)"
   },
-  "notes": "Erste Baseline des Rohvektor-Pfads der Verwaltungsdomäne (Issue #1043), gemessen am 2026-08-31 in einem Testcontainer-Lauf auf CPU (pgvector/pgvector:pg18 + ollama/ollama:0.6.5, nomic-embed-text:v1.5 auf dem geprüften Digest) über './gradlew evaluateVerwaltungRetrieval'; Laufzeit des Rohvektor-Pfads einschließlich Indizierung der 70 Dokumente: rund 5,6 Minuten. Zwei aufeinanderfolgende Läufe auf derselben Maschine lieferten identische Gruppenwerte. Die Zahlen sind bewusst niedrig: Diese Domäne ist als Sammlung benannter Fehlerbilder gebaut, nicht als Abdeckungsdomäne — 33 der 46 Fälle sind als known_gap geführt (siehe eval/corpus/verwaltung/MAINTENANCE.md). Die Gruppen category:literal_term_weak_embedding (nDCG@10 0,231) und category:compound_word (AlleThemenGetroffen@10 0,111) beziffern die Lücken, die Roadmap-Phase 1 schließen soll; category:exact_identifier (nDCG@10 0,918) zeigt, dass die Domäne nicht pauschal schwer ist. Die Gruppe language:de fehlt bewusst: In dieser einsprachigen Domäne ist sie fallgleich mit overall, ein zweiter Vergleich derselben Daten ohne zusätzliche Aussage (dieselbe Konsolidierungsentscheidung wie bei comic-characters, Issue #304). Nicht mit eval/baseline/pipeline-verwaltung.json vergleichbar: anderes Fenster, andere Schwellenbehandlung (ADR-0012, Nachtrag Pipeline-Messpfad). Toleranzformel und Fehlerkriterium: ADR-0013, unverändert."
+  "notes": "Erste Baseline des Rohvektor-Pfads der Verwaltungsdomäne (Issue #1043), gemessen am 2026-09-01 in einem Testcontainer-Lauf auf CPU (pgvector/pgvector:pg18 + ollama/ollama:0.6.5, nomic-embed-text:v1.5 auf dem geprüften Digest) über './gradlew evaluateVerwaltungRetrieval'; Laufzeit des Rohvektor-Pfads einschließlich Indizierung der 70 Dokumente: rund 5,5 Minuten. Aufeinanderfolgende Läufe auf derselben Maschine lieferten identische Gruppenwerte. Die Zahlen sind bewusst niedrig: Diese Domäne ist als Sammlung benannter Fehlerbilder gebaut, nicht als Abdeckungsdomäne — 37 der 46 Fälle sind als known_gap geführt (siehe eval/corpus/verwaltung/MAINTENANCE.md). Die Gruppen category:literal_term_weak_embedding (nDCG@10 0,356) und category:compound_word (AlleThemenGetroffen@10 0,111) beziffern die Lücken, die Roadmap-Phase 1 schließen soll; category:exact_identifier (nDCG@10 0,918) zeigt, dass die Domäne nicht pauschal schwer ist. Die Gruppe language:de fehlt bewusst: In dieser einsprachigen Domäne ist sie fallgleich mit overall, ein zweiter Vergleich derselben Daten ohne zusätzliche Aussage (dieselbe Konsolidierungsentscheidung wie bei comic-characters, Issue #304). Nicht mit eval/baseline/pipeline-verwaltung.json vergleichbar: anderes Fenster, andere Schwellenbehandlung (ADR-0012, Nachtrag Pipeline-Messpfad). Toleranzformel und Fehlerkriterium: ADR-0013, unverändert."
 }

@@ -17,7 +17,8 @@ class MetricsAggregateTest {
 
   private static GoldenCase goldenCase(String category, List<String> expected) {
     return new GoldenCase(
-        "id", "test", "query", expected, category, "easy", "en", "type", null, null, null, null);
+        "id", "test", "query", expected, category, "easy", "en", "type", null, null, null, null,
+        null);
   }
 
   @Test

@@ -100,31 +100,88 @@ class GoldenCaseCurationTest {
   }
 
   /**
-   * Every declared {@code answer_span} resolves to exactly one chunk of its single expected
-   * document, chunked by the production {@link ChunkingService} at the application's default
-   * parameters. Catches both failure modes the harness would otherwise report late: a span that is
-   * not literally in its document (typo) and one that straddles a chunk boundary.
+   * Every class spans enough <b>distinct</b> expected-document sets that its group value is not the
+   * rank of a single document in disguise — see {@code
+   * GoldenCaseCuration#MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS} for why the case count alone does
+   * not deliver that.
    */
   @Test
-  void everyAnswerSpanResolvesToAChunkOfItsExpectedDocument() throws IOException {
+  void everyClassSpansEnoughDistinctExpectedDocumentSets() throws IOException {
+    List<GoldenCase> cases = verwaltungCases();
+    for (String caseClass : GoldenCaseCuration.CASE_CLASSES) {
+      long distinct =
+          cases.stream()
+              .filter(c -> caseClass.equals(c.category()))
+              .map(c -> c.expectedDocuments().stream().sorted().toList())
+              .distinct()
+              .count();
+      assertThat(distinct)
+          .as("distinct expected_documents sets in class %s", caseClass)
+          .isGreaterThanOrEqualTo(GoldenCaseCuration.MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS);
+    }
+  }
+
+  /**
+   * Every declared {@code answer_span} of <b>every</b> domain resolves to a chunk of its expected
+   * document, chunked by the production {@link ChunkingService} at the application's default
+   * parameters. Catches both failure modes the Docker-requiring harness would otherwise be the
+   * first to report: a span that is not literally in its document (typo) and one that straddles a
+   * chunk boundary.
+   *
+   * <p>All three domains rather than only {@code verwaltung}: the check costs nothing beyond
+   * chunking the documents a span points at, and a {@code city-landmarks} span broken by a future
+   * chunking change is exactly as expensive to find late. The state- and class-related rules above
+   * stay verwaltung-specific — only that domain declares those fields.
+   */
+  @Test
+  void everyAnswerSpanOfEveryDomainResolvesToAChunkOfItsExpectedDocument() throws IOException {
+    int checkedSpans = 0;
+    List<String> unresolved = new ArrayList<>();
+    for (EvalDomainConfig domain :
+        List.of(
+            EvalDomainConfig.COMIC_CHARACTERS,
+            EvalDomainConfig.CITY_LANDMARKS,
+            EvalDomainConfig.VERWALTUNG)) {
+      List<GoldenCase> cases =
+          GoldenDataset.load(
+              RepoPaths.evalDir().resolve("golden").resolve(domain.goldenDatasetFileName()));
+      checkedSpans += resolveSpans(domain, cases, unresolved);
+    }
+
+    assertThat(unresolved)
+        .as(
+            "answer_span cases that resolve to no chunk of their expected document — either not "
+                + "literally present (typo) or split across a chunk boundary: %s",
+            unresolved)
+        .isEmpty();
+    assertThat(checkedSpans)
+        .as("at least the verwaltung domain must declare answer_span cases at all")
+        .isPositive();
+  }
+
+  /** Chunks every document a span points at and collects the spans that do not resolve. */
+  private static int resolveSpans(
+      EvalDomainConfig domain, List<GoldenCase> cases, List<String> unresolved) throws IOException {
     IndexingProperties properties =
         new IndexingProperties(CHUNK_SIZE, CHUNK_OVERLAP, 50, null, null, List.of(), null, null, 0);
     DocumentService documentService = new DocumentService();
     ChunkingService chunkingService = new ChunkingService(properties);
+    Path corpusDir = RepoPaths.evalDir().resolve("corpus").resolve(domain.name());
 
     Map<String, Map<String, String>> spansByDocument = new LinkedHashMap<>();
-    for (GoldenCase goldenCase : verwaltungCases()) {
+    for (GoldenCase goldenCase : cases) {
       if (ChunkAnswerSpanMetrics.isApplicable(goldenCase)) {
+        // A span belongs to the case's single expected document — GoldenCaseCuration enforces that
+        // a case with more than one expected document carries no span at all.
         spansByDocument
             .computeIfAbsent(goldenCase.expectedDocuments().getFirst(), d -> new LinkedHashMap<>())
             .put(goldenCase.id(), goldenCase.answerSpan());
       }
     }
-    assertThat(spansByDocument).as("the domain must declare answer_span cases at all").isNotEmpty();
 
-    List<String> unresolved = new ArrayList<>();
+    int checked = 0;
     for (var entry : spansByDocument.entrySet()) {
-      Path file = corpusDir().resolve(entry.getKey());
+      Path file = corpusDir.resolve(entry.getKey());
       var parsed = documentService.parseDocument(file);
       String documentText =
           parsed.stream()
@@ -137,18 +194,13 @@ class GoldenCaseCurationTest {
       ChunkMap.DocumentChunkMap map =
           ChunkMap.build(entry.getKey(), documentText, chunkTexts, entry.getValue());
       for (String caseId : entry.getValue().keySet()) {
+        checked++;
         if (!map.answerSpanChunkIndexByCaseId().containsKey(caseId)) {
-          unresolved.add(caseId + " (" + entry.getKey() + ")");
+          unresolved.add(domain.name() + "/" + caseId + " (" + entry.getKey() + ")");
         }
       }
     }
-
-    assertThat(unresolved)
-        .as(
-            "answer_span cases that resolve to no chunk of their expected document — either not "
-                + "literally present (typo) or split across a chunk boundary: %s",
-            unresolved)
-        .isEmpty();
+    return checked;
   }
 
   // --- the rules themselves, against synthetic cases --------------------------------------------
@@ -167,7 +219,8 @@ class GoldenCaseCurationTest {
         answerSpan,
         GoldenCase.ExpectedState.SOLVED,
         "2026-08-31",
-        "Testfixture");
+        "Testfixture",
+        null);
   }
 
   @Test
@@ -195,6 +248,7 @@ class GoldenCaseCurationTest {
             "medium",
             "de",
             "f",
+            null,
             null,
             null,
             null,
@@ -226,7 +280,8 @@ class GoldenCaseCurationTest {
             null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "irgendwann 2026",
-            "Grund");
+            "Grund",
+            null);
 
     assertThat(GoldenCaseCuration.validate(List.of(badDate), "test-domain", Set.of("a.md")))
         .extracting(GoldenCaseCuration.Violation::rule)
@@ -264,6 +319,43 @@ class GoldenCaseCurationTest {
     assertThat(violations)
         .extracting(GoldenCaseCuration.Violation::rule)
         .contains("duplicate id", "duplicate query");
+  }
+
+  @Test
+  void rejectsAClassWhoseCasesShareTooFewDistinctExpectedDocumentSets() {
+    // Acht Fälle, aber alle auf dasselbe Dokument: erfüllt die Fallzahl, nicht die Aussagekraft.
+    List<GoldenCase> cases =
+        java.util.stream.IntStream.range(0, GoldenCaseCuration.MINIMUM_CASES_PER_CLASS)
+            .mapToObj(i -> syntheticCase("c" + i, "multi_hop", List.of("a.md"), null))
+            .toList();
+
+    assertThat(GoldenCaseCuration.validate(cases, "test-domain", Set.of("a.md")))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .anyMatch(rule -> rule.contains("distinct expected_documents sets"))
+        .noneMatch(rule -> rule.contains("case class 'multi_hop' has"));
+  }
+
+  @Test
+  void rejectsABlankExpectedStateException() {
+    GoldenCase blankException =
+        new GoldenCase(
+            "a",
+            "test-domain",
+            "frage",
+            List.of("a.md"),
+            "multi_hop",
+            "medium",
+            "de",
+            "f",
+            null,
+            GoldenCase.ExpectedState.KNOWN_GAP,
+            "2026-08-31",
+            "Grund",
+            "   ");
+
+    assertThat(GoldenCaseCuration.validate(List.of(blankException), "test-domain", Set.of("a.md")))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .contains("expected_state_exception is present but blank");
   }
 
   /** The state enum's JSON spelling is part of the committed dataset's schema, not an internal. */

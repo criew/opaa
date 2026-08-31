@@ -72,6 +72,7 @@ class VariantComparisonRunnerTest {
                 null,
                 null,
                 null,
+                null,
                 null),
             new GoldenCase(
                 "b",
@@ -82,6 +83,7 @@ class VariantComparisonRunnerTest {
                 "easy",
                 "de",
                 "t",
+                null,
                 null,
                 null,
                 null,
@@ -179,6 +181,7 @@ class VariantComparisonRunnerTest {
             "easy",
             "de",
             "t",
+            null,
             null,
             null,
             null,

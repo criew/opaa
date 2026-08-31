@@ -116,7 +116,7 @@ könnte das den Fall zu leicht machen — die Klasse verlangt einen Begriff, der
 Dokument steht, dessen **Gesamtthema woanders liegt**.
 
 Entschieden nach dem Kriterium der Spezifikation, nicht nach Augenschein: **keine Änderung am
-Generator.** Der erste Messlauf der Domäne (2026-08-31, CPU-Testcontainer) löst **keinen einzigen**
+Generator.** Der erste Messlauf der Domäne (2026-09-01, CPU-Testcontainer) löst **keinen einzigen**
 der neun `literal_term_weak_embedding`-Fälle — `verwaltung-0038` liegt bei mehreren davon nicht
 einmal im Trefferfenster, obwohl es den Begriff wörtlich führt. Die Klasse misst das Fehlerbild
 also bereits in voller Schärfe; eine Nachschärfung würde den Korpus, das Manifest, den

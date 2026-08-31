@@ -39,7 +39,13 @@ public record GoldenCase(
     // enforced by GoldenCaseCuration.
     @JsonProperty("expected_state") ExpectedState expectedState,
     @JsonProperty("expected_state_since") String expectedStateSince,
-    @JsonProperty("expected_state_reason") String expectedStateReason) {
+    @JsonProperty("expected_state_reason") String expectedStateReason,
+    // Issue #1043: optional, committed reason why this case's *measured* state deviates from its
+    // declared one on purpose — a known_gap case today's ranking happens to solve without the
+    // mechanism it measures, or one solved on only one of the two measurement paths. Such a case is
+    // reported separately from an unexplained deviation (see ExpectedStateAudit), so a permanently
+    // expected finding does not train readers to ignore the section.
+    @JsonProperty("expected_state_exception") String expectedStateException) {
 
   /**
    * The two states a curated case can be in (docs/features/retrieval-benchmark.md §5,
@@ -47,9 +53,12 @@ public record GoldenCase(
    * the dataset: the measured, dated statement that a named building block is missing.
    *
    * <p><b>What "solved" means is one criterion for both measurement paths</b>, defined once in
-   * {@link ExpectedStateAudit#isSolved}: every expected document inside the path's own window. A
-   * case is only committed as {@code SOLVED} when both paths reach it; the audit in each path's
-   * report then names every case whose measured state differs from the declared one.
+   * {@link ExpectedStateAudit#isSolved}: every expected document inside the path's own window
+   * <b>and</b> an expected document at rank 1. A case is only committed as {@code SOLVED} when
+   * <b>both</b> paths reach it under that criterion; the audit in each path's report then names
+   * every case whose measured state differs from the declared one. The rank-1 half is not
+   * decoration: without it, a {@code metadata_filter} case would count as solved while the wrong
+   * Fassung sits above the right one — the very capability that class measures.
    */
   public enum ExpectedState {
     @JsonProperty("solved")

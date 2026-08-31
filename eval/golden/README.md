@@ -11,7 +11,7 @@ absichert.
 
 | Klasse (`category`) | Anzahl | Was sie misst | Ground Truth |
 |---|---|---|---|
-| `literal_term_weak_embedding` | 9 | die #938-Klasse: „Gebührenbefreiung wegen Bedürftigkeit" steht wörtlich nur in den sechs Kämmerei-Dokumenten, die Frage ist in Bürgersprache formuliert | 1–2 Dokumente |
+| `literal_term_weak_embedding` | 9 | die #938-Klasse: „Gebührenbefreiung wegen Bedürftigkeit" steht wörtlich nur in den sechs Kämmerei-Dokumenten, die Frage ist in Bürgersprache formuliert | 1–2 Dokumente, verteilt über sechs verschiedene Zieldokument-Mengen |
 | `exact_identifier` | 10 | Aktenzeichen, Formularnummern, Paragraphen mit Verwechslungspartner (`SOZ-DA-1/2023` vs. `…/2024`, `§ 3` vs. `§ 13`) | 1–2 Dokumente |
 | `compound_word` | 9 | die Frage nennt einen Wortbestandteil („Ausweis"), das Dokument das Kompositum („Personalausweisgebührensatzung") | 2–3 Dokumente |
 | `multi_hop` | 9 | zweistufige Ketten: Sachregelung **und** Vertretungsregelung/Geschäftsverteilungsplan | genau 2 Dokumente |
@@ -21,10 +21,17 @@ absichert.
 kein Generatorskript, weil die Fälle laut Spezifikation „aus den Dokumenten heraus formuliert"
 werden und ein Generator nur die mechanische Hälfte davon reproduzieren könnte. Abgesichert ist
 das Ergebnis stattdessen durch Regeln statt durch einen Erzeugungsweg:
-`io.opaa.eval.GoldenCaseCuration` (mindestens acht Fälle je Klasse, vollständige Zustandsfelder mit
-ISO-Datum, Treffermenge im Fenster [1, 15], eindeutige `id`/`query`, jedes erwartete Dokument im
-Manifest) und `GoldenCaseCurationTest`, das diese Regeln Docker-frei auf die committete Datei
-anwendet und zusätzlich jeden `answer_span` durch die produktive `ChunkingService` auflöst.
+`io.opaa.eval.GoldenCaseCuration` und `GoldenCaseCurationTest`, das diese Regeln Docker-frei auf
+die committete Datei anwendet und zusätzlich jeden `answer_span` **aller drei Domänen** durch die
+produktive `ChunkingService` auflöst:
+
+- mindestens acht Fälle je Klasse,
+- mindestens **sechs unterschiedliche Treffermengen** je Klasse — die Fallzahl allein liefert nicht,
+  wofür sie da ist: Neun Fälle, die alle dasselbe Dokument erwarten, sind eine Beobachtung, und die
+  Toleranz aus ADR-0013 rechnet ohnehin mit `distinctExpectedDocumentSets` statt mit `n`
+  (Herleitung der Sechs: `GoldenCaseCuration.MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS`),
+- vollständige Zustandsfelder mit ISO-Datum, Treffermenge im Fenster [1, 15], eindeutige
+  `id`/`query`, jedes erwartete Dokument im Manifest.
 
 ### Zustandsfelder (Issue #1043)
 
@@ -32,9 +39,15 @@ Jeder Fall führt drei Pflichtfelder — ab dem ersten committeten Fall, nicht n
 
 ```json
 "expected_state": "known_gap",
-"expected_state_since": "2026-08-31",
-"expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): …; gemessen am 2026-08-31: …"
+"expected_state_since": "2026-09-01",
+"expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): …; gemessen am 2026-09-01 (Pipeline-Pfad): …"
 ```
+
+Ein Fall darf zusätzlich `expected_state_exception` tragen: die committete Begründung, warum
+seine gemessene Lage dauerhaft von der deklarierten abweicht (eine Pfad-Asymmetrie, oder ein
+`known_gap`-Fall, den die Rangfolge heute ohne den geprüften Mechanismus zufällig löst). Das Audit
+führt solche Fälle getrennt von den Befunden — sonst stünde in jedem Lauf dieselbe erwartete Meldung
+in der Fundliste.
 
 **Wann ein Fall als `solved` gilt** (`io.opaa.eval.ExpectedStateAudit#isSolved`): alle erwarteten
 Dokumente im Fenster **und** ein erwartetes Dokument auf Rang 1 — und zwar auf **beiden**
@@ -42,10 +55,15 @@ Messpfaden. Die Rang-1-Bedingung ist nicht Kosmetik: Beide Fassungen einer Satzu
 nahezu identisch und ranken deshalb nebeneinander, sodass „die richtige Fassung liegt irgendwo im
 Fenster" auch dann erfüllt ist, wenn die falsche obenauf steht — genau die Fähigkeit, die
 `metadata_filter` messen soll. Ohne die Zusatzbedingung wären 9 von 9 Fällen dieser Klasse
-„gelöst", mit ihr sind es 4.
+„gelöst", mit ihr sind es 4 — und auch diese vier werden als `known_gap` geführt, weil ein Treffer
+ohne Filtermechanismus keine Fähigkeit belegt (Begründung in
+[`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)).
 
 Der Bericht beider Pfade führt in jedem Lauf einen Abschnitt „Zustandsfelder", der die deklarierten
-Zustände gegen die gemessenen hält und beide Abweichungsrichtungen namentlich nennt. Ein
+Zustände gegen die gemessenen hält und beide Abweichungsrichtungen namentlich nennt — als JSON-Feld
+`expectedStateAudit`, als Textblock im Lauf-Log **und** als Markdown-Abschnitt unter der
+Delta-Tabelle, die der nächtliche Job in Job-Zusammenfassung, PR-Kommentar und Alarm-Issue
+veröffentlicht. Ein
 `known_gap`-Fall, den ein neuer Baustein löst, wird damit sichtbar, statt als stillschweigende
 Baseline-Verbesserung durchzugehen; das Nachziehen der Felder bleibt ein bewusster,
 dokumentierter Schritt (Verfahren: [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)).
@@ -54,8 +72,8 @@ dokumentierter Schritt (Verfahren: [`../corpus/verwaltung/MAINTENANCE.md`](../co
 
 `docs/features/retrieval-benchmark.md` ließ offen, ob die Chunkebenen-Metrik bei Fällen mit mehreren
 Zieldokumenten **je Dokument** oder **je Fall** gebildet wird. Entschieden mit diesem Datensatz:
-**je Fall — und nur für Fälle mit genau einem erwarteten Dokument.** 23 der 46 Fälle tragen deshalb
-einen `answer_span`, die 23 mehrdokumentigen keinen. Begründung, Alternative und Durchsetzung stehen
+**je Fall — und nur für Fälle mit genau einem erwarteten Dokument.** 24 der 46 Fälle tragen deshalb
+einen `answer_span`, die 22 mehrdokumentigen keinen. Begründung, Alternative und Durchsetzung stehen
 bei `GoldenCaseCuration.SINGLE_DOCUMENT_ANSWER_SPAN_RULE` und im Nachtrag zu
 [ADR-0012](../../docs/decisions/0012-messvertrag-retrieval-harness.md); kurz: ein einzelner Span auf
 einem Fall, dessen Antwort über zwei Dokumente verteilt ist, misst eine Hälfte und meldet sie als

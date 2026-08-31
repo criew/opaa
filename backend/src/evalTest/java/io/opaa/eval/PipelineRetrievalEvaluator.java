@@ -112,6 +112,7 @@ public final class PipelineRetrievalEvaluator {
                             r.goldenCase().id(),
                             r.goldenCase().category(),
                             r.goldenCase().expectedState(),
+                            r.goldenCase().expectedStateException(),
                             ExpectedStateAudit.isSolved(
                                 r.allExpectedDocumentsHit(),
                                 r.rankedFileNames(),

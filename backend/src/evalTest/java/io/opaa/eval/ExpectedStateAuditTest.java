@@ -11,7 +11,12 @@ class ExpectedStateAuditTest {
 
   private static ExpectedStateAudit.CaseState state(
       String id, String caseClass, ExpectedState declared, boolean solvedNow) {
-    return new ExpectedStateAudit.CaseState(id, caseClass, declared, solvedNow);
+    return new ExpectedStateAudit.CaseState(id, caseClass, declared, null, solvedNow);
+  }
+
+  private static ExpectedStateAudit.CaseState stateWithException(
+      String id, String caseClass, ExpectedState declared, boolean solvedNow, String reason) {
+    return new ExpectedStateAudit.CaseState(id, caseClass, declared, reason, solvedNow);
   }
 
   @Test
@@ -39,6 +44,69 @@ class ExpectedStateAuditTest {
     assertThat(result.unexpectedlySolved()).isEmpty();
   }
 
+  /**
+   * A deviation the dataset itself declares as expected is reported separately and does not count
+   * as a finding — otherwise a permanently expected deviation would sit in every run's finding list
+   * and train readers to ignore the section.
+   */
+  @Test
+  void separatesAcceptedDeviationsFromFindings() {
+    var result =
+        ExpectedStateAudit.evaluate(
+            List.of(
+                stateWithException(
+                    "known-but-solved",
+                    "metadata_filter",
+                    ExpectedState.KNOWN_GAP,
+                    true,
+                    "rankt heute zufällig oben, die geprüfte Fähigkeit fehlt"),
+                state("plain-gap", "metadata_filter", ExpectedState.KNOWN_GAP, false)));
+
+    assertThat(result.unexpectedlySolved()).isEmpty();
+    assertThat(result.unexpectedlyUnsolved()).isEmpty();
+    assertThat(result.matchesDeclaredStates()).isTrue();
+    assertThat(result.acceptedDeviations())
+        .extracting(ExpectedStateAudit.AcceptedDeviation::id)
+        .containsExactly("known-but-solved");
+    assertThat(ExpectedStateAudit.renderMarkdown(result))
+        .contains("Keine unerwartete Abweichung")
+        .contains("Erwartete, im Datensatz begründete Abweichungen")
+        .contains("known-but-solved");
+  }
+
+  /** An exception only applies while the case actually deviates — it never hides agreement. */
+  @Test
+  void doesNotListAnExceptionWhenTheCaseBehavesAsDeclared() {
+    var result =
+        ExpectedStateAudit.evaluate(
+            List.of(
+                stateWithException(
+                    "gap", "metadata_filter", ExpectedState.KNOWN_GAP, false, "Ausnahmegrund")));
+
+    assertThat(result.acceptedDeviations()).isEmpty();
+    assertThat(result.matchesDeclaredStates()).isTrue();
+  }
+
+  /** The Markdown block is what reaches the job summary, PR comment and alert issue (§5). */
+  @Test
+  void markdownCarriesThePerClassTableAndBothDeviationDirections() {
+    var result =
+        ExpectedStateAudit.evaluate(
+            List.of(
+                state("gap-now-solved", "multi_hop", ExpectedState.KNOWN_GAP, true),
+                state("was-solved", "compound_word", ExpectedState.SOLVED, false)));
+
+    String markdown = ExpectedStateAudit.renderMarkdown(result);
+
+    assertThat(markdown)
+        .contains("### Zustandsfelder")
+        .contains("| Fallklasse | n |")
+        .contains("`multi_hop`")
+        .contains("gap-now-solved")
+        .contains("was-solved");
+    assertThat(ExpectedStateAudit.renderMarkdown(null)).isEmpty();
+  }
+
   @Test
   void reportsPerCaseClass() {
     var result =
@@ -62,7 +130,7 @@ class ExpectedStateAuditTest {
     assertThat(ExpectedStateAudit.evaluate(List.of(state("a", "cat", null, true)))).isNull();
     assertThat(ExpectedStateAudit.renderSummary(null))
         .contains("nicht deklariert")
-        .doesNotContain("Jeder Fall verhält sich wie deklariert");
+        .doesNotContain("Keine unerwartete Abweichung");
   }
 
   /** "Solved" is every expected document in the window, not merely a hit somewhere. */

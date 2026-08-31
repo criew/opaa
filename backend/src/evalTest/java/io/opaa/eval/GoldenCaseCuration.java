@@ -20,6 +20,9 @@ import java.util.TreeMap;
  *   <li><b>At least {@link #MINIMUM_CASES_PER_CLASS} cases per class</b> — below that, a group's
  *       value is dominated by a single case flipping and ADR-0013's error criterion has nothing to
  *       bite on.
+ *   <li><b>At least {@link #MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS} distinct expected-document
+ *       sets per class</b> — the case count alone does not deliver what the rule above is for; see
+ *       that constant.
  *   <li><b>Every case carries all three state fields</b>, with a parseable ISO date and a non-blank
  *       reason. The fields are worthless if they may be left empty: a missing reason is exactly the
  *       "reconstructed instead of recorded" state §5 warns about.
@@ -39,6 +42,22 @@ public final class GoldenCaseCuration {
 
   /** docs/features/retrieval-benchmark.md §5, "Gemeinsame Regeln". */
   public static final int MINIMUM_CASES_PER_CLASS = 8;
+
+  /**
+   * Minimum number of <b>distinct</b> expected-document sets a class must span. The case-count
+   * minimum above does not deliver on its own what it promises: eight cases that all expect the
+   * same one document are, for every purpose that matters, a single observation — one document's
+   * rank change flips all eight at once, and ADR-0013's tolerance is computed from exactly this
+   * number ({@code n_eff = distinctExpectedDocumentSets}), not from the case count.
+   *
+   * <p>Six, because the tolerance {@code K_MIN / n_eff = 2 / n_eff} is what the group is judged by:
+   * at {@code n_eff = 6} it is 0,33 and already the loosest gate the formula ever applies to a
+   * healthy group; below that (0,40 at five, 0,50 at four) the group stops being able to report a
+   * regression at all, whatever its case count says. The bound is therefore derived from the error
+   * criterion, not chosen for aesthetics — a class that cannot reach it needs more Zieldokumente in
+   * the corpus, not a lower bar.
+   */
+  public static final int MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS = 6;
 
   /**
    * Upper bound of the existing set-question window (docs/features/search-quality-evaluation.md).
@@ -177,6 +196,13 @@ public final class GoldenCaseCuration {
     if (goldenCase.expectedState() == null) {
       violations.add(new Violation(goldenCase.id(), "expected_state is missing"));
     }
+    // An exception is a written statement, so a blank one is worse than none at all: it silences
+    // the audit for this case without saying why.
+    if (goldenCase.expectedStateException() != null
+        && goldenCase.expectedStateException().isBlank()) {
+      violations.add(
+          new Violation(goldenCase.id(), "expected_state_exception is present but blank"));
+    }
     if (goldenCase.expectedStateReason() == null || goldenCase.expectedStateReason().isBlank()) {
       violations.add(new Violation(goldenCase.id(), "expected_state_reason is missing or blank"));
     }
@@ -196,8 +222,17 @@ public final class GoldenCaseCuration {
 
   private static void validateClassSizes(List<GoldenCase> cases, List<Violation> violations) {
     Map<String, Integer> countsByCategory = new TreeMap<>();
+    Map<String, Set<List<String>>> expectedSetsByCategory = new TreeMap<>();
     for (GoldenCase goldenCase : cases) {
-      countsByCategory.merge(String.valueOf(goldenCase.category()), 1, Integer::sum);
+      String category = String.valueOf(goldenCase.category());
+      countsByCategory.merge(category, 1, Integer::sum);
+      if (goldenCase.expectedDocuments() != null) {
+        expectedSetsByCategory
+            .computeIfAbsent(category, k -> new LinkedHashSet<>())
+            // Sorted copy: two cases expecting the same documents in a different order are the same
+            // observation, and n_eff must count them once.
+            .add(goldenCase.expectedDocuments().stream().sorted().toList());
+      }
     }
     for (String caseClass : CASE_CLASSES) {
       int count = countsByCategory.getOrDefault(caseClass, 0);
@@ -211,6 +246,20 @@ public final class GoldenCaseCuration {
                     + count
                     + " cases, fewer than the required minimum of "
                     + MINIMUM_CASES_PER_CLASS));
+      }
+      int distinctSets = expectedSetsByCategory.getOrDefault(caseClass, Set.of()).size();
+      if (distinctSets < MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS) {
+        violations.add(
+            new Violation(
+                null,
+                "case class '"
+                    + caseClass
+                    + "' spans only "
+                    + distinctSets
+                    + " distinct expected_documents sets, fewer than the required minimum of "
+                    + MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS
+                    + " — its group value would move with a single document's rank (see "
+                    + "MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS)"));
       }
     }
   }

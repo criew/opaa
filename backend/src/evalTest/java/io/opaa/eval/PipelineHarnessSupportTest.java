@@ -44,6 +44,7 @@ class PipelineHarnessSupportTest {
             null,
             null,
             null,
+            null,
             null));
   }
 

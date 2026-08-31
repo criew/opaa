@@ -51,7 +51,7 @@ organisationsweite Vertretungsregelung und einen Geschäftsverteilungsplan). Sie
 Domäne, die nicht Abdeckung, sondern **benannte Fehlerbilder** misst: Ihre 46 Golden-Fälle tragen
 je eine der fünf Fallklassen `literal_term_weak_embedding`, `exact_identifier`, `compound_word`,
 `multi_hop` und `metadata_filter` als `category`, und jeder Fall führt seinen zuletzt bewusst
-akzeptierten Zustand (`expected_state`) mit Datum und Begründung. 33 der 46 Fälle sind heute als
+akzeptierten Zustand (`expected_state`) mit Datum und Begründung. 37 der 46 Fälle sind heute als
 `known_gap` geführt — das ist der Zweck der Domäne, kein Mangel; die Liste steht in
 `eval/corpus/verwaltung/MAINTENANCE.md`.
 

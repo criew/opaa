@@ -54,9 +54,13 @@ class VerwaltungBaselineRegressionTest {
     BaselineComparator.ComparisonResult result = BaselineComparator.compare(baseline, report);
 
     String markdown =
-        BaselineMarkdownWriter.render(result, EvalDomainConfig.VERWALTUNG.baselineFileName());
+        BaselineMarkdownWriter.render(
+            result, EvalDomainConfig.VERWALTUNG.baselineFileName(), report.expectedStateAudit());
     BaselineMarkdownWriter.write(
-        result, MARKDOWN_FILE, EvalDomainConfig.VERWALTUNG.baselineFileName());
+        result,
+        MARKDOWN_FILE,
+        EvalDomainConfig.VERWALTUNG.baselineFileName(),
+        report.expectedStateAudit());
     log.info(markdown);
     System.out.println(markdown);
     System.out.println("Delta-Tabelle geschrieben nach " + MARKDOWN_FILE.toAbsolutePath());

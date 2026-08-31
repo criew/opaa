@@ -76,6 +76,7 @@ class DocumentWindowRegressionProofTest {
         null,
         null,
         null,
+        null,
         null);
   }
 

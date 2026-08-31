@@ -47,12 +47,12 @@ Pfade. Wo der Pipeline-Pfad abweicht, steht es unter
 ## Domäne `verwaltung` (Issue #1043)
 
 `verwaltung.json` und `pipeline-verwaltung.json` sind die beiden Baselines der dritten Domäne,
-beide im selben CPU-Testcontainer-Lauf vom 2026-08-31 gezogen — anders als bei `city-landmarks`
+beide im selben CPU-Testcontainer-Lauf vom 2026-09-01 gezogen — anders als bei `city-landmarks`
 gibt es hier von Anfang an für **beide** Pfade ein Urteil (`checkVerwaltungRetrievalBaseline` führt
 beide Vergleiche aus). Drei Besonderheiten, alle in den `notes` der Dateien selbst festgehalten:
 
-- **Die Zahlen sind bewusst niedrig** (Gesamt-nDCG@10 0,553 / nDCG@8 0,536). Diese Domäne misst
-  benannte Fehlerbilder, nicht Abdeckung: 33 der 46 Fälle sind als `known_gap` geführt (siehe
+- **Die Zahlen sind bewusst niedrig** (Gesamt-nDCG@10 0,575 / nDCG@8 0,558). Diese Domäne misst
+  benannte Fehlerbilder, nicht Abdeckung: 37 der 46 Fälle sind als `known_gap` geführt (siehe
   [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)). Eine spätere
   Verbesserung dieser Zahlen ist der erwartete Nutzen eines Retrieval-Bausteins — sie ist der
   Grund, warum die Baseline **jetzt** gezogen wurde und nicht danach.

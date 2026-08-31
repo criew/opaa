@@ -33,6 +33,7 @@ class RetrievalMetricsTest {
         null,
         null,
         null,
+        null,
         null);
   }
 

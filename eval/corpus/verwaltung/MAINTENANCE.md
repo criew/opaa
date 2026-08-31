@@ -21,7 +21,7 @@ cd backend
 
 Beide Messpfade sind von Anfang an beurteilt: `eval/baseline/verwaltung.json` (Rohvektor) und
 `eval/baseline/pipeline-verwaltung.json` (Pipeline) wurden im selben CPU-Testcontainer-Lauf am
-2026-08-31 gezogen. Der Docker-freie Chunk-Zahl-Nachweis
+2026-09-01 gezogen. Der Docker-freie Chunk-Zahl-Nachweis
 (`io.opaa.eval.VerwaltungChunkSizeDryRunTest`) bleibt daneben bestehen, ergänzt um
 `io.opaa.eval.GoldenCaseCurationTest`, das die Kuratierungsregeln und jeden `answer_span` ohne
 Docker prüft.
@@ -88,23 +88,39 @@ Die Rang-1-Bedingung ist nicht Strenge um ihrer selbst willen: Die beiden Fassun
 unterscheiden sich nur im Frontmatter und ranken deshalb unmittelbar nebeneinander. Ohne sie wäre
 jeder `metadata_filter`-Fall „gelöst", sobald die richtige Fassung irgendwo im Fenster liegt —
 auch dann, wenn die falsche darüber steht. Genau das ist die Fähigkeit, die diese Klasse messen
-soll (9 von 9 „gelöst" ohne die Bedingung, 4 von 9 mit ihr).
+soll.
 
-**Eine bekannte Asymmetrie, absichtlich so geführt:** `verw-comp-006` ist auf dem Rohvektor-Pfad
-gelöst, auf dem Pipeline-Pfad nicht, und wird deshalb als `known_gap` geführt. Der
-Zustandsfelder-Abschnitt des **Rohvektor**-Reports nennt diesen Fall in jedem Lauf unter „als
-known_gap geführt, aber gelöst". Das ist kein offener Befund, sondern die sichtbare Folge der
-Regel „gelöst nur auf beiden Pfaden"; wer den Abschnitt liest, prüft, ob **weitere** Fälle
-dazugekommen sind.
+**`metadata_filter` wird ausnahmslos als `known_gap` geführt** (Entscheidung nach Spezifikation,
+Abschnitt 5e: die Klasse misst „eine heute **nicht vorhandene** Produktfähigkeit"). Vier ihrer neun
+Fälle löst die Rangfolge heute richtig — aber ohne Mechanismus, rein zufällig, weil die richtige
+Fassung eben oben landet. Sie als `solved` zu führen hieße, ein Zufallsergebnis unter
+Regressionsschutz zu stellen: Der nächste Embedding- oder Chunking-Wechsel würde als „Rückschritt"
+gemeldet, obwohl nie eine Fähigkeit existierte, die verloren gehen könnte. Sie bleiben deshalb
+`known_gap` und tragen die Begründung in `expected_state_exception` (siehe unten).
+
+### Erwartete Abweichungen (`expected_state_exception`)
+
+Ein Fall darf einen vierten, optionalen Text tragen: die committete Begründung, **warum** seine
+gemessene Lage dauerhaft von der deklarierten abweicht. Das Audit führt solche Fälle getrennt von
+den Befunden; nur unerklärte Abweichungen gelten als Befund. Ohne diese Trennung stünde in jedem
+Lauf dieselbe erwartete Meldung in der Fundliste — und niemand läse sie nach dem dritten Mal noch.
+
+Derzeit fünf Fälle:
+
+| Fall | Grund |
+|---|---|
+| `verw-comp-006` | Pfad-Asymmetrie: auf dem Rohvektor-Pfad gelöst, auf dem Pipeline-Pfad nicht. Bleibt `known_gap`, weil ein Fall erst gelöst ist, wenn ihn beide Pfade lösen. |
+| `verw-meta-003`, `verw-meta-005`, `verw-meta-007`, `verw-meta-009` | Heute auf beiden Pfaden gelöst, aber ohne den geprüften Mechanismus (siehe oben). |
 
 Jede Zustandsänderung ist ein bewusster Vorgang mit Datum und Begründung im selben PR wie ihr
-Auslöser — nie eine Datenpflege nebenbei. Der Zustandsfelder-Abschnitt beider Reports meldet
-Abweichungen in beide Richtungen; er lässt den Lauf bewusst **nicht** fehlschlagen, weil die
-Entscheidung über einen Zustandswechsel eine menschliche ist.
+Auslöser — nie eine Datenpflege nebenbei. Der Zustandsfelder-Abschnitt beider Reports **und** beider
+Markdown-Delta-Tabellen (Job-Zusammenfassung, PR-Kommentar, Alarm-Issue) meldet Abweichungen in
+beide Richtungen; er lässt den Lauf bewusst **nicht** fehlschlagen, weil die Entscheidung über einen
+Zustandswechsel eine menschliche ist.
 
 ## `known_gap`-Fälle
 
-**33 von 46 Fällen**, Stand 2026-08-31 (erste Kuratierung, Issue #1043). Das ist der Zweck dieser
+**37 von 46 Fällen**, Stand 2026-09-01 (erste Kuratierung, Issue #1043). Das ist der Zweck dieser
 Domäne, kein Mangel: „Ein Fall, den heute keine Variante löst, ist der wertvollste im Datensatz"
 (`docs/features/retrieval-benchmark.md`, Abschnitt 4). Die Begründung steht je Fall im Feld
 `expected_state_reason`; die Tabellen unten führen zusätzlich das gemessene Symptom.
@@ -115,7 +131,7 @@ Domäne, kein Mangel: „Ein Fall, den heute keine Variante löst, ist der wertv
 | `exact_identifier` | 10 | 2 | Schutz unzerlegter Kennungs-Tokens (Roadmap 1a) |
 | `compound_word` | 9 | 9 | Komposita-Zerlegung (Roadmap 1a) |
 | `multi_hop` | 9 | 8 | Zusammenführung mehrgliedriger Ketten (Messgrundlage für Roadmap 3c) |
-| `metadata_filter` | 9 | 5 | Metadatenfilter in der Suche (Roadmap 2f) |
+| `metadata_filter` | 9 | 9 | Metadatenfilter in der Suche (Roadmap 2f) |
 
 Der für die Eintrittsbedingung aus Abschnitt 6 der Spezifikation eigentliche Befund:
 `literal_term_weak_embedding` ist **vollständig** ungelöst (0 von 9), obwohl der Anfragebegriff
@@ -124,42 +140,42 @@ Die Domäne ist also nicht pauschal schwer; die Lücke ist klassenspezifisch.
 
 ### literal_term_weak_embedding (9 Fälle)
 
-| Fall | Symptom im Lauf vom 2026-08-31 (Pipeline-Pfad) |
+| Fall | Symptom im Lauf vom 2026-09-01 (Pipeline-Pfad) |
 |---|---|
 | `verw-lit-001` | außerhalb des Fensters: verwaltung-0038_verwaltungsgebuehrensatzung.md |
 | `verw-lit-002` | außerhalb des Fensters: verwaltung-0043_formularhinweis-kaemmerei-8.md |
-| `verw-lit-003` | außerhalb des Fensters: verwaltung-0042_formularhinweis-kaemmerei-7.md, verwaltung-0043_formularhinweis-kaemmerei-8.md |
+| `verw-lit-003` | im Fenster, aber Rang 1: verwaltung-0042_formularhinweis-kaemmerei-7.md |
 | `verw-lit-004` | außerhalb des Fensters: verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md, verwaltung-0041_dienstanweisung-kaemmerei-2-2024.md |
 | `verw-lit-005` | im Fenster, aber Rang 1: verwaltung-vertretungsregelung.md |
 | `verw-lit-006` | im Fenster, aber Rang 1: verwaltung-geschaeftsverteilungsplan.md |
 | `verw-lit-007` | außerhalb des Fensters: verwaltung-0038_verwaltungsgebuehrensatzung.md |
 | `verw-lit-008` | im Fenster, aber Rang 1: verwaltung-0045_gebuehrenordnung-personalamt.md |
-| `verw-lit-009` | außerhalb des Fensters: verwaltung-0038_verwaltungsgebuehrensatzung.md |
+| `verw-lit-009` | im Fenster, aber Rang 1: verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md |
 
 ### exact_identifier (2 Fälle)
 
-| Fall | Symptom im Lauf vom 2026-08-31 (Pipeline-Pfad) |
+| Fall | Symptom im Lauf vom 2026-09-01 (Pipeline-Pfad) |
 |---|---|
 | `verw-id-002` | im Fenster, aber Rang 1: verwaltung-0004_dienstanweisung-sozialamt-1-2023.md |
 | `verw-id-005` | im Fenster, aber Rang 1: verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md |
 
 ### compound_word (9 Fälle)
 
-| Fall | Symptom im Lauf vom 2026-08-31 (Pipeline-Pfad) |
+| Fall | Symptom im Lauf vom 2026-09-01 (Pipeline-Pfad) |
 |---|---|
 | `verw-comp-001` | außerhalb des Fensters: verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md, verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md, verwaltung-0033_gebuehrenordnung-buergeramt.md |
 | `verw-comp-002` | außerhalb des Fensters: verwaltung-0057_abfallgebuehrensatzung.md |
 | `verw-comp-003` | außerhalb des Fensters: verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md |
 | `verw-comp-004` | außerhalb des Fensters: verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md, verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md |
 | `verw-comp-005` | außerhalb des Fensters: verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md, verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md |
-| `verw-comp-006` | außerhalb des Fensters: verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md |
+| `verw-comp-006` | außerhalb des Fensters: verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md **(erwartete Abweichung)** |
 | `verw-comp-007` | außerhalb des Fensters: verwaltung-0025_personenstandsurkundengebuehrensatzung.md |
 | `verw-comp-008` | außerhalb des Fensters: verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md |
 | `verw-comp-009` | außerhalb des Fensters: verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md |
 
 ### multi_hop (8 Fälle)
 
-| Fall | Symptom im Lauf vom 2026-08-31 (Pipeline-Pfad) |
+| Fall | Symptom im Lauf vom 2026-09-01 (Pipeline-Pfad) |
 |---|---|
 | `verw-hop-001` | außerhalb des Fensters: verwaltung-0038_verwaltungsgebuehrensatzung.md, verwaltung-vertretungsregelung.md |
 | `verw-hop-002` | außerhalb des Fensters: verwaltung-vertretungsregelung.md |
@@ -170,21 +186,24 @@ Die Domäne ist also nicht pauschal schwer; die Lücke ist klassenspezifisch.
 | `verw-hop-008` | außerhalb des Fensters: verwaltung-vertretungsregelung.md |
 | `verw-hop-009` | außerhalb des Fensters: verwaltung-vertretungsregelung.md |
 
-### metadata_filter (5 Fälle)
+### metadata_filter (9 Fälle)
 
-| Fall | Symptom im Lauf vom 2026-08-31 (Pipeline-Pfad) |
+| Fall | Symptom im Lauf vom 2026-09-01 (Pipeline-Pfad) |
 |---|---|
 | `verw-meta-001` | im Fenster, aber Rang 1: verwaltung-0004_dienstanweisung-sozialamt-1-2023.md |
 | `verw-meta-002` | außerhalb des Fensters: verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md |
+| `verw-meta-003` | richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war **(erwartete Abweichung)** |
 | `verw-meta-004` | außerhalb des Fensters: verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md |
+| `verw-meta-005` | richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war **(erwartete Abweichung)** |
 | `verw-meta-006` | im Fenster, aber Rang 1: verwaltung-0004_dienstanweisung-sozialamt-1-2023.md |
+| `verw-meta-007` | richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war **(erwartete Abweichung)** |
 | `verw-meta-008` | im Fenster, aber Rang 1: verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md |
+| `verw-meta-009` | richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war **(erwartete Abweichung)** |
 
 Die Einschätzung aus dem #1042-Stand dieser Datei — die `metadata_filter`-Fälle würden zunächst
-vollständig als `known_gap` erwartet — hat sich damit **nur teilweise** bestätigt: 4 der 9 Fälle
-sind gelöst, weil die richtige Fassung dort auch ohne Metadatenfilter auf Rang 1 landet.
-Festgehalten, weil eine Vorhersage, die man nach der Messung stillschweigend anpasst, nichts mehr
-wert ist.
+vollständig als `known_gap` erwartet — hat sich in der Sache bestätigt, wenn auch aus einem anderen
+Grund als vermutet: Nicht weil die Rangfolge sie alle verfehlt (vier von neun trifft sie), sondern
+weil ohne Filtermechanismus auch ein Treffer keine Fähigkeit belegt.
 
 ## Overfitting-Risiko
 

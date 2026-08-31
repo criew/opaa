@@ -29,6 +29,7 @@ class VariantOutcomeTest {
                     null,
                     null,
                     null,
+                    null,
                     null)),
             VariantComparisonRunnerTest.toPipeline(Map.of("frage", List.of("a.md")))),
         VariantComparisonRunnerTest.runConfiguration());

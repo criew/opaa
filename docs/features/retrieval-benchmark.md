@@ -503,21 +503,30 @@ Drei Milderungen, keine Lösungen:
 > Baselines der Domäne sind aus demselben CPU-Testcontainer-Lauf gezogen
 > (`eval/baseline/verwaltung.json`, `eval/baseline/pipeline-verwaltung.json`).
 >
-> **Was der erste Lauf zeigt** (2026-08-31, Pipeline-Pfad): 33 der 46 Fälle sind als `known_gap`
+> **Was der erste Lauf zeigt** (2026-09-01, Pipeline-Pfad): 37 der 46 Fälle sind als `known_gap`
 > geführt. `literal_term_weak_embedding` ist vollständig ungelöst (0 von 9) — der Anfragebegriff
 > steht wörtlich im Zieldokument, und dieses liegt in mehreren Fällen nicht einmal im
-> Trefferfenster; `compound_word` ebenfalls (0 von 9); `multi_hop` 1 von 9; `metadata_filter` 4 von
-> 9; `exact_identifier` dagegen 8 von 10. Die Domäne ist damit nicht pauschal schwer, sondern
-> klassenspezifisch — genau die Voraussetzung, die Abschnitt 6 an eine Eintrittsbedingung stellt.
-> Die vollständige Liste mit Begründung je Fall: `eval/corpus/verwaltung/MAINTENANCE.md`.
+> Trefferfenster; `compound_word` ebenfalls (0 von 9); `multi_hop` 1 von 9; `exact_identifier`
+> dagegen 8 von 10. `metadata_filter` wird ausnahmslos als `known_gap` geführt, obwohl die
+> Rangfolge vier seiner neun Fälle heute richtig sortiert: Die Klasse misst eine nicht vorhandene
+> Produktfähigkeit (Abschnitt 5e), ein Treffer ohne Filtermechanismus belegt keine Fähigkeit, und
+> als `solved` stünde ein Zufallsergebnis unter Regressionsschutz. Die Domäne ist damit nicht
+> pauschal schwer, sondern klassenspezifisch — genau die Voraussetzung, die Abschnitt 6 an eine
+> Eintrittsbedingung stellt. Die vollständige Liste mit Begründung je Fall:
+> `eval/corpus/verwaltung/MAINTENANCE.md`.
 >
-> **Zustandsfelder-Audit statt stiller Baseline-Verbesserung:** Jeder Lauf hält in beiden Reports
-> die deklarierten Zustände gegen die gemessenen und nennt beide Abweichungsrichtungen namentlich
-> (`io.opaa.eval.ExpectedStateAudit`). „Gelöst" ist dabei einheitlich definiert: alle erwarteten
-> Dokumente im Fenster **und** ein erwartetes Dokument auf Rang 1, auf beiden Messpfaden — ohne die
-> Rang-1-Bedingung gälten alle neun `metadata_filter`-Fälle als gelöst, obwohl in fünf davon die
-> falsche Fassung obenauf liegt. Das Audit meldet, es lässt den Lauf nicht fehlschlagen: Ein
-> Zustandswechsel bleibt eine bewusste, datierte Entscheidung.
+> **Zustandsfelder-Audit statt stiller Baseline-Verbesserung:** Jeder Lauf hält die deklarierten
+> Zustände gegen die gemessenen und nennt beide Abweichungsrichtungen namentlich
+> (`io.opaa.eval.ExpectedStateAudit`) — in beiden JSON-Reports und in beiden Markdown-Delta-Tabellen,
+> also überall dort, wo auch das Regressionsurteil erscheint (Job-Zusammenfassung, PR-Kommentar,
+> Alarm-Issue). „Gelöst" ist dabei einheitlich definiert: alle erwarteten Dokumente im Fenster
+> **und** ein erwartetes Dokument auf Rang 1, auf beiden Messpfaden — ohne die Rang-1-Bedingung
+> gälten alle neun `metadata_filter`-Fälle als gelöst, obwohl in fünf davon die falsche Fassung
+> obenauf liegt. Eine dauerhaft erwartete Abweichung (Pfad-Asymmetrie, oder ein Treffer ohne den
+> geprüften Mechanismus) trägt ihre Begründung im Datensatz (`expected_state_exception`) und wird
+> getrennt von den Befunden ausgewiesen, damit die Fundliste leer bleibt, solange nichts Neues
+> passiert ist. Das Audit meldet, es lässt den Lauf nicht fehlschlagen: Ein Zustandswechsel bleibt
+> eine bewusste, datierte Entscheidung.
 >
 > **Nicht mit umgesetzt:** die Aufnahme der Klassen in die bestehenden Domänen (offener Punkt 5) —
 > unverändert offen, weil sie dort eine Baseline-Neuziehung kostet.
