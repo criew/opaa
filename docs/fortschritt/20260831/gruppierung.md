@@ -151,7 +151,7 @@ mit Auto-Merge samt seiner Härtung (Lockfile-Gruppierung, Major-Ausnahmen, mini
 #1005, #1007,
 PR#403, PR#818, PR#847, PR#864, PR#867, PR#869, PR#870, PR#871, PR#872, PR#873, PR#879,
 PR#893, PR#897, PR#899, PR#902, PR#905, PR#908, PR#1014,
-dazu der [Sammelbaustein der Renovate-Updates](./bausteine/pr-renovate-updates.md) (43 PRs)
+dazu der [Sammelbaustein der Renovate-Updates](./bausteine.md#pr-renovate-updates) (43 PRs)
 
 ## T2 · Agenten-Organisation & Projektsteuerung
 

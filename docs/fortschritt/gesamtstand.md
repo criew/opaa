@@ -9,7 +9,7 @@
 
 **Stand: Stichtag 31.08.2026** — Datenstand `main@a51e6b8c` (30.08.2026), im Repository als
 Tag `inventur-20260830` verankert. Belege: [Zeitraumsbericht 20260831](./20260831/report.md)
-mit [Bausteinen](./20260831/bausteine/). Alle Aussagen dieses Dokuments tragen diesen Stand.
+mit den [Bausteinen mit Befund](./20260831/bausteine.md). Alle Aussagen dieses Dokuments tragen diesen Stand.
 
 ## Was mit dem Produkt heute konkret möglich ist
 

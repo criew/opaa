@@ -24,24 +24,33 @@ Gesamtstand sind dort einmalig deckungsgleich.
 ```
 JJJJMMTT/
 ├── anker.md         Diff-Anker: Commit-Stand von main und Abfragezeitpunkt der Issues/PRs
-├── index.md         generierter Index: jedes geschlossene Issue mit seinen gemergten PRs,
-│                    dazu gemergte PRs ohne Issue-Verknüpfung
-├── bausteine/       je Issue ein Baustein (issue-NNN.md), je unverknüpftem PR einer (pr-NNN.md)
+├── bausteine.md     die Bausteine **mit Befund** in einer Datei, mit Anker `#issue-NNN`
+│                    bzw. `#pr-NNN`; im Anhang die Nummern der geprüften Vorgänge ohne Befund
 ├── gruppierung.md   Zuordnung jedes Bausteins zu genau einem Themenbereich
 └── report.md        der Bericht — bis zur Abnahme als ENTWURF markiert
 ```
+
+**Nur nicht Reproduzierbares wird committet.** Rohdaten-Dumps (Issue-/PR-JSON) und ein
+Issue↔PR-Index sind jederzeit per `gh` erneut abzurufen und gehören deshalb nicht ins
+Repository, sondern in ein Arbeitsverzeichnis außerhalb. Aus demselben Grund trägt
+`bausteine.md` nur die Bausteine **mit Befund**: Ein Vorgang, der geliefert wurde wie
+beschrieben und dessen Lieferung noch steht, ist aus GitHub und `git log` jederzeit
+nachvollziehbar — seine Nummer im Anhang genügt. Erkenntnis steckt in der Abweichung.
 
 ## Wie ein Bericht entsteht
 
 1. **Anker ziehen.** Commit-Hash von `main` und Zeitstempel der GitHub-Abfrage in `anker.md`
    festhalten. Beides trennen: Der Hash datiert den Code-Stand, der Zeitstempel die Issue-Menge.
-2. **Rohdaten erheben.** Geschlossene Issues und gemergte PRs als JSON dumpen
+2. **Rohdaten erheben.** Geschlossene Issues und gemergte PRs als JSON dumpen — außerhalb des
+   Repositorys, die Dumps werden nicht committet
    (`gh issue list --state closed …`, `gh pr list --state merged …` mit `closingIssuesReferences`),
    Issue↔PR-Zuordnung daraus ableiten; PRs ohne „Closes"-Referenz gesondert führen und ihre im
    Titel/Body erwähnten Issue-Nummern als weiche Referenz erfassen.
-3. **Bausteine schreiben.** Pro Issue: was laut Issue gefordert war, was laut PR(s) tatsächlich
-   gemergt wurde (Abweichungen ausdrücklich benennen), kurzer Realitätscheck gegen den heutigen
-   Code, Themen-Schlagworte. Format siehe unten. Bausteine sind roh und ungeschönt — sie sind
+3. **Bausteine schreiben.** Alle Bausteine eines Stichtags stehen in **einer** Datei
+   `bausteine.md`, je Baustein ein `## `-Abschnitt mit vorangestelltem Anker
+   (`<a id="issue-NNN"></a>` bzw. `<a id="pr-NNN"></a>`). Pro Issue: was laut Issue gefordert
+   war, was laut PR(s) tatsächlich gemergt wurde (Abweichungen ausdrücklich benennen), kurzer
+   Realitätscheck gegen den heutigen Code, Themen-Schlagworte. Format siehe unten. Bausteine sind roh und ungeschönt — sie sind
    die Wahrheitsquelle, nicht die Erzählung.
 4. **Gruppieren.** Jeden Baustein genau einem Bereich zuordnen: die elf Themenbereiche A–K der
    Vision, ergänzt um T1–T3 (Projektsetup, Agenten-Organisation, Testinfrastruktur), V
@@ -72,14 +81,19 @@ Neues Verzeichnis anlegen und **nur das Delta** erheben:
 
 - **Code:** `git log <alter-anker-hash>..main` — jeder Squash-Commit auf `main` ist genau ein PR.
 - **Issues:** `gh issue list --state closed --search "closed:><alter-abfragezeitpunkt>"`.
-- Für das Delta neue Bausteine schreiben, die bestehenden aus dem Vorgänger-Verzeichnis
-  unverändert übernehmen bzw. referenzieren, Gruppierung und Report fortschreiben. Der alte
-  Bericht bleibt als historisches Dokument stehen.
+- Für das Delta eine neue `bausteine.md` schreiben, die **nur die Befunde des Zeitraums** enthält;
+  die des Vorgängers bleiben in seinem Verzeichnis und werden nicht kopiert. Gruppierung und Report
+  fortschreiben. Der alte Bericht bleibt als historisches Dokument stehen.
+- Ein Vorgang, der im Vorgängerzeitraum ohne Befund war und dessen Lieferung jetzt zurückgebaut
+  wurde, wird im neuen Zeitraum **dort** als Befund geführt, wo der Rückbau stattfand — nicht
+  rückwirkend im alten Verzeichnis.
 
 ## Baustein-Format
 
 ```markdown
-# Issue #NNN — Titel
+<a id="issue-NNN"></a>
+
+## Issue #NNN — Titel
 - Geschlossen: JJJJ-MM-TT (completed | not planned)
 - Labels: …
 - PRs: #a (JJJJ-MM-TT), #b (JJJJ-MM-TT) | keine
@@ -95,8 +109,8 @@ vorhanden? Später entfernt oder ersetzt — durch was?).
 **Themen:** freie Schlagworte für die Gruppierung
 ```
 
-Für PRs ohne Issue-Verknüpfung analog (`pr-NNN.md`) mit `Bezug: #a, #b | keiner` für weiche
-Referenzen.
+Für PRs ohne Issue-Verknüpfung analog (`## PR #NNN — Titel`, Anker `pr-NNN`) mit
+`Bezug: #a, #b | keiner` für weiche Referenzen. Die Abschnitte werden durch `---` getrennt.
 
 ## Stolperfallen aus der ersten Inventur (20260831)
 
