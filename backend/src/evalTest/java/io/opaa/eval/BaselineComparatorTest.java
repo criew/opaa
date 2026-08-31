@@ -385,7 +385,8 @@ class BaselineComparatorTest {
   void requireBaselineComparableAllowsATestcontainerRun() {
     EvaluationReport report = reportWith(runConfiguration("m1", "d1", "corpus-a", "golden-a"));
 
-    assertThatCode(() -> BaselineComparator.requireBaselineComparable(report)).doesNotThrowAnyException();
+    assertThatCode(() -> BaselineComparator.requireBaselineComparable(report))
+        .doesNotThrowAnyException();
   }
 
   @Test

@@ -373,6 +373,11 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
                     "Model '" + EMBEDDING_MODEL + "' not found in /api/tags response: " + tags));
   }
 
+  // Non-streaming POST /api/pull only returns once the whole ~275 MB model is on disk; 10 minutes
+  // comfortably covers a cold pull over a normal connection without masking a genuinely hung
+  // request as a slow one indefinitely.
+  private static final Duration PULL_TIMEOUT = Duration.ofMinutes(10);
+
   /**
    * Pulls {@link #EMBEDDING_MODEL} on an external Ollama endpoint (issue #1076) — {@code
    * ollama.execInContainer} only works against a Testcontainer, so this equivalent goes through
@@ -387,11 +392,24 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             .writeValueAsString(Map.of("model", EMBEDDING_MODEL, "stream", false));
     HttpRequest request =
         HttpRequest.newBuilder(URI.create(ollamaEndpoint() + "/api/pull"))
-            .timeout(Duration.ofMinutes(10))
+            .timeout(PULL_TIMEOUT)
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(requestBody))
             .build();
-    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response;
+    try {
+      response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    } catch (java.net.http.HttpTimeoutException e) {
+      throw new IllegalStateException(
+          "Timed out after "
+              + PULL_TIMEOUT
+              + " pulling '"
+              + EMBEDDING_MODEL
+              + "' via POST /api/pull on the external Ollama endpoint "
+              + ollamaEndpoint()
+              + " — check that the endpoint is reachable and has network access to pull the model.",
+          e);
+    }
     if (response.statusCode() != 200) {
       throw new IllegalStateException(
           "Failed to pull '"

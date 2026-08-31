@@ -305,8 +305,8 @@ public final class BaselineComparator {
    * A report measured against an external Ollama endpoint (issue #1076, {@code
    * opaa.eval.ollamaBaseUrl}) is never baseline-comparable — CPU/GPU embedding kernels are not
    * guaranteed bit-identical, analogous to the {@code -Dopaa.eval.allowGpu} opt-out. Called by
-   * every {@code *BaselineRegressionTest} before {@link #compare(Baseline, EvaluationReport)}, so
-   * a stray external run fails loudly instead of being silently compared as if it were a
+   * every {@code *BaselineRegressionTest} before {@link #compare(Baseline, EvaluationReport)}, so a
+   * stray external run fails loudly instead of being silently compared as if it were a
    * Testcontainer/CPU run.
    */
   public static void requireBaselineComparable(EvaluationReport report) {

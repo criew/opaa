@@ -98,17 +98,20 @@ fun registerEvalDomain(
         outputs.upToDateWhen { false }
         jvmArgs("-XX:+EnableDynamicAgentLoading")
         systemProperty("file.encoding", "UTF-8")
-        // Gradle does not forward -D command-line system properties to forked test JVMs on its
-        // own; each opt-in eval property the harness reads (issue #1076's external Ollama
-        // endpoint, the pre-existing GPU opt-out) needs an explicit systemProperty() call here,
-        // read via providers.systemProperty() so the configuration cache captures the dependency
-        // correctly instead of just baking in whatever value happened to be present at
-        // configuration time. TODO(#1077 review, Befund 1): fold into the shared opaa.eval
-        // passthrough list #1077 introduces once that PR is merged, instead of keeping a second
-        // list here.
-        listOf("opaa.eval.ollamaBaseUrl", "opaa.eval.allowGpu").forEach { key ->
-            providers.systemProperty(key).orNull?.let { systemProperty(key, it) }
-        }
+        // Gradle does not forward -D command-line system properties into a forked Test JVM on its
+        // own (they stay properties of the Gradle daemon process that evaluates this build script) —
+        // every property a harness class reads via System.getProperty/Boolean.getBoolean at runtime
+        // needs an explicit systemProperty() call here, read from this daemon-process property at
+        // configuration time. opaa.eval.allowGpu (RetrievalEvaluationHarnessTest, local GPU opt-out),
+        // opaa.eval.ollamaBaseUrl (issue #1076, external Ollama endpoint) and the issue #1041
+        // variant-comparison opt-in share this list because all three are optional, manually-invoked
+        // knobs rather than something every eval domain always needs.
+        listOf(
+            "opaa.eval.allowGpu",
+            "opaa.eval.ollamaBaseUrl",
+            "opaa.eval.runVariantComparison",
+            "opaa.eval.variantComparisonFile",
+        ).forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
         testLogging {
             events("passed", "skipped", "failed", "standard_out")
             showStandardStreams = true

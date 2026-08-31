@@ -28,6 +28,7 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;
+import io.opaa.query.QueryServiceDependencies;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -56,6 +57,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -371,6 +373,11 @@ class RetrievalEvaluationHarnessTest {
                     "Model '" + EMBEDDING_MODEL + "' not found in /api/tags response: " + tags));
   }
 
+  // Non-streaming POST /api/pull only returns once the whole ~275 MB model is on disk; 10 minutes
+  // comfortably covers a cold pull over a normal connection without masking a genuinely hung
+  // request as a slow one indefinitely.
+  private static final Duration PULL_TIMEOUT = Duration.ofMinutes(10);
+
   /**
    * Pulls {@link #EMBEDDING_MODEL} on an external Ollama endpoint (issue #1076) — {@code
    * ollama.execInContainer} only works against a Testcontainer, so this equivalent goes through
@@ -385,11 +392,24 @@ class RetrievalEvaluationHarnessTest {
             .writeValueAsString(Map.of("model", EMBEDDING_MODEL, "stream", false));
     HttpRequest request =
         HttpRequest.newBuilder(URI.create(ollamaEndpoint() + "/api/pull"))
-            .timeout(Duration.ofMinutes(10))
+            .timeout(PULL_TIMEOUT)
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(requestBody))
             .build();
-    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response;
+    try {
+      response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    } catch (java.net.http.HttpTimeoutException e) {
+      throw new IllegalStateException(
+          "Timed out after "
+              + PULL_TIMEOUT
+              + " pulling '"
+              + EMBEDDING_MODEL
+              + "' via POST /api/pull on the external Ollama endpoint "
+              + ollamaEndpoint()
+              + " — check that the endpoint is reachable and has network access to pull the model.",
+          e);
+    }
     if (response.statusCode() != 200) {
       throw new IllegalStateException(
           "Failed to pull '"
@@ -465,6 +485,12 @@ class RetrievalEvaluationHarnessTest {
   // very beans a real request runs through, not a re-implementation of steps 2 to 6.
   @Autowired private QueryService queryService;
   @Autowired private QueryProperties queryProperties;
+  // #1041: the variant-comparison step builds its own QueryService instances around the same
+  // collaborators the autowired queryService above uses — two of those collaborators
+  // (ChunkEmbeddingLookup, QueryDecompositionService) are package-private in io.opaa.query and
+  // cannot be named from this package at all. QueryServiceDependencies#fromContext is the seam
+  // that crosses that boundary via bean lookups instead.
+  @Autowired private ApplicationContext applicationContext;
 
   // #419: triggerIndexing needs a caller-chosen target library and an authorized caller -
   // set up once per run, not pinned to a well-known system library id, since #419 already stopped
@@ -536,6 +562,18 @@ class RetrievalEvaluationHarnessTest {
     // check reads nothing but the query configuration, which is fixed from context startup. Failing
     // it after the hour-long raw-vector path would cost that path its baseline verdict for nothing.
     PipelineHarnessSupport.requireMeasurableConfiguration(queryProperties);
+
+    // Same reasoning for the variant-comparison opt-in (#1041 review, Befund 3): a broken
+    // comparison file, an unresolvable referenceVariant, an invalid QueryProperties override
+    // (e.g. fetchK < topK) or a reference variant that would itself be skipped must fail before
+    // indexing, not after it — this call reads only the comparison file and the already-started
+    // context's QueryProperties, so it can decide immediately. Step 7 below repeats the load (the
+    // comparison instance is cheap and not worth threading through 400+ lines of this method as a
+    // local variable) — see runVariantComparison's own Javadoc for why that repeat is guarded while
+    // this one is not.
+    if (Boolean.getBoolean(RUN_VARIANT_COMPARISON_PROPERTY)) {
+      loadAndValidateVariantComparison(queryProperties);
+    }
 
     Path evalDir = RepoPaths.evalDir();
     Path corpusDir = evalDir.resolve("corpus").resolve(DOMAIN.name());
@@ -867,8 +905,7 @@ class RetrievalEvaluationHarnessTest {
     //    at its own window, in its own file, and guarded so a failure here cannot fail this test
     //    and thereby rob the nightly job of its raw-vector verdict (see PipelineHarnessSupport).
     Instant pipelineRunStart = Instant.now();
-    PipelineHarnessSupport.runAndWriteGuarded(
-        DOMAIN,
+    PipelineHarnessSupport.RunIdentity identity =
         new PipelineHarnessSupport.RunIdentity(
             "ollama",
             EMBEDDING_MODEL,
@@ -880,7 +917,10 @@ class RetrievalEvaluationHarnessTest {
             CorpusManifest.sha256Hex(manifestFile),
             manifest.fileNames().size(),
             "eval/golden/" + DOMAIN.goldenDatasetFileName(),
-            GoldenDataset.sha256(goldenFile)),
+            GoldenDataset.sha256(goldenFile));
+    PipelineHarnessSupport.runAndWriteGuarded(
+        DOMAIN,
+        identity,
         queryService,
         queryProperties,
         indexingProperties,
@@ -888,6 +928,140 @@ class RetrievalEvaluationHarnessTest {
         goldenCases,
         pipelineRunStart,
         log);
+
+    // 7. Variant comparison (#1041, docs/features/retrieval-benchmark.md §2): an opt-in step,
+    //    off by default so a normal evaluateRetrieval/checkRetrievalBaseline run is unaffected —
+    //    see eval/variants/README.md for how to opt in and how to point at a different comparison
+    //    file without any code change (issue #1041 acceptance criteria). Guarded like step 6 (see
+    //    runVariantComparison's Javadoc): a failure here must not cost the raw-vector path its
+    //    baseline verdict, on which checkRetrievalBaseline depends via dependsOn.
+    if (Boolean.getBoolean(RUN_VARIANT_COMPARISON_PROPERTY)) {
+      runVariantComparison(identity, queryProperties, goldenCases, evalLibraryId);
+    }
+  }
+
+  // System properties for the opt-in variant-comparison step (#1041) — see eval/variants/README.md.
+  private static final String RUN_VARIANT_COMPARISON_PROPERTY = "opaa.eval.runVariantComparison";
+  private static final String VARIANT_COMPARISON_FILE_PROPERTY = "opaa.eval.variantComparisonFile";
+  private static final String DEFAULT_VARIANT_COMPARISON_FILE =
+      "eval/variants/comic-characters-selection-mechanics.json";
+
+  /**
+   * Resolves, loads and validates the opt-in comparison file (issue #1041 review, Befund 3) —
+   * called once, early, from {@link #evaluatesRetrievalQualityAgainstTheGoldenDataset} before any
+   * indexing happens, and again from {@link #runVariantComparison} right before actually running
+   * it. Re-loading is cheap (a small JSON file) and keeps this method free of state to thread
+   * through 400+ lines of the calling test method as a local variable.
+   */
+  private VariantComparison loadAndValidateVariantComparison(QueryProperties queryProperties)
+      throws IOException {
+    Path repoRoot = RepoPaths.evalDir().getParent();
+    Path comparisonFile =
+        repoRoot.resolve(
+            System.getProperty(VARIANT_COMPARISON_FILE_PROPERTY, DEFAULT_VARIANT_COMPARISON_FILE));
+    VariantComparison comparison = VariantComparisonDataset.load(comparisonFile);
+    comparison.requireExecutableReference(queryProperties);
+    return comparison;
+  }
+
+  /**
+   * Loads the declarative comparison, runs it, asserts the reference-variant self-check, and writes
+   * the report.
+   *
+   * <p>Loading, running and writing are guarded exactly like step 6 ({@link
+   * PipelineHarnessSupport#runAndWriteGuarded}, issue #1041 review, Befund 4): a {@link
+   * RuntimeException} or {@link IOException} here must not fail {@code
+   * evaluatesRetrievalQualityAgainstTheGoldenDataset}, or {@code checkRetrievalBaseline} — which
+   * {@code dependsOn} this task — would lose the raw-vector path's already-completed verdict to an
+   * observation this test never promised. The Referenzvarianten-Selbstprüfung assertions below stay
+   * hard on purpose: {@code assertThat(...).isEqualTo(...)} throws {@link AssertionError}, not
+   * {@link RuntimeException}, so it is not caught by the guard below and fails this test as any
+   * other assertion would — the one failure mode this method must never swallow, since it signals a
+   * bug in the variant mechanism itself, not a broken input.
+   */
+  private void runVariantComparison(
+      PipelineHarnessSupport.RunIdentity identity,
+      QueryProperties queryProperties,
+      List<GoldenCase> goldenCases,
+      UUID evalLibraryId) {
+    try {
+      VariantComparison comparison = loadAndValidateVariantComparison(queryProperties);
+      QueryServiceDependencies dependencies =
+          QueryServiceDependencies.fromContext(applicationContext);
+
+      VariantReport report =
+          VariantComparisonRunner.run(
+              comparison,
+              dependencies,
+              queryProperties,
+              DOMAIN,
+              identity,
+              indexingProperties,
+              evalLibraryId,
+              goldenCases);
+
+      // Referenzvarianten-Selbstprüfung (issue #1041 acceptance criteria): the reference variant
+      // (no parameter override) must reproduce, field for field, what the harness's own
+      // @Autowired QueryService bean computes for the unchanged production configuration — the
+      // very bean step 6 above already measured with, not a second, hand-built instance (issue
+      // #1041 review, Befund 1: a hand-built instance from QueryServiceDependencies would only
+      // prove the mechanism is internally deterministic, not that it matches the production-wired
+      // pipeline — a mismatched getBean(Class) result, a future AOP proxy, or a wrong constructor
+      // argument in QueryServiceDependencies could all pass such a check while measuring a
+      // different pipeline).
+      PipelineEvaluationReport directReferenceMeasurement =
+          PipelineHarnessSupport.measure(
+              DOMAIN,
+              identity,
+              queryService,
+              queryProperties,
+              indexingProperties,
+              evalLibraryId,
+              goldenCases,
+              Instant.now());
+      PipelineEvaluationReport referenceReport =
+          report.outcomes().stream()
+              .filter(o -> o.variant().name().equals(report.referenceVariant()))
+              .findFirst()
+              .orElseThrow()
+              .report();
+      assertThat(referenceReport.overall())
+          .as(
+              "reference variant must be bit-identical to a direct pipeline measurement through "
+                  + "the production-wired QueryService bean (Referenzvarianten-Selbstprüfung, "
+                  + "issue #1041)")
+          .isEqualTo(directReferenceMeasurement.overall());
+      assertThat(referenceReport.allQueryResults())
+          .as(
+              "reference variant's per-case results must be bit-identical to the direct measurement")
+          .isEqualTo(directReferenceMeasurement.allQueryResults());
+      // ignoringFields: runStartedAt/runDurationSeconds necessarily differ between two separate
+      // measurements taken seconds apart — every other field, including fetchK/maxSubQueries/etc.,
+      // must match exactly, so a variant-mechanism bug that silently applied an override the
+      // reference variant should not have (a rank-neutral one, invisible in overall()/
+      // allQueryResults() because it does not change which chunks were selected) still fails here.
+      assertThat(referenceReport.runConfiguration())
+          .usingRecursiveComparison()
+          .ignoringFields("runStartedAt", "runDurationSeconds")
+          .as("reference variant's run configuration must match the direct measurement's")
+          .isEqualTo(directReferenceMeasurement.runConfiguration());
+      log.info(
+          "Referenzvarianten-Selbstprüfung bestanden: bitgleiche Zahlen zum direkten Pipeline-Lauf"
+              + " über das produktiv verdrahtete QueryService-Bean.");
+
+      Path reportFile =
+          Path.of("build", "eval-reports", "variant-report-" + comparison.name() + ".json");
+      VariantReportWriter.writeJson(report, reportFile);
+      log.info(VariantReportWriter.renderSummary(report));
+      System.out.println("Variant report written to " + reportFile.toAbsolutePath());
+    } catch (RuntimeException | IOException e) {
+      log.error(
+          "Variantenvergleich fehlgeschlagen, Rohvektor- und Pipeline-Pfad unberührt — deren "
+              + "Messung und Baseline-Vergleich sind zu diesem Zeitpunkt bereits abgeschlossen "
+              + "und von diesem Fehler nicht betroffen. Für diesen Lauf fehlt nur der "
+              + "Variantenbericht.",
+          e);
+    }
   }
 
   private static WorstQuery toWorstQuery(RetrievalMetrics.QueryResult r) {
