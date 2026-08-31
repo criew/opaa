@@ -408,7 +408,8 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.runStartedAt(),
-            cfg.runDurationSeconds());
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
     EvaluationReport report = reportWith(withDifferentTopK);
 
     var result = BaselineComparator.compare(baseline, report);
@@ -708,7 +709,8 @@ class BaselineComparatorTest {
         goldenSha,
         121,
         "2026-08-03T00:00:00Z",
-        1004.0);
+        1004.0,
+        false);
   }
 
   private static Baseline baselineWith(Baseline.FixedPoints fixedPoints) {
@@ -776,7 +778,8 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.runStartedAt(),
-            cfg.runDurationSeconds());
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
     EvaluationReport report = reportWith(withDifferentChunkOverlap);
 
     var result = BaselineComparator.compare(baseline, report);
@@ -813,7 +816,8 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.runStartedAt(),
-            cfg.runDurationSeconds());
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
     EvaluationReport report = reportWith(withDifferentDocumentTopK);
 
     var result = BaselineComparator.compare(baseline, report);
@@ -850,7 +854,8 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.runStartedAt(),
-            cfg.runDurationSeconds());
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
     EvaluationReport report = reportWith(withDifferentChunkTopK);
 
     var result = BaselineComparator.compare(baseline, report);
