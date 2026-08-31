@@ -17,6 +17,11 @@ class VariantReportWriterTest {
     return new PipelineVariant(name, "desc", false, PipelineVariant.QueryOverrides.NONE);
   }
 
+  private static PipelineVariant variantWithOverrides(
+      String name, PipelineVariant.QueryOverrides overrides) {
+    return new PipelineVariant(name, "desc", false, overrides);
+  }
+
   private static PipelineEvaluationReport report() {
     var goldenCase =
         new GoldenCase("a", "test", "frage", List.of("a.md"), "cat", "easy", "de", "t", null);
@@ -46,6 +51,33 @@ class VariantReportWriterTest {
         .contains("reference")
         .contains("needs-reindex")
         .contains("requires reindex");
+  }
+
+  /**
+   * Issue #1041 review (second round): the effectively-changed-parameters line must actually name
+   * the override on a changed variant and say so explicitly on an unchanged one — otherwise a
+   * variant that changed nothing and a variant whose override happened to have no measurable effect
+   * are indistinguishable in the summary (the whole point of {@code describeOverrides}).
+   */
+  @Test
+  void rendersTheEffectivelyChangedParametersPerVariant() {
+    var reference = VariantOutcome.executed(variant("reference"), report());
+    var mmrOverride = new PipelineVariant.QueryOverrides(null, 0.7, null, null, null, null);
+    var changed = VariantOutcome.executed(variantWithOverrides("mmr-0.7", mmrOverride), report());
+    var comparisonAgainstReference = VariantComparisonRunner.delta(changed, reference);
+    var report =
+        new VariantReport(
+            "c",
+            "desc",
+            "comic-characters",
+            "reference",
+            List.of(reference, changed),
+            List.of(comparisonAgainstReference));
+
+    String summary = VariantReportWriter.renderSummary(report);
+
+    assertThat(summary).contains("keine Änderung");
+    assertThat(summary).contains("mmrLambda=0.7");
   }
 
   @Test

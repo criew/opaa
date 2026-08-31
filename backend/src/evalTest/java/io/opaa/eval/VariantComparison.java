@@ -78,15 +78,44 @@ public record VariantComparison(
   }
 
   /**
-   * Fails fast if {@link #reference()} would not actually run under {@code
-   * productionQueryProperties} — every prerequisite {@link VariantPrerequisites} checks (issue
-   * #1041 review, Befund 3/9). Cannot be enforced in the compact constructor above: the check needs
-   * the harness's production {@link QueryProperties}, which is not known when a comparison is
-   * merely parsed from its JSON file. Callers invoke this immediately after loading, before paying
-   * for the (tens-of-minutes) corpus indexing the comparison would otherwise only fail after — the
-   * same reasoning as {@code PipelineHarnessSupport#requireMeasurableConfiguration}.
+   * Fails fast, before any corpus indexing, on two classes of configuration error a comparison file
+   * can contain (issue #1041 review, two rounds — Befund 3/9, then a follow-up):
+   *
+   * <ol>
+   *   <li><b>any</b> variant's {@code queryOverrides} building an invalid {@link QueryProperties}
+   *       (e.g. an override {@code fetchK} below the production {@code topK}) — checked for every
+   *       variant listed, not only the reference. Leaving this to {@link VariantRunner} would let
+   *       the mistake surface only once the run reaches that variant, tens of minutes into the
+   *       harness run, where it is caught by {@code RetrievalEvaluationHarnessTest}'s guard and
+   *       silently drops that one variant's comparison down to a {@code log.error} instead of
+   *       failing the run outright;
+   *   <li>{@link #reference()} specifically not being executable at all (see {@link
+   *       VariantPrerequisites}) — every delta in the report is paired against it, so a skipped
+   *       reference variant would leave every other variant's delta undefined.
+   * </ol>
+   *
+   * <p>Cannot be enforced in the compact constructor above: the check needs the harness's
+   * production {@link QueryProperties}, which is not known when a comparison is merely parsed from
+   * its JSON file. Callers invoke this immediately after loading, before paying for the
+   * (tens-of-minutes) corpus indexing the comparison would otherwise only fail after — the same
+   * reasoning as {@code PipelineHarnessSupport#requireMeasurableConfiguration}.
    */
   public void requireExecutableReference(QueryProperties productionQueryProperties) {
+    for (PipelineVariant variant : variants) {
+      try {
+        VariantQueryProperties.apply(productionQueryProperties, variant.queryOverrides());
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException(
+            "Variante '"
+                + variant.name()
+                + "' des Variantenvergleichs '"
+                + name
+                + "' ergibt unter der Produktionskonfiguration eine ungültige Konfiguration: "
+                + e.getMessage(),
+            e);
+      }
+    }
+
     PipelineVariant reference = reference();
     QueryProperties effective =
         VariantQueryProperties.apply(productionQueryProperties, reference.queryOverrides());

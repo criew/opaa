@@ -106,4 +106,30 @@ class VariantComparisonTest {
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Referenzvariante");
   }
+
+  /**
+   * Issue #1041 review (second round): a broken override must fail fast for <b>every</b> variant,
+   * not only the reference — otherwise a non-reference variant's mistake would only surface once
+   * {@link VariantRunner} reaches it mid-run, well after the corpus indexing this check exists to
+   * happen before.
+   */
+  @Test
+  void requireExecutableReferenceRejectsAnInvalidOverrideOnAnyVariantNotOnlyTheReference() {
+    var invalidNonReference =
+        new PipelineVariant(
+            "b",
+            "desc",
+            false,
+            // fetchK=5 is below PRODUCTION_LIKE's topK=8 — QueryProperties' own compact
+            // constructor rejects that combination.
+            new PipelineVariant.QueryOverrides(5, null, null, null, null, null));
+    var comparison =
+        new VariantComparison(
+            "c", "desc", "domain", "a", List.of(variant("a"), invalidNonReference));
+
+    assertThatThrownBy(() -> comparison.requireExecutableReference(PRODUCTION_LIKE))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("'b'")
+        .hasMessageContaining("ungültige Konfiguration");
+  }
 }
