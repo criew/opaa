@@ -320,6 +320,17 @@ Rohvektor-Pfad spielt). Gehört zur Baseline-Folgearbeit, nicht zu #1039.
 > Entscheidungen 1–10 (Rohvektor-Pfad) und 11–16 (Pipeline-Messpfad) gelten unverändert. Was hier
 > hinzukommt, betrifft ausschließlich den Pipeline-Pfad — **die committeten Rohvektor-Baselines aus
 > #228/#234 bleiben unangetastet und gültig**, ihre `measurementContractVersion` bleibt bei 2.
+>
+> **Herkunft der Abweichungen:** Dieser Nachtrag weicht in zwei Punkten von
+> `retrieval-benchmark.md` §1 ab. Erstens erhöht er — wie schon der Nachtrag zu #1039, siehe dort
+> Entscheidung 16 — die **eigene** Vertragsversion des Pipeline-Pfads statt der
+> `measurementContractVersion`, die die Spezifikation nennt. Zweitens sagt die Spezifikation das
+> „unveränderte Fehlerkriterium aus ADR-0013" zu, während Entscheidung 19 unten für den
+> Pipeline-Pfad **eigene feste Anker der harten Untergrenze** festlegt (Formel, Toleranz und
+> fallzahlbasierte Prüfung bleiben wörtlich unverändert; nur die absoluten Anker sind
+> pfadspezifisch). Beides freigegeben vom Koordinator unter delegierter Maintainer-Autorität am
+> 2026-08-31; die Freigabe wird dem Maintainer im Abschlussbericht des Epics gemeldet. ADR-0013
+> trägt die entsprechende Verweiszeile in seinem Kopf.
 
 ### 17. Eine Baseline-Datei je Pfad und Domäne
 

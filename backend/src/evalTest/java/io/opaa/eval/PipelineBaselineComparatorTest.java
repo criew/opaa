@@ -11,9 +11,11 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Docker-free unit tests for the pipeline path's baseline comparison (issue #1040): that the five
- * previously unchecked query parameters now invalidate a baseline, that a pipeline comparison
- * cannot be run against a raw-vector baseline, and that the error criterion applied is literally
- * ADR-0013's.
+ * previously unchecked query parameters now invalidate a baseline, that the error criterion applied
+ * is literally ADR-0013's, and that this path's own absolute floors bind where they are meant to.
+ *
+ * <p>That a raw-vector baseline can never be loaded as a pipeline baseline is covered one layer
+ * earlier, in {@link PipelineBaselineTest} — a comparison against such a file never gets to run.
  */
 class PipelineBaselineComparatorTest {
 
@@ -294,6 +296,52 @@ class PipelineBaselineComparatorTest {
             check -> Baseline.OVERALL.equals(check.group()) && "ndcgAt8".equals(check.metric()))
         .singleElement()
         .satisfies(check -> assertThat(check.hardFloor()).isGreaterThan(0.0));
+  }
+
+  /**
+   * Pins this path's own absolute floors (ADR-0012, Nachtrag, decision 19; ADR-0013 header note) at
+   * the point where they actually bind — a baseline low enough that the relative component (0.8 ·
+   * baseline) falls below the anchor, which is the whole reason the anchor exists. Without this
+   * test the two constants could be edited to any value while every other test stayed green, since
+   * the relative component dominates for every realistic baseline.
+   */
+  @Test
+  void hardFloorFallsBackToThisPathsOwnAbsoluteAnchorsOnceTheBaselineHasEroded() {
+    PipelineBaseline eroded =
+        new PipelineBaseline(
+            PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION,
+            fixedPoints(),
+            groups(0.15, 20),
+            "2026-08-31",
+            null,
+            "eroded baseline fixture");
+    // 0.8 * 0.15 = 0.12, below the Hit Rate@5 anchor of 0.15 and below the 0.125 ranking anchors:
+    // the anchors must win via max(...). The reported 0.12 clears the relative component exactly
+    // and must still fail — that failure is the anchors doing their job, nothing else does it here.
+    PipelineEvaluationReport report = report(0.12, 20, matchingRunConfiguration());
+
+    var result = PipelineBaselineComparator.compare(eroded, report);
+    var overall = result.checks().stream().filter(c -> Baseline.OVERALL.equals(c.group())).toList();
+
+    assertThat(overall)
+        .filteredOn(c -> "hitRateAt5".equals(c.metric()))
+        .singleElement()
+        .satisfies(
+            c -> {
+              assertThat(c.hardFloor())
+                  .isCloseTo(PipelineBaselineComparator.HARD_FLOOR_ABSOLUTE_HIT_RATE, within(DELTA))
+                  .isCloseTo(0.15, within(DELTA));
+              assertThat(c.passesHardFloor()).isFalse();
+            });
+    assertThat(overall)
+        .filteredOn(c -> List.of("mrrAt8", "ndcgAt8", "recallAt8").contains(c.metric()))
+        .hasSize(3)
+        .allSatisfy(
+            c -> {
+              assertThat(c.hardFloor()).isCloseTo(0.125, within(DELTA));
+              assertThat(c.passesHardFloor()).isFalse();
+            });
+    assertThat(result.passed()).isFalse();
   }
 
   @Test

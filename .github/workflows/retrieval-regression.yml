@@ -59,12 +59,17 @@ jobs:
             # Urteil: eigene Delta-Tabelle, eigener Testfall, kein gemeinsames Ja/Nein mit dem
             # Rohvektor-Pfad (die beiden Pfade sind nicht ineinander umrechenbar).
             pipeline_report_file: pipeline-baseline-comparison-comic-characters.md
+            # pipeline_gated steuert, ob der Pipeline-Pfad dieser Domäne beurteilt wird. Jede
+            # Ausgabe des Jobs (Job-Zusammenfassung, PR-Kommentar, Alarm-Issue) liest diesen
+            # Schlüssel und benennt den Zustand ausdrücklich — ein grüner Lauf darf nicht
+            # verschweigen, dass ein Pfad unbeurteilt blieb.
+            pipeline_gated: true
+            pipeline_state_note: ''
             artifact_name: retrieval-metrics
             metrics_file: retrieval-metrics.json
             pipeline_metrics_file: pipeline-metrics-comic-characters.json
             chunk_map_file: chunk-map-comic-characters.json
             marker: '<!-- retrieval-regression-alert -->'
-            pr_fallback_heading: '## Retrieval-Regression gegen Baseline'
             invariant_hint: Ein-Chunk-Invariante-Verletzung
             failure_prefix: 'Erneut fehlgeschlagen:'
             issue_intro: '**Automatischer nächtlicher Retrieval-Regressionslauf fehlgeschlagen.**'
@@ -81,12 +86,13 @@ jobs:
             exec_step_name: 'Retrieval-Regression (city-landmarks) ausführen'
             report_file: baseline-comparison-city-landmarks.md
             pipeline_report_file: pipeline-baseline-comparison-city-landmarks.md
+            pipeline_gated: false
+            pipeline_state_note: 'Pipeline-Baseline noch nicht gezogen — Issue #1081. Dieser Pfad wird bewusst nicht beurteilt: Sein Report entsteht bei jedem Lauf und liegt im Artefakt, aber es gibt keine committete Baseline, gegen die verglichen werden könnte. Das Urteil dieses Laufs betrifft ausschließlich den Rohvektor-Pfad.'
             artifact_name: retrieval-metrics-city-landmarks
             metrics_file: retrieval-metrics-city-landmarks.json
             pipeline_metrics_file: pipeline-metrics-city-landmarks.json
             chunk_map_file: chunk-map-city-landmarks.json
             marker: '<!-- retrieval-regression-alert-city-landmarks -->'
-            pr_fallback_heading: '## Retrieval-Regression gegen Baseline (city-landmarks)'
             invariant_hint: Mehr-Chunk-Invariante-Verletzung
             failure_prefix: 'Erneut fehlgeschlagen (city-landmarks):'
             issue_intro: '**Automatischer nächtlicher Retrieval-Regressionslauf (city-landmarks) fehlgeschlagen.**'
@@ -224,17 +230,46 @@ jobs:
       # Workflow.
       # Beide Delta-Tabellen, je Pfad eine, hintereinander — nie zu einer zusammengefasst: die
       # Zahlen der beiden Pfade sind an unterschiedlichen Fenstern und mit unterschiedlicher
-      # Schwellenbehandlung gemessen (ADR-0012, Nachtrag, Entscheidung 12).
+      # Schwellenbehandlung gemessen (ADR-0012, Nachtrag, Entscheidung 12). Jeder Pfad erscheint in
+      # jedem Lauf mit einem benannten Zustand — beurteilt, nicht erreicht oder bewusst ungegated.
+      # Ein stillschweigend fehlender Abschnitt wäre die eine Ausgabe, die ein unbeurteilter Pfad
+      # nicht haben darf: Ein grüner Lauf sähe dann aus, als sei alles geprüft worden.
       - name: Report der Job-Zusammenfassung hinzufügen
         if: always()
         run: |
-          for f in "${{ matrix.report_file }}" "${{ matrix.pipeline_report_file }}"; do
-            if [ -f "backend/build/eval-reports/$f" ]; then
-              cat "backend/build/eval-reports/$f" >> "$GITHUB_STEP_SUMMARY"
-              echo "" >> "$GITHUB_STEP_SUMMARY"
-            fi
-          done
+          missing_note="Keine Delta-Tabelle — dieser Pfad hat den Baseline-Vergleich nicht erreicht (siehe Workflow-Logs)."
 
+          if [ -f "backend/build/eval-reports/${{ matrix.report_file }}" ]; then
+            cat "backend/build/eval-reports/${{ matrix.report_file }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## Rohvektor-Pfad (${{ matrix.domain }})" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "$missing_note" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ matrix.pipeline_gated }}" = "true" ]; then
+            if [ -f "backend/build/eval-reports/${{ matrix.pipeline_report_file }}" ]; then
+              cat "backend/build/eval-reports/${{ matrix.pipeline_report_file }}" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "## Pipeline-Messpfad (${{ matrix.domain }})" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "$missing_note" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            echo "## Pipeline-Messpfad (${{ matrix.domain }}) — nicht beurteilt" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "${{ matrix.pipeline_state_note }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+      # Die Delta-Tabelle des Pipeline-Pfads wird nur für eine Domäne erwartet, deren Pipeline-Pfad
+      # auch beurteilt wird — für eine ungegatete Domäne entsteht sie nie, und sie als erwartete
+      # Datei zu führen hieße, `if-no-files-found` dauerhaft auf einen Zustand einzustellen, der
+      # gar keiner ist. `warn` bleibt trotzdem: Bricht ein Lauf vor dem Baseline-Vergleich ab
+      # (Manifest-, Invarianten- oder Zeitlimit-Fehlschlag), fehlen die Reports tatsächlich — ein
+      # `error` würde dann den Upload-Schritt fehlschlagen lassen und den eigentlichen Befund
+      # überdecken.
       - name: Report als Artefakt hochladen
         if: always()
         uses: actions/upload-artifact@v7
@@ -244,7 +279,7 @@ jobs:
             backend/build/eval-reports/${{ matrix.metrics_file }}
             backend/build/eval-reports/${{ matrix.pipeline_metrics_file }}
             backend/build/eval-reports/${{ matrix.report_file }}
-            backend/build/eval-reports/${{ matrix.pipeline_report_file }}
+            ${{ matrix.pipeline_gated && format('backend/build/eval-reports/{0}', matrix.pipeline_report_file) || '' }}
             backend/build/eval-reports/${{ matrix.chunk_map_file }}
           if-no-files-found: warn
           retention-days: 90
@@ -262,22 +297,26 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            // Ein Abschnitt je Messpfad, jeder mit eigener Überschrift und eigenem Urteil. Fehlt
-            // einer, wird genau das benannt, statt den anderen als Gesamtaussage zu lesen.
-            const paths = [
-              ['backend/build/eval-reports/${{ matrix.report_file }}', 'Rohvektor-Pfad'],
-              ['backend/build/eval-reports/${{ matrix.pipeline_report_file }}', 'Pipeline-Messpfad'],
-            ];
-            const sections = paths.map(([path, label]) =>
+            // Ein Abschnitt je Messpfad, jeder mit eigener Überschrift und benanntem Zustand:
+            // beurteilt, nicht erreicht, oder bewusst ungegated. Ein "nicht erreicht" für einen
+            // Pfad zu behaupten, der absichtlich nicht beurteilt wird, wäre sachlich falsch.
+            const domain = '${{ matrix.domain }}';
+            const pipelineGated = ${{ matrix.pipeline_gated }};
+            const notReached = 'Keine Delta-Tabelle erzeugt — dieser Pfad hat den ' +
+              'Baseline-Vergleich nicht erreicht (siehe Workflow-Logs).';
+            const section = (path, label) =>
               fs.existsSync(path)
                 ? fs.readFileSync(path, 'utf8')
-                : `### ${label}\n\nKeine Delta-Tabelle erzeugt — dieser Pfad hat den ` +
-                  'Baseline-Vergleich nicht erreicht (siehe Workflow-Logs).'
-            );
-            const body = sections.join('\n\n---\n\n') ||
-              '${{ matrix.pr_fallback_heading }}\n\nDer Lauf hat keinen Report erzeugt ' +
-              '(vermutlich vor der Baseline-Prüfung abgebrochen) — siehe die Workflow-Logs für ' +
-              'Details.';
+                : `## ${label} (${domain})\n\n${notReached}`;
+            const body = [
+              section('backend/build/eval-reports/${{ matrix.report_file }}', 'Rohvektor-Pfad'),
+              pipelineGated
+                ? section(
+                    'backend/build/eval-reports/${{ matrix.pipeline_report_file }}',
+                    'Pipeline-Messpfad')
+                : `## Pipeline-Messpfad (${domain}) — nicht beurteilt\n\n` +
+                  '${{ matrix.pipeline_state_note }}',
+            ].join('\n\n---\n\n');
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -309,23 +348,35 @@ jobs:
           script: |
             const fs = require('fs');
             const marker = '${{ matrix.marker }}';
+            const domain = '${{ matrix.domain }}';
+            const pipelineGated = ${{ matrix.pipeline_gated }};
             const missing = '_Keine Delta-Tabelle für diesen Pfad — er hat den Baseline-Vergleich ' +
               'nicht erreicht (z. B. Manifest- oder ${{ matrix.invariant_hint }}, ein ' +
               'fehlgeschlagener Messlauf oder das Zeitlimit). Siehe Workflow-Logs._';
-            const sections = [
-              ['backend/build/eval-reports/${{ matrix.report_file }}', 'Rohvektor-Pfad'],
-              ['backend/build/eval-reports/${{ matrix.pipeline_report_file }}', 'Pipeline-Messpfad'],
-            ].map(([path, label]) =>
+            const section = (path, label) =>
               fs.existsSync(path)
                 ? fs.readFileSync(path, 'utf8')
-                : `### ${label}\n\n${missing}`
-            );
-            const details = sections.join('\n\n---\n\n');
-            const pathNote = 'Der Lauf führt zwei getrennte Urteile: Rohvektor-Pfad und ' +
-              'Pipeline-Messpfad, jeder gegen seine eigene Baseline. Fehlgeschlagen ist der Pfad, ' +
-              'dessen Tabelle unten eine Regression oder eine ungültige Baseline ausweist — der ' +
-              'andere kann im selben Lauf grün sein. Die Zahlen der beiden Pfade sind nicht ' +
-              'miteinander vergleichbar (ADR-0012, Nachtrag Pipeline-Messpfad).';
+                : `## ${label} (${domain})\n\n${missing}`;
+            const details = [
+              section('backend/build/eval-reports/${{ matrix.report_file }}', 'Rohvektor-Pfad'),
+              pipelineGated
+                ? section(
+                    'backend/build/eval-reports/${{ matrix.pipeline_report_file }}',
+                    'Pipeline-Messpfad')
+                : `## Pipeline-Messpfad (${domain}) — nicht beurteilt\n\n` +
+                  '${{ matrix.pipeline_state_note }}',
+            ].join('\n\n---\n\n');
+            // Der Hinweis muss zum tatsächlichen Zustand dieser Domäne passen: "zwei getrennte
+            // Urteile" wäre für eine Domäne mit ungegatetem Pipeline-Pfad schlicht unwahr.
+            const pathNote = pipelineGated
+              ? 'Der Lauf führt zwei getrennte Urteile: Rohvektor-Pfad und Pipeline-Messpfad, ' +
+                'jeder gegen seine eigene Baseline. Fehlgeschlagen ist der Pfad, dessen Tabelle ' +
+                'unten eine Regression oder eine ungültige Baseline ausweist — der andere kann im ' +
+                'selben Lauf grün sein. Die Zahlen der beiden Pfade sind nicht miteinander ' +
+                'vergleichbar (ADR-0012, Nachtrag Pipeline-Messpfad).'
+              : 'Dieser Lauf führt genau ein Urteil, das des Rohvektor-Pfads: Der Pipeline-Pfad ' +
+                'dieser Domäne wird bewusst nicht beurteilt (siehe den zweiten Abschnitt unten). ' +
+                'Der Fehlschlag betrifft daher den Rohvektor-Pfad.';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const commentBody = `${{ matrix.failure_prefix }} ${runUrl}\n\n${pathNote}\n\n${details}`;
             const issueBody = `${marker}\n\n${{ matrix.issue_intro }}\n\n${pathNote}\n\nWorkflow-Lauf: ${runUrl}\n\n${details}`;

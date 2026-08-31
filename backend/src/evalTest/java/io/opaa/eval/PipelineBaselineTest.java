@@ -31,6 +31,23 @@ class PipelineBaselineTest {
         .isEqualTo(94);
   }
 
+  /**
+   * Issue #1040's first acceptance criterion from the loading side: the two paths' baselines are
+   * not interchangeable files that happen to live in the same directory. A raw-vector baseline
+   * handed to this loader must fail, not deserialize into a pipeline baseline whose {@code …At8}
+   * fields were quietly defaulted from {@code …At10} data that means something else.
+   */
+  @Test
+  void refusesToLoadARawVectorBaselineAsAPipelineBaseline() {
+    Path rawVectorBaseline =
+        RepoPaths.evalDir()
+            .resolve("baseline")
+            .resolve(EvalDomainConfig.COMIC_CHARACTERS.baselineFileName());
+
+    assertThatThrownBy(() -> PipelineBaseline.load(rawVectorBaseline))
+        .isInstanceOf(Exception.class);
+  }
+
   @Test
   void rejectsAGroupWithZeroDistinctExpectedDocumentSets() throws IOException {
     Path file = tempDir.resolve("pipeline-baseline.json");

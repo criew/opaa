@@ -83,11 +83,10 @@ import java.util.function.ToIntFunction;
  * drop from rank 1 to rank 3 — no lost hit required — to breach the mean tolerance more than twice
  * over.
  *
- * <p><b>Fix (issue #306, ADR-0013 Nachtrag):</b> {@link #addMetricCheck} determines, per
- * group/metric pair and dynamically (not from a hardcoded pair list — see {@link
- * #usesCaseBasedCheck}), whether {@code toleranceFor(baselineValue, nEff) < 1.0 / n}. Where that
- * holds, the pair must clear <b>both</b> of the following (a conjunction, not a replacement — see
- * "Review correction" below):
+ * <p><b>Fix (issue #306, ADR-0013 Nachtrag):</b> {@link #metricCheck} determines, per group/metric
+ * pair and dynamically (not from a hardcoded pair list — see {@link #usesCaseBasedCheck}), whether
+ * {@code toleranceFor(baselineValue, nEff) < 1.0 / n}. Where that holds, the pair must clear
+ * <b>both</b> of the following (a conjunction, not a replacement — see "Review correction" below):
  *
  * <ol>
  *   <li>A case-count test: the number of cases in the group scoring above zero ({@link
@@ -660,14 +659,14 @@ public final class BaselineComparator {
 
   /**
    * Issue #306: whether {@code meanTolerance} is tighter than the shift one flipped case causes
-   * ({@code 1/n}) — the condition under which {@link #addMetricCheck} additionally requires the
+   * ({@code 1/n}) — the condition under which {@link #metricCheck} additionally requires the
    * case-count test (see class Javadoc) to pass, on top of the (widened) mean-tolerance test.
    * Deliberately computed from the *current* {@code toleranceFor(...)} result and a raw case count
    * rather than a hardcoded pair list, so it self-adjusts to whichever pairs qualify under a future
    * baseline re-measurement — see the class Javadoc. The case count passed in is always the
-   * baseline's own {@code n} (issue #306 review, Befund 4) — see the call site in {@link
-   * #addMetricCheck} — matching the "1/n" wording in ADR-0013's "Offen" section and README table:
-   * it is the raw case count the *baseline's* mean was actually divided by.
+   * baseline's own {@code n} (issue #306 review, Befund 4) — see the {@code baseN} parameter of
+   * {@link #metricCheck} — matching the "1/n" wording in ADR-0013's "Offen" section and README
+   * table: it is the raw case count the *baseline's* mean was actually divided by.
    */
   static boolean usesCaseBasedCheck(double meanTolerance, int n) {
     return n > 0 && meanTolerance < (1.0 / n) - EPSILON;
