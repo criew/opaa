@@ -189,7 +189,7 @@ Die beiden Pfade messen **unterschiedliche Dinge und sind nicht ineinander umrec
 | Fenster | `documentTopK=10` | `opaa.query.top-k=8` |
 | Metriken | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | **Hit Rate@5, MRR@8, nDCG@8, Recall@8** |
 | Report | `build/eval-reports/retrieval-metrics[-<domäne>].json` | `build/eval-reports/pipeline-metrics-<domäne>.json` |
-| Baseline | `eval/baseline/<domäne>.json` | `eval/baseline/pipeline-<domäne>.json` |
+| Baseline | `eval/baseline/<domäne>.json` | `eval/baseline/pipeline-<domäne>.json` (city-landmarks: noch nicht gezogen, Issue #1081) |
 | Vergleich im nächtlichen Job | `BaselineRegressionTest` | `PipelineBaselineRegressionTest` |
 
 Weil die Schwelle im Pipeline-Pfad tatsächlich greift, kann ein Dokument dort ganz aus der

@@ -387,6 +387,13 @@ wie ein Pipeline-Fehler künftig gatet, ohne das Rohvektor-Urteil zu verhindern:
   ausdrücklich, dass der jeweils andere Pfad im selben Lauf grün sein kann. Die frühere,
   pauschale „Retrieval-Regression"-Begründung wäre mit zwei Urteilen irreführend gewesen.
 
+**Eine Domäne ohne gezogene Pipeline-Baseline wird nicht gegated, sondern sichtbar ausgelassen.**
+`city-landmarks` hat seine Pipeline-Baseline noch nicht (Issue #1081); ihr Pipeline-Vergleich wird
+deshalb im Gradle-Task ausdrücklich nicht eingehängt (`pipelineBaselineTestClass = null` mit
+Begründung), statt gegen eine nicht existierende Datei zu laufen. Das ist die Alternative zu einem
+stillen Sonderfall im Vergleichscode („keine Baseline → bestanden"), der genau die Lücke erzeugte,
+die dieser Nachtrag schließen soll: eine Prüfung, die aussieht, als fände sie statt.
+
 **Eigene absolute Anker der harten Untergrenze.** Die *Formel* ist unverändert
 (`max(0,8 · Baselinewert, feste Untergrenze)`); die festen Untergrenzen des Pipeline-Pfads sind
 eigene Werte: Hit Rate@5 ≥ 0,15, MRR@8/nDCG@8/Recall@8 ≥ 0,125 — die Hälfte der ADR-0013-Werte. Die

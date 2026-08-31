@@ -83,13 +83,18 @@ dependencies {
 // #1040). JUnit runs both classes regardless of the other's outcome, so each path gets its own
 // verdict and its own delta table — a red pipeline path never suppresses the raw-vector judgment
 // and vice versa, which is the reason they are two test classes rather than one.
+//
+// `pipelineBaselineTestClass` is null for a domain whose pipeline baseline has not been drawn yet:
+// wiring the test without a committed baseline would turn the nightly job red for a measurement
+// that was never taken. See the call sites for which domain that currently is and under which
+// issue it is being drawn.
 fun registerEvalDomain(
     name: String,
     evaluateDescription: String,
     checkDescription: String,
     harnessTestClass: String,
     baselineTestClass: String,
-    pipelineBaselineTestClass: String,
+    pipelineBaselineTestClass: String?,
 ) {
     val evaluateTaskName = "evaluate${name}Retrieval"
     tasks.register<Test>(evaluateTaskName) {
@@ -125,7 +130,9 @@ fun registerEvalDomain(
         outputs.upToDateWhen { false }
         filter {
             includeTestsMatching(baselineTestClass)
-            includeTestsMatching(pipelineBaselineTestClass)
+            if (pipelineBaselineTestClass != null) {
+                includeTestsMatching(pipelineBaselineTestClass)
+            }
         }
         testLogging {
             events("passed", "skipped", "failed", "standard_out")
@@ -158,11 +165,17 @@ registerEvalDomain(
         "against eval/corpus/city-landmarks using Testcontainers (pgvector + Ollama). Not part " +
         "of build/check.",
     checkDescription = "Runs evaluateCityLandmarksRetrieval, then fails if the result regresses " +
-        "beyond tolerance against eval/baseline/city-landmarks.json (raw-vector path, issue #234) " +
-        "or eval/baseline/pipeline-city-landmarks.json (pipeline path, issue #1040). Needs Docker.",
+        "beyond tolerance against eval/baseline/city-landmarks.json (issue #234). Needs Docker.",
     harnessTestClass = "io.opaa.eval.CityLandmarksRetrievalEvaluationHarnessTest",
     baselineTestClass = "io.opaa.eval.CityLandmarksBaselineRegressionTest",
-    pipelineBaselineTestClass = "io.opaa.eval.CityLandmarksPipelineBaselineRegressionTest",
+    // Pipeline-Pfad noch ungegated: eval/baseline/pipeline-city-landmarks.json ist noch nicht
+    // gezogen (Issue #1081 — die Ziehung braucht einen ungestörten ~2-Stunden-Lauf und erfolgt aus
+    // dem CPU-Artefakt des nächtlichen Laufs). CityLandmarksPipelineBaselineRegressionTest ist
+    // fertig und wird mit dieser Baseline zusammen hier eingehängt; bis dahin liefe es gegen eine
+    // nicht existierende Baseline und färbte den nächtlichen Job rot für eine Messung, die nie
+    // stattgefunden hat. Der Pipeline-Report dieser Domäne entsteht weiterhin bei jedem Lauf und
+    // liegt im Artefakt.
+    pipelineBaselineTestClass = null,
 )
 
 // Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
