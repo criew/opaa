@@ -42,6 +42,7 @@ class CityLandmarksBaselineRegressionTest {
         JsonMapper.builder()
             .build()
             .readValue(Files.readString(REPORT_FILE), EvaluationReport.class);
+    BaselineComparator.requireBaselineComparable(report);
     Path baselineFile =
         RepoPaths.evalDir()
             .resolve("baseline")

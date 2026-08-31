@@ -49,7 +49,8 @@ class VariantComparisonRunnerTest {
         1,
         PipelineHarnessSupport.SEARCH_SCOPE_NOTE,
         "2026-08-31T00:00:00Z",
-        1.0);
+        1.0,
+        false);
   }
 
   private static PipelineVariant variant(String name) {

@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -169,61 +170,23 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   static PostgreSQLContainer postgres =
       new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
 
-  @Container
-  static OllamaContainer ollama =
-      new OllamaContainer(DockerImageName.parse(OLLAMA_IMAGE))
-          // Testcontainers' OllamaContainer auto-requests a GPU (device request, all GPUs)
-          // whenever the Docker daemon merely *lists* an "nvidia" runtime — regardless of the
-          // configured default runtime and regardless of whether that runtime actually works
-          // (`docker info` | Runtimes). On a host with a broken WSL2/GPU passthrough this device
-          // request alone makes container creation fail outright. The harness has no GPU
-          // requirement — nomic-embed-text embeds on CPU — so the auto-added device request is
-          // cleared again here; this createContainerCmdModifier runs after the container's own
-          // and therefore wins. Forcing CPU is also deliberately good for baseline stability, not
-          // just a workaround: CPU and GPU embedding kernels are not guaranteed to be
-          // bit-identical,
-          // so a GPU-embedded run would not be comparable across machines or to CI. Opt out for
-          // local experiments with -Dopaa.eval.allowGpu=true.
-          .withCreateContainerCmdModifier(
-              cmd -> {
-                boolean allowGpu = Boolean.getBoolean(ALLOW_GPU_PROPERTY);
-                if (!allowGpu) {
-                  cmd.getHostConfig().withDeviceRequests(List.of());
-                  // Defensive: prove the clear above actually took effect, instead of trusting
-                  // modifier-ordering silently. A future Testcontainers upgrade that changes when
-                  // OllamaContainer's own GPU-adding modifier runs relative to this one would
-                  // otherwise reintroduce a GPU device request without any visible failure.
-                  var deviceRequests = cmd.getHostConfig().getDeviceRequests();
-                  if (deviceRequests != null && !deviceRequests.isEmpty()) {
-                    throw new IllegalStateException(
-                        "Expected no GPU device requests on the Ollama container ("
-                            + ALLOW_GPU_PROPERTY
-                            + "=false), but found: "
-                            + deviceRequests
-                            + ". A Testcontainers upgrade likely reordered "
-                            + "createContainerCmdModifier calls.");
-                  }
-                }
-              })
-          // Named volume for the model cache — see OLLAMA_MODEL_VOLUME javadoc above.
-          .withCreateContainerCmdModifier(
-              cmd -> {
-                var existingBinds = cmd.getHostConfig().getBinds();
-                var binds = new ArrayList<Bind>();
-                if (existingBinds != null) {
-                  binds.addAll(List.of(existingBinds));
-                }
-                binds.add(new Bind(OLLAMA_MODEL_VOLUME, new Volume(OLLAMA_MODEL_VOLUME_PATH)));
-                cmd.getHostConfig().withBinds(binds.toArray(new Bind[0]));
-              });
+  // Not @Container-managed: issue #1076 needs to skip container creation entirely when
+  // opaa.eval.ollamaBaseUrl selects an external endpoint, and TestcontainersExtension does not
+  // support a conditionally-null @Container field. Started (if at all) by startOllamaIfNeeded()
+  // below, before Spring's context preparation reads ollamaEndpoint() via @DynamicPropertySource —
+  // preparation happens on first test-instance construction, which is always after every @BeforeAll
+  // method has run.
+  static OllamaContainer ollama;
 
   @org.junit.jupiter.api.io.TempDir static Path corpusWorkingDir;
 
   @BeforeAll
   static void pullEmbeddingModel() throws IOException, InterruptedException {
-    // Check the (local, in-container) /api/tags endpoint before pulling anything. If the model is
-    // already present with exactly the expected digest — the common case on a warm
-    // OLLAMA_MODEL_VOLUME, whether on a developer machine or restored from the CI cache (see
+    startOllamaIfNeeded();
+
+    // Check the /api/tags endpoint before pulling anything. If the model is already present with
+    // exactly the expected digest — the common case on a warm OLLAMA_MODEL_VOLUME, whether on a
+    // developer machine or restored from the CI cache (see
     // .github/workflows/retrieval-regression.yml) — skip 'ollama pull' entirely. Without this
     // check, 'ollama pull' always reaches out to the model registry to resolve the tag's manifest
     // even when every layer is already cached locally, which contradicted this harness's claim
@@ -231,31 +194,40 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     // cache (PR #301 review, Befund 5). Narrowly scoped claim, not "no third-party network access
     // at all": the pgvector/pgvector and ollama/ollama base images are still pulled from Docker
     // Hub regardless of this check (Testcontainers itself does that, independent of the model). GET
-    // /api/tags itself never leaves the Docker network either way — it talks to the Ollama
-    // container this test just started, not to any third party.
+    // /api/tags itself never leaves the Docker network either way in the default (Testcontainer)
+    // mode — it talks to the Ollama container this test just started, not to any third party.
     String cachedDigest = tryFetchEmbeddingModelDigest();
     if (cachedDigest != null && EXPECTED_EMBEDDING_MODEL_DIGEST.equalsIgnoreCase(cachedDigest)) {
       log.info(
-          "{} already present in the Ollama Testcontainer with the expected digest {} — skipping "
-              + "'ollama pull' (no third-party network access needed).",
+          "{} already present at {} with the expected digest {} — skipping 'ollama pull'.",
           EMBEDDING_MODEL,
+          ollamaEndpoint(),
           cachedDigest);
       actualEmbeddingModelDigest = cachedDigest;
       return;
     }
 
     log.info(
-        "Pulling {} into the Ollama Testcontainer (cached in the '{}' Docker volume after the "
-            + "first run)...",
+        "Pulling {} into the Ollama endpoint at {}"
+            + (EvalOllamaEndpoint.isExternal()
+                ? "..."
+                : " (cached in the '"
+                    + OLLAMA_MODEL_VOLUME
+                    + "' Docker volume after the first "
+                    + "run)..."),
         EMBEDDING_MODEL,
-        OLLAMA_MODEL_VOLUME);
-    var pullResult = ollama.execInContainer("ollama", "pull", EMBEDDING_MODEL);
-    if (pullResult.getExitCode() != 0) {
-      throw new IllegalStateException(
-          "Failed to pull '"
-              + EMBEDDING_MODEL
-              + "' in the Ollama container: "
-              + pullResult.getStderr());
+        ollamaEndpoint());
+    if (EvalOllamaEndpoint.isExternal()) {
+      pullEmbeddingModelViaHttp();
+    } else {
+      var pullResult = ollama.execInContainer("ollama", "pull", EMBEDDING_MODEL);
+      if (pullResult.getExitCode() != 0) {
+        throw new IllegalStateException(
+            "Failed to pull '"
+                + EMBEDDING_MODEL
+                + "' in the Ollama container: "
+                + pullResult.getStderr());
+      }
     }
     actualEmbeddingModelDigest = fetchEmbeddingModelDigest();
     if (!EXPECTED_EMBEDDING_MODEL_DIGEST.equalsIgnoreCase(actualEmbeddingModelDigest)) {
@@ -271,6 +243,94 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
               + "evaluateRetrieval run, updated numbers in the PR), not a code bug.");
     }
     log.info("Embedding model digest verified: {}", actualEmbeddingModelDigest);
+  }
+
+  /**
+   * Starts the Ollama Testcontainer, unless {@link EvalOllamaEndpoint#isExternal()} selects an
+   * external endpoint instead (issue #1076) — in which case no container is created at all and
+   * {@link #ollamaEndpoint()} returns that external URL for the rest of the run. Runs from {@link
+   * #pullEmbeddingModel()}, itself a {@code @BeforeAll}; Spring's context preparation (which reads
+   * {@link #ollamaEndpoint()} via {@link #configureProperties(DynamicPropertyRegistry)}) only
+   * happens once every {@code @BeforeAll} method has completed, so this ordering is safe regardless
+   * of {@code @BeforeAll} method declaration order.
+   */
+  private static void startOllamaIfNeeded() {
+    if (EvalOllamaEndpoint.isExternal()) {
+      log.warn(
+          "Using external Ollama endpoint {} ({} system property) instead of a Testcontainer — "
+              + "this run is NOT comparable to the pinned CI/baseline numbers (analogous to the {} "
+              + "opt-out), see eval/README.md, \"Externer Ollama-Endpunkt\".",
+          EvalOllamaEndpoint.externalBaseUrl(),
+          EvalOllamaEndpoint.BASE_URL_PROPERTY,
+          ALLOW_GPU_PROPERTY);
+      return;
+    }
+    ollama =
+        new OllamaContainer(DockerImageName.parse(OLLAMA_IMAGE))
+            // Testcontainers' OllamaContainer auto-requests a GPU (device request, all GPUs)
+            // whenever the Docker daemon merely *lists* an "nvidia" runtime — regardless of the
+            // configured default runtime and regardless of whether that runtime actually works
+            // (`docker info` | Runtimes). On a host with a broken WSL2/GPU passthrough this device
+            // request alone makes container creation fail outright. The harness has no GPU
+            // requirement — nomic-embed-text embeds on CPU — so the auto-added device request is
+            // cleared again here; this createContainerCmdModifier runs after the container's own
+            // and therefore wins. Forcing CPU is also deliberately good for baseline stability, not
+            // just a workaround: CPU and GPU embedding kernels are not guaranteed to be
+            // bit-identical,
+            // so a GPU-embedded run would not be comparable across machines or to CI. Opt out for
+            // local experiments with -Dopaa.eval.allowGpu=true.
+            .withCreateContainerCmdModifier(
+                cmd -> {
+                  boolean allowGpu = Boolean.getBoolean(ALLOW_GPU_PROPERTY);
+                  if (!allowGpu) {
+                    cmd.getHostConfig().withDeviceRequests(List.of());
+                    // Defensive: prove the clear above actually took effect, instead of trusting
+                    // modifier-ordering silently. A future Testcontainers upgrade that changes when
+                    // OllamaContainer's own GPU-adding modifier runs relative to this one would
+                    // otherwise reintroduce a GPU device request without any visible failure.
+                    var deviceRequests = cmd.getHostConfig().getDeviceRequests();
+                    if (deviceRequests != null && !deviceRequests.isEmpty()) {
+                      throw new IllegalStateException(
+                          "Expected no GPU device requests on the Ollama container ("
+                              + ALLOW_GPU_PROPERTY
+                              + "=false), but found: "
+                              + deviceRequests
+                              + ". A Testcontainers upgrade likely reordered "
+                              + "createContainerCmdModifier calls.");
+                    }
+                  }
+                })
+            // Named volume for the model cache — see OLLAMA_MODEL_VOLUME javadoc above.
+            .withCreateContainerCmdModifier(
+                cmd -> {
+                  var existingBinds = cmd.getHostConfig().getBinds();
+                  var binds = new ArrayList<Bind>();
+                  if (existingBinds != null) {
+                    binds.addAll(List.of(existingBinds));
+                  }
+                  binds.add(new Bind(OLLAMA_MODEL_VOLUME, new Volume(OLLAMA_MODEL_VOLUME_PATH)));
+                  cmd.getHostConfig().withBinds(binds.toArray(new Bind[0]));
+                });
+    ollama.start();
+  }
+
+  @AfterAll
+  static void stopOllamaIfStarted() {
+    // Mirrors what TestcontainersExtension does automatically for @Container-managed fields — this
+    // one is managed manually (see startOllamaIfNeeded()) so it needs the same explicit stop. null
+    // in external-endpoint mode (issue #1076), where there is nothing this harness started.
+    if (ollama != null) {
+      ollama.stop();
+    }
+  }
+
+  /**
+   * The Ollama endpoint this run talks to — the external one if configured, else the container's.
+   */
+  private static String ollamaEndpoint() {
+    return EvalOllamaEndpoint.isExternal()
+        ? EvalOllamaEndpoint.externalBaseUrl()
+        : ollama.getEndpoint();
   }
 
   /**
@@ -295,11 +355,11 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   private static String fetchEmbeddingModelDigest() throws IOException, InterruptedException {
     HttpClient client = HttpClient.newHttpClient();
     HttpRequest request =
-        HttpRequest.newBuilder(URI.create(ollama.getEndpoint() + "/api/tags")).GET().build();
+        HttpRequest.newBuilder(URI.create(ollamaEndpoint() + "/api/tags")).GET().build();
     HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
     if (response.statusCode() != 200) {
       throw new IllegalStateException(
-          "GET /api/tags on the Ollama container failed with status " + response.statusCode());
+          "GET /api/tags on the Ollama endpoint failed with status " + response.statusCode());
     }
     OllamaTagsResponse tags =
         JsonMapper.builder().build().readValue(response.body(), OllamaTagsResponse.class);
@@ -313,6 +373,54 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
                     "Model '" + EMBEDDING_MODEL + "' not found in /api/tags response: " + tags));
   }
 
+  // Non-streaming POST /api/pull only returns once the whole ~275 MB model is on disk; 10 minutes
+  // comfortably covers a cold pull over a normal connection without masking a genuinely hung
+  // request as a slow one indefinitely.
+  private static final Duration PULL_TIMEOUT = Duration.ofMinutes(10);
+
+  /**
+   * Pulls {@link #EMBEDDING_MODEL} on an external Ollama endpoint (issue #1076) — {@code
+   * ollama.execInContainer} only works against a Testcontainer, so this equivalent goes through
+   * Ollama's {@code POST /api/pull} HTTP API instead, non-streaming so the call blocks until the
+   * pull actually finishes (or fails).
+   */
+  private static void pullEmbeddingModelViaHttp() throws IOException, InterruptedException {
+    HttpClient client = HttpClient.newHttpClient();
+    String requestBody =
+        JsonMapper.builder()
+            .build()
+            .writeValueAsString(Map.of("model", EMBEDDING_MODEL, "stream", false));
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(ollamaEndpoint() + "/api/pull"))
+            .timeout(PULL_TIMEOUT)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+            .build();
+    HttpResponse<String> response;
+    try {
+      response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    } catch (java.net.http.HttpTimeoutException e) {
+      throw new IllegalStateException(
+          "Timed out after "
+              + PULL_TIMEOUT
+              + " pulling '"
+              + EMBEDDING_MODEL
+              + "' via POST /api/pull on the external Ollama endpoint "
+              + ollamaEndpoint()
+              + " — check that the endpoint is reachable and has network access to pull the model.",
+          e);
+    }
+    if (response.statusCode() != 200) {
+      throw new IllegalStateException(
+          "Failed to pull '"
+              + EMBEDDING_MODEL
+              + "' via POST /api/pull on the external Ollama endpoint: HTTP "
+              + response.statusCode()
+              + " — "
+              + response.body());
+    }
+  }
+
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -320,7 +428,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     registry.add("spring.datasource.password", postgres::getPassword);
     // #762: no native Ollama provider anymore - reach the same container through its
     // OpenAI-compatible /v1 endpoint instead (application.yml's own default path since #762).
-    registry.add("spring.ai.openai.embedding.base-url", () -> ollama.getEndpoint() + "/v1");
+    registry.add("spring.ai.openai.embedding.base-url", () -> ollamaEndpoint() + "/v1");
     registry.add("spring.ai.openai.embedding.model", () -> EMBEDDING_MODEL);
     registry.add("spring.ai.vectorstore.pgvector.dimensions", () -> EMBEDDING_DIMENSIONS);
     // ADR-0018: a FILESYSTEM library reads its own sourcePath, not an application-wide path - the
@@ -718,7 +826,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             "ollama",
             EMBEDDING_MODEL,
             actualEmbeddingModelDigest,
-            OLLAMA_IMAGE,
+            EvalOllamaEndpoint.describeImageOrEndpoint(OLLAMA_IMAGE),
             EMBEDDING_DIMENSIONS,
             actualChunkSize,
             actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
@@ -737,7 +845,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             GoldenDataset.sha256(goldenFile),
             goldenCases.size(),
             runStart.toString(),
-            Duration.between(runStart, Instant.now()).toMillis() / 1000.0);
+            Duration.between(runStart, Instant.now()).toMillis() / 1000.0,
+            EvalOllamaEndpoint.isExternal());
 
     EvaluationReport report =
         new EvaluationReport(
@@ -779,7 +888,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             "ollama",
             EMBEDDING_MODEL,
             actualEmbeddingModelDigest,
-            OLLAMA_IMAGE,
+            EvalOllamaEndpoint.describeImageOrEndpoint(OLLAMA_IMAGE),
             EMBEDDING_DIMENSIONS,
             actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
             PGVECTOR_INDEX_TYPE,
