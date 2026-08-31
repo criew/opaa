@@ -30,7 +30,7 @@ Die Andockpunkte sind aber ungewöhnlich gut:
 | **SSRF-Härtung** | `TargetAddressValidator` (Egress-Prüfung der Indexing-Fetches) | der natürliche Ort für die Agenten-Egress-Allowlist |
 | **Frontend** | reines Request/Response, kein SSE/WebSocket | Zwischenschritt-Anzeige eines Agent-Laufs braucht einen Streaming-/Event-Kanal — eigenes Arbeitspaket |
 
-Dokumentarisch ist Phase 2 weit ausgearbeitet ([agents-and-tools.md](../features/agents-and-tools.md): Agent als teilbares Paket, geführtes Onboarding, Prüfstand, Prüfagenten, dreistufige Werkzeuge, MCP), aber es existieren **null Zeilen Code und keine Issues** ([discussion-backlog-neuausrichtung.md](discussion-backlog-neuausrichtung.md): „Bereich D schneiden, sobald #349 entschieden ist").
+Dokumentarisch ist Phase 2 weit ausgearbeitet ([agents-and-tools.md](../features/agents-and-tools.md): Agent als teilbares Paket, geführtes Onboarding, Prüfstand, Prüfagenten, dreistufige Werkzeuge, MCP), aber es existieren **null Zeilen Code und keine Issues** (Backlog-Sichtung vom 14.08.2026, Issue #343: „Bereich D schneiden, sobald #349 entschieden ist").
 
 ## 2. Architektur-Grundentscheidungen (Vorschlag)
 
