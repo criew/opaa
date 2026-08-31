@@ -1,7 +1,7 @@
 # Bausteine mit Befund
 
 Die Leistungsinventur zum Stichtag hat **562 Vorgänge** geprüft — jedes geschlossene Issue und
-jeden gemergten Pull Request ohne Issue-Verknüpfung. Diese Datei führt die **128 Vorgänge mit
+jeden gemergten Pull Request ohne Issue-Verknüpfung. Diese Datei führt die **131 Vorgänge mit
 Befund**: solche, bei denen die Lieferung wesentlich vom Vorgang abweicht. Aufnahmekriterium ist
 eines der folgenden drei:
 
@@ -12,7 +12,7 @@ eines der folgenden drei:
    beschriebene — bis hin zum gegenteiligen.
 3. **Nicht mehr vorhanden.** Das Gelieferte existiert zum Stichtag nicht mehr oder wurde ersetzt.
 
-Die übrigen **434 Vorgänge sind ohne Befund**: geliefert wie beschrieben, und das Gelieferte steht
+Die übrigen **431 Vorgänge sind ohne Befund**: geliefert wie beschrieben, und das Gelieferte steht
 noch. Sie sind aus GitHub und `git log` jederzeit nachvollziehbar und werden deshalb nicht
 mitgeführt; ihre Nummern stehen am Ende dieser Datei.
 
@@ -1639,6 +1639,23 @@ Suche mit `Issue #NNN` bzw. `PR #NNN`; jeder Abschnitt trägt den Anker `#issue-
 
 ---
 
+<a id="issue-585"></a>
+
+## Issue #585 — feat(frontend): A11y-Basisausstattung — Landmarken, Fokusführung, reduzierte Bewegung
+- Geschlossen: 2026-08-20 (completed)
+- Labels: enhancement, frontend, size:M
+- PRs: #629 (2026-08-20)
+
+**Laut Issue:** Landmarken-Struktur (`header`/`nav`/`main`/`footer`), Sprungmarke, Fokus-Management bei Routenwechsel auf die Seitenüberschrift, sichtbarer Fokus-Stil aus dem Designsystem, `prefers-reduced-motion`, Dokumenttitel je Seite, Live-Region für asynchrone Statusmeldungen.
+
+**Geliefert:** Alle genannten Punkte umgesetzt (`SkipLink`, `PageHeading`, `usePageTitle`, Fokusring-Fix für MUI `ButtonBase` als während der Umsetzung entdeckter Nebenbefund, `role="status"`-Live-Regionen). Eine Abnahmekriterium blieb im PR selbst ausdrücklich offen: „Routenwechsel wird vom Screenreader angesagt" — laut PR-Text war dafür eine **VoiceOver-Stichprobe durch den Maintainer offen**, technisch nur indirekt über Fokus/Titel belegt. Ob diese manuelle Prüfung nachträglich erfolgte, ist aus den Daten nicht ersichtlich.
+
+**Verifikation:** `frontend/src/components/a11y/SkipLink.tsx` und die übrigen im PR gelisteten Dateien (`PageHeading.tsx`, `AppShell.tsx` etc.) existieren im aktuellen Code.
+
+**Themen:** frontend, barrierefreiheit, fokusfuehrung, ui
+
+---
+
 <a id="issue-586"></a>
 
 ## Issue #586 — ci(frontend): Automatisierte Barrierefreiheits-Prüfungen in Lint und E2E-Suite
@@ -1653,6 +1670,23 @@ Suche mit `Issue #NNN` bzw. `PR #NNN`; jeder Abschnitt trägt den Anker `#issue-
 **Verifikation:** `frontend/eslint.config.js` importiert weiterhin `eslint-plugin-jsx-a11y-x` (Zeile 7), `eslint-plugin-jsx-a11y-x` steht in `frontend/package.json`; der im PR angekündigte Rückwechsel auf das Original-Plugin (#635) ist demnach noch nicht erfolgt. `e2e/tests/accessibility.spec.ts` existiert.
 
 **Themen:** ci, barrierefreiheit, frontend, e2e, lint
+
+---
+
+<a id="issue-587"></a>
+
+## Issue #587 — feat(frontend): App-Shell und Seitenleiste nach Zielbild — Space-Wechsler, Chats, Bereichsnavigation
+- Geschlossen: 2026-08-20 (completed)
+- Labels: enhancement, frontend, size:L
+- PRs: #652 (2026-08-20)
+
+**Laut Issue:** Seitenleiste nach Mockup 1a umbauen — Space-Wechsler als prominentes Dropdown, Chats des aktiven Space in der Mitte, Bereichs-Navigation und Nutzer-Badge unten; „Katalog" entfällt, „Als PDF exportieren"/„Archivieren" sind nicht Teil des Issues; Mobile-Verhalten anpassen; bestehende Sidebar-Tests aktualisieren.
+
+**Geliefert:** Wie gefordert. Navy-Leiste in beiden Farbschemata über verschachtelten `ThemeProvider`, Space-Wechsler mit Art und Mitgliederzahl je Space, Chats unverändert aus `ChatList`, Bereichs-Navigation unten (inkl. „Branding" und „Gruppen" für Systemverwaltung), Nutzer-Badge mit Menü für Einstellungen/Abmelden. Bewusste Abweichung vom Mockup, im PR benannt: die Mockup-Angabe „n Quellen" je Space wird durch die Mitgliederzahl ersetzt, weil die Listen-API noch keine Quellenzahl liefert (Lücke bereits in #593 vermerkt). Mobile Drawer/`MobileHeader` blieben unangetastet.
+
+**Verifikation:** `frontend/src/layouts/Sidebar.tsx` existiert im aktuellen Code.
+
+**Themen:** frontend, ui, navigation, spaces, design
 
 ---
 
@@ -1823,6 +1857,23 @@ Suche mit `Issue #NNN` bzw. `PR #NNN`; jeder Abschnitt trägt den Anker `#issue-
 **Verifikation:** `frontend/src/theme/theme.test.ts` und `docs/design/guidelines.md` im Worktree vorhanden.
 
 **Themen:** frontend, barrierefreiheit, theme, ui
+
+---
+
+<a id="issue-862"></a>
+
+## Issue #862 — refactor(db): CHECK-Constraints für Enum-Vokabulare ablösen — Enum-Erweiterungen ohne Migration
+- Geschlossen: 2026-08-24 (completed)
+- Labels: enhancement, backend, size:M
+- PRs: #868 (2026-08-24)
+
+**Laut Issue:** Teil von Epic #826, Phase 3 (Befund B4). Enum-Vokabulare sind doppelt geschützt (Java-Enum + CHECK-Constraint); 8 von 63 Migrationen existieren nur, um Wertelisten zu erweitern. Constraints ersatzlos entfernen, Java-Enum bleibt alleiniger Schreibschutz.
+
+**Geliefert:** Migrationen 064–066 droppen `chk_audit_log_event_type`, `chk_indexing_run_events_category`, `chk_notifications_type`. Umfang bewusst auf diese drei Tabellen begrenzt — `chk_documents_source_type` zeigt dasselbe Muster, wurde aber bewusst zurückgestellt (separates Folgeticket angekündigt); `chk_audit_log_object_type` ebenso, da es das Wachstumsmuster (noch) nicht zeigt. Nachbesserung: zwei Migrationstests (017, 040), die zuvor gegen das lebende `AuditEventType.values()` mit Ausschlusslisten prüften, wurden auf eingefrorene Literallisten umgestellt, damit ein künftiger migrationfreier Enum-Wert sie nicht unbemerkt grün lässt.
+
+**Verifikation:** `backend/src/main/resources/db/changelog/changes/064-drop-audit-log-event-type-check.yaml`, `065-...`, `066-...` sowie die zugehörigen Migrationstests im Worktree vorhanden.
+
+**Themen:** datenbank, migration, enum, backend, technische-schulden
 
 ---
 
@@ -2183,4 +2234,4 @@ trägt die nachgeschärften Regeln.
 
 Geliefert wie beschrieben, und das Gelieferte steht zum Stichtag noch. Belege sind das Issue, sein Pull Request und der heutige Code.
 
-#2, #4, #6, #7, #11, #12, #14, #16, #17, #19, #23, #29, #37, #40, #42, #43, #44, #47, #49, #50, #53, #58, #60, #61, #62, #64, #65, #67, #69, #70, #71, #72, #74, #75, #78, #86, #95, #98, #102, #108, #109, #110, #111, #112, #113, #114, #121, #122, #123, #133, #137, #144, #148, #149, #152, #153, #157, #162, #165, #170, #172, #174, #176, #178, #180, #182, #184, #186, #188, #189, #193, #194, #196, #199, #200, #201, #218, #219, #221, #224, #225, #226, #227, #228, #229, #230, #232, #233, #234, #238, #244, #245, #248, #250, #252, #256, #257, #261, #263, #265, #266, #267, #268, #271, #272, #274, #276, #279, #282, #285, #288, #289, #290, #293, #294, #295, #300, #302, #304, #306, #308, #310, #311, #317, #319, #321, #324, #326, #330, #332, #333, #335, #338, #339, #340, #341, #342, #343, #344, #346, #348, #350, #355, #356, #360, #361, #362, #363, #367, #370, #373, #375, #383, #390, #394, #400, #401, #404, #406, #407, #408, #409, #410, #414, #416, #418, #419, #420, #421, #422, #423, #424, #434, #435, #436, #438, #440, #441, #445, #456, #458, #459, #461, #463, #464, #465, #466, #467, #470, #471, #475, #476, #477, #478, #479, #480, #481, #482, #483, #486, #491, #493, #495, #497, #501, #505, #507, #508, #513, #514, #515, #516, #517, #518, #519, #520, #521, #522, #523, #524, #525, #526, #527, #528, #533, #538, #544, #545, #547, #550, #551, #552, #553, #556, #557, #559, #560, #565, #566, #569, #572, #573, #575, #580, #581, #582, #583, #584, #585, #587, #588, #590, #591, #592, #593, #594, #595, #596, #597, #598, #600, #606, #609, #611, #614, #616, #617, #619, #623, #625, #632, #634, #636, #637, #639, #646, #650, #651, #653, #654, #658, #659, #661, #677, #682, #684, #686, #693, #707, #708, #709, #711, #712, #713, #716, #720, #721, #725, #731, #736, #737, #738, #739, #740, #744, #747, #749, #751, #755, #756, #757, #758, #759, #760, #762, #769, #771, #773, #775, #777, #782, #784, #786, #787, #788, #789, #792, #800, #805, #807, #809, #812, #814, #815, #819, #820, #821, #822, #823, #824, #826, #832, #833, #834, #835, #836, #837, #838, #839, #840, #842, #844, #845, #848, #860, #862, #863, #875, #876, #877, #884, #886, #888, #892, #896, #912, #924, #927, #929, #937, #941, #951, #954, #956, #957, #958, #959, #966, #996, #997, #1000, #1001, #1002, #1005, #1007, #1016, #1022, #1023, PR #1, PR #91, PR #104, PR #105, PR #275, PR #287, PR #385, PR #399, PR #403, PR #412, PR #413, PR #502, PR #648, PR #695, PR #698, PR #728, PR #732, PR #761, PR #790, PR #804, PR #810, PR #818, PR #847, PR #861, PR #864, PR #867, PR #869, PR #870, PR #871, PR #872, PR #873, PR #879, PR #882, PR #893, PR #897, PR #899, PR #901, PR #902, PR #905, PR #908, PR #930, PR #936, PR #939, PR #942, PR #946, PR #1014
+#2, #4, #6, #7, #11, #12, #14, #16, #17, #19, #23, #29, #37, #40, #42, #43, #44, #47, #49, #50, #53, #58, #60, #61, #62, #64, #65, #67, #69, #70, #71, #72, #74, #75, #78, #86, #95, #98, #102, #108, #109, #110, #111, #112, #113, #114, #121, #122, #123, #133, #137, #144, #148, #149, #152, #153, #157, #162, #165, #170, #172, #174, #176, #178, #180, #182, #184, #186, #188, #189, #193, #194, #196, #199, #200, #201, #218, #219, #221, #224, #225, #226, #227, #228, #229, #230, #232, #233, #234, #238, #244, #245, #248, #250, #252, #256, #257, #261, #263, #265, #266, #267, #268, #271, #272, #274, #276, #279, #282, #285, #288, #289, #290, #293, #294, #295, #300, #302, #304, #306, #308, #310, #311, #317, #319, #321, #324, #326, #330, #332, #333, #335, #338, #339, #340, #341, #342, #343, #344, #346, #348, #350, #355, #356, #360, #361, #362, #363, #367, #370, #373, #375, #383, #390, #394, #400, #401, #404, #406, #407, #408, #409, #410, #414, #416, #418, #419, #420, #421, #422, #423, #424, #434, #435, #436, #438, #440, #441, #445, #456, #458, #459, #461, #463, #464, #465, #466, #467, #470, #471, #475, #476, #477, #478, #479, #480, #481, #482, #483, #486, #491, #493, #495, #497, #501, #505, #507, #508, #513, #514, #515, #516, #517, #518, #519, #520, #521, #522, #523, #524, #525, #526, #527, #528, #533, #538, #544, #545, #547, #550, #551, #552, #553, #556, #557, #559, #560, #565, #566, #569, #572, #573, #575, #580, #581, #582, #583, #584, #588, #590, #591, #592, #593, #594, #595, #596, #597, #598, #600, #606, #609, #611, #614, #616, #617, #619, #623, #625, #632, #634, #636, #637, #639, #646, #650, #651, #653, #654, #658, #659, #661, #677, #682, #684, #686, #693, #707, #708, #709, #711, #712, #713, #716, #720, #721, #725, #731, #736, #737, #738, #739, #740, #744, #747, #749, #751, #755, #756, #757, #758, #759, #760, #762, #769, #771, #773, #775, #777, #782, #784, #786, #787, #788, #789, #792, #800, #805, #807, #809, #812, #814, #815, #819, #820, #821, #822, #823, #824, #826, #832, #833, #834, #835, #836, #837, #838, #839, #840, #842, #844, #845, #848, #860, #863, #875, #876, #877, #884, #886, #888, #892, #896, #912, #924, #927, #929, #937, #941, #951, #954, #956, #957, #958, #959, #966, #996, #997, #1000, #1001, #1002, #1005, #1007, #1016, #1022, #1023, PR #1, PR #91, PR #104, PR #105, PR #275, PR #287, PR #385, PR #399, PR #403, PR #412, PR #413, PR #502, PR #648, PR #695, PR #698, PR #728, PR #732, PR #761, PR #790, PR #804, PR #810, PR #818, PR #847, PR #861, PR #864, PR #867, PR #869, PR #870, PR #871, PR #872, PR #873, PR #879, PR #882, PR #893, PR #897, PR #899, PR #901, PR #902, PR #905, PR #908, PR #930, PR #936, PR #939, PR #942, PR #946, PR #1014
