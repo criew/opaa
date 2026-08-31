@@ -108,7 +108,7 @@ public final class PipelineHarnessSupport {
     requireMeasurableConfiguration(queryProperties);
     try {
       PipelineEvaluationReport report =
-          runAndWrite(
+          measure(
               domain,
               identity,
               queryService,
@@ -117,6 +117,7 @@ public final class PipelineHarnessSupport {
               evalLibraryId,
               goldenCases,
               pipelineRunStart);
+      PipelineReportWriter.writeJson(report, reportFile(domain));
       log.info(PipelineReportWriter.renderSummary(report));
       System.out.println("Pipeline report written to " + reportFile(domain).toAbsolutePath());
     } catch (RuntimeException | IOException e) {
@@ -131,7 +132,15 @@ public final class PipelineHarnessSupport {
     }
   }
 
-  private static PipelineEvaluationReport runAndWrite(
+  /**
+   * Runs the pipeline measurement path and returns its report, without writing or logging it — the
+   * half of {@link #runAndWriteGuarded} that a variant comparison (issue #1041,
+   * docs/features/retrieval-benchmark.md §2) reuses for its reference variant's self-check: the
+   * reference variant's own report (computed through {@link VariantRunner}, a second, independent
+   * call into this same measurement) must equal, field for field, what this method computes for the
+   * unmodified production configuration in the very same harness run.
+   */
+  public static PipelineEvaluationReport measure(
       EvalDomainConfig domain,
       RunIdentity identity,
       QueryService queryService,
@@ -139,8 +148,7 @@ public final class PipelineHarnessSupport {
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
       List<GoldenCase> goldenCases,
-      Instant pipelineRunStart)
-      throws IOException {
+      Instant pipelineRunStart) {
     Set<UUID> searchScope = Set.of(evalLibraryId);
     List<PipelineRetrievalEvaluator.CaseOutcome> outcomes =
         PipelineRetrievalEvaluator.evaluateAll(
@@ -156,20 +164,16 @@ public final class PipelineHarnessSupport {
                     .toList());
 
     // Built after the run, not before: runDurationSeconds must cover the queries above.
-    PipelineEvaluationReport report =
-        PipelineRetrievalEvaluator.report(
-            outcomes,
-            runConfiguration(
-                domain,
-                identity,
-                queryProperties,
-                indexingProperties,
-                goldenCases.size(),
-                searchScope.size(),
-                pipelineRunStart));
-
-    PipelineReportWriter.writeJson(report, reportFile(domain));
-    return report;
+    return PipelineRetrievalEvaluator.report(
+        outcomes,
+        buildRunConfiguration(
+            domain,
+            identity,
+            queryProperties,
+            indexingProperties,
+            goldenCases.size(),
+            searchScope.size(),
+            pipelineRunStart));
   }
 
   /** Where a domain's pipeline report is written — never the raw-vector path's report file. */
@@ -228,7 +232,13 @@ public final class PipelineHarnessSupport {
     }
   }
 
-  private static PipelineEvaluationReport.PipelineRunConfiguration runConfiguration(
+  /**
+   * Assembles a run's fixed-point configuration record. Public (issue #1041): {@link VariantRunner}
+   * reuses this exact builder for every variant's report so a variant's {@code runConfiguration} is
+   * built the identical way the single-configuration pipeline path builds its own, just with a
+   * variant's {@link QueryProperties} instead of the production instance.
+   */
+  public static PipelineEvaluationReport.PipelineRunConfiguration buildRunConfiguration(
       EvalDomainConfig domain,
       RunIdentity identity,
       QueryProperties queryProperties,
