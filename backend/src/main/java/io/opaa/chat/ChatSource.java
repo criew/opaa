@@ -84,6 +84,11 @@ public final class ChatSource {
     this.fileName = fileName;
   }
 
+  /**
+   * The reciprocal of this source's rank within the answer - {@code 1.0} for the top-ranked one,
+   * {@code 0.5} for the second - not a similarity score, and {@code 0.0} for a synthetic entry no
+   * retrieved chunk backs (see {@code QueryService#mapSources}).
+   */
   public double getRelevanceScore() {
     return relevanceScore;
   }

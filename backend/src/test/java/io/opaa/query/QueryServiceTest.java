@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -647,7 +648,8 @@ class QueryServiceTest {
     assertThat(response.getAnswer()).contains("【source:");
     assertThat(response.getSources()).hasSize(1);
     assertThat(response.getSources().getFirst().getFileName()).isEqualTo("readme.md");
-    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(0.85);
+    // #1102: the reciprocal of the fused rank, not the chunk's raw score.
+    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(1.0);
     assertThat(response.getSources().getFirst().getCited()).isTrue();
     assertThat(response.getSources().getFirst().getMatchCount()).isEqualTo(1);
     assertThat(response.getMetadata().getModel()).isEqualTo("gpt-4o");
@@ -1160,7 +1162,7 @@ class QueryServiceTest {
     assertThat(response.getSources()).hasSize(1);
     ChatSource source = response.getSources().getFirst();
     assertThat(source.getFileName()).isEqualTo("readme.md");
-    assertThat(source.getRelevanceScore()).isEqualTo(0.85);
+    assertThat(source.getRelevanceScore()).isEqualTo(1.0);
     assertThat(source.getMatchCount()).isEqualTo(1);
     assertThat(source.getCited()).isFalse();
     assertThat(source.getCitationValid()).isFalse();
@@ -1196,7 +1198,7 @@ class QueryServiceTest {
     assertThat(response.getSources()).hasSize(1);
     ChatSource source = response.getSources().getFirst();
     assertThat(source.getFileName()).isEqualTo("readme.md");
-    assertThat(source.getRelevanceScore()).isEqualTo(0.85);
+    assertThat(source.getRelevanceScore()).isEqualTo(1.0);
     assertThat(source.getCited()).isTrue();
     assertThat(source.getCitationValid()).isFalse();
   }
@@ -1284,7 +1286,7 @@ class QueryServiceTest {
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
     assertThat(response.getSources()).hasSize(1);
-    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(0.9);
+    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(1.0);
   }
 
   /**
@@ -1469,7 +1471,7 @@ class QueryServiceTest {
 
     assertThat(response.getSources()).hasSize(1);
     assertThat(response.getSources().getFirst().getCited()).isTrue();
-    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(0.95);
+    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(1.0);
   }
 
   /**
@@ -2120,6 +2122,127 @@ class QueryServiceTest {
           .filteredOn(source -> source.getFileName().equals("d3.md"))
           .hasSize(1)
           .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(2));
+    }
+  }
+
+  /**
+   * #1102: {@code relevanceScore} must mean the same thing no matter which search path found the
+   * chunk - unlike every other test in this class (see {@link #newQueryService}), the lexical path
+   * is wired in here.
+   */
+  @Nested
+  class RelevanceScoreAcrossSearchPaths {
+
+    private QueryService newHybridQueryService(
+        FullTextChunkSearch fullTextChunkSearch, FullTextBackfillGate backfillGate) {
+      return newHybridQueryService(fullTextChunkSearch, backfillGate, 1);
+    }
+
+    private QueryService newHybridQueryService(
+        FullTextChunkSearch fullTextChunkSearch,
+        FullTextBackfillGate backfillGate,
+        int maxChunksPerDocument) {
+      RetrievalPipeline pipeline =
+          new QueryConfiguration()
+              .retrievalPipeline(
+                  new SearchScopeStage(),
+                  new SubQueryDecompositionStage(queryDecompositionService),
+                  new VectorSearchStage(vectorStore),
+                  new FullTextSearchStage(fullTextChunkSearch, backfillGate),
+                  new MmrSelectionStage(chunkEmbeddingLookup),
+                  new RankFusionStage(),
+                  new DocumentCompletionStage(),
+                  RetrievalPipelineProperties.allStagesEnabled());
+      return new QueryService(
+          pipeline,
+          answerGenerationService,
+          chatMemory,
+          new CitationParser(),
+          new CitationValidator(),
+          documentRepository,
+          libraryAccessService,
+          permissionHistoryService,
+          chatService,
+          new QueryMetrics(new SimpleMeterRegistry()),
+          new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, maxChunksPerDocument, true),
+          knowledgeLibraryRepository);
+    }
+
+    /**
+     * A lone vector hit (cosine 0.8) and a lone lexical hit (ts_rank 0.09) tie in the fusion, so
+     * the fused order keeps the search-stage order - and the exposed scores follow that order (1.0,
+     * 0.5) instead of the incomparable raw scores, which would have dropped the lexical hit to the
+     * bottom of the evidence list.
+     */
+    @Test
+    void aLexicalOnlyChunkKeepsTheRelevanceScoreOfItsFusedRank() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      FullTextChunkSearch fullTextChunkSearch = mock(FullTextChunkSearch.class);
+      FullTextBackfillGate backfillGate = mock(FullTextBackfillGate.class);
+      when(backfillGate.searchableLibraries(Set.of(readableLibraryId)))
+          .thenReturn(Set.of(readableLibraryId));
+      var vectorChunk =
+          Document.builder()
+              .text("vector hit")
+              .metadata(Map.of("file_name", "vector.md", "document_id", "doc-vector"))
+              .score(0.8)
+              .build();
+      var lexicalChunk =
+          Document.builder()
+              .text("literal term")
+              .metadata(Map.of("file_name", "lexical.md", "document_id", "doc-lexical"))
+              .score(0.09)
+              .build();
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(vectorChunk));
+      when(fullTextChunkSearch.search(any(), any(), anyInt())).thenReturn(List.of(lexicalChunk));
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      QueryResult response =
+          newHybridQueryService(fullTextChunkSearch, backfillGate)
+              .query("Frage", null, caller, true, List.of());
+
+      assertThat(response.getSources())
+          .extracting(ChatSource::getFileName, ChatSource::getRelevanceScore)
+          .containsExactly(tuple("vector.md", 1.0), tuple("lexical.md", 0.5));
+    }
+
+    /**
+     * The rank is a source's own position, not its best chunk's: a document contributing two of the
+     * three selected chunks occupies one row, and the next document is rank 2 - never rank 3, which
+     * would label a two-row list "Rang 1" and "Rang 3" (#1102).
+     */
+    @Test
+    void ranksSourcesByTheirOwnPositionWhenOneDocumentContributesSeveralChunks() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      FullTextChunkSearch fullTextChunkSearch = mock(FullTextChunkSearch.class);
+      FullTextBackfillGate backfillGate = mock(FullTextBackfillGate.class);
+      when(backfillGate.searchableLibraries(Set.of(readableLibraryId)))
+          .thenReturn(Set.of(readableLibraryId));
+      var firstChunkOfA = chunkOf("a.md", "doc-a", "A, erster Abschnitt", 0.9);
+      var secondChunkOfA = chunkOf("a.md", "doc-a", "A, zweiter Abschnitt", 0.85);
+      var chunkOfB = chunkOf("b.md", "doc-b", "B, einziger Abschnitt", 0.8);
+      when(vectorStore.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(firstChunkOfA, secondChunkOfA, chunkOfB));
+      when(fullTextChunkSearch.search(any(), any(), anyInt())).thenReturn(List.of());
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      QueryResult response =
+          newHybridQueryService(fullTextChunkSearch, backfillGate, 2)
+              .query("Frage", null, caller, true, List.of());
+
+      assertThat(response.getSources())
+          .extracting(ChatSource::getFileName, ChatSource::getRelevanceScore)
+          .containsExactly(tuple("a.md", 1.0), tuple("b.md", 0.5));
+    }
+
+    private Document chunkOf(String fileName, String documentId, String text, double score) {
+      return Document.builder()
+          .text(text)
+          .metadata(Map.of("file_name", fileName, "document_id", documentId))
+          .score(score)
+          .build();
     }
   }
 
