@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Bounds {@link AutoindexCrawlerService}'s recursive descent - deliberately its own property block
- * rather than a component of {@link IndexingProperties} (mirrors {@code UploadProperties}'s own
+ * rather than a component of {@code IndexingProperties} (mirrors {@code UploadProperties}'s own
  * reasoning): {@link AutoindexCrawlerService} is a plain, non-Spring-bean class with a single
  * test-friendly constructor, and adding these two values there would touch every one of {@link
  * IndexingProperties}'s many positional-record call sites for a concern specific to the {@code

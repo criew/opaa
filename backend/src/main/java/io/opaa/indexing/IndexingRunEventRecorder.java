@@ -1,6 +1,5 @@
 package io.opaa.indexing;
 
-import io.opaa.indexing.source.SourceIndexingExecutor;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,12 +7,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Records a single run's protocol of skipped/rejected items and errors, one instance per run -
  * mirrors {@link IndexingRunProgress}'s own per-run instantiation pattern, held locally by each
- * {@link SourceIndexingExecutor} for the duration of its {@code execute} call. Every executor runs
+ * {@code SourceIndexingExecutor} for the duration of its {@code execute} call. Every executor runs
  * on exactly one thread (its own {@code @Async} invocation), so the in-memory counter below needs
  * no synchronization.
- *
- * <p>Public - constructed from every {@code source.*} executor package (#1113); still not part of
- * any cross-module API surface.
  *
  * <p>Capped at {@link #MAX_EVENTS_PER_RUN}: a run that skips thousands of items must not turn its
  * own protocol into an unbounded table scan or an unusable page - events beyond the cap are

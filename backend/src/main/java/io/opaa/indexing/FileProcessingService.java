@@ -8,8 +8,6 @@ import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
-import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
-import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.observability.IndexingMetrics;
@@ -241,8 +239,8 @@ public class FileProcessingService {
 
   /**
    * Processes a file downloaded from a remote URL, with an explicit {@link DocumentSourceType} and
-   * origin. Used by both {@link UrlIndexingExecutor} ({@code HTTP_DIRECTORY}, no origin entry - see
-   * the six-argument overload above) and {@link RssFeedIndexingExecutor} for an RSS entry's
+   * origin. Used by both {@code UrlIndexingExecutor} ({@code HTTP_DIRECTORY}, no origin entry - see
+   * the six-argument overload above) and {@code RssFeedIndexingExecutor} for an RSS entry's
    * attachments ({@code RSS_FEED}, {@code sourceEntryUrl} set to the entry's detail page URL) - the
    * same processing chain either way, only the recorded provenance differs.
    *
@@ -354,12 +352,12 @@ public class FileProcessingService {
   /**
    * Processes a single RSS feed entry's already-extracted main text (ADR-0017, decision 2): unlike
    * {@link #processFile}/{@link #processUrlFile}, there is no file to open or download here -
-   * {@link RssFeedIndexingExecutor} has already fetched the entry's detail page and reduced it to
+   * {@code RssFeedIndexingExecutor} has already fetched the entry's detail page and reduced it to
    * its main content before calling this method. This text never goes through {@link
    * SupportedDocumentFormats}' content-based admission at all (there is no file to detect a format
    * from) and is handed straight to {@link DocumentPipelineRegistry#fallbackPipeline()} below,
    * bypassing routing entirely - {@code .html} being admitted since #1059 changes nothing here: an
-   * RSS entry's own detail-page text still never reaches {@link HtmlDocumentPipeline}. Only a
+   * RSS entry's own detail-page text still never reaches {@code HtmlDocumentPipeline}. Only a
    * genuine {@code .html} file - a directory crawl, the filesystem, or an RSS entry's own
    * attachment via {@link #processUrlFile} - is routed there. Content-based deduplication/change
    * detection otherwise mirrors {@link #processUrlFile} exactly: identity by {@code entryUrl} in
@@ -496,7 +494,7 @@ public class FileProcessingService {
 
   /**
    * Re-runs the current pipeline over a document whose source file is still on this machine and
-   * replaces its chunks - the in-place half of {@link PipelineReindexService#reindexBatch}. The
+   * replaces its chunks - the in-place half of {@code PipelineReindexService#reindexBatch}. The
    * document keeps its own id and row, so citations and deep links into it survive; only its chunks
    * are exchanged.
    *

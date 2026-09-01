@@ -7,10 +7,8 @@ import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.SupportedDocumentFormats;
-import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
 import io.opaa.indexing.source.rss.RssFeedRunContext;
 import io.opaa.indexing.source.rss.RssPoliteness;
-import io.opaa.indexing.source.web.DetailPageExtractor;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
@@ -26,8 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Downloads and indexes the attachment candidates {@link DetailPageExtractor} finds on an RSS
- * entry's detail page, split out of {@link RssFeedIndexingExecutor}. Package-private - an
+ * Downloads and indexes the attachment candidates {@code DetailPageExtractor} finds on an RSS
+ * entry's detail page, split out of {@code RssFeedIndexingExecutor}. Package-private - an
  * implementation detail of the executor, not a new public API.
  *
  * <p>Never lets an attachment failure propagate to the caller: a lost attachment (too large,
@@ -35,9 +33,6 @@ import org.slf4j.LoggerFactory;
  * skipped, with no effect on the entry's own processed/skipped/failed outcome - but marks {@code
  * ctx.anyEntryDeferred()}, so a future run's conditional {@code GET} is not allowed to suppress a
  * retry of the lost attachment.
- *
- * <p>Public - consumed from {@link RssFeedIndexingExecutor} in the sibling {@code source.rss}
- * package (#1113); still not part of any cross-module API surface.
  */
 public class AttachmentIndexer {
 

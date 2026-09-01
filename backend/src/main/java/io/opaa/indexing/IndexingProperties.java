@@ -1,10 +1,6 @@
 package io.opaa.indexing;
 
-import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.attachment.AttachmentProfile;
-import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
-import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
-import io.opaa.indexing.source.rss.RssFeedParser;
 import java.time.Duration;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -23,14 +19,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     (see that parameter's Javadoc for the actual sizing formula, which is not simply this value).
  * @param threadPool thread pool settings for async indexing. Defaults (core=2, max=4, queue=20) are
  *     conservative values suitable for typical single-server deployments.
- * @param rss settings governing {@link IndexingSourceType#RSS_FEED} runs - obergrenzen and
+ * @param rss settings governing {@code IndexingSourceType#RSS_FEED} runs - obergrenzen and
  *     politeness settings the executor must apply against feed operators it does not control (see
  *     {@link Rss}'s own Javadoc).
  * @param filesystemAllowlist absolute base directories a {@code FILESYSTEM} library's {@code
  *     sourcePath} must resolve underneath (ADR-0018 Entscheidung 6) - the actual security boundary:
  *     a caller-chosen path outside every configured base directory is rejected, and an <b>empty
  *     allowlist (the default) disables the FILESYSTEM quellentyp entirely</b> rather than
- *     defaulting to "everything allowed". Checked by {@link FilesystemPathAllowlist}, both at
+ *     defaulting to "everything allowed". Checked by {@code FilesystemPathAllowlist}, both at
  *     library creation/update time ({@code KnowledgeLibraryService}) and again at run time ({@link
  *     AsyncIndexingExecutor}), because the allowlist can be narrowed after a library was created.
  * @param staleJobTimeout how long a run may stay {@link JobStatus#RUNNING} before {@code
@@ -150,9 +146,9 @@ public record IndexingProperties(
   }
 
   /**
-   * Politeness and DoS-hardening settings for {@link IndexingSourceType#RSS_FEED} runs. The
+   * Politeness and DoS-hardening settings for {@code IndexingSourceType#RSS_FEED} runs. The
    * addresses an RSS run touches - the feed itself and every entry's detail page - come from the
-   * feed operator, not from OPAA's own configuration; {@link RssFeedParser} deliberately does not
+   * feed operator, not from OPAA's own configuration; {@code RssFeedParser} deliberately does not
    * enforce any of these limits itself (it is a pure, unbounded parser meant to run without network
    * or database), so the executor that drives it is the only place left to apply them.
    *

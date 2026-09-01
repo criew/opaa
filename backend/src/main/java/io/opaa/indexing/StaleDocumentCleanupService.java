@@ -1,9 +1,6 @@
 package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
-import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
-import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import java.util.List;
 import java.util.Set;
@@ -22,9 +19,9 @@ import org.slf4j.LoggerFactory;
  * cancelled, or was truncated by a configured limit (see {@code
  * AutoindexCrawlerService.CrawlResult#truncated}/{@code #incomplete}) must never call {@link
  * #cleanupVanished} at all - its {@code currentFilePaths} would be incomplete, and every document
- * beyond the cut would look vanished. {@link AsyncIndexingExecutor} and {@link UrlIndexingExecutor}
+ * beyond the cut would look vanished. {@code AsyncIndexingExecutor} and {@code UrlIndexingExecutor}
  * enforce this by only calling in on their own success path, after every discovered file has been
- * accounted for. {@link RssFeedIndexingExecutor} deliberately never calls this - an RSS entry
+ * accounted for. {@code RssFeedIndexingExecutor} deliberately never calls this - an RSS entry
  * scrolling out of the feed's window is not evidence the entry itself is gone (ADR-0017, decision
  * 5).
  *
@@ -35,9 +32,6 @@ import org.slf4j.LoggerFactory;
  * "successful run" invariant above. Deleting a library's entire bestand on that single,
  * cheap-to-get- wrong signal is not a risk worth taking for the rare case of a genuinely emptied
  * source - this class fails safe instead, and the next run with a real bestand catches up normally.
- *
- * <p>Public - constructed from the {@code source.filesystem}/{@code source.web} executor packages
- * (#1113); still not part of any cross-module API surface.
  */
 public class StaleDocumentCleanupService {
 

@@ -16,7 +16,6 @@ import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.web.DetailPageExtractor;
-import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -462,7 +461,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * Checks if an RSS entry's document is unchanged based on its {@code pubDate}, before its detail
-   * page is ever requested (ADR-0017) - mirrors {@link UrlIndexingExecutor#isUnchanged}. A missing
+   * page is ever requested (ADR-0017) - mirrors {@code UrlIndexingExecutor#isUnchanged}. A missing
    * {@code pubDate} is treated as "changed" - the SHA-256 checksum inside {@link
    * FileProcessingService#processRssEntry} becomes the deciding change signal instead. The lookup
    * is scoped to {@code targetLibrary} (#877): the same entry URL indexed into a different library

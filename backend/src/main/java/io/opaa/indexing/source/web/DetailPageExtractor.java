@@ -2,7 +2,6 @@ package io.opaa.indexing.source.web;
 
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
-import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.ByteArrayInputStream;
@@ -22,15 +21,12 @@ import org.jsoup.nodes.Element;
 
 /**
  * Fetches a single RSS entry's detail page and reduces it to its main content's text plus
- * attachment candidates, split out of {@link RssFeedIndexingExecutor}. Package-private - an
+ * attachment candidates, split out of {@code RssFeedIndexingExecutor}. Package-private - an
  * implementation detail of the executor, not a new public API.
  *
  * <p>{@code nav}/{@code header}/{@code footer}/menu-ish elements are stripped before the configured
  * {@link IndexingProperties.Rss#mainContentSelector()} is applied, so boilerplate inside the
  * matched main element does not survive either and is never considered for attachments.
- *
- * <p>Public - consumed from {@link RssFeedIndexingExecutor} in the sibling {@code source.rss}
- * package (#1113); still not part of any cross-module API surface.
  */
 public class DetailPageExtractor {
 

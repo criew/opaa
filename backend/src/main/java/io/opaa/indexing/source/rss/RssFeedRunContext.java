@@ -13,9 +13,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * collapses the 9-10-parameter methods {@link RssFeedIndexingExecutor} used to thread this same
  * state through individually into one object.
  *
- * <p>Public - consumed from {@code AttachmentIndexer} in the sibling {@code source.attachment}
- * package (#1113); still not part of any cross-module API surface.
- *
  * <p><b>{@link #httpClientFor}/{@link #authHeaderFor}.</b> {@code sourceInsecureSsl}/{@code
  * Authorization} are withheld for any target outside the feed's own origin - an entry's {@code
  * <link>} or an attachment URL is content the feed operator controls, not a target the library

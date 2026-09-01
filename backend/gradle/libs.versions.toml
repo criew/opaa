@@ -11,7 +11,7 @@ cyclonedx-bom = "3.4.1"
 # relied on transitively. Must stay in sync with the version spring-ai-commons resolves to,
 # otherwise chunk size and chunk overlap would be counted in different tokenizations.
 jtokkit = "1.1.0"
-# HTML parser used directly by io.opaa.indexing.RssFeedIndexingExecutor/AttachmentProfile to read
+# HTML parser used directly by io.opaa.indexing.source.rss.RssFeedIndexingExecutor and io.opaa.indexing.source.attachment.AttachmentProfile to read
 # detail pages and their linked attachments (#467, #468). Previously reached the classpath only
 # transitively via spring-ai-tika-document-reader, so a Spring AI version bump could have silently
 # dropped it - now declared explicitly, version pinned to what that transitive dependency resolves

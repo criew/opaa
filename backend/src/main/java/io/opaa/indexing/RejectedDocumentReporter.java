@@ -1,7 +1,6 @@
 package io.opaa.indexing;
 
 import io.opaa.indexing.source.IndexingSourceType;
-import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,9 +11,8 @@ import org.slf4j.LoggerFactory;
  * nobody has to guess why the number of indexed documents is lower than the number of items the
  * source offered.
  *
- * <p>Used by {@link AsyncIndexingExecutor}, which maps its own rejected-item list down to display
- * names before calling this shared helper. Public - consumed from the {@code source.filesystem}
- * package (#1113); still not part of any cross-module API surface.
+ * <p>Used by {@code AsyncIndexingExecutor}, which maps its own rejected-item list down to display
+ * names before calling this shared helper.
  */
 public final class RejectedDocumentReporter {
 

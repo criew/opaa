@@ -1,14 +1,9 @@
 package io.opaa.indexing.source.rss;
 
-import io.opaa.indexing.source.attachment.AttachmentIndexer;
-
 /**
- * The politeness delay {@link RssFeedIndexingExecutor} and {@link AttachmentIndexer} both apply
+ * The politeness delay {@link RssFeedIndexingExecutor} and {@code AttachmentIndexer} both apply
  * before a detail-page or attachment request - OPAA does not operate the servers an RSS feed points
  * at.
- *
- * <p>Public - consumed from {@link AttachmentIndexer} in the sibling {@code source.attachment}
- * package (#1113); still not part of any cross-module API surface.
  */
 public final class RssPoliteness {
 

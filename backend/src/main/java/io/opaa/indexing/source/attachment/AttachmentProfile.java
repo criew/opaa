@@ -2,7 +2,6 @@ package io.opaa.indexing.source.attachment;
 
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.SupportedDocumentFormats;
-import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.LinkedHashSet;
@@ -14,12 +13,12 @@ import org.jsoup.nodes.Element;
 /**
  * Describes which links on an RSS entry's detail page count as attachments - a named, configurable
  * answer to "which of this page's links are documents", kept as an explicit code construct instead
- * of an {@code if} chain inside {@link RssFeedIndexingExecutor}: a second CMS with a different
+ * of an {@code if} chain inside {@code RssFeedIndexingExecutor}: a second CMS with a different
  * attachment pattern becomes a third enum constant. Selected per deployment via {@code
  * opaa.indexing.rss.attachment-profile} ({@link IndexingProperties.Rss#attachmentProfile()}), not
  * per run and not by guessing the CMS from the feed's address.
  *
- * <p>Both profiles search only inside the same content area {@link RssFeedIndexingExecutor} already
+ * <p>Both profiles search only inside the same content area {@code RssFeedIndexingExecutor} already
  * extracts the article text from ({@code opaa.indexing.rss.main-content-selector}). A link outside
  * that area (site navigation, a footer's imprint link) is never an attachment under either profile,
  * and neither profile ever considers a link to a different host than the detail page's own.
@@ -101,7 +100,7 @@ public enum AttachmentProfile {
   };
 
   /**
-   * Finds every attachment {@code contentArea} - the same element {@link RssFeedIndexingExecutor}
+   * Finds every attachment {@code contentArea} - the same element {@code RssFeedIndexingExecutor}
    * already extracted the article text from - links to, according to this profile's rules. Never
    * throws on a malformed link; a link this profile cannot make sense of is simply not an
    * attachment.

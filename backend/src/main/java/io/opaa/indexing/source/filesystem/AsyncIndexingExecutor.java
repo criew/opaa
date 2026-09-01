@@ -13,7 +13,6 @@ import io.opaa.indexing.RejectedDocumentReporter;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.SourceIndexingExecutor;
-import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -49,7 +48,7 @@ import org.springframework.scheduling.annotation.Async;
  * above be pruned in this same run instead of lagging one run behind. Both are only reached on this
  * method's own success path (never from a {@code catch} block), so a failed or crashed run never
  * deletes anything; {@code discoverFiles} walks the whole tree with no truncation limit, so -
- * unlike {@link UrlIndexingExecutor} - there is no capped-run case to guard against here. It does,
+ * unlike {@code UrlIndexingExecutor} - there is no capped-run case to guard against here. It does,
  * however, throw when {@code sourcePath} itself does not currently exist or is not a directory
  * (#886 review) - an unmounted network share or a moved directory fails this run instead of
  * silently reporting an empty, "successful" bestand that {@link

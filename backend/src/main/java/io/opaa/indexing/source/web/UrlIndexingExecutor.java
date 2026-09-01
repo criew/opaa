@@ -16,7 +16,6 @@ import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.SourceIndexingExecutor;
-import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -345,9 +344,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
    *
    * <p>The lookup is scoped to {@code targetLibrary} (#877): the same URL indexed into a different
    * library is an independent document, so this never reports "unchanged" for a document that
-   * belongs to another library. The RSS path ({@link RssFeedIndexingExecutor#isUnchanged}) mirrors
-   * this too. Public so {@code PipelineReindexServiceIntegrationTest} in the core {@code
-   * io.opaa.indexing} package (#1113) can assert on the gate directly.
+   * belongs to another library. The RSS path ({@code RssFeedIndexingExecutor#isUnchanged}) mirrors
+   * this too.
    */
   public boolean isUnchanged(
       String remoteUrl, String lastModified, KnowledgeLibrary targetLibrary) {
@@ -364,9 +362,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   /**
    * Decides whether a crawled entry is supported from a leading byte sample of its content, never
    * from {@code entryName} alone - the same decision {@link #execute} makes before downloading an
-   * entry in full. Public so {@code DocumentFormatParityTest} in the core {@code io.opaa.indexing}
-   * package (#1113) exercises this exact call instead of a reimplementation that could silently
-   * drift from it.
+   * entry in full. Public so the cross-package parity test exercises this exact call instead of a
+   * reimplementation that could silently drift from it.
    */
   public static SupportedDocumentFormats.ContentDecision decideForEntry(
       byte[] prefix, String entryName) {

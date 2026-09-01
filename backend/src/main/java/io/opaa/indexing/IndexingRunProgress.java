@@ -1,16 +1,11 @@
 package io.opaa.indexing;
 
-import io.opaa.indexing.source.SourceIndexingExecutor;
-import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
 import java.util.UUID;
 
 /**
  * Tracks the processed/failed/skipped counters of a single indexing run and reports them through
  * {@link IndexingJobService} - the shared place for that bookkeeping, so every {@link
  * SourceIndexingExecutor} reuses it instead of repeating it independently.
- *
- * <p>Public - constructed from every {@code source.*} executor package (#1113); still not part of
- * any cross-module API surface.
  */
 public final class IndexingRunProgress {
 
