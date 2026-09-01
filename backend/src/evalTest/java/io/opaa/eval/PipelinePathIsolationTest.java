@@ -126,4 +126,26 @@ class PipelinePathIsolationTest {
       assertThat(baseline.groups()).containsKey(Baseline.OVERALL);
     }
   }
+
+  /**
+   * The committed pipeline baselines (issue #1040/#1081/#1043) must stay loadable and pass {@link
+   * PipelineBaseline}'s load-time invariants — the Docker-free half of "the committed baseline is
+   * internally consistent", run on every {@code evalUnitTest} instead of only inside the expensive,
+   * label-gated regression job.
+   */
+  @Test
+  void committedPipelineBaselinesStayLoadableAndValid() throws java.io.IOException {
+    for (EvalDomainConfig domain :
+        List.of(
+            EvalDomainConfig.COMIC_CHARACTERS,
+            EvalDomainConfig.CITY_LANDMARKS,
+            EvalDomainConfig.VERWALTUNG)) {
+      PipelineBaseline baseline =
+          PipelineBaseline.load(
+              RepoPaths.evalDir().resolve("baseline").resolve(domain.pipelineBaselineFileName()));
+      assertThat(baseline.pipelineMeasurementContractVersion())
+          .isEqualTo(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION);
+      assertThat(baseline.groups()).containsKey(Baseline.OVERALL);
+    }
+  }
 }

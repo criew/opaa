@@ -194,17 +194,11 @@ registerEvalDomain(
         "against eval/corpus/city-landmarks using Testcontainers (pgvector + Ollama). Not part " +
         "of build/check.",
     checkDescription = "Runs evaluateCityLandmarksRetrieval, then fails if the result regresses " +
-        "beyond tolerance against eval/baseline/city-landmarks.json (issue #234). Needs Docker.",
+        "beyond tolerance against eval/baseline/city-landmarks.json (raw-vector path, issue #234) " +
+        "or eval/baseline/pipeline-city-landmarks.json (pipeline path, issue #1081). Needs Docker.",
     harnessTestClass = "io.opaa.eval.CityLandmarksRetrievalEvaluationHarnessTest",
     baselineTestClass = "io.opaa.eval.CityLandmarksBaselineRegressionTest",
-    // Pipeline-Pfad noch ungegated: eval/baseline/pipeline-city-landmarks.json ist noch nicht
-    // gezogen (Issue #1081 — die Ziehung braucht einen ungestörten ~2-Stunden-Lauf und erfolgt aus
-    // dem CPU-Artefakt des nächtlichen Laufs). CityLandmarksPipelineBaselineRegressionTest ist
-    // fertig und wird mit dieser Baseline zusammen hier eingehängt; bis dahin liefe es gegen eine
-    // nicht existierende Baseline und färbte den nächtlichen Job rot für eine Messung, die nie
-    // stattgefunden hat. Der Pipeline-Report dieser Domäne entsteht weiterhin bei jedem Lauf und
-    // liegt im Artefakt.
-    pipelineBaselineTestClass = null,
+    pipelineBaselineTestClass = "io.opaa.eval.CityLandmarksPipelineBaselineRegressionTest",
 )
 
 // verwaltung domain (issues #1042/#1043): third domain, the one that carries the five named

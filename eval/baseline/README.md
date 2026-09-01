@@ -16,15 +16,17 @@ Baselines:
 | `comic-characters.json` | Rohvektor (`similaritySearch` direkt) | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | `measurementContractVersion` |
 | `city-landmarks.json` | Rohvektor | dieselben | `measurementContractVersion` |
 | `pipeline-comic-characters.json` | Pipeline (Schritte 2–6 der Produktion) | Hit Rate@5, MRR@8, nDCG@8, Recall@8 | `pipelineMeasurementContractVersion` |
-| `pipeline-city-landmarks.json` | Pipeline | dieselben | noch nicht gezogen, siehe Issue #1081 |
+| `pipeline-city-landmarks.json` | Pipeline | dieselben | `pipelineMeasurementContractVersion` |
 | `verwaltung.json` | Rohvektor | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | `measurementContractVersion` |
 | `pipeline-verwaltung.json` | Pipeline | Hit Rate@5, MRR@8, nDCG@8, Recall@8 | `pipelineMeasurementContractVersion` |
 
-Die Pipeline-Baseline von `city-landmarks` fehlt noch: Ihre Ziehung braucht einen ungestörten
-Zwei-Stunden-Lauf und erfolgt aus dem CPU-Artefakt des nächtlichen Laufs (Issue #1081). Bis dahin
-schreibt der Lauf dieser Domäne seinen Pipeline-Report wie gehabt, wird aber nicht dagegen geprüft —
-sichtbar am `pipelineBaselineTestClass = null` in `backend/build.gradle.kts`, nicht durch einen
-stillen Sonderfall im Vergleichscode.
+Die Pipeline-Baseline von `city-landmarks` ist seit Issue #1081 gezogen, aus dem CPU-Artefakt eines
+erfolgreichen nächtlichen Laufs statt aus einem eigenen lokalen Lauf — ein ungestörter, rund
+zweistündiger lokaler Lauf ließ sich im Rahmen von #1040 wiederholt nicht durchführen (siehe die
+`notes` der Baseline-Datei für die genaue Quelle). Beide Pfade dieser Domäne liefern damit ein
+Urteil (`checkCityLandmarksRetrievalBaseline` prüft beide), `pipelineBaselineTestClass` in
+`backend/build.gradle.kts` zeigt jetzt auf `CityLandmarksPipelineBaselineRegressionTest` statt auf
+`null`.
 
 **Die beiden Pfade sind nicht ineinander umrechenbar** (ADR-0012, Nachtrag „Pipeline-Messpfad",
 Entscheidung 12): Der Pipeline-Pfad wendet die Produktionsschwelle tatsächlich an und misst am
