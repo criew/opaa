@@ -186,7 +186,8 @@ Chunks überlebt die aus der **früheren** Liste, nicht die mit dem höheren Sco
 Suchpfad können das eine Kosinus-Ähnlichkeit und ein `ts_rank` sein, und die größere der beiden Zahlen
 bedeutet nichts. Da die Pipeline ihre Listen in Stufenreihenfolge übergibt, ist die frühere die der
 Vektorsuche — der angezeigte Relevanzwert bleibt damit eine Ähnlichkeit, außer bei einem Chunk, den nur
-der Volltextpfad gefunden hat. Bei
+der Volltextpfad gefunden hat; was der Wert für diesen Fall bedeuten soll, ist offen
+([#1102](https://github.com/criew/opaa/issues/1102)). Bei
 genau einer Suchanfrage und abgeschaltetem Volltextpfad läuft die Stufe mit und ist dort nachweislich die Identität: innerhalb einer Liste
 sind alle Ränge verschieden, die fusionierten Werte also streng fallend in der Listenreihenfolge, und die
 Deckelung ist durch das Listenbudget bereits erfüllt. Vor #1046 wurde dieser Fall stattdessen verzweigt
