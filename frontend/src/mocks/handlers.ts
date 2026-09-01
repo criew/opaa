@@ -63,6 +63,7 @@ const SUPPORTED_DOCUMENT_EXTENSIONS = [
   '.doc',
   '.docx',
   '.eml',
+  '.html',
   '.md',
   '.msg',
   '.odp',

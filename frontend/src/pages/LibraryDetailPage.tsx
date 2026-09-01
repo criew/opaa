@@ -84,7 +84,7 @@ import SectionHead from '../components/SectionHead'
 // Exported so directoryEntries.test.ts exercises filterAcceptedFiles against the same list rather
 // than a copy that can silently drift out of sync with it.
 export const ACCEPTED_FILE_EXTENSIONS =
-  '.csv,.doc,.docx,.eml,.md,.msg,.odp,.ods,.odt,.pdf,.pptx,.txt,.xlsx'
+  '.csv,.doc,.docx,.eml,.html,.md,.msg,.odp,.ods,.odt,.pdf,.pptx,.txt,.xlsx'
 
 const allVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
 

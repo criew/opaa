@@ -71,6 +71,15 @@ public class IndexingConfiguration {
   }
 
   /**
+   * HTML pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 4) - registered as an
+   * ordinary {@link DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}.
+   */
+  @Bean
+  HtmlDocumentPipeline htmlDocumentPipeline() {
+    return new HtmlDocumentPipeline();
+  }
+
+  /**
    * EML/MSG pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) - an {@link
    * org.springframework.beans.factory.ObjectProvider}, not a direct {@link
    * DocumentPipelineRegistry} dependency, breaks the circular bean graph the recursive-attachment
