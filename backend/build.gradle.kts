@@ -58,6 +58,7 @@ dependencies {
     implementation(libs.poi.scratchpad)
     implementation(libs.mime4j.dom)
     implementation(libs.commons.csv)
+    implementation(libs.pdfbox)
     runtimeOnly(libs.bundles.runtime)
     testImplementation(libs.bundles.test.deps)
     testRuntimeOnly(libs.bundles.test.runtime.deps)
