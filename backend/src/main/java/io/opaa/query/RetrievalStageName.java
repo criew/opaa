@@ -44,11 +44,11 @@ public enum RetrievalStageName {
   /**
    * One {@code VectorStore#similaritySearch} per search query, each with the identical filter from
    * {@link #SEARCH_SCOPE} and the identical {@link QueryProperties#similarityThreshold}, yielding
-   * {@link QueryProperties#fetchK} candidates per query. The only stage that adds candidates the
-   * pipeline did not already hold; every later stage is confined to what this one produced.
+   * {@link QueryProperties#fetchK} candidates per query. One of the two stages that add candidates
+   * the pipeline did not already hold; every later stage is confined to what the two produced.
    *
-   * <p>Switched off, the pipeline retrieves nothing at all - meaningful only in combination with a
-   * second search path (docs/features/hybrid-retrieval.md, Arbeitspaket 2).
+   * <p>Switched off, the pipeline retrieves through the lexical path alone (#1049) - the {@code
+   * lexical-only} variant, and nothing at all if that path is switched off too.
    */
   VECTOR_SEARCH,
 
@@ -57,10 +57,10 @@ public enum RetrievalStageName {
    * #SEARCH_SCOPE} and the identical {@link QueryProperties#fetchK}, over the libraries whose
    * full-text backfill has finished (docs/features/hybrid-retrieval.md, Arbeitspaket 2).
    *
-   * <p><b>Its candidates do not reach the fusion yet</b> - they are recorded in the explanation
-   * protocol and nowhere else, so this stage is currently the identity for the selection and
-   * switching it off changes nothing but the protocol. #1049 makes its lists an input of {@link
-   * #RANK_FUSION}, and that is where the behaviour change and the re-drawn baselines belong.
+   * <p>Its lists are inputs of {@link #RANK_FUSION} (#1049), one per search query, next to the
+   * vector path's. Switched off, the pipeline retrieves through the vector path alone - the {@code
+   * vector-only} measurement variant, which {@link QueryProperties#fullTextSearchEnabled()}
+   * expresses without removing the stage from the chain.
    */
   FULL_TEXT_SEARCH,
 

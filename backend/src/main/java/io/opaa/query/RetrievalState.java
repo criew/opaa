@@ -15,7 +15,7 @@ import org.springframework.ai.vectorstore.filter.Filter;
  * <p><b>{@code candidatePool} is the ceiling of the whole run.</b> Only a search stage may extend
  * it; every other stage draws from it and can therefore never see more candidates than it was
  * handed - the invariant that keeps document completion (#932) from reaching past the permission
- * and threshold filter the search itself applied.
+ * filter the searches themselves applied.
  *
  * <p>Immutable: a stage returns a new state rather than mutating this one, so a stage cannot alter
  * what an earlier stage recorded in the explanation protocol.

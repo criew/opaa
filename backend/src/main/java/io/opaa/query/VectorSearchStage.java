@@ -13,9 +13,9 @@ import org.springframework.stereotype.Component;
  * per search query, each with the identical permission filter from {@link SearchScopeStage} and the
  * identical {@link QueryProperties#similarityThreshold}, yielding one candidate list per query.
  *
- * <p>The only stage that adds candidates the run did not already hold - it is therefore the only
- * one that calls {@link RetrievalState#withSearchResults}, and the ceiling every later stage works
- * within.
+ * <p>One of the two stages that add candidates the run did not already hold ({@link
+ * FullTextSearchStage} is the other, #1049) - together they call {@link
+ * RetrievalState#withSearchResults} and form the ceiling every later stage works within.
  *
  * <p>With no search queries in the state - which happens exactly when {@link
  * RetrievalStageName#SUB_QUERY_DECOMPOSITION} is switched off - the bare question is searched and

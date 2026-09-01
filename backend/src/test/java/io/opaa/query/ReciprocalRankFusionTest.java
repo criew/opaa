@@ -52,17 +52,43 @@ class ReciprocalRankFusionTest {
         .containsExactly("shared", "only-first", "only-second");
   }
 
+  /**
+   * #1049: a chunk both search paths found is one candidate, and the instance that survives is the
+   * earliest list's - the vector path's, whose score is a cosine similarity. Picking "the higher
+   * score" instead would compare a similarity against a {@code ts_rank}, the cross-scale comparison
+   * this class exists to avoid.
+   */
   @Test
-  void dedupesByChunkIdKeepingTheHigherScoringDocumentInstance() {
-    Document lowerScoreFirst = chunk("dup", "first list's copy", 0.1);
-    Document higherScoreSecond = chunk("dup", "second list's copy", 0.9);
+  void dedupesByChunkIdKeepingTheEarliestListsDocumentInstance() {
+    Document fromVectorPath = chunk("dup", "vector path's copy", 0.42);
+    Document fromLexicalPath = chunk("dup", "lexical path's copy", 0.9);
+
+    List<Document> fused =
+        ReciprocalRankFusion.fuse(List.of(List.of(fromVectorPath), List.of(fromLexicalPath)), 10);
+
+    assertThat(fused).hasSize(1);
+    assertThat(fused.getFirst().getText()).isEqualTo("vector path's copy");
+    assertThat(fused.getFirst().getScore()).isEqualTo(0.42);
+  }
+
+  /**
+   * The fusion mechanic the hybrid search rests on: a chunk both paths rank second beats a chunk
+   * either path alone ranks first (docs/features/hybrid-retrieval.md, "Fusion: zwei Ergebnislisten,
+   * eine Auswahl").
+   */
+  @Test
+  void aChunkBothPathsFoundOutranksOneOnlyASinglePathFound() {
+    Document vectorTop = chunk("vector-top", "top of the vector list", 0.8);
+    Document foundByBoth = chunk("both", "second in both lists", 0.5);
+    Document lexicalTop = chunk("lexical-top", "top of the lexical list", 0.07);
 
     List<Document> fused =
         ReciprocalRankFusion.fuse(
-            List.of(List.of(lowerScoreFirst), List.of(higherScoreSecond)), 10);
+            List.of(List.of(vectorTop, foundByBoth), List.of(lexicalTop, foundByBoth)), 10);
 
-    assertThat(fused).hasSize(1);
-    assertThat(fused.getFirst().getText()).isEqualTo("second list's copy");
+    assertThat(fused)
+        .extracting(Document::getId)
+        .containsExactly("both", "vector-top", "lexical-top");
   }
 
   @Test

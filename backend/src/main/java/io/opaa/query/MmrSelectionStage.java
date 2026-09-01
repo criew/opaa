@@ -18,8 +18,10 @@ import org.springframework.stereotype.Component;
  * always multiplied by zero (see {@link MmrSelector#select}), so the round trip is skipped entirely
  * - it could not affect the result.
  *
- * <p>Narrows only: every chunk it passes on was already permission-scoped and threshold-filtered by
- * the search that produced it.
+ * <p>Narrows only: every chunk it passes on was already permission-scoped by the search that
+ * produced it, and threshold-filtered if that search was the vector one - {@link
+ * QueryProperties#similarityThreshold} is a property of vector distance and has no counterpart in
+ * the lexical path, whose lists this stage narrows by the same per-list budget all the same.
  */
 @Component
 class MmrSelectionStage implements RetrievalStage {

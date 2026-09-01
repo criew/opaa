@@ -8,7 +8,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * Step 5 of docs/features/retrieval-algorithm.md as a pipeline stage: merges every candidate list
- * into one by {@link ReciprocalRankFusion} and caps it at {@link QueryProperties#topK}.
+ * into one by {@link ReciprocalRankFusion} and caps it at {@link QueryProperties#topK}. Since #1049
+ * that is two lists per search query - the vector path's and the lexical path's - fused by the same
+ * mechanism that already fused several sub-queries: one further input list, no weighting
+ * (docs/features/hybrid-retrieval.md, Arbeitspaket 3).
  *
  * <p>Runs for a single list too, where it is provably the identity: within one list every rank is
  * distinct, so the fused scores are strictly decreasing in the list's own order and the cap is
