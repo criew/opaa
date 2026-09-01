@@ -44,7 +44,8 @@ public final class SupportedDocumentFormats {
 
   private static final Set<String> EXTENSIONS =
       Set.of(
-          ".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv", ".odt", ".ods", ".odp");
+          ".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv", ".odt", ".ods", ".odp",
+          ".html");
 
   /**
    * Maps a {@code Content-Type} header value to one of the {@link #EXTENSIONS} above, for sources
@@ -67,7 +68,8 @@ public final class SupportedDocumentFormats {
           Map.entry("text/csv", ".csv"),
           Map.entry("application/vnd.oasis.opendocument.text", ".odt"),
           Map.entry("application/vnd.oasis.opendocument.spreadsheet", ".ods"),
-          Map.entry("application/vnd.oasis.opendocument.presentation", ".odp"));
+          Map.entry("application/vnd.oasis.opendocument.presentation", ".odp"),
+          Map.entry("text/html", ".html"));
 
   /**
    * Extensions whose content is only checked for being text at all - {@code .md}, {@code .txt} and
@@ -109,7 +111,11 @@ public final class SupportedDocumentFormats {
           // is needed here.
           Map.entry(".odt", Set.of("application/vnd.oasis.opendocument.text")),
           Map.entry(".ods", Set.of("application/vnd.oasis.opendocument.spreadsheet")),
-          Map.entry(".odp", Set.of("application/vnd.oasis.opendocument.presentation")));
+          Map.entry(".odp", Set.of("application/vnd.oasis.opendocument.presentation")),
+          // HTML has a distinctive enough signature (DOCTYPE/<html> tag) that Tika reliably tells
+          // it apart from plain text - both text/html and the XHTML variant are accepted, mirroring
+          // DetailPageExtractor's own isHtmlContentType (ingestion-pipelines.md, Teil 3, Punkt 4).
+          Map.entry(".html", Set.of("text/html", "application/xhtml+xml")));
 
   private SupportedDocumentFormats() {}
 

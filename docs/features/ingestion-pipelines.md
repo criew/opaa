@@ -564,6 +564,50 @@ Chunks, die auf jeder Seite eines Auftritts nahezu gleich aussehen und die Treff
 Wiederholungen füllen. `JsoupDocumentReader` mit CSS-Selektoren erlaubt, den Hauptinhalt zu
 adressieren. Der Zuschnitt folgt den Überschriften h1–h3.
 
+#### Umgesetzt (#1059)
+
+`HtmlDocumentPipeline` (`id` `html`, Version 1) beansprucht `.html` in der
+`DocumentPipelineRegistry`; `.html` ist dafür neu in `SupportedDocumentFormats` zugelassen, über
+den unzweideutigen Tika-Medientyp `text/html` (bzw. `application/xhtml+xml`) — wie bei PDF/DOCX ein
+strenger, inhaltsbasierter Treffer, keine text-tolerante Sonderregel wie bei Markdown/Klartext/CSV.
+Damit ist HTML nicht mehr auf den Feed-Weg angewiesen: Sowohl der Verzeichnis-Crawl
+(`UrlIndexingExecutor`) als auch das Dateisystem erkennen und indizieren `.html`-Dateien jetzt
+direkt über dieselbe Pipeline.
+
+**Statt des in der Spezifikation genannten Spring-AI-`JsoupDocumentReader`** liest die Pipeline
+direkt über `org.jsoup:jsoup` (bereits Projektabhängigkeit, von `DetailPageExtractor` für den
+RSS-Weg genutzt) — kein solches Spring-AI-Modul liegt auf dem Klassenpfad, und Boilerplate-Entfernung
+plus Überschriftenschnitt sind mit Jsoup unmittelbar wenige hundert Zeilen, keine Rechtfertigung für
+eine zusätzliche Abhängigkeit. Dieselbe Abwägung trifft `TabularDocumentPipeline` bereits für Apache
+POI statt eines Spring-AI-Tabellen-Readers.
+
+**Boilerplate-Entfernung:** Vor der Auswahl des Hauptinhalts werden `nav`, `header`, `footer`,
+`aside`, die zugehörigen ARIA-Rollen sowie gängige Cookie-Banner-Selektoren entfernt — dieselbe
+Menge, die `DetailPageExtractor` für eine RSS-Detailseite bereits verwendet, um Cookie-Banner-Marker
+ergänzt. Der Hauptinhalt wird danach über `main, article, [role=main]` adressiert — derselbe
+Selektor, den `IndexingProperties.Rss#DEFAULT_MAIN_CONTENT_SELECTOR` schon für die überwiegende
+Mehrheit deutscher Verwaltungs-CMS-Templates für ausreichend befunden hat; ohne Treffer fällt die
+Pipeline auf `body` zurück.
+
+**Zuschnitt:** Ein neuer Chunk beginnt bei jeder h1-h3-Überschrift; h4-h6 bleiben Teil des
+umgebenden Abschnitts. Jeder Chunk trägt seinen Überschriftenpfad (z. B. „Abschn. Personalausweis
+beantragen › Voraussetzungen") im bestehenden, generischen `location`-Metadatenfeld — demselben
+Kanal, über den `ChunkLocationResolver` Seiten-/Überschriftenstruktur aus flachem Text
+rekonstruiert; diese Pipeline kennt die Struktur direkt aus dem DOM und muss sie nicht erst wieder
+erraten. Text vor der ersten Überschrift wird als eigener, pfadloser Chunk ausgegeben.
+
+Eine Obergrenze von 20.000 Zeichen je Chunk (**gesetzt, nicht gemessen** — der
+Evaluierungskorpus enthält bislang keine HTML-Dokumente, siehe unten) schützt vor einem
+Abschnitt ohne weitere Gliederung, der allein schon das Einbettungsmodell-Limit sprengen würde;
+betroffener Text wird mit sichtbarem „[…gekürzt]"-Vermerk gekappt, nach demselben Muster wie
+`TabularDocumentPipeline#HARD_CHUNK_CHAR_LIMIT`.
+
+Eine Seite, deren gesamter Inhalt Boilerplate ist (nur Navigation/Fußzeile/Cookie-Banner, kein
+`main`/`article` und kein sonstiger Textinhalt), meldet `NO_EXTRACTABLE_TEXT` — dasselbe Ergebnis,
+das jede andere Pipeline für Text meldet, der auf nichts herunter zerlegt.
+
+**Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine HTML-Dokumente.
+
 ### 5. EML und MSG
 
 Vorgangskommunikation und Verfügungen per Mail. Tika parst beide Formate nativ, aber als einen Block

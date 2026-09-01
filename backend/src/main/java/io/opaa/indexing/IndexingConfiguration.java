@@ -70,6 +70,15 @@ public class IndexingConfiguration {
   }
 
   /**
+   * HTML pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 4) - registered as an
+   * ordinary {@link DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}.
+   */
+  @Bean
+  HtmlDocumentPipeline htmlDocumentPipeline() {
+    return new HtmlDocumentPipeline();
+  }
+
+  /**
    * Populated from every {@link DocumentPipeline} bean Spring finds - a new format becomes
    * reachable by adding one more pipeline bean, never by editing this method or {@link
    * FileProcessingService} (the open-closed criterion of docs/features/ingestion-pipelines.md, Teil

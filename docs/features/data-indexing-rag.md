@@ -531,7 +531,7 @@ heute läuft, und dem, was zum Zielbild gehört.
 | Seitenlayout-Dokument | PDF (`.pdf`), Word (`.docx`, `.doc`), OpenDocument-Text (`.odt`) | RTF |
 | Tabellenkalkulation | Excel (`.xlsx`), CSV, OpenDocument (`.ods`) | Excel `.xls` |
 | Präsentation | PowerPoint (`.pptx`), OpenDocument (`.odp`) | — |
-| Auszeichnungssprache | — | HTML, XML |
+| Auszeichnungssprache | HTML (`.html`) | XML |
 | Strukturierte Daten | — | JSON, CSV, XML-Datensätze |
 | Nachricht aus einem Postfach | — | Einzelnachrichten (`.eml`, `.msg`), Postfachexporte (MBOX, PST) |
 | Bild oder gescannte Seite | — | Rasterbilder (`.png`, `.jpg`, `.tiff`), Bild-PDF über Texterkennung |
@@ -557,7 +557,7 @@ den zugelassenen Bestand aufgenommen — eine stille Erweiterung, die diese Umst
 wollte. Für diese drei Typen gilt deshalb: Der Inhalt muss lesbarer Text sein, **und** die Datei muss
 bereits `.md`, `.txt` oder `.csv` heißen — eine lesbare Textdatei namens `README` oder `export.log` wird
 abgewiesen, dieselben Bytes unter `notiz.txt` oder `export.csv` angenommen. Für die eindeutig erkennbaren
-Formate (PDF, Word, PowerPoint, Excel, OpenDocument) gilt diese Einschränkung nicht: Ihr Byte-Muster ist
+Formate (PDF, Word, PowerPoint, Excel, OpenDocument, HTML) gilt diese Einschränkung nicht: Ihr Byte-Muster ist
 eindeutig genug, dass die Endung dort wirklich nur noch Hinweis ist.
 
 Beim **RSS-Anlagenweg** kommt eine zweite, davon unabhängige Einschränkung hinzu: Welche Verweise einer

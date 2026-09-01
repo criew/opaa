@@ -327,4 +327,43 @@ class SupportedDocumentFormatsTest {
 
     assertThat(SupportedDocumentFormats.detectMediaType(file)).startsWith("text/plain");
   }
+
+  // --- #1059: HTML ------------------------------------------------------------------------------
+
+  @Test
+  void contentMatchesExtensionAcceptsHtmlAndXhtmlForTheHtmlExtension() {
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".html", "text/html")).isTrue();
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".html", "application/xhtml+xml"))
+        .isTrue();
+  }
+
+  @Test
+  void extensionForDetectedContentResolvesHtml() {
+    assertThat(SupportedDocumentFormats.extensionForDetectedContent("text/html"))
+        .isEqualTo(".html");
+  }
+
+  @Test
+  void decideForFileNameAcceptsHtmlContentRegardlessOfExtension() {
+    // Routing (ingestion-pipelines.md, Teil 3, Punkt 4): HTML is admitted purely from its detected
+    // content, exactly like PDF/DOCX - the file's own extension only decides the mismatch flag.
+    var decision = SupportedDocumentFormats.decideForFileName("seite.htm", "text/html");
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".html");
+    assertThat(decision.extensionMismatch()).isTrue();
+  }
+
+  @Test
+  void isSupportedAcceptsHtmlByName() {
+    assertThat(SupportedDocumentFormats.isSupported("seite.html")).isTrue();
+  }
+
+  @Test
+  void detectMediaTypeReadsHtmlFromARealFile() throws IOException {
+    Path file = tempDir.resolve("seite.html");
+    Files.writeString(file, "<html><body><main><h1>Titel</h1><p>Inhalt.</p></main></body></html>");
+
+    assertThat(SupportedDocumentFormats.detectMediaType(file)).isEqualTo("text/html");
+  }
 }
