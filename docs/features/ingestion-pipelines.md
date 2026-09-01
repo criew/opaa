@@ -468,16 +468,22 @@ Inhalt muss Text sein **und** die Datei muss `.csv` heißen.
 
 #### Umgesetzt (#1058)
 
-`TabularDocumentPipeline` (`id` `tabular`, Version 1) beansprucht `.xlsx` und `.csv` in der
+`TabularDocumentPipeline` (`id` `tabular`, Version 1) beansprucht `.xlsx`, `.csv` und `.ods` in der
 `DocumentPipelineRegistry`. XLSX wird blatt- und zellenweise über Apache POI gelesen, CSV über einen
 Trennzeichen-erkennenden Parser (Komma, Semikolon, Tabulator — die reale Exportvarianten, siehe
-Test-Fixtures). Beide Leser teilen sich denselben Zuschnitt:
+Test-Fixtures). **ODS liest POI nicht** — POI deckt OOXML (XLSX/DOCX/PPTX) und die alten
+Binärformate ab, nie OpenDocument. Statt einer vollen ODF-Bibliothek (z. B. ODF Toolkit) für einen
+einzigen, schmalen Lesezugriff liest die Pipeline `content.xml` (eine ODS-Datei ist ein ZIP-Archiv)
+direkt über einen gehärteten SAX-Parser — `table:table`/`table:table-row`/`table:table-cell` sind
+schlichtes, wohlgeformtes XML. Damit bedient dieselbe Pipeline auch das „ODS wie XLSX" aus
+[Punkt 2](#2-odf--odt-ods-odp): #1057 lässt `.ods` zu, dieses Issue liest es strukturerhaltend statt
+über den Tika-Fallback. Alle drei Leser teilen sich denselben Zuschnitt:
 
 - Die erste nicht-leere Zeile eines Blatts bzw. der Datei ist die Kopfzeile; jeder folgende Chunk trägt
-  sie erneut, zusammen mit einer Strukturkontext-Zeile (`Blatt: … · Tabelle: …` für XLSX, `Tabelle: …`
-  für CSV) — direkt im Chunk-Text, nicht als separates Metadatenfeld, weil `FileProcessingService`
+  sie erneut, zusammen mit einer Strukturkontext-Zeile (`Blatt: … · Tabelle: …` für XLSX/ODS, `Tabelle:
+  …` für CSV) — direkt im Chunk-Text, nicht als separates Metadatenfeld, weil `FileProcessingService`
   nur eine feste, generische Metadatenmenge auf einen gespeicherten Chunk überträgt (siehe
-  [Teil 5](#teil-5--übergabepunkt-an-das-metadatenschema)). Für XLSX fallen Blatt- und Tabellenname
+  [Teil 5](#teil-5--übergabepunkt-an-das-metadatenschema)). Für XLSX/ODS fallen Blatt- und Tabellenname
   zusammen: Excels separates Konzept „definierte Tabelle" wird nicht eigens erkannt.
 - Eine Zeilengruppe von bis zu 50 Datenzeilen bildet einen Chunk, vorzeitig geschlossen, wenn die
   nächste Zeile den Chunk über 6.000 Zeichen triebe (Schutz gegen eine Riesenzeile mit hunderten
@@ -492,8 +498,16 @@ Test-Fixtures). Beide Leser teilen sich denselben Zuschnitt:
   CSV-Datei Nutzdaten, meldet die Pipeline `NO_EXTRACTABLE_TEXT` — dasselbe Ergebnis, das
   `TikaFallbackPipeline` für Text meldet, der auf nichts herunter zerlegt (siehe
   [Punkt 1](#1-scan-erkennung-und-bestandsprüfung)).
+- ODS-eigene Grenzfälle: `table:number-columns-repeated` — ODF-Exporte polstern eine Zeile
+  routinemäßig mit einer einzigen wiederholten Leerzelle bis zur vollen Blattbreite (bis zu 16384) —
+  wird pro Zelle und pro Zeile gedeckelt (dieselbe Art Schutz wie die 6.000-Zeichen-Grenze, nur für
+  die ODS-eigene Riesenzeilen-Darstellung); `table:number-rows-repeated` wird nicht expandiert, eine
+  wiederholte Zeile zählt einmal. Der SAX-Parser lehnt eine `<!DOCTYPE …>` in `content.xml` ab
+  (XXE-Härtung) — die Datei kommt aus einem hochgeladenen bzw. indizierten Dokument, nie aus
+  vertrauenswürdiger Quelle.
 
-**Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine XLSX- oder CSV-Dokumente.
+**Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine XLSX-, CSV- oder
+ODS-Dokumente.
 
 ### 4. HTML
 

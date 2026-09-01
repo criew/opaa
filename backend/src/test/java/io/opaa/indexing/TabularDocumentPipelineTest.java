@@ -1,12 +1,16 @@
 package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -14,9 +18,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The XLSX/CSV pipeline (#1058, ingestion-pipelines.md Teil 3, Punkt 3): tabular structure - not
- * flattened prose - survives the cut, headers repeat in every chunk, and blatt/tabelle show up as
- * structural context.
+ * The XLSX/CSV/ODS pipeline (#1058, #1057; ingestion-pipelines.md Teil 3, Punkt 3): tabular
+ * structure - not flattened prose - survives the cut, headers repeat in every chunk, and
+ * blatt/tabelle show up as structural context.
  */
 class TabularDocumentPipelineTest {
 
@@ -25,8 +29,8 @@ class TabularDocumentPipelineTest {
   private final TabularDocumentPipeline pipeline = new TabularDocumentPipeline();
 
   @Test
-  void claimsExactlyXlsxAndCsv() {
-    assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".xlsx", ".csv");
+  void claimsExactlyXlsxCsvAndOds() {
+    assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".xlsx", ".csv", ".ods");
     assertThat(pipeline.id()).isEqualTo("tabular");
     assertThat(pipeline.version()).isEqualTo((short) 1);
   }
@@ -294,5 +298,181 @@ class TabularDocumentPipelineTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks().getFirst().getText()).contains("Müller | Bauamt");
+  }
+
+  // --- ODS (#1057 admits .ods; POI does not read OpenDocument, see readOds) --------------------
+
+  @Test
+  void aSingleOdsSheetProducesOneChunkWithRepeatedHeaderAndSheetContext() throws IOException {
+    Path file = tempDir.resolve("gebuehren.ods");
+    writeOds(
+        file,
+        odsTable("Gebühren", odsRow("Leistung", "Betrag"), odsRow("Personalausweis", "37,00 EUR")));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "gebuehren.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Blatt: Gebühren")
+        .contains("Tabelle: Gebühren")
+        .contains("Leistung | Betrag")
+        .contains("Personalausweis | 37,00 EUR");
+    assertThat(result.chunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+        .isEqualTo("Blatt Gebühren · Zeile 2");
+  }
+
+  @Test
+  void multipleOdsSheetsEachProduceTheirOwnChunksWithTheirOwnSheetName() throws IOException {
+    Path file = tempDir.resolve("verzeichnis.ods");
+    writeOds(
+        file,
+        odsTable("Gebühren", odsRow("Leistung", "Betrag"), odsRow("Ausweis", "37,00 EUR"))
+            + odsTable("Zuständigkeiten", odsRow("Name", "Amt"), odsRow("Müller", "Bauamt")));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "verzeichnis.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().get(0).getText()).contains("Blatt: Gebühren");
+    assertThat(result.chunks().get(1).getText()).contains("Blatt: Zuständigkeiten");
+  }
+
+  @Test
+  void anEmptyOdsSheetAmongOthersContributesNoChunkOfItsOwn() throws IOException {
+    Path file = tempDir.resolve("gemischt.ods");
+    writeOds(file, odsTable("Leer") + odsTable("Daten", odsRow("Spalte"), odsRow("Wert")));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "gemischt.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).contains("Blatt: Daten");
+  }
+
+  @Test
+  void anOdsSpreadsheetWhoseOnlySheetIsEmptyHasNoExtractableText() throws IOException {
+    Path file = tempDir.resolve("leer.ods");
+    writeOds(file, odsTable("Leer"));
+
+    DocumentPipelineResult result = pipeline.run(DocumentPipelineSource.ofFile(file, "leer.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+  }
+
+  @Test
+  void aHeaderOnlyOdsSheetHasNoExtractableText() throws IOException {
+    Path file = tempDir.resolve("nur-kopfzeile.ods");
+    writeOds(file, odsTable("Blatt1", odsRow("Name", "Amt")));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "nur-kopfzeile.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+  }
+
+  @Test
+  void aCoveredTableCellFromAMergedRegionIsTreatedAsBlankRatherThanCrashing() throws IOException {
+    Path file = tempDir.resolve("verbunden.ods");
+    writeOds(
+        file,
+        odsTable(
+            "Blatt1",
+            odsRow("Name", "Amt"),
+            "<table:table-row>"
+                + "<table:table-cell office:value-type=\"string\"><text:p>Müller</text:p>"
+                + "</table:table-cell>"
+                + "<table:covered-table-cell/>"
+                + "</table:table-row>"));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "verbunden.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText()).contains("Müller |");
+  }
+
+  @Test
+  void aHugeTrailingColumnRepeatIsCappedRatherThanBallooningTheChunk() throws IOException {
+    // ODF exporters routinely pad a row to the sheet's full width (e.g. 16384) with a single
+    // repeated blank cell - the "Riesenzeile" guard for ODS, see MAX_CELL_REPEAT/MAX_ROW_COLUMNS.
+    Path file = tempDir.resolve("riesenspalte.ods");
+    String headerRowWithTrailingRepeat =
+        "<table:table-row>"
+            + "<table:table-cell office:value-type=\"string\"><text:p>Name</text:p></table:table-cell>"
+            + "<table:table-cell office:value-type=\"string\"><text:p>Amt</text:p></table:table-cell>"
+            + "<table:table-cell table:number-columns-repeated=\"16384\"/>"
+            + "</table:table-row>";
+    writeOds(file, odsTable("Blatt1", headerRowWithTrailingRepeat, odsRow("Müller", "Bauamt")));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "riesenspalte.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    // Capped at 200 columns per row rather than 16384 - a bounded, not unboundedly large, chunk.
+    assertThat(result.chunks().getFirst().getText()).hasSizeLessThan(5_000);
+  }
+
+  @Test
+  void anOdsContentXmlWithADoctypeIsRejectedRatherThanResolvingExternalEntities()
+      throws IOException {
+    // XXE hardening: content.xml comes from an uploaded/indexed file, never trusted input.
+    Path file = tempDir.resolve("xxe.ods");
+    String maliciousContent =
+        "<?xml version=\"1.0\"?>"
+            + "<!DOCTYPE office:document-content [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]>"
+            + "<office:document-content"
+            + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+            + " xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\""
+            + " xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\">"
+            + "<office:body><office:spreadsheet>"
+            + odsTable("Blatt1", odsRow("Name", "&xxe;"))
+            + "</office:spreadsheet></office:body></office:document-content>";
+    try (var out = new ZipOutputStream(Files.newOutputStream(file))) {
+      out.putNextEntry(new ZipEntry("content.xml"));
+      out.write(maliciousContent.getBytes(StandardCharsets.UTF_8));
+      out.closeEntry();
+    }
+
+    assertThatThrownBy(() -> pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.ods")))
+        .isInstanceOf(UncheckedIOException.class);
+  }
+
+  private static void writeOds(Path file, String spreadsheetBodyXml) throws IOException {
+    String content =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<office:document-content"
+            + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+            + " xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\""
+            + " xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\">"
+            + "<office:body><office:spreadsheet>"
+            + spreadsheetBodyXml
+            + "</office:spreadsheet></office:body></office:document-content>";
+    try (var out = new ZipOutputStream(Files.newOutputStream(file))) {
+      out.putNextEntry(new ZipEntry("content.xml"));
+      out.write(content.getBytes(StandardCharsets.UTF_8));
+      out.closeEntry();
+    }
+  }
+
+  private static String odsTable(String name, String... rows) {
+    StringBuilder xml = new StringBuilder("<table:table table:name=\"").append(name).append("\">");
+    for (String row : rows) {
+      xml.append(row);
+    }
+    return xml.append("</table:table>").toString();
+  }
+
+  private static String odsRow(String... cellValues) {
+    StringBuilder xml = new StringBuilder("<table:table-row>");
+    for (String value : cellValues) {
+      xml.append("<table:table-cell office:value-type=\"string\"><text:p>")
+          .append(value)
+          .append("</text:p></table:table-cell>");
+    }
+    return xml.append("</table:table-row>").toString();
   }
 }

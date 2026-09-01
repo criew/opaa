@@ -11,6 +11,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import javax.xml.XMLConstants;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -21,13 +27,18 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.ai.document.Document;
+import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * The XLSX/CSV pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 3): the requirement is
- * not "read the table" but "keep the table structure" - Tika's own XLSX extraction flattens a sheet
- * into prose-like text, which is worse than nothing for a Gebührenverzeichnis or
- * Zuständigkeitsliste. This reads blatt- and zellenweise over Apache POI (XLSX) or via a
- * delimiter-detecting CSV parser, and cuts along logical row groups instead of tokens.
+ * The XLSX/CSV/ODS pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 3): the
+ * requirement is not "read the table" but "keep the table structure" - Tika's own spreadsheet
+ * extraction flattens a sheet into prose-like text, which is worse than nothing for a
+ * Gebührenverzeichnis or Zuständigkeitsliste. This reads blatt- and zellenweise over Apache POI
+ * (XLSX), a lightweight direct read of the ODF XML (ODS - POI does not read OpenDocument formats,
+ * see {@link #readOds}), or a delimiter-detecting CSV parser, and cuts along logical row groups
+ * instead of tokens.
  *
  * <p><b>Every chunk repeats its column headers</b> - deliberate redundancy (ingestion-pipelines.md,
  * Teil 2): a row group from the middle of a large table is meaningless without knowing what its
@@ -43,6 +54,11 @@ import org.springframework.ai.document.Document;
  * SupportedDocumentFormats}): content alone cannot distinguish a CSV export from a Markdown table
  * or arbitrary text, so a CSV file is only accepted - and therefore only ever reaches this pipeline
  * - once its own file name already claims {@code .csv}.
+ *
+ * <p><b>ODS admission is owned by a separate issue (#1057).</b> This pipeline claims {@code .ods}
+ * regardless of whether {@link SupportedDocumentFormats} admits it yet on a given deployment - a
+ * claimed-but-never-routed format is harmless (see {@link DocumentPipelineRegistry}), and it means
+ * ODS becomes end-to-end reachable the moment #1057 lands, without a second wiring change here.
  */
 public class TabularDocumentPipeline implements DocumentPipeline {
 
@@ -83,16 +99,22 @@ public class TabularDocumentPipeline implements DocumentPipeline {
 
   @Override
   public Set<String> handledFormats() {
-    return Set.of(".xlsx", ".csv");
+    return Set.of(".xlsx", ".csv", ".ods");
   }
 
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
-    boolean isCsv =
-        source.fileName() != null && source.fileName().toLowerCase(Locale.ROOT).endsWith(".csv");
+    String lowerFileName =
+        source.fileName() == null ? "" : source.fileName().toLowerCase(Locale.ROOT);
     List<Document> chunks;
     try {
-      chunks = isCsv ? readCsv(source) : readXlsx(source);
+      if (lowerFileName.endsWith(".csv")) {
+        chunks = readCsv(source);
+      } else if (lowerFileName.endsWith(".ods")) {
+        chunks = readOds(source);
+      } else {
+        chunks = readXlsx(source);
+      }
     } catch (IOException e) {
       throw new UncheckedIOException("Could not read tabular document " + source.fileName(), e);
     }
@@ -121,7 +143,7 @@ public class TabularDocumentPipeline implements DocumentPipeline {
             .setDelimiter(detectDelimiter(text))
             .setTrim(true)
             .setIgnoreEmptyLines(false)
-            .build();
+            .get();
     List<CSVRecord> records;
     try (CSVParser parser = CSVParser.parse(text, format)) {
       records = parser.getRecords();
@@ -198,27 +220,17 @@ public class TabularDocumentPipeline implements DocumentPipeline {
   }
 
   private List<Document> readSheet(Sheet sheet) {
+    List<RawRow> rows = new ArrayList<>();
     List<String> header = null;
-    List<List<String>> dataRows = new ArrayList<>();
-    List<Long> dataRowNumbers = new ArrayList<>();
     for (Row row : sheet) {
       List<String> values = toValues(row, header == null ? -1 : header.size());
-      if (isBlankRow(values)) {
-        continue;
-      }
-      if (header == null) {
+      if (header == null && !isBlankRow(values)) {
         header = values;
-        continue;
       }
-      dataRows.add(values);
       // 1-based, matching the row number Excel itself displays (getRowNum() is 0-based).
-      dataRowNumbers.add((long) (row.getRowNum() + 1));
+      rows.add(new RawRow(row.getRowNum() + 1L, values));
     }
-    if (header == null || dataRows.isEmpty()) {
-      return List.of();
-    }
-    return buildChunks(
-        sheet.getSheetName(), sheet.getSheetName(), header, dataRows, dataRowNumbers);
+    return chunksFromRawRows(sheet.getSheetName(), rows);
   }
 
   private static List<String> toValues(Row row, int minColumns) {
@@ -232,7 +244,192 @@ public class TabularDocumentPipeline implements DocumentPipeline {
     return values;
   }
 
+  // --- ODS -------------------------------------------------------------------------------------
+
+  /**
+   * Reads an ODS spreadsheet directly from its {@code content.xml} - deliberately not Apache POI,
+   * which only reads OOXML (XLSX/DOCX/PPTX) and legacy binary Office formats, never OpenDocument.
+   * An ODS file is a ZIP archive; {@code content.xml} inside it is plain, well-formed XML ({@code
+   * table:table}/{@code table:table-row}/{@code table:table-cell} elements) - reading it with a
+   * hardened {@link SAXParser} avoids pulling in a full ODF library (ODF Toolkit) for a single,
+   * narrow read.
+   */
+  private List<Document> readOds(DocumentPipelineSource source) throws IOException {
+    if (source.file() == null) {
+      return List.of();
+    }
+    List<Document> chunks = new ArrayList<>();
+    try (ZipFile zip = new ZipFile(source.file().toFile())) {
+      ZipEntry entry = zip.getEntry("content.xml");
+      if (entry == null) {
+        return List.of();
+      }
+      List<OdsSheet> sheets;
+      try (InputStream in = zip.getInputStream(entry)) {
+        sheets = OdsContentHandler.parse(in);
+      }
+      for (OdsSheet sheet : sheets) {
+        List<RawRow> rows = new ArrayList<>(sheet.rows().size());
+        for (int i = 0; i < sheet.rows().size(); i++) {
+          rows.add(new RawRow(i + 1L, sheet.rows().get(i)));
+        }
+        chunks.addAll(chunksFromRawRows(sheet.name(), rows));
+      }
+    }
+    return chunks;
+  }
+
+  private record OdsSheet(String name, List<List<String>> rows) {}
+
+  /**
+   * SAX handler collecting every {@code table:table} into an {@link OdsSheet} of raw cell-value
+   * rows. Deliberately narrow: it reads only what {@link #chunksFromRawRows} needs (sheet name, row
+   * order, cell text) and ignores everything else in {@code content.xml} (styles, formulas,
+   * annotations).
+   *
+   * <p><b>{@code table:number-rows-repeated} is not expanded</b> - a repeated row is recorded once.
+   * ODF exporters use it almost exclusively for large runs of trailing blank filler rows (up to a
+   * sheet's full row count); expanding it for content-bearing rows would be unusual and is not
+   * modelled here.
+   *
+   * <p><b>{@code table:number-columns-repeated} is expanded, but capped</b> at {@link
+   * #MAX_CELL_REPEAT} per cell and {@link #MAX_ROW_COLUMNS} per row - the same style of guard as
+   * {@link #MAX_CHUNK_CHARS} against a pathologically wide sheet, since this attribute is exactly
+   * how ODF represents a "Riesenzeile" of blank filler cells (routinely repeated to the full sheet
+   * width, e.g. 16384).
+   */
+  private static final class OdsContentHandler extends DefaultHandler {
+
+    private static final int MAX_CELL_REPEAT = 50;
+    private static final int MAX_ROW_COLUMNS = 200;
+
+    private final List<OdsSheet> sheets = new ArrayList<>();
+    private String currentSheetName;
+    private List<List<String>> currentSheetRows;
+    private List<String> currentRow;
+    private final StringBuilder cellText = new StringBuilder();
+    private int pendingRepeat = 1;
+    private boolean insideCell;
+
+    static List<OdsSheet> parse(InputStream in) throws IOException {
+      try {
+        SAXParserFactory factory = SAXParserFactory.newInstance();
+        factory.setNamespaceAware(false);
+        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        // XXE hardening: content.xml originates from an uploaded/indexed file, never trusted input.
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setXIncludeAware(false);
+        SAXParser parser = factory.newSAXParser();
+        OdsContentHandler handler = new OdsContentHandler();
+        parser.parse(in, handler);
+        return handler.sheets;
+      } catch (ParserConfigurationException | SAXException e) {
+        throw new IOException("Could not parse ODS content.xml", e);
+      }
+    }
+
+    @Override
+    public void startElement(String uri, String localName, String qName, Attributes attributes) {
+      switch (qName) {
+        case "table:table" -> {
+          currentSheetName = attributes.getValue("table:name");
+          currentSheetRows = new ArrayList<>();
+        }
+        case "table:table-row" -> currentRow = new ArrayList<>();
+        case "table:table-cell", "table:covered-table-cell" -> {
+          insideCell = true;
+          cellText.setLength(0);
+          String repeated = attributes.getValue("table:number-columns-repeated");
+          pendingRepeat = repeated != null ? Math.max(1, parseIntOrOne(repeated)) : 1;
+        }
+        default -> {
+          // Every other element (styles, formulas, annotations) carries no structure this pipeline
+          // renders and is ignored.
+        }
+      }
+    }
+
+    @Override
+    public void characters(char[] ch, int start, int length) {
+      if (insideCell) {
+        cellText.append(ch, start, length);
+      }
+    }
+
+    @Override
+    public void endElement(String uri, String localName, String qName) {
+      switch (qName) {
+        case "table:table" -> {
+          if (currentSheetName != null && currentSheetRows != null) {
+            sheets.add(new OdsSheet(currentSheetName, currentSheetRows));
+          }
+          currentSheetName = null;
+          currentSheetRows = null;
+        }
+        case "table:table-row" -> {
+          if (currentSheetRows != null && currentRow != null) {
+            currentSheetRows.add(currentRow);
+          }
+          currentRow = null;
+        }
+        case "table:table-cell", "table:covered-table-cell" -> {
+          if (currentRow != null) {
+            String text = cellText.toString();
+            int toAdd = Math.min(pendingRepeat, MAX_CELL_REPEAT);
+            for (int i = 0; i < toAdd && currentRow.size() < MAX_ROW_COLUMNS; i++) {
+              currentRow.add(text);
+            }
+          }
+          insideCell = false;
+          pendingRepeat = 1;
+        }
+        default -> {
+          // See startElement.
+        }
+      }
+    }
+
+    private static int parseIntOrOne(String value) {
+      try {
+        return Integer.parseInt(value);
+      } catch (NumberFormatException e) {
+        return 1;
+      }
+    }
+  }
+
   // --- shared ----------------------------------------------------------------------------------
+
+  private record RawRow(long number, List<String> values) {}
+
+  /**
+   * Shared header/data-row detection for the two readers ({@link #readSheet}, {@link #readOds})
+   * that iterate a sequence of already-extracted rows: the first non-blank row is the header, every
+   * following non-blank row is data, and a workbook/sheet contributing no data rows contributes no
+   * chunk at all.
+   */
+  private static List<Document> chunksFromRawRows(String sheetName, List<RawRow> rows) {
+    List<String> header = null;
+    List<List<String>> dataRows = new ArrayList<>();
+    List<Long> dataRowNumbers = new ArrayList<>();
+    for (RawRow row : rows) {
+      if (isBlankRow(row.values())) {
+        continue;
+      }
+      if (header == null) {
+        header = row.values();
+        continue;
+      }
+      dataRows.add(row.values());
+      dataRowNumbers.add(row.number());
+    }
+    if (header == null || dataRows.isEmpty()) {
+      return List.of();
+    }
+    return buildChunks(sheetName, sheetName, header, dataRows, dataRowNumbers);
+  }
 
   private static boolean isBlankRow(List<String> values) {
     return values.stream().allMatch(String::isBlank);
