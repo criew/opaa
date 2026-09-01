@@ -602,6 +602,28 @@ schlechterer Suchqualität führen, nie zu einem Fehler für den fragenden Mensc
 
 ## Arbeitspaket 4: Reranking als Modellrolle
 
+> **Stand: gebaut, per Voreinstellung aus** ([#1050](https://github.com/criew/opaa/issues/1050)).
+> Der gebaute Ablauf steht in
+> [Retrieval-Algorithmus (Ist-Stand), Schritt 5b](./retrieval-algorithm.md#5b-reranking-1050); dieser
+> Abschnitt bleibt die Begründung und der Zuschnitt. Was #1050 geliefert hat:
+>
+> - **Die Rerank-Rolle** (`io.opaa.llm.RerankModelRole`, `RerankProperties`, `RerankClient`) auf
+>   derselben Ebene wie Chat und Einbettung, angebunden über `POST {Basis-Adresse}/rerank`.
+> - **Der explizite Schalter** `OPAA_RERANK_ENABLED`, getrennt von `OPAA_RERANK_BASE_URL`,
+>   `OPAA_RERANK_MODEL` und `OPAA_RERANK_API_KEY`. Voreinstellung: aus.
+> - **Der Widerspruchszustand**: Startmeldung auf Fehler-Ebene *und* der fortlaufend abfragbare
+>   Zustand `RerankModelRole#status()` (vier Zustände: ausgeschaltet, unbelegt, nicht erreichbar,
+>   aktiv). Die Administrationsseite aus [#1053](https://github.com/criew/opaa/issues/1053) liest
+>   genau diesen Zustand; #1050 liefert ihn, nicht die Oberfläche.
+> - **Die Stufe** `RERANK` zwischen Fusion und Dokument-Vervollständigung, mit eigenem Eintrag im
+>   Erklärprotokoll — inklusive des Status `UNAVAILABLE` für „eingeschaltet, aber nicht nutzbar".
+> - **Die Kandidatenzahl** `OPAA_QUERY_RERANK_CANDIDATE_COUNT` (Startwert 50, `0` schaltet die Stufe
+>   über ihren eigenen Parameter ab), gemessen über den Variantenvergleich
+>   `eval/variants/verwaltung-reranking.json`.
+>
+> **Nicht geliefert**: die Aktivierung. Siehe [Die Lehre aus MMR](#die-lehre-aus-mmr) und den
+> Messabschnitt am Ende dieses Arbeitspakets.
+
 ### Die Entscheidung
 
 Reranking wird **kein eingebautes Verfahren, sondern ein konfigurierbarer Aufgabentyp** im

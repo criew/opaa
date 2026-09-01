@@ -12,6 +12,7 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
+import io.opaa.llm.RerankModelRole;
 import io.opaa.observability.QueryMetrics;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -56,6 +57,7 @@ public class QueryService {
   private final QueryMetrics metrics;
   private final QueryProperties queryProperties;
   private final KnowledgeLibraryRepository knowledgeLibraryRepository;
+  private final RerankModelRole rerankModelRole;
 
   public QueryService(
       RetrievalPipeline retrievalPipeline,
@@ -69,7 +71,8 @@ public class QueryService {
       ChatService chatService,
       QueryMetrics metrics,
       QueryProperties queryProperties,
-      KnowledgeLibraryRepository knowledgeLibraryRepository) {
+      KnowledgeLibraryRepository knowledgeLibraryRepository,
+      RerankModelRole rerankModelRole) {
     this.retrievalPipeline = retrievalPipeline;
     this.answerGenerationService = answerGenerationService;
     this.chatMemory = chatMemory;
@@ -82,6 +85,7 @@ public class QueryService {
     this.metrics = metrics;
     this.queryProperties = queryProperties;
     this.knowledgeLibraryRepository = knowledgeLibraryRepository;
+    this.rerankModelRole = rerankModelRole;
   }
 
   /**
@@ -427,7 +431,14 @@ public class QueryService {
       String question, List<Message> conversationHistory, Set<UUID> searchScope) {
     RetrievalPipelineResult result =
         retrievalPipeline.run(
-            new RetrievalContext(question, conversationHistory, searchScope, queryProperties));
+            new RetrievalContext(
+                question,
+                conversationHistory,
+                searchScope,
+                queryProperties,
+                // Decided once per run, so every stage sees the same answer: fusion widens its
+                // budget for the reranker only if the reranker can actually be called.
+                rerankModelRole.usable()));
     // Only for a run that actually searched: an empty scope logged nothing before this pipeline
     // existed, and a "0 chunks across 0 search queries" line would read like a failed retrieval
     // rather than the deliberate short-circuit it is.

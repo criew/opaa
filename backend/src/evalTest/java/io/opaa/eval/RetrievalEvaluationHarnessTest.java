@@ -1,5 +1,6 @@
 package io.opaa.eval;
 
+import io.opaa.llm.RerankModelRole;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -490,6 +491,9 @@ class RetrievalEvaluationHarnessTest {
   // pipeline report since the lexical path feeds the fusion.
   @Autowired private FullTextBackfillProgressService fullTextBackfillProgressService;
   @Autowired private RetrievalPipelineProperties pipelineProperties;
+  // #1050: whether this run could rerank at all - a fact about the context, and the one
+  // requireMeasurableConfiguration needs to keep a reranking run out of the committed baseline.
+  @Autowired private RerankModelRole rerankModelRole;
   // #1041: the variant-comparison step builds its own QueryService instances around the same
   // collaborators the autowired queryService above uses — two of those collaborators
   // (ChunkEmbeddingLookup, QueryDecompositionService) are package-private in io.opaa.query and
@@ -566,7 +570,8 @@ class RetrievalEvaluationHarnessTest {
     // Decided up front although the pipeline path (step 6 below) only runs at the very end: the
     // check reads nothing but the query configuration, which is fixed from context startup. Failing
     // it after the hour-long raw-vector path would cost that path its baseline verdict for nothing.
-    PipelineHarnessSupport.requireMeasurableConfiguration(queryProperties, pipelineProperties);
+    PipelineHarnessSupport.requireMeasurableConfiguration(
+        queryProperties, pipelineProperties, rerankModelRole.usable());
 
     // Same reasoning for the variant-comparison opt-in (#1041 review, Befund 3): a broken
     // comparison file, an unresolvable referenceVariant, an invalid QueryProperties override
@@ -934,6 +939,7 @@ class RetrievalEvaluationHarnessTest {
         queryService,
         queryProperties,
         pipelineProperties,
+        rerankModelRole.usable(),
         indexingProperties,
         evalLibraryId,
         goldenCases,

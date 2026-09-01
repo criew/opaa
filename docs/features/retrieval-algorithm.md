@@ -158,8 +158,12 @@ Die Auswahl ist dann bit-identisch zu der ohne sie — die Messvariante `vector-
 ### 4. MMR-Auswahl je Teilfrage
 
 `MmrSelectionStage` narrowt die `fetch-k` Kandidaten **jeder Liste einzeln** — je Teilfrage und je
-Suchpfad, nie über die zusammengeführte Gesamtmenge — mittels `MmrSelector#select` auf `opaa.query.top-k`
-(`OPAA_QUERY_TOP_K`, Default `8`) Fundstellen. Steuernder Parameter ist `opaa.query.mmr-lambda`
+Suchpfad, nie über die zusammengeführte Gesamtmenge — mittels `MmrSelector#select` auf das **Kandidatenbudget** des Laufs
+(`RetrievalContext#candidateBudget`). Ohne Reranking ist das `opaa.query.top-k`
+(`OPAA_QUERY_TOP_K`, Default `8`) — das Verhalten von vor #1050. Läuft die Rerank-Stufe, ist es
+stattdessen `opaa.query.rerank-candidate-count`: Ein Reranker, der nur `top-k` Kandidaten je
+Liste zu sehen bekäme, könnte nichts mehr hochziehen, was die vorgelagerten Stufen bereits
+verworfen haben, und wäre damit zwecklos. Steuernder Parameter ist `opaa.query.mmr-lambda`
 (`OPAA_QUERY_MMR_LAMBDA`, Default `1,0` = Vielfaltsauswahl per Voreinstellung deaktiviert, reine
 Top-`k`-Relevanz). Bei `mmrLambda < 1,0` wird die paarweise Ähnlichkeit über die **echten
 Chunk-Embeddings** berechnet (Kosinus-Ähnlichkeit), die `ChunkEmbeddingLookup` in einem einzigen,
@@ -175,7 +179,8 @@ null multipliziert wird. Details, Messwerte und die Begründung des Defaults in
 ausgewählten Ranglisten zu einer einzigen zusammen — seit #1049 also zwei Listen je Teilfrage, die der
 Vektor- und die der Volltextsuche. Jeder Chunk erhält je Liste, in der er vorkommt, den Beitrag
 `1 / (60 + Rang)` (Rang 1-basiert, Dämpfungskonstante 60 nach Cormack et al.), die Beiträge werden über
-alle Listen summiert, absteigend sortiert und auf `top-k` gedeckelt. Keine Gewichtung je Pfad: RRF ist
+alle Listen summiert, absteigend sortiert und auf das Kandidatenbudget gedeckelt (`top-k` ohne
+Reranking, `rerank-candidate-count` mit — die Deckelung auf `top-k` übernimmt dann Schritt 5b). Keine Gewichtung je Pfad: RRF ist
 tuningfrei, und ein ungetuntes Gewicht kippt die Suche unbemerkt auf eine Modalität
 (siehe [Hybride Suche mit Reranking](./hybrid-retrieval.md#arbeitspaket-3-fusion)).
 Dedupliziert wird per Chunk-Kennung
@@ -193,6 +198,33 @@ sind alle Ränge verschieden, die fusionierten Werte also streng fallend in der 
 Deckelung ist durch das Listenbudget bereits erfüllt. Vor #1046 wurde dieser Fall stattdessen verzweigt
 übersprungen; dass beides dasselbe auswählt, sichert `RetrievalPipelineParityTest` gegen die
 Vorher-Implementierung ab.
+
+### 5b. Reranking (#1050)
+
+`RerankStage` bewertet die fusionierte Kandidatenmenge mit der **Rerank-Modellrolle** neu und deckelt
+sie wieder auf `top-k`. Die Stufe steht zwischen Fusion und Dokument-Vervollständigung: Die
+Vervollständigung ergänzt Geschwister-Chunks bereits ausgewählter Dokumente und muss deshalb auf der
+endgültigen Rangfolge arbeiten, nicht auf einer, die der Reranker gleich wieder umsortiert
+(siehe [Hybride Suche mit Reranking](./hybrid-retrieval.md#arbeitspaket-4-reranking-als-modellrolle)).
+
+**Die Rolle ist per Voreinstellung aus.** `OPAA_RERANK_ENABLED` ist ein eigener, expliziter Schalter,
+getrennt von den Endpunktangaben `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL` und
+`OPAA_RERANK_API_KEY` — „Reranking aus" soll eine Aussage der Betreiberin sein und nicht das
+ununterscheidbare Ergebnis einer fehlenden Konfigurationszeile. Ein Widerspruch (Schalter an, Rolle
+unbelegt oder Endpunkt stumm) wird beim Start als Fehler geloggt und bleibt danach über
+`RerankModelRole#status()` abfragbar; die Suche läuft weiter, aber nicht unbemerkt.
+
+Die Kandidatenzahl steuert `opaa.query.rerank-candidate-count`
+(`OPAA_QUERY_RERANK_CANDIDATE_COUNT`, Default `50`, Ebene-1-Wert). `0` schaltet die Stufe über ihren
+eigenen Parameter ab — dieselbe explizite Abwahl, die `max-chunks-per-document = 1` für die
+Dokument-Vervollständigung ist. Der Startwert 50 folgt der Diagnose zu
+[#938](https://github.com/criew/opaa/issues/938): Die dort verfehlte Fundstelle lag auf Rang 50.
+
+Angebunden wird über denselben Weg wie Chat und Einbettung: ein `POST {base-url}/rerank` mit
+`{model, query, documents}`, das vLLM, Text Embeddings Inference, Infinity, Jina, Cohere und Voyage
+gleichermaßen sprechen. **Ein Fehlschlag kostet die Reihenfolge, nie die Antwort**: Bleibt der
+Endpunkt stumm, behält die Stufe die fusionierte Reihenfolge, stellt die `top-k`-Deckelung wieder her
+und vermerkt im Erklärprotokoll den Status `UNAVAILABLE` statt so zu tun, als hätte sie entschieden.
 
 ### 6. Dokument-Vervollständigung
 
@@ -252,9 +284,12 @@ Frage + Gesprächsverlauf
         ↓
 3b. Je Suchanfrage: Volltextsuche (fetch-k, identischer Rechtefilter, Backfill-Tor)
         ↓
-4. Je Liste (Teilfrage × Suchpfad): MMR-Auswahl auf top-k (mmr-lambda)
+4. Je Liste (Teilfrage × Suchpfad): MMR-Auswahl auf das Kandidatenbudget (mmr-lambda)
         ↓
-5. Reciprocal Rank Fusion über alle Listen beider Pfade, gedeckelt auf top-k
+5. Reciprocal Rank Fusion über alle Listen beider Pfade, gedeckelt auf das Kandidatenbudget
+        ↓
+5b. Reranking der Kandidatenmenge durch die Rerank-Modellrolle, zurück auf top-k
+    (per Voreinstellung aus: OPAA_RERANK_ENABLED)
         ↓
 6. Dokument-Vervollständigung (max-chunks-per-document, zweistufige Verdrängung)
         ↓

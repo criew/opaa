@@ -120,6 +120,21 @@ opaa:
     max-sub-queries: ${OPAA_QUERY_MAX_SUB_QUERIES:3}
     max-chunks-per-document: ${OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT:2}
     full-text-search-enabled: ${OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED:true}
+    # #1050: how many fused candidates the rerank stage scores, and the budget the fusion keeps
+    # for it while reranking runs. An Ebene-1 benchmark value (see QueryProperties); 0 switches the
+    # stage off through its own parameter, independently of the role switch below.
+    rerank-candidate-count: ${OPAA_QUERY_RERANK_CANDIDATE_COUNT:50}
+  # #1050: the rerank model role - on the same level as the chat and embedding roles. The switch
+  # is deliberately separate from the endpoint fields: reranking being off must be an operator's
+  # statement, not an indistinguishable consequence of a missing configuration line
+  # (docs/features/hybrid-retrieval.md, Arbeitspaket 4). Default off - the role ships built, not
+  # activated, until the benchmark shows a gain on the project's own corpora.
+  rerank:
+    enabled: ${OPAA_RERANK_ENABLED:false}
+    base-url: ${OPAA_RERANK_BASE_URL:}
+    model: ${OPAA_RERANK_MODEL:}
+    api-key: ${OPAA_RERANK_API_KEY:}
+    timeout: ${OPAA_RERANK_TIMEOUT:10s}
   indexing:
     chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}
     chunk-overlap: ${OPAA_INDEXING_CHUNK_OVERLAP:100}

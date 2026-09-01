@@ -34,6 +34,9 @@ final class VariantQueryProperties {
             : production.maxChunksPerDocument(),
         overrides.fullTextSearchEnabled() != null
             ? overrides.fullTextSearchEnabled()
-            : production.fullTextSearchEnabled());
+            : production.fullTextSearchEnabled(),
+        overrides.rerankCandidateCount() != null
+            ? overrides.rerankCandidateCount()
+            : production.rerankCandidateCount());
   }
 }

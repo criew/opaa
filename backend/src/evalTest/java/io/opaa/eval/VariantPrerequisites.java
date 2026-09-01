@@ -52,12 +52,26 @@ final class VariantPrerequisites {
    * entirely. Such a variant would measure the vector-only configuration under a name that promises
    * the hybrid one — and its Δ0.000 against the vector-only reference would read as "the lexical
    * path changes nothing", the strongest possible wrong conclusion this comparison could produce.
+   *
+   * <p>Since issue #1050 it also covers the rerank role: a variant with a non-zero rerank
+   * candidate window needs a usable rerank model role, for exactly the same reason - it would
+   * otherwise measure the configuration without reranking under the name of the one with it.
    */
   static Optional<String> unmetReason(
-      PipelineVariant variant, QueryProperties effective, boolean fullTextBackfillComplete) {
+      PipelineVariant variant,
+      QueryProperties effective,
+      boolean fullTextBackfillComplete,
+      boolean rerankRoleUsable) {
     Optional<String> earlier = unmetReason(variant, effective);
     if (earlier.isPresent()) {
       return earlier;
+    }
+    if (effective.rerankCandidateCount() > 0 && !rerankRoleUsable) {
+      return Optional.of(
+          "Diese Variante lässt die Rerank-Stufe laufen, aber die Rerank-Modellrolle ist in "
+              + "diesem Lauf nicht nutzbar (ausgeschaltet, unbelegt oder nicht erreichbar – "
+              + "siehe io.opaa.llm.RerankModelRole#status). Die Variante würde die "
+              + "Konfiguration ohne Reranking unter dem Namen der mit Reranking messen.");
     }
     if (effective.fullTextSearchEnabled() && !fullTextBackfillComplete) {
       return Optional.of(

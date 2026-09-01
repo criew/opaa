@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 class VariantQueryPropertiesTest {
 
   private static final QueryProperties PRODUCTION =
-      new QueryProperties(8, 25, 1.0, 0.3, 0.5, false, 3, 2, true);
+      new QueryProperties(8, 25, 1.0, 0.3, 0.5, false, 3, 2, true, 50);
 
   @Test
   void emptyOverridesReproduceTheProductionConfigurationExactly() {
@@ -20,7 +20,7 @@ class VariantQueryPropertiesTest {
 
   @Test
   void anOverriddenFieldReplacesOnlyThatField() {
-    var overrides = new PipelineVariant.QueryOverrides(null, 0.7, null, null, null, null, null);
+    var overrides = new PipelineVariant.QueryOverrides(null, 0.7, null, null, null, null, null, null);
 
     QueryProperties effective = VariantQueryProperties.apply(PRODUCTION, overrides);
 
@@ -36,7 +36,7 @@ class VariantQueryPropertiesTest {
 
   @Test
   void permissionHistorySampleRateIsNeverOverridden() {
-    var overrides = new PipelineVariant.QueryOverrides(null, null, null, null, null, null, null);
+    var overrides = new PipelineVariant.QueryOverrides(null, null, null, null, null, null, null, null);
 
     QueryProperties effective = VariantQueryProperties.apply(PRODUCTION, overrides);
 

@@ -1,5 +1,6 @@
 package io.opaa.query;
 
+import io.opaa.llm.RerankModelRole;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -52,6 +53,7 @@ class RetrievalPipelineParityTest {
                 mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
+            new RerankStage(mock(RerankModelRole.class)),
             new DocumentCompletionStage(),
             RetrievalPipelineProperties.allStagesEnabled());
   }
@@ -168,7 +170,7 @@ class RetrievalPipelineParityTest {
    */
   private static QueryProperties randomProperties(Random random, double mmrLambda) {
     return new QueryProperties(
-        2 + random.nextInt(5), 25, mmrLambda, 0.3, 1.0, true, 3, 1 + random.nextInt(3), false);
+        2 + random.nextInt(5), 25, mmrLambda, 0.3, 1.0, true, 3, 1 + random.nextInt(3), false, 50);
   }
 
   @Test

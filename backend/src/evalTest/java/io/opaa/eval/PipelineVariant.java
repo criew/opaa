@@ -45,6 +45,12 @@ public record PipelineVariant(
    * …) are pinned to the production window (docs/features/retrieval-benchmark.md §1, "Folgen für
    * Messvertrag und Baselines", 4.), and a variant that changed it would need a new window and new
    * component names, not a silently relabeled report.
+   *
+   * <p>{@code rerankCandidateCount} is a field here, and it is the one this comparison
+   * exists for on the rerank side: the candidate window is a measured value, not a set-and-
+   * forgotten one (docs/features/hybrid-retrieval.md, Arbeitspaket 4). {@code 0} is the
+   * reranking-off variant. Whether the rerank model role is reachable at all is not an
+   * override but a prerequisite - see {@link VariantPrerequisites}.
    */
   public record QueryOverrides(
       Integer fetchK,
@@ -53,10 +59,11 @@ public record PipelineVariant(
       Boolean queryDecompositionEnabled,
       Integer maxSubQueries,
       Integer maxChunksPerDocument,
-      Boolean fullTextSearchEnabled) {
+      Boolean fullTextSearchEnabled,
+      Integer rerankCandidateCount) {
 
     /** The reference variant's overrides: every field unset, i.e. the production configuration. */
     public static final QueryOverrides NONE =
-        new QueryOverrides(null, null, null, null, null, null, null);
+        new QueryOverrides(null, null, null, null, null, null, null, null);
   }
 }

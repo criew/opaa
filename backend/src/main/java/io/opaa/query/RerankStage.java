@@ -1,0 +1,153 @@
+package io.opaa.query;
+
+import io.opaa.llm.RerankClient.ScoredCandidate;
+import io.opaa.llm.RerankModelRole;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.ai.document.Document;
+import org.springframework.stereotype.Component;
+
+/**
+ * Re-scores the fused candidate window with the rerank model role and cuts it back to {@link
+ * QueryProperties#topK} (docs/features/hybrid-retrieval.md, Arbeitspaket 4). Sits between {@link
+ * RankFusionStage} and {@link DocumentCompletionStage}.
+ *
+ * <p><b>This stage restores the {@code top-k} cap on every path it can take</b> - reranked,
+ * switched off, or unavailable. {@link RankFusionStage} widens its budget to {@link
+ * QueryProperties#rerankCandidateCount} whenever reranking is active, so a path that passed on more
+ * than {@code top-k} chunks would hand a multiple of the intended context to answer generation.
+ *
+ * <p>A chunk the reranker did not score keeps its fused order behind every scored one: an endpoint
+ * that answers for part of the window must not make the rest disappear.
+ */
+@Component
+class RerankStage implements RetrievalStage {
+
+  private final RerankModelRole role;
+
+  RerankStage(RerankModelRole role) {
+    this.role = role;
+  }
+
+  @Override
+  public RetrievalStageName name() {
+    return RetrievalStageName.RERANK;
+  }
+
+  @Override
+  public StageOutcome apply(RetrievalContext context, RetrievalState state) {
+    QueryProperties properties = context.queryProperties();
+    List<Document> incoming = state.selection();
+    int topK = properties.topK();
+
+    if (!context.rerankActive() || incoming.isEmpty()) {
+      return unchanged(
+          state,
+          incoming,
+          StageStatus.DISABLED,
+          properties.rerankCandidateCount() == 0
+              ? "reranking switched off through opaa.query.rerank-candidate-count=0"
+              : "reranking did not run: the rerank model role is not usable in this run");
+    }
+
+    List<Document> window =
+        List.copyOf(incoming.subList(0, Math.min(incoming.size(), properties.rerankCandidateCount())));
+    List<ScoredCandidate> scored =
+        role.rerank(context.question(), window.stream().map(RerankStage::textOf).toList());
+    if (scored.isEmpty()) {
+      return unchanged(
+          state,
+          incoming.subList(0, Math.min(incoming.size(), topK)),
+          StageStatus.UNAVAILABLE,
+          "the rerank model role scored nothing; the fused order was kept and capped at top-k "
+              + topK);
+    }
+
+    List<RankedCandidate> reranked = reorder(window, scored);
+    List<Document> selection =
+        reranked.stream().limit(topK).map(RankedCandidate::document).toList();
+
+    List<CandidateVerdict> verdicts = new ArrayList<>(incoming.size());
+    for (int rank = 1; rank <= reranked.size(); rank++) {
+      RankedCandidate candidate = reranked.get(rank - 1);
+      boolean kept = rank <= topK;
+      verdicts.add(
+          CandidateVerdict.of(
+              candidate.document(),
+              kept ? CandidateOutcome.KEPT : CandidateOutcome.DROPPED,
+              kept ? VerdictReason.WITHIN_BUDGET : VerdictReason.OUTSIDE_RERANK_BUDGET,
+              RankFusionStage.FUSED_LIST_LABEL,
+              rank,
+              candidate.score()));
+    }
+    // Candidates beyond the rerank window: the reranker never saw them, and they are out.
+    for (int i = window.size(); i < incoming.size(); i++) {
+      verdicts.add(
+          CandidateVerdict.of(
+              incoming.get(i),
+              CandidateOutcome.DROPPED,
+              VerdictReason.OUTSIDE_RERANK_BUDGET,
+              RankFusionStage.FUSED_LIST_LABEL,
+              i + 1,
+              null));
+    }
+
+    return new StageOutcome(
+        state.withCandidateLists(
+            List.of(new CandidateList(RankFusionStage.FUSED_LIST_LABEL, selection))),
+        StageExplanation.executed(
+            name(),
+            incoming.size(),
+            selection.size(),
+            verdicts,
+            List.of(
+                "rerank candidate window " + properties.rerankCandidateCount(),
+                scored.size() + " of " + window.size() + " candidate(s) scored by the rerank model",
+                "overall budget top-k " + topK)));
+  }
+
+  /**
+   * The stage did not rerank: {@code kept} is passed on unchanged in its incoming order, truncated
+   * where the widened fusion budget made that necessary, and the note says why no reranking
+   * happened.
+   */
+  private StageOutcome unchanged(
+      RetrievalState state, List<Document> kept, StageStatus status, String note) {
+    int incoming = state.candidateLists().stream().mapToInt(list -> list.documents().size()).sum();
+    return new StageOutcome(
+        state.withCandidateLists(
+            List.of(new CandidateList(RankFusionStage.FUSED_LIST_LABEL, List.copyOf(kept)))),
+        StageExplanation.notRun(name(), status, incoming, kept.size(), note));
+  }
+
+  /** One candidate in the reranked order, with the score it got - {@code null} if it got none. */
+  private record RankedCandidate(Document document, Double score) {}
+
+  /**
+   * The reranked window: the scored candidates in the model's order, then every candidate the model
+   * did not score, in the fused order it came in with.
+   */
+  private static List<RankedCandidate> reorder(
+      List<Document> window, List<ScoredCandidate> scored) {
+    List<RankedCandidate> reordered = new ArrayList<>(window.size());
+    boolean[] taken = new boolean[window.size()];
+    for (ScoredCandidate candidate : scored) {
+      if (!taken[candidate.index()]) {
+        taken[candidate.index()] = true;
+        reordered.add(new RankedCandidate(window.get(candidate.index()), candidate.score()));
+      }
+    }
+    for (int i = 0; i < window.size(); i++) {
+      if (!taken[i]) {
+        reordered.add(new RankedCandidate(window.get(i), null));
+      }
+    }
+    return reordered;
+  }
+
+  /** The chunk text the model scores; never null, so a text-less chunk cannot break a request. */
+  private static String textOf(Document document) {
+    String text = document.getText();
+    return text == null ? "" : text;
+  }
+}

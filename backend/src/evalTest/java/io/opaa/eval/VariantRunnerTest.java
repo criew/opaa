@@ -24,7 +24,7 @@ class VariantRunnerTest {
   }
 
   private static QueryProperties productionProperties(boolean queryDecompositionEnabled) {
-    return new QueryProperties(8, 25, 1.0, 0.3, 1.0, queryDecompositionEnabled, 3, 2, true);
+    return new QueryProperties(8, 25, 1.0, 0.3, 1.0, queryDecompositionEnabled, 3, 2, true, 50);
   }
 
   /**
@@ -103,7 +103,7 @@ class VariantRunnerTest {
   @Test
   void runsThreeTimesWhenDecompositionIsEnabledOnlyThroughAnOverride() {
     AtomicInteger calls = new AtomicInteger();
-    var overrides = new PipelineVariant.QueryOverrides(null, null, null, true, null, null, null);
+    var overrides = new PipelineVariant.QueryOverrides(null, null, null, true, null, null, null, null);
     QueryProperties effective =
         VariantQueryProperties.apply(productionProperties(false), overrides);
     assertThat(effective.queryDecompositionEnabled()).isTrue();

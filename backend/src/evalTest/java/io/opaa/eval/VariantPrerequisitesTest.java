@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 class VariantPrerequisitesTest {
 
   private static final QueryProperties PRODUCTION_LIKE =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, true);
+      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, true, 50);
 
   private static PipelineVariant variant(boolean requiresReindex) {
     return new PipelineVariant("v", "desc", requiresReindex, PipelineVariant.QueryOverrides.NONE);
@@ -29,7 +29,7 @@ class VariantPrerequisitesTest {
 
   @Test
   void aVariantThatEnablesDecompositionIsSkippedForLackOfAChatModel() {
-    var decompositionOn = new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, true);
+    var decompositionOn = new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, true, 50);
 
     var reason = VariantPrerequisites.unmetReason(variant(false), decompositionOn);
 
@@ -45,7 +45,7 @@ class VariantPrerequisitesTest {
    */
   @Test
   void aHybridVariantIsSkippedWhileTheFullTextBackfillIsIncomplete() {
-    var reason = VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, false);
+    var reason = VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, false, false);
 
     assertThat(reason).isPresent();
     assertThat(reason.get()).contains("Backfill");
@@ -54,9 +54,9 @@ class VariantPrerequisitesTest {
   /** The same variant with a complete backfill runs, and a vector-only variant always does. */
   @Test
   void theBackfillPrerequisiteOnlyConstrainsAVariantThatUsesTheLexicalPath() {
-    var vectorOnly = new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false);
+    var vectorOnly = new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
 
-    assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true)).isEmpty();
-    assertThat(VariantPrerequisites.unmetReason(variant(false), vectorOnly, false)).isEmpty();
+    assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true, false)).isEmpty();
+    assertThat(VariantPrerequisites.unmetReason(variant(false), vectorOnly, false, false)).isEmpty();
   }
 }

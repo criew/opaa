@@ -22,6 +22,9 @@ public enum VerdictReason {
   /** The candidate's fused rank placed it below the overall {@code top-k} budget. */
   OUTSIDE_FUSION_BUDGET,
 
+  /** The rerank model scored the candidate below the {@code top-k} the stage passes on. */
+  OUTSIDE_RERANK_BUDGET,
+
   /**
    * Document completion pulled the candidate in as a sibling chunk of a document the selection
    * already held (#932).
