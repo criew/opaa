@@ -526,7 +526,9 @@ verschoben haben, mit unveränderten Rohvektor-Werten in jeder Gruppe. Genau daf
 getrennte Zählung aus Entscheidung 16.
 
 **Eine Folge für die Zustandsfelder** (Spezifikation, Abschnitt 5): Ein Fall gilt als `solved`, wenn
-ihn **beide** Messpfade lösen. Fälle, die der lexikalische Pfad löst, kann der Rohvektor-Pfad
-strukturell nicht lösen — sie bleiben deshalb `known_gap` und tragen ihre Pfad-Asymmetrie als
-committete `expected_state_exception`. Ob diese Definition mit einem produktiven zweiten Suchpfad
-noch die richtige ist, ist eine offene Frage an die Spezifikation und wird hier nicht entschieden.
+ihn **beide** Messpfade lösen. Von den zwölf Fällen, die der Pipeline-Pfad mit #1049 zusätzlich löst,
+erfüllt genau einer diese Bedingung (`verw-comp-006`, den der Rohvektor-Pfad schon vorher löste) und
+wechselt auf `solved`; die übrigen elf kann der Rohvektor-Pfad strukturell nicht lösen und bleiben
+deshalb `known_gap` mit committeter `expected_state_exception`. Ob diese Definition mit einem
+produktiven zweiten Suchpfad noch die richtige ist, ist eine offene Frage an die Spezifikation und
+wird hier nicht entschieden.

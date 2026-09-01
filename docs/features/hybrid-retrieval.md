@@ -550,16 +550,21 @@ Zwei Folgerungen sind verbindlich:
 >
 > | Gruppe | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 |
 > |---|---|---|---|---|
-> | gesamt | 0,783 → **0,935** | 0,576 → **0,761** | 0,558 → **0,751** | 0,696 → **0,880** |
+> | gesamt | 0,783 → **0,935** | 0,576 → **0,758** | 0,558 → **0,749** | 0,696 → **0,880** |
 > | `literal_term_weak_embedding` (die #938-Klasse) | 0,556 → **0,889** | 0,226 → **0,593** | 0,324 → **0,633** | 0,611 → **0,833** |
 > | `compound_word` | 0,778 → 0,778 | 0,657 → **0,796** | 0,431 → **0,675** | 0,444 → **0,722** |
 > | `exact_identifier` | 1,000 → 1,000 | 0,900 → 0,900 | 0,918 → **0,926** | 1,000 → 1,000 |
 > | `metadata_filter` | 0,667 → **1,000** | 0,537 → **0,685** | 0,595 → **0,766** | 0,778 → **1,000** |
-> | `multi_hop` | 0,889 → **1,000** | 0,522 → **0,815** | 0,480 → **0,734** | 0,611 → **0,833** |
+> | `multi_hop` | 0,889 → **1,000** | 0,522 → **0,800** | 0,480 → **0,726** | 0,611 → **0,833** |
 >
-> Keine Gruppe verschlechtert sich. Elf Fälle, die als `known_gap` geführt werden, löst der
-> Pipeline-Pfad seither — der Rohvektor-Pfad kann sie strukturell nicht lösen, weshalb sie ihre
-> Pfad-Asymmetrie als `expected_state_exception` committet tragen (siehe
+> Die Werte sind die der committeten Baseline (`eval/baseline/pipeline-verwaltung.json`) und die der
+> `vector-only`-Variante desselben Laufs; keine Gruppe verschlechtert sich.
+>
+> Auf Einzelfallebene löst der Pipeline-Pfad seither **zwölf** Fälle zusätzlich und **einen** nicht
+> mehr (`verw-meta-003`, dessen ersten Rang jetzt ein lexikalischer Treffer belegt). Genau einer der
+> zwölf — `verw-comp-006` — wird auch vom Rohvektor-Pfad gelöst und wechselt deshalb auf `solved`;
+> die übrigen elf bleiben `known_gap` und tragen ihre Pfad-Asymmetrie als
+> `expected_state_exception` committet (siehe
 > [Retrieval-Benchmark §5](./retrieval-benchmark.md) und
 > `eval/corpus/verwaltung/MAINTENANCE.md`).
 

@@ -23,7 +23,7 @@
     "corpusManifestSha256": "e63f373f658aa2627cee5a9753526b7e5b4c56027b9c80de048466a2dc8c398d",
     "corpusDocumentCount": 70,
     "goldenDatasetFile": "eval/golden/verwaltung.json",
-    "goldenDatasetSha256": "bfaf95b0045ded248020c06317b50595b9bc5aedbd62a9d169d7e59eaf1f9183",
+    "goldenDatasetSha256": "ccca2633af9d94aefecd36bd282c5df4e64b587dad4f9a4204524f5dfb8c3a81",
     "goldenCaseCount": 46
   },
   "groups": {

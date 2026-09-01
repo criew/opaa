@@ -105,12 +105,12 @@ gemessene Lage dauerhaft von der deklarierten abweicht. Das Audit führt solche 
 den Befunden; nur unerklärte Abweichungen gelten als Befund. Ohne diese Trennung stünde in jedem
 Lauf dieselbe erwartete Meldung in der Fundliste — und niemand läse sie nach dem dritten Mal noch.
 
-Derzeit 16 Fälle:
+Derzeit 15 Fälle:
 
 | Fall | Grund |
 |---|---|
-| `verw-comp-006` | Pfad-Asymmetrie: auf dem Rohvektor-Pfad gelöst, auf dem Pipeline-Pfad nicht. Bleibt `known_gap`, weil ein Fall erst gelöst ist, wenn ihn beide Pfade lösen. |
-| `verw-meta-003`, `verw-meta-005`, `verw-meta-007`, `verw-meta-009` | Heute auf beiden Pfaden gelöst, aber ohne den geprüften Mechanismus (siehe oben). |
+| `verw-meta-005`, `verw-meta-007`, `verw-meta-009` | Heute auf beiden Pfaden gelöst, aber ohne den geprüften Mechanismus (siehe oben). |
+| `verw-meta-003` | Seit #1049 in die andere Richtung asymmetrisch: auf dem Rohvektor-Pfad gelöst, auf dem Pipeline-Pfad nicht mehr, weil dort ein lexikalischer Treffer den ersten Rang belegt. Bleibt `known_gap` — gelöst war er ohnehin nur ohne den geprüften Mechanismus. |
 | `verw-lit-006`, `verw-lit-008`, `verw-comp-002`, `verw-comp-003`, `verw-comp-008`, `verw-comp-009`, `verw-hop-002`, `verw-hop-005`, `verw-hop-007`, `verw-hop-009` | Pfad-Asymmetrie in die andere Richtung, seit Issue #1049: auf dem **Pipeline**-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst `similaritySearch` direkt und kennt den Volltextpfad nicht. Bleiben `known_gap` nach derselben Regel wie `verw-comp-006`. |
 | `verw-meta-001` | Seit #1049 auf dem Pipeline-Pfad gelöst, aber ohne den geprüften Mechanismus — dieselbe Begründung wie bei den vier `metadata_filter`-Fällen darüber. |
 
@@ -130,9 +130,12 @@ Zustandswechsel eine menschliche ist.
 
 ## `known_gap`-Fälle
 
-**37 von 46 Fällen**, Stand 2026-09-01 (erste Kuratierung, Issue #1043; die Zustände selbst sind mit
-Issue #1049 unverändert geblieben — elf Fälle haben lediglich ihre erwartete Abweichung
-nachgezogen bekommen, siehe oben). Das ist der Zweck dieser Domäne, kein Mangel: „Ein Fall, den heute keine Variante löst, ist der wertvollste im Datensatz"
+**36 von 46 Fällen**, Stand 2026-09-01. Mit Issue #1049 hat sich genau **ein** Zustand geändert:
+`verw-comp-006` ist von `known_gap` auf `solved` gewechselt — er ist der einzige Fall, den seither
+**beide** Messpfade lösen, und damit der einzige, der die Solved-Definition erfüllt. Elf weitere
+Fälle löst nur der Pipeline-Pfad; sie bleiben `known_gap` und haben ihre Pfad-Asymmetrie als
+erwartete Abweichung nachgezogen bekommen (siehe oben). Das ist der Zweck dieser Domäne, kein
+Mangel: „Ein Fall, den heute keine Variante löst, ist der wertvollste im Datensatz"
 (`docs/features/retrieval-benchmark.md`, Abschnitt 4). Die Begründung steht je Fall im Feld
 `expected_state_reason`; die Tabellen unten führen zusätzlich das gemessene Symptom.
 
@@ -140,7 +143,7 @@ nachgezogen bekommen, siehe oben). Das ist der Zweck dieser Domäne, kein Mangel
 |---|---|---|---|
 | `literal_term_weak_embedding` | 9 | 9 | lexikalischer Pfad und Fusion (Roadmap 1a/1b) — die #938-Klasse |
 | `exact_identifier` | 10 | 2 | Schutz unzerlegter Kennungs-Tokens (Roadmap 1a) |
-| `compound_word` | 9 | 9 | Komposita-Zerlegung (Roadmap 1a) |
+| `compound_word` | 9 | 8 | Komposita-Zerlegung (Roadmap 1a) |
 | `multi_hop` | 9 | 8 | Zusammenführung mehrgliedriger Ketten (Messgrundlage für Roadmap 3c) |
 | `metadata_filter` | 9 | 9 | Metadatenfilter in der Suche (Roadmap 2f) |
 
@@ -160,8 +163,17 @@ Rohvektor-Pfad bleibt bei den Zahlen der ersten Kuratierung:
 | `multi_hop` | 1 von 9 | 1 von 9 | **5 von 9** |
 | `metadata_filter` | 4 von 9 | 4 von 9 | 4 von 9 |
 
-Die deklarierten Zustände bleiben davon unberührt (siehe die offene Frage oben); die Klassenwerte der
-Baseline bewegen sich dagegen deutlich (`eval/baseline/pipeline-verwaltung.json`).
+Zwölf Fälle löst der Pipeline-Pfad seither zusätzlich, **einen verliert er**: `verw-meta-003` stand
+vorher auf Rang 1 der richtigen Fassung, seither belegt ihn dort ein lexikalischer Treffer. Die
+Klasse `metadata_filter` bleibt deshalb bei vier gelösten Fällen, obwohl `verw-meta-001` neu
+hinzukommt — die Zahl ist gleich, die Menge nicht. In jeder Metrik dieser Klasse geht es dennoch
+aufwärts (Hit Rate@5 0,667 → 1,000), weil der verlorene Fall den ersten Rang, nicht das Fenster
+verliert.
+
+Von den zwölf neu gelösten Fällen löst nur `verw-comp-006` auch der Rohvektor-Pfad; nur er wechselt
+deshalb auf `solved`. Die übrigen elf bleiben `known_gap` mit committeter Pfad-Asymmetrie (siehe die
+offene Frage oben). Die Klassenwerte der Baseline bewegen sich unabhängig davon deutlich
+(`eval/baseline/pipeline-verwaltung.json`).
 
 ### literal_term_weak_embedding (9 Fälle)
 
@@ -184,7 +196,7 @@ Baseline bewegen sich dagegen deutlich (`eval/baseline/pipeline-verwaltung.json`
 | `verw-id-002` | im Fenster, aber Rang 1: verwaltung-0004_dienstanweisung-sozialamt-1-2023.md |
 | `verw-id-005` | im Fenster, aber Rang 1: verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md |
 
-### compound_word (9 Fälle)
+### compound_word (8 Fälle, `verw-comp-006` ist seit #1049 gelöst)
 
 | Fall | Symptom im Lauf vom 2026-09-01 (Pipeline-Pfad, nach #1049) |
 |---|---|
@@ -193,7 +205,7 @@ Baseline bewegen sich dagegen deutlich (`eval/baseline/pipeline-verwaltung.json`
 | `verw-comp-003` | gelöst auf dem Pipeline-Pfad seit #1049 **(erwartete Abweichung: Pfad-Asymmetrie)** |
 | `verw-comp-004` | außerhalb des Fensters: verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md, verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md |
 | `verw-comp-005` | außerhalb des Fensters: verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md, verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md |
-| `verw-comp-006` | außerhalb des Fensters: verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md **(erwartete Abweichung)** |
+| `verw-comp-006` | seit #1049 auf beiden Pfaden gelöst — **nicht mehr `known_gap`**, siehe oben |
 | `verw-comp-007` | außerhalb des Fensters: verwaltung-0025_personenstandsurkundengebuehrensatzung.md |
 | `verw-comp-008` | gelöst auf dem Pipeline-Pfad seit #1049 **(erwartete Abweichung: Pfad-Asymmetrie)** |
 | `verw-comp-009` | gelöst auf dem Pipeline-Pfad seit #1049 **(erwartete Abweichung: Pfad-Asymmetrie)** |
@@ -217,7 +229,7 @@ Baseline bewegen sich dagegen deutlich (`eval/baseline/pipeline-verwaltung.json`
 |---|---|
 | `verw-meta-001` | richtige Fassung auf Rang 1 seit #1049, ohne dass ein Metadatenfilter beteiligt war **(erwartete Abweichung)** |
 | `verw-meta-002` | außerhalb des Fensters: verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md |
-| `verw-meta-003` | richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war **(erwartete Abweichung)** |
+| `verw-meta-003` | seit #1049 im Fenster, aber Rang 1 lexikalisch belegt; auf dem Rohvektor-Pfad weiterhin richtige Fassung auf Rang 1 **(erwartete Abweichung)** |
 | `verw-meta-004` | außerhalb des Fensters: verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md |
 | `verw-meta-005` | richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war **(erwartete Abweichung)** |
 | `verw-meta-006` | im Fenster, aber Rang 1: verwaltung-0004_dienstanweisung-sozialamt-1-2023.md |

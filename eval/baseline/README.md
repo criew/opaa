@@ -72,7 +72,7 @@ Besonderheiten, alle in den `notes` der Dateien selbst festgehalten:
 **Neu gezogen mit Issue #1049** (Volltextpfad als Eingangsliste der RRF-Fusion): Die
 Pipeline-Baseline dieser Domäne steht auf Messvertragsversion 3 und trägt die beiden neuen Fixpunkte
 `fullTextSearchEnabled`/`fullTextBackfillComplete`; ihre Zahlen sind durchgängig besser (Gesamt-nDCG@8
-0,558 → 0,751). Die **Rohvektor**-Baseline ist davon unberührt — an ihr hat sich ausschließlich der
+0,558 → 0,749). Die **Rohvektor**-Baseline ist davon unberührt — an ihr hat sich ausschließlich der
 Golden-Hash geändert (elf Fälle haben ihre `expected_state_exception` nachgezogen bekommen), jeder
 Metrikwert ist im selben Lauf erneut gemessen und unverändert: Dieser Pfad misst `similaritySearch`
 direkt und kennt den Volltextpfad nicht.

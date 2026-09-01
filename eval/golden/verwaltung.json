@@ -413,10 +413,9 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md)",
-    "expected_state_exception": "Pfad-Asymmetrie: auf dem Rohvektor-Pfad gelöst, auf dem Pipeline-Pfad nicht. Der Fall bleibt known_gap, weil ein Fall erst als gelöst gilt, wenn ihn beide Pfade lösen — die Abweichung im Audit des Rohvektor-Pfads ist deshalb erwartet."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-01",
+    "expected_state_reason": "Gelöst mit #1049 (Volltextpfad in der RRF-Fusion), und zwar auf beiden Messpfaden: Der Rohvektor-Pfad löste diesen Fall schon vorher, der Pipeline-Pfad seit der Aufnahme des lexikalischen Pfads in die Fusion. Damit entfällt die bisherige Pfad-Asymmetrie, die ihn seit 2026-08-31 als known_gap geführt hat. Gemessen am 2026-09-01: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1. Der Treffer entsteht ohne Komposita-Zerlegung — die Klasse misst weiterhin Decompounding (Roadmap 1a), vier ihrer neun Fälle bleiben ungelöst."
   },
   {
     "id": "verw-comp-007",
@@ -677,7 +676,7 @@
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
     "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-09-01 (Pipeline-Pfad): richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war",
-    "expected_state_exception": "Heute auf beiden Pfaden gelöst, aber ohne den geprüften Mechanismus: Die richtige Fassung rankt zufällig oben, ein Metadatenfilter existiert nicht. Der Fall bleibt known_gap, damit ein Zufallsergebnis nicht unter Regressionsschutz gerät — die Abweichung im Audit ist deshalb erwartet."
+    "expected_state_exception": "Pfad-Asymmetrie seit #1049: auf dem Rohvektor-Pfad gelöst, auf dem Pipeline-Pfad nicht mehr — dort belegt seither ein lexikalischer Treffer den ersten Rang. Der Fall bleibt known_gap, weil er ohnehin nur ohne den geprüften Mechanismus gelöst war: Die richtige Fassung rankte zufällig oben, ein Metadatenfilter existiert nicht. Die Abweichung im Audit des Rohvektor-Pfads ist deshalb erwartet."
   },
   {
     "id": "verw-meta-004",
