@@ -7,7 +7,6 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.ApplicationContext;
 
 /**
@@ -22,14 +21,17 @@ import org.springframework.context.ApplicationContext;
  * minutes (Testcontainers, migrations, bean graph) per variant instead of milliseconds.
  *
  * <p>Lives in {@code io.opaa.query} (not {@code io.opaa.eval}, where the rest of the variant
- * mechanism lives) specifically to see {@link ChunkEmbeddingLookup} and {@link
- * QueryDecompositionService} — both package-private collaborators of {@link QueryService} that no
- * class outside this package can name. {@link #fromContext} is the seam: it is the only place a
- * caller from {@code io.opaa.eval} needs to cross that boundary, via {@link ApplicationContext}
- * bean lookups rather than a direct type reference.
+ * mechanism lives) so it can name {@link QueryService}'s collaborators directly, including
+ * package-private ones. {@link #fromContext} is the seam: it is the only place a caller from {@code
+ * io.opaa.eval} needs to cross that boundary, via {@link ApplicationContext} bean lookups rather
+ * than a direct type reference.
+ *
+ * <p>All variants share one {@link RetrievalPipeline} instance: a variant differs only in {@link
+ * QueryProperties}, which the pipeline reads per run from its {@link RetrievalContext} instead of
+ * holding it in its stages.
  */
 public record QueryServiceDependencies(
-    VectorStore vectorStore,
+    RetrievalPipeline retrievalPipeline,
     AnswerGenerationService answerGenerationService,
     ChatMemory chatMemory,
     CitationParser citationParser,
@@ -39,13 +41,11 @@ public record QueryServiceDependencies(
     PermissionHistoryService permissionHistoryService,
     ChatService chatService,
     QueryMetrics metrics,
-    KnowledgeLibraryRepository knowledgeLibraryRepository,
-    ChunkEmbeddingLookup chunkEmbeddingLookup,
-    QueryDecompositionService queryDecompositionService) {
+    KnowledgeLibraryRepository knowledgeLibraryRepository) {
 
   public static QueryServiceDependencies fromContext(ApplicationContext context) {
     return new QueryServiceDependencies(
-        context.getBean(VectorStore.class),
+        context.getBean(RetrievalPipeline.class),
         context.getBean(AnswerGenerationService.class),
         context.getBean(ChatMemory.class),
         context.getBean(CitationParser.class),
@@ -55,14 +55,12 @@ public record QueryServiceDependencies(
         context.getBean(PermissionHistoryService.class),
         context.getBean(ChatService.class),
         context.getBean(QueryMetrics.class),
-        context.getBean(KnowledgeLibraryRepository.class),
-        context.getBean(ChunkEmbeddingLookup.class),
-        context.getBean(QueryDecompositionService.class));
+        context.getBean(KnowledgeLibraryRepository.class));
   }
 
   public QueryService buildQueryService(QueryProperties queryProperties) {
     return new QueryService(
-        vectorStore,
+        retrievalPipeline,
         answerGenerationService,
         chatMemory,
         citationParser,
@@ -73,8 +71,6 @@ public record QueryServiceDependencies(
         chatService,
         metrics,
         queryProperties,
-        knowledgeLibraryRepository,
-        chunkEmbeddingLookup,
-        queryDecompositionService);
+        knowledgeLibraryRepository);
   }
 }

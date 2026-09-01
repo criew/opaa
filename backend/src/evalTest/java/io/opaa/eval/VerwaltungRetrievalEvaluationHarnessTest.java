@@ -28,6 +28,7 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;
+import io.opaa.query.RetrievalPipelineProperties;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -479,6 +480,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   // very beans a real request runs through, not a re-implementation of steps 2 to 6.
   @Autowired private QueryService queryService;
   @Autowired private QueryProperties queryProperties;
+  @Autowired private RetrievalPipelineProperties pipelineProperties;
 
   // #419: triggerIndexing needs a caller-chosen target library and an authorized caller -
   // set up once per run, not pinned to a well-known system library id, since #419 already stopped
@@ -549,7 +551,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     // Decided up front although the pipeline path (step 6 below) only runs at the very end: the
     // check reads nothing but the query configuration, which is fixed from context startup. Failing
     // it after the hour-long raw-vector path would cost that path its baseline verdict for nothing.
-    PipelineHarnessSupport.requireMeasurableConfiguration(queryProperties);
+    PipelineHarnessSupport.requireMeasurableConfiguration(queryProperties, pipelineProperties);
 
     Path evalDir = RepoPaths.evalDir();
     Path corpusDir = evalDir.resolve("corpus").resolve(DOMAIN.name());
@@ -908,6 +910,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             GoldenDataset.sha256(goldenFile)),
         queryService,
         queryProperties,
+        pipelineProperties,
         indexingProperties,
         evalLibraryId,
         goldenCases,

@@ -1,0 +1,99 @@
+package io.opaa.query;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.springframework.ai.document.Document;
+import org.springframework.stereotype.Component;
+
+/**
+ * Step 4 of docs/features/retrieval-algorithm.md as a pipeline stage: narrows every candidate list
+ * to {@link QueryProperties#topK} via {@link MmrSelector}, each list on its own - MMR runs inside
+ * one sub-query's single-topic candidate pool, never across the pooled cross-topic result.
+ *
+ * <p>The chunk embeddings MMR needs are read back once for the whole run, over the pooled
+ * candidates, rather than once per list: {@link ChunkEmbeddingLookup} does not care which list a
+ * candidate came from. At {@link QueryProperties#mmrLambda} {@code >= 1.0} the diversity term is
+ * always multiplied by zero (see {@link MmrSelector#select}), so the round trip is skipped entirely
+ * - it could not affect the result.
+ *
+ * <p>Narrows only: every chunk it passes on was already permission-scoped and threshold-filtered by
+ * the search that produced it.
+ */
+@Component
+class MmrSelectionStage implements RetrievalStage {
+
+  private final ChunkEmbeddingLookup chunkEmbeddingLookup;
+
+  MmrSelectionStage(ChunkEmbeddingLookup chunkEmbeddingLookup) {
+    this.chunkEmbeddingLookup = chunkEmbeddingLookup;
+  }
+
+  @Override
+  public RetrievalStageName name() {
+    return RetrievalStageName.MMR_SELECTION;
+  }
+
+  @Override
+  public StageOutcome apply(RetrievalContext context, RetrievalState state) {
+    QueryProperties properties = context.queryProperties();
+    Map<String, float[]> embeddings = lookupEmbeddings(state.candidatePool(), properties);
+
+    List<CandidateList> narrowed = new ArrayList<>(state.candidateLists().size());
+    List<CandidateVerdict> verdicts = new ArrayList<>();
+    int incoming = 0;
+    for (CandidateList list : state.candidateLists()) {
+      List<Document> selected =
+          MmrSelector.select(
+              list.documents(), properties.topK(), properties.mmrLambda(), embeddings);
+      narrowed.add(new CandidateList(list.label(), selected));
+      incoming += list.documents().size();
+
+      Map<String, Integer> rankInSelection = new HashMap<>();
+      for (int i = 0; i < selected.size(); i++) {
+        rankInSelection.put(selected.get(i).getId(), i + 1);
+      }
+      for (int incomingRank = 1; incomingRank <= list.documents().size(); incomingRank++) {
+        Document candidate = list.documents().get(incomingRank - 1);
+        Integer selectedRank = rankInSelection.get(candidate.getId());
+        boolean kept = selectedRank != null;
+        verdicts.add(
+            CandidateVerdict.of(
+                candidate,
+                kept ? CandidateOutcome.KEPT : CandidateOutcome.DROPPED,
+                kept ? VerdictReason.WITHIN_BUDGET : VerdictReason.OUTSIDE_LIST_BUDGET,
+                list.label(),
+                kept ? selectedRank : incomingRank,
+                candidate.getScore()));
+      }
+    }
+
+    int outgoing = narrowed.stream().mapToInt(list -> list.documents().size()).sum();
+    return new StageOutcome(
+        state.withCandidateLists(narrowed),
+        StageExplanation.executed(
+            name(),
+            incoming,
+            outgoing,
+            verdicts,
+            List.of(
+                "per-list budget top-k " + properties.topK(),
+                "mmr-lambda "
+                    + properties.mmrLambda()
+                    + (properties.mmrLambda() >= 1.0
+                        ? " (diversity term inactive: plain top-k by relevance)"
+                        : " (diversity term active, cosine similarity of real chunk embeddings)"))));
+  }
+
+  /**
+   * One pooled lookup for the whole run, skipped entirely at {@code mmrLambda >= 1.0} - see this
+   * class's Javadoc.
+   */
+  private Map<String, float[]> lookupEmbeddings(
+      List<Document> candidatePool, QueryProperties properties) {
+    return properties.mmrLambda() >= 1.0
+        ? Map.of()
+        : chunkEmbeddingLookup.findByIds(candidatePool.stream().map(Document::getId).toList());
+  }
+}

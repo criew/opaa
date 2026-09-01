@@ -392,7 +392,7 @@ Score-Lücke aus dem #912-Beispiel (Personalausweis/Führerschein) tritt hier ni
 auf — die Live-Verifikation genau dieses Beispiels auf der Demo (siehe #923-Abnahmekriterien) bleibt
 der eigentliche Nachweis für den Fall, den Maßnahme B beheben soll. Nachmessung nach dem
 Budget-Review-Fix (jede Teilfrage wird auf das volle `top-k` MMR-ausgewählt statt `top-k` geteilt
-durch die Teilfragenzahl, siehe `QueryService#retrieveRelevantChunks`): weiterhin 19/20 zu 19/20 -
+durch die Teilfragenzahl, siehe `MmrSelectionStage`): weiterhin 19/20 zu 19/20 -
 der zuvor verlorene Fall (`city-multi_topic-012`) erreicht jetzt zwar wieder das volle
 Chunk-Budget, verfehlt aber inhaltlich weiterhin eines der beiden erwarteten Dokumente. Gemessene
 Zusatzlatenz des Zerlegungsaufrufs: rund 157 ms im Mittel (GPU-beschleunigtes lokales Modell).

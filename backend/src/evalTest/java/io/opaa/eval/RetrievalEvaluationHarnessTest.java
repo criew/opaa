@@ -29,6 +29,7 @@ import io.opaa.organization.Organization;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;
 import io.opaa.query.QueryServiceDependencies;
+import io.opaa.query.RetrievalPipelineProperties;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -485,6 +486,7 @@ class RetrievalEvaluationHarnessTest {
   // very beans a real request runs through, not a re-implementation of steps 2 to 6.
   @Autowired private QueryService queryService;
   @Autowired private QueryProperties queryProperties;
+  @Autowired private RetrievalPipelineProperties pipelineProperties;
   // #1041: the variant-comparison step builds its own QueryService instances around the same
   // collaborators the autowired queryService above uses — two of those collaborators
   // (ChunkEmbeddingLookup, QueryDecompositionService) are package-private in io.opaa.query and
@@ -561,7 +563,7 @@ class RetrievalEvaluationHarnessTest {
     // Decided up front although the pipeline path (step 6 below) only runs at the very end: the
     // check reads nothing but the query configuration, which is fixed from context startup. Failing
     // it after the hour-long raw-vector path would cost that path its baseline verdict for nothing.
-    PipelineHarnessSupport.requireMeasurableConfiguration(queryProperties);
+    PipelineHarnessSupport.requireMeasurableConfiguration(queryProperties, pipelineProperties);
 
     // Same reasoning for the variant-comparison opt-in (#1041 review, Befund 3): a broken
     // comparison file, an unresolvable referenceVariant, an invalid QueryProperties override
@@ -926,6 +928,7 @@ class RetrievalEvaluationHarnessTest {
         identity,
         queryService,
         queryProperties,
+        pipelineProperties,
         indexingProperties,
         evalLibraryId,
         goldenCases,

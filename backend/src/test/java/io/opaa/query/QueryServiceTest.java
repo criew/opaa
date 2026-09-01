@@ -75,7 +75,7 @@ class QueryServiceTest {
   @Mock private ChunkEmbeddingLookup chunkEmbeddingLookup;
   // Unstubbed by default: Mockito returns an empty List for #decompose, which QueryService treats
   // as a decomposition failure and falls back to the pre-#923 single-query path (see
-  // QueryService#effectiveSearchQueries) - every test in this class relies on that unless it
+  // SubQueryDecompositionStage) - every test in this class relies on that unless it
   // explicitly stubs this mock (see the "Query decomposition (#923)" nested class below).
   @Mock private QueryDecompositionService queryDecompositionService;
   private QueryService queryService;
@@ -86,28 +86,45 @@ class QueryServiceTest {
   private final CurrentUser caller =
       CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "User");
 
+  /**
+   * Assembles the production pipeline around this class's mocked collaborators - through {@link
+   * QueryConfiguration#retrievalPipeline} itself, not a second stage list of its own, so these
+   * tests can never run a different stage order than the application does.
+   */
+  private QueryService newQueryService(QueryProperties queryProperties, ChatMemory memory) {
+    RetrievalPipeline pipeline =
+        new QueryConfiguration()
+            .retrievalPipeline(
+                new SearchScopeStage(),
+                new SubQueryDecompositionStage(queryDecompositionService),
+                new VectorSearchStage(vectorStore),
+                new MmrSelectionStage(chunkEmbeddingLookup),
+                new RankFusionStage(),
+                new DocumentCompletionStage(),
+                RetrievalPipelineProperties.allStagesEnabled());
+    return new QueryService(
+        pipeline,
+        answerGenerationService,
+        memory,
+        new CitationParser(),
+        new CitationValidator(),
+        documentRepository,
+        libraryAccessService,
+        permissionHistoryService,
+        chatService,
+        new QueryMetrics(new SimpleMeterRegistry()),
+        queryProperties,
+        knowledgeLibraryRepository);
+  }
+
   @BeforeEach
   void setUp() {
+    // mmrLambda=1.0 (pure top-K by relevance): the tests in this class stub small,
+    // already-descending-score candidate lists and assert on their exact order/content -
+    // MmrSelector's own diversity behaviour (mmrLambda != 1.0) is covered separately by
+    // MmrSelectorTest.
     queryService =
-        new QueryService(
-            vectorStore,
-            answerGenerationService,
-            chatMemory,
-            new CitationParser(),
-            new CitationValidator(),
-            documentRepository,
-            libraryAccessService,
-            permissionHistoryService,
-            chatService,
-            new QueryMetrics(new SimpleMeterRegistry()),
-            // mmrLambda=1.0 (pure top-K by relevance): the tests in this class stub small,
-            // already-descending-score candidate lists and assert on their exact order/content -
-            // MmrSelector's own diversity behaviour (mmrLambda != 1.0) is covered separately by
-            // MmrSelectorTest.
-            new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2),
-            knowledgeLibraryRepository,
-            chunkEmbeddingLookup,
-            queryDecompositionService);
+        newQueryService(new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2), chatMemory);
 
     // lenient: not every test in this class exercises the full query() path (e.g. the
     // mergeSourceReferences nested tests call other members directly), so MockitoExtension's
@@ -148,21 +165,7 @@ class QueryServiceTest {
   @Test
   void queryCallsChunkEmbeddingLookupWhenMmrLambdaIsBelowOne() {
     QueryService serviceWithMmrEnabled =
-        new QueryService(
-            vectorStore,
-            answerGenerationService,
-            chatMemory,
-            new CitationParser(),
-            new CitationValidator(),
-            documentRepository,
-            libraryAccessService,
-            permissionHistoryService,
-            chatService,
-            new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(8, 25, 0.5, 0.3, 1.0, true, 3, 2),
-            knowledgeLibraryRepository,
-            chunkEmbeddingLookup,
-            queryDecompositionService);
+        newQueryService(new QueryProperties(8, 25, 0.5, 0.3, 1.0, true, 3, 2), chatMemory);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chunk =
         Document.builder()
@@ -187,21 +190,7 @@ class QueryServiceTest {
   @Test
   void permissionHistoryCheckNeverRunsWhenSampleRateIsZero() {
     QueryService serviceWithNoSampling =
-        new QueryService(
-            vectorStore,
-            answerGenerationService,
-            chatMemory,
-            new CitationParser(),
-            new CitationValidator(),
-            documentRepository,
-            libraryAccessService,
-            permissionHistoryService,
-            chatService,
-            new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(8, 25, 1.0, 0.3, 0.0, true, 3, 2),
-            knowledgeLibraryRepository,
-            chunkEmbeddingLookup,
-            queryDecompositionService);
+        newQueryService(new QueryProperties(8, 25, 1.0, 0.3, 0.0, true, 3, 2), chatMemory);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
@@ -905,21 +894,7 @@ class QueryServiceTest {
             .maxMessages(20)
             .build();
     QueryService serviceWithRealMemory =
-        new QueryService(
-            vectorStore,
-            answerGenerationService,
-            realChatMemory,
-            new CitationParser(),
-            new CitationValidator(),
-            documentRepository,
-            libraryAccessService,
-            permissionHistoryService,
-            chatService,
-            new QueryMetrics(new SimpleMeterRegistry()),
-            new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2),
-            knowledgeLibraryRepository,
-            chunkEmbeddingLookup,
-            queryDecompositionService);
+        newQueryService(new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2), realChatMemory);
 
     UUID otherUserId = UUID.randomUUID();
     CurrentUser otherCaller =
@@ -1858,7 +1833,7 @@ class QueryServiceTest {
     /**
      * An empty decomposition result (LLM failure or unparsable output, {@code
      * QueryDecompositionService#decompose}'s documented failure signal) falls back to {@link
-     * QueryService#buildSearchQuery}'s pre-#923 single-query behaviour unchanged.
+     * SubQueryDecompositionStage#buildSearchQuery}'s pre-#923 single-query behaviour unchanged.
      */
     @Test
     void emptyDecompositionResultFallsBackToBuildSearchQuery() {
@@ -1879,21 +1854,7 @@ class QueryServiceTest {
     @Test
     void decompositionDisabledSkipsTheDecompositionServiceEntirely() {
       QueryService serviceWithDecompositionDisabled =
-          new QueryService(
-              vectorStore,
-              answerGenerationService,
-              chatMemory,
-              new CitationParser(),
-              new CitationValidator(),
-              documentRepository,
-              libraryAccessService,
-              permissionHistoryService,
-              chatService,
-              new QueryMetrics(new SimpleMeterRegistry()),
-              new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2),
-              knowledgeLibraryRepository,
-              chunkEmbeddingLookup,
-              queryDecompositionService);
+          newQueryService(new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2), chatMemory);
       when(chatMemory.get(any())).thenReturn(List.of());
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));

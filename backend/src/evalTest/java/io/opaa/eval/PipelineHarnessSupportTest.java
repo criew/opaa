@@ -9,8 +9,11 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;
+import io.opaa.query.RetrievalPipelineProperties;
+import io.opaa.query.RetrievalStageName;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
@@ -66,6 +69,7 @@ class PipelineHarnessSupportTest {
                     IDENTITY,
                     failing,
                     productionLikeProperties(8, false),
+                    RetrievalPipelineProperties.allStagesEnabled(),
                     // Never dereferenced on this path: the failure happens while querying, before
                     // the run configuration (the only reader of indexing properties) is built.
                     null,
@@ -82,22 +86,49 @@ class PipelineHarnessSupportTest {
    */
   @Test
   void anUnmeasurableConfigurationStillFailsHard() {
-    assertThatThrownBy(() -> runWith(productionLikeProperties(8, true)))
+    assertThatThrownBy(
+            () ->
+                runWith(
+                    productionLikeProperties(8, true),
+                    RetrievalPipelineProperties.allStagesEnabled()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("query-decomposition-enabled");
 
-    assertThatThrownBy(() -> runWith(productionLikeProperties(5, false)))
+    assertThatThrownBy(
+            () ->
+                runWith(
+                    productionLikeProperties(5, false),
+                    RetrievalPipelineProperties.allStagesEnabled()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("top-k");
   }
 
+  /**
+   * A run with a switched-off pipeline stage measures a different pipeline while reporting the same
+   * fixed points as a full run - no report field records which stages ran, so the difference would
+   * land on the committed baseline as a code change. Making stage selection measurable is a
+   * contract change (new fixed point, raised contract version, re-drawn baselines), not a property.
+   */
+  @Test
+  void aRunWithASwitchedOffStageIsRejectedAsUnmeasurable() {
+    assertThatThrownBy(
+            () ->
+                runWith(
+                    productionLikeProperties(8, false),
+                    new RetrievalPipelineProperties(Set.of(RetrievalStageName.MMR_SELECTION))))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("disabled-stages");
+  }
+
   /** Collaborators are null on purpose: the guard must reject before touching any of them. */
-  private static void runWith(QueryProperties queryProperties) {
+  private static void runWith(
+      QueryProperties queryProperties, RetrievalPipelineProperties pipelineProperties) {
     PipelineHarnessSupport.runAndWriteGuarded(
         EvalDomainConfig.COMIC_CHARACTERS,
         IDENTITY,
         null,
         queryProperties,
+        pipelineProperties,
         null,
         UUID.randomUUID(),
         oneCase(),

@@ -2,6 +2,7 @@ package io.opaa.query;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.observability.QueryMetrics;
+import java.util.List;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
@@ -21,8 +22,39 @@ import org.springframework.context.annotation.Configuration;
  * cross-cutting convention this issue did not change.
  */
 @Configuration
-@EnableConfigurationProperties(QueryProperties.class)
+@EnableConfigurationProperties({QueryProperties.class, RetrievalPipelineProperties.class})
 public class QueryConfiguration {
+
+  /**
+   * <b>The one place the retrieval order is decided</b> (docs/features/hybrid-retrieval.md,
+   * Arbeitspaket 1). The stages are {@code @Component}s, but their sequence is not left to
+   * component scanning or to {@code @Order} annotations scattered across six files: whether
+   * reranking runs before or after document completion is a technical decision with consequences,
+   * and it belongs somewhere it can be read off in one line.
+   *
+   * <p>New stages are inserted here, at the position they belong to - the lexical search path next
+   * to {@link VectorSearchStage}, reranking between {@link RankFusionStage} and {@link
+   * DocumentCompletionStage} (docs/features/hybrid-retrieval.md, Arbeitspaket 2/4).
+   */
+  @Bean
+  RetrievalPipeline retrievalPipeline(
+      SearchScopeStage searchScopeStage,
+      SubQueryDecompositionStage subQueryDecompositionStage,
+      VectorSearchStage vectorSearchStage,
+      MmrSelectionStage mmrSelectionStage,
+      RankFusionStage rankFusionStage,
+      DocumentCompletionStage documentCompletionStage,
+      RetrievalPipelineProperties pipelineProperties) {
+    return new RetrievalPipeline(
+        List.of(
+            searchScopeStage,
+            subQueryDecompositionStage,
+            vectorSearchStage,
+            mmrSelectionStage,
+            rankFusionStage,
+            documentCompletionStage),
+        pipelineProperties);
+  }
 
   /**
    * Maximum messages retained per conversation. Default 20: this corresponds to roughly 10
