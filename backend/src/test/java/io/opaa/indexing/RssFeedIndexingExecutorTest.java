@@ -657,6 +657,40 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
+  void anEntryRejectedForHavingNoUsableTextIsRecordedAndItsAttachmentsAreNotIndexed()
+      throws Exception {
+    // NO_EXTRACTABLE_TEXT became reachable on this path with #1056 (processRssEntry now honours the
+    // pipeline outcome instead of indexing zero chunks). Without its own branch it would fall into
+    // the else: counted as processed and logged as "Indexed RSS entry" although the document is
+    // FAILED - and the attachments of a rejected entry would be indexed as if it had succeeded.
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/leer.html"));
+    serve(
+        "/leer.html",
+        200,
+        "text/html",
+        "<html><body><main>Text<a href=\""
+            + baseUrl
+            + "/anhang.pdf\">Anhang</a></main></body>"
+            + "</html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.NO_EXTRACTABLE_TEXT);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && (baseUrl + "/leer.html").equals(event.getReference())
+                        && DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE.equals(event.getMessage())));
+    verify(fileProcessingService, never())
+        .processUrlFile(any(), anyString(), anyString(), any(), anyLong(), any(), any(), any());
+  }
+
+  @Test
   void aFailedEventWriteNeverPreventsTheRunFromCompleting() {
     // #513, PR #604 review finding 2: a DB hiccup while writing the protocol must never leave the
     // job stuck RUNNING - uk_indexing_jobs_library_running (migration 028) would then permanently

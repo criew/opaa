@@ -8,6 +8,7 @@ import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.library.UploadProperties;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import io.opaa.test.OpaaIndexingTestDirectory;
@@ -25,12 +26,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The selective re-index by pipeline version (#1056, ingestion-pipelines.md Querschnittsregel (d)):
- * "alle Chunks unterhalb Version N dieser Pipeline" must be auslösbar, wiederaufnehmbar, and its
- * Fortschritt je Bibliothek abfragbar.
+ * The selective re-index by pipeline version (#1056, ingestion-pipelines.md cross-cutting rule
+ * (d)): every chunk below version N of one pipeline must be triggerable, resumable, and its
+ * progress queryable per library.
  *
  * <p>Chunks are seeded directly through {@link VectorStore#add} without the pipeline metadata -
- * that is exactly the state of every chunk written before the abstraction existed, the bestand the
+ * that is exactly the state of every chunk written before the abstraction existed, the corpus the
  * whole mechanism is meant to be able to reach again.
  */
 @OpaaIndexingIntegrationTest
@@ -44,6 +45,7 @@ class PipelineReindexServiceIntegrationTest {
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private UploadProperties uploadProperties;
 
   private UUID userId;
   private KnowledgeLibrary library;
@@ -95,7 +97,7 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   @Test
-  void thePreAbstractionBestandCountsAsStaleAndIsReportedPerLibrary() throws IOException {
+  void thePreAbstractionCorpusCountsAsStaleAndIsReportedPerLibrary() throws IOException {
     Document legacy = persistedFilesystemDocument("altbestand.txt", "Alter Inhalt");
     seedChunk(legacy.getId(), "alter chunk", null, null);
     Document current = persistedFilesystemDocument("neubestand.txt", "Neuer Inhalt");
@@ -110,7 +112,7 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(libraryProgress.libraryId()).isEqualTo(library.getId());
     assertThat(libraryProgress.totalChunks()).isEqualTo(2);
     assertThat(libraryProgress.currentVersionChunks()).isEqualTo(1);
-    // A chunk carrying no pipeline metadata at all is not "unbekannt" but attributable: only the
+    // A chunk carrying no pipeline metadata at all is not "unknown" but attributable: only the
     // Tika path ever produced chunks before, so it counts as that pipeline at version 0.
     assertThat(libraryProgress.staleChunks()).isEqualTo(1);
     assertThat(libraryProgress.isComplete()).isFalse();
@@ -150,7 +152,7 @@ class PipelineReindexServiceIntegrationTest {
         .isNotEmpty();
     assertThat(pipelineVersionsOf(document.getId()))
         .containsOnly((int) TikaFallbackPipeline.VERSION);
-    // The re-index is the first path that deletes and rewrites chunks of an existing bestand, so
+    // The re-index is the first path that deletes and rewrites chunks of an existing corpus, so
     // the lexical index has to come along: exactly one chunk_full_text row per vector_store chunk
     // of this document, none left over from the chunks that were replaced.
     assertThat(fullTextRowCountOf(document.getId()))
@@ -243,6 +245,68 @@ class PipelineReindexServiceIntegrationTest {
                 .getFirst()
                 .staleChunks())
         .isEqualTo(1);
+  }
+
+  @Test
+  void aLibraryWhoseSourcePathNoLongerPassesTheAllowlistIsNotReadAgain() throws IOException {
+    // Isolates the allowlist check from the containment check: the file does lie underneath its
+    // library's own configured sourcePath, so containment alone would let it through - only the
+    // allowlist rejects it. This is the "operator narrowed (or emptied) the allowlist after the
+    // library was created" case FilesystemPathAllowlist exists for.
+    Path withdrawnDirectory = Files.createTempDirectory("withdrawn-source-path");
+    Path file = withdrawnDirectory.resolve("satzung.txt");
+    Files.writeString(file, "Inhalt in einem nicht mehr erlaubten Quellverzeichnis. ".repeat(20));
+    KnowledgeLibrary withdrawnLibrary =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID,
+                "Zurückgezogene Bibliothek",
+                null,
+                userId,
+                LibraryVisibility.PRIVATE,
+                false,
+                DocumentSourceType.FILESYSTEM,
+                withdrawnDirectory.toString(),
+                null,
+                null,
+                null,
+                false));
+    Document document =
+        persistedDocumentPointingAt(
+            "satzung.txt", file, DocumentSourceType.FILESYSTEM, withdrawnLibrary.getId());
+    seedChunk(document.getId(), withdrawnLibrary.getId(), "alter chunk", null, null);
+
+    PipelineReindexResult result = reindexBatch(10);
+
+    assertThat(result.skippedDocuments()).isEqualTo(1);
+    assertThat(result.reindexedDocuments()).isZero();
+    assertThat(chunkTextsOf(document.getId())).containsExactly("alter chunk");
+  }
+
+  @Test
+  void anUploadedDocumentInsideTheManagedStorageIsReindexedInPlace() throws IOException {
+    // The positive counterpart to the two containment tests: without it, a wrongly resolved
+    // storagePath would let every upload pass silently as "skipped" and nobody would notice that
+    // uploads are never re-indexed at all.
+    Path managedDirectory =
+        Path.of(uploadProperties.storagePath()).resolve(uploadLibrary.getId().toString());
+    Files.createDirectories(managedDirectory);
+    Path file = managedDirectory.resolve(UUID.randomUUID() + "-vermerk.txt");
+    Files.writeString(file, "Ein hochgeladener Vermerk über Verwaltungsgebühren. ".repeat(20));
+    Document document =
+        persistedDocumentPointingAt(
+            "vermerk.txt", file, DocumentSourceType.UPLOAD, uploadLibrary.getId());
+    seedChunk(document.getId(), uploadLibrary.getId(), "veralteter chunk", null, null);
+
+    PipelineReindexResult result = reindexBatch(10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(result.skippedDocuments()).isZero();
+    assertThat(chunkTextsOf(document.getId()))
+        .noneMatch(text -> text.equals("veralteter chunk"))
+        .isNotEmpty();
+    assertThat(pipelineVersionsOf(document.getId()))
+        .containsOnly((int) TikaFallbackPipeline.VERSION);
   }
 
   @Test

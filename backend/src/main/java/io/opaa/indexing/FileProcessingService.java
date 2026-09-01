@@ -485,11 +485,15 @@ public class FileProcessingService {
    * <p><b>Nothing is destroyed before the replacement exists.</b> The old chunks are deleted only
    * once the pipeline has actually produced new ones, immediately before they are written (chunk
    * ids are generated per write, so the old ones would otherwise accumulate alongside the new
-   * ones). A document that fails to parse this time - a transient reader failure, a temporarily
-   * unreadable file - keeps its working chunks and its {@code INDEXED} row and is reported back as
-   * not re-indexed, rather than being left permanently chunkless and {@code FAILED} with no path
-   * back: unlike a fresh upload, there is an existing, working state here that is worth more than a
-   * consistent-looking failure.
+   * ones). A document that cannot be re-chunked this time keeps its working chunks and its {@code
+   * INDEXED} row and is reported back as not re-indexed, rather than being left permanently
+   * chunkless and {@code FAILED} with no path back: unlike a fresh upload, there is an existing,
+   * working state here that is worth more than a consistent-looking failure. That holds for both
+   * ways the attempt can fail - a pipeline that reports no usable text, and a pipeline that throws
+   * (the likelier transient case: a damaged file the reader rejects, a momentarily unreadable
+   * file). Only once the previous chunks have actually been deleted does a later failure fall back
+   * to the upload path's cleanup, because from that point there is no untouched state left to
+   * preserve.
    *
    * @return whether the document was actually re-indexed
    */
@@ -518,6 +522,10 @@ public class FileProcessingService {
       return false;
     }
 
+    // Whether the previous chunks have already been removed - the point from which this method can
+    // no longer leave the document untouched, and therefore the only case in which the catch block
+    // below is allowed to clean up on the re-index path (see this method's own contract).
+    boolean previousChunksDeleted = false;
     try {
       DocumentPipeline pipeline = pipelineRegistry.pipelineFor(storedFile, doc.getFileName());
       DocumentPipelineResult parsed =
@@ -558,6 +566,7 @@ public class FileProcessingService {
 
       if (replacingExistingChunks) {
         vectorChunkStore.deleteByDocumentId(doc.getId());
+        previousChunksDeleted = true;
       }
       storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(doc.getFileName()), pipeline);
 
@@ -573,13 +582,20 @@ public class FileProcessingService {
       metrics.recordProcessed();
       return true;
     } catch (Exception e) {
-      log.error("Failed to process uploaded document {}", doc.getFileName(), e);
-      // Whatever failed, storeChunks may already have written chunks for doc.getId() into the
-      // vector store - deleting them here mirrors processFile/processUrlFile's own re-index
-      // cleanup, so a FAILED row never leaves orphaned chunks still returned by search. On the
-      // re-index path this runs for the same reason: once the delete-then-store sequence above has
-      // begun, a half-written replacement is worse than none, and the document's own connector run
-      // or a repeated re-index is the way back.
+      log.error("Failed to process stored document {}", doc.getFileName(), e);
+      if (replacingExistingChunks && !previousChunksDeleted) {
+        // The failure happened before anything was destroyed - a damaged file the reader threw on,
+        // a transient I/O error. The document still has its working chunks and its INDEXED row, and
+        // keeping them is the whole point of the re-index contract: the caller reports this as
+        // skipped and the document can be tried again, rather than being left empty and FAILED with
+        // no way back.
+        metrics.recordFailed();
+        return false;
+      }
+      // Past the delete, or on the upload path where there is no working previous state: whatever
+      // failed, storeChunks may already have written chunks for doc.getId() into the vector store -
+      // deleting them here mirrors processFile/processUrlFile's own re-index cleanup, so a FAILED
+      // row never leaves orphaned chunks still returned by search.
       vectorChunkStore.deleteByDocumentId(doc.getId());
       markUploadFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
       metrics.recordFailed();
