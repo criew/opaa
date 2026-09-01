@@ -169,8 +169,8 @@ class AsyncIndexingExecutorTest {
         new IndexingProperties(1000, 0, 50, null, null, null, null, null, null, 1);
     FileProcessingService realFileProcessingService =
         new FileProcessingService(
-            scanDetectingDocumentService,
-            new ChunkingService(indexingProperties),
+            TestPipelineRegistries.fallbackOnly(
+                scanDetectingDocumentService, new ChunkingService(indexingProperties)),
             documentRepository,
             new VectorChunkStore(
                 vectorStore,

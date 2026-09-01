@@ -72,8 +72,7 @@ class FileProcessingServiceTest {
             vectorStore, embeddingModel, batchingStrategy, vectorStoreWriter, fullTextChunkStore);
     service =
         new FileProcessingService(
-            documentService,
-            chunkingService,
+            TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
             documentRepository,
             vectorChunkStore,
             checksumService,
@@ -177,8 +176,7 @@ class FileProcessingServiceTest {
 
     FileProcessingService serviceWithRealScanDetection =
         new FileProcessingService(
-            realDocumentService,
-            chunkingService,
+            TestPipelineRegistries.fallbackOnly(realDocumentService, chunkingService),
             documentRepository,
             vectorChunkStore,
             checksumService,
@@ -287,8 +285,7 @@ class FileProcessingServiceTest {
             documentRepository, new UploadProperties(null, 0, null, 0, 1000));
     FileProcessingService serviceWithRealQuota =
         new FileProcessingService(
-            documentService,
-            chunkingService,
+            TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
             documentRepository,
             vectorChunkStore,
             checksumService,
@@ -379,6 +376,13 @@ class FileProcessingServiceTest {
         .containsEntry("organization_id", targetLibrary.getOrganizationId().toString());
     // #667: the chunk's Fundort rides along to the vector store.
     assertThat(metadata).containsEntry(ChunkingService.LOCATION_METADATA_KEY, "S. 2");
+    // #1056, ingestion-pipelines.md Querschnittsregel (d): every chunk names the verfahren that
+    // produced it - without it, a bestand containing chunks from two pipelines is not feststellbar.
+    assertThat(metadata)
+        .containsEntry(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY, TikaFallbackPipeline.ID)
+        .containsEntry(
+            ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY,
+            (int) TikaFallbackPipeline.VERSION);
   }
 
   @Test
@@ -1298,6 +1302,53 @@ class FileProcessingServiceTest {
     ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository).save(savedDocCaptor.capture());
     verify(vectorStore).delete(documentIdFilter(savedDocCaptor.getValue().getId()));
+  }
+
+  @Test
+  void aReindexWhoseReaderThrowsLeavesTheDocumentsChunksAndStatusUntouched() throws IOException {
+    // The likeliest transient failure on the re-index path: the reader throws on a damaged or
+    // momentarily unreadable file, before anything has been deleted. Deleting the working chunks
+    // and marking the document FAILED here would destroy a functioning document over a failure
+    // that may not even repeat - and, unlike a fresh upload, there is a working previous state.
+    Path file = tempDir.resolve("beschaedigt.pdf");
+    Files.writeString(file, "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection");
+    UUID documentId = UUID.randomUUID();
+    Document existing = new Document("beschaedigt.pdf", file.toString(), "application/pdf", 42L);
+    existing.setLibraryId(targetLibrary.getId());
+    existing.setOrganizationId(targetLibrary.getOrganizationId());
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(existing));
+    when(documentService.parseDocument(file))
+        .thenThrow(new RuntimeException("Tika konnte die Datei nicht lesen"));
+
+    boolean reindexed = service.reindexStoredDocument(documentId, file);
+
+    assertThat(reindexed).isFalse();
+    verify(vectorStore, never()).delete(any(Filter.Expression.class));
+    verify(fullTextChunkStore, never()).deleteByDocumentId(any());
+    verify(documentRepository, never()).markFailed(any(), any());
+    verify(documentRepository, never()).markIndexed(any(), anyInt(), any());
+  }
+
+  @Test
+  void processRssEntryRejectsAnEntryWhoseTextChunksDownToNothing() {
+    // Pre-existing gap closed with #1056: this path discarded the pipeline outcome entirely and
+    // left such an entry INDEXED with zero chunks - the same silent empty index the file paths
+    // already guard against, only reached through a feed instead of a file.
+    String entryUrl = "https://example.gov/artikel/leer";
+
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-empty-entry");
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(chunkingService.chunkDocuments(anyString(), any())).thenReturn(List.of());
+
+    FileProcessingResult result =
+        service.processRssEntry("x", "Titel", entryUrl, "2025-06-15T10:30:00Z", targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
+    verify(documentRepository).markFailed(any(), eq(DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE));
+    verify(documentRepository, never()).markIndexedFromSource(any(), anyInt(), any(), any(), any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
   }
 
   @Test

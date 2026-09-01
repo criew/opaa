@@ -129,8 +129,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
             vectorStoreWriter,
             fullTextChunkStore);
     return new FileProcessingService(
-        documentService,
-        chunkingService,
+        TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
         documentRepository,
         vectorChunkStore,
         checksumService,
