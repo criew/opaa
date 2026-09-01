@@ -473,8 +473,33 @@ describe('LibraryGrantsDialog', () => {
 
     expect(await screen.findByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Referat 50')).toBeInTheDocument()
-    expect(screen.getAllByText(/erteilt von manager am/i)).toHaveLength(2)
+    expect(screen.getAllByText(/Rolle vergeben von Manager/i)).toHaveLength(2)
     expect(screen.queryByText('user-alice')).not.toBeInTheDocument()
+  })
+
+  it('#1052: dates the granter line by updatedAt, never by createdAt', async () => {
+    // grantedByUserId names whoever conferred the current role. Pairing that name with createdAt
+    // would show a granter/date combination that never existed once a later role change moved the
+    // name on.
+    setManager()
+    setGrants(library.id, [
+      {
+        id: 'grant-1',
+        subjectType: 'USER',
+        subjectId: 'user-alice',
+        subjectDisplayName: 'Alice',
+        role: 'OWNER',
+        expiresAt: null,
+        grantedByUserId: 'admin-2',
+        grantedByDisplayName: 'Admin B',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-08-20T10:00:00Z',
+      },
+    ])
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+
+    expect(await screen.findByText(/Rolle vergeben von Admin B/i)).toHaveTextContent('20.8.2026')
+    expect(screen.queryByText(/1\.3\.2026/)).not.toBeInTheDocument()
   })
 
   it('#777: offers the searchable user picker for a MANAGER without a system role', async () => {

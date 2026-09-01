@@ -72,6 +72,7 @@ class SpecEnumParityTest {
         Arguments.of("AuditEventType", AuditEventType.values()),
         Arguments.of("AuditIncidentScopePurpose", AuditIncidentScopePurpose.values()),
         Arguments.of("AuditIncidentScopeStatus", AuditIncidentScopeStatus.values()),
+        Arguments.of("DiagnosticTargetKind", DiagnosticTargetKind.values()),
         Arguments.of("ChatStatus", ChatStatus.values()),
         Arguments.of("ChatRole", ChatRole.values()),
         Arguments.of("ColorScheme", ColorScheme.values()),

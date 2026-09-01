@@ -296,10 +296,13 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                 >
                   <Stack spacing={0.25} sx={{ minWidth: 160, flexGrow: 1 }}>
                     <Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>{subjectName}</Typography>
+                    {/* grantedByUserId names whoever conferred the role the grant carries now, not
+                        whoever created the row - so it is never paired with createdAt, which would
+                        assert a granter/date combination that never existed. */}
                     <Typography variant="caption" color="text.secondary">
-                      {permissionSubjectTypeLabel(grant.subjectType)} · erteilt von{' '}
-                      {grantedByDisplayName(grant)} am{' '}
-                      {new Date(grant.createdAt).toLocaleDateString('de-DE')}
+                      {permissionSubjectTypeLabel(grant.subjectType)} · Rolle vergeben von{' '}
+                      {grantedByDisplayName(grant)} · zuletzt geändert am{' '}
+                      {new Date(grant.updatedAt).toLocaleDateString('de-DE')}
                     </Typography>
                   </Stack>
                   <FormControl size="small" sx={{ minWidth: 160 }}>

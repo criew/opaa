@@ -1,0 +1,67 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-diagnostic-impersonation-grants
+      author: opaa
+      comment: >-
+        Die Befugnis "Sicht als" (#1052, docs/features/hybrid-retrieval.md, Leitplanke (c)) als
+        eigene Tabelle statt als weiterer Wert auf users.system_role: sie ist einzeln vergebbar und
+        wird ausdruecklich nicht aus SYSTEM_ADMIN abgeleitet - ein Rollenwert waere genau die
+        Ableitung, die die Leitplanke verbietet, und koennte weder Geltungsbereich noch Befristung
+        tragen. scope_group_id und valid_until sind NOT NULL: ein unbefristetes, bereichsloses
+        Dauerrecht ist damit nicht anlegbar, unabhaengig davon, was die Anwendungsschicht prueft.
+        chk_diagnostic_impersonation_grants_validity zieht zusaetzlich eine Hoechstdauer von zwoelf
+        Monaten ein - ohne sie waere "valid_until = 2999-12-31" ein faktisch unbefristetes Recht,
+        das die NOT-NULL-Spalte allein nicht verhindert. Der Geltungsbereich ist eine Gruppe der Art
+        ORG_UNIT (die Organisationseinheit des Verzeichnisses); dass es sich um eine ORG_UNIT und
+        nicht um eine AD_HOC-Gruppe handelt, prueft der Dienst - groups traegt keinen fuer einen
+        Fremdschluessel nutzbaren Schluessel auf (id, kind).
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.diagnostic_impersonation_grants (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  holder_user_id uuid NOT NULL,
+                  scope_group_id uuid NOT NULL,
+                  valid_from timestamp with time zone NOT NULL,
+                  valid_until timestamp with time zone NOT NULL,
+                  granted_by_user_id uuid NOT NULL,
+                  granted_at timestamp with time zone NOT NULL,
+                  revoked_at timestamp with time zone,
+                  revoked_by_user_id uuid,
+                  CONSTRAINT chk_diagnostic_impersonation_grants_validity
+                      CHECK ((valid_until > valid_from) AND (valid_until <= (valid_from + interval '12 months'))),
+                  CONSTRAINT chk_diagnostic_impersonation_grants_revocation
+                      CHECK (((revoked_at IS NULL) AND (revoked_by_user_id IS NULL))
+                             OR ((revoked_at IS NOT NULL) AND (revoked_by_user_id IS NOT NULL)))
+              );
+
+              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+                  ADD CONSTRAINT diagnostic_impersonation_grants_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_organization
+                  FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_holder_organization
+                  FOREIGN KEY (holder_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_granter_organization
+                  FOREIGN KEY (granted_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_revoker_organization
+                  FOREIGN KEY (revoked_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_scope_organization
+                  FOREIGN KEY (scope_group_id, organization_id) REFERENCES public.groups(id, organization_id) ON DELETE RESTRICT;
+
+              CREATE INDEX idx_diagnostic_impersonation_grants_holder
+                  ON public.diagnostic_impersonation_grants USING btree (organization_id, holder_user_id, valid_until);
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS public.diagnostic_impersonation_grants CASCADE;

@@ -164,6 +164,44 @@ public class LibraryAccessService {
   }
 
   /**
+   * Whether {@code userId} holds {@link AssetRole#OWNER} on {@code library} on a basis they did not
+   * create for themselves: an unexpired {@code OWNER} grant somebody else issued, or one they
+   * issued to themselves while being the library's named owner ({@code ownerUserId}, or a member of
+   * the owning group). Unlike {@link #effectiveRole} there is no system-admin floor here, and an
+   * {@code OWNER} grant an administrator issued to themselves through that floor does not count -
+   * closing the two-step path "grant myself OWNER via the administrative floor, then act as the
+   * responsible owner". {@link AssetGrant#updateRole} carries the changer into {@code
+   * grantedByUserId} on a role change <em>and</em> on the revival of an expired grant, so both
+   * raising a pre-existing foreign grant to {@code OWNER} and re-arming an expired foreign {@code
+   * OWNER} grant at an unchanged role count as self-issued - the expiry filter below is what makes
+   * the second case necessary. Used by {@code LibraryDiagnosticsLockService} for the one rule that
+   * must hold against the administration itself; every other library endpoint keeps using {@link
+   * #requireRole}.
+   *
+   * <p><b>The named-owner exception is only half closed, and the open half is administratively
+   * reachable.</b> {@code library.getOwnerUserId()} is immutable and has no setter. {@code
+   * library.getOwnerGroupId()} is immutable as well, but membership in that group is not: {@code
+   * GroupController#addMember} is open to {@code SYSTEM_ADMIN}, {@code GroupService#addMember}
+   * knows no self-exclusion, and its {@code rejectOrgUnit} guard covers only {@code ORG_UNIT}
+   * groups. An administrator can therefore add themselves to a non-{@code ORG_UNIT} owning group in
+   * one step, become {@code namedOwner}, and validate their own self-issued {@code OWNER} grant.
+   * Closing that is a change to group administration with its own trade-off (issue #1124), not to
+   * this method.
+   */
+  public boolean holdsIndependentOwnerRole(KnowledgeLibrary library, UUID userId) {
+    Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
+    boolean namedOwner =
+        userId.equals(library.getOwnerUserId())
+            || (library.getOwnerGroupId() != null && groupIds.contains(library.getOwnerGroupId()));
+    Instant now = Instant.now();
+    return grantsByLibrary.get(library.getId(), grantRepository::findByLibraryId).stream()
+        .filter(grant -> !grant.isExpired(now))
+        .filter(grant -> grant.getRole() == AssetRole.OWNER)
+        .filter(grant -> reaches(grant, userId, groupIds))
+        .anyMatch(grant -> namedOwner || !userId.equals(grant.getGrantedByUserId()));
+  }
+
+  /**
    * Every library id a <b>permission profile</b> may read: the group's own grants plus every
    * organization-wide library - the group-shaped counterpart of {@link #readableLibraryIds}, and
    * the search scope the administration's diagnosis runs a Rechteprofil in (#1053,
@@ -284,12 +322,7 @@ public class LibraryAccessService {
       if (grant.isExpired(now)) {
         continue;
       }
-      boolean reaches =
-          (grant.getSubjectType() == PermissionSubjectType.USER
-                  && grant.getSubjectUserId().equals(userId))
-              || (grant.getSubjectType() == PermissionSubjectType.GROUP
-                  && groupIds.contains(grant.getSubjectGroupId()));
-      if (reaches && (best == null || grant.getRole().atLeast(best))) {
+      if (reaches(grant, userId, groupIds) && (best == null || grant.getRole().atLeast(best))) {
         best = grant.getRole();
       }
     }
@@ -303,6 +336,14 @@ public class LibraryAccessService {
    */
   public void invalidateLibrary(UUID libraryId) {
     grantsByLibrary.invalidate(libraryId);
+  }
+
+  /** Whether {@code grant} reaches {@code userId} - directly, or via one of {@code groupIds}. */
+  private static boolean reaches(AssetGrant grant, UUID userId, Set<UUID> groupIds) {
+    return (grant.getSubjectType() == PermissionSubjectType.USER
+            && grant.getSubjectUserId().equals(userId))
+        || (grant.getSubjectType() == PermissionSubjectType.GROUP
+            && groupIds.contains(grant.getSubjectGroupId()));
   }
 
   private static boolean atLeast(AssetRole role, AssetRole required) {

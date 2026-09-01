@@ -131,6 +131,23 @@ public enum AuditEventType {
    */
   LLM_MODEL_DEACTIVATED,
 
+  // Diagnose in fremdem Rechtekontext ("Sicht als", #1052)
+  /**
+   * The separately granted "Sicht als" befugnis (scope plus expiry) was given to a person. Never
+   * implied by {@link #SYSTEM_ADMIN_ROLE_GRANTED} - the befugnis is not derived from any role.
+   */
+  DIAGNOSTIC_IMPERSONATION_GRANTED,
+  /** A "Sicht als" befugnis was revoked before its own expiry. */
+  DIAGNOSTIC_IMPERSONATION_REVOKED,
+  /** The retention period of the diagnostic context protocol changed (12 months by default). */
+  DIAGNOSTIC_CONTEXT_RETENTION_CHANGED,
+  /**
+   * A library's diagnosesperre was set or lifted by the responsible owner. Distinct from {@link
+   * #LIBRARY_CHANGED}: this flag decides whether a foreign rights context can see the library at
+   * all, and an auditor must be able to find that change by its own name.
+   */
+  LIBRARY_DIAGNOSTICS_LOCK_CHANGED,
+
   // Zugriff auf die Protokolldaten selbst
   /** Any read, evaluation or export of audit data, including rejected attempts (see outcome). */
   AUDIT_LOG_ACCESSED

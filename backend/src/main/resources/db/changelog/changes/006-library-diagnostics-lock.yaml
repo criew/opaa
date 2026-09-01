@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-library-diagnostics-lock
+      author: opaa
+      comment: >-
+        Diagnosesperre je Bibliothek (#1052, docs/features/hybrid-retrieval.md, Leitplanke (e)).
+        DEFAULT true, und die Spalte wird fuer jede bereits vorhandene Bibliothek auf true gesetzt:
+        die Leitplanke verlangt, dass Bestaende der Personalvertretung, der
+        Schwerbehindertenvertretung, der Gleichstellung und Personalvorgaenge "standardmaessig
+        gesperrt" sind - eine Kategorie, die dieses Schema fuer bestehende Bibliotheken nicht
+        erkennen kann und die auch beim Anlegen niemand verlaesslich pflegt. Deshalb ist nicht die
+        Kategorie, sondern die Sperre die Voreinstellung: jede Bibliothek ist fuer "Sicht als"
+        zunaechst gesperrt, und die zustaendige Stelle (der OWNER der Bibliothek, nicht die
+        Administration) hebt die Sperre bewusst auf. Das schuetzt die vier genannten Bestaende ohne
+        sie klassifizieren zu muessen und faellt im Zweifel zugunsten des Schutzes aus. Nur "Sicht
+        als" ist davon betroffen; die Diagnose im eigenen Rechtekontext und fuer Rechteprofile
+        kennt die Sperre nicht.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries
+                  ADD COLUMN diagnostics_locked boolean DEFAULT true NOT NULL;
+      rollback:
+        - sql:
+            sql: ALTER TABLE public.knowledge_libraries DROP COLUMN IF EXISTS diagnostics_locked;
