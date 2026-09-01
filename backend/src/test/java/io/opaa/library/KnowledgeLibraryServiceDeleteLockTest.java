@@ -20,6 +20,7 @@ import io.opaa.group.GroupRepository;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.FullTextChunkStore;
+import io.opaa.indexing.VectorStoreWriter;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
@@ -66,7 +67,12 @@ class KnowledgeLibraryServiceDeleteLockTest {
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
     VectorChunkStore vectorChunkStore =
-        new VectorChunkStore(mock(VectorStore.class), mock(FullTextChunkStore.class));
+        new VectorChunkStore(
+            mock(VectorStore.class),
+            mock(org.springframework.ai.embedding.EmbeddingModel.class),
+            mock(org.springframework.ai.embedding.BatchingStrategy.class),
+            mock(VectorStoreWriter.class),
+            mock(FullTextChunkStore.class));
     FilesystemPathAllowlist filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     indexingJobRepository = mock(IndexingJobRepository.class);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);

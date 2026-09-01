@@ -48,6 +48,9 @@ class FileProcessingServiceTest {
   @Mock private DocumentRepository documentRepository;
   @Mock private VectorStore vectorStore;
   @Mock private FullTextChunkStore fullTextChunkStore;
+  @Mock private org.springframework.ai.embedding.EmbeddingModel embeddingModel;
+  @Mock private org.springframework.ai.embedding.BatchingStrategy batchingStrategy;
+  @Mock private VectorStoreWriter vectorStoreWriter;
   private VectorChunkStore vectorChunkStore;
   @Mock private ChecksumService checksumService;
   @Mock private LibraryStorageQuotaService storageQuotaService;
@@ -64,7 +67,9 @@ class FileProcessingServiceTest {
   @BeforeEach
   void setUp() {
     meterRegistry = new SimpleMeterRegistry();
-    vectorChunkStore = new VectorChunkStore(vectorStore, fullTextChunkStore);
+    vectorChunkStore =
+        new VectorChunkStore(
+            vectorStore, embeddingModel, batchingStrategy, vectorStoreWriter, fullTextChunkStore);
     service =
         new FileProcessingService(
             documentService,
@@ -135,7 +140,7 @@ class FileProcessingServiceTest {
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(documentService).parseDocument(file);
     verify(chunkingService).chunkDocuments(eq("new-doc.txt"), eq(parsed));
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
 
     // The initial PENDING row is still a plain save; the final INDEXED transition is now a
     // conditional UPDATE (#632), not a second save.
@@ -170,7 +175,7 @@ class FileProcessingServiceTest {
     assertThat(result).isEqualTo(FileProcessingResult.QUOTA_EXCEEDED);
     verify(documentRepository, never()).save(any(Document.class));
     verify(documentService, never()).parseDocument(any());
-    verify(vectorStore, never()).add(any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
   }
 
   @Test
@@ -277,7 +282,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
     Map<String, Object> metadata = storedChunk.getMetadata();
     assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
@@ -318,7 +323,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
 
     // The metadata is still there for filtering/citation...
@@ -364,7 +369,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     List<org.springframework.ai.document.Document> storedChunks = chunkCaptor.getValue();
 
     // The stored content column stays exactly the chunk text, unprefixed, for every chunk (see
@@ -423,7 +428,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
 
     storedChunk.getMetadata().put("future_bookkeeping_key", "some-future-uuid");
@@ -460,7 +465,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
 
     assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
@@ -493,7 +498,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
 
     assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
@@ -541,7 +546,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
 
     assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
@@ -569,7 +574,7 @@ class FileProcessingServiceTest {
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
     verify(documentService, never()).parseDocument(any());
     verify(chunkingService, never()).chunkDocuments(anyString(), any());
-    verify(vectorStore, never()).add(any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
     verify(vectorStore, never()).delete(any(Filter.Expression.class));
   }
 
@@ -698,7 +703,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     Map<String, Object> metadata = chunkCaptor.getValue().getFirst().getMetadata();
     assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
   }
@@ -787,7 +792,7 @@ class FileProcessingServiceTest {
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(documentService).parseDocument(file);
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
 
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
@@ -945,7 +950,7 @@ class FileProcessingServiceTest {
     assertThat(onlyDocument.getSourceEntryUrl())
         .isEqualTo("https://example.gov/artikel/erster-artikel");
     verify(documentRepository, never()).delete(any());
-    verify(vectorStore, org.mockito.Mockito.times(1)).add(any());
+    verify(vectorStoreWriter, org.mockito.Mockito.times(1)).writeEmbeddedChunks(any(), any());
   }
 
   @Test
@@ -1102,7 +1107,7 @@ class FileProcessingServiceTest {
             targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository).save(savedDocCaptor.capture());
     verify(vectorStore).delete(documentIdFilter(savedDocCaptor.getValue().getId()));
@@ -1163,7 +1168,7 @@ class FileProcessingServiceTest {
             "entry main text", "Titel", entryUrl, "2025-06-15T10:30:00Z", targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository).save(savedDocCaptor.capture());
     verify(vectorStore).delete(documentIdFilter(savedDocCaptor.getValue().getId()));
@@ -1186,7 +1191,7 @@ class FileProcessingServiceTest {
     assertThat(result).isEqualTo(FileProcessingResult.QUOTA_EXCEEDED);
     verify(documentRepository, never()).save(any(Document.class));
     verify(chunkingService, never()).chunkDocuments(anyString(), any());
-    verify(vectorStore, never()).add(any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
   }
 
   @Test
@@ -1221,7 +1226,7 @@ class FileProcessingServiceTest {
     // storeChunks already ran (vectorStore.add was called) before the final update failed - the
     // catch block must remove exactly those chunks, keyed by this document's id, or they become
     // orphaned.
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     ArgumentCaptor<UUID> idCaptor = ArgumentCaptor.forClass(UUID.class);
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository).save(docCaptor.capture());
@@ -1269,7 +1274,7 @@ class FileProcessingServiceTest {
 
     service.processUploadedFileAsync(doc.getId(), file);
 
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     verify(documentRepository).markIndexed(eq(doc.getId()), eq(1), any());
     verify(vectorStore, never()).delete(any(Filter.Expression.class));
   }
@@ -1290,7 +1295,7 @@ class FileProcessingServiceTest {
 
     verify(documentRepository)
         .markFailed(doc.getId(), "Aus der Datei konnte kein Text extrahiert werden");
-    verify(vectorStore, never()).add(any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
     // Nothing was ever written for this document, so there is nothing to remove from the vector
     // store either - unlike the exception path below, which may have already written chunks.
     verify(vectorStore, never()).delete(any(Filter.Expression.class));
@@ -1317,7 +1322,7 @@ class FileProcessingServiceTest {
     // The catch block's vectorStore.delete call is made unconditionally, the same way
     // processFile/processUrlFile's own re-index paths always do regardless of whether there was
     // anything to remove (chunkDocuments itself threw here, before storeChunks could run).
-    verify(vectorStore, never()).add(any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
     verify(vectorStore).delete(documentIdFilter(doc.getId()));
     // Unlike the synchronous #420 design, the row survives a failed upload - it is never deleted.
     verify(documentRepository, never()).delete(any(Document.class));
@@ -1367,7 +1372,7 @@ class FileProcessingServiceTest {
     // nothing to update - they are now orphaned and must be removed, or /api/v1/query would keep
     // returning them for a document that, as far as the rest of the application is concerned, no
     // longer exists. Nothing is ever marked FAILED either - the row is simply gone.
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     verify(vectorStore).delete(documentIdFilter(doc.getId()));
     verify(documentRepository, never()).markFailed(any(), anyString());
     verify(documentRepository, never()).save(any());
@@ -1402,7 +1407,7 @@ class FileProcessingServiceTest {
     // block must remove exactly those chunks, keyed by this document's id, or they become
     // orphaned: still returned by /api/v1/query, unreachable through deleteDocument once nothing
     // else points at them.
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     verify(vectorStore).delete(documentIdFilter(doc.getId()));
     verify(documentRepository).markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
     verify(documentRepository, never()).delete(any(Document.class));

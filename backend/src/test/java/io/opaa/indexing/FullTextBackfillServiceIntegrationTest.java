@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * The resumability contract of {@link FullTextBackfillService#backfillBatch} (#1047, docs/features/
@@ -23,11 +22,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * <p>Chunks here are written directly via {@link VectorStore#add}, bypassing {@link
  * VectorChunkStore} on purpose: that is exactly the state of a chunk written before #1047, or one
  * this backfill has not caught up to yet - the backlog this service exists to drain.
+ *
+ * <p>No {@code @MockitoBean} needed to silence {@link FullTextBackfillScheduler}'s own tick (#1047
+ * review, finding 8): {@code @OpaaIndexingIntegrationTest} fixes {@code
+ * opaa.indexing.full-text-backfill.tick-ms} high enough that it never fires during a test run, so
+ * this class shares the ordinary {@code @OpaaIndexingIntegrationTest} context like any other class
+ * carrying that meta-annotation.
  */
-// Own @MockitoBean FullTextBackfillScheduler below (needed so the real, shared-context scheduler's
-// own periodic tick cannot race this test's own manual backfillBatch() calls and turn the exact
-// row-count assertions flaky) means Spring's context cache still keys this to its own context
-// regardless of the shared @OpaaIndexingIntegrationTest base - documented exception per AGENTS.md.
 @OpaaIndexingIntegrationTest
 class FullTextBackfillServiceIntegrationTest {
 
@@ -35,7 +36,6 @@ class FullTextBackfillServiceIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private FullTextBackfillService backfillService;
   @Autowired private FullTextBackfillProgressService progressService;
-  @MockitoBean private FullTextBackfillScheduler fullTextBackfillScheduler;
 
   private final UUID libraryId = UUID.randomUUID();
   private final UUID documentId = UUID.randomUUID();
@@ -93,6 +93,7 @@ class FullTextBackfillServiceIntegrationTest {
     FullTextBackfillProgress beforeBackfill = progressService.progressForLibrary(libraryId);
     assertThat(beforeBackfill.totalChunks()).isEqualTo(4);
     assertThat(beforeBackfill.indexedChunks()).isZero();
+    assertThat(beforeBackfill.missingChunks()).isEqualTo(4);
     assertThat(beforeBackfill.isComplete()).isFalse();
 
     backfillService.backfillBatch(3);
@@ -100,13 +101,47 @@ class FullTextBackfillServiceIntegrationTest {
     FullTextBackfillProgress partial = progressService.progressForLibrary(libraryId);
     assertThat(partial.totalChunks()).isEqualTo(4);
     assertThat(partial.indexedChunks()).isEqualTo(3);
+    assertThat(partial.missingChunks()).isEqualTo(1);
     assertThat(partial.isComplete()).isFalse();
 
     backfillService.backfillBatch(10);
 
     FullTextBackfillProgress complete = progressService.progressForLibrary(libraryId);
     assertThat(complete.indexedChunks()).isEqualTo(4);
+    assertThat(complete.missingChunks()).isZero();
     assertThat(complete.isComplete()).isTrue();
+  }
+
+  /**
+   * #1047 review, finding 2: a {@code chunk_full_text} row with no matching {@code vector_store}
+   * row (e.g. left behind by a bug, or by a chunk deleted through a path that skipped {@link
+   * VectorChunkStore}) must never make {@link FullTextBackfillProgress#isComplete()} look complete
+   * for chunks that are genuinely still missing - {@code indexedChunks} and {@code totalChunks}
+   * alone cannot tell the two situations apart, only the direct {@code missingChunks} anti-join can.
+   */
+  @Test
+  void anOrphanedFullTextRowDoesNotMaskAGenuinelyMissingChunk() {
+    seedUnindexedChunks(2);
+    backfillService.backfillBatch(1);
+    // One chunk deliberately left un-backfilled; simulate an orphaned chunk_full_text row for an
+    // id that has no vector_store counterpart at all (never produced by this backfill's own
+    // insert, since it only ever inserts ids it selected from vector_store).
+    jdbcTemplate.update(
+        "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv) "
+            + "VALUES (?, ?, ?, to_tsvector('german', 'orphan'))",
+        UUID.randomUUID(),
+        documentId,
+        libraryId);
+
+    FullTextBackfillProgress progress = progressService.progressForLibrary(libraryId);
+
+    // totalChunks (2) vs indexedChunks (1 real + 1 orphan = 2) would wrongly read "complete" if
+    // isComplete() compared those two counts directly - missingChunks (the anti-join) still
+    // correctly reports the one vector_store chunk that has no chunk_full_text row.
+    assertThat(progress.totalChunks()).isEqualTo(2);
+    assertThat(progress.indexedChunks()).isEqualTo(2);
+    assertThat(progress.missingChunks()).isEqualTo(1);
+    assertThat(progress.isComplete()).isFalse();
   }
 
   private void seedUnindexedChunks(int count) {

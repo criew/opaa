@@ -331,6 +331,12 @@ class LibraryDocumentServiceIntegrationTest {
             Long.class,
             uploaded.document().getId().toString());
     assertThat(chunksBefore).isGreaterThan(0);
+    Long fullTextChunksBefore =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM chunk_full_text WHERE document_id = ?",
+            Long.class,
+            uploaded.document().getId());
+    assertThat(fullTextChunksBefore).isEqualTo(chunksBefore);
 
     documentService.deleteDocument(
         libraryId, uploaded.document().getId(), currentUserOf(editor, false));
@@ -343,6 +349,16 @@ class LibraryDocumentServiceIntegrationTest {
             Long.class,
             uploaded.document().getId().toString());
     assertThat(chunksAfter).isZero();
+    // #1047 review, finding 4: deleteDocument runs the chunk delete from a
+    // TransactionSynchronization#afterCommit callback (see LibraryDocumentService#deleteDocument) -
+    // this proves the full-text delete actually reaches the database from that deferred callback
+    // against a real connection/transaction manager, not just against a mock.
+    Long fullTextChunksAfter =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM chunk_full_text WHERE document_id = ?",
+            Long.class,
+            uploaded.document().getId());
+    assertThat(fullTextChunksAfter).isZero();
   }
 
   @Test

@@ -158,12 +158,16 @@ class FileProcessingServiceIntegrationTest {
     FileProcessingResult result = fileProcessingService.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    Long vectorChunkCount =
-        jdbcTemplate.queryForObject("SELECT count(*) FROM vector_store", Long.class);
-    Long fullTextChunkCount =
-        jdbcTemplate.queryForObject("SELECT count(*) FROM chunk_full_text", Long.class);
-    assertThat(fullTextChunkCount).isEqualTo(vectorChunkCount);
+    // Compares the actual sets of chunk ids, not just their counts (#1047 review, finding 8): equal
+    // counts alone would not catch a bug where chunk_full_text ends up populated for the right
+    // number of rows but the wrong ids.
+    List<java.util.UUID> vectorChunkIds =
+        jdbcTemplate.queryForList("SELECT id FROM vector_store", java.util.UUID.class);
+    List<java.util.UUID> fullTextChunkIds =
+        jdbcTemplate.queryForList("SELECT chunk_id FROM chunk_full_text", java.util.UUID.class);
+    assertThat(fullTextChunkIds).containsExactlyInAnyOrderElementsOf(vectorChunkIds);
 
+    Long fullTextChunkCount = (long) fullTextChunkIds.size();
     Long matches =
         jdbcTemplate.queryForObject(
             "SELECT count(*) FROM chunk_full_text WHERE content_tsv @@"

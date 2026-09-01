@@ -38,25 +38,28 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ai.embedding.BatchingStrategy;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.filter.Filter;
 
 /**
  * Unit tests for the concurrent embedding path #734 adds to {@link FileProcessingService} (private
  * {@code addToVectorStore}/{@code subBatchSize}, exercised only via {@link
- * FileProcessingService#processFile}) - no real Ollama, a fake {@link VectorStore} standing in for
- * the embedding-triggering call. {@link FileProcessingServiceTest} already covers {@code
+ * FileProcessingService#processFile}) - no real Ollama, a fake {@link VectorStoreWriter} standing
+ * in for the terminal write call {@link VectorChunkStore#addChunks} makes after embedding (#1047
+ * moved that terminal call from {@code VectorStore#add} to {@code VectorStoreWriter}, see both
+ * classes' own Javadoc). {@link FileProcessingServiceTest} already covers {@code
  * embeddingConcurrency == 1} exhaustively (its {@code defaultIndexingProperties()} always uses 1);
  * this class covers only what changes above 1.
  *
  * <p><b>Deterministic where it matters, not everywhere (#735 review, nit 8).</b> {@link
  * #embeddingConcurrencyAboveOneSplitsIntoBatchSizedSubBatchesOnTheExecutor} proves actual overlap
- * with a {@link CyclicBarrier} every {@code add} call must reach within a timeout - if the executor
- * ran calls one at a time instead of concurrently, the barrier would time out and fail the test
- * loudly, rather than the test merely observing whatever concurrency scheduling luck happened to
- * produce. The remaining tests (sub-batch count, chunk order, direct-path threading, failure
- * propagation) were always deterministic - only that one "did this actually run concurrently"
- * assertion previously relied on a sleep-widened race window, which this replaces.
+ * with a {@link CyclicBarrier} every write call must reach within a timeout - if the executor ran
+ * calls one at a time instead of concurrently, the barrier would time out and fail the test loudly,
+ * rather than the test merely observing whatever concurrency scheduling luck happened to produce.
+ * The remaining tests (sub-batch count, chunk order, direct-path threading, failure propagation)
+ * were always deterministic - only that one "did this actually run concurrently" assertion
+ * previously relied on a sleep-widened race window, which this replaces.
  */
 @ExtendWith(MockitoExtension.class)
 class FileProcessingServiceEmbeddingConcurrencyTest {
@@ -66,6 +69,9 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
   @Mock private DocumentRepository documentRepository;
   @Mock private ChecksumService checksumService;
   @Mock private LibraryStorageQuotaService storageQuotaService;
+  @Mock private EmbeddingModel embeddingModel;
+  @Mock private BatchingStrategy batchingStrategy;
+  @Mock private FullTextChunkStore fullTextChunkStore;
 
   @TempDir Path tempDir;
 
@@ -105,7 +111,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
   }
 
   private FileProcessingService service(
-      VectorStore vectorStore, int embeddingConcurrency, int batchSize) {
+      VectorStoreWriter vectorStoreWriter, int embeddingConcurrency, int batchSize) {
     IndexingProperties properties =
         new IndexingProperties(
             1000, 0, batchSize, null, null, null, null, null, null, embeddingConcurrency);
@@ -115,11 +121,18 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     // bound production relies on.
     ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, embeddingConcurrency));
     executorsToShutdown.add(executor);
+    VectorChunkStore vectorChunkStore =
+        new VectorChunkStore(
+            mock(VectorStore.class),
+            embeddingModel,
+            batchingStrategy,
+            vectorStoreWriter,
+            fullTextChunkStore);
     return new FileProcessingService(
         documentService,
         chunkingService,
         documentRepository,
-        new VectorChunkStore(vectorStore, mock(FullTextChunkStore.class)),
+        vectorChunkStore,
         checksumService,
         new IndexingMetrics(meterRegistry),
         storageQuotaService,
@@ -150,15 +163,15 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     Files.writeString(file, "irrelevant");
     stubParseAndChunk(file, "many-chunks.txt", chunksOf(9));
 
-    RecordingVectorStore vectorStore = new RecordingVectorStore(null);
-    FileProcessingService service = service(vectorStore, 1, 2);
+    RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(null);
+    FileProcessingService service = service(writer, 1, 2);
 
     FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    assertThat(vectorStore.addCalls).hasSize(1);
-    assertThat(vectorStore.addCalls.getFirst()).hasSize(9);
-    assertThat(vectorStore.threadNames).containsExactly(Thread.currentThread().getName());
+    assertThat(writer.writeCalls).hasSize(1);
+    assertThat(writer.writeCalls.getFirst()).hasSize(9);
+    assertThat(writer.threadNames).containsExactly(Thread.currentThread().getName());
   }
 
   @Test
@@ -166,7 +179,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
       throws IOException {
     // 6 chunks, batchSize=2, embeddingConcurrency=3 -> subBatchSize = min(2, ceil(6/3)=2) = 2 ->
     // exactly 3 sub-batches (2,2,2), matching both the 3-thread pool (see #service) and the
-    // barrier's 3 parties in a single round - every add() call must reach the barrier within a
+    // barrier's 3 parties in a single round - every write call must reach the barrier within a
     // timeout, deterministically proving all 3 genuinely overlap rather than merely being
     // observed to (#735 review, nit 8). A CyclicBarrier is cyclic - it resets after every trip -
     // so the sub-batch count is chosen to be an exact multiple of the pool size, or a second,
@@ -177,23 +190,23 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     stubParseAndChunk(file, "many-chunks.txt", chunksOf(6));
 
     CyclicBarrier concurrencyProof = new CyclicBarrier(3);
-    RecordingVectorStore vectorStore = new RecordingVectorStore(concurrencyProof);
-    FileProcessingService service = service(vectorStore, 3, 2);
+    RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(concurrencyProof);
+    FileProcessingService service = service(writer, 3, 2);
 
     FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    assertThat(vectorStore.addCalls).hasSize(3);
-    assertThat(vectorStore.addCalls.stream().mapToInt(List::size).sum()).isEqualTo(6);
-    assertThat(vectorStore.threadNames).doesNotContain(Thread.currentThread().getName());
-    // The barrier itself already proved 3 calls overlapped (see RecordingVectorStore) - this is
-    // an additional, redundant cross-check against the same evidence.
-    assertThat(vectorStore.maxConcurrentAddCalls.get()).isEqualTo(3);
+    assertThat(writer.writeCalls).hasSize(3);
+    assertThat(writer.writeCalls.stream().mapToInt(List::size).sum()).isEqualTo(6);
+    assertThat(writer.threadNames).doesNotContain(Thread.currentThread().getName());
+    // The barrier itself already proved 3 calls overlapped (see RecordingVectorStoreWriter) - this
+    // is an additional, redundant cross-check against the same evidence.
+    assertThat(writer.maxConcurrentWriteCalls.get()).isEqualTo(3);
 
     // Chunk order/metadata (#chunk_index) must survive being split into concurrent sub-batches -
-    // sorting the union of every add() call's chunks by chunk_index must reproduce 0..5 in order.
+    // sorting the union of every write call's chunks by chunk_index must reproduce 0..5 in order.
     List<Integer> chunkIndices =
-        vectorStore.addCalls.stream()
+        writer.writeCalls.stream()
             .flatMap(List::stream)
             .map(doc -> (Integer) doc.getMetadata().get("chunk_index"))
             .sorted()
@@ -209,14 +222,14 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     Files.writeString(file, "irrelevant");
     stubParseAndChunk(file, "one-chunk.txt", chunksOf(1));
 
-    RecordingVectorStore vectorStore = new RecordingVectorStore(null);
-    FileProcessingService service = service(vectorStore, 8, 50);
+    RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(null);
+    FileProcessingService service = service(writer, 8, 50);
 
     FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    assertThat(vectorStore.addCalls).hasSize(1);
-    assertThat(vectorStore.threadNames).containsExactly(Thread.currentThread().getName());
+    assertThat(writer.writeCalls).hasSize(1);
+    assertThat(writer.threadNames).containsExactly(Thread.currentThread().getName());
   }
 
   @Test
@@ -231,27 +244,26 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     Files.writeString(file, "irrelevant");
     stubParseAndChunk(file, "few-chunks-high-batch-size.txt", chunksOf(3));
 
-    RecordingVectorStore vectorStore = new RecordingVectorStore(null);
-    FileProcessingService service = service(vectorStore, 3, 50);
+    RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(null);
+    FileProcessingService service = service(writer, 3, 50);
 
     FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    assertThat(vectorStore.addCalls).hasSize(3);
-    assertThat(vectorStore.threadNames).doesNotContain(Thread.currentThread().getName());
+    assertThat(writer.writeCalls).hasSize(3);
+    assertThat(writer.threadNames).doesNotContain(Thread.currentThread().getName());
   }
 
   @Test
   void aFailingSubBatchPropagatesTheOriginalExceptionAndFailsTheDocument() throws IOException {
-    // #734: a sub-batch failure must surface exactly like a single vectorStore.add failure did
-    // before this issue - processFile's own catch block (unchanged) marks the document FAILED and
-    // cleans up whatever chunks the *other*, successful sub-batches already wrote.
+    // #734: a sub-batch failure must surface exactly like a single write failure did before this
+    // issue - processFile's own catch block (unchanged) marks the document FAILED and cleans up
+    // whatever chunks the *other*, successful sub-batches already wrote.
     Path file = tempDir.resolve("failing-batch.txt");
     Files.writeString(file, "irrelevant");
     stubParseAndChunk(file, "failing-batch.txt", chunksOf(4));
 
-    FailingVectorStore vectorStore = new FailingVectorStore();
-    FileProcessingService service = service(vectorStore, 2, 2);
+    FileProcessingService service = service(new FailingVectorStoreWriter(), 2, 2);
 
     assertThatThrownBy(() -> service.processFile(file, targetLibrary))
         .isInstanceOf(RuntimeException.class)
@@ -261,34 +273,49 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
   }
 
   /**
-   * Records every {@code add} call's chunks, its thread name, and the observed peak concurrency.
+   * Records every {@link VectorStoreWriter#writeEmbeddedChunks} call's chunks, its thread name, and
+   * the observed peak concurrency - the write-path counterpart of the pre-#1047 {@code
+   * RecordingVectorStore}, moved here because {@link VectorChunkStore#addChunks} now hands
+   * already-embedded chunks to {@link VectorStoreWriter} instead of calling {@code VectorStore#add}
+   * directly (see both classes' own Javadoc).
    *
    * <p>{@code concurrencyProof}, when given (#735 review, nit 8), makes "these calls actually
    * overlapped" a deterministic fact rather than an observation that depends on scheduling luck:
-   * every {@code add} call blocks on the same {@link CyclicBarrier} until as many parties as the
-   * barrier was built for have all arrived, within a bounded timeout. If the executor ran calls one
-   * at a time instead of concurrently, the first call would still be waiting when the timeout
-   * expires and the test fails loudly with a clear cause, instead of silently passing on a {@code
-   * maxConcurrentAddCalls} value a sleep window merely made likely.
+   * every write call blocks on the same {@link CyclicBarrier} until as many parties as the barrier
+   * was built for have all arrived, within a bounded timeout. If the executor ran calls one at a
+   * time instead of concurrently, the first call would still be waiting when the timeout expires
+   * and the test fails loudly with a clear cause, instead of silently passing on a {@code
+   * maxConcurrentWriteCalls} value a sleep window merely made likely.
+   *
+   * <p>Extends the real {@link VectorStoreWriter} purely for its type (a mocked constructor's
+   * dependencies are never touched - every one of them is a bare mock, and the only overridden
+   * method never calls {@code super}), not to reuse any of its behaviour.
    */
-  private static final class RecordingVectorStore implements VectorStore {
-    final List<List<org.springframework.ai.document.Document>> addCalls =
+  private static final class RecordingVectorStoreWriter extends VectorStoreWriter {
+    final List<List<org.springframework.ai.document.Document>> writeCalls =
         new CopyOnWriteArrayList<>();
     final Set<String> threadNames = java.util.concurrent.ConcurrentHashMap.newKeySet();
-    private final java.util.concurrent.atomic.AtomicInteger concurrentAddCalls =
+    private final java.util.concurrent.atomic.AtomicInteger concurrentWriteCalls =
         new java.util.concurrent.atomic.AtomicInteger();
-    final java.util.concurrent.atomic.AtomicInteger maxConcurrentAddCalls =
+    final java.util.concurrent.atomic.AtomicInteger maxConcurrentWriteCalls =
         new java.util.concurrent.atomic.AtomicInteger();
     private final CyclicBarrier concurrencyProof;
 
-    RecordingVectorStore(CyclicBarrier concurrencyProof) {
+    RecordingVectorStoreWriter(CyclicBarrier concurrencyProof) {
+      super(
+          mock(org.springframework.jdbc.core.JdbcTemplate.class),
+          mock(FullTextChunkStore.class),
+          mock(tools.jackson.databind.ObjectMapper.class),
+          "public",
+          "vector_store");
       this.concurrencyProof = concurrencyProof;
     }
 
     @Override
-    public void add(List<org.springframework.ai.document.Document> documents) {
-      int current = concurrentAddCalls.incrementAndGet();
-      maxConcurrentAddCalls.updateAndGet(max -> Math.max(max, current));
+    void writeEmbeddedChunks(
+        List<org.springframework.ai.document.Document> chunks, List<float[]> embeddings) {
+      int current = concurrentWriteCalls.incrementAndGet();
+      maxConcurrentWriteCalls.updateAndGet(max -> Math.max(max, current));
       threadNames.add(Thread.currentThread().getName());
       if (concurrencyProof != null) {
         try {
@@ -298,45 +325,31 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
           throw new IllegalStateException("interrupted while proving concurrency", e);
         } catch (BrokenBarrierException | TimeoutException e) {
           throw new IllegalStateException(
-              "add() calls did not overlap within the timeout - concurrency was not actually"
+              "write calls did not overlap within the timeout - concurrency was not actually"
                   + " exercised",
               e);
         }
       }
-      addCalls.add(new ArrayList<>(documents));
-      concurrentAddCalls.decrementAndGet();
-    }
-
-    @Override
-    public void delete(List<String> idList) {}
-
-    @Override
-    public void delete(Filter.Expression filterExpression) {}
-
-    @Override
-    public List<org.springframework.ai.document.Document> similaritySearch(
-        org.springframework.ai.vectorstore.SearchRequest request) {
-      return List.of();
+      writeCalls.add(new ArrayList<>(chunks));
+      concurrentWriteCalls.decrementAndGet();
     }
   }
 
-  /** Every {@code add} call throws - simulates one sub-batch's embedding call failing. */
-  private static final class FailingVectorStore implements VectorStore {
-    @Override
-    public void add(List<org.springframework.ai.document.Document> documents) {
-      throw new RuntimeException("embedding call blew up");
+  /** Every write call throws - simulates one sub-batch's embedding call failing. */
+  private static final class FailingVectorStoreWriter extends VectorStoreWriter {
+    FailingVectorStoreWriter() {
+      super(
+          mock(org.springframework.jdbc.core.JdbcTemplate.class),
+          mock(FullTextChunkStore.class),
+          mock(tools.jackson.databind.ObjectMapper.class),
+          "public",
+          "vector_store");
     }
 
     @Override
-    public void delete(List<String> idList) {}
-
-    @Override
-    public void delete(Filter.Expression filterExpression) {}
-
-    @Override
-    public List<org.springframework.ai.document.Document> similaritySearch(
-        org.springframework.ai.vectorstore.SearchRequest request) {
-      return List.of();
+    void writeEmbeddedChunks(
+        List<org.springframework.ai.document.Document> chunks, List<float[]> embeddings) {
+      throw new RuntimeException("embedding call blew up");
     }
   }
 }

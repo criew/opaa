@@ -7,27 +7,28 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta test for {@code changes/002-chunk-full-text-index.yaml} (issue #1047, AP2a): applies the
+ * Delta test for {@code changes/002-chunk-full-text-table.yaml} (issue #1047, AP2a): applies the
  * baseline, then this one changeSet in isolation, and asserts the resulting {@code chunk_full_text}
- * table and its indexes - the schema the AP2a write path (VectorChunkStore / FullTextChunkStore)
- * and backfill (FullTextBackfillService) both depend on.
+ * table and its btree indexes - the schema the AP2a write path (VectorChunkStore /
+ * FullTextChunkStore) and backfill (FullTextBackfillService) both depend on. The GIN index on
+ * {@code content_tsv} is a separate changeset (003, {@link Migration003ChunkFullTextGinIndexTest}) -
+ * {@code CREATE INDEX CONCURRENTLY} cannot share a transaction with this one's table creation.
  *
  * <p>Deliberately a table of its own rather than columns added to {@code vector_store}: {@code
  * vector_store} is created by Spring AI at application startup, never by Liquibase (see the
  * changeSet's own comment) - it does not exist in this test's fixture chain at all, which is
  * exactly why altering it directly here is not an option this delta test could ever exercise.
  */
-class Migration002ChunkFullTextIndexTest extends AbstractMigrationTest {
+class Migration002ChunkFullTextTableTest extends AbstractMigrationTest {
 
   private static final String CHANGELOG_PATH =
-      "db/changelog/changes/002-chunk-full-text-index.yaml";
+      "db/changelog/changes/002-chunk-full-text-table.yaml";
 
   private Connection connection;
 
@@ -54,6 +55,22 @@ class Migration002ChunkFullTextIndexTest extends AbstractMigrationTest {
     assertThat(columnType("document_id")).isEqualTo("uuid");
     assertThat(columnType("library_id")).isEqualTo("uuid");
     assertThat(columnType("content_tsv")).isEqualTo("tsvector");
+    assertThat(columnType("content_tsv_version")).isEqualTo("smallint");
+  }
+
+  @Test
+  void contentTsvVersionDefaultsToOne() throws SQLException {
+    UUID chunkId = insertRow(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "text");
+
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "SELECT content_tsv_version FROM chunk_full_text WHERE chunk_id = ?")) {
+      statement.setObject(1, chunkId);
+      try (ResultSet rs = statement.executeQuery()) {
+        assertThat(rs.next()).isTrue();
+        assertThat(rs.getShort("content_tsv_version")).isEqualTo((short) 1);
+      }
+    }
   }
 
   @Test
@@ -66,49 +83,19 @@ class Migration002ChunkFullTextIndexTest extends AbstractMigrationTest {
   }
 
   @Test
-  void theGinIndexExistsIsValidAndSupportsFullTextMatching() throws SQLException {
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery(
-                "SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' "
-                    + "AND indexname = 'idx_chunk_full_text_content_tsv'")) {
-      assertThat(rs.next()).as("GIN index must exist").isTrue();
-      assertThat(rs.getString("indexdef")).containsIgnoringCase("USING gin");
-    }
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery(
-                "SELECT indisvalid FROM pg_index "
-                    + "WHERE indexrelid = 'idx_chunk_full_text_content_tsv'::regclass")) {
-      assertThat(rs.next()).isTrue();
-      assertThat(rs.getBoolean("indisvalid")).as("index must have finished building").isTrue();
-    }
-
-    UUID chunkId = UUID.randomUUID();
-    insertRow(
-        chunkId,
-        UUID.randomUUID(),
-        UUID.randomUUID(),
-        "Befreiung von der Verwaltungsgebühr wegen Bedürftigkeit");
-
-    try (PreparedStatement statement =
-        connection.prepareStatement(
-            "SELECT 1 FROM chunk_full_text WHERE chunk_id = ? "
-                + "AND content_tsv @@ to_tsquery('german', 'Bedürftigkeit')")) {
-      statement.setObject(1, chunkId);
-      try (ResultSet rs = statement.executeQuery()) {
-        assertThat(rs.next()).as("the GIN index must support a real tsquery match").isTrue();
-      }
-    }
-  }
-
-  @Test
   void documentIdAndLibraryIdColumnsAreIndexed() throws SQLException {
     assertThat(indexExists("idx_chunk_full_text_document_id")).isTrue();
     assertThat(indexExists("idx_chunk_full_text_library_id")).isTrue();
   }
 
-  private void insertRow(UUID chunkId, UUID documentId, UUID libraryId, String content)
+  @Test
+  void theGinIndexDoesNotExistYet() throws SQLException {
+    // Confirms the split between 002 (table) and 003 (GIN index, CONCURRENTLY) is real: this
+    // changeSet alone must not create it.
+    assertThat(indexExists("idx_chunk_full_text_content_tsv")).isFalse();
+  }
+
+  private UUID insertRow(UUID chunkId, UUID documentId, UUID libraryId, String content)
       throws SQLException {
     try (PreparedStatement statement =
         connection.prepareStatement(
@@ -120,6 +107,7 @@ class Migration002ChunkFullTextIndexTest extends AbstractMigrationTest {
       statement.setString(4, content);
       statement.executeUpdate();
     }
+    return chunkId;
   }
 
   private boolean tableExists(String tableName) throws SQLException {
