@@ -185,6 +185,65 @@ class PipelineReindexServiceIntegrationTest {
         .orElseThrow(() -> new IllegalStateException("No PDF pipeline registered"));
   }
 
+  private DocumentPipeline htmlPipeline() {
+    return pipelineRegistry.pipelines().stream()
+        .filter(candidate -> candidate.handledFormats().contains(".html"))
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("No HTML pipeline registered"));
+  }
+
+  @Test
+  void aChunkAlreadyNamingASpecializedPipelineIsNotPulledBackByAnUnrelatedPipelineReindex()
+      throws IOException {
+    // Regression guard for the #1125 review: the misrouted branch only targets chunks still
+    // naming the fallback pipeline (COALESCE(...) = fallbackId, see #misroutedPredicateFor). A
+    // chunk that already names a different specialized pipeline must stay excluded even though
+    // its file name matches another pipeline's claimed extension - widening that equality to
+    // "<> pipelineId" would pull such a chunk back into a pipeline it was never routed to.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document = persistedFilesystemPdfDocument("x.pdf");
+    seedChunk(document.getId(), "html chunk", "html", (short) 1);
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.isEmpty()).isTrue();
+    assertThat(result.reindexedDocuments()).isZero();
+    assertThat(pipelineIdsOf(document.getId())).containsOnly("html");
+  }
+
+  @Test
+  void anRssFeedDocumentWithAnHtmlLookingFileNameIsNotSelectedByAnHtmlPipelineReindex() {
+    // Regression guard for the #1125 review: an RSS entry's body always goes to the fallback
+    // pipeline (ADR-0017, decision 2), so its file name (title or entry URL) is never a routing
+    // signal - the exact case the "d.source_type <> RSS_FEED" guard exists for. RSS was the
+    // originally reported trigger of the routing-gap blocker; without this test it could return
+    // unnoticed.
+    DocumentPipeline htmlPipeline = htmlPipeline();
+    Document document = persistedRssFeedDocument("https://example.test/feed/artikel.html");
+    seedChunk(
+        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, htmlPipeline.id(), htmlPipeline.version(), 10);
+
+    assertThat(result.isEmpty()).isTrue();
+    assertThat(result.reindexedDocuments()).isZero();
+    assertThat(result.markedForNextRun()).isZero();
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+  }
+
+  private Document persistedRssFeedDocument(String url) {
+    Document document =
+        new Document("artikel.html", url, "text/html", 1024L, DocumentSourceType.RSS_FEED);
+    document.setLibraryId(library.getId());
+    document.setOrganizationId(Organization.DEFAULT_ID);
+    document.setChecksum("checksum-rss");
+    return documentRepository.save(document);
+  }
+
   private Document persistedFilesystemPdfDocument(String fileName) throws IOException {
     Path file = classTempDir.resolve(UUID.randomUUID() + "-" + fileName);
     try (PDDocument pdf = new PDDocument()) {

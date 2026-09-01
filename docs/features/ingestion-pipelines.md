@@ -1028,6 +1028,18 @@ dessen Dateiname von seinem tatsächlichen Inhalt abweicht (z. B. eine PDF, dere
 zuständigen Pipeline passte), bleibt entsprechend teilweise offen: Über die Näherung nicht erreichbar,
 weil ihr Dateiname keiner registrierten Pipeline zuordenbar ist.
 
+Die Näherung schließt nur eine Richtung — sie holt einen Kandidaten aus dem Fallback heraus, sie hält
+ihn aber nicht davon ab, dorthin zurückzufallen. Für die strikten Formate (`.pdf`/`.docx`/`.pptx`/
+`.xlsx`/`.html`/`.msg`/`.od*`) bleibt ein zweiter, hier bewusst unbehobener Fall offen: Passt die
+Dateiendung zur zuständigen Pipeline, aber entscheidet die inhaltsbasierte Erkennung in
+`routedPipelineFor` beim Nachziehen erneut auf die Fallback-Pipeline (z. B. eine `.pdf` mit reinem
+Textinhalt), bleibt der Chunk dauerhaft als Fallback-Chunk stehen, `isComplete()` für die Bibliothek
+dauerhaft `false`, und kein weiterer Nachzieh-Aufruf kann daran etwas ändern — der Kandidat scheitert
+nicht an der Auswahl, sondern am selben Routing-Ergebnis wie beim letzten Versuch. Der text-tolerante
+Pipeline-Satz ist davon nicht betroffen. Die eigentliche Behebung wäre ein Routing-Schlüssel, der
+Fallback-Chunks als solche markiert erreichbar hält, statt über die Dateiendung zu raten - vom
+Maintainer bewusst vertagt und kein Gegenstand dieser Näherung.
+
 ---
 
 ## Teil 5 — Übergabepunkt an das Metadatenschema

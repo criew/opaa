@@ -165,10 +165,14 @@ public class PipelineReindexService {
           // own extensions - reporting it stale here without selectStaleDocuments ever being able
           // to
           // reach it would leave isComplete() permanently false for a document no re-index call can
-          // advance.
+          // advance. This closes only the direction from fallback into a claimed specialized
+          // pipeline; a document whose extension already claims that pipeline but whose
+          // content-based routing keeps sending it back to the fallback stays permanently
+          // fallback-labeled, and isComplete() stays permanently false for it - a known,
+          // unaddressed gap (see docs/features/ingestion-pipelines.md, same section).
           boolean routingStale =
               fileName != null
-                  && !"RSS_FEED".equals(sourceType)
+                  && !DocumentSourceType.RSS_FEED.name().equals(sourceType)
                   && pipelineId.equals(pipelineRegistry.fallbackPipeline().id())
                   && !pipelineId.equals(currentPipelineIdForFileName(fileName));
           if (!routingStale && version >= currentVersion) {
@@ -406,12 +410,20 @@ public class PipelineReindexService {
       UUID organizationId, String pipelineId, int belowVersion, int batchSize, int offset) {
     MisroutedPredicate misrouted = misroutedPredicateFor(pipelineId);
     String sql =
-        "SELECT DISTINCT (v.metadata->>'document_id')::uuid AS document_id "
+        "SELECT DISTINCT v.metadata->>'document_id' AS document_id "
             + "FROM "
             + vectorStoreTable
             + " v "
-            + "LEFT JOIN documents d ON d.id = (v.metadata->>'document_id')::uuid "
+            // A text comparison, not d.id = (...)::uuid: mirrors progressForOrganization's own
+            // join - a chunk whose document_id metadata is not a well-formed UUID must not fail
+            // this query with "invalid input syntax for type uuid", it must simply not join to any
+            // document row.
+            + "LEFT JOIN documents d ON d.id::text = v.metadata->>'document_id' "
             + "WHERE v.metadata->>'document_id' IS NOT NULL "
+            // Excludes the same malformed metadata the join above already tolerates, so this
+            // column's values are always safe to parse as UUID in Java below.
+            + "  AND v.metadata->>'document_id' ~* "
+            + "'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' "
             + "  AND v.metadata->>'organization_id' = ? "
             + "  AND ("
             + "       (COALESCE(v.metadata->>'"
@@ -466,7 +478,7 @@ public class PipelineReindexService {
     jdbcTemplate.query(
         sql,
         rs -> {
-          ids.add((UUID) rs.getObject("document_id"));
+          ids.add(UUID.fromString(rs.getString("document_id")));
         },
         params.toArray());
     return ids;
