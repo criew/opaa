@@ -11,11 +11,11 @@ import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
-import io.opaa.indexing.DocumentPipeline;
-import io.opaa.indexing.DocumentPipelineRegistry;
 import io.opaa.indexing.LowChunkDocumentAuditService;
-import io.opaa.indexing.PipelineReindexResult;
-import io.opaa.indexing.PipelineReindexService;
+import io.opaa.indexing.pipeline.DocumentPipeline;
+import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
+import io.opaa.indexing.pipeline.PipelineReindexResult;
+import io.opaa.indexing.pipeline.PipelineReindexService;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
@@ -114,7 +114,9 @@ public class IndexingAdminController {
     // Above the pipeline's own version there is no version to re-index *to*: the run would rewrite
     // every chunk at the current version, find it still below the requested bound, and select the
     // same documents again on every following batch - an unbounded loop of embedding calls, not a
-    // slow run.
+    // slow run. Note that a chunk selected via the routing gap (#1105, still naming the fallback
+    // pipeline for a format pipelineId now claims) is included regardless of this bound - see
+    // PipelineReindexService#selectStaleDocuments.
     if (belowVersion > pipeline.version()) {
       throw new IllegalArgumentException(
           "belowVersion darf höchstens der aktuellen Version der Pipeline "

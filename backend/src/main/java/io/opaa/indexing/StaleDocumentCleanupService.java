@@ -19,9 +19,9 @@ import org.slf4j.LoggerFactory;
  * cancelled, or was truncated by a configured limit (see {@code
  * AutoindexCrawlerService.CrawlResult#truncated}/{@code #incomplete}) must never call {@link
  * #cleanupVanished} at all - its {@code currentFilePaths} would be incomplete, and every document
- * beyond the cut would look vanished. {@link AsyncIndexingExecutor} and {@link UrlIndexingExecutor}
+ * beyond the cut would look vanished. {@code AsyncIndexingExecutor} and {@code UrlIndexingExecutor}
  * enforce this by only calling in on their own success path, after every discovered file has been
- * accounted for. {@link RssFeedIndexingExecutor} deliberately never calls this - an RSS entry
+ * accounted for. {@code RssFeedIndexingExecutor} deliberately never calls this - an RSS entry
  * scrolling out of the feed's window is not evidence the entry itself is gone (ADR-0017, decision
  * 5).
  *
@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  * cheap-to-get- wrong signal is not a risk worth taking for the rare case of a genuinely emptied
  * source - this class fails safe instead, and the next run with a real bestand catches up normally.
  */
-class StaleDocumentCleanupService {
+public class StaleDocumentCleanupService {
 
   private static final Logger log = LoggerFactory.getLogger(StaleDocumentCleanupService.class);
 
@@ -42,7 +42,7 @@ class StaleDocumentCleanupService {
   private final DocumentRepository documentRepository;
   private final VectorChunkStore vectorChunkStore;
 
-  StaleDocumentCleanupService(
+  public StaleDocumentCleanupService(
       DocumentRepository documentRepository, VectorChunkStore vectorChunkStore) {
     this.documentRepository = documentRepository;
     this.vectorChunkStore = vectorChunkStore;
@@ -62,7 +62,7 @@ class StaleDocumentCleanupService {
    *
    * @return the number of documents removed
    */
-  int cleanupVanished(
+  public int cleanupVanished(
       KnowledgeLibrary library,
       DocumentSourceType sourceType,
       Set<String> currentFilePaths,

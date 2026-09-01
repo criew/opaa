@@ -7,6 +7,7 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;

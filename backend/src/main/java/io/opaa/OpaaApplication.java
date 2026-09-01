@@ -1,10 +1,10 @@
 package io.opaa;
 
 import io.opaa.auth.AuthProperties;
-import io.opaa.indexing.CrawlProperties;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.MailProperties;
-import io.opaa.indexing.TabularProperties;
+import io.opaa.indexing.pipeline.mail.MailProperties;
+import io.opaa.indexing.pipeline.tabular.TabularProperties;
+import io.opaa.indexing.source.web.CrawlProperties;
 import io.opaa.library.RemoteContentProperties;
 import io.opaa.library.UploadProperties;
 import io.opaa.llm.RerankProperties;

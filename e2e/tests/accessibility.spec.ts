@@ -135,6 +135,24 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Branding)");
   });
 
+  // #1053: die dichteste Seite des Verwaltungsbereichs — achtspaltige Tabelle, Akkordeons je
+  // Suchstufe und Statuschips in drei Farbrollen.
+  test("Verwaltungsbereich: Suche & Indexierung", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/admin/search");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Suche & Indexierung" }),
+    ).toBeVisible();
+    // Wait for the status call to have landed: the chat role chip only renders once it has.
+    await expect(page.getByLabel(/^Chat: /)).toBeVisible();
+
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (Suche & Indexierung)",
+    );
+  });
+
   // #800: die Einstellungsseite lag als einzige globale Seite außerhalb der Suite, obwohl sie
   // mit Badge neben der H1 und Akzent-Avatar eigene Farbkombinationen einführt (#788).
   test("Benutzer-Einstellungen", async ({ authenticatedPage: page }) => {

@@ -1008,6 +1008,38 @@ administrative Entscheidung, die Dokumente sind seine Wirkung.
 [Offene Punkte](#offene-punkte) genannte, bewusst offene Frage; deshalb gibt es hier keinen
 Hintergrund-Tick, der bei einer Versionserhöhung eigenmächtig den ganzen Bestand anfasst.
 
+#### Nachgezogen: die tika-fallback-Lücke nach Routing-Umstellungen (#1105)
+
+Ein Dokument, das zwischen der Einführung der Pipeline-Metadaten und der Registrierung seiner heutigen
+Format-Pipeline indiziert wurde, trägt `tika-fallback` in der aktuellen Version der Fallback-Pipeline
+selbst — für keinen Versionsvergleich mehr von einem stale unterscheidbar, obwohl das Dokument
+inzwischen einer spezialisierten Pipeline gehört. Die Auswahl erweitert deshalb ihr Kriterium bewusst
+um eine **Näherung, die von der sonst geltenden Regel abweicht**: Ob eine Pipeline heute zuständig
+wäre, wird hier — anders als beim eigentlichen Routing (siehe oben, „nicht die Dateiendung") — allein
+über die Dateiendung gegen die von den registrierten Pipelines beanspruchten Formate geschätzt, ohne
+den Dateiinhalt erneut zu lesen. Dieser Zweig greift nur bei Chunks, die noch die Fallback-Pipeline
+nennen; ein Chunk, der bereits eine spezialisierte Pipeline nennt, bleibt dem reinen
+Versionsvergleich überlassen, selbst wenn seine Dateiendung nicht mehr passt (umbenannt, oder nie
+zutreffend) — sonst würde die tatsächliche, inhaltsbasierte Neuzuordnung beim Nachziehen jedes Mal
+widersprechen und derselbe Kandidat auf jeder Charge erneut ausgewählt werden. Ein RSS-Eintrag ist
+davon grundsätzlich ausgenommen: sein Textkörper geht per ADR-0017 immer an die Fallback-Pipeline,
+unabhängig vom Dateinamen (Titel oder Eintrags-URL) — der ist dort kein Routing-Signal. Ein Altbestand,
+dessen Dateiname von seinem tatsächlichen Inhalt abweicht (z. B. eine PDF, deren Endung nie zur
+zuständigen Pipeline passte), bleibt entsprechend teilweise offen: Über die Näherung nicht erreichbar,
+weil ihr Dateiname keiner registrierten Pipeline zuordenbar ist.
+
+Die Näherung schließt nur eine Richtung — sie holt einen Kandidaten aus dem Fallback heraus, sie hält
+ihn aber nicht davon ab, dorthin zurückzufallen. Für die strikten Formate (`.pdf`/`.docx`/`.pptx`/
+`.xlsx`/`.html`/`.msg`/`.od*`) bleibt ein zweiter, hier bewusst unbehobener Fall offen: Passt die
+Dateiendung zur zuständigen Pipeline, aber entscheidet die inhaltsbasierte Erkennung in
+`routedPipelineFor` beim Nachziehen erneut auf die Fallback-Pipeline (z. B. eine `.pdf` mit reinem
+Textinhalt), bleibt der Chunk dauerhaft als Fallback-Chunk stehen, `isComplete()` für die Bibliothek
+dauerhaft `false`, und kein weiterer Nachzieh-Aufruf kann daran etwas ändern — der Kandidat scheitert
+nicht an der Auswahl, sondern am selben Routing-Ergebnis wie beim letzten Versuch. Der text-tolerante
+Pipeline-Satz ist davon nicht betroffen. Die eigentliche Behebung wäre ein Routing-Schlüssel, der
+Fallback-Chunks als solche markiert erreichbar hält, statt über die Dateiendung zu raten - vom
+Maintainer bewusst vertagt und kein Gegenstand dieser Näherung.
+
 ---
 
 ## Teil 5 — Übergabepunkt an das Metadatenschema

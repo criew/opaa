@@ -38,6 +38,16 @@ interface EvidenceDoc {
    *  source that does not match the chunks actually retrieved for this answer. */
   citationValid: boolean
   relevanceScore?: number
+  /** #1102: this row's position in the backend's `sources` array - the order the retrieval pipeline
+   *  settled on, which the cited rows are sorted by and every row is numbered by.
+   *  `Number.MAX_SAFE_INTEGER` when this message's source list does not contain the row's source. */
+  sourceIndex: number
+  /** #1102: the rank shown in the row, derived from {@link sourceIndex} and never from
+   *  `relevanceScore` - a message persisted before #1102 still carries a raw path-dependent score
+   *  in its snapshot. Undefined for a synthetic entry (#386), which backs no retrieved passage and
+   *  therefore holds no rank; such a row does not consume a rank either, so the numbering stays
+   *  gap-free. */
+  rank?: number
   indexedAt?: string | null
   sourceEntryUrl?: string | null
   /** #739/#747: the original's document id - openable via GET /documents/{id}/content for every
@@ -57,9 +67,9 @@ function formatAnsweredAt(answeredAt: Date): string {
 
 /**
  * Mockup 1i's Belegfenster (#592): the side panel with every source of one answer - searchable,
- * filterable to cited ones, sorted by weight. The per-passage verbatim quotes and locations the
- * mockup shows wait on the backend's chunk metadata (#667); until then each document row carries
- * what the API can already vouch for.
+ * filterable to cited ones, in the order the retrieval pipeline selected the chunks (#1102). The
+ * per-passage verbatim quotes and locations the mockup shows wait on the backend's chunk metadata
+ * (#667); until then each document row carries what the API can already vouch for.
  */
 export default function SourceEvidenceDrawer({
   open,
@@ -90,6 +100,7 @@ export default function SourceEvidenceDrawer({
       cited: true,
       citationValid: doc.source?.citationValid !== false,
       relevanceScore: doc.source?.relevanceScore,
+      sourceIndex: doc.sourceIndex,
       indexedAt: doc.source?.indexedAt,
       sourceEntryUrl: doc.source?.sourceEntryUrl,
       documentId: doc.source?.documentId,
@@ -102,16 +113,34 @@ export default function SourceEvidenceDrawer({
       cited: false,
       citationValid: source.citationValid !== false,
       relevanceScore: source.relevanceScore,
+      sourceIndex: citations.sourceIndexByReference.get(source) ?? Number.MAX_SAFE_INTEGER,
       indexedAt: source.indexedAt,
       sourceEntryUrl: source.sourceEntryUrl,
       documentId: source.documentId,
       sourceType: source.sourceType,
       sourceUrl: source.sourceUrl,
     }))
-    // Mockup 1i: "nach Gewicht sortiert" - by relevance within each group, cited before checked.
-    const byWeight = (a: EvidenceDoc, b: EvidenceDoc) =>
-      (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0)
-    return [...cited.sort(byWeight), ...uncited.sort(byWeight)]
+    // #1102: order by the position the retrieval pipeline settled on, never by relevanceScore -
+    // a persisted message's snapshot may still carry the pre-#1102 path-dependent raw score, and
+    // sorting by that would drop a lexical-only source to the bottom. `citations.uncited` already
+    // arrives in that order; the cited rows arrive in first-appearance order instead.
+    const byPipelineOrder = (a: EvidenceDoc, b: EvidenceDoc) => a.sourceIndex - b.sourceIndex
+    const rows = [...cited.sort(byPipelineOrder), ...uncited]
+    // The rank is the row's position in `sources`, never `1 / relevanceScore` and never its
+    // position in `rows`: the score in a message persisted before #1102 is still a raw,
+    // path-dependent one that would label a lexical-only source "Rang 11", while `rows` groups the
+    // cited rows before the uncited ones and would renumber as soon as an uncited source sits
+    // between two cited ones. A synthetic entry (#386) backs no retrieved passage, holds no rank
+    // and consumes none. Numbering happens before `visibleDocs` filters, so it stays stable under
+    // search and "nur zitierte".
+    const rankByDoc = new Map<EvidenceDoc, number>()
+    let nextRank = 1
+    for (const doc of [...rows].sort(byPipelineOrder)) {
+      if (doc.relevanceScore !== undefined && doc.relevanceScore !== 0) {
+        rankByDoc.set(doc, nextRank++)
+      }
+    }
+    return rows.map((doc) => ({ ...doc, rank: rankByDoc.get(doc) }))
   }, [citations])
 
   const visibleDocs = useMemo(() => {
@@ -153,7 +182,7 @@ export default function SourceEvidenceDrawer({
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: 16, fontWeight: 600 }}>Belege dieser Antwort</Typography>
           <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.25 }}>
-            {stellen} in {dokumente} · nach Gewicht sortiert
+            {stellen} in {dokumente} · nach Relevanzrang sortiert
           </Typography>
         </Box>
         <IconButton size="small" onClick={onClose} aria-label="Belegfenster schließen">
@@ -204,7 +233,9 @@ export default function SourceEvidenceDrawer({
         ) : (
           visibleDocs.map((doc) => (
             <Box
-              key={doc.fileName}
+              // #739: two distinct documents may share a file name and each get their own row,
+              // so the file name alone is not a unique key.
+              key={doc.documentId ?? doc.fileName}
               data-testid="evidence-doc"
               data-file={doc.fileName}
               data-cited={doc.cited ? 'true' : 'false'}
@@ -267,9 +298,7 @@ export default function SourceEvidenceDrawer({
               >
                 <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
                   {[
-                    doc.relevanceScore !== undefined
-                      ? `Gewicht ${Math.round(doc.relevanceScore * 100)} %`
-                      : null,
+                    doc.rank !== undefined ? `Rang ${doc.rank}` : null,
                     doc.indexedAt
                       ? `indiziert ${new Date(doc.indexedAt).toLocaleDateString('de-DE', { dateStyle: 'medium' })}`
                       : null,

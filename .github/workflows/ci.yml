@@ -44,9 +44,14 @@ jobs:
         if: github.event_name == 'pull_request'
         with:
           filters: |
+            # eval/** belongs here because the Docker-free invariant tests that
+            # guard the corpora and golden datasets (chunk-size dry runs, golden
+            # case curation, manifest checks) run as part of the backend job's
+            # check task - a corpus-only PR would otherwise skip them (#1089).
             backend:
               - 'backend/**'
               - 'opaa-api/**'
+              - 'eval/**'
               - '.github/workflows/ci.yml'
             # The frontend build regenerates its API types from the OpenAPI
             # spec under opaa-api/ on every pnpm run build/test (ADR-0006), so a

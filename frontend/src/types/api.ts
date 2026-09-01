@@ -107,6 +107,31 @@ export type LlmModelTestRequest = components['schemas']['LlmModelTestRequest']
 export type LlmModelTestResponse = components['schemas']['LlmModelTestResponse']
 export type EmbeddingInfoResponse = components['schemas']['EmbeddingInfoResponse']
 
+export type SearchModelRole = components['schemas']['SearchModelRole']
+export type SearchModelRoleState = components['schemas']['SearchModelRoleState']
+export type SearchModelRoleStatusResponse = components['schemas']['SearchModelRoleStatusResponse']
+export type SearchPath = components['schemas']['SearchPath']
+export type SearchPathState = components['schemas']['SearchPathState']
+export type SearchPathStatusResponse = components['schemas']['SearchPathStatusResponse']
+export type LibraryIndexState = components['schemas']['LibraryIndexState']
+export type LibrarySearchStatusResponse = components['schemas']['LibrarySearchStatusResponse']
+export type SearchStatusResponse = components['schemas']['SearchStatusResponse']
+export type SearchPermissionProfileResponse =
+  components['schemas']['SearchPermissionProfileResponse']
+export type SearchDiagnosisContextType = components['schemas']['SearchDiagnosisContextType']
+export type SearchDiagnosisRequest = components['schemas']['SearchDiagnosisRequest']
+export type SearchDiagnosisResponse = components['schemas']['SearchDiagnosisResponse']
+export type RetrievalStage = components['schemas']['RetrievalStage']
+export type RetrievalStageStatus = components['schemas']['RetrievalStageStatus']
+export type RetrievalStageResponse = components['schemas']['RetrievalStageResponse']
+export type RetrievalVerdictResponse = components['schemas']['RetrievalVerdictResponse']
+export type RetrievalCandidateOutcome = components['schemas']['RetrievalCandidateOutcome']
+export type RetrievalVerdictReason = components['schemas']['RetrievalVerdictReason']
+export type DiagnosisSelectionEntryResponse =
+  components['schemas']['DiagnosisSelectionEntryResponse']
+export type TrackedDocumentOutcome = components['schemas']['TrackedDocumentOutcome']
+export type TrackedDocumentResponse = components['schemas']['TrackedDocumentResponse']
+
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
     typeof data === 'object' &&

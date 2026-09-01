@@ -19,6 +19,9 @@ import type {
   LibraryDocumentResponse,
   LibraryResponse,
   SpaceLibraryAssociationListResponse,
+  SearchStatusResponse,
+  SearchPermissionProfileResponse,
+  SearchDiagnosisResponse,
 } from '../types/api'
 
 // #822: a plain mock shape rather than LibraryFolderResponse itself - documentCount there is
@@ -102,7 +105,7 @@ export const mockQueryResponses: QueryResponse[] = [
     sources: [
       {
         fileName: 'architecture-overview.md',
-        relevanceScore: 0.92,
+        relevanceScore: 1,
         matchCount: 3,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
@@ -116,7 +119,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'getting-started.pdf',
-        relevanceScore: 0.85,
+        relevanceScore: 0.5,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
@@ -128,7 +131,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'adr-0002-technology-stack.md',
-        relevanceScore: 0.78,
+        relevanceScore: 0.33,
         matchCount: 2,
         indexedAt: '2025-01-14T08:00:00Z',
         cited: false,
@@ -158,7 +161,7 @@ export const mockQueryResponses: QueryResponse[] = [
     sources: [
       {
         fileName: 'contributing-guide.md',
-        relevanceScore: 0.95,
+        relevanceScore: 1,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
@@ -190,7 +193,7 @@ export const mockQueryResponses: QueryResponse[] = [
     sources: [
       {
         fileName: 'docker-compose.yml',
-        relevanceScore: 0.97,
+        relevanceScore: 1,
         matchCount: 2,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
@@ -198,7 +201,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'deployment-guide.pdf',
-        relevanceScore: 0.91,
+        relevanceScore: 0.5,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
@@ -206,7 +209,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'adr-0002-technology-stack.md',
-        relevanceScore: 0.88,
+        relevanceScore: 0.33,
         matchCount: 3,
         indexedAt: '2025-01-14T08:00:00Z',
         cited: true,
@@ -214,7 +217,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'ci-pipeline.md',
-        relevanceScore: 0.85,
+        relevanceScore: 0.25,
         matchCount: 1,
         indexedAt: '2025-01-13T15:00:00Z',
         cited: true,
@@ -222,7 +225,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'liquibase-changelog.xml',
-        relevanceScore: 0.82,
+        relevanceScore: 0.2,
         matchCount: 1,
         indexedAt: '2025-01-12T09:00:00Z',
         cited: true,
@@ -230,7 +233,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'postgres-setup.md',
-        relevanceScore: 0.79,
+        relevanceScore: 0.17,
         matchCount: 1,
         indexedAt: '2025-01-11T14:00:00Z',
         cited: false,
@@ -238,7 +241,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'environment-config.md',
-        relevanceScore: 0.76,
+        relevanceScore: 0.14,
         matchCount: 1,
         indexedAt: '2025-01-10T11:00:00Z',
         cited: false,
@@ -246,7 +249,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'monitoring-guide.md',
-        relevanceScore: 0.72,
+        relevanceScore: 0.13,
         matchCount: 1,
         indexedAt: '2025-01-09T16:00:00Z',
         cited: false,
@@ -254,7 +257,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'backup-strategy.pdf',
-        relevanceScore: 0.68,
+        relevanceScore: 0.11,
         matchCount: 1,
         indexedAt: null,
         cited: false,
@@ -262,7 +265,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'security-checklist.md',
-        relevanceScore: 0.65,
+        relevanceScore: 0.1,
         matchCount: 1,
         indexedAt: null,
         cited: false,
@@ -509,6 +512,203 @@ export const mockEmbeddingInfo: EmbeddingInfoResponse = {
   provider: 'openai',
   model: 'nomic-embed-text',
   dimensions: 1536,
+}
+
+/**
+ * Deliberately not an all-green picture: the rerank role is off, the full-text path is still
+ * building, and one library carries documents without chunks - the three states the
+ * "Suche & Indexierung" page exists to make visible.
+ */
+export const mockSearchStatus: SearchStatusResponse = {
+  modelRoles: [
+    {
+      role: 'CHAT',
+      state: 'ACTIVE',
+      endpoint: 'http://localhost:11434/v1',
+      modelIdentifier: 'qwen3:8b',
+      faulted: false,
+      detail: 'Verbindung erfolgreich, Modell hat geantwortet.',
+    },
+    {
+      role: 'EMBEDDING',
+      state: 'ACTIVE',
+      endpoint: null,
+      modelIdentifier: 'nomic-embed-text',
+      faulted: false,
+      detail: 'Das Einbettungsmodell hat auf die Erreichbarkeitspruefung geantwortet.',
+    },
+    {
+      role: 'RERANK',
+      state: 'DISABLED',
+      endpoint: null,
+      modelIdentifier: null,
+      faulted: false,
+      detail:
+        'Reranking ist ausdruecklich abgeschaltet. Die Suche laeuft ohne diese Stufe - das ist die Voreinstellung, kein Fehler.',
+    },
+  ],
+  searchPaths: [
+    {
+      path: 'VECTOR',
+      state: 'ACTIVE',
+      detail: 'Die Vektorsuche ist aktiv und deckt alle 2 Bibliotheken mit Inhalt ab.',
+    },
+    {
+      path: 'FULL_TEXT',
+      state: 'INCOMPLETE',
+      detail:
+        'Die Volltextsuche ist aktiv, aber noch nicht ueber den ganzen Bestand aufgebaut: 1 von 2 Bibliotheken sind unvollstaendig und werden von diesem Pfad nicht durchsucht.',
+    },
+  ],
+  libraries: [
+    {
+      libraryId: 'lib-satzungen',
+      libraryName: 'Satzungen & Gebuehrenordnungen',
+      documentCount: 12,
+      indexedDocumentCount: 11,
+      pendingDocumentCount: 1,
+      failedDocumentCount: 0,
+      lowChunkDocumentCount: 2,
+      chunkCount: 240,
+      vectorChunkCount: 236,
+      lastIndexedAt: '2026-09-01T06:00:00Z',
+      vectorIndexState: 'INCOMPLETE',
+      fullTextIndexState: 'INCOMPLETE',
+      fullTextIndexedChunks: 180,
+      fullTextMissingChunks: 56,
+    },
+    {
+      libraryId: 'lib-protokolle',
+      libraryName: 'Protokolle',
+      documentCount: 3,
+      indexedDocumentCount: 3,
+      pendingDocumentCount: 0,
+      failedDocumentCount: 0,
+      lowChunkDocumentCount: 0,
+      chunkCount: 30,
+      vectorChunkCount: 30,
+      lastIndexedAt: '2026-08-31T12:00:00Z',
+      vectorIndexState: 'READY',
+      fullTextIndexState: 'INCOMPLETE',
+      fullTextIndexedChunks: 29,
+      fullTextMissingChunks: 1,
+    },
+    {
+      libraryId: 'lib-formulare',
+      libraryName: 'Formulare',
+      documentCount: 4,
+      indexedDocumentCount: 4,
+      pendingDocumentCount: 0,
+      failedDocumentCount: 0,
+      lowChunkDocumentCount: 0,
+      chunkCount: 48,
+      vectorChunkCount: 48,
+      lastIndexedAt: '2026-08-30T09:30:00Z',
+      vectorIndexState: 'READY',
+      fullTextIndexState: 'READY',
+      fullTextIndexedChunks: 48,
+      fullTextMissingChunks: 0,
+    },
+  ],
+}
+
+export const mockSearchPermissionProfiles: SearchPermissionProfileResponse[] = [
+  { id: 'group-buergerbuero', name: 'Sachbearbeitung Buergerbuero', libraryCount: 2 },
+  { id: 'group-phoenix', name: 'Projektbeteiligte Phoenix', libraryCount: 1 },
+]
+
+export const mockSearchDiagnosis: SearchDiagnosisResponse = {
+  question: 'Was gilt bei Gebuehrenbefreiung wegen Beduerftigkeit?',
+  contextType: 'PERMISSION_PROFILE',
+  contextLabel: 'Rechteprofil „Sachbearbeitung Buergerbuero“',
+  executedAt: '2026-09-01T10:00:00Z',
+  searchScope: [
+    { id: 'lib-satzungen', name: 'Satzungen & Gebuehrenordnungen' },
+    { id: 'lib-formulare', name: 'Formulare' },
+  ],
+  searchQueries: ['Gebuehrenbefreiung Beduerftigkeit'],
+  stages: [
+    {
+      stage: 'SEARCH_SCOPE',
+      status: 'EXECUTED',
+      incomingCount: 0,
+      outgoingCount: 0,
+      notes: ['2 Bibliotheken im Suchbereich'],
+      verdicts: [],
+    },
+    {
+      stage: 'VECTOR_SEARCH',
+      status: 'EXECUTED',
+      incomingCount: 0,
+      outgoingCount: 2,
+      notes: [],
+      verdicts: [
+        {
+          chunkId: 'chunk-1',
+          documentKey: 'doc-satzung',
+          documentTitle: 'verwaltungsgebuehrensatzung.pdf',
+          libraryName: 'Satzungen & Gebuehrenordnungen',
+          outcome: 'ADDED',
+          reason: 'RETRIEVED_BY_SEARCH',
+          listLabel: 'vector#1',
+          rank: 1,
+          value: 0.81,
+        },
+        {
+          chunkId: 'chunk-2',
+          documentKey: 'doc-formular',
+          documentTitle: 'antrag-befreiung.pdf',
+          libraryName: 'Formulare',
+          outcome: 'ADDED',
+          reason: 'RETRIEVED_BY_SEARCH',
+          listLabel: 'vector#1',
+          rank: 2,
+          value: 0.64,
+        },
+      ],
+    },
+    {
+      stage: 'RANK_FUSION',
+      status: 'EXECUTED',
+      incomingCount: 2,
+      outgoingCount: 1,
+      notes: [],
+      verdicts: [
+        {
+          chunkId: 'chunk-1',
+          documentKey: 'doc-satzung',
+          documentTitle: 'verwaltungsgebuehrensatzung.pdf',
+          libraryName: 'Satzungen & Gebuehrenordnungen',
+          outcome: 'KEPT',
+          reason: 'WITHIN_BUDGET',
+          listLabel: null,
+          rank: 1,
+          value: 0.032,
+        },
+        {
+          chunkId: 'chunk-2',
+          documentKey: 'doc-formular',
+          documentTitle: 'antrag-befreiung.pdf',
+          libraryName: 'Formulare',
+          outcome: 'DROPPED',
+          reason: 'OUTSIDE_FUSION_BUDGET',
+          listLabel: null,
+          rank: 2,
+          value: 0.016,
+        },
+      ],
+    },
+  ],
+  finalSelection: [
+    {
+      rank: 1,
+      chunkId: 'chunk-1',
+      documentKey: 'doc-satzung',
+      documentTitle: 'verwaltungsgebuehrensatzung.pdf',
+      libraryName: 'Satzungen & Gebuehrenordnungen',
+    },
+  ],
+  trackedDocument: null,
 }
 
 export const mockGroups: GroupListResponse[] = [

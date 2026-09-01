@@ -11,6 +11,9 @@ import {
   mockBranding,
   setMockBranding,
   mockEmbeddingInfo,
+  mockSearchStatus,
+  mockSearchPermissionProfiles,
+  mockSearchDiagnosis,
   mockLlmModels,
   resetMockLlmModels,
   mockUser,
@@ -946,6 +949,46 @@ export const handlers = [
 
   http.get('/api/v1/admin/models/embedding-info', () => {
     return HttpResponse.json(mockEmbeddingInfo)
+  }),
+
+  http.get('/api/v1/admin/search/status', () => {
+    return HttpResponse.json(mockSearchStatus)
+  }),
+
+  http.get('/api/v1/admin/search/permission-profiles', () => {
+    return HttpResponse.json(mockSearchPermissionProfiles)
+  }),
+
+  http.post('/api/v1/admin/search/diagnosis', async ({ request }) => {
+    const body = (await request.json()) as {
+      question?: string
+      contextType?: string
+      permissionProfileId?: string
+      trackedDocumentId?: string
+    }
+    if (!body.question || body.question.trim() === '') {
+      return HttpResponse.json({ error: 'Die Testfrage darf nicht leer sein.' }, { status: 400 })
+    }
+    return HttpResponse.json({
+      ...mockSearchDiagnosis,
+      question: body.question,
+      contextType: body.contextType === 'SELF' ? 'SELF' : 'PERMISSION_PROFILE',
+      contextLabel:
+        body.contextType === 'SELF' ? 'Eigener Rechtekontext' : mockSearchDiagnosis.contextLabel,
+      trackedDocument: body.trackedDocumentId
+        ? {
+            documentId: body.trackedDocumentId,
+            fileName: 'antrag-befreiung.pdf',
+            libraryId: 'lib-formulare',
+            libraryName: 'Formulare',
+            outcome: 'DISPLACED',
+            displacedAtStage: 'RANK_FUSION',
+            displacedReason: 'OUTSIDE_FUSION_BUDGET',
+            retrievedChunkCount: 1,
+            selectedChunkCount: 0,
+          }
+        : null,
+    })
   }),
 
   http.get('/api/v1/libraries', () => {

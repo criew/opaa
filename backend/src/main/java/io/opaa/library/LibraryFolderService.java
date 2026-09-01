@@ -37,7 +37,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * library's folders are meant to be created this way, not blocked) and {@link #requireEditable} (an
  * indexing job acts on the system's own behalf, there is no request-scoped caller/role to check).
  * Neither method is reachable through {@link io.opaa.api.LibraryController} - only {@code
- * io.opaa.indexing.AsyncIndexingExecutor} calls them.
+ * io.opaa.indexing.source.filesystem.AsyncIndexingExecutor} calls them.
  *
  * <p><b>Deletion is recursive and runs through the application layer, never a database cascade</b>
  * (ADR-0020, Entscheidung 5): {@link #deleteFolder} walks the folder's subtree leaf-first, deleting
@@ -374,10 +374,11 @@ public class LibraryFolderService {
    * Removes every {@link LibraryFolder} of {@code libraryId} that is both absent from {@code
    * currentFolderIds} (this indexing run's own directory walk never touched it - its source
    * directory is gone) and empty, including transitively (#824, docs/features/knowledge-sources.md
-   * "Ordner in FILESYSTEM-Bibliotheken"). {@code io.opaa.indexing.AsyncIndexingExecutor} calls
-   * {@code io.opaa.indexing.StaleDocumentCleanupService#cleanupVanished} before this method (#886):
-   * a document whose backing file disappeared is already gone by the time this runs, so a folder
-   * left holding only such a document is correctly treated as empty and pruned, not left standing.
+   * "Ordner in FILESYSTEM-Bibliotheken"). {@code
+   * io.opaa.indexing.source.filesystem.AsyncIndexingExecutor} calls {@code
+   * io.opaa.indexing.StaleDocumentCleanupService#cleanupVanished} before this method (#886): a
+   * document whose backing file disappeared is already gone by the time this runs, so a folder left
+   * holding only such a document is correctly treated as empty and pruned, not left standing.
    *
    * <p>Walked leaf-first (post-order): a folder only qualifies once every one of its own subfolders
    * has already either survived (still referenced, or non-empty) or been removed - mirroring {@link

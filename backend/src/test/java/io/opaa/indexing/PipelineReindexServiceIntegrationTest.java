@@ -6,6 +6,15 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
+import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
+import io.opaa.indexing.pipeline.DocumentPipeline;
+import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
+import io.opaa.indexing.pipeline.PipelineReindexResult;
+import io.opaa.indexing.pipeline.PipelineReindexService;
+import io.opaa.indexing.pipeline.PipelineVersionProgress;
+import io.opaa.indexing.pipeline.TikaFallbackPipeline;
+import io.opaa.indexing.source.web.AutoindexCrawlerService;
+import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadProperties;
@@ -19,6 +28,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -46,6 +61,7 @@ class PipelineReindexServiceIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UploadProperties uploadProperties;
+  @Autowired private DocumentPipelineRegistry pipelineRegistry;
 
   private UUID userId;
   private KnowledgeLibrary library;
@@ -130,6 +146,197 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(progress.currentVersionChunks()).isZero();
     assertThat(progress.staleChunks()).isZero();
     assertThat(progress.isComplete()).isTrue();
+  }
+
+  @Test
+  void aDocumentMisroutedToTheFallbackPipelineIsSelectableAndReportedAsStale() throws IOException {
+    // Simulates the routing gap (#1105): the PDF pipeline was registered after this document was
+    // indexed, so its chunks still carry tika-fallback at the fallback's own current version - a
+    // state no version-only comparison against either pipeline can ever call stale.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document = persistedFilesystemPdfDocument("satzung.pdf");
+    seedChunk(
+        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+
+    PipelineVersionProgress progress =
+        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    assertThat(progress.staleChunks()).isEqualTo(1);
+    assertThat(progress.currentVersionChunks()).isZero();
+    assertThat(progress.isComplete()).isFalse();
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(pdfPipeline.id());
+    assertThat(
+            reindexService
+                .progressForOrganization(Organization.DEFAULT_ID)
+                .getFirst()
+                .staleChunks())
+        .isZero();
+  }
+
+  private DocumentPipeline pdfPipeline() {
+    return pipelineRegistry.pipelines().stream()
+        .filter(candidate -> candidate.handledFormats().contains(".pdf"))
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("No PDF pipeline registered"));
+  }
+
+  private DocumentPipeline htmlPipeline() {
+    return pipelineRegistry.pipelines().stream()
+        .filter(candidate -> candidate.handledFormats().contains(".html"))
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("No HTML pipeline registered"));
+  }
+
+  @Test
+  void aChunkAlreadyNamingASpecializedPipelineIsNotPulledBackByAnUnrelatedPipelineReindex()
+      throws IOException {
+    // Regression guard for the #1125 review: the misrouted branch only targets chunks still
+    // naming the fallback pipeline (COALESCE(...) = fallbackId, see #misroutedPredicateFor). A
+    // chunk that already names a different specialized pipeline must stay excluded even though
+    // its file name matches another pipeline's claimed extension - widening that equality to
+    // "<> pipelineId" would pull such a chunk back into a pipeline it was never routed to.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document = persistedFilesystemPdfDocument("x.pdf");
+    seedChunk(document.getId(), "html chunk", "html", (short) 1);
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.isEmpty()).isTrue();
+    assertThat(result.reindexedDocuments()).isZero();
+    assertThat(pipelineIdsOf(document.getId())).containsOnly("html");
+  }
+
+  @Test
+  void anRssFeedDocumentWithAnHtmlLookingFileNameIsNotSelectedByAnHtmlPipelineReindex() {
+    // Regression guard for the #1125 review: an RSS entry's body always goes to the fallback
+    // pipeline (ADR-0017, decision 2), so its file name (title or entry URL) is never a routing
+    // signal - the exact case the "d.source_type <> RSS_FEED" guard exists for. RSS was the
+    // originally reported trigger of the routing-gap blocker; without this test it could return
+    // unnoticed.
+    DocumentPipeline htmlPipeline = htmlPipeline();
+    Document document = persistedRssFeedDocument("https://example.test/feed/artikel.html");
+    seedChunk(
+        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, htmlPipeline.id(), htmlPipeline.version(), 10);
+
+    assertThat(result.isEmpty()).isTrue();
+    assertThat(result.reindexedDocuments()).isZero();
+    assertThat(result.markedForNextRun()).isZero();
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+  }
+
+  private Document persistedRssFeedDocument(String url) {
+    Document document =
+        new Document("artikel.html", url, "text/html", 1024L, DocumentSourceType.RSS_FEED);
+    document.setLibraryId(library.getId());
+    document.setOrganizationId(Organization.DEFAULT_ID);
+    document.setChecksum("checksum-rss");
+    return documentRepository.save(document);
+  }
+
+  private Document persistedFilesystemPdfDocument(String fileName) throws IOException {
+    Path file = classTempDir.resolve(UUID.randomUUID() + "-" + fileName);
+    try (PDDocument pdf = new PDDocument()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      pdf.addPage(page);
+      try (PDPageContentStream stream = new PDPageContentStream(pdf, page)) {
+        stream.beginText();
+        stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+        stream.newLineAtOffset(50, 700);
+        stream.showText("Die Verwaltungsgebühr für einen Personalausweis beträgt 37,00 EUR.");
+        stream.endText();
+      }
+      pdf.save(file.toFile());
+    }
+    Document document =
+        new Document(
+            fileName, file.toAbsolutePath().toString(), "application/pdf", Files.size(file));
+    document.setLibraryId(library.getId());
+    document.setOrganizationId(Organization.DEFAULT_ID);
+    document.setChecksum("checksum-" + fileName);
+    return documentRepository.save(document);
+  }
+
+  private List<String> pipelineIdsOf(UUID documentId) {
+    return jdbcTemplate.queryForList(
+        "SELECT metadata->>'pipeline_id' FROM vector_store WHERE metadata->>'document_id' = ?",
+        String.class,
+        documentId.toString());
+  }
+
+  @Test
+  void aGenuineFallbackDocumentIsNotSelectedByAnUnrelatedSpecializedPipelineReindex()
+      throws IOException {
+    // Regression guard for the #1105 review, blocker finding 1: the misrouted branch must stay
+    // scoped to the one gap it exists for. A .txt document with no specialized pipeline of its own
+    // is correctly fallback-labeled forever and must never be pulled into an unrelated pipeline's
+    // batch just because that pipeline happens to be registered.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document = persistedFilesystemDocument("altbestand.txt", "Alter Inhalt");
+    seedChunk(
+        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.isEmpty()).isTrue();
+    assertThat(result.reindexedDocuments()).isZero();
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+  }
+
+  @Test
+  void aDocumentThatStaysMisroutedAfterReindexTerminatesInsteadOfLoopingForever()
+      throws IOException {
+    // Regression guard for the #1105 review, blocker finding 1: reindexStoredDocument routes on
+    // re-detected content (DocumentPipelineRegistry#routedPipelineFor), not on the file name
+    // selectStaleDocuments guessed the candidate from. A document named like the target pipeline's
+    // format but whose real content never resolves to it stays fallback-labeled after every
+    // rewrite - without the loop protection this would be re-selected, re-embedded and re-written
+    // on every single call, never converging (see IndexingAdminController's own guard against the
+    // equivalent belowVersion case, which this same failure mode bypassed).
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document =
+        persistedFilesystemTextDocumentNamedLikePdf(
+            "bericht.pdf", "Dies ist kein PDF, sondern reiner Text. ");
+    seedChunk(
+        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+
+    PipelineReindexResult first =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+    assertThat(first.isEmpty()).isTrue();
+    assertThat(first.skippedDocuments()).isEqualTo(1);
+    assertThat(first.reindexedDocuments()).isZero();
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+
+    PipelineReindexResult second =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+    assertThat(second.isEmpty()).isTrue();
+  }
+
+  private Document persistedFilesystemTextDocumentNamedLikePdf(String fileName, String content)
+      throws IOException {
+    Path file = classTempDir.resolve(UUID.randomUUID() + "-" + fileName);
+    Files.writeString(file, content.repeat(30));
+    Document document =
+        new Document(
+            fileName, file.toAbsolutePath().toString(), "application/pdf", Files.size(file));
+    document.setLibraryId(library.getId());
+    document.setOrganizationId(Organization.DEFAULT_ID);
+    document.setChecksum("checksum-" + fileName);
+    return documentRepository.save(document);
   }
 
   @Test
@@ -369,6 +576,30 @@ class PipelineReindexServiceIntegrationTest {
         org.mockito.Mockito.mock(IndexingRunEventRepository.class),
         org.mockito.Mockito.mock(io.opaa.library.LibraryStorageQuotaService.class),
         org.mockito.Mockito.mock(StaleDocumentCleanupService.class));
+  }
+
+  @Test
+  void aMalformedDocumentIdInChunkMetadataDoesNotFailProgressOrReindexBatch() throws IOException {
+    // Regression guard for the #1125 review: document_id is a text-typed jsonb field, so nothing
+    // stops a chunk from carrying a value that is not a well-formed UUID. Both
+    // progressForOrganization (pre-existing text-comparison join) and selectStaleDocuments (this
+    // round's fix, replacing an unguarded ::uuid cast) must tolerate such a chunk rather than fail
+    // the query - and the surrounding organization's other documents must still be processed.
+    Document document = persistedFilesystemDocument("gueltig.txt", "Gueltiger Inhalt");
+    seedChunk(document.getId(), "gueltiger chunk", null, null);
+    seedChunk(document.getId(), "chunk mit defekten metadaten", null, null);
+    jdbcTemplate.update(
+        "UPDATE vector_store SET metadata ="
+            + " jsonb_set(metadata::jsonb, '{document_id}', '\"nicht-uuid\"')::json"
+            + " WHERE content = ?",
+        "chunk mit defekten metadaten");
+
+    assertThat(reindexService.progressForOrganization(Organization.DEFAULT_ID)).isNotEmpty();
+
+    PipelineReindexResult result = reindexBatch(10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(chunkTextsOf(document.getId())).noneMatch(text -> text.equals("gueltiger chunk"));
   }
 
   @Test
