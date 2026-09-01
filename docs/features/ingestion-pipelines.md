@@ -513,18 +513,41 @@ schlichtes, wohlgeformtes XML. Damit bedient dieselbe Pipeline auch das „ODS w
   [Chunk-Größen](#chunk-größen-gemessen-wo-messmaterial-existiert--und-sonst-ehrlich-gesetzt)): Weder
   der bestehende Evaluierungskorpus noch die geplante Verwaltungs-Evaldomäne (#1036) enthalten heute
   Tabellenblätter mit kuratierter Ground Truth.
-- Ein leeres Blatt liefert keinen Chunk; ein Blatt oder eine Datei mit ausschließlich einer Kopfzeile
-  (keine Datenzeile) ebenfalls nicht. Trägt kein Blatt einer Arbeitsmappe bzw. keine Zeile einer
-  CSV-Datei Nutzdaten, meldet die Pipeline `NO_EXTRACTABLE_TEXT` — dasselbe Ergebnis, das
-  `TikaFallbackPipeline` für Text meldet, der auf nichts herunter zerlegt (siehe
-  [Punkt 1](#1-scan-erkennung-und-bestandsprüfung)).
+- Ein leeres Blatt liefert keinen Chunk; ein Blatt oder eine Datei mit zwei oder mehr Zeilen, von
+  denen nach der Kopfzeile keine eine Datenzeile ist, ebenfalls nicht. Trägt kein Blatt einer
+  Arbeitsmappe bzw. keine Zeile einer CSV-Datei Nutzdaten, meldet die Pipeline
+  `NO_EXTRACTABLE_TEXT` — dasselbe Ergebnis, das `TikaFallbackPipeline` für Text meldet, der auf
+  nichts herunter zerlegt (siehe [Punkt 1](#1-scan-erkennung-und-bestandsprüfung)).
+- **Ausnahme: eine einzelne Zeile ist immer Inhalt, nie eine leere Kopfzeile.** Ein Blatt oder eine
+  Datei, die nie mehr als eine nicht-leere Zeile hatte, hat keinen Kopfzeile-/Datenzeile-Unterschied
+  zu treffen — die eine Zeile wird als eigener Chunk ausgegeben, unabhängig von ihrer Spaltenzahl.
+  Das gilt sowohl für eine einzelne Zelle (ein Tabellenblatt als schlichter Textcontainer) als auch
+  für eine einzelne, mehrspaltige Zeile (etwa eine einzeilige Ergebnistabelle) — beides sind
+  Nutzdaten, deren Verwerfen ein stiller Datenverlust wäre. Eine echte, mehrspaltige Kopfzeile ohne
+  jede Datenzeile ist von einer einzeiligen Ergebnistabelle strukturell nicht unterscheidbar, sobald
+  Leerzeilen herausgefiltert sind — die Pipeline nimmt bewusst das Risiko in Kauf, gelegentlich eine
+  reine Feldnamen-Zeile zu indizieren, statt gelegentlich echte Daten zu verwerfen.
+- Eine einzelne Zeile, die für sich schon die 6.000-Zeichen-Grenze überschreitet, wird zusätzlich
+  auf eine harte Obergrenze von 20.000 Zeichen gekürzt (mit Protokolleintrag und sichtbarem
+  „[…gekürzt]"-Vermerk) — ohne diese zweite Grenze würde eine echte Riesenzeile unbegrenzt an das
+  Einbettungsmodell gehen und dort am Token-Limit scheitern, statt beim Zerlegen selbst zu enden.
+- Die Spaltenzahl je Zeile ist für XLSX und ODS gleichermaßen gedeckelt (`opaa.indexing.tabular.
+  max-row-columns`, gesetzt 200) — eine überbreite Zeile wird abgeschnitten statt verworfen, mit
+  Protokolleintrag je betroffenem Blatt.
 - ODS-eigene Grenzfälle: `table:number-columns-repeated` — ODF-Exporte polstern eine Zeile
   routinemäßig mit einer einzigen wiederholten Leerzelle bis zur vollen Blattbreite (bis zu 16384) —
-  wird pro Zelle und pro Zeile gedeckelt (dieselbe Art Schutz wie die 6.000-Zeichen-Grenze, nur für
-  die ODS-eigene Riesenzeilen-Darstellung); `table:number-rows-repeated` wird nicht expandiert, eine
-  wiederholte Zeile zählt einmal. Der SAX-Parser lehnt eine `<!DOCTYPE …>` in `content.xml` ab
-  (XXE-Härtung) — die Datei kommt aus einem hochgeladenen bzw. indizierten Dokument, nie aus
-  vertrauenswürdiger Quelle.
+  wird pro Zelle (`opaa.indexing.tabular.max-ods-cell-repeat`, gesetzt 50) und pro Zeile (dieselbe
+  Spaltengrenze wie oben) gedeckelt; `table:number-rows-repeated` wird nicht expandiert, eine
+  wiederholte Zeile zählt einmal, schaltet aber die laufende Zeilennummerierung um den vollen
+  Wiederholungsumfang weiter, damit eine Fundstelle nach einer Leerzeilen-Lücke die richtige
+  Zeilennummer trägt. Der SAX-Parser lehnt eine `<!DOCTYPE …>` in `content.xml` ab (XXE-Härtung) —
+  die Datei kommt aus einem hochgeladenen bzw. indizierten Dokument, nie aus vertrauenswürdiger
+  Quelle. Zwei weitere, unabhängige Zip-Bomb-Wächter — ein Byte-Deckel auf den entpackten
+  `content.xml`-Strom (`opaa.indexing.tabular.max-ods-content-xml-bytes`, gesetzt 10 MiB) und ein
+  Zeilen-Deckel auf den Parse-Vorgang selbst (`opaa.indexing.tabular.max-ods-rows`, gesetzt
+  100.000) — brechen mit einer benannten Abweisung ab, statt Speicher unbegrenzt zu verbrauchen; ein
+  kleines, stark repetitives `content.xml` könnte sonst unter dem Byte-Deckel bleiben und trotzdem
+  unverhältnismäßig viele Zeilen beschreiben.
 
 **Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine XLSX-, CSV- oder
 ODS-Dokumente.

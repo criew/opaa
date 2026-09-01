@@ -28,6 +28,9 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -328,9 +331,11 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void indexesOdfDocuments() throws IOException {
-    // #1057: ODT/ODS/ODP go through the exact same admission and pipeline path as their Microsoft
-    // counterparts (Teil 3, Punkt 2) - no dedicated pipeline exists for either family yet, so both
-    // resolve to the Tika fallback used by indexesPdfAndDocxDocuments above.
+    // #1057: ODT/ODS/ODP are admitted the exact same way as their Microsoft counterparts (Teil 3,
+    // Punkt 2). ODT and ODP resolve to the Tika fallback used by indexesPdfAndDocxDocuments above
+    // (no dedicated pipeline exists for either yet); ODS resolves to TabularDocumentPipeline since
+    // #1058 - see indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline for the assertion that it
+    // actually reads the file structurally rather than through the fallback.
     copyTestResource("test-documents/test-document.odt", "satzung.odt");
     copyTestResource("test-documents/test-document.ods", "haushalt.ods");
     copyTestResource("test-documents/test-document.odp", "vortrag.odp");
@@ -348,6 +353,50 @@ class DocumentIndexingIntegrationTest {
     assertThat(documents).hasSize(3);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
+  }
+
+  @Test
+  void indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline() throws IOException {
+    // #1096 review, finding 8: an end-to-end proof that XLSX/CSV/ODS actually flow through
+    // TabularDocumentPipeline (admission -> registry -> pipeline -> stored chunk), not just the
+    // pipeline's own unit tests - mirrors indexesPdfAndDocxDocuments's own end-to-end shape, with
+    // the pipeline_id assertion the real point of this test.
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("Gebühren");
+      Row header = sheet.createRow(0);
+      header.createCell(0).setCellValue("Leistung");
+      header.createCell(1).setCellValue("Betrag");
+      Row data = sheet.createRow(1);
+      data.createCell(0).setCellValue("Personalausweis");
+      data.createCell(1).setCellValue("37,00 EUR");
+      try (var out = Files.newOutputStream(classTempDir.resolve("gebuehren.xlsx"))) {
+        workbook.write(out);
+      }
+    }
+    Files.writeString(classTempDir.resolve("zustaendigkeiten.csv"), "Name,Amt\nMüller,Bauamt\n");
+
+    IndexingJob job = triggerIndexing();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(completedJob.getDocumentsProcessed()).isEqualTo(2);
+    assertThat(completedJob.getDocumentsFailed()).isZero();
+
+    List<Document> documents = documentRepository.findAll();
+    assertThat(documents).hasSize(2);
+    assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
+    assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
+
+    List<org.springframework.ai.document.Document> results =
+        vectorStore.similaritySearch(
+            SearchRequest.builder().query("Gebühren").topK(100).similarityThreshold(0.0).build());
+    assertThat(results).isNotEmpty();
+    assertThat(results)
+        .allMatch(
+            r ->
+                TabularDocumentPipeline.ID.equals(
+                    r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
   }
 
   @Test

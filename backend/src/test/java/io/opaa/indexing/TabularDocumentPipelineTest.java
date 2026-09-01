@@ -5,12 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -26,7 +28,8 @@ class TabularDocumentPipelineTest {
 
   @TempDir Path tempDir;
 
-  private final TabularDocumentPipeline pipeline = new TabularDocumentPipeline();
+  private final TabularDocumentPipeline pipeline =
+      new TabularDocumentPipeline(new TabularProperties(0, 0, 0, 0));
 
   @Test
   void claimsExactlyXlsxCsvAndOds() {
@@ -114,14 +117,20 @@ class TabularDocumentPipelineTest {
   }
 
   @Test
-  void aHeaderOnlySheetHasNoExtractableText() throws IOException {
-    Path file = tempDir.resolve("nur-kopfzeile.xlsx");
+  void aSoleRowWithMultipleColumnsIsIndexedAsItsOwnChunkNotDiscardedAsAnEmptyHeader()
+      throws IOException {
+    // #1096 review, finding 9: a sheet that never had more than one row has no header/data split
+    // to make - the sole row is Nutzdaten (e.g. a one-line summary table), not an empty header,
+    // and must not be discarded.
+    Path file = tempDir.resolve("eine-zeile.xlsx");
     writeWorkbook(file, sheetHeaderOnly("Blatt1", List.of("Name", "Amt")));
 
     DocumentPipelineResult result =
-        pipeline.run(DocumentPipelineSource.ofFile(file, "nur-kopfzeile.xlsx"));
+        pipeline.run(DocumentPipelineSource.ofFile(file, "eine-zeile.xlsx"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).contains("Name | Amt");
   }
 
   @Test
@@ -151,6 +160,84 @@ class TabularDocumentPipelineTest {
         .contains("Eintrag 51")
         .doesNotContain("Eintrag 101");
     assertThat(result.chunks().get(2).getText()).contains("Eintrag 101").contains("Eintrag 120");
+  }
+
+  @Test
+  void aFormulaCellRendersItsCachedValueNotTheFormulaText() throws IOException {
+    // #1096 review, finding 4: without setUseCachedValuesForFormulaCells, DataFormatter renders
+    // the formula text itself ("100+1140") rather than the value a spreadsheet application shows.
+    Path file = tempDir.resolve("formel.xlsx");
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("Haushalt");
+      writeRow(sheet, 0, "Posten", "Betrag");
+      Row dataRow = sheet.createRow(1);
+      dataRow.createCell(0).setCellValue("Straßenbau");
+      Cell formulaCell = dataRow.createCell(1);
+      formulaCell.setCellFormula("100+1140");
+      workbook.getCreationHelper().createFormulaEvaluator().evaluateFormulaCell(formulaCell);
+      try (var out = Files.newOutputStream(file)) {
+        workbook.write(out);
+      }
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "formel.xlsx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText()).contains("1240").doesNotContain("100+1140");
+  }
+
+  @Test
+  void xlsxRowsWiderThanTheConfiguredLimitAreTruncatedNotCrashed() throws IOException {
+    // #1096 review, finding 10: the column-width cap applies symmetrically to XLSX, not just ODS.
+    TabularDocumentPipeline narrowPipeline =
+        new TabularDocumentPipeline(new TabularProperties(3, 0, 0, 0));
+    Path file = tempDir.resolve("breit.xlsx");
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("Breit");
+      writeRow(sheet, 0, "A", "B", "C", "D", "E");
+      writeRow(sheet, 1, "1", "2", "3", "4", "5");
+      try (var out = Files.newOutputStream(file)) {
+        workbook.write(out);
+      }
+    }
+
+    DocumentPipelineResult result =
+        narrowPipeline.run(DocumentPipelineSource.ofFile(file, "breit.xlsx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    String text = result.chunks().getFirst().getText();
+    assertThat(text).contains("A | B | C").doesNotContain("D").doesNotContain("E");
+  }
+
+  @Test
+  void aGenuineXlsxMisnamedCsvIsRoutedByDetectedContentNotByItsName() throws IOException {
+    // #1096 review, finding 3: the pipeline dispatches on the detected extension the registry
+    // resolved, not on the (possibly misleading) file name - a real XLSX renamed .csv must still
+    // be read as XLSX rather than fed to the CSV parser, which would fail on binary content.
+    Path file = tempDir.resolve("bericht.csv");
+    writeWorkbook(
+        file, sheet("Bericht", List.of("Posten", "Betrag"), List.of("Straßenbau", "1240")));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "bericht.csv", ".xlsx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText()).contains("Blatt: Bericht");
+  }
+
+  @Test
+  void anOdsMisnamedXlsxIsRoutedByDetectedContentNotByItsName() throws IOException {
+    // #1096 review, finding 3, the reverse direction: an ODS renamed .xlsx must not be handed to
+    // POI, which cannot open it at all.
+    Path file = tempDir.resolve("bericht.xlsx");
+    writeOds(file, odsTable("Bericht", odsRow("Posten", "Betrag"), odsRow("Straßenbau", "1240")));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "bericht.xlsx", ".ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText()).contains("Blatt: Bericht");
   }
 
   private static void writeRow(Sheet sheet, int rowIndex, String... values) {
@@ -236,6 +323,61 @@ class TabularDocumentPipelineTest {
   }
 
   @Test
+  void aWindowsCp1252EncodedCsvIsDecodedCorrectly() throws IOException {
+    // #1096 review, finding 1: German Excel's own default CSV export encoding - not valid UTF-8
+    // for any text containing an umlaut or the Euro sign.
+    Path file = tempDir.resolve("strassen.csv");
+    byte[] bytes = "Name;Straße\nMüller;Königsallee\n".getBytes(Charset.forName("windows-1252"));
+    Files.write(file, bytes);
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "strassen.csv"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Name | Straße")
+        .contains("Müller | Königsallee");
+  }
+
+  @Test
+  void aUtf8CsvWithALeadingByteOrderMarkStripsIt() throws IOException {
+    Path file = tempDir.resolve("bom.csv");
+    byte[] bom = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
+    byte[] content = "Name,Amt\nMüller,Bauamt\n".getBytes(StandardCharsets.UTF_8);
+    byte[] withBom = new byte[bom.length + content.length];
+    System.arraycopy(bom, 0, withBom, 0, bom.length);
+    System.arraycopy(content, 0, withBom, bom.length, content.length);
+    Files.write(file, withBom);
+
+    DocumentPipelineResult result = pipeline.run(DocumentPipelineSource.ofFile(file, "bom.csv"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    String text = result.chunks().getFirst().getText();
+    assertThat(text).contains("Name | Amt").doesNotContain("﻿");
+    // The BOM must not survive as a stray character glued to the first header cell.
+    assertThat(text).doesNotContain("﻿Name");
+  }
+
+  @Test
+  void aQuotedFieldContainingAnotherDelimiterDoesNotConfuseDetection() throws IOException {
+    // #1096 review, finding 2: raw character counting used to tie (one comma, one semicolon) and
+    // always resolve ties to comma - splitting the quoted field and failing the row. The real
+    // delimiter (semicolon) must win because it is the one that actually produces columns once
+    // quoting is respected.
+    Path file = tempDir.resolve("gequotet.csv");
+    Files.writeString(
+        file, "\"Leistung, allgemein\";Betrag\n\"Ausstellung\";37 EUR\n", StandardCharsets.UTF_8);
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "gequotet.csv"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Leistung, allgemein | Betrag")
+        .contains("Ausstellung | 37 EUR");
+  }
+
+  @Test
   void anEmptyCsvHasNoExtractableText() throws IOException {
     Path file = tempDir.resolve("leer.csv");
     Files.writeString(file, "", StandardCharsets.UTF_8);
@@ -246,14 +388,17 @@ class TabularDocumentPipelineTest {
   }
 
   @Test
-  void aHeaderOnlyCsvHasNoExtractableText() throws IOException {
-    Path file = tempDir.resolve("nur-kopfzeile.csv");
+  void aSoleCsvRowWithMultipleColumnsIsIndexedAsItsOwnChunkNotDiscardedAsAnEmptyHeader()
+      throws IOException {
+    Path file = tempDir.resolve("eine-zeile.csv");
     Files.writeString(file, "Name,Amt\n", StandardCharsets.UTF_8);
 
     DocumentPipelineResult result =
-        pipeline.run(DocumentPipelineSource.ofFile(file, "nur-kopfzeile.csv"));
+        pipeline.run(DocumentPipelineSource.ofFile(file, "eine-zeile.csv"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).contains("Name | Amt");
   }
 
   @Test
@@ -288,6 +433,22 @@ class TabularDocumentPipelineTest {
     assertThat(result.chunks()).hasSize(2);
     assertThat(result.chunks().getFirst().getText()).contains(hugeValue);
     assertThat(result.chunks().get(1).getText()).contains("zweite | zeile");
+  }
+
+  @Test
+  void aRowExceedingTheHardCharacterCeilingIsTruncatedWithAVisibleMarker() throws IOException {
+    // #1096 review, finding 12: MAX_CHUNK_CHARS alone does not bound a single, giant row - without
+    // a hard ceiling it would be handed to the embedding model unbounded and fail there instead.
+    String hugeValue = "x".repeat(30_000);
+    Path file = tempDir.resolve("riesig.csv");
+    Files.writeString(file, "Spalte1,Spalte2\n" + hugeValue + ",normal\n", StandardCharsets.UTF_8);
+
+    DocumentPipelineResult result = pipeline.run(DocumentPipelineSource.ofFile(file, "riesig.csv"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    String text = result.chunks().getFirst().getText();
+    assertThat(text.length()).isLessThanOrEqualTo(TabularDocumentPipeline.HARD_CHUNK_CHAR_LIMIT);
+    assertThat(text).endsWith("[…gekürzt]");
   }
 
   @Test
@@ -364,14 +525,17 @@ class TabularDocumentPipelineTest {
   }
 
   @Test
-  void aHeaderOnlyOdsSheetHasNoExtractableText() throws IOException {
-    Path file = tempDir.resolve("nur-kopfzeile.ods");
+  void aSoleOdsRowWithMultipleColumnsIsIndexedAsItsOwnChunkNotDiscardedAsAnEmptyHeader()
+      throws IOException {
+    Path file = tempDir.resolve("eine-zeile.ods");
     writeOds(file, odsTable("Blatt1", odsRow("Name", "Amt")));
 
     DocumentPipelineResult result =
-        pipeline.run(DocumentPipelineSource.ofFile(file, "nur-kopfzeile.ods"));
+        pipeline.run(DocumentPipelineSource.ofFile(file, "eine-zeile.ods"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).contains("Name | Amt");
   }
 
   @Test
@@ -438,6 +602,65 @@ class TabularDocumentPipelineTest {
     }
 
     assertThatThrownBy(() -> pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.ods")))
+        .isInstanceOf(UncheckedIOException.class);
+  }
+
+  @Test
+  void odsRowNumbersAdvanceByTheFullRepeatSpanOfARepeatedBlankRow() throws IOException {
+    // #1096 review, finding 11: table:number-rows-repeated must advance the running row counter
+    // by the full repeat span, not by one, so a citation's "Zeile n" is correct for every row
+    // after a filler gap.
+    Path file = tempDir.resolve("zeilennummern.ods");
+    String repeatedBlankRow =
+        "<table:table-row table:number-rows-repeated=\"5\"><table:table-cell/></table:table-row>";
+    writeOds(
+        file,
+        odsTable(
+            "Blatt1",
+            odsRow("Name", "Amt"),
+            odsRow("Müller", "Bauamt"),
+            repeatedBlankRow,
+            odsRow("Schmidt", "Ordnungsamt")));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "zeilennummern.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    // Header at row 1, "Müller" at row 2, five blank filler rows (3-7), "Schmidt" at row 8.
+    assertThat(result.chunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+        .isEqualTo("Blatt Blatt1 · Zeilen 2–8");
+  }
+
+  @Test
+  void anOdsContentXmlExceedingTheByteLimitIsRejectedRatherThanExhaustingMemory()
+      throws IOException {
+    // #1096 review, finding 6: the zip-bomb guard on content.xml's decompressed byte stream.
+    TabularDocumentPipeline tinyLimitPipeline =
+        new TabularDocumentPipeline(new TabularProperties(0, 0, 50, 0));
+    Path file = tempDir.resolve("gross.ods");
+    writeOds(file, odsTable("Blatt1", odsRow("Name", "Amt"), odsRow("Müller", "Bauamt")));
+
+    assertThatThrownBy(
+            () -> tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.ods")))
+        .isInstanceOf(UncheckedIOException.class);
+  }
+
+  @Test
+  void anOdsSpreadsheetExceedingTheRowLimitIsRejectedRatherThanExhaustingMemory()
+      throws IOException {
+    // #1096 review, finding 6: the second, row-count-based zip-bomb guard - a small, repetitive
+    // content.xml could stay under the byte limit while still describing too many rows.
+    TabularDocumentPipeline tinyLimitPipeline =
+        new TabularDocumentPipeline(new TabularProperties(0, 0, 0, 2));
+    Path file = tempDir.resolve("viele-zeilen.ods");
+    writeOds(
+        file,
+        odsTable(
+            "Blatt1", odsRow("Name", "Amt"), odsRow("A", "1"), odsRow("B", "2"), odsRow("C", "3")));
+
+    assertThatThrownBy(
+            () -> tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-zeilen.ods")))
         .isInstanceOf(UncheckedIOException.class);
   }
 

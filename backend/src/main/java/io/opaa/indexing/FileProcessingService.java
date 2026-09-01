@@ -167,8 +167,10 @@ public class FileProcessingService {
     doc = documentRepository.save(doc);
 
     try {
-      DocumentPipeline pipeline = pipelineRegistry.pipelineFor(file, fileName);
-      DocumentPipelineResult parsed = pipeline.run(DocumentPipelineSource.ofFile(file, fileName));
+      DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
+      DocumentPipeline pipeline = routed.pipeline();
+      DocumentPipelineResult parsed =
+          pipeline.run(DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()));
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn("No usable text extracted from {} by pipeline {}", file, pipeline.id());
@@ -292,9 +294,12 @@ public class FileProcessingService {
     doc = documentRepository.save(doc);
 
     try {
-      DocumentPipeline pipeline = pipelineRegistry.pipelineFor(localFile, fileName);
+      DocumentPipelineRegistry.Routed routed =
+          pipelineRegistry.routedPipelineFor(localFile, fileName);
+      DocumentPipeline pipeline = routed.pipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(DocumentPipelineSource.ofFile(localFile, fileName));
+          pipeline.run(
+              DocumentPipelineSource.ofFile(localFile, fileName, routed.detectedExtension()));
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn(
@@ -527,9 +532,13 @@ public class FileProcessingService {
     // below is allowed to clean up on the re-index path (see this method's own contract).
     boolean previousChunksDeleted = false;
     try {
-      DocumentPipeline pipeline = pipelineRegistry.pipelineFor(storedFile, doc.getFileName());
+      DocumentPipelineRegistry.Routed routed =
+          pipelineRegistry.routedPipelineFor(storedFile, doc.getFileName());
+      DocumentPipeline pipeline = routed.pipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(DocumentPipelineSource.ofFile(storedFile, doc.getFileName()));
+          pipeline.run(
+              DocumentPipelineSource.ofFile(
+                  storedFile, doc.getFileName(), routed.detectedExtension()));
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn(
