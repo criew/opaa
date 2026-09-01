@@ -4,6 +4,7 @@ import io.opaa.api.types.DiagnosticTargetKind;
 import io.opaa.audit.AuditActorPseudonymService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.library.LibraryAccessService;
@@ -13,6 +14,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>The callback shape is the reason this is a service and not a set of check methods: a caller
  * cannot obtain a {@link ForeignDiagnosticContext} without also handing back its {@link
  * ForeignDiagnosticFindings}, and the protocol entry is written from those findings before this
- * method returns. "Ein Protokolleintrag je Ausfuehrung" is therefore structural, not a rule a
- * future call site could forget.
+ * method returns - including when the callback throws, so a caller cannot keep what it saw by
+ * failing after it saw it, and through {@link DiagnosticContextLogWriter}, so a rollback of the
+ * calling transaction cannot take the entry with it. "Ein Protokolleintrag je Ausfuehrung" is
+ * therefore structural, not a rule a future call site could forget.
  *
  * <p>Not covered here on purpose: a diagnosis in the caller's own rights context. It is not a
  * foreign context, needs no befugnis and produces no protocol entry (Leitplanke (c), last bullet) -
@@ -33,6 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class ForeignDiagnosticContextService {
+
+  private static final Logger log = LoggerFactory.getLogger(ForeignDiagnosticContextService.class);
 
   private static final int MAX_QUESTION_LENGTH = 2000;
   private static final int MAX_JUSTIFICATION_LENGTH = 1000;
@@ -43,21 +50,21 @@ public class ForeignDiagnosticContextService {
   private final LibraryAccessService libraryAccessService;
   private final UserRepository userRepository;
   private final AuditActorPseudonymService pseudonymService;
-  private final DiagnosticContextLogRepository logRepository;
+  private final DiagnosticContextLogWriter logWriter;
 
-  public ForeignDiagnosticContextService(
+  ForeignDiagnosticContextService(
       DiagnosticImpersonationGrantService grantService,
       LibraryDiagnosticsLockService lockService,
       LibraryAccessService libraryAccessService,
       UserRepository userRepository,
       AuditActorPseudonymService pseudonymService,
-      DiagnosticContextLogRepository logRepository) {
+      DiagnosticContextLogWriter logWriter) {
     this.grantService = grantService;
     this.lockService = lockService;
     this.libraryAccessService = libraryAccessService;
     this.userRepository = userRepository;
     this.pseudonymService = pseudonymService;
-    this.logRepository = logRepository;
+    this.logWriter = logWriter;
   }
 
   /**
@@ -65,8 +72,9 @@ public class ForeignDiagnosticContextService {
    *
    * @throws ValidationException if a person context carries no free-text justification, if the
    *     caller names themselves as the target, or if the request is otherwise malformed
-   * @throws io.opaa.common.AccessDeniedException if the caller holds no valid "Sicht als" befugnis
-   *     covering the target person's Organisationseinheit
+   * @throws AccessDeniedException if the caller holds no valid "Sicht als" befugnis covering the
+   *     target person's Organisationseinheit, or if a profile names a library the caller may not
+   *     read themselves
    */
   @Transactional
   public <T> ForeignDiagnosticOutcome<T> execute(
@@ -115,6 +123,13 @@ public class ForeignDiagnosticContextService {
         execution);
   }
 
+  /**
+   * A profile is exempt from befugnis and Begründung only because Leitplanke (c) assumes it "zeigt
+   * nichts, was die ausführende Person nicht ohnehin sehen darf". That assumption is enforced here
+   * rather than assumed of the caller: the library set is checked against the executing person's
+   * own readable libraries, which are organization-scoped, so neither a foreign nor an
+   * organization-foreign library can enter a profile context.
+   */
   private <T> ForeignDiagnosticOutcome<T> executeForProfile(
       CurrentUser actor,
       ForeignDiagnosticRequest request,
@@ -126,6 +141,14 @@ public class ForeignDiagnosticContextService {
     String label = requireText(request.profileLabel(), "Bezeichnung des Rechteprofils", 255);
     Set<UUID> candidates =
         request.profileLibraryIds() == null ? Set.of() : Set.copyOf(request.profileLibraryIds());
+    if (!candidates.isEmpty()) {
+      Set<UUID> ownReadable =
+          libraryAccessService.readableLibraryIds(actor.id(), actor.organizationId());
+      if (!ownReadable.containsAll(candidates)) {
+        throw new AccessDeniedException(
+            "Ein Rechteprofil darf nur Bibliotheken umfassen, die Sie selbst einsehen dürfen");
+      }
+    }
     return run(
         actor,
         DiagnosticTargetKind.PERMISSION_PROFILE,
@@ -158,22 +181,51 @@ public class ForeignDiagnosticContextService {
             locked,
             permissionSnapshot(searchable, locked));
 
-    ForeignDiagnosticFindings<T> findings = execution.apply(context);
-    List<String> hitRefs = findings.hitRefs() == null ? List.of() : findings.hitRefs();
+    ForeignDiagnosticFindings<T> findings;
+    try {
+      findings = execution.apply(context);
+    } catch (RuntimeException failed) {
+      // The vetted context has already been handed out at this point, so the entry is owed no
+      // matter how the execution ended - a caller must not be able to keep what it saw by
+      // throwing after it saw it. No hit is recorded because none was reported.
+      try {
+        logWriter.record(
+            entry(actor, targetKind, targetRef, question, List.of(), context, justification));
+      } catch (RuntimeException loggingFailure) {
+        log.error(
+            "Failed to write the protocol entry for a foreign-context diagnosis whose execution"
+                + " threw - the execution is reported correctly, but its entry is missing",
+            loggingFailure);
+        failed.addSuppressed(loggingFailure);
+      }
+      throw failed;
+    }
 
+    List<String> hitRefs = findings.hitRefs() == null ? List.of() : findings.hitRefs();
     DiagnosticContextLogEntry entry =
-        logRepository.save(
-            new DiagnosticContextLogEntry(
-                actor.organizationId(),
-                pseudonymService.pseudonymFor(actor.id(), actor.organizationId()).toString(),
-                targetKind,
-                targetRef,
-                question,
-                hitRefs.size(),
-                joinHitRefs(hitRefs),
-                context.permissionSnapshot(),
-                justification));
+        logWriter.record(
+            entry(actor, targetKind, targetRef, question, hitRefs, context, justification));
     return new ForeignDiagnosticOutcome<>(context, findings.presentation(), entry.getEventId());
+  }
+
+  private DiagnosticContextLogEntry entry(
+      CurrentUser actor,
+      DiagnosticTargetKind targetKind,
+      String targetRef,
+      String question,
+      List<String> hitRefs,
+      ForeignDiagnosticContext context,
+      String justification) {
+    return new DiagnosticContextLogEntry(
+        actor.organizationId(),
+        pseudonymService.pseudonymFor(actor.id(), actor.organizationId()).toString(),
+        targetKind,
+        targetRef,
+        question,
+        hitRefs.size(),
+        joinHitRefs(hitRefs),
+        context.permissionSnapshot(),
+        justification);
   }
 
   /** Sorted so the same rights state always renders identically across runs and installations. */

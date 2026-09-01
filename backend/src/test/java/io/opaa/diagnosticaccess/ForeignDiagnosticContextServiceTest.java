@@ -45,7 +45,7 @@ class ForeignDiagnosticContextServiceTest {
   @Mock private LibraryAccessService libraryAccessService;
   @Mock private UserRepository userRepository;
   @Mock private AuditActorPseudonymService pseudonymService;
-  @Mock private DiagnosticContextLogRepository logRepository;
+  @Mock private DiagnosticContextLogWriter logWriter;
 
   private ForeignDiagnosticContextService service;
 
@@ -63,14 +63,16 @@ class ForeignDiagnosticContextServiceTest {
             libraryAccessService,
             userRepository,
             pseudonymService,
-            logRepository);
+            logWriter);
     when(pseudonymService.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
     when(userRepository.findByIdAndOrganizationId(any(), any()))
         .thenReturn(Optional.of(new User("s", "i", null, "Zielperson")));
     when(libraryAccessService.readableLibraryIds(targetId, ORGANIZATION_ID))
         .thenReturn(Set.of(openLibrary, lockedLibrary));
     when(lockService.lockedAmong(any())).thenReturn(Set.of(lockedLibrary));
-    when(logRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(logWriter.record(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(libraryAccessService.readableLibraryIds(actorId, ORGANIZATION_ID))
+        .thenReturn(Set.of(openLibrary, lockedLibrary));
   }
 
   @Test
@@ -90,7 +92,7 @@ class ForeignDiagnosticContextServiceTest {
 
     assertThat(executed).isFalse();
     verify(grantService, never()).requireImpersonationPermission(any(), any());
-    verify(logRepository, never()).save(any());
+    verify(logWriter, never()).record(any());
   }
 
   @Test
@@ -105,7 +107,7 @@ class ForeignDiagnosticContextServiceTest {
                     ForeignDiagnosticRequest.forUser(targetId, "Wo steht das?", "Beschwerde 4711"),
                     context -> new ForeignDiagnosticFindings<>(List.of(), "x")))
         .isInstanceOf(AccessDeniedException.class);
-    verify(logRepository, never()).save(any());
+    verify(logWriter, never()).record(any());
   }
 
   @Test
@@ -131,7 +133,7 @@ class ForeignDiagnosticContextServiceTest {
 
     ArgumentCaptor<DiagnosticContextLogEntry> entry =
         ArgumentCaptor.forClass(DiagnosticContextLogEntry.class);
-    verify(logRepository).save(entry.capture());
+    verify(logWriter).record(entry.capture());
     DiagnosticContextLogEntry written = entry.getValue();
     assertThat(written.getTargetKind()).isEqualTo(DiagnosticTargetKind.USER);
     assertThat(written.getTestQuestion()).isEqualTo("Wo steht die Dienstanweisung?");
@@ -154,7 +156,7 @@ class ForeignDiagnosticContextServiceTest {
     verify(grantService, never()).requireImpersonationPermission(any(), any());
     ArgumentCaptor<DiagnosticContextLogEntry> entry =
         ArgumentCaptor.forClass(DiagnosticContextLogEntry.class);
-    verify(logRepository).save(entry.capture());
+    verify(logWriter).record(entry.capture());
     assertThat(entry.getValue().getTargetKind()).isEqualTo(DiagnosticTargetKind.PERMISSION_PROFILE);
     assertThat(entry.getValue().getTargetRef()).isEqualTo("Sachbearbeitung Bauamt");
     assertThat(entry.getValue().getJustification()).isNull();
@@ -170,7 +172,61 @@ class ForeignDiagnosticContextServiceTest {
                     ForeignDiagnosticRequest.forUser(actorId, "Wo steht das?", "Selbsttest"),
                     context -> new ForeignDiagnosticFindings<>(List.of(), "x")))
         .isInstanceOf(ValidationException.class);
-    verify(logRepository, never()).save(any());
+    verify(logWriter, never()).record(any());
+  }
+
+  /**
+   * Leitplanke (c) exempts a profile from befugnis and Begründung on the premise that it shows
+   * nothing the executing person may not see anyway. The premise is enforced, not assumed: a
+   * library outside the caller's own readable set - which is organization-scoped, so this covers an
+   * organization-foreign one too - is rejected before anything runs.
+   */
+  @Test
+  void refusesAProfileNamingALibraryTheCallerMayNotReadThemselves() {
+    UUID foreignLibrary = UUID.randomUUID();
+    AtomicBoolean executed = new AtomicBoolean();
+
+    assertThatThrownBy(
+            () ->
+                service.execute(
+                    actor(),
+                    ForeignDiagnosticRequest.forProfile(
+                        "Sachbearbeitung Bauamt",
+                        Set.of(openLibrary, foreignLibrary),
+                        "Wo steht das?"),
+                    context -> {
+                      executed.set(true);
+                      return new ForeignDiagnosticFindings<>(List.of(), "x");
+                    }))
+        .isInstanceOf(AccessDeniedException.class);
+
+    assertThat(executed).isFalse();
+    verify(logWriter, never()).record(any());
+  }
+
+  /**
+   * The context is handed to the callback before the entry is written, so a callback that keeps the
+   * context and then throws must not escape the protocol - otherwise "es gibt keinen Weg, einen
+   * Kontext zu erhalten, ohne dass ein Eintrag entsteht" would hold only for callbacks that return
+   * normally.
+   */
+  @Test
+  void recordsTheExecutionEvenWhenTheCallbackThrowsAfterSeeingTheContext() {
+    assertThatThrownBy(
+            () ->
+                service.execute(
+                    actor(),
+                    ForeignDiagnosticRequest.forUser(targetId, "Wo steht das?", "Beschwerde 4711"),
+                    context -> {
+                      throw new IllegalStateException("die Anzeige ist schon raus");
+                    }))
+        .isInstanceOf(IllegalStateException.class);
+
+    ArgumentCaptor<DiagnosticContextLogEntry> entry =
+        ArgumentCaptor.forClass(DiagnosticContextLogEntry.class);
+    verify(logWriter).record(entry.capture());
+    assertThat(entry.getValue().getHitCount()).isZero();
+    assertThat(entry.getValue().getJustification()).isEqualTo("Beschwerde 4711");
   }
 
   private CurrentUser actor() {

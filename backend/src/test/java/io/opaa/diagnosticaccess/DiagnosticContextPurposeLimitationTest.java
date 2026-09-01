@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -72,28 +73,49 @@ class DiagnosticContextPurposeLimitationTest {
   }
 
   /**
-   * The Gesamtprotokoll path must not accept a person. A {@link UUID} parameter would be the only
-   * way to name one; {@link CurrentUser} is the caller's own, server-resolved identity and is
-   * therefore the one identity-carrying parameter allowed.
+   * A Positivliste, not a blacklist: a read path may take the caller's own {@link CurrentUser}, a
+   * time bound, a paging number, or the {@code reason} string - and nothing else. Checking only
+   * against {@link UUID} would miss the shape the target person actually has in this model, a
+   * {@link String} pseudonym ({@code target_ref} is a {@code varchar}), so a method taking one
+   * would pass a blacklist untouched.
    */
   @Test
-  void noProtocolReadPathTakesATargetPerson() {
+  void noProtocolReadPathTakesAnythingButTheCallersOwnIdentityTimeAndPaging() {
     Stream.concat(
             publicMethods(DiagnosticContextLogQueryService.class),
             publicMethods(DiagnosticContextLogController.class))
         .forEach(
             method -> {
               for (Parameter parameter : method.getParameters()) {
-                if (parameter.getType() == CurrentUser.class) {
-                  continue;
-                }
-                assertThat(parameter.getType())
+                assertThat(parameter.isNamePresent())
+                    .as("compiled without -parameters; this guard would be meaningless")
+                    .isTrue();
+                assertThat(isAllowedReadParameter(parameter))
                     .as(
-                        "%s.%s must not take an identity other than the caller's own",
-                        method.getDeclaringClass().getSimpleName(), method.getName())
-                    .isNotEqualTo(UUID.class);
+                        "%s.%s takes %s %s, which is not one of the parameters a protocol read path"
+                            + " may have (own identity, time range, paging, reason)",
+                        method.getDeclaringClass().getSimpleName(),
+                        method.getName(),
+                        parameter.getType().getSimpleName(),
+                        parameter.getName())
+                    .isTrue();
               }
             });
+  }
+
+  private static boolean isAllowedReadParameter(Parameter parameter) {
+    Class<?> type = parameter.getType();
+    String name = parameter.getName();
+    if (type == CurrentUser.class) {
+      return true;
+    }
+    if (type == Instant.class) {
+      return Set.of("from", "to").contains(name);
+    }
+    if (type == int.class) {
+      return Set.of("page", "size").contains(name);
+    }
+    return type == String.class && "reason".equals(name);
   }
 
   @Test

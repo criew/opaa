@@ -2396,10 +2396,12 @@ paths:
       operationId: setLibraryDiagnosticsLock
       tags: [libraries]
       summary: >
-        Sets or lifts a library's Diagnosesperre. Only the library's OWNER may call this - a system
-        admin without an OWNER grant on that library is rejected with 403, deliberately: an
-        administrative privilege able to lift a foreign Bestand's lock would remove the protection.
-        Every library is locked by default, including all pre-existing ones.
+        Sets or lifts a library's Diagnosesperre. It takes an OWNER grant on that library which the
+        caller did not issue to themselves - being a system admin confers nothing here, and neither
+        does an OWNER grant an admin issued to themselves through the administrative floor of the
+        grant endpoint; both are rejected with 403. What remains possible, stated plainly: an admin
+        can grant OWNER to a different, named account, whose use of this endpoint is audited in
+        turn. Every library is locked by default, including all pre-existing ones.
       requestBody:
         required: true
         content:
@@ -5395,16 +5397,19 @@ components:
     DiagnosticContextEventResponse:
       type: object
       description: >
-        One protocol entry as the Gesamtprotokoll shows it. actorRef and - for a USER target -
-        targetRef stay pseudonyms, resolvable only through the separately held mapping table; the
-        entry carries the identifiers of the displayed hits, never the hits themselves.
+        One protocol entry as the Gesamtprotokoll shows it. actorRef stays a pseudonym, resolvable
+        only through the separately held mapping table; the entry carries the identifiers of the
+        displayed hits, never the hits themselves. targetRef is present only for a
+        PERMISSION_PROFILE target, where it is the profile's label: for a USER target it is
+        deliberately absent, because a stable per-person pseudonym on every row of a paged list
+        makes "Diagnosen je Nutzer" a client-side grouping - exactly what Leitplanke (g) rules out.
+        Which of the two kinds an entry has is still visible in targetKind.
       required:
         [
           eventId,
           recordedAt,
           actorRef,
           targetKind,
-          targetRef,
           testQuestion,
           hitCount,
           hitRefs,
@@ -5423,6 +5428,7 @@ components:
           $ref: "#/components/schemas/DiagnosticTargetKind"
         targetRef:
           type: string
+          nullable: true
         testQuestion:
           type: string
         hitCount:

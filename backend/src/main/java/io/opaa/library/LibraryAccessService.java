@@ -163,6 +163,30 @@ public class LibraryAccessService {
   }
 
   /**
+   * Whether {@code userId} holds {@link AssetRole#OWNER} on {@code library} on a basis they did not
+   * create for themselves: an unexpired {@code OWNER} grant somebody else issued, or one they
+   * issued to themselves while being the library's named owner ({@code ownerUserId}, or a member of
+   * the owning group). Unlike {@link #effectiveRole} there is no system-admin floor here, and an
+   * {@code OWNER} grant an administrator issued to themselves through that floor does not count -
+   * closing the two-step path "grant myself OWNER via the administrative floor, then act as the
+   * responsible owner". Used by {@code LibraryDiagnosticsLockService} for the one rule that must
+   * hold against the administration itself; every other library endpoint keeps using {@link
+   * #requireRole}.
+   */
+  public boolean holdsIndependentOwnerRole(KnowledgeLibrary library, UUID userId) {
+    Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
+    boolean namedOwner =
+        userId.equals(library.getOwnerUserId())
+            || (library.getOwnerGroupId() != null && groupIds.contains(library.getOwnerGroupId()));
+    Instant now = Instant.now();
+    return grantsByLibrary.get(library.getId(), grantRepository::findByLibraryId).stream()
+        .filter(grant -> !grant.isExpired(now))
+        .filter(grant -> grant.getRole() == AssetRole.OWNER)
+        .filter(grant -> reaches(grant, userId, groupIds))
+        .anyMatch(grant -> namedOwner || !userId.equals(grant.getGrantedByUserId()));
+  }
+
+  /**
    * The effective {@link AssetRole} for every one of {@code libraries}, for {@code userId} - the
    * {@code listLibraries} counterpart of {@link #effectiveRole}, deliberately not built by calling
    * that method once per library:
@@ -231,12 +255,7 @@ public class LibraryAccessService {
       if (grant.isExpired(now)) {
         continue;
       }
-      boolean reaches =
-          (grant.getSubjectType() == PermissionSubjectType.USER
-                  && grant.getSubjectUserId().equals(userId))
-              || (grant.getSubjectType() == PermissionSubjectType.GROUP
-                  && groupIds.contains(grant.getSubjectGroupId()));
-      if (reaches && (best == null || grant.getRole().atLeast(best))) {
+      if (reaches(grant, userId, groupIds) && (best == null || grant.getRole().atLeast(best))) {
         best = grant.getRole();
       }
     }
@@ -250,6 +269,14 @@ public class LibraryAccessService {
    */
   public void invalidateLibrary(UUID libraryId) {
     grantsByLibrary.invalidate(libraryId);
+  }
+
+  /** Whether {@code grant} reaches {@code userId} - directly, or via one of {@code groupIds}. */
+  private static boolean reaches(AssetGrant grant, UUID userId, Set<UUID> groupIds) {
+    return (grant.getSubjectType() == PermissionSubjectType.USER
+            && grant.getSubjectUserId().equals(userId))
+        || (grant.getSubjectType() == PermissionSubjectType.GROUP
+            && groupIds.contains(grant.getSubjectGroupId()));
   }
 
   private static boolean atLeast(AssetRole role, AssetRole required) {

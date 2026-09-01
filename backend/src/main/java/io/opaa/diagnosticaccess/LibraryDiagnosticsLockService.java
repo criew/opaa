@@ -23,10 +23,16 @@ import org.springframework.transaction.annotation.Transactional;
  * Sets and lifts a library's Diagnosesperre (Leitplanke (e)).
  *
  * <p>The single rule this class exists for: the lock is the responsible body's, not the
- * administration's. {@link #setLocked} resolves the caller's role with {@code systemAdmin = false},
- * so {@code SYSTEM_ADMIN} confers nothing here and an administrator without an {@link
- * AssetRole#OWNER} grant on the library cannot lift a lock they did not set. An administrator
- * privilege that could unlock a foreign Bestand would remove the protection entirely.
+ * administration's. {@link #setLocked} asks {@link LibraryAccessService#holdsIndependentOwnerRole},
+ * which knows no system-admin floor and discounts an {@link AssetRole#OWNER} grant the caller
+ * issued to themselves - otherwise an administrator could reach a foreign lock in two steps, by
+ * granting themselves {@code OWNER} through the administrative floor of the grant endpoint and then
+ * lifting the lock as "the owner".
+ *
+ * <p>What this does <b>not</b> cover, stated plainly: an administrator can still grant {@code
+ * OWNER} to a <em>different</em> account and have that account lift the lock. The rule enforced
+ * here is that lifting a foreign lock takes a second, named person and leaves an audit trail on
+ * both acts - not that it is impossible for an administrator with a second account.
  */
 @Service
 public class LibraryDiagnosticsLockService {
@@ -52,9 +58,9 @@ public class LibraryDiagnosticsLockService {
             .filter(candidate -> actor.organizationId().equals(candidate.getOrganizationId()))
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
 
-    // Deliberately systemAdmin = false: see the class Javadoc.
-    AssetRole role = accessService.effectiveRole(library, actor.id(), false);
-    if (role == null || !role.atLeast(AssetRole.OWNER)) {
+    // Deliberately not effectiveRole/requireRole: those fail open for a system admin, and an
+    // OWNER grant is self-issuable through that floor - see the class Javadoc.
+    if (!accessService.holdsIndependentOwnerRole(library, actor.id())) {
       throw new AccessDeniedException(
           "Die Diagnosesperre setzt und löst nur die für die Bibliothek zuständige Stelle");
     }

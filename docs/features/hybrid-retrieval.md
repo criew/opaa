@@ -897,6 +897,13 @@ feststellen.
 >   Sperre bewusst aufhebt. Eine Kategorienerkennung („ist das ein Personalvertretungsbestand?")
 >   gibt es nicht und kann es für Altbestände nicht geben; die Sperre als Grundzustand deckt die
 >   vier genannten Bestände zuverlässig ab und fällt im Zweifel zugunsten des Schutzes aus.
+> - **Reichweite der Zusage aus (e)** — die Sperre löst nur, wer einen `OWNER`-Grant auf der
+>   Bibliothek hält, den er sich nicht selbst gegeben hat (oder wer die benannte zuständige Stelle
+>   ist: Eigentümerperson bzw. Mitglied der Eigentümergruppe). Damit ist auch der Zwei-Schritt-Weg
+>   geschlossen, sich über die Administratorbefugnis des Grant-Endpunkts erst selbst `OWNER` zu
+>   geben und dann als „Zuständige Stelle“ zu entsperren. **Nicht** ausgeschlossen ist, dass die
+>   Administration einem *anderen*, benannten Konto `OWNER` gibt, das die Sperre dann löst — dafür
+>   braucht es eine zweite Person, und beide Vorgänge stehen im Protokoll.
 >
 > Das Protokoll liegt in einer eigenen Tabelle (`diagnostic_context_log`) unter derselben
 > Eigentümertrennung wie `audit_log` (ADR-0015), nicht als weiterer Ereignistyp darin: seine

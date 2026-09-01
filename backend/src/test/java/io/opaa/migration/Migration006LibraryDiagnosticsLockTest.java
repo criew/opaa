@@ -14,11 +14,12 @@ import org.junit.jupiter.api.Test;
 /**
  * Delta test for {@code changes/006-library-diagnostics-lock.yaml} (#1052): the Diagnosesperre and
  * the one property that decides whether "standardmäßig gesperrt" actually holds - a library that
- * already existed before this changeset ran must come out locked, not unlocked. A column added with
- * a {@code DEFAULT} but no backfill would leave exactly the Bestände the leitplanke protects (they
- * are the old ones) open, which is why {@link
- * #locksEveryLibraryThatAlreadyExistedBeforeTheChangeset} seeds its row <em>before</em> applying
- * the changelog.
+ * already existed before this changeset ran must come out locked, not unlocked. Postgres fills a
+ * {@code NOT NULL DEFAULT true} column for existing rows itself, so no backfill is needed; what
+ * {@link #locksEveryLibraryThatAlreadyExistedBeforeTheChangeset} catches by seeding its row
+ * <em>before</em> applying the changelog is a future edit to {@code DEFAULT false} or to a nullable
+ * column, either of which would leave exactly the Bestände the leitplanke protects (they are the
+ * old ones) open.
  */
 class Migration006LibraryDiagnosticsLockTest extends AbstractMigrationTest {
 

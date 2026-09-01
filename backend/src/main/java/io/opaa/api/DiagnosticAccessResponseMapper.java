@@ -8,6 +8,7 @@ import io.opaa.api.dto.DiagnosticImpersonationGrantResponse;
 import io.opaa.api.dto.LibraryDiagnosticsLockResponse;
 import io.opaa.api.dto.OwnDiagnosticContextEventPage;
 import io.opaa.api.dto.OwnDiagnosticContextEventResponse;
+import io.opaa.api.types.DiagnosticTargetKind;
 import io.opaa.diagnosticaccess.DiagnosticContextLogEntry;
 import io.opaa.diagnosticaccess.DiagnosticContextRetentionSettings;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrant;
@@ -79,17 +80,26 @@ final class DiagnosticAccessResponseMapper {
         page.hasNext());
   }
 
+  /**
+   * {@code targetRef} is passed on only for a {@link DiagnosticTargetKind#PERMISSION_PROFILE}
+   * entry, where it is the profile's label. For a {@code USER} entry it is dropped: it is a stable
+   * per-person pseudonym, and carrying it on every row of a paged list would make "Diagnosen je
+   * Nutzer" a client-side grouping - the evaluation Leitplanke (g) rules out.
+   */
   static DiagnosticContextEventResponse toResponse(DiagnosticContextLogEntry entry) {
     return new DiagnosticContextEventResponse(
             entry.getEventId(),
             entry.getRecordedAt(),
             entry.getActorRef(),
             entry.getTargetKind(),
-            entry.getTargetRef(),
             entry.getTestQuestion(),
             entry.getHitCount(),
             entry.getHitRefs(),
             entry.getPermissionSnapshot())
+        .targetRef(
+            entry.getTargetKind() == DiagnosticTargetKind.PERMISSION_PROFILE
+                ? entry.getTargetRef()
+                : null)
         .justification(entry.getJustification());
   }
 }

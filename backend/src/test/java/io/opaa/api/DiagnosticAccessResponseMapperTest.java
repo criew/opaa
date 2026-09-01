@@ -97,12 +97,32 @@ class DiagnosticAccessResponseMapperTest {
     assertThat(response.getEventId()).isEqualTo(entry.getEventId());
     assertThat(response.getActorRef()).isEqualTo("actor-pseudonym");
     assertThat(response.getTargetKind()).isEqualTo(DiagnosticTargetKind.USER);
-    assertThat(response.getTargetRef()).isEqualTo("target-pseudonym");
+    // Leitplanke (g): the per-person pseudonym never reaches the Gesamtprotokoll list, where a
+    // client could group by it. Only the profile label does - see the sibling test below.
+    assertThat(response.getTargetRef()).isNull();
     assertThat(response.getTestQuestion()).isEqualTo("Wo steht die Dienstanweisung?");
     assertThat(response.getHitCount()).isEqualTo(2);
     assertThat(response.getHitRefs()).isEqualTo("chunk-1,chunk-2");
     assertThat(response.getPermissionSnapshot()).isEqualTo("libraries=[];lockedLibraries=[]");
     assertThat(response.getJustification()).isEqualTo("Beschwerde 4711");
+  }
+
+  @Test
+  void keepsTheProfileLabelAsTargetRefBecauseAProfileBelongsToNobody() {
+    DiagnosticContextLogEntry entry =
+        new DiagnosticContextLogEntry(
+            ORGANIZATION_ID,
+            "actor-pseudonym",
+            DiagnosticTargetKind.PERMISSION_PROFILE,
+            "Sachbearbeitung Bauamt",
+            "Wo steht die Dienstanweisung?",
+            0,
+            "",
+            "libraries=[];lockedLibraries=[]",
+            null);
+
+    assertThat(DiagnosticAccessResponseMapper.toResponse(entry).getTargetRef())
+        .isEqualTo("Sachbearbeitung Bauamt");
   }
 
   @Test

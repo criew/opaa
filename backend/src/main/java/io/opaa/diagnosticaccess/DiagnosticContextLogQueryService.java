@@ -1,12 +1,9 @@
 package io.opaa.diagnosticaccess;
 
-import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.DiagnosticTargetKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditActorPseudonymService;
-import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.UserRepository;
@@ -14,8 +11,12 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -49,8 +50,7 @@ public class DiagnosticContextLogQueryService {
 
   private static final int MAX_PAGE_SIZE = 100;
 
-  private static final UUID PROTOCOL_OBJECT_ID =
-      UUID.nameUUIDFromBytes("diagnostic_context_log".getBytes());
+  private static final Logger log = LoggerFactory.getLogger(DiagnosticContextLogQueryService.class);
 
   private final DiagnosticContextLogRepository logRepository;
   private final AuditActorPseudonymService pseudonymService;
@@ -92,33 +92,53 @@ public class DiagnosticContextLogQueryService {
   }
 
   /**
-   * The Gesamtprotokoll for the named Stellen. Logs its own invocation into the audit trail,
+   * The Gesamtprotokoll for the named Stellen. Records its own invocation in the audit trail,
    * including a rejected one - the role check happens here rather than as an annotation exactly so
-   * a denial is recordable.
+   * a denial is recordable, and it is recorded through {@link
+   * AuditEventRecorder#recordAuditLogAccess}, whose {@code Propagation.NOT_SUPPORTED} keeps the
+   * entry from being rolled back by the very exception that rejects the call. This method holds no
+   * transaction of its own: it issues one query and needs none.
    */
-  @Transactional
   public Page<DiagnosticContextLogEntry> findByTimeRange(
       CurrentUser caller, Instant from, Instant to, String reason, int page, int size) {
-    if (caller.systemRole() != SystemRole.AUDITOR) {
-      recordProtocolAccess(caller, reason, AuditOutcome.DENIED);
-      throw new AccessDeniedException("Das Gesamtprotokoll steht nur den benannten Stellen offen");
+    Map<String, Object> scope = new LinkedHashMap<>();
+    scope.put("accessPath", "diagnostic-context-events");
+    scope.put("from", from == null ? null : from.toString());
+    scope.put("to", to == null ? null : to.toString());
+    try {
+      if (caller.systemRole() != SystemRole.AUDITOR) {
+        throw new AccessDeniedException(
+            "Das Gesamtprotokoll steht nur den benannten Stellen offen");
+      }
+      if (reason == null || reason.isBlank()) {
+        throw new ValidationException("Für die Einsicht ist ein Anlass anzugeben");
+      }
+      if (from == null || to == null || !to.isAfter(from)) {
+        throw new ValidationException("Der Zeitraum ist unvollständig oder leer");
+      }
+      if (Duration.between(from, to).toDays() > MAX_RANGE_DAYS) {
+        throw new ValidationException(
+            "Der Zeitraum darf höchstens " + MAX_RANGE_DAYS + " Tage umfassen");
+      }
+      Page<DiagnosticContextLogEntry> result =
+          logRepository.findByTimeRange(caller.organizationId(), from, to, pageRequest(page, size));
+      recordProtocolAccess(caller, scope, reason, AuditOutcome.SUCCESS);
+      return result;
+    } catch (RuntimeException rejected) {
+      // Mirrors AuditQueryService#loggedAccess: the DENIED entry is best-effort on top of the
+      // rejection, never a precondition for reporting it correctly.
+      try {
+        recordProtocolAccess(caller, scope, reason, AuditOutcome.DENIED);
+      } catch (RuntimeException loggingFailure) {
+        log.error(
+            "Failed to write the DENIED entry for a rejected Gesamtprotokoll access - the"
+                + " rejection is still reported correctly, but this attempt is missing its"
+                + " audit_log entry",
+            loggingFailure);
+        rejected.addSuppressed(loggingFailure);
+      }
+      throw rejected;
     }
-    if (reason == null || reason.isBlank()) {
-      recordProtocolAccess(caller, reason, AuditOutcome.DENIED);
-      throw new ValidationException("Für die Einsicht ist ein Anlass anzugeben");
-    }
-    if (from == null || to == null || !to.isAfter(from)) {
-      recordProtocolAccess(caller, reason, AuditOutcome.DENIED);
-      throw new ValidationException("Der Zeitraum ist unvollständig oder leer");
-    }
-    if (Duration.between(from, to).toDays() > MAX_RANGE_DAYS) {
-      recordProtocolAccess(caller, reason, AuditOutcome.DENIED);
-      throw new ValidationException(
-          "Der Zeitraum darf höchstens " + MAX_RANGE_DAYS + " Tage umfassen");
-    }
-    recordProtocolAccess(caller, reason, AuditOutcome.SUCCESS);
-    return logRepository.findByTimeRange(
-        caller.organizationId(), from, to, pageRequest(page, size));
   }
 
   /**
@@ -137,16 +157,10 @@ public class DiagnosticContextLogQueryService {
         entry.getRecordedAt(), actorDisplayName, entry.getJustification());
   }
 
-  private void recordProtocolAccess(CurrentUser caller, String reason, AuditOutcome outcome) {
-    auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(caller.organizationId())
-            .actor(caller.id())
-            .type(AuditEventType.AUDIT_LOG_ACCESSED)
-            .object(AuditObjectType.AUDIT_LOG, PROTOCOL_OBJECT_ID, "diagnostic_context_log")
-            .outcome(outcome)
-            .reason(reason)
-            .build());
+  private void recordProtocolAccess(
+      CurrentUser caller, Map<String, Object> scope, String reason, AuditOutcome outcome) {
+    auditEventRecorder.recordAuditLogAccess(
+        caller.organizationId(), caller.id(), scope, outcome, reason);
   }
 
   private static Optional<UUID> parseUuid(String value) {

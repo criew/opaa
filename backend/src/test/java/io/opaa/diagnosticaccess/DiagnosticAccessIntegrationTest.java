@@ -3,9 +3,11 @@ package io.opaa.diagnosticaccess;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DiagnosticTargetKind;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -13,6 +15,10 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
+import io.opaa.library.AssetGrant;
+import io.opaa.library.AssetGrantRepository;
+import io.opaa.library.AssetGrantService;
+import io.opaa.library.AssetGrantUpsert;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
@@ -20,12 +26,14 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The leitplanken against the real, Liquibase-built schema rather than a mock: the database itself
@@ -38,6 +46,12 @@ class DiagnosticAccessIntegrationTest {
   @Autowired private DiagnosticImpersonationGrantService grantService;
   @Autowired private DiagnosticImpersonationGrantRepository grantRepository;
   @Autowired private DiagnosticContextRetentionSettingsRepository retentionRepository;
+  @Autowired private DiagnosticContextLogRepository logRepository;
+  @Autowired private DiagnosticContextLogQueryService logQueryService;
+  @Autowired private LibraryDiagnosticsLockService lockService;
+  @Autowired private AssetGrantService assetGrantService;
+  @Autowired private AssetGrantRepository assetGrantRepository;
+  @Autowired private TransactionTemplate transactionTemplate;
   @Autowired private DiagnosticContextRetentionDeletionService deletionService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private OrganizationRepository organizationRepository;
@@ -142,44 +156,119 @@ class DiagnosticAccessIntegrationTest {
     assertThat(deletionService.runOnce()).isEmpty();
   }
 
+  /**
+   * The write path of Leitplanke (f) through the repository the application actually uses, not
+   * through a hand-written INSERT: this is what proves the entity mapping, {@code
+   * Persistable#isNew()} and the {@code @PrePersist} timestamp work against the real, partitioned
+   * table - a row inserted by the test's own SQL would prove only that SQL.
+   */
   @Test
   void aProtocolEntryCarriesTheMandatoryFieldsOfLeitplankeF() {
     DiagnosticContextLogEntry entry =
-        new DiagnosticContextLogEntry(
-            organizationId,
-            UUID.randomUUID().toString(),
-            DiagnosticTargetKind.USER,
-            UUID.randomUUID().toString(),
-            "Wo steht die Dienstanweisung?",
-            1,
-            "chunk-1",
-            "libraries=[];lockedLibraries=[]",
-            "Beschwerde 4711");
+        logRepository.save(
+            new DiagnosticContextLogEntry(
+                organizationId,
+                UUID.randomUUID().toString(),
+                DiagnosticTargetKind.USER,
+                UUID.randomUUID().toString(),
+                "Wo steht die Dienstanweisung?",
+                1,
+                "chunk-1",
+                "libraries=[];lockedLibraries=[]",
+                "Beschwerde 4711"));
+
+    Map<String, Object> stored =
+        jdbcTemplate.queryForMap(
+            "SELECT * FROM diagnostic_context_log WHERE event_id = ?", entry.getEventId());
+    assertThat(stored)
+        .containsEntry("organization_id", organizationId)
+        .containsEntry("actor_ref", entry.getActorRef())
+        .containsEntry("target_kind", "USER")
+        .containsEntry("target_ref", entry.getTargetRef())
+        .containsEntry("test_question", "Wo steht die Dienstanweisung?")
+        .containsEntry("hit_count", 1)
+        .containsEntry("hit_refs", "chunk-1")
+        .containsEntry("permission_snapshot", "libraries=[];lockedLibraries=[]")
+        .containsEntry("justification", "Beschwerde 4711");
+    assertThat(stored.get("recorded_at")).isNotNull();
+  }
+
+  /**
+   * Leitplanke (h): the rejected access to the Gesamtprotokoll must still be readable afterwards.
+   * The call runs inside a transaction that the rejection rolls back - an entry written by a
+   * transaction-joining recorder disappears with it, which is what this asserts against.
+   */
+  @Test
+  void aRejectedGesamtprotokollAccessSurvivesTheRollbackOfTheRejectedCall() {
+    Instant from = Instant.now().minus(1, ChronoUnit.DAYS);
+
+    assertThatThrownBy(
+            () ->
+                transactionTemplate.execute(
+                    status ->
+                        logQueryService.findByTimeRange(
+                            admin, from, Instant.now(), "Beschwerde 4711", 0, 50)))
+        .isInstanceOf(AccessDeniedException.class);
 
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM diagnostic_context_log WHERE event_id = ?",
+                "SELECT count(*) FROM audit_log WHERE organization_id = ? AND event_type ="
+                    + " 'AUDIT_LOG_ACCESSED' AND outcome = 'DENIED' AND reason = ?",
                 Integer.class,
-                saveEntry(entry)))
+                organizationId,
+                "Beschwerde 4711"))
         .isEqualTo(1);
   }
 
-  private UUID saveEntry(DiagnosticContextLogEntry entry) {
-    jdbcTemplate.update(
-        "INSERT INTO diagnostic_context_log (event_id, recorded_at, organization_id, actor_ref,"
-            + " target_kind, target_ref, test_question, hit_count, hit_refs, permission_snapshot,"
-            + " justification) VALUES (?, now(), ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        entry.getEventId(),
-        entry.getOrganizationId(),
-        entry.getActorRef(),
-        entry.getTargetKind().name(),
-        entry.getTargetRef(),
-        entry.getTestQuestion(),
-        entry.getHitCount(),
-        entry.getHitRefs(),
-        entry.getPermissionSnapshot(),
-        entry.getJustification());
-    return entry.getEventId();
+  /**
+   * Leitplanke (e) against the real grant model: the two-step path, in which an administrator first
+   * grants themselves {@code OWNER} through the administrative floor of the grant endpoint and then
+   * lifts the lock as "the responsible body". The self-grant itself succeeds - granting is the
+   * administration's job - and the lock holds anyway.
+   */
+  @Test
+  void anAdministratorWhoGrantsThemselvesOwnerStillCannotLiftAForeignLock() {
+    KnowledgeLibrary library = persistLibraryOwnedBy(holderId);
+
+    assetGrantService.upsertGrant(
+        library.getId(),
+        new AssetGrantUpsert(PermissionSubjectType.USER, admin.id(), AssetRole.OWNER),
+        admin);
+
+    assertThatThrownBy(() -> lockService.setLocked(admin, library.getId(), false))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT diagnostics_locked FROM knowledge_libraries WHERE id = ?",
+                Boolean.class,
+                library.getId()))
+        .isTrue();
+  }
+
+  /** The counterpart: the named responsible body does lift its own lock. */
+  @Test
+  void theResponsibleOwnerLiftsTheLock() {
+    KnowledgeLibrary library = persistLibraryOwnedBy(holderId);
+    CurrentUser owner = CurrentUser.of(holderId, organizationId, SystemRole.USER, "Zustaendige");
+
+    assertThat(lockService.setLocked(owner, library.getId(), false).isDiagnosticsLocked())
+        .isFalse();
+  }
+
+  private KnowledgeLibrary persistLibraryOwnedBy(UUID ownerUserId) {
+    KnowledgeLibrary library =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                organizationId,
+                "Personalvorgaenge " + UUID.randomUUID(),
+                null,
+                ownerUserId,
+                LibraryVisibility.PRIVATE,
+                false));
+    assetGrantRepository.save(
+        AssetGrant.forUser(
+            library.getId(), organizationId, ownerUserId, AssetRole.OWNER, null, ownerUserId));
+    return library;
   }
 
   private User persistUser(String subject) {

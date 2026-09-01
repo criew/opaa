@@ -12,7 +12,6 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.DiagnosticTargetKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditActorPseudonymService;
-import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -22,6 +21,7 @@ import io.opaa.common.ValidationException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -105,9 +105,9 @@ class DiagnosticContextLogQueryServiceTest {
                     50))
         .isInstanceOf(AccessDeniedException.class);
 
-    ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
-    verify(auditEventRecorder).recordUserAction(event.capture());
-    assertThat(event.getValue().outcome()).isEqualTo(AuditOutcome.DENIED);
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID), eq(callerId), any(), eq(AuditOutcome.DENIED), eq("Beschwerde"));
   }
 
   @Test
@@ -138,10 +138,40 @@ class DiagnosticContextLogQueryServiceTest {
     service.findByTimeRange(
         caller(SystemRole.AUDITOR), FROM, FROM.plus(7, ChronoUnit.DAYS), "Beschwerde 4711", 0, 50);
 
-    ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
-    verify(auditEventRecorder).recordUserAction(event.capture());
-    assertThat(event.getValue().outcome()).isEqualTo(AuditOutcome.SUCCESS);
-    assertThat(event.getValue().reason()).isEqualTo("Beschwerde 4711");
+    ArgumentCaptor<Map<String, Object>> scope = ArgumentCaptor.captor();
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            scope.capture(),
+            eq(AuditOutcome.SUCCESS),
+            eq("Beschwerde 4711"));
+    assertThat(scope.getValue())
+        .containsEntry("accessPath", "diagnostic-context-events")
+        .containsKeys("from", "to");
+  }
+
+  /**
+   * Regression guard for the review of #1121: the DENIED entry must be written through {@link
+   * AuditEventRecorder#recordAuditLogAccess}, whose suspended transaction survives the rejection -
+   * {@code recordUserAction} joins the caller's transaction, which the thrown exception rolls back.
+   * {@code DiagnosticAccessIntegrationTest} proves the surviving row against a real transaction;
+   * this assertion keeps a future edit from silently swapping the method back.
+   */
+  @Test
+  void aRejectedAccessIsNeverRecordedThroughATransactionJoiningPath() {
+    assertThatThrownBy(
+            () ->
+                service.findByTimeRange(
+                    caller(SystemRole.SYSTEM_ADMIN),
+                    FROM,
+                    FROM.plus(1, ChronoUnit.DAYS),
+                    "Beschwerde",
+                    0,
+                    50))
+        .isInstanceOf(AccessDeniedException.class);
+
+    verify(auditEventRecorder, never()).recordUserAction(any());
   }
 
   private DiagnosticContextLogEntry entry(UUID actorPseudonym, String targetRef) {

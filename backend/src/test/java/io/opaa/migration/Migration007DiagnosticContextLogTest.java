@@ -9,6 +9,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,9 +26,14 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The restricted account is provisioned here rather than by re-running the changeset as a
  * non-superuser - same reasoning and same shape as {@link AuditPrivilegeModelTest}, see its
- * Javadoc. {@code opaa_audit_owner} is deliberately never dropped by this class: it is created by
- * the baseline, which this class's own fixture chain applies at template-build time (see {@link
- * AbstractMigrationTest}, "Important asymmetry").
+ * Javadoc: Liquibase runs as an account that must be able to create the objects in the first place,
+ * so the account the application later uses cannot be the account that applied the changeset. That
+ * hand-provisioned role is only as truthful as the grants it copies, which is why {@link
+ * #grantsTheApplicationAccountExactlyInsertAndSelect} asserts the ACL the changeset itself produced
+ * - without it, a changeset handing out {@code UPDATE} would leave every "permission denied"
+ * assertion below green. {@code opaa_audit_owner} is deliberately never dropped by this class: it
+ * is created by the baseline, which this class's own fixture chain applies at template-build time
+ * (see {@link AbstractMigrationTest}, "Important asymmetry").
  */
 class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
 
@@ -183,6 +190,227 @@ class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
             statement.executeQuery(
                 "SELECT * FROM opaa_diagnostic_context_delete_expired_partitions()")) {
       assertThat(rs.next()).isFalse();
+    }
+  }
+
+  /**
+   * The privileges {@link #provisionApplicationRole} hands the test role must be the privileges the
+   * changeset hands the real application account - otherwise this class measures its own fixture.
+   */
+  @Test
+  void grantsTheApplicationAccountExactlyInsertAndSelect() throws SQLException {
+    assertThat(tablePrivilegesOf("diagnostic_context_log", changesetAccount()))
+        .containsExactlyInAnyOrder("INSERT", "SELECT");
+    assertThat(tablePrivilegesOf("diagnostic_context_retention_settings", changesetAccount()))
+        .containsExactly("SELECT");
+  }
+
+  /** A partition carries no ACL of its own, so nothing reaches it except through the parent. */
+  @Test
+  void grantsNothingOnAPartitionItself() throws Exception {
+    UUID eventId = insertEntryAs(appConnection, "PERMISSION_PROFILE", "Profil", null);
+    String partition = partitionNameOf(eventId);
+
+    assertThat(tablePrivilegesOf(partition.replace("public.", ""), changesetAccount())).isEmpty();
+  }
+
+  /**
+   * The account may not repair its own restriction. A {@code GRANT} by a grantor holding no
+   * grantable privilege is a Postgres quirk - it raises only a WARNING the driver does not surface
+   * - so this asserts the effect afterwards rather than the statement throwing, exactly as {@code
+   * AuditPrivilegeModelTest} does.
+   */
+  @Test
+  void applicationAccountCanNeitherGrantItselfMoreNorBecomeTheOwner() throws Exception {
+    UUID eventId = insertEntryAs(appConnection, "PERMISSION_PROFILE", "Profil", null);
+    try (Statement statement = appConnection.createStatement()) {
+      statement.execute("GRANT ALL ON TABLE diagnostic_context_log TO " + APP_ROLE);
+    } catch (SQLException expectedOrIgnored) {
+      // Either outcome is acceptable - see this method's own Javadoc.
+    }
+
+    assertThatThrownBy(
+            () ->
+                execute(
+                    appConnection,
+                    "DELETE FROM diagnostic_context_log WHERE event_id = '" + eventId + "'"))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("permission denied");
+    assertThatThrownBy(() -> execute(appConnection, "SET ROLE " + OWNER_ROLE))
+        .isInstanceOf(SQLException.class);
+  }
+
+  /**
+   * Nor may it weaken the table itself - the Begr\u00fcndungspflicht is a constraint, not a habit.
+   */
+  @Test
+  void applicationAccountCannotDropAConstraintOrDetachAPartition() throws Exception {
+    UUID eventId = insertEntryAs(appConnection, "PERMISSION_PROFILE", "Profil", null);
+    String partition = partitionNameOf(eventId);
+
+    assertThatThrownBy(
+            () ->
+                execute(
+                    appConnection,
+                    "ALTER TABLE diagnostic_context_log DROP CONSTRAINT"
+                        + " chk_diagnostic_context_log_justification"))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("must be owner");
+    assertThatThrownBy(
+            () ->
+                execute(
+                    appConnection,
+                    "ALTER TABLE diagnostic_context_log DETACH PARTITION " + partition))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("must be owner");
+  }
+
+  /**
+   * Leitplanke (i) asks for a deletion that is "automatisch und nachweisbar" - so this drops a real
+   * partition with a real row in it, rather than asserting that a run with nothing due removes
+   * nothing.
+   */
+  @Test
+  void dropsAnExpiredPartitionWithItsRows() throws Exception {
+    createOwnedPartitionMonthsAgo(6);
+    insertEntryMonthsAgo(6);
+    assertThat(countAs(connection)).isEqualTo(1);
+    // retention 1 month, and the last run was a month ago: the forward cap allows exactly one
+    // month of progress, from the sixth-last month to the fifth-last - enough to expire the
+    // partition seeded above.
+    setRetentionState(1, 6, 1);
+
+    assertThat(runDeletion()).containsExactly(partitionNameMonthsAgo(6));
+
+    assertThat(countAs(connection)).isZero();
+    assertThat(cutoffMonthsAgo()).isEqualTo(5);
+  }
+
+  /**
+   * The forward cap of the same function: a drastically shortened Frist takes effect one calendar
+   * month per run instead of erasing years in a single call.
+   */
+  @Test
+  void neverAdvancesFurtherThanOneMonthPerRun() throws Exception {
+    createOwnedPartitionMonthsAgo(6);
+    insertEntryMonthsAgo(6);
+    // Same shortened Frist, but this month's run has already happened: no month has elapsed, so
+    // the cutoff must not move at all and nothing may be dropped.
+    setRetentionState(1, 6, 0);
+
+    assertThat(runDeletion()).isEmpty();
+
+    assertThat(countAs(connection)).isEqualTo(1);
+    assertThat(cutoffMonthsAgo()).isEqualTo(6);
+  }
+
+  private void setRetentionState(int retentionMonths, int cutoffMonthsAgo, int lastRunMonthsAgo)
+      throws SQLException {
+    execute(
+        connection,
+        "UPDATE diagnostic_context_retention_settings SET retention_months = "
+            + retentionMonths
+            + ", last_cutoff = date_trunc('month', now()) - interval '"
+            + cutoffMonthsAgo
+            + " months', last_run_month = (date_trunc('month', now()) - interval '"
+            + lastRunMonthsAgo
+            + " months')::date WHERE id = 1");
+  }
+
+  private List<String> runDeletion() throws SQLException {
+    List<String> dropped = new ArrayList<>();
+    try (Statement statement = appConnection.createStatement();
+        ResultSet rs =
+            statement.executeQuery(
+                "SELECT * FROM opaa_diagnostic_context_delete_expired_partitions()")) {
+      while (rs.next()) {
+        dropped.add(rs.getString(1));
+      }
+    }
+    return dropped;
+  }
+
+  private int cutoffMonthsAgo() throws SQLException {
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery(
+                "SELECT ((extract(year FROM date_trunc('month', now())) - extract(year FROM"
+                    + " last_cutoff)) * 12 + (extract(month FROM date_trunc('month', now())) -"
+                    + " extract(month FROM last_cutoff)))::int AS months FROM"
+                    + " diagnostic_context_retention_settings WHERE id = 1")) {
+      assertThat(rs.next()).isTrue();
+      return rs.getInt("months");
+    }
+  }
+
+  private void createOwnedPartitionMonthsAgo(int monthsAgo) throws SQLException {
+    String name = partitionNameMonthsAgo(monthsAgo);
+    execute(
+        connection,
+        "CREATE TABLE "
+            + name
+            + " PARTITION OF diagnostic_context_log FOR VALUES FROM ((date_trunc('month', now())"
+            + " - interval '"
+            + monthsAgo
+            + " months')::date) TO ((date_trunc('month', now()) - interval '"
+            + (monthsAgo - 1)
+            + " months')::date)");
+    // The function drops partitions as opaa_audit_owner, which requires ownership - the changeset
+    // hands every partition it creates to that role for the same reason.
+    execute(connection, "ALTER TABLE " + name + " OWNER TO " + OWNER_ROLE);
+  }
+
+  private String partitionNameMonthsAgo(int monthsAgo) throws SQLException {
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "SELECT 'diagnostic_context_log_' || to_char(date_trunc('month', now()) - (? ||"
+                + " ' months')::interval, 'YYYY_MM')")) {
+      statement.setInt(1, monthsAgo);
+      try (ResultSet rs = statement.executeQuery()) {
+        assertThat(rs.next()).isTrue();
+        return rs.getString(1);
+      }
+    }
+  }
+
+  private void insertEntryMonthsAgo(int monthsAgo) throws SQLException {
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "INSERT INTO diagnostic_context_log (event_id, recorded_at, organization_id,"
+                + " actor_ref, target_kind, target_ref, test_question, hit_count, hit_refs,"
+                + " permission_snapshot, justification) VALUES (?, date_trunc('month', now()) -"
+                + " (? || ' months')::interval + interval '2 days', ?, 'actor-pseudonym',"
+                + " 'PERMISSION_PROFILE', 'Profil', 'Wo steht die Dienstanweisung?', 0, '',"
+                + " 'libraries=[];lockedLibraries=[]', NULL)")) {
+      statement.setObject(1, UUID.randomUUID());
+      statement.setInt(2, monthsAgo);
+      statement.setObject(3, ORGANIZATION_ID);
+      statement.executeUpdate();
+    }
+  }
+
+  private String changesetAccount() throws SQLException {
+    try (Statement statement = connection.createStatement();
+        ResultSet rs = statement.executeQuery("SELECT current_user")) {
+      assertThat(rs.next()).isTrue();
+      return rs.getString(1);
+    }
+  }
+
+  private List<String> tablePrivilegesOf(String tableName, String grantee) throws SQLException {
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "SELECT DISTINCT privilege_type FROM information_schema.table_privileges WHERE"
+                + " table_schema = 'public' AND table_name = ? AND grantee = ?")) {
+      statement.setString(1, tableName);
+      statement.setString(2, grantee);
+      List<String> privileges = new ArrayList<>();
+      try (ResultSet rs = statement.executeQuery()) {
+        while (rs.next()) {
+          privileges.add(rs.getString(1));
+        }
+      }
+      return privileges;
     }
   }
 
