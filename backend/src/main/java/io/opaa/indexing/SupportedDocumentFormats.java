@@ -20,7 +20,7 @@ import org.apache.tika.mime.MediaTypeRegistry;
  * from the file's actual content rather than its name.
  *
  * <p>Both the filesystem path ({@link DocumentService}) and the network path ({@link
- * UrlIndexingExecutor}/{@link RssFeedIndexingExecutor}) ask this class the same question the same
+ * UrlIndexingExecutor}/{@code RssFeedIndexingExecutor}) ask this class the same question the same
  * way: what does {@link #detectMediaType} report for these bytes, not what does the file happen to
  * be named. {@link #decideForFileName} accepts a Tika-detected media type {@link #EXTENSIONS}
  * covers regardless of what the file is named; a claimed extension that does not match the detected
@@ -50,7 +50,7 @@ public final class SupportedDocumentFormats {
   /**
    * Maps a {@code Content-Type} header value to one of the {@link #EXTENSIONS} above, for sources
    * that cannot expose a supported extension in the URL itself - the Government Site Builder
-   * attachment profile ({@link AttachmentProfile#GSB}), whose addresses carry the file through a
+   * attachment profile ({@code AttachmentProfile#GSB}), whose addresses carry the file through a
    * query parameter instead of a path extension. Deliberately narrower than what Tika itself could
    * detect: this map only needs to cover the same formats {@link #EXTENSIONS} already accepts.
    */
@@ -216,7 +216,7 @@ public final class SupportedDocumentFormats {
   /**
    * Detects a media type from a leading byte sample alone - the network path's own counterpart to
    * {@link #detectMediaType(Path)}, used before a file behind a listing is downloaded in full:
-   * {@link UrlIndexingExecutor} reads at most {@link #DETECTION_PREFIX_BYTES} to decide whether an
+   * {@code UrlIndexingExecutor} reads at most {@link #DETECTION_PREFIX_BYTES} to decide whether an
    * entry is worth downloading at all, so an arbitrarily large file linked from a directory listing
    * never has to be written to disk in full only to be rejected afterwards.
    */

@@ -5,15 +5,15 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.AutoindexCrawlerService;
 import io.opaa.indexing.DocumentService;
-import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.RssFeedEntry;
-import io.opaa.indexing.RssFeedParseException;
-import io.opaa.indexing.RssFeedParser;
 import io.opaa.indexing.SupportedDocumentFormats;
-import io.opaa.indexing.UrlIndexingExecutor;
+import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
+import io.opaa.indexing.source.rss.RssFeedEntry;
+import io.opaa.indexing.source.rss.RssFeedParseException;
+import io.opaa.indexing.source.rss.RssFeedParser;
+import io.opaa.indexing.source.web.AutoindexCrawlerService;
+import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
@@ -44,10 +44,10 @@ import org.springframework.stereotype.Service;
 /**
  * Tests a source configuration <em>before</em> a library is created (#514) - the same three checks
  * {@link KnowledgeLibraryService#createLibrary} and the corresponding {@code
- * io.opaa.indexing.SourceIndexingExecutor} would otherwise only surface much later, at the first
- * indexing run: whether a FILESYSTEM directory exists and is readable, whether an HTTP_DIRECTORY
- * page answers under the configured proxy/credentials/certificate settings, and whether an RSS_FEED
- * URL serves a parseable feed.
+ * io.opaa.indexing.source.SourceIndexingExecutor} would otherwise only surface much later, at the
+ * first indexing run: whether a FILESYSTEM directory exists and is readable, whether an
+ * HTTP_DIRECTORY page answers under the configured proxy/credentials/certificate settings, and
+ * whether an RSS_FEED URL serves a parseable feed.
  *
  * <p><b>Same building blocks as the real runs, deliberately</b> (issue #514): {@link
  * SourceHttpClientFactory#buildHttpClient} and {@link SourceHttpClientFactory#buildAuthHeader} are

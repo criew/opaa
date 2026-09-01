@@ -8,8 +8,8 @@ import java.util.Set;
  *
  * <p><b>Open-closed is the acceptance criterion, not a style wish.</b> Adding a format means adding
  * an implementation of this interface and registering it as a bean - nothing in {@link
- * DocumentPipelineRegistry}, {@link FileProcessingService} or {@link SupportedDocumentFormats}
- * changes shape for it. {@link SupportedDocumentFormats} stays the single admission decision (what
+ * DocumentPipelineRegistry}, {@code FileProcessingService} or {@code SupportedDocumentFormats}
+ * changes shape for it. {@code SupportedDocumentFormats} stays the single admission decision (what
  * is indexed at all); this interface only decides <em>how</em> an already-admitted document is
  * processed.
  *
@@ -34,7 +34,7 @@ public interface DocumentPipeline {
   short version();
 
   /**
-   * The canonical {@link SupportedDocumentFormats} extensions this pipeline claims (e.g. {@code
+   * The canonical {@code SupportedDocumentFormats} extensions this pipeline claims (e.g. {@code
    * ".pdf"}) - the routing key {@link DocumentPipelineRegistry} resolves from a document's
    * <em>detected content</em>, never from its file name alone. Empty for the fallback pipeline,
    * which claims no format and handles everything no other pipeline claimed.

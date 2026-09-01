@@ -22,7 +22,7 @@ public class DocumentService {
    * caller that needs to both set it as {@link Document#getErrorMessage()} and report the same
    * wording as an {@link IndexingRunEvent}, so the two never drift apart.
    */
-  static final String NO_EXTRACTABLE_TEXT_MESSAGE =
+  public static final String NO_EXTRACTABLE_TEXT_MESSAGE =
       "Enthält keinen extrahierbaren Text, vermutlich ein Scan; für diese Datei ist"
           + " Texterkennung nötig, die derzeit nicht eingerichtet ist";
 

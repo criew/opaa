@@ -9,12 +9,15 @@ import java.util.List;
  * else - so a test that only cares about {@link FileProcessingService} keeps stubbing {@link
  * DocumentService} and {@link ChunkingService} directly, exactly as before the pipeline abstraction
  * existed.
+ *
+ * <p>Public - consumed from {@code io.opaa.indexing.source.filesystem} test code (#1113); a test
+ * helper, not a production API surface.
  */
-final class TestPipelineRegistries {
+public final class TestPipelineRegistries {
 
   private TestPipelineRegistries() {}
 
-  static DocumentPipelineRegistry fallbackOnly(
+  public static DocumentPipelineRegistry fallbackOnly(
       DocumentService documentService, ChunkingService chunkingService) {
     TikaFallbackPipeline fallback = new TikaFallbackPipeline(documentService, chunkingService);
     return new DocumentPipelineRegistry(List.of(fallback), fallback);

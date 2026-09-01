@@ -17,7 +17,7 @@ import java.nio.file.Path;
  *     {@link DocumentPipelineRegistry.Routed#detectedExtension()}), or {@code null} when routing
  *     did not resolve one (detection failed, or this source never went through the registry at all
  *     - the RSS entry body's {@link #ofExtractedText}). A pipeline handling more than one format
- *     (e.g. {@link TabularDocumentPipeline}'s XLSX/CSV/ODS) dispatches on this, not on {@code
+ *     (e.g. {@code TabularDocumentPipeline}'s XLSX/CSV/ODS) dispatches on this, not on {@code
  *     fileName}'s own suffix - a document is admitted and routed by its <em>detected</em> content
  *     (#404), and a pipeline that re-derived the format from the name alone would silently
  *     reintroduce the name-trusting bug the registry exists to avoid (a genuine XLSX misnamed

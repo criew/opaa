@@ -11,6 +11,8 @@ import io.opaa.indexing.pipeline.PipelineReindexResult;
 import io.opaa.indexing.pipeline.PipelineReindexService;
 import io.opaa.indexing.pipeline.PipelineVersionProgress;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
+import io.opaa.indexing.source.web.AutoindexCrawlerService;
+import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadProperties;
