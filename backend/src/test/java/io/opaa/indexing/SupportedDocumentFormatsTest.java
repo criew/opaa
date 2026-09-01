@@ -132,6 +132,14 @@ class SupportedDocumentFormatsTest {
   }
 
   @Test
+  void isPdfContentIsTrueOnlyForDetectedPdfContent() {
+    assertThat(SupportedDocumentFormats.isPdfContent("application/pdf")).isTrue();
+    assertThat(SupportedDocumentFormats.isPdfContent("application/msword")).isFalse();
+    assertThat(SupportedDocumentFormats.isPdfContent("text/plain")).isFalse();
+    assertThat(SupportedDocumentFormats.isPdfContent(null)).isFalse();
+  }
+
+  @Test
   void decideForFileNameAcceptsMatchingExtensionWithoutAMismatch() {
     var decision = SupportedDocumentFormats.decideForFileName("bescheid.pdf", "application/pdf");
 

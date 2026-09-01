@@ -220,6 +220,13 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                 storageQuotaService.quotaExceededMessage(targetLibrary.getId()),
                 entry.url());
             progress.recordSkipped();
+          } else if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
+            // See AsyncIndexingExecutor's own handling of this outcome.
+            events.record(
+                IndexingEventCategory.REJECTED,
+                DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
+                entry.url());
+            progress.recordSkipped();
           } else if (result == FileProcessingResult.SKIPPED) {
             progress.recordSkipped();
           } else {

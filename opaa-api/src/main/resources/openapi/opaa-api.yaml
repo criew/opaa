@@ -571,6 +571,62 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/indexing/low-chunk-documents:
+    get:
+      operationId: listLowChunkDocuments
+      tags: [admin, indexing]
+      summary: >
+        The one-time inventory check for scan-PDF fallout (system admin only, #1055/#1090,
+        ingestion-pipelines.md Teil 3 Punkt 1 "Scan-Erkennung und Bestandsprüfung")
+      description: >
+        Every INDEXED document of the caller's own organization whose chunkCount is at or below
+        chunkCountThreshold - the bestand a scan PDF could have silently landed in before ingest-time
+        detection existed, and the operational metric that stays permanently queryable rather than a
+        one-off cleanup that goes stale the moment the next such file is indexed. Scoped to the
+        caller's own organization the same way every other admin listing in this API is - never a
+        cross-organization view. Consumed by the "Suche & Indexierung" administration page (#1053).
+      parameters:
+        - name: chunkCountThreshold
+          in: query
+          required: false
+          description: >
+            Flags a document whose chunkCount is at or below this value. Default 0 - the unambiguous
+            anomaly this issue's own bug produces. Raising it also catches "auffällig wenige" chunks,
+            a judgement call with no measured threshold (see ingestion-pipelines.md's "gesetzt, nicht
+            gemessen" rule for chunk sizes) - left to the caller rather than guessed here.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: page
+          in: query
+          required: false
+          description: Rejected with 400 if negative.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          description: Rejected with 400 outside 1..100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Page of flagged documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LowChunkDocumentPageResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/admin/directory-sync/dry-run:
     post:
       operationId: runDirectorySyncDryRun
@@ -4237,6 +4293,50 @@ components:
             itself (#821). Empty at the library's root and always empty when q is set.
           items:
             $ref: "#/components/schemas/LibraryFolderBreadcrumbItem"
+
+    LowChunkDocumentResponse:
+      type: object
+      required: [documentId, libraryId, libraryName, fileName, chunkCount]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+          description: >
+            The library's current name, or "Unbekannte Bibliothek" if the library no longer resolves
+            (deleted between the query and the response being built) - the document is still
+            reported rather than silently dropped.
+        fileName:
+          type: string
+        fileSize:
+          type: integer
+          format: int64
+          nullable: true
+        chunkCount:
+          type: integer
+
+    LowChunkDocumentPageResponse:
+      type: object
+      required: [items, page, size, totalElements]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LowChunkDocumentResponse"
+        page:
+          type: integer
+          description: Zero-based index of the returned page.
+        size:
+          type: integer
+          description: The requested page size (not necessarily items.length for the last page).
+        totalElements:
+          type: integer
+          format: int64
+          description: Total number of flagged documents across all pages.
 
     LibraryFolderRequest:
       type: object
