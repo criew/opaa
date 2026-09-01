@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-documents-indexed-chunk-count-index
+      author: opaa
+      comment: >
+        Backs LowChunkDocumentAuditService#findLowChunkDocuments: (organization_id, chunk_count),
+        partial on status = 'INDEXED' - the only status this query filters on.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE INDEX idx_documents_indexed_chunk_count ON public.documents USING btree (organization_id, chunk_count) WHERE ((status)::text = 'INDEXED'::text);
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_documents_indexed_chunk_count;

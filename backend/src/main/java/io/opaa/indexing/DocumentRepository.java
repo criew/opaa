@@ -38,16 +38,12 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   List<Document> findByLibraryId(UUID libraryId);
 
   /**
-   * Backs {@link LowChunkDocumentAuditService#findLowChunkDocuments} - the one-time inventory check
-   * from ingestion-pipelines.md, Teil 3, Punkt 1 "Scan-Erkennung und Bestandsprüfung": every {@link
-   * DocumentStatus#INDEXED} document whose {@code chunkCount} is at or below {@code
-   * chunkCountThreshold}, the pre-fix bestand a scan PDF could have silently landed in as
-   * "successfully" indexed with no or barely any retrievable content. A plain query, not a stored
-   * snapshot - {@code chunk_count} is already a live column, so re-running this finds the current
-   * state, satisfying the "dauerhaft abfragbar" requirement without a separate audit table.
+   * Backs {@link LowChunkDocumentAuditService#findLowChunkDocuments}: one organization's {@link
+   * DocumentStatus#INDEXED} documents at or below {@code chunkCountThreshold} chunks, paged. Backed
+   * by the partial index {@code idx_documents_indexed_chunk_count} (migration 002).
    */
-  List<Document> findByStatusAndChunkCountLessThanEqual(
-      DocumentStatus status, int chunkCountThreshold);
+  Page<Document> findByOrganizationIdAndStatusAndChunkCountLessThanEqual(
+      UUID organizationId, DocumentStatus status, int chunkCountThreshold, Pageable pageable);
 
   /**
    * Backs {@link StaleDocumentCleanupService#cleanupVanished}: every document of a single {@code

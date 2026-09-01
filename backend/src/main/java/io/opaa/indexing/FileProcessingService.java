@@ -189,6 +189,14 @@ public class FileProcessingService {
       List<org.springframework.ai.document.Document> chunks =
           chunkingService.chunkDocuments(fileName, parsed);
       log.debug("File {} produced {} chunks", fileName, chunks.size());
+      if (chunks.isEmpty()) {
+        // Non-blank parsed text can still chunk down to nothing (OCR noise/page footers below
+        // ChunkingService's own minChunkLengthToEmbed/minChunkSizeChars, or a non-PDF format the
+        // isTextlessPdf guard above never covers) - the format-independent guard on the promised
+        // outcome itself: never INDEXED with zero chunks, regardless of why chunking produced none.
+        log.warn("Chunking produced no chunks for: {}", file);
+        return markConnectorRejected(doc.getId());
+      }
 
       // Enrich chunks with metadata and store via VectorStore
       storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(fileName));
@@ -309,6 +317,12 @@ public class FileProcessingService {
       List<org.springframework.ai.document.Document> chunks =
           chunkingService.chunkDocuments(fileName, parsed);
       log.debug("URL file {} produced {} chunks", fileName, chunks.size());
+      if (chunks.isEmpty()) {
+        // See processFile's identical guard for why this check exists independently of
+        // isTextlessPdf above.
+        log.warn("Chunking produced no chunks for URL document: {}", remoteUrl);
+        return markConnectorRejected(doc.getId());
+      }
 
       // fileName is always a real file name here regardless of sourceType - both HTTP_DIRECTORY
       // and an RSS_FEED entry's attachment (see this method's own Javadoc) go through this path,
@@ -478,6 +492,16 @@ public class FileProcessingService {
       List<org.springframework.ai.document.Document> chunks =
           chunkingService.chunkDocuments(doc.getFileName(), parsed);
       log.debug("Uploaded file {} produced {} chunks", doc.getFileName(), chunks.size());
+      if (chunks.isEmpty()) {
+        // See processFile's identical guard for why this check exists independently of
+        // isTextlessPdf above. metrics.recordFailed(), not recordSkipped(): every other outcome on
+        // this path is INDEXED or FAILED - a single, deliberate upload has no "skipped" concept the
+        // way a connector run's item count does.
+        log.warn("Chunking produced no chunks for uploaded document: {}", doc.getFileName());
+        markUploadFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+        metrics.recordFailed();
+        return;
+      }
 
       storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(doc.getFileName()));
 
@@ -555,13 +579,12 @@ public class FileProcessingService {
   }
 
   /**
-   * The connector counterpart to {@link #markConnectorFailed} for a document rejected specifically
-   * because it carried no extractable text (see {@link DocumentService#isTextlessPdf}): marks the
-   * row {@code FAILED} with {@link DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE} instead of a
-   * generic, message-less failure, and reports {@link FileProcessingResult#NO_EXTRACTABLE_TEXT} so
-   * the caller counts and logs it as a rejection - the same contract {@link
-   * FileProcessingResult#QUOTA_EXCEEDED} already has - rather than silently treating it as a
-   * successful, zero-chunk indexing run.
+   * The connector counterpart to {@link #markConnectorFailed} for a document that never yields a
+   * usable chunk - flagged by {@link DocumentService#isTextlessPdf} or by an empty {@code
+   * chunkDocuments} result. Marks {@code FAILED} with {@link
+   * DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE} and reports {@link
+   * FileProcessingResult#NO_EXTRACTABLE_TEXT}, the same rejection contract {@link
+   * FileProcessingResult#QUOTA_EXCEEDED} already has.
    */
   private FileProcessingResult markConnectorRejected(UUID documentId) {
     int updated =

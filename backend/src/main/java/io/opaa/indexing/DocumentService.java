@@ -105,9 +105,7 @@ public class DocumentService {
    * Whether {@code parsed} carries no extractable text at all and {@code file} was detected as a
    * PDF. Tika's PDF parser returns a {@link org.springframework.ai.document.Document} even for a
    * scan without a text layer - just with blank text - so {@code parsed.isEmpty()} alone does not
-   * catch this case (ingestion-pipelines.md, Teil 3, Punkt 1 "Scan-Erkennung und Bestandsprüfung").
-   * Currently scoped to PDF; the same rule is meant to extend to TIFF/PNG/JPEG once those formats
-   * are accepted as single-page scans.
+   * catch this case. Scoped to PDF for now; meant to extend to TIFF/PNG/JPEG once accepted.
    */
   boolean isTextlessPdf(Path file, List<org.springframework.ai.document.Document> parsed) {
     boolean hasText = parsed.stream().anyMatch(d -> d.getText() != null && !d.getText().isBlank());

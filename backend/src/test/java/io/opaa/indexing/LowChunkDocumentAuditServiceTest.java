@@ -1,8 +1,6 @@
 package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -12,29 +10,34 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Unit coverage of the one-time inventory check from ingestion-pipelines.md, Teil 3, Punkt 1
- * "Scan-Erkennung und Bestandsprüfung" (#1055): finding already-INDEXED documents with null or
- * auffällig wenigen Chunks, grouped per library.
+ * "Scan-Erkennung und Bestandsprüfung" (#1055/#1090): finding already-INDEXED documents of one
+ * organization with null or auffällig wenigen Chunks, paged and carrying their library's name.
  */
 class LowChunkDocumentAuditServiceTest {
 
   private DocumentRepository documentRepository;
   private KnowledgeLibraryRepository libraryRepository;
   private LowChunkDocumentAuditService service;
+  private UUID organizationId;
 
   @BeforeEach
   void setUp() {
     documentRepository = mock(DocumentRepository.class);
     libraryRepository = mock(KnowledgeLibraryRepository.class);
     service = new LowChunkDocumentAuditService(documentRepository, libraryRepository);
+    organizationId = UUID.randomUUID();
   }
 
   private static KnowledgeLibrary library(String name) {
@@ -50,84 +53,71 @@ class LowChunkDocumentAuditServiceTest {
     return document;
   }
 
-  // findLowChunkDocuments groups by a HashMap keyed on libraryId and asks the repository with
-  // that map's keySet() (a Set, order-independent) - a plain List.of(...) argument would never
-  // match Mockito's equals()-based stubbing (a Set never equals a List, even with the same
-  // elements), so every findAllById stub here matches on contents instead.
-  private static Iterable<UUID> containingExactly(UUID... ids) {
-    return argThat(actual -> new HashSet<>(toSet(actual)).equals(Set.of(ids)));
-  }
+  @Test
+  void returnsAnEmptyPageWhenNoDocumentIsAtOrBelowTheThreshold() {
+    Pageable pageable = PageRequest.of(0, 20);
+    when(documentRepository.findByOrganizationIdAndStatusAndChunkCountLessThanEqual(
+            organizationId, DocumentStatus.INDEXED, 0, pageable))
+        .thenReturn(Page.empty(pageable));
 
-  private static Set<UUID> toSet(Iterable<UUID> ids) {
-    Set<UUID> result = new HashSet<>();
-    ids.forEach(result::add);
-    return result;
+    Page<LowChunkDocumentAuditService.LowChunkDocumentEntry> result =
+        service.findLowChunkDocuments(organizationId, 0, pageable);
+
+    assertThat(result.getContent()).isEmpty();
+    assertThat(result.getTotalElements()).isZero();
   }
 
   @Test
-  void returnsAnEmptyListWhenNoDocumentIsAtOrBelowTheThreshold() {
-    when(documentRepository.findByStatusAndChunkCountLessThanEqual(
-            eq(DocumentStatus.INDEXED), anyInt()))
-        .thenReturn(List.of());
+  void scopesToTheCallersOrganizationAndCarriesLibraryNameFileNameSizeAndChunkCount() {
+    KnowledgeLibrary library = library("Satzungen");
+    Document zeroChunk = indexedDocument(library.getId(), "scan.pdf", 12_345L, 0);
+    Pageable pageable = PageRequest.of(0, 20);
 
-    assertThat(service.findLowChunkDocuments(0)).isEmpty();
+    when(documentRepository.findByOrganizationIdAndStatusAndChunkCountLessThanEqual(
+            organizationId, DocumentStatus.INDEXED, 0, pageable))
+        .thenReturn(new PageImpl<>(List.of(zeroChunk), pageable, 1));
+    when(libraryRepository.findAllById(Set.of(library.getId()))).thenReturn(List.of(library));
+
+    Page<LowChunkDocumentAuditService.LowChunkDocumentEntry> result =
+        service.findLowChunkDocuments(organizationId, 0, pageable);
+
+    assertThat(result.getTotalElements()).isEqualTo(1);
+    LowChunkDocumentAuditService.LowChunkDocumentEntry entry = result.getContent().getFirst();
+    assertThat(entry.libraryId()).isEqualTo(library.getId());
+    assertThat(entry.libraryName()).isEqualTo("Satzungen");
+    assertThat(entry.fileName()).isEqualTo("scan.pdf");
+    assertThat(entry.fileSize()).isEqualTo(12_345L);
+    assertThat(entry.chunkCount()).isEqualTo(0);
   }
 
   @Test
-  void groupsFlaggedDocumentsPerLibraryWithFileNameSizeAndChunkCount() {
-    KnowledgeLibrary libraryA = library("Satzungen");
-    KnowledgeLibrary libraryB = library("Formulare");
-    Document zeroChunkInA = indexedDocument(libraryA.getId(), "scan.pdf", 12_345L, 0);
-    Document alsoZeroInA = indexedDocument(libraryA.getId(), "altakte.pdf", 999L, 0);
-    Document zeroChunkInB = indexedDocument(libraryB.getId(), "vermerk.pdf", 42L, 0);
-
-    when(documentRepository.findByStatusAndChunkCountLessThanEqual(DocumentStatus.INDEXED, 0))
-        .thenReturn(List.of(zeroChunkInA, alsoZeroInA, zeroChunkInB));
-    when(libraryRepository.findAllById(containingExactly(libraryA.getId(), libraryB.getId())))
-        .thenReturn(List.of(libraryA, libraryB));
-
-    List<LowChunkDocumentAuditService.LibraryLowChunkReport> reports =
-        service.findLowChunkDocuments(0);
-
-    assertThat(reports).hasSize(2);
-    // Sorted by library name.
-    assertThat(reports.get(0).libraryName()).isEqualTo("Formulare");
-    assertThat(reports.get(0).documents())
-        .extracting(LowChunkDocumentAuditService.LowChunkDocumentEntry::fileName)
-        .containsExactly("vermerk.pdf");
-    assertThat(reports.get(0).documents().getFirst().fileSize()).isEqualTo(42L);
-    assertThat(reports.get(0).documents().getFirst().chunkCount()).isEqualTo(0);
-
-    assertThat(reports.get(1).libraryName()).isEqualTo("Satzungen");
-    // Sorted by file name within a library.
-    assertThat(reports.get(1).documents())
-        .extracting(LowChunkDocumentAuditService.LowChunkDocumentEntry::fileName)
-        .containsExactly("altakte.pdf", "scan.pdf");
-  }
-
-  @Test
-  void aLibraryThatNoLongerResolvesStillReportsItsDocumentsUnderAPlaceholderName() {
+  void aLibraryThatNoLongerResolvesStillReportsItsDocumentUnderAPlaceholderName() {
     UUID vanishedLibraryId = UUID.randomUUID();
     Document orphan = indexedDocument(vanishedLibraryId, "scan.pdf", 1L, 0);
+    Pageable pageable = PageRequest.of(0, 20);
 
-    when(documentRepository.findByStatusAndChunkCountLessThanEqual(DocumentStatus.INDEXED, 0))
-        .thenReturn(List.of(orphan));
-    when(libraryRepository.findAllById(containingExactly(vanishedLibraryId))).thenReturn(List.of());
+    when(documentRepository.findByOrganizationIdAndStatusAndChunkCountLessThanEqual(
+            organizationId, DocumentStatus.INDEXED, 0, pageable))
+        .thenReturn(new PageImpl<>(List.of(orphan), pageable, 1));
+    when(libraryRepository.findAllById(Set.of(vanishedLibraryId))).thenReturn(List.of());
 
-    List<LowChunkDocumentAuditService.LibraryLowChunkReport> reports =
-        service.findLowChunkDocuments(0);
+    Page<LowChunkDocumentAuditService.LowChunkDocumentEntry> result =
+        service.findLowChunkDocuments(organizationId, 0, pageable);
 
-    assertThat(reports).hasSize(1);
-    assertThat(reports.getFirst().libraryName()).isEqualTo("Unbekannte Bibliothek");
+    assertThat(result.getContent().getFirst().libraryName()).isEqualTo("Unbekannte Bibliothek");
   }
 
   @Test
-  void thresholdIsPassedThroughToTheRepositoryQuery() {
-    when(documentRepository.findByStatusAndChunkCountLessThanEqual(DocumentStatus.INDEXED, 3))
-        .thenReturn(List.of());
+  void thresholdAndPageableArePassedThroughToTheRepositoryQuery() {
+    Pageable pageable = PageRequest.of(2, 10);
+    when(documentRepository.findByOrganizationIdAndStatusAndChunkCountLessThanEqual(
+            organizationId, DocumentStatus.INDEXED, 3, pageable))
+        .thenReturn(Page.empty(pageable));
 
-    service.findLowChunkDocuments(3);
+    service.findLowChunkDocuments(organizationId, 3, pageable);
 
-    verify(documentRepository).findByStatusAndChunkCountLessThanEqual(DocumentStatus.INDEXED, 3);
+    verify(documentRepository)
+        .findByOrganizationIdAndStatusAndChunkCountLessThanEqual(
+            eq(organizationId), eq(DocumentStatus.INDEXED), eq(3), eq(pageable));
   }
 }
