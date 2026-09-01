@@ -13,10 +13,6 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
-import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
-import io.opaa.indexing.pipeline.office.DocxDocumentPipeline;
-import io.opaa.indexing.pipeline.pdf.PdfDocumentPipeline;
-import io.opaa.indexing.pipeline.tabular.TabularDocumentPipeline;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.ActiveChatModelResolver;
@@ -343,7 +339,7 @@ class DocumentIndexingIntegrationTest {
                 String.class,
                 "report.pdf"))
         .isNotEmpty()
-        .allMatch(PdfDocumentPipeline.ID::equals);
+        .allMatch("pdf"::equals);
     assertThat(
             jdbcTemplate.queryForList(
                 "SELECT metadata->>'pipeline_id' FROM vector_store WHERE metadata->>'file_name' ="
@@ -351,7 +347,7 @@ class DocumentIndexingIntegrationTest {
                 String.class,
                 "notes.docx"))
         .isNotEmpty()
-        .allMatch(DocxDocumentPipeline.ID::equals);
+        .allMatch("docx"::equals);
   }
 
   @Test
@@ -420,8 +416,8 @@ class DocumentIndexingIntegrationTest {
     assertThat(results)
         .allMatch(
             r ->
-                TabularDocumentPipeline.ID.equals(
-                    r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
+                "tabular"
+                    .equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
   }
 
   @Test
@@ -461,8 +457,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(results)
         .allMatch(
             r ->
-                HtmlDocumentPipeline.ID.equals(
-                    r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
+                "html".equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
     assertThat(results)
         .allMatch(
             r ->

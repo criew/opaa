@@ -1,4 +1,4 @@
-package io.opaa.indexing.pipeline;
+package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -6,15 +6,11 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
-import io.opaa.indexing.AutoindexCrawlerService;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.IndexingRunEventRepository;
-import io.opaa.indexing.StaleDocumentCleanupService;
-import io.opaa.indexing.UrlIndexingExecutor;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
+import io.opaa.indexing.pipeline.PipelineReindexResult;
+import io.opaa.indexing.pipeline.PipelineReindexService;
+import io.opaa.indexing.pipeline.PipelineVersionProgress;
+import io.opaa.indexing.pipeline.TikaFallbackPipeline;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadProperties;

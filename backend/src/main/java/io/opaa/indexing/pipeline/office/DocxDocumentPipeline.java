@@ -39,7 +39,7 @@ public class DocxDocumentPipeline implements DocumentPipeline {
 
   private static final Logger log = LoggerFactory.getLogger(DocxDocumentPipeline.class);
 
-  public static final String ID = "docx";
+  static final String ID = "docx";
   static final short VERSION = 1;
 
   /**

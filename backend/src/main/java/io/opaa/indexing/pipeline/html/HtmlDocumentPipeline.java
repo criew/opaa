@@ -41,7 +41,7 @@ import org.springframework.ai.document.Document;
  */
 public class HtmlDocumentPipeline implements DocumentPipeline {
 
-  public static final String ID = "html";
+  static final String ID = "html";
   static final short VERSION = 1;
 
   /**

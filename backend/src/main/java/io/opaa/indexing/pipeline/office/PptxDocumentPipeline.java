@@ -44,7 +44,7 @@ public class PptxDocumentPipeline implements DocumentPipeline {
 
   private static final Logger log = LoggerFactory.getLogger(PptxDocumentPipeline.class);
 
-  public static final String ID = "pptx";
+  static final String ID = "pptx";
   static final short VERSION = 1;
 
   @Override
@@ -124,10 +124,10 @@ public class PptxDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * Walks {@code shapes} in order, skipping {@code titleShape} by identity (see this class's own
-   * Javadoc), descending into a {@link XSLFGroupShape} recursively and reading a {@link XSLFTable}
-   * row by row - neither is a {@link XSLFTextShape}, so a naive {@code instanceof} filter would
-   * silently drop both.
+   * Walks {@code shapes} in order, descending into a {@link XSLFGroupShape} recursively and reading
+   * a {@link XSLFTable} row by row - neither is a {@link XSLFTextShape}, so a naive {@code
+   * instanceof} filter would silently drop both. {@code titleShape} is skipped by object identity,
+   * not by comparing text: a body shape repeating the title's exact wording must still be read.
    */
   private static void collectShapeText(
       List<XSLFShape> shapes, XSLFShape titleShape, StringBuilder body) {

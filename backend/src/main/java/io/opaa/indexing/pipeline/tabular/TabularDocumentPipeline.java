@@ -60,7 +60,7 @@ public class TabularDocumentPipeline implements DocumentPipeline {
 
   private static final Logger log = LoggerFactory.getLogger(TabularDocumentPipeline.class);
 
-  public static final String ID = "tabular";
+  static final String ID = "tabular";
   static final short VERSION = 1;
 
   /**

@@ -44,7 +44,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
 
   private static final Logger log = LoggerFactory.getLogger(MailDocumentPipeline.class);
 
-  public static final String ID = "email";
+  static final String ID = "email";
   static final short VERSION = 1;
 
   /**

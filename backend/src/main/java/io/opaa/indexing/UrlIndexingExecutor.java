@@ -333,8 +333,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
    * belongs to another library. The RSS path ({@link RssFeedIndexingExecutor#isUnchanged}) mirrors
    * this too.
    */
-  public boolean isUnchanged(
-      String remoteUrl, String lastModified, KnowledgeLibrary targetLibrary) {
+  boolean isUnchanged(String remoteUrl, String lastModified, KnowledgeLibrary targetLibrary) {
     if (lastModified == null || lastModified.isBlank()) {
       return false;
     }

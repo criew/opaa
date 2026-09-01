@@ -41,7 +41,7 @@ public class PdfDocumentPipeline implements DocumentPipeline {
 
   private static final Logger log = LoggerFactory.getLogger(PdfDocumentPipeline.class);
 
-  public static final String ID = "pdf";
+  static final String ID = "pdf";
   static final short VERSION = 1;
 
   @Override

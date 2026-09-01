@@ -17,6 +17,11 @@
  * below a given pipeline version. {@code version} is raised only when a pipeline's cut or emitted
  * structure metadata actually changes, never for a behaviour-neutral fix.
  *
+ * <p>A pipeline reads its input through {@link io.opaa.indexing.pipeline.DocumentPipelineSource},
+ * which carries either a file or already extracted text. A binary-format pipeline handed a source
+ * without a file returns no content rather than failing - a source it cannot read is an empty
+ * document, never an error that aborts the run.
+ *
  * <p>{@link io.opaa.indexing.pipeline.HeadingSectionSplitter} is the shared section-cutting engine
  * every heading-driven pipeline (Markdown, DOCX, PDF, HTML) uses to turn a flat heading/paragraph
  * event stream into chunks along the heading path in effect at each cut - implemented once here so

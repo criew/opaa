@@ -3,13 +3,7 @@ package io.opaa.indexing.pipeline;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
-import io.opaa.indexing.pipeline.mail.MailDocumentPipeline;
 import io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline;
-import io.opaa.indexing.pipeline.office.DocxDocumentPipeline;
-import io.opaa.indexing.pipeline.office.PptxDocumentPipeline;
-import io.opaa.indexing.pipeline.pdf.PdfDocumentPipeline;
-import io.opaa.indexing.pipeline.tabular.TabularDocumentPipeline;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
@@ -36,59 +30,54 @@ class DocumentPipelineRegistryRoutingIntegrationTest {
 
   @Test
   void routesEveryAdmittedFormatToItsRegisteredPipeline() {
-    assertThat(registry.pipelineFor("satzung.pdf", "application/pdf").id())
-        .isEqualTo(PdfDocumentPipeline.ID);
+    assertThat(registry.pipelineFor("satzung.pdf", "application/pdf").id()).isEqualTo("pdf");
     assertThat(
             registry
                 .pipelineFor(
                     "vermerk.docx",
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
                 .id())
-        .isEqualTo(DocxDocumentPipeline.ID);
+        .isEqualTo("docx");
     assertThat(
             registry
                 .pipelineFor(
                     "vortrag.pptx",
                     "application/vnd.openxmlformats-officedocument.presentationml.presentation")
                 .id())
-        .isEqualTo(PptxDocumentPipeline.ID);
+        .isEqualTo("pptx");
     assertThat(
             registry
                 .pipelineFor(
                     "haushalt.xlsx",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 .id())
-        .isEqualTo(TabularDocumentPipeline.ID);
+        .isEqualTo("tabular");
     assertThat(registry.pipelineFor("zustaendigkeiten.csv", "text/plain").id())
-        .isEqualTo(TabularDocumentPipeline.ID);
+        .isEqualTo("tabular");
     assertThat(
             registry
                 .pipelineFor("haushalt.ods", "application/vnd.oasis.opendocument.spreadsheet")
                 .id())
-        .isEqualTo(TabularDocumentPipeline.ID);
-    assertThat(registry.pipelineFor("buergeramt.html", "text/html").id())
-        .isEqualTo(HtmlDocumentPipeline.ID);
-    assertThat(registry.pipelineFor("vorgang.eml", "text/plain").id())
-        .isEqualTo(MailDocumentPipeline.ID);
+        .isEqualTo("tabular");
+    assertThat(registry.pipelineFor("buergeramt.html", "text/html").id()).isEqualTo("html");
+    assertThat(registry.pipelineFor("vorgang.eml", "text/plain").id()).isEqualTo("email");
     assertThat(registry.pipelineFor("vorgang.msg", "application/vnd.ms-outlook").id())
-        .isEqualTo(MailDocumentPipeline.ID);
+        .isEqualTo("email");
 
     // Every format without its own registered pipeline keeps going through TikaFallbackPipeline -
     // the verhaltensneutral guarantee of Teil 1 (a new pipeline bean must never change this for a
     // format it does not claim).
-    assertThat(registry.pipelineFor("notiz.md", "text/plain").id())
-        .isEqualTo(TikaFallbackPipeline.ID);
-    assertThat(registry.pipelineFor("notiz.txt", "text/plain").id())
-        .isEqualTo(TikaFallbackPipeline.ID);
+    assertThat(registry.pipelineFor("notiz.md", "text/plain").id()).isEqualTo("tika-fallback");
+    assertThat(registry.pipelineFor("notiz.txt", "text/plain").id()).isEqualTo("tika-fallback");
     assertThat(registry.pipelineFor("altakte.doc", "application/msword").id())
-        .isEqualTo(TikaFallbackPipeline.ID);
+        .isEqualTo("tika-fallback");
     assertThat(registry.pipelineFor("satzung.odt", "application/vnd.oasis.opendocument.text").id())
-        .isEqualTo(TikaFallbackPipeline.ID);
+        .isEqualTo("tika-fallback");
     assertThat(
             registry
                 .pipelineFor("vortrag.odp", "application/vnd.oasis.opendocument.presentation")
                 .id())
-        .isEqualTo(TikaFallbackPipeline.ID);
+        .isEqualTo("tika-fallback");
   }
 
   @Test
