@@ -16,20 +16,15 @@ import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * The ODT pipeline (docs/features/ingestion-pipelines.md, Teil 3 Punkt 2) - the ODT counterpart of
- * {@link DocxDocumentPipeline}, but reading {@code content.xml} directly through a hardened SAX
- * parser ({@link OdfContentXml}) rather than Apache POI, which reads OOXML and the legacy binary
- * Office formats but never OpenDocument (see that pipeline's own Javadoc for the full reasoning,
- * shared verbatim here).
- *
- * <p>Heading level comes straight from a {@code text:h} element's own {@code text:outline-level}
- * attribute (defaulting to 1 when absent, per the ODF schema) - no style-name pattern matching is
- * needed the way {@link DocxDocumentPipeline} needs one for Word's own built-in styles. Cutting
- * stops at level 3 ({@link #MAX_CUTTING_LEVEL}), mirroring {@link DocxDocumentPipeline}. A {@code
- * table:table} is read cell by cell into one paragraph-level text block per table (never a
- * heading), mirroring {@link DocxDocumentPipeline#run}'s own table handling; a paragraph nested
- * inside another (e.g. a footnote body) folds into its enclosing paragraph's text rather than being
- * split out on its own, and a table nested inside a table cell is not specially handled - both are
- * accepted, narrow gaps for structures this document type rarely carries.
+ * {@link DocxDocumentPipeline}, reading {@code content.xml} directly through a hardened SAX parser
+ * ({@link OdfContentXml}), since Apache POI never reads OpenDocument. Heading level comes from
+ * {@code text:h}'s own {@code text:outline-level} (default 1); cutting stops at level 3 ({@link
+ * #MAX_CUTTING_LEVEL}), mirroring {@link DocxDocumentPipeline}. A {@code table:table} is read cell
+ * by cell into one paragraph-level text block; a table nested inside a cell keeps the outer table's
+ * rows intact but does not separately emit its own rows, an accepted narrow gap. {@code
+ * text:tracked-changes} (deleted text pending review) is skipped entirely. Header/footer text in
+ * {@code styles.xml} is not read at all - a known, deliberate content regression versus the
+ * previous Tika-based extraction (see docs/features/ingestion-pipelines.md).
  */
 public class OdtDocumentPipeline implements DocumentPipeline {
 
@@ -111,11 +106,13 @@ public class OdtDocumentPipeline implements DocumentPipeline {
     private Integer headingLevel;
     private final StringBuilder text = new StringBuilder();
 
-    private boolean insideTable;
+    private int tableDepth;
     private boolean insideCell;
     private List<String> tableRows;
     private List<String> currentRowCells;
     private final StringBuilder cellText = new StringBuilder();
+
+    private boolean insideTrackedChanges;
 
     OdtContentHandler(int maxParagraphs) {
       this.maxParagraphs = maxParagraphs;
@@ -127,7 +124,11 @@ public class OdtDocumentPipeline implements DocumentPipeline {
 
     @Override
     public void startElement(String uri, String localName, String qName, Attributes attributes) {
+      if (insideTrackedChanges) {
+        return;
+      }
       switch (qName) {
+        case "text:tracked-changes" -> insideTrackedChanges = true;
         case "text:h" -> {
           if (paragraphDepth == 0) {
             text.setLength(0);
@@ -143,18 +144,31 @@ public class OdtDocumentPipeline implements DocumentPipeline {
           paragraphDepth++;
         }
         case "table:table" -> {
-          insideTable = true;
-          tableRows = new ArrayList<>();
+          tableDepth++;
+          if (tableDepth == 1) {
+            tableRows = new ArrayList<>();
+          }
         }
         case "table:table-row" -> {
-          if (insideTable) {
+          if (tableDepth > 0) {
             currentRowCells = new ArrayList<>();
           }
         }
         case "table:table-cell", "table:covered-table-cell" -> {
-          if (insideTable) {
+          if (tableDepth > 0) {
             insideCell = true;
             cellText.setLength(0);
+          }
+        }
+        case "text:s" -> appendRepeatedSpace(attributes);
+        case "text:tab" -> {
+          if (paragraphDepth > 0) {
+            text.append('\t');
+          }
+        }
+        case "text:line-break" -> {
+          if (paragraphDepth > 0) {
+            text.append('\n');
           }
         }
         default -> {
@@ -162,6 +176,14 @@ public class OdtDocumentPipeline implements DocumentPipeline {
           // pipeline renders and is ignored.
         }
       }
+    }
+
+    private void appendRepeatedSpace(Attributes attributes) {
+      if (paragraphDepth == 0) {
+        return;
+      }
+      int count = parsePositiveIntOrDefault(attributes.getValue("text:c"), 1);
+      text.append(" ".repeat(count));
     }
 
     @Override
@@ -173,12 +195,18 @@ public class OdtDocumentPipeline implements DocumentPipeline {
 
     @Override
     public void endElement(String uri, String localName, String qName) throws SAXException {
+      if (insideTrackedChanges) {
+        if ("text:tracked-changes".equals(qName)) {
+          insideTrackedChanges = false;
+        }
+        return;
+      }
       switch (qName) {
         case "text:h", "text:p" -> {
           paragraphDepth--;
           if (paragraphDepth == 0) {
             String value = text.toString();
-            if (insideTable) {
+            if (tableDepth > 0) {
               if (insideCell) {
                 if (cellText.length() > 0) {
                   cellText.append(' ');
@@ -191,7 +219,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
           }
         }
         case "table:table-cell", "table:covered-table-cell" -> {
-          if (insideTable) {
+          if (tableDepth > 0) {
             insideCell = false;
             if (currentRowCells != null) {
               currentRowCells.add(cellText.toString());
@@ -199,7 +227,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
           }
         }
         case "table:table-row" -> {
-          if (insideTable && currentRowCells != null) {
+          if (tableDepth > 0 && currentRowCells != null) {
             String rowText = String.join(" | ", currentRowCells);
             if (!rowText.isBlank()) {
               tableRows.add(rowText);
@@ -208,8 +236,8 @@ public class OdtDocumentPipeline implements DocumentPipeline {
           }
         }
         case "table:table" -> {
-          if (insideTable) {
-            insideTable = false;
+          tableDepth--;
+          if (tableDepth == 0) {
             if (tableRows != null) {
               String tableText = String.join("\n", tableRows);
               if (!tableText.isBlank()) {

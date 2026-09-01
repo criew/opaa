@@ -110,6 +110,72 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
+  void multipleSpacesTabsAndLineBreaksAreRenderedRatherThanSwallowed() throws IOException {
+    Path file = tempDir.resolve("ausrichtung.odt");
+    writeOdt(
+        file,
+        "<text:p>Personalausweis<text:tab/>37,00 EUR</text:p>"
+            + "<text:p>Zeile eins<text:line-break/>Zeile zwei</text:p>"
+            + "<text:p>A<text:s text:c=\"3\"/>B</text:p>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "ausrichtung.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Personalausweis\t37,00 EUR")
+        .contains("Zeile eins\nZeile zwei")
+        .contains("A   B");
+  }
+
+  @Test
+  void deletedTextInTrackedChangesIsNotIndexedAsCurrentBodyText() throws IOException {
+    Path file = tempDir.resolve("aenderungsverfolgung.odt");
+    writeOdt(
+        file,
+        "<text:tracked-changes>"
+            + "<text:changed-region text:id=\"ct1\">"
+            + "<text:deletion><text:p>Geloeschter Absatz.</text:p></text:deletion>"
+            + "</text:changed-region>"
+            + "</text:tracked-changes>"
+            + odtHeading(1, "Ueberschrift")
+            + odtParagraph("Aktueller Absatz."));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "aenderungsverfolgung.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Aktueller Absatz.")
+        .doesNotContain("Geloeschter Absatz.");
+  }
+
+  @Test
+  void aNestedTableKeepsTheOuterTablesOwnRows() throws IOException {
+    Path file = tempDir.resolve("verschachtelte-tabelle.odt");
+    writeOdt(
+        file,
+        odtHeading(1, "Gebuehrenverzeichnis")
+            + "<table:table>"
+            + odtRow("Leistung", "Gebuehr")
+            + "<table:table-row><table:table-cell>"
+            + odtTable(odtRow("innen", "innen"))
+            + "</table:table-cell></table:table-row>"
+            + odtRow("Personalausweis", "37,00 EUR")
+            + "</table:table>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "verschachtelte-tabelle.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Leistung | Gebuehr")
+        .contains("Personalausweis | 37,00 EUR");
+  }
+
+  @Test
   void aFilelessSourceHasNoContent() {
     // An ODT pipeline is only ever reached through a genuine .odt file (never RSS-extracted text,
     // ADR-0017 decision 2) - defensive fallback, mirrors DocxDocumentPipeline/PptxDocumentPipeline.

@@ -114,6 +114,52 @@ class OdpDocumentPipelineTest {
   }
 
   @Test
+  void multipleSpacesTabsAndLineBreaksAreRenderedRatherThanSwallowed() throws IOException {
+    Path file = tempDir.resolve("ausrichtung.odp");
+    writeOdp(
+        file,
+        odpSlide(
+            odpFrame(null, "Personalausweis<text:tab/>37,00 EUR")
+                + odpFrame(null, "Zeile eins<text:line-break/>Zeile zwei")
+                + odpFrame(null, "A<text:s text:c=\"3\"/>B")));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "ausrichtung.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Personalausweis\t37,00 EUR")
+        .contains("Zeile eins\nZeile zwei")
+        .contains("A   B");
+  }
+
+  @Test
+  void aNestedTableKeepsTheOuterTablesOwnRows() throws IOException {
+    Path file = tempDir.resolve("verschachtelte-tabelle.odp");
+    writeOdp(
+        file,
+        odpSlide(
+            "<draw:frame>"
+                + "<table:table>"
+                + odpRow("Leistung", "Gebuehr")
+                + "<table:table-row><table:table-cell>"
+                + odpTable(odpRow("innen", "innen"))
+                + "</table:table-cell></table:table-row>"
+                + odpRow("Personalausweis", "37,00 EUR")
+                + "</table:table>"
+                + "</draw:frame>"));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "verschachtelte-tabelle.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Leistung | Gebuehr")
+        .contains("Personalausweis | 37,00 EUR");
+  }
+
+  @Test
   void aNonContentNotesPlaceholderIsExcludedFromTheNotesText() throws IOException {
     // Mirrors PptxDocumentPipeline's NON_CONTENT_NOTES_PLACEHOLDERS: layout scaffolding
     // (slide number/date/footer/header) inherited from the notes master is never meaningful body
@@ -139,12 +185,32 @@ class OdpDocumentPipelineTest {
   }
 
   @Test
-  void aPresentationWithoutAnySlideHasNoContent() throws IOException {
+  void aPresentationWithoutAnySlideIsRejectedAsNoExtractableText() throws IOException {
+    // A well-formed but empty <office:presentation/> is a parsed document with nothing to chunk,
+    // not an unparseable one - distinct from aZipWithoutAContentXmlEntryHasNoContent below. Matches
+    // the NO_EXTRACTABLE_TEXT outcome TikaFallbackPipeline reported for this exact case before this
+    // pipeline existed (#1057).
     Path file = tempDir.resolve("keine-folien.odp");
     writeOdp(file, "");
 
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "keine-folien.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.chunks()).isEmpty();
+  }
+
+  @Test
+  void aZipWithoutAContentXmlEntryHasNoContent() throws IOException {
+    Path file = tempDir.resolve("ohne-content-xml.odp");
+    try (var out = new ZipOutputStream(Files.newOutputStream(file))) {
+      out.putNextEntry(new ZipEntry("mimetype"));
+      out.write("application/vnd.oasis.opendocument.presentation".getBytes(StandardCharsets.UTF_8));
+      out.closeEntry();
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "ohne-content-xml.odp", ".odp"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }

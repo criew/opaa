@@ -491,6 +491,28 @@ class DocumentIndexingIntegrationTest {
   }
 
   @Test
+  void anEmptyOdpPresentationIsRejectedInsteadOfIndexedWithZeroChunks() throws IOException {
+    // Same #1057 guard as anEmptyOdfDocumentIsRejectedInsteadOfIndexedWithZeroChunks above, for the
+    // ODP counterpart: a <office:presentation/> without any draw:page must be reported as skipped,
+    // not counted as failed.
+    copyTestResource("test-documents/empty-document.odp", "leer.odp");
+
+    IndexingJob job = triggerIndexing();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(completedJob.getDocumentsProcessed()).isZero();
+    assertThat(completedJob.getDocumentsFailed()).isZero();
+    assertThat(completedJob.getDocumentsSkipped()).isEqualTo(1);
+    List<Document> documents = documentRepository.findAll();
+    assertThat(documents).hasSize(1);
+    assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(documents.getFirst().getErrorMessage())
+        .isEqualTo(DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+  }
+
+  @Test
   void reindexingReplacesOldChunks() throws IOException {
     Files.writeString(classTempDir.resolve("doc.txt"), "Original content.");
 

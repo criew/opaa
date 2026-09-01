@@ -545,6 +545,12 @@ Verstärkungs-Deckel nötig ist.
   Platzhalterklassen (`header`/`footer`/`date-time`/`page-number`) wie bei PPTX. Eine Präsentation, in
   der keine Folie Text trägt, meldet `NO_EXTRACTABLE_TEXT`.
 
+**Bewusste Bestandsregression: `styles.xml` wird nicht gelesen.** Beide Pipelines lesen ausschließlich
+`content.xml`. Kopf-/Fußzeilentext (ODT) und Masterfolien-Text (ODP) — etwa Behördenname oder
+Aktenzeichen — liegen in `styles.xml` und waren über `TikaFallbackPipeline` bisher indiziert; sie
+sind es mit `OdtDocumentPipeline`/`OdpDocumentPipeline` nicht mehr. Kein offenes Issue dazu bei
+Einführung dieser Pipelines (#1110).
+
 **Reindex-Nachzug (#1105):** Ein bereits als ODT/ODP indizierter Bestand trägt heute noch
 `tika-fallback` als Pipeline-Metadatum. Der in #1105 gebaute Fehlrouting-Zweig von
 `PipelineReindexService#selectStaleDocuments` erkennt diesen Fall generisch über

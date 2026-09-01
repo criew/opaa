@@ -19,23 +19,17 @@ import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * The ODP pipeline (docs/features/ingestion-pipelines.md, Teil 3 Punkt 2: eine Folie = ein Chunk) -
- * the ODP counterpart of {@link PptxDocumentPipeline}, but reading {@code content.xml} directly
- * through a hardened SAX parser ({@link OdfContentXml}) rather than Apache POI, which reads OOXML
- * and the legacy binary Office formats but never OpenDocument (see {@link OdtDocumentPipeline}'s
- * own Javadoc for the full reasoning, shared verbatim here).
- *
- * <p>Every {@code draw:page} with any text becomes exactly one chunk, mirroring {@link
- * PptxDocumentPipeline}. A frame's role comes from its own {@code presentation:class} attribute:
- * {@code "title"} becomes the chunk's leading line and its {@link
- * ChunkingService#LOCATION_METADATA_KEY location}; every other frame's text (including {@code
- * "subtitle"}, matching {@link PptxDocumentPipeline}'s own narrower title concept) becomes body
- * text, joined with a blank line between frames - unlike {@link PptxDocumentPipeline}, this reader
- * does not distinguish paragraphs within one frame from paragraphs across frames, a deliberate,
- * narrow simplification since the SAX event stream carries no per-frame grouping of its own. Text
- * inside {@code presentation:notes} becomes a final labeled paragraph, with the same non-content
- * placeholder classes ({@code header}/{@code footer}/{@code date-time}/{@code page-number})
- * excluded that {@link PptxDocumentPipeline} excludes from its own notes reading. A presentation
- * where no slide carries any text at all is rejected as {@code NO_EXTRACTABLE_TEXT}.
+ * the ODP counterpart of {@link PptxDocumentPipeline}, reading {@code content.xml} directly through
+ * a hardened SAX parser ({@link OdfContentXml}), since Apache POI never reads OpenDocument. Every
+ * {@code draw:page} with any text becomes exactly one chunk; a frame's {@code presentation:class}
+ * of {@code "title"} becomes the chunk's leading line and {@link
+ * ChunkingService#LOCATION_METADATA_KEY location}, every other frame's text becomes body text.
+ * {@code presentation:notes} becomes a final labeled paragraph, excluding the same non-content
+ * placeholder classes {@link PptxDocumentPipeline} excludes. A presentation where no slide carries
+ * any text is rejected as {@code NO_EXTRACTABLE_TEXT}. A placeholder class on a slide's own {@code
+ * draw:frame} (not just in notes) and master-slide text in {@code styles.xml} are not read at all,
+ * a known, deliberate content regression versus the previous Tika-based extraction (see
+ * docs/features/ingestion-pipelines.md).
  */
 public class OdpDocumentPipeline implements DocumentPipeline {
 
@@ -78,10 +72,16 @@ public class OdpDocumentPipeline implements DocumentPipeline {
     } catch (IOException e) {
       throw new UncheckedIOException("Could not read ODP document " + source.fileName(), e);
     }
-    if (!found || handler.chunks().isEmpty()) {
+    if (!found) {
+      // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed" case
+      // OdtDocumentPipeline reports for a corrupt .odt, distinct from a well-formed but empty
+      // presentation below.
       return DocumentPipelineResult.noContent();
     }
-    if (!handler.anySlideHasText()) {
+    if (handler.chunks().isEmpty() || !handler.anySlideHasText()) {
+      // Covers both a genuinely empty <office:presentation/> (zero draw:page elements) and a
+      // presentation whose slides carry no text - the same NO_EXTRACTABLE_TEXT outcome
+      // TikaFallbackPipeline reported for either case before this pipeline existed (#1057).
       return DocumentPipelineResult.noExtractableText();
     }
     return DocumentPipelineResult.chunked(handler.chunks());
@@ -113,7 +113,7 @@ public class OdpDocumentPipeline implements DocumentPipeline {
     private int paragraphDepth;
     private final StringBuilder text = new StringBuilder();
 
-    private boolean insideTable;
+    private int tableDepth;
     private boolean insideCell;
     private List<String> tableRows;
     private List<String> currentRowCells;
@@ -160,24 +160,57 @@ public class OdpDocumentPipeline implements DocumentPipeline {
           paragraphDepth++;
         }
         case "table:table" -> {
-          insideTable = true;
-          tableRows = new ArrayList<>();
+          tableDepth++;
+          if (tableDepth == 1) {
+            tableRows = new ArrayList<>();
+          }
         }
         case "table:table-row" -> {
-          if (insideTable) {
+          if (tableDepth > 0) {
             currentRowCells = new ArrayList<>();
           }
         }
         case "table:table-cell", "table:covered-table-cell" -> {
-          if (insideTable) {
+          if (tableDepth > 0) {
             insideCell = true;
             cellText.setLength(0);
+          }
+        }
+        case "text:s" -> appendRepeatedSpace(attributes);
+        case "text:tab" -> {
+          if (paragraphDepth > 0) {
+            text.append('\t');
+          }
+        }
+        case "text:line-break" -> {
+          if (paragraphDepth > 0) {
+            text.append('\n');
           }
         }
         default -> {
           // Every other element (styles, images, animations) carries no structure this pipeline
           // renders and is ignored.
         }
+      }
+    }
+
+    private void appendRepeatedSpace(Attributes attributes) {
+      if (paragraphDepth == 0) {
+        return;
+      }
+      int count = parsePositiveIntOrDefault(attributes.getValue("text:c"), 1);
+      text.append(" ".repeat(count));
+    }
+
+    private static int parsePositiveIntOrDefault(String value, int defaultValue) {
+      if (value == null) {
+        return defaultValue;
+      }
+      try {
+        int parsed = Integer.parseInt(value);
+        return parsed > 0 ? parsed : defaultValue;
+      } catch (NumberFormatException e) {
+        return defaultValue;
       }
     }
 
@@ -197,7 +230,7 @@ public class OdpDocumentPipeline implements DocumentPipeline {
           paragraphDepth--;
           if (paragraphDepth == 0) {
             String value = text.toString();
-            if (insideTable) {
+            if (tableDepth > 0) {
               if (insideCell) {
                 if (cellText.length() > 0) {
                   cellText.append(' ');
@@ -210,7 +243,7 @@ public class OdpDocumentPipeline implements DocumentPipeline {
           }
         }
         case "table:table-cell", "table:covered-table-cell" -> {
-          if (insideTable) {
+          if (tableDepth > 0) {
             insideCell = false;
             if (currentRowCells != null) {
               currentRowCells.add(cellText.toString());
@@ -218,7 +251,7 @@ public class OdpDocumentPipeline implements DocumentPipeline {
           }
         }
         case "table:table-row" -> {
-          if (insideTable && currentRowCells != null) {
+          if (tableDepth > 0 && currentRowCells != null) {
             String rowText = String.join(" | ", currentRowCells);
             if (!rowText.isBlank()) {
               tableRows.add(rowText);
@@ -227,8 +260,8 @@ public class OdpDocumentPipeline implements DocumentPipeline {
           }
         }
         case "table:table" -> {
-          if (insideTable) {
-            insideTable = false;
+          tableDepth--;
+          if (tableDepth == 0) {
             if (tableRows != null && hasSlide) {
               String tableText = String.join("\n", tableRows);
               if (!tableText.isBlank()) {
