@@ -55,6 +55,13 @@ poi-scratchpad = "5.5.1"
 # directly through org.apache.james.mime4j.dom rather than only through Tika's own extraction.
 # Version pinned to what that transitive dependency resolves to today (`./gradlew dependencies`).
 mime4j = "0.8.14"
+# PDF outline/page reader for io.opaa.indexing.PdfDocumentPipeline (docs/features/ingestion-pipelines.md,
+# Teil 3 - "gliederungsbewusster PDF-Pfad"). Already on the classpath transitively via
+# spring-ai-tika-document-reader's tika-parser-pdf-module; declared explicitly because this module now
+# reads the PDF catalog (bookmarks) and page text directly through org.apache.pdfbox rather than only
+# through Tika's own extraction. Version pinned to what that transitive dependency resolves to today
+# (`./gradlew dependencies`).
+pdfbox = "3.0.7"
 # opaa-api's tests are deliberately Spring-free (issue #896) and use plain JUnit Jupiter/AssertJ
 # instead of the Spring Boot-managed test-deps bundle below - these two versions are therefore
 # pinned explicitly rather than inherited from the Spring Boot BOM. The module's main sourceSet is
@@ -99,6 +106,7 @@ pgvector = { module = "com.pgvector:pgvector", version.ref = "pgvector" }
 poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi-ooxml" }
 poi-scratchpad = { module = "org.apache.poi:poi-scratchpad", version.ref = "poi-scratchpad" }
 mime4j-dom = { module = "org.apache.james:apache-mime4j-dom", version.ref = "mime4j" }
+pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
 commons-csv = { module = "org.apache.commons:commons-csv", version.ref = "commons-csv" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }

@@ -79,6 +79,39 @@ public class IndexingConfiguration {
     return new HtmlDocumentPipeline();
   }
 
+  // MarkdownDocumentPipeline is deliberately not registered here - see its own Javadoc for why
+  // (#1103, eval-corpus measurement contract).
+
+  /**
+   * DOCX pipeline (docs/features/ingestion-pipelines.md, Teil 2) - registered as an ordinary {@link
+   * DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}.
+   */
+  @Bean
+  DocxDocumentPipeline docxDocumentPipeline() {
+    return new DocxDocumentPipeline();
+  }
+
+  /**
+   * PPTX pipeline (docs/features/ingestion-pipelines.md, Teil 2) - registered as an ordinary {@link
+   * DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}.
+   */
+  @Bean
+  PptxDocumentPipeline pptxDocumentPipeline() {
+    return new PptxDocumentPipeline();
+  }
+
+  /**
+   * PDF pipeline (docs/features/ingestion-pipelines.md, Teil 1's parsing table and Teil 2) -
+   * registered as an ordinary {@link DocumentPipeline} bean, exactly like {@link
+   * #tabularDocumentPipeline}. Answers the #1055 scan-detection guard from its own PDFBox
+   * extraction rather than needing {@link DocumentService} (see {@link PdfDocumentPipeline}'s own
+   * Javadoc).
+   */
+  @Bean
+  PdfDocumentPipeline pdfDocumentPipeline() {
+    return new PdfDocumentPipeline();
+  }
+
   /**
    * EML/MSG pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) - an {@link
    * org.springframework.beans.factory.ObjectProvider}, not a direct {@link
