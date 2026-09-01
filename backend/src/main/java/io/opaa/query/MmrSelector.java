@@ -30,6 +30,16 @@ import org.springframework.ai.document.Document;
  * relevance-favoring {@code mmrLambda} unless the caller accounts for that scale mismatch when
  * choosing it. {@link QueryProperties#mmrLambda()}'s Javadoc documents the measured effect this had
  * on {@code mmrLambda}'s chosen default.
+ *
+ * <p><b>The mismatch is sharper for the lexical path's lists</b> (#1049): their relevance is a
+ * {@code ts_rank}, which lives around 0.06 to 0.1 rather than the 0.3 to 0.9 of a cosine
+ * similarity, while the diversity term keeps using cosine similarities of the chunk embeddings. At
+ * any {@code mmrLambda < 1.0} - a supported operator value, not a hypothetical - the diversity term
+ * therefore dominates a lexical list's ranking essentially completely, and the list that reaches
+ * the fusion is ordered by diversity rather than by lexical relevance. At the shipped default of
+ * {@code 1.0} the diversity term is multiplied by zero and the question does not arise. Making the
+ * two paths comparable here would need a per-path normalization, which is a measured decision and
+ * not made in #1049.
  */
 final class MmrSelector {
 

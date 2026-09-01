@@ -90,7 +90,9 @@ public record RetrievalState(
    * that list <em>is</em> the selection. With several, they are collapsed by ordered concatenation
    * deduplicated by chunk id: the deliberate fallback for a run whose fusion stage is switched off,
    * which consequently also loses fusion's {@code top-k} cap. That is what "the pipeline without
-   * this stage" means here; it is not a second fusion rule.
+   * this stage" means here; it is not a second fusion rule. Since #1049 that uncapped fallback
+   * spans up to two lists per search query rather than one, so a fusion-less run can hand on twice
+   * as many chunks as before - a benchmark variant, never the shipped configuration.
    */
   public List<Document> selection() {
     if (candidateLists.isEmpty()) {

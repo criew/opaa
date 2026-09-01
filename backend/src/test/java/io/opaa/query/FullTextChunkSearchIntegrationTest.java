@@ -230,6 +230,22 @@ class FullTextChunkSearchIntegrationTest {
         .containsExactly("a-satzung.md", "z-satzung.md");
   }
 
+  /**
+   * Within one document the tie-break is the chunk index, and it is compared as a number: as text,
+   * chunk 10 would sort ahead of chunk 2 and the protocol would report an order the document does
+   * not have.
+   */
+  @Test
+  void chunksOfOneDocumentWithTheSameRankAreOrderedNumericallyByTheirIndex() {
+    seed(readableLibrary, "Die Satzung regelt die Gebühr.", "satzung.md", 10);
+    seed(readableLibrary, "Die Satzung regelt die Gebühr.", "satzung.md", 2);
+    backfillService.backfillBatch(100);
+
+    List<Document> hits = fullTextChunkSearch.search("Satzung Gebühr", Set.of(readableLibrary), 25);
+
+    assertThat(hits).extracting(hit -> hit.getMetadata().get("chunk_index")).containsExactly(2, 10);
+  }
+
   private UUID seed(UUID libraryId, String text) {
     Document chunk =
         new Document(

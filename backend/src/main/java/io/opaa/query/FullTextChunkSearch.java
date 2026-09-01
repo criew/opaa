@@ -120,13 +120,23 @@ class FullTextChunkSearch {
             + "  AND f.content_tsv_version = ? "
             + "  AND f.content_tsv @@ q.tsq "
             // Ties in ts_rank are common - identically structured documents of one office score the
-            // same for a question naming none of them. The tie-break must therefore be derived from
-            // the chunk's content, not from its id: a chunk id is a fresh UUID per indexing run, so
-            // an id-based order silently reshuffles the tail between two runs over the same corpus
-            // and costs the retrieval benchmark its run-to-run reproducibility (ADR-0013). The id
-            // stays as the last key so the order is total even for two chunks of one document that
-            // somehow share a chunk_index.
-            + "ORDER BY rank DESC, v.metadata->>'file_name', v.metadata->>'chunk_index', chunk_id "
+            // same for a question naming none of them. The tie-break is therefore derived from the
+            // chunk's content, not from its identity: a chunk id and a document id are fresh UUIDs
+            // per indexing run, so an id-based order silently reshuffles the tail between two runs
+            // over the same corpus and costs the retrieval benchmark its run-to-run
+            // reproducibility (ADR-0013). That is also why document_id is deliberately *not* an
+            // earlier key than file_name, tempting as it would be for disambiguation.
+            //
+            // chunk_index is cast to int because "10" sorts before "2" as text; the value is
+            // written as a number by FileProcessingService and by nothing else. The id remains the
+            // last key so the order is total.
+            //
+            // Honest limit: two documents that share a file name - possible across libraries, or
+            // after the same file was uploaded twice - fall through to the id and are therefore
+            // ordered stably within one database, but not identically across a re-indexing run.
+            // Stronger would need a content hash per chunk, which no column carries today.
+            + "ORDER BY rank DESC, v.metadata->>'file_name',"
+            + " (v.metadata->>'chunk_index')::int, chunk_id "
             + "LIMIT ?";
 
     UUID[] libraries = libraryIds.toArray(UUID[]::new);
