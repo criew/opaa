@@ -17,3 +17,9 @@ databaseChangeLog:
       file: db/changelog/changes/003-chunk-full-text-table.yaml
   - include:
       file: db/changelog/changes/004-chunk-full-text-gin-index.yaml
+  - include:
+      file: db/changelog/changes/005-diagnostic-impersonation-grants.yaml
+  - include:
+      file: db/changelog/changes/006-library-diagnostics-lock.yaml
+  - include:
+      file: db/changelog/changes/007-diagnostic-context-log.yaml

@@ -2277,6 +2277,236 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/admin/diagnostic-impersonation-grants:
+    get:
+      operationId: listDiagnosticImpersonationGrants
+      tags: [admin]
+      summary: >
+        Lists the granted "Sicht als" befugnisse of the caller's organization (system admin only).
+        Granting the befugnis and holding it are separate acts - a system admin sees this list but
+        derives no befugnis of their own from it.
+      responses:
+        "200":
+          description: Granted befugnisse, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticImpersonationGrantListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: grantDiagnosticImpersonation
+      tags: [admin]
+      summary: >
+        Grants the "Sicht als" befugnis (system admin only). Scope (an ORG_UNIT group) and validity
+        window are mandatory and the window may not exceed twelve months - an unbounded, scopeless
+        permanent right is not representable, at the database level as well.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiagnosticImpersonationGrantRequest"
+      responses:
+        "201":
+          description: Befugnis granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticImpersonationGrantResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/diagnostic-impersonation-grants/{grantId}:
+    parameters:
+      - name: grantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      operationId: revokeDiagnosticImpersonation
+      tags: [admin]
+      summary: Revokes a "Sicht als" befugnis before its own expiry (system admin only).
+      responses:
+        "200":
+          description: Befugnis revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticImpersonationGrantResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/diagnostic-context/retention:
+    get:
+      operationId: getDiagnosticContextRetention
+      tags: [admin]
+      summary: >
+        Reads the retention period of the diagnostic context protocol (system admin only). Twelve
+        months by default, configurable between 1 and 24; there is no field to switch the deletion
+        off, here or anywhere else.
+      responses:
+        "200":
+          description: Current retention configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticContextRetentionResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateDiagnosticContextRetention
+      tags: [admin]
+      summary: Changes the retention period of the diagnostic context protocol (system admin only).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiagnosticContextRetentionRequest"
+      responses:
+        "200":
+          description: Retention configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticContextRetentionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/libraries/{libraryId}/diagnostics-lock:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      operationId: setLibraryDiagnosticsLock
+      tags: [libraries]
+      summary: >
+        Sets or lifts a library's Diagnosesperre. Only the library's OWNER may call this - a system
+        admin without an OWNER grant on that library is rejected with 403, deliberately: an
+        administrative privilege able to lift a foreign Bestand's lock would remove the protection.
+        Every library is locked by default, including all pre-existing ones.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryDiagnosticsLockRequest"
+      responses:
+        "200":
+          description: Diagnosesperre updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryDiagnosticsLockResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/me/diagnostic-context-events:
+    get:
+      operationId: listOwnDiagnosticContextEvents
+      tags: [me]
+      summary: >
+        Einsichtsrecht: when and by whom the caller's own rights context was assumed for a search
+        diagnosis. No role, no reason and no approval - the filter is the caller's own identity,
+        resolved server-side, and no parameter names a person.
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 50
+      responses:
+        "200":
+          description: The caller's own entries, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnDiagnosticContextEventPage"
+
+  /api/v1/audit/diagnostic-context-events:
+    get:
+      operationId: listDiagnosticContextEvents
+      tags: [audit]
+      summary: >
+        The Gesamtprotokoll of diagnoses run in a foreign rights context (AUDITOR role required -
+        Datenschutzbeauftragte und Personalvertretung; Fachvorgesetzte hold USER or SYSTEM_ADMIN and
+        reach nothing here). Requires a reason and a time range of at most 31 days, because the
+        evaluation is einzelfall- und anlassbezogen. There is deliberately no parameter naming a
+        target person and no aggregate response field: "Diagnosen je Nutzer" is not restricted here,
+        it is not expressible.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: reason
+          in: query
+          required: true
+          description: >
+            Mandatory Anlass; a missing one is rejected, and the rejected attempt is itself recorded
+            in audit_log.
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 50
+      responses:
+        "200":
+          description: Bounded page of protocol entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticContextEventPage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/branding:
     get:
       operationId: getBranding
@@ -4922,6 +5152,10 @@ components:
           LLM_MODEL_DELETED,
           LLM_MODEL_ACTIVATED,
           LLM_MODEL_DEACTIVATED,
+          DIAGNOSTIC_IMPERSONATION_GRANTED,
+          DIAGNOSTIC_IMPERSONATION_REVOKED,
+          DIAGNOSTIC_CONTEXT_RETENTION_CHANGED,
+          LIBRARY_DIAGNOSTICS_LOCK_CHANGED,
           AUDIT_LOG_ACCESSED,
         ]
       example: ASSET_GRANT_REVOKED
@@ -5007,6 +5241,210 @@ components:
         hasMore:
           type: boolean
           description: True if further, older-page results exist beyond this bounded page.
+
+    DiagnosticTargetKind:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.DiagnosticTargetKind - whose rights context a diagnosis ran in.
+        PERMISSION_PROFILE is the default; USER is the exception requiring a separate befugnis and a
+        free-text justification.
+      enum: [PERMISSION_PROFILE, USER]
+      example: PERMISSION_PROFILE
+
+    DiagnosticImpersonationGrantRequest:
+      type: object
+      required: [holderUserId, scopeGroupId, validFrom, validUntil]
+      properties:
+        holderUserId:
+          type: string
+          format: uuid
+        scopeGroupId:
+          type: string
+          format: uuid
+          description: The Organisationseinheit the befugnis applies to - a group of kind ORG_UNIT.
+        validFrom:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+          description: At most twelve months after validFrom; there is no "unbefristet" value.
+
+    DiagnosticImpersonationGrantResponse:
+      type: object
+      required:
+        [id, holderUserId, scopeGroupId, validFrom, validUntil, grantedByUserId, grantedAt, active]
+      properties:
+        id:
+          type: string
+          format: uuid
+        holderUserId:
+          type: string
+          format: uuid
+        scopeGroupId:
+          type: string
+          format: uuid
+        validFrom:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+        grantedByUserId:
+          type: string
+          format: uuid
+        grantedAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+        active:
+          type: boolean
+          description: Unrevoked and inside its validity window at the time of this response.
+
+    DiagnosticImpersonationGrantListResponse:
+      type: object
+      required: [grants]
+      properties:
+        grants:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagnosticImpersonationGrantResponse"
+
+    DiagnosticContextRetentionRequest:
+      type: object
+      required: [retentionMonths]
+      properties:
+        retentionMonths:
+          type: integer
+          minimum: 1
+          maximum: 24
+
+    DiagnosticContextRetentionResponse:
+      type: object
+      required: [retentionMonths, updatedAt]
+      properties:
+        retentionMonths:
+          type: integer
+        lastCutoff:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+
+    LibraryDiagnosticsLockRequest:
+      type: object
+      required: [locked]
+      properties:
+        locked:
+          type: boolean
+
+    LibraryDiagnosticsLockResponse:
+      type: object
+      required: [libraryId, locked]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        locked:
+          type: boolean
+
+    OwnDiagnosticContextEventResponse:
+      type: object
+      description: >
+        One entry as the affected person sees it - when, by whom, and with which justification.
+        Deliberately carries neither the test question nor the hits.
+      required: [recordedAt]
+      properties:
+        recordedAt:
+          type: string
+          format: date-time
+        actorDisplayName:
+          type: string
+          nullable: true
+        justification:
+          type: string
+          nullable: true
+
+    OwnDiagnosticContextEventPage:
+      type: object
+      required: [events, page, size, hasMore]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/OwnDiagnosticContextEventResponse"
+        page:
+          type: integer
+        size:
+          type: integer
+        hasMore:
+          type: boolean
+
+    DiagnosticContextEventResponse:
+      type: object
+      description: >
+        One protocol entry as the Gesamtprotokoll shows it. actorRef and - for a USER target -
+        targetRef stay pseudonyms, resolvable only through the separately held mapping table; the
+        entry carries the identifiers of the displayed hits, never the hits themselves.
+      required:
+        [
+          eventId,
+          recordedAt,
+          actorRef,
+          targetKind,
+          targetRef,
+          testQuestion,
+          hitCount,
+          hitRefs,
+          permissionSnapshot,
+        ]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        recordedAt:
+          type: string
+          format: date-time
+        actorRef:
+          type: string
+        targetKind:
+          $ref: "#/components/schemas/DiagnosticTargetKind"
+        targetRef:
+          type: string
+        testQuestion:
+          type: string
+        hitCount:
+          type: integer
+        hitRefs:
+          type: string
+        permissionSnapshot:
+          type: string
+        justification:
+          type: string
+          nullable: true
+
+    DiagnosticContextEventPage:
+      type: object
+      description: >
+        A bounded page and nothing else - no totals per target person, no counts, no grouping. The
+        absence is the Zweckbindung of Leitplanke (g), not an omission.
+      required: [events, page, size, hasMore]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagnosticContextEventResponse"
+        page:
+          type: integer
+        size:
+          type: integer
+        hasMore:
+          type: boolean
 
     AuditIncidentScopePurpose:
       type: string

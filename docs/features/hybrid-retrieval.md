@@ -881,6 +881,29 @@ feststellen.
 
 ### Berechtigungs-Leitplanken
 
+> **Stand: gebaut** ([#1052](https://github.com/criew/opaa/issues/1052)). Das Befugnis- und
+> Protokollmodell liegt im Backend-Paket `io.opaa.diagnosticaccess`; die Regeln unten bleiben die
+> maßgebliche Fassung. Drei Festlegungen der Umsetzung, die dieser Abschnitt offenließ:
+>
+> - **Geltungsbereich** ist eine Gruppe der Art `ORG_UNIT` (die Organisationseinheit aus dem
+>   Verzeichnisabgleich); **Gültigkeitsdauer** ist auf zwölf Monate je Vergabe begrenzt. Beides sind
+>   `NOT NULL`-Spalten mit zusätzlicher `CHECK`-Bedingung — ein unbefristetes, bereichsloses
+>   Dauerrecht ist nicht speicherbar, nicht nur nicht anlegbar.
+> - **Die Befugnis zur Protokollauswertung** ist die vorhandene Rolle `AUDITOR` (die „benannten
+>   Stellen" aus (h)); sie und „Sicht als" haben keinerlei Ableitungsbeziehung, und `SYSTEM_ADMIN`
+>   trägt keine von beiden.
+> - **„Standardmäßig gesperrt"** ist als Voreinstellung der Sperre selbst umgesetzt: jede
+>   Bibliothek — auch jede bereits vorhandene — ist diagnosegesperrt, bis die zuständige Stelle die
+>   Sperre bewusst aufhebt. Eine Kategorienerkennung („ist das ein Personalvertretungsbestand?")
+>   gibt es nicht und kann es für Altbestände nicht geben; die Sperre als Grundzustand deckt die
+>   vier genannten Bestände zuverlässig ab und fällt im Zweifel zugunsten des Schutzes aus.
+>
+> Das Protokoll liegt in einer eigenen Tabelle (`diagnostic_context_log`) unter derselben
+> Eigentümertrennung wie `audit_log` (ADR-0015), nicht als weiterer Ereignistyp darin: seine
+> Aufbewahrung beträgt nach (i) zwölf Monate, die von `audit_log` 12–120 — und eine kürzere Frist
+> für eine Teilmenge der Zeilen wäre nur mit einem zeilenweisen `DELETE` erreichbar, das es auf
+> `audit_log` nicht geben darf.
+
 Ein Werkzeug, das zeigt, was ein anderer Mensch sieht, ist ein Berechtigungswerkzeug — und in einer
 Behörde zugleich ein mitbestimmungsrelevantes. Die folgenden Regeln sind deshalb nicht verhandelbar;
 sie sind Baubedingung, nicht Ausbaustufe.
