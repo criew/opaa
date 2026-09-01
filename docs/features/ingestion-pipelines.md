@@ -451,6 +451,21 @@ der Zulassungsliste und in der Medientyp-Zuordnung der Formaterkennung.
 **Zuschnitt:** wie die jeweiligen Microsoft-Pendants — ODT wie DOCX, ODS wie XLSX, ODP wie PPTX. Die
 Pipelines sind dieselben; nur das Routing kennt einen weiteren erkannten Medientyp.
 
+#### Umgesetzt (#1057)
+
+`.odt`, `.ods` und `.odp` sind in `SupportedDocumentFormats` zugelassen, mit den jeweils eindeutigen
+ODF-Medientypen (`application/vnd.oasis.opendocument.{text,spreadsheet,presentation}`) als
+strikte Erkennungsgrenze — anders als bei OOXML gibt es keinen generischen, unaufgelösten
+ODF-Containertyp, den es zusätzlich abzuweisen gälte. Da weder für DOCX/PPTX noch für XLSX bereits
+eine eigene `DocumentPipeline` existiert (Stand #1056/#1058), läuft auch ODF vollständig über die
+`TikaFallbackPipeline` — das Routing über `SupportedDocumentFormats.decideForFileName` reicht dafür
+aus, ohne dass die Registry oder eine neue Pipeline-Klasse etwas dazulernen musste. Eine ODT-, ODS-
+oder ODP-Datei ohne extrahierbaren Text wird über denselben generischen Leer-Chunk-Guard der
+Fallback-Pipeline abgewiesen (`NO_EXTRACTABLE_TEXT` statt `INDEXED` mit null Chunks, #1055), nicht
+über eine formatspezifische Prüfung.
+
+Baseline unberührt — kein Korpusdokument dieses Typs.
+
 ### 3. XLSX und CSV
 
 Gebührenverzeichnisse, Zuständigkeitslisten und Haushaltsdaten sind das Rückgrat vieler

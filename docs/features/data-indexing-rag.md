@@ -528,9 +528,9 @@ heute läuft, und dem, was zum Zielbild gehört.
 | Typklasse | Gebaut | Zielbild |
 |---|---|---|
 | Textdokument mit Gliederung | Markdown (`.md`), Klartext (`.txt`) | AsciiDoc (`.adoc`), reStructuredText |
-| Seitenlayout-Dokument | PDF (`.pdf`), Word (`.docx`, `.doc`) | OpenDocument-Text (`.odt`), RTF |
-| Tabellenkalkulation | — | Excel (`.xlsx`, `.xls`), OpenDocument (`.ods`), CSV |
-| Präsentation | PowerPoint (`.pptx`) | OpenDocument (`.odp`) |
+| Seitenlayout-Dokument | PDF (`.pdf`), Word (`.docx`, `.doc`), OpenDocument-Text (`.odt`) | RTF |
+| Tabellenkalkulation | OpenDocument (`.ods`) | Excel (`.xlsx`, `.xls`), CSV |
+| Präsentation | PowerPoint (`.pptx`), OpenDocument (`.odp`) | — |
 | Auszeichnungssprache | — | HTML, XML |
 | Strukturierte Daten | — | JSON, CSV, XML-Datensätze |
 | Nachricht aus einem Postfach | — | Einzelnachrichten (`.eml`, `.msg`), Postfachexporte (MBOX, PST) |

@@ -327,6 +327,55 @@ class DocumentIndexingIntegrationTest {
   }
 
   @Test
+  void indexesOdfDocuments() throws IOException {
+    // #1057: ODT/ODS/ODP go through the exact same admission and pipeline path as their Microsoft
+    // counterparts (Teil 3, Punkt 2) - no dedicated pipeline exists for either family yet, so both
+    // resolve to the Tika fallback used by indexesPdfAndDocxDocuments above.
+    copyTestResource("test-documents/test-document.odt", "satzung.odt");
+    copyTestResource("test-documents/test-document.ods", "haushalt.ods");
+    copyTestResource("test-documents/test-document.odp", "vortrag.odp");
+
+    IndexingJob job = triggerIndexing();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(completedJob.getDocumentsProcessed()).isEqualTo(3);
+    assertThat(completedJob.getDocumentsFailed()).isZero();
+    assertThat(completedJob.getDocumentsSkipped()).isZero();
+
+    List<Document> documents = documentRepository.findAll();
+    assertThat(documents).hasSize(3);
+    assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
+    assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
+  }
+
+  @Test
+  void anEmptyOdfDocumentIsRejectedInsteadOfIndexedWithZeroChunks() throws IOException {
+    // #1055 guard carried over to ODF (#1057): a document that parses without error but yields no
+    // usable text must be reported as skipped, the same way a scan PDF is - never silently INDEXED
+    // with zero chunks.
+    copyTestResource("test-documents/empty-document.odt", "leer.odt");
+
+    IndexingJob job = triggerIndexing();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(completedJob.getDocumentsProcessed()).isZero();
+    assertThat(completedJob.getDocumentsFailed()).isZero();
+    assertThat(completedJob.getDocumentsSkipped()).isEqualTo(1);
+    // The document row itself is kept, marked FAILED with the same user-facing message a scan PDF
+    // gets (DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE) - not deleted or left INDEXED with zero
+    // chunks.
+    List<Document> documents = documentRepository.findAll();
+    assertThat(documents).hasSize(1);
+    assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(documents.getFirst().getErrorMessage())
+        .isEqualTo(DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+  }
+
+  @Test
   void reindexingReplacesOldChunks() throws IOException {
     Files.writeString(classTempDir.resolve("doc.txt"), "Original content.");
 
