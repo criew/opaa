@@ -75,16 +75,38 @@ public class DocumentPipelineRegistry {
   }
 
   /**
+   * The pipeline and the extension it was routed on, for {@code file} - the pipeline result of
+   * {@link #pipelineFor(Path, String)} paired with the same {@link
+   * SupportedDocumentFormats.ContentDecision#detectedExtension()} that decided it, so a caller can
+   * hand both to {@link DocumentPipelineSource#ofFile(Path, String, String)}. Kept as a nested
+   * record rather than a two-element return, so a future addition to what routing resolves does not
+   * ripple through every call site's argument list.
+   *
+   * @param detectedExtension {@code null} exactly when {@code pipeline} is the fallback because
+   *     routing could not resolve one (detection failed, or the content is not admitted at all -
+   *     see {@link #pipelineFor(String, String)})
+   */
+  public record Routed(DocumentPipeline pipeline, String detectedExtension) {}
+
+  /**
    * The pipeline for {@code file}, decided from its bytes. A file whose content cannot be read for
    * detection (deleted or permission-denied since it was discovered) falls back rather than failing
    * here - the subsequent read attempt inside the pipeline reports the real problem.
    */
   public DocumentPipeline pipelineFor(Path file, String fileName) {
+    return routedPipelineFor(file, fileName).pipeline();
+  }
+
+  /**
+   * Like {@link #pipelineFor(Path, String)}, but also returns the extension the routing decision
+   * resolved to - see {@link Routed}'s own Javadoc for why a pipeline needs it at all.
+   */
+  public Routed routedPipelineFor(Path file, String fileName) {
     try {
-      return pipelineFor(fileName, SupportedDocumentFormats.detectMediaType(file));
+      return routedPipelineFor(fileName, SupportedDocumentFormats.detectMediaType(file));
     } catch (IOException e) {
       log.warn("Could not read {} to route it to a pipeline, using the fallback pipeline", file, e);
-      return fallback;
+      return new Routed(fallback, null);
     }
   }
 
@@ -92,12 +114,17 @@ public class DocumentPipelineRegistry {
    * The pipeline for a document with this name whose content Tika detected as {@code mediaType}.
    */
   public DocumentPipeline pipelineFor(String fileName, String detectedMediaType) {
+    return routedPipelineFor(fileName, detectedMediaType).pipeline();
+  }
+
+  private Routed routedPipelineFor(String fileName, String detectedMediaType) {
     SupportedDocumentFormats.ContentDecision decision =
         SupportedDocumentFormats.decideForFileName(fileName, detectedMediaType);
     if (!decision.supported()) {
-      return fallback;
+      return new Routed(fallback, null);
     }
-    return byFormat.getOrDefault(decision.detectedExtension(), fallback);
+    DocumentPipeline pipeline = byFormat.getOrDefault(decision.detectedExtension(), fallback);
+    return new Routed(pipeline, decision.detectedExtension());
   }
 
   /**

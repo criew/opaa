@@ -464,10 +464,10 @@ oder ODP-Datei ohne extrahierbaren Text wird über denselben generischen Leer-Ch
 Fallback-Pipeline abgewiesen (`NO_EXTRACTABLE_TEXT` statt `INDEXED` mit null Chunks, #1055), nicht
 über eine formatspezifische Prüfung.
 
-**Ausnahme ODS, dauerhaft bis zu einer eigenen ODF-Tabellen-Pipeline:** „ODS wie XLSX" gilt für den
-Zuschnitt, nicht für den Reader — die XLSX-Pipeline (#1058) liest über POI, das kein ODF versteht.
-ODS bleibt deshalb auf der Tika-Fallback-Pipeline, auch nachdem #1058 landet; siehe die Begründung
-unter [Punkt 3](#3-xlsx-und-csv).
+**ODS wird seit #1058 von `TabularDocumentPipeline` mitbedient**, nicht mehr von der
+Tika-Fallback-Pipeline: „ODS wie XLSX" gilt seitdem auch für den Reader, über einen eigenen,
+POI-unabhängigen ODF-XML-Leser (POI selbst versteht kein ODF) — siehe die Begründung unter
+[Punkt 3](#3-xlsx-und-csv). ODT und ODP laufen unverändert über die Tika-Fallback-Pipeline.
 
 Baseline unberührt — kein Korpusdokument dieses Typs.
 
@@ -486,11 +486,71 @@ Klartext- oder Markdown-Datei zu unterscheiden — die gleiche Mehrdeutigkeit, w
 `.txt` heute zusätzlich ihre Endung nachweisen müssen. CSV wird deshalb in derselben Weise behandelt:
 Inhalt muss Text sein **und** die Datei muss `.csv` heißen.
 
-**ODS bleibt bis dahin auf dem Fallback (#1057).** Die für XLSX beschriebene POI-Pipeline liest kein
-ODF — POI ist ein OOXML/OLE2-Werkzeug, kein ODF-Werkzeug. „ODS wie XLSX" (Teil 3, Punkt 2) gilt daher
-erst für den Zuschnitt, nicht für den Reader: Diese Pipeline braucht für ODS einen eigenen ODF-Leser,
-nicht denselben POI-Code wie für XLSX. Bis dahin läuft ODS über dieselbe Tika-Glättung, die dieser
-Abschnitt für XLSX gerade verwirft — mit demselben Qualitätsverlust.
+#### Umgesetzt (#1058)
+
+`TabularDocumentPipeline` (`id` `tabular`, Version 1) beansprucht `.xlsx`, `.csv` und `.ods` in der
+`DocumentPipelineRegistry`. XLSX wird blatt- und zellenweise über Apache POI gelesen, CSV über einen
+Trennzeichen-erkennenden Parser (Komma, Semikolon, Tabulator — die reale Exportvarianten, siehe
+Test-Fixtures). **ODS liest POI nicht** — POI deckt OOXML (XLSX/DOCX/PPTX) und die alten
+Binärformate ab, nie OpenDocument. Statt einer vollen ODF-Bibliothek (z. B. ODF Toolkit) für einen
+einzigen, schmalen Lesezugriff liest die Pipeline `content.xml` (eine ODS-Datei ist ein ZIP-Archiv)
+direkt über einen gehärteten SAX-Parser — `table:table`/`table:table-row`/`table:table-cell` sind
+schlichtes, wohlgeformtes XML. Damit bedient dieselbe Pipeline auch das „ODS wie XLSX" aus
+[Punkt 2](#2-odf--odt-ods-odp): #1057 lässt `.ods` zu, dieses Issue liest es strukturerhaltend statt
+über den Tika-Fallback. Alle drei Leser teilen sich denselben Zuschnitt:
+
+- Die erste nicht-leere Zeile eines Blatts bzw. der Datei ist die Kopfzeile; jeder folgende Chunk trägt
+  sie erneut, zusammen mit einer Strukturkontext-Zeile (`Blatt: … · Tabelle: …` für XLSX/ODS, `Tabelle:
+  …` für CSV) — direkt im Chunk-Text, nicht als separates Metadatenfeld, weil `FileProcessingService`
+  nur eine feste, generische Metadatenmenge auf einen gespeicherten Chunk überträgt (siehe
+  [Teil 5](#teil-5--übergabepunkt-an-das-metadatenschema)). Für XLSX/ODS fallen Blatt- und Tabellenname
+  zusammen: Excels separates Konzept „definierte Tabelle" wird nicht eigens erkannt.
+- Eine Zeilengruppe von bis zu 50 Datenzeilen bildet einen Chunk, vorzeitig geschlossen, wenn die
+  nächste Zeile den Chunk über 6.000 Zeichen triebe (Schutz gegen eine Riesenzeile mit hunderten
+  Spalten oder einer sehr langen Zelle) — eine einzelne Zeile, die diese Grenze für sich allein schon
+  überschreitet, wird trotzdem als eigener Chunk ausgegeben, statt mitten in der Zeile geschnitten oder
+  verworfen zu werden. **Gesetzt, nicht gemessen** (siehe
+  [Chunk-Größen](#chunk-größen-gemessen-wo-messmaterial-existiert--und-sonst-ehrlich-gesetzt)): Weder
+  der bestehende Evaluierungskorpus noch die geplante Verwaltungs-Evaldomäne (#1036) enthalten heute
+  Tabellenblätter mit kuratierter Ground Truth.
+- Ein leeres Blatt liefert keinen Chunk; ein Blatt oder eine Datei mit zwei oder mehr Zeilen, von
+  denen nach der Kopfzeile keine eine Datenzeile ist, ebenfalls nicht. Trägt kein Blatt einer
+  Arbeitsmappe bzw. keine Zeile einer CSV-Datei Nutzdaten, meldet die Pipeline
+  `NO_EXTRACTABLE_TEXT` — dasselbe Ergebnis, das `TikaFallbackPipeline` für Text meldet, der auf
+  nichts herunter zerlegt (siehe [Punkt 1](#1-scan-erkennung-und-bestandsprüfung)).
+- **Ausnahme: eine einzelne Zeile ist immer Inhalt, nie eine leere Kopfzeile.** Ein Blatt oder eine
+  Datei, die nie mehr als eine nicht-leere Zeile hatte, hat keinen Kopfzeile-/Datenzeile-Unterschied
+  zu treffen — die eine Zeile wird als eigener Chunk ausgegeben, unabhängig von ihrer Spaltenzahl.
+  Das gilt sowohl für eine einzelne Zelle (ein Tabellenblatt als schlichter Textcontainer) als auch
+  für eine einzelne, mehrspaltige Zeile (etwa eine einzeilige Ergebnistabelle) — beides sind
+  Nutzdaten, deren Verwerfen ein stiller Datenverlust wäre. Eine echte, mehrspaltige Kopfzeile ohne
+  jede Datenzeile ist von einer einzeiligen Ergebnistabelle strukturell nicht unterscheidbar, sobald
+  Leerzeilen herausgefiltert sind — die Pipeline nimmt bewusst das Risiko in Kauf, gelegentlich eine
+  reine Feldnamen-Zeile zu indizieren, statt gelegentlich echte Daten zu verwerfen.
+- Eine einzelne Zeile, die für sich schon die 6.000-Zeichen-Grenze überschreitet, wird zusätzlich
+  auf eine harte Obergrenze von 20.000 Zeichen gekürzt (mit Protokolleintrag und sichtbarem
+  „[…gekürzt]"-Vermerk) — ohne diese zweite Grenze würde eine echte Riesenzeile unbegrenzt an das
+  Einbettungsmodell gehen und dort am Token-Limit scheitern, statt beim Zerlegen selbst zu enden.
+- Die Spaltenzahl je Zeile ist für XLSX und ODS gleichermaßen gedeckelt
+  (`opaa.indexing.tabular.max-row-columns`, gesetzt 200) — eine überbreite Zeile wird abgeschnitten
+  statt verworfen, mit Protokolleintrag je betroffenem Blatt.
+- ODS-eigene Grenzfälle: `table:number-columns-repeated` — ODF-Exporte polstern eine Zeile
+  routinemäßig mit einer einzigen wiederholten Leerzelle bis zur vollen Blattbreite (bis zu 16384) —
+  wird pro Zelle (`opaa.indexing.tabular.max-ods-cell-repeat`, gesetzt 50) und pro Zeile (dieselbe
+  Spaltengrenze wie oben) gedeckelt; `table:number-rows-repeated` wird nicht expandiert, eine
+  wiederholte Zeile zählt einmal, schaltet aber die laufende Zeilennummerierung um den vollen
+  Wiederholungsumfang weiter, damit eine Fundstelle nach einer Leerzeilen-Lücke die richtige
+  Zeilennummer trägt. Der SAX-Parser lehnt eine `<!DOCTYPE …>` in `content.xml` ab (XXE-Härtung) —
+  die Datei kommt aus einem hochgeladenen bzw. indizierten Dokument, nie aus vertrauenswürdiger
+  Quelle. Zwei weitere, unabhängige Zip-Bomb-Wächter — ein Byte-Deckel auf den entpackten
+  `content.xml`-Strom (`opaa.indexing.tabular.max-ods-content-xml-bytes`, gesetzt 10 MiB) und ein
+  Zeilen-Deckel auf den Parse-Vorgang selbst (`opaa.indexing.tabular.max-ods-rows`, gesetzt
+  100.000) — brechen mit einer benannten Abweisung ab, statt Speicher unbegrenzt zu verbrauchen; ein
+  kleines, stark repetitives `content.xml` könnte sonst unter dem Byte-Deckel bleiben und trotzdem
+  unverhältnismäßig viele Zeilen beschreiben.
+
+**Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine XLSX-, CSV- oder
+ODS-Dokumente.
 
 ### 4. HTML
 

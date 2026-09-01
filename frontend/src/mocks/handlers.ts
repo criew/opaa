@@ -58,7 +58,19 @@ import type {
 
 // Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - kept as a
 // literal list here rather than importing across the frontend/backend boundary.
-const SUPPORTED_DOCUMENT_EXTENSIONS = ['.doc', '.docx', '.md', '.pdf', '.pptx', '.txt']
+const SUPPORTED_DOCUMENT_EXTENSIONS = [
+  '.csv',
+  '.doc',
+  '.docx',
+  '.md',
+  '.odp',
+  '.ods',
+  '.odt',
+  '.pdf',
+  '.pptx',
+  '.txt',
+  '.xlsx',
+]
 const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024
 const documentPollCounts = new Map<string, number>()
 // Upload ids that should resolve to FAILED (#434/#614), not INDEXED, the next time the documents

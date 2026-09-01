@@ -43,7 +43,8 @@ public final class SupportedDocumentFormats {
   private static final Tika TIKA = new Tika();
 
   private static final Set<String> EXTENSIONS =
-      Set.of(".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".odt", ".ods", ".odp");
+      Set.of(
+          ".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv", ".odt", ".ods", ".odp");
 
   /**
    * Maps a {@code Content-Type} header value to one of the {@link #EXTENSIONS} above, for sources
@@ -60,8 +61,10 @@ public final class SupportedDocumentFormats {
               "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx"),
           Map.entry(
               "application/vnd.openxmlformats-officedocument.presentationml.presentation", ".pptx"),
+          Map.entry("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
           Map.entry("text/plain", ".txt"),
           Map.entry("text/markdown", ".md"),
+          Map.entry("text/csv", ".csv"),
           Map.entry("application/vnd.oasis.opendocument.text", ".odt"),
           Map.entry("application/vnd.oasis.opendocument.spreadsheet", ".ods"),
           Map.entry("application/vnd.oasis.opendocument.presentation", ".odp"));
@@ -70,11 +73,12 @@ public final class SupportedDocumentFormats {
    * Extensions whose content is only checked for being text at all - {@code .md}, {@code .txt} and
    * {@code .csv} are barely distinguishable by content alone (a CSV file is valid Markdown and vice
    * versa), so demanding Tika detect one specific media type among them would produce false
-   * positives on legitimate files far more often than it would catch a real mismatch. Only {@code
-   * .md} and {@code .txt} are listed here since those are the only text extensions {@link
-   * #EXTENSIONS} currently accepts.
+   * positives on legitimate files far more often than it would catch a real mismatch. {@code .csv}
+   * joins {@code .md}/{@code .txt} here for the same reason (ingestion-pipelines.md, Teil 3, Punkt
+   * 3): content alone cannot tell a comma- or semicolon-separated export apart from a Markdown
+   * table or plain text, so a CSV file is only accepted once its own extension already claims it.
    */
-  private static final Set<String> TEXT_TOLERANT_EXTENSIONS = Set.of(".md", ".txt");
+  private static final Set<String> TEXT_TOLERANT_EXTENSIONS = Set.of(".md", ".txt", ".csv");
 
   /**
    * The Tika-detected media type(s) consistent with each non-text extension in {@link #EXTENSIONS}.
@@ -97,6 +101,8 @@ public final class SupportedDocumentFormats {
           Map.entry(
               ".pptx",
               Set.of("application/vnd.openxmlformats-officedocument.presentationml.presentation")),
+          Map.entry(
+              ".xlsx", Set.of("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
           // ODF, unlike .docx/.pptx, has one specific, unambiguous media type per format straight
           // from Tika's ZIP-mimetype-entry detector - there is no generic "unresolved ODF
           // container" fallback the way there is application/x-tika-ooxml, so no exclusion note

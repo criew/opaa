@@ -60,6 +60,16 @@ public class IndexingConfiguration {
   }
 
   /**
+   * XLSX/CSV/ODS pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 3) - registered as
+   * an ordinary {@link DocumentPipeline} bean, picked up by {@link #documentPipelineRegistry} below
+   * without either method changing shape (the open-closed criterion of Teil 1).
+   */
+  @Bean
+  TabularDocumentPipeline tabularDocumentPipeline(TabularProperties tabularProperties) {
+    return new TabularDocumentPipeline(tabularProperties);
+  }
+
+  /**
    * Populated from every {@link DocumentPipeline} bean Spring finds - a new format becomes
    * reachable by adding one more pipeline bean, never by editing this method or {@link
    * FileProcessingService} (the open-closed criterion of docs/features/ingestion-pipelines.md, Teil

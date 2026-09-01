@@ -28,6 +28,9 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -198,7 +201,7 @@ class DocumentIndexingIntegrationTest {
   @Test
   void skipsUnsupportedFileFormatsAndContinues() throws IOException {
     Files.writeString(classTempDir.resolve("good.txt"), "Valid content here.");
-    Files.writeString(classTempDir.resolve("bad.csv"), "a,b,c");
+    Files.writeString(classTempDir.resolve("bad.xyz"), "a,b,c");
 
     IndexingJob job = triggerIndexing();
     assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
@@ -207,7 +210,7 @@ class DocumentIndexingIntegrationTest {
 
     var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
     assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
-    // Only .txt is a supported format, .csv is rejected by the shared format list.
+    // Only .txt is a supported format, .xyz is rejected by the shared format list.
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(completedJob.getDocumentsFailed()).isZero();
     // Issue #375: a rejected document must be reported, not silently dropped. Both files were
@@ -223,7 +226,7 @@ class DocumentIndexingIntegrationTest {
         indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(completedJob.getId());
     assertThat(events).hasSize(1);
     assertThat(events.getFirst().getCategory()).isEqualTo(IndexingEventCategory.UNSUPPORTED_FORMAT);
-    assertThat(events.getFirst().getReference()).isEqualTo("bad.csv");
+    assertThat(events.getFirst().getReference()).isEqualTo("bad.xyz");
     assertThat(completedJob.getEventsTruncatedCount()).isZero();
 
     // Verify only the supported file was indexed
@@ -237,7 +240,7 @@ class DocumentIndexingIntegrationTest {
   void retainsOnlyTheLastTenRunsPerLibraryAndPrunesTheirEvents() throws IOException {
     // #513, Umfangserweiterung (Maintainer-Ergaenzung 20.08.2026): only the last 10 runs of a
     // library stay around - older ones, and their own events, are pruned once an 11th run starts.
-    Files.writeString(classTempDir.resolve("bad.csv"), "a,b,c");
+    Files.writeString(classTempDir.resolve("bad.xyz"), "a,b,c");
 
     // #604 review, nit (d): a second library's own single run, untouched by the first library's
     // eleven-run pruning below - proves retention is scoped per library, not to the first 10 rows
@@ -328,9 +331,11 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void indexesOdfDocuments() throws IOException {
-    // #1057: ODT/ODS/ODP go through the exact same admission and pipeline path as their Microsoft
-    // counterparts (Teil 3, Punkt 2) - no dedicated pipeline exists for either family yet, so both
-    // resolve to the Tika fallback used by indexesPdfAndDocxDocuments above.
+    // #1057: ODT/ODS/ODP are admitted the exact same way as their Microsoft counterparts (Teil 3,
+    // Punkt 2). ODT and ODP resolve to the Tika fallback used by indexesPdfAndDocxDocuments above
+    // (no dedicated pipeline exists for either yet); ODS resolves to TabularDocumentPipeline since
+    // #1058 - see indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline for the assertion that it
+    // actually reads the file structurally rather than through the fallback.
     copyTestResource("test-documents/test-document.odt", "satzung.odt");
     copyTestResource("test-documents/test-document.ods", "haushalt.ods");
     copyTestResource("test-documents/test-document.odp", "vortrag.odp");
@@ -348,6 +353,50 @@ class DocumentIndexingIntegrationTest {
     assertThat(documents).hasSize(3);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
+  }
+
+  @Test
+  void indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline() throws IOException {
+    // #1096 review, finding 8: an end-to-end proof that XLSX/CSV/ODS actually flow through
+    // TabularDocumentPipeline (admission -> registry -> pipeline -> stored chunk), not just the
+    // pipeline's own unit tests - mirrors indexesPdfAndDocxDocuments's own end-to-end shape, with
+    // the pipeline_id assertion the real point of this test.
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("Gebühren");
+      Row header = sheet.createRow(0);
+      header.createCell(0).setCellValue("Leistung");
+      header.createCell(1).setCellValue("Betrag");
+      Row data = sheet.createRow(1);
+      data.createCell(0).setCellValue("Personalausweis");
+      data.createCell(1).setCellValue("37,00 EUR");
+      try (var out = Files.newOutputStream(classTempDir.resolve("gebuehren.xlsx"))) {
+        workbook.write(out);
+      }
+    }
+    Files.writeString(classTempDir.resolve("zustaendigkeiten.csv"), "Name,Amt\nMüller,Bauamt\n");
+
+    IndexingJob job = triggerIndexing();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(completedJob.getDocumentsProcessed()).isEqualTo(2);
+    assertThat(completedJob.getDocumentsFailed()).isZero();
+
+    List<Document> documents = documentRepository.findAll();
+    assertThat(documents).hasSize(2);
+    assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
+    assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
+
+    List<org.springframework.ai.document.Document> results =
+        vectorStore.similaritySearch(
+            SearchRequest.builder().query("Gebühren").topK(100).similarityThreshold(0.0).build());
+    assertThat(results).isNotEmpty();
+    assertThat(results)
+        .allMatch(
+            r ->
+                TabularDocumentPipeline.ID.equals(
+                    r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
   }
 
   @Test

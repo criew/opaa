@@ -11,9 +11,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextBox;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
@@ -118,6 +121,19 @@ class DocumentFormatParityTest {
 
     assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
     var networkDecision = networkPathDecision(file, "folien.pptx");
+    assertThat(networkDecision.supported()).isTrue();
+    assertThat(networkDecision.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void bothIndexingPathsAcceptAGenuineXlsxUnderItsOwnExtension() throws IOException {
+    // #1096 review, optional item: a real POI-built XLSX (not merely a media-type string) through
+    // both indexing paths - mirrors the DOCX/PPTX cases above.
+    Path file = tempDir.resolve("gebuehren.xlsx");
+    Files.write(file, realXlsxBytes());
+
+    assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
+    var networkDecision = networkPathDecision(file, "gebuehren.xlsx");
     assertThat(networkDecision.supported()).isTrue();
     assertThat(networkDecision.extensionMismatch()).isFalse();
   }
@@ -236,6 +252,17 @@ class DocumentFormatParityTest {
       textBox.setText("Ein echter PPTX-Inhalt fuer den Formaterkennungstest.");
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       slideShow.write(out);
+      return out.toByteArray();
+    }
+  }
+
+  private static byte[] realXlsxBytes() throws IOException {
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("Gebühren");
+      Row row = sheet.createRow(0);
+      row.createCell(0).setCellValue("Ein echter XLSX-Inhalt fuer den Formaterkennungstest.");
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      workbook.write(out);
       return out.toByteArray();
     }
   }

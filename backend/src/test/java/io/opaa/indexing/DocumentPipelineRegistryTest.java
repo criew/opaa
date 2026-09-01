@@ -77,8 +77,9 @@ class DocumentPipelineRegistryTest {
     // exactly the admission rule, reused rather than re-implemented.
     assertThat(registry.pipelineFor("handbuch.md", PLAIN_TEXT)).isSameAs(markdownPipeline);
     assertThat(registry.pipelineFor("handbuch.txt", PLAIN_TEXT)).isSameAs(textPipeline);
-    // Plain-text content under an extension that claims neither is not admitted at all, so it can
-    // only ever fall back - the registry never widens what SupportedDocumentFormats accepts.
+    // CSV is admitted in its own right since #1058, but no pipeline in this registry claims
+    // ".csv" - it falls back exactly like any other admitted format without a specialized
+    // pipeline (see aFormatWithoutItsOwnPipelineKeepsUsingTheFallback below).
     assertThat(registry.pipelineFor("export.csv", PLAIN_TEXT)).isSameAs(fallback);
   }
 

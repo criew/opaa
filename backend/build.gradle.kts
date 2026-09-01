@@ -54,6 +54,8 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.tika.core)
     implementation(libs.pgvector)
+    implementation(libs.poi.ooxml)
+    implementation(libs.commons.csv)
     runtimeOnly(libs.bundles.runtime)
     testImplementation(libs.bundles.test.deps)
     testRuntimeOnly(libs.bundles.test.runtime.deps)

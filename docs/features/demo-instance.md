@@ -71,8 +71,9 @@ QA-Schwesterset [LHM-Dienstleistungen-QA](https://huggingface.co/datasets/it-at-
 
 Das Bürgerbüro Rheinfurt gliedert sich in Sachgebiete; dazu kommt die Pressestelle der Stadt als externe
 Quelle, die alle lesen. Jede Wissensbibliothek demonstriert einen Konnektortyp und mindestens ein
-Dateiformat. Der Formatvorrat ist durch `SupportedDocumentFormats` gesetzt — `.md`, `.txt`, `.pdf`,
-`.docx`, `.doc` und `.pptx`; `.csv` ist nicht darunter:
+Dateiformat. Der Formatvorrat ist durch `SupportedDocumentFormats` gesetzt — `.md`, `.txt`, `.csv`,
+`.pdf`, `.docx`, `.doc`, `.xlsx`, `.pptx`, `.odt`, `.ods` und `.odp` (#1058/#1057); die Demo-Bibliotheken
+unten nutzen davon nur eine Teilmenge:
 
 | Wissensbibliothek | Inhalt | Formate | Quellentyp |
 |---|---|---|---|
