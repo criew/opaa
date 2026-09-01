@@ -191,6 +191,9 @@ public class AssetGrantService {
       throw denied;
     }
 
+    // One reference instant for the whole upsert, so the revival check in AssetGrant#updateRole and
+    // any expiry comparison below judge the same moment.
+    Instant now = Instant.now();
     AssetGrant grant;
     boolean isNewGrant;
     // #392: captured before grant.updateRole() mutates the entity in place, further down - the
@@ -219,7 +222,7 @@ public class AssetGrantService {
             library.getId(), grant, request.role(), request.expiresAt());
         previousRole = grant.getRole();
         previousExpiresAt = grant.getExpiresAt();
-        grant.updateRole(request.role(), request.expiresAt(), currentUserId);
+        grant.updateRole(request.role(), request.expiresAt(), currentUserId, now);
       }
     } else {
       grant =
@@ -243,7 +246,7 @@ public class AssetGrantService {
             library.getId(), grant, request.role(), request.expiresAt());
         previousRole = grant.getRole();
         previousExpiresAt = grant.getExpiresAt();
-        grant.updateRole(request.role(), request.expiresAt(), currentUserId);
+        grant.updateRole(request.role(), request.expiresAt(), currentUserId, now);
       }
     }
 

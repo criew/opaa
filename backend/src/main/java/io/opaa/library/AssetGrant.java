@@ -144,12 +144,18 @@ public class AssetGrant {
    * administrator could raise a pre-existing foreign grant to {@code OWNER} and still appear as
    * "not self-granted".
    *
-   * <p>Only an actual role change rewrites {@code granted_by_user_id}: an unchanged role - a pure
-   * expiry extension or an identical upsert - leaves the original conferrer in place, so extending
-   * one's own grant does not turn its holder into its own conferrer.
+   * <p>Two changes rewrite {@code granted_by_user_id}: an actual role change, and the revival of an
+   * already expired grant into an active one. Extending a still-running grant - or an identical
+   * upsert - leaves the original conferrer in place, so extending one's own grant does not turn its
+   * holder into its own conferrer. Revival must count, because an expired grant confers nothing:
+   * whoever makes it effective again procures the role it carries, exactly as if they had created
+   * the row.
+   *
+   * @param now the reference instant deciding whether this grant was expired before the change
    */
-  public void updateRole(AssetRole role, Instant expiresAt, UUID grantedByUserId) {
-    if (role != this.role) {
+  public void updateRole(AssetRole role, Instant expiresAt, UUID grantedByUserId, Instant now) {
+    boolean revived = isExpired(now) && (expiresAt == null || !expiresAt.isBefore(now));
+    if (role != this.role || revived) {
       this.grantedByUserId = grantedByUserId;
     }
     this.role = role;

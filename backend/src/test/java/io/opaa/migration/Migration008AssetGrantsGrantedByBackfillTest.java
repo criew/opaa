@@ -21,6 +21,11 @@ import org.junit.jupiter.api.Test;
  * changeSet reconstructs it from {@code asset_grant_history}; these tests pin both directions - it
  * rewrites a row whose role a foreign actor raised, and it leaves every row alone whose history
  * does not actually say who conferred the current role.
+ *
+ * <p>Deliberately out of the backfill's reach: the revival of an expired grant at an unchanged
+ * role, which {@code AssetGrant#updateRole} does treat as conferring. The backfill reconstructs
+ * from role changes only, so a pre-deploy revival keeps naming the original conferrer - see
+ * docs/features/hybrid-retrieval.md, "Berechtigungs-Leitplanken".
  */
 class Migration008AssetGrantsGrantedByBackfillTest extends AbstractMigrationTest {
 
@@ -112,7 +117,9 @@ class Migration008AssetGrantsGrantedByBackfillTest extends AbstractMigrationTest
   /**
    * A pure expiry change writes a {@code ROLE_CHANGED} interval too, but does not move the role -
    * and must not move the conferrer either, or an owner extending their own grant would become its
-   * own conferrer and lose the right to lift a lock.
+   * own conferrer and lose the right to lift a lock. The backfill applies this to a revival of an
+   * expired grant as well, which the running application does count as conferring; see the class
+   * Javadoc for that deliberately unclosed edge of the stock.
    */
   @Test
   void ignoresAnIntervalThatOnlyChangedTheExpiry() throws Exception {

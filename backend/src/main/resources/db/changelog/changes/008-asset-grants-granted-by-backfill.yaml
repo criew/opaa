@@ -81,5 +81,10 @@ databaseChangeLog:
                 AND g.subject_group_id IS NOT DISTINCT FROM r.subject_group_id
                 AND g.role = r.role
                 AND g.granted_by_user_id IS DISTINCT FROM r.actor_user_id;
-      # Kein Rollback: der ueberschriebene Vorzustand ist nach dem Lauf nicht mehr rekonstruierbar -
-      # asset_grants haelt nur den aktuellen Wert. Die Historie bleibt unangetastet.
+      # Bewusst leerer Rollback: der ueberschriebene Vorzustand ist nach dem Lauf nicht mehr
+      # rekonstruierbar - asset_grants haelt nur den aktuellen Wert. Die Historie bleibt
+      # unangetastet. Als "empty" deklariert und nicht weggelassen, damit ein "liquibase rollback"
+      # ueber die Kette hier weiterlaeuft, statt an einem sql-Change ohne Rollback-Block
+      # abzubrechen.
+      rollback:
+        - empty: {}

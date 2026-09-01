@@ -171,9 +171,11 @@ public class LibraryAccessService {
    * {@code OWNER} grant an administrator issued to themselves through that floor does not count -
    * closing the two-step path "grant myself OWNER via the administrative floor, then act as the
    * responsible owner". {@link AssetGrant#updateRole} carries the changer into {@code
-   * grantedByUserId}, so raising a pre-existing foreign grant to {@code OWNER} counts as
-   * self-issued too. Used by {@code LibraryDiagnosticsLockService} for the one rule that must hold
-   * against the administration itself; every other library endpoint keeps using {@link
+   * grantedByUserId} on a role change <em>and</em> on the revival of an expired grant, so both
+   * raising a pre-existing foreign grant to {@code OWNER} and re-arming an expired foreign {@code
+   * OWNER} grant at an unchanged role count as self-issued - the expiry filter below is what makes
+   * the second case necessary. Used by {@code LibraryDiagnosticsLockService} for the one rule that
+   * must hold against the administration itself; every other library endpoint keeps using {@link
    * #requireRole}.
    *
    * <p><b>The named-owner exception is only half closed, and the open half is administratively

@@ -903,11 +903,24 @@ feststellen.
 >   geschlossen, sich über die Administratorbefugnis des Grant-Endpunkts erst selbst `OWNER` zu
 >   geben und dann als „Zuständige Stelle“ zu entsperren — auch dann, wenn dazu nur ein bereits
 >   vorhandener Fremd-Grant angehoben würde, denn `granted_by_user_id` wird beim Rollenwechsel auf
->   die ändernde Person fortgeschrieben. Fortgeschrieben wird nur bei einer echten Rollenänderung —
->   eine bloße Fristverlängerung macht niemanden zum eigenen Vergeber. Für Zeilen, deren Rolle
->   bereits vor dieser Änderung angehoben wurde, zieht Changeset `008` den Vergeber einmalig aus der
->   Rechtehistorie (`asset_grant_history`) nach; ohne diesen Nachzug bliebe der Weg für den
->   Altbestand offen.
+>   die ändernde Person fortgeschrieben. Fortgeschrieben wird bei einer echten Rollenänderung **und
+>   bei der Wiederbelebung einer bereits abgelaufenen Berechtigung**: Eine abgelaufene Berechtigung
+>   zählt für die Zusage nicht mit, also verschafft die Rolle, wer sie wieder wirksam macht — auch
+>   wenn die Rolle dabei unverändert bleibt. Ohne diesen zweiten Fall stünde der Weg über die
+>   *abgelaufene* Fremd-Berechtigung offen: Frist neu setzen, Rolle unverändert lassen, weiterhin als
+>   fremd vergeben gelten. Die Verlängerung einer **noch laufenden** Berechtigung macht dagegen
+>   niemanden zum eigenen Vergeber; sie verschafft nichts, was nicht schon galt.
+>
+>   Für Zeilen, deren Rolle bereits vor dieser Änderung angehoben wurde, zieht Changeset `008` den
+>   Vergeber einmalig aus der Rechtehistorie (`asset_grant_history`) nach; ohne diesen Nachzug bliebe
+>   der Weg für den Altbestand offen. **Der Nachzug deckt den Wiederbelebungsfall nicht ab:** `008`
+>   rekonstruiert ausschließlich aus Intervallen, deren Rolle sich von der des Vorgängerintervalls
+>   unterscheidet. Eine Wiederbelebung vor dem Deploy — jemand hat die Frist einer abgelaufenen
+>   Fremd-Berechtigung verlängert, ohne die Rolle zu ändern — bleibt damit im Bestand mit dem alten
+>   Vergeber stehen. Die Laufzeitkorrektur heilt das nicht mit: Sie greift erst, wenn dieselbe Zeile
+>   nach dem Deploy erneut angefasst wird. Rekonstruierbar wäre der Fall (`asset_grant_history` führt
+>   `expires_at` und `valid_from`); dass er nicht nachgezogen wird, ist eine bewusste offene Stelle
+>   für den Altbestand.
 >
 >   **Was die Administration weiterhin allein erreicht**, ohne dass eine zweite Person mitwirkt:
 >   Gehört die Bibliothek einer Gruppe, die keine `ORG_UNIT` ist, kann ein `SYSTEM_ADMIN` sich über

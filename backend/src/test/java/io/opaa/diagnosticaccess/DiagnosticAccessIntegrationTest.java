@@ -284,6 +284,51 @@ class DiagnosticAccessIntegrationTest {
         .isEqualTo(admin.id());
   }
 
+  /**
+   * The third shape of the same two-step path, and the one an unchanged-role check alone leaves
+   * open: the administration holds a foreign {@code OWNER} grant that has long expired - {@code
+   * holdsIndependentOwnerRole} discounts it - and merely extends its expiry at an unchanged role.
+   * Only because {@code AssetGrant#updateRole} treats a revival as procuring the role does the row
+   * stop naming the original conferrer, and the lock holds.
+   */
+  @Test
+  void anAdministratorWhoRevivesAnExpiredForeignOwnerGrantStillCannotLiftAForeignLock() {
+    KnowledgeLibrary library = persistLibraryOwnedBy(holderId);
+    assetGrantRepository.save(
+        AssetGrant.forUser(
+            library.getId(),
+            organizationId,
+            admin.id(),
+            AssetRole.OWNER,
+            Instant.now().minus(365, ChronoUnit.DAYS),
+            holderId));
+
+    assetGrantService.upsertGrant(
+        library.getId(),
+        new AssetGrantUpsert(
+            PermissionSubjectType.USER,
+            admin.id(),
+            AssetRole.OWNER,
+            Instant.now().plus(90, ChronoUnit.DAYS)),
+        admin);
+
+    assertThatThrownBy(() -> lockService.setLocked(admin, library.getId(), false))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT diagnostics_locked FROM knowledge_libraries WHERE id = ?",
+                Boolean.class,
+                library.getId()))
+        .isTrue();
+    assertThat(
+            assetGrantRepository
+                .findByLibraryIdAndSubjectTypeAndSubjectUserId(
+                    library.getId(), PermissionSubjectType.USER, admin.id())
+                .orElseThrow()
+                .getGrantedByUserId())
+        .isEqualTo(admin.id());
+  }
+
   /** The counterpart: the named responsible body does lift its own lock. */
   @Test
   void theResponsibleOwnerLiftsTheLock() {
