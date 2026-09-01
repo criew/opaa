@@ -63,6 +63,13 @@ class DocumentPipelineRegistryRoutingIntegrationTest {
     assertThat(registry.pipelineFor("vorgang.eml", "text/plain").id()).isEqualTo("email");
     assertThat(registry.pipelineFor("vorgang.msg", "application/vnd.ms-outlook").id())
         .isEqualTo("email");
+    assertThat(registry.pipelineFor("satzung.odt", "application/vnd.oasis.opendocument.text").id())
+        .isEqualTo("odt");
+    assertThat(
+            registry
+                .pipelineFor("vortrag.odp", "application/vnd.oasis.opendocument.presentation")
+                .id())
+        .isEqualTo("odp");
 
     // Every format without its own registered pipeline keeps going through TikaFallbackPipeline -
     // the verhaltensneutral guarantee of Teil 1 (a new pipeline bean must never change this for a
@@ -70,13 +77,6 @@ class DocumentPipelineRegistryRoutingIntegrationTest {
     assertThat(registry.pipelineFor("notiz.md", "text/plain").id()).isEqualTo("tika-fallback");
     assertThat(registry.pipelineFor("notiz.txt", "text/plain").id()).isEqualTo("tika-fallback");
     assertThat(registry.pipelineFor("altakte.doc", "application/msword").id())
-        .isEqualTo("tika-fallback");
-    assertThat(registry.pipelineFor("satzung.odt", "application/vnd.oasis.opendocument.text").id())
-        .isEqualTo("tika-fallback");
-    assertThat(
-            registry
-                .pipelineFor("vortrag.odp", "application/vnd.oasis.opendocument.presentation")
-                .id())
         .isEqualTo("tika-fallback");
   }
 

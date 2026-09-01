@@ -353,10 +353,10 @@ class DocumentIndexingIntegrationTest {
   @Test
   void indexesOdfDocuments() throws IOException {
     // #1057: ODT/ODS/ODP are admitted the exact same way as their Microsoft counterparts (Teil 3,
-    // Punkt 2). ODT and ODP resolve to the Tika fallback used by indexesPdfAndDocxDocuments above
-    // (no dedicated pipeline exists for either yet); ODS resolves to TabularDocumentPipeline since
-    // #1058 - see indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline for the assertion that it
-    // actually reads the file structurally rather than through the fallback.
+    // Punkt 2). ODT and ODP resolve to their own OdtDocumentPipeline/OdpDocumentPipeline since
+    // #1110; ODS resolves to TabularDocumentPipeline since #1058 - see
+    // indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline for the assertion that it actually
+    // reads the file structurally rather than through the fallback.
     copyTestResource("test-documents/test-document.odt", "satzung.odt");
     copyTestResource("test-documents/test-document.ods", "haushalt.ods");
     copyTestResource("test-documents/test-document.odp", "vortrag.odp");

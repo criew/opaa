@@ -1,6 +1,6 @@
 # Ingestion-Pipelines je Dokumenttyp
 
-> **Status: Umgesetzt bis auf dokumentierte Zurückstellungen (#1062, #1103, #1105, #1110); Pflege
+> **Status: Umgesetzt bis auf dokumentierte Zurückstellungen (#1062, #1103, #1105); Pflege
 > fortlaufend.**
 
 Diese Spezifikation führt zusammen, was in den Diskussionspapieren zu
@@ -493,10 +493,11 @@ strukturbewussten Zuschnitt verwenden, liest kein ODF — POI deckt OOXML (DOCX/
 alten Binärformate ab, nie OpenDocument (siehe die gleiche Einschränkung unter
 [Punkt 3](#3-xlsx-und-csv)). Nur ODS bekommt tatsächlich einen strukturerhaltenden Zuschnitt, über
 einen eigenen, POI-unabhängigen ODF-Leser (`TabularDocumentPipeline`, #1058) — „ODS wie XLSX" gilt
-also im Ergebnis, aber nicht über dieselbe Pipeline-Implementierung. **ODT und ODP verbleiben
-dauerhaft auf `TikaFallbackPipeline`**, solange es keinen eigenen ODF-Text-/Präsentationsleser gibt;
-ein strukturbewusster Zuschnitt dafür ist als Folge-Issue vermerkt:
-[#1110](https://github.com/criew/opaa/issues/1110).
+also im Ergebnis, aber nicht über dieselbe Pipeline-Implementierung. **Seit #1110 gilt dasselbe auch
+für ODT und ODP**: `OdtDocumentPipeline`/`OdpDocumentPipeline` lesen `content.xml` über einen
+eigenen, POI-unabhängigen ODF-SAX-Leser, im selben Stil wie `TabularDocumentPipeline`s ODS-Leser —
+„ODT wie DOCX, ODP wie PPTX" gilt seitdem also ebenfalls im Ergebnis, aber über eine eigene
+Pipeline-Implementierung statt über POI.
 
 #### Umgesetzt (#1057)
 
@@ -514,9 +515,43 @@ Fallback-Pipeline abgewiesen (`NO_EXTRACTABLE_TEXT` statt `INDEXED` mit null Chu
 **ODS wird seit #1058 von `TabularDocumentPipeline` mitbedient**, nicht mehr von der
 Tika-Fallback-Pipeline: „ODS wie XLSX" gilt seitdem auch für den Reader, über einen eigenen,
 POI-unabhängigen ODF-XML-Leser (POI selbst versteht kein ODF) — siehe die Begründung unter
-[Punkt 3](#3-xlsx-und-csv). ODT und ODP laufen unverändert über die Tika-Fallback-Pipeline.
+[Punkt 3](#3-xlsx-und-csv).
 
 Baseline unberührt — kein Korpusdokument dieses Typs.
+
+#### Umgesetzt (#1110)
+
+`OdtDocumentPipeline` (`id` `odt`, Version 1) und `OdpDocumentPipeline` (`id` `odp`, Version 1)
+beanspruchen `.odt` bzw. `.odp` in der `DocumentPipelineRegistry` und lösen damit die
+`TikaFallbackPipeline` für beide Formate ab. Beide lesen `content.xml` (eine ODT-/ODP-Datei ist wie
+ODS ein ZIP-Archiv) direkt über einen gehärteten SAX-Parser, geteilt über `OdfContentXml` — dieselbe
+XXE-Härtung (kein `<!DOCTYPE …>`, keine externen Entitäten) und derselbe Byte-Deckel auf den
+entpackten `content.xml`-Strom (`opaa.indexing.odf.max-content-xml-bytes`, gesetzt 10 MiB) wie
+`TabularDocumentPipeline`s ODS-Leser. Ein zweiter Element-Deckel gilt zusätzlich pro Format
+(`opaa.indexing.odf.max-odt-paragraphs` bzw. `opaa.indexing.odf.max-odp-slides`, je gesetzt 50.000
+bzw. 5.000) — anders als beim ODS-Leser wird `table:number-columns-repeated`/
+`table:number-rows-repeated` hier nicht expandiert (eine Tabelle in einem Textdokument oder einer
+Folie wird elementweise gelesen), sodass für diese beiden Attribute kein eigener
+Verstärkungs-Deckel nötig ist.
+
+- **ODT** entspricht fachlich `DocxDocumentPipeline`: Die Gliederungsebene kommt direkt aus `text:h`s
+  eigenem `text:outline-level`-Attribut (kein Stilname-Abgleich nötig, anders als bei DOCX' eingebauten
+  Word-Formatvorlagen), mit Abbruch der Schnittebene bei 3 wie bei DOCX. Eine `table:table` wird
+  zellenweise in einen einzelnen Fließtext-Absatz je Tabelle gelesen, nie als Überschrift.
+- **ODP** entspricht fachlich `PptxDocumentPipeline`: eine Folie (`draw:page`) = ein Chunk. Die Rolle
+  eines Rahmens kommt aus seinem eigenen `presentation:class`-Attribut — `"title"` wird Fundort und
+  führende Zeile des Chunks, jeder andere Rahmen (auch `"subtitle"`) wird Fließtext, Text in
+  `presentation:notes` wird als eigener, benannter Absatz angehängt, mit denselben ausgefilterten
+  Platzhalterklassen (`header`/`footer`/`date-time`/`page-number`) wie bei PPTX. Eine Präsentation, in
+  der keine Folie Text trägt, meldet `NO_EXTRACTABLE_TEXT`.
+
+**Reindex-Nachzug (#1105):** Ein bereits als ODT/ODP indizierter Bestand trägt heute noch
+`tika-fallback` als Pipeline-Metadatum. Der in #1105 gebaute Fehlrouting-Zweig von
+`PipelineReindexService#selectStaleDocuments` erkennt diesen Fall generisch über
+`DocumentPipeline#handledFormats()` der neu registrierten Pipeline (keine ODT-/ODP-spezifische
+Anpassung nötig) und zieht solche Dokumente beim nächsten `reindexBatch`-Aufruf nach.
+
+Baseline unberührt — der bestehende Evaluierungskorpus enthält keine ODT-/ODP-Dokumente.
 
 ### 3. XLSX und CSV
 
