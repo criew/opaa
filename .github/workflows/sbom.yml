@@ -76,7 +76,7 @@ jobs:
       # runtime-only scope - see docs/sbom.md.
       # renovate: datasource=npm depName=@cyclonedx/cdxgen
       - name: Generate frontend SBOM
-        run: pnpm dlx @cyclonedx/cdxgen@11.11.0 -t pnpm --no-babel --required-only --project-name opaa-frontend -o bom.json .
+        run: pnpm dlx @cyclonedx/cdxgen@12.8.4 -t pnpm --no-babel --required-only --project-name opaa-frontend -o bom.json .
 
       - uses: actions/upload-artifact@v7
         with:
