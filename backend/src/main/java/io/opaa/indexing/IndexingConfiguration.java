@@ -1,6 +1,18 @@
 package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.indexing.pipeline.DocumentPipeline;
+import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
+import io.opaa.indexing.pipeline.PipelineReindexService;
+import io.opaa.indexing.pipeline.TikaFallbackPipeline;
+import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
+import io.opaa.indexing.pipeline.mail.MailDocumentPipeline;
+import io.opaa.indexing.pipeline.mail.MailProperties;
+import io.opaa.indexing.pipeline.office.DocxDocumentPipeline;
+import io.opaa.indexing.pipeline.office.PptxDocumentPipeline;
+import io.opaa.indexing.pipeline.pdf.PdfDocumentPipeline;
+import io.opaa.indexing.pipeline.tabular.TabularDocumentPipeline;
+import io.opaa.indexing.pipeline.tabular.TabularProperties;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.LibraryFolderService;
