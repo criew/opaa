@@ -579,6 +579,30 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   @Test
+  void aMalformedDocumentIdInChunkMetadataDoesNotFailProgressOrReindexBatch() throws IOException {
+    // Regression guard for the #1125 review: document_id is a text-typed jsonb field, so nothing
+    // stops a chunk from carrying a value that is not a well-formed UUID. Both
+    // progressForOrganization (pre-existing text-comparison join) and selectStaleDocuments (this
+    // round's fix, replacing an unguarded ::uuid cast) must tolerate such a chunk rather than fail
+    // the query - and the surrounding organization's other documents must still be processed.
+    Document document = persistedFilesystemDocument("gueltig.txt", "Gueltiger Inhalt");
+    seedChunk(document.getId(), "gueltiger chunk", null, null);
+    seedChunk(document.getId(), "chunk mit defekten metadaten", null, null);
+    jdbcTemplate.update(
+        "UPDATE vector_store SET metadata ="
+            + " jsonb_set(metadata::jsonb, '{document_id}', '\"nicht-uuid\"')::json"
+            + " WHERE content = ?",
+        "chunk mit defekten metadaten");
+
+    assertThat(reindexService.progressForOrganization(Organization.DEFAULT_ID)).isNotEmpty();
+
+    PipelineReindexResult result = reindexBatch(10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(chunkTextsOf(document.getId())).noneMatch(text -> text.equals("gueltiger chunk"));
+  }
+
+  @Test
   void chunksWhoseDocumentRowIsGoneAreRemovedRatherThanReselectedForever() {
     UUID vanishedDocumentId = UUID.randomUUID();
     seedChunk(vanishedDocumentId, "verwaister chunk", null, null);
