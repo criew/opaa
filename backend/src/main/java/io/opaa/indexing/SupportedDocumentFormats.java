@@ -44,7 +44,8 @@ public final class SupportedDocumentFormats {
 
   private static final Set<String> EXTENSIONS =
       Set.of(
-          ".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv", ".odt", ".ods", ".odp");
+          ".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv", ".odt", ".ods", ".odp",
+          ".html", ".eml", ".msg");
 
   /**
    * Maps a {@code Content-Type} header value to one of the {@link #EXTENSIONS} above, for sources
@@ -67,7 +68,8 @@ public final class SupportedDocumentFormats {
           Map.entry("text/csv", ".csv"),
           Map.entry("application/vnd.oasis.opendocument.text", ".odt"),
           Map.entry("application/vnd.oasis.opendocument.spreadsheet", ".ods"),
-          Map.entry("application/vnd.oasis.opendocument.presentation", ".odp"));
+          Map.entry("application/vnd.oasis.opendocument.presentation", ".odp"),
+          Map.entry("text/html", ".html"));
 
   /**
    * Extensions whose content is only checked for being text at all - {@code .md}, {@code .txt} and
@@ -77,8 +79,25 @@ public final class SupportedDocumentFormats {
    * joins {@code .md}/{@code .txt} here for the same reason (ingestion-pipelines.md, Teil 3, Punkt
    * 3): content alone cannot tell a comma- or semicolon-separated export apart from a Markdown
    * table or plain text, so a CSV file is only accepted once its own extension already claims it.
+   *
+   * <p>{@code .eml} joins this set (#1101 review) rather than the strict one below, for a reason
+   * specific to Tika's own {@code message/rfc822} detector: it is a loose textual heuristic (looks
+   * for header-shaped lines such as {@code Date:}/{@code Subject:}/{@code To:}/{@code From:} near
+   * the top of the content), not a fixed byte signature the way a PDF header or an OLE2/ZIP
+   * container is - {@code message/rfc822} is registered in Tika's own media type hierarchy as a
+   * specialization of {@code text/plain} (confirmed empirically), so it is exactly as ambiguous by
+   * content alone as Markdown or plain text: a log file with {@code Date:}/{@code Status:} lines, a
+   * changelog with {@code To:}/{@code From:} lines, or a CSV export with {@code Date:}/{@code
+   * Subject:} columns can trip the same heuristic. Treating {@code message/rfc822} as strictly
+   * detected content (as an earlier version of this class did) would route such files into the mail
+   * pipeline with no mismatch reported at all, and - the mirror failure - reject a genuine {@code
+   * .eml} whose first header line does not match the heuristic (e.g. a leading {@code
+   * Authentication-Results:} or a German {@code Von:}/{@code An:} pair) outright. Requiring the
+   * file's own {@code .eml} extension in addition to "looks like text" fixes both: an unrelated
+   * text file never gets routed as mail regardless of what its content resembles, and a genuine
+   * {@code .eml} is admitted regardless of which header happens to come first.
    */
-  private static final Set<String> TEXT_TOLERANT_EXTENSIONS = Set.of(".md", ".txt", ".csv");
+  private static final Set<String> TEXT_TOLERANT_EXTENSIONS = Set.of(".md", ".txt", ".csv", ".eml");
 
   /**
    * The Tika-detected media type(s) consistent with each non-text extension in {@link #EXTENSIONS}.
@@ -109,7 +128,15 @@ public final class SupportedDocumentFormats {
           // is needed here.
           Map.entry(".odt", Set.of("application/vnd.oasis.opendocument.text")),
           Map.entry(".ods", Set.of("application/vnd.oasis.opendocument.spreadsheet")),
-          Map.entry(".odp", Set.of("application/vnd.oasis.opendocument.presentation")));
+          Map.entry(".odp", Set.of("application/vnd.oasis.opendocument.presentation")),
+          // HTML has a distinctive enough signature (DOCTYPE/<html> tag) that Tika reliably tells
+          // it apart from plain text - both text/html and the XHTML variant are accepted, mirroring
+          // DetailPageExtractor's own isHtmlContentType (ingestion-pipelines.md, Teil 3, Punkt 4).
+          Map.entry(".html", Set.of("text/html", "application/xhtml+xml")),
+          // MSG's application/vnd.ms-outlook is a genuinely distinctive OLE2/MAPI container type,
+          // unlike EML's message/rfc822 (see TEXT_TOLERANT_EXTENSIONS's own Javadoc for why EML
+          // joins the text-tolerant set instead).
+          Map.entry(".msg", Set.of("application/vnd.ms-outlook")));
 
   private SupportedDocumentFormats() {}
 
@@ -267,32 +294,57 @@ public final class SupportedDocumentFormats {
   /**
    * The single decision both indexing paths make once a file's bytes are available.
    *
-   * <p>An unambiguous, {@link #extensionForDetectedContent strictly detected} type is accepted
-   * outright, regardless of what the file is named - {@code fileName}'s own claimed extension only
-   * decides whether the caller needs to report a mismatch, never whether the file is indexed.
+   * <p>The Markdown/Klartext/CSV special rule ({@link #TEXT_TOLERANT_EXTENSIONS}) is checked
+   * <b>first</b>, ahead of any strict detection - not just as a fallback for content a strict
+   * detection could not resolve at all. {@code text/html} is registered in Tika's own {@code
+   * tika-mimetypes.xml} as a specialization of {@code text/plain} (confirmed empirically, see
+   * {@code SupportedDocumentFormatsTest}), so a Markdown file that happens to open with a raw
+   * {@code <div>}/{@code <h1>} detects as {@code text/html}, an otherwise-strict type (#1059
+   * review, finding 1) - the special rule must still win, per ingestion-pipelines.md, Teil 1 ("gilt
+   * für das Routing unverändert weiter"), or such a file would be silently routed to the HTML
+   * pipeline with no {@code FORMAT_MISMATCH} even reported (the same content that makes the
+   * text-tolerant match succeed also makes the strict branch's own mismatch check come out {@code
+   * false}).
    *
-   * <p>An ambiguous, text-tolerant detection (see {@link #TEXT_TOLERANT_EXTENSIONS}) is different:
-   * content alone cannot tell a Markdown file apart from a CSV export or a source file, so this
-   * only accepts it when {@code fileName}'s own extension already claims one of {@link
-   * #TEXT_TOLERANT_EXTENSIONS} - never as a mismatch, and never for any other or missing extension.
+   * <p>The same precedence is what makes {@code .eml} admission correct for a message whose HTML
+   * body happens to be detected as {@code text/html} content (#1101 review): {@code text/html} is
+   * {@code isInstanceOf text/plain} (see {@link #TEXT_TOLERANT_EXTENSIONS}'s own Javadoc on why
+   * {@code .eml} joined this set), so such a file matches the text-tolerant branch on its own
+   * {@code .eml} extension before the strict branch ever gets a say - the extension decides, not
+   * the content, exactly as for the Markdown-detected-as-HTML case above. A file actually named
+   * {@code .html} with the same content still takes the strict branch (its own extension is not
+   * text-tolerant) and is routed to the HTML pipeline as normal; only a file already claiming
+   * {@code .eml} benefits from this priority.
+   *
+   * <p>Once that is ruled out, an unambiguous, {@link #extensionForDetectedContent strictly
+   * detected} type is accepted outright, regardless of what the file is named - {@code fileName}'s
+   * own claimed extension only decides whether the caller needs to report a mismatch, never whether
+   * the file is indexed. A text-tolerant name over genuinely non-text content (e.g. a PDF misnamed
+   * {@code .csv}) never satisfies the first check above (PDF is not an {@code isInstanceOf
+   * text/plain}), so it still falls through to this strict branch and is reported as a mismatch
+   * there, exactly as before this method's own text-tolerant priority check existed.
+   *
+   * <p>Content that is neither a text-tolerant match nor a strict detection is unsupported -
+   * content alone cannot tell a Markdown file apart from a CSV export or a source file, so an
+   * ambiguous, text-tolerant detection is only ever accepted under one of {@link
+   * #TEXT_TOLERANT_EXTENSIONS}, never as a mismatch, and never for any other or missing extension.
    */
   public static ContentDecision decideForFileName(String fileName, String detectedMimeType) {
     if (detectedMimeType == null) {
       return ContentDecision.UNSUPPORTED;
-    }
-    String strictExtension = extensionForDetectedContent(detectedMimeType);
-    if (strictExtension != null) {
-      Optional<String> claimedExtension = matchedExtension(fileName);
-      boolean matches =
-          claimedExtension.isPresent()
-              && contentMatchesExtension(claimedExtension.get(), detectedMimeType);
-      return new ContentDecision(true, strictExtension, !matches);
     }
     Optional<String> claimedExtension = matchedExtension(fileName);
     if (claimedExtension.isPresent()
         && TEXT_TOLERANT_EXTENSIONS.contains(claimedExtension.get())
         && contentMatchesExtension(claimedExtension.get(), detectedMimeType)) {
       return new ContentDecision(true, claimedExtension.get(), false);
+    }
+    String strictExtension = extensionForDetectedContent(detectedMimeType);
+    if (strictExtension != null) {
+      boolean matches =
+          claimedExtension.isPresent()
+              && contentMatchesExtension(claimedExtension.get(), detectedMimeType);
+      return new ContentDecision(true, strictExtension, !matches);
     }
     return ContentDecision.UNSUPPORTED;
   }

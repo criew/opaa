@@ -83,7 +83,8 @@ import SectionHead from '../components/SectionHead'
 // client-side hint for the file picker; the backend remains the authority on what is accepted.
 // Exported so directoryEntries.test.ts exercises filterAcceptedFiles against the same list rather
 // than a copy that can silently drift out of sync with it.
-export const ACCEPTED_FILE_EXTENSIONS = '.csv,.doc,.docx,.md,.odp,.ods,.odt,.pdf,.pptx,.txt,.xlsx'
+export const ACCEPTED_FILE_EXTENSIONS =
+  '.csv,.doc,.docx,.eml,.html,.md,.msg,.odp,.ods,.odt,.pdf,.pptx,.txt,.xlsx'
 
 const allVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
 

@@ -55,6 +55,8 @@ dependencies {
     implementation(libs.tika.core)
     implementation(libs.pgvector)
     implementation(libs.poi.ooxml)
+    implementation(libs.poi.scratchpad)
+    implementation(libs.mime4j.dom)
     implementation(libs.commons.csv)
     runtimeOnly(libs.bundles.runtime)
     testImplementation(libs.bundles.test.deps)

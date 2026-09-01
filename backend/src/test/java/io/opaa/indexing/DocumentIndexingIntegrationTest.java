@@ -400,6 +400,52 @@ class DocumentIndexingIntegrationTest {
   }
 
   @Test
+  void indexesHtmlDocumentsThroughTheHtmlPipeline() throws IOException {
+    // #1059 review, finding 9: an end-to-end proof that .html actually flows through
+    // HtmlDocumentPipeline (admission -> registry -> pipeline -> stored chunk), not just the
+    // pipeline's own unit tests - mirrors indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline's
+    // own shape, with the pipeline_id and location assertions the real point of this test.
+    Files.writeString(
+        classTempDir.resolve("buergeramt.html"),
+        "<html><body><nav><a href=\"/\">Startseite</a></nav>"
+            + "<main><h1>Personalausweis beantragen</h1>"
+            + "<p>Der Personalausweis ist ein amtliches Ausweisdokument.</p>"
+            + "</main></body></html>");
+
+    IndexingJob job = triggerIndexing();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(completedJob.getDocumentsProcessed()).isEqualTo(1);
+    assertThat(completedJob.getDocumentsFailed()).isZero();
+
+    List<Document> documents = documentRepository.findAll();
+    assertThat(documents).hasSize(1);
+    assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
+    assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
+
+    List<org.springframework.ai.document.Document> results =
+        vectorStore.similaritySearch(
+            SearchRequest.builder()
+                .query("Personalausweis")
+                .topK(100)
+                .similarityThreshold(0.0)
+                .build());
+    assertThat(results).isNotEmpty();
+    assertThat(results)
+        .allMatch(
+            r ->
+                HtmlDocumentPipeline.ID.equals(
+                    r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
+    assertThat(results)
+        .allMatch(
+            r ->
+                "Abschn. Personalausweis beantragen"
+                    .equals(r.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY)));
+  }
+
+  @Test
   void anEmptyOdfDocumentIsRejectedInsteadOfIndexedWithZeroChunks() throws IOException {
     // #1055 guard carried over to ODF (#1057): a document that parses without error but yields no
     // usable text must be reported as skipped, the same way a scan PDF is - never silently INDEXED

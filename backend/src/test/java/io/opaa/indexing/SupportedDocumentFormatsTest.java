@@ -320,11 +320,182 @@ class SupportedDocumentFormatsTest {
     assertThat(SupportedDocumentFormats.detectMediaType(file)).isEqualTo("application/pdf");
   }
 
+  // --- #1060/#1101: EML and MSG ------------------------------------------------------------------
+
+  @Test
+  void isSupportedAcceptsEmlAndMsgByName() {
+    assertThat(SupportedDocumentFormats.isSupported("vorgang.eml")).isTrue();
+    assertThat(SupportedDocumentFormats.isSupported("vorgang.msg")).isTrue();
+  }
+
+  @Test
+  void contentMatchesExtensionAcceptsTheExactMediaTypeForMsg() {
+    assertThat(
+            SupportedDocumentFormats.contentMatchesExtension(".msg", "application/vnd.ms-outlook"))
+        .isTrue();
+  }
+
+  @Test
+  void contentMatchesExtensionAcceptsEmlOnlyAsTextTolerantContent() {
+    // #1101 review, finding 1: message/rfc822 is a text/plain specialization in Tika's own media
+    // type hierarchy, not a distinctive byte signature - .eml is admitted the same tolerant way
+    // .md/.txt/.csv are, not as a strictly detected type.
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".eml", "message/rfc822")).isTrue();
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".eml", "text/plain")).isTrue();
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".eml", "application/pdf"))
+        .isFalse();
+  }
+
+  @Test
+  void decideForFileNameAcceptsMsgContentRegardlessOfExtension() {
+    var msg =
+        SupportedDocumentFormats.decideForFileName("vorgang.msg", "application/vnd.ms-outlook");
+    assertThat(msg.supported()).isTrue();
+    assertThat(msg.detectedExtension()).isEqualTo(".msg");
+    assertThat(msg.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void decideForFileNameAcceptsEmlOnlyUnderItsOwnExtension() {
+    var wrongExtension =
+        SupportedDocumentFormats.decideForFileName("vorgang.pdf", "message/rfc822");
+    assertThat(wrongExtension.supported()).isFalse();
+
+    var eml = SupportedDocumentFormats.decideForFileName("vorgang.eml", "message/rfc822");
+    assertThat(eml.supported()).isTrue();
+    assertThat(eml.detectedExtension()).isEqualTo(".eml");
+    assertThat(eml.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void decideForFileNameDoesNotRouteUnrelatedTextFilesIntoTheMailPipelineEvenIfTikaGuessesRfc822() {
+    // #1101 review, finding 1 (empirically confirmed hijack): a log file, a Markdown changelog and
+    // a CSV export can all trip Tika's loose message/rfc822 header-line heuristic, but each keeps
+    // its own extension's routing because decideForFileName's text-tolerant branch always
+    // classifies
+    // by the file's own claimed extension, never by which text-tolerant type the content merely
+    // resembles.
+    var log = SupportedDocumentFormats.decideForFileName("system.log", "message/rfc822");
+    assertThat(log.supported()).isFalse();
+
+    var markdown = SupportedDocumentFormats.decideForFileName("protokoll.md", "message/rfc822");
+    assertThat(markdown.supported()).isTrue();
+    assertThat(markdown.detectedExtension()).isEqualTo(".md");
+
+    var csv = SupportedDocumentFormats.decideForFileName("export.csv", "message/rfc822");
+    assertThat(csv.supported()).isTrue();
+    assertThat(csv.detectedExtension()).isEqualTo(".csv");
+  }
+
+  @Test
+  void decideForFileNameAcceptsARealEmlEvenWhenTikaDoesNotRecognizeItsFirstHeaderLine() {
+    // #1101 review, finding 1: an .eml whose first header does not match Tika's rfc822 heuristic
+    // (e.g. a leading Authentication-Results: or German Von:/An: pair) can be detected as plain
+    // text/plain instead of message/rfc822 - still admitted, since .eml only demands text-tolerant
+    // content, not the rfc822 heuristic specifically.
+    var eml = SupportedDocumentFormats.decideForFileName("weiterleitung.eml", "text/plain");
+    assertThat(eml.supported()).isTrue();
+    assertThat(eml.detectedExtension()).isEqualTo(".eml");
+  }
+
   @Test
   void detectMediaTypeDetectsPlainText() throws IOException {
     Path file = tempDir.resolve("data.bin");
     Files.writeString(file, "Ganz gewöhnlicher Text ohne besondere Bytes.");
 
     assertThat(SupportedDocumentFormats.detectMediaType(file)).startsWith("text/plain");
+  }
+
+  // --- #1059: HTML ------------------------------------------------------------------------------
+
+  @Test
+  void contentMatchesExtensionAcceptsHtmlAndXhtmlForTheHtmlExtension() {
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".html", "text/html")).isTrue();
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".html", "application/xhtml+xml"))
+        .isTrue();
+  }
+
+  @Test
+  void extensionForDetectedContentResolvesHtml() {
+    assertThat(SupportedDocumentFormats.extensionForDetectedContent("text/html"))
+        .isEqualTo(".html");
+  }
+
+  @Test
+  void decideForFileNameAcceptsHtmlContentRegardlessOfExtension() {
+    // Routing (ingestion-pipelines.md, Teil 3, Punkt 4): HTML is admitted purely from its detected
+    // content, exactly like PDF/DOCX - the file's own extension only decides the mismatch flag.
+    var decision = SupportedDocumentFormats.decideForFileName("seite.htm", "text/html");
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".html");
+    assertThat(decision.extensionMismatch()).isTrue();
+  }
+
+  @Test
+  void isSupportedAcceptsHtmlByName() {
+    assertThat(SupportedDocumentFormats.isSupported("seite.html")).isTrue();
+  }
+
+  @Test
+  void detectMediaTypeReadsHtmlFromARealFile() throws IOException {
+    Path file = tempDir.resolve("seite.html");
+    Files.writeString(file, "<html><body><main><h1>Titel</h1><p>Inhalt.</p></main></body></html>");
+
+    assertThat(SupportedDocumentFormats.detectMediaType(file)).isEqualTo("text/html");
+  }
+
+  @Test
+  void decideForFileNameKeepsTheMarkdownRuleWinningOverAHtmlContentDetection() throws IOException {
+    // #1059 review, finding 1 (blocking): Tika's tika-mimetypes.xml registers text/html as a
+    // specialization of text/plain, so a Markdown file that happens to open with a raw
+    // <div>/<h1> is detected as text/html, not text/plain - confirmed empirically against the
+    // real Tika detector below, not assumed from a literal mime string. Without the fix, the
+    // strict (HTML) branch would win over the Markdown/Klartext/CSV special rule
+    // (ingestion-pipelines.md, Teil 1, "gilt für das Routing unverändert weiter"), silently
+    // routing the file to HtmlDocumentPipeline with no FORMAT_MISMATCH ever reported (the
+    // content passing contentMatchesExtension(".md", "text/html") means the strict branch's own
+    // mismatch check comes out false too).
+    Path file = tempDir.resolve("readme.md");
+    Files.writeString(
+        file, "<div><h1>Nicht wirklich Markdown</h1><p>Text</p></div>", StandardCharsets.UTF_8);
+    String detected = SupportedDocumentFormats.detectMediaType(file);
+    assertThat(detected).isEqualTo("text/html");
+
+    var decision = SupportedDocumentFormats.decideForFileName("readme.md", detected);
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".md");
+    assertThat(decision.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void decideForFileNameKeepsTheKlartextRuleWinningOverAHtmlContentDetection() {
+    // Same rule for .txt as for .md above - the special rule covers all three text-tolerant
+    // extensions (.md/.txt/.csv), not just Markdown.
+    var decision = SupportedDocumentFormats.decideForFileName("notiz.txt", "text/html");
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".txt");
+    assertThat(decision.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void decideForFileNameKeepsTheEmlRuleWinningOverAHtmlContentDetection() {
+    // #1101 review (post-#1100-merge): .eml joined TEXT_TOLERANT_EXTENSIONS after #1100 already
+    // established that the text-tolerant branch must win over a strict detection - the same
+    // rationale applies here without any change to decideForFileName itself. An HTML-formatted
+    // mail body (common for a genuine .eml exported as raw markup, or one saved without its own
+    // MIME headers) detects as text/html, exactly the Markdown/Klartext case above - the file's
+    // own .eml extension decides, not the content, so it is routed to MailDocumentPipeline rather
+    // than silently to HtmlDocumentPipeline with no FORMAT_MISMATCH reported. A file genuinely
+    // named .html with the same content is unaffected (own extension is not text-tolerant, so it
+    // still takes the strict branch and reaches HtmlDocumentPipeline as normal) - only a file
+    // already claiming .eml benefits from this priority.
+    var decision = SupportedDocumentFormats.decideForFileName("nachricht.eml", "text/html");
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".eml");
+    assertThat(decision.extensionMismatch()).isFalse();
   }
 }
