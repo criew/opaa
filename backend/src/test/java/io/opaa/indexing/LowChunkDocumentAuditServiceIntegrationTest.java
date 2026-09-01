@@ -10,6 +10,7 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,12 +48,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    documentRepository.deleteAll();
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = ?)",
-        OWNER_EMAIL);
-    jdbcTemplate.update("DELETE FROM users WHERE email = ?", OWNER_EMAIL);
+    cleanUpFixtures();
     userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
@@ -79,12 +75,6 @@ class LowChunkDocumentAuditServiceIntegrationTest {
     // second, independent organization/user/library, not by attaching a foreign organizationId to
     // the same library (which the fk_documents_library_organization composite FK rejects anyway).
     jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = ?)",
-        OTHER_ORGANIZATION_OWNER_EMAIL);
-    jdbcTemplate.update("DELETE FROM users WHERE email = ?", OTHER_ORGANIZATION_OWNER_EMAIL);
-    jdbcTemplate.update("DELETE FROM organizations WHERE id = ?", OTHER_ORGANIZATION_ID);
-    jdbcTemplate.update(
         "INSERT INTO organizations (id, name, created_at) VALUES (?, 'Fremdorganisation', now())",
         OTHER_ORGANIZATION_ID);
     UUID otherOrganizationUserId = UUID.randomUUID();
@@ -106,6 +96,31 @@ class LowChunkDocumentAuditServiceIntegrationTest {
                 otherOrganizationUserId,
                 LibraryVisibility.PRIVATE,
                 false));
+  }
+
+  @AfterEach
+  void tearDown() {
+    // Mandatory: SpaceRepositoryTest (and any other class sharing this @OpaaIntegrationTest
+    // context) unconditionally deletes every knowledge_libraries row in its own cleanUp() -
+    // leftover documents from this class referencing library/otherOrganizationLibrary would block
+    // that delete with a fk_documents_library_organization RESTRICT violation (#1090 CI failure).
+    cleanUpFixtures();
+  }
+
+  /** Deletes every fixture this class creates, in FK order: documents, libraries, users, org. */
+  private void cleanUpFixtures() {
+    documentRepository.deleteAll();
+    jdbcTemplate.update(
+        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
+            + " email = ?)",
+        OWNER_EMAIL);
+    jdbcTemplate.update("DELETE FROM users WHERE email = ?", OWNER_EMAIL);
+    jdbcTemplate.update(
+        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
+            + " email = ?)",
+        OTHER_ORGANIZATION_OWNER_EMAIL);
+    jdbcTemplate.update("DELETE FROM users WHERE email = ?", OTHER_ORGANIZATION_OWNER_EMAIL);
+    jdbcTemplate.update("DELETE FROM organizations WHERE id = ?", OTHER_ORGANIZATION_ID);
   }
 
   private Document indexedDocument(
