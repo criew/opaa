@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.ContentFormatter;
 import org.springframework.ai.document.DefaultContentFormatter;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.scheduling.annotation.Async;
 
 public class FileProcessingService {
@@ -70,7 +69,6 @@ public class FileProcessingService {
   private final DocumentService documentService;
   private final ChunkingService chunkingService;
   private final DocumentRepository documentRepository;
-  private final VectorStore vectorStore;
   private final VectorChunkStore vectorChunkStore;
   private final ChecksumService checksumService;
   private final IndexingMetrics metrics;
@@ -83,7 +81,6 @@ public class FileProcessingService {
       DocumentService documentService,
       ChunkingService chunkingService,
       DocumentRepository documentRepository,
-      VectorStore vectorStore,
       VectorChunkStore vectorChunkStore,
       ChecksumService checksumService,
       IndexingMetrics metrics,
@@ -93,7 +90,6 @@ public class FileProcessingService {
     this.documentService = documentService;
     this.chunkingService = chunkingService;
     this.documentRepository = documentRepository;
-    this.vectorStore = vectorStore;
     this.vectorChunkStore = vectorChunkStore;
     this.checksumService = checksumService;
     this.metrics = metrics;
@@ -690,8 +686,10 @@ public class FileProcessingService {
 
   /**
    * Embeds and persists {@code enriched}. At {@code embeddingConcurrency == 1}, a single {@link
-   * VectorStore#add} call covers every chunk of this one document, on the calling thread, in
-   * document order - the baseline behaviour.
+   * VectorChunkStore#addChunks} call covers every chunk of this one document, on the calling
+   * thread, in document order - the baseline behaviour. That call also writes each chunk's {@code
+   * chunk_full_text} row, in the same transaction (#1047, see {@link VectorChunkStore#addChunks}'s
+   * own Javadoc) - not a separate step this method has to orchestrate.
    *
    * <p>At {@code embeddingConcurrency > 1}, {@code enriched} is sliced into sub-batches sized by
    * {@link #subBatchSize} - deliberately not {@code opaa.indexing.batchSize} directly, which would
@@ -699,8 +697,8 @@ public class FileProcessingService {
    * #subBatchSize} instead spreads a document's chunks evenly across up to {@code
    * embeddingConcurrency} workers, capped by {@code batchSize} as the per-call upper bound.
    *
-   * <p>Every sub-batch is embedded and persisted via its own {@code vectorStore.add} call,
-   * submitted to the shared, bounded {@code embeddingExecutor} (see {@link
+   * <p>Every sub-batch is embedded and persisted via its own {@code vectorChunkStore.addChunks}
+   * call, submitted to the shared, bounded {@code embeddingExecutor} (see {@link
    * IndexingConfiguration#embeddingTaskExecutor}) and awaited before this method returns, so {@link
    * #storeChunks} stays fully synchronous from every caller's perspective. A document with only a
    * single sub-batch takes the same direct, un-pooled path.
@@ -714,11 +712,11 @@ public class FileProcessingService {
    *
    * <p>Failure propagation mirrors the single-call path: {@link CompletableFuture#allOf} on every
    * sub-batch's future, unwrapped from {@link CompletionException} to the same {@link
-   * RuntimeException} {@code vectorStore.add} would have thrown, so every existing catch block that
-   * assumes {@code storeChunks} may throw needs no change. An {@link Error} is rethrown unwrapped
-   * too, exactly as a direct {@code vectorStore.add} call would let it propagate. A failing
-   * sub-batch does not cancel sibling sub-batches already in flight; whatever they wrote is cleaned
-   * up the same way a partially-written single call already could (see {@link
+   * RuntimeException} {@code vectorChunkStore.addChunks} would have thrown, so every existing catch
+   * block that assumes {@code storeChunks} may throw needs no change. An {@link Error} is rethrown
+   * unwrapped too, exactly as a direct {@code vectorChunkStore.addChunks} call would let it
+   * propagate. A failing sub-batch does not cancel sibling sub-batches already in flight; whatever
+   * they wrote is cleaned up the same way a partially-written single call already could (see {@link
    * #markConnectorFailedAfterException}).
    *
    * <p>{@code embeddingTaskExecutor} is one pool shared by every document currently splitting its
@@ -729,7 +727,7 @@ public class FileProcessingService {
    */
   private void addToVectorStore(List<org.springframework.ai.document.Document> enriched) {
     if (embeddingConcurrency <= 1) {
-      vectorStore.add(enriched);
+      vectorChunkStore.addChunks(enriched);
       return;
     }
 
@@ -739,7 +737,7 @@ public class FileProcessingService {
       subBatches.add(enriched.subList(i, Math.min(i + subBatchSize, enriched.size())));
     }
     if (subBatches.size() <= 1) {
-      vectorStore.add(enriched);
+      vectorChunkStore.addChunks(enriched);
       return;
     }
 
@@ -747,7 +745,8 @@ public class FileProcessingService {
         subBatches.stream()
             .map(
                 subBatch ->
-                    CompletableFuture.runAsync(() -> vectorStore.add(subBatch), embeddingExecutor))
+                    CompletableFuture.runAsync(
+                        () -> vectorChunkStore.addChunks(subBatch), embeddingExecutor))
             .toList();
     try {
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();

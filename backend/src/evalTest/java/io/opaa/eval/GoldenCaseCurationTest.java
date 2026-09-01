@@ -163,7 +163,8 @@ class GoldenCaseCurationTest {
   private static int resolveSpans(
       EvalDomainConfig domain, List<GoldenCase> cases, List<String> unresolved) throws IOException {
     IndexingProperties properties =
-        new IndexingProperties(CHUNK_SIZE, CHUNK_OVERLAP, 50, null, null, List.of(), null, null, 0);
+        new IndexingProperties(
+            CHUNK_SIZE, CHUNK_OVERLAP, 50, null, null, List.of(), null, null, null, 0);
     DocumentService documentService = new DocumentService();
     ChunkingService chunkingService = new ChunkingService(properties);
     Path corpusDir = RepoPaths.evalDir().resolve("corpus").resolve(domain.name());

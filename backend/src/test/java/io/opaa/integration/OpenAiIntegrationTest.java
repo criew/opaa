@@ -81,7 +81,7 @@ class OpenAiIntegrationTest {
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     documentRepository.deleteAll();
     indexingJobRepository.deleteAll();
     // #478: the trigger endpoint/service reads type and configuration off the library itself, and

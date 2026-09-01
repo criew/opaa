@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-chunk-full-text-gin-index
+      author: opaa
+      comment: >-
+        AP2a (docs/features/hybrid-retrieval.md): the GIN index on chunk_full_text.content_tsv (003
+        added the table itself), built CONCURRENTLY and therefore outside this changeSet's own
+        transaction (runInTransaction: false) - a GIN build over an already-populated table must not
+        block concurrent writes for its duration. The leading DROP INDEX CONCURRENTLY IF EXISTS is
+        restart safety, not a no-op nicety: if a previous attempt at this changeSet was interrupted
+        mid-build (a crash, a killed deployment), PostgreSQL leaves an index of the same name behind
+        marked invalid - a plain CREATE INDEX CONCURRENTLY IF EXISTS would then see the name already
+        taken and silently skip, permanently leaving the index invalid and never rebuilt. Dropping
+        first makes a retried run of this changeSet (Liquibase retries a changeSet that never reached
+        DATABASECHANGELOG on the next application start) actually finish the index, whether the name
+        it finds is absent, valid, or invalid.
+      runInTransaction: false
+      changes:
+        - sql:
+            sql: |
+              DROP INDEX CONCURRENTLY IF EXISTS public.idx_chunk_full_text_content_tsv;
+              CREATE INDEX CONCURRENTLY idx_chunk_full_text_content_tsv ON public.chunk_full_text USING gin (content_tsv);
+      rollback:
+        - sql:
+            sql: DROP INDEX CONCURRENTLY IF EXISTS public.idx_chunk_full_text_content_tsv;

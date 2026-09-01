@@ -11,7 +11,6 @@ import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
 import java.util.List;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
@@ -52,7 +51,6 @@ public class IndexingConfiguration {
       DocumentService documentService,
       ChunkingService chunkingService,
       DocumentRepository documentRepository,
-      VectorStore vectorStore,
       VectorChunkStore vectorChunkStore,
       ChecksumService checksumService,
       IndexingMetrics indexingMetrics,
@@ -63,7 +61,6 @@ public class IndexingConfiguration {
         documentService,
         chunkingService,
         documentRepository,
-        vectorStore,
         vectorChunkStore,
         checksumService,
         indexingMetrics,

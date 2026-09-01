@@ -166,14 +166,18 @@ class AsyncIndexingExecutorTest {
         .parseDocument(file);
 
     IndexingProperties indexingProperties =
-        new IndexingProperties(1000, 0, 50, null, null, null, null, null, 1);
+        new IndexingProperties(1000, 0, 50, null, null, null, null, null, null, 1);
     FileProcessingService realFileProcessingService =
         new FileProcessingService(
             scanDetectingDocumentService,
             new ChunkingService(indexingProperties),
             documentRepository,
-            vectorStore,
-            new VectorChunkStore(vectorStore),
+            new VectorChunkStore(
+                vectorStore,
+                mock(org.springframework.ai.embedding.EmbeddingModel.class),
+                mock(org.springframework.ai.embedding.BatchingStrategy.class),
+                mock(VectorStoreWriter.class),
+                mock(FullTextChunkStore.class)),
             new ChecksumService(),
             new IndexingMetrics(new SimpleMeterRegistry()),
             realFlowQuotaService,

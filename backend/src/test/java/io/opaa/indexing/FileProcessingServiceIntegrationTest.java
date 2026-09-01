@@ -60,7 +60,7 @@ class FileProcessingServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     documentRepository.deleteAll();
 
     jdbcTemplate.update(
@@ -136,5 +136,43 @@ class FileProcessingServiceIntegrationTest {
     assertThat(doc.getChecksum()).isNotNull();
     Long chunkCount = jdbcTemplate.queryForObject("SELECT count(*) FROM vector_store", Long.class);
     assertThat(chunkCount).isPositive();
+  }
+
+  /**
+   * #1047 (docs/features/hybrid-retrieval.md, "Arbeitspaket 2": "Der Volltextindex entsteht beim
+   * Schreiben des Chunks, in derselben Transaktion wie Text und Vektor") - a newly written chunk
+   * always gets both rows, never one without the other, and the full-text row is actually
+   * searchable through the GIN index, not merely present.
+   */
+  @Test
+  void everyNewlyWrittenChunkAlsoGetsItsFullTextRowInTheSameWrite() throws IOException {
+    Path file = classTempDir.resolve("full-text.txt");
+    Files.writeString(file, "content with a searchable term");
+
+    var parsed =
+        List.of(
+            new org.springframework.ai.document.Document(
+                "Befreiung von der Verwaltungsgebühr wegen Bedürftigkeit"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    FileProcessingResult result = fileProcessingService.processFile(file, targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    // Compares the actual sets of chunk ids, not just their counts (#1047 review, finding 8): equal
+    // counts alone would not catch a bug where chunk_full_text ends up populated for the right
+    // number of rows but the wrong ids.
+    List<java.util.UUID> vectorChunkIds =
+        jdbcTemplate.queryForList("SELECT id FROM vector_store", java.util.UUID.class);
+    List<java.util.UUID> fullTextChunkIds =
+        jdbcTemplate.queryForList("SELECT chunk_id FROM chunk_full_text", java.util.UUID.class);
+    assertThat(fullTextChunkIds).containsExactlyInAnyOrderElementsOf(vectorChunkIds);
+
+    Long fullTextChunkCount = (long) fullTextChunkIds.size();
+    Long matches =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM chunk_full_text WHERE content_tsv @@"
+                + " to_tsquery('german', 'Bedürftigkeit')",
+            Long.class);
+    assertThat(matches).isEqualTo(fullTextChunkCount);
   }
 }
