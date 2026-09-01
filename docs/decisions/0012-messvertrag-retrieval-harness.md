@@ -399,11 +399,15 @@ wie ein Pipeline-Fehler künftig gatet, ohne das Rohvektor-Urteil zu verhindern:
   pauschale „Retrieval-Regression"-Begründung wäre mit zwei Urteilen irreführend gewesen.
 
 **Eine Domäne ohne gezogene Pipeline-Baseline wird nicht gegated, sondern sichtbar ausgelassen.**
-`city-landmarks` hat seine Pipeline-Baseline noch nicht (Issue #1081); ihr Pipeline-Vergleich wird
-deshalb im Gradle-Task ausdrücklich nicht eingehängt (`pipelineBaselineTestClass = null` mit
-Begründung), statt gegen eine nicht existierende Datei zu laufen. Das ist die Alternative zu einem
-stillen Sonderfall im Vergleichscode („keine Baseline → bestanden"), der genau die Lücke erzeugte,
-die dieser Nachtrag schließen soll: eine Prüfung, die aussieht, als fände sie statt.
+`city-landmarks` hatte seine Pipeline-Baseline zunächst nicht; ihr Pipeline-Vergleich war deshalb im
+Gradle-Task ausdrücklich nicht eingehängt (`pipelineBaselineTestClass = null` mit Begründung), statt
+gegen eine nicht existierende Datei zu laufen. Das ist die Alternative zu einem stillen Sonderfall im
+Vergleichscode („keine Baseline → bestanden"), der genau die Lücke erzeugte, die dieser Nachtrag
+schließen soll: eine Prüfung, die aussieht, als fände sie statt. Issue #1081 zog diese Baseline aus
+dem CPU-Artefakt eines erfolgreichen, label-ausgelösten Regressionslaufs (Run 33437536393, Branch
+von PR #1084) und hängte `CityLandmarksPipelineBaselineRegressionTest` ein — der beschriebene
+ausgelassene Zustand war damit ein Übergangszustand, kein Dauerzustand, und betrifft heute keine der
+drei Domänen mehr.
 
 **Eigene absolute Anker der harten Untergrenze.** Die *Formel* ist unverändert
 (`max(0,8 · Baselinewert, feste Untergrenze)`); die festen Untergrenzen des Pipeline-Pfads sind

@@ -132,18 +132,19 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 > Vergleicher (`PipelineBaselineComparator`), eigenes Urteil im nächtlichen Job neben dem des
 > Rohvektor-Pfads. Die Fixpunkte des Pipeline-Pfads werden jetzt geprüft statt nur ausgewiesen; die
 > Pipeline-Vertragsversion steht dadurch bei 2 (ADR-0012, Nachtrag „Baselines des Pipeline-Pfads",
-> Entscheidungen 17–20). Gezogen ist bisher die Baseline von `comic-characters`; die von
-> `city-landmarks` folgt aus dem CPU-Artefakt des nächtlichen Laufs (Issue #1081), bis dahin bleibt
-> der Pipeline-Pfad dieser Domäne ungegated statt gegen eine nicht existierende Baseline zu laufen.
-> Offen bleibt außerdem die Entscheidung über das Chat-Modell — bis dahin misst der Pipeline-Pfad
-> die Variante `decomposition-off`, und dass keines beteiligt war, ist als geprüfter Fixpunkt
-> (`chatModel = null`) festgehalten.
+> Entscheidungen 17–20). Gezogen sind inzwischen die Baselines von `comic-characters`,
+> `verwaltung` (Issue #1043) und `city-landmarks` (Issue #1081, aus dem CPU-Artefakt des
+> erfolgreichen, label-ausgelösten Regressionslaufs 33437536393 auf dem Branch von PR #1084). Der
+> Pipeline-Pfad läuft damit für alle drei Domänen gegen eine committete Baseline. Offen bleibt
+> außerdem die Entscheidung über das Chat-Modell — bis dahin misst der Pipeline-Pfad die Variante
+> `decomposition-off`, und dass keines beteiligt war, ist als geprüfter Fixpunkt (`chatModel =
+> null`) festgehalten.
 >
 > **Umsetzungsstand (Issue #1044, 08/2026):** Beide Messpfade liefen mit #1039/#1040 bereits im
-> nächtlichen Job je Domäne — für `city-landmarks` misst der Pipeline-Pfad dabei mit, bleibt aber
-> bewusst unbeurteilt, bis Issue #1081 seine Baseline zieht (siehe die Matrix-Spalte
-> `pipeline_gated` in `retrieval-regression.yml`); offen war nur, ob das gemessene Zeitbudget das
-> dauerhaft trägt. Gemessen an fünf realen `checkRetrievalBaseline`/
+> nächtlichen Job je Domäne; seit Issue #1081 ist auch der Pipeline-Pfad von `city-landmarks`
+> beurteilt (siehe die Matrix-Spalte `pipeline_gated` in `retrieval-regression.yml`). Offen war, ob
+> das gemessene Zeitbudget des nächtlichen Jobs das dauerhaft trägt. Gemessen an fünf realen
+> `checkRetrievalBaseline`/
 > `checkCityLandmarksRetrievalBaseline`-Läufen der letzten Feature-PRs (GitHub-Actions-Runs
 > 33412876752/33412877826/33429049024/33414091586/33431667972, alle auf CI-Hardware, beide Pfade in
 > einem Lauf): `comic-characters` liegt zwischen rund 28 und 43 Minuten (70-Minuten-Budget, der
@@ -793,9 +794,8 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
 2. **Laufzeitbudget des nächtlichen Jobs — entschieden mit Issue #1044 (08/2026).** Gemessen an
    realen CI-Läufen (siehe die Umsetzungsstand-Notiz zu Issue #1044 in Abschnitt 1): Beide
    Regressionspfade bleiben nächtlich für beide Domänen, wie bereits durch #1039/#1040 umgesetzt —
-   für `city-landmarks` läuft der Pipeline-Pfad dabei bis zur Baseline-Ziehung in Issue #1081
-   bewusst unbeurteilt mit (misst und schreibt seinen Report, ohne dass ein Urteil gefällt wird).
-   Variantenvergleiche (Abschnitt 2), einschließlich der Mehrfachlauf-Regel aus Abschnitt 3, bleiben
+   seit Issue #1081 liefert auch `city-landmarks` ein Urteil für den Pipeline-Pfad statt nur den
+   Report zu schreiben. Variantenvergleiche (Abschnitt 2), einschließlich der Mehrfachlauf-Regel aus Abschnitt 3, bleiben
    ausschließlich manuell ausgelöst (`-Dopaa.eval.runVariantComparison=true`) und werden nicht Teil
    des nächtlichen Jobs — das gemessene Zeitbudget des `city-landmarks`-Regressionslaufs (bis zu ~133
    von 180 Minuten in der langsamsten beobachteten Messung) verträgt die Vervielfachung durch mehrere

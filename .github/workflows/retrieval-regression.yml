@@ -86,8 +86,11 @@ jobs:
             exec_step_name: 'Retrieval-Regression (city-landmarks) ausführen'
             report_file: baseline-comparison-city-landmarks.md
             pipeline_report_file: pipeline-baseline-comparison-city-landmarks.md
-            pipeline_gated: false
-            pipeline_state_note: 'Pipeline-Baseline noch nicht gezogen — Issue #1081. Dieser Pfad wird bewusst nicht beurteilt: Sein Report entsteht bei jedem Lauf und liegt im Artefakt, aber es gibt keine committete Baseline, gegen die verglichen werden könnte. Das Urteil dieses Laufs betrifft ausschließlich den Rohvektor-Pfad.'
+            # Pipeline-Baseline seit Issue #1081 gezogen — beide Pfade dieser Domäne liefern
+            # seither ein Urteil (Quelle und Herleitung der Baseline: siehe deren eigene
+            # provenance/notes in eval/baseline/pipeline-city-landmarks.json).
+            pipeline_gated: true
+            pipeline_state_note: ''
             artifact_name: retrieval-metrics-city-landmarks
             metrics_file: retrieval-metrics-city-landmarks.json
             pipeline_metrics_file: pipeline-metrics-city-landmarks.json
