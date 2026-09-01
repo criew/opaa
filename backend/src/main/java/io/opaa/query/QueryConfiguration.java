@@ -22,11 +22,7 @@ import org.springframework.context.annotation.Configuration;
  * cross-cutting convention this issue did not change.
  */
 @Configuration
-@EnableConfigurationProperties({
-  QueryProperties.class,
-  RetrievalPipelineProperties.class,
-  FullTextSearchProperties.class
-})
+@EnableConfigurationProperties({QueryProperties.class, RetrievalPipelineProperties.class})
 public class QueryConfiguration {
 
   /**

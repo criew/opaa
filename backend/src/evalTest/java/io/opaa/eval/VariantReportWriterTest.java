@@ -76,7 +76,7 @@ class VariantReportWriterTest {
   @Test
   void rendersTheEffectivelyChangedParametersPerVariant() {
     var reference = VariantOutcome.executed(variant("reference"), report());
-    var mmrOverride = new PipelineVariant.QueryOverrides(null, 0.7, null, null, null, null);
+    var mmrOverride = new PipelineVariant.QueryOverrides(null, 0.7, null, null, null, null, null);
     var changed = VariantOutcome.executed(variantWithOverrides("mmr-0.7", mmrOverride), report());
     var comparisonAgainstReference = VariantComparisonRunner.delta(changed, reference);
     var report =
@@ -92,6 +92,29 @@ class VariantReportWriterTest {
 
     assertThat(summary).contains("keine Änderung");
     assertThat(summary).contains("mmrLambda=0.7");
+  }
+
+  /**
+   * Issue #1049: the same requirement for the lexical path's switch. Without it a {@code
+   * vector-only} variant would be rendered as "keine Änderung" next to the hybrid reference —
+   * exactly the indistinguishability the test above exists to prevent.
+   */
+  @Test
+  void rendersTheLexicalPathOverride() {
+    var reference = VariantOutcome.executed(variant("vector+fulltext-rrf"), report());
+    var vectorOnly = new PipelineVariant.QueryOverrides(null, null, null, null, null, null, false);
+    var changed =
+        VariantOutcome.executed(variantWithOverrides("vector-only", vectorOnly), report());
+    var report =
+        new VariantReport(
+            "c",
+            "desc",
+            "verwaltung",
+            "vector+fulltext-rrf",
+            List.of(reference, changed),
+            List.of(VariantComparisonRunner.delta(changed, reference)));
+
+    assertThat(VariantReportWriter.renderSummary(report)).contains("fullTextSearchEnabled=false");
   }
 
   /**
@@ -132,7 +155,8 @@ class VariantReportWriterTest {
                         VariantComparisonRunnerTest.runConfiguration()))
             .toList();
     MultiRunSummary summary = MultiRunAggregator.summarize(runs);
-    var decompositionOn = new PipelineVariant.QueryOverrides(null, null, null, true, null, null);
+    var decompositionOn =
+        new PipelineVariant.QueryOverrides(null, null, null, true, null, null, null);
     var multiRunOutcome =
         VariantOutcome.executedMultiRun(
             variantWithOverrides("decomposition-on", decompositionOn),

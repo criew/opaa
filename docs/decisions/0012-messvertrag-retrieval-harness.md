@@ -12,7 +12,11 @@ Rohvektor-Pfad und bleibt bei Version 2) und den
 [Nachtrag zu den Pipeline-Baselines](#nachtrag-baselines-des-pipeline-pfads-issue-1040)
 (Issue #1040: getrennte Baseline-Dateien je Pfad und Domäne, durchgesetzte Fixpunkte des
 Pipeline-Pfads, Pipeline-Messvertrag-Version 2 — die Rohvektor-Version bleibt auch dadurch
-unberührt bei 2).
+unberührt bei 2) und den [Nachtrag zum Volltextpfad](#nachtrag-volltextpfad-in-der-fusion-issue-1049)
+(Issue #1049: der lexikalische Suchpfad wird Eingangsliste der Fusion und bewegt damit erstmals die
+Endauswahl — zwei neue Fixpunkte des Pipeline-Pfads, Pipeline-Messvertrag-Version 3, neu gezogene
+Pipeline-Baselines aller drei Domänen; die Rohvektor-Version bleibt bei 2, weil dieser Pfad den
+Volltextpfad konstruktionsbedingt nicht sieht).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -467,3 +471,64 @@ bestehender Baselines. Neu ist allein, dass die Regel **geprüft** wird statt Ge
 `io.opaa.eval.GoldenCaseCuration` lehnt einen `answer_span` auf einem mehrdokumentigen Fall ab,
 `GoldenCaseCurationTest` wendet das Docker-frei auf jeden committeten Datensatz der betroffenen
 Domäne an.
+
+---
+
+## Nachtrag: Volltextpfad in der Fusion (Issue #1049)
+
+**Datum:** 2026-09-01 · **Betrifft:** ausschließlich den Pipeline-Messpfad · **Rohvektor-Vertrag:**
+unverändert Version 2.
+
+Mit [#1049](https://github.com/criew/opaa/issues/1049) geht der lexikalische Suchpfad als weitere
+Eingangsliste in die Reciprocal Rank Fusion ein (docs/features/hybrid-retrieval.md, Arbeitspaket 3).
+Das ist die erste Änderung dieses Epics, die die Endauswahl tatsächlich bewegt — und damit die erste,
+die den Messvertrag berührt.
+
+### 22. Zwei neue Fixpunkte des Pipeline-Pfads
+
+`PipelineEvaluationReport.PipelineRunConfiguration` und `PipelineBaseline.FixedPoints` führen zwei
+weitere Felder, beide als Gültigkeitsfelder nach Entscheidung 18:
+
+- **`fullTextSearchEnabled`** — ob der lexikalische Pfad in diesem Lauf seine Listen in die Fusion
+  eingebracht hat (`opaa.query.full-text-search-enabled`). Ohne dieses Feld trüge ein
+  `vector-only`-Lauf denselben `runConfiguration`-Abdruck wie ein hybrider, und die Differenz
+  zwischen beiden würde gegen die committete Baseline als Codeänderung verbucht — genau die
+  Verwechslung, die Entscheidung 18 für die Query-Parameter ausschließt. Der Wert war bis #1049
+  bewusst **kein** Fixpunkt (die Stufe lief protokollarisch, die Endauswahl war bit-identisch); die
+  Auflage, ihn mit der Aufnahme in die Fusion nachzuziehen, stand seit dem Review zu #1048 in
+  docs/features/hybrid-retrieval.md, Arbeitspaket 2.
+- **`fullTextBackfillComplete`** — ob der Volltext-Backfill der gemessenen Bibliothek abgeschlossen
+  war. Das Backfill-Tor (`FullTextBackfillGate`) hält eine unvollständig indizierte Bibliothek
+  vollständig aus dem lexikalischen Pfad heraus; ein Lauf mit `fullTextSearchEnabled = true` über
+  einem halb gefüllten Index misst deshalb die vector-only-Konfiguration, ohne es zu sagen. Erst
+  beide Felder zusammen beantworten die Frage „hat der lexikalische Pfad in diesem Lauf beigetragen?".
+
+Der Harness-Guard (`PipelineHarnessSupport#requireMeasurableConfiguration`) weist zusätzlich einen
+Lauf mit `fullTextSearchEnabled = false` ab — nicht weil er nicht messbar wäre (das ist er, seit der
+Fixpunkt existiert), sondern weil der Pfad, der die committete Baseline schreibt, die ausgelieferte
+Konfiguration messen muss. Die vector-only-Messung ist ein benannter Variantenvergleich
+(`eval/variants/*-lexical-path.json`), und ein Variantenbericht ist ein Artefakt, keine Baseline.
+Ein Variantenlauf, der den lexikalischen Pfad über einem unvollständigen Backfill anfordert, wird
+als „nicht ausgeführt" gemeldet statt stillschweigend degradiert (`VariantPrerequisites`) — dieselbe
+Regel wie für die Teilfragen-Zerlegung ohne Chat-Modell (Entscheidung 15).
+
+### 23. Pipeline-Messvertrag-Version 3, Rohvektor-Version unverändert 2
+
+Zwei neue Gültigkeitsfelder erweitern, was „dieselbe Messung" heißt; nach Entscheidung 6 ist das eine
+Vertragsänderung. `PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` steigt von 2 auf
+**3**, und die Pipeline-Baselines aller drei Domänen werden neu gezogen — nicht nur wegen der neuen
+Felder, sondern weil die gemessenen Zahlen sich tatsächlich bewegen.
+
+Die Rohvektor-Zählung bleibt bei 2, und das ist keine Nachlässigkeit, sondern die Aussage: Dieser Pfad
+misst `similaritySearch` direkt und kennt den lexikalischen Pfad nicht. Weder seine Definitionen noch
+seine Werte ändern sich durch #1049 — nachgewiesen im selben Lauf, in dem die Pipeline-Zahlen sich
+verschoben haben, mit unveränderten Rohvektor-Werten in jeder Gruppe. Genau dafür existiert die
+getrennte Zählung aus Entscheidung 16.
+
+**Eine Folge für die Zustandsfelder** (Spezifikation, Abschnitt 5): Ein Fall gilt als `solved`, wenn
+ihn **beide** Messpfade lösen. Von den zwölf Fällen, die der Pipeline-Pfad mit #1049 zusätzlich löst,
+erfüllt genau einer diese Bedingung (`verw-comp-006`, den der Rohvektor-Pfad schon vorher löste) und
+wechselt auf `solved`; die übrigen elf kann der Rohvektor-Pfad strukturell nicht lösen und bleiben
+deshalb `known_gap` mit committeter `expected_state_exception`. Ob diese Definition mit einem
+produktiven zweiten Suchpfad noch die richtige ist, ist eine offene Frage an die Spezifikation und
+wird hier nicht entschieden.

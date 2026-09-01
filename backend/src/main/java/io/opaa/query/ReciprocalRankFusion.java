@@ -16,13 +16,19 @@ import org.springframework.ai.document.Document;
  * 1-based), so a chunk ranked first in its own sub-query's results competes on equal footing with
  * the top chunk of every other sub-query, regardless of either list's absolute scores.
  *
- * <p>Deduplicated by {@link Document#getId()} (the chunk id, stable across sub-queries since the
- * same chunk can legitimately be a top candidate for more than one sub-query): a chunk's
- * contributions from every list it appears in are summed before ranking, and the {@link Document}
- * instance with the higher {@link Document#getScore()} among duplicates is the one kept in the
- * result - a chunk's own score is comparable across duplicates of the *same* chunk (unlike across
- * different chunks from different sub-queries), so this keeps the more relevant of the two
- * instances feeding {@code ChatSource#getRelevanceScore()} downstream.
+ * <p>Deduplicated by {@link Document#getId()} (the chunk id, stable across lists since the same
+ * chunk can legitimately be a top candidate for more than one sub-query and for more than one
+ * search path): a chunk's contributions from every list it appears in are summed before ranking,
+ * and the {@link Document} instance from the <b>earliest</b> list is the one kept in the result.
+ *
+ * <p>That tie-break is deliberately positional and not "the higher {@link Document#getScore()}"
+ * (its rule until #1049): since the lexical path became an input, duplicate instances of one chunk
+ * can carry a cosine similarity and a {@code ts_rank}, and picking the larger of those two numbers
+ * would be the very cross-scale comparison this class exists to avoid. The pipeline hands its lists
+ * in stage order, so the earliest list is the vector path's - the score that survives is the
+ * similarity every consumer of {@code ChatSource#getRelevanceScore()} expects. Only a chunk no
+ * vector list found at all carries a {@code ts_rank} downstream; the ranking itself is the fused
+ * score in either case and never a document's own.
  */
 final class ReciprocalRankFusion {
 
@@ -74,8 +80,7 @@ final class ReciprocalRankFusion {
         int rank = i + 1;
         double contribution = 1.0 / (RANK_DAMPING_CONSTANT + rank);
         fusedScoreByChunkId.merge(document.getId(), contribution, Double::sum);
-        documentByChunkId.merge(
-            document.getId(), document, ReciprocalRankFusion::preferHigherScore);
+        documentByChunkId.putIfAbsent(document.getId(), document);
       }
     }
 
@@ -83,18 +88,5 @@ final class ReciprocalRankFusion {
         .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
         .map(entry -> new FusedCandidate(documentByChunkId.get(entry.getKey()), entry.getValue()))
         .toList();
-  }
-
-  /** {@code null} scores lose to any non-null one; between two non-null scores, the higher wins. */
-  private static Document preferHigherScore(Document a, Document b) {
-    Double scoreA = a.getScore();
-    Double scoreB = b.getScore();
-    if (scoreA == null) {
-      return b;
-    }
-    if (scoreB == null) {
-      return a;
-    }
-    return scoreA >= scoreB ? a : b;
   }
 }

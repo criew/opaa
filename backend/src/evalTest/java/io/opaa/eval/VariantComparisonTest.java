@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 class VariantComparisonTest {
 
   private static final QueryProperties PRODUCTION_LIKE =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2);
+      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, true);
 
   private static PipelineVariant variant(String name) {
     return new PipelineVariant(name, "desc", false, PipelineVariant.QueryOverrides.NONE);
@@ -97,7 +97,7 @@ class VariantComparisonTest {
             "a",
             "desc",
             false,
-            new PipelineVariant.QueryOverrides(null, null, null, true, null, null));
+            new PipelineVariant.QueryOverrides(null, null, null, true, null, null, null));
     var comparison =
         new VariantComparison(
             "c", "desc", "domain", "a", List.of(decompositionReference, variant("b")));
@@ -122,7 +122,7 @@ class VariantComparisonTest {
             false,
             // fetchK=5 is below PRODUCTION_LIKE's topK=8 — QueryProperties' own compact
             // constructor rejects that combination.
-            new PipelineVariant.QueryOverrides(5, null, null, null, null, null));
+            new PipelineVariant.QueryOverrides(5, null, null, null, null, null, null));
     var comparison =
         new VariantComparison(
             "c", "desc", "domain", "a", List.of(variant("a"), invalidNonReference));

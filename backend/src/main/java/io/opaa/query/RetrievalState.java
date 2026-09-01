@@ -15,7 +15,7 @@ import org.springframework.ai.vectorstore.filter.Filter;
  * <p><b>{@code candidatePool} is the ceiling of the whole run.</b> Only a search stage may extend
  * it; every other stage draws from it and can therefore never see more candidates than it was
  * handed - the invariant that keeps document completion (#932) from reaching past the permission
- * and threshold filter the search itself applied.
+ * filter the searches themselves applied.
  *
  * <p>Immutable: a stage returns a new state rather than mutating this one, so a stage cannot alter
  * what an earlier stage recorded in the explanation protocol.
@@ -90,7 +90,9 @@ public record RetrievalState(
    * that list <em>is</em> the selection. With several, they are collapsed by ordered concatenation
    * deduplicated by chunk id: the deliberate fallback for a run whose fusion stage is switched off,
    * which consequently also loses fusion's {@code top-k} cap. That is what "the pipeline without
-   * this stage" means here; it is not a second fusion rule.
+   * this stage" means here; it is not a second fusion rule. Since #1049 that uncapped fallback
+   * spans up to two lists per search query rather than one, so a fusion-less run can hand on twice
+   * as many chunks as before - a benchmark variant, never the shipped configuration.
    */
   public List<Document> selection() {
     if (candidateLists.isEmpty()) {

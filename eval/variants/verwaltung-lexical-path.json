@@ -1,0 +1,20 @@
+{
+  "name": "verwaltung-lexical-path",
+  "description": "Wirkungsnachweis der Aufnahme des Volltextpfads in die RRF-Fusion (Issue #1049, docs/features/hybrid-retrieval.md, Arbeitspaket 3): vector+fulltext-rrf gegen vector-only, gepaart über dasselbe Golden Dataset und denselben Index. Domäne Verwaltung — die Domäne, für die der lexikalische Pfad gebaut wurde: die Fallklassen literal_term_weak_embedding, exact_identifier und compound_word (docs/features/retrieval-benchmark.md §5). Referenzvariante ist die Produktionskonfiguration (hybrid), weil die Selbstprüfung der Variantenmechanik das verlangt (docs/features/retrieval-benchmark.md, Abschnitt 2); die ausgewiesenen Deltas sind deshalb vector-only minus hybrid — ein negatives Delta ist ein Gewinn des lexikalischen Pfads.",
+  "domain": "verwaltung",
+  "referenceVariant": "vector+fulltext-rrf",
+  "variants": [
+    {
+      "name": "vector+fulltext-rrf",
+      "description": "Unveränderte Produktionskonfiguration seit #1049: je Teilfrage eine Vektor- und eine Volltextliste, beide per RRF fusioniert. Die Referenzvariante — muss bitgleiche Zahlen zum direkten Pipeline-Lauf desselben Harness-Laufs liefern (Selbstprüfung).",
+      "requiresReindex": false,
+      "queryOverrides": {}
+    },
+    {
+      "name": "vector-only",
+      "description": "Der Stand vor #1049: Der Volltextpfad läuft nicht, die Fusion sieht nur die Vektorlisten. Entspricht der committeten Pipeline-Baseline bis einschließlich Messvertragsversion 2.",
+      "requiresReindex": false,
+      "queryOverrides": { "fullTextSearchEnabled": false }
+    }
+  ]
+}

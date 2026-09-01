@@ -1,5 +1,5 @@
 {
-  "pipelineMeasurementContractVersion": 2,
+  "pipelineMeasurementContractVersion": 3,
   "fixedPoints": {
     "embeddingModel": "nomic-embed-text:v1.5",
     "embeddingModelDigest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
@@ -12,6 +12,8 @@
     "similarityThreshold": 0.3,
     "maxChunksPerDocument": 2,
     "mmrLambda": 1.0,
+    "fullTextSearchEnabled": true,
+    "fullTextBackfillComplete": true,
     "queryDecompositionEnabled": false,
     "maxSubQueries": 3,
     "chatModel": null,
@@ -21,39 +23,39 @@
     "corpusManifestSha256": "e63f373f658aa2627cee5a9753526b7e5b4c56027b9c80de048466a2dc8c398d",
     "corpusDocumentCount": 70,
     "goldenDatasetFile": "eval/golden/verwaltung.json",
-    "goldenDatasetSha256": "a373effbb52889c5471c3a3963f489d6a72702c13942f196f90a4c30460c8f24",
+    "goldenDatasetSha256": "ccca2633af9d94aefecd36bd282c5df4e64b587dad4f9a4204524f5dfb8c3a81",
     "goldenCaseCount": 46
   },
   "groups": {
     "overall": {
       "n": 46,
-      "hitRateAt5": 0.783,
-      "mrrAt8": 0.576,
-      "ndcgAt8": 0.558,
-      "recallAt8": 0.696,
+      "hitRateAt5": 0.935,
+      "mrrAt8": 0.758,
+      "ndcgAt8": 0.749,
+      "recallAt8": 0.88,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 36,
-      "hitCountAt5": 36,
-      "hitCountAt8": 39,
-      "allExpectedDocumentsHitAt8": 0.543
+      "hitCountAt5": 43,
+      "hitCountAt8": 44,
+      "allExpectedDocumentsHitAt8": 0.804
     },
     "category:compound_word": {
       "n": 9,
       "hitRateAt5": 0.778,
-      "mrrAt8": 0.657,
-      "ndcgAt8": 0.431,
-      "recallAt8": 0.444,
+      "mrrAt8": 0.796,
+      "ndcgAt8": 0.675,
+      "recallAt8": 0.722,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 9,
       "hitCountAt5": 7,
       "hitCountAt8": 8,
-      "allExpectedDocumentsHitAt8": 0.0
+      "allExpectedDocumentsHitAt8": 0.556
     },
     "category:exact_identifier": {
       "n": 10,
       "hitRateAt5": 1.0,
       "mrrAt8": 0.9,
-      "ndcgAt8": 0.918,
+      "ndcgAt8": 0.926,
       "recallAt8": 1.0,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 10,
@@ -63,39 +65,39 @@
     },
     "category:literal_term_weak_embedding": {
       "n": 9,
-      "hitRateAt5": 0.556,
-      "mrrAt8": 0.226,
-      "ndcgAt8": 0.324,
-      "recallAt8": 0.611,
+      "hitRateAt5": 0.889,
+      "mrrAt8": 0.593,
+      "ndcgAt8": 0.633,
+      "recallAt8": 0.833,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 6,
-      "hitCountAt5": 5,
-      "hitCountAt8": 6,
-      "allExpectedDocumentsHitAt8": 0.556
+      "hitCountAt5": 8,
+      "hitCountAt8": 8,
+      "allExpectedDocumentsHitAt8": 0.778
     },
     "category:metadata_filter": {
       "n": 9,
-      "hitRateAt5": 0.667,
-      "mrrAt8": 0.537,
-      "ndcgAt8": 0.595,
-      "recallAt8": 0.778,
+      "hitRateAt5": 1.0,
+      "mrrAt8": 0.685,
+      "ndcgAt8": 0.766,
+      "recallAt8": 1.0,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 9,
-      "hitCountAt5": 6,
-      "hitCountAt8": 7,
-      "allExpectedDocumentsHitAt8": 0.778
+      "hitCountAt5": 9,
+      "hitCountAt8": 9,
+      "allExpectedDocumentsHitAt8": 1.0
     },
     "category:multi_hop": {
       "n": 9,
-      "hitRateAt5": 0.889,
-      "mrrAt8": 0.522,
-      "ndcgAt8": 0.48,
-      "recallAt8": 0.611,
+      "hitRateAt5": 1.0,
+      "mrrAt8": 0.8,
+      "ndcgAt8": 0.726,
+      "recallAt8": 0.833,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 8,
-      "hitCountAt5": 8,
-      "hitCountAt8": 8,
-      "allExpectedDocumentsHitAt8": 0.333
+      "hitCountAt5": 9,
+      "hitCountAt8": 9,
+      "allExpectedDocumentsHitAt8": 0.667
     },
     "difficulty:easy": {
       "n": 3,
@@ -111,33 +113,33 @@
     },
     "difficulty:hard": {
       "n": 34,
-      "hitRateAt5": 0.735,
-      "mrrAt8": 0.514,
-      "ndcgAt8": 0.466,
-      "recallAt8": 0.588,
+      "hitRateAt5": 0.912,
+      "mrrAt8": 0.731,
+      "ndcgAt8": 0.702,
+      "recallAt8": 0.838,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 32,
-      "hitCountAt5": 25,
-      "hitCountAt8": 27,
-      "allExpectedDocumentsHitAt8": 0.382
+      "hitCountAt5": 31,
+      "hitCountAt8": 32,
+      "allExpectedDocumentsHitAt8": 0.735
     },
     "difficulty:medium": {
       "n": 9,
-      "hitRateAt5": 0.889,
-      "mrrAt8": 0.667,
-      "ndcgAt8": 0.757,
+      "hitRateAt5": 1.0,
+      "mrrAt8": 0.778,
+      "ndcgAt8": 0.843,
       "recallAt8": 1.0,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 8,
-      "hitCountAt5": 8,
+      "hitCountAt5": 9,
       "hitCountAt8": 9,
       "allExpectedDocumentsHitAt8": 1.0
     }
   },
   "measuredAt": "2026-09-01",
   "provenance": {
-    "sourceReportRunStartedAt": "2026-08-31T23:13:31.782942600Z",
-    "sourcePullRequest": "PR zu Issue #1043 (erste Pipeline-Baseline der Verwaltungsdomäne)"
+    "sourceReportRunStartedAt": "2026-09-01T12:18:58.422620300Z",
+    "sourcePullRequest": "PR zu Issue #1049 (Volltextpfad in der RRF-Fusion)"
   },
-  "notes": "Erste Baseline des Pipeline-Messpfads der Verwaltungsdomäne (Issue #1043), gemessen im selben Testcontainer-Lauf auf CPU wie eval/baseline/verwaltung.json, auf demselben Index und demselben manifest-geprüften Korpus; reine Messzeit des Pipeline-Pfads rund 4 s (die Indizierung ist vom Rohvektor-Pfad bereits bezahlt). Gemessen wird die Variante decomposition-off (chatModel = null, ADR-0012, Nachtrag, Entscheidung 15). Die Pipeline lieferte in allen 46 Anfragen acht Chunks; keine Anfrage blieb durch die Ähnlichkeitsschwelle leer. Nicht mit eval/baseline/verwaltung.json vergleichbar: Dieser Pfad wendet die Produktionsschwelle (0,3) tatsächlich an und misst am Produktionsfenster top-k=8 (MRR@8, nDCG@8, Recall@8) statt bei documentTopK=10 ohne Schwelle. Die Gruppe language:de fehlt aus demselben Grund wie in der Rohvektor-Baseline. Toleranzformel und Fehlerkriterium: ADR-0013, unverändert; die festen Anker der harten Untergrenze sind für diesen Pfad eigene Werte (siehe eval/baseline/README.md)."
+  "notes": "Neu gezogen mit Issue #1049 (Volltextpfad als Eingangsliste der RRF-Fusion) — die erste Änderung dieses Epics, die die Endauswahl tatsächlich bewegt, und damit die erste, für die eine Neuziehung fachlich zwingend ist. Messvertragsversion 3: Neue Fixpunkte fullTextSearchEnabled und fullTextBackfillComplete (ADR-0012, Nachtrag Volltextpfad); ohne sie trüge ein vector-only-Lauf denselben runConfiguration-Abdruck wie ein hybrider. Gemessen im CPU-Testcontainer-Lauf vom 2026-09-01, decomposition-off (chatModel = null, ADR-0012, Nachtrag, Entscheidung 15), auf demselben Index und demselben manifest-geprüften Korpus wie eval/baseline/verwaltung.json. Ein zweiter Lauf derselben Konfiguration lieferte jede Zahl dieser Datei bitgleich. Vorgängerwerte (Vertragsversion 2, gezogen mit #1043, Volltextpfad noch nicht in der Fusion) zum Vergleich, überholt: Gesamt HitRate@5 0,783 / MRR@8 0,576 / nDCG@8 0,558 / Recall@8 0,696 / AlleThemenGetroffen@8 0,543; je Klasse literal_term_weak_embedding 0,556/0,226/0,324/0,611, compound_word 0,778/0,657/0,431/0,444, exact_identifier 1,000/0,900/0,918/1,000, metadata_filter 0,667/0,537/0,595/0,778, multi_hop 0,889/0,522/0,480/0,611. Dass die Vorgängerwerte exakt die der Variante vector-only desselben Laufs sind (eval/variants/verwaltung-lexical-path.json), ist der Beleg, dass die Verschiebung vollständig vom Volltextpfad kommt und nicht von einem Nebeneffekt der Änderung. Keine Gruppe und keine Metrik verschlechtert sich. Der Golden-Dataset-Hash hat sich mitgeändert, weil elf Fälle ihre erwartete Abweichung (expected_state_exception) nachgezogen bekommen haben — Zustandspflege ist immer auch eine Neuziehung (siehe eval/baseline/README.md). Nicht mit eval/baseline/verwaltung.json vergleichbar: Dieser Pfad wendet die Produktionsschwelle (0,3) tatsächlich an und misst am Produktionsfenster top-k=8 (MRR@8, nDCG@8, Recall@8) statt bei documentTopK=10 ohne Schwelle. Die Gruppe language:de fehlt aus demselben Grund wie in der Rohvektor-Baseline. Toleranzformel und Fehlerkriterium: ADR-0013, unverändert; die festen Anker der harten Untergrenze sind für diesen Pfad eigene Werte (siehe eval/baseline/README.md)."
 }

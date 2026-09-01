@@ -98,13 +98,12 @@ class QueryServiceTest {
                 new SearchScopeStage(),
                 new SubQueryDecompositionStage(queryDecompositionService),
                 new VectorSearchStage(vectorStore),
-                // Lexical path switched off: this class is about what QueryService does with the
-                // selection, and the lexical stage does not change it (see
+                // The lexical path is switched off in every QueryProperties this class builds
+                // (fullTextSearchEnabled = false): this class is about what QueryService does with
+                // the selection, not about how the selection is retrieved (see
                 // FullTextSearchStageTest).
                 new FullTextSearchStage(
-                    mock(FullTextChunkSearch.class),
-                    mock(FullTextBackfillGate.class),
-                    new FullTextSearchProperties(false)),
+                    mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
                 new MmrSelectionStage(chunkEmbeddingLookup),
                 new RankFusionStage(),
                 new DocumentCompletionStage(),
@@ -131,7 +130,7 @@ class QueryServiceTest {
     // MmrSelector's own diversity behaviour (mmrLambda != 1.0) is covered separately by
     // MmrSelectorTest.
     queryService =
-        newQueryService(new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2), chatMemory);
+        newQueryService(new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false), chatMemory);
 
     // lenient: not every test in this class exercises the full query() path (e.g. the
     // mergeSourceReferences nested tests call other members directly), so MockitoExtension's
@@ -172,7 +171,7 @@ class QueryServiceTest {
   @Test
   void queryCallsChunkEmbeddingLookupWhenMmrLambdaIsBelowOne() {
     QueryService serviceWithMmrEnabled =
-        newQueryService(new QueryProperties(8, 25, 0.5, 0.3, 1.0, true, 3, 2), chatMemory);
+        newQueryService(new QueryProperties(8, 25, 0.5, 0.3, 1.0, true, 3, 2, false), chatMemory);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chunk =
         Document.builder()
@@ -197,7 +196,7 @@ class QueryServiceTest {
   @Test
   void permissionHistoryCheckNeverRunsWhenSampleRateIsZero() {
     QueryService serviceWithNoSampling =
-        newQueryService(new QueryProperties(8, 25, 1.0, 0.3, 0.0, true, 3, 2), chatMemory);
+        newQueryService(new QueryProperties(8, 25, 1.0, 0.3, 0.0, true, 3, 2, false), chatMemory);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
@@ -901,7 +900,8 @@ class QueryServiceTest {
             .maxMessages(20)
             .build();
     QueryService serviceWithRealMemory =
-        newQueryService(new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2), realChatMemory);
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false), realChatMemory);
 
     UUID otherUserId = UUID.randomUUID();
     CurrentUser otherCaller =
@@ -1861,7 +1861,8 @@ class QueryServiceTest {
     @Test
     void decompositionDisabledSkipsTheDecompositionServiceEntirely() {
       QueryService serviceWithDecompositionDisabled =
-          newQueryService(new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2), chatMemory);
+          newQueryService(
+              new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false), chatMemory);
       when(chatMemory.get(any())).thenReturn(List.of());
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));

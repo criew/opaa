@@ -46,8 +46,16 @@ public record PipelineEvaluationReport(
    * max-sub-queries} — became enforced fixed points of the baseline validity check. That widens
    * what "the same measurement" means, so it is a contract change by decision 6 of this ADR; it
    * costs nothing here because no pipeline baseline existed under version 1.
+   *
+   * <p>Version 3 (issue #1049, ADR-0012 Nachtrag Volltextpfad): the lexical search path became an
+   * input of the fusion and therefore moves the selection. Two new fixed points record it — {@code
+   * fullTextSearchEnabled} (the path's switch) and {@code fullTextBackfillComplete} (whether the
+   * measured library's full-text index was complete, i.e. whether the path could contribute at
+   * all). Without them a hybrid run and a vector-only run would carry the identical {@code
+   * runConfiguration} fingerprint and the difference between them would be booked against the
+   * committed baseline as a code change.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 2;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 3;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
@@ -57,7 +65,17 @@ public record PipelineEvaluationReport(
    *
    * @param similarityThresholdNote states that the threshold was actually applied — the one
    *     deliberate difference to the raw-vector path, where the same value is reported but not
-   *     applied (ADR-0012 decision 3).
+   *     applied (ADR-0012 decision 3). It describes the vector path: {@code
+   *     opaa.query.similarity-threshold} is a property of vector distance and has no counterpart in
+   *     the lexical path.
+   * @param fullTextSearchEnabled whether the lexical search path contributed its ranked lists to
+   *     the fusion in this run (issue #1049). A measured dimension since that path moves the
+   *     selection — a {@code vector-only} run would otherwise be indistinguishable from a hybrid
+   *     one here and its numbers would be judged against the committed baseline as a code change.
+   * @param fullTextBackfillComplete whether the measured library's full-text backfill was complete,
+   *     i.e. whether the lexical path could contribute at all ({@code FullTextBackfillGate} keeps
+   *     an incomplete library out of it entirely). {@code true} with {@code fullTextSearchEnabled =
+   *     false} is not a contradiction: the index was ready, the path was switched off.
    * @param searchScopeNote records that the harness measures a fixed, complete search scope and
    *     that permission filtering is not a measurement subject.
    * @param chatModel the chat model used for decomposition, or {@code null} when decomposition is
@@ -79,6 +97,8 @@ public record PipelineEvaluationReport(
       String similarityThresholdNote,
       int maxChunksPerDocument,
       double mmrLambda,
+      boolean fullTextSearchEnabled,
+      boolean fullTextBackfillComplete,
       boolean queryDecompositionEnabled,
       int maxSubQueries,
       String chatModel,

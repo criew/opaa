@@ -214,25 +214,27 @@ class DocumentCompletionTest {
   }
 
   /**
-   * The same chunk id can appear once per sub-query in a pooled multi-query candidate list (#923),
-   * each instance carrying that sub-query's own raw score - deduped to the higher-scoring instance
-   * before it is offered as a completion candidate, mirroring {@code ReciprocalRankFusion}'s own
-   * duplicate-instance handling for the identical case.
+   * The same chunk id can appear once per sub-query and once per search path in a pooled candidate
+   * list (#923, #1049), each instance carrying its own search's raw score - deduped to the
+   * first-occurring instance before it is offered as a completion candidate, mirroring {@code
+   * ReciprocalRankFusion}'s own duplicate-instance handling for the identical case. First rather
+   * than highest: since the lexical path feeds the pool, two instances can carry a cosine
+   * similarity and a {@code ts_rank}, and the larger of those two numbers means nothing.
    */
   @Test
-  void dedupesAPoolCandidateAppearingInMoreThanOneSubQueryKeepingTheHigherScoringInstance() {
+  void dedupesAPoolCandidateAppearingInMoreThanOneListKeepingTheFirstOccurringInstance() {
     Document a0 = chunk("a-0", "doc-a", 0.9);
-    Document siblingLowScoreInstance = chunk("a-1", "doc-a", 0.2);
-    Document siblingHighScoreInstance = chunk("a-1", "doc-a", 0.7);
+    Document siblingFromVectorPath = chunk("a-1", "doc-a", 0.2);
+    Document siblingFromLexicalPath = chunk("a-1", "doc-a", 0.7);
     List<Document> selection = List.of(a0);
-    List<Document> candidatePool = List.of(a0, siblingLowScoreInstance, siblingHighScoreInstance);
+    List<Document> candidatePool = List.of(a0, siblingFromVectorPath, siblingFromLexicalPath);
 
     List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 2);
 
     assertThat(result).hasSize(2);
     Document added = result.get(1);
     assertThat(added.getId()).isEqualTo("a-1");
-    assertThat(added.getScore()).isEqualTo(0.7);
+    assertThat(added.getScore()).isEqualTo(0.2);
   }
 
   @Test

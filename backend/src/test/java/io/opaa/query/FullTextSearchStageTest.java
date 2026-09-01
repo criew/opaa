@@ -19,9 +19,10 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.ai.document.Document;
 
 /**
- * The lexical search stage's contract (#1048, docs/features/hybrid-retrieval.md, Arbeitspaket 2):
- * it searches only what the permission scope and the backfill gate allow, it records everything it
- * found in the explanation protocol, and - until #1049 - it hands the state on untouched.
+ * The lexical search stage's contract (#1048/#1049, docs/features/hybrid-retrieval.md, Arbeitspaket
+ * 2 and 3): it searches only what the permission scope and the backfill gate allow, it records
+ * everything it found in the explanation protocol, and it hands its lists on as further inputs of
+ * the fusion.
  *
  * <p>The query itself is not mocked away here in the sense that matters: whether the permission
  * filter is part of the SQL rather than applied to its result is asserted against a real database
@@ -33,17 +34,23 @@ class FullTextSearchStageTest {
   private static final UUID COMPLETE_LIBRARY = UUID.randomUUID();
   private static final UUID BACKFILLING_LIBRARY = UUID.randomUUID();
   private static final QueryProperties PROPERTIES =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2);
+      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, true);
+  private static final QueryProperties LEXICAL_PATH_OFF =
+      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false);
 
   private final FullTextChunkSearch search = mock(FullTextChunkSearch.class);
   private final FullTextBackfillGate gate = mock(FullTextBackfillGate.class);
 
-  private FullTextSearchStage stage(boolean enabled) {
-    return new FullTextSearchStage(search, gate, new FullTextSearchProperties(enabled));
+  private FullTextSearchStage stage() {
+    return new FullTextSearchStage(search, gate);
   }
 
   private static RetrievalContext context(Set<UUID> searchScope) {
-    return new RetrievalContext("Was gilt nach § 35 BauGB?", List.of(), searchScope, PROPERTIES);
+    return context(searchScope, PROPERTIES);
+  }
+
+  private static RetrievalContext context(Set<UUID> searchScope, QueryProperties properties) {
+    return new RetrievalContext("Was gilt nach § 35 BauGB?", List.of(), searchScope, properties);
   }
 
   private static RetrievalState scopedState(Set<UUID> searchScope) {
@@ -65,7 +72,7 @@ class FullTextSearchStageTest {
   @Test
   void refusesToRunWithoutAPermissionFilter() {
     assertThatThrownBy(
-            () -> stage(true).apply(context(Set.of(COMPLETE_LIBRARY)), RetrievalState.initial()))
+            () -> stage().apply(context(Set.of(COMPLETE_LIBRARY)), RetrievalState.initial()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("ADR-0008");
     verifyNoInteractions(search, gate);
@@ -82,7 +89,7 @@ class FullTextSearchStageTest {
     when(gate.searchableLibraries(scope)).thenReturn(Set.of(COMPLETE_LIBRARY));
     when(search.search(anyString(), any(), anyInt())).thenReturn(List.of(chunk("a")));
 
-    StageOutcome outcome = stage(true).apply(context(scope), scopedState(scope));
+    StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<UUID>> libraries = ArgumentCaptor.forClass(Set.class);
@@ -98,7 +105,7 @@ class FullTextSearchStageTest {
     Set<UUID> scope = Set.of(BACKFILLING_LIBRARY);
     when(gate.searchableLibraries(scope)).thenReturn(Set.of());
 
-    StageOutcome outcome = stage(true).apply(context(scope), scopedState(scope));
+    StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
 
     verifyNoInteractions(search);
     assertThat(outcome.explanation().verdicts()).isEmpty();
@@ -110,7 +117,7 @@ class FullTextSearchStageTest {
   void switchedOffPropertySkipsTheQueryAndSaysSoInTheProtocol() {
     Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
 
-    StageOutcome outcome = stage(false).apply(context(scope), scopedState(scope));
+    StageOutcome outcome = stage().apply(context(scope, LEXICAL_PATH_OFF), scopedState(scope));
 
     verifyNoInteractions(search, gate);
     assertThat(outcome.explanation().status()).isEqualTo(StageStatus.EXECUTED);
@@ -131,17 +138,16 @@ class FullTextSearchStageTest {
             .withLibraryFilter(SearchScopeStage.libraryFilter(scope))
             .withSearchQueries(List.of("q1", "q2"));
 
-    StageOutcome outcome = stage(true).apply(context(scope), state);
+    StageOutcome outcome = stage().apply(context(scope), state);
 
     verify(search).search("q1", scope, PROPERTIES.fetchK());
     verify(search).search("q2", scope, PROPERTIES.fetchK());
-    // Incoming equals outgoing: the stage passes the lists in flight on unchanged. Its own three
-    // candidates are in the verdicts and in a note, not in the counts - they are not handed on
-    // until #1049 makes them an input of the fusion.
-    assertThat(outcome.explanation().incomingCount())
-        .isEqualTo(outcome.explanation().outgoingCount());
-    assertThat(outcome.explanation().notes())
-        .anySatisfy(note -> assertThat(note).contains("3 lexical candidate(s) found"));
+    // Nothing was in flight, three candidates leave: the stage adds, it never narrows.
+    assertThat(outcome.explanation().incomingCount()).isZero();
+    assertThat(outcome.explanation().outgoingCount()).isEqualTo(3);
+    assertThat(outcome.state().candidateLists())
+        .extracting(CandidateList::label)
+        .containsExactly(FullTextSearchStage.listLabel(0), FullTextSearchStage.listLabel(1));
     assertThat(outcome.explanation().verdicts())
         .extracting(CandidateVerdict::chunkId)
         .containsExactly("a", "b", "c");
@@ -168,38 +174,88 @@ class FullTextSearchStageTest {
     RetrievalState state =
         RetrievalState.initial().withLibraryFilter(SearchScopeStage.libraryFilter(scope));
 
-    stage(true).apply(context(scope), state);
+    stage().apply(context(scope), state);
 
     verify(search).search("Was gilt nach § 35 BauGB?", scope, PROPERTIES.fetchK());
   }
 
   /**
-   * Until #1049 the stage is the identity for everything downstream: same lists in flight, same
-   * candidate pool, same selection. That is what keeps the committed benchmark baselines valid
-   * while the path is built.
+   * #1049: the stage's lists are handed on next to the vector path's, and its candidates extend the
+   * run's pool - the two properties that make them an input of the fusion and a source for document
+   * completion. It adds; it never touches what was already in flight.
    */
   @Test
-  void leavesTheStateUntouchedSoTheSelectionCannotMove() {
+  void handsItsListsOnNextToTheVectorPathsAndExtendsThePool() {
     Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
     when(gate.searchableLibraries(scope)).thenReturn(scope);
     when(search.search(anyString(), any(), anyInt())).thenReturn(List.of(chunk("lexical-only")));
     RetrievalState before =
         scopedState(scope)
-            .withSearchResults(List.of(new CandidateList("vector", List.of(chunk("vector-hit")))));
+            .withSearchResults(
+                List.of(
+                    new CandidateList(VectorSearchStage.listLabel(0), List.of(chunk("vector")))));
 
-    StageOutcome outcome = stage(true).apply(context(scope), before);
+    StageOutcome outcome = stage().apply(context(scope), before);
 
-    assertThat(outcome.state()).isSameAs(before);
-    assertThat(outcome.state().selection())
-        .extracting(Document::getId)
-        .containsExactly("vector-hit");
+    assertThat(outcome.state().candidateLists())
+        .extracting(CandidateList::label)
+        .containsExactly(VectorSearchStage.listLabel(0), FullTextSearchStage.listLabel(0));
     assertThat(outcome.state().candidatePool())
         .extracting(Document::getId)
-        .containsExactly("vector-hit");
-    // Found and recorded all the same - the protocol is where the path is visible before it acts.
-    assertThat(outcome.explanation().verdicts())
-        .extracting(CandidateVerdict::chunkId)
-        .containsExactly("lexical-only");
+        .containsExactly("vector", "lexical-only");
+    // The vector path's list is unchanged - a search stage adds a list, it never edits one.
+    assertThat(outcome.state().candidateLists().get(0).documents())
+        .isEqualTo(before.candidateLists().get(0).documents());
+  }
+
+  /**
+   * The switched-off path is the identity for the selection: a run with {@code
+   * fullTextSearchEnabled = false} carries exactly the lists it carried before this stage - the
+   * {@code vector-only} measurement variant, and the state the committed pre-#1049 baselines were
+   * drawn in.
+   */
+  @Test
+  void switchedOffPathLeavesTheStateUntouched() {
+    Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
+    RetrievalState before =
+        scopedState(scope)
+            .withSearchResults(
+                List.of(
+                    new CandidateList(VectorSearchStage.listLabel(0), List.of(chunk("vector")))));
+
+    StageOutcome outcome = stage().apply(context(scope, LEXICAL_PATH_OFF), before);
+
+    assertThat(outcome.state()).isSameAs(before);
+    verifyNoInteractions(search, gate);
+  }
+
+  /**
+   * A failed list is left out of the fusion, the remaining ones are not: "Fällt der Volltextpfad
+   * aus, läuft die Fusion mit den verbleibenden Listen weiter" (docs/features/hybrid-retrieval.md,
+   * Arbeitspaket 3).
+   */
+  @Test
+  void aFailedListIsOmittedWhileTheRemainingOnesStillReachTheFusion() {
+    Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
+    when(gate.searchableLibraries(scope)).thenReturn(scope);
+    when(search.search(anyString(), any(), anyInt()))
+        .thenThrow(new IllegalStateException("relation chunk_full_text does not exist"))
+        .thenReturn(List.of(chunk("second-list-hit")));
+    RetrievalState state =
+        RetrievalState.initial()
+            .withLibraryFilter(SearchScopeStage.libraryFilter(scope))
+            .withSearchQueries(List.of("q1", "q2"));
+
+    StageOutcome outcome = stage().apply(context(scope), state);
+
+    assertThat(outcome.state().candidateLists())
+        .extracting(CandidateList::label)
+        .containsExactly(FullTextSearchStage.listLabel(1));
+    assertThat(outcome.state().candidatePool())
+        .extracting(Document::getId)
+        .containsExactly("second-list-hit");
+    assertThat(outcome.explanation().notes())
+        .anySatisfy(note -> assertThat(note).contains("lexical search failed"));
   }
 
   /**
@@ -214,7 +270,7 @@ class FullTextSearchStageTest {
     when(search.search(anyString(), any(), anyInt()))
         .thenThrow(new IllegalStateException("relation chunk_full_text does not exist"));
 
-    StageOutcome outcome = stage(true).apply(context(scope), scopedState(scope));
+    StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
 
     assertThat(outcome.explanation().status()).isEqualTo(StageStatus.EXECUTED);
     assertThat(outcome.explanation().verdicts()).isEmpty();

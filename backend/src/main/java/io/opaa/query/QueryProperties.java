@@ -69,6 +69,19 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     confused decomposition response. Each sub-query is independently narrowed to the full {@link
  *     #topK} (see {@code MmrSelectionStage}), so the overall chunk count stays capped at {@link
  *     #topK} regardless of {@code maxSubQueries}.
+ * @param fullTextSearchEnabled whether {@link RetrievalStageName#FULL_TEXT_SEARCH} runs its
+ *     PostgreSQL full-text query and contributes its ranked lists to the fusion (#1049,
+ *     docs/features/hybrid-retrieval.md, Arbeitspaket 3). Default {@code true}: the lexical path is
+ *     the answer to the failure class in which the searched term stands literally in the target
+ *     document and the vector search still misses it (#938). Set to {@code false} for the {@code
+ *     vector-only} measurement variant, or to spare the query on a deployment whose full-text
+ *     backfill is not wanted at all - the stage then stays in the chain and says so in the
+ *     explanation protocol, unlike switching it off via {@link
+ *     RetrievalPipelineProperties#disabledStages()}. A parameter of this record rather than a
+ *     record of its own (its shape until #1049): from the moment its value moves the final
+ *     selection it is a measured dimension of the retrieval benchmark's run configuration
+ *     (ADR-0012, Nachtrag Volltextpfad), and every measured query parameter travels in {@link
+ *     RetrievalContext} so one pipeline instance can serve several variants in one process.
  * @param maxChunksPerDocument the upper bound on how many chunks of one document {@link
  *     DocumentCompletion#complete} will pull into the final selection on top of whatever the
  *     fusion/MMR step already picked (#932 scope v2 - v1's single-tier eviction was a no-op
@@ -90,7 +103,8 @@ public record QueryProperties(
     @DefaultValue("1.0") double permissionHistorySampleRate,
     @DefaultValue("true") boolean queryDecompositionEnabled,
     @DefaultValue("3") int maxSubQueries,
-    @DefaultValue("2") int maxChunksPerDocument) {
+    @DefaultValue("2") int maxChunksPerDocument,
+    @DefaultValue("true") boolean fullTextSearchEnabled) {
 
   public QueryProperties {
     if (topK <= 0) {

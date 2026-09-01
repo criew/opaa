@@ -35,6 +35,8 @@ class VariantComparisonRunnerTest {
         "angewandt",
         2,
         1.0,
+        true,
+        true,
         false,
         3,
         null,

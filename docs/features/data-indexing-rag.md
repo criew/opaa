@@ -190,6 +190,13 @@ Antwort — und wird ausdrücklich als solcher gekennzeichnet, nicht zu einem Mi
 
 ### Hybride Suche
 
+> **Gebaut** (#1048/#1049): Der lexikalische Pfad läuft mit demselben Rechtefilter wie die
+> Vektorsuche und geht rangbasiert (Reciprocal Rank Fusion) in die Auswahl ein. Nicht gebaut ist das
+> **Reranking** darunter — die zusammengeführte Liste geht heute ohne zweite Bewertungsstufe in die
+> Antwort. Der gebaute Ablauf steht in
+> [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md), die Begründung und die gemessene
+> Wirkung in [Hybride Suche mit Reranking](./hybrid-retrieval.md#arbeitspaket-3-fusion).
+
 Vektorsuche und Volltextsuche haben komplementäre Schwächen, und beide fallen in der Verwaltung ins
 Gewicht:
 

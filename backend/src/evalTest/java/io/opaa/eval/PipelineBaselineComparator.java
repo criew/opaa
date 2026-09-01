@@ -204,6 +204,17 @@ public final class PipelineBaselineComparator {
         String.valueOf(cfg.maxChunksPerDocument()));
     addIfDiffers(
         mismatches, "mmrLambda", String.valueOf(fp.mmrLambda()), String.valueOf(cfg.mmrLambda()));
+    // Issue #1049: the lexical path feeds the fusion, so both of these change what is measured.
+    addIfDiffers(
+        mismatches,
+        "fullTextSearchEnabled",
+        String.valueOf(fp.fullTextSearchEnabled()),
+        String.valueOf(cfg.fullTextSearchEnabled()));
+    addIfDiffers(
+        mismatches,
+        "fullTextBackfillComplete",
+        String.valueOf(fp.fullTextBackfillComplete()),
+        String.valueOf(cfg.fullTextBackfillComplete()));
     addIfDiffers(
         mismatches,
         "queryDecompositionEnabled",

@@ -52,10 +52,11 @@ public record PipelineVariant(
       Double similarityThreshold,
       Boolean queryDecompositionEnabled,
       Integer maxSubQueries,
-      Integer maxChunksPerDocument) {
+      Integer maxChunksPerDocument,
+      Boolean fullTextSearchEnabled) {
 
     /** The reference variant's overrides: every field unset, i.e. the production configuration. */
     public static final QueryOverrides NONE =
-        new QueryOverrides(null, null, null, null, null, null);
+        new QueryOverrides(null, null, null, null, null, null, null);
   }
 }

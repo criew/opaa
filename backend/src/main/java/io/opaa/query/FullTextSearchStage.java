@@ -10,23 +10,27 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
 /**
- * The lexical search path as a pipeline stage (docs/features/hybrid-retrieval.md, Arbeitspaket 2):
- * one PostgreSQL full-text query per search query, each with the identical permission filter the
- * vector path applies and the identical {@link QueryProperties#fetchK}, yielding one labelled
+ * The lexical search path as a pipeline stage (docs/features/hybrid-retrieval.md, Arbeitspaket
+ * 2/3): one PostgreSQL full-text query per search query, each with the identical permission filter
+ * the vector path applies and the identical {@link QueryProperties#fetchK}, yielding one labelled
  * candidate list per search query.
  *
- * <p><b>Not yet an input of the fusion.</b> The lists this stage produces reach the explanation
- * protocol and stop there; {@link RetrievalState} is handed on untouched, so the selection this
- * pipeline returns is bit-identical to the one it returned without this stage. That is deliberate
- * and temporary: the fusion takes the lexical list as a further input in #1049, which is where the
- * change of behaviour - and the re-drawn benchmark baselines it requires - belongs. Until then the
- * path is fully built, fully permission-filtered and fully visible in the diagnosis, and it cannot
- * move a single measured number.
+ * <p><b>Its lists are inputs of the fusion</b> (#1049): they are handed on in the pipeline state
+ * next to the vector path's, so {@link RankFusionStage} merges both paths of every search query by
+ * rank. A chunk both paths found is one candidate with two contributions, never two candidates -
+ * deduplication is by chunk id, never by score, because a cosine similarity and a {@code ts_rank}
+ * are not comparable quantities (#912).
+ *
+ * <p><b>The second stage that adds candidates the run did not already hold</b>, and therefore the
+ * second caller of {@link RetrievalState#withSearchResults}. Everything it adds passed the same
+ * permission filter as the vector path's candidates, so the pool invariant that confines document
+ * completion to permission-scoped chunks (#932) holds unchanged.
  *
  * <p><b>Two gates, both narrowing, never widening:</b>
  *
  * <ul>
- *   <li>{@link FullTextSearchProperties#enabled()} - the operator's switch.
+ *   <li>{@link QueryProperties#fullTextSearchEnabled()} - the operator's switch, and the {@code
+ *       vector-only} measurement variant.
  *   <li>{@link FullTextBackfillGate} - a library whose backfill has not finished is not searched. A
  *       half-filled full-text index returns hits and hides the rest, which is worse than returning
  *       nothing (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a").
@@ -36,9 +40,9 @@ import org.springframework.stereotype.Component;
  * cost search quality and must not raise for the person asking (docs/features/hybrid-retrieval.md,
  * Arbeitspaket 3: "Der Volltextpfad hat dieselbe Ausfallsicherheit wie die Teilfragen-Zerlegung").
  * The failure is logged and recorded in the protocol as such - never swallowed into a silently
- * empty result that looks like "nothing matched". Note what the fallback is <em>not</em>: it is an
- * empty list, never an unfiltered one, so no failure mode of this stage can return a chunk outside
- * the search scope.
+ * empty result that looks like "nothing matched" - and the fusion continues with the remaining
+ * lists. Note what the fallback is <em>not</em>: it is an empty list, never an unfiltered one, so
+ * no failure mode of this stage can return a chunk outside the search scope.
  */
 @Component
 class FullTextSearchStage implements RetrievalStage {
@@ -47,15 +51,10 @@ class FullTextSearchStage implements RetrievalStage {
 
   private final FullTextChunkSearch fullTextChunkSearch;
   private final FullTextBackfillGate backfillGate;
-  private final FullTextSearchProperties properties;
 
-  FullTextSearchStage(
-      FullTextChunkSearch fullTextChunkSearch,
-      FullTextBackfillGate backfillGate,
-      FullTextSearchProperties properties) {
+  FullTextSearchStage(FullTextChunkSearch fullTextChunkSearch, FullTextBackfillGate backfillGate) {
     this.fullTextChunkSearch = fullTextChunkSearch;
     this.backfillGate = backfillGate;
-    this.properties = properties;
   }
 
   @Override
@@ -70,12 +69,9 @@ class FullTextSearchStage implements RetrievalStage {
     // exactly as it does in the vector path.
     SearchScopeStage.requiredLibraryFilter(state);
 
-    // Incoming and outgoing are the same number throughout this stage, and deliberately so: it
-    // passes the lists in flight on unchanged. Its own candidates are not part of that count until
-    // #1049 hands them to the fusion - they are reported in the verdicts and in a note instead.
     int inFlight = state.candidateLists().stream().mapToInt(list -> list.documents().size()).sum();
 
-    if (!properties.enabled()) {
+    if (!context.queryProperties().fullTextSearchEnabled()) {
       return new StageOutcome(
           state,
           StageExplanation.executed(
@@ -83,7 +79,7 @@ class FullTextSearchStage implements RetrievalStage {
               inFlight,
               inFlight,
               List.of(),
-              List.of("lexical search path switched off (opaa.query.full-text-search.enabled)")));
+              List.of("lexical search path switched off (opaa.query.full-text-search-enabled)")));
     }
 
     Set<UUID> searchable = backfillGate.searchableLibraries(context.searchScope());
@@ -97,14 +93,15 @@ class FullTextSearchStage implements RetrievalStage {
               List.of(),
               List.of(
                   "no library of the search scope has a completed full-text backfill",
-                  "the lexical path stays out until a library's backfill is complete")));
+                  "the lexical path stays out of the fusion until a library's backfill is"
+                      + " complete")));
     }
 
     List<String> searchQueries =
         state.searchQueries().isEmpty() ? List.of(context.question()) : state.searchQueries();
+    List<CandidateList> lists = new ArrayList<>(searchQueries.size());
     List<CandidateVerdict> verdicts = new ArrayList<>();
     List<String> notes = new ArrayList<>();
-    int retrieved = 0;
     for (int i = 0; i < searchQueries.size(); i++) {
       String label = listLabel(i);
       List<Document> candidates;
@@ -121,7 +118,7 @@ class FullTextSearchStage implements RetrievalStage {
         notes.add("lexical search failed for " + label + ": " + e.getClass().getSimpleName());
         continue;
       }
-      retrieved += candidates.size();
+      lists.add(new CandidateList(label, candidates));
       for (int rank = 1; rank <= candidates.size(); rank++) {
         Document candidate = candidates.get(rank - 1);
         verdicts.add(
@@ -135,7 +132,8 @@ class FullTextSearchStage implements RetrievalStage {
       }
     }
 
-    notes.add(0, "full-text search, " + searchQueries.size() + " list(s)");
+    int retrieved = lists.stream().mapToInt(list -> list.documents().size()).sum();
+    notes.add(0, "full-text search, " + lists.size() + " list(s)");
     notes.add(1, "fetch-k " + context.queryProperties().fetchK() + " per list");
     notes.add(
         2,
@@ -144,13 +142,9 @@ class FullTextSearchStage implements RetrievalStage {
             + " of "
             + context.searchScope().size()
             + " scoped libraries searched, the rest awaiting their backfill");
-    notes.add(
-        3,
-        retrieved
-            + " lexical candidate(s) found and recorded here only - the fusion takes them as an"
-            + " input in #1049, which is why they are not counted as this stage's output");
     return new StageOutcome(
-        state, StageExplanation.executed(name(), inFlight, inFlight, verdicts, notes));
+        state.withSearchResults(lists),
+        StageExplanation.executed(name(), inFlight, inFlight + retrieved, verdicts, notes));
   }
 
   static String listLabel(int searchQueryIndex) {

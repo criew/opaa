@@ -49,6 +49,13 @@ public final class PipelineReportWriter {
             cfg.mmrLambda()));
     sb.append(
         format(
+            "  full-text-search-enabled=%s (Volltext-Backfill der gemessenen Bibliothek" + " %s)\n",
+            cfg.fullTextSearchEnabled(),
+            cfg.fullTextBackfillComplete()
+                ? "abgeschlossen"
+                : "UNVOLLSTÄNDIG — der lexikalische Pfad hat nichts beigetragen"));
+    sb.append(
+        format(
             "  query-decomposition-enabled=%s, max-sub-queries=%d, Chat-Modell=%s\n",
             cfg.queryDecompositionEnabled(),
             cfg.maxSubQueries(),

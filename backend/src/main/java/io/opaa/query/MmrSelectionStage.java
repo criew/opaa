@@ -18,8 +18,18 @@ import org.springframework.stereotype.Component;
  * always multiplied by zero (see {@link MmrSelector#select}), so the round trip is skipped entirely
  * - it could not affect the result.
  *
- * <p>Narrows only: every chunk it passes on was already permission-scoped and threshold-filtered by
- * the search that produced it.
+ * <p>Narrows only: every chunk it passes on was already permission-scoped by the search that
+ * produced it, and threshold-filtered if that search was the vector one - {@link
+ * QueryProperties#similarityThreshold} is a property of vector distance and has no counterpart in
+ * the lexical path, whose lists this stage narrows by the same per-list budget all the same.
+ *
+ * <p><b>At {@link QueryProperties#mmrLambda} {@code < 1.0} this stage treats the two paths' lists
+ * unequally</b>, and knowingly so: the relevance term is each candidate's own score, which is a
+ * cosine similarity in a vector list and a {@code ts_rank} an order of magnitude smaller in a
+ * lexical one, while the diversity term is a cosine similarity in both. A lexical list is therefore
+ * ordered almost entirely by diversity at any lambda below 1.0 - see {@link MmrSelector}'s scale
+ * note. The shipped default is {@code 1.0}, where the diversity term is multiplied by zero and both
+ * paths are narrowed identically.
  */
 @Component
 class MmrSelectionStage implements RetrievalStage {

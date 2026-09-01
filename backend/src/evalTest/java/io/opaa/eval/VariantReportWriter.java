@@ -164,6 +164,9 @@ public final class VariantReportWriter {
     if (overrides.maxChunksPerDocument() != null) {
       parts.add("maxChunksPerDocument=" + overrides.maxChunksPerDocument());
     }
+    if (overrides.fullTextSearchEnabled() != null) {
+      parts.add("fullTextSearchEnabled=" + overrides.fullTextSearchEnabled());
+    }
     return parts.isEmpty() ? "keine Änderung" : String.join(", ", parts);
   }
 

@@ -35,9 +35,10 @@ class PipelinePathIsolationTest {
 
   @Test
   void pipelinePathCountsItsOwnContractVersionSeparately() {
-    // Version 2 since issue #1040 made the five previously unchecked query parameters enforced
-    // fixed points; the raw-vector path's version above stays at 2 for its own, unrelated reasons.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(2);
+    // Version 3 since issue #1049 made the lexical path's switch and the measured library's
+    // full-text backfill state fixed points; the raw-vector path's version above stays at 2 for its
+    // own, unrelated reasons - that path never sees the lexical candidates at all.
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(3);
   }
 
   @Test

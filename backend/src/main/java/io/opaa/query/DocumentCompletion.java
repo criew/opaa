@@ -175,10 +175,13 @@ final class DocumentCompletion {
 
   /**
    * Groups every candidate not already in {@code selection} by document, deduplicated by chunk id
-   * (the same chunk can appear once per sub-query in a pooled multi-query candidate list, kept at
-   * its higher-scoring instance) and ordered by each chunk's own first-occurrence position in
-   * {@code candidatePool} - not {@link Document#getScore()}, which is only comparable within the
-   * single search vector that produced it (see this class's Javadoc).
+   * (the same chunk can appear once per sub-query and once per search path in a pooled candidate
+   * list, kept at its first-occurring instance) and ordered by each chunk's own first-occurrence
+   * position in {@code candidatePool} - not {@link Document#getScore()}, which is only comparable
+   * within the single search that produced it (see this class's Javadoc). First-occurring, not
+   * highest-scoring, for the reason {@link ReciprocalRankFusion} states for the same tie-break:
+   * since #1049 two instances of one chunk can carry a cosine similarity and a {@code ts_rank}, and
+   * the larger of those two numbers means nothing.
    */
   private static Map<String, List<Document>> unusedCandidatesByDocument(
       List<Document> candidatePool, Set<String> selectedChunkIds) {
@@ -190,7 +193,7 @@ final class DocumentCompletion {
       if (selectedChunkIds.contains(candidate.getId())) {
         continue;
       }
-      byChunkId.merge(candidate.getId(), candidate, DocumentCompletion::preferHigherScore);
+      byChunkId.putIfAbsent(candidate.getId(), candidate);
     }
     Map<String, List<Document>> byDocument =
         byChunkId.values().stream()
@@ -279,18 +282,5 @@ final class DocumentCompletion {
     }
     result.remove(weakest);
     return weakest;
-  }
-
-  /** {@code null} scores lose to any non-null one; between two non-null scores, the higher wins. */
-  private static Document preferHigherScore(Document a, Document b) {
-    Double scoreA = a.getScore();
-    Double scoreB = b.getScore();
-    if (scoreA == null) {
-      return b;
-    }
-    if (scoreB == null) {
-      return a;
-    }
-    return scoreA >= scoreB ? a : b;
   }
 }

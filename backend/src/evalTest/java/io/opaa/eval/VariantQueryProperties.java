@@ -31,6 +31,9 @@ final class VariantQueryProperties {
         overrides.maxSubQueries() != null ? overrides.maxSubQueries() : production.maxSubQueries(),
         overrides.maxChunksPerDocument() != null
             ? overrides.maxChunksPerDocument()
-            : production.maxChunksPerDocument());
+            : production.maxChunksPerDocument(),
+        overrides.fullTextSearchEnabled() != null
+            ? overrides.fullTextSearchEnabled()
+            : production.fullTextSearchEnabled());
   }
 }

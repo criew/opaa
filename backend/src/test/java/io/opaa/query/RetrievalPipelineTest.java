@@ -33,7 +33,7 @@ class RetrievalPipelineTest {
 
   private static final UUID LIBRARY_ID = UUID.randomUUID();
   private static final QueryProperties PROPERTIES =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2);
+      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false);
 
   private final VectorStore vectorStore = mock(VectorStore.class);
   private final ChunkEmbeddingLookup chunkEmbeddingLookup = mock(ChunkEmbeddingLookup.class);
@@ -55,13 +55,12 @@ class RetrievalPipelineTest {
             new SearchScopeStage(),
             new SubQueryDecompositionStage(queryDecompositionService),
             new VectorSearchStage(vectorStore),
-            // Lexical path switched off: this class asserts the structural guarantees over the
-            // vector path's candidates. The lexical stage's own behaviour - including that it
-            // leaves the selection untouched - is covered by FullTextSearchStageTest.
+            // The lexical path is switched off through every QueryProperties this class builds
+            // (fullTextSearchEnabled = false): the structural guarantees asserted here are about
+            // the vector path's candidates. The lexical stage's own behaviour is covered by
+            // FullTextSearchStageTest.
             new FullTextSearchStage(
-                mock(FullTextChunkSearch.class),
-                mock(FullTextBackfillGate.class),
-                new FullTextSearchProperties(false)),
+                mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new DocumentCompletionStage(),
@@ -168,7 +167,7 @@ class RetrievalPipelineTest {
                   ? List.of(shared, firstOnly)
                   : List.of(shared, secondOnly);
             });
-    QueryProperties twoChunkBudget = new QueryProperties(2, 25, 1.0, 0.3, 1.0, true, 3, 1);
+    QueryProperties twoChunkBudget = new QueryProperties(2, 25, 1.0, 0.3, 1.0, true, 3, 1, false);
 
     RetrievalPipelineResult withoutFusion =
         pipeline(new RetrievalPipelineProperties(Set.of(RetrievalStageName.RANK_FUSION)))
@@ -199,7 +198,7 @@ class RetrievalPipelineTest {
                     "Zweite Frage",
                     history,
                     Set.of(LIBRARY_ID),
-                    new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2)));
+                    new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false)));
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
@@ -222,8 +221,8 @@ class RetrievalPipelineTest {
             chunk("c-0", "doc-c", 0.7),
             chunk("a-1", "doc-a", 0.5));
     stubSearch(candidates);
-    QueryProperties completing = new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 2);
-    QueryProperties notCompleting = new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 1);
+    QueryProperties completing = new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 2, false);
+    QueryProperties notCompleting = new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 1, false);
     RetrievalContext completingRun =
         new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), completing);
     RetrievalContext notCompletingRun =

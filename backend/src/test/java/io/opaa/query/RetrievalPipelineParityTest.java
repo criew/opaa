@@ -44,14 +44,12 @@ class RetrievalPipelineParityTest {
             new SearchScopeStage(),
             new SubQueryDecompositionStage(queryDecompositionService),
             new VectorSearchStage(vectorStore),
-            // Lexical path switched off: this class pins the selection against the pre-#1046
-            // algorithm, and the stage that must not change it is best held at its identity here.
-            // Its own behaviour is covered by FullTextSearchStageTest and
-            // FullTextChunkSearchIntegrationTest.
+            // The lexical path is switched off in every QueryProperties this class builds
+            // (fullTextSearchEnabled = false): parity is claimed against the pre-#1046 algorithm,
+            // which had no second search path. Its own behaviour is covered by
+            // FullTextSearchStageTest and FullTextChunkSearchIntegrationTest.
             new FullTextSearchStage(
-                mock(FullTextChunkSearch.class),
-                mock(FullTextBackfillGate.class),
-                new FullTextSearchProperties(false)),
+                mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new DocumentCompletionStage(),
@@ -170,7 +168,7 @@ class RetrievalPipelineParityTest {
    */
   private static QueryProperties randomProperties(Random random, double mmrLambda) {
     return new QueryProperties(
-        2 + random.nextInt(5), 25, mmrLambda, 0.3, 1.0, true, 3, 1 + random.nextInt(3));
+        2 + random.nextInt(5), 25, mmrLambda, 0.3, 1.0, true, 3, 1 + random.nextInt(3), false);
   }
 
   @Test
