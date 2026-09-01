@@ -15,7 +15,11 @@
  * {@link io.opaa.indexing.pipeline.ChunkPipelineMetadata}), read back by {@link
  * io.opaa.indexing.pipeline.PipelineReindexService} to select and selectively re-index every chunk
  * below a given pipeline version. {@code version} is raised only when a pipeline's cut or emitted
- * structure metadata actually changes, never for a behaviour-neutral fix.
+ * structure metadata actually changes, never for a behaviour-neutral fix. One selection criterion
+ * of {@link io.opaa.indexing.pipeline.PipelineReindexService} is, by necessity, an exception to
+ * "never on the file extension alone": catching up a chunk still naming the fallback pipeline whose
+ * format a pipeline registered afterwards now claims (#1105) has no other signal available to catch
+ * up on - see that class's own Javadoc for the narrower guarantee this approximation gives.
  *
  * <p>A pipeline reads its input through {@link io.opaa.indexing.pipeline.DocumentPipelineSource},
  * which carries either a file or already extracted text. A binary-format pipeline handed a source

@@ -4562,7 +4562,10 @@ components:
             abstraction existed count as version 0 and are therefore always included. Rejected with
             400 above the pipeline's own currentVersion: a re-index cannot produce a version the
             pipeline does not have, so every rewritten chunk would still be below the bound and the
-            same documents would be selected again on every following batch.
+            same documents would be selected again on every following batch. A chunk still naming
+            the fallback pipeline whose format pipelineId now claims (#1105) is also always
+            included regardless of belowVersion - it is unreachable by any other call, not merely
+            below a version bound.
         batchSize:
           type: integer
           minimum: 1

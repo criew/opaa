@@ -114,7 +114,9 @@ public class IndexingAdminController {
     // Above the pipeline's own version there is no version to re-index *to*: the run would rewrite
     // every chunk at the current version, find it still below the requested bound, and select the
     // same documents again on every following batch - an unbounded loop of embedding calls, not a
-    // slow run.
+    // slow run. Note that a chunk selected via the routing gap (#1105, still naming the fallback
+    // pipeline for a format pipelineId now claims) is included regardless of this bound - see
+    // PipelineReindexService#selectStaleDocuments.
     if (belowVersion > pipeline.version()) {
       throw new IllegalArgumentException(
           "belowVersion darf höchstens der aktuellen Version der Pipeline "

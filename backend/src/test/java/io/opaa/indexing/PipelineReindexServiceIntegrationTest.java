@@ -216,6 +216,71 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   @Test
+  void aGenuineFallbackDocumentIsNotSelectedByAnUnrelatedSpecializedPipelineReindex()
+      throws IOException {
+    // Regression guard for the #1105 review, blocker finding 1: the misrouted branch must stay
+    // scoped to the one gap it exists for. A .txt document with no specialized pipeline of its own
+    // is correctly fallback-labeled forever and must never be pulled into an unrelated pipeline's
+    // batch just because that pipeline happens to be registered.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document = persistedFilesystemDocument("altbestand.txt", "Alter Inhalt");
+    seedChunk(
+        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.isEmpty()).isTrue();
+    assertThat(result.reindexedDocuments()).isZero();
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+  }
+
+  @Test
+  void aDocumentThatStaysMisroutedAfterReindexTerminatesInsteadOfLoopingForever()
+      throws IOException {
+    // Regression guard for the #1105 review, blocker finding 1: reindexStoredDocument routes on
+    // re-detected content (DocumentPipelineRegistry#routedPipelineFor), not on the file name
+    // selectStaleDocuments guessed the candidate from. A document named like the target pipeline's
+    // format but whose real content never resolves to it stays fallback-labeled after every
+    // rewrite - without the loop protection this would be re-selected, re-embedded and re-written
+    // on every single call, never converging (see IndexingAdminController's own guard against the
+    // equivalent belowVersion case, which this same failure mode bypassed).
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document =
+        persistedFilesystemTextDocumentNamedLikePdf(
+            "bericht.pdf", "Dies ist kein PDF, sondern reiner Text. ");
+    seedChunk(
+        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+
+    PipelineReindexResult first =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+    assertThat(first.isEmpty()).isTrue();
+    assertThat(first.skippedDocuments()).isEqualTo(1);
+    assertThat(first.reindexedDocuments()).isZero();
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+
+    PipelineReindexResult second =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+    assertThat(second.isEmpty()).isTrue();
+  }
+
+  private Document persistedFilesystemTextDocumentNamedLikePdf(String fileName, String content)
+      throws IOException {
+    Path file = classTempDir.resolve(UUID.randomUUID() + "-" + fileName);
+    Files.writeString(file, content.repeat(30));
+    Document document =
+        new Document(
+            fileName, file.toAbsolutePath().toString(), "application/pdf", Files.size(file));
+    document.setLibraryId(library.getId());
+    document.setOrganizationId(Organization.DEFAULT_ID);
+    document.setChecksum("checksum-" + fileName);
+    return documentRepository.save(document);
+  }
+
+  @Test
   void aLocallyReadableDocumentIsReindexedInPlaceAndKeepsItsDocumentId() throws IOException {
     Document document =
         persistedFilesystemDocument(
