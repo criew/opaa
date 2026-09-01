@@ -451,6 +451,26 @@ der Zulassungsliste und in der Medientyp-Zuordnung der Formaterkennung.
 **Zuschnitt:** wie die jeweiligen Microsoft-Pendants — ODT wie DOCX, ODS wie XLSX, ODP wie PPTX. Die
 Pipelines sind dieselben; nur das Routing kennt einen weiteren erkannten Medientyp.
 
+#### Umgesetzt (#1057)
+
+`.odt`, `.ods` und `.odp` sind in `SupportedDocumentFormats` zugelassen, mit den jeweils eindeutigen
+ODF-Medientypen (`application/vnd.oasis.opendocument.{text,spreadsheet,presentation}`) als
+strikte Erkennungsgrenze — anders als bei OOXML gibt es keinen generischen, unaufgelösten
+ODF-Containertyp, den es zusätzlich abzuweisen gälte. Da weder für DOCX/PPTX noch für XLSX bereits
+eine eigene `DocumentPipeline` existiert (Stand #1056/#1058), läuft auch ODF vollständig über die
+`TikaFallbackPipeline` — das Routing über `SupportedDocumentFormats.decideForFileName` reicht dafür
+aus, ohne dass die Registry oder eine neue Pipeline-Klasse etwas dazulernen musste. Eine ODT-, ODS-
+oder ODP-Datei ohne extrahierbaren Text wird über denselben generischen Leer-Chunk-Guard der
+Fallback-Pipeline abgewiesen (`NO_EXTRACTABLE_TEXT` statt `INDEXED` mit null Chunks, #1055), nicht
+über eine formatspezifische Prüfung.
+
+**Ausnahme ODS, dauerhaft bis zu einer eigenen ODF-Tabellen-Pipeline:** „ODS wie XLSX" gilt für den
+Zuschnitt, nicht für den Reader — die XLSX-Pipeline (#1058) liest über POI, das kein ODF versteht.
+ODS bleibt deshalb auf der Tika-Fallback-Pipeline, auch nachdem #1058 landet; siehe die Begründung
+unter [Punkt 3](#3-xlsx-und-csv).
+
+Baseline unberührt — kein Korpusdokument dieses Typs.
+
 ### 3. XLSX und CSV
 
 Gebührenverzeichnisse, Zuständigkeitslisten und Haushaltsdaten sind das Rückgrat vieler
@@ -465,6 +485,12 @@ CSV kommt dabei mit einer eigenen Schwierigkeit: Eine CSV-Datei ist am Inhalt ni
 Klartext- oder Markdown-Datei zu unterscheiden — die gleiche Mehrdeutigkeit, wegen der `.md` und
 `.txt` heute zusätzlich ihre Endung nachweisen müssen. CSV wird deshalb in derselben Weise behandelt:
 Inhalt muss Text sein **und** die Datei muss `.csv` heißen.
+
+**ODS bleibt bis dahin auf dem Fallback (#1057).** Die für XLSX beschriebene POI-Pipeline liest kein
+ODF — POI ist ein OOXML/OLE2-Werkzeug, kein ODF-Werkzeug. „ODS wie XLSX" (Teil 3, Punkt 2) gilt daher
+erst für den Zuschnitt, nicht für den Reader: Diese Pipeline braucht für ODS einen eigenen ODF-Leser,
+nicht denselben POI-Code wie für XLSX. Bis dahin läuft ODS über dieselbe Tika-Glättung, die dieser
+Abschnitt für XLSX gerade verwirft — mit demselben Qualitätsverlust.
 
 ### 4. HTML
 

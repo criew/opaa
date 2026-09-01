@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -43,6 +44,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * <p>The network path's decision is exercised through {@link UrlIndexingExecutor#decideForEntry}
  * itself, the exact call {@link UrlIndexingExecutor#execute} makes on a byte prefix before a full
  * download - not a reimplementation of it, so this test cannot silently drift from production.
+ *
+ * <p><b>ODF (#1057) is read from the same fixtures {@code SupportedDocumentFormatsTest} and {@code
+ * TikaFallbackPipelineTest} use, not generated via POI</b> - POI is an OOXML/OLE2 library and has
+ * no ODF writer, unlike the DOCX/PPTX cases above which POI builds from scratch.
  */
 class DocumentFormatParityTest {
 
@@ -113,6 +118,25 @@ class DocumentFormatParityTest {
 
     assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
     var networkDecision = networkPathDecision(file, "folien.pptx");
+    assertThat(networkDecision.supported()).isTrue();
+    assertThat(networkDecision.extensionMismatch()).isFalse();
+  }
+
+  // --- #1057: ODF is admitted the same way DOCX/PPTX are - both indexing paths must agree, and
+  // the network path's own 64-KiB-prefix detection
+  // (SupportedDocumentFormats#DETECTION_PREFIX_BYTES)
+  // must resolve each ODF media type from a real file too, not just from a media-type string. --
+
+  @ParameterizedTest
+  @ValueSource(strings = {"odt", "ods", "odp"})
+  void bothIndexingPathsAcceptAGenuineOdfFileUnderItsOwnExtension(String extension)
+      throws IOException {
+    String fileName = "dokument." + extension;
+    Path file = tempDir.resolve(fileName);
+    Files.write(file, realOdfBytes(extension));
+
+    assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
+    var networkDecision = networkPathDecision(file, fileName);
     assertThat(networkDecision.supported()).isTrue();
     assertThat(networkDecision.extensionMismatch()).isFalse();
   }
@@ -193,6 +217,15 @@ class DocumentFormatParityTest {
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       document.write(out);
       return out.toByteArray();
+    }
+  }
+
+  private static byte[] realOdfBytes(String extension) throws IOException {
+    String resourceName = "test-documents/test-document." + extension;
+    try (InputStream in =
+        DocumentFormatParityTest.class.getClassLoader().getResourceAsStream(resourceName)) {
+      assertThat(in).as("Test resource %s must exist", resourceName).isNotNull();
+      return in.readAllBytes();
     }
   }
 

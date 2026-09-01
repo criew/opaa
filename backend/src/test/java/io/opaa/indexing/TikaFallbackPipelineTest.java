@@ -4,11 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * The fallback pipeline reproduces the pre-abstraction ingest exactly (#1056): the same Tika
@@ -83,5 +87,49 @@ class TikaFallbackPipelineTest {
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> new DocumentPipelineSource("x.txt", tempDir.resolve("x.txt"), "text"))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  // --- #1057: ODF routes through this same fallback (no dedicated pipeline exists yet for its
+  // Microsoft-format counterparts either), so the fallback's Tika reader is the actual extractor
+  // exercised for ODT/ODS/ODP -----------------------------------------------------------------
+
+  @ParameterizedTest
+  @ValueSource(strings = {"odt", "ods", "odp"})
+  void extractsAndChunksTextFromEveryOdfFormat(String extension) throws IOException {
+    Path file = copyTestResource("test-document." + extension, "vermerk." + extension);
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, file.getFileName().toString()));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).isNotEmpty();
+    assertThat(result.chunks())
+        .anyMatch(
+            chunk -> chunk.getText() != null && chunk.getText().toLowerCase().contains("opaa"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"odt", "ods", "odp"})
+  void anEmptyOdfDocumentIsReportedAsHavingNoExtractableTextRatherThanIndexedWithZeroChunks(
+      String extension) throws IOException {
+    // #1055 guard: a format that parses successfully but yields no usable content must not end up
+    // INDEXED with zero chunks - it must be rejected the same way a scan PDF is.
+    Path file = copyTestResource("empty-document." + extension, "leer." + extension);
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, file.getFileName().toString()));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.chunks()).isEmpty();
+  }
+
+  private Path copyTestResource(String resourceName, String targetFileName) throws IOException {
+    Path target = tempDir.resolve(targetFileName);
+    try (InputStream in =
+        getClass().getClassLoader().getResourceAsStream("test-documents/" + resourceName)) {
+      assertThat(in).as("Test resource %s must exist", resourceName).isNotNull();
+      Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+    }
+    return target;
   }
 }
