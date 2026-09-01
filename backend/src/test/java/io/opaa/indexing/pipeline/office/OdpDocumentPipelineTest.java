@@ -26,7 +26,8 @@ class OdpDocumentPipelineTest {
 
   @TempDir Path tempDir;
 
-  private final OdpDocumentPipeline pipeline = new OdpDocumentPipeline(new OdfProperties(0, 0, 0));
+  private final OdpDocumentPipeline pipeline =
+      new OdpDocumentPipeline(new OdfProperties(0, 0, 0, 0));
 
   @Test
   void claimsExactlyOdp() {
@@ -135,6 +136,9 @@ class OdpDocumentPipelineTest {
 
   @Test
   void aNestedTableKeepsTheOuterTablesOwnRows() throws IOException {
+    // regression guard for #1143: the carrier row (the row whose cell holds the nested table) has
+    // a second cell of its own that must survive intact, and the nested table's own row must not
+    // be mixed into the outer table.
     Path file = tempDir.resolve("verschachtelte-tabelle.odp");
     writeOdp(
         file,
@@ -142,9 +146,12 @@ class OdpDocumentPipelineTest {
             "<draw:frame>"
                 + "<table:table>"
                 + odpRow("Leistung", "Gebuehr")
-                + "<table:table-row><table:table-cell>"
+                + "<table:table-row>"
+                + "<table:table-cell>"
                 + odpTable(odpRow("innen", "innen"))
-                + "</table:table-cell></table:table-row>"
+                + "</table:table-cell>"
+                + "<table:table-cell><text:p>Randnotiz</text:p></table:table-cell>"
+                + "</table:table-row>"
                 + odpRow("Personalausweis", "37,00 EUR")
                 + "</table:table>"
                 + "</draw:frame>"));
@@ -156,7 +163,9 @@ class OdpDocumentPipelineTest {
     assertThat(result.chunks()).hasSize(1);
     assertThat(result.chunks().getFirst().getText())
         .contains("Leistung | Gebuehr")
-        .contains("Personalausweis | 37,00 EUR");
+        .contains(" | Randnotiz")
+        .contains("Personalausweis | 37,00 EUR")
+        .doesNotContain("innen");
   }
 
   @Test
@@ -263,7 +272,7 @@ class OdpDocumentPipelineTest {
 
   @Test
   void aContentXmlExceedingTheByteLimitIsRejectedRatherThanExhaustingMemory() throws IOException {
-    OdpDocumentPipeline tinyLimitPipeline = new OdpDocumentPipeline(new OdfProperties(50, 0, 0));
+    OdpDocumentPipeline tinyLimitPipeline = new OdpDocumentPipeline(new OdfProperties(50, 0, 0, 0));
     Path file = tempDir.resolve("gross.odp");
     writeOdp(file, odpSlide(odpFrame("title", "Titel") + odpFrame(null, "Ein laengerer Text.")));
 
@@ -275,9 +284,24 @@ class OdpDocumentPipelineTest {
   }
 
   @Test
+  void aTextSWithAnExtremeRepeatCountIsCappedRatherThanExhaustingMemory() throws IOException {
+    // regression guard for #1143: text:c is attacker-controlled and unrelated to content.xml's
+    // byte size - without a cap, a single element requests gigabytes of in-memory spaces.
+    OdpDocumentPipeline tinyLimitPipeline = new OdpDocumentPipeline(new OdfProperties(0, 0, 0, 5));
+    Path file = tempDir.resolve("weite-luecke.odp");
+    writeOdp(file, odpSlide(odpFrame(null, "A<text:s text:c=\"2000000000\"/>B")));
+
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "weite-luecke.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText()).contains("A     B");
+  }
+
+  @Test
   void aPresentationExceedingTheSlideLimitIsRejectedRatherThanExhaustingMemory()
       throws IOException {
-    OdpDocumentPipeline tinyLimitPipeline = new OdpDocumentPipeline(new OdfProperties(0, 0, 1));
+    OdpDocumentPipeline tinyLimitPipeline = new OdpDocumentPipeline(new OdfProperties(0, 0, 1, 0));
     Path file = tempDir.resolve("viele-folien.odp");
     writeOdp(
         file, odpSlide(odpFrame(null, "Folie eins.")) + odpSlide(odpFrame(null, "Folie zwei.")));

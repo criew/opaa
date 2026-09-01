@@ -6,7 +6,9 @@ import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 import org.springframework.ai.document.Document;
@@ -65,7 +67,8 @@ public class OdtDocumentPipeline implements DocumentPipeline {
     }
     List<HeadingSectionSplitter.Event> events;
     try {
-      OdtContentHandler handler = new OdtContentHandler(odfProperties.maxOdtParagraphs());
+      OdtContentHandler handler =
+          new OdtContentHandler(odfProperties.maxOdtParagraphs(), odfProperties.maxSpaceRepeat());
       boolean found =
           OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler);
       if (!found) {
@@ -98,6 +101,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
   private static final class OdtContentHandler extends DefaultHandler {
 
     private final int maxParagraphs;
+    private final int maxSpaceRepeat;
     private int paragraphCount;
 
     private final List<HeadingSectionSplitter.Event> events = new ArrayList<>();
@@ -107,15 +111,15 @@ public class OdtDocumentPipeline implements DocumentPipeline {
     private final StringBuilder text = new StringBuilder();
 
     private int tableDepth;
-    private boolean insideCell;
-    private List<String> tableRows;
-    private List<String> currentRowCells;
-    private final StringBuilder cellText = new StringBuilder();
+    // One frame per currently open table:table, deepest on top; a nested table gets its own row
+    // list and cell buffer so it cannot overwrite the carrier row/cell of the table around it.
+    private final Deque<TableFrame> tableStack = new ArrayDeque<>();
 
     private boolean insideTrackedChanges;
 
-    OdtContentHandler(int maxParagraphs) {
+    OdtContentHandler(int maxParagraphs, int maxSpaceRepeat) {
       this.maxParagraphs = maxParagraphs;
+      this.maxSpaceRepeat = maxSpaceRepeat;
     }
 
     List<HeadingSectionSplitter.Event> events() {
@@ -145,19 +149,18 @@ public class OdtDocumentPipeline implements DocumentPipeline {
         }
         case "table:table" -> {
           tableDepth++;
-          if (tableDepth == 1) {
-            tableRows = new ArrayList<>();
-          }
+          tableStack.push(new TableFrame());
         }
         case "table:table-row" -> {
           if (tableDepth > 0) {
-            currentRowCells = new ArrayList<>();
+            tableStack.peek().currentRowCells = new ArrayList<>();
           }
         }
         case "table:table-cell", "table:covered-table-cell" -> {
           if (tableDepth > 0) {
-            insideCell = true;
-            cellText.setLength(0);
+            TableFrame frame = tableStack.peek();
+            frame.insideCell = true;
+            frame.cellText.setLength(0);
           }
         }
         case "text:s" -> appendRepeatedSpace(attributes);
@@ -183,7 +186,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
         return;
       }
       int count = parsePositiveIntOrDefault(attributes.getValue("text:c"), 1);
-      text.append(" ".repeat(count));
+      text.append(" ".repeat(Math.min(count, maxSpaceRepeat)));
     }
 
     @Override
@@ -207,11 +210,12 @@ public class OdtDocumentPipeline implements DocumentPipeline {
           if (paragraphDepth == 0) {
             String value = text.toString();
             if (tableDepth > 0) {
-              if (insideCell) {
-                if (cellText.length() > 0) {
-                  cellText.append(' ');
+              TableFrame frame = tableStack.peek();
+              if (frame.insideCell) {
+                if (frame.cellText.length() > 0) {
+                  frame.cellText.append(' ');
                 }
-                cellText.append(value.strip());
+                frame.cellText.append(value.strip());
               }
             } else {
               recordParagraphOrHeading(qName, value);
@@ -220,32 +224,36 @@ public class OdtDocumentPipeline implements DocumentPipeline {
         }
         case "table:table-cell", "table:covered-table-cell" -> {
           if (tableDepth > 0) {
-            insideCell = false;
-            if (currentRowCells != null) {
-              currentRowCells.add(cellText.toString());
+            TableFrame frame = tableStack.peek();
+            frame.insideCell = false;
+            if (frame.currentRowCells != null) {
+              frame.currentRowCells.add(frame.cellText.toString());
             }
           }
         }
         case "table:table-row" -> {
-          if (tableDepth > 0 && currentRowCells != null) {
-            String rowText = String.join(" | ", currentRowCells);
-            if (!rowText.isBlank()) {
-              tableRows.add(rowText);
+          if (tableDepth > 0) {
+            TableFrame frame = tableStack.peek();
+            if (frame.currentRowCells != null) {
+              String rowText = String.join(" | ", frame.currentRowCells);
+              if (!rowText.isBlank()) {
+                frame.rows.add(rowText);
+              }
+              frame.currentRowCells = null;
             }
-            currentRowCells = null;
           }
         }
         case "table:table" -> {
           tableDepth--;
+          TableFrame frame = tableStack.pop();
           if (tableDepth == 0) {
-            if (tableRows != null) {
-              String tableText = String.join("\n", tableRows);
-              if (!tableText.isBlank()) {
-                incrementParagraphCount();
-                events.add(new HeadingSectionSplitter.Paragraph(tableText));
-              }
+            // A nested table's own frame (tableDepth > 0 here) is discarded without emitting -
+            // its rows do not separately become an event, only the carrier row's cell survives.
+            String tableText = String.join("\n", frame.rows);
+            if (!tableText.isBlank()) {
+              incrementParagraphCount();
+              events.add(new HeadingSectionSplitter.Paragraph(tableText));
             }
-            tableRows = null;
           }
         }
         default -> {
@@ -282,6 +290,14 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       } catch (NumberFormatException e) {
         return defaultValue;
       }
+    }
+
+    /** Per-table-nesting-level row/cell accumulation state, see {@link #tableStack}. */
+    private static final class TableFrame {
+      private final List<String> rows = new ArrayList<>();
+      private final StringBuilder cellText = new StringBuilder();
+      private List<String> currentRowCells;
+      private boolean insideCell;
     }
   }
 }

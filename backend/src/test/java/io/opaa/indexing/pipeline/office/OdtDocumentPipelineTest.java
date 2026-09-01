@@ -26,7 +26,8 @@ class OdtDocumentPipelineTest {
 
   @TempDir Path tempDir;
 
-  private final OdtDocumentPipeline pipeline = new OdtDocumentPipeline(new OdfProperties(0, 0, 0));
+  private final OdtDocumentPipeline pipeline =
+      new OdtDocumentPipeline(new OdfProperties(0, 0, 0, 0));
 
   @Test
   void claimsExactlyOdt() {
@@ -153,15 +154,21 @@ class OdtDocumentPipelineTest {
 
   @Test
   void aNestedTableKeepsTheOuterTablesOwnRows() throws IOException {
+    // regression guard for #1143: the carrier row (the row whose cell holds the nested table) has
+    // a second cell of its own that must survive intact, and the nested table's own row must not
+    // be mixed into the outer table.
     Path file = tempDir.resolve("verschachtelte-tabelle.odt");
     writeOdt(
         file,
         odtHeading(1, "Gebuehrenverzeichnis")
             + "<table:table>"
             + odtRow("Leistung", "Gebuehr")
-            + "<table:table-row><table:table-cell>"
+            + "<table:table-row>"
+            + "<table:table-cell>"
             + odtTable(odtRow("innen", "innen"))
-            + "</table:table-cell></table:table-row>"
+            + "</table:table-cell>"
+            + "<table:table-cell><text:p>Randnotiz</text:p></table:table-cell>"
+            + "</table:table-row>"
             + odtRow("Personalausweis", "37,00 EUR")
             + "</table:table>");
 
@@ -172,7 +179,9 @@ class OdtDocumentPipelineTest {
     assertThat(result.chunks()).hasSize(1);
     assertThat(result.chunks().getFirst().getText())
         .contains("Leistung | Gebuehr")
-        .contains("Personalausweis | 37,00 EUR");
+        .contains(" | Randnotiz")
+        .contains("Personalausweis | 37,00 EUR")
+        .doesNotContain("innen");
   }
 
   @Test
@@ -265,7 +274,7 @@ class OdtDocumentPipelineTest {
 
   @Test
   void aContentXmlExceedingTheByteLimitIsRejectedRatherThanExhaustingMemory() throws IOException {
-    OdtDocumentPipeline tinyLimitPipeline = new OdtDocumentPipeline(new OdfProperties(50, 0, 0));
+    OdtDocumentPipeline tinyLimitPipeline = new OdtDocumentPipeline(new OdfProperties(50, 0, 0, 0));
     Path file = tempDir.resolve("gross.odt");
     writeOdt(file, odtHeading(1, "Ueberschrift") + odtParagraph("Ein laengerer Textkoerper."));
 
@@ -277,9 +286,24 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
+  void aTextSWithAnExtremeRepeatCountIsCappedRatherThanExhaustingMemory() throws IOException {
+    // regression guard for #1143: text:c is attacker-controlled and unrelated to content.xml's
+    // byte size - without a cap, a single element requests gigabytes of in-memory spaces.
+    OdtDocumentPipeline tinyLimitPipeline = new OdtDocumentPipeline(new OdfProperties(0, 0, 0, 5));
+    Path file = tempDir.resolve("weite-luecke.odt");
+    writeOdt(file, odtParagraph("A<text:s text:c=\"2000000000\"/>B"));
+
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "weite-luecke.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText()).isEqualTo("A     B");
+  }
+
+  @Test
   void aDocumentExceedingTheParagraphLimitIsRejectedRatherThanExhaustingMemory()
       throws IOException {
-    OdtDocumentPipeline tinyLimitPipeline = new OdtDocumentPipeline(new OdfProperties(0, 1, 0));
+    OdtDocumentPipeline tinyLimitPipeline = new OdtDocumentPipeline(new OdfProperties(0, 1, 0, 0));
     Path file = tempDir.resolve("viele-absaetze.odt");
     writeOdt(file, odtParagraph("Erster Absatz.") + odtParagraph("Zweiter Absatz."));
 

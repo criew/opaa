@@ -7,7 +7,9 @@ import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +67,8 @@ public class OdpDocumentPipeline implements DocumentPipeline {
     if (source.file() == null) {
       return DocumentPipelineResult.noContent();
     }
-    OdpContentHandler handler = new OdpContentHandler(odfProperties.maxOdpSlides());
+    OdpContentHandler handler =
+        new OdpContentHandler(odfProperties.maxOdpSlides(), odfProperties.maxSpaceRepeat());
     boolean found;
     try {
       found = OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler);
@@ -95,6 +98,7 @@ public class OdpDocumentPipeline implements DocumentPipeline {
   private static final class OdpContentHandler extends DefaultHandler {
 
     private final int maxSlides;
+    private final int maxSpaceRepeat;
     private int slideCount;
 
     private final List<Document> chunks = new ArrayList<>();
@@ -114,13 +118,13 @@ public class OdpDocumentPipeline implements DocumentPipeline {
     private final StringBuilder text = new StringBuilder();
 
     private int tableDepth;
-    private boolean insideCell;
-    private List<String> tableRows;
-    private List<String> currentRowCells;
-    private final StringBuilder cellText = new StringBuilder();
+    // One frame per currently open table:table, deepest on top; a nested table gets its own row
+    // list and cell buffer so it cannot overwrite the carrier row/cell of the table around it.
+    private final Deque<TableFrame> tableStack = new ArrayDeque<>();
 
-    OdpContentHandler(int maxSlides) {
+    OdpContentHandler(int maxSlides, int maxSpaceRepeat) {
       this.maxSlides = maxSlides;
+      this.maxSpaceRepeat = maxSpaceRepeat;
     }
 
     List<Document> chunks() {
@@ -161,19 +165,18 @@ public class OdpDocumentPipeline implements DocumentPipeline {
         }
         case "table:table" -> {
           tableDepth++;
-          if (tableDepth == 1) {
-            tableRows = new ArrayList<>();
-          }
+          tableStack.push(new TableFrame());
         }
         case "table:table-row" -> {
           if (tableDepth > 0) {
-            currentRowCells = new ArrayList<>();
+            tableStack.peek().currentRowCells = new ArrayList<>();
           }
         }
         case "table:table-cell", "table:covered-table-cell" -> {
           if (tableDepth > 0) {
-            insideCell = true;
-            cellText.setLength(0);
+            TableFrame frame = tableStack.peek();
+            frame.insideCell = true;
+            frame.cellText.setLength(0);
           }
         }
         case "text:s" -> appendRepeatedSpace(attributes);
@@ -199,7 +202,7 @@ public class OdpDocumentPipeline implements DocumentPipeline {
         return;
       }
       int count = parsePositiveIntOrDefault(attributes.getValue("text:c"), 1);
-      text.append(" ".repeat(count));
+      text.append(" ".repeat(Math.min(count, maxSpaceRepeat)));
     }
 
     private static int parsePositiveIntOrDefault(String value, int defaultValue) {
@@ -231,11 +234,12 @@ public class OdpDocumentPipeline implements DocumentPipeline {
           if (paragraphDepth == 0) {
             String value = text.toString();
             if (tableDepth > 0) {
-              if (insideCell) {
-                if (cellText.length() > 0) {
-                  cellText.append(' ');
+              TableFrame frame = tableStack.peek();
+              if (frame.insideCell) {
+                if (frame.cellText.length() > 0) {
+                  frame.cellText.append(' ');
                 }
-                cellText.append(value.strip());
+                frame.cellText.append(value.strip());
               }
             } else if (hasSlide) {
               routeParagraphText(value);
@@ -244,31 +248,35 @@ public class OdpDocumentPipeline implements DocumentPipeline {
         }
         case "table:table-cell", "table:covered-table-cell" -> {
           if (tableDepth > 0) {
-            insideCell = false;
-            if (currentRowCells != null) {
-              currentRowCells.add(cellText.toString());
+            TableFrame frame = tableStack.peek();
+            frame.insideCell = false;
+            if (frame.currentRowCells != null) {
+              frame.currentRowCells.add(frame.cellText.toString());
             }
           }
         }
         case "table:table-row" -> {
-          if (tableDepth > 0 && currentRowCells != null) {
-            String rowText = String.join(" | ", currentRowCells);
-            if (!rowText.isBlank()) {
-              tableRows.add(rowText);
+          if (tableDepth > 0) {
+            TableFrame frame = tableStack.peek();
+            if (frame.currentRowCells != null) {
+              String rowText = String.join(" | ", frame.currentRowCells);
+              if (!rowText.isBlank()) {
+                frame.rows.add(rowText);
+              }
+              frame.currentRowCells = null;
             }
-            currentRowCells = null;
           }
         }
         case "table:table" -> {
           tableDepth--;
-          if (tableDepth == 0) {
-            if (tableRows != null && hasSlide) {
-              String tableText = String.join("\n", tableRows);
-              if (!tableText.isBlank()) {
-                routeParagraphText(tableText);
-              }
+          TableFrame frame = tableStack.pop();
+          if (tableDepth == 0 && hasSlide) {
+            // A nested table's own frame (tableDepth > 0 here) is discarded without emitting -
+            // its rows do not separately become body text, only the carrier row's cell survives.
+            String tableText = String.join("\n", frame.rows);
+            if (!tableText.isBlank()) {
+              routeParagraphText(tableText);
             }
-            tableRows = null;
           }
         }
         default -> {
@@ -330,6 +338,14 @@ public class OdpDocumentPipeline implements DocumentPipeline {
       chunks.add(new Document(HeadingSectionSplitter.capChunkLength(text), metadata));
       anySlideHasText |= hasText;
       hasSlide = false;
+    }
+
+    /** Per-table-nesting-level row/cell accumulation state, see {@link #tableStack}. */
+    private static final class TableFrame {
+      private final List<String> rows = new ArrayList<>();
+      private final StringBuilder cellText = new StringBuilder();
+      private List<String> currentRowCells;
+      private boolean insideCell;
     }
   }
 }
