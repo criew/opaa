@@ -44,7 +44,10 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
   Volltext-Backfill der gemessenen Bibliothek unvollständig ist: Das Backfill-Tor hielte die
   Bibliothek dann vollständig aus dem lexikalischen Pfad heraus, und die Variante hätte die
   vector-only-Konfiguration unter dem Namen der hybriden gemessen.
-- Eine Variante mit `rerankCandidateCount > 0` wird als „nicht ausgeführt" gemeldet, solange die
+- Der Vergleich `verwaltung-reranking.json` (Issue #1050) misst die Rerank-Stufe und ihr
+  Kandidatenfenster; das Ergebnis steht in
+  [`docs/features/hybrid-retrieval.md`](../../docs/features/hybrid-retrieval.md), Arbeitspaket 4.
+- Eine Variante, die `rerankCandidateCount > 0` **ausdrücklich setzt**, wird als „nicht ausgeführt" gemeldet, solange die
   Rerank-Modellrolle des Laufs nicht nutzbar ist (Schalter aus, Rolle unbelegt oder Endpunkt
   nicht erreichbar) — sie hätte sonst die Konfiguration ohne Reranking unter dem Namen der mit
   Reranking gemessen. Ein Rerank-Vergleichslauf setzt deshalb `-Dopaa.rerank.enabled=true`,

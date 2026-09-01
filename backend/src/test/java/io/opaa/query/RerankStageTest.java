@@ -32,8 +32,7 @@ class RerankStageTest {
   private final RerankStage stage = new RerankStage(role);
 
   private static QueryProperties properties(int rerankCandidateCount) {
-    return new QueryProperties(
-        TOP_K, 25, 1.0, 0.3, 1.0, false, 3, 2, true, rerankCandidateCount);
+    return new QueryProperties(TOP_K, 25, 1.0, 0.3, 1.0, false, 3, 2, true, rerankCandidateCount);
   }
 
   private static RetrievalContext context(int rerankCandidateCount, boolean roleUsable) {
@@ -57,7 +56,8 @@ class RerankStageTest {
     List<Document> documents =
         IntStream.range(0, chunkCount).mapToObj(i -> chunk("c" + i)).toList();
     return RetrievalState.initial()
-        .withCandidateLists(List.of(new CandidateList(RankFusionStage.FUSED_LIST_LABEL, documents)));
+        .withCandidateLists(
+            List.of(new CandidateList(RankFusionStage.FUSED_LIST_LABEL, documents)));
   }
 
   @Test
@@ -86,10 +86,7 @@ class RerankStageTest {
     // 20 fused candidates, reversed by the reranker: the last chunk must end up first.
     when(role.rerank(anyString(), any()))
         .thenReturn(
-            IntStream.range(0, 20)
-                .mapToObj(i -> new ScoredCandidate(i, i))
-                .toList()
-                .reversed());
+            IntStream.range(0, 20).mapToObj(i -> new ScoredCandidate(i, i)).toList().reversed());
 
     StageOutcome outcome = stage.apply(context(50, true), stateWith(20));
 

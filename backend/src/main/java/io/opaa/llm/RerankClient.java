@@ -103,9 +103,9 @@ public class RerankClient {
   }
 
   /**
-   * Signals that the endpoint could not be used for this call. The message is technical and
-   * English - it ends up in {@link RerankRoleStatus#diagnostic()}, whose German wording is the
-   * presenting layer's business - and it never contains the access key.
+   * Signals that the endpoint could not be used for this call. The message is technical and English
+   * - it ends up in {@link RerankRoleStatus#diagnostic()}, whose German wording is the presenting
+   * layer's business - and it never contains the access key.
    */
   public static class RerankUnavailableException extends RuntimeException {
     public RerankUnavailableException(String message) {
@@ -204,8 +204,7 @@ public class RerankClient {
     return uri;
   }
 
-  private String requestBody(
-      String model, String query, List<String> documents, Dialect dialect) {
+  private String requestBody(String model, String query, List<String> documents, Dialect dialect) {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("query", query);
     if (dialect == Dialect.COHERE) {

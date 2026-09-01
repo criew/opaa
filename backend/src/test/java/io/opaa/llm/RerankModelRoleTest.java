@@ -140,8 +140,7 @@ class RerankModelRoleTest {
   @Test
   void aSuccessfulCallReturnsTheScoresAndKeepsTheRoleReady() {
     RerankClient client = mock(RerankClient.class);
-    when(client.rerank(any(), anyString(), any()))
-        .thenReturn(List.of(new ScoredCandidate(0, 1.0)));
+    when(client.rerank(any(), anyString(), any())).thenReturn(List.of(new ScoredCandidate(0, 1.0)));
     RerankModelRole role = role(client, true, ENDPOINT, "m");
 
     assertThat(role.rerank("Frage", List.of("a"))).containsExactly(new ScoredCandidate(0, 1.0));

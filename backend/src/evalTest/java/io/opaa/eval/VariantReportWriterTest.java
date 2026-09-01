@@ -76,7 +76,8 @@ class VariantReportWriterTest {
   @Test
   void rendersTheEffectivelyChangedParametersPerVariant() {
     var reference = VariantOutcome.executed(variant("reference"), report());
-    var mmrOverride = new PipelineVariant.QueryOverrides(null, 0.7, null, null, null, null, null, null);
+    var mmrOverride =
+        new PipelineVariant.QueryOverrides(null, 0.7, null, null, null, null, null, null);
     var changed = VariantOutcome.executed(variantWithOverrides("mmr-0.7", mmrOverride), report());
     var comparisonAgainstReference = VariantComparisonRunner.delta(changed, reference);
     var report =
@@ -102,7 +103,8 @@ class VariantReportWriterTest {
   @Test
   void rendersTheLexicalPathOverride() {
     var reference = VariantOutcome.executed(variant("vector+fulltext-rrf"), report());
-    var vectorOnly = new PipelineVariant.QueryOverrides(null, null, null, null, null, null, false, null);
+    var vectorOnly =
+        new PipelineVariant.QueryOverrides(null, null, null, null, null, null, false, null);
     var changed =
         VariantOutcome.executed(variantWithOverrides("vector-only", vectorOnly), report());
     var report =

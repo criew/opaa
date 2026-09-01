@@ -53,7 +53,8 @@ class RerankPipelineTest {
             new VectorSearchStage(vectorStore),
             // The lexical path is switched off in every QueryProperties here: this class is about
             // what happens to the fused list afterwards, not about how it was retrieved.
-            new FullTextSearchStage(mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
+            new FullTextSearchStage(
+                mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(rerankModelRole),
@@ -74,9 +75,7 @@ class RerankPipelineTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(IntStream.range(0, 25).mapToObj(RerankPipelineTest::chunk).toList());
     return pipeline()
-        .run(
-            new RetrievalContext(
-                "Frage", List.of(), Set.of(LIBRARY_ID), properties, roleUsable));
+        .run(new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), properties, roleUsable));
   }
 
   private static StageExplanation stageOf(
@@ -129,8 +128,7 @@ class RerankPipelineTest {
     RetrievalPipelineResult result = run(WITHOUT_RERANKING, false);
 
     assertThat(stageOf(result, RetrievalStageName.RANK_FUSION).outgoingCount()).isEqualTo(TOP_K);
-    assertThat(stageOf(result, RetrievalStageName.RERANK).status())
-        .isEqualTo(StageStatus.DISABLED);
+    assertThat(stageOf(result, RetrievalStageName.RERANK).status()).isEqualTo(StageStatus.DISABLED);
     assertThat(result.chunks()).hasSize(TOP_K);
   }
 

@@ -8,11 +8,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * The rerank model role: the single entry point for both questions anyone has about reranking - "may
- * a query use it?" and "what state is it in?" (docs/features/hybrid-retrieval.md, Arbeitspaket 4).
- * Sits on the same level as the chat role's {@link ActiveChatModelResolver} and the embedding role's
- * {@link EmbeddingInfoService}, and like them owns the whole role rather than spreading it over the
- * callers.
+ * The rerank model role: the single entry point for both questions anyone has about reranking -
+ * "may a query use it?" and "what state is it in?" (docs/features/hybrid-retrieval.md, Arbeitspaket
+ * 4). Sits on the same level as the chat role's {@link ActiveChatModelResolver} and the embedding
+ * role's {@link EmbeddingInfoService}, and like them owns the whole role rather than spreading it
+ * over the callers.
  *
  * <p><b>A contradiction is never resolved silently.</b> Switch on with the role unbound or its
  * endpoint unreachable is reported at startup ({@link RerankRoleStartupCheck}) and stays readable
@@ -37,9 +37,9 @@ public class RerankModelRole implements RerankRoleStatusProvider {
   private final RerankClient client;
 
   /**
-   * The last probe or call result for a switched-on, bound role; {@code null} until the first probe.
-   * The switched-off and unbound states are derived from configuration instead, so they can never
-   * go stale.
+   * The last probe or call result for a switched-on, bound role; {@code null} until the first
+   * probe. The switched-off and unbound states are derived from configuration instead, so they can
+   * never go stale.
    */
   private final AtomicReference<RerankRoleStatus> lastKnown = new AtomicReference<>();
 
@@ -102,7 +102,8 @@ public class RerankModelRole implements RerankRoleStatusProvider {
    *
    * <p><b>Never throws and never fails a query.</b> A call that does not come back usable yields an
    * empty list and moves the role to {@link RerankRoleState#UNREACHABLE}, so the caller falls back
-   * to the ranking it already had and the failure is visible in {@link #currentStatus()} afterwards.
+   * to the ranking it already had and the failure is visible in {@link #currentStatus()}
+   * afterwards.
    */
   public List<RerankClient.ScoredCandidate> rerank(String query, List<String> texts) {
     if (!properties.enabled() || !properties.bound()) {

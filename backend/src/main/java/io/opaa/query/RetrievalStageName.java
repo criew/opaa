@@ -67,17 +67,17 @@ public enum RetrievalStageName {
   /**
    * Narrows each candidate list to {@link RetrievalContext#candidateBudget()} via {@link
    * MmrSelector} - {@link QueryProperties#topK} unless reranking runs, the wider rerank candidate
-   * window if it does - trading
-   * relevance against redundancy at {@link QueryProperties#mmrLambda} (at the shipped default
-   * {@code 1.0} this is plain top-k by relevance). Switched off, every list stays at its full
-   * {@link QueryProperties#fetchK} length and the budget is enforced by {@link #RANK_FUSION} alone.
+   * window if it does - trading relevance against redundancy at {@link QueryProperties#mmrLambda}
+   * (at the shipped default {@code 1.0} this is plain top-k by relevance). Switched off, every list
+   * stays at its full {@link QueryProperties#fetchK} length and the budget is enforced by {@link
+   * #RANK_FUSION} alone.
    */
   MMR_SELECTION,
 
   /**
    * Merges every candidate list into one by rank via {@link ReciprocalRankFusion} and caps it at
-   * {@link RetrievalContext#candidateBudget()}. Switched off, the lists are collapsed by ordered concatenation
-   * deduplicated by chunk id and the top-k cap does not apply (see {@link
+   * {@link RetrievalContext#candidateBudget()}. Switched off, the lists are collapsed by ordered
+   * concatenation deduplicated by chunk id and the top-k cap does not apply (see {@link
    * RetrievalState#selection}).
    */
   RANK_FUSION,

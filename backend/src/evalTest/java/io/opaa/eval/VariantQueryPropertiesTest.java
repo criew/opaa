@@ -20,7 +20,8 @@ class VariantQueryPropertiesTest {
 
   @Test
   void anOverriddenFieldReplacesOnlyThatField() {
-    var overrides = new PipelineVariant.QueryOverrides(null, 0.7, null, null, null, null, null, null);
+    var overrides =
+        new PipelineVariant.QueryOverrides(null, 0.7, null, null, null, null, null, null);
 
     QueryProperties effective = VariantQueryProperties.apply(PRODUCTION, overrides);
 
@@ -36,7 +37,8 @@ class VariantQueryPropertiesTest {
 
   @Test
   void permissionHistorySampleRateIsNeverOverridden() {
-    var overrides = new PipelineVariant.QueryOverrides(null, null, null, null, null, null, null, null);
+    var overrides =
+        new PipelineVariant.QueryOverrides(null, null, null, null, null, null, null, null);
 
     QueryProperties effective = VariantQueryProperties.apply(PRODUCTION, overrides);
 

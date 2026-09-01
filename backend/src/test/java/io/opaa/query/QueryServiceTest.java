@@ -1,6 +1,5 @@
 package io.opaa.query;
 
-import io.opaa.llm.RerankModelRole;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
@@ -31,6 +30,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
+import io.opaa.llm.RerankModelRole;
 import io.opaa.observability.QueryMetrics;
 import java.lang.reflect.Method;
 import java.time.Instant;
@@ -134,7 +134,8 @@ class QueryServiceTest {
     // MmrSelector's own diversity behaviour (mmrLambda != 1.0) is covered separately by
     // MmrSelectorTest.
     queryService =
-        newQueryService(new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false, 50), chatMemory);
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false, 50), chatMemory);
 
     // lenient: not every test in this class exercises the full query() path (e.g. the
     // mergeSourceReferences nested tests call other members directly), so MockitoExtension's
@@ -175,7 +176,8 @@ class QueryServiceTest {
   @Test
   void queryCallsChunkEmbeddingLookupWhenMmrLambdaIsBelowOne() {
     QueryService serviceWithMmrEnabled =
-        newQueryService(new QueryProperties(8, 25, 0.5, 0.3, 1.0, true, 3, 2, false, 50), chatMemory);
+        newQueryService(
+            new QueryProperties(8, 25, 0.5, 0.3, 1.0, true, 3, 2, false, 50), chatMemory);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chunk =
         Document.builder()
@@ -200,7 +202,8 @@ class QueryServiceTest {
   @Test
   void permissionHistoryCheckNeverRunsWhenSampleRateIsZero() {
     QueryService serviceWithNoSampling =
-        newQueryService(new QueryProperties(8, 25, 1.0, 0.3, 0.0, true, 3, 2, false, 50), chatMemory);
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, 0.0, true, 3, 2, false, 50), chatMemory);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
@@ -2154,6 +2157,7 @@ class QueryServiceTest {
                   new FullTextSearchStage(fullTextChunkSearch, backfillGate),
                   new MmrSelectionStage(chunkEmbeddingLookup),
                   new RankFusionStage(),
+                  new RerankStage(mock(RerankModelRole.class)),
                   new DocumentCompletionStage(),
                   RetrievalPipelineProperties.allStagesEnabled());
       return new QueryService(
@@ -2167,8 +2171,9 @@ class QueryServiceTest {
           permissionHistoryService,
           chatService,
           new QueryMetrics(new SimpleMeterRegistry()),
-          new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, maxChunksPerDocument, true),
-          knowledgeLibraryRepository);
+          new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, maxChunksPerDocument, true, 50),
+          knowledgeLibraryRepository,
+          mock(RerankModelRole.class));
     }
 
     /**

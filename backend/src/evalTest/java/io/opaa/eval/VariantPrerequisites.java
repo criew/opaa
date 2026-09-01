@@ -53,9 +53,12 @@ final class VariantPrerequisites {
    * the hybrid one — and its Δ0.000 against the vector-only reference would read as "the lexical
    * path changes nothing", the strongest possible wrong conclusion this comparison could produce.
    *
-   * <p>Since issue #1050 it also covers the rerank role: a variant with a non-zero rerank
-   * candidate window needs a usable rerank model role, for exactly the same reason - it would
-   * otherwise measure the configuration without reranking under the name of the one with it.
+   * <p>Since issue #1050 it also covers the rerank role: a variant that <b>declares</b> a non-zero
+   * rerank candidate window needs a usable rerank model role, for exactly the same reason - it
+   * would otherwise measure the configuration without reranking under the name of the one with it.
+   * Deliberately the declared override, not the effective value: the shipped configuration carries
+   * a candidate window of 50 with the role switched off, and a variant that merely inherits it
+   * claims nothing about reranking.
    */
   static Optional<String> unmetReason(
       PipelineVariant variant,
@@ -66,7 +69,8 @@ final class VariantPrerequisites {
     if (earlier.isPresent()) {
       return earlier;
     }
-    if (effective.rerankCandidateCount() > 0 && !rerankRoleUsable) {
+    Integer declaredRerankWindow = variant.queryOverrides().rerankCandidateCount();
+    if (declaredRerankWindow != null && declaredRerankWindow > 0 && !rerankRoleUsable) {
       return Optional.of(
           "Diese Variante lässt die Rerank-Stufe laufen, aber die Rerank-Modellrolle ist in "
               + "diesem Lauf nicht nutzbar (ausgeschaltet, unbelegt oder nicht erreichbar – "

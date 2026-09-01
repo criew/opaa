@@ -622,10 +622,10 @@ schlechterer Suchqualität führen, nie zu einem Fehler für den fragenden Mensc
 >   Erklärprotokoll — inklusive des Status `UNAVAILABLE` für „eingeschaltet, aber nicht nutzbar".
 > - **Die Kandidatenzahl** `OPAA_QUERY_RERANK_CANDIDATE_COUNT` (Startwert 50, `0` schaltet die Stufe
 >   über ihren eigenen Parameter ab), gemessen über den Variantenvergleich
->   `eval/variants/verwaltung-reranking.json`.
+>   `eval/variants/verwaltung-reranking.json` — siehe
+>   [Gemessene Wirkung](#gemessene-wirkung-und-gemessene-kandidatenzahl-1050).
 >
-> **Nicht geliefert**: die Aktivierung. Siehe [Die Lehre aus MMR](#die-lehre-aus-mmr) und den
-> Messabschnitt am Ende dieses Arbeitspakets.
+> **Nicht geliefert**: die Aktivierung. Siehe [Die Lehre aus MMR](#die-lehre-aus-mmr).
 
 ### Die Entscheidung
 
@@ -729,6 +729,56 @@ zwei nicht kennt. Die Zahlen liefert das
 [Arbeitspaket „Latenz-/Hardwareprofil"](#arbeitspaket-latenz-hardwareprofil); die Installation
 entscheidet damit, welchen Punkt auf der Qualität-Latenz-Kurve sie wählt.
 
+### Gemessene Wirkung und gemessene Kandidatenzahl (#1050)
+
+Messaufbau: Verwaltungs-Evaldomäne, 46 Golden-Fälle, Pipeline-Messpfad, ein Index, ein Lauf,
+Variantenvergleich `eval/variants/verwaltung-reranking.json`. Referenzvariante ist die ausgelieferte
+Konfiguration (Kandidatenfenster 0, kein Reranking); die drei Varianten laufen gepaart über
+denselben Index, sind also untereinander vergleichbar. Rerank-Modell: `BAAI/bge-reranker-v2-m3`
+(Apache 2.0) über Text Embeddings Inference auf CPU — der Kandidat, den die Übersicht oben für
+Installationen ohne GPU nennt. Die Einbettungen dieses Laufs stammen aus einem externen
+Ollama-Endpunkt; die absoluten Zahlen sind deshalb **nicht** mit der committeten Baseline
+vergleichbar, die Deltas innerhalb des Laufs sehr wohl. Die committeten Baselines bleiben
+unverändert: Die ausgelieferte Konfiguration rerankt nicht, und der Harness lehnt einen
+Baseline-Lauf ab, der es täte.
+
+| Klasse | n | nDCG@8 ohne → 25 → 50 | MRR@8 ohne → 25 → 50 | Recall@8 ohne → 25 → 50 |
+|---|---|---|---|---|
+| gesamt | 46 | 0,726 → 0,868 → **0,867** | 0,733 → 0,906 → **0,886** | 0,859 → 0,909 → **0,920** |
+| `compound_word` | 9 | 0,731 → 0,941 → **0,941** | 0,861 → 1,000 → **1,000** | 0,722 → 0,926 → **0,926** |
+| `literal_term_weak_embedding` | 9 | 0,494 → 0,846 → **0,846** | 0,444 → 0,889 → **0,889** | 0,722 → 0,833 → **0,833** |
+| `exact_identifier` | 10 | 0,889 → 1,000 → **1,000** | 0,870 → 1,000 → **1,000** | 1,000 → 1,000 → **1,000** |
+| `metadata_filter` | 9 | 0,807 → 0,862 → **0,807** | 0,741 → 0,815 → **0,741** | 1,000 → 1,000 → **1,000** |
+| `multi_hop` | 9 | 0,691 → 0,677 → **0,725** | 0,731 → 0,815 → **0,787** | 0,833 → 0,778 → **0,833** |
+
+Zwei Aussagen fallen daraus, und nur diese beiden:
+
+- **Die Wirkung ist groß und trifft genau die schwachen Klassen.** `literal_term_weak_embedding` —
+  die #938-Klasse — steigt im nDCG@8 von 0,494 auf 0,846, `compound_word` von 0,731 auf 0,941. Das
+  sind die beiden Klassen, die die Neubewertung vor dem Bau als unter dem Schwellenwert liegend
+  ausgewiesen hat.
+- **Der Startwert 50 trägt, und er trägt aus einem benennbaren Grund.** Bei Fenster 25 verliert
+  `multi_hop` gegenüber der Referenz (Recall@8 0,833 → 0,778, nDCG@8 0,691 → 0,677, vollständig
+  getroffene Erwartungsmengen 0,667 → 0,556): Mehrteilige Fragen brauchen zwei verschiedene
+  Dokumente, und das zweite steht oft hinter Rang 25. Bei Fenster 50 verschwindet diese Regression
+  vollständig — **keine Klasse liegt dort unter der Referenz**. 25 ist billiger und in vier von fünf
+  Klassen gleichwertig; 50 ist die Zahl, die ohne Regression an anderer Stelle auskommt, und bleibt
+  deshalb der Default.
+
+**Was diese Messung nicht sagt.** Sie sagt nichts über Latenz: Der Lauf brauchte auf einer
+20-Kern-CPU rund 2,3 Stunden je Rerank-Variante, also grob drei Minuten je Frage bei 50 Kandidaten.
+Das ist eine Zahl über den Messaufbau, keine über den Betrieb — der Aufbau ist für Qualität gebaut,
+nicht für Laufzeit (siehe [Retrieval-Benchmark, Abgrenzung](./retrieval-benchmark.md#abgrenzung)).
+Eine belastbare Laufzeitaussage liefert erst das
+[Arbeitspaket „Latenz-/Hardwareprofil"](#arbeitspaket-latenz-hardwareprofil), und **ohne dieses
+Arbeitspaket wird keine Aktivierungsempfehlung ausgesprochen** — die Größenordnung oben legt
+allerdings nahe, dass eine Installation ohne GPU mit diesem Modell nicht sinnvoll rerankt.
+
+**Einschränkung dieses Laufs, offen benannt:** Der Rerank-Endpunkt wurde in dem Moment gestoppt, in
+dem die letzte Anfrage der Variante `rerank-50` zurückkam. Sollte die allerletzte Anfrage davon
+betroffen gewesen sein, wäre einer der 46 Fälle dieser Variante ohne Neubewertung gemessen worden.
+Die Aussagen oben hängen an keinem Einzelfall.
+
 ### Die Lehre aus MMR
 
 Es gibt in diesem Projekt bereits einen gebauten, fachlich gut begründeten Retrieval-Baustein, der per
@@ -744,6 +794,12 @@ gegen 20 von 20 ohne. Der Baustein blieb, die Voreinstellung wurde nach der Mess
   zeigt** — und zwar gegen die bestehenden Baselines, ohne Regression an anderer Stelle.
 - Zeigt er ihn nicht, bleibt er als betreiberseitig aktivierbare Option bestehen, mit dokumentiertem
   Messergebnis. Das ist kein Fehlschlag, sondern das Ergebnis.
+
+**Stand nach #1050:** Der Qualitätsnutzen ist gezeigt (Abschnitt oben), die Voreinstellung bleibt
+trotzdem „aus". Das ist kein Widerspruch, sondern die zweite Hälfte derselben Regel: Für eine
+Aktivierungsempfehlung fehlt das Latenz-/Hardwareprofil, und ein Qualitätsgewinn, dessen Preis
+niemand kennt, ist keine Entscheidungsgrundlage. Die Voreinstellung wird nach dieser Messung
+gesetzt — nicht vor ihr.
 
 Dasselbe gilt für jede Teilentscheidung dieser Spezifikation, die eine Zahl trägt: Kompositazerlegung,
 Kandidatenzahl, Fusionsgewichte, Eskalationsstufen.

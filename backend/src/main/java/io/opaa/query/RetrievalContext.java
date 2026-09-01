@@ -23,10 +23,11 @@ import org.springframework.ai.chat.messages.Message;
  * variant-comparison harness (issue #1041) measures a dozen of them without rebuilding the bean
  * graph.
  *
- * <p>{@code rerankRoleUsable} travels here for the same reason: whether the rerank model role can be
- * called is decided once per run, by whoever builds the context, and every stage that depends on it
- * must see the same answer. Deciding it per stage would let {@link RetrievalStageName#RANK_FUSION}
- * widen its budget for a reranker that {@link RetrievalStageName#RERANK} then finds unavailable.
+ * <p>{@code rerankRoleUsable} travels here for the same reason: whether the rerank model role can
+ * be called is decided once per run, by whoever builds the context, and every stage that depends on
+ * it must see the same answer. Deciding it per stage would let {@link
+ * RetrievalStageName#RANK_FUSION} widen its budget for a reranker that {@link
+ * RetrievalStageName#RERANK} then finds unavailable.
  */
 public record RetrievalContext(
     String question,

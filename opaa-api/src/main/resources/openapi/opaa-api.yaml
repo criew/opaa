@@ -5679,6 +5679,7 @@ components:
           FULL_TEXT_SEARCH,
           MMR_SELECTION,
           RANK_FUSION,
+          RERANK,
           DOCUMENT_COMPLETION,
         ]
       example: RANK_FUSION
@@ -5687,8 +5688,10 @@ components:
       type: string
       description: >
         Whether a registered stage ran. A stage that did not run still appears in the protocol - a
-        stage silently missing is the failure the protocol exists to prevent.
-      enum: [EXECUTED, DISABLED, NOT_REACHED]
+        stage silently missing is the failure the protocol exists to prevent. UNAVAILABLE means the
+        stage was switched on but could not do its work - its model role is unbound or its endpoint
+        did not answer; the run continued without it.
+      enum: [EXECUTED, DISABLED, NOT_REACHED, UNAVAILABLE]
       example: EXECUTED
 
     RetrievalCandidateOutcome:
@@ -5707,6 +5710,7 @@ components:
           WITHIN_BUDGET,
           OUTSIDE_LIST_BUDGET,
           OUTSIDE_FUSION_BUDGET,
+          OUTSIDE_RERANK_BUDGET,
           COMPLETED_AS_SIBLING,
           EVICTED_BY_DOCUMENT_COMPLETION_TIER_1,
           EVICTED_BY_DOCUMENT_COMPLETION_TIER_2,

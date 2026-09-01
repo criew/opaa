@@ -84,6 +84,7 @@ const STAGE_LABELS: Record<RetrievalStage, string> = {
   FULL_TEXT_SEARCH: 'Volltextsuche',
   MMR_SELECTION: 'Auswahl je Liste',
   RANK_FUSION: 'Fusion (RRF)',
+  RERANK: 'Neubewertung (Reranking)',
   DOCUMENT_COMPLETION: 'Dokument-Vervollständigung',
 }
 
@@ -91,6 +92,7 @@ const STAGE_STATUS_LABELS: Record<RetrievalStageStatus, string> = {
   EXECUTED: 'Ausgeführt',
   DISABLED: 'Abgeschaltet',
   NOT_REACHED: 'Nicht erreicht',
+  UNAVAILABLE: 'Eingeschaltet, aber nicht verfügbar',
 }
 
 const OUTCOME_LABELS: Record<RetrievalCandidateOutcome, string> = {
@@ -104,6 +106,7 @@ const REASON_LABELS: Record<RetrievalVerdictReason, string> = {
   WITHIN_BUDGET: 'Innerhalb der Auswahlgrenze',
   OUTSIDE_LIST_BUDGET: 'Unterhalb der Auswahlgrenze der eigenen Liste',
   OUTSIDE_FUSION_BUDGET: 'Nach der Fusion unterhalb der Auswahlgrenze',
+  OUTSIDE_RERANK_BUDGET: 'Nach der Neubewertung unterhalb der Auswahlgrenze',
   COMPLETED_AS_SIBLING: 'Als weiterer Abschnitt desselben Dokuments ergänzt',
   EVICTED_BY_DOCUMENT_COMPLETION_TIER_1:
     'Von der Dokument-Vervollständigung verdrängt (schwächster Abschnitt seines Dokuments)',

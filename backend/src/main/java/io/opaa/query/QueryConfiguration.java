@@ -34,8 +34,8 @@ public class QueryConfiguration {
    *
    * <p>New stages are inserted here, at the position they belong to - the lexical search path next
    * to {@link VectorSearchStage} (in place since #1048), reranking between {@link RankFusionStage}
-   * and {@link DocumentCompletionStage} (in place since #1050,
-   * docs/features/hybrid-retrieval.md, Arbeitspaket 4).
+   * and {@link DocumentCompletionStage} (in place since #1050, docs/features/hybrid-retrieval.md,
+   * Arbeitspaket 4).
    */
   @Bean
   RetrievalPipeline retrievalPipeline(

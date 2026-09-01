@@ -1,6 +1,5 @@
 package io.opaa.eval;
 
-import io.opaa.llm.RerankModelRole;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -27,6 +26,7 @@ import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.JobStatus;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.llm.RerankModelRole;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;

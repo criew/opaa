@@ -18,9 +18,9 @@ import org.springframework.stereotype.Component;
  * than {@code top-k} chunks would hand a multiple of the intended context to answer generation.
  *
  * <p>A chunk the reranker did not score keeps its fused order behind every scored one - whether it
- * sat behind the candidate window or the endpoint simply did not score it. An endpoint that
- * answers for part of the window must not make the rest disappear, and a window below {@code
- * top-k} must not shrink the answer's context.
+ * sat behind the candidate window or the endpoint simply did not score it. An endpoint that answers
+ * for part of the window must not make the rest disappear, and a window below {@code top-k} must
+ * not shrink the answer's context.
  */
 @Component
 class RerankStage implements RetrievalStage {
@@ -53,7 +53,8 @@ class RerankStage implements RetrievalStage {
     }
 
     List<Document> window =
-        List.copyOf(incoming.subList(0, Math.min(incoming.size(), properties.rerankCandidateCount())));
+        List.copyOf(
+            incoming.subList(0, Math.min(incoming.size(), properties.rerankCandidateCount())));
     List<ScoredCandidate> scored =
         role.rerank(context.question(), window.stream().map(RerankStage::textOf).toList());
     if (scored.isEmpty()) {

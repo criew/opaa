@@ -57,7 +57,8 @@ class RerankClientTest {
     server.createContext(
         "/v1/rerank",
         exchange -> {
-          capturedBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+          capturedBody.set(
+              new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
           capturedAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
           byte[] response = body.getBytes(StandardCharsets.UTF_8);
           exchange.sendResponseHeaders(200, response.length);
@@ -187,8 +188,7 @@ class RerankClientTest {
             exchange.close();
             return;
           }
-          byte[] response =
-              "[{\"index\":0,\"score\":0.5}]".getBytes(StandardCharsets.UTF_8);
+          byte[] response = "[{\"index\":0,\"score\":0.5}]".getBytes(StandardCharsets.UTF_8);
           exchange.sendResponseHeaders(200, response.length);
           try (OutputStream out = exchange.getResponseBody()) {
             out.write(response);

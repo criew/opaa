@@ -17,8 +17,8 @@ public enum StageStatus {
   /**
    * The stage was switched on but could not do its work: the model role it needs is unbound, its
    * endpoint did not answer, or the call failed. The run continued without it - a degraded
-   * ordering, never a failed query - and says so here rather than looking like a stage that
-   * decided nothing.
+   * ordering, never a failed query - and says so here rather than looking like a stage that decided
+   * nothing.
    */
   UNAVAILABLE("stage switched on but unavailable: the run continued without it"),
 

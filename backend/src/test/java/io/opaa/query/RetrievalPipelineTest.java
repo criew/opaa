@@ -1,6 +1,5 @@
 package io.opaa.query;
 
-import io.opaa.llm.RerankModelRole;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -9,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.llm.RerankModelRole;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -177,7 +177,8 @@ class RetrievalPipelineTest {
                   ? List.of(shared, firstOnly)
                   : List.of(shared, secondOnly);
             });
-    QueryProperties twoChunkBudget = new QueryProperties(2, 25, 1.0, 0.3, 1.0, true, 3, 1, false, 50);
+    QueryProperties twoChunkBudget =
+        new QueryProperties(2, 25, 1.0, 0.3, 1.0, true, 3, 1, false, 50);
 
     RetrievalPipelineResult withoutFusion =
         pipeline(new RetrievalPipelineProperties(Set.of(RetrievalStageName.RANK_FUSION)))
@@ -232,7 +233,8 @@ class RetrievalPipelineTest {
             chunk("a-1", "doc-a", 0.5));
     stubSearch(candidates);
     QueryProperties completing = new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
-    QueryProperties notCompleting = new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 1, false, 50);
+    QueryProperties notCompleting =
+        new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 1, false, 50);
     RetrievalContext completingRun =
         new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), completing);
     RetrievalContext notCompletingRun =

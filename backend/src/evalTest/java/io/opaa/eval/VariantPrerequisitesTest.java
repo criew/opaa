@@ -56,7 +56,40 @@ class VariantPrerequisitesTest {
   void theBackfillPrerequisiteOnlyConstrainsAVariantThatUsesTheLexicalPath() {
     var vectorOnly = new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
 
-    assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true, false)).isEmpty();
-    assertThat(VariantPrerequisites.unmetReason(variant(false), vectorOnly, false, false)).isEmpty();
+    assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true, false))
+        .isEmpty();
+    assertThat(VariantPrerequisites.unmetReason(variant(false), vectorOnly, false, false))
+        .isEmpty();
+  }
+
+  /**
+   * Issue #1050: only a variant that states a rerank window claims to rerank. The shipped
+   * configuration carries a window of 50 with the role switched off - reading the effective value
+   * instead of the declared override would skip every variant of every comparison.
+   */
+  @Test
+  void theRerankPrerequisiteOnlyConstrainsAVariantThatDeclaresAWindow() {
+    assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true, false))
+        .isEmpty();
+    assertThat(VariantPrerequisites.unmetReason(rerankVariant(50), PRODUCTION_LIKE, true, true))
+        .isEmpty();
+    assertThat(VariantPrerequisites.unmetReason(rerankVariant(0), PRODUCTION_LIKE, true, false))
+        .isEmpty();
+  }
+
+  @Test
+  void aRerankingVariantIsSkippedWithoutAUsableRerankRole() {
+    var reason = VariantPrerequisites.unmetReason(rerankVariant(50), PRODUCTION_LIKE, true, false);
+
+    assertThat(reason).isPresent();
+    assertThat(reason.get()).contains("Rerank-Modellrolle");
+  }
+
+  private static PipelineVariant rerankVariant(int window) {
+    return new PipelineVariant(
+        "rerank-" + window,
+        "desc",
+        false,
+        new PipelineVariant.QueryOverrides(null, null, null, null, null, null, null, window));
   }
 }

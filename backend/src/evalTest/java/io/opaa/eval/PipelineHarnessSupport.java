@@ -231,9 +231,9 @@ public final class PipelineHarnessSupport {
    *       PipelineEvaluationReport#PIPELINE_MEASUREMENT_CONTRACT_VERSION}, re-drawn baselines), not
    *       something a property may do silently.
    *   <li><b>Reranking must not run.</b> Same argument as for the lexical path, in the other
-   *       direction: the committed baseline is the shipped configuration, and that one does
-   *       not rerank. A rerank run belongs in the Variantenvergleich, whose candidate-window
-   *       overrides are exactly what issue #1050 has to measure.
+   *       direction: the committed baseline is the shipped configuration, and that one does not
+   *       rerank. A rerank run belongs in the Variantenvergleich, whose candidate-window overrides
+   *       are exactly what issue #1050 has to measure.
    *   <li><b>The lexical search path must be switched on</b> (issue #1049, the Auflage recorded in
    *       docs/features/hybrid-retrieval.md, Arbeitspaket 2). Since it feeds the fusion, {@code
    *       opaa.query.full-text-search-enabled} moves the selection; the committed pipeline baseline
