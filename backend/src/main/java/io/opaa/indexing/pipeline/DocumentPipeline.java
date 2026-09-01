@@ -1,5 +1,6 @@
 package io.opaa.indexing.pipeline;
 
+import io.opaa.indexing.ChunkingService;
 import java.util.Set;
 
 /**
@@ -43,4 +44,21 @@ public interface DocumentPipeline {
 
   /** Parses and splits {@code source} into chunks. */
   DocumentPipelineResult run(DocumentPipelineSource source);
+
+  /**
+   * Chunk metadata keys this pipeline may set on a produced chunk's own metadata (as opposed to
+   * {@link ChunkPipelineMetadata}'s keys, which every pipeline gets unconditionally) that {@code
+   * FileProcessingService#storeChunks} carries onto the persisted chunk. A key this pipeline never
+   * actually set on a given chunk is simply skipped - declaring it here is a ceiling, not a promise
+   * every chunk carries it. This is the extension point #1107 replaced a hardcoded allowlist in
+   * {@code storeChunks} with: adding a passthrough key means overriding this method, nothing in the
+   * caller.
+   *
+   * <p>Defaults to {@link ChunkingService#LOCATION_METADATA_KEY}, the Fundort most pipelines derive
+   * via {@link HeadingSectionSplitter} or their own splitting; override to add further structural
+   * fields (e.g. {@code io.opaa.indexing.pipeline.mail.ChunkMailMetadata}'s Kopfdaten keys).
+   */
+  default Set<String> passthroughMetadataKeys() {
+    return Set.of(ChunkingService.LOCATION_METADATA_KEY);
+  }
 }

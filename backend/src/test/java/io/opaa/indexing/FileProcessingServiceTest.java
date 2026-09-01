@@ -17,8 +17,11 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
+import io.opaa.indexing.pipeline.DocumentPipeline;
+import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
+import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
-import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.UploadProperties;
@@ -30,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
@@ -388,44 +392,86 @@ class FileProcessingServiceTest {
             (int) TikaFallbackPipeline.VERSION);
   }
 
+  /**
+   * A stand-in pipeline declaring an arbitrary passthrough key - stands in for e.g.
+   * MailDocumentPipeline's mail_* keys without pulling that pipeline's own parsing into this
+   * service-level test (#1107: the mechanism under test is generic, not tied to any one pipeline's
+   * key names). {@code run} simply returns {@code chunksToReturn} - routed to via {@code
+   * processRssEntry}, which calls the registry's fallback pipeline directly rather than through
+   * content-based routing.
+   */
+  private record FakePassthroughPipeline(
+      Set<String> passthroughMetadataKeys,
+      List<org.springframework.ai.document.Document> chunksToReturn)
+      implements DocumentPipeline {
+
+    @Override
+    public String id() {
+      return "fake-passthrough";
+    }
+
+    @Override
+    public short version() {
+      return 1;
+    }
+
+    @Override
+    public Set<String> handledFormats() {
+      return Set.of();
+    }
+
+    @Override
+    public DocumentPipelineResult run(DocumentPipelineSource source) {
+      return DocumentPipelineResult.chunked(chunksToReturn);
+    }
+  }
+
   @Test
-  void mailKopfdatenRideAlongToTheVectorStoreOnlyWhenThePipelineSetThem() throws IOException {
-    // #1060, ingestion-pipelines.md Teil 3, Punkt 5: MailDocumentPipeline sets these keys on its
-    // own body chunks; storeChunks must forward them the same way it already forwards `location`,
-    // and must not invent them for a chunk that never carried one (an ordinary text document here).
-    Path file = tempDir.resolve("mail-metadata.txt");
-    Files.writeString(file, "some content");
-
-    when(checksumService.computeSha256(file)).thenReturn("abc123");
-    when(documentRepository.findByLibraryIdAndFilePath(
-            targetLibrary.getId(), file.toAbsolutePath().toString()))
-        .thenReturn(Optional.empty());
-    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
-
-    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
-    when(documentService.parseDocument(file)).thenReturn(parsed);
-
+  void pipelineDeclaredPassthroughMetadataKeysRideAlongOnlyWhenThePipelineSetThem() {
+    // #1107: storeChunks no longer hardcodes which non-bookkeeping metadata keys ride along - it
+    // reads DocumentPipeline#passthroughMetadataKeys() from the pipeline that actually produced the
+    // chunk. A declared-but-absent key must still be skipped, and an undeclared key present on the
+    // chunk must never be copied (mirrors the pre-#1107 mail Kopfdaten test's own two assertions).
     var chunks =
         List.of(
             new org.springframework.ai.document.Document(
                 "chunk1",
-                Map.of(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY, "Anfrage Bauantrag")));
-    when(chunkingService.chunkDocuments(eq("mail-metadata.txt"), eq(parsed))).thenReturn(chunks);
+                Map.of(
+                    "structural_key", "Kapitel 3",
+                    "undeclared_key", "must not ride along")));
+    var fakePipeline =
+        new FakePassthroughPipeline(Set.of("structural_key", "declared_but_absent_key"), chunks);
+    var registry = new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline);
+    FileProcessingService serviceWithFakePipeline =
+        new FileProcessingService(
+            registry,
+            documentRepository,
+            vectorChunkStore,
+            checksumService,
+            new IndexingMetrics(meterRegistry),
+            storageQuotaService,
+            defaultIndexingProperties(),
+            Runnable::run);
 
-    service.processFile(file, targetLibrary);
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
+    when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    serviceWithFakePipeline.processRssEntry(
+        "entry main text",
+        "Titel",
+        "https://example.gov/entry",
+        "2025-06-15T10:30:00Z",
+        targetLibrary);
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
     verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     Map<String, Object> metadata = chunkCaptor.getValue().getFirst().getMetadata();
-    assertThat(metadata)
-        .containsEntry(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY, "Anfrage Bauantrag");
-    assertThat(metadata)
-        .doesNotContainKeys(
-            ChunkMailMetadata.MAIL_FROM_METADATA_KEY,
-            ChunkMailMetadata.MAIL_TO_METADATA_KEY,
-            ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
+    assertThat(metadata).containsEntry("structural_key", "Kapitel 3");
+    assertThat(metadata).doesNotContainKeys("declared_but_absent_key", "undeclared_key");
   }
 
   @Test

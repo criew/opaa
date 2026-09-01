@@ -85,6 +85,21 @@ public class MailDocumentPipeline implements DocumentPipeline {
     return Set.of(".eml", ".msg");
   }
 
+  /**
+   * Adds {@link ChunkMailMetadata}'s Kopfdaten keys to the default {@link
+   * DocumentPipeline#passthroughMetadataKeys()} - set only on a message's own body chunks (see
+   * {@link #bodyChunks}), never on an attachment's recursively produced chunks.
+   */
+  @Override
+  public Set<String> passthroughMetadataKeys() {
+    return Set.of(
+        ChunkingService.LOCATION_METADATA_KEY,
+        ChunkMailMetadata.MAIL_FROM_METADATA_KEY,
+        ChunkMailMetadata.MAIL_TO_METADATA_KEY,
+        ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY,
+        ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
+  }
+
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
     if (source.file() == null) {

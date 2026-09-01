@@ -123,6 +123,20 @@ class MailDocumentPipelineTest {
     assertThat(pipeline.version()).isEqualTo((short) 1);
   }
 
+  @Test
+  void passesThroughLocationAndAllFourMailKopfdatenKeys() {
+    // #1107 neutrality guard: the exact key set FileProcessingService#storeChunks hardcoded before
+    // this pipeline declared its own passthrough keys (#1101's four mail_* lines, plus location).
+    MailDocumentPipeline pipeline = pipeline(defaultProperties);
+    assertThat(pipeline.passthroughMetadataKeys())
+        .containsExactlyInAnyOrder(
+            ChunkingService.LOCATION_METADATA_KEY,
+            ChunkMailMetadata.MAIL_FROM_METADATA_KEY,
+            ChunkMailMetadata.MAIL_TO_METADATA_KEY,
+            ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY,
+            ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
+  }
+
   // --- EML: headers as metadata, not text -----------------------------------------------------
 
   @Test

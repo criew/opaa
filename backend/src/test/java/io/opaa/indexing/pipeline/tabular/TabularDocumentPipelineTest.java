@@ -41,6 +41,14 @@ class TabularDocumentPipelineTest {
     assertThat(pipeline.version()).isEqualTo((short) 1);
   }
 
+  @Test
+  void passesThroughOnlyTheLocationKey() {
+    // #1107 neutrality guard: unchanged from the pre-refactor hardcoded allowlist - Blatt/Tabelle
+    // context is baked into the chunk text (Teil 3, Punkt 3), not carried as its own metadata key.
+    assertThat(pipeline.passthroughMetadataKeys())
+        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
+  }
+
   // --- XLSX ------------------------------------------------------------------------------------
 
   @Test

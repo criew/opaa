@@ -40,6 +40,13 @@ class PdfDocumentPipelineTest {
   }
 
   @Test
+  void passesThroughOnlyTheLocationKey() {
+    // #1107 neutrality guard: unchanged from the pre-refactor hardcoded allowlist.
+    assertThat(pipeline.passthroughMetadataKeys())
+        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
+  }
+
+  @Test
   void cutsFollowTheOutlineWithHeadingPathAndUnrestrictedNestingDepth() throws IOException {
     Path file = tempDir.resolve("satzung.pdf");
     try (PDDocument doc = new PDDocument()) {

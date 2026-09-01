@@ -31,6 +31,13 @@ class MarkdownDocumentPipelineTest {
     assertThat(pipeline.version()).isEqualTo((short) 1);
   }
 
+  @Test
+  void passesThroughOnlyTheLocationKey() {
+    // #1107 neutrality guard: unchanged from the pre-refactor hardcoded allowlist.
+    assertThat(pipeline.passthroughMetadataKeys())
+        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
+  }
+
   private static final String SATZUNG =
       """
       # Verwaltungsgebuehrensatzung

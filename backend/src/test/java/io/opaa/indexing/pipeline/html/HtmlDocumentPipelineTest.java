@@ -31,6 +31,13 @@ class HtmlDocumentPipelineTest {
     assertThat(pipeline.version()).isEqualTo((short) 1);
   }
 
+  @Test
+  void passesThroughOnlyTheLocationKey() {
+    // #1107 neutrality guard: unchanged from the pre-refactor hardcoded allowlist.
+    assertThat(pipeline.passthroughMetadataKeys())
+        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
+  }
+
   // A realistic Government Site Builder-style page: nav, header, footer and a cookie banner
   // outside <main>, plus nested headings (h1 > h2 > h3) inside it.
   private static final String REALISTIC_PAGE =
