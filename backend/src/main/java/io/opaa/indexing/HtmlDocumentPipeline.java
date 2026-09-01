@@ -26,8 +26,10 @@ import org.springframework.ai.document.Document;
  * boilerplate - navigation, footer, cookie notice and sidebar make up a large share of a typical
  * page and, read through Tika, end up in the chunk as if they were content. This reads the page
  * with Jsoup (already a project dependency, used the same way by {@link DetailPageExtractor} for an
- * RSS entry's detail page), strips boilerplate outside the chosen content area, addresses the
- * content itself via a CSS selector - mirroring {@code
+ * RSS entry's detail page), strips boilerplate - unconditionally where it never is legitimate
+ * content (navigation, sidebar, cookie consent), only outside the chosen content area where it
+ * sometimes legitimately is (a nested {@code <header>}/{@code <footer>}) - addresses the content
+ * itself via a CSS selector - mirroring {@code
  * IndexingProperties.Rss#DEFAULT_MAIN_CONTENT_SELECTOR}'s own choice of {@code main, article,
  * [role=main]}, which the project already found covers the vast majority of German public
  * administration CMS templates - and cuts along h1-h3.
@@ -47,8 +49,13 @@ import org.springframework.ai.document.Document;
  * on every chunk of a section that itself had to be split further (mirrors {@link
  * TabularDocumentPipeline}'s repeated column header, for the identical reason). h4-h6 stay inside
  * their enclosing section's text rather than cutting a further chunk; they are not part of the
- * tracked path either. A section that is nothing but its own heading (no body text at all) still
- * becomes a one-line chunk rather than being silently dropped as {@code NO_EXTRACTABLE_TEXT}.
+ * tracked path either. A section that is genuinely empty - its heading immediately followed by a
+ * sibling/ancestor-level heading or by the end of the document, never by a body paragraph - still
+ * becomes a one-line chunk rather than being silently dropped as {@code NO_EXTRACTABLE_TEXT}. An
+ * ordinary title heading immediately followed by its first subsection heading (h1 then h2, with no
+ * body text of its own in between) is not treated as empty this way - its title already opens every
+ * descendant section's own heading path, so a redundant title-only chunk would only duplicate it
+ * (#1059 review, follow-up finding 3).
  *
  * <p><b>An oversized section is split further at block boundaries</b>
  * (paragraph/list-item/table-row breaks), each sub-chunk repeating the heading line, so a page with
@@ -74,19 +81,26 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   static final short VERSION = 1;
 
   /**
-   * Candidate boilerplate elements - stripped only when they sit <em>outside</em> every chosen
-   * content root (see {@link #selectContentRoots}), never unconditionally: a standard CMS
-   * article/section legitimately nests its own {@code <header>} (title, Stand-Datum) or {@code
-   * <footer>} (author, tags), and stripping those away would silently drop real content along with
-   * the surrounding page chrome (#1059 review, finding 4). Extends the set {@link
-   * DetailPageExtractor} uses for an RSS detail page with cookie-banner markers - a page's own
-   * boilerplate, not a detail page's, routinely carries one.
+   * Boilerplate that is only ever boilerplate, never legitimate content - removed everywhere,
+   * including inside the chosen content root: navigation, sidebar, cookie consent and
+   * script/style/noscript sit in a content wrapper often enough (#1059 review, follow-up finding 2)
+   * that they cannot be treated the same way as {@link #CONDITIONAL_BOILERPLATE_SELECTOR}.
    */
-  private static final String BOILERPLATE_SELECTOR =
-      "nav, header, footer, aside, [role=navigation], [role=banner], [role=contentinfo],"
-          + " [role=complementary], .nav, .navigation, .menu, .breadcrumb, .sidebar,"
-          + " .cookie-banner, .cookie-consent, #cookie-banner, #cookie-consent, script, style,"
-          + " noscript";
+  private static final String UNCONDITIONAL_BOILERPLATE_SELECTOR =
+      "nav, aside, [role=navigation], [role=complementary], .nav, .navigation, .menu,"
+          + " .breadcrumb, .sidebar, .cookie-banner, .cookie-consent, #cookie-banner,"
+          + " #cookie-consent, script, style, noscript";
+
+  /**
+   * Boilerplate stripped only when it sits <em>outside</em> every chosen content root (see {@link
+   * #selectContentRoots}) - a standard CMS article/section legitimately nests its own {@code
+   * <header>} (title, Stand-Datum) or {@code <footer>} (author, tags), and stripping those away
+   * would silently drop real content along with the surrounding page chrome (#1059 review, finding
+   * 4). Mirrors the set {@link DetailPageExtractor} uses for an RSS detail page, minus the elements
+   * moved to {@link #UNCONDITIONAL_BOILERPLATE_SELECTOR} above.
+   */
+  private static final String CONDITIONAL_BOILERPLATE_SELECTOR =
+      "header, footer, [role=banner], [role=contentinfo]";
 
   /** Mirrors {@code IndexingProperties.Rss#DEFAULT_MAIN_CONTENT_SELECTOR}'s own choice. */
   private static final String MAIN_CONTENT_SELECTOR = "main, article, [role=main]";
@@ -189,39 +203,76 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
 
   /**
    * The content root(s) this document is cut from, and the boilerplate-stripping side effect that
-   * has to happen relative to them (see {@link #BOILERPLATE_SELECTOR}'s own Javadoc for why the
-   * distinction matters).
+   * has to happen relative to them.
+   *
+   * <p>{@link #UNCONDITIONAL_BOILERPLATE_SELECTOR} is removed first, document-wide, regardless of
+   * where the content area ends up - it is never legitimate content anywhere.
    *
    * <p>Every {@link #MAIN_CONTENT_SELECTOR} match is processed, not just the first (#1059 review,
    * finding 5) - an overview page routinely lists several {@code <article>} teasers, and taking
-   * only the first would silently drop every other one.
+   * only the first would silently drop every other one. A match nested inside another match (e.g.
+   * {@code <main><article>…</article></main>}, both matching the selector) is dropped in favour of
+   * its outer match rather than kept as a second, overlapping root - otherwise the same content
+   * would be cut and stored twice (#1059 review, follow-up finding 1).
    */
   private static List<Element> selectContentRoots(org.jsoup.nodes.Document htmlDoc) {
+    htmlDoc.select(UNCONDITIONAL_BOILERPLATE_SELECTOR).remove();
     Elements mainCandidates = htmlDoc.select(MAIN_CONTENT_SELECTOR);
     if (!mainCandidates.isEmpty()) {
-      removeBoilerplateOutside(htmlDoc, mainCandidates);
-      return List.copyOf(mainCandidates);
+      List<Element> roots = topLevelOnly(mainCandidates);
+      removeConditionalBoilerplateOutside(htmlDoc, roots);
+      return roots;
     }
     Element body = htmlDoc.body();
     if (body == null) {
       return List.of();
     }
-    // No dedicated content area was found at all - body itself is "the content", and the ordinary,
-    // unconditional strip applies (there is no narrower area left to preserve nested chrome for).
-    body.select(BOILERPLATE_SELECTOR).remove();
+    // No dedicated content area was found at all - body itself is "the content", and the
+    // ordinary, unconditional strip applies (there is no narrower area left to preserve nested
+    // chrome for).
+    body.select(CONDITIONAL_BOILERPLATE_SELECTOR).remove();
     return List.of(body);
   }
 
-  /** Removes every {@link #BOILERPLATE_SELECTOR} match that is not itself part of {@code roots}. */
-  private static void removeBoilerplateOutside(org.jsoup.nodes.Document htmlDoc, Elements roots) {
-    for (Element candidate : htmlDoc.select(BOILERPLATE_SELECTOR)) {
+  /**
+   * {@code candidates} with every match dropped that is itself a descendant of another match - the
+   * fix for {@code <main><article>…</article></main>} both matching {@link #MAIN_CONTENT_SELECTOR}
+   * (#1059 review, follow-up finding 1).
+   */
+  private static List<Element> topLevelOnly(Elements candidates) {
+    List<Element> roots = new ArrayList<>();
+    for (Element candidate : candidates) {
+      if (!isDescendantOfAnother(candidate, candidates)) {
+        roots.add(candidate);
+      }
+    }
+    return roots;
+  }
+
+  private static boolean isDescendantOfAnother(Element candidate, Elements candidates) {
+    for (Node node = candidate.parent(); node != null; node = node.parent()) {
+      if (candidates.contains(node)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Removes every {@link #CONDITIONAL_BOILERPLATE_SELECTOR} match that is not itself part of {@code
+   * roots} - {@link #UNCONDITIONAL_BOILERPLATE_SELECTOR} matches are already gone by the time this
+   * runs (see {@link #selectContentRoots}).
+   */
+  private static void removeConditionalBoilerplateOutside(
+      org.jsoup.nodes.Document htmlDoc, List<Element> roots) {
+    for (Element candidate : htmlDoc.select(CONDITIONAL_BOILERPLATE_SELECTOR)) {
       if (!isWithinAnyOf(candidate, roots)) {
         candidate.remove();
       }
     }
   }
 
-  private static boolean isWithinAnyOf(Element candidate, Elements roots) {
+  private static boolean isWithinAnyOf(Element candidate, List<Element> roots) {
     for (Node node = candidate; node != null; node = node.parent()) {
       if (roots.contains(node)) {
         return true;
@@ -250,8 +301,8 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
             if (node instanceof Element el) {
               String tag = el.tagName().toLowerCase(Locale.ROOT);
               if (HEADING_TAGS.contains(tag)) {
-                flushSection(chunks, section.takeBlocks(), headingPath);
                 int level = Integer.parseInt(tag.substring(1));
+                flushSection(chunks, section.takeBlocks(), headingPath, level);
                 // A heading of level n closes every open heading of level >= n, exactly as an
                 // outline reads (mirrors ChunkLocationResolver#headingPath's own stack rule).
                 headingPath.tailMap(level, true).clear();
@@ -274,7 +325,7 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
           @Override
           public void tail(Node node, int depth) {}
         });
-    flushSection(chunks, section.takeBlocks(), headingPath);
+    flushSection(chunks, section.takeBlocks(), headingPath, null);
     return chunks;
   }
 
@@ -377,12 +428,31 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
    * leading line (#1059 review, finding 6) - repeated on every sub-chunk if the section had to be
    * split further by {@link #splitIntoBudgetedChunks}, the same repetition {@link
    * TabularDocumentPipeline} already applies to its column header.
+   *
+   * @param closingHeadingLevel the level of the heading that is closing this section, or {@code
+   *     null} when it closes because the document itself ended. A body-less section closed by a
+   *     <em>deeper</em> heading (h1 immediately followed by h2, the ordinary shape of a titled
+   *     document) is not a section in its own right - its title already opens every descendant
+   *     section's own heading path, so it does not additionally need a redundant title-only chunk
+   *     (#1059 review, follow-up finding 3). A body-less section closed by a sibling/ancestor-level
+   *     heading or by the end of the document is genuinely empty and still gets a chunk - see
+   *     {@code aHeadingWithNoBodyTextStillBecomesItsOwnChunkInsteadOfNoExtractableText}.
    */
   private static void flushSection(
-      List<Document> chunks, List<String> blocks, NavigableMap<Integer, String> headingPath) {
+      List<Document> chunks,
+      List<String> blocks,
+      NavigableMap<Integer, String> headingPath,
+      Integer closingHeadingLevel) {
     if (blocks.isEmpty() && headingPath.isEmpty()) {
       // Nothing before the first heading, and no heading opened yet - a true empty prefix, not a
       // section in its own right.
+      return;
+    }
+    boolean closedByADeeperHeading =
+        closingHeadingLevel != null
+            && !headingPath.isEmpty()
+            && closingHeadingLevel > headingPath.lastKey();
+    if (blocks.isEmpty() && closedByADeeperHeading) {
       return;
     }
     String headingLine = headingPath.isEmpty() ? null : String.join(" › ", headingPath.values());

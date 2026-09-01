@@ -190,6 +190,74 @@ class HtmlDocumentPipelineTest {
     assertThat(allText).contains("Erster Teaser").contains("Zweiter Teaser");
   }
 
+  // --- #1059 review, follow-up finding 1: a nested selector match is one root, not two ----------
+
+  @Test
+  void aMainWrappingAnArticleIsProcessedOnceNotTwice() throws IOException {
+    // <main><article>…</article></main> matches MAIN_CONTENT_SELECTOR twice (both the main and
+    // the article element) - the standard shape of many CMS templates. Only the outer match may
+    // become a content root, or the same content is cut and stored twice.
+    String page =
+        "<html><body><main><article><h1>Titel</h1><p>Inhalt.</p></article></main></body></html>";
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(page));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).contains("Inhalt.");
+  }
+
+  // --- #1059 review, follow-up finding 2: nav/cookie banner inside the content area still go ----
+
+  @Test
+  void navAndCookieBannerInsideTheContentAreaAreStillStripped() throws IOException {
+    // Unlike header/footer (see headerAndFooterNestedInsideTheContentAreaAreNotStripped), nav,
+    // aside and cookie-consent markers are never legitimate content - a CMS nesting them inside
+    // its own <main>/<article> wrapper (a common pattern) must not let them survive just because
+    // they sit inside the chosen content root.
+    String page =
+        """
+        <html>
+          <body>
+            <main>
+              <nav><a href="/">Startseite</a></nav>
+              <div class="cookie-banner"><p>Wir verwenden Cookies.</p></div>
+              <h1>Titel</h1>
+              <p>Inhalt.</p>
+            </main>
+          </body>
+        </html>
+        """;
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(page));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    String allText = String.join("\n", result.chunks().stream().map(d -> d.getText()).toList());
+    assertThat(allText).doesNotContain("Startseite").doesNotContain("Cookies").contains("Inhalt.");
+  }
+
+  // --- #1059 review, follow-up finding 3: no redundant title-only chunk for an ordinary document -
+
+  @Test
+  void anOrdinaryTitleImmediatelyFollowedByASubsectionHeadingGetsNoRedundantTitleOnlyChunk()
+      throws IOException {
+    // h1 immediately followed by h2 (no body text of the h1's own in between) is the ordinary
+    // shape of a titled document, not an empty section - it must not additionally produce a chunk
+    // containing nothing but the page title. Contrast with
+    // aHeadingWithNoBodyTextStillBecomesItsOwnChunkInsteadOfNoExtractableText above: a page that
+    // truly is only headings still gets its one chunk.
+    String page =
+        "<html><body><main><h1>Titel</h1><h2>Abschnitt</h2><p>Text.</p></main></body></html>";
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(page));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .startsWith("Titel › Abschnitt")
+        .contains("Text.");
+  }
+
   // --- #1059 review, finding 7: inline markup must not introduce a spurious word-internal space -
 
   @Test
