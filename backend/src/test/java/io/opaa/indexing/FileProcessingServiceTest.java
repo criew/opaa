@@ -47,6 +47,10 @@ class FileProcessingServiceTest {
   @Mock private ChunkingService chunkingService;
   @Mock private DocumentRepository documentRepository;
   @Mock private VectorStore vectorStore;
+  @Mock private FullTextChunkStore fullTextChunkStore;
+  @Mock private org.springframework.ai.embedding.EmbeddingModel embeddingModel;
+  @Mock private org.springframework.ai.embedding.BatchingStrategy batchingStrategy;
+  @Mock private VectorStoreWriter vectorStoreWriter;
   private VectorChunkStore vectorChunkStore;
   @Mock private ChecksumService checksumService;
   @Mock private LibraryStorageQuotaService storageQuotaService;
@@ -63,13 +67,13 @@ class FileProcessingServiceTest {
   @BeforeEach
   void setUp() {
     meterRegistry = new SimpleMeterRegistry();
-    vectorChunkStore = new VectorChunkStore(vectorStore);
+    vectorChunkStore =
+        new VectorChunkStore(
+            vectorStore, embeddingModel, batchingStrategy, vectorStoreWriter, fullTextChunkStore);
     service =
         new FileProcessingService(
-            documentService,
-            chunkingService,
+            TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
             documentRepository,
-            vectorStore,
             vectorChunkStore,
             checksumService,
             new IndexingMetrics(meterRegistry),
@@ -101,7 +105,7 @@ class FileProcessingServiceTest {
   // storeChunks path (a single vectorStore.add call) unless it opts into concurrency itself (see
   // EmbeddingConcurrencyTest) - Runnable::run above is therefore never actually invoked here.
   private static IndexingProperties defaultIndexingProperties() {
-    return new IndexingProperties(1000, 0, 50, null, null, null, null, null, 1);
+    return new IndexingProperties(1000, 0, 50, null, null, null, null, null, null, 1);
   }
 
   // Mirrors VectorChunkStore#deleteByDocumentId's own filter construction, so assertions here
@@ -135,7 +139,7 @@ class FileProcessingServiceTest {
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(documentService).parseDocument(file);
     verify(chunkingService).chunkDocuments(eq("new-doc.txt"), eq(parsed));
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
 
     // The initial PENDING row is still a plain save; the final INDEXED transition is now a
     // conditional UPDATE (#632), not a second save.
@@ -148,6 +152,94 @@ class FileProcessingServiceTest {
             idCaptor.capture(), eq(1), any(), checksumCaptor.capture(), eq(null));
     assertThat(idCaptor.getValue()).isEqualTo(docCaptor.getValue().getId());
     assertThat(checksumCaptor.getValue()).isEqualTo("abc123");
+  }
+
+  @Test
+  void scanPdfWithoutExtractableTextIsRejectedInsteadOfIndexedWithZeroChunks() throws IOException {
+    // regression guard for #1055: a PDF Tika can open but that carries no text layer (a scan) used
+    // to sail through parsed.isEmpty() - Tika still returns a Document, just with blank text - get
+    // chunked into zero chunks, and land in the bestand as INDEXED with chunkCount 0: "successful",
+    // but unfindable (ingestion-pipelines.md, Teil 3, Punkt 1). It must instead be rejected with a
+    // clear, German message and never reach the vector store or an INDEXED row.
+    //
+    // Uses a spy around a real DocumentService (only #parseDocument stubbed) instead of the class'
+    // own mocked field, so the scan-detection path this test exercises runs for real against the
+    // file on disk - only its magic bytes, which is enough for Tika's own content-type detection
+    // (see DocumentServiceTest's identical PDF_MAGIC_BYTES fixture).
+    Path file = tempDir.resolve("scan.pdf");
+    Files.writeString(file, "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection");
+
+    DocumentService realDocumentService = org.mockito.Mockito.spy(new DocumentService());
+    org.mockito.Mockito.doReturn(List.of(new org.springframework.ai.document.Document("")))
+        .when(realDocumentService)
+        .parseDocument(file);
+
+    FileProcessingService serviceWithRealScanDetection =
+        new FileProcessingService(
+            TestPipelineRegistries.fallbackOnly(realDocumentService, chunkingService),
+            documentRepository,
+            vectorChunkStore,
+            checksumService,
+            new IndexingMetrics(meterRegistry),
+            storageQuotaService,
+            defaultIndexingProperties(),
+            Runnable::run);
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-scan");
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    FileProcessingResult result = serviceWithRealScanDetection.processFile(file, targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
+    // Scan detection intercepts before chunking is ever attempted - chunkDocuments is never
+    // called, unlike the pre-fix path (see this test's own Javadoc for the reproduction proof).
+    verify(chunkingService, never()).chunkDocuments(anyString(), any());
+
+    // The actual bug: nothing must ever be written to the vector store or marked INDEXED with zero
+    // chunks for this document.
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+    verify(documentRepository, never()).markIndexedFromSource(any(), anyInt(), any(), any(), any());
+
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(docCaptor.capture());
+    ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
+    verify(documentRepository)
+        .markFailed(eq(docCaptor.getValue().getId()), messageCaptor.capture());
+    assertThat(messageCaptor.getValue()).containsIgnoringCase("Scan");
+  }
+
+  @Test
+  void chunkingProducingNoChunksIsRejectedInsteadOfIndexedWithZeroChunks() throws IOException {
+    // #1090 review finding 1: DocumentService#isTextlessPdf only guards the pre-chunking stage
+    // (blank parsed text). ChunkingService's own minChunkLengthToEmbed/minChunkSizeChars can still
+    // reduce non-blank text (OCR noise, page footers) to zero chunks afterwards, and a non-PDF
+    // format with blank parsed text never reaches isTextlessPdf at all (it is PDF-only). The
+    // format-independent guard is on the promised outcome itself: never INDEXED with zero chunks.
+    Path file = tempDir.resolve("noise-only.txt");
+    Files.writeString(file, "content that survives parsing but not chunking");
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-noise");
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("content that is not blank"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+    when(chunkingService.chunkDocuments(eq("noise-only.txt"), eq(parsed))).thenReturn(List.of());
+
+    FileProcessingResult result = service.processFile(file, targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
+    verify(vectorStore, never()).add(any());
+    verify(documentRepository, never()).markIndexedFromSource(any(), anyInt(), any(), any(), any());
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(docCaptor.capture());
+    verify(documentRepository)
+        .markFailed(docCaptor.getValue().getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
   }
 
   @Test
@@ -170,7 +262,7 @@ class FileProcessingServiceTest {
     assertThat(result).isEqualTo(FileProcessingResult.QUOTA_EXCEEDED);
     verify(documentRepository, never()).save(any(Document.class));
     verify(documentService, never()).parseDocument(any());
-    verify(vectorStore, never()).add(any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
   }
 
   @Test
@@ -193,10 +285,8 @@ class FileProcessingServiceTest {
             documentRepository, new UploadProperties(null, 0, null, 0, 1000));
     FileProcessingService serviceWithRealQuota =
         new FileProcessingService(
-            documentService,
-            chunkingService,
+            TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
             documentRepository,
-            vectorStore,
             vectorChunkStore,
             checksumService,
             new IndexingMetrics(meterRegistry),
@@ -278,7 +368,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
     Map<String, Object> metadata = storedChunk.getMetadata();
     assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
@@ -286,6 +376,13 @@ class FileProcessingServiceTest {
         .containsEntry("organization_id", targetLibrary.getOrganizationId().toString());
     // #667: the chunk's Fundort rides along to the vector store.
     assertThat(metadata).containsEntry(ChunkingService.LOCATION_METADATA_KEY, "S. 2");
+    // #1056, ingestion-pipelines.md Querschnittsregel (d): every chunk names the verfahren that
+    // produced it - without it, a bestand containing chunks from two pipelines is not feststellbar.
+    assertThat(metadata)
+        .containsEntry(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY, TikaFallbackPipeline.ID)
+        .containsEntry(
+            ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY,
+            (int) TikaFallbackPipeline.VERSION);
   }
 
   @Test
@@ -319,7 +416,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
 
     // The metadata is still there for filtering/citation...
@@ -365,7 +462,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     List<org.springframework.ai.document.Document> storedChunks = chunkCaptor.getValue();
 
     // The stored content column stays exactly the chunk text, unprefixed, for every chunk (see
@@ -424,7 +521,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
 
     storedChunk.getMetadata().put("future_bookkeeping_key", "some-future-uuid");
@@ -461,7 +558,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
 
     assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
@@ -494,7 +591,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
 
     assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
@@ -542,7 +639,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
 
     assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
@@ -570,7 +667,7 @@ class FileProcessingServiceTest {
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
     verify(documentService, never()).parseDocument(any());
     verify(chunkingService, never()).chunkDocuments(anyString(), any());
-    verify(vectorStore, never()).add(any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
     verify(vectorStore, never()).delete(any(Filter.Expression.class));
   }
 
@@ -699,7 +796,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStore).add(chunkCaptor.capture());
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     Map<String, Object> metadata = chunkCaptor.getValue().getFirst().getMetadata();
     assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
   }
@@ -788,7 +885,7 @@ class FileProcessingServiceTest {
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(documentService).parseDocument(file);
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
 
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
@@ -798,6 +895,43 @@ class FileProcessingServiceTest {
     verify(documentRepository)
         .markIndexedFromSource(
             eq(lastSaved.getId()), eq(1), any(), eq("sha256-of-pdf"), eq("2025-06-15 10:30"));
+  }
+
+  @Test
+  void processUrlFileChunkingProducingNoChunksIsRejectedInsteadOfIndexedWithZeroChunks()
+      throws IOException {
+    // #1090 review finding 2: the post-chunking guard test above only covered processFile - this
+    // mirrors it for processUrlFile, the second of the three ingest paths carrying the guard.
+    Path file = tempDir.resolve("noise-only-remote.txt");
+    Files.writeString(file, "content that survives parsing but not chunking");
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-noise");
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://example.com/docs/noise-only-remote.txt"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("content that is not blank"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+    when(chunkingService.chunkDocuments(eq("noise-only-remote.txt"), eq(parsed)))
+        .thenReturn(List.of());
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            file,
+            "noise-only-remote.txt",
+            "https://example.com/docs/noise-only-remote.txt",
+            null,
+            1024,
+            targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
+    verify(vectorStore, never()).add(any());
+    verify(documentRepository, never()).markIndexedFromSource(any(), anyInt(), any(), any(), any());
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(docCaptor.capture());
+    verify(documentRepository)
+        .markFailed(docCaptor.getValue().getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
   }
 
   @Test
@@ -946,7 +1080,7 @@ class FileProcessingServiceTest {
     assertThat(onlyDocument.getSourceEntryUrl())
         .isEqualTo("https://example.gov/artikel/erster-artikel");
     verify(documentRepository, never()).delete(any());
-    verify(vectorStore, org.mockito.Mockito.times(1)).add(any());
+    verify(vectorStoreWriter, org.mockito.Mockito.times(1)).writeEmbeddedChunks(any(), any());
   }
 
   @Test
@@ -1103,7 +1237,7 @@ class FileProcessingServiceTest {
             targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository).save(savedDocCaptor.capture());
     verify(vectorStore).delete(documentIdFilter(savedDocCaptor.getValue().getId()));
@@ -1164,10 +1298,57 @@ class FileProcessingServiceTest {
             "entry main text", "Titel", entryUrl, "2025-06-15T10:30:00Z", targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository).save(savedDocCaptor.capture());
     verify(vectorStore).delete(documentIdFilter(savedDocCaptor.getValue().getId()));
+  }
+
+  @Test
+  void aReindexWhoseReaderThrowsLeavesTheDocumentsChunksAndStatusUntouched() throws IOException {
+    // The likeliest transient failure on the re-index path: the reader throws on a damaged or
+    // momentarily unreadable file, before anything has been deleted. Deleting the working chunks
+    // and marking the document FAILED here would destroy a functioning document over a failure
+    // that may not even repeat - and, unlike a fresh upload, there is a working previous state.
+    Path file = tempDir.resolve("beschaedigt.pdf");
+    Files.writeString(file, "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection");
+    UUID documentId = UUID.randomUUID();
+    Document existing = new Document("beschaedigt.pdf", file.toString(), "application/pdf", 42L);
+    existing.setLibraryId(targetLibrary.getId());
+    existing.setOrganizationId(targetLibrary.getOrganizationId());
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(existing));
+    when(documentService.parseDocument(file))
+        .thenThrow(new RuntimeException("Tika konnte die Datei nicht lesen"));
+
+    boolean reindexed = service.reindexStoredDocument(documentId, file);
+
+    assertThat(reindexed).isFalse();
+    verify(vectorStore, never()).delete(any(Filter.Expression.class));
+    verify(fullTextChunkStore, never()).deleteByDocumentId(any());
+    verify(documentRepository, never()).markFailed(any(), any());
+    verify(documentRepository, never()).markIndexed(any(), anyInt(), any());
+  }
+
+  @Test
+  void processRssEntryRejectsAnEntryWhoseTextChunksDownToNothing() {
+    // Pre-existing gap closed with #1056: this path discarded the pipeline outcome entirely and
+    // left such an entry INDEXED with zero chunks - the same silent empty index the file paths
+    // already guard against, only reached through a feed instead of a file.
+    String entryUrl = "https://example.gov/artikel/leer";
+
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-empty-entry");
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(chunkingService.chunkDocuments(anyString(), any())).thenReturn(List.of());
+
+    FileProcessingResult result =
+        service.processRssEntry("x", "Titel", entryUrl, "2025-06-15T10:30:00Z", targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
+    verify(documentRepository).markFailed(any(), eq(DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE));
+    verify(documentRepository, never()).markIndexedFromSource(any(), anyInt(), any(), any(), any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
   }
 
   @Test
@@ -1187,7 +1368,7 @@ class FileProcessingServiceTest {
     assertThat(result).isEqualTo(FileProcessingResult.QUOTA_EXCEEDED);
     verify(documentRepository, never()).save(any(Document.class));
     verify(chunkingService, never()).chunkDocuments(anyString(), any());
-    verify(vectorStore, never()).add(any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
   }
 
   @Test
@@ -1222,7 +1403,7 @@ class FileProcessingServiceTest {
     // storeChunks already ran (vectorStore.add was called) before the final update failed - the
     // catch block must remove exactly those chunks, keyed by this document's id, or they become
     // orphaned.
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     ArgumentCaptor<UUID> idCaptor = ArgumentCaptor.forClass(UUID.class);
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository).save(docCaptor.capture());
@@ -1270,7 +1451,7 @@ class FileProcessingServiceTest {
 
     service.processUploadedFileAsync(doc.getId(), file);
 
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     verify(documentRepository).markIndexed(eq(doc.getId()), eq(1), any());
     verify(vectorStore, never()).delete(any(Filter.Expression.class));
   }
@@ -1291,10 +1472,53 @@ class FileProcessingServiceTest {
 
     verify(documentRepository)
         .markFailed(doc.getId(), "Aus der Datei konnte kein Text extrahiert werden");
-    verify(vectorStore, never()).add(any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
     // Nothing was ever written for this document, so there is nothing to remove from the vector
     // store either - unlike the exception path below, which may have already written chunks.
     verify(vectorStore, never()).delete(any(Filter.Expression.class));
+  }
+
+  @Test
+  void processUploadedFileAsyncMarksTheDocumentFailedForATextlessScanPdf() throws IOException {
+    // #1090 review finding 4: the scan branch of the upload path had no coverage of its own.
+    Path file = tempDir.resolve("scan-upload.pdf");
+    Files.writeString(file, "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection");
+
+    Document doc = pendingUploadDocument("scan-upload.pdf");
+    when(documentRepository.findById(doc.getId())).thenReturn(Optional.of(doc));
+    var parsed = List.of(new org.springframework.ai.document.Document(""));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+    when(documentService.isTextlessPdf(file, parsed)).thenReturn(true);
+    when(documentRepository.markFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE))
+        .thenReturn(1);
+
+    service.processUploadedFileAsync(doc.getId(), file);
+
+    verify(documentRepository).markFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+    verify(chunkingService, never()).chunkDocuments(anyString(), any());
+    verify(vectorStore, never()).add(any());
+  }
+
+  @Test
+  void processUploadedFileAsyncMarksTheDocumentFailedWhenChunkingProducesNoChunks()
+      throws IOException {
+    // #1090 review finding 1: the post-chunking guard applies to the upload path too, not only the
+    // connector paths.
+    Path file = tempDir.resolve("noise-upload.txt");
+    Files.writeString(file, "content that survives parsing but not chunking");
+
+    Document doc = pendingUploadDocument("noise-upload.txt");
+    when(documentRepository.findById(doc.getId())).thenReturn(Optional.of(doc));
+    var parsed = List.of(new org.springframework.ai.document.Document("content that is not blank"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+    when(chunkingService.chunkDocuments(eq("noise-upload.txt"), eq(parsed))).thenReturn(List.of());
+    when(documentRepository.markFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE))
+        .thenReturn(1);
+
+    service.processUploadedFileAsync(doc.getId(), file);
+
+    verify(documentRepository).markFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+    verify(vectorStore, never()).add(any());
   }
 
   @Test
@@ -1318,7 +1542,7 @@ class FileProcessingServiceTest {
     // The catch block's vectorStore.delete call is made unconditionally, the same way
     // processFile/processUrlFile's own re-index paths always do regardless of whether there was
     // anything to remove (chunkDocuments itself threw here, before storeChunks could run).
-    verify(vectorStore, never()).add(any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
     verify(vectorStore).delete(documentIdFilter(doc.getId()));
     // Unlike the synchronous #420 design, the row survives a failed upload - it is never deleted.
     verify(documentRepository, never()).delete(any(Document.class));
@@ -1368,7 +1592,7 @@ class FileProcessingServiceTest {
     // nothing to update - they are now orphaned and must be removed, or /api/v1/query would keep
     // returning them for a document that, as far as the rest of the application is concerned, no
     // longer exists. Nothing is ever marked FAILED either - the row is simply gone.
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     verify(vectorStore).delete(documentIdFilter(doc.getId()));
     verify(documentRepository, never()).markFailed(any(), anyString());
     verify(documentRepository, never()).save(any());
@@ -1403,7 +1627,7 @@ class FileProcessingServiceTest {
     // block must remove exactly those chunks, keyed by this document's id, or they become
     // orphaned: still returned by /api/v1/query, unreachable through deleteDocument once nothing
     // else points at them.
-    verify(vectorStore).add(any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     verify(vectorStore).delete(documentIdFilter(doc.getId()));
     verify(documentRepository).markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
     verify(documentRepository, never()).delete(any(Document.class));

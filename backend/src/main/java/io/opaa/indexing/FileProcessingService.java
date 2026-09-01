@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.ContentFormatter;
 import org.springframework.ai.document.DefaultContentFormatter;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.scheduling.annotation.Async;
 
 public class FileProcessingService {
@@ -67,10 +66,8 @@ public class FileProcessingService {
     return (document, mode) -> "[" + title + "]\n\n" + document.getText();
   }
 
-  private final DocumentService documentService;
-  private final ChunkingService chunkingService;
+  private final DocumentPipelineRegistry pipelineRegistry;
   private final DocumentRepository documentRepository;
-  private final VectorStore vectorStore;
   private final VectorChunkStore vectorChunkStore;
   private final ChecksumService checksumService;
   private final IndexingMetrics metrics;
@@ -80,20 +77,16 @@ public class FileProcessingService {
   private final Executor embeddingExecutor;
 
   public FileProcessingService(
-      DocumentService documentService,
-      ChunkingService chunkingService,
+      DocumentPipelineRegistry pipelineRegistry,
       DocumentRepository documentRepository,
-      VectorStore vectorStore,
       VectorChunkStore vectorChunkStore,
       ChecksumService checksumService,
       IndexingMetrics metrics,
       LibraryStorageQuotaService storageQuotaService,
       IndexingProperties indexingProperties,
       Executor embeddingExecutor) {
-    this.documentService = documentService;
-    this.chunkingService = chunkingService;
+    this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;
-    this.vectorStore = vectorStore;
     this.vectorChunkStore = vectorChunkStore;
     this.checksumService = checksumService;
     this.metrics = metrics;
@@ -174,20 +167,28 @@ public class FileProcessingService {
     doc = documentRepository.save(doc);
 
     try {
-      // Parse document using Tika
-      List<org.springframework.ai.document.Document> parsed = documentService.parseDocument(file);
-      if (parsed.isEmpty()) {
-        log.warn("No content extracted from: {}", file);
-        return markConnectorFailed(doc.getId());
+      DocumentPipeline pipeline = pipelineRegistry.pipelineFor(file, fileName);
+      DocumentPipelineResult parsed = pipeline.run(DocumentPipelineSource.ofFile(file, fileName));
+      switch (parsed.outcome()) {
+        case NO_EXTRACTABLE_TEXT -> {
+          log.warn("No usable text extracted from {} by pipeline {}", file, pipeline.id());
+          return markConnectorRejected(doc.getId());
+        }
+        case NO_CONTENT -> {
+          log.warn("No content extracted from: {}", file);
+          return markConnectorFailed(doc.getId());
+        }
+        case CHUNKED ->
+            log.debug(
+                "File {} produced {} chunks via pipeline {}",
+                fileName,
+                parsed.chunks().size(),
+                pipeline.id());
       }
-
-      // Chunk the parsed content
-      List<org.springframework.ai.document.Document> chunks =
-          chunkingService.chunkDocuments(fileName, parsed);
-      log.debug("File {} produced {} chunks", fileName, chunks.size());
+      List<org.springframework.ai.document.Document> chunks = parsed.chunks();
 
       // Enrich chunks with metadata and store via VectorStore
-      storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(fileName));
+      storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(fileName), pipeline);
 
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, null);
@@ -291,23 +292,36 @@ public class FileProcessingService {
     doc = documentRepository.save(doc);
 
     try {
-      List<org.springframework.ai.document.Document> parsed =
-          documentService.parseDocument(localFile);
-      if (parsed.isEmpty()) {
-        log.warn("No content extracted from URL document: {}", remoteUrl);
-        return markConnectorFailed(doc.getId());
+      DocumentPipeline pipeline = pipelineRegistry.pipelineFor(localFile, fileName);
+      DocumentPipelineResult parsed =
+          pipeline.run(DocumentPipelineSource.ofFile(localFile, fileName));
+      switch (parsed.outcome()) {
+        case NO_EXTRACTABLE_TEXT -> {
+          log.warn(
+              "No usable text extracted from URL document {} by pipeline {}",
+              remoteUrl,
+              pipeline.id());
+          return markConnectorRejected(doc.getId());
+        }
+        case NO_CONTENT -> {
+          log.warn("No content extracted from URL document: {}", remoteUrl);
+          return markConnectorFailed(doc.getId());
+        }
+        case CHUNKED ->
+            log.debug(
+                "URL file {} produced {} chunks via pipeline {}",
+                fileName,
+                parsed.chunks().size(),
+                pipeline.id());
       }
-
-      List<org.springframework.ai.document.Document> chunks =
-          chunkingService.chunkDocuments(fileName, parsed);
-      log.debug("URL file {} produced {} chunks", fileName, chunks.size());
+      List<org.springframework.ai.document.Document> chunks = parsed.chunks();
 
       // fileName is always a real file name here regardless of sourceType - both HTTP_DIRECTORY
       // and an RSS_FEED entry's attachment (see this method's own Javadoc) go through this path,
       // so ChunkContextTitle's filesystem-style-name assumption always applies; only
       // processRssEntry's own entry-body document (never routed through processUrlFile) uses a
       // headline instead - see storeChunks's Javadoc for why that distinction is call-site-bound.
-      storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(fileName));
+      storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(fileName), pipeline);
 
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, lastModified);
@@ -389,14 +403,29 @@ public class FileProcessingService {
     doc = documentRepository.save(doc);
 
     try {
-      List<org.springframework.ai.document.Document> parsed =
-          List.of(new org.springframework.ai.document.Document(mainText));
+      // The entry body never was a file, so there is no content to detect a format from - it is
+      // already extracted text and goes to the fallback pipeline directly (ADR-0017, decision 2).
+      DocumentPipeline pipeline = pipelineRegistry.fallbackPipeline();
+      DocumentPipelineResult parsed =
+          pipeline.run(DocumentPipelineSource.ofExtractedText(mainText, fileName));
+      switch (parsed.outcome()) {
+        // Before #1056 this path ignored the outcome entirely and left an entry whose text
+        // chunked down to nothing as INDEXED with zero chunks - the same silent empty index the
+        // file paths already guard against, only reached through a feed instead of a file.
+        case NO_EXTRACTABLE_TEXT -> {
+          log.warn("No usable text in RSS entry {}", entryUrl);
+          return markConnectorRejected(doc.getId());
+        }
+        case NO_CONTENT -> {
+          log.warn("No content extracted from RSS entry: {}", entryUrl);
+          return markConnectorFailed(doc.getId());
+        }
+        case CHUNKED ->
+            log.debug("RSS entry {} produced {} chunks", entryUrl, parsed.chunks().size());
+      }
+      List<org.springframework.ai.document.Document> chunks = parsed.chunks();
 
-      List<org.springframework.ai.document.Document> chunks =
-          chunkingService.chunkDocuments(fileName, parsed);
-      log.debug("RSS entry {} produced {} chunks", entryUrl, chunks.size());
-
-      storeChunks(doc, chunks, contextTitle);
+      storeChunks(doc, chunks, contextTitle, pipeline);
 
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, publishedAt);
@@ -444,28 +473,102 @@ public class FileProcessingService {
    */
   @Async("uploadTaskExecutor")
   public void processUploadedFileAsync(UUID documentId, Path storedFile) {
+    processStoredFile(documentId, storedFile, false);
+  }
+
+  /**
+   * Re-runs the current pipeline over a document whose source file is still on this machine and
+   * replaces its chunks - the in-place half of {@link PipelineReindexService#reindexBatch}. The
+   * document keeps its own id and row, so citations and deep links into it survive; only its chunks
+   * are exchanged.
+   *
+   * <p><b>Nothing is destroyed before the replacement exists.</b> The old chunks are deleted only
+   * once the pipeline has actually produced new ones, immediately before they are written (chunk
+   * ids are generated per write, so the old ones would otherwise accumulate alongside the new
+   * ones). A document that cannot be re-chunked this time keeps its working chunks and its {@code
+   * INDEXED} row and is reported back as not re-indexed, rather than being left permanently
+   * chunkless and {@code FAILED} with no path back: unlike a fresh upload, there is an existing,
+   * working state here that is worth more than a consistent-looking failure. That holds for both
+   * ways the attempt can fail - a pipeline that reports no usable text, and a pipeline that throws
+   * (the likelier transient case: a damaged file the reader rejects, a momentarily unreadable
+   * file). Only once the previous chunks have actually been deleted does a later failure fall back
+   * to the upload path's cleanup, because from that point there is no untouched state left to
+   * preserve.
+   *
+   * @return whether the document was actually re-indexed
+   */
+  boolean reindexStoredDocument(UUID documentId, Path storedFile) {
+    return processStoredFile(documentId, storedFile, true);
+  }
+
+  /**
+   * The synchronous body shared by {@link #processUploadedFileAsync} and {@link
+   * #reindexStoredDocument}: parse, chunk, store and transition a document whose row already exists
+   * and whose file is already on disk.
+   *
+   * @param replacingExistingChunks {@code true} for a re-index of an already-indexed document -
+   *     deletes the previous chunks just before the new ones are written, and leaves the document
+   *     untouched on every non-{@code CHUNKED} outcome (see {@link #reindexStoredDocument}). {@code
+   *     false} for a first upload, where there is no previous state to preserve and every outcome
+   *     must reach a terminal status the frontend's polling can key off.
+   * @return whether chunks were written and the document transitioned to {@code INDEXED}
+   */
+  private boolean processStoredFile(
+      UUID documentId, Path storedFile, boolean replacingExistingChunks) {
     Document doc = documentRepository.findById(documentId).orElse(null);
     if (doc == null) {
       log.warn(
           "Uploaded document {} no longer exists, skipping asynchronous processing", documentId);
-      return;
+      return false;
     }
 
+    // Whether the previous chunks have already been removed - the point from which this method can
+    // no longer leave the document untouched, and therefore the only case in which the catch block
+    // below is allowed to clean up on the re-index path (see this method's own contract).
+    boolean previousChunksDeleted = false;
     try {
-      List<org.springframework.ai.document.Document> parsed =
-          documentService.parseDocument(storedFile);
-      if (parsed.isEmpty()) {
-        log.warn("No content extracted from uploaded document: {}", doc.getFileName());
-        markUploadFailed(doc.getId(), "Aus der Datei konnte kein Text extrahiert werden");
-        metrics.recordFailed();
-        return;
+      DocumentPipeline pipeline = pipelineRegistry.pipelineFor(storedFile, doc.getFileName());
+      DocumentPipelineResult parsed =
+          pipeline.run(DocumentPipelineSource.ofFile(storedFile, doc.getFileName()));
+      switch (parsed.outcome()) {
+        case NO_EXTRACTABLE_TEXT -> {
+          log.warn(
+              "No usable text extracted from stored document {} by pipeline {}",
+              doc.getFileName(),
+              pipeline.id());
+          if (replacingExistingChunks) {
+            return false;
+          }
+          // metrics.recordFailed(), not recordSkipped(): every other outcome on this path is
+          // INDEXED or FAILED - a single, deliberate upload has no "skipped" concept the way a
+          // connector run's item count does.
+          markUploadFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+          metrics.recordFailed();
+          return false;
+        }
+        case NO_CONTENT -> {
+          log.warn("No content extracted from uploaded document: {}", doc.getFileName());
+          if (replacingExistingChunks) {
+            return false;
+          }
+          markUploadFailed(doc.getId(), "Aus der Datei konnte kein Text extrahiert werden");
+          metrics.recordFailed();
+          return false;
+        }
+        case CHUNKED ->
+            log.debug(
+                "Stored file {} produced {} chunks via pipeline {}",
+                doc.getFileName(),
+                parsed.chunks().size(),
+                pipeline.id());
       }
+      List<org.springframework.ai.document.Document> chunks = parsed.chunks();
 
-      List<org.springframework.ai.document.Document> chunks =
-          chunkingService.chunkDocuments(doc.getFileName(), parsed);
-      log.debug("Uploaded file {} produced {} chunks", doc.getFileName(), chunks.size());
-
-      storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(doc.getFileName()));
+      if (replacingExistingChunks) {
+        vectorChunkStore.deleteByDocumentId(doc.getId());
+        previousChunksDeleted = true;
+      }
+      storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(doc.getFileName()), pipeline);
 
       int updated = documentRepository.markIndexed(doc.getId(), chunks.size(), Instant.now());
       if (updated == 0) {
@@ -474,17 +577,29 @@ public class FileProcessingService {
                 + " again",
             doc.getId());
         vectorChunkStore.deleteByDocumentId(doc.getId());
-        return;
+        return false;
       }
       metrics.recordProcessed();
+      return true;
     } catch (Exception e) {
-      log.error("Failed to process uploaded document {}", doc.getFileName(), e);
-      // Whatever failed, storeChunks may already have written chunks for doc.getId() into the
-      // vector store - deleting them here mirrors processFile/processUrlFile's own re-index
-      // cleanup, so a FAILED row never leaves orphaned chunks still returned by search.
+      log.error("Failed to process stored document {}", doc.getFileName(), e);
+      if (replacingExistingChunks && !previousChunksDeleted) {
+        // The failure happened before anything was destroyed - a damaged file the reader threw on,
+        // a transient I/O error. The document still has its working chunks and its INDEXED row, and
+        // keeping them is the whole point of the re-index contract: the caller reports this as
+        // skipped and the document can be tried again, rather than being left empty and FAILED with
+        // no way back.
+        metrics.recordFailed();
+        return false;
+      }
+      // Past the delete, or on the upload path where there is no working previous state: whatever
+      // failed, storeChunks may already have written chunks for doc.getId() into the vector store -
+      // deleting them here mirrors processFile/processUrlFile's own re-index cleanup, so a FAILED
+      // row never leaves orphaned chunks still returned by search.
       vectorChunkStore.deleteByDocumentId(doc.getId());
       markUploadFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
       metrics.recordFailed();
+      return false;
     }
   }
 
@@ -541,6 +656,26 @@ public class FileProcessingService {
   }
 
   /**
+   * The connector counterpart to {@link #markConnectorFailed} for a document that never yields a
+   * usable chunk - flagged by {@link DocumentService#isTextlessPdf} or by an empty {@code
+   * chunkDocuments} result. Marks {@code FAILED} with {@link
+   * DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE} and reports {@link
+   * FileProcessingResult#NO_EXTRACTABLE_TEXT}, the same rejection contract {@link
+   * FileProcessingResult#QUOTA_EXCEEDED} already has.
+   */
+  private FileProcessingResult markConnectorRejected(UUID documentId) {
+    int updated =
+        documentRepository.markFailed(documentId, DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+    if (updated == 0) {
+      log.warn("Document {} was deleted before it could be marked as rejected", documentId);
+      metrics.recordSkipped();
+      return FileProcessingResult.SKIPPED;
+    }
+    metrics.recordSkipped();
+    return FileProcessingResult.NO_EXTRACTABLE_TEXT;
+  }
+
+  /**
    * The catch-block counterpart to {@link #markConnectorFailed}, used when parsing, chunking or
    * embedding throws instead of returning empty. Unlike {@link #markConnectorFailed}, {@link
    * #storeChunks} may already have written chunks for {@code documentId} into the vector store by
@@ -591,11 +726,14 @@ public class FileProcessingService {
    *     processUrlFile}, routed there by {@code RssFeedIndexingExecutor}) - the title-derivation
    *     rule depends on which of those this chunk set came from, not on {@code document}'s source
    *     type alone (#940 review).
+   * @param pipeline the pipeline that produced {@code chunks}; its id and version are written onto
+   *     every chunk (see {@link ChunkPipelineMetadata})
    */
   private void storeChunks(
       Document document,
       List<org.springframework.ai.document.Document> chunks,
-      String contextTitle) {
+      String contextTitle,
+      DocumentPipeline pipeline) {
     boolean documentWasSplit = chunks.size() >= 2;
     ContentFormatter embedFormatter =
         documentWasSplit && contextTitle != null
@@ -615,6 +753,13 @@ public class FileProcessingService {
                   metadata.put(
                       VectorChunkStore.LIBRARY_ID_METADATA_KEY, document.getLibraryId().toString());
                   metadata.put("organization_id", document.getOrganizationId().toString());
+                  // The verfahren that produced this chunk (ingestion-pipelines.md,
+                  // Querschnittsregel (d)) - what makes a mixed bestand after a pipeline change
+                  // feststellbar and selectively re-indexable at all.
+                  metadata.put(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY, pipeline.id());
+                  metadata.put(
+                      ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY,
+                      (int) pipeline.version());
                   // The chunk's Fundort, when ChunkingService could derive one.
                   Object location = chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
                   if (location != null) {
@@ -632,8 +777,10 @@ public class FileProcessingService {
 
   /**
    * Embeds and persists {@code enriched}. At {@code embeddingConcurrency == 1}, a single {@link
-   * VectorStore#add} call covers every chunk of this one document, on the calling thread, in
-   * document order - the baseline behaviour.
+   * VectorChunkStore#addChunks} call covers every chunk of this one document, on the calling
+   * thread, in document order - the baseline behaviour. That call also writes each chunk's {@code
+   * chunk_full_text} row, in the same transaction (#1047, see {@link VectorChunkStore#addChunks}'s
+   * own Javadoc) - not a separate step this method has to orchestrate.
    *
    * <p>At {@code embeddingConcurrency > 1}, {@code enriched} is sliced into sub-batches sized by
    * {@link #subBatchSize} - deliberately not {@code opaa.indexing.batchSize} directly, which would
@@ -641,8 +788,8 @@ public class FileProcessingService {
    * #subBatchSize} instead spreads a document's chunks evenly across up to {@code
    * embeddingConcurrency} workers, capped by {@code batchSize} as the per-call upper bound.
    *
-   * <p>Every sub-batch is embedded and persisted via its own {@code vectorStore.add} call,
-   * submitted to the shared, bounded {@code embeddingExecutor} (see {@link
+   * <p>Every sub-batch is embedded and persisted via its own {@code vectorChunkStore.addChunks}
+   * call, submitted to the shared, bounded {@code embeddingExecutor} (see {@link
    * IndexingConfiguration#embeddingTaskExecutor}) and awaited before this method returns, so {@link
    * #storeChunks} stays fully synchronous from every caller's perspective. A document with only a
    * single sub-batch takes the same direct, un-pooled path.
@@ -656,11 +803,11 @@ public class FileProcessingService {
    *
    * <p>Failure propagation mirrors the single-call path: {@link CompletableFuture#allOf} on every
    * sub-batch's future, unwrapped from {@link CompletionException} to the same {@link
-   * RuntimeException} {@code vectorStore.add} would have thrown, so every existing catch block that
-   * assumes {@code storeChunks} may throw needs no change. An {@link Error} is rethrown unwrapped
-   * too, exactly as a direct {@code vectorStore.add} call would let it propagate. A failing
-   * sub-batch does not cancel sibling sub-batches already in flight; whatever they wrote is cleaned
-   * up the same way a partially-written single call already could (see {@link
+   * RuntimeException} {@code vectorChunkStore.addChunks} would have thrown, so every existing catch
+   * block that assumes {@code storeChunks} may throw needs no change. An {@link Error} is rethrown
+   * unwrapped too, exactly as a direct {@code vectorChunkStore.addChunks} call would let it
+   * propagate. A failing sub-batch does not cancel sibling sub-batches already in flight; whatever
+   * they wrote is cleaned up the same way a partially-written single call already could (see {@link
    * #markConnectorFailedAfterException}).
    *
    * <p>{@code embeddingTaskExecutor} is one pool shared by every document currently splitting its
@@ -671,7 +818,7 @@ public class FileProcessingService {
    */
   private void addToVectorStore(List<org.springframework.ai.document.Document> enriched) {
     if (embeddingConcurrency <= 1) {
-      vectorStore.add(enriched);
+      vectorChunkStore.addChunks(enriched);
       return;
     }
 
@@ -681,7 +828,7 @@ public class FileProcessingService {
       subBatches.add(enriched.subList(i, Math.min(i + subBatchSize, enriched.size())));
     }
     if (subBatches.size() <= 1) {
-      vectorStore.add(enriched);
+      vectorChunkStore.addChunks(enriched);
       return;
     }
 
@@ -689,7 +836,8 @@ public class FileProcessingService {
         subBatches.stream()
             .map(
                 subBatch ->
-                    CompletableFuture.runAsync(() -> vectorStore.add(subBatch), embeddingExecutor))
+                    CompletableFuture.runAsync(
+                        () -> vectorChunkStore.addChunks(subBatch), embeddingExecutor))
             .toList();
     try {
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();

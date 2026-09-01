@@ -189,6 +189,33 @@ Datei ───────────────────┤              
                               Embedding · Volltextindex · Vektorablage
 ```
 
+### Umgesetzt: die Abstraktion selbst (#1056)
+
+Die Abstraktion steht; noch ohne eine einzige Format-Pipeline, und das ist der Punkt: Solange nur die
+Fallback-Pipeline registriert ist, läuft jedes Format exakt den bisherigen Weg — die Umstellung ist
+für den Bestand nachweislich verhaltensneutral.
+
+| Baustein | Was er tut |
+|---|---|
+| `DocumentPipeline` | Reader, Splitter, Metadaten-Anreicherung und Chunk-Größe einer Dokumentklasse hinter einem Aufruf; dazu `id()` und `version()`, die auf jedem erzeugten Chunk landen |
+| `DocumentPipelineRegistry` | Routing über den **erkannten Inhalt** — es fragt dieselbe Stelle (`SupportedDocumentFormats.decideForFileName`), die auch über die Zulassung entscheidet, statt die Regel ein zweites Mal zu formulieren. Damit gilt die Markdown-/Klartext-Sonderregel (Inhalt *und* Endung) fürs Routing automatisch mit |
+| `TikaFallbackPipeline` | Der bisherige Weg (Tika-Reader + Token-Splitter mit `opaa.indexing.chunk-size`/`-overlap`), zuständig für alles, wofür keine spezialisierte Pipeline registriert ist. Chunk-Größe: **gesetzt, nicht gemessen** |
+
+Eine neue Format-Pipeline hinzuzufügen heißt: eine Klasse schreiben und als Bean registrieren. Weder
+die Registry noch `FileProcessingService` noch `SupportedDocumentFormats` ändern dafür ihre Form.
+Zwei Pipelines, die dasselbe Format beanspruchen, sind ein Verdrahtungsfehler und lassen den Kontext
+beim Start scheitern, statt die Bean-Reihenfolge entscheiden zu lassen.
+
+Die drei Ausgänge, die `FileProcessingService` bisher selbst entschied — „Scan ohne Textebene",
+„gar nichts geparst", „Text, aber keine Chunks" — entscheidet jetzt die Pipeline für ihr eigenes
+Format. Genau das braucht eine PDF-Pipeline später, um Scan-Erkennung anders zu beantworten als eine
+Tabellen-Pipeline.
+
+**Keine Datenbankänderung nötig.** Die Pipeline-Version ist ein Chunk-Metadatum und liegt damit dort,
+wo Chunk-Metadaten liegen: in `vector_store.metadata`. Diese Tabelle legt Spring AI beim Start an,
+nicht Liquibase — eine Spalte wäre dort gar nicht verfügbar, und eine zweite Tabelle wäre eine dritte
+Zeile je Chunk für einen Wert, der definitorisch zum Chunk gehört.
+
 ### Parsing-Strategie: hybrid, nicht ein Werkzeug für alles
 
 Für die Frage „womit parsen" gibt es keine einheitliche Antwort, und der Versuch, eine zu erzwingen,
@@ -602,6 +629,60 @@ stillschweigend unterschritten.
 **Diese Entscheidung fällt vor der ersten Typ-Pipeline**, nicht nach ihr. Nachträglich eingeführt,
 trägt die Version für den gesamten bis dahin erzeugten Bestand den Wert „unbekannt", und genau dieser
 Bestand ist der, den man später gezielt anfassen möchte.
+
+#### Umgesetzt (#1056)
+
+Jeder Chunk trägt `pipeline_id` und `pipeline_version` als Metadatum. Der Bestand von **vor** dieser
+Einführung trägt keines von beidem — er ist trotzdem nicht „unbekannt", sondern zuordenbar: Bis zur
+Abstraktion erzeugte ausschließlich der Tika-Weg Chunks, also zählt ein Chunk ohne diese Angaben als
+`tika-fallback` in Version 0. Damit ist gerade der Altbestand vollständig auswählbar, statt der einzige
+zu sein, den man nicht ansprechen kann.
+
+Zwei Administrationsendpunkte (`SYSTEM_ADMIN`, auf die eigene Organisation begrenzt):
+
+- `GET /api/v1/admin/indexing/pipeline-versions` — registrierte Pipelines mit ihrer aktuellen Version
+  und der Füllstand je Bibliothek (Chunks insgesamt / auf aktueller Version / darunter). Ein Chunk, der
+  eine Pipeline nennt, die diese Installation gar nicht hat, zählt weder als aktuell noch als
+  nachzuziehen — er ließe sich von keiner vorhandenen Pipeline neu erzeugen.
+- `POST /api/v1/admin/indexing/pipeline-reindex` — verarbeitet **eine Charge** und wird wiederholt
+  aufgerufen, bis `done` gemeldet wird. Der Reststand wird bei jedem Aufruf neu aus den
+  Chunk-Metadaten abgeleitet; ein abgebrochener Lauf verliert damit höchstens eine Charge und setzt
+  fort, statt von vorn zu beginnen.
+
+Ein Dokument, dessen Quelldatei lokal liegt (Dateisystem, Upload), wird sofort neu gelesen, zerlegt
+und gespeichert — **unter seiner eigenen Dokument-ID**, damit Belege und Deep Links es überleben.
+Gelesen wird dabei nur, was diese Installation lesen darf: Die Datei muss dieselbe Laufzeitprüfung
+bestehen wie beim Ausliefern eines Originals (Allowlist, Lage unterhalb des konfigurierten
+Quellverzeichnisses der Bibliothek bzw. des verwalteten Upload-Verzeichnisses, aufgelöst über
+`toRealPath` gegen Symlinks; ADR-0018, Entscheidung 6). Eine nachträglich verkleinerte Allowlist wirkt
+damit auch auf die Neuindizierung — sie ist nicht der eine Pfad, der weiterliest.
+
+Ein Dokument aus einer entfernten Quelle kann nur sein eigener Konnektorlauf neu lesen; es wird dafür
+vorgemerkt und fällt danach aus der Auswahl, damit der Lauf abschließt. Vorgemerkt heißt: **beide**
+Änderungsmarker werden geleert. Der Lauf entscheidet vor dem Download allein anhand von
+`last_modified_remote` und dem Status `INDEXED`; die Prüfsumme vergleicht er dort noch gar nicht, weil
+die Bytes dafür bewusst noch nicht geholt wurden. Nur die Prüfsumme zu leeren wäre für den ersten
+Ausgang folglich wirkungslos gewesen. Die Chunks bleiben bis zum Lauf als nachzuziehen ausgewiesen —
+der Füllstand beschönigt das nicht.
+
+**Nichts wird zerstört, bevor der Ersatz existiert.** Die alten Chunks fallen erst, wenn die Pipeline
+tatsächlich neue erzeugt hat. Ein Dokument, das diesmal nicht verarbeitbar ist — vorübergehend
+unlesbare Datei, Lesefehler —, behält seine funktionierenden Chunks und seinen Status und wird als
+*übersprungen* zurückgemeldet, statt dauerhaft chunklos und fehlerhaft zurückzubleiben. Dasselbe gilt
+für Dokumente, deren Datei außerhalb des Erlaubten liegt. Eine Charge, die nur noch übersprungen hat,
+meldet `done` — Weiterlaufen hieße, dieselben unerreichbaren Dokumente endlos erneut zu versuchen.
+
+`belowVersion` oberhalb der aktuellen Version der Pipeline wird mit 400 abgewiesen: Jeder neu
+geschriebene Chunk läge weiterhin unterhalb der Schranke, dieselben Dokumente würden in jeder weiteren
+Charge erneut ausgewählt — kein langsamer Lauf, sondern ein unbegrenzter.
+
+Der auslösende Aufruf wird protokolliert (`INDEXING_PIPELINE_REINDEX_TRIGGERED`, mit Pipeline,
+`belowVersion` und den Chargenzählern) — ein Eintrag je Aufruf, nicht je Dokument: Der Aufruf ist die
+administrative Entscheidung, die Dokumente sind seine Wirkung.
+
+**Ausgelöst wird nichts von selbst.** Ob und wann ein Bestand nachgezogen wird, bleibt die oben unter
+[Offene Punkte](#offene-punkte) genannte, bewusst offene Frage; deshalb gibt es hier keinen
+Hintergrund-Tick, der bei einer Versionserhöhung eigenmächtig den ganzen Bestand anfasst.
 
 ---
 

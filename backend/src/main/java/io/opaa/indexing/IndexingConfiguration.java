@@ -11,10 +11,11 @@ import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
 import java.util.List;
-import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -47,12 +48,58 @@ public class IndexingConfiguration {
     return new IndexingMetrics(meterRegistry);
   }
 
+  /**
+   * The fallback pipeline (docs/features/ingestion-pipelines.md, Teil 1) - declared as its concrete
+   * type, not as {@link DocumentPipeline}, so {@link #documentPipelineRegistry} can ask for exactly
+   * this one by type while still receiving every pipeline in its {@code List} parameter.
+   */
+  @Bean
+  TikaFallbackPipeline tikaFallbackPipeline(
+      DocumentService documentService, ChunkingService chunkingService) {
+    return new TikaFallbackPipeline(documentService, chunkingService);
+  }
+
+  /**
+   * Populated from every {@link DocumentPipeline} bean Spring finds - a new format becomes
+   * reachable by adding one more pipeline bean, never by editing this method or {@link
+   * FileProcessingService} (the open-closed criterion of docs/features/ingestion-pipelines.md, Teil
+   * 1). Mirrors {@link #indexingSourceExecutorRegistry}'s own collection-injection pattern.
+   */
+  @Bean
+  DocumentPipelineRegistry documentPipelineRegistry(
+      List<DocumentPipeline> pipelines, TikaFallbackPipeline fallback) {
+    return new DocumentPipelineRegistry(pipelines, fallback);
+  }
+
+  @Bean
+  PipelineReindexService pipelineReindexService(
+      JdbcTemplate jdbcTemplate,
+      DocumentPipelineRegistry documentPipelineRegistry,
+      DocumentRepository documentRepository,
+      KnowledgeLibraryRepository libraryRepository,
+      FileProcessingService fileProcessingService,
+      VectorChunkStore vectorChunkStore,
+      FilesystemPathAllowlist filesystemPathAllowlist,
+      UploadProperties uploadProperties,
+      @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
+      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
+    return new PipelineReindexService(
+        jdbcTemplate,
+        documentPipelineRegistry,
+        documentRepository,
+        libraryRepository,
+        fileProcessingService,
+        vectorChunkStore,
+        filesystemPathAllowlist,
+        uploadProperties,
+        schemaName,
+        tableName);
+  }
+
   @Bean
   FileProcessingService fileProcessingService(
-      DocumentService documentService,
-      ChunkingService chunkingService,
+      DocumentPipelineRegistry documentPipelineRegistry,
       DocumentRepository documentRepository,
-      VectorStore vectorStore,
       VectorChunkStore vectorChunkStore,
       ChecksumService checksumService,
       IndexingMetrics indexingMetrics,
@@ -60,10 +107,8 @@ public class IndexingConfiguration {
       IndexingProperties indexingProperties,
       TaskExecutor embeddingTaskExecutor) {
     return new FileProcessingService(
-        documentService,
-        chunkingService,
+        documentPipelineRegistry,
         documentRepository,
-        vectorStore,
         vectorChunkStore,
         checksumService,
         indexingMetrics,
@@ -195,6 +240,12 @@ public class IndexingConfiguration {
   IndexingSourceExecutorRegistry indexingSourceExecutorRegistry(
       List<SourceIndexingExecutor> executors) {
     return new IndexingSourceExecutorRegistry(executors);
+  }
+
+  @Bean
+  LowChunkDocumentAuditService lowChunkDocumentAuditService(
+      DocumentRepository documentRepository, KnowledgeLibraryRepository libraryRepository) {
+    return new LowChunkDocumentAuditService(documentRepository, libraryRepository);
   }
 
   @Bean

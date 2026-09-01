@@ -47,7 +47,8 @@ class VerwaltungChunkSizeDryRunTest {
     assertThat(manifestResult.fileNames()).hasSize(EXPECTED_DOCUMENT_COUNT);
 
     IndexingProperties properties =
-        new IndexingProperties(CHUNK_SIZE, CHUNK_OVERLAP, 50, null, null, List.of(), null, null, 0);
+        new IndexingProperties(
+            CHUNK_SIZE, CHUNK_OVERLAP, 50, null, null, List.of(), null, null, null, 0);
     DocumentService documentService = new DocumentService();
     ChunkingService chunkingService = new ChunkingService(properties);
 

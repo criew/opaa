@@ -11,3 +11,9 @@ databaseChangeLog:
   # AbstractMigrationTest's Javadoc and test-master-through-baseline.yaml).
   - include:
       file: db/changelog/changes/001-baseline.yaml
+  - include:
+      file: db/changelog/changes/002-documents-indexed-chunk-count-index.yaml
+  - include:
+      file: db/changelog/changes/003-chunk-full-text-table.yaml
+  - include:
+      file: db/changelog/changes/004-chunk-full-text-gin-index.yaml

@@ -97,7 +97,8 @@ class RssFeedIndexingExecutorTest {
   }
 
   private RssFeedIndexingExecutor newExecutor(IndexingProperties.Rss rss) {
-    IndexingProperties properties = new IndexingProperties(0, 0, 0, null, rss, null, null, null, 0);
+    IndexingProperties properties =
+        new IndexingProperties(0, 0, 0, null, rss, null, null, null, null, 0);
     // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest,
     // RssFeedIndexingExecutorTargetValidationTest) - disabled here since every stub server this
     // class talks to is deliberately loopback (com.sun.net.httpserver.HttpServer, #467's own
@@ -653,6 +654,40 @@ class RssFeedIndexingExecutorTest {
                     event.getCategory() == IndexingEventCategory.REJECTED
                         && (baseUrl + "/over-quota.html").equals(event.getReference())
                         && expectedMessage.equals(event.getMessage())));
+  }
+
+  @Test
+  void anEntryRejectedForHavingNoUsableTextIsRecordedAndItsAttachmentsAreNotIndexed()
+      throws Exception {
+    // NO_EXTRACTABLE_TEXT became reachable on this path with #1056 (processRssEntry now honours the
+    // pipeline outcome instead of indexing zero chunks). Without its own branch it would fall into
+    // the else: counted as processed and logged as "Indexed RSS entry" although the document is
+    // FAILED - and the attachments of a rejected entry would be indexed as if it had succeeded.
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/leer.html"));
+    serve(
+        "/leer.html",
+        200,
+        "text/html",
+        "<html><body><main>Text<a href=\""
+            + baseUrl
+            + "/anhang.pdf\">Anhang</a></main></body>"
+            + "</html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.NO_EXTRACTABLE_TEXT);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && (baseUrl + "/leer.html").equals(event.getReference())
+                        && DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE.equals(event.getMessage())));
+    verify(fileProcessingService, never())
+        .processUrlFile(any(), anyString(), anyString(), any(), anyLong(), any(), any(), any());
   }
 
   @Test

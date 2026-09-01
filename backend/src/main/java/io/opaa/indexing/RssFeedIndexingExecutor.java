@@ -260,6 +260,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             storageQuotaService.quotaExceededMessage(ctx.targetLibrary().getId()),
             entryUrl);
         progress.recordSkipped();
+      } else if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
+        // See AsyncIndexingExecutor's own handling of this outcome. Reachable on this path since
+        // #1056: the entry's own document was rejected and marked FAILED, so it is reported as
+        // rejected rather than counted as processed - and its attachments are deliberately not
+        // indexed, mirroring every other rejected entry.
+        events.record(
+            IndexingEventCategory.REJECTED, DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE, entryUrl);
+        progress.recordSkipped();
       } else if (result == FileProcessingResult.SKIPPED) {
         progress.recordSkipped();
       } else {

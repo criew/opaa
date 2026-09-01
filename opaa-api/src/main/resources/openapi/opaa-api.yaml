@@ -571,6 +571,116 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/indexing/low-chunk-documents:
+    get:
+      operationId: listLowChunkDocuments
+      tags: [admin, indexing]
+      summary: >
+        The one-time inventory check for scan-PDF fallout (system admin only, #1055/#1090,
+        ingestion-pipelines.md Teil 3 Punkt 1 "Scan-Erkennung und Bestandsprüfung")
+      description: >
+        Every INDEXED document of the caller's own organization whose chunkCount is at or below
+        chunkCountThreshold - the bestand a scan PDF could have silently landed in before ingest-time
+        detection existed, and the operational metric that stays permanently queryable rather than a
+        one-off cleanup that goes stale the moment the next such file is indexed. Scoped to the
+        caller's own organization the same way every other admin listing in this API is - never a
+        cross-organization view. Consumed by the "Suche & Indexierung" administration page (#1053).
+      parameters:
+        - name: chunkCountThreshold
+          in: query
+          required: false
+          description: >
+            Flags a document whose chunkCount is at or below this value. Default 0 - the unambiguous
+            anomaly this issue's own bug produces. Raising it also catches "auffällig wenige" chunks,
+            a judgement call with no measured threshold (see ingestion-pipelines.md's "gesetzt, nicht
+            gemessen" rule for chunk sizes) - left to the caller rather than guessed here.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: page
+          in: query
+          required: false
+          description: Rejected with 400 if negative.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          description: Rejected with 400 outside 1..100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Page of flagged documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LowChunkDocumentPageResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/indexing/pipeline-versions:
+    get:
+      operationId: getPipelineVersionStatus
+      tags: [admin, indexing]
+      summary: >
+        Which ingestion pipeline versions the chunk bestand was produced with (system admin only,
+        #1056, ingestion-pipelines.md Querschnittsregel (d))
+      description: >
+        The registered pipelines with their current versions, plus the fill state per library of the
+        caller's own organization: how many chunks were produced by the current version of the
+        pipeline named on them, and how many are below it and therefore candidates for a selective
+        re-index. Without this, a bestand containing chunks from two verfahren is not feststellbar at
+        all - one cannot tell from a chunk which rules cut it.
+      responses:
+        "200":
+          description: Pipeline versions and per-library fill state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineVersionStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/indexing/pipeline-reindex:
+    post:
+      operationId: reindexPipelineBatch
+      tags: [admin, indexing]
+      summary: >
+        Re-index one batch of chunks below a given pipeline version (system admin only, #1056)
+      description: >
+        Processes at most batchSize documents of the caller's own organization that still hold
+        chunks from pipelineId below belowVersion, and reports what it did. Deliberately batched and
+        repeatable rather than one long-running request: the remaining work is re-derived from the
+        chunk metadata on every call, so an interrupted run continues where it stood instead of
+        starting over. Repeat until done is true. Whether and when a bestand is nachgezogen at all is
+        an explicit operator decision - nothing triggers this automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PipelineReindexRequest"
+      responses:
+        "200":
+          description: What this batch did
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineReindexResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/admin/directory-sync/dry-run:
     post:
       operationId: runDirectorySyncDryRun
@@ -4238,6 +4348,186 @@ components:
           items:
             $ref: "#/components/schemas/LibraryFolderBreadcrumbItem"
 
+    LowChunkDocumentResponse:
+      type: object
+      required: [documentId, libraryId, libraryName, fileName, chunkCount]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+          description: >
+            The library's current name, or "Unbekannte Bibliothek" if the library no longer resolves
+            (deleted between the query and the response being built) - the document is still
+            reported rather than silently dropped.
+        fileName:
+          type: string
+        fileSize:
+          type: integer
+          format: int64
+          nullable: true
+        chunkCount:
+          type: integer
+
+    LowChunkDocumentPageResponse:
+      type: object
+      required: [items, page, size, totalElements]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LowChunkDocumentResponse"
+        page:
+          type: integer
+          description: Zero-based index of the returned page.
+        size:
+          type: integer
+          description: The requested page size (not necessarily items.length for the last page).
+        totalElements:
+          type: integer
+          format: int64
+          description: Total number of flagged documents across all pages.
+
+    DocumentPipelineResponse:
+      type: object
+      required: [id, currentVersion, handledFormats]
+      properties:
+        id:
+          type: string
+          description: >
+            The pipeline's stable identity, persisted on every chunk it produced (#1056,
+            ingestion-pipelines.md Querschnittsregel (d)) - the value to pass as
+            PipelineReindexRequest.pipelineId.
+          example: tika-fallback
+        currentVersion:
+          type: integer
+          description: >
+            The version of the cut and structure metadata this pipeline currently produces. Raised
+            when either changes, never for a fix without an effect on the produced chunks.
+        handledFormats:
+          type: array
+          description: >
+            The file formats this pipeline claims, decided from the detected content and not from
+            the file extension (#404). Empty for the fallback pipeline, which handles everything no
+            other pipeline claimed.
+          items:
+            type: string
+            example: .pdf
+
+    LibraryPipelineVersionResponse:
+      type: object
+      required: [libraryId, totalChunks, currentVersionChunks, staleChunks, complete]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        totalChunks:
+          type: integer
+          format: int64
+        currentVersionChunks:
+          type: integer
+          format: int64
+          description: Chunks produced by the current version of the pipeline named on them.
+        staleChunks:
+          type: integer
+          format: int64
+          description: >
+            Chunks below the current version of the pipeline named on them, including the bestand
+            written before the pipeline abstraction existed. Counted directly, not derived as
+            totalChunks - currentVersionChunks: a chunk naming a pipeline this deployment no longer
+            has is neither current nor re-indexable and inflates neither count.
+        complete:
+          type: boolean
+          description: staleChunks == 0 - nothing in this library waits for a version re-index.
+
+    PipelineVersionStatusResponse:
+      type: object
+      required: [pipelines, libraries]
+      properties:
+        pipelines:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentPipelineResponse"
+        libraries:
+          type: array
+          description: >
+            Every library of the caller's own organization holding at least one chunk, sorted by id.
+          items:
+            $ref: "#/components/schemas/LibraryPipelineVersionResponse"
+
+    PipelineReindexRequest:
+      type: object
+      required: [pipelineId, belowVersion]
+      properties:
+        pipelineId:
+          type: string
+          description: The DocumentPipelineResponse.id whose chunks are to be re-indexed.
+          example: tika-fallback
+        belowVersion:
+          type: integer
+          minimum: 1
+          description: >
+            Only chunks below this version are re-indexed. Chunks written before the pipeline
+            abstraction existed count as version 0 and are therefore always included. Rejected with
+            400 above the pipeline's own currentVersion: a re-index cannot produce a version the
+            pipeline does not have, so every rewritten chunk would still be below the bound and the
+            same documents would be selected again on every following batch.
+        batchSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: >
+            The maximum number of documents one call processes. The call is meant to be repeated
+            until done is true - deliberately not one request that re-indexes a whole bestand, so an
+            interrupted run loses at most one batch.
+
+    PipelineReindexResponse:
+      type: object
+      required:
+        [
+          reindexedDocuments,
+          markedForNextRun,
+          skippedDocuments,
+          removedOrphanChunkSets,
+          done,
+        ]
+      properties:
+        reindexedDocuments:
+          type: integer
+          description: >
+            Documents whose source file was readable within the directories this deployment is
+            configured to read, and which were parsed, chunked and stored again on the spot, keeping
+            their own document id.
+        markedForNextRun:
+          type: integer
+          description: >
+            Documents whose source is remote and can only be re-read by their own connector run;
+            marked so that run redoes them instead of skipping them as unchanged. Their chunks stay
+            stale until that run happens, which the status figures keep showing.
+        skippedDocuments:
+          type: integer
+          description: >
+            Documents this call could not advance: their file lies outside what this deployment may
+            read (an allowlist narrowed since indexing, a path no longer resolving underneath its
+            library's configured directory), or the pipeline produced no chunks for them this time.
+            Nothing about them is changed - a working document keeps its existing chunks rather than
+            being emptied - and their chunks stay visible as outstanding in the status figures.
+        removedOrphanChunkSets:
+          type: integer
+          description: Chunk sets whose document row no longer exists; deleted rather than re-read.
+        done:
+          type: boolean
+          description: >
+            True when this call advanced nothing - the signal to stop repeating it. Deliberately
+            ignores skippedDocuments: a call that only skipped is exactly the "nothing further is
+            possible right now" state, and repeating it would retry the same unreachable documents
+            forever.
+
     LibraryFolderRequest:
       type: object
       required: [name]
@@ -4625,6 +4915,7 @@ components:
           AUDIT_LOG_CONFIGURATION_CHANGED,
           MODEL_POLICY_CHANGED,
           CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
+          INDEXING_PIPELINE_REINDEX_TRIGGERED,
           BRANDING_SETTINGS_CHANGED,
           LLM_MODEL_CREATED,
           LLM_MODEL_CHANGED,

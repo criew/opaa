@@ -58,7 +58,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
     properties = {
       "opaa.indexing.chunk-size=100",
       "opaa.indexing.chunk-overlap=10",
-      "opaa.indexing.batch-size=10"
+      "opaa.indexing.batch-size=10",
+      // Long enough that FullTextBackfillScheduler's tick (#1047) never fires during a test run -
+      // it would otherwise race a test's own assertions against chunk_full_text/vector_store in
+      // the shared context this signature provides.
+      "opaa.indexing.full-text-backfill.tick-ms=3600000"
     })
 @Import({TestcontainersConfiguration.class, OpaaIndexingMockConfiguration.class})
 @ActiveProfiles({"local", "dev"})

@@ -19,11 +19,13 @@ import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FilesystemPathAllowlist;
+import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
 import io.opaa.indexing.RssFeedStateRepository;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.VectorStoreWriter;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
@@ -64,7 +66,13 @@ class KnowledgeLibraryServiceDeleteLockTest {
     accessService = mock(LibraryAccessService.class);
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
-    VectorChunkStore vectorChunkStore = new VectorChunkStore(mock(VectorStore.class));
+    VectorChunkStore vectorChunkStore =
+        new VectorChunkStore(
+            mock(VectorStore.class),
+            mock(org.springframework.ai.embedding.EmbeddingModel.class),
+            mock(org.springframework.ai.embedding.BatchingStrategy.class),
+            mock(VectorStoreWriter.class),
+            mock(FullTextChunkStore.class));
     FilesystemPathAllowlist filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     indexingJobRepository = mock(IndexingJobRepository.class);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);

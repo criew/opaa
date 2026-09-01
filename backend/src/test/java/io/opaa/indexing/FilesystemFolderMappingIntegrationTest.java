@@ -55,7 +55,7 @@ class FilesystemFolderMappingIntegrationTest {
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     documentRepository.deleteAll();
     indexingJobRepository.deleteAll();
     jdbcTemplate.update("DELETE FROM library_folders");
