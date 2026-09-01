@@ -60,4 +60,14 @@ public class AuditActorPseudonymService {
   public Optional<UUID> findExistingPseudonym(UUID userId) {
     return repository.findByUserId(userId).map(AuditActorPseudonym::getPseudonymId);
   }
+
+  /**
+   * The reverse direction: which person a pseudonym belongs to. Deliberately narrow - the only
+   * caller is the Einsichtsrecht of docs/features/hybrid-retrieval.md, Leitplanke (h), which
+   * requires a person to see <em>by whom</em> their rights context was assumed. No revision access
+   * path resolves a pseudonym this way.
+   */
+  public Optional<UUID> findUserByPseudonym(UUID pseudonymId) {
+    return repository.findById(pseudonymId).map(AuditActorPseudonym::getUserId);
+  }
 }
