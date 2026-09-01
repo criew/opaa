@@ -1,5 +1,7 @@
 package io.opaa.indexing;
 
+import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
+import io.opaa.indexing.pipeline.TikaFallbackPipeline;
 import java.util.List;
 
 /**

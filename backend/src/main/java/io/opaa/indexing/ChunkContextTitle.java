@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
  *   <li>{@code "report.pdf"} → {@code "report"} (nothing structural to strip)
  * </ul>
  */
-final class ChunkContextTitle {
+public final class ChunkContextTitle {
 
   private static final Pattern SEPARATOR = Pattern.compile("[-_]+");
   private static final Pattern EXTENSION = Pattern.compile("\\.[A-Za-z0-9]{1,5}$");
@@ -48,7 +48,7 @@ final class ChunkContextTitle {
    *     unchanged if stripping structural tokens would leave nothing (e.g. a file named just {@code
    *     "12345.pdf"})
    */
-  static String deriveTitle(String fileName) {
+  public static String deriveTitle(String fileName) {
     String baseName = stripExtension(fileName);
     List<String> tokens = new ArrayList<>(List.of(SEPARATOR.split(baseName)));
     tokens.removeIf(String::isBlank);
