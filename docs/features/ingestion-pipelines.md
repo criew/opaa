@@ -323,6 +323,23 @@ Verwaltungsgebührensatzung" ist eine andere Belegqualität als „Seite 4".
 einer großen Tabelle und ist trotzdem richtig: Ohne sie ist eine Zeilengruppe aus der Tabellenmitte
 bedeutungsleer, mit ihr eine beantwortbare Frage.
 
+#### Umgesetzt (#1061)
+
+`PdfDocumentPipeline` (`id` `pdf`, Version 1), `DocxDocumentPipeline` (`id` `docx`, Version 1) und
+`PptxDocumentPipeline` (`id` `pptx`, Version 1) sind registriert und beanspruchen `.pdf`, `.docx`
+bzw. `.pptx` in der `DocumentPipelineRegistry`. `.doc` bleibt unverändert bei
+`TikaFallbackPipeline` — POIs OOXML-Leser kann das ältere Binärformat gar nicht öffnen.
+
+- **PDF** liest über Apache PDFBox direkt (nicht den in Teil 1 genannten Spring-AI-`ParagraphPdfDocumentReader`/`PagePdfDocumentReader` — kein solches Modul liegt auf dem Klassenpfad, dieselbe Abwägung wie bei `HtmlDocumentPipeline`/Jsoup). Trägt der PDF-Katalog ein Inhaltsverzeichnis (Outline/Bookmarks), schneidet die Pipeline entlang **jeder** dort vorhandenen Verschachtelungstiefe — anders als bei Markdown/DOCX/HTML gibt es hier **kein** Level-3-Limit, weil § und Absatz in einer Satzung typischerweise zwei Katalogebenen sind und eine tiefere Gliederung ebenso zitierfähig bleiben soll. Ein Katalogeintrag, dessen Ziel sich nicht auf eine Seite auflösen lässt, wird übersprungen (seine Kinder bleiben auf ihrer eigenen Ebene). Ohne auflösbaren Katalog fällt die Pipeline auf eine Seite = ein Chunk zurück (`location` = „S. n"). Der #1055-Scan-Guard (`DocumentService.isTextlessPdf`) läuft unverändert vor der eigenen PDFBox-Extraktion.
+- **DOCX** liest direkt über Apache POI (`XWPFDocument`) statt über Tika, weil die Absatzformat-Überschriftenebene — genau das, worauf diese Pipeline schneidet — bei Tikas Extraktion verloren geht. Die Ebene kommt aus der eingebauten Word-Formatvorlage (Style-ID `Heading1`…`Heading9`, sprachunabhängig) oder ersatzweise aus dem direkten Gliederungsattribut (`w:outlineLvl`); eine Absatz ohne beides bleibt Fließtext im laufenden Abschnitt.
+- **PPTX** liest über Apache POI (`XMLSlideShow`): eine Folie = ein Chunk, mit Folientitel und -nummer als Fundort und Sprechernotizen als eigenem, klar benannten Absatz. Auch eine leere Folie erzeugt einen (fast leeren) Chunk, damit die Foliennummerierung als Fundstelle lückenlos bleibt.
+
+Alle drei nutzen die neue, geteilte `HeadingSectionSplitter` (Überschriftenpfad, Soft-/Hard-Zeichenlimit, „Abschn. …“-Fundort) — dasselbe Verfahren, das `HtmlDocumentPipeline` bereits für HTML anwendet, nur ohne eigene Kopie der Zuschnittsregeln je Format.
+
+**Chunk-Größe: gesetzt, nicht gemessen** für alle drei — der bestehende Evaluierungskorpus enthält keine PDF-, DOCX- oder PPTX-Dokumente. **Baseline unberührt** — kein Korpusdokument dieses Typs.
+
+**`MarkdownDocumentPipeline` (`id` `markdown`, Version 1) ist gebaut und getestet, aber bewusst nicht als Bean registriert.** Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; ein Umschalten von `.md` auf überschriftenbewussten Zuschnitt ist damit — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung: Ein Testlauf gegen die Verwaltungsdomäne zeigte 17 statt der konfigurierten (und bislang gemessenen) höchstens 6 Chunks je Dokument, weil die §-Gliederung der Satzungen jetzt tatsächlich geschnitten wird. Gleichzeitig zieht #1049 die Pipeline-Baselines neu — zwei gleichzeitige Baseline-Bewegungen wären nicht auseinanderzuhalten. Die Registrierung (Bean-Methode plus die dafür nötige Aktualisierung von Eval-Domänenkonfiguration und Baselines) ist deshalb auf #1103 verschoben, das erst nach #1049 und einem grünen nächtlichen Lauf startet (Koordinator-Freigabe 01.09.2026). Bis dahin läuft `.md` unverändert über `TikaFallbackPipeline`.
+
 ### Chunk-Größen: gemessen, wo Messmaterial existiert — und sonst ehrlich gesetzt
 
 Die heutigen 1000 Token sind **gesetzt, nicht gemessen** — das steht so in
