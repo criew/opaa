@@ -8,8 +8,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -24,22 +28,31 @@ import org.springframework.ai.document.Document;
  * - Tika is not "ergänzt" after the fact, it is replaced for this one format.
  *
  * <p><b>Heading level comes from the paragraph's own formatting, not from guessed text
- * patterns</b>: a built-in Word heading style (styleId {@code Heading1}..{@code Heading9},
- * regardless of the UI locale the document was authored in - Word persists the English styleId even
- * under a German UI) or, failing that, the paragraph's direct outline level ({@code w:outlineLvl},
- * the same property Word's own "Gliederungsebene" dropdown sets and a table of contents is built
- * from). A paragraph with neither is body text, folded into the current section - exactly {@link
- * HtmlDocumentPipeline}'s treatment of everything that is not h1-h3.
+ * patterns</b>: a built-in Word heading style (styleId {@code Heading1}..{@code Heading9} in the
+ * common English-templated case) <b>or</b> a localized equivalent (LibreOffice and some German Word
+ * templates export {@code berschrift1}/{@code Ueberschrift1} - the leading "Ü" is stripped by the
+ * OOXML styleId sanitizer, which is why the pattern below matches both spellings; the styleId is
+ * <em>not</em> reliably English regardless of authoring locale, contrary to what an earlier version
+ * of this Javadoc claimed). Failing both, the paragraph's direct outline level ({@code
+ * w:outlineLvl}, the same property Word's own "Gliederungsebene" dropdown sets and a table of
+ * contents is built from) is tried. A paragraph with none of the three is body text, folded into
+ * the current section - exactly {@link HtmlDocumentPipeline}'s treatment of everything that is not
+ * h1-h3.
  *
  * <p><b>Only {@code .docx} is handled, not the legacy binary {@code .doc}</b>: POI's OOXML reader
  * used here cannot open the older binary format at all, and the older {@code HWPFDocument} reader
  * has no equivalent paragraph-style API to extract a heading level from. {@code .doc} keeps running
  * through {@link TikaFallbackPipeline} unchanged.
  *
- * <p>Only top-level body paragraphs are read ({@link XWPFDocument#getParagraphs()}) - a table
- * cell's paragraphs are a known limitation, not covered by this pipeline (a document that relies on
- * a table for its layout loses that content, same trade-off {@link TabularDocumentPipeline} accepts
- * for a spreadsheet's own formulas).
+ * <p><b>Tables are read cell by cell</b>, not skipped: a Gebührenverzeichnis or Formular is
+ * practically always a table, and Tika's flattened extraction (the pre-#1061 behaviour) did carry
+ * that content, so dropping it here would be a regression, not a simplification. Body elements are
+ * walked via {@link XWPFDocument#getBodyElements()} in document order; each {@link XWPFTable}
+ * becomes one paragraph-level text block (one line per row, cells joined by {@code " | "}) rather
+ * than a heading - a table never itself opens a new section. <b>Known limitation:</b> header/footer
+ * paragraphs and tables are not part of {@code getBodyElements()} and are not read by this pipeline
+ * (a document that puts content exclusively in a running header/footer loses that content, the same
+ * trade-off {@link TabularDocumentPipeline} accepts for a spreadsheet's own formulas).
  */
 public class DocxDocumentPipeline implements DocumentPipeline {
 
@@ -73,11 +86,17 @@ public class DocxDocumentPipeline implements DocumentPipeline {
 
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
-    List<XWPFParagraph> paragraphs = readParagraphs(source);
-    if (paragraphs == null) {
+    if (source.file() == null) {
+      // A DOCX pipeline is only ever reached through a genuine .docx file (never RSS-extracted
+      // text, ADR-0017 decision 2) - defensive fallback, mirrors PdfDocumentPipeline/
+      // PptxDocumentPipeline.
       return DocumentPipelineResult.noContent();
     }
-    List<HeadingSectionSplitter.Event> events = toEvents(paragraphs);
+    List<IBodyElement> elements = readBodyElements(source);
+    if (elements == null) {
+      return DocumentPipelineResult.noContent();
+    }
+    List<HeadingSectionSplitter.Event> events = toEvents(elements);
     if (events.isEmpty()) {
       return DocumentPipelineResult.noContent();
     }
@@ -89,10 +108,10 @@ public class DocxDocumentPipeline implements DocumentPipeline {
   }
 
   /** {@code null} when the file could not be opened as a DOCX at all - reported as no content. */
-  private static List<XWPFParagraph> readParagraphs(DocumentPipelineSource source) {
-    try (InputStream in = openStream(source)) {
+  private static List<IBodyElement> readBodyElements(DocumentPipelineSource source) {
+    try (InputStream in = Files.newInputStream(source.file())) {
       try (XWPFDocument document = new XWPFDocument(in)) {
-        return document.getParagraphs();
+        return document.getBodyElements();
       }
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read DOCX document {}", source.fileName(), e);
@@ -100,26 +119,51 @@ public class DocxDocumentPipeline implements DocumentPipeline {
     }
   }
 
-  private static InputStream openStream(DocumentPipelineSource source) throws IOException {
-    if (source.file() != null) {
-      return Files.newInputStream(source.file());
-    }
-    return new java.io.ByteArrayInputStream(
-        source.extractedText().getBytes(java.nio.charset.StandardCharsets.UTF_8));
-  }
-
-  private static List<HeadingSectionSplitter.Event> toEvents(List<XWPFParagraph> paragraphs) {
+  private static List<HeadingSectionSplitter.Event> toEvents(List<IBodyElement> elements) {
     List<HeadingSectionSplitter.Event> events = new ArrayList<>();
-    for (XWPFParagraph paragraph : paragraphs) {
-      String text = paragraph.getText();
-      Integer level = headingLevel(paragraph);
-      if (level != null) {
-        events.add(new HeadingSectionSplitter.Heading(level, text == null ? "" : text));
-      } else if (text != null && !text.isBlank()) {
-        events.add(new HeadingSectionSplitter.Paragraph(text));
+    for (IBodyElement element : elements) {
+      if (element instanceof XWPFParagraph paragraph) {
+        String text = paragraph.getText();
+        Integer level = headingLevel(paragraph);
+        if (level != null) {
+          events.add(new HeadingSectionSplitter.Heading(level, text == null ? "" : text));
+        } else if (text != null && !text.isBlank()) {
+          events.add(new HeadingSectionSplitter.Paragraph(text));
+        }
+      } else if (element instanceof XWPFTable table) {
+        String tableText = tableText(table);
+        if (!tableText.isBlank()) {
+          events.add(new HeadingSectionSplitter.Paragraph(tableText));
+        }
       }
     }
     return events;
+  }
+
+  /**
+   * One line per row, cells joined by {@code " | "} - a blank row (no non-blank cell) is dropped.
+   */
+  private static String tableText(XWPFTable table) {
+    StringBuilder text = new StringBuilder();
+    for (XWPFTableRow row : table.getRows()) {
+      StringBuilder rowText = new StringBuilder();
+      for (XWPFTableCell cell : row.getTableCells()) {
+        String cellText = cell.getText();
+        if (cellText != null && !cellText.isBlank()) {
+          if (rowText.length() > 0) {
+            rowText.append(" | ");
+          }
+          rowText.append(cellText.strip());
+        }
+      }
+      if (rowText.length() > 0) {
+        if (text.length() > 0) {
+          text.append('\n');
+        }
+        text.append(rowText);
+      }
+    }
+    return text.toString();
   }
 
   private static Integer headingLevel(XWPFParagraph paragraph) {

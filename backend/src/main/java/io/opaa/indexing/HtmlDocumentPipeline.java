@@ -3,10 +3,8 @@ package io.opaa.indexing;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
@@ -129,27 +127,20 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
 
   /**
    * Soft budget a section's rendered body text is grouped into before another chunk starts -
-   * roughly the same order of magnitude as {@code opaa.indexing.chunk-size}'s own default of 1000
-   * tokens (~4 characters/token), so an HTML chunk without further heading structure lands in the
-   * same bestand size class as everything else instead of scaling with the page (#1059 review,
-   * finding 3). <b>Gesetzt, nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen") - the
-   * evaluation corpus contains no HTML documents at all, so there is nothing to measure a value
-   * against yet. A single block that alone already exceeds this still becomes its own chunk rather
-   * than being cut mid-block - see {@link #HARD_CHUNK_CHAR_LIMIT} for the absolute ceiling that
-   * chunk is still subject to.
+   * delegates to {@link HeadingSectionSplitter#SOFT_CHUNK_CHAR_LIMIT}, the shared value {@link
+   * #flushSection} (via {@link HeadingSectionSplitter#flushSection}) actually applies; kept as its
+   * own named constant here because {@code HtmlDocumentPipelineTest} references it by this class's
+   * name. <b>Gesetzt, nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen") - the evaluation
+   * corpus contains no HTML documents at all, so there is nothing to measure a value against yet.
    */
-  static final int SOFT_CHUNK_CHAR_LIMIT = 4_000;
+  static final int SOFT_CHUNK_CHAR_LIMIT = HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT;
 
   /**
-   * Absolute ceiling on a single chunk's rendered text length, applied after {@link
-   * #SOFT_CHUNK_CHAR_LIMIT} has already done its normal job - the last-resort backstop for a single
-   * block that is itself pathologically large (one giant paragraph with no further internal
-   * structure), not the ordinary size-control mechanism. Mirrors {@link
-   * TabularDocumentPipeline#HARD_CHUNK_CHAR_LIMIT} both in value and in intent.
+   * Absolute ceiling on a single chunk's rendered text length - delegates to {@link
+   * HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT} for the same reason {@link
+   * #SOFT_CHUNK_CHAR_LIMIT} does.
    */
-  static final int HARD_CHUNK_CHAR_LIMIT = 20_000;
-
-  private static final String TRUNCATION_MARKER = " […gekürzt]";
+  static final int HARD_CHUNK_CHAR_LIMIT = HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT;
 
   private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
@@ -423,98 +414,16 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * Turns one section's collected blocks into one or more chunks, each carrying the section's
-   * heading path both as {@link ChunkingService#LOCATION_METADATA_KEY} and as the chunk text's own
-   * leading line (#1059 review, finding 6) - repeated on every sub-chunk if the section had to be
-   * split further by {@link #splitIntoBudgetedChunks}, the same repetition {@link
-   * TabularDocumentPipeline} already applies to its column header.
-   *
-   * @param closingHeadingLevel the level of the heading that is closing this section, or {@code
-   *     null} when it closes because the document itself ended. A body-less section closed by a
-   *     <em>deeper</em> heading (h1 immediately followed by h2, the ordinary shape of a titled
-   *     document) is not a section in its own right - its title already opens every descendant
-   *     section's own heading path, so it does not additionally need a redundant title-only chunk
-   *     (#1059 review, follow-up finding 3). A body-less section closed by a sibling/ancestor-level
-   *     heading or by the end of the document is genuinely empty and still gets a chunk - see
-   *     {@code aHeadingWithNoBodyTextStillBecomesItsOwnChunkInsteadOfNoExtractableText}.
+   * Delegates to {@link HeadingSectionSplitter#flushSection} - see its own Javadoc for the
+   * section-emission and empty-section-suppression rules (#1059 review, findings 3/6, follow-up
+   * finding 3), shared verbatim with {@link MarkdownDocumentPipeline}/{@link DocxDocumentPipeline}/
+   * {@link PdfDocumentPipeline} rather than duplicated here.
    */
   private static void flushSection(
       List<Document> chunks,
       List<String> blocks,
       NavigableMap<Integer, String> headingPath,
       Integer closingHeadingLevel) {
-    if (blocks.isEmpty() && headingPath.isEmpty()) {
-      // Nothing before the first heading, and no heading opened yet - a true empty prefix, not a
-      // section in its own right.
-      return;
-    }
-    boolean closedByADeeperHeading =
-        closingHeadingLevel != null
-            && !headingPath.isEmpty()
-            && closingHeadingLevel > headingPath.lastKey();
-    if (blocks.isEmpty() && closedByADeeperHeading) {
-      return;
-    }
-    String headingLine = headingPath.isEmpty() ? null : String.join(" › ", headingPath.values());
-    String location = headingLine == null ? null : "Abschn. " + headingLine;
-    List<String> bodies = splitIntoBudgetedChunks(blocks);
-    if (bodies.isEmpty()) {
-      // A section that is nothing but its own heading (no body text at all) still becomes a
-      // one-line chunk - otherwise a heading-only page would look like NO_EXTRACTABLE_TEXT even
-      // though its heading is real, searchable content (#1059 review, finding 6).
-      bodies = List.of("");
-    }
-    for (String body : bodies) {
-      String text =
-          headingLine == null ? body : body.isEmpty() ? headingLine : headingLine + "\n\n" + body;
-      Map<String, Object> metadata = new HashMap<>();
-      if (location != null) {
-        metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
-      }
-      chunks.add(new Document(capChunkLength(text), metadata));
-    }
-  }
-
-  /**
-   * Groups {@code blocks} into chunks of at most {@link #SOFT_CHUNK_CHAR_LIMIT} characters each,
-   * closing a chunk early rather than letting the next block push it over the budget - the fix for
-   * a section with no further heading structure (a "Div-Suppe", or §-style headings expressed as
-   * {@code <p><strong>} rather than real headings) that would otherwise become a single,
-   * ever-growing chunk (#1059 review, finding 3). A single block that alone already exceeds the
-   * budget still becomes its own chunk rather than being cut mid-block - {@link #flushSection}'s
-   * own {@link #capChunkLength} call is the backstop that chunk is still subject to.
-   */
-  private static List<String> splitIntoBudgetedChunks(List<String> blocks) {
-    List<String> result = new ArrayList<>();
-    StringBuilder current = new StringBuilder();
-    for (String block : blocks) {
-      boolean wouldExceed =
-          current.length() > 0 && current.length() + 2 + block.length() > SOFT_CHUNK_CHAR_LIMIT;
-      if (wouldExceed) {
-        result.add(current.toString());
-        current.setLength(0);
-      }
-      if (current.length() > 0) {
-        current.append("\n\n");
-      }
-      current.append(block);
-    }
-    if (current.length() > 0) {
-      result.add(current.toString());
-    }
-    return result;
-  }
-
-  /** See {@link #HARD_CHUNK_CHAR_LIMIT}'s own Javadoc for why this exists. */
-  private static String capChunkLength(String text) {
-    if (text.length() <= HARD_CHUNK_CHAR_LIMIT) {
-      return text;
-    }
-    log.warn(
-        "A chunk exceeds the hard limit of {} characters ({} actual); truncating",
-        HARD_CHUNK_CHAR_LIMIT,
-        text.length());
-    return text.substring(0, HARD_CHUNK_CHAR_LIMIT - TRUNCATION_MARKER.length())
-        + TRUNCATION_MARKER;
+    HeadingSectionSplitter.flushSection(chunks, blocks, headingPath, closingHeadingLevel);
   }
 }

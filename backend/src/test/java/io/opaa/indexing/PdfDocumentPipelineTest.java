@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -26,7 +27,7 @@ class PdfDocumentPipelineTest {
 
   @TempDir Path tempDir;
 
-  private final PdfDocumentPipeline pipeline = new PdfDocumentPipeline(new DocumentService());
+  private final PdfDocumentPipeline pipeline = new PdfDocumentPipeline();
 
   @Test
   void claimsExactlyPdf() {
@@ -70,6 +71,44 @@ class PdfDocumentPipelineTest {
     assertThat(result.chunks().get(2).getText())
         .startsWith("§ 1 Personaldokumente › Abs. 2 Ermaessigung")
         .contains("Minderjaehrige");
+  }
+
+  @Test
+  void multipleOutlineEntriesOnTheSamePageEachGetTheirOwnBodyText() throws IOException {
+    // The Satzung normal case: several §§ cataloged on the same page - each one's body text must
+    // stay attached to its own heading, not bleed into (or entirely vanish behind) a sibling's.
+    Path file = tempDir.resolve("mehrere-paragraphen.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page1 =
+          addPageWithLines(
+              doc,
+              List.of(
+                  "§ 1 Anwendungsbereich",
+                  "Diese Satzung gilt fuer alle Antragstellenden.",
+                  "§ 2 Gebuehren",
+                  "Es werden 37,00 EUR erhoben."));
+
+      PDDocumentOutline outline = new PDDocumentOutline();
+      doc.getDocumentCatalog().setDocumentOutline(outline);
+      outline.addLast(outlineItem("§ 1 Anwendungsbereich", page1));
+      outline.addLast(outlineItem("§ 2 Gebuehren", page1));
+
+      doc.save(file.toFile());
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "mehrere-paragraphen.pdf", ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().get(0).getText())
+        .startsWith("§ 1 Anwendungsbereich")
+        .contains("Antragstellenden")
+        .doesNotContain("37,00 EUR");
+    assertThat(result.chunks().get(1).getText())
+        .startsWith("§ 2 Gebuehren")
+        .contains("37,00 EUR")
+        .doesNotContain("Antragstellenden");
   }
 
   @Test
@@ -120,14 +159,36 @@ class PdfDocumentPipelineTest {
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
+  @Test
+  void aFilelessSourceHasNoContent() {
+    // A PDF pipeline is only ever reached through a genuine .pdf file (never RSS-extracted text,
+    // ADR-0017 decision 2) - defensive fallback, mirrors DocxDocumentPipeline/PptxDocumentPipeline.
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofExtractedText("irrelevanter Text", "quelle.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.chunks()).isEmpty();
+  }
+
   private static PDPage addPage(PDDocument doc, String text) throws IOException {
+    return addPageWithLines(doc, List.of(text));
+  }
+
+  private static PDPage addPageWithLines(PDDocument doc, List<String> lines) throws IOException {
     PDPage page = new PDPage(PDRectangle.A4);
     doc.addPage(page);
     try (PDPageContentStream stream = new PDPageContentStream(doc, page)) {
       stream.beginText();
       stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
       stream.newLineAtOffset(50, 700);
-      stream.showText(text);
+      boolean first = true;
+      for (String line : lines) {
+        if (!first) {
+          stream.newLineAtOffset(0, -15);
+        }
+        first = false;
+        stream.showText(line);
+      }
       stream.endText();
     }
     return page;

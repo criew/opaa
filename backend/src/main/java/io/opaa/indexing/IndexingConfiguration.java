@@ -101,13 +101,15 @@ public class IndexingConfiguration {
   }
 
   /**
-   * PDF pipeline (docs/features/ingestion-pipelines.md, Teil 1's parsing table and Teil 2) - needs
-   * {@link DocumentService} to preserve the #1055 scan-detection guard unchanged (see {@link
-   * PdfDocumentPipeline}'s own Javadoc).
+   * PDF pipeline (docs/features/ingestion-pipelines.md, Teil 1's parsing table and Teil 2) -
+   * registered as an ordinary {@link DocumentPipeline} bean, exactly like {@link
+   * #tabularDocumentPipeline}. Answers the #1055 scan-detection guard from its own PDFBox
+   * extraction rather than needing {@link DocumentService} (see {@link PdfDocumentPipeline}'s own
+   * Javadoc).
    */
   @Bean
-  PdfDocumentPipeline pdfDocumentPipeline(DocumentService documentService) {
-    return new PdfDocumentPipeline(documentService);
+  PdfDocumentPipeline pdfDocumentPipeline() {
+    return new PdfDocumentPipeline();
   }
 
   /**

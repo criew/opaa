@@ -13,13 +13,15 @@ import org.springframework.ai.document.Document;
 /**
  * Cuts a flat sequence of heading/paragraph events into chunks along the heading path in effect at
  * each cut (docs/features/ingestion-pipelines.md, Teil 2: "Markdown, DOCX ... |
- * Überschriftenabschnitt"). Shared by {@link MarkdownDocumentPipeline} (events come from ATX
- * heading lines), {@link DocxDocumentPipeline} (events come from a paragraph's outline level) and
- * {@link PdfDocumentPipeline} (events come from the PDF catalog/outline) so the section-building
- * and size-budgeting rules - repeated heading path, soft/hard character limits - are defined once
- * rather than per format. {@link HtmlDocumentPipeline} keeps its own copy of the same shape of
- * logic because it is driven by DOM traversal rather than a flat event list and would gain nothing
- * from sharing this class.
+ * Überschriftenabschnitt"). Used by {@link MarkdownDocumentPipeline} (events come from ATX heading
+ * lines), {@link DocxDocumentPipeline} (events come from a paragraph's outline level) and {@link
+ * PdfDocumentPipeline} (events come from the PDF catalog/outline) via {@link #chunk}, the
+ * event-list entry point. {@link HtmlDocumentPipeline} is driven by DOM traversal rather than a
+ * flat event list, so it builds its own {@code blocks}/{@code headingPath} state, but calls the
+ * package-visible {@link #flushSection} and {@link #capChunkLength} directly instead of keeping a
+ * second copy of the section-emission and size-budgeting logic - the #1100 review findings that
+ * shaped this logic (empty-section suppression, soft/hard limits) live in exactly one place this
+ * way, not two that could drift apart.
  *
  * <p>The maximum heading level that actually cuts a new chunk is a caller-supplied parameter, not a
  * constant: Markdown/DOCX cap at level 3 (ingestion-pipelines.md, Teil 2 table), while a PDF
@@ -86,12 +88,19 @@ final class HeadingSectionSplitter {
   }
 
   /**
+   * Turns one section's collected blocks into one or more chunks - package-visible so {@link
+   * HtmlDocumentPipeline#buildChunks} can call it directly with the blocks/heading-path state its
+   * own DOM traversal accumulates, instead of duplicating this method.
+   *
    * @param closingLevel the level of the heading that is closing this section, or {@code null} when
-   *     it closes because the event stream itself ended. See {@link
-   *     HtmlDocumentPipeline#flushSection} for why a body-less section closed by a deeper heading
-   *     is dropped rather than emitted as a redundant title-only chunk.
+   *     it closes because the event stream (or, for {@link HtmlDocumentPipeline}, the document)
+   *     itself ended. A body-less section closed by a <em>deeper</em> heading is dropped rather
+   *     than emitted as a redundant title-only chunk - its title already opens every descendant
+   *     section's own heading path. A body-less section closed by a sibling/ancestor-level heading
+   *     or by the end of the input is genuinely empty and still gets a one-line, heading-only
+   *     chunk.
    */
-  private static void flushSection(
+  static void flushSection(
       List<Document> chunks,
       List<String> blocks,
       NavigableMap<Integer, String> headingPath,
@@ -145,7 +154,12 @@ final class HeadingSectionSplitter {
     return result;
   }
 
-  private static String capChunkLength(String text) {
+  /**
+   * Package-visible so {@link PdfDocumentPipeline#chunkByPage} (a page-fallback chunk, never
+   * heading-sectioned) and {@link HtmlDocumentPipeline} can apply the same last-resort backstop
+   * without their own copy.
+   */
+  static String capChunkLength(String text) {
     if (text.length() <= HARD_CHUNK_CHAR_LIMIT) {
       return text;
     }
