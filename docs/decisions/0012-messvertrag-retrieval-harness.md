@@ -404,9 +404,10 @@ Gradle-Task ausdrücklich nicht eingehängt (`pipelineBaselineTestClass = null` 
 gegen eine nicht existierende Datei zu laufen. Das ist die Alternative zu einem stillen Sonderfall im
 Vergleichscode („keine Baseline → bestanden"), der genau die Lücke erzeugte, die dieser Nachtrag
 schließen soll: eine Prüfung, die aussieht, als fände sie statt. Issue #1081 zog diese Baseline aus
-dem CPU-Artefakt eines erfolgreichen nächtlichen Laufs und hängte
-`CityLandmarksPipelineBaselineRegressionTest` ein — der beschriebene ausgelassene Zustand war damit
-ein Übergangszustand, kein Dauerzustand, und betrifft heute keine der drei Domänen mehr.
+dem CPU-Artefakt eines erfolgreichen, label-ausgelösten Regressionslaufs (Run 33437536393, Branch
+von PR #1084) und hängte `CityLandmarksPipelineBaselineRegressionTest` ein — der beschriebene
+ausgelassene Zustand war damit ein Übergangszustand, kein Dauerzustand, und betrifft heute keine der
+drei Domänen mehr.
 
 **Eigene absolute Anker der harten Untergrenze.** Die *Formel* ist unverändert
 (`max(0,8 · Baselinewert, feste Untergrenze)`); die festen Untergrenzen des Pipeline-Pfads sind

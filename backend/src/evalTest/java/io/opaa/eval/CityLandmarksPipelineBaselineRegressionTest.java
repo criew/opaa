@@ -11,7 +11,8 @@ import org.slf4j.LoggerFactory;
  * with any other domain or with either domain's raw-vector path.
  *
  * <p>Wired into {@code checkCityLandmarksRetrievalBaseline} since issue #1081, which drew {@code
- * eval/baseline/pipeline-city-landmarks.json} from the CPU artifact of a successful nightly run.
+ * eval/baseline/pipeline-city-landmarks.json} (see that file's {@code provenance}/{@code notes} for
+ * the source run).
  */
 class CityLandmarksPipelineBaselineRegressionTest {
 

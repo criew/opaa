@@ -21,10 +21,10 @@ Baselines:
 | `pipeline-verwaltung.json` | Pipeline | Hit Rate@5, MRR@8, nDCG@8, Recall@8 | `pipelineMeasurementContractVersion` |
 
 Die Pipeline-Baseline von `city-landmarks` ist seit Issue #1081 gezogen, aus dem CPU-Artefakt eines
-erfolgreichen nächtlichen Laufs statt aus einem eigenen lokalen Lauf — ein ungestörter, rund
-zweistündiger lokaler Lauf ließ sich im Rahmen von #1040 wiederholt nicht durchführen (siehe die
-`notes` der Baseline-Datei für die genaue Quelle). Beide Pfade dieser Domäne liefern damit ein
-Urteil (`checkCityLandmarksRetrievalBaseline` prüft beide), `pipelineBaselineTestClass` in
+erfolgreichen, label-ausgelösten Regressionslaufs (Run 33437536393, Branch von PR #1084) statt aus
+einem eigenen lokalen Lauf (siehe die `notes` der Baseline-Datei für die genaue Quelle). Beide Pfade
+dieser Domäne liefern damit ein Urteil (`checkCityLandmarksRetrievalBaseline` prüft beide),
+`pipelineBaselineTestClass` in
 `backend/build.gradle.kts` zeigt jetzt auf `CityLandmarksPipelineBaselineRegressionTest` statt auf
 `null`.
 
@@ -49,9 +49,9 @@ Pfade. Wo der Pipeline-Pfad abweicht, steht es unter
 ## Domäne `verwaltung` (Issue #1043)
 
 `verwaltung.json` und `pipeline-verwaltung.json` sind die beiden Baselines der dritten Domäne,
-beide im selben CPU-Testcontainer-Lauf vom 2026-09-01 gezogen — anders als bei `city-landmarks`
-gibt es hier von Anfang an für **beide** Pfade ein Urteil (`checkVerwaltungRetrievalBaseline` führt
-beide Vergleiche aus). Drei Besonderheiten, alle in den `notes` der Dateien selbst festgehalten:
+beide im selben CPU-Testcontainer-Lauf vom 2026-09-01 gezogen — für beide Pfade gibt es hier von
+Anfang an ein Urteil (`checkVerwaltungRetrievalBaseline` führt beide Vergleiche aus). Drei
+Besonderheiten, alle in den `notes` der Dateien selbst festgehalten:
 
 - **Die Zahlen sind bewusst niedrig** (Gesamt-nDCG@10 0,575 / nDCG@8 0,558). Diese Domäne misst
   benannte Fehlerbilder, nicht Abdeckung: 37 der 46 Fälle sind als `known_gap` geführt (siehe

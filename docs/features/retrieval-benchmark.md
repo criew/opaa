@@ -133,17 +133,18 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 > Rohvektor-Pfads. Die Fixpunkte des Pipeline-Pfads werden jetzt geprüft statt nur ausgewiesen; die
 > Pipeline-Vertragsversion steht dadurch bei 2 (ADR-0012, Nachtrag „Baselines des Pipeline-Pfads",
 > Entscheidungen 17–20). Gezogen sind inzwischen die Baselines von `comic-characters`,
-> `verwaltung` (Issue #1043) und `city-landmarks` (Issue #1081, aus dem CPU-Artefakt eines
-> erfolgreichen nächtlichen Laufs — der Zwei-Stunden-Lauf dieser Domäne ließ sich lokal wiederholt
-> nicht ungestört durchführen). Der Pipeline-Pfad läuft damit für alle drei Domänen gegen eine
-> committete Baseline. Offen bleibt außerdem die Entscheidung über das Chat-Modell — bis dahin misst
-> der Pipeline-Pfad die Variante `decomposition-off`, und dass keines beteiligt war, ist als geprüfter
-> Fixpunkt (`chatModel = null`) festgehalten.
+> `verwaltung` (Issue #1043) und `city-landmarks` (Issue #1081, aus dem CPU-Artefakt des
+> erfolgreichen, label-ausgelösten Regressionslaufs 33437536393 auf dem Branch von PR #1084). Der
+> Pipeline-Pfad läuft damit für alle drei Domänen gegen eine committete Baseline. Offen bleibt
+> außerdem die Entscheidung über das Chat-Modell — bis dahin misst der Pipeline-Pfad die Variante
+> `decomposition-off`, und dass keines beteiligt war, ist als geprüfter Fixpunkt (`chatModel =
+> null`) festgehalten.
 >
 > **Umsetzungsstand (Issue #1044, 08/2026):** Beide Messpfade liefen mit #1039/#1040 bereits im
 > nächtlichen Job je Domäne; seit Issue #1081 ist auch der Pipeline-Pfad von `city-landmarks`
-> beurteilt (siehe die Matrix-Spalte `pipeline_gated` in `retrieval-regression.yml`). Gemessen an
-> fünf realen `checkRetrievalBaseline`/
+> beurteilt (siehe die Matrix-Spalte `pipeline_gated` in `retrieval-regression.yml`). Offen war, ob
+> das gemessene Zeitbudget des nächtlichen Jobs das dauerhaft trägt. Gemessen an fünf realen
+> `checkRetrievalBaseline`/
 > `checkCityLandmarksRetrievalBaseline`-Läufen der letzten Feature-PRs (GitHub-Actions-Runs
 > 33412876752/33412877826/33429049024/33414091586/33431667972, alle auf CI-Hardware, beide Pfade in
 > einem Lauf): `comic-characters` liegt zwischen rund 28 und 43 Minuten (70-Minuten-Budget, der

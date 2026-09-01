@@ -86,9 +86,9 @@ jobs:
             exec_step_name: 'Retrieval-Regression (city-landmarks) ausführen'
             report_file: baseline-comparison-city-landmarks.md
             pipeline_report_file: pipeline-baseline-comparison-city-landmarks.md
-            # Pipeline-Baseline seit Issue #1081 gezogen (aus dem CPU-Artefakt eines erfolgreichen
-            # nächtlichen Laufs, ein ungestörter lokaler Zwei-Stunden-Lauf war wiederholt nicht
-            # durchführbar) — beide Pfade dieser Domäne liefern seither ein Urteil.
+            # Pipeline-Baseline seit Issue #1081 gezogen — beide Pfade dieser Domäne liefern
+            # seither ein Urteil (Quelle und Herleitung der Baseline: siehe deren eigene
+            # provenance/notes in eval/baseline/pipeline-city-landmarks.json).
             pipeline_gated: true
             pipeline_state_note: ''
             artifact_name: retrieval-metrics-city-landmarks
