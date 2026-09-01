@@ -19,6 +19,9 @@ import type {
   LibraryDocumentResponse,
   LibraryResponse,
   SpaceLibraryAssociationListResponse,
+  SearchStatusResponse,
+  SearchPermissionProfileResponse,
+  SearchDiagnosisResponse,
 } from '../types/api'
 
 // #822: a plain mock shape rather than LibraryFolderResponse itself - documentCount there is
@@ -509,6 +512,187 @@ export const mockEmbeddingInfo: EmbeddingInfoResponse = {
   provider: 'openai',
   model: 'nomic-embed-text',
   dimensions: 1536,
+}
+
+/**
+ * Deliberately not an all-green picture: the rerank role is off, the full-text path is still
+ * building, and one library carries documents without chunks - the three states the
+ * "Suche & Indexierung" page exists to make visible.
+ */
+export const mockSearchStatus: SearchStatusResponse = {
+  modelRoles: [
+    {
+      role: 'CHAT',
+      state: 'ACTIVE',
+      endpoint: 'http://localhost:11434/v1',
+      modelIdentifier: 'qwen3:8b',
+      faulted: false,
+      detail: 'Verbindung erfolgreich, Modell hat geantwortet.',
+    },
+    {
+      role: 'EMBEDDING',
+      state: 'ACTIVE',
+      endpoint: null,
+      modelIdentifier: 'nomic-embed-text',
+      faulted: false,
+      detail: 'Das Einbettungsmodell hat auf die Erreichbarkeitspruefung geantwortet.',
+    },
+    {
+      role: 'RERANK',
+      state: 'DISABLED',
+      endpoint: null,
+      modelIdentifier: null,
+      faulted: false,
+      detail:
+        'Reranking ist ausdruecklich abgeschaltet. Die Suche laeuft ohne diese Stufe - das ist die Voreinstellung, kein Fehler.',
+    },
+  ],
+  searchPaths: [
+    {
+      path: 'VECTOR',
+      state: 'ACTIVE',
+      detail: 'Die Vektorsuche ist aktiv und deckt alle 2 Bibliotheken mit Inhalt ab.',
+    },
+    {
+      path: 'FULL_TEXT',
+      state: 'INCOMPLETE',
+      detail:
+        'Die Volltextsuche ist aktiv, aber noch nicht ueber den ganzen Bestand aufgebaut: 1 von 2 Bibliotheken sind unvollstaendig und werden von diesem Pfad nicht durchsucht.',
+    },
+  ],
+  libraries: [
+    {
+      libraryId: 'lib-satzungen',
+      libraryName: 'Satzungen & Gebuehrenordnungen',
+      documentCount: 12,
+      indexedDocumentCount: 11,
+      pendingDocumentCount: 1,
+      failedDocumentCount: 0,
+      lowChunkDocumentCount: 2,
+      chunkCount: 240,
+      vectorChunkCount: 236,
+      lastIndexedAt: '2026-09-01T06:00:00Z',
+      vectorIndexState: 'INCOMPLETE',
+      fullTextIndexState: 'INCOMPLETE',
+      fullTextIndexedChunks: 180,
+      fullTextMissingChunks: 56,
+    },
+    {
+      libraryId: 'lib-formulare',
+      libraryName: 'Formulare',
+      documentCount: 4,
+      indexedDocumentCount: 4,
+      pendingDocumentCount: 0,
+      failedDocumentCount: 0,
+      lowChunkDocumentCount: 0,
+      chunkCount: 48,
+      vectorChunkCount: 48,
+      lastIndexedAt: '2026-08-30T09:30:00Z',
+      vectorIndexState: 'READY',
+      fullTextIndexState: 'READY',
+      fullTextIndexedChunks: 48,
+      fullTextMissingChunks: 0,
+    },
+  ],
+}
+
+export const mockSearchPermissionProfiles: SearchPermissionProfileResponse[] = [
+  { id: 'group-buergerbuero', name: 'Sachbearbeitung Buergerbuero', libraryCount: 2 },
+  { id: 'group-phoenix', name: 'Projektbeteiligte Phoenix', libraryCount: 1 },
+]
+
+export const mockSearchDiagnosis: SearchDiagnosisResponse = {
+  question: 'Was gilt bei Gebuehrenbefreiung wegen Beduerftigkeit?',
+  contextType: 'PERMISSION_PROFILE',
+  contextLabel: 'Rechteprofil „Sachbearbeitung Buergerbuero“',
+  executedAt: '2026-09-01T10:00:00Z',
+  searchScope: [
+    { id: 'lib-satzungen', name: 'Satzungen & Gebuehrenordnungen' },
+    { id: 'lib-formulare', name: 'Formulare' },
+  ],
+  searchQueries: ['Gebuehrenbefreiung Beduerftigkeit'],
+  stages: [
+    {
+      stage: 'SEARCH_SCOPE',
+      status: 'EXECUTED',
+      incomingCount: 0,
+      outgoingCount: 0,
+      notes: ['2 Bibliotheken im Suchbereich'],
+      verdicts: [],
+    },
+    {
+      stage: 'VECTOR_SEARCH',
+      status: 'EXECUTED',
+      incomingCount: 0,
+      outgoingCount: 2,
+      notes: [],
+      verdicts: [
+        {
+          chunkId: 'chunk-1',
+          documentKey: 'doc-satzung',
+          documentTitle: 'verwaltungsgebuehrensatzung.pdf',
+          libraryName: 'Satzungen & Gebuehrenordnungen',
+          outcome: 'ADDED',
+          reason: 'RETRIEVED_BY_SEARCH',
+          listLabel: 'vector#1',
+          rank: 1,
+          value: 0.81,
+        },
+        {
+          chunkId: 'chunk-2',
+          documentKey: 'doc-formular',
+          documentTitle: 'antrag-befreiung.pdf',
+          libraryName: 'Formulare',
+          outcome: 'ADDED',
+          reason: 'RETRIEVED_BY_SEARCH',
+          listLabel: 'vector#1',
+          rank: 2,
+          value: 0.64,
+        },
+      ],
+    },
+    {
+      stage: 'RANK_FUSION',
+      status: 'EXECUTED',
+      incomingCount: 2,
+      outgoingCount: 1,
+      notes: [],
+      verdicts: [
+        {
+          chunkId: 'chunk-1',
+          documentKey: 'doc-satzung',
+          documentTitle: 'verwaltungsgebuehrensatzung.pdf',
+          libraryName: 'Satzungen & Gebuehrenordnungen',
+          outcome: 'KEPT',
+          reason: 'WITHIN_BUDGET',
+          listLabel: null,
+          rank: 1,
+          value: 0.032,
+        },
+        {
+          chunkId: 'chunk-2',
+          documentKey: 'doc-formular',
+          documentTitle: 'antrag-befreiung.pdf',
+          libraryName: 'Formulare',
+          outcome: 'DROPPED',
+          reason: 'OUTSIDE_FUSION_BUDGET',
+          listLabel: null,
+          rank: 2,
+          value: 0.016,
+        },
+      ],
+    },
+  ],
+  finalSelection: [
+    {
+      rank: 1,
+      chunkId: 'chunk-1',
+      documentKey: 'doc-satzung',
+      documentTitle: 'verwaltungsgebuehrensatzung.pdf',
+      libraryName: 'Satzungen & Gebuehrenordnungen',
+    },
+  ],
+  trackedDocument: null,
 }
 
 export const mockGroups: GroupListResponse[] = [

@@ -9,6 +9,10 @@ import type {
   ChatSummary,
   ChatUpdateRequest,
   EmbeddingInfoResponse,
+  SearchStatusResponse,
+  SearchPermissionProfileResponse,
+  SearchDiagnosisRequest,
+  SearchDiagnosisResponse,
   GroupListResponse,
   GroupMemberResponse,
   GroupResponse,
@@ -944,6 +948,44 @@ export async function testLlmModel(request: LlmModelTestRequest): Promise<LlmMod
 export async function getEmbeddingInfo(): Promise<EmbeddingInfoResponse> {
   try {
     const { data } = await client.get<EmbeddingInfoResponse>('/v1/admin/models/embedding-info')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getSearchStatus(): Promise<SearchStatusResponse> {
+  try {
+    const { data } = await client.get<SearchStatusResponse>('/v1/admin/search/status')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getSearchPermissionProfiles(): Promise<SearchPermissionProfileResponse[]> {
+  try {
+    const { data } = await client.get<SearchPermissionProfileResponse[]>(
+      '/v1/admin/search/permission-profiles',
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Runs one diagnosis. A POST because a test question does not belong in a URL - the call writes
+ * nothing, and there is no field in the request that could name an existing chat.
+ */
+export async function runSearchDiagnosis(
+  request: SearchDiagnosisRequest,
+): Promise<SearchDiagnosisResponse> {
+  try {
+    const { data } = await client.post<SearchDiagnosisResponse>(
+      '/v1/admin/search/diagnosis',
+      request,
+    )
     return data
   } catch (err) {
     normalizeError(err)

@@ -25,16 +25,18 @@ import { useUiStore } from './stores/uiStore'
 import { resolveThemeMode } from './theme/colorScheme'
 import BrandingSettingsPage from './pages/BrandingSettingsPage'
 import LlmModelManagementPage from './pages/LlmModelManagementPage'
+import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },
   { label: 'Benutzer & Gruppen', to: '/admin/groups' },
   { label: 'Modelle', to: '/admin/models' },
+  { label: 'Suche & Indexierung', to: '/admin/search' },
 ]
 
 /**
  * A regular user deep-linking into /admin/* gets the bare frame: showing them the full
- * administration navigation with three "nicht freigegeben" destinations helps no one
+ * administration navigation with "nicht freigegeben" destinations helps no one
  * (#800, review #794 finding 3). The pages keep their own role gates.
  */
 function AdminAreaLayout() {
@@ -112,6 +114,7 @@ export default function App() {
                 <Route path="admin/groups" element={<GroupManagementPage />} />
                 <Route path="admin/branding" element={<BrandingSettingsPage />} />
                 <Route path="admin/models" element={<LlmModelManagementPage />} />
+                <Route path="admin/search" element={<SearchIndexingAdminPage />} />
               </Route>
               {/* Mockup 2c (#788): the user settings render in the bare global frame -
                   no space column, no secondary column. */}
