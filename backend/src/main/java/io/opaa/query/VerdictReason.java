@@ -39,8 +39,5 @@ public enum VerdictReason {
    * (#932, tier 2) - unlike tier 1 this can drop a document out of the selection entirely, which is
    * why it is a reason of its own.
    */
-  EVICTED_BY_DOCUMENT_COMPLETION_TIER_2,
-
-  /** The stage did not act on this candidate at all, because it did not run. */
-  STAGE_NOT_RUN
+  EVICTED_BY_DOCUMENT_COMPLETION_TIER_2
 }

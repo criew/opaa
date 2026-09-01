@@ -26,10 +26,9 @@ import org.springframework.context.ApplicationContext;
  * io.opaa.eval} needs to cross that boundary, via {@link ApplicationContext} bean lookups rather
  * than a direct type reference.
  *
- * <p>Since issue #1046 the retrieval half of those collaborators is one bean, the {@link
- * RetrievalPipeline} — and every variant shares it, because a variant differs only in {@link
- * QueryProperties}, which the pipeline reads per run from its {@link RetrievalContext} rather than
- * holding in its stages.
+ * <p>All variants share one {@link RetrievalPipeline} instance: a variant differs only in {@link
+ * QueryProperties}, which the pipeline reads per run from its {@link RetrievalContext} instead of
+ * holding it in its stages.
  */
 public record QueryServiceDependencies(
     RetrievalPipeline retrievalPipeline,

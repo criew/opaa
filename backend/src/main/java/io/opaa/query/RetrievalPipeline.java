@@ -69,6 +69,12 @@ public class RetrievalPipeline {
    * Runs every registered stage in order and returns the selection together with the complete
    * explanation protocol.
    *
+   * <p><b>{@code context.searchScope()} is taken as given.</b> This method applies it as the {@code
+   * library_id} filter of every search, but resolves no permissions of its own: whoever builds the
+   * context is responsible for the scope being one the acting user may read (ADR-0008 §5). That
+   * holds for every caller of this second public entry point - the administration's diagnosis as
+   * much as {@code QueryService}.
+   *
    * <p>Once a stage halts the run - today only the empty-scope case in {@link SearchScopeStage} -
    * the remaining stages are recorded as not reached instead of being executed: an empty scope must
    * not pay for a decomposition LLM call whose result nothing would use.
@@ -78,16 +84,11 @@ public class RetrievalPipeline {
     List<StageExplanation> explanations = new ArrayList<>(stages.size());
 
     for (RetrievalStage stage : stages) {
-      int candidateCount =
-          state.candidateLists().stream().mapToInt(l -> l.documents().size()).sum();
-      if (state.halted()) {
-        explanations.add(
-            StageExplanation.notRun(stage.name(), StageStatus.NOT_REACHED, candidateCount));
-        continue;
-      }
-      if (disabledStages.contains(stage.name())) {
-        explanations.add(
-            StageExplanation.notRun(stage.name(), StageStatus.DISABLED, candidateCount));
+      if (state.halted() || disabledStages.contains(stage.name())) {
+        StageStatus status = state.halted() ? StageStatus.NOT_REACHED : StageStatus.DISABLED;
+        int candidateCount =
+            state.candidateLists().stream().mapToInt(list -> list.documents().size()).sum();
+        explanations.add(StageExplanation.notRun(stage.name(), status, candidateCount));
         continue;
       }
       StageOutcome outcome = stage.apply(context, state);

@@ -18,8 +18,9 @@ import org.springframework.stereotype.Component;
  * within.
  *
  * <p>With no search queries in the state - which happens exactly when {@link
- * RetrievalStageName#SUB_QUERY_DECOMPOSITION} is switched off - the bare question is searched. Note
- * the difference to that stage's own fallback, which prepends the conversation's first user
+ * RetrievalStageName#SUB_QUERY_DECOMPOSITION} is switched off - the bare question is searched and
+ * recorded as the run's search query, so a run never reports having searched nothing while it did.
+ * Note the difference to that stage's own fallback, which prepends the conversation's first user
  * message: a switched-off stage is absent, not neutralized.
  */
 @Component
@@ -56,20 +57,27 @@ class VectorSearchStage implements RetrievalStage {
                   .filterExpression(filter)
                   .build());
       lists.add(new CandidateList(label, candidates));
-      candidates.forEach(
-          candidate ->
-              verdicts.add(
-                  CandidateVerdict.of(
-                      candidate,
-                      CandidateOutcome.ADDED,
-                      VerdictReason.RETRIEVED_BY_SEARCH,
-                      label,
-                      candidate.getScore())));
+      for (int rank = 1; rank <= candidates.size(); rank++) {
+        Document candidate = candidates.get(rank - 1);
+        verdicts.add(
+            CandidateVerdict.of(
+                candidate,
+                CandidateOutcome.ADDED,
+                VerdictReason.RETRIEVED_BY_SEARCH,
+                label,
+                rank,
+                candidate.getScore()));
+      }
     }
 
+    // Records the queries actually searched when this stage derived them itself, so the run always
+    // reports what it searched for - the state's search queries are otherwise empty exactly when
+    // the decomposition stage is switched off.
+    RetrievalState searched =
+        state.searchQueries().isEmpty() ? state.withSearchQueries(searchQueries) : state;
     int retrieved = lists.stream().mapToInt(list -> list.documents().size()).sum();
     return new StageOutcome(
-        state.withSearchResults(lists),
+        searched.withSearchResults(lists),
         StageExplanation.executed(
             name(),
             0,

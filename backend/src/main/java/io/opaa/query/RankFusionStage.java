@@ -12,10 +12,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>Runs for a single list too, where it is provably the identity: within one list every rank is
  * distinct, so the fused scores are strictly decreasing in the list's own order and the cap is
- * already met by the per-list budget. That is deliberate - the pre-#923 single-query path used to
- * skip fusion, and reproducing that as a branch would be a second code path to keep in step with
- * this one for no gain (see docs/features/hybrid-retrieval.md, "Was das Refactoring ausdrücklich
- * nicht tut").
+ * already met by the per-list budget. One code path therefore covers both, rather than a branch
+ * that has to be kept in step with this one.
  *
  * <p>Deduplicates by chunk id, never by score: a chunk two lists found independently is one
  * candidate with two contributions, and scores from different searches are not comparable (#912).
@@ -51,6 +49,7 @@ class RankFusionStage implements RetrievalStage {
               withinBudget ? CandidateOutcome.KEPT : CandidateOutcome.DROPPED,
               withinBudget ? VerdictReason.WITHIN_BUDGET : VerdictReason.OUTSIDE_FUSION_BUDGET,
               FUSED_LIST_LABEL,
+              i + 1,
               candidate.fusedScore()));
     }
 

@@ -1,10 +1,9 @@
 package io.opaa.query;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
@@ -51,16 +50,21 @@ class MmrSelectionStage implements RetrievalStage {
       narrowed.add(new CandidateList(list.label(), selected));
       incoming += list.documents().size();
 
-      Set<String> selectedIds = new HashSet<>();
-      selected.forEach(document -> selectedIds.add(document.getId()));
-      for (Document candidate : list.documents()) {
-        boolean kept = selectedIds.contains(candidate.getId());
+      Map<String, Integer> rankInSelection = new HashMap<>();
+      for (int i = 0; i < selected.size(); i++) {
+        rankInSelection.put(selected.get(i).getId(), i + 1);
+      }
+      for (int incomingRank = 1; incomingRank <= list.documents().size(); incomingRank++) {
+        Document candidate = list.documents().get(incomingRank - 1);
+        Integer selectedRank = rankInSelection.get(candidate.getId());
+        boolean kept = selectedRank != null;
         verdicts.add(
             CandidateVerdict.of(
                 candidate,
                 kept ? CandidateOutcome.KEPT : CandidateOutcome.DROPPED,
                 kept ? VerdictReason.WITHIN_BUDGET : VerdictReason.OUTSIDE_LIST_BUDGET,
                 list.label(),
+                kept ? selectedRank : incomingRank,
                 candidate.getScore()));
       }
     }

@@ -15,10 +15,17 @@ import org.springframework.ai.document.Document;
  * @param reason why, as a fixed vocabulary rather than prose, so a consumer can group by it.
  * @param listLabel which candidate list the verdict refers to ({@link CandidateList#label()}), or
  *     {@code null} once the lists have been fused into one.
+ * @param rank the candidate's 1-based position in the ordering this stage decided against: its
+ *     position in the stage's output for a surviving candidate, the position it held in the stage's
+ *     input for a dropped one. {@code null} for a stage that does not rank at all. <b>Ranks, not
+ *     scores, are what fusion works on</b> - and unlike {@link #value} they stay meaningful across
+ *     search methods, which is why a lexical path's rank will be comparable with a vector path's
+ *     while their scores never are.
  * @param value the stage-internal number the decision was made on - similarity score, fused RRF
  *     score, and so on. {@code null} for a stage whose decision is not numeric. Deliberately not
- *     comparable across stages: a fusion score and a similarity score are different quantities, the
- *     exact confusion #912 was rooted in.
+ *     comparable across stages, and not across search methods within one: a fusion score, a cosine
+ *     similarity and a lexical rank score are different quantities, the exact confusion #912 was
+ *     rooted in.
  */
 public record CandidateVerdict(
     String chunkId,
@@ -26,6 +33,7 @@ public record CandidateVerdict(
     CandidateOutcome outcome,
     VerdictReason reason,
     String listLabel,
+    Integer rank,
     Double value) {
 
   static CandidateVerdict of(
@@ -33,6 +41,7 @@ public record CandidateVerdict(
       CandidateOutcome outcome,
       VerdictReason reason,
       String listLabel,
+      Integer rank,
       Double value) {
     return new CandidateVerdict(
         document.getId(),
@@ -40,6 +49,7 @@ public record CandidateVerdict(
         outcome,
         reason,
         listLabel,
+        rank,
         value);
   }
 }

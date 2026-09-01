@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +14,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -102,6 +106,99 @@ class RetrievalPipelineTest {
             .orElseThrow();
     assertThat(completion.status()).isEqualTo(StageStatus.DISABLED);
     assertThat(completion.incomingCount()).isEqualTo(completion.outgoingCount());
+  }
+
+  /**
+   * "Abgeschaltet = Identität" for the MMR stage: without it, no per-list narrowing happens at all,
+   * so the full {@code fetch-k} lists reach fusion, which then enforces the only remaining budget.
+   * The switch must remove the stage, not neutralize it - a pipeline that still truncated per list
+   * would measure the diversity term alone rather than the stage's contribution.
+   */
+  @Test
+  void switchingOffTheMmrStageLeavesTheFullListsToFusion() {
+    List<Document> candidates = new ArrayList<>();
+    for (int i = 0; i < 12; i++) {
+      candidates.add(chunk("chunk-" + i, "doc-" + i, 0.9 - i * 0.01));
+    }
+    stubSearch(List.copyOf(candidates));
+
+    RetrievalPipelineResult withoutMmr =
+        pipeline(new RetrievalPipelineProperties(Set.of(RetrievalStageName.MMR_SELECTION)))
+            .run(context(Set.of(LIBRARY_ID)));
+
+    // Fusion still caps at top-k, and the order is the search order: with one list, RRF ranks by
+    // that list's own ranks.
+    assertThat(withoutMmr.chunks())
+        .extracting(Document::getId)
+        .containsExactly(
+            "chunk-0", "chunk-1", "chunk-2", "chunk-3", "chunk-4", "chunk-5", "chunk-6", "chunk-7");
+    StageExplanation fusion =
+        withoutMmr.explanation().stages().stream()
+            .filter(stage -> stage.stage() == RetrievalStageName.RANK_FUSION)
+            .findFirst()
+            .orElseThrow();
+    assertThat(fusion.incomingCount()).isEqualTo(12);
+  }
+
+  /**
+   * Without the fusion stage the lists are not merged by rank at all: {@link
+   * RetrievalState#selection()} collapses them by ordered concatenation deduplicated by chunk id,
+   * and fusion's {@code top-k} cap consequently does not apply. That is what "this pipeline without
+   * that stage" means here - it is deliberately not a second, quieter fusion rule.
+   */
+  @Test
+  void switchingOffTheFusionStageCollapsesTheListsByConcatenationWithoutTheBudget() {
+    Document shared = chunk("shared", "doc-shared", 0.9);
+    Document firstOnly = chunk("first", "doc-first", 0.8);
+    Document secondOnly = chunk("second", "doc-second", 0.7);
+    when(queryDecompositionService.decompose(any(), any(), any(Integer.class)))
+        .thenReturn(List.of("q1", "q2"));
+    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              SearchRequest request = invocation.getArgument(0);
+              return "q1".equals(request.getQuery())
+                  ? List.of(shared, firstOnly)
+                  : List.of(shared, secondOnly);
+            });
+    QueryProperties twoChunkBudget = new QueryProperties(2, 25, 1.0, 0.3, 1.0, true, 3, 1);
+
+    RetrievalPipelineResult withoutFusion =
+        pipeline(new RetrievalPipelineProperties(Set.of(RetrievalStageName.RANK_FUSION)))
+            .run(new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), twoChunkBudget));
+
+    // Deduplicated by chunk id (shared appears once, at its first position), in list order, and
+    // three chunks despite a top-k of two - the cap belonged to the stage that is gone.
+    assertThat(withoutFusion.chunks())
+        .extracting(Document::getId)
+        .containsExactly("shared", "first", "second");
+  }
+
+  /**
+   * Without the decomposition stage there is no query-building step: the bare question is searched,
+   * without the conversation-history prefix the stage's own fallback prepends - and the run still
+   * reports the query it actually searched.
+   */
+  @Test
+  void switchingOffTheDecompositionStageSearchesTheBareQuestion() {
+    stubSearch(List.of(chunk("a-0", "doc-a", 0.9)));
+    List<Message> history = List.of(new UserMessage("Erste Frage"));
+
+    RetrievalPipelineResult withoutDecomposition =
+        pipeline(
+                new RetrievalPipelineProperties(Set.of(RetrievalStageName.SUB_QUERY_DECOMPOSITION)))
+            .run(
+                new RetrievalContext(
+                    "Zweite Frage",
+                    history,
+                    Set.of(LIBRARY_ID),
+                    new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2)));
+
+    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+    verify(vectorStore).similaritySearch(captor.capture());
+    assertThat(captor.getValue().getQuery()).isEqualTo("Zweite Frage");
+    verifyNoInteractions(queryDecompositionService);
+    assertThat(withoutDecomposition.searchQueries()).containsExactly("Zweite Frage");
   }
 
   /**

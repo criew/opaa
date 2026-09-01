@@ -428,11 +428,16 @@ public class QueryService {
     RetrievalPipelineResult result =
         retrievalPipeline.run(
             new RetrievalContext(question, conversationHistory, searchScope, queryProperties));
-    log.debug(
-        "Retrieved {} relevant chunks across {} search quer{} for query",
-        result.chunks().size(),
-        result.searchQueries().size(),
-        result.searchQueries().size() == 1 ? "y" : "ies");
+    // Only for a run that actually searched: an empty scope logged nothing before this pipeline
+    // existed, and a "0 chunks across 0 search queries" line would read like a failed retrieval
+    // rather than the deliberate short-circuit it is.
+    if (!result.searchQueries().isEmpty()) {
+      log.debug(
+          "Retrieved {} relevant chunks across {} search quer{} for query",
+          result.chunks().size(),
+          result.searchQueries().size(),
+          result.searchQueries().size() == 1 ? "y" : "ies");
+    }
     return new RetrievalWithDecomposition(result.chunks(), result.searchQueries());
   }
 

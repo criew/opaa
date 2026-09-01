@@ -246,8 +246,13 @@ Zwei Eigenschaften sind verbindlich, weil alles Weitere daran hängt:
 
 **Jede Stufe ist einzeln abschaltbar** (`opaa.query.pipeline.disabled-stages`), und zwar so, dass die
 abgeschaltete Stufe zur Identität wird —
-die Pipeline läuft dann bit-identisch zu ihrem Zustand ohne diese Stufe. Nur so misst der Benchmark den
-Beitrag einer Stufe und nicht den Unterschied zweier Codepfade. **Eine Ausnahme, aus der Umsetzung:** die
+die Pipeline läuft dann bit-identisch zu ihrem Zustand ohne diese Stufe. Nur so ist der Unterschied zweier
+Läufe der Beitrag einer Stufe und nicht der Unterschied zweier Codepfade. **Damit der Benchmark diesen
+Unterschied auch messen darf, fehlt noch ein Schritt:** Der Harness weist einen Lauf mit abgeschalteter
+Stufe heute ab, weil kein Report-Feld festhält, welche Stufen liefen — ein solcher Lauf wäre von einem
+vollständigen nicht unterscheidbar und würde als Codeänderung gegen die Baseline verbucht. Die
+Stufen-Auswahl zur Messgröße zu machen ist ein Vertragsnachtrag mit neuem Fixpunkt, erhöhter
+Vertragsversion und neu gezogenen Baselines. **Eine zweite Ausnahme, aus der Umsetzung:** die
 Stufe, die den Rechtefilter setzt (`SEARCH_SCOPE`), ist nicht abschaltbar — „ohne diese Stufe" wäre keine
 Messvariante, sondern eine Suche ohne Rechtefilter (ADR-0008 §5). Eine Konfiguration, die es versucht,
 scheitert beim Start, nicht bei der Abfrage.

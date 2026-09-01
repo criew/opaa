@@ -37,9 +37,16 @@ der Volltextpfad (AP 2) und die Reranking-Stufe (AP 4) eingehängt.
 
 **Jede Stufe ist einzeln abschaltbar** über `opaa.query.pipeline.disabled-stages` (Ebene-1-Wert, in keiner
 Administrationsoberfläche); die abgeschaltete Stufe entfällt dann vollständig, statt neutralisiert
-mitzulaufen — nur so misst der Benchmark den Beitrag einer Stufe und nicht den Unterschied zweier
+mitzulaufen — der Unterschied zweier Läufe ist so der Beitrag der Stufe und nicht der Unterschied zweier
 Codepfade. Einzige Ausnahme ist die Stufe `SEARCH_SCOPE`: „ohne Rechtefilter" ist keine Messvariante,
 sondern eine Rechteumgehung, und wird beim Start abgelehnt (ADR-0008 §5).
+
+**Für den Benchmark ist der Schalter (noch) nicht zugelassen.** Der Harness weist eine nicht-leere Menge
+ab (`PipelineHarnessSupport#requireMeasurableConfiguration`): Kein Feld eines Pipeline-Reports hält fest,
+welche Stufen liefen — ein Lauf mit abgeschalteter Stufe trüge denselben `runConfiguration`-Abdruck wie ein
+vollständiger, und seine Zahlen würden gegen die committete Baseline als Codeänderung verbucht. Die
+Stufen-Auswahl zur Messgröße zu machen ist ein bewusster Vertragsnachtrag (neuer Fixpunkt, erhöhte
+Vertragsversion, neu gezogene Baselines), keine Property-Entscheidung.
 
 **Das Erklärprotokoll** (`RetrievalExplanation`) enthält je registrierter Stufe einen Eintrag — auch für
 eine abgeschaltete oder nicht erreichte Stufe — mit hereingekommenen, hinausgegangenen und verworfenen

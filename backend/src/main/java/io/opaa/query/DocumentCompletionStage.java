@@ -2,8 +2,10 @@ package io.opaa.query;
 
 import io.opaa.query.DocumentCompletion.CompletionEvent;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
@@ -44,8 +46,15 @@ class DocumentCompletionStage implements RetrievalStage {
     Set<String> survivingChunkIds = new HashSet<>();
     completed.forEach(document -> survivingChunkIds.add(document.getId()));
 
+    Map<String, Integer> rankInResult = new HashMap<>();
+    for (int i = 0; i < completed.size(); i++) {
+      rankInResult.put(completed.get(i).getId(), i + 1);
+    }
+
     List<CandidateVerdict> verdicts = new ArrayList<>();
-    for (Document candidate : selection) {
+    for (int incomingRank = 1; incomingRank <= selection.size(); incomingRank++) {
+      Document candidate = selection.get(incomingRank - 1);
+      Integer resultRank = rankInResult.get(candidate.getId());
       boolean kept = survivingChunkIds.contains(candidate.getId());
       verdicts.add(
           CandidateVerdict.of(
@@ -53,6 +62,7 @@ class DocumentCompletionStage implements RetrievalStage {
               kept ? CandidateOutcome.KEPT : CandidateOutcome.DROPPED,
               kept ? VerdictReason.WITHIN_BUDGET : evictionReasonFor(candidate, events),
               RankFusionStage.FUSED_LIST_LABEL,
+              kept ? resultRank : incomingRank,
               null));
     }
     for (CompletionEvent event : events) {
@@ -62,6 +72,7 @@ class DocumentCompletionStage implements RetrievalStage {
               CandidateOutcome.ADDED,
               VerdictReason.COMPLETED_AS_SIBLING,
               RankFusionStage.FUSED_LIST_LABEL,
+              rankInResult.get(event.added().getId()),
               null));
     }
 

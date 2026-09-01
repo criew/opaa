@@ -3,6 +3,7 @@ package io.opaa.eval;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;
+import io.opaa.query.RetrievalPipelineProperties;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -104,12 +105,13 @@ public final class PipelineHarnessSupport {
       RunIdentity identity,
       QueryService queryService,
       QueryProperties queryProperties,
+      RetrievalPipelineProperties pipelineProperties,
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
       List<GoldenCase> goldenCases,
       Instant pipelineRunStart,
       Logger log) {
-    requireMeasurableConfiguration(queryProperties);
+    requireMeasurableConfiguration(queryProperties, pipelineProperties);
     try {
       PipelineEvaluationReport report =
           measure(
@@ -214,9 +216,18 @@ public final class PipelineHarnessSupport {
    *       while measuring without it. The specification forbids exactly that silent degradation,
    *       and which chat model the pipeline path should use is still an open decision
    *       (docs/features/retrieval-benchmark.md, "Offene Punkte" 3).
+   *   <li><b>No pipeline stage may be switched off.</b> This path measures the complete pipeline,
+   *       and which stages it consists of is not part of a report's fixed points: a run with a
+   *       stage switched off would carry a {@code runConfiguration} fingerprint identical to a full
+   *       run and its numbers would then be booked against the committed baseline as a code
+   *       regression or improvement. Making stage selection a measured dimension is a deliberate
+   *       measurement-contract change (new fixed point, raised {@code
+   *       PipelineEvaluationReport#PIPELINE_MEASUREMENT_CONTRACT_VERSION}, re-drawn baselines), not
+   *       something a property may do silently.
    * </ul>
    */
-  public static void requireMeasurableConfiguration(QueryProperties queryProperties) {
+  public static void requireMeasurableConfiguration(
+      QueryProperties queryProperties, RetrievalPipelineProperties pipelineProperties) {
     if (queryProperties.topK() != PipelineMetricsAggregate.RANKING_K) {
       throw new IllegalStateException(
           "opaa.query.top-k is "
@@ -240,6 +251,17 @@ public final class PipelineHarnessSupport {
               + "measured without it. Set the property to false for the run (the decomposition-off "
               + "variant), or supply a chat model once that open decision is settled "
               + "(docs/features/retrieval-benchmark.md, 'Offene Punkte' 3).");
+    }
+    if (!pipelineProperties.disabledStages().isEmpty()) {
+      throw new IllegalStateException(
+          "opaa.query.pipeline.disabled-stages switches off "
+              + pipelineProperties.disabledStages()
+              + ", but this path measures the complete pipeline and no report field records which "
+              + "stages ran. The run would be indistinguishable from a full one in its "
+              + "runConfiguration and its numbers would be judged against the committed baseline "
+              + "as a code change. Measure the full pipeline, or turn stage selection into a "
+              + "measured dimension deliberately: new fixed point, raised "
+              + "PIPELINE_MEASUREMENT_CONTRACT_VERSION, re-drawn baselines.");
     }
   }
 
