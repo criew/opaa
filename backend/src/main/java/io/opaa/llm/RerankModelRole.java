@@ -1,11 +1,10 @@
 package io.opaa.llm;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
@@ -17,65 +16,85 @@ import org.springframework.stereotype.Service;
  *
  * <p><b>A contradiction is never resolved silently.</b> Switch on with the role unbound or its
  * endpoint unreachable is reported at startup ({@link RerankRoleStartupCheck}) and stays readable
- * afterwards through {@link #status()} - retrieval then runs without reranking, but not unnoticed.
+ * afterwards through {@link #currentStatus()} - retrieval then runs without reranking, but not
+ * unnoticed.
  *
- * <p>The status is probed at startup and refreshed lazily: a read older than {@link #STATUS_TTL}
- * re-probes, and every real call updates it from what actually happened. An endpoint that dies
- * during operation therefore shows up as {@link RerankRoleState#UNREACHABLE} within a minute of the
- * next look, without a scheduler.
+ * <p><b>Neither {@link #currentStatus()} nor {@link #usable()} ever probes.</b> Both answer from
+ * configuration and the last known endpoint state: the first is on the path of an administration
+ * page load, the second on the path of every query, and neither may pay for a network round trip.
+ * The state is kept current by {@link #refresh()} - once at startup, then on a fixed schedule - and
+ * by every real {@link #rerank} call, which records what actually happened.
  */
 @Service
-public class RerankModelRole {
+public class RerankModelRole implements RerankRoleStatusProvider {
 
   private static final Logger log = LoggerFactory.getLogger(RerankModelRole.class);
 
-  /** How long a probe result is trusted before {@link #status()} probes again. */
-  static final Duration STATUS_TTL = Duration.ofSeconds(60);
+  /** How often the endpoint is re-probed while nothing else exercises it. */
+  private static final long PROBE_INTERVAL_MILLIS = 60_000;
 
   private final RerankProperties properties;
   private final RerankClient client;
-  private final AtomicReference<RerankRoleStatus> status = new AtomicReference<>();
+
+  /**
+   * The last probe or call result for a switched-on, bound role; {@code null} until the first probe.
+   * The switched-off and unbound states are derived from configuration instead, so they can never
+   * go stale.
+   */
+  private final AtomicReference<RerankRoleStatus> lastKnown = new AtomicReference<>();
 
   public RerankModelRole(RerankProperties properties, RerankClient client) {
     this.properties = properties;
     this.client = client;
   }
 
-  /**
-   * The current state, re-probing when the last probe is older than {@link #STATUS_TTL}. Never
-   * throws: an unreachable endpoint is a state, not an error.
-   */
-  public RerankRoleStatus status() {
-    if (!properties.enabled() || !properties.bound()) {
-      return configurationOnlyStatus();
+  @Override
+  public RerankRoleStatus currentStatus() {
+    if (!properties.enabled()) {
+      return RerankRoleStatus.disabled();
     }
-    RerankRoleStatus current = status.get();
-    if (current == null
-        || Duration.between(current.checkedAt(), Instant.now()).compareTo(STATUS_TTL) > 0) {
-      return refresh();
+    if (!properties.bound()) {
+      return new RerankRoleStatus(
+          RerankRoleState.UNCONFIGURED,
+          emptyToNull(properties.baseUrl()),
+          emptyToNull(properties.model()),
+          "rerank role switched on, but opaa.rerank.base-url and/or opaa.rerank.model are unset");
     }
-    return current;
+    RerankRoleStatus known = lastKnown.get();
+    return known != null ? known : status(RerankRoleState.UNREACHABLE, "endpoint not probed yet");
   }
 
-  /** Probes the endpoint now and returns the resulting state. */
+  /**
+   * Keeps the state current while nothing else exercises the endpoint - so a role that dies in
+   * operation shows up as {@link RerankRoleState#UNREACHABLE} within a minute rather than at the
+   * next query.
+   */
+  @Scheduled(fixedDelay = PROBE_INTERVAL_MILLIS, initialDelay = PROBE_INTERVAL_MILLIS)
+  void probePeriodically() {
+    refresh();
+  }
+
+  /**
+   * Probes the endpoint and records the result. Blocking, and therefore called only from the
+   * startup check and the schedule above - never from a query or a page load.
+   */
   public RerankRoleStatus refresh() {
     if (!properties.enabled() || !properties.bound()) {
-      RerankRoleStatus configuration = configurationOnlyStatus();
-      status.set(configuration);
-      return configuration;
+      lastKnown.set(null);
+      return currentStatus();
     }
     String failure = client.probeFailureMessage(properties);
     RerankRoleStatus probed =
         failure == null
-            ? reachable()
-            : unreachable("Der Rerank-Endpunkt hat nicht geantwortet: " + failure);
-    status.set(probed);
+            ? status(RerankRoleState.READY, null)
+            : status(RerankRoleState.UNREACHABLE, failure);
+    lastKnown.set(probed);
     return probed;
   }
 
-  /** Whether a query may call the endpoint right now. */
+  /** Whether a query may call the endpoint right now. Never blocks. */
   public boolean usable() {
-    return status().usable();
+    return currentStatus().state() == RerankRoleState.READY;
   }
 
   /**
@@ -83,7 +102,7 @@ public class RerankModelRole {
    *
    * <p><b>Never throws and never fails a query.</b> A call that does not come back usable yields an
    * empty list and moves the role to {@link RerankRoleState#UNREACHABLE}, so the caller falls back
-   * to the ranking it already had and the failure is visible in {@link #status()} afterwards.
+   * to the ranking it already had and the failure is visible in {@link #currentStatus()} afterwards.
    */
   public List<RerankClient.ScoredCandidate> rerank(String query, List<String> texts) {
     if (!properties.enabled() || !properties.bound()) {
@@ -91,10 +110,10 @@ public class RerankModelRole {
     }
     try {
       List<RerankClient.ScoredCandidate> scored = client.rerank(properties, query, texts);
-      status.set(reachable());
+      lastKnown.set(status(RerankRoleState.READY, null));
       return scored;
     } catch (RerankClient.RerankUnavailableException e) {
-      status.set(unreachable("Der letzte Rerank-Aufruf ist fehlgeschlagen: " + e.getMessage()));
+      lastKnown.set(status(RerankRoleState.UNREACHABLE, e.getMessage()));
       log.warn(
           "Rerank call against {} failed, continuing without reranking: {}",
           properties.describeWithoutSecrets(),
@@ -103,48 +122,11 @@ public class RerankModelRole {
     }
   }
 
-  private RerankRoleStatus configurationOnlyStatus() {
-    if (!properties.enabled()) {
-      return new RerankRoleStatus(
-          RerankRoleState.DISABLED,
-          false,
-          properties.baseUrl(),
-          properties.model(),
-          "Reranking ist ausgeschaltet (OPAA_RERANK_ENABLED). Die Suche läuft ohne Reranking – so"
-              + " eingestellt.",
-          null);
-    }
-    if (!properties.bound()) {
-      return new RerankRoleStatus(
-          RerankRoleState.UNCONFIGURED,
-          true,
-          properties.baseUrl(),
-          properties.model(),
-          "Reranking ist eingeschaltet, aber die Rerank-Rolle ist nicht belegt: Basis-Adresse"
-              + " und Modell-Kennung müssen beide gesetzt sein (OPAA_RERANK_BASE_URL,"
-              + " OPAA_RERANK_MODEL). Die Suche läuft bis dahin ohne Reranking.",
-          null);
-    }
-    throw new IllegalStateException("configurationOnlyStatus called for a bound, enabled role");
+  private RerankRoleStatus status(RerankRoleState state, String diagnostic) {
+    return new RerankRoleStatus(state, properties.baseUrl(), properties.model(), diagnostic);
   }
 
-  private RerankRoleStatus reachable() {
-    return new RerankRoleStatus(
-        RerankRoleState.ACTIVE,
-        true,
-        properties.baseUrl(),
-        properties.model(),
-        "Reranking ist eingeschaltet und der Endpunkt hat geantwortet.",
-        Instant.now());
-  }
-
-  private RerankRoleStatus unreachable(String message) {
-    return new RerankRoleStatus(
-        RerankRoleState.UNREACHABLE,
-        true,
-        properties.baseUrl(),
-        properties.model(),
-        message + " Die Suche läuft bis dahin ohne Reranking.",
-        Instant.now());
+  private static String emptyToNull(String value) {
+    return value.isEmpty() ? null : value;
   }
 }

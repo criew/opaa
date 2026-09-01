@@ -1,5 +1,6 @@
 package io.opaa.llm;
 
+import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
@@ -40,13 +41,14 @@ import tools.jackson.databind.ObjectMapper;
  *
  * <p><b>The access key never appears anywhere but the {@code Authorization} header</b> - not in an
  * exception message, not in a log line, not truncated. Redirects are never followed, so the header
- * cannot be replayed to an address this class never validated.
+ * cannot be replayed to an address this class never validated. Every failure message is technical
+ * English: it travels into {@link RerankRoleStatus#diagnostic()}, not onto a screen.
  */
 @Component
 public class RerankClient {
 
   /** Short enough that an unreachable endpoint degrades a query rather than stalling it. */
-  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
 
   private final ObjectMapper objectMapper;
 
@@ -57,8 +59,26 @@ public class RerankClient {
    */
   private final AtomicReference<Dialect> dialect = new AtomicReference<>();
 
+  /**
+   * One client for the whole application, not one per call: reranking is on the path of every query
+   * of an installation that switched it on, and a fresh TCP (and TLS) handshake per query is both
+   * wasted latency and, against a busy endpoint, a connect timeout waiting to happen. Redirects are
+   * never followed, so the {@code Authorization} header cannot be replayed to an address this class
+   * never validated.
+   */
+  private final HttpClient httpClient =
+      HttpClient.newBuilder()
+          .connectTimeout(CONNECT_TIMEOUT)
+          .followRedirects(HttpClient.Redirect.NEVER)
+          .build();
+
   public RerankClient(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
+  }
+
+  @PreDestroy
+  void closeHttpClient() {
+    httpClient.close();
   }
 
   /**
@@ -82,7 +102,11 @@ public class RerankClient {
     }
   }
 
-  /** Signals that the endpoint could not be used for this call, with a German, safe message. */
+  /**
+   * Signals that the endpoint could not be used for this call. The message is technical and
+   * English - it ends up in {@link RerankRoleStatus#diagnostic()}, whose German wording is the
+   * presenting layer's business - and it never contains the access key.
+   */
   public static class RerankUnavailableException extends RuntimeException {
     public RerankUnavailableException(String message) {
       super(message);
@@ -133,11 +157,7 @@ public class RerankClient {
       request.header("Authorization", "Bearer " + properties.apiKey());
     }
 
-    try (HttpClient httpClient =
-        HttpClient.newBuilder()
-            .connectTimeout(CONNECT_TIMEOUT)
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .build()) {
+    try {
       HttpResponse<String> response =
           httpClient.send(request.build(), HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() == 400 || response.statusCode() == 422) {
@@ -151,7 +171,7 @@ public class RerankClient {
       throw new RerankUnavailableException(describeConnectionError(e), e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new RerankUnavailableException("Die Verbindung wurde unterbrochen.", e);
+      throw new RerankUnavailableException("the call was interrupted", e);
     }
   }
 
@@ -175,12 +195,11 @@ public class RerankClient {
     try {
       uri = ModelEndpointUri.append(baseUrl, "/rerank");
     } catch (IllegalArgumentException | URISyntaxException e) {
-      throw new RerankUnavailableException("Die Basis-Adresse ist keine gültige URL.", e);
+      throw new RerankUnavailableException("base URL is not a valid URI", e);
     }
     String scheme = uri.getScheme();
     if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
-      throw new RerankUnavailableException(
-          "Die Basis-Adresse muss mit http:// oder https:// beginnen.");
+      throw new RerankUnavailableException("base URL must start with http:// or https://");
     }
     return uri;
   }
@@ -201,7 +220,7 @@ public class RerankClient {
     try {
       return objectMapper.writeValueAsString(body);
     } catch (JacksonException e) {
-      throw new IllegalStateException("Die Rerank-Anfrage konnte nicht aufgebaut werden", e);
+      throw new IllegalStateException("failed to build the rerank request body", e);
     }
   }
 
@@ -217,13 +236,11 @@ public class RerankClient {
     try {
       root = objectMapper.readTree(responseBody);
     } catch (JacksonException e) {
-      throw new RerankUnavailableException(
-          "Die Antwort des Rerank-Endpunkts ist kein gültiges JSON.", e);
+      throw new RerankUnavailableException("endpoint response is not valid JSON", e);
     }
     JsonNode entries = root.isArray() ? root : root.path("results");
     if (!entries.isArray()) {
-      throw new RerankUnavailableException(
-          "Die Antwort des Rerank-Endpunkts enthält keine Trefferliste.");
+      throw new RerankUnavailableException("endpoint response contains no result list");
     }
     List<ScoredCandidate> scored = new ArrayList<>(entries.size());
     for (JsonNode entry : entries) {
@@ -232,7 +249,7 @@ public class RerankClient {
           entry.has("relevance_score") ? entry.path("relevance_score") : entry.path("score");
       if (!indexNode.isNumber() || !scoreNode.isNumber()) {
         throw new RerankUnavailableException(
-            "Die Antwort des Rerank-Endpunkts enthält einen Eintrag ohne Index oder Bewertung.");
+            "endpoint response contains an entry without an index or a score");
       }
       int index = indexNode.intValue();
       if (index < 0 || index >= documentCount) {
@@ -253,35 +270,27 @@ public class RerankClient {
 
   private static String describeStatus(int status) {
     return switch (status) {
-      case 401 ->
-          "Die Authentifizierung am Rerank-Endpunkt ist fehlgeschlagen (HTTP 401). Prüfen Sie den"
-              + " Zugangsschlüssel.";
-      case 403 -> "Der Rerank-Endpunkt hat den Zugriff verweigert (HTTP 403).";
-      case 404 ->
-          "Der Rerank-Endpunkt kennt weder die Adresse noch die Modell-Kennung (HTTP 404). Prüfen"
-              + " Sie Basis-Adresse und Modell-Kennung.";
-      case 400, 422 ->
-          "Der Rerank-Endpunkt hat die Anfrage abgelehnt (HTTP "
-              + status
-              + "). Prüfen Sie Modell-Kennung und Endpunkt.";
-      default -> "Der Rerank-Endpunkt antwortete mit HTTP " + status + ".";
+      case 401 -> "HTTP 401: authentication failed, check the access key";
+      case 403 -> "HTTP 403: the endpoint refused access";
+      case 404 -> "HTTP 404: unknown path or model identifier";
+      case 400, 422 -> "HTTP " + status + ": the endpoint rejected the request";
+      default -> "HTTP " + status + " from the rerank endpoint";
     };
   }
 
   private static String describeConnectionError(IOException e) {
     if (e instanceof UnknownHostException) {
-      return "Der Host des Rerank-Endpunkts konnte nicht gefunden werden (DNS-Auflösung"
-          + " fehlgeschlagen).";
+      return "host not found (DNS resolution failed)";
     }
     if (e instanceof ConnectException) {
-      return "Die Verbindung zum Rerank-Endpunkt wurde abgelehnt.";
+      return "connection refused";
     }
     if (e instanceof HttpTimeoutException || e instanceof SocketTimeoutException) {
-      return "Der Rerank-Endpunkt hat das Zeitlimit überschritten.";
+      return "request timed out";
     }
     if (e instanceof SSLException) {
-      return "Das Zertifikat des Rerank-Endpunkts konnte nicht geprüft werden.";
+      return "TLS handshake failed";
     }
-    return "Der Rerank-Endpunkt ist nicht erreichbar.";
+    return "endpoint not reachable";
   }
 }

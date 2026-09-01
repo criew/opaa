@@ -1,42 +1,22 @@
 package io.opaa.llm;
 
-import java.time.Instant;
-
 /**
- * The continuously queryable state of the rerank model role - the named backend query the
- * administration surface (issue #1053) reads, and the answer to "a message that only appears at
- * startup is out of anyone's reach a day later" (docs/features/hybrid-retrieval.md, Arbeitspaket
- * 4).
+ * The continuously queryable state of the rerank model role (#1050 acceptance criterion 3), as the
+ * administration page reads it.
  *
- * <p><b>Carries no access key, in no form.</b> Not the key, not a truncation of it, not a hash: the
- * only fields describing the configuration are the endpoint address and the model identifier.
+ * <p>{@code baseUrl} and {@code modelIdentifier} are {@code null} while the role is unbelegt. The
+ * access key is not part of this type and never will be - a status display shows it neither in full
+ * nor shortened.
  *
- * @param state what the role is currently in; {@link RerankRoleState#contradictsIntent()} says
- *     whether it needs anyone's attention.
- * @param enabled the raw switch value, so a consumer can distinguish "off" from "on but broken"
- *     without interpreting {@link #state}.
- * @param baseUrl configured endpoint address, empty when the role is unbound.
- * @param model configured model identifier, empty when the role is unbound.
- * @param message one German sentence stating what holds and, where something is wrong, what to
- *     check. User-facing text, unlike the technical strings of the retrieval explanation protocol.
- * @param checkedAt when the endpoint was last probed; {@code null} when no probe has run because
- *     the role is switched off or unbound.
+ * @param diagnostic a short technical statement of what the endpoint reported, or {@code null} when
+ *     there is nothing beyond {@code state} to say. Not a user-facing text: the German wording is
+ *     the API mapper's business.
  */
 public record RerankRoleStatus(
-    RerankRoleState state,
-    boolean enabled,
-    String baseUrl,
-    String model,
-    String message,
-    Instant checkedAt) {
+    RerankRoleState state, String baseUrl, String modelIdentifier, String diagnostic) {
 
-  public RerankRoleStatus {
-    baseUrl = baseUrl == null ? "" : baseUrl;
-    model = model == null ? "" : model;
-  }
-
-  /** Whether a query may actually call the rerank endpoint. */
-  public boolean usable() {
-    return state == RerankRoleState.ACTIVE;
+  /** The role's switch is off. */
+  public static RerankRoleStatus disabled() {
+    return new RerankRoleStatus(RerankRoleState.DISABLED, null, null, null);
   }
 }

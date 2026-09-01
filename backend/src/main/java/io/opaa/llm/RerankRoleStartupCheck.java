@@ -7,14 +7,14 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 
 /**
- * Reports the rerank role's state once the application is up (docs/features/hybrid-retrieval.md,
- * Arbeitspaket 4): a contradiction between the switch and the role's configuration is logged at
- * {@code ERROR}, so it cannot pass for a normal startup line.
+ * Probes the rerank role once the application is up and reports the result
+ * (docs/features/hybrid-retrieval.md, Arbeitspaket 4): a contradiction between the switch and the
+ * role's configuration is logged at {@code ERROR}, so it cannot pass for a normal startup line.
  *
  * <p><b>The application still starts.</b> A misconfigured rerank role degrades retrieval, it does
  * not break it - failing the start would take a whole installation offline over an optional
  * component. The startup line is therefore only half the answer; the other half is {@link
- * RerankModelRole#status()}, which stays readable long after this line has scrolled away.
+ * RerankModelRole#currentStatus()}, which stays readable long after this line has scrolled away.
  */
 @Component
 class RerankRoleStartupCheck implements ApplicationListener<ApplicationReadyEvent> {
@@ -30,14 +30,19 @@ class RerankRoleStartupCheck implements ApplicationListener<ApplicationReadyEven
   @Override
   public void onApplicationEvent(ApplicationReadyEvent event) {
     RerankRoleStatus status = role.refresh();
-    if (status.state().contradictsIntent()) {
+    boolean contradictsIntent =
+        status.state() == RerankRoleState.UNCONFIGURED
+            || status.state() == RerankRoleState.UNREACHABLE;
+    if (contradictsIntent) {
       log.error(
-          "Rerank role misconfigured (state {}): {} Configured endpoint: {}",
+          "Rerank role is switched on but not usable (state {}): {}. Endpoint: {}. Retrieval "
+              + "continues without reranking; the state stays readable via "
+              + "RerankRoleStatusProvider#currentStatus.",
           status.state(),
-          status.message(),
-          status.baseUrl().isEmpty() ? "(none)" : status.baseUrl());
+          status.diagnostic(),
+          status.baseUrl() == null ? "(none configured)" : status.baseUrl());
       return;
     }
-    log.info("Rerank role state: {} ({})", status.state(), status.message());
+    log.info("Rerank role state: {}", status.state());
   }
 }

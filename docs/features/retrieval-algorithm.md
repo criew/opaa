@@ -212,7 +212,9 @@ getrennt von den Endpunktangaben `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL` und
 `OPAA_RERANK_API_KEY` — „Reranking aus" soll eine Aussage der Betreiberin sein und nicht das
 ununterscheidbare Ergebnis einer fehlenden Konfigurationszeile. Ein Widerspruch (Schalter an, Rolle
 unbelegt oder Endpunkt stumm) wird beim Start als Fehler geloggt und bleibt danach über
-`RerankModelRole#status()` abfragbar; die Suche läuft weiter, aber nicht unbemerkt.
+`RerankRoleStatusProvider#currentStatus()` abfragbar — dem schmalen Vertrag, den die
+Administrationsseite ([#1053](https://github.com/criew/opaa/issues/1053)) liest. Die Suche
+läuft weiter, aber nicht unbemerkt.
 
 Die Kandidatenzahl steuert `opaa.query.rerank-candidate-count`
 (`OPAA_QUERY_RERANK_CANDIDATE_COUNT`, Default `50`, Ebene-1-Wert). `0` schaltet die Stufe über ihren

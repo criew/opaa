@@ -17,8 +17,10 @@ import org.springframework.stereotype.Component;
  * QueryProperties#rerankCandidateCount} whenever reranking is active, so a path that passed on more
  * than {@code top-k} chunks would hand a multiple of the intended context to answer generation.
  *
- * <p>A chunk the reranker did not score keeps its fused order behind every scored one: an endpoint
- * that answers for part of the window must not make the rest disappear.
+ * <p>A chunk the reranker did not score keeps its fused order behind every scored one - whether it
+ * sat behind the candidate window or the endpoint simply did not score it. An endpoint that
+ * answers for part of the window must not make the rest disappear, and a window below {@code
+ * top-k} must not shrink the answer's context.
  */
 @Component
 class RerankStage implements RetrievalStage {
@@ -63,7 +65,14 @@ class RerankStage implements RetrievalStage {
               + topK);
     }
 
-    List<RankedCandidate> reranked = reorder(window, scored);
+    List<RankedCandidate> reranked = new ArrayList<>(incoming.size());
+    reranked.addAll(reorder(window, scored));
+    // Candidates behind the window keep their fused position behind the reranked ones. They only
+    // exist when the window is smaller than the incoming list, and dropping them would let a window
+    // below top-k shrink the answer's context.
+    for (int i = window.size(); i < incoming.size(); i++) {
+      reranked.add(new RankedCandidate(incoming.get(i), null));
+    }
     List<Document> selection =
         reranked.stream().limit(topK).map(RankedCandidate::document).toList();
 
@@ -79,17 +88,6 @@ class RerankStage implements RetrievalStage {
               RankFusionStage.FUSED_LIST_LABEL,
               rank,
               candidate.score()));
-    }
-    // Candidates beyond the rerank window: the reranker never saw them, and they are out.
-    for (int i = window.size(); i < incoming.size(); i++) {
-      verdicts.add(
-          CandidateVerdict.of(
-              incoming.get(i),
-              CandidateOutcome.DROPPED,
-              VerdictReason.OUTSIDE_RERANK_BUDGET,
-              RankFusionStage.FUSED_LIST_LABEL,
-              i + 1,
-              null));
     }
 
     return new StageOutcome(

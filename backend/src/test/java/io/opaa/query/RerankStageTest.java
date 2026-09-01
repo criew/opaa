@@ -161,6 +161,23 @@ class RerankStageTest {
         .containsExactly("c3", "c0", "c1", "c2", "c4");
   }
 
+  /**
+   * A candidate window below {@code top-k} must reorder its window without shrinking the answer:
+   * everything behind the window keeps its fused position behind the reranked ones.
+   */
+  @Test
+  void aWindowSmallerThanTopKDoesNotShrinkTheSelection() {
+    when(role.rerank(anyString(), any()))
+        .thenReturn(List.of(new ScoredCandidate(2, 9.0), new ScoredCandidate(0, 1.0)));
+
+    StageOutcome outcome = stage.apply(context(3, true), stateWith(12));
+
+    assertThat(outcome.state().selection()).hasSize(TOP_K);
+    assertThat(outcome.state().selection())
+        .extracting(Document::getId)
+        .startsWith("c2", "c0", "c1", "c3", "c4");
+  }
+
   @Test
   void anEmptySelectionIsPassedThroughWithoutCallingTheModel() {
     StageOutcome outcome = stage.apply(context(50, true), RetrievalState.initial());

@@ -145,7 +145,7 @@ class RerankClientTest {
 
     assertThatThrownBy(() -> client.rerank(properties(""), "Frage", List.of("a")))
         .isInstanceOf(RerankUnavailableException.class)
-        .hasMessageContaining("Trefferliste");
+        .hasMessageContaining("no result list");
   }
 
   @Test

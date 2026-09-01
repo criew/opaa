@@ -612,9 +612,12 @@ schlechterer Suchqualität führen, nie zu einem Fehler für den fragenden Mensc
 > - **Der explizite Schalter** `OPAA_RERANK_ENABLED`, getrennt von `OPAA_RERANK_BASE_URL`,
 >   `OPAA_RERANK_MODEL` und `OPAA_RERANK_API_KEY`. Voreinstellung: aus.
 > - **Der Widerspruchszustand**: Startmeldung auf Fehler-Ebene *und* der fortlaufend abfragbare
->   Zustand `RerankModelRole#status()` (vier Zustände: ausgeschaltet, unbelegt, nicht erreichbar,
->   aktiv). Die Administrationsseite aus [#1053](https://github.com/criew/opaa/issues/1053) liest
->   genau diesen Zustand; #1050 liefert ihn, nicht die Oberfläche.
+>   Zustand hinter `RerankRoleStatusProvider#currentStatus()` (vier Zustände: `DISABLED`,
+>   `READY`, `UNCONFIGURED`, `UNREACHABLE`). Die Administrationsseite aus
+>   [#1053](https://github.com/criew/opaa/issues/1053) liest genau diesen Vertrag; #1050
+>   liefert die Implementierung, nicht die Oberfläche. Weder die Zustandsabfrage noch die
+>   Prüfung auf dem Anfragepfad wartet dafür auf einen Netzaufruf: Der Erreichbarkeitszustand
+>   wird beim Start, im Minutentakt und bei jedem echten Rerank-Aufruf fortgeschrieben.
 > - **Die Stufe** `RERANK` zwischen Fusion und Dokument-Vervollständigung, mit eigenem Eintrag im
 >   Erklärprotokoll — inklusive des Status `UNAVAILABLE` für „eingeschaltet, aber nicht nutzbar".
 > - **Die Kandidatenzahl** `OPAA_QUERY_RERANK_CANDIDATE_COUNT` (Startwert 50, `0` schaltet die Stufe
