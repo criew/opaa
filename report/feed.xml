@@ -5,8 +5,30 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-31T05:53:52Z</updated>
+  <updated>2026-09-01T05:27:36Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Montag, 31. August 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-31.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-31.html</id>
+    <updated>2026-09-01T05:27:36Z</updated>
+    <summary type="text">feat(eval): Suchqualitäts-Benchmark — Konfigurationsvergleiche und Verwaltungs-Evaldomäne:
+— Pipeline-Messpfad, Variantenmechanik und Verwaltungs-Evaldomäne implementiert
+— Baseline für city-landmarks-Lauf noch ausstehend
+feat(indexing): Metadatenschema für Wissensbibliotheken:
+— Kernfelder, Bibliotheksfelder und Metadatenextraktion geplant
+— Modellgestützte Extraktion und Schlagworte vorgesehen
+feat(indexing): Ingestion-Pipelines je Dokumenttyp:
+— Dokumenttyp-spezifische Pipelines und strukturbewusstes Chunking geplant
+— Docling-PoC für layoutbewusste Konvertierung vorgesehen
+feat(retrieval): Hybride Suche mit Reranking:
+— Hybride Suche mit Volltextpfad und Reranking geplant
+— Reranking als konfigurierbare Modellrolle vorgesehen
+Sonstiges:
+— SBOM-Erzeugung und CVE-Erkennung implementiert
+— Externer Ollama-Endpunkt für Retrieval-Harness unterstützt
+— Feature-Spezifikationen für Retrieval und Ingestion konsolidiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Sonntag, 30. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-30.html"/>

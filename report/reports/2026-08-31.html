@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-08-31</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Montag, 31. August 2026</h1>
+<nav class="blaettern"><a href="2026-08-30.html" rel="prev" title="Sonntag, 30. August 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/33473381214" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">36</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+44</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">13</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">16</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1036">#1036</a> feat(eval): Suchqualitäts-Benchmark — Konfigurationsvergleiche und Verwaltungs-Evaldomäne</span>
+<span class="epic-progress">7 / 7 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Pipeline-Messpfad, Variantenmechanik und Verwaltungs-Evaldomäne implementiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1081">#1081</a></span>Baseline für city-landmarks-Lauf noch ausstehend</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1084">#1084</a></span>feat(eval): Getrennte Baselines je Messpfad und ADR-0012-Nachtrag zum Messvertrag (+2072/−75, 23 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1077">#1077</a></span>feat(eval): Variantenmechanik für gepaarte Konfigurationsvergleiche (+1827/−25, 26 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1075">#1075</a></span>feat(eval): Pipeline-Messpfad im Retrieval-Harness (+1812/−23, 19 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1074">#1074</a></span>feat(eval): Verwaltungs-Evaldomäne — Generator, Korpus, Manifest und MAINTENANCE.md (+7666/−3, 77 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1065">#1065</a> feat(indexing): Metadatenschema für Wissensbibliotheken</span>
+<span class="epic-progress">0 / 8 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+<ul><li>Kernfelder, Bibliotheksfelder und Metadatenextraktion geplant</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1073">#1073</a></span>Modellgestützte Extraktion und Schlagworte vorgesehen</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1054">#1054</a> feat(indexing): Ingestion-Pipelines je Dokumenttyp</span>
+<span class="epic-progress">2 / 8 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 25%"></div></div>
+<ul><li>Dokumenttyp-spezifische Pipelines und strukturbewusstes Chunking geplant</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1062">#1062</a></span>Docling-PoC für layoutbewusste Konvertierung vorgesehen</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1045">#1045</a> feat(retrieval): Hybride Suche mit Reranking</span>
+<span class="epic-progress">1 / 8 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 12%"></div></div>
+<ul><li>Hybride Suche mit Volltextpfad und Reranking geplant</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1050">#1050</a></span>Reranking als konfigurierbare Modellrolle vorgesehen</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li>SBOM-Erzeugung und CVE-Erkennung implementiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1076">#1076</a></span>Externer Ollama-Endpunkt für Retrieval-Harness unterstützt</li><li>Feature-Spezifikationen für Retrieval und Ingestion konsolidiert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1083">#1083</a></span>ci: CVE-Erkennung mit Dependency-Submission und geplantem Image-Scan (+173/−1, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1082">#1082</a></span>ci: SBOM-Erzeugung für Backend, Frontend und Docker-Images (+176/−0, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1080">#1080</a></span>feat(eval): Externen Ollama-Endpunkt für den Retrieval-Harness unterstützen (+585/−155, 17 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1064">#1064</a></span>docs(features): Spezifikation für das Metadatenschema der Bibliotheken (+958/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1038">#1038</a></span>docs(fortschritt): Bausteine auf Vorgänge mit Befund reduzieren, Index streichen (+2269/−7330, 568 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1035">#1035</a></span>docs(discussions): Discussion-Dokumente auf Entscheidungsstand konsolidieren (+54/−682, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1034">#1034</a></span>docs(features): Spezifikationen für Retrieval-Benchmark, Hybrid-Suche und Ingestion-Pipelines (+2316/−0, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1031">#1031</a></span>docs(discussions): abgearbeitete Backlog-Sichtung entfernen (+1/−204, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1030">#1030</a></span>docs(discussions): obsolete Diskussionsdokumente entfernen (+0/−298, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1028">#1028</a></span>chore(deps): org.yaml:snakeyaml auf v2.7 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1027">#1027</a></span>chore(deps): react-router auf v8.3.1 aktualisieren (+6/−6, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1020">#1020</a></span>chore(ci): pnpm-Mindestalter-Ausnahme für die vorgezogenen Updates zurückbauen (+0/−9, 1 Datei)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-09-01 um 07:27 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-08-31T00:00:00 bis 2026-08-31T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
