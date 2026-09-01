@@ -198,6 +198,12 @@ public class IndexingConfiguration {
   }
 
   @Bean
+  LowChunkDocumentAuditService lowChunkDocumentAuditService(
+      DocumentRepository documentRepository, KnowledgeLibraryRepository libraryRepository) {
+    return new LowChunkDocumentAuditService(documentRepository, libraryRepository);
+  }
+
+  @Bean
   DocumentIndexingService documentIndexingService(
       IndexingJobService indexingJobService,
       IndexingSourceExecutorRegistry indexingSourceExecutorRegistry,

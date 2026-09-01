@@ -17,6 +17,16 @@ public class DocumentService {
   private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
 
   /**
+   * The user-facing message a document is rejected with when {@link #isTextlessPdf} detects it -
+   * ingestion-pipelines.md, Teil 3, Punkt 1 "Scan-Erkennung und Bestandsprüfung". Shared by every
+   * caller that needs to both set it as {@link Document#getErrorMessage()} and report the same
+   * wording as an {@link IndexingRunEvent}, so the two never drift apart.
+   */
+  static final String NO_EXTRACTABLE_TEXT_MESSAGE =
+      "Enthält keinen extrahierbaren Text, vermutlich ein Scan; für diese Datei ist"
+          + " Texterkennung nötig, die derzeit nicht eingerichtet ist";
+
+  /**
    * Everything found below the document directory, split into what will be indexed, what was
    * rejected because of its format, and which of the indexed files carried an extension that did
    * not match their actually detected content. The rejected files are carried out of here on
@@ -89,6 +99,31 @@ public class DocumentService {
    */
   boolean isSupportedFormat(Path file) {
     return classify(file).supported();
+  }
+
+  /**
+   * Whether {@code parsed} carries no extractable text at all and {@code file} was detected as a
+   * PDF. Tika's PDF parser returns a {@link org.springframework.ai.document.Document} even for a
+   * scan without a text layer - just with blank text - so {@code parsed.isEmpty()} alone does not
+   * catch this case (ingestion-pipelines.md, Teil 3, Punkt 1 "Scan-Erkennung und Bestandsprüfung").
+   * Currently scoped to PDF; the same rule is meant to extend to TIFF/PNG/JPEG once those formats
+   * are accepted as single-page scans.
+   */
+  boolean isTextlessPdf(Path file, List<org.springframework.ai.document.Document> parsed) {
+    boolean hasText = parsed.stream().anyMatch(d -> d.getText() != null && !d.getText().isBlank());
+    if (hasText) {
+      return false;
+    }
+    return isPdf(file);
+  }
+
+  private boolean isPdf(Path file) {
+    try {
+      return SupportedDocumentFormats.isPdfContent(SupportedDocumentFormats.detectMediaType(file));
+    } catch (IOException e) {
+      log.warn("Could not read {} to detect whether it is a PDF", file, e);
+      return false;
+    }
   }
 
   private SupportedDocumentFormats.ContentDecision classify(Path file) {

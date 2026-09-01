@@ -109,6 +109,28 @@ class AsyncIndexingExecutorTest {
   }
 
   @Test
+  void aScanPdfWithoutExtractableTextIsSkippedAndRecordedAsARejectedEvent() throws IOException {
+    // #1055: FileProcessingResult#NO_EXTRACTABLE_TEXT is reported the same way QUOTA_EXCEEDED is -
+    // counted as skipped, not as processed, and logged by name like any other rejected file.
+    Path file = documentDir.resolve("scan.txt");
+    Files.writeString(file, "content");
+
+    when(fileProcessingService.processFile(eq(file), eq(library), isNull()))
+        .thenReturn(FileProcessingResult.NO_EXTRACTABLE_TEXT);
+
+    executor.execute(UUID.randomUUID(), library);
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), anyInt());
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && "scan.txt".equals(event.getReference())
+                        && DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE.equals(event.getMessage())));
+  }
+
+  @Test
   void aProcessedFileIsCountedNormallyWhenTheQuotaIsNotExceeded() throws IOException {
     Path file = documentDir.resolve("ok.txt");
     Files.writeString(file, "content");

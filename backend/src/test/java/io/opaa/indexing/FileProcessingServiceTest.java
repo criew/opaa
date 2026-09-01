@@ -151,6 +151,64 @@ class FileProcessingServiceTest {
   }
 
   @Test
+  void scanPdfWithoutExtractableTextIsRejectedInsteadOfIndexedWithZeroChunks() throws IOException {
+    // regression guard for #1055: a PDF Tika can open but that carries no text layer (a scan) used
+    // to sail through parsed.isEmpty() - Tika still returns a Document, just with blank text - get
+    // chunked into zero chunks, and land in the bestand as INDEXED with chunkCount 0: "successful",
+    // but unfindable (ingestion-pipelines.md, Teil 3, Punkt 1). It must instead be rejected with a
+    // clear, German message and never reach the vector store or an INDEXED row.
+    //
+    // Uses a spy around a real DocumentService (only #parseDocument stubbed) instead of the class'
+    // own mocked field, so the scan-detection path this test exercises runs for real against the
+    // file on disk - only its magic bytes, which is enough for Tika's own content-type detection
+    // (see DocumentServiceTest's identical PDF_MAGIC_BYTES fixture).
+    Path file = tempDir.resolve("scan.pdf");
+    Files.writeString(file, "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection");
+
+    DocumentService realDocumentService = org.mockito.Mockito.spy(new DocumentService());
+    org.mockito.Mockito.doReturn(List.of(new org.springframework.ai.document.Document("")))
+        .when(realDocumentService)
+        .parseDocument(file);
+
+    FileProcessingService serviceWithRealScanDetection =
+        new FileProcessingService(
+            realDocumentService,
+            chunkingService,
+            documentRepository,
+            vectorStore,
+            vectorChunkStore,
+            checksumService,
+            new IndexingMetrics(meterRegistry),
+            storageQuotaService,
+            defaultIndexingProperties(),
+            Runnable::run);
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-scan");
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    serviceWithRealScanDetection.processFile(file, targetLibrary);
+
+    // Scan detection intercepts before chunking is ever attempted - chunkDocuments is never
+    // called, unlike the pre-fix path (see this test's own Javadoc for the reproduction proof).
+    verify(chunkingService, never()).chunkDocuments(anyString(), any());
+
+    // The actual bug: nothing must ever be written to the vector store or marked INDEXED with zero
+    // chunks for this document.
+    verify(vectorStore, never()).add(any());
+    verify(documentRepository, never()).markIndexedFromSource(any(), anyInt(), any(), any(), any());
+
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(docCaptor.capture());
+    ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
+    verify(documentRepository)
+        .markFailed(eq(docCaptor.getValue().getId()), messageCaptor.capture());
+    assertThat(messageCaptor.getValue()).containsIgnoringCase("Scan");
+  }
+
+  @Test
   void processFileSkipsWithoutPersistingWhenTheLibraryQuotaWouldBeExceeded() throws IOException {
     // #119: nothing is persisted - no document row, no chunks - once the library's quota would be
     // exceeded, and the caller (an indexing executor) learns exactly why via the distinct

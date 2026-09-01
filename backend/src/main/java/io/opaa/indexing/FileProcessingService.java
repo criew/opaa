@@ -176,6 +176,10 @@ public class FileProcessingService {
     try {
       // Parse document using Tika
       List<org.springframework.ai.document.Document> parsed = documentService.parseDocument(file);
+      if (documentService.isTextlessPdf(file, parsed)) {
+        log.warn("No extractable text in PDF, likely a scan: {}", file);
+        return markConnectorRejected(doc.getId());
+      }
       if (parsed.isEmpty()) {
         log.warn("No content extracted from: {}", file);
         return markConnectorFailed(doc.getId());
@@ -293,6 +297,10 @@ public class FileProcessingService {
     try {
       List<org.springframework.ai.document.Document> parsed =
           documentService.parseDocument(localFile);
+      if (documentService.isTextlessPdf(localFile, parsed)) {
+        log.warn("No extractable text in URL PDF, likely a scan: {}", remoteUrl);
+        return markConnectorRejected(doc.getId());
+      }
       if (parsed.isEmpty()) {
         log.warn("No content extracted from URL document: {}", remoteUrl);
         return markConnectorFailed(doc.getId());
@@ -454,6 +462,12 @@ public class FileProcessingService {
     try {
       List<org.springframework.ai.document.Document> parsed =
           documentService.parseDocument(storedFile);
+      if (documentService.isTextlessPdf(storedFile, parsed)) {
+        log.warn("No extractable text in uploaded PDF, likely a scan: {}", doc.getFileName());
+        markUploadFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+        metrics.recordFailed();
+        return;
+      }
       if (parsed.isEmpty()) {
         log.warn("No content extracted from uploaded document: {}", doc.getFileName());
         markUploadFailed(doc.getId(), "Aus der Datei konnte kein Text extrahiert werden");
@@ -538,6 +552,27 @@ public class FileProcessingService {
       return FileProcessingResult.SKIPPED;
     }
     return FileProcessingResult.PROCESSED;
+  }
+
+  /**
+   * The connector counterpart to {@link #markConnectorFailed} for a document rejected specifically
+   * because it carried no extractable text (see {@link DocumentService#isTextlessPdf}): marks the
+   * row {@code FAILED} with {@link DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE} instead of a
+   * generic, message-less failure, and reports {@link FileProcessingResult#NO_EXTRACTABLE_TEXT} so
+   * the caller counts and logs it as a rejection - the same contract {@link
+   * FileProcessingResult#QUOTA_EXCEEDED} already has - rather than silently treating it as a
+   * successful, zero-chunk indexing run.
+   */
+  private FileProcessingResult markConnectorRejected(UUID documentId) {
+    int updated =
+        documentRepository.markFailed(documentId, DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+    if (updated == 0) {
+      log.warn("Document {} was deleted before it could be marked as rejected", documentId);
+      metrics.recordSkipped();
+      return FileProcessingResult.SKIPPED;
+    }
+    metrics.recordSkipped();
+    return FileProcessingResult.NO_EXTRACTABLE_TEXT;
   }
 
   /**

@@ -185,6 +185,15 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
                 storageQuotaService.quotaExceededMessage(targetLibrary.getId()),
                 fileName);
             progress.recordSkipped();
+          } else if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
+            // See DocumentService#isTextlessPdf and FileProcessingResult#NO_EXTRACTABLE_TEXT: the
+            // document was already rejected and marked FAILED with the user-facing message below -
+            // reported the same way QUOTA_EXCEEDED is, not silently counted as processed.
+            events.record(
+                IndexingEventCategory.REJECTED,
+                DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
+                fileName);
+            progress.recordSkipped();
           } else if (result == FileProcessingResult.SKIPPED) {
             progress.recordSkipped();
           } else {

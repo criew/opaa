@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -35,6 +36,18 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
   List<Document> findByLibraryId(UUID libraryId);
+
+  /**
+   * Backs {@link LowChunkDocumentAuditService#findLowChunkDocuments} - the one-time inventory check
+   * from ingestion-pipelines.md, Teil 3, Punkt 1 "Scan-Erkennung und Bestandsprüfung": every {@link
+   * DocumentStatus#INDEXED} document whose {@code chunkCount} is at or below {@code
+   * chunkCountThreshold}, the pre-fix bestand a scan PDF could have silently landed in as
+   * "successfully" indexed with no or barely any retrievable content. A plain query, not a stored
+   * snapshot - {@code chunk_count} is already a live column, so re-running this finds the current
+   * state, satisfying the "dauerhaft abfragbar" requirement without a separate audit table.
+   */
+  List<Document> findByStatusAndChunkCountLessThanEqual(
+      DocumentStatus status, int chunkCountThreshold);
 
   /**
    * Backs {@link StaleDocumentCleanupService#cleanupVanished}: every document of a single {@code
