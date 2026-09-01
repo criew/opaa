@@ -21,18 +21,29 @@ import org.springframework.data.jpa.repository.Query;
 import org.yaml.snakeyaml.Yaml;
 
 /**
- * Leitplanke (g) is a Nicht-Existenz-Anforderung, so this is a Nicht-Existenz-Test: it asserts that
- * no read path in this codebase can express "Diagnosen je Nutzer", by checking the three places one
- * could be built - the repository's queries, the query service's signatures, and the published API
- * contract.
+ * Leitplanke (g) is a Nicht-Existenz-Anforderung, so this is a Nicht-Existenz-Test against
+ * "Diagnosen je Nutzer". What it actually checks, stated as narrowly as it holds:
+ *
+ * <ul>
+ *   <li>Every method declared on {@link DiagnosticContextLogRepository} carries an explicit
+ *       {@code @Query} whose JPQL contains none of {@code group by}, {@code count(}, {@code
+ *       distinct}. It does <b>not</b> inspect what those queries filter on: a hand-written
+ *       {@code @Query} with a {@code targetRef} predicate passes this assertion and is caught, if
+ *       at all, only by the parameter check below via its calling service method.
+ *   <li>Every {@code public} method of {@link DiagnosticContextLogQueryService} and {@code
+ *       DiagnosticContextLogController} takes only the caller's own identity, a time bound, a
+ *       paging number or {@code reason}. A package-private or protected method is not covered - the
+ *       filter is on {@code public} - so a read path built as one would slip through.
+ *   <li>The published schemas of the two protocol responses and their pages carry no
+ *       aggregate-looking field and neither of the two stable per-person grouping keys.
+ *   <li>The two protocol operations declare exactly the request parameters listed here.
+ * </ul>
  *
  * <p><b>How much this guarantees, honestly:</b> it is a structural guard, not a proof. It cannot
  * stop someone with database access from writing {@code GROUP BY target_ref} by hand, and it cannot
  * stop a future feature that resolves target pseudonyms elsewhere. What it does guarantee is that
- * such a capability cannot appear through this application's own surface without this test turning
- * red - a new repository aggregate, a new target-person parameter on the protocol query, a new
- * count field on the response, or a new request parameter in the specification each fail one of the
- * assertions below.
+ * the capability cannot appear through the public surface enumerated above without this test
+ * turning red.
  */
 class DiagnosticContextPurposeLimitationTest {
 
@@ -139,6 +150,22 @@ class DiagnosticContextPurposeLimitationTest {
                                       .as("%s.%s looks like an aggregate", schema, field)
                                       .isFalse());
                         }));
+  }
+
+  /**
+   * A grouping key does not have to be called "count": a field that is stable per person and
+   * repeats across that person's entries is one, and {@code GROUP BY} over it rebuilds exactly the
+   * evaluation Leitplanke (g) forbids. Both such fields of the stored entry stay out of the
+   * Gesamtprotokoll list - {@code targetRef} for a {@code USER} entry (dropped in the mapper, see
+   * {@code DiagnosticAccessResponseMapperTest}) and {@code permissionSnapshot}, which is not
+   * published at all. Hashing the snapshot would not satisfy this: a hash is the same key.
+   */
+  @Test
+  void theProtocolListPublishesNoStablePerPersonGroupingKey() {
+    assertThat(propertiesOf("DiagnosticContextEventResponse"))
+        .doesNotContainKey("permissionSnapshot");
+    assertThat(propertiesOf("OwnDiagnosticContextEventResponse"))
+        .doesNotContainKey("permissionSnapshot");
   }
 
   @Test

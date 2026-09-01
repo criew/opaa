@@ -219,7 +219,7 @@ public class AssetGrantService {
             library.getId(), grant, request.role(), request.expiresAt());
         previousRole = grant.getRole();
         previousExpiresAt = grant.getExpiresAt();
-        grant.updateRole(request.role(), request.expiresAt());
+        grant.updateRole(request.role(), request.expiresAt(), currentUserId);
       }
     } else {
       grant =
@@ -243,7 +243,7 @@ public class AssetGrantService {
             library.getId(), grant, request.role(), request.expiresAt());
         previousRole = grant.getRole();
         previousExpiresAt = grant.getExpiresAt();
-        grant.updateRole(request.role(), request.expiresAt());
+        grant.updateRole(request.role(), request.expiresAt(), currentUserId);
       }
     }
 

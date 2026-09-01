@@ -81,10 +81,23 @@ final class DiagnosticAccessResponseMapper {
   }
 
   /**
-   * {@code targetRef} is passed on only for a {@link DiagnosticTargetKind#PERMISSION_PROFILE}
-   * entry, where it is the profile's label. For a {@code USER} entry it is dropped: it is a stable
-   * per-person pseudonym, and carrying it on every row of a paged list would make "Diagnosen je
-   * Nutzer" a client-side grouping - the evaluation Leitplanke (g) rules out.
+   * Withholds the two stable per-person keys of a stored entry, each of which would make "Diagnosen
+   * je Nutzer" a one-step client-side {@code GROUP BY} - the evaluation Leitplanke (g) rules out:
+   *
+   * <ul>
+   *   <li>{@code targetRef} is passed on only for a {@link DiagnosticTargetKind#PERMISSION_PROFILE}
+   *       entry, where it is the profile's label and belongs to nobody. For a {@code USER} entry it
+   *       is a stable per-person pseudonym and is dropped.
+   *   <li>{@code permissionSnapshot} is not passed on at all: it is the rights fingerprint of one
+   *       person and stays byte-identical across every entry about them until their rights change,
+   *       so it is the same grouping key under another name. Hashing it would not help, for the
+   *       same reason. It remains in the stored entry, which is where Leitplanke (f) requires it;
+   *       the anlassbezogene single-entry view that may show it is issue #1124.
+   * </ul>
+   *
+   * <p>This is not a claim that individual rows cannot be correlated: {@code recordedAt}, {@code
+   * actorRef} and {@code hitRefs} remain, and the same test question against the same rights yields
+   * the same {@code hitRefs} twice.
    */
   static DiagnosticContextEventResponse toResponse(DiagnosticContextLogEntry entry) {
     return new DiagnosticContextEventResponse(
@@ -94,8 +107,7 @@ final class DiagnosticAccessResponseMapper {
             entry.getTargetKind(),
             entry.getTestQuestion(),
             entry.getHitCount(),
-            entry.getHitRefs(),
-            entry.getPermissionSnapshot())
+            entry.getHitRefs())
         .targetRef(
             entry.getTargetKind() == DiagnosticTargetKind.PERMISSION_PROFILE
                 ? entry.getTargetRef()

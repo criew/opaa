@@ -136,9 +136,18 @@ public class AssetGrant {
     this.updatedAt = Instant.now();
   }
 
-  public void updateRole(AssetRole role, Instant expiresAt) {
+  /**
+   * Moves this grant to a new role, recording who conferred it. {@code granted_by_user_id} answers
+   * "who procured this role", not "who created this row" - {@code
+   * LibraryAccessService#holdsIndependentOwnerRole} reads it to tell a self-issued {@link
+   * AssetRole#OWNER} from one somebody else issued, and without carrying the changer forward an
+   * administrator could raise a pre-existing foreign grant to {@code OWNER} and still appear as
+   * "not self-granted".
+   */
+  public void updateRole(AssetRole role, Instant expiresAt, UUID grantedByUserId) {
     this.role = role;
     this.expiresAt = expiresAt;
+    this.grantedByUserId = grantedByUserId;
   }
 
   public boolean isExpired(Instant now) {

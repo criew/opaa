@@ -245,6 +245,45 @@ class DiagnosticAccessIntegrationTest {
         .isTrue();
   }
 
+  /**
+   * The same rule where the administrator does not have to create the grant row at all: a grant the
+   * responsible body itself issued to the administration (here {@code VIEWER}) already exists, and
+   * the administration raises it to {@code OWNER} in a single step. Only because {@code
+   * AssetGrant#updateRole} carries the changer into {@code granted_by_user_id} does {@code
+   * holdsIndependentOwnerRole} still see a self-procured {@code OWNER} - otherwise the row would
+   * keep naming the original granter and the lock would open.
+   */
+  @Test
+  void anAdministratorWhoRaisesAnExistingForeignGrantToOwnerStillCannotLiftAForeignLock() {
+    KnowledgeLibrary library = persistLibraryOwnedBy(holderId);
+    CurrentUser owner = CurrentUser.of(holderId, organizationId, SystemRole.USER, "Zustaendige");
+
+    assetGrantService.upsertGrant(
+        library.getId(),
+        new AssetGrantUpsert(PermissionSubjectType.USER, admin.id(), AssetRole.VIEWER),
+        owner);
+    assetGrantService.upsertGrant(
+        library.getId(),
+        new AssetGrantUpsert(PermissionSubjectType.USER, admin.id(), AssetRole.OWNER),
+        admin);
+
+    assertThatThrownBy(() -> lockService.setLocked(admin, library.getId(), false))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT diagnostics_locked FROM knowledge_libraries WHERE id = ?",
+                Boolean.class,
+                library.getId()))
+        .isTrue();
+    assertThat(
+            assetGrantRepository
+                .findByLibraryIdAndSubjectTypeAndSubjectUserId(
+                    library.getId(), PermissionSubjectType.USER, admin.id())
+                .orElseThrow()
+                .getGrantedByUserId())
+        .isEqualTo(admin.id());
+  }
+
   /** The counterpart: the named responsible body does lift its own lock. */
   @Test
   void theResponsibleOwnerLiftsTheLock() {

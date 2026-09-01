@@ -2479,9 +2479,17 @@ paths:
         Sets or lifts a library's Diagnosesperre. It takes an OWNER grant on that library which the
         caller did not issue to themselves - being a system admin confers nothing here, and neither
         does an OWNER grant an admin issued to themselves through the administrative floor of the
-        grant endpoint; both are rejected with 403. What remains possible, stated plainly: an admin
-        can grant OWNER to a different, named account, whose use of this endpoint is audited in
-        turn. Every library is locked by default, including all pre-existing ones.
+        grant endpoint, whether newly created or raised from a pre-existing foreign grant; all of
+        these are rejected with 403. Every library is locked by default, including all pre-existing
+        ones.
+
+        What remains possible, stated plainly and without the claim that it takes a second person:
+        an admin can grant OWNER to a different, named account, whose use of this endpoint is
+        audited in turn - and, where the library is owned by a group that is not an ORG_UNIT, an
+        admin can add themselves to that owning group via POST /api/v1/groups/{groupId}/members,
+        which makes them the library's named responsible body and lets them lift the lock alone.
+        Group administration has no self-exclusion today; closing that path is tracked separately
+        (issue #1124). The library's named owner user, in contrast, is immutable.
       requestBody:
         required: true
         content:
@@ -4983,6 +4991,10 @@ components:
           type: string
           format: uuid
           nullable: true
+          description: >
+            Wer die aktuell eingetragene Rolle verschafft hat - bei einer Rollenaenderung die
+            aendernde Person, nicht die, die den Eintrag urspruenglich angelegt hat. Null nur
+            bei historischen Eintraegen aus der Zeit vor diesem Feld.
         grantedByDisplayName:
           type: string
           nullable: true
@@ -5479,22 +5491,24 @@ components:
       description: >
         One protocol entry as the Gesamtprotokoll shows it. actorRef stays a pseudonym, resolvable
         only through the separately held mapping table; the entry carries the identifiers of the
-        displayed hits, never the hits themselves. targetRef is present only for a
-        PERMISSION_PROFILE target, where it is the profile's label: for a USER target it is
-        deliberately absent, because a stable per-person pseudonym on every row of a paged list
-        makes "Diagnosen je Nutzer" a client-side grouping - exactly what Leitplanke (g) rules out.
-        Which of the two kinds an entry has is still visible in targetKind.
+        displayed hits, never the hits themselves. Which kind of target an entry has is visible in
+        targetKind.
+
+        Two fields the stored entry carries are deliberately withheld here, because each of them is
+        a stable, per-person key that a client could GROUP BY and thereby rebuild "Diagnosen je
+        Nutzer" - exactly what Leitplanke (g) rules out: targetRef for a USER target (a stable
+        per-person pseudonym; it is present only for a PERMISSION_PROFILE target, where it is the
+        profile's label and belongs to nobody), and permissionSnapshot (the rights fingerprint of
+        one person, identical across every entry about them until their rights change). Both stay
+        in the stored entry, where Leitplanke (f) requires them; the anlassbezogene single-entry
+        view that may show the rights snapshot is not part of this endpoint (issue #1124).
+
+        What this does not claim: that correlating individual rows is impossible. recordedAt,
+        actorRef and hitRefs remain, and two entries produced by the same test question against the
+        same rights carry the same hitRefs. The response withholds the keys that make grouping by
+        person a one-step operation; it does not turn the protocol into unlinkable rows.
       required:
-        [
-          eventId,
-          recordedAt,
-          actorRef,
-          targetKind,
-          testQuestion,
-          hitCount,
-          hitRefs,
-          permissionSnapshot,
-        ]
+        [eventId, recordedAt, actorRef, targetKind, testQuestion, hitCount, hitRefs]
       properties:
         eventId:
           type: string
@@ -5514,8 +5528,6 @@ components:
         hitCount:
           type: integer
         hitRefs:
-          type: string
-        permissionSnapshot:
           type: string
         justification:
           type: string

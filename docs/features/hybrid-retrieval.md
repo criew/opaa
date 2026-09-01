@@ -899,11 +899,24 @@ feststellen.
 >   vier genannten Bestände zuverlässig ab und fällt im Zweifel zugunsten des Schutzes aus.
 > - **Reichweite der Zusage aus (e)** — die Sperre löst nur, wer einen `OWNER`-Grant auf der
 >   Bibliothek hält, den er sich nicht selbst gegeben hat (oder wer die benannte zuständige Stelle
->   ist: Eigentümerperson bzw. Mitglied der Eigentümergruppe). Damit ist auch der Zwei-Schritt-Weg
+>   ist: Eigentümerperson bzw. Mitglied der Eigentümergruppe). Damit ist der Zwei-Schritt-Weg
 >   geschlossen, sich über die Administratorbefugnis des Grant-Endpunkts erst selbst `OWNER` zu
->   geben und dann als „Zuständige Stelle“ zu entsperren. **Nicht** ausgeschlossen ist, dass die
->   Administration einem *anderen*, benannten Konto `OWNER` gibt, das die Sperre dann löst — dafür
->   braucht es eine zweite Person, und beide Vorgänge stehen im Protokoll.
+>   geben und dann als „Zuständige Stelle“ zu entsperren — auch dann, wenn dazu nur ein bereits
+>   vorhandener Fremd-Grant angehoben würde, denn `granted_by_user_id` wird beim Rollenwechsel auf
+>   die ändernde Person fortgeschrieben.
+>
+>   **Was die Administration weiterhin allein erreicht**, ohne dass eine zweite Person mitwirkt:
+>   Gehört die Bibliothek einer Gruppe, die keine `ORG_UNIT` ist, kann ein `SYSTEM_ADMIN` sich über
+>   `POST /api/v1/groups/{id}/members` selbst in diese Eigentümergruppe eintragen — die
+>   Gruppenverwaltung kennt keinen Selbstausschluss, und `rejectOrgUnit` greift nur für
+>   Verzeichnis-Organisationseinheiten. Danach ist er „benannte zuständige Stelle“ und löst die
+>   Sperre. Die Eigentümerperson (`ownerUserId`) ist von diesem Weg nicht betroffen: sie ist
+>   unveränderlich. Ebenfalls nicht ausgeschlossen bleibt, dass die Administration einem anderen,
+>   benannten Konto `OWNER` gibt, das die Sperre dann löst. Beide Wege stehen vollständig im
+>   Protokoll, keiner ist verhindert; der Selbstausschluss bei der Gruppenmitgliedschaft ist ein
+>   eigener Eingriff mit eigener Abwägung und als Folgearbeit in
+>   [#1124](https://github.com/criew/opaa/issues/1124) vorgemerkt. Solange er fehlt, gilt das
+>   Abnahmekriterium „nicht die Administration" aus #1052 als **nicht erfüllt**.
 >
 > Das Protokoll liegt in einer eigenen Tabelle (`diagnostic_context_log`) unter derselben
 > Eigentümertrennung wie `audit_log` (ADR-0015), nicht als weiterer Ereignistyp darin: seine

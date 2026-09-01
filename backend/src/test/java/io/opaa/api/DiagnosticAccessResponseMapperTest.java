@@ -78,8 +78,13 @@ class DiagnosticAccessResponseMapperTest {
     assertThat(response.getActive()).isFalse();
   }
 
+  /**
+   * Every field of a stored entry that the Gesamtprotokoll list may show. The two it may not -
+   * {@code targetRef} for a {@code USER} entry and {@code permissionSnapshot} - are asserted absent
+   * here and in {@code DiagnosticContextPurposeLimitationTest}.
+   */
   @Test
-  void mapsEveryProtocolEntryField() {
+  void mapsEveryProtocolEntryFieldTheGesamtprotokollMayShow() {
     DiagnosticContextLogEntry entry =
         new DiagnosticContextLogEntry(
             ORGANIZATION_ID,
@@ -103,7 +108,6 @@ class DiagnosticAccessResponseMapperTest {
     assertThat(response.getTestQuestion()).isEqualTo("Wo steht die Dienstanweisung?");
     assertThat(response.getHitCount()).isEqualTo(2);
     assertThat(response.getHitRefs()).isEqualTo("chunk-1,chunk-2");
-    assertThat(response.getPermissionSnapshot()).isEqualTo("libraries=[];lockedLibraries=[]");
     assertThat(response.getJustification()).isEqualTo("Beschwerde 4711");
   }
 

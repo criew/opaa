@@ -29,10 +29,19 @@ import org.springframework.transaction.annotation.Transactional;
  * granting themselves {@code OWNER} through the administrative floor of the grant endpoint and then
  * lifting the lock as "the owner".
  *
- * <p>What this does <b>not</b> cover, stated plainly: an administrator can still grant {@code
- * OWNER} to a <em>different</em> account and have that account lift the lock. The rule enforced
- * here is that lifting a foreign lock takes a second, named person and leaves an audit trail on
- * both acts - not that it is impossible for an administrator with a second account.
+ * <p>What this does <b>not</b> cover, stated plainly - and it is not merely "takes a second
+ * person":
+ *
+ * <ul>
+ *   <li>An administrator can grant {@code OWNER} to a <em>different</em> account and have that
+ *       account lift the lock. Both acts are audited.
+ *   <li>Where the library is owned by a group that is not an {@code ORG_UNIT}, an administrator can
+ *       add <em>themselves</em> to that owning group ({@code GroupController#addMember}, open to
+ *       {@code SYSTEM_ADMIN}, with no self-exclusion), thereby becoming the library's named
+ *       responsible body, and lift the lock alone - see {@link
+ *       LibraryAccessService#holdsIndependentOwnerRole}. Closing this is a change to group
+ *       administration, tracked as issue #1124.
+ * </ul>
  */
 @Service
 public class LibraryDiagnosticsLockService {

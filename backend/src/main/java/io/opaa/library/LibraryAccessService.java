@@ -170,9 +170,21 @@ public class LibraryAccessService {
    * the owning group). Unlike {@link #effectiveRole} there is no system-admin floor here, and an
    * {@code OWNER} grant an administrator issued to themselves through that floor does not count -
    * closing the two-step path "grant myself OWNER via the administrative floor, then act as the
-   * responsible owner". Used by {@code LibraryDiagnosticsLockService} for the one rule that must
-   * hold against the administration itself; every other library endpoint keeps using {@link
+   * responsible owner". {@link AssetGrant#updateRole} carries the changer into {@code
+   * grantedByUserId}, so raising a pre-existing foreign grant to {@code OWNER} counts as
+   * self-issued too. Used by {@code LibraryDiagnosticsLockService} for the one rule that must hold
+   * against the administration itself; every other library endpoint keeps using {@link
    * #requireRole}.
+   *
+   * <p><b>The named-owner exception is only half closed, and the open half is administratively
+   * reachable.</b> {@code library.getOwnerUserId()} is immutable and has no setter. {@code
+   * library.getOwnerGroupId()} is immutable as well, but membership in that group is not: {@code
+   * GroupController#addMember} is open to {@code SYSTEM_ADMIN}, {@code GroupService#addMember}
+   * knows no self-exclusion, and its {@code rejectOrgUnit} guard covers only {@code ORG_UNIT}
+   * groups. An administrator can therefore add themselves to a non-{@code ORG_UNIT} owning group in
+   * one step, become {@code namedOwner}, and validate their own self-issued {@code OWNER} grant.
+   * Closing that is a change to group administration with its own trade-off (issue #1124), not to
+   * this method.
    */
   public boolean holdsIndependentOwnerRole(KnowledgeLibrary library, UUID userId) {
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
