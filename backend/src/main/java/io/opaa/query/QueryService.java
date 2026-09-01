@@ -437,9 +437,9 @@ public class QueryService {
                 conversationHistory,
                 searchScope,
                 queryProperties,
-                // Decided once per run, so every stage sees the same answer: fusion widens its
+                // Read once per run, so every stage sees the same answer: fusion widens its
                 // budget for the reranker only if the reranker can actually be called.
-                rerankModelRole.usable()));
+                RerankAvailability.of(rerankModelRole.currentStatus().state())));
     // Only for a run that actually searched: an empty scope logged nothing before this pipeline
     // existed, and a "0 chunks across 0 search queries" line would read like a failed retrieval
     // rather than the deliberate short-circuit it is.

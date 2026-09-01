@@ -662,6 +662,17 @@ schlechter. Diese Verwechselbarkeit wird konstruktiv ausgeschlossen.
   Reranking, aber nicht unbemerkt.
 - **Der Startlog ist nicht der einzige Ort.** Eine Meldung, die nur beim Start erscheint, ist einen Tag
   später niemandem mehr zugänglich; deshalb der abfragbare Zustand daneben.
+- **Auch das Erklärprotokoll unterscheidet die beiden Fälle.** Der Rollenzustand reist als
+  `RerankAvailability` (abgeschaltet / an-aber-nicht-nutzbar / nutzbar) im `RetrievalContext` mit,
+  nicht als Ja/Nein. Die Rerank-Stufe meldet `DISABLED` nur für eine Betreiberentscheidung
+  (`OPAA_RERANK_ENABLED=false` oder `rerank-candidate-count=0`) und `UNAVAILABLE` für die Störung —
+  sonst stünde genau die Verwechselbarkeit, die dieser Abschnitt ausschließt, im Diagnosewerkzeug.
+  Ein leerer Kandidatensatz bekommt eine eigene Notiz, statt fälschlich die Rolle zu beschuldigen.
+- **Das Diagnosewerkzeug liest denselben Rollenzustand wie der Chatpfad.** Es erklärt sonst eine
+  Suche, die niemand gestellt hat — und zwar genau dann, wenn jemand fragt „warum diese
+  Fundstellen?". Ebenso nimmt die Pipeline das verbreiterte Kandidatenfenster zurück, wenn die
+  Rerank-Stufe über `opaa.query.pipeline.disabled-stages` abgeschaltet ist: Ohne die Stufe stellt
+  niemand die `top-k`-Deckelung wieder her.
 
 ### Hardware ist eine Deployment-Entscheidung
 

@@ -70,7 +70,8 @@ class RetrievalPipelineTest {
   }
 
   private RetrievalContext context(Set<UUID> searchScope) {
-    return new RetrievalContext("Frage", List.of(), searchScope, PROPERTIES);
+    return new RetrievalContext(
+        "Frage", List.of(), searchScope, PROPERTIES, RerankAvailability.SWITCHED_OFF);
   }
 
   private void stubSearch(List<Document> results) {
@@ -182,7 +183,13 @@ class RetrievalPipelineTest {
 
     RetrievalPipelineResult withoutFusion =
         pipeline(new RetrievalPipelineProperties(Set.of(RetrievalStageName.RANK_FUSION)))
-            .run(new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), twoChunkBudget));
+            .run(
+                new RetrievalContext(
+                    "Frage",
+                    List.of(),
+                    Set.of(LIBRARY_ID),
+                    twoChunkBudget,
+                    RerankAvailability.SWITCHED_OFF));
 
     // Deduplicated by chunk id (shared appears once, at its first position), in list order, and
     // three chunks despite a top-k of two - the cap belonged to the stage that is gone.
@@ -209,7 +216,8 @@ class RetrievalPipelineTest {
                     "Zweite Frage",
                     history,
                     Set.of(LIBRARY_ID),
-                    new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false, 50)));
+                    new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false, 50),
+                    RerankAvailability.SWITCHED_OFF));
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
@@ -236,9 +244,11 @@ class RetrievalPipelineTest {
     QueryProperties notCompleting =
         new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 1, false, 50);
     RetrievalContext completingRun =
-        new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), completing);
+        new RetrievalContext(
+            "Frage", List.of(), Set.of(LIBRARY_ID), completing, RerankAvailability.SWITCHED_OFF);
     RetrievalContext notCompletingRun =
-        new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), notCompleting);
+        new RetrievalContext(
+            "Frage", List.of(), Set.of(LIBRARY_ID), notCompleting, RerankAvailability.SWITCHED_OFF);
 
     List<Document> stageSwitchedOff =
         pipeline(new RetrievalPipelineProperties(Set.of(RetrievalStageName.DOCUMENT_COMPLETION)))

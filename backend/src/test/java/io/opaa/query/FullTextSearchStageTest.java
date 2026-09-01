@@ -50,7 +50,12 @@ class FullTextSearchStageTest {
   }
 
   private static RetrievalContext context(Set<UUID> searchScope, QueryProperties properties) {
-    return new RetrievalContext("Was gilt nach § 35 BauGB?", List.of(), searchScope, properties);
+    return new RetrievalContext(
+        "Was gilt nach § 35 BauGB?",
+        List.of(),
+        searchScope,
+        properties,
+        RerankAvailability.SWITCHED_OFF);
   }
 
   private static RetrievalState scopedState(Set<UUID> searchScope) {

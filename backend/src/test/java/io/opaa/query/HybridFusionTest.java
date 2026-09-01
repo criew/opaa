@@ -66,7 +66,13 @@ class HybridFusionTest {
 
   private List<Document> run(QueryProperties properties) {
     return pipeline()
-        .run(new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), properties))
+        .run(
+            new RetrievalContext(
+                "Frage",
+                List.of(),
+                Set.of(LIBRARY_ID),
+                properties,
+                RerankAvailability.SWITCHED_OFF))
         .chunks();
   }
 

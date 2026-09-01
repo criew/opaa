@@ -46,6 +46,10 @@ class RerankPipelineTest {
   private final RerankModelRole rerankModelRole = mock(RerankModelRole.class);
 
   private RetrievalPipeline pipeline() {
+    return pipeline(RetrievalPipelineProperties.allStagesEnabled());
+  }
+
+  private RetrievalPipeline pipeline(RetrievalPipelineProperties pipelineProperties) {
     return new QueryConfiguration()
         .retrievalPipeline(
             new SearchScopeStage(),
@@ -59,7 +63,7 @@ class RerankPipelineTest {
             new RankFusionStage(),
             new RerankStage(rerankModelRole),
             new DocumentCompletionStage(),
-            RetrievalPipelineProperties.allStagesEnabled());
+            pipelineProperties);
   }
 
   private static Document chunk(int i) {
@@ -71,11 +75,16 @@ class RerankPipelineTest {
         .build();
   }
 
-  private RetrievalPipelineResult run(QueryProperties properties, boolean roleUsable) {
+  private RetrievalPipelineResult run(QueryProperties properties, RerankAvailability availability) {
+    return run(pipeline(), properties, availability);
+  }
+
+  private RetrievalPipelineResult run(
+      RetrievalPipeline pipeline, QueryProperties properties, RerankAvailability availability) {
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(IntStream.range(0, 25).mapToObj(RerankPipelineTest::chunk).toList());
-    return pipeline()
-        .run(new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), properties, roleUsable));
+    return pipeline.run(
+        new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), properties, availability));
   }
 
   private static StageExplanation stageOf(
@@ -99,7 +108,7 @@ class RerankPipelineTest {
                 .toList()
                 .reversed());
 
-    RetrievalPipelineResult result = run(WITH_RERANKING, true);
+    RetrievalPipelineResult result = run(WITH_RERANKING, RerankAvailability.USABLE);
 
     assertThat(result.chunks()).hasSize(TOP_K);
     assertThat(result.chunks().getFirst().getId()).isEqualTo("c19");
@@ -114,7 +123,7 @@ class RerankPipelineTest {
                 .mapToObj(i -> new ScoredCandidate(i, -i))
                 .toList());
 
-    RetrievalPipelineResult result = run(WITH_RERANKING, true);
+    RetrievalPipelineResult result = run(WITH_RERANKING, RerankAvailability.USABLE);
 
     assertThat(stageOf(result, RetrievalStageName.RANK_FUSION).outgoingCount())
         .isEqualTo(CANDIDATE_WINDOW);
@@ -125,7 +134,7 @@ class RerankPipelineTest {
   /** Without reranking the pipeline behaves exactly as it did before this stage existed. */
   @Test
   void withoutRerankingFusionKeepsTopKAndTheStageIsIdentity() {
-    RetrievalPipelineResult result = run(WITHOUT_RERANKING, false);
+    RetrievalPipelineResult result = run(WITHOUT_RERANKING, RerankAvailability.SWITCHED_OFF);
 
     assertThat(stageOf(result, RetrievalStageName.RANK_FUSION).outgoingCount()).isEqualTo(TOP_K);
     assertThat(stageOf(result, RetrievalStageName.RERANK).status()).isEqualTo(StageStatus.DISABLED);
@@ -141,12 +150,31 @@ class RerankPipelineTest {
   void anEndpointThatFailsMidRunCostsTheOrderingNeverTheQuery() {
     when(rerankModelRole.rerank(anyString(), any())).thenReturn(List.of());
 
-    RetrievalPipelineResult result = run(WITH_RERANKING, true);
+    RetrievalPipelineResult result = run(WITH_RERANKING, RerankAvailability.USABLE);
 
     assertThat(result.chunks()).hasSize(TOP_K);
     assertThat(result.chunks().getFirst().getId()).isEqualTo("c0");
     assertThat(stageOf(result, RetrievalStageName.RERANK).status())
         .isEqualTo(StageStatus.UNAVAILABLE);
+  }
+
+  /**
+   * Switching the rerank stage off through {@code opaa.query.pipeline.disabled-stages} while the
+   * model role stays on must not leave the widened candidate window in place: nothing would restore
+   * the {@code top-k} cap, and up to {@code rerankCandidateCount} chunks would reach answer
+   * generation.
+   */
+  @Test
+  void switchingTheStageOffThroughThePipelineAlsoTakesTheWidenedBudgetWithIt() {
+    RetrievalPipeline withoutRerankStage =
+        pipeline(new RetrievalPipelineProperties(Set.of(RetrievalStageName.RERANK)));
+
+    RetrievalPipelineResult result =
+        run(withoutRerankStage, WITH_RERANKING, RerankAvailability.USABLE);
+
+    assertThat(stageOf(result, RetrievalStageName.RANK_FUSION).outgoingCount()).isEqualTo(TOP_K);
+    assertThat(stageOf(result, RetrievalStageName.RERANK).status()).isEqualTo(StageStatus.DISABLED);
+    assertThat(result.chunks()).hasSize(TOP_K);
   }
 
   /** The stage sits between fusion and document completion, and nowhere else. */

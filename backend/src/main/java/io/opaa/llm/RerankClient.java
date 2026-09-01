@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
@@ -39,6 +40,15 @@ import tools.jackson.databind.ObjectMapper;
  * which one the configured endpoint speaks - one wasted request per process, not per query. The
  * response is read from either shape either way.
  *
+ * <p><b>The response is read bounded, in every dimension.</b> A rerank endpoint may be a cloud
+ * provider - a trust boundary, not an own service - and this call sits on the request path of a
+ * user's question, where an unbounded read would tie up a request thread and the heap ({@code
+ * OutOfMemoryError} is an {@link Error}, which no {@code catch (Exception)} on that path would
+ * catch). Capped are the bytes read from the body ({@link #MAX_RESPONSE_BYTES}), the number of
+ * ranking entries (never more than candidates were sent) and the indices they may name. Every
+ * breach is a {@link RerankUnavailableException} - the same fallback as an unreachable endpoint, so
+ * the query degrades to the order it already had instead of failing.
+ *
  * <p><b>The access key never appears anywhere but the {@code Authorization} header</b> - not in an
  * exception message, not in a log line, not truncated. Redirects are never followed, so the header
  * cannot be replayed to an address this class never validated. Every failure message is technical
@@ -49,6 +59,14 @@ public class RerankClient {
 
   /** Short enough that an unreachable endpoint degrades a query rather than stalling it. */
   private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+
+  /**
+   * The most this client reads from a rerank response. A well-behaved answer is two numbers per
+   * candidate and {@code opaa.query.rerank-candidate-count} is capped at 200, so a few kilobytes;
+   * the headroom covers an endpoint that echoes the submitted texts back despite being asked not
+   * to. Anything beyond is not a large ranking, it is a broken or hostile endpoint.
+   */
+  static final int MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 
   private final ObjectMapper objectMapper;
 
@@ -158,15 +176,17 @@ public class RerankClient {
     }
 
     try {
-      HttpResponse<String> response =
-          httpClient.send(request.build(), HttpResponse.BodyHandlers.ofString());
-      if (response.statusCode() == 400 || response.statusCode() == 422) {
-        throw new SchemaMismatchException(describeStatus(response.statusCode()));
+      HttpResponse<InputStream> response =
+          httpClient.send(request.build(), HttpResponse.BodyHandlers.ofInputStream());
+      try (InputStream responseBody = response.body()) {
+        if (response.statusCode() == 400 || response.statusCode() == 422) {
+          throw new SchemaMismatchException(describeStatus(response.statusCode()));
+        }
+        if (response.statusCode() != 200) {
+          throw new RerankUnavailableException(describeStatus(response.statusCode()));
+        }
+        return parse(readBounded(responseBody), documents.size());
       }
-      if (response.statusCode() != 200) {
-        throw new RerankUnavailableException(describeStatus(response.statusCode()));
-      }
-      return parse(response.body(), documents.size());
     } catch (IOException e) {
       throw new RerankUnavailableException(describeConnectionError(e), e);
     } catch (InterruptedException e) {
@@ -188,6 +208,20 @@ public class RerankClient {
     } catch (RerankUnavailableException e) {
       return e.getMessage();
     }
+  }
+
+  /**
+   * Reads at most {@link #MAX_RESPONSE_BYTES} of the body and refuses anything longer, rather than
+   * materializing whatever the endpoint decides to send. The stream is closed by the caller's
+   * try-with-resources, which also discards the remainder of an over-long response unread.
+   */
+  private static String readBounded(InputStream body) throws IOException {
+    byte[] bytes = body.readNBytes(MAX_RESPONSE_BYTES + 1);
+    if (bytes.length > MAX_RESPONSE_BYTES) {
+      throw new RerankUnavailableException(
+          "endpoint response exceeds the " + MAX_RESPONSE_BYTES + " byte limit this client reads");
+    }
+    return new String(bytes, StandardCharsets.UTF_8);
   }
 
   private static URI rerankUri(String baseUrl) {
@@ -226,9 +260,14 @@ public class RerankClient {
   /**
    * Reads the ranking out of the response. Accepts both spellings the same family of servers uses -
    * {@code results} (Cohere/Jina/vLLM) and a bare top-level array (Text Embeddings Inference) - and
-   * both score field names ({@code relevance_score}, {@code score}). An entry whose index is
-   * outside the request's range is dropped rather than trusted: it would silently promote a chunk
-   * the query never asked about.
+   * both score field names ({@code relevance_score}, {@code score}).
+   *
+   * <p><b>The response may name only what the request contained.</b> More entries than candidates
+   * were sent is refused outright, an entry whose index lies outside the request's range is dropped
+   * - it would otherwise silently promote a chunk the query never asked about - and a response in
+   * which no entry named a candidate that was sent is refused as well, because accepting it would
+   * pass an empty ranking off as a successful call. A repeated index is harmless: the caller takes
+   * the first occurrence and ignores the rest.
    */
   private List<ScoredCandidate> parse(String responseBody, int documentCount) {
     JsonNode root;
@@ -240,6 +279,14 @@ public class RerankClient {
     JsonNode entries = root.isArray() ? root : root.path("results");
     if (!entries.isArray()) {
       throw new RerankUnavailableException("endpoint response contains no result list");
+    }
+    if (entries.size() > documentCount) {
+      throw new RerankUnavailableException(
+          "endpoint response contains "
+              + entries.size()
+              + " ranking entries for "
+              + documentCount
+              + " submitted candidate(s)");
     }
     List<ScoredCandidate> scored = new ArrayList<>(entries.size());
     for (JsonNode entry : entries) {
@@ -255,6 +302,10 @@ public class RerankClient {
         continue;
       }
       scored.add(new ScoredCandidate(index, scoreNode.doubleValue()));
+    }
+    if (scored.isEmpty() && !entries.isEmpty()) {
+      throw new RerankUnavailableException(
+          "endpoint response names no candidate that was submitted; every index was out of range");
     }
     scored.sort((left, right) -> Double.compare(right.score(), left.score()));
     return List.copyOf(scored);

@@ -107,7 +107,13 @@ class RetrievalPipelineParityTest {
               return candidatesPerSearchQuery.get(index);
             });
     return pipeline()
-        .run(new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), properties))
+        .run(
+            new RetrievalContext(
+                "Frage",
+                List.of(),
+                Set.of(LIBRARY_ID),
+                properties,
+                RerankAvailability.SWITCHED_OFF))
         .chunks();
   }
 

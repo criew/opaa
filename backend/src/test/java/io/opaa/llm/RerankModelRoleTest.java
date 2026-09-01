@@ -156,6 +156,43 @@ class RerankModelRoleTest {
     verify(client, never()).rerank(any(), anyString(), any());
   }
 
+  /**
+   * The reading a measurement compares before and after a run: the last known state alone cannot
+   * answer "did reranking hold throughout?", because a role that fails and recovers reads READY
+   * again afterwards.
+   */
+  @Test
+  void aFailedCallIsCountedAndStaysCountedAfterTheRoleRecovers() {
+    RerankClient client = mock(RerankClient.class);
+    RerankModelRole role = role(client, true, ENDPOINT, "m");
+    when(client.rerank(any(), anyString(), any()))
+        .thenThrow(new RerankUnavailableException("connection refused"))
+        .thenReturn(List.of(new ScoredCandidate(0, 1.0)));
+
+    assertThat(role.rerank("Frage", List.of("a"))).isEmpty();
+    assertThat(role.degradedCallCount()).isEqualTo(1);
+
+    assertThat(role.rerank("Frage", List.of("a"))).hasSize(1);
+    assertThat(role.usable()).isTrue();
+    assertThat(role.degradedCallCount()).isEqualTo(1);
+  }
+
+  /**
+   * An endpoint that answers with an empty ranking leaves the caller with the order it already had,
+   * exactly as a failure does - so it counts the same, even though the role stays reachable.
+   */
+  @Test
+  void anEmptyRankingForANonEmptyRequestCountsAsDegradedToo() {
+    RerankClient client = mock(RerankClient.class);
+    RerankModelRole role = role(client, true, ENDPOINT, "m");
+    when(client.rerank(any(), anyString(), any())).thenReturn(List.of());
+
+    assertThat(role.rerank("Frage", List.of("a"))).isEmpty();
+
+    assertThat(role.degradedCallCount()).isEqualTo(1);
+    assertThat(role.usable()).isTrue();
+  }
+
   @Test
   void noStateEverCarriesTheAccessKey() {
     RerankClient client = mock(RerankClient.class);

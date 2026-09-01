@@ -50,7 +50,14 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
 - Eine Variante, die `rerankCandidateCount > 0` **ausdrücklich setzt**, wird als „nicht ausgeführt" gemeldet, solange die
   Rerank-Modellrolle des Laufs nicht nutzbar ist (Schalter aus, Rolle unbelegt oder Endpunkt
   nicht erreichbar) — sie hätte sonst die Konfiguration ohne Reranking unter dem Namen der mit
-  Reranking gemessen. Ein Rerank-Vergleichslauf setzt deshalb `-Dopaa.rerank.enabled=true`,
+  Reranking gemessen. **Diese Prüfung wiederholt sich nach jeder Variante:** Fällt der Endpunkt
+  mitten im Lauf aus, ist jede betroffene Frage auf die fusionierte Reihenfolge des verbreiterten
+  Fensters zurückgefallen — weder das Ergebnis mit Reranking noch das der Konfiguration ohne
+  Reranking (siehe [retrieval-algorithm.md](../../docs/features/retrieval-algorithm.md), Schritt
+  5b). Die Variante wird dann als „nicht verwertbar" gemeldet statt als Messwert. Maßgeblich ist
+  dabei nicht der Rollenzustand am Ende, sondern die Zahl der Aufrufe ohne verwertbare Rangfolge
+  (`RerankModelRole#degradedCallCount`) vor und nach der Variante — eine Rolle, die ausfällt und
+  sich wieder fängt, sähe am Ende unauffällig aus. Ein Rerank-Vergleichslauf setzt deshalb `-Dopaa.rerank.enabled=true`,
   `-Dopaa.rerank.base-url=…`, `-Dopaa.rerank.model=…` und — damit der Baseline-Pfad desselben
   Laufs weiter die ausgelieferte Konfiguration misst — `-Dopaa.query.rerank-candidate-count=0`.
 - `requiresReindex: true` markiert eine Variante, die ein anderes Embedding-Modell oder eine

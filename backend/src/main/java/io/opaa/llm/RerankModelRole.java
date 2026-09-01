@@ -1,6 +1,7 @@
 package io.opaa.llm;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,12 @@ import org.springframework.stereotype.Service;
  * endpoint unreachable is reported at startup ({@link RerankRoleStartupCheck}) and stays readable
  * afterwards through {@link #currentStatus()} - retrieval then runs without reranking, but not
  * unnoticed.
+ *
+ * <p><b>A call that came back without a ranking is counted, not only remembered</b> ({@link
+ * #degradedCallCount()}). The last known state alone cannot answer "did reranking work throughout
+ * this measurement?": an endpoint that fails and recovers looks {@link RerankRoleState#READY}
+ * afterwards, and a run measured across that outage would be reported under the name of the
+ * configuration with reranking (issue #1050, docs/features/retrieval-benchmark.md §2).
  *
  * <p><b>Neither {@link #currentStatus()} nor {@link #usable()} ever probes.</b> Both answer from
  * configuration and the last known endpoint state: the first is on the path of an administration
@@ -42,6 +49,14 @@ public class RerankModelRole implements RerankRoleStatusProvider {
    * never go stale.
    */
   private final AtomicReference<RerankRoleStatus> lastKnown = new AtomicReference<>();
+
+  /**
+   * How many {@link #rerank} calls came back without a usable ranking since this process started -
+   * a failed call as well as an endpoint that answered with an empty ranking. Exactly the calls for
+   * which {@code RerankStage} reports {@code UNAVAILABLE} and falls back to the fused order. Never
+   * reset: a caller that wants "did anything degrade in between?" compares two readings.
+   */
+  private final AtomicLong degradedCalls = new AtomicLong();
 
   public RerankModelRole(RerankProperties properties, RerankClient client) {
     this.properties = properties;
@@ -69,7 +84,10 @@ public class RerankModelRole implements RerankRoleStatusProvider {
    * operation shows up as {@link RerankRoleState#UNREACHABLE} within a minute rather than at the
    * next query.
    */
-  @Scheduled(fixedDelay = PROBE_INTERVAL_MILLIS, initialDelay = PROBE_INTERVAL_MILLIS)
+  @Scheduled(
+      fixedDelay = PROBE_INTERVAL_MILLIS,
+      initialDelay = PROBE_INTERVAL_MILLIS,
+      scheduler = "rerankProbeScheduler")
   void probePeriodically() {
     refresh();
   }
@@ -98,6 +116,15 @@ public class RerankModelRole implements RerankRoleStatusProvider {
   }
 
   /**
+   * The number of {@link #rerank} calls that did not come back with a usable ranking since this
+   * process started - see {@link #degradedCalls}. Monotonically increasing; two readings around a
+   * measurement tell whether reranking held for all of it.
+   */
+  public long degradedCallCount() {
+    return degradedCalls.get();
+  }
+
+  /**
    * Scores {@code texts} against {@code query}, best first.
    *
    * <p><b>Never throws and never fails a query.</b> A call that does not come back usable yields an
@@ -112,8 +139,14 @@ public class RerankModelRole implements RerankRoleStatusProvider {
     try {
       List<RerankClient.ScoredCandidate> scored = client.rerank(properties, query, texts);
       lastKnown.set(status(RerankRoleState.READY, null));
+      if (scored.isEmpty() && !texts.isEmpty()) {
+        // The endpoint answered, but with nothing the caller can order by - the caller falls back
+        // to its incoming order just as it does after a failure, so it counts as one.
+        degradedCalls.incrementAndGet();
+      }
       return scored;
     } catch (RerankClient.RerankUnavailableException e) {
+      degradedCalls.incrementAndGet();
       lastKnown.set(status(RerankRoleState.UNREACHABLE, e.getMessage()));
       log.warn(
           "Rerank call against {} failed, continuing without reranking: {}",

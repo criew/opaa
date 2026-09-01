@@ -15,6 +15,11 @@ import java.util.Set;
  * QueryConfiguration#retrievalPipeline} - so a question like "does reranking run before or after
  * document completion?" is answered by reading a list rather than by tracing branches.
  *
+ * <p><b>A stage switched off here is switched off everywhere.</b> Taking {@link
+ * RetrievalStageName#RERANK} out of the chain also takes the widened candidate budget with it (see
+ * {@link RetrievalContext#withoutReranking()}) - a pipeline cannot be configured into a state in
+ * which the budget is widened for a stage that never runs.
+ *
  * <p><b>Every registered stage appears in the protocol, always.</b> A switched-off stage is
  * recorded as {@link StageStatus#DISABLED}, a stage the run never reached as {@link
  * StageStatus#NOT_REACHED}. A candidate can therefore not disappear between two stages of a
@@ -79,7 +84,14 @@ public class RetrievalPipeline {
    * the remaining stages are recorded as not reached instead of being executed: an empty scope must
    * not pay for a decomposition LLM call whose result nothing would use.
    */
-  public RetrievalPipelineResult run(RetrievalContext context) {
+  public RetrievalPipelineResult run(RetrievalContext rawContext) {
+    // A pipeline without the rerank stage must not let the narrowing stages widen their budget for
+    // it: nothing would restore the top-k cap, and up to rerankCandidateCount chunks would reach
+    // answer generation. Enforced here rather than at the call sites, which cannot see this set.
+    RetrievalContext context =
+        disabledStages.contains(RetrievalStageName.RERANK)
+            ? rawContext.withoutReranking()
+            : rawContext;
     RetrievalState state = RetrievalState.initial();
     List<StageExplanation> explanations = new ArrayList<>(stages.size());
 

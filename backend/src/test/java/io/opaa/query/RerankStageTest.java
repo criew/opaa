@@ -35,13 +35,14 @@ class RerankStageTest {
     return new QueryProperties(TOP_K, 25, 1.0, 0.3, 1.0, false, 3, 2, true, rerankCandidateCount);
   }
 
-  private static RetrievalContext context(int rerankCandidateCount, boolean roleUsable) {
+  private static RetrievalContext context(
+      int rerankCandidateCount, RerankAvailability availability) {
     return new RetrievalContext(
         "Wie hoch ist die Verwaltungsgebühr?",
         List.of(),
         Set.of(UUID.randomUUID()),
         properties(rerankCandidateCount),
-        roleUsable);
+        availability);
   }
 
   private static Document chunk(String id) {
@@ -60,21 +61,37 @@ class RerankStageTest {
             List.of(new CandidateList(RankFusionStage.FUSED_LIST_LABEL, documents)));
   }
 
+  /**
+   * A switched-off role and a broken one are different statements about an installation, and the
+   * protocol must not report both as the same thing.
+   */
   @Test
-  void withoutAUsableRoleTheStagePassesItsInputThroughUnchanged() {
+  void aSwitchedOffRoleIsDisabledAndPassesTheInputThroughUnchanged() {
     RetrievalState state = stateWith(TOP_K);
 
-    StageOutcome outcome = stage.apply(context(50, false), state);
+    StageOutcome outcome = stage.apply(context(50, RerankAvailability.SWITCHED_OFF), state);
 
     assertThat(outcome.state().selection()).isEqualTo(state.selection());
     assertThat(outcome.explanation().status()).isEqualTo(StageStatus.DISABLED);
-    assertThat(outcome.explanation().notes()).hasSize(1);
+    assertThat(outcome.explanation().notes().get(0)).contains("OPAA_RERANK_ENABLED");
+    verify(role, never()).rerank(anyString(), any());
+  }
+
+  @Test
+  void aRoleThatIsOnButNotUsableIsUnavailableRatherThanDisabled() {
+    RetrievalState state = stateWith(TOP_K);
+
+    StageOutcome outcome = stage.apply(context(50, RerankAvailability.NOT_USABLE), state);
+
+    assertThat(outcome.state().selection()).isEqualTo(state.selection());
+    assertThat(outcome.explanation().status()).isEqualTo(StageStatus.UNAVAILABLE);
+    assertThat(outcome.explanation().notes().get(0)).contains("switched on but was not usable");
     verify(role, never()).rerank(anyString(), any());
   }
 
   @Test
   void aZeroCandidateWindowSwitchesTheStageOffThroughItsOwnParameter() {
-    StageOutcome outcome = stage.apply(context(0, true), stateWith(TOP_K));
+    StageOutcome outcome = stage.apply(context(0, RerankAvailability.USABLE), stateWith(TOP_K));
 
     assertThat(outcome.explanation().status()).isEqualTo(StageStatus.DISABLED);
     assertThat(outcome.explanation().notes().get(0)).contains("rerank-candidate-count=0");
@@ -88,7 +105,7 @@ class RerankStageTest {
         .thenReturn(
             IntStream.range(0, 20).mapToObj(i -> new ScoredCandidate(i, i)).toList().reversed());
 
-    StageOutcome outcome = stage.apply(context(50, true), stateWith(20));
+    StageOutcome outcome = stage.apply(context(50, RerankAvailability.USABLE), stateWith(20));
 
     List<Document> selection = outcome.state().selection();
     assertThat(selection).hasSize(TOP_K);
@@ -105,7 +122,7 @@ class RerankStageTest {
     when(role.rerank(anyString(), any()))
         .thenReturn(IntStream.range(0, 12).mapToObj(i -> new ScoredCandidate(i, -i)).toList());
 
-    StageOutcome outcome = stage.apply(context(12, true), stateWith(20));
+    StageOutcome outcome = stage.apply(context(12, RerankAvailability.USABLE), stateWith(20));
 
     assertThat(outcome.explanation().verdicts()).hasSize(20);
     assertThat(outcome.explanation().verdicts())
@@ -122,7 +139,7 @@ class RerankStageTest {
     when(role.rerank(anyString(), any()))
         .thenReturn(List.of(new ScoredCandidate(0, 1.0), new ScoredCandidate(1, 0.5)));
 
-    stage.apply(context(2, true), stateWith(20));
+    stage.apply(context(2, RerankAvailability.USABLE), stateWith(20));
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<String>> sent = ArgumentCaptor.forClass(List.class);
@@ -138,7 +155,7 @@ class RerankStageTest {
   void aFailedCallStillRestoresTheTopKCap() {
     when(role.rerank(anyString(), any())).thenReturn(List.of());
 
-    StageOutcome outcome = stage.apply(context(50, true), stateWith(50));
+    StageOutcome outcome = stage.apply(context(50, RerankAvailability.USABLE), stateWith(50));
 
     assertThat(outcome.state().selection()).hasSize(TOP_K);
     assertThat(outcome.state().selection().get(0).getId()).isEqualTo("c0");
@@ -151,7 +168,7 @@ class RerankStageTest {
   void candidatesTheModelDidNotScoreKeepTheirFusedOrderBehindTheScoredOnes() {
     when(role.rerank(anyString(), any())).thenReturn(List.of(new ScoredCandidate(3, 9.0)));
 
-    StageOutcome outcome = stage.apply(context(50, true), stateWith(5));
+    StageOutcome outcome = stage.apply(context(50, RerankAvailability.USABLE), stateWith(5));
 
     assertThat(outcome.state().selection())
         .extracting(Document::getId)
@@ -167,7 +184,7 @@ class RerankStageTest {
     when(role.rerank(anyString(), any()))
         .thenReturn(List.of(new ScoredCandidate(2, 9.0), new ScoredCandidate(0, 1.0)));
 
-    StageOutcome outcome = stage.apply(context(3, true), stateWith(12));
+    StageOutcome outcome = stage.apply(context(3, RerankAvailability.USABLE), stateWith(12));
 
     assertThat(outcome.state().selection()).hasSize(TOP_K);
     assertThat(outcome.state().selection())
@@ -175,11 +192,18 @@ class RerankStageTest {
         .startsWith("c2", "c0", "c1", "c3", "c4");
   }
 
+  /**
+   * With a usable role and nothing to rerank, the note must say exactly that - reporting "the role
+   * is not usable" would be a false statement about the installation.
+   */
   @Test
-  void anEmptySelectionIsPassedThroughWithoutCallingTheModel() {
-    StageOutcome outcome = stage.apply(context(50, true), RetrievalState.initial());
+  void anEmptySelectionIsPassedThroughWithItsOwnNoteAndWithoutCallingTheModel() {
+    StageOutcome outcome =
+        stage.apply(context(50, RerankAvailability.USABLE), RetrievalState.initial());
 
     assertThat(outcome.state().selection()).isEmpty();
+    assertThat(outcome.explanation().status()).isEqualTo(StageStatus.EXECUTED);
+    assertThat(outcome.explanation().notes().get(0)).contains("nothing to rerank");
     verify(role, never()).rerank(anyString(), any());
   }
 }

@@ -21,6 +21,13 @@ import org.springframework.stereotype.Component;
  * sat behind the candidate window or the endpoint simply did not score it. An endpoint that answers
  * for part of the window must not make the rest disappear, and a window below {@code top-k} must
  * not shrink the answer's context.
+ *
+ * <p><b>A failure costs the order, never the answer - but not the order of a run without
+ * reranking.</b> An endpoint that drops out mid-run leaves the fused order of the <i>widened</i>
+ * window: {@link MmrSelectionStage} kept {@link QueryProperties#rerankCandidateCount} entries per
+ * list instead of {@code top-k}, so ranks 9 to 50 of each list took part in the fusion and a chunk
+ * found by both searches can outrank a rank-3 hit of a single one. The selection is therefore a
+ * third state, distinct both from the reranked run and from the run configured without reranking.
  */
 @Component
 class RerankStage implements RetrievalStage {
@@ -42,14 +49,40 @@ class RerankStage implements RetrievalStage {
     List<Document> incoming = state.selection();
     int topK = properties.topK();
 
-    if (!context.rerankActive() || incoming.isEmpty()) {
+    if (properties.rerankCandidateCount() == 0) {
       return unchanged(
           state,
           incoming,
           StageStatus.DISABLED,
-          properties.rerankCandidateCount() == 0
-              ? "reranking switched off through opaa.query.rerank-candidate-count=0"
-              : "reranking did not run: the rerank model role is not usable in this run");
+          "reranking switched off through opaa.query.rerank-candidate-count=0");
+    }
+    if (context.rerankAvailability() == RerankAvailability.SWITCHED_OFF) {
+      return unchanged(
+          state,
+          incoming,
+          StageStatus.DISABLED,
+          "reranking switched off through the rerank model role's own switch "
+              + "(opaa.rerank.enabled / OPAA_RERANK_ENABLED)");
+    }
+    if (context.rerankAvailability() == RerankAvailability.NOT_USABLE) {
+      return unchanged(
+          state,
+          incoming,
+          StageStatus.UNAVAILABLE,
+          "the rerank model role is switched on but was not usable when this run started - no "
+              + "endpoint or model is configured for it, or its endpoint did not answer; the "
+              + "role's own state says which (RerankRoleStatusProvider#currentStatus)");
+    }
+    if (incoming.isEmpty()) {
+      return new StageOutcome(
+          state.withCandidateLists(
+              List.of(new CandidateList(RankFusionStage.FUSED_LIST_LABEL, List.of()))),
+          StageExplanation.executed(
+              name(),
+              0,
+              0,
+              List.of(),
+              List.of("no candidate reached this stage; there was nothing to rerank")));
     }
 
     List<Document> window =

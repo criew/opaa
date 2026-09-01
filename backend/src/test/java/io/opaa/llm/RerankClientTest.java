@@ -12,6 +12,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -203,6 +204,60 @@ class RerankClientTest {
     assertThat(client.rerank(properties(""), "Frage", List.of("a"))).hasSize(1);
     assertThat(bodies).hasSize(3);
     assertThat(bodies.get(2)).contains("texts");
+  }
+
+  /**
+   * A rerank endpoint may be a cloud provider - a trust boundary. An answer larger than this client
+   * reads must degrade the query, not the process: the call sits on the request path of a user's
+   * question, where an unbounded read would tie up a request thread and the heap.
+   */
+  @Test
+  void aResponseBeyondTheReadLimitIsRefusedRatherThanRead() {
+    server.createContext(
+        "/v1/rerank",
+        exchange -> {
+          exchange.getRequestBody().readAllBytes();
+          byte[] filler = new byte[64 * 1024];
+          Arrays.fill(filler, (byte) 'x');
+          // Chunked (length 0), so the client cannot decide on Content-Length alone.
+          exchange.sendResponseHeaders(200, 0);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(
+                "[{\"index\":0,\"score\":0.5,\"padding\":\"".getBytes(StandardCharsets.UTF_8));
+            for (int written = 0; written < RerankClient.MAX_RESPONSE_BYTES + filler.length; ) {
+              out.write(filler);
+              written += filler.length;
+            }
+          } catch (IOException e) {
+            // The client cut the read short; that is the expected outcome, not a test failure.
+          }
+        });
+
+    assertThatThrownBy(() -> client.rerank(properties(""), "Frage", List.of("a")))
+        .isInstanceOf(RerankUnavailableException.class);
+  }
+
+  @Test
+  void moreRankingEntriesThanCandidatesWereSentIsRefused() {
+    respond(
+        "{\"results\":[{\"index\":0,\"relevance_score\":0.9},{\"index\":0,\"relevance_score\":0.8}]}",
+        new AtomicReference<>());
+
+    assertThatThrownBy(() -> client.rerank(properties(""), "Frage", List.of("a")))
+        .isInstanceOf(RerankUnavailableException.class)
+        .hasMessageContaining("2 ranking entries for 1");
+  }
+
+  /** All indices out of range is not an empty ranking, it is an unusable answer. */
+  @Test
+  void aResponseWhoseEveryIndexIsOutOfRangeIsRefused() {
+    respond(
+        "{\"results\":[{\"index\":7,\"relevance_score\":0.9},{\"index\":-1,\"relevance_score\":0.8}]}",
+        new AtomicReference<>());
+
+    assertThatThrownBy(() -> client.rerank(properties(""), "Frage", List.of("a", "b")))
+        .isInstanceOf(RerankUnavailableException.class)
+        .hasMessageContaining("out of range");
   }
 
   @Test

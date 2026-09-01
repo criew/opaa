@@ -228,6 +228,24 @@ gleichermaßen sprechen. **Ein Fehlschlag kostet die Reihenfolge, nie die Antwor
 Endpunkt stumm, behält die Stufe die fusionierte Reihenfolge, stellt die `top-k`-Deckelung wieder her
 und vermerkt im Erklärprotokoll den Status `UNAVAILABLE` statt so zu tun, als hätte sie entschieden.
 
+**Diese Reihenfolge ist allerdings nicht die des Laufs ohne Reranking.** Fällt der Endpunkt mitten
+im Lauf aus, hat die MMR-Auswahl je Liste bereits `rerank-candidate-count` statt `top-k` Einträge
+behalten — Ränge 9 bis 50 jeder Liste sind also in die Fusion eingeflossen, und ein Chunk mit
+Übereinstimmung in beiden Listen überholt dort einen Rang-3-Treffer aus nur einer. Das Ergebnis ist
+ein **dritter Zustand**: weder die Auswahl des rerankten Laufs noch die der Konfiguration ohne
+Reranking. Kein Fehler — die Antwort bleibt eine Antwort mit `top-k` Chunks —, aber der Grund,
+warum ein Messlauf mit unterbrochenem Reranking nicht als Messwert gilt (siehe
+[eval/variants/README.md](../../eval/variants/README.md)).
+
+**Der Zustand der Rolle reist mit, nicht ein Ja/Nein.** `RetrievalContext#rerankAvailability`
+unterscheidet „abgeschaltet", „an, aber nicht nutzbar" und „nutzbar", und das Erklärprotokoll führt
+die ersten beiden getrennt: `DISABLED` für die Betreiberentscheidung, `UNAVAILABLE` für die Störung.
+Ein leerer Kandidatensatz bekommt eine eigene Notiz statt der Behauptung, die Rolle sei nicht
+nutzbar gewesen. **Das Diagnosewerkzeug liest denselben Rollenzustand wie der Chatpfad**, sonst
+erklärte es eine Suche, die so nie gelaufen ist. Wird die Stufe über
+`opaa.query.pipeline.disabled-stages` abgeschaltet, während die Rolle an ist, nimmt die Pipeline das
+verbreiterte Kandidatenfenster mit zurück — sonst stellte niemand die `top-k`-Deckelung wieder her.
+
 ### 6. Dokument-Vervollständigung
 
 `DocumentCompletionStage` (`DocumentCompletion#complete`, #932/#934/#935) läuft **zuletzt** und zieht ausschließlich
