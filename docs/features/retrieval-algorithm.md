@@ -239,6 +239,26 @@ Ungültige Zitate werden im Antworttext belassen, aber in der zugehörigen `Chat
 (`QueryService#mapSources`). Details zur Belegvalidierung stehen unter
 [Zitierzwang](./data-indexing-rag.md#zitierzwang).
 
+**Was `relevanceScore` bedeutet (#1102).** Der Relevanzwert einer Quellenangabe ist der **Kehrwert
+ihrer Position in der Quellenliste der Antwort** — 1,0 für die erste Quelle, 0,5 für die zweite,
+0,33 für die dritte —, **keine Ähnlichkeit**. Gezählt werden Quellen, nicht Chunks: Ein Dokument
+darf mehrere Chunks zur Auswahl beisteuern (`max-chunks-per-document`), belegt in der Quellenliste
+aber genau eine Position — die Rangvergabe erfolgt deshalb erst, nachdem die Chunks je Dokument zu
+einer Quellenangabe zusammengefasst sind, und die Rangfolge ist lückenlos. Der Rohwert eines Chunks
+(`Document#getScore()`) taugt dafür seit #1049 nicht mehr: Ein Chunk, den nur der lexikalische Pfad
+gefunden hat, trägt einen `ts_rank` (grob 0,03–0,1), einer aus der Vektorsuche eine
+Kosinus-Ähnlichkeit (grob 0,3–0,9); die beiden Skalen sind nicht vergleichbar, und eine nach ihnen
+sortierte Belegliste hätte eine rein lexikalisch gefundene Fundstelle selbst dann ans Ende gestellt,
+wenn die Fusion sie auf Rang 1 gesetzt hat. Der Rang dagegen bedeutet für jede Fundstelle dasselbe,
+unabhängig vom Pfad. Eine synthetische Quellenangabe zu einem erfundenen Beleg (#386) hat gar keinen
+Rang und trägt weiterhin 0. Das Belegfenster (`SourceEvidenceDrawer`) sortiert entsprechend nach der
+Reihenfolge des `sources`-Arrays — also nach der Auswahlreihenfolge der Pipeline, nicht nach einem
+Zahlenwert — und beschriftet die Zeile mit „Rang n" statt mit einem Prozentgewicht. Auch die
+Beschriftung leitet sich allein aus der Position in `sources` ab, nicht aus dem Zahlenwert und nicht
+aus der Zeilenposition im Belegfenster: Die Liste stellt zitierte Quellen vor unzitierte, während
+„Rang n" dieselbe Position meint, deren Kehrwert `relevanceScore` trägt. So bleibt die Beschriftung
+auch für vor #1102 gespeicherte Nachrichten richtig, deren `sources`-JSON noch Rohwerte trägt.
+
 ### Zusammenfassung als Ablauf
 
 ```
