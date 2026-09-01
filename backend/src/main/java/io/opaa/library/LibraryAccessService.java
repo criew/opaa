@@ -10,6 +10,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.group.GroupMembershipResolver;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -160,6 +161,58 @@ public class LibraryAccessService {
         .findByOrganizationIdAndVisibility(organizationId, LibraryVisibility.ORGANIZATION)
         .forEach(library -> readable.add(library.getId()));
     return readable;
+  }
+
+  /**
+   * Every library id a <b>permission profile</b> may read: the group's own grants plus every
+   * organization-wide library - the group-shaped counterpart of {@link #readableLibraryIds}, and
+   * the search scope the administration's diagnosis runs a Rechteprofil in (#1053,
+   * docs/features/hybrid-retrieval.md, "Das Diagnosewerkzeug").
+   *
+   * <p>Deliberately without the direct user grants that formula also considers: a profile is a
+   * role, not a person. Uncached for the same reason {@link #readableLibraryIds} is - this is a
+   * search-scope decision, where a stale cache would leak rather than merely delay.
+   */
+  public Set<UUID> readableLibraryIdsForGroup(UUID groupId, UUID organizationId) {
+    Set<UUID> readable =
+        new HashSet<>(
+            grantRepository.findReadableLibraryIdsByGroupGrant(
+                Set.of(groupId), organizationId, Instant.now()));
+    libraryRepository
+        .findByOrganizationIdAndVisibility(organizationId, LibraryVisibility.ORGANIZATION)
+        .forEach(library -> readable.add(library.getId()));
+    return readable;
+  }
+
+  /**
+   * How many libraries each of {@code groupIds} may read, by the same formula {@link
+   * #readableLibraryIdsForGroup} applies - in two queries for the whole set rather than two per
+   * group. Every requested id gets an entry, including a group with no grant at all, which still
+   * reaches every organization-wide library.
+   */
+  public Map<UUID, Integer> readableLibraryCountsForGroups(
+      Collection<UUID> groupIds, UUID organizationId) {
+    Instant now = Instant.now();
+    Set<UUID> organizationWide =
+        libraryRepository
+            .findByOrganizationIdAndVisibility(organizationId, LibraryVisibility.ORGANIZATION)
+            .stream()
+            .map(KnowledgeLibrary::getId)
+            .collect(Collectors.toSet());
+    Map<UUID, Set<UUID>> grantedByGroup = new HashMap<>();
+    for (AssetGrant grant : grantRepository.findActiveGroupGrants(organizationId, now)) {
+      grantedByGroup
+          .computeIfAbsent(grant.getSubjectGroupId(), id -> new HashSet<>())
+          .add(grant.getLibraryId());
+    }
+
+    Map<UUID, Integer> counts = new HashMap<>();
+    for (UUID groupId : groupIds) {
+      Set<UUID> readable = new HashSet<>(organizationWide);
+      readable.addAll(grantedByGroup.getOrDefault(groupId, Set.of()));
+      counts.put(groupId, readable.size());
+    }
+    return counts;
   }
 
   /**

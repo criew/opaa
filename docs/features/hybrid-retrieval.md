@@ -942,6 +942,27 @@ erzeugen. Er enthält verbindlich:
 - den verwendeten Rechte-Snapshot,
 - die Begründung, sofern ein Personenkontext eingenommen wurde.
 
+> **Klarstellung zum Rechteprofil-Kontext (Koordinator, 01.09.2026, mit Maintainer-Freigabe).** Die
+> Aufzählung oben nennt „Rechteprofil oder Person" als Zielkontext, während (c) den Profilkontext
+> ausdrücklich von den Leitplanken ausnimmt („Dasselbe gilt für Rechteprofile, die keiner Person
+> zugeordnet sind"). Das ist ein Widerspruch innerhalb dieses Abschnitts, aufgefallen im Review zu
+> [#1118](https://github.com/criew/opaa/pull/1118). Er wird zugunsten von (c) aufgelöst: **Die
+> Protokollpflicht aus (f) gilt für den Personenkontext; für Rechteprofile ruht sie**, bis das
+> Befugnis- und Protokollmodell aus [#1052](https://github.com/criew/opaa/issues/1052) steht.
+>
+> Begründung: Ein Rechteprofil ist keiner Person zugeordnet, eine Profil-Diagnose ist deshalb keine
+> Aussage über einen Menschen und aus Mitbestimmungssicht nicht das, wogegen diese Leitplanken
+> geschrieben sind. Hinzu kommt, dass die Diagnose dem Ausführenden im Profilkontext nichts zeigt, was
+> er nicht ohnehin sehen darf: Die Seite ist Systemadministratoren vorbehalten, und
+> `LibraryAccessService` lässt diese Rolle auf jede Bibliothek ihrer Organisation als `OWNER` durch —
+> dieselben Dokumenttitel stehen ihnen bereits in der Bibliotheksverwaltung offen. Chunk-Inhalte gibt
+> die Diagnose überhaupt nicht heraus. Der Zweck von (f) ist hier also die Nachvollziehbarkeit der
+> Befugnisausübung, nicht der Geheimnisschutz — und eine Befugnis, die über das Bestandsrecht des
+> Systemadministrators nicht hinausgeht, trägt diese Pflicht noch nicht.
+>
+> **Diese Ruhensregel endet mit #1052.** Sobald das Protokollmodell steht, ist erneut zu entscheiden,
+> ob Profil-Läufe mitprotokolliert werden; die Kosten dafür sind dann gering, weil die Ablage existiert.
+
 **(g) Zweckbindung des Protokolls.** Das Protokoll ist unveränderlich und dient ausschließlich der
 Nachvollziehbarkeit einzelner Befugnisausübungen. Daraus folgt:
 

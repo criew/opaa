@@ -123,6 +123,20 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
       @Param("now") Instant now);
 
   /**
+   * Every non-expired group grant of one organization, for {@link
+   * LibraryAccessService#readableLibraryCountsForGroups} - one query for every profile at once
+   * instead of one per profile, which would put a round trip per row onto the administration page's
+   * profile picker (#1053).
+   */
+  @Query(
+      "select g from AssetGrant g "
+          + "where g.subjectType = io.opaa.api.types.PermissionSubjectType.GROUP "
+          + "and g.organizationId = :organizationId "
+          + "and (g.expiresAt is null or g.expiresAt > :now)")
+  List<AssetGrant> findActiveGroupGrants(
+      @Param("organizationId") UUID organizationId, @Param("now") Instant now);
+
+  /**
    * Whether the given group is the subject of any grant, on any library - used by {@code
    * GroupService#deleteGroup} to reject deleting a group that still holds a grant ({@code
    * fk_asset_grants_subject_group_organization} is RESTRICT, so without this check the delete would

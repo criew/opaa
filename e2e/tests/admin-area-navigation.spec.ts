@@ -44,7 +44,14 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
       320,
     )
 
-    for (const label of ['Allgemein & Branding', 'Benutzer & Gruppen', 'Modelle']) {
+    // "Suche & Indexierung" is the longest of the four labels and therefore the one that
+    // decides whether the column still fits into 320 px (#1053).
+    for (const label of [
+      'Allgemein & Branding',
+      'Benutzer & Gruppen',
+      'Modelle',
+      'Suche & Indexierung',
+    ]) {
       const box = await column.getByRole('link', { name: label }).boundingBox()
       expect(box, `Ziel "${label}" ist gerendert`).not.toBeNull()
       expect(box!.x, `Ziel "${label}" beginnt im Viewport`).toBeGreaterThanOrEqual(0)

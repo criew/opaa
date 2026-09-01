@@ -681,6 +681,86 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/search/status:
+    get:
+      operationId: getSearchStatus
+      tags: [admin, search]
+      summary: >
+        The active retrieval configuration as a read-only status display (system admin only, #1053,
+        hybrid-retrieval.md "Was die Seite anzeigt")
+      description: >
+        Model roles, search paths and per-library index state of the caller's own organization. A
+        status display, never an editor: this API has no counterpart that writes any of it. Access
+        keys never appear in this response, not even shortened - the same write-only convention
+        LlmModelResponse already establishes.
+      responses:
+        "200":
+          description: The active configuration and index state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/search/permission-profiles:
+    get:
+      operationId: listSearchPermissionProfiles
+      tags: [admin, search]
+      summary: The permission profiles the diagnosis can be run in (system admin only, #1053)
+      description: >
+        A permission profile is a group together with the library set it may read - the diagnosis
+        context hybrid-retrieval.md's Berechtigungs-Leitplanken (d) names as the default one. A
+        person is deliberately not offered here: the "Sicht als (Person)" context needs the
+        Befugnis- und Protokollmodell (#1052) and is not delivered without it.
+      responses:
+        "200":
+          description: The permission profiles of the caller's own organization, by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SearchPermissionProfileResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/search/diagnosis:
+    post:
+      operationId: runSearchDiagnosis
+      tags: [admin, search]
+      summary: >
+        Run a test question through the retrieval pipeline and return its explanation protocol
+        (system admin only, #1053, hybrid-retrieval.md "Das Diagnosewerkzeug")
+      description: >
+        Answers "why does this document not appear?" from the pipeline's own Erklärprotokoll
+        (#1046) - not from a reconstruction: every stage in the response is one the pipeline
+        actually ran, in the order it ran them. Three invariants hold, all of them Baubedingung
+        rather than Ausbaustufe (hybrid-retrieval.md, Berechtigungs-Leitplanken): the run never
+        reads an existing chat, it answers the Jetzt-Zustand only and is no
+        Zugriffshistorien-Nachweis, and it applies a permission filter like every other search - it
+        sets that filter differently, it never omits it. No answer is generated; the run stops
+        after retrieval.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchDiagnosisRequest"
+      responses:
+        "200":
+          description: The stage-by-stage protocol of this run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchDiagnosisResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/directory-sync/dry-run:
     post:
       operationId: runDirectorySyncDryRun
@@ -5350,6 +5430,460 @@ components:
           type: integer
           description: Vector dimensionality of the configured pgvector store.
           example: 1536
+
+    SearchModelRole:
+      type: string
+      description: >
+        The three model roles of the Modell-Schichtenmodell (hybrid-retrieval.md, Arbeitspaket 4):
+        reranking sits on the same level as chat and embedding, not inside the search as a built-in
+        procedure.
+      enum: [CHAT, EMBEDDING, RERANK]
+      example: RERANK
+
+    SearchModelRoleState:
+      type: string
+      description: >
+        DISABLED is an explicit statement, not an absence: only a role whose switch is deliberately
+        off reports it. UNCONFIGURED and UNREACHABLE are the two Störungszustände - a role that is
+        switched on but unbelegt, and one that is belegt but not reachable.
+      enum: [ACTIVE, DISABLED, UNCONFIGURED, UNREACHABLE]
+      example: DISABLED
+
+    SearchModelRoleStatusResponse:
+      type: object
+      required: [role, state, faulted, detail]
+      properties:
+        role:
+          $ref: "#/components/schemas/SearchModelRole"
+        state:
+          $ref: "#/components/schemas/SearchModelRoleState"
+        endpoint:
+          type: string
+          nullable: true
+          description: >
+            The role's base address, or null when no endpoint is configured. The access key is
+            never part of this response, not even shortened.
+          example: http://localhost:11434/v1
+        modelIdentifier:
+          type: string
+          nullable: true
+          example: qwen3:8b
+        faulted:
+          type: boolean
+          description: >
+            Whether this role's state is a Störungsmeldung rather than a Fußnote - true for exactly
+            UNCONFIGURED and UNREACHABLE. Carried explicitly so a client cannot decide it from a
+            state enum that may gain further values.
+        detail:
+          type: string
+          description: The user-facing German explanation of this state.
+
+    SearchPath:
+      type: string
+      enum: [VECTOR, FULL_TEXT]
+      example: FULL_TEXT
+
+    SearchPathState:
+      type: string
+      description: >
+        INCOMPLETE is the state hybrid-retrieval.md demands be visible rather than only noticeable
+        in bad answers: the path runs, but not over the whole bestand yet.
+      enum: [ACTIVE, DISABLED, INCOMPLETE]
+      example: INCOMPLETE
+
+    SearchPathStatusResponse:
+      type: object
+      required: [path, state, detail]
+      properties:
+        path:
+          $ref: "#/components/schemas/SearchPath"
+        state:
+          $ref: "#/components/schemas/SearchPathState"
+        detail:
+          type: string
+          description: The user-facing German explanation of this state.
+
+    LibraryIndexState:
+      type: string
+      description: >
+        EMPTY - the library holds no chunk at all. READY - every chunk this index needs is there.
+        INCOMPLETE - chunks are missing, which for the full-text index is exactly the condition
+        that keeps the lexical path from searching this library at all.
+      enum: [EMPTY, READY, INCOMPLETE]
+      example: INCOMPLETE
+
+    LibrarySearchStatusResponse:
+      type: object
+      required:
+        [
+          libraryId,
+          libraryName,
+          documentCount,
+          indexedDocumentCount,
+          pendingDocumentCount,
+          failedDocumentCount,
+          lowChunkDocumentCount,
+          chunkCount,
+          vectorChunkCount,
+          vectorIndexState,
+          fullTextIndexState,
+          fullTextIndexedChunks,
+          fullTextMissingChunks,
+        ]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+          example: Satzungen & Gebührenordnungen
+        documentCount:
+          type: integer
+          format: int64
+        indexedDocumentCount:
+          type: integer
+          format: int64
+        pendingDocumentCount:
+          type: integer
+          format: int64
+          description: The Rückstand - documents still waiting to be indexed.
+        failedDocumentCount:
+          type: integer
+          format: int64
+        lowChunkDocumentCount:
+          type: integer
+          format: int64
+          description: >
+            Documents geführt as INDEXED with null or auffällig wenige chunks (#1055/#1090) - a
+            permanent operational metric, not a one-off cleanup number.
+        chunkCount:
+          type: integer
+          format: int64
+          description: Chunks the documents of this library are recorded as having produced.
+        vectorChunkCount:
+          type: integer
+          format: int64
+          description: >
+            Chunks of this library that actually sit in the vector store - the reference count the
+            full-text index is measured against. A visible gap to chunkCount means the two stores
+            disagree, which is itself the finding.
+        lastIndexedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: The latest indexing time across this library's documents; null if none ran.
+        vectorIndexState:
+          $ref: "#/components/schemas/LibraryIndexState"
+        fullTextIndexState:
+          $ref: "#/components/schemas/LibraryIndexState"
+        fullTextIndexedChunks:
+          type: integer
+          format: int64
+        fullTextMissingChunks:
+          type: integer
+          format: int64
+          description: >
+            Counted by anti-join, never derived as total minus indexed - see
+            FullTextBackfillProgress's own documentation for why the two counts cannot be
+            subtracted. This is the one number the full-text backfill completion gate reads, and
+            therefore the same data source the "Volltextpfad inaktiv oder unvollständig" alarm
+            reads.
+
+    SearchStatusResponse:
+      type: object
+      required: [modelRoles, searchPaths, libraries]
+      properties:
+        modelRoles:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchModelRoleStatusResponse"
+        searchPaths:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchPathStatusResponse"
+        libraries:
+          type: array
+          description: Every library of the caller's own organization, by name.
+          items:
+            $ref: "#/components/schemas/LibrarySearchStatusResponse"
+
+    SearchPermissionProfileResponse:
+      type: object
+      required: [id, name, libraryCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Sachbearbeitung Bürgerbüro
+        libraryCount:
+          type: integer
+          description: How many libraries this profile may read.
+
+    SearchDiagnosisContextType:
+      type: string
+      description: >
+        SELF runs in the calling administrator's own rights context; PERMISSION_PROFILE runs in a
+        group's. A person context is deliberately not part of this enum - it needs #1052.
+      enum: [SELF, PERMISSION_PROFILE]
+      example: PERMISSION_PROFILE
+
+    SearchDiagnosisRequest:
+      type: object
+      required: [question, contextType]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: >
+            A freshly entered test question. There is no way to run this against an existing chat:
+            chats are space-eigener, zunächst privater Inhalt, and this page never reads them.
+          example: Was gilt bei Gebührenbefreiung wegen Bedürftigkeit?
+        contextType:
+          $ref: "#/components/schemas/SearchDiagnosisContextType"
+        permissionProfileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Required for PERMISSION_PROFILE, rejected with 400 for SELF. An unknown id yields 404.
+        trackedDocumentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            A document to follow through the whole run. Without it the response still lists every
+            document a search stage found; with it, the response additionally states plainly
+            whether that document was outside the search scope, never retrieved, displaced at a
+            named stage, or in the final selection - the distinction between an indexing problem
+            and a ranking problem.
+
+    RetrievalStage:
+      type: string
+      description: The named stages of the retrieval pipeline (hybrid-retrieval.md, Arbeitspaket 1).
+      enum:
+        [
+          SEARCH_SCOPE,
+          SUB_QUERY_DECOMPOSITION,
+          VECTOR_SEARCH,
+          FULL_TEXT_SEARCH,
+          MMR_SELECTION,
+          RANK_FUSION,
+          DOCUMENT_COMPLETION,
+        ]
+      example: RANK_FUSION
+
+    RetrievalStageStatus:
+      type: string
+      description: >
+        Whether a registered stage ran. A stage that did not run still appears in the protocol - a
+        stage silently missing is the failure the protocol exists to prevent.
+      enum: [EXECUTED, DISABLED, NOT_REACHED]
+      example: EXECUTED
+
+    RetrievalCandidateOutcome:
+      type: string
+      enum: [ADDED, KEPT, DROPPED]
+      example: DROPPED
+
+    RetrievalVerdictReason:
+      type: string
+      description: >
+        The fixed vocabulary a stage attaches to its verdict - a closed set rather than free text,
+        so a consumer can group and translate it instead of parsing sentences.
+      enum:
+        [
+          RETRIEVED_BY_SEARCH,
+          WITHIN_BUDGET,
+          OUTSIDE_LIST_BUDGET,
+          OUTSIDE_FUSION_BUDGET,
+          COMPLETED_AS_SIBLING,
+          EVICTED_BY_DOCUMENT_COMPLETION_TIER_1,
+          EVICTED_BY_DOCUMENT_COMPLETION_TIER_2,
+        ]
+      example: OUTSIDE_FUSION_BUDGET
+
+    RetrievalVerdictResponse:
+      type: object
+      required: [chunkId, documentKey, outcome, reason]
+      properties:
+        chunkId:
+          type: string
+        documentKey:
+          type: string
+          description: >
+            The chunk's document grouping key - the level the question "why is document Z not in
+            the answer?" is actually asked at.
+        documentTitle:
+          type: string
+          nullable: true
+          description: File name of the document, or null if it is no longer resolvable.
+        libraryName:
+          type: string
+          nullable: true
+        outcome:
+          $ref: "#/components/schemas/RetrievalCandidateOutcome"
+        reason:
+          $ref: "#/components/schemas/RetrievalVerdictReason"
+        listLabel:
+          type: string
+          nullable: true
+          description: Which candidate list this verdict refers to; null once the lists are fused.
+        rank:
+          type: integer
+          nullable: true
+          description: >
+            The candidate's 1-based position in the ordering this stage decided against. Ranks stay
+            comparable across search methods, unlike value.
+        value:
+          type: number
+          format: double
+          nullable: true
+          description: >
+            The stage-internal number the decision was made on. Deliberately not comparable across
+            stages, nor across search methods within one.
+
+    RetrievalStageResponse:
+      type: object
+      required: [stage, status, incomingCount, outgoingCount, notes, verdicts]
+      properties:
+        stage:
+          $ref: "#/components/schemas/RetrievalStage"
+        status:
+          $ref: "#/components/schemas/RetrievalStageStatus"
+        incomingCount:
+          type: integer
+        outgoingCount:
+          type: integer
+          description: >
+            Both counts are list entries, not distinct chunks: the same chunk found by two
+            sub-queries is two entries before fusion and one after.
+        notes:
+          type: array
+          items:
+            type: string
+        verdicts:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetrievalVerdictResponse"
+
+    DiagnosisSelectionEntryResponse:
+      type: object
+      required: [rank, chunkId, documentKey]
+      properties:
+        rank:
+          type: integer
+          description: 1-based position in the final selection.
+        chunkId:
+          type: string
+        documentKey:
+          type: string
+        documentTitle:
+          type: string
+          nullable: true
+        libraryName:
+          type: string
+          nullable: true
+
+    TrackedDocumentOutcome:
+      type: string
+      description: >
+        OUTSIDE_SEARCH_SCOPE - the context may not read this document's library, so no search could
+        have reached it. NOT_RETRIEVED - inside the scope, but no search stage found any of its
+        chunks: an indexing or chunking problem. DISPLACED - found and dropped at a named stage: a
+        ranking problem. IN_FINAL_SELECTION - it is in the Endauswahl.
+      enum: [OUTSIDE_SEARCH_SCOPE, NOT_RETRIEVED, DISPLACED, IN_FINAL_SELECTION]
+      example: DISPLACED
+
+    TrackedDocumentResponse:
+      type: object
+      required: [documentId, outcome, retrievedChunkCount, selectedChunkCount]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          nullable: true
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+        libraryName:
+          type: string
+          nullable: true
+        outcome:
+          $ref: "#/components/schemas/TrackedDocumentOutcome"
+        displacedAtStage:
+          allOf:
+            - $ref: "#/components/schemas/RetrievalStage"
+          nullable: true
+          description: Set only for DISPLACED - the first stage that dropped one of its chunks.
+        displacedReason:
+          allOf:
+            - $ref: "#/components/schemas/RetrievalVerdictReason"
+          nullable: true
+        retrievedChunkCount:
+          type: integer
+          description: How many of this document's chunks any search stage returned.
+        selectedChunkCount:
+          type: integer
+          description: How many of them are in the final selection.
+
+    SearchDiagnosisResponse:
+      type: object
+      required:
+        [
+          question,
+          contextType,
+          contextLabel,
+          executedAt,
+          searchScope,
+          searchQueries,
+          stages,
+          finalSelection,
+        ]
+      properties:
+        question:
+          type: string
+        contextType:
+          $ref: "#/components/schemas/SearchDiagnosisContextType"
+        contextLabel:
+          type: string
+          description: The German label of the rights context this run used.
+        executedAt:
+          type: string
+          format: date-time
+          description: >
+            When this run happened. The diagnosis answers the Jetzt-Zustand only; it is no
+            Zugriffshistorien-Nachweis, and this value dates the answer rather than allowing one.
+        searchScope:
+          type: array
+          description: >
+            The libraries the run was allowed to search - the permission filter every stage
+            applied, never widened by any of them.
+          items:
+            $ref: "#/components/schemas/SearchedLibrary"
+        searchQueries:
+          type: array
+          items:
+            type: string
+        stages:
+          type: array
+          description: One entry per registered stage, in execution order, whether it ran or not.
+          items:
+            $ref: "#/components/schemas/RetrievalStageResponse"
+        finalSelection:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagnosisSelectionEntryResponse"
+        trackedDocument:
+          allOf:
+            - $ref: "#/components/schemas/TrackedDocumentResponse"
+          nullable: true
+          description: Present only when the request named a trackedDocumentId.
 
   parameters:
     AuditFrom:

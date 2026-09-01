@@ -28,6 +28,13 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
       UUID organizationId, LibraryVisibility visibility);
 
   /**
+   * Every library of one organization, regardless of visibility or grants - for the administrative
+   * index-status view (#1053), which reports on the bestand as such rather than on what any one
+   * person may read.
+   */
+  List<KnowledgeLibrary> findByOrganizationId(UUID organizationId);
+
+  /**
    * Every library with an active schedule (#485), across every organization - {@code
    * io.opaa.indexing.LibraryIndexingScheduler}'s own tick is the only caller; a schedule can only
    * ever be enabled on a connector library (migration 054's {@code

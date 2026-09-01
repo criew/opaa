@@ -25,9 +25,9 @@ import org.springframework.stereotype.Component;
  *
  * <p><b>Cached, because the underlying count is expensive and the answer is monotone.</b> {@link
  * FullTextBackfillProgressService} counts against {@code vector_store} without an index on the
- * {@code library_id} metadata key; running that per query would put a table scan into the retrieval
- * path. A library that is complete stays complete: every chunk written after #1047 gets its {@code
- * chunk_full_text} row in the same transaction as its vector row (see {@code
+ * {@code library_id} metadata key (#1119); running that per query would put a table scan into the
+ * retrieval path. A library that is complete stays complete: every chunk written after #1047 gets
+ * its {@code chunk_full_text} row in the same transaction as its vector row (see {@code
  * VectorChunkStore#addChunks}), so completion is never lost while the process runs. A completed
  * library is consequently cached for the process's lifetime, an incomplete one re-checked at most
  * once per {@link #RECHECK_INTERVAL}.
