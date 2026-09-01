@@ -28,6 +28,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -566,15 +567,16 @@ public class QueryService {
     // malformed/missing value) - two chunks with the same unparseable id must still merge into one
     // entry rather than colliding on a shared null key.
     Map<String, ChatSource> fromChunksByDocumentId =
-        chunks.stream()
-            .map(
-                chunk -> {
+        IntStream.range(0, chunks.size())
+            .mapToObj(
+                position -> {
+                  Document chunk = chunks.get(position);
                   String fileName =
                       chunk.getMetadata().getOrDefault("file_name", "unknown").toString();
                   String documentId =
                       chunk.getMetadata().getOrDefault("document_id", "").toString();
                   String groupKey = chunkGroupingKey(chunk);
-                  double score = chunk.getScore() != null ? chunk.getScore() : 0.0;
+                  double score = relevanceScoreForRank(position + 1);
                   boolean cited = validCitedDocumentIds.contains(documentId);
                   boolean citationValid = !documentIdsWithInvalidCitation.contains(documentId);
                   int matches = matchCounts.getOrDefault(groupKey, 1);
@@ -619,6 +621,16 @@ public class QueryService {
 
     return Stream.concat(fromChunksByDocumentId.values().stream(), unmatchedOrphanEntries.stream())
         .toList();
+  }
+
+  /**
+   * The reciprocal of a chunk's 1-based position in the final selection - {@code 1.0} for the
+   * top-ranked chunk, strictly decreasing and always within {@code (0, 1]}, so it stays inside
+   * {@code SourceReference#relevanceScore}'s declared bounds. A position is comparable across
+   * search paths, a raw {@link Document#getScore()} is not (#1102).
+   */
+  private static double relevanceScoreForRank(int rank) {
+    return 1.0 / rank;
   }
 
   /**

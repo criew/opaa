@@ -38,6 +38,9 @@ interface EvidenceDoc {
    *  source that does not match the chunks actually retrieved for this answer. */
   citationValid: boolean
   relevanceScore?: number
+  /** #1102: position in the backend's `sources` array within this doc's group - the order the
+   *  retrieval pipeline settled on. */
+  sourceIndex: number
   indexedAt?: string | null
   sourceEntryUrl?: string | null
   /** #739/#747: the original's document id - openable via GET /documents/{id}/content for every
@@ -57,9 +60,9 @@ function formatAnsweredAt(answeredAt: Date): string {
 
 /**
  * Mockup 1i's Belegfenster (#592): the side panel with every source of one answer - searchable,
- * filterable to cited ones, sorted by weight. The per-passage verbatim quotes and locations the
- * mockup shows wait on the backend's chunk metadata (#667); until then each document row carries
- * what the API can already vouch for.
+ * filterable to cited ones, in the order the retrieval pipeline selected the chunks (#1102). The
+ * per-passage verbatim quotes and locations the mockup shows wait on the backend's chunk metadata
+ * (#667); until then each document row carries what the API can already vouch for.
  */
 export default function SourceEvidenceDrawer({
   open,
@@ -90,28 +93,32 @@ export default function SourceEvidenceDrawer({
       cited: true,
       citationValid: doc.source?.citationValid !== false,
       relevanceScore: doc.source?.relevanceScore,
+      sourceIndex: doc.sourceIndex,
       indexedAt: doc.source?.indexedAt,
       sourceEntryUrl: doc.source?.sourceEntryUrl,
       documentId: doc.source?.documentId,
       sourceType: doc.source?.sourceType,
       sourceUrl: doc.source?.sourceUrl,
     }))
-    const uncited: EvidenceDoc[] = citations.uncited.map((source) => ({
+    const uncited: EvidenceDoc[] = citations.uncited.map((source, index) => ({
       fileName: source.fileName,
       numbers: [],
       cited: false,
       citationValid: source.citationValid !== false,
       relevanceScore: source.relevanceScore,
+      sourceIndex: index,
       indexedAt: source.indexedAt,
       sourceEntryUrl: source.sourceEntryUrl,
       documentId: source.documentId,
       sourceType: source.sourceType,
       sourceUrl: source.sourceUrl,
     }))
-    // Mockup 1i: "nach Gewicht sortiert" - by relevance within each group, cited before checked.
-    const byWeight = (a: EvidenceDoc, b: EvidenceDoc) =>
-      (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0)
-    return [...cited.sort(byWeight), ...uncited.sort(byWeight)]
+    // #1102: order by the position the retrieval pipeline settled on, never by relevanceScore -
+    // a persisted message's snapshot may still carry the pre-#1102 path-dependent raw score, and
+    // sorting by that would drop a lexical-only source to the bottom. `citations.uncited` already
+    // arrives in that order; the cited rows arrive in first-appearance order instead.
+    const byPipelineOrder = (a: EvidenceDoc, b: EvidenceDoc) => a.sourceIndex - b.sourceIndex
+    return [...cited.sort(byPipelineOrder), ...uncited]
   }, [citations])
 
   const visibleDocs = useMemo(() => {
@@ -153,7 +160,7 @@ export default function SourceEvidenceDrawer({
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: 16, fontWeight: 600 }}>Belege dieser Antwort</Typography>
           <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.25 }}>
-            {stellen} in {dokumente} · nach Gewicht sortiert
+            {stellen} in {dokumente} · nach Relevanzrang sortiert
           </Typography>
         </Box>
         <IconButton size="small" onClick={onClose} aria-label="Belegfenster schließen">
@@ -267,8 +274,11 @@ export default function SourceEvidenceDrawer({
               >
                 <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
                   {[
-                    doc.relevanceScore !== undefined
-                      ? `Gewicht ${Math.round(doc.relevanceScore * 100)} %`
+                    // #1102: relevanceScore is the reciprocal of the source's rank in this
+                    // answer, not a similarity - a synthetic entry (#386) carries 0 and gets no
+                    // rank at all.
+                    doc.relevanceScore !== undefined && doc.relevanceScore > 0
+                      ? `Rang ${Math.round(1 / doc.relevanceScore)}`
                       : null,
                     doc.indexedAt
                       ? `indiziert ${new Date(doc.indexedAt).toLocaleDateString('de-DE', { dateStyle: 'medium' })}`

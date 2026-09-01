@@ -73,7 +73,31 @@ describe('buildCitationIndex', () => {
     const index = buildCitationIndex('Text【source: xx#0 | verwaist.md】', [])
 
     expect(index.docs).toEqual([
-      { fileName: 'verwaist.md', numbers: [1], source: undefined, locations: [] },
+      {
+        fileName: 'verwaist.md',
+        numbers: [1],
+        source: undefined,
+        // #1102: no source, hence no position in the pipeline's selection - such a row sorts last
+        // in the Belegfenster instead of silently taking the top spot.
+        sourceIndex: Number.MAX_SAFE_INTEGER,
+        locations: [],
+      },
+    ])
+  })
+
+  test('carries the position of each row in the backend sources array (#1102)', () => {
+    // The markers cite the second source first - the row order follows the text, but sourceIndex
+    // keeps the pipeline's own selection order available to the Belegfenster.
+    const content = 'A【source: doc-b#0 | b.md】 B【source: doc-a#0 | a.md】'
+
+    const index = buildCitationIndex(content, [
+      source('a.md', true, 'doc-a'),
+      source('b.md', true, 'doc-b'),
+    ])
+
+    expect(index.docs.map((d) => [d.fileName, d.sourceIndex])).toEqual([
+      ['b.md', 1],
+      ['a.md', 0],
     ])
   })
 

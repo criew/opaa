@@ -18,6 +18,10 @@ export interface CitationDoc {
    *  entry (#386) with no matching retrieved document, same as {@link SourceReference.documentId}
    *  it is carried straight through from. */
   documentId: string | null | undefined
+  /** #1102: this row's position in the backend's `sources` array - the order the retrieval
+   *  pipeline settled on, which the Belegfenster sorts by. `Number.MAX_SAFE_INTEGER` when no
+   *  source matched (a persisted legacy message whose snapshot lists none). */
+  sourceIndex: number
   /** #667: the distinct Fundorte of this row's footnotes, in footnote order - "S. 2–4",
    *  "Abschn. 4.2 Fristsetzung" - resolved from the marker's chunk index via
    *  {@link SourceReference.chunkLocations}. Empty when the pipeline knew none. */
@@ -65,6 +69,11 @@ export function buildCitationIndex(
     (sources ?? []).filter((s) => s.documentId != null).map((s) => [s.documentId as string, s]),
   )
   const sourceByFileName = new Map((sources ?? []).map((s) => [s.fileName, s]))
+  const indexBySource = new Map((sources ?? []).map((s, i) => [s, i]))
+
+  function sourceIndexOf(source: SourceReference | undefined): number {
+    return source === undefined ? Number.MAX_SAFE_INTEGER : (indexBySource.get(source) ?? 0)
+  }
 
   function resolveSource(
     documentId: string | undefined,
@@ -112,6 +121,7 @@ export function buildCitationIndex(
           numbers: [],
           source,
           documentId: source?.documentId,
+          sourceIndex: sourceIndexOf(source),
           locations: [],
         })
       }
@@ -136,6 +146,7 @@ export function buildCitationIndex(
         numbers: [],
         source,
         documentId: source.documentId,
+        sourceIndex: sourceIndexOf(source),
         locations: [],
       })
     }

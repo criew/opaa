@@ -37,19 +37,23 @@ function source(
   }
 }
 
-/** An answer citing three documents, plus one checked-but-uncited source. */
+/**
+ * An answer citing three documents, plus one checked-but-uncited source. #1102: `sources` arrives
+ * in the order the retrieval pipeline settled on, each `relevanceScore` the reciprocal of that
+ * position - deliberately a different order than the citation markers in the text.
+ */
 function message(): ChatMessage {
   return {
     id: 'ev-1',
     role: 'assistant',
     content:
-      'Erstens【source: a#0 | schwach.md】, zweitens【source: b#0 | stark.md】, ' +
-      'drittens【source: c#0 | mittel.md】.',
+      'Erstens【source: a#0 | zweiter.md】, zweitens【source: b#0 | erster.md】, ' +
+      'drittens【source: c#0 | dritter.md】.',
     sources: [
-      source('schwach.md', true, 0.41),
-      source('stark.md', true, 0.97),
-      source('mittel.md', true, 0.7),
-      source('ungenutzt.md', false, 0.3),
+      source('erster.md', true, 1),
+      source('zweiter.md', true, 0.5),
+      source('dritter.md', true, 1 / 3),
+      source('ungenutzt.md', false, 0.25),
     ],
     timestamp: new Date('2026-08-20T14:12:00'),
   }
@@ -72,29 +76,65 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
 
     expect(within(drawer).getByText('Belege dieser Antwort')).toBeInTheDocument()
     expect(
-      within(drawer).getByText('3 Stellen in 3 Dokumenten · nach Gewicht sortiert'),
+      within(drawer).getByText('3 Stellen in 3 Dokumenten · nach Relevanzrang sortiert'),
     ).toBeInTheDocument()
     expect(within(drawer).getByText(/Stand der Antwort: 20\.08\.2026, 14:12/)).toBeInTheDocument()
   })
 
-  it('sorts documents by relevance, uncited ones greyed at the end', async () => {
+  it('lists documents in the order the pipeline selected them, uncited ones at the end', async () => {
     const { drawer } = await openDrawer()
 
     const names = within(drawer)
       .getAllByTestId('evidence-doc')
       .map((el) => el.getAttribute('data-file'))
-    expect(names).toEqual(['stark.md', 'mittel.md', 'schwach.md', 'ungenutzt.md'])
+    expect(names).toEqual(['erster.md', 'zweiter.md', 'dritter.md', 'ungenutzt.md'])
+  })
+
+  // #1102: relevanceScore is the reciprocal of the fused rank, so it is only ever a label - a
+  // persisted message from before #1102 still carries the old path-dependent raw score, and the
+  // drawer must not reorder by it. A lexical-only source (tiny ts_rank) that the pipeline put
+  // first therefore stays first.
+  it('never reorders by relevanceScore, even when the values contradict the backend order', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MessageBubble
+        message={{
+          id: 'ev-legacy',
+          role: 'assistant',
+          content: 'Beleg【source: a#0 | lexikalisch.md】 und【source: b#0 | vektor.md】.',
+          sources: [source('lexikalisch.md', true, 0.09), source('vektor.md', true, 0.8)],
+          timestamp: new Date('2026-08-22T09:00:00'),
+        }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    const names = within(drawer)
+      .getAllByTestId('evidence-doc')
+      .map((el) => el.getAttribute('data-file'))
+    expect(names).toEqual(['lexikalisch.md', 'vektor.md'])
+  })
+
+  it('labels a source with its rank in the answer, not a percentage weight (#1102)', async () => {
+    const { drawer } = await openDrawer()
+
+    const rows = within(drawer).getAllByTestId('evidence-doc')
+    expect(within(rows[0]).getByText(/Rang 1/)).toBeInTheDocument()
+    expect(within(rows[1]).getByText(/Rang 2/)).toBeInTheDocument()
+    expect(within(rows[2]).getByText(/Rang 3/)).toBeInTheDocument()
+    expect(within(drawer).queryByText(/Gewicht/)).not.toBeInTheDocument()
   })
 
   it('filters by the search field', async () => {
     const { user, drawer } = await openDrawer()
 
-    await user.type(within(drawer).getByPlaceholderText('In Belegen suchen …'), 'stark')
+    await user.type(within(drawer).getByPlaceholderText('In Belegen suchen …'), 'zweiter')
 
     const names = within(drawer)
       .getAllByTestId('evidence-doc')
       .map((el) => el.getAttribute('data-file'))
-    expect(names).toEqual(['stark.md'])
+    expect(names).toEqual(['zweiter.md'])
   })
 
   it('hides checked-but-uncited sources behind the "Nur zitierte" filter', async () => {
@@ -105,7 +145,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     const names = within(drawer)
       .getAllByTestId('evidence-doc')
       .map((el) => el.getAttribute('data-file'))
-    expect(names).toEqual(['stark.md', 'mittel.md', 'schwach.md'])
+    expect(names).toEqual(['erster.md', 'zweiter.md', 'dritter.md'])
   })
 
   it('flags a source with an invalid citation as "Beleg nicht bestätigt" (#386)', async () => {

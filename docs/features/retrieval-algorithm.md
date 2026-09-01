@@ -239,6 +239,19 @@ Ungültige Zitate werden im Antworttext belassen, aber in der zugehörigen `Chat
 (`QueryService#mapSources`). Details zur Belegvalidierung stehen unter
 [Zitierzwang](./data-indexing-rag.md#zitierzwang).
 
+**Was `relevanceScore` bedeutet (#1102).** Der Relevanzwert einer Quellenangabe ist der **Kehrwert
+ihres Rangs in der fusionierten Auswahl** — 1,0 für die erstplatzierte Fundstelle, 0,5 für die
+zweite, 0,33 für die dritte —, **keine Ähnlichkeit**. Der Rohwert eines Chunks
+(`Document#getScore()`) taugt dafür seit #1049 nicht mehr: Ein Chunk, den nur der lexikalische Pfad
+gefunden hat, trägt einen `ts_rank` (grob 0,03–0,1), einer aus der Vektorsuche eine
+Kosinus-Ähnlichkeit (grob 0,3–0,9); die beiden Skalen sind nicht vergleichbar, und eine nach ihnen
+sortierte Belegliste hätte eine rein lexikalisch gefundene Fundstelle selbst dann ans Ende gestellt,
+wenn die Fusion sie auf Rang 1 gesetzt hat. Der Rang dagegen bedeutet für jede Fundstelle dasselbe,
+unabhängig vom Pfad. Eine synthetische Quellenangabe zu einem erfundenen Beleg (#386) hat gar keinen
+Rang und trägt weiterhin 0. Das Belegfenster (`SourceEvidenceDrawer`) sortiert entsprechend nach der
+Reihenfolge des `sources`-Arrays — also nach der Auswahlreihenfolge der Pipeline, nicht nach einem
+Zahlenwert — und beschriftet die Zeile mit „Rang n" statt mit einem Prozentgewicht.
+
 ### Zusammenfassung als Ablauf
 
 ```
