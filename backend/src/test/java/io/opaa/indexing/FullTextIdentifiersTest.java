@@ -75,6 +75,83 @@ class FullTextIdentifiersTest {
     assertThat(FullTextIdentifiers.extract("Erlass Nr. 12/2024")).contains("xnr122024");
   }
 
+  /**
+   * The property the whole mechanism depends on: a document writes the file number behind a
+   * keyword, a person asks for it bare. A pattern that needs the keyword fires on one side only,
+   * and the protection then silently does nothing at all - which is exactly what happened to eight
+   * of the ten {@code exact_identifier} golden cases before this test existed.
+   */
+  @Test
+  void theSameFileNumberYieldsTheSameLexemeInAChunkAndInAQuestion() {
+    for (String identifier : List.of("BAU-DA-2/2024", "SOZ-DA-1/2023", "KAE-07", "BUE-08")) {
+      List<String> asWrittenInADocument =
+          FullTextIdentifiers.extract(
+              "Diese Dienstanweisung trägt das Aktenzeichen " + identifier + ".");
+      List<String> asAskedInAQuestion =
+          FullTextIdentifiers.extract("Was regelt die Dienstanweisung " + identifier + "?");
+
+      assertThat(asAskedInAQuestion)
+          .as("question form of %s", identifier)
+          .isNotEmpty()
+          .containsAnyElementsOf(asWrittenInADocument);
+    }
+  }
+
+  @Test
+  void keywordFreeAdministrativeFileNumbersAreRecognized() {
+    assertThat(FullTextIdentifiers.extract("Was regelt die Dienstanweisung BAU-DA-2/2024?"))
+        .containsExactly("xakzbauda22024");
+    assertThat(FullTextIdentifiers.extract("Wofür wird Formular KAE-07 verwendet?"))
+        .containsExactly("xakzkae07");
+  }
+
+  /** Two administrative file numbers differing in one component must not share a lexeme. */
+  @Test
+  void neighbouringAdministrativeFileNumbersStayApart() {
+    assertThat(FullTextIdentifiers.extract("Dienstanweisung SOZ-DA-1/2023"))
+        .doesNotContainAnyElementsOf(FullTextIdentifiers.extract("Dienstanweisung SOZ-DA-1/2024"));
+    assertThat(FullTextIdentifiers.extract("Formular KAE-07"))
+        .doesNotContainAnyElementsOf(FullTextIdentifiers.extract("Formular KAE-08"));
+  }
+
+  /**
+   * A keyword followed by ordinary prose is not an identifier. Without this guard "Aktenzeichen der
+   * Satzung" produces the lexeme {@code xakzder}, which then sits at weight {@code A} on every
+   * prose chunk carrying the same phrase - noise at the top of the ranking, produced by the
+   * mechanism meant to sharpen it.
+   */
+  @Test
+  void aKeywordFollowedByProseProducesNoLexeme() {
+    assertThat(FullTextIdentifiers.extract("Aktenzeichen der Satzung")).isEmpty();
+    assertThat(FullTextIdentifiers.extract("Das Aktenzeichen ist unbekannt.")).isEmpty();
+  }
+
+  /** {@code Azubi} is a word, not an {@code Az} with something behind it. */
+  @Test
+  void aWordBeginningWithTheKeywordIsNotAKeyword() {
+    assertThat(FullTextIdentifiers.extract("Azubi")).isEmpty();
+    assertThat(FullTextIdentifiers.extract("Die Azubine im Amt")).isEmpty();
+  }
+
+  /** An uppercase abbreviation without a digit is a word, not a file number. */
+  @Test
+  void hyphenatedUppercaseAbbreviationsWithoutADigitProduceNoLexeme() {
+    assertThat(FullTextIdentifiers.extract("Die EU-DSGVO gilt.")).isEmpty();
+    assertThat(FullTextIdentifiers.extract("IT-SICHERHEIT")).isEmpty();
+  }
+
+  /**
+   * German administrative texts enumerate behind {@code §§}. Keeping only the first number would
+   * lose exactly the reference a question about the second one needs.
+   */
+  @Test
+  void paragraphEnumerationsYieldALexemePerNumber() {
+    assertThat(FullTextIdentifiers.extract("§§ 34, 35 BauGB"))
+        .containsExactlyInAnyOrderElementsOf(
+            List.of("xpar34", "xpar34baugb", "xpar35", "xpar35baugb"));
+    assertThat(FullTextIdentifiers.extract("§§ 34 und 35 BauGB")).contains("xpar35baugb");
+  }
+
   /** Two ordinance numbers differing in one digit must not share a lexeme. */
   @Test
   void ordinanceNumbersOfNeighbouringYearsStayApart() {

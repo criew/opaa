@@ -2,6 +2,7 @@ package io.opaa.query;
 
 import io.opaa.indexing.FullTextBackfillProgress;
 import io.opaa.indexing.FullTextBackfillProgressService;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashSet;
@@ -9,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -42,11 +44,19 @@ class FullTextBackfillGate {
   static final Duration RECHECK_INTERVAL = Duration.ofSeconds(60);
 
   private final FullTextBackfillProgressService progressService;
+  private final Clock clock;
   private final Map<UUID, Instant> incompleteUntil = new ConcurrentHashMap<>();
   private final Set<UUID> complete = ConcurrentHashMap.newKeySet();
 
+  @Autowired
   FullTextBackfillGate(FullTextBackfillProgressService progressService) {
+    this(progressService, Clock.systemUTC());
+  }
+
+  /** Test seam: lets {@code FullTextBackfillGateTest} advance time instead of sleeping a minute. */
+  FullTextBackfillGate(FullTextBackfillProgressService progressService, Clock clock) {
     this.progressService = progressService;
+    this.clock = clock;
   }
 
   /**
@@ -56,7 +66,7 @@ class FullTextBackfillGate {
    */
   Set<UUID> searchableLibraries(Set<UUID> searchScope) {
     Set<UUID> searchable = new LinkedHashSet<>();
-    Instant now = Instant.now();
+    Instant now = clock.instant();
     for (UUID libraryId : searchScope) {
       if (isComplete(libraryId, now)) {
         searchable.add(libraryId);

@@ -46,20 +46,22 @@ public class FullTextChunkStore {
   static final String IDENTIFIER_LEXEME_WEIGHT = "A";
 
   /**
-   * The {@code content_tsv_version} every row written by {@link #indexChunks} carries. <b>Bumped to
-   * 2 by #1048</b>, which changed how {@code content_tsv} is built: it now carries the undecomposed
-   * identifier lexemes of {@link FullTextIdentifiers} alongside the German analysis chain's output.
-   * A row written under version 1 does not contain them and would silently miss every identifier
-   * query, so {@link FullTextBackfillService#backfillBatch} treats it exactly like a missing row -
-   * the version scaffolding #1047 put in place for this. Nothing else has to happen for existing
-   * rows to be brought up to date: {@link FullTextBackfillScheduler} re-checks the backlog after
-   * every process restart, which a deployment carrying a new value of this constant necessarily is.
+   * The {@code content_tsv_version} every row written by {@link #indexChunks} carries. <b>Raise it
+   * whenever the lexemes this class stores change</b> - version 2 added the undecomposed identifier
+   * lexemes of {@link FullTextIdentifiers} alongside the German analysis chain's output, version 3
+   * widened that class's pattern list (keyword-free file numbers, paragraph enumerations). A row
+   * written under an older version carries different lexemes and would silently miss the queries
+   * the new ones answer, so {@link FullTextBackfillService#backfillBatch} treats it exactly like a
+   * missing row - the version scaffolding #1047 put in place for this. Nothing else has to happen
+   * for existing rows to be brought up to date: {@link FullTextBackfillScheduler} re-checks the
+   * backlog after every process restart, which a deployment carrying a new value of this constant
+   * necessarily is.
    *
    * <p>Public for the same reason {@link #TEXT_SEARCH_CONFIGURATION} is: the lexical search path
    * ({@code io.opaa.query.FullTextChunkSearch}) must restrict its query to rows built under this
    * version, or it would read a row whose lexemes were built by a different chain.
    */
-  public static final short CURRENT_TSV_VERSION = 2;
+  public static final short CURRENT_TSV_VERSION = 3;
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -94,10 +96,10 @@ public class FullTextChunkStore {
    * with the same values (a genuine no-op), and one present at an older version is brought up to
    * date. {@code DO NOTHING} would have been wrong here: {@link
    * FullTextBackfillService#backfillBatch} selects rows whose {@code content_tsv_version} does not
-   * match {@link #CURRENT_TSV_VERSION} - and that constant has now been bumped once, so {@code DO
-   * NOTHING} would make every such row permanently unreachable: selected again on every tick,
-   * written nowhere, forever reported as {@code processed}, and {@link FullTextBackfillScheduler}
-   * would never see an empty batch to go dormant on. Mirrors the vector upsert {@link
+   * match {@link #CURRENT_TSV_VERSION} - and that constant does get raised, so {@code DO NOTHING}
+   * would make every such row permanently unreachable: selected again on every tick, written
+   * nowhere, forever reported as {@code processed}, and {@link FullTextBackfillScheduler} would
+   * never see an empty batch to go dormant on. Mirrors the vector upsert {@link
    * VectorStoreWriter#writeEmbeddedChunks} already performs on an {@code id} conflict.
    */
   void indexChunks(List<org.springframework.ai.document.Document> chunks) {

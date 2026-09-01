@@ -162,6 +162,35 @@ class FullTextChunkSearchIntegrationTest {
   }
 
   /**
+   * The asymmetry the identifier protection lives or dies by, end to end: the document names its
+   * file number behind a keyword ("mit dem Aktenzeichen BAU-DA-2/2024"), the question names it bare
+   * ("Was regelt die Dienstanweisung BAU-DA-2/2024?"). Both sides must produce the same lexeme, or
+   * the protection is inert on exactly the questions it exists for - and the competitor here, which
+   * repeats the question's words and carries the neighbouring number, would win.
+   */
+  @Test
+  void anAdministrativeFileNumberIsFoundThoughOnlyTheChunkNamesTheKeyword() {
+    UUID wanted =
+        seed(
+            readableLibrary,
+            "Diese Dienstanweisung mit dem Aktenzeichen BAU-DA-2/2024 regelt die Bearbeitung.");
+    UUID neighbour =
+        seed(
+            readableLibrary,
+            "Diese Dienstanweisung mit dem Aktenzeichen BAU-DA-1/2023 regelt die Bearbeitung;"
+                + " die Dienstanweisung regelt ferner die Vertretung, und diese Dienstanweisung"
+                + " regelt die Fristen.");
+    backfillService.backfillBatch(100);
+
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Was regelt die Dienstanweisung BAU-DA-2/2024?", Set.of(readableLibrary), 25);
+
+    assertThat(hits).extracting(Document::getId).first().isEqualTo(wanted.toString());
+    assertThat(hits).extracting(Document::getId).contains(neighbour.toString());
+  }
+
+  /**
    * A question is user input and reaches {@code to_tsquery}, whose own syntax has operators. The
    * tokens are reduced to letters and digits before they get there, so no character of the question
    * can be read as one - neither to raise a syntax error nor to change what is matched.

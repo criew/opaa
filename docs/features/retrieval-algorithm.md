@@ -127,7 +127,10 @@ nach `ts_rank`.
   vorkommen müssten, träfe nichts.
 - die **unzerlegten Kennungs-Tokens** (`FullTextIdentifiers`), ODER darübergelegt. Sie tragen im Index das
   Gewicht `A` gegen das `D` des Fließtexts — der Mechanismus, der „§ 34" und „§ 35" in einer Rangliste mit
-  Konkurrenz auseinanderhält und nicht nur im Treffer.
+  Konkurrenz auseinanderhält und nicht nur im Treffer. Erkannt werden Paragrafenverweise (auch
+  Aufzählungen hinter `§§`), gerichtliche Aktenzeichen sowie Dienstanweisungs-, Formular-, Erlass- und
+  Drucksachennummern — jedes schlüsselwortgeführte Muster mit einem schlüsselwortfreien Gegenstück,
+  weil ein Dokument die Nummer hinter einem Schlüsselwort nennt und eine Frage sie nackt.
 
 Beide Hälften entstehen aus bereinigten Tokens (Wörter auf Buchstaben und Ziffern reduziert,
 Kennungs-Lexeme per Konstruktion ASCII-alphanumerisch); kein Zeichen der Nutzerfrage erreicht

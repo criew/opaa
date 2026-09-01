@@ -70,13 +70,18 @@ class FullTextSearchStage implements RetrievalStage {
     // exactly as it does in the vector path.
     SearchScopeStage.requiredLibraryFilter(state);
 
+    // Incoming and outgoing are the same number throughout this stage, and deliberately so: it
+    // passes the lists in flight on unchanged. Its own candidates are not part of that count until
+    // #1049 hands them to the fusion - they are reported in the verdicts and in a note instead.
+    int inFlight = state.candidateLists().stream().mapToInt(list -> list.documents().size()).sum();
+
     if (!properties.enabled()) {
       return new StageOutcome(
           state,
           StageExplanation.executed(
               name(),
-              0,
-              0,
+              inFlight,
+              inFlight,
               List.of(),
               List.of("lexical search path switched off (opaa.query.full-text-search.enabled)")));
     }
@@ -87,8 +92,8 @@ class FullTextSearchStage implements RetrievalStage {
           state,
           StageExplanation.executed(
               name(),
-              0,
-              0,
+              inFlight,
+              inFlight,
               List.of(),
               List.of(
                   "no library of the search scope has a completed full-text backfill",
@@ -139,9 +144,13 @@ class FullTextSearchStage implements RetrievalStage {
             + " of "
             + context.searchScope().size()
             + " scoped libraries searched, the rest awaiting their backfill");
-    notes.add(3, "candidates are recorded here only - the fusion takes them as an input in #1049");
+    notes.add(
+        3,
+        retrieved
+            + " lexical candidate(s) found and recorded here only - the fusion takes them as an"
+            + " input in #1049, which is why they are not counted as this stage's output");
     return new StageOutcome(
-        state, StageExplanation.executed(name(), 0, retrieved, verdicts, notes));
+        state, StageExplanation.executed(name(), inFlight, inFlight, verdicts, notes));
   }
 
   static String listLabel(int searchQueryIndex) {

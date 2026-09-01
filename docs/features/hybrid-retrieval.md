@@ -300,6 +300,13 @@ nebenbei die Suchqualität verändert, ist im Nachhinein nicht mehr von einer Re
 > Pfad in [Arbeitspaket 3](#arbeitspaket-3-fusion) mit
 > [#1049](https://github.com/criew/opaa/issues/1049); dort gehört die Verhaltensänderung hin, mitsamt den
 > dafür neu zu ziehenden Baselines.
+>
+> **Auflage für #1049:** Sobald der Pfad die Endauswahl beeinflusst, muss
+> `opaa.query.full-text-search.enabled` in den Messvertrag und den Harness-Guard
+> (`PipelineHarnessSupport#requireMeasurableConfiguration`) aufgenommen werden — aus demselben Grund, aus
+> dem dort schon die abgeschalteten Stufen abgewiesen werden: Ein Lauf mit `enabled=false` wäre sonst am
+> `runConfiguration`-Abdruck von einem Volllauf nicht zu unterscheiden, und seine Zahlen würden gegen die
+> committete Baseline als Codeänderung verbucht.
 
 ### Entscheidung: Postgres-nativ
 
@@ -374,6 +381,20 @@ eine nicht erkannte Kennung ist der Fehler, der wehtut.
 
 - **Dieselbe Liste auf beiden Seiten.** Schreibpfad und Suchpfad rufen dieselbe Methode. Ein Token aus
   einem Chunk und ein Token aus einer Frage entstehen im selben Code, sonst träfen sie einander nie.
+- **Jedes schlüsselwortgeführte Muster hat ein schlüsselwortfreies Gegenstück.** Das ist keine
+  Bequemlichkeit, sondern die Bedingung dafür, dass der Mechanismus überhaupt läuft: Ein Dokument
+  schreibt „Dienstanweisung mit dem Aktenzeichen BAU-DA-2/2024", eine Frage nennt die Nummer nackt.
+  Ein Muster, das das Schlüsselwort braucht, greift damit nur auf einer der beiden Seiten — und der
+  Schutz tut still gar nichts. Genau das war bei acht von zehn `exact_identifier`-Golden-Fällen der
+  Fall, bis das Review zu #1048 es aufdeckte; ein Symmetrietest hält beide Schreibweisen derselben
+  Kennung jetzt gegeneinander.
+- **Ein Kandidat wird nur als Kennung angenommen, wenn er strukturell eine ist** — mindestens eine
+  Ziffer und mindestens ein Trennzeichen. Ohne diese Prüfung erzeugt „Aktenzeichen der Satzung" das
+  Token `xakzder`, das dann auf jedem gewöhnlichen Fließtext-Chunk mit derselben Wendung mit Gewicht
+  `A` sitzt: Rauschen an der Spitze der Rangliste, erzeugt vom Mechanismus, der sie schärfen soll.
+- **Aufzählungen hinter `§§`** („§§ 34, 35 BauGB") liefern je Nummer ein Token; das Gesetzeskürzel gilt
+  für alle, ein `Abs.` nur bei einer einzelnen Nummer — bei einer Aufzählung ist aus dem Text nicht
+  entscheidbar, zu welcher es gehört.
 - **Jedes Token ist kleingeschriebenes ASCII-Alphanumerisch mit Typpräfix** (`xpar`, `xakz`, `xnr`).
   Daraus folgen zwei tragende Eigenschaften: Ein solcher String kann nicht mit einem Lexem der deutschen
   Analysekette kollidieren, und er passiert `to_tsquery`, ohne ein Operatorzeichen mitzubringen.
@@ -436,6 +457,12 @@ festgelegt und committet sein** — eine nach der Messung gewählte Schwelle bel
 siehe [Retrieval-Benchmark](./retrieval-benchmark.md#6-der-benchmark-als-eintrittsbedingungs-maschine)).
 
 #### Festlegung: **X = 0,80** (committet mit #1048, vor dem ersten Variantenvergleich)
+
+**Die Schwelle gilt je Fallgruppe einzeln, nicht für beide gemeinsam.** Bleibt *eine* der beiden Gruppen
+unter X, ist die Eintrittsbedingung für den Mechanismus dieser Gruppe erfüllt — `compound_word` spricht
+für Kompositabehandlung, `exact_identifier` für eine echte BM25-Bewertung. Ein Mittelwert über beide
+würde genau die Aussage verwischen, für die die Gruppen getrennt ausgewiesen werden (Koordinator-
+Entscheidung im Review zu #1048).
 
 Die Zahl ist aus dem Betrieb begründet, nicht aus den Messwerten abgeleitet: Hit Rate@5 = 0,80 heißt
 „höchstens jede fünfte Frage dieser Klasse verfehlt die richtige Fundstelle im sichtbaren Fenster".

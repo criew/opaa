@@ -135,7 +135,13 @@ class FullTextSearchStageTest {
 
     verify(search).search("q1", scope, PROPERTIES.fetchK());
     verify(search).search("q2", scope, PROPERTIES.fetchK());
-    assertThat(outcome.explanation().outgoingCount()).isEqualTo(3);
+    // Incoming equals outgoing: the stage passes the lists in flight on unchanged. Its own three
+    // candidates are in the verdicts and in a note, not in the counts - they are not handed on
+    // until #1049 makes them an input of the fusion.
+    assertThat(outcome.explanation().incomingCount())
+        .isEqualTo(outcome.explanation().outgoingCount());
+    assertThat(outcome.explanation().notes())
+        .anySatisfy(note -> assertThat(note).contains("3 lexical candidate(s) found"));
     assertThat(outcome.explanation().verdicts())
         .extracting(CandidateVerdict::chunkId)
         .containsExactly("a", "b", "c");

@@ -221,12 +221,48 @@ class FullTextBackfillServiceIntegrationTest {
     assertThat(progressService.progressForLibrary(libraryId).isComplete()).isTrue();
   }
 
+  /**
+   * The same mechanism for the second version bump: version 2 already carried identifier lexemes,
+   * but not the keyword-free administrative file numbers version 3 added. A row at the older
+   * version is rebuilt rather than left behind - the assertion that keeps a widened pattern list
+   * from taking effect on new chunks only.
+   */
+  @Test
+  void aRowAtThePreviousIdentifierVersionIsRebuiltWithTheWidenedPatternList() {
+    String text = "Diese Dienstanweisung BAU-DA-2/2024 regelt die Bearbeitung.";
+    UUID chunkId = seedUnindexedChunk(text);
+    jdbcTemplate.update(
+        "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv, "
+            + "content_tsv_version) VALUES (?, ?, ?, to_tsvector('german', ?), 2)",
+        chunkId,
+        documentId,
+        libraryId,
+        text);
+
+    assertThat(matchesLexeme(chunkId, "xakzbauda22024")).isZero();
+
+    assertThat(backfillService.backfillBatch(10)).isEqualTo(1);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT content_tsv_version FROM chunk_full_text WHERE chunk_id = ?",
+                Short.class,
+                chunkId))
+        .isEqualTo(FullTextChunkStore.CURRENT_TSV_VERSION);
+    assertThat(matchesLexeme(chunkId, "xakzbauda22024")).isEqualTo(1L);
+  }
+
   private long identifierMatches(UUID chunkId) {
+    return matchesLexeme(chunkId, "xpar35baugb");
+  }
+
+  private long matchesLexeme(UUID chunkId, String lexeme) {
     return jdbcTemplate.queryForObject(
         "SELECT count(*) FROM chunk_full_text WHERE chunk_id = ? "
-            + "AND content_tsv @@ to_tsquery('simple', 'xpar35baugb')",
+            + "AND content_tsv @@ to_tsquery('simple', ?)",
         Long.class,
-        chunkId);
+        chunkId,
+        lexeme);
   }
 
   private void seedUnindexedChunks(int count) {
