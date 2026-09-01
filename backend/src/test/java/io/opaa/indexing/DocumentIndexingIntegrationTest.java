@@ -353,10 +353,10 @@ class DocumentIndexingIntegrationTest {
   @Test
   void indexesOdfDocuments() throws IOException {
     // #1057: ODT/ODS/ODP are admitted the exact same way as their Microsoft counterparts (Teil 3,
-    // Punkt 2). ODT and ODP resolve to the Tika fallback used by indexesPdfAndDocxDocuments above
-    // (no dedicated pipeline exists for either yet); ODS resolves to TabularDocumentPipeline since
-    // #1058 - see indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline for the assertion that it
-    // actually reads the file structurally rather than through the fallback.
+    // Punkt 2). ODT and ODP resolve to their own OdtDocumentPipeline/OdpDocumentPipeline since
+    // #1110; ODS resolves to TabularDocumentPipeline since #1058 - see
+    // indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline for the assertion that it actually
+    // reads the file structurally rather than through the fallback.
     copyTestResource("test-documents/test-document.odt", "satzung.odt");
     copyTestResource("test-documents/test-document.ods", "haushalt.ods");
     copyTestResource("test-documents/test-document.odp", "vortrag.odp");
@@ -483,6 +483,28 @@ class DocumentIndexingIntegrationTest {
     // The document row itself is kept, marked FAILED with the same user-facing message a scan PDF
     // gets (DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE) - not deleted or left INDEXED with zero
     // chunks.
+    List<Document> documents = documentRepository.findAll();
+    assertThat(documents).hasSize(1);
+    assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(documents.getFirst().getErrorMessage())
+        .isEqualTo(DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+  }
+
+  @Test
+  void anEmptyOdpPresentationIsRejectedInsteadOfIndexedWithZeroChunks() throws IOException {
+    // Same #1057 guard as anEmptyOdfDocumentIsRejectedInsteadOfIndexedWithZeroChunks above, for the
+    // ODP counterpart: a <office:presentation/> without any draw:page must be reported as skipped,
+    // not counted as failed.
+    copyTestResource("test-documents/empty-document.odp", "leer.odp");
+
+    IndexingJob job = triggerIndexing();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(completedJob.getDocumentsProcessed()).isZero();
+    assertThat(completedJob.getDocumentsFailed()).isZero();
+    assertThat(completedJob.getDocumentsSkipped()).isEqualTo(1);
     List<Document> documents = documentRepository.findAll();
     assertThat(documents).hasSize(1);
     assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.FAILED);

@@ -9,6 +9,9 @@ import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
 import io.opaa.indexing.pipeline.mail.MailDocumentPipeline;
 import io.opaa.indexing.pipeline.mail.MailProperties;
 import io.opaa.indexing.pipeline.office.DocxDocumentPipeline;
+import io.opaa.indexing.pipeline.office.OdfProperties;
+import io.opaa.indexing.pipeline.office.OdpDocumentPipeline;
+import io.opaa.indexing.pipeline.office.OdtDocumentPipeline;
 import io.opaa.indexing.pipeline.office.PptxDocumentPipeline;
 import io.opaa.indexing.pipeline.pdf.PdfDocumentPipeline;
 import io.opaa.indexing.pipeline.tabular.TabularDocumentPipeline;
@@ -120,6 +123,24 @@ public class IndexingConfiguration {
   @Bean
   PptxDocumentPipeline pptxDocumentPipeline() {
     return new PptxDocumentPipeline();
+  }
+
+  /**
+   * ODT pipeline (docs/features/ingestion-pipelines.md, Teil 3 Punkt 2) - registered as an ordinary
+   * {@link DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}.
+   */
+  @Bean
+  OdtDocumentPipeline odtDocumentPipeline(OdfProperties odfProperties) {
+    return new OdtDocumentPipeline(odfProperties);
+  }
+
+  /**
+   * ODP pipeline (docs/features/ingestion-pipelines.md, Teil 3 Punkt 2) - registered as an ordinary
+   * {@link DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}.
+   */
+  @Bean
+  OdpDocumentPipeline odpDocumentPipeline(OdfProperties odfProperties) {
+    return new OdpDocumentPipeline(odfProperties);
   }
 
   /**

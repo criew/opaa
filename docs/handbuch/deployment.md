@@ -141,15 +141,18 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 > **Neuindizierung nach #1054 (Ingestion-Pipelines je Dokumenttyp).** Vor diesem Update lief jedes
 > zugelassene Format über denselben Weg (Tika-Extraktion, Token-Chunking). Seitdem übernehmen eigene
 > Pipelines den Zuschnitt für `.pdf` (`pdf`), `.docx` (`docx`), `.pptx` (`pptx`),
-> `.xlsx`/`.csv`/`.ods` (`tabular`), `.html` (`html`) sowie `.eml`/`.msg` (`email`) — jede mit ihrer
-> eigenen `pipeline_id`/`pipeline_version` am Chunk (siehe [Ingestion-Pipelines je
-> Dokumenttyp](../features/ingestion-pipelines.md#umgesetzt-die-abstraktion-selbst-1056)). `.md`,
-> `.txt`, `.doc`, `.odt`, `.odp` sowie jedes Format ohne eigene Pipeline laufen unverändert über
-> `TikaFallbackPipeline` weiter — für sie ändert sich am bestehenden Bestand nichts.
+> `.xlsx`/`.csv`/`.ods` (`tabular`), `.html` (`html`), `.eml`/`.msg` (`email`) sowie `.odt` (`odt`)
+> und `.odp` (`odp`, #1110) — jede mit ihrer eigenen `pipeline_id`/`pipeline_version` am Chunk (siehe
+> [Ingestion-Pipelines je Dokumenttyp](../features/ingestion-pipelines.md#umgesetzt-die-abstraktion-selbst-1056)).
+> `.md`, `.txt`, `.doc` sowie jedes Format ohne eigene Pipeline laufen unverändert über
+> `TikaFallbackPipeline` weiter — für sie ändert sich am bestehenden Bestand nichts. Für `.odt`/`.odp`
+> ändert sich der Bestand dagegen genauso wie für die anderen sechs Formate: Wer diese Anleitung
+> abarbeitet, muss `odt`/`odp` als eigene Aufrufe mitnehmen (siehe unten), sonst bleiben bestehende
+> ODT-/ODP-Dokumente dauerhaft auf dem Fallback-Zuschnitt.
 >
 > Anders als bei #773/#933 oben ist kein bibliotheksweites Rücksetzen von `documents`/`vector_store`
 > nötig: Die selektive Neuindizierung wählt gezielt über die Chunk-Metadaten aus, welcher Bestand vom
-> alten, generischen Zuschnitt betroffen ist. **Der eigentliche Migrationsschritt ist ein siebter,
+> alten, generischen Zuschnitt betroffen ist. **Der eigentliche Migrationsschritt ist ein neunter,
 > vorangestellter Aufruf mit `pipelineId: "tika-fallback"`**, wiederholt bis `done: true` in der
 > Antwort steht:
 >
@@ -164,9 +167,10 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 > siehe unten) **und** jeden Chunk, den `tika-fallback` selbst in Version 0 erzeugt hat — beides
 > wird beim Neuerzeugen über die Registry an die heute zuständige Pipeline geroutet, nicht mehr an
 > `TikaFallbackPipeline` zurück. Erst danach folgen, ebenfalls je wiederholt bis `done: true`, die
-> sechs formatbezogenen Aufrufe (`pdf`, `docx`, `pptx`, `tabular`, `html`, `email`) — sie decken nur
-> noch den #1094-Zwischenstand ab, also Chunks, die bereits mit `pipeline_id`/`pipeline_version`
-> geschrieben wurden, aber noch auf einer älteren Version ihrer heutigen Pipeline liegen:
+> acht formatbezogenen Aufrufe (`pdf`, `docx`, `pptx`, `tabular`, `html`, `email`, `odt`, `odp`) — sie
+> decken nur noch den #1094-Zwischenstand ab, also Chunks, die bereits mit
+> `pipeline_id`/`pipeline_version` geschrieben wurden, aber noch auf einer älteren Version ihrer
+> heutigen Pipeline liegen:
 >
 > ```bash
 > curl -X POST http://localhost:8081/api/v1/admin/indexing/pipeline-reindex \
@@ -182,20 +186,12 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 >
 > **Altbestand vor #1094** (vor Einführung der Pipeline-Metadaten selbst) trägt weder `pipeline_id`
 > noch `pipeline_version` und zählt dafür als `tika-fallback` Version 0 — er ist **ausschließlich**
-> über den `tika-fallback`-Aufruf oben erfasst, nicht über die sechs formatbezogenen Aufrufe: Die
+> über den `tika-fallback`-Aufruf oben erfasst, nicht über die acht formatbezogenen Aufrufe: Die
 > Auswahlabfrage der selektiven Neuindizierung matcht einen Chunk ohne `pipeline_id` nur gegen
-> `pipelineId: "tika-fallback"` (`COALESCE` auf den Legacy-Wert), niemals gegen eine der sechs
-> übrigen Kennungen. Wer den `tika-fallback`-Aufruf auslässt, bekommt bei den sechs formatbezogenen
+> `pipelineId: "tika-fallback"` (`COALESCE` auf den Legacy-Wert), niemals gegen eine der acht
+> übrigen Kennungen. Wer den `tika-fallback`-Aufruf auslässt, bekommt bei den acht formatbezogenen
 > Aufrufen sofort `done: true` und hat den gesamten Vor-#1094-Bestand — bei jeder heutigen
 > Installation der Normalfall — nicht angefasst.
->
-> **Bekannte Lücke (#1105):** Ein Dokument, das zwischen #1094 und der Registrierung seiner heute
-> zuständigen Format-Pipeline indiziert wurde, trägt bereits `tika-fallback` Version 1 und zählt in
-> `pipeline-versions` als „auf aktueller Version" — es ist über keinen der obigen Aufrufe (auch nicht
-> den `tika-fallback`-Aufruf, dessen `belowVersion: 1` es nicht mehr erfasst) nachziehbar, obwohl es
-> inzwischen einer anderen Pipeline (PDF/DOCX/PPTX/XLSX/HTML/EML) gehört. Betroffen ist nur dieses
-> schmale Zwischenfenster; #1105 ist noch offen. Wer für die betroffenen Formate sichergehen will,
-> setzt ersatzweise das bibliotheksweite Rücksetzen wie bei #933 oben ein.
 
 ## Sicherheitshinweis: `POST /api/v1/libraries/{libraryId}/indexing` ist von außen erreichbar
 
