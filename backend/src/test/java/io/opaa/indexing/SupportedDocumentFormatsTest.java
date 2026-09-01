@@ -72,6 +72,22 @@ class SupportedDocumentFormatsTest {
         .isTrue();
   }
 
+  // Review nit 3 (#1057): pins DOCX and ODT apart from each other the same way the OOXML-container
+  // tests above pin real Office content apart from its generic, unresolved container type - so a
+  // later "tolerance" widening of either extension's strict set cannot silently start accepting
+  // the other family's content.
+  @Test
+  void contentMatchesExtensionRejectsDocxContentForOdtAndOdtContentForDocx() {
+    assertThat(
+            SupportedDocumentFormats.contentMatchesExtension(
+                ".odt", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+        .isFalse();
+    assertThat(
+            SupportedDocumentFormats.contentMatchesExtension(
+                ".docx", "application/vnd.oasis.opendocument.text"))
+        .isFalse();
+  }
+
   @Test
   void extensionForDetectedContentResolvesEveryOdfType() {
     assertThat(

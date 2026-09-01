@@ -5,6 +5,7 @@ import {
   isSystemFile,
   resolveDroppedItems,
 } from './directoryEntries'
+import { ACCEPTED_FILE_EXTENSIONS } from '../pages/LibraryDetailPage'
 
 // #823: fake DataTransferItem/FileSystemEntry stand-ins - jsdom does not implement
 // webkitGetAsEntry()/FileSystemDirectoryEntry at all, so these tests build the minimal shape
@@ -210,10 +211,22 @@ describe('directoryPathFromWebkitRelativePath', () => {
 // #823 review, Befund 2: format filtering for the folder upload path - a real OS folder routinely
 // carries files nobody dragged there on purpose.
 describe('filterAcceptedFiles', () => {
-  const acceptedExtensions = '.doc,.docx,.md,.pdf,.pptx,.txt'
+  // #1057 review: reuses the actual client-side list (LibraryDetailPage#ACCEPTED_FILE_EXTENSIONS)
+  // instead of a locally duplicated copy, so an extension added there is covered here too rather
+  // than silently drifting out of sync.
+  const acceptedExtensions = ACCEPTED_FILE_EXTENSIONS
 
   it('accepts files matching one of the given extensions', () => {
     const entries = [{ file: new File(['x'], 'bericht.pdf') }]
+
+    const { accepted, skippedCount } = filterAcceptedFiles(entries, acceptedExtensions)
+
+    expect(accepted).toEqual(entries)
+    expect(skippedCount).toBe(0)
+  })
+
+  it('accepts an ODF file (#1057)', () => {
+    const entries = [{ file: new File(['x'], 'satzung.odt') }]
 
     const { accepted, skippedCount } = filterAcceptedFiles(entries, acceptedExtensions)
 
