@@ -90,4 +90,26 @@ public record EvalDomainConfig(
           ChunkCountExpectation.atLeast(3),
           10,
           13);
+
+  /**
+   * The verwaltung domain (issues #1042/#1043): 70 German-language administrative documents of the
+   * fictional municipality "Kalkstadt", multi-chunk like {@code city-landmarks} but with a much
+   * narrower spread — minimum 3, median 3, maximum 4 chunks per document at the application's
+   * default {@code chunk-size=1000} (measured by {@code VerwaltungChunkSizeDryRunTest}, see {@code
+   * eval/corpus/verwaltung/SOURCE.md}). {@code maxChunksPerDocument=6} is a deliberately
+   * conservative upper bound above that measured maximum, checked at runtime by the harness like
+   * every domain's.
+   *
+   * <p>Unlike the other two domains, this corpus is smaller than one might expect a search window
+   * to need: 70 documents against {@code documentTopK=10} is still comfortably above the window, so
+   * the harness's "every query reached the full document window" assertion holds here too.
+   */
+  public static final EvalDomainConfig VERWALTUNG =
+      new EvalDomainConfig(
+          "verwaltung",
+          "verwaltung.json",
+          "verwaltung.json",
+          ChunkCountExpectation.atLeast(3),
+          10,
+          6);
 }

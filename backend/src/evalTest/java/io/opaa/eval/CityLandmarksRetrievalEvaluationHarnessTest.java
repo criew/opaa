@@ -861,6 +861,9 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             answerSpanOverall,
             documentWindowCoverage,
             answerSpanResolution,
+            // Issue #1043: declared vs. measured case state. Null for this domain, whose
+            // golden dataset carries no expected_state fields.
+            ExpectedStateAudit.fromRawVectorResults(results),
             worstQueries,
             allQueryResults);
 
@@ -871,7 +874,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     Path reportFile =
         Path.of("build", "eval-reports", "retrieval-metrics-" + DOMAIN.name() + ".json");
     ReportWriter.writeJson(report, reportFile);
-    String summary = ReportWriter.renderSummary(report);
+    String summary = ReportWriter.renderSummary(report, DOMAIN.name());
     log.info(summary);
     System.out.println("Report written to " + reportFile.toAbsolutePath());
 

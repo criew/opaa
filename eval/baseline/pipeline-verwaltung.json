@@ -1,0 +1,143 @@
+{
+  "pipelineMeasurementContractVersion": 2,
+  "fixedPoints": {
+    "embeddingModel": "nomic-embed-text:v1.5",
+    "embeddingModelDigest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+    "embeddingDimensions": 768,
+    "chunkSize": 1000,
+    "chunkSizeMatchesApplicationDefault": true,
+    "chunkOverlap": 100,
+    "fetchK": 25,
+    "topK": 8,
+    "similarityThreshold": 0.3,
+    "maxChunksPerDocument": 2,
+    "mmrLambda": 1.0,
+    "queryDecompositionEnabled": false,
+    "maxSubQueries": 3,
+    "chatModel": null,
+    "hitRateK": 5,
+    "rankingK": 8,
+    "pgvectorIndexType": "hnsw",
+    "corpusManifestSha256": "e63f373f658aa2627cee5a9753526b7e5b4c56027b9c80de048466a2dc8c398d",
+    "corpusDocumentCount": 70,
+    "goldenDatasetFile": "eval/golden/verwaltung.json",
+    "goldenDatasetSha256": "a373effbb52889c5471c3a3963f489d6a72702c13942f196f90a4c30460c8f24",
+    "goldenCaseCount": 46
+  },
+  "groups": {
+    "overall": {
+      "n": 46,
+      "hitRateAt5": 0.783,
+      "mrrAt8": 0.576,
+      "ndcgAt8": 0.558,
+      "recallAt8": 0.696,
+      "recallAt8Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 36,
+      "hitCountAt5": 36,
+      "hitCountAt8": 39,
+      "allExpectedDocumentsHitAt8": 0.543
+    },
+    "category:compound_word": {
+      "n": 9,
+      "hitRateAt5": 0.778,
+      "mrrAt8": 0.657,
+      "ndcgAt8": 0.431,
+      "recallAt8": 0.444,
+      "recallAt8Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 9,
+      "hitCountAt5": 7,
+      "hitCountAt8": 8,
+      "allExpectedDocumentsHitAt8": 0.0
+    },
+    "category:exact_identifier": {
+      "n": 10,
+      "hitRateAt5": 1.0,
+      "mrrAt8": 0.9,
+      "ndcgAt8": 0.918,
+      "recallAt8": 1.0,
+      "recallAt8Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 10,
+      "hitCountAt5": 10,
+      "hitCountAt8": 10,
+      "allExpectedDocumentsHitAt8": 1.0
+    },
+    "category:literal_term_weak_embedding": {
+      "n": 9,
+      "hitRateAt5": 0.556,
+      "mrrAt8": 0.226,
+      "ndcgAt8": 0.324,
+      "recallAt8": 0.611,
+      "recallAt8Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 6,
+      "hitCountAt5": 5,
+      "hitCountAt8": 6,
+      "allExpectedDocumentsHitAt8": 0.556
+    },
+    "category:metadata_filter": {
+      "n": 9,
+      "hitRateAt5": 0.667,
+      "mrrAt8": 0.537,
+      "ndcgAt8": 0.595,
+      "recallAt8": 0.778,
+      "recallAt8Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 9,
+      "hitCountAt5": 6,
+      "hitCountAt8": 7,
+      "allExpectedDocumentsHitAt8": 0.778
+    },
+    "category:multi_hop": {
+      "n": 9,
+      "hitRateAt5": 0.889,
+      "mrrAt8": 0.522,
+      "ndcgAt8": 0.48,
+      "recallAt8": 0.611,
+      "recallAt8Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 8,
+      "hitCountAt5": 8,
+      "hitCountAt8": 8,
+      "allExpectedDocumentsHitAt8": 0.333
+    },
+    "difficulty:easy": {
+      "n": 3,
+      "hitRateAt5": 1.0,
+      "mrrAt8": 1.0,
+      "ndcgAt8": 1.0,
+      "recallAt8": 1.0,
+      "recallAt8Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 3,
+      "hitCountAt5": 3,
+      "hitCountAt8": 3,
+      "allExpectedDocumentsHitAt8": 1.0
+    },
+    "difficulty:hard": {
+      "n": 34,
+      "hitRateAt5": 0.735,
+      "mrrAt8": 0.514,
+      "ndcgAt8": 0.466,
+      "recallAt8": 0.588,
+      "recallAt8Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 32,
+      "hitCountAt5": 25,
+      "hitCountAt8": 27,
+      "allExpectedDocumentsHitAt8": 0.382
+    },
+    "difficulty:medium": {
+      "n": 9,
+      "hitRateAt5": 0.889,
+      "mrrAt8": 0.667,
+      "ndcgAt8": 0.757,
+      "recallAt8": 1.0,
+      "recallAt8Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 8,
+      "hitCountAt5": 8,
+      "hitCountAt8": 9,
+      "allExpectedDocumentsHitAt8": 1.0
+    }
+  },
+  "measuredAt": "2026-09-01",
+  "provenance": {
+    "sourceReportRunStartedAt": "2026-08-31T23:13:31.782942600Z",
+    "sourcePullRequest": "PR zu Issue #1043 (erste Pipeline-Baseline der Verwaltungsdomäne)"
+  },
+  "notes": "Erste Baseline des Pipeline-Messpfads der Verwaltungsdomäne (Issue #1043), gemessen im selben Testcontainer-Lauf auf CPU wie eval/baseline/verwaltung.json, auf demselben Index und demselben manifest-geprüften Korpus; reine Messzeit des Pipeline-Pfads rund 4 s (die Indizierung ist vom Rohvektor-Pfad bereits bezahlt). Gemessen wird die Variante decomposition-off (chatModel = null, ADR-0012, Nachtrag, Entscheidung 15). Die Pipeline lieferte in allen 46 Anfragen acht Chunks; keine Anfrage blieb durch die Ähnlichkeitsschwelle leer. Nicht mit eval/baseline/verwaltung.json vergleichbar: Dieser Pfad wendet die Produktionsschwelle (0,3) tatsächlich an und misst am Produktionsfenster top-k=8 (MRR@8, nDCG@8, Recall@8) statt bei documentTopK=10 ohne Schwelle. Die Gruppe language:de fehlt aus demselben Grund wie in der Rohvektor-Baseline. Toleranzformel und Fehlerkriterium: ADR-0013, unverändert; die festen Anker der harten Untergrenze sind für diesen Pfad eigene Werte (siehe eval/baseline/README.md)."
+}

@@ -18,14 +18,30 @@ class ChunkAnswerSpanMetricsTest {
         "medium",
         "de",
         "factual",
-        span);
+        span,
+        null,
+        null,
+        null,
+        null);
   }
 
   @Test
   void notApplicableWhenAnswerSpanIsNull() {
     GoldenCase goldenCase =
         new GoldenCase(
-            "id", "comic-characters", "q", List.of("a.md"), "cat", "easy", "en", "t", null);
+            "id",
+            "comic-characters",
+            "q",
+            List.of("a.md"),
+            "cat",
+            "easy",
+            "en",
+            "t",
+            null,
+            null,
+            null,
+            null,
+            null);
 
     assertThat(ChunkAnswerSpanMetrics.isApplicable(goldenCase)).isFalse();
   }

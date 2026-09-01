@@ -28,7 +28,6 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;
-import io.opaa.query.QueryServiceDependencies;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -57,7 +56,6 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -70,31 +68,36 @@ import org.testcontainers.utility.DockerImageName;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Retrieval-quality evaluation harness (issue #227). Indexes the frozen `eval/corpus/`
- * comic-characters corpus through the production pipeline ({@link
+ * Retrieval-quality evaluation harness for the {@code verwaltung} domain (issues #1042/#1043), the
+ * third domain and the first one built to carry named failure classes rather than general coverage
+ * — see {@link EvalDomainConfig#VERWALTUNG} for its chunk-count profile and {@code
+ * eval/corpus/verwaltung/SOURCE.md} for how the corpus constructs those failure modes. Indexes the
+ * frozen {@code eval/corpus/verwaltung} corpus through the production pipeline ({@link
  * io.opaa.indexing.FileProcessingService} / {@link io.opaa.indexing.ChunkingService}), then runs
- * every case from {@code eval/golden/comic-characters.json} directly against {@link
+ * every case from {@code eval/golden/verwaltung.json} directly against {@link
  * VectorStore#similaritySearch}. No LLM — retrieval-only, per ADR-0011 decision 3.
  *
- * <p><b>Two measurement paths since issue #1039</b> (docs/features/retrieval-benchmark.md §1), on
- * the same index, in this order:
+ * <p>Like both other harnesses, it additionally runs the <b>pipeline measurement path</b> (issue
+ * #1039, {@link PipelineHarnessSupport}) on the same index afterwards, reported separately at its
+ * own window; the raw-vector path's numbers, report file and baseline are untouched by it.
  *
- * <ol>
- *   <li>the <b>raw-vector path</b> described above — unchanged in every observable way, still the
- *       one that writes {@code retrieval-metrics.json} and is compared against {@code
- *       eval/baseline/comic-characters.json};
- *   <li>the <b>pipeline path</b> ({@link PipelineHarnessSupport}), which runs the same golden cases
- *       through {@code QueryService}'s production retrieval chain — decomposition, per-sub-query
- *       search, MMR, RRF, document completion — with the production configuration including the
- *       similarity threshold, and writes its own report at its own window.
- * </ol>
+ * <p>This class is a deliberate near-duplicate of {@link RetrievalEvaluationHarnessTest} rather
+ * than a parameterization of it, for the reason recorded in issue #721 PR #723
+ * ("Umfang-Entscheidungen"): a further domain "reiht sich als zweite Konstante + zweiter Testlauf
+ * ein, ohne die bestehende Struktur umzubauen" — the two existing domains' baselines and CI
+ * behaviour stay untouched by this domain's arrival.
  *
- * <p>The two are never mixed: different windows, different files, different contract versions.
+ * <p><b>What this domain adds beyond a third corpus</b> (docs/features/retrieval-benchmark.md §5):
+ * its golden cases carry the five named case classes as their {@code category} — so both reports'
+ * {@code byCategory} groups are the per-class evaluation the specification asks for — and the state
+ * fields {@code expected_state}/{@code expected_state_since}/{@code expected_state_reason}, audited
+ * per run by {@link ExpectedStateAudit}. The curation rules themselves are checked Docker-free by
+ * {@code GoldenCaseCurationTest}, not here: a violated rule must not cost an hour of indexing to
+ * discover.
  *
  * <p>Also carries out the domain's chunk-count invariant check ADR-0010 assigns to this harness
- * (see {@link ChunkCountExpectation}) — for comic-characters ({@link
- * EvalDomainConfig#COMIC_CHARACTERS}) that is still, unchanged, the Ein-Chunk-Invariante: the
- * generator's own byte-size guard is only a cheap approximation, this is the proof.
+ * (see {@link ChunkCountExpectation}) — for {@code verwaltung} that is the Mehr-Chunk-Invariante
+ * (at least 3 chunks per document), the proof behind the generator's own size heuristics.
  *
  * <p>The measurement contract this harness implements (gain function, IDCG basis, k-windows,
  * threshold handling, micro- vs. macro-averaging, the document-bound window from {@link
@@ -102,9 +105,9 @@ import tools.jackson.databind.json.JsonMapper;
  * EvaluationReport#CURRENT_MEASUREMENT_CONTRACT_VERSION}.
  *
  * <p>Deliberately not part of {@code ./gradlew build}/{@code test} — see the {@code evalTest}
- * source set and {@code evaluateRetrieval} task in {@code build.gradle.kts}. Run explicitly with
- * {@code ./gradlew evaluateRetrieval}; needs Docker and pulls the {@code nomic-embed-text} model
- * into the Ollama Testcontainer on first run.
+ * source set and {@code evaluateVerwaltungRetrieval} task in {@code build.gradle.kts}. Run
+ * explicitly with {@code ./gradlew evaluateVerwaltungRetrieval}; needs Docker and pulls the {@code
+ * nomic-embed-text} model into the Ollama Testcontainer on first run.
  */
 // AuthProfileGuard (ADR-0005) refuses to start the context without an auth profile, so the harness
 // declares one just like every other @SpringBootTest in this repository. Without it the run aborts
@@ -112,9 +115,10 @@ import tools.jackson.databind.json.JsonMapper;
 @SpringBootTest
 @ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
-class RetrievalEvaluationHarnessTest {
+class VerwaltungRetrievalEvaluationHarnessTest {
 
-  private static final Logger log = LoggerFactory.getLogger(RetrievalEvaluationHarnessTest.class);
+  private static final Logger log =
+      LoggerFactory.getLogger(VerwaltungRetrievalEvaluationHarnessTest.class);
 
   // Pinned per ADR-0011 decision 4: a fixed *tag* (not "nomic-embed-text", which resolves to
   // ":latest") keeps the baseline stable across time. The digest assertion below is the second,
@@ -146,10 +150,10 @@ class RetrievalEvaluationHarnessTest {
 
   private static volatile String actualEmbeddingModelDigest;
 
-  // Issue #721: comic-characters' domain configuration — chunk-count expectation, document-bound
-  // k-window, chunk-search sizing. See EvalDomainConfig's Javadoc for why chunkTopK() == 10 here
-  // (maxChunksPerDocument=1), which is the mechanism behind this PR's bit-identical-baseline claim.
-  private static final EvalDomainConfig DOMAIN = EvalDomainConfig.COMIC_CHARACTERS;
+  // Issues #1042/#1043: verwaltung's domain configuration — chunk-count expectation,
+  // document-bound k-window, chunk-search sizing. See EvalDomainConfig.VERWALTUNG's Javadoc for
+  // the measured chunk-count distribution this configuration is based on.
+  private static final EvalDomainConfig DOMAIN = EvalDomainConfig.VERWALTUNG;
 
   // The production query-time default (opaa.query.similarity-threshold); reported for context but
   // deliberately NOT applied to the searches below — see the "similarityThresholdNote" in the
@@ -457,16 +461,6 @@ class RetrievalEvaluationHarnessTest {
     registry.add("opaa.indexing.thread-pool.core-size", () -> 1);
     registry.add("opaa.indexing.thread-pool.max-size", () -> 1);
     registry.add("opaa.indexing.thread-pool.queue-capacity", () -> 2000);
-    // #734/#735: embedding-concurrency > 1 lets FileProcessingService#addToVectorStore split a
-    // document's chunks into sub-batches embedded and inserted into pgvector concurrently - the
-    // same nondeterminism risk the thread-pool override above already guards against for
-    // cross-document ordering, now one level deeper (within a single document). pgvector's HNSW
-    // index build is itself insertion-order-sensitive; a baseline whose HNSW graph shape depends on
-    // which sub-batch's embedding call happens to finish first would never reproduce the same
-    // retrieval metrics twice. Pinned to 1 for exactly the reason opaa.indexing.thread-pool.*
-    // above is pinned to a single worker: determinism of the baseline outranks indexing speed for
-    // this manually-invoked, non-interactive batch tool.
-    registry.add("opaa.indexing.embedding-concurrency", () -> 1);
   }
 
   @Autowired private DocumentIndexingService documentIndexingService;
@@ -485,12 +479,6 @@ class RetrievalEvaluationHarnessTest {
   // very beans a real request runs through, not a re-implementation of steps 2 to 6.
   @Autowired private QueryService queryService;
   @Autowired private QueryProperties queryProperties;
-  // #1041: the variant-comparison step builds its own QueryService instances around the same
-  // collaborators the autowired queryService above uses — two of those collaborators
-  // (ChunkEmbeddingLookup, QueryDecompositionService) are package-private in io.opaa.query and
-  // cannot be named from this package at all. QueryServiceDependencies#fromContext is the seam
-  // that crosses that boundary via bean lookups instead.
-  @Autowired private ApplicationContext applicationContext;
 
   // #419: triggerIndexing needs a caller-chosen target library and an authorized caller -
   // set up once per run, not pinned to a well-known system library id, since #419 already stopped
@@ -563,18 +551,6 @@ class RetrievalEvaluationHarnessTest {
     // it after the hour-long raw-vector path would cost that path its baseline verdict for nothing.
     PipelineHarnessSupport.requireMeasurableConfiguration(queryProperties);
 
-    // Same reasoning for the variant-comparison opt-in (#1041 review, Befund 3): a broken
-    // comparison file, an unresolvable referenceVariant, an invalid QueryProperties override
-    // (e.g. fetchK < topK) or a reference variant that would itself be skipped must fail before
-    // indexing, not after it — this call reads only the comparison file and the already-started
-    // context's QueryProperties, so it can decide immediately. Step 7 below repeats the load (the
-    // comparison instance is cheap and not worth threading through 400+ lines of this method as a
-    // local variable) — see runVariantComparison's own Javadoc for why that repeat is guarded while
-    // this one is not.
-    if (Boolean.getBoolean(RUN_VARIANT_COMPARISON_PROPERTY)) {
-      loadAndValidateVariantComparison(queryProperties);
-    }
-
     Path evalDir = RepoPaths.evalDir();
     Path corpusDir = evalDir.resolve("corpus").resolve(DOMAIN.name());
     Path manifestFile = corpusDir.resolve("MANIFEST.sha256");
@@ -624,7 +600,7 @@ class RetrievalEvaluationHarnessTest {
 
     // 3. Chunk-count invariant (ADR-0010, Nachtrag #721): the real, production-configured
     //    TokenTextSplitter just ran. Verify every document satisfies the domain's declared
-    //    expectation — for comic-characters that is still, unchanged, "exactly one chunk".
+    //    expectation — for verwaltung that is "at least 3 chunks per document".
     List<Document> documents = documentRepository.findAll();
     List<ChunkCountExpectation.DocumentChunkCount> documentChunkCounts =
         documents.stream()
@@ -721,11 +697,10 @@ class RetrievalEvaluationHarnessTest {
     EvaluationReport.DocumentWindowCoverageResult documentWindowCoverage =
         new EvaluationReport.DocumentWindowCoverageResult(
             windowResults.size(), queriesBelowDocumentTopK, minDistinctDocumentsReached);
-    // comic-characters' corpus (1448 documents) is comfortably larger than documentTopK=10, so
-    // every query's chunk-bound search must reach the full document window — a query that does not
-    // would mean either a corpus/index problem or an undersized chunkTopK, not a fact about this
-    // domain the harness should silently accept. A future, deliberately small domain would need to
-    // relax or replace this assertion, not this domain.
+    // This corpus (70 documents) is the smallest of the three but still comfortably larger than
+    // documentTopK=10, so every query's chunk-bound search must reach the full document window — a
+    // query that does not would mean either a corpus/index problem or an undersized chunkTopK, not
+    // a fact about this domain the harness should silently accept.
     assertThat(documentWindowCoverage.alwaysReachedDocumentTopK())
         .as(
             "%d of %d queries did not reach documentTopK=%d distinct documents (min reached: %d) "
@@ -832,7 +807,7 @@ class RetrievalEvaluationHarnessTest {
     List<WorstQuery> allQueryResults =
         results.stream()
             .sorted(worstFirst)
-            .map(RetrievalEvaluationHarnessTest::toWorstQuery)
+            .map(VerwaltungRetrievalEvaluationHarnessTest::toWorstQuery)
             .toList();
     List<WorstQuery> worstQueries = allQueryResults.stream().limit(10).toList();
 
@@ -842,12 +817,16 @@ class RetrievalEvaluationHarnessTest {
         new DatasetNotes(
             goldenCases.size(),
             (int) distinctExpectedSets,
-            "Mehrere Fälle teilen sich dieselbe Erwartungsmenge, und jede crosslingual-Anfrage ist "
-                + "konstruktionsbedingt der deutsche Zwilling einer englischen Anfrage mit identischer "
-                + "Erwartungsmenge (siehe eval/generator/generate_golden_dataset.py). Die Fallzahl "
-                + "überschätzt deshalb die Zahl unabhängiger Beobachtungen. Der Sprachvergleich "
-                + "(de vs. en) ist zusätzlich mit dem Anteil an 'hard'-Fällen konfundiert — siehe "
-                + "eval/README.md.");
+            "Mehrere Fälle teilen sich dieselbe Erwartungsmenge — insbesondere in der Klasse "
+                + "literal_term_weak_embedding, deren Ground Truth zwangsläufig immer wieder "
+                + "dieselben sechs Kämmerei-Dokumente sind (der Begriff kommt korpusweit nur dort "
+                + "vor, siehe eval/corpus/verwaltung/SOURCE.md). Die Fallzahl überschätzt deshalb "
+                + "die Zahl unabhängiger Beobachtungen; die Toleranzformel aus ADR-0013 rechnet "
+                + "ohnehin mit distinctExpectedDocumentSets statt mit n. Alle Fragen sind auf "
+                + "Deutsch: ein Sprachvergleich ist in dieser Domäne nicht vorgesehen. Die Fälle "
+                + "sind konstruiert, nicht aus echten Nutzeranfragen gewonnen — siehe "
+                + "docs/features/retrieval-benchmark.md, Abschnitt 4, \"Ehrliche Einschränkung: "
+                + "Benchmark-Overfitting\".");
 
     RunConfiguration runConfiguration =
         new RunConfiguration(
@@ -895,7 +874,12 @@ class RetrievalEvaluationHarnessTest {
             worstQueries,
             allQueryResults);
 
-    Path reportFile = Path.of("build", "eval-reports", "retrieval-metrics.json");
+    // Domain-specific report file name: RetrievalEvaluationHarnessTest (comic-characters) writes
+    // to the plain "retrieval-metrics.json" for backward compatibility with existing tooling and
+    // CI artifact names; this second harness must not silently overwrite that file when both run
+    // in the same job (see .github/workflows/retrieval-regression.yml, issue #234).
+    Path reportFile =
+        Path.of("build", "eval-reports", "retrieval-metrics-" + DOMAIN.name() + ".json");
     ReportWriter.writeJson(report, reportFile);
     String summary = ReportWriter.renderSummary(report, DOMAIN.name());
     log.info(summary);
@@ -904,11 +888,12 @@ class RetrievalEvaluationHarnessTest {
     // 6. Second measurement path (#1039): the same golden cases, the same index, but through the
     //    production query pipeline (steps 2 to 6 of docs/features/retrieval-algorithm.md) instead
     //    of similaritySearch directly. Runs after — never instead of — the raw-vector path above,
-    //    whose numbers, report file and baseline are untouched by this block. Reported separately,
-    //    at its own window, in its own file, and guarded so a failure here cannot fail this test
-    //    and thereby rob the nightly job of its raw-vector verdict (see PipelineHarnessSupport).
+    //    whose numbers, report file and baseline are untouched by this block, and guarded so a
+    //    failure here cannot fail this test and thereby rob the nightly job of its raw-vector
+    //    verdict (see PipelineHarnessSupport).
     Instant pipelineRunStart = Instant.now();
-    PipelineHarnessSupport.RunIdentity identity =
+    PipelineHarnessSupport.runAndWriteGuarded(
+        DOMAIN,
         new PipelineHarnessSupport.RunIdentity(
             "ollama",
             EMBEDDING_MODEL,
@@ -920,10 +905,7 @@ class RetrievalEvaluationHarnessTest {
             CorpusManifest.sha256Hex(manifestFile),
             manifest.fileNames().size(),
             "eval/golden/" + DOMAIN.goldenDatasetFileName(),
-            GoldenDataset.sha256(goldenFile));
-    PipelineHarnessSupport.runAndWriteGuarded(
-        DOMAIN,
-        identity,
+            GoldenDataset.sha256(goldenFile)),
         queryService,
         queryProperties,
         indexingProperties,
@@ -931,140 +913,6 @@ class RetrievalEvaluationHarnessTest {
         goldenCases,
         pipelineRunStart,
         log);
-
-    // 7. Variant comparison (#1041, docs/features/retrieval-benchmark.md §2): an opt-in step,
-    //    off by default so a normal evaluateRetrieval/checkRetrievalBaseline run is unaffected —
-    //    see eval/variants/README.md for how to opt in and how to point at a different comparison
-    //    file without any code change (issue #1041 acceptance criteria). Guarded like step 6 (see
-    //    runVariantComparison's Javadoc): a failure here must not cost the raw-vector path its
-    //    baseline verdict, on which checkRetrievalBaseline depends via dependsOn.
-    if (Boolean.getBoolean(RUN_VARIANT_COMPARISON_PROPERTY)) {
-      runVariantComparison(identity, queryProperties, goldenCases, evalLibraryId);
-    }
-  }
-
-  // System properties for the opt-in variant-comparison step (#1041) — see eval/variants/README.md.
-  private static final String RUN_VARIANT_COMPARISON_PROPERTY = "opaa.eval.runVariantComparison";
-  private static final String VARIANT_COMPARISON_FILE_PROPERTY = "opaa.eval.variantComparisonFile";
-  private static final String DEFAULT_VARIANT_COMPARISON_FILE =
-      "eval/variants/comic-characters-selection-mechanics.json";
-
-  /**
-   * Resolves, loads and validates the opt-in comparison file (issue #1041 review, Befund 3) —
-   * called once, early, from {@link #evaluatesRetrievalQualityAgainstTheGoldenDataset} before any
-   * indexing happens, and again from {@link #runVariantComparison} right before actually running
-   * it. Re-loading is cheap (a small JSON file) and keeps this method free of state to thread
-   * through 400+ lines of the calling test method as a local variable.
-   */
-  private VariantComparison loadAndValidateVariantComparison(QueryProperties queryProperties)
-      throws IOException {
-    Path repoRoot = RepoPaths.evalDir().getParent();
-    Path comparisonFile =
-        repoRoot.resolve(
-            System.getProperty(VARIANT_COMPARISON_FILE_PROPERTY, DEFAULT_VARIANT_COMPARISON_FILE));
-    VariantComparison comparison = VariantComparisonDataset.load(comparisonFile);
-    comparison.requireExecutableReference(queryProperties);
-    return comparison;
-  }
-
-  /**
-   * Loads the declarative comparison, runs it, asserts the reference-variant self-check, and writes
-   * the report.
-   *
-   * <p>Loading, running and writing are guarded exactly like step 6 ({@link
-   * PipelineHarnessSupport#runAndWriteGuarded}, issue #1041 review, Befund 4): a {@link
-   * RuntimeException} or {@link IOException} here must not fail {@code
-   * evaluatesRetrievalQualityAgainstTheGoldenDataset}, or {@code checkRetrievalBaseline} — which
-   * {@code dependsOn} this task — would lose the raw-vector path's already-completed verdict to an
-   * observation this test never promised. The Referenzvarianten-Selbstprüfung assertions below stay
-   * hard on purpose: {@code assertThat(...).isEqualTo(...)} throws {@link AssertionError}, not
-   * {@link RuntimeException}, so it is not caught by the guard below and fails this test as any
-   * other assertion would — the one failure mode this method must never swallow, since it signals a
-   * bug in the variant mechanism itself, not a broken input.
-   */
-  private void runVariantComparison(
-      PipelineHarnessSupport.RunIdentity identity,
-      QueryProperties queryProperties,
-      List<GoldenCase> goldenCases,
-      UUID evalLibraryId) {
-    try {
-      VariantComparison comparison = loadAndValidateVariantComparison(queryProperties);
-      QueryServiceDependencies dependencies =
-          QueryServiceDependencies.fromContext(applicationContext);
-
-      VariantReport report =
-          VariantComparisonRunner.run(
-              comparison,
-              dependencies,
-              queryProperties,
-              DOMAIN,
-              identity,
-              indexingProperties,
-              evalLibraryId,
-              goldenCases);
-
-      // Referenzvarianten-Selbstprüfung (issue #1041 acceptance criteria): the reference variant
-      // (no parameter override) must reproduce, field for field, what the harness's own
-      // @Autowired QueryService bean computes for the unchanged production configuration — the
-      // very bean step 6 above already measured with, not a second, hand-built instance (issue
-      // #1041 review, Befund 1: a hand-built instance from QueryServiceDependencies would only
-      // prove the mechanism is internally deterministic, not that it matches the production-wired
-      // pipeline — a mismatched getBean(Class) result, a future AOP proxy, or a wrong constructor
-      // argument in QueryServiceDependencies could all pass such a check while measuring a
-      // different pipeline).
-      PipelineEvaluationReport directReferenceMeasurement =
-          PipelineHarnessSupport.measure(
-              DOMAIN,
-              identity,
-              queryService,
-              queryProperties,
-              indexingProperties,
-              evalLibraryId,
-              goldenCases,
-              Instant.now());
-      PipelineEvaluationReport referenceReport =
-          report.outcomes().stream()
-              .filter(o -> o.variant().name().equals(report.referenceVariant()))
-              .findFirst()
-              .orElseThrow()
-              .report();
-      assertThat(referenceReport.overall())
-          .as(
-              "reference variant must be bit-identical to a direct pipeline measurement through "
-                  + "the production-wired QueryService bean (Referenzvarianten-Selbstprüfung, "
-                  + "issue #1041)")
-          .isEqualTo(directReferenceMeasurement.overall());
-      assertThat(referenceReport.allQueryResults())
-          .as(
-              "reference variant's per-case results must be bit-identical to the direct measurement")
-          .isEqualTo(directReferenceMeasurement.allQueryResults());
-      // ignoringFields: runStartedAt/runDurationSeconds necessarily differ between two separate
-      // measurements taken seconds apart — every other field, including fetchK/maxSubQueries/etc.,
-      // must match exactly, so a variant-mechanism bug that silently applied an override the
-      // reference variant should not have (a rank-neutral one, invisible in overall()/
-      // allQueryResults() because it does not change which chunks were selected) still fails here.
-      assertThat(referenceReport.runConfiguration())
-          .usingRecursiveComparison()
-          .ignoringFields("runStartedAt", "runDurationSeconds")
-          .as("reference variant's run configuration must match the direct measurement's")
-          .isEqualTo(directReferenceMeasurement.runConfiguration());
-      log.info(
-          "Referenzvarianten-Selbstprüfung bestanden: bitgleiche Zahlen zum direkten Pipeline-Lauf"
-              + " über das produktiv verdrahtete QueryService-Bean.");
-
-      Path reportFile =
-          Path.of("build", "eval-reports", "variant-report-" + comparison.name() + ".json");
-      VariantReportWriter.writeJson(report, reportFile);
-      log.info(VariantReportWriter.renderSummary(report));
-      System.out.println("Variant report written to " + reportFile.toAbsolutePath());
-    } catch (RuntimeException | IOException e) {
-      log.error(
-          "Variantenvergleich fehlgeschlagen, Rohvektor- und Pipeline-Pfad unberührt — deren "
-              + "Messung und Baseline-Vergleich sind zu diesem Zeitpunkt bereits abgeschlossen "
-              + "und von diesem Fehler nicht betroffen. Für diesen Lauf fehlt nur der "
-              + "Variantenbericht.",
-          e);
-    }
   }
 
   private static WorstQuery toWorstQuery(RetrievalMetrics.QueryResult r) {
@@ -1084,20 +932,18 @@ class RetrievalEvaluationHarnessTest {
   }
 
   /**
-   * Waits for the corpus to finish indexing. The 45-minute budget is deliberate and matches the
-   * runtime the CI job already documents: on a GitHub Actions runner (2 vCPU shared between the
-   * Postgres, Ollama and application containers) the 1448-document corpus takes roughly 38 minutes,
-   * with the sequential Ollama embedding latency dominating — see the {@code timeout-minutes}
-   * comment in {@code .github/workflows/retrieval-regression.yml}. The previous 30 minutes
-   * contradicted that measurement and only ever passed on a fast runner: PR #415 stalled at 1121 of
-   * 1448 documents (~1.6 s/document), while the nightly run before it managed ~0.85 s/document and
-   * finished with minutes to spare. The budget must also stay comfortably below the workflow's
-   * {@code timeout-minutes} so a genuinely stuck indexing run fails here — with a diagnosable test
-   * failure — instead of being killed as a cancelled job.
+   * Waits for the corpus to finish indexing. 70 documents at 3 to 4 chunks each is the smallest
+   * indexing job of the three domains — roughly a seventh of {@code city-landmarks}' 200
+   * multi-chunk documents, for which a GitHub Actions runner needed about 115 minutes at the
+   * measured rate recorded in {@link CityLandmarksRetrievalEvaluationHarnessTest}. Extrapolated
+   * from that same rate this corpus needs well under 30 minutes; the budget is set to 60 so a
+   * slower runner still finishes, while a genuinely stuck run fails here — with a diagnosable test
+   * failure — comfortably before the workflow's own {@code timeout-minutes} turns it into a
+   * cancelled job. Whoever changes one of the two limits checks the other.
    */
   private void awaitJobCompletion(IndexingJob job) {
     await()
-        .atMost(45, TimeUnit.MINUTES)
+        .atMost(60, TimeUnit.MINUTES)
         .pollInterval(2, TimeUnit.SECONDS)
         .until(
             () -> {

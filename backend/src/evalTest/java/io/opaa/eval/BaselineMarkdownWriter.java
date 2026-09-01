@@ -29,13 +29,25 @@ public final class BaselineMarkdownWriter {
   private BaselineMarkdownWriter() {}
 
   public static void write(
-      BaselineComparator.ComparisonResult result, Path target, String baselineFileName)
+      BaselineComparator.ComparisonResult result,
+      Path target,
+      String baselineFileName,
+      ExpectedStateAudit.Result expectedStateAudit)
       throws IOException {
     Files.createDirectories(target.getParent());
-    Files.writeString(target, render(result, baselineFileName), StandardCharsets.UTF_8);
+    Files.writeString(
+        target, render(result, baselineFileName, expectedStateAudit), StandardCharsets.UTF_8);
   }
 
-  public static String render(BaselineComparator.ComparisonResult result, String baselineFileName) {
+  /**
+   * @param expectedStateAudit the run's declared-vs-measured case-state audit, appended below the
+   *     delta table (issue #1043); {@code null} for a domain whose golden dataset declares no
+   *     states, in which case the output is unchanged from before that issue.
+   */
+  public static String render(
+      BaselineComparator.ComparisonResult result,
+      String baselineFileName,
+      ExpectedStateAudit.Result expectedStateAudit) {
     StringBuilder sb = new StringBuilder();
     // Issue #234: parameterized, not hardcoded to "comic-characters.json" — this class is shared
     // between both domains' *BaselineRegressionTest callers, and a hardcoded title here would
@@ -62,6 +74,9 @@ public final class BaselineMarkdownWriter {
                 mismatch.baselineValue(),
                 mismatch.currentValue()));
       }
+      // Deliberately also on the invalid-baseline path: the states were still measured, and a
+      // deviation is worth seeing even when no metric comparison is meaningful.
+      sb.append(ExpectedStateAudit.renderMarkdown(expectedStateAudit));
       return sb.toString();
     }
 
@@ -129,6 +144,7 @@ public final class BaselineMarkdownWriter {
       }
     }
 
+    sb.append(ExpectedStateAudit.renderMarkdown(expectedStateAudit));
     return sb.toString();
   }
 }

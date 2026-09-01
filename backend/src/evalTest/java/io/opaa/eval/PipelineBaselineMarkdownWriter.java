@@ -24,14 +24,24 @@ public final class PipelineBaselineMarkdownWriter {
   private PipelineBaselineMarkdownWriter() {}
 
   public static void write(
-      PipelineBaselineComparator.ComparisonResult result, Path target, String baselineFileName)
+      PipelineBaselineComparator.ComparisonResult result,
+      Path target,
+      String baselineFileName,
+      ExpectedStateAudit.Result expectedStateAudit)
       throws IOException {
     Files.createDirectories(target.getParent());
-    Files.writeString(target, render(result, baselineFileName), StandardCharsets.UTF_8);
+    Files.writeString(
+        target, render(result, baselineFileName, expectedStateAudit), StandardCharsets.UTF_8);
   }
 
+  /**
+   * @param expectedStateAudit the run's declared-vs-measured case-state audit at this path's window
+   *     (issue #1043); {@code null} for a domain whose golden dataset declares no states.
+   */
   public static String render(
-      PipelineBaselineComparator.ComparisonResult result, String baselineFileName) {
+      PipelineBaselineComparator.ComparisonResult result,
+      String baselineFileName,
+      ExpectedStateAudit.Result expectedStateAudit) {
     StringBuilder sb = new StringBuilder();
     sb.append("## Pipeline-Messpfad gegen Baseline (`eval/baseline/")
         .append(baselineFileName)
@@ -56,6 +66,8 @@ public final class PipelineBaselineMarkdownWriter {
                 mismatch.baselineValue(),
                 mismatch.currentValue()));
       }
+      // Same reasoning as in BaselineMarkdownWriter: the states were measured either way.
+      sb.append(ExpectedStateAudit.renderMarkdown(expectedStateAudit));
       return sb.toString();
     }
 
@@ -103,6 +115,7 @@ public final class PipelineBaselineMarkdownWriter {
       }
     }
 
+    sb.append(ExpectedStateAudit.renderMarkdown(expectedStateAudit));
     return sb.toString();
   }
 }

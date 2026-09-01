@@ -12,21 +12,23 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Compares the most recent {@code evaluateCityLandmarksRetrieval} report against the committed
- * {@code city-landmarks} baseline (issue #234) — the city-landmarks counterpart of {@link
- * BaselineRegressionTest}. Own report file, own baseline file, own group (see {@link
- * EvalDomainConfig#CITY_LANDMARKS}): comic-characters' baseline and CI behavior are unaffected by
- * this class (issue #234 acceptance criterion "keine gemeinsame overall-Gruppe mit Comichelden").
+ * Compares the most recent {@code evaluateVerwaltungRetrieval} report against the committed {@code
+ * verwaltung} baseline (issue #1043) — the verwaltung counterpart of {@link
+ * BaselineRegressionTest}. Own report file, own baseline file, own groups: the other two domains'
+ * baselines and CI behaviour are unaffected by this class.
+ *
+ * <p>The per-class groups this compares ({@code category:literal_term_weak_embedding} and the four
+ * others) are the reason the domain exists — a regression that only shows in the aggregate would
+ * say nothing about the failure class a Retrieval-Baustein was built to close.
  */
-class CityLandmarksBaselineRegressionTest {
+class VerwaltungBaselineRegressionTest {
 
-  private static final Logger log =
-      LoggerFactory.getLogger(CityLandmarksBaselineRegressionTest.class);
+  private static final Logger log = LoggerFactory.getLogger(VerwaltungBaselineRegressionTest.class);
 
   private static final Path REPORT_FILE =
-      Path.of("build", "eval-reports", "retrieval-metrics-city-landmarks.json");
+      Path.of("build", "eval-reports", "retrieval-metrics-verwaltung.json");
   private static final Path MARKDOWN_FILE =
-      Path.of("build", "eval-reports", "baseline-comparison-city-landmarks.md");
+      Path.of("build", "eval-reports", "baseline-comparison-verwaltung.md");
 
   @Test
   void currentRunStaysWithinToleranceOfTheCommittedBaseline() throws IOException {
@@ -34,8 +36,8 @@ class CityLandmarksBaselineRegressionTest {
       fail(
           "No report found at '"
               + REPORT_FILE.toAbsolutePath()
-              + "'. Run './gradlew evaluateCityLandmarksRetrieval' first — this test only compares "
-              + "an existing report against the baseline, it does not produce one.");
+              + "'. Run './gradlew evaluateVerwaltungRetrieval' first — this test only compares an "
+              + "existing report against the baseline, it does not produce one.");
     }
 
     EvaluationReport report =
@@ -46,20 +48,18 @@ class CityLandmarksBaselineRegressionTest {
     Path baselineFile =
         RepoPaths.evalDir()
             .resolve("baseline")
-            .resolve(EvalDomainConfig.CITY_LANDMARKS.baselineFileName());
+            .resolve(EvalDomainConfig.VERWALTUNG.baselineFileName());
     Baseline baseline = Baseline.load(baselineFile);
 
     BaselineComparator.ComparisonResult result = BaselineComparator.compare(baseline, report);
 
     String markdown =
         BaselineMarkdownWriter.render(
-            result,
-            EvalDomainConfig.CITY_LANDMARKS.baselineFileName(),
-            report.expectedStateAudit());
+            result, EvalDomainConfig.VERWALTUNG.baselineFileName(), report.expectedStateAudit());
     BaselineMarkdownWriter.write(
         result,
         MARKDOWN_FILE,
-        EvalDomainConfig.CITY_LANDMARKS.baselineFileName(),
+        EvalDomainConfig.VERWALTUNG.baselineFileName(),
         report.expectedStateAudit());
     log.info(markdown);
     System.out.println(markdown);

@@ -60,8 +60,10 @@ final class PipelineBaselineRegressionCheck {
         PipelineBaselineComparator.compare(baseline, report);
 
     String markdown =
-        PipelineBaselineMarkdownWriter.render(result, domain.pipelineBaselineFileName());
-    PipelineBaselineMarkdownWriter.write(result, markdownFile, domain.pipelineBaselineFileName());
+        PipelineBaselineMarkdownWriter.render(
+            result, domain.pipelineBaselineFileName(), report.expectedStateAudit());
+    PipelineBaselineMarkdownWriter.write(
+        result, markdownFile, domain.pipelineBaselineFileName(), report.expectedStateAudit());
     // Both outputs on purpose, matching BaselineRegressionTest exactly: the logger reaches the test
     // report, System.out reaches Gradle's console via showStandardStreams. Dropping either would
     // make the two paths' output differ in where a delta table can be found.

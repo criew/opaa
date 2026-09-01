@@ -24,6 +24,10 @@ public record PipelineEvaluationReport(
     Map<String, PipelineMetricsAggregate> byCategory,
     Map<String, PipelineMetricsAggregate> byDifficulty,
     Map<String, PipelineMetricsAggregate> byLanguage,
+    // Issue #1043, docs/features/retrieval-benchmark.md §5 "Zustandsfelder": declared vs. measured
+    // case state, at this path's own window. Null for a domain whose golden dataset carries no
+    // expected_state fields (see ExpectedStateAudit#evaluate).
+    ExpectedStateAudit.Result expectedStateAudit,
     List<PipelineQueryResult> worstQueries,
     List<PipelineQueryResult> allQueryResults) {
 

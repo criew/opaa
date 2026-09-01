@@ -107,6 +107,25 @@ bleibt: „§ 3" allein bleibt über 68 Dokumente hinweg mehrdeutig, aber nur in
 tatsächlich eine Bedürftigkeitsklausel — die anderen 62 sind für den `literal_term`-Fall
 glaubwürdige, sachlich falsche Konkurrenzdokumente, nicht nur Rauschen.
 
+### Nachschärfung geprüft und bewusst verworfen (Issue #1043)
+
+Der Review von #1042 hat einen offenen Kuratierungspunkt hinterlassen: Das Ground-Truth-Dokument
+`verwaltung-0038` verstärkt „Gebührenbefreiung"/„Bedürftigkeit" zusätzlich in `schlagworte` und in
+der Zusammenfassung. Für die `literal_term_weak_embedding`-Klasse (Abschnitt 5a der Spezifikation)
+könnte das den Fall zu leicht machen — die Klasse verlangt einen Begriff, der wörtlich in einem
+Dokument steht, dessen **Gesamtthema woanders liegt**.
+
+Entschieden nach dem Kriterium der Spezifikation, nicht nach Augenschein: **keine Änderung am
+Generator.** Der erste Messlauf der Domäne (2026-09-01, CPU-Testcontainer) löst **keinen einzigen**
+der neun `literal_term_weak_embedding`-Fälle — `verwaltung-0038` liegt bei mehreren davon nicht
+einmal im Trefferfenster, obwohl es den Begriff wörtlich führt. Die Klasse misst das Fehlerbild
+also bereits in voller Schärfe; eine Nachschärfung würde den Korpus, das Manifest, den
+Determinismusnachweis und beide Baselines kosten, ohne die Messaussage zu verändern. Sollte ein
+künftiger Baustein (Roadmap 1a/1b) diese Klasse lösen und dabei der Verdacht aufkommen, die
+Schlagwort-Verstärkung habe geholfen statt der Baustein, ist die Nachschärfung der dann fällige
+nächste Schritt — mit Neuziehung beider Baselines, wie in [`MAINTENANCE.md`](MAINTENANCE.md)
+beschrieben.
+
 ## Bekannte Eigenschaften und Grenzen dieses Korpus
 
 - **§ 3 und § 13 sind über alle Amts-Satzungen hinweg an denselben Paragraphennummern verankert,

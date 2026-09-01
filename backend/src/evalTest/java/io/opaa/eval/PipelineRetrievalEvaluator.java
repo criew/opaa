@@ -104,6 +104,20 @@ public final class PipelineRetrievalEvaluator {
         PipelineMetricsAggregate.groupBy(results, GoldenCase::category),
         PipelineMetricsAggregate.groupBy(results, GoldenCase::difficulty),
         PipelineMetricsAggregate.groupBy(results, GoldenCase::language),
+        ExpectedStateAudit.evaluate(
+            results.stream()
+                .map(
+                    r ->
+                        new ExpectedStateAudit.CaseState(
+                            r.goldenCase().id(),
+                            r.goldenCase().category(),
+                            r.goldenCase().expectedState(),
+                            r.goldenCase().expectedStateException(),
+                            ExpectedStateAudit.isSolved(
+                                r.allExpectedDocumentsHit(),
+                                r.rankedFileNames(),
+                                r.goldenCase().expectedDocuments())))
+                .toList()),
         allQueryResults.stream().limit(10).toList(),
         allQueryResults);
   }
