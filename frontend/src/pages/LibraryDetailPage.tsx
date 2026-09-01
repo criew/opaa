@@ -81,7 +81,7 @@ import SectionHead from '../components/SectionHead'
 
 // Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - only a
 // client-side hint for the file picker; the backend remains the authority on what is accepted.
-const ACCEPTED_FILE_EXTENSIONS = '.doc,.docx,.md,.pdf,.pptx,.txt'
+const ACCEPTED_FILE_EXTENSIONS = '.csv,.doc,.docx,.md,.pdf,.pptx,.txt,.xlsx'
 
 const allVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
 

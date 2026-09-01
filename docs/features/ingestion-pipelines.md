@@ -466,6 +466,35 @@ Klartext- oder Markdown-Datei zu unterscheiden — die gleiche Mehrdeutigkeit, w
 `.txt` heute zusätzlich ihre Endung nachweisen müssen. CSV wird deshalb in derselben Weise behandelt:
 Inhalt muss Text sein **und** die Datei muss `.csv` heißen.
 
+#### Umgesetzt (#1058)
+
+`TabularDocumentPipeline` (`id` `tabular`, Version 1) beansprucht `.xlsx` und `.csv` in der
+`DocumentPipelineRegistry`. XLSX wird blatt- und zellenweise über Apache POI gelesen, CSV über einen
+Trennzeichen-erkennenden Parser (Komma, Semikolon, Tabulator — die reale Exportvarianten, siehe
+Test-Fixtures). Beide Leser teilen sich denselben Zuschnitt:
+
+- Die erste nicht-leere Zeile eines Blatts bzw. der Datei ist die Kopfzeile; jeder folgende Chunk trägt
+  sie erneut, zusammen mit einer Strukturkontext-Zeile (`Blatt: … · Tabelle: …` für XLSX, `Tabelle: …`
+  für CSV) — direkt im Chunk-Text, nicht als separates Metadatenfeld, weil `FileProcessingService`
+  nur eine feste, generische Metadatenmenge auf einen gespeicherten Chunk überträgt (siehe
+  [Teil 5](#teil-5--übergabepunkt-an-das-metadatenschema)). Für XLSX fallen Blatt- und Tabellenname
+  zusammen: Excels separates Konzept „definierte Tabelle" wird nicht eigens erkannt.
+- Eine Zeilengruppe von bis zu 50 Datenzeilen bildet einen Chunk, vorzeitig geschlossen, wenn die
+  nächste Zeile den Chunk über 6.000 Zeichen triebe (Schutz gegen eine Riesenzeile mit hunderten
+  Spalten oder einer sehr langen Zelle) — eine einzelne Zeile, die diese Grenze für sich allein schon
+  überschreitet, wird trotzdem als eigener Chunk ausgegeben, statt mitten in der Zeile geschnitten oder
+  verworfen zu werden. **Gesetzt, nicht gemessen** (siehe
+  [Chunk-Größen](#chunk-größen-gemessen-wo-messmaterial-existiert--und-sonst-ehrlich-gesetzt)): Weder
+  der bestehende Evaluierungskorpus noch die geplante Verwaltungs-Evaldomäne (#1036) enthalten heute
+  Tabellenblätter mit kuratierter Ground Truth.
+- Ein leeres Blatt liefert keinen Chunk; ein Blatt oder eine Datei mit ausschließlich einer Kopfzeile
+  (keine Datenzeile) ebenfalls nicht. Trägt kein Blatt einer Arbeitsmappe bzw. keine Zeile einer
+  CSV-Datei Nutzdaten, meldet die Pipeline `NO_EXTRACTABLE_TEXT` — dasselbe Ergebnis, das
+  `TikaFallbackPipeline` für Text meldet, der auf nichts herunter zerlegt (siehe
+  [Punkt 1](#1-scan-erkennung-und-bestandsprüfung)).
+
+**Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine XLSX- oder CSV-Dokumente.
+
 ### 4. HTML
 
 Intranet-Seiten, Government-Site-Builder-Auftritte, Ratsinformationssysteme. Heute nur mittelbar über

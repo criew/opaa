@@ -58,6 +58,7 @@ class SupportedDocumentFormatsTest {
   void contentMatchesExtensionAcceptsAnyTextSpecializationForTheTextTolerantExtensions() {
     assertThat(SupportedDocumentFormats.contentMatchesExtension(".txt", "text/plain")).isTrue();
     assertThat(SupportedDocumentFormats.contentMatchesExtension(".md", "text/plain")).isTrue();
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".csv", "text/plain")).isTrue();
     // application/xml and application/rtf are declared sub-class-of text/plain in Tika's own
     // media type registry (tika-mimetypes.xml) - exactly the false positives #435's code review
     // flagged a plain startsWith("text/") check as missing.
@@ -181,11 +182,24 @@ class SupportedDocumentFormatsTest {
   }
 
   @Test
+  void decideForFileNameAcceptsCsvContentOnlyUnderItsOwnExtension() {
+    // #1058: CSV joins .md/.txt as text-tolerant - its own extension has to already claim it,
+    // exactly like the other two, since content alone cannot tell a CSV export apart from
+    // Markdown or plain text.
+    var decision = SupportedDocumentFormats.decideForFileName("gebuehren.csv", "text/plain");
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".csv");
+    assertThat(decision.extensionMismatch()).isFalse();
+  }
+
+  @Test
   void decideForFileNameRejectsAmbiguousTextContentUnderAnUnrelatedExtension() {
     // #404: the extension is consulted for ambiguous (text) content, not just for reporting a
-    // mismatch - a CSV export, a log file or source code carrying genuinely readable text must not
-    // silently widen the accepted Bestand to "any plain text whatsoever".
-    var decision = SupportedDocumentFormats.decideForFileName("export.csv", "text/plain");
+    // mismatch - a log file or source code carrying genuinely readable text must not silently
+    // widen the accepted Bestand to "any plain text whatsoever". (CSV itself is a text-tolerant
+    // extension since #1058, see decideForFileNameAcceptsCsvContentOnlyUnderItsOwnExtension.)
+    var decision = SupportedDocumentFormats.decideForFileName("export.log", "text/plain");
 
     assertThat(decision.supported()).isFalse();
   }

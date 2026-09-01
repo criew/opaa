@@ -198,7 +198,7 @@ class DocumentIndexingIntegrationTest {
   @Test
   void skipsUnsupportedFileFormatsAndContinues() throws IOException {
     Files.writeString(classTempDir.resolve("good.txt"), "Valid content here.");
-    Files.writeString(classTempDir.resolve("bad.csv"), "a,b,c");
+    Files.writeString(classTempDir.resolve("bad.xyz"), "a,b,c");
 
     IndexingJob job = triggerIndexing();
     assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
@@ -207,7 +207,7 @@ class DocumentIndexingIntegrationTest {
 
     var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
     assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
-    // Only .txt is a supported format, .csv is rejected by the shared format list.
+    // Only .txt is a supported format, .xyz is rejected by the shared format list.
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(completedJob.getDocumentsFailed()).isZero();
     // Issue #375: a rejected document must be reported, not silently dropped. Both files were
@@ -223,7 +223,7 @@ class DocumentIndexingIntegrationTest {
         indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(completedJob.getId());
     assertThat(events).hasSize(1);
     assertThat(events.getFirst().getCategory()).isEqualTo(IndexingEventCategory.UNSUPPORTED_FORMAT);
-    assertThat(events.getFirst().getReference()).isEqualTo("bad.csv");
+    assertThat(events.getFirst().getReference()).isEqualTo("bad.xyz");
     assertThat(completedJob.getEventsTruncatedCount()).isZero();
 
     // Verify only the supported file was indexed
@@ -237,7 +237,7 @@ class DocumentIndexingIntegrationTest {
   void retainsOnlyTheLastTenRunsPerLibraryAndPrunesTheirEvents() throws IOException {
     // #513, Umfangserweiterung (Maintainer-Ergaenzung 20.08.2026): only the last 10 runs of a
     // library stay around - older ones, and their own events, are pruned once an 11th run starts.
-    Files.writeString(classTempDir.resolve("bad.csv"), "a,b,c");
+    Files.writeString(classTempDir.resolve("bad.xyz"), "a,b,c");
 
     // #604 review, nit (d): a second library's own single run, untouched by the first library's
     // eleven-run pruning below - proves retention is scoped per library, not to the first 10 rows
