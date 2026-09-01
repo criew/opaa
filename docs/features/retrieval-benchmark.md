@@ -531,6 +531,19 @@ Drei Milderungen, keine Lösungen:
 >
 > **Nicht mit umgesetzt:** die Aufnahme der Klassen in die bestehenden Domänen (offener Punkt 5) —
 > unverändert offen, weil sie dort eine Baseline-Neuziehung kostet.
+>
+> **Fortschreibung (Issue #1049, 09/2026):** Mit der Aufnahme des lexikalischen Pfads in die Fusion
+> löst der Pipeline-Pfad elf der 37 `known_gap`-Fälle — `literal_term_weak_embedding` 0 → 2 von 9,
+> `compound_word` 0 → 5 von 9, `multi_hop` 1 → 5 von 9, `exact_identifier` und `metadata_filter`
+> unverändert 8 von 10 bzw. 4 von 9. Die deklarierten Zustände bleiben trotzdem `known_gap`: Der
+> Rohvektor-Pfad kann diese Fälle strukturell nicht lösen (er misst `similaritySearch` direkt und
+> kennt den Volltextpfad nicht), und „gelöst" ist unten auf **beiden** Pfaden definiert. Die elf Fälle
+> tragen ihre Pfad-Asymmetrie deshalb als committete `expected_state_exception`. Ob diese Definition
+> mit einem produktiven zweiten Suchpfad noch die richtige ist — der Rohvektor-Pfad misst seither
+> bewusst eine nicht-produktive Konfiguration —, ist eine offene Frage an diesen Abschnitt; #1049 hat
+> sie ausdrücklich nicht entschieden (ADR-0012, Nachtrag Volltextpfad, Entscheidung 23). Der
+> Messvertrag des Pipeline-Pfads steht seither auf Version 3, mit den Fixpunkten
+> `fullTextSearchEnabled` und `fullTextBackfillComplete`.
 
 
 Fünf Kategorien kommen hinzu. Jede hat ein benanntes Fehlerbild, eine überprüfbare Ground Truth und

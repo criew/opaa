@@ -510,7 +510,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_QUERY_DECOMPOSITION_ENABLED` | `true` | `true` | Zerlegt eine Frage vor dem Retrieval per LLM-Aufruf in bis zu `OPAA_QUERY_MAX_SUB_QUERIES` eigenständige Suchanfragen, je mit eigenem berechtigungs- und schwellenwertgeprüften `similaritySearch`-Aufruf, rangbasiert (Reciprocal Rank Fusion) zusammengeführt (#923). Ersetzt zugleich die feste "erste Chat-Nachricht voranstellen"-Heuristik der Kontext-Anreicherung. Ein LLM-Fehlschlag oder eine unparsebare Antwort fällt auf die bisherige Ein-Suche-Logik zurück, nie auf einen Fehler; Modellwahl folgt dem systemweiten aktiven Chat-Modell (kein zusätzlicher API-Anbindungsweg) |
 | `OPAA_QUERY_MAX_SUB_QUERIES` | `3` | `3` | Obergrenze der Teilfragen aus der Zerlegung (#923) — darüber hinaus kappt die Zerlegung, ohne die Zahl der `similaritySearch`-Aufrufe (und damit die Retrieval-Latenz) unbegrenzt wachsen zu lassen |
 | `OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT` | `2` | `2` | Nach der Fusions-/MMR-Auswahl bevorzugt bis zu diese viele Chunks je bereits ausgewähltem Dokument aus der ohnehin berechtigungs- und schwellenwertgefilterten Kandidatenmenge (#932, Zuschnitt v2) — zweistufige Verdrängung: zuerst der schwächste Chunk eines Dokuments, das schon mit mindestens zwei Chunks vertreten ist; existiert keine solche Quelle, der auswahlrang-letzte Chunk der Gesamtauswahl, sofern das zu vervollständigende Dokument mit seinem besten Chunk strikt besser rankt als dieser (die Dokumentvielfalt darf dabei sinken) — auf `max(1, OPAA_QUERY_TOP_K / 4)` solcher Verdrängungen je Abfrage gedeckelt (bei Default `OPAA_QUERY_TOP_K=8` also 2), damit eine einzelne Abfrage nicht mehrere Themen zugunsten eines einzigen verdrängt. `1` schaltet die Dokument-Vervollständigung vollständig ab (Stand vor #932) |
-| `OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED` | `true` | nicht gesetzt (Anwendungs-Default gilt) | Ob der lexikalische Suchpfad seine Volltextabfrage ausführt (#1048, siehe [„Volltextsuche (lexikalischer Suchpfad)"](#volltextsuche-lexikalischer-suchpfad)). `false` spart die Abfrage; der Pfad erscheint dann weiterhin im Erklärprotokoll der Suche und weist sich dort als abgeschaltet aus. Solange die Kandidaten des Pfads nicht in die Ergebnis-Fusion eingehen, ändert der Wert an keiner Antwort etwas |
+| `OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED` | `true` | nicht gesetzt (Anwendungs-Default gilt) | Ob der lexikalische Suchpfad seine Volltextabfrage ausführt und seine Trefferliste in die Ergebnis-Fusion einbringt (#1048/#1049, siehe [„Volltextsuche (lexikalischer Suchpfad)"](#volltextsuche-lexikalischer-suchpfad)). `false` spart die Abfrage und lässt die Suche wieder rein vektoriell laufen — der Pfad erscheint dann weiterhin im Erklärprotokoll der Suche und weist sich dort als abgeschaltet aus. Seit #1049 wirkt der Wert damit unmittelbar auf die Antwort; auf der Verwaltungs-Evaldomäne kostet `false` gemessen 15 Prozentpunkte Hit Rate@5 (0,935 → 0,783) |
 | **Indizierung** | | | |
 | `OPAA_INDEXING_CHUNK_SIZE` | `1000` | `1000` | Ziel-Tokens pro Chunk (1–10.000) |
 | `OPAA_INDEXING_CHUNK_OVERLAP` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Anzahl der Tokens, die jeder Chunk vom Ende seines Vorgängers wiederholt, damit eine Aussage an einer Chunk-Grenze in mindestens einem Chunk vollständig erhalten bleibt (#374). Muss kleiner als `OPAA_INDEXING_CHUNK_SIZE` sein; `0` deaktiviert die Überlappung, ein negativer Wert wird auf `0` normalisiert |
@@ -994,9 +994,11 @@ System**: derselbe Sicherungslauf, dieselbe Wiederherstellung, derselbe Verschl�
 Pfad findet, woran eine Vektorsuche strukturell scheitert — Paragrafenverweise, Aktenzeichen,
 Erlassnummern, seltene Fachbegriffe.
 
-> **Stand:** Der Pfad ist gebaut und läuft mit, **wirkt aber noch nicht auf die Antwort**. Seine
-> Kandidaten gehen bislang nur in das Erklärprotokoll der Suche; in die Ergebnis-Fusion aufgenommen wird
-> er mit einem eigenen, gesondert gemessenen Schritt.
+> **Stand:** Der Pfad ist gebaut und **wirkt seit #1049 auf die Antwort**. Je Teilfrage liefert er
+> eine zweite Trefferliste, die zusammen mit der Liste der Vektorsuche rangbasiert fusioniert wird
+> (Reciprocal Rank Fusion). Ein Chunk, den beide Pfade finden, ist dabei **ein** Treffer mit zwei
+> Beiträgen, kein doppelter. Fällt die Volltextabfrage aus, läuft die Fusion mit den verbleibenden
+> Listen weiter: schlechtere Suchqualität, nie ein Fehler für die fragende Person.
 
 ### Was zu tun ist
 

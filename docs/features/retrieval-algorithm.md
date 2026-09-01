@@ -6,11 +6,12 @@ für Parameter, Stand `main` nach der Stufen-Zerlegung aus
 Ergänzung zu [Wissensschicht und Retrieval](./data-indexing-rag.md), das überwiegend das **Zielbild**
 beschreibt (siehe dessen „Lesehinweis zum Umsetzungsstand"): Abschnitte wie
 [Hybride Suche](./data-indexing-rag.md#hybride-suche) und [Reranking](./data-indexing-rag.md#reranking)
-dort sind Vision — im heutigen Code gibt es **kein separates Reranking-Modell**, und der seit
-[#1048](https://github.com/criew/opaa/issues/1048) gebaute lexikalische Suchpfad (Schritt 3b) ist
-**noch keine Eingangsliste der Fusion**: Was die Endauswahl bestimmt, ist unverändert allein die
-Vektorsuche mit den unten beschriebenen Nachbearbeitungsschritten. Wer wissen will, was gebaut ist,
-liest dieses Dokument; wer wissen will, wohin es geht, liest `data-indexing-rag.md`.
+dort sind teils Vision, teils gebaut: Ein **separates Reranking-Modell** gibt es im heutigen Code
+nicht; die **hybride Suche** dagegen schon — der mit
+[#1048](https://github.com/criew/opaa/issues/1048) gebaute lexikalische Suchpfad (Schritt 3b) ist seit
+[#1049](https://github.com/criew/opaa/issues/1049) eine Eingangsliste der Fusion und bestimmt die
+Endauswahl mit. Wer wissen will, was gebaut ist, liest dieses Dokument; wer wissen will, wohin es
+geht, liest `data-indexing-rag.md`.
 
 Die Stellschrauben-Tabelle in `data-indexing-rag.md` bleibt die eine Quelle der Wahrheit für Parameter und
 ihre Defaults (siehe [Stellschrauben und ihre Wirkung](./data-indexing-rag.md#stellschrauben-und-ihre-wirkung));
@@ -113,7 +114,7 @@ ohne Kontextbezug decodiert typischerweise zu genau einer Suchanfrage; dieser Fa
 wie vor #923, nur ohne die vorangestellte Verlaufs-Heuristik. Details zu beiden Parametern in der
 Stellschrauben-Tabelle.
 
-### 3b. Volltextsuche je Teilfrage (#1048)
+### 3b. Volltextsuche je Teilfrage (#1048/#1049)
 
 `FullTextSearchStage` führt für **jede** Suchanfrage aus Schritt 2 eine PostgreSQL-Volltextabfrage gegen
 `chunk_full_text` aus — mit **identischem Rechtefilter** wie Schritt 3 (`library_id = ANY(...)` als Teil
@@ -136,7 +137,8 @@ Beide Hälften entstehen aus bereinigten Tokens (Wörter auf Buchstaben und Ziff
 Kennungs-Lexeme per Konstruktion ASCII-alphanumerisch); kein Zeichen der Nutzerfrage erreicht
 `to_tsquery` als Operator.
 
-**Zwei Tore, beide verengend:** `opaa.query.full-text-search.enabled` (Ebene-1-Wert, Default `true`) und
+**Zwei Tore, beide verengend:** `opaa.query.full-text-search-enabled` (`OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED`,
+Ebene-1-Wert, Default `true`) und
 das Backfill-Tor — eine Bibliothek, deren Volltext-Backfill nicht abgeschlossen ist, wird nicht durchsucht
 (`FullTextBackfillGate`, siehe [Arbeitspaket 2a](./hybrid-retrieval.md#arbeitspaket-2a-backfill-des-bestands)).
 Ein halb gefüllter Volltextindex liefert Treffer und verschweigt den Rest; das ist schlechter als nichts
@@ -146,16 +148,17 @@ zu liefern.
 Suchqualität kosten, aber nie zum Fehler für den fragenden Menschen werden; die Rückfallebene ist eine
 **leere** Kandidatenliste, nie eine ungefilterte.
 
-**Noch keine Eingangsliste der Fusion.** Die Listen dieser Stufe landen im Erklärprotokoll und dort
-enden sie; der Pipeline-Zustand wird unverändert weitergereicht, die Endauswahl ist bit-identisch zu der
-ohne diese Stufe. Das ist Absicht: Die Aufnahme in die RRF ist
-[#1049](https://github.com/criew/opaa/issues/1049), und dorthin gehören die Verhaltensänderung und die
-dafür neu zu ziehenden Benchmark-Baselines.
+**Eingangsliste der Fusion (#1049).** Die Listen dieser Stufe werden im Pipeline-Zustand
+weitergereicht, genau wie die der Vektorsuche, und in Schritt 5 rangbasiert mit ihnen zusammengeführt.
+Die Stufe ist damit — neben der Vektorsuche — die zweite, die dem Lauf Kandidaten hinzufügt; alles,
+was sie hinzufügt, hat denselben Rechtefilter passiert, und der Kandidatenpool bleibt die Obergrenze
+für Schritt 6. Abgeschaltet (`opaa.query.full-text-search-enabled=false`) ist die Stufe die Identität:
+Die Auswahl ist dann bit-identisch zu der ohne sie — die Messvariante `vector-only`.
 
 ### 4. MMR-Auswahl je Teilfrage
 
-`MmrSelectionStage` narrowt die `fetch-k` Kandidaten **jeder Teilfrage einzeln** (nie über die
-zusammengeführte Gesamtmenge) mittels `MmrSelector#select` auf `opaa.query.top-k`
+`MmrSelectionStage` narrowt die `fetch-k` Kandidaten **jeder Liste einzeln** — je Teilfrage und je
+Suchpfad, nie über die zusammengeführte Gesamtmenge — mittels `MmrSelector#select` auf `opaa.query.top-k`
 (`OPAA_QUERY_TOP_K`, Default `8`) Fundstellen. Steuernder Parameter ist `opaa.query.mmr-lambda`
 (`OPAA_QUERY_MMR_LAMBDA`, Default `1,0` = Vielfaltsauswahl per Voreinstellung deaktiviert, reine
 Top-`k`-Relevanz). Bei `mmrLambda < 1,0` wird die paarweise Ähnlichkeit über die **echten
@@ -168,13 +171,23 @@ null multipliziert wird. Details, Messwerte und die Begründung des Defaults in
 
 ### 5. Reciprocal Rank Fusion
 
-`RankFusionStage` führt über `ReciprocalRankFusion` die pro Teilfrage per MMR ausgewählten
-Ranglisten zu einer einzigen zusammen: Jeder Chunk erhält je Liste, in der er vorkommt, den Beitrag
+`RankFusionStage` führt über `ReciprocalRankFusion` die pro Teilfrage und **je Suchpfad** per MMR
+ausgewählten Ranglisten zu einer einzigen zusammen — seit #1049 also zwei Listen je Teilfrage, die der
+Vektor- und die der Volltextsuche. Jeder Chunk erhält je Liste, in der er vorkommt, den Beitrag
 `1 / (60 + Rang)` (Rang 1-basiert, Dämpfungskonstante 60 nach Cormack et al.), die Beiträge werden über
-alle Listen summiert, absteigend sortiert und auf `top-k` gedeckelt. Dedupliziert wird per Chunk-Kennung
+alle Listen summiert, absteigend sortiert und auf `top-k` gedeckelt. Keine Gewichtung je Pfad: RRF ist
+tuningfrei, und ein ungetuntes Gewicht kippt die Suche unbemerkt auf eine Modalität
+(siehe [Hybride Suche mit Reranking](./hybrid-retrieval.md#arbeitspaket-3-fusion)).
+Dedupliziert wird per Chunk-Kennung
 (`Document#getId()`), nie per Score — Ähnlichkeitswerte verschiedener Suchvektoren sind nicht vergleichbar,
-genau die Wurzel des in [#912](https://github.com/criew/opaa/issues/912) dokumentierten Fehlerbilds. Bei
-genau einer Suchanfrage läuft die Stufe mit und ist dort nachweislich die Identität: innerhalb einer Liste
+genau die Wurzel des in [#912](https://github.com/criew/opaa/issues/912) dokumentierten Fehlerbilds; ein
+Chunk, den beide Pfade finden, ist **ein** Kandidat mit zwei Beiträgen. Von zwei Instanzen desselben
+Chunks überlebt die aus der **früheren** Liste, nicht die mit dem höheren Score: Seit dem zweiten
+Suchpfad können das eine Kosinus-Ähnlichkeit und ein `ts_rank` sein, und die größere der beiden Zahlen
+bedeutet nichts. Da die Pipeline ihre Listen in Stufenreihenfolge übergibt, ist die frühere die der
+Vektorsuche — der angezeigte Relevanzwert bleibt damit eine Ähnlichkeit, außer bei einem Chunk, den nur
+der Volltextpfad gefunden hat. Bei
+genau einer Suchanfrage und abgeschaltetem Volltextpfad läuft die Stufe mit und ist dort nachweislich die Identität: innerhalb einer Liste
 sind alle Ränge verschieden, die fusionierten Werte also streng fallend in der Listenreihenfolge, und die
 Deckelung ist durch das Listenbudget bereits erfüllt. Vor #1046 wurde dieser Fall stattdessen verzweigt
 übersprungen; dass beides dasselbe auswählt, sichert `RetrievalPipelineParityTest` gegen die
@@ -237,11 +250,10 @@ Frage + Gesprächsverlauf
 3. Je Suchanfrage: similaritySearch (fetch-k Kandidaten, Rechtefilter + Schwelle)
         ↓
 3b. Je Suchanfrage: Volltextsuche (fetch-k, identischer Rechtefilter, Backfill-Tor)
-    → nur ins Erklärprotokoll, noch nicht in die Fusion (#1049)
         ↓
-4. Je Suchanfrage: MMR-Auswahl auf top-k (mmr-lambda)
+4. Je Liste (Teilfrage × Suchpfad): MMR-Auswahl auf top-k (mmr-lambda)
         ↓
-5. Reciprocal Rank Fusion über alle Teilfragen (nur bei >1 Suchanfrage), gedeckelt auf top-k
+5. Reciprocal Rank Fusion über alle Listen beider Pfade, gedeckelt auf top-k
         ↓
 6. Dokument-Vervollständigung (max-chunks-per-document, zweistufige Verdrängung)
         ↓
@@ -335,20 +347,22 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   Teilfragen-Zerlegung) kann einen solchen Rückstand überbrücken — sie ordnen nur, was die
   Vektorsuche liefert. Der passende Mechanismus wäre eine lexikalische Suchkomponente
   (Hybrid-Suche, siehe unten); sie ist als Arbeitspaket 2 von
-  [Hybride Suche mit Reranking](./hybrid-retrieval.md) beauftragt, aber noch nicht gebaut. Bis dahin gilt: Ein
-  Dokument, dessen Embedding die Anfrage nicht erreicht, bleibt für betroffene Konten unauffindbar,
-  auch wenn es die maßgebliche Quelle ist (Diagnose vollständig in #938).
+  [Hybride Suche mit Reranking](./hybrid-retrieval.md) beauftragt und mit #1048/#1049 zur Hälfte
+  gebaut: Der lexikalische Pfad findet ein Dokument jetzt auch dann, wenn sein Embedding die Anfrage
+  nicht erreicht, sofern der Anfragebegriff wörtlich darin steht (auf der Verwaltungsdomäne löst der
+  Pipeline-Pfad seither zwei der neun `literal_term_weak_embedding`-Fälle, die Hit Rate@5 dieser Klasse
+  stieg von 0,556 auf 0,889). Was fehlt, ist die zweite Hälfte: ein Reranker für die Fälle, in denen die
+  richtige Fundstelle im Fenster liegt, aber nicht weit genug oben (Diagnose vollständig in #938).
 
 ### Etablierte Verfahren, die OPAA noch nicht nutzt
 
 Als Ideen zu verstehen, ohne Zusage einer Umsetzung.
 
-- **Hybrid-Suche (BM25 + Vektor).** In `data-indexing-rag.md` als Zielbild beschrieben
-  ([Hybride Suche](./data-indexing-rag.md#hybride-suche)), im heutigen Code aber **nicht gebaut** — es
-  gibt keinen Volltextsuche-Pfad, nur `VectorStore#similaritySearch`. Trade-off: Volltextsuche trifft
-  Aktenzeichen, Paragrafen und Eigennamen exakt, die eine reine Vektorsuche bei ungewöhnlicher Schreibweise
-  verfehlt — kostet aber einen zweiten Suchindex und eine score-unabhängige Zusammenführung (z. B. RRF wie
-  in Schritt 5, nur über Such**verfahren** statt über Such**anfragen**).
+- ~~**Hybrid-Suche (BM25 + Vektor).**~~ Gebaut mit #1048/#1049 — Schritt 3b und die erweiterte Fusion
+  in Schritt 5. Was hier als Trade-off stand (zweiter Suchindex, score-unabhängige Zusammenführung),
+  ist eingelöst: Der Index liegt in derselben PostgreSQL-Datenbank (`tsvector`/GIN statt einer eigenen
+  Engine), zusammengeführt wird rangbasiert. Es ist `ts_rank` statt BM25 — die bekannte Grenze steht in
+  [Hybride Suche mit Reranking](./hybrid-retrieval.md#die-bekannte-grenze-ts_rank-ist-kein-bm25).
 - **Cross-Encoder-Reranking.** Ebenfalls Zielbild in `data-indexing-rag.md`
   ([Reranking](./data-indexing-rag.md#reranking)), heute nicht gebaut. Ein Modell, das Frage und Passage
   gemeinsam statt getrennt bewertet, erkennt Passung genauer als eine reine Vektorähnlichkeit — kostet

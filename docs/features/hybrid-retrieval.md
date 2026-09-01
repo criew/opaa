@@ -18,10 +18,12 @@ bereits mit „ja" beantwortet hat — [Hybride Suche](./data-indexing-rag.md#hy
 `retrieval-algorithm.md` für den jeweils gebauten Ablauf. **Gebaut sind Arbeitspaket 1** (Pipeline als
 benannte Stufen mit Erklärprotokoll, [#1046](https://github.com/criew/opaa/issues/1046)), **Arbeitspaket
 2a** (Volltextspalte, GIN-Index, wiederaufnehmbarer Backfill,
-[#1047](https://github.com/criew/opaa/issues/1047)) **und Arbeitspaket 2** (lexikalischer Suchpfad mit
-Kennungsschutz und Rechtefilter, [#1048](https://github.com/criew/opaa/issues/1048)) — **keines davon
-ändert bisher die Endauswahl**. Fusion um eine Eingangsliste, Reranking und Admin-Diagnose sind
-unverändert nicht gebaut.
+[#1047](https://github.com/criew/opaa/issues/1047)), **Arbeitspaket 2** (lexikalischer Suchpfad mit
+Kennungsschutz und Rechtefilter, [#1048](https://github.com/criew/opaa/issues/1048)) **und
+Arbeitspaket 3** (Aufnahme dieses Pfads in die RRF-Fusion,
+[#1049](https://github.com/criew/opaa/issues/1049)) — **mit Arbeitspaket 3 ändert sich zum ersten Mal
+die Endauswahl**, entsprechend sind die Pipeline-Baselines aller drei Domänen neu gezogen. Reranking
+und Admin-Diagnose sind unverändert nicht gebaut.
 
 ---
 
@@ -235,9 +237,9 @@ Kandidaten sehen, als ihr übergeben wurden.
 | Suchbereich bestimmen | lesbare Bibliotheken ∩ Kontext des Chats | gebaut |
 | Teilfragen bilden | 1..`max-sub-queries` eigenständige Suchanfragen | gebaut (#923) |
 | Vektorsuche je Teilfrage | `fetch-k` Kandidaten, Rechtefilter, Ähnlichkeitsschwelle | gebaut |
-| **Volltextsuche je Teilfrage** | `fetch-k` Kandidaten, identischer Rechtefilter | gebaut (#1048), noch nicht in der Fusion |
+| **Volltextsuche je Teilfrage** | `fetch-k` Kandidaten, identischer Rechtefilter | gebaut (#1048), in der Fusion seit #1049 |
 | Vielfaltsauswahl (MMR) je Teilfrage | Relevanz gegen Redundanz | gebaut, voreingestellt aus |
-| Fusion | RRF über alle Listen aller Teilfragen | gebaut, erweitert (AP 3) |
+| Fusion | RRF über alle Listen aller Teilfragen | gebaut, erweitert (#1049) |
 | **Reranking** | Cross-Encoder über die fusionierte Kandidatenmenge | **neu (AP 4)** |
 | Dokument-Vervollständigung | bis `max-chunks-per-document` Chunks je Dokument | gebaut (#932/#935) |
 
@@ -294,19 +296,21 @@ nebenbei die Suchqualität verändert, ist im Nachhinein nicht mehr von einer Re
 > in [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md#3b-volltextsuche-je-teilfrage-1048);
 > dieser Abschnitt bleibt die Begründung und der Zuschnitt.
 >
-> **Noch nicht in der Fusion.** Die Stufe läuft, filtert nach Rechten und liefert je Teilfrage eine
-> gelabelte Kandidatenliste — aber ausschließlich ins Erklärprotokoll. Die Endauswahl ist bit-identisch
-> zu der ohne diese Stufe, und die committeten Baselines bewegen sich deshalb nicht. Aufgenommen wird der
-> Pfad in [Arbeitspaket 3](#arbeitspaket-3-fusion) mit
-> [#1049](https://github.com/criew/opaa/issues/1049); dort gehört die Verhaltensänderung hin, mitsamt den
-> dafür neu zu ziehenden Baselines.
+> **Seit [#1049](https://github.com/criew/opaa/issues/1049) in der Fusion.** Die Stufe liefert je
+> Teilfrage eine gelabelte Kandidatenliste, und diese Listen sind Eingangslisten der RRF (siehe
+> [Arbeitspaket 3](#arbeitspaket-3-fusion)). Dort steht auch die Wirkung.
 >
-> **Auflage für #1049:** Sobald der Pfad die Endauswahl beeinflusst, muss
-> `opaa.query.full-text-search.enabled` in den Messvertrag und den Harness-Guard
-> (`PipelineHarnessSupport#requireMeasurableConfiguration`) aufgenommen werden — aus demselben Grund, aus
-> dem dort schon die abgeschalteten Stufen abgewiesen werden: Ein Lauf mit `enabled=false` wäre sonst am
-> `runConfiguration`-Abdruck von einem Volllauf nicht zu unterscheiden, und seine Zahlen würden gegen die
-> committete Baseline als Codeänderung verbucht.
+> **Die Auflage für #1049 ist erfüllt:** `opaa.query.full-text-search-enabled` ist Fixpunkt des
+> Pipeline-Messvertrags (zusammen mit `fullTextBackfillComplete`, dem Zustand des Backfill-Tors für die
+> gemessene Bibliothek), die Vertragsversion steht auf 3, und die Pipeline-Baselines aller drei Domänen
+> sind neu gezogen. Der Harness-Guard
+> (`PipelineHarnessSupport#requireMeasurableConfiguration`) weist einen Lauf mit `enabled=false` ab: Die
+> committete Baseline beschreibt die ausgelieferte hybride Konfiguration, ein vector-only-Lauf gehört in
+> den Variantenvergleich (`eval/variants/*-lexical-path.json`), der keine Baseline schreibt. Der
+> Property-Name hat sich dabei von `opaa.query.full-text-search.enabled` zu
+> `opaa.query.full-text-search-enabled` geändert — der Schalter ist mit der Aufnahme in die Fusion ein
+> gemessener Query-Parameter geworden und liegt deshalb in `QueryProperties`, wo jeder gemessene
+> Parameter liegt; die Umgebungsvariable `OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED` ist unverändert.
 
 ### Entscheidung: Postgres-nativ
 
@@ -471,16 +475,22 @@ betriebstauglich; oberhalb ist der verbleibende Rest kein Argument für einen zw
 Suchmechanismus mit eigenem PostgreSQL-Image.
 
 Zur Einordnung, ausdrücklich **nicht** als Herleitung — die Ausgangswerte der Verwaltungsdomäne auf dem
-Pipeline-Pfad (`eval/baseline/pipeline-verwaltung.json`, gezogen mit #1043, also vor jeder Zeile dieses
-Arbeitspakets): `compound_word` 0,778, `exact_identifier` 1,000. Die Schwelle liegt damit vor der Messung
+Pipeline-Pfad (Baseline gezogen mit #1043, also vor jeder Zeile dieses Arbeitspakets):
+`compound_word` 0,778, `exact_identifier` 1,000. Die Schwelle liegt damit vor der Messung
 fest und **kann** ablehnen: Sie würde bei unverändertem `compound_word`-Wert greifen, bei unverändertem
 `exact_identifier`-Wert nicht. Genau das ist der Zweck einer Eintrittsbedingung — sie muss beide Ausgänge
 haben, sonst dokumentiert sie eine Entscheidung, statt sie herbeizuführen.
 
-Zwei Bedingungen der Aussage sind heute noch nicht erfüllt und werden vor dem Vergleich hergestellt:
-Der lexikalische Pfad wirkt erst mit [#1049](https://github.com/criew/opaa/issues/1049) auf die
-Endauswahl, und einen Reranker gibt es erst mit Arbeitspaket 4. Bis dahin ist die Bedingung **nicht
-auswertbar** — was sie nicht schwächer macht, sondern der Grund ist, sie jetzt festzuschreiben.
+Von den zwei Bedingungen der Aussage ist eine seit [#1049](https://github.com/criew/opaa/issues/1049)
+erfüllt — der lexikalische Pfad wirkt auf die Endauswahl —, die zweite nicht: Einen Reranker gibt es
+erst mit Arbeitspaket 4. Bis dahin bleibt die Bedingung **nicht auswertbar**, was sie nicht schwächer
+macht, sondern der Grund ist, sie festgeschrieben zu haben.
+
+Der Zwischenstand nach #1049, ausdrücklich **keine** Auswertung der Eintrittsbedingung: `compound_word`
+liegt bei Hit Rate@5 0,778 (unverändert gegenüber dem Ausgangswert — die Fusion hebt in dieser Klasse
+Ränge und Recall, aber keinen zusätzlichen Fall in die ersten fünf), `exact_identifier` bei 1,000.
+Bliebe es dabei, spräche das für Kompositabehandlung und gegen eine BM25-Extension — beides zu
+entscheiden erst nach Arbeitspaket 4.
 
 Ist die Bedingung erfüllt, gilt Stufe 1 dennoch nicht automatisch als beauftragt. Vier
 **Betriebsauflagen** sind vor dem Bau zu erfüllen; jede einzelne verworfene Auflage verwirft die Stufe:
@@ -530,6 +540,28 @@ Zwei Folgerungen sind verbindlich:
 ---
 
 ## Arbeitspaket 3: Fusion
+
+> **Stand: gebaut** ([#1049](https://github.com/criew/opaa/issues/1049)). Der gebaute Ablauf steht in
+> [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md#5-reciprocal-rank-fusion); dieser
+> Abschnitt bleibt die Begründung und der Zuschnitt.
+>
+> **Gemessene Wirkung** (Verwaltungsdomäne, Pipeline-Messpfad, CPU-Testcontainer-Lauf vom 2026-09-01,
+> `vector-only` gegen `vector+fulltext-rrf` im selben Lauf über denselben Index):
+>
+> | Gruppe | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 |
+> |---|---|---|---|---|
+> | gesamt | 0,783 → **0,935** | 0,576 → **0,761** | 0,558 → **0,751** | 0,696 → **0,880** |
+> | `literal_term_weak_embedding` (die #938-Klasse) | 0,556 → **0,889** | 0,226 → **0,593** | 0,324 → **0,633** | 0,611 → **0,833** |
+> | `compound_word` | 0,778 → 0,778 | 0,657 → **0,796** | 0,431 → **0,675** | 0,444 → **0,722** |
+> | `exact_identifier` | 1,000 → 1,000 | 0,900 → 0,900 | 0,918 → **0,926** | 1,000 → 1,000 |
+> | `metadata_filter` | 0,667 → **1,000** | 0,537 → **0,685** | 0,595 → **0,766** | 0,778 → **1,000** |
+> | `multi_hop` | 0,889 → **1,000** | 0,522 → **0,815** | 0,480 → **0,734** | 0,611 → **0,833** |
+>
+> Keine Gruppe verschlechtert sich. Elf Fälle, die als `known_gap` geführt werden, löst der
+> Pipeline-Pfad seither — der Rohvektor-Pfad kann sie strukturell nicht lösen, weshalb sie ihre
+> Pfad-Asymmetrie als `expected_state_exception` committet tragen (siehe
+> [Retrieval-Benchmark §5](./retrieval-benchmark.md) und
+> `eval/corpus/verwaltung/MAINTENANCE.md`).
 
 Hier ist am wenigsten zu tun, und das ist beabsichtigt. Die vorhandene Reciprocal Rank Fusion fusioniert
 bereits die Ranglisten mehrerer Teilfragen. Der Volltextpfad wird **eine weitere Eingangsliste je
@@ -940,7 +972,7 @@ ist.
 | 0 | Benchmark misst die produktive Pipeline | — | Vorbedingung; ohne sie ist nichts abnehmbar |
 | 1 | Pipeline als benannte Stufen | 0 | Kein fachlicher; Voraussetzung für 2, 5 und die Diagnose |
 | 2 | Volltextspalte, Index und **Backfill des Bestands** (AP 2a) | 1 | Der Volltextpfad wird überhaupt erst vollständig speisbar; Füllstand wird sichtbar |
-| 3 | Lexikalischer Suchpfad + Fusion (AP 2/AP 3) | 1, 2 | Löst die #938-Klasse; wirkt ohne jedes weitere Modell |
+| 3 | Lexikalischer Suchpfad + Fusion (AP 2/AP 3) | 1, 2 | Löst die #938-Klasse; wirkt ohne jedes weitere Modell — **gebaut (#1048/#1049)**, gemessen in AP 3 |
 | 4 | Rerank-Modellrolle + Reranking-Stufe | 1, 3 | Präzision auf der fusionierten Menge; nur mit Modell |
 | 5 | Admin-Seite „Suche & Indexierung" | 1, Befugnis-/Protokollmodell | Diagnosepfad; wird mit jedem weiteren Paket wertvoller |
 | 6 | Latenz-/Hardwareprofil auf Referenzhardware | 4 | Voraussetzung jeder Aktivierungsempfehlung für Reranking |
