@@ -584,6 +584,64 @@ Die Rechte- und Herkunftsfrage von Anhängen (welche Bibliothek, welche Fundstel
 Beleg) folgt dabei den bestehenden Regeln des Anlagenwegs, siehe
 [Wissensquellen und Konnektoren](./knowledge-sources.md).
 
+#### Umgesetzt (#1060)
+
+`MailDocumentPipeline` (`id` `email`, Version 1) beansprucht `.eml` und `.msg` in der
+`DocumentPipelineRegistry`; beide Endungen sind jetzt in `SupportedDocumentFormats` zugelassen, mit
+den eindeutigen Tika-Medientypen `message/rfc822` bzw. `application/vnd.ms-outlook` als strikte
+Erkennungsgrenze (wie bei PDF/DOCX, nicht wie bei Markdown/Klartext).
+
+**Zwei eigene Leser statt eines gemeinsamen Tika-Parsers**, weil Kopfdaten, Text und Anhänge getrennt
+werden müssen, statt in einen Block zu fließen:
+
+- **EML** über `org.apache.james.mime4j.dom` (bereits transitiv über `tika-parser-mail-module` auf
+  dem Klassenpfad, jetzt direkt referenziert): läuft den MIME-Baum ab, wählt aus einem
+  `multipart/alternative` genau eine Repräsentation (bevorzugt `text/plain`, sonst `text/html` über
+  Jsoup von Markup befreit) als Nachrichtentext, und behandelt jeden weiteren Teil mit
+  `Content-Disposition: attachment` oder einem Dateinamen als Anhang.
+- **MSG** über Apache POI HSMF (`org.apache.poi.hsmf.MAPIMessage`, `poi-scratchpad` jetzt direkt
+  referenziert): liest Betreff/Von/An/Datum/Text sowie `AttachmentChunks` für Anhänge.
+
+**Kopfdaten landen als Chunk-Metadaten, nicht im Fließtext** — `ChunkMailMetadata` definiert
+`mail_from`/`mail_to`/`mail_subject`/`mail_date`; `FileProcessingService#storeChunks` kopiert sie auf
+den gespeicherten Chunk, genau wie es das schon für `location` tut (Teil 5, Übergabepunkt).
+
+**Ein Chunk je Nachricht, bei erkanntem Zitatverlauf ein Chunk je Nachricht im Thread** —
+`MailThreadSplitter` schneidet an den Zitat-Trennzeilen, die Outlook/Thunderbird/Gmail auf Deutsch und
+Englisch erzeugen (`"Am … schrieb …:"`, `"On … wrote:"`, der `-----Ursprüngliche
+Nachricht-----`/`-----Original Message-----`-Block). **Gesetzt, nicht gemessen**: Eine nicht erkannte
+Zitierkonvention bleibt bewusst ein einziger Chunk (falsches Negativ), statt Fließtext an einer
+zufällig passenden Zeile mitten im Satz zu zerschneiden (falsches Positiv). Jedes Thread-Segment trägt
+dieselben Kopfdaten der äußeren MIME-Hülle — die Kopfzeile einer zitierten Nachricht ist freier Text
+der jeweiligen Zitierkonvention, keine zuverlässig strukturiert rückführbare Angabe.
+
+**Anhänge laufen rekursiv durch `DocumentPipelineRegistry`.** `MailDocumentPipeline` selbst injiziert
+die Registry über `ObjectProvider<DocumentPipelineRegistry>` statt direkt — die Registry wird aus
+jeder registrierten `DocumentPipeline` gebaut, auch dieser selbst, eine direkte Konstruktorabhängigkeit
+würde also einen Zirkel in Springs Bean-Erzeugung schließen. Ein Anhang durchläuft dieselbe
+Formatzulassung wie jedes andere Dokument (`SupportedDocumentFormats.decideForFileName`) — ein nicht
+zugelassenes Format wird übersprungen und protokolliert, nicht `FAILED` für die ganze Mail. Ein
+EML-in-EML-Anhang (eine Weiterleitung) erreicht `MailDocumentPipeline` dadurch ein weiteres Mal, mit
+seinen eigenen Kopfdaten. Der Fundort eines Anhang-Chunks trägt `Anhang: <Dateiname>` als Präfix vor
+dem Fundort, den die Sub-Pipeline selbst ermittelt hat (z. B. `Anhang: antrag.pdf`).
+
+**Zwei Sicherheits-Grenzfälle, Muster `TabularProperties`** (`MailProperties`,
+`opaa.indexing.mail.*`): `max-attachment-depth` (gesetzt 5) deckelt die Rekursionstiefe gegen eine
+Mail, die sich selbst oder zyklisch weiterleitet; `max-attachments-per-message` (gesetzt 50) und
+`max-attachment-bytes` (gesetzt 50 MiB) deckeln Anzahl und Größe der Anhänge einer einzelnen Nachricht.
+Bei EML wird die Byte-Grenze beim Kopieren des Anhangs in eine temporäre Datei durchgesetzt (wie
+`TabularDocumentPipeline`s ODS-Leser), nicht nachträglich. Bei MSG ist das nur nachträglich möglich:
+`MAPIMessage` liest die gesamte `.msg`-Datei einschließlich aller Anhangsbytes vollständig in den
+Speicher, bevor dieser Code sie zu sehen bekommt — ein eingebetteter Outlook-Anhang (ein Element als
+eigenes MAPI-Objekt statt als Datei) wird deshalb übersprungen statt rekonstruiert, da POI dafür
+keinen öffentlichen `.msg`-Writer anbietet.
+
+**Chunk-Größe:** entfällt — eine Nachricht wird genau ein Chunk (oder einer je Thread-Segment), nie
+nach Tokenzahl geschnitten; anders als bei `TabularDocumentPipeline` gibt es hier keinen
+Zuschnitts-Parameter, der gesetzt oder gemessen sein könnte.
+
+**Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine EML- oder MSG-Dokumente.
+
 ### Ausblick: Scan-PDF und OCR (eigenes Epic)
 
 Gescannte Altakten und unterschriebene Originale sind der größte unerschlossene Bestand und der

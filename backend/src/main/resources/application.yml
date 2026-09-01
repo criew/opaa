@@ -154,6 +154,12 @@ opaa:
       max-ods-cell-repeat: ${OPAA_INDEXING_TABULAR_MAX_ODS_CELL_REPEAT:50}
       max-ods-content-xml-bytes: ${OPAA_INDEXING_TABULAR_MAX_ODS_CONTENT_XML_BYTES:10485760}
       max-ods-rows: ${OPAA_INDEXING_TABULAR_MAX_ODS_ROWS:100000}
+    # #1060: DoS-hardening limits for MailDocumentPipeline (EML/MSG) - own property block, own
+    # binding prefix, see MailProperties's own Javadoc for why.
+    mail:
+      max-attachment-depth: ${OPAA_INDEXING_MAIL_MAX_ATTACHMENT_DEPTH:5}
+      max-attachments-per-message: ${OPAA_INDEXING_MAIL_MAX_ATTACHMENTS_PER_MESSAGE:50}
+      max-attachment-bytes: ${OPAA_INDEXING_MAIL_MAX_ATTACHMENT_BYTES:52428800}
     # #484/ADR-0018 Entscheidung 6: absolute base directories a FILESYSTEM library's sourcePath
     # must resolve underneath. No default on purpose - an empty allowlist disables the FILESYSTEM
     # quellentyp entirely, the safe default for a fresh installation.

@@ -44,7 +44,8 @@ public final class SupportedDocumentFormats {
 
   private static final Set<String> EXTENSIONS =
       Set.of(
-          ".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv", ".odt", ".ods", ".odp");
+          ".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv", ".odt", ".ods", ".odp",
+          ".eml", ".msg");
 
   /**
    * Maps a {@code Content-Type} header value to one of the {@link #EXTENSIONS} above, for sources
@@ -109,7 +110,13 @@ public final class SupportedDocumentFormats {
           // is needed here.
           Map.entry(".odt", Set.of("application/vnd.oasis.opendocument.text")),
           Map.entry(".ods", Set.of("application/vnd.oasis.opendocument.spreadsheet")),
-          Map.entry(".odp", Set.of("application/vnd.oasis.opendocument.presentation")));
+          Map.entry(".odp", Set.of("application/vnd.oasis.opendocument.presentation")),
+          // EML and MSG each have one specific, unambiguous Tika-detected media type - message/
+          // rfc822 for EML (mime4j's own RFC822 detector) and application/vnd.ms-outlook for MSG
+          // (the OLE2/MAPI container POI's HSMF module identifies), so both join the strict set
+          // rather than the text-tolerant one (ingestion-pipelines.md, Teil 3, Punkt 5).
+          Map.entry(".eml", Set.of("message/rfc822")),
+          Map.entry(".msg", Set.of("application/vnd.ms-outlook")));
 
   private SupportedDocumentFormats() {}
 

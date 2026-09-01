@@ -386,6 +386,46 @@ class FileProcessingServiceTest {
   }
 
   @Test
+  void mailKopfdatenRideAlongToTheVectorStoreOnlyWhenThePipelineSetThem() throws IOException {
+    // #1060, ingestion-pipelines.md Teil 3, Punkt 5: MailDocumentPipeline sets these keys on its
+    // own body chunks; storeChunks must forward them the same way it already forwards `location`,
+    // and must not invent them for a chunk that never carried one (an ordinary text document here).
+    Path file = tempDir.resolve("mail-metadata.txt");
+    Files.writeString(file, "some content");
+
+    when(checksumService.computeSha256(file)).thenReturn("abc123");
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks =
+        List.of(
+            new org.springframework.ai.document.Document(
+                "chunk1",
+                Map.of(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY, "Anfrage Bauantrag")));
+    when(chunkingService.chunkDocuments(eq("mail-metadata.txt"), eq(parsed))).thenReturn(chunks);
+
+    service.processFile(file, targetLibrary);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
+    Map<String, Object> metadata = chunkCaptor.getValue().getFirst().getMetadata();
+    assertThat(metadata)
+        .containsEntry(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY, "Anfrage Bauantrag");
+    assertThat(metadata)
+        .doesNotContainKeys(
+            ChunkMailMetadata.MAIL_FROM_METADATA_KEY,
+            ChunkMailMetadata.MAIL_TO_METADATA_KEY,
+            ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
+  }
+
+  @Test
   void aSingleChunkDocumentEmbedsByteIdenticalToBeforeIssue933() throws IOException {
     // Issue #773 (whitelist itself) and #933 review ("gesplittet ja/nein"): a document
     // ChunkingService left as a single chunk gets NO contextual-title prefix at all - see

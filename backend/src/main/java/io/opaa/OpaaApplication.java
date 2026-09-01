@@ -3,6 +3,7 @@ package io.opaa;
 import io.opaa.auth.AuthProperties;
 import io.opaa.indexing.CrawlProperties;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.MailProperties;
 import io.opaa.indexing.TabularProperties;
 import io.opaa.library.RemoteContentProperties;
 import io.opaa.library.UploadProperties;
@@ -22,7 +23,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   RemoteContentProperties.class,
   SettingsEncryptionProperties.class,
   CrawlProperties.class,
-  TabularProperties.class
+  TabularProperties.class,
+  MailProperties.class
 })
 // Enables io.opaa.audit.AuditRetentionScheduler's @Scheduled monthly retention deletion (#395).
 @EnableScheduling

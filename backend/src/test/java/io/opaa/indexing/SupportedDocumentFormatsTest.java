@@ -320,6 +320,36 @@ class SupportedDocumentFormatsTest {
     assertThat(SupportedDocumentFormats.detectMediaType(file)).isEqualTo("application/pdf");
   }
 
+  // --- #1060: EML and MSG -----------------------------------------------------------------------
+
+  @Test
+  void isSupportedAcceptsEmlAndMsgByName() {
+    assertThat(SupportedDocumentFormats.isSupported("vorgang.eml")).isTrue();
+    assertThat(SupportedDocumentFormats.isSupported("vorgang.msg")).isTrue();
+  }
+
+  @Test
+  void contentMatchesExtensionAcceptsTheExactMediaTypeForEmlAndMsg() {
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".eml", "message/rfc822")).isTrue();
+    assertThat(
+            SupportedDocumentFormats.contentMatchesExtension(".msg", "application/vnd.ms-outlook"))
+        .isTrue();
+  }
+
+  @Test
+  void decideForFileNameAcceptsEmlAndMsgContentRegardlessOfExtension() {
+    var eml = SupportedDocumentFormats.decideForFileName("vorgang.pdf", "message/rfc822");
+    assertThat(eml.supported()).isTrue();
+    assertThat(eml.detectedExtension()).isEqualTo(".eml");
+    assertThat(eml.extensionMismatch()).isTrue();
+
+    var msg =
+        SupportedDocumentFormats.decideForFileName("vorgang.msg", "application/vnd.ms-outlook");
+    assertThat(msg.supported()).isTrue();
+    assertThat(msg.detectedExtension()).isEqualTo(".msg");
+    assertThat(msg.extensionMismatch()).isFalse();
+  }
+
   @Test
   void detectMediaTypeDetectsPlainText() throws IOException {
     Path file = tempDir.resolve("data.bin");
