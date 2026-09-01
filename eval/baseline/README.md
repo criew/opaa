@@ -69,6 +69,14 @@ Besonderheiten, alle in den `notes` der Dateien selbst festgehalten:
   `comic-characters`, Issue #304); sobald eine künftige Neuziehung sie aufnimmt, wird sie wieder
   verglichen.
 
+**Neu gezogen mit Issue #1049** (Volltextpfad als Eingangsliste der RRF-Fusion): Die
+Pipeline-Baseline dieser Domäne steht auf Messvertragsversion 3 und trägt die beiden neuen Fixpunkte
+`fullTextSearchEnabled`/`fullTextBackfillComplete`; ihre Zahlen sind durchgängig besser (Gesamt-nDCG@8
+0,558 → 0,751). Die **Rohvektor**-Baseline ist davon unberührt — an ihr hat sich ausschließlich der
+Golden-Hash geändert (elf Fälle haben ihre `expected_state_exception` nachgezogen bekommen), jeder
+Metrikwert ist im selben Lauf erneut gemessen und unverändert: Dieser Pfad misst `similaritySearch`
+direkt und kennt den Volltextpfad nicht.
+
 Ein Zustandswechsel eines Falls (`expected_state`) ändert die Golden-Dataset-Datei und damit deren
 SHA-256 — einen Fixpunkt beider Baselines. Eine Zustandspflege ist deshalb **immer** auch eine
 Baseline-Neuziehung, nach dem Verfahren unten; das ist gewollt und kein Nebeneffekt: Ein
@@ -457,6 +465,12 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
 - Quelle der gerundeten Mittelwerte ist die `%.3f`-Textausgabe von
   `PipelineReportWriter.renderSummary` (Konsolen-Log des Laufs), nie eine eigene Nachrundung — die
   Rundungsregel unten gilt hier wortgleich.
+- Die `fixedPoints` dieses Pfads führen seit Issue #1049 zusätzlich `fullTextSearchEnabled` (ob der
+  lexikalische Pfad seine Listen in die Fusion eingebracht hat) und `fullTextBackfillComplete` (ob
+  das Backfill-Tor die gemessene Bibliothek überhaupt durchgelassen hat). Erst beide zusammen
+  beantworten „hat der Volltextpfad in diesem Lauf beigetragen?" — ohne sie wäre ein
+  `vector-only`-Lauf von einem hybriden nicht zu unterscheiden (ADR-0012, Nachtrag Volltextpfad,
+  Entscheidung 22).
 - `hitCountAt5`/`hitCountAt8` stehen nicht in der Textausgabe; sie werden aus `allQueryResults` des
   Pipeline-Reports (`build/eval-reports/pipeline-metrics-<domäne>.json`) desselben Laufs gezählt
   (`hitRateAt5 > 0` bzw. `ndcgAt8 > 0`) — nicht aus den Mittelwerten zurückgerechnet.

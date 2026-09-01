@@ -96,7 +96,8 @@
     "answer_span": "Die Gebührenposition 7 unterliegt unverändert der Gebührenbefreiung wegen Bedürftigkeit nach § 3 und der Gebührenermäßigung für eingetragene Vereine nach § 13 der Verwaltungsgebührensatzung.",
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-geschaeftsverteilungsplan.md"
+    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1 — der wörtlich im Zieldokument stehende Anfragebegriff wird jetzt lexikalisch getroffen; auf dem Rohvektor-Pfad unverändert ungelöst",
+    "expected_state_exception": "Pfad-Asymmetrie seit #1049: auf dem Pipeline-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst similaritySearch direkt und kennt den Volltextpfad nicht. Der Fall bleibt known_gap, weil ein Fall erst als gelöst gilt, wenn ihn beide Pfade lösen (docs/features/retrieval-benchmark.md §5); die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet und dauerhaft."
   },
   {
     "id": "verw-lit-007",
@@ -128,7 +129,8 @@
     "answer_span": "(3) Diese Ermäßigung ist unabhängig von der Gebührenbefreiung wegen Bedürftigkeit nach § 3 dieser Satzung zu beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 für dieselbe Amtshandlung besteht nicht, da § 3 natürliche Personen in einer persönlichen Notlage betrifft und § 13 juristische Personen in Vereinsform unabhängig von deren wirtschaftlicher Lage.\n\n## § 14 Übergangsregelung und Inkrafttreten\n\n(1) Diese Satzung in der Fassung 2024 tritt am 1.",
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0045_gebuehrenordnung-personalamt.md"
+    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1 — der wörtlich im Zieldokument stehende Anfragebegriff wird jetzt lexikalisch getroffen; auf dem Rohvektor-Pfad unverändert ungelöst",
+    "expected_state_exception": "Pfad-Asymmetrie seit #1049: auf dem Pipeline-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst similaritySearch direkt und kennt den Volltextpfad nicht. Der Fall bleibt known_gap, weil ein Fall erst als gelöst gilt, wenn ihn beide Pfade lösen (docs/features/retrieval-benchmark.md §5); die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet und dauerhaft."
   },
   {
     "id": "verw-lit-009",
@@ -340,7 +342,8 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0057_abfallgebuehrensatzung.md)"
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1 — ohne Komposita-Zerlegung, allein weil die Fusion den lexikalischen Treffer über die thematische Konkurrenz hebt; auf dem Rohvektor-Pfad unverändert ungelöst",
+    "expected_state_exception": "Pfad-Asymmetrie seit #1049: auf dem Pipeline-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst similaritySearch direkt und kennt den Volltextpfad nicht. Der Fall bleibt known_gap, weil ein Fall erst als gelöst gilt, wenn ihn beide Pfade lösen (docs/features/retrieval-benchmark.md §5); die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet und dauerhaft."
   },
   {
     "id": "verw-comp-003",
@@ -357,7 +360,8 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md)"
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1 — ohne Komposita-Zerlegung, allein weil die Fusion den lexikalischen Treffer über die thematische Konkurrenz hebt; auf dem Rohvektor-Pfad unverändert ungelöst",
+    "expected_state_exception": "Pfad-Asymmetrie seit #1049: auf dem Pipeline-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst similaritySearch direkt und kennt den Volltextpfad nicht. Der Fall bleibt known_gap, weil ein Fall erst als gelöst gilt, wenn ihn beide Pfade lösen (docs/features/retrieval-benchmark.md §5); die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet und dauerhaft."
   },
   {
     "id": "verw-comp-004",
@@ -446,7 +450,8 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md)"
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1 — ohne Komposita-Zerlegung, allein weil die Fusion den lexikalischen Treffer über die thematische Konkurrenz hebt; auf dem Rohvektor-Pfad unverändert ungelöst",
+    "expected_state_exception": "Pfad-Asymmetrie seit #1049: auf dem Pipeline-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst similaritySearch direkt und kennt den Volltextpfad nicht. Der Fall bleibt known_gap, weil ein Fall erst als gelöst gilt, wenn ihn beide Pfade lösen (docs/features/retrieval-benchmark.md §5); die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet und dauerhaft."
   },
   {
     "id": "verw-comp-009",
@@ -464,7 +469,8 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md)"
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1 — ohne Komposita-Zerlegung, allein weil die Fusion den lexikalischen Treffer über die thematische Konkurrenz hebt; auf dem Rohvektor-Pfad unverändert ungelöst",
+    "expected_state_exception": "Pfad-Asymmetrie seit #1049: auf dem Pipeline-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst similaritySearch direkt und kennt den Volltextpfad nicht. Der Fall bleibt known_gap, weil ein Fall erst als gelöst gilt, wenn ihn beide Pfade lösen (docs/features/retrieval-benchmark.md §5); die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet und dauerhaft."
   },
   {
     "id": "verw-hop-001",
@@ -498,7 +504,8 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-vertretungsregelung.md)"
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1 — beide Glieder der Kette werden gefunden, zusammengeführt wird sie weiterhin von keinem Verfahren; auf dem Rohvektor-Pfad unverändert ungelöst",
+    "expected_state_exception": "Pfad-Asymmetrie seit #1049: auf dem Pipeline-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst similaritySearch direkt und kennt den Volltextpfad nicht. Der Fall bleibt known_gap, weil ein Fall erst als gelöst gilt, wenn ihn beide Pfade lösen (docs/features/retrieval-benchmark.md §5); die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet und dauerhaft."
   },
   {
     "id": "verw-hop-003",
@@ -549,7 +556,8 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0064_gebuehrenordnung-kulturamt.md"
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1 — beide Glieder der Kette werden gefunden, zusammengeführt wird sie weiterhin von keinem Verfahren; auf dem Rohvektor-Pfad unverändert ungelöst",
+    "expected_state_exception": "Pfad-Asymmetrie seit #1049: auf dem Pipeline-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst similaritySearch direkt und kennt den Volltextpfad nicht. Der Fall bleibt known_gap, weil ein Fall erst als gelöst gilt, wenn ihn beide Pfade lösen (docs/features/retrieval-benchmark.md §5); die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet und dauerhaft."
   },
   {
     "id": "verw-hop-006",
@@ -583,7 +591,8 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0064_gebuehrenordnung-kulturamt.md"
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1 — beide Glieder der Kette werden gefunden, zusammengeführt wird sie weiterhin von keinem Verfahren; auf dem Rohvektor-Pfad unverändert ungelöst",
+    "expected_state_exception": "Pfad-Asymmetrie seit #1049: auf dem Pipeline-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst similaritySearch direkt und kennt den Volltextpfad nicht. Der Fall bleibt known_gap, weil ein Fall erst als gelöst gilt, wenn ihn beide Pfade lösen (docs/features/retrieval-benchmark.md §5); die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet und dauerhaft."
   },
   {
     "id": "verw-hop-008",
@@ -617,7 +626,8 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-vertretungsregelung.md)"
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1 — die Dienstanweisungsnummer der Frage trifft als unzerlegtes Kennungs-Token; auf dem Rohvektor-Pfad unverändert ungelöst",
+    "expected_state_exception": "Pfad-Asymmetrie seit #1049: auf dem Pipeline-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst similaritySearch direkt und kennt den Volltextpfad nicht. Der Fall bleibt known_gap, weil ein Fall erst als gelöst gilt, wenn ihn beide Pfade lösen (docs/features/retrieval-benchmark.md §5); die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet und dauerhaft."
   },
   {
     "id": "verw-meta-001",
@@ -633,7 +643,8 @@
     "answer_span": "Satzung des Sozialamts der Stadt Kalkstadt über die Erhebung von Gebühren für Bescheinigungen und Leistungen der sozialen Unterstützung (Fassung 2024), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md"
+    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, richtige Fassung auf Rang 1 — ohne Metadatenfilter, also ohne den geprüften Mechanismus; auf dem Rohvektor-Pfad unverändert ungelöst",
+    "expected_state_exception": "Seit #1049 auf dem Pipeline-Pfad gelöst, aber ohne den geprüften Mechanismus: Die richtige Fassung rankt zufällig oben, ein Metadatenfilter existiert nicht. Der Fall bleibt known_gap, damit ein Zufallsergebnis nicht unter Regressionsschutz gerät — die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet."
   },
   {
     "id": "verw-meta-002",
