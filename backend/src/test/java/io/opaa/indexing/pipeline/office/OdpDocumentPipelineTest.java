@@ -1,16 +1,19 @@
 package io.opaa.indexing.pipeline.office;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
@@ -65,6 +68,17 @@ class OdpDocumentPipelineTest {
         .contains("Notizen: Bitte langsam sprechen.");
     assertThat(result.chunks().get(1).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
         .isEqualTo("Folie 2: Gebuehren");
+    // A key this pipeline actually produced that also belongs to the registry-wide passthrough
+    // union must be part of its own declaration - storeChunks copies any union key it finds on a
+    // chunk regardless of which pipeline declares it (nested-pipeline attribution), so an
+    // undeclared union key here would silently ride along. A key outside the union is irrelevant:
+    // storeChunks never copies it, declared or not.
+    Set<String> actualKeysInUnion =
+        result.chunks().stream()
+            .flatMap(c -> c.getMetadata().keySet().stream())
+            .filter(PassthroughMetadataKeysTestSupport.REGISTRY_UNION::contains)
+            .collect(toSet());
+    assertThat(pipeline.passthroughMetadataKeys()).containsAll(actualKeysInUnion);
   }
 
   @Test

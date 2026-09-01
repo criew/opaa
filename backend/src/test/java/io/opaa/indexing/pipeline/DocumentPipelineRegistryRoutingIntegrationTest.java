@@ -112,6 +112,8 @@ class DocumentPipelineRegistryRoutingIntegrationTest {
             "tabular", Set.of(ChunkingService.LOCATION_METADATA_KEY),
             "html", Set.of(ChunkingService.LOCATION_METADATA_KEY),
             "tika-fallback", Set.of(ChunkingService.LOCATION_METADATA_KEY),
+            "odt", Set.of(ChunkingService.LOCATION_METADATA_KEY),
+            "odp", Set.of(ChunkingService.LOCATION_METADATA_KEY),
             "email",
                 Set.of(
                     ChunkingService.LOCATION_METADATA_KEY,
