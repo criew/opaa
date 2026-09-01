@@ -107,7 +107,7 @@ public class DocumentService {
    * scan without a text layer - just with blank text - so {@code parsed.isEmpty()} alone does not
    * catch this case. Scoped to PDF for now; meant to extend to TIFF/PNG/JPEG once accepted.
    */
-  boolean isTextlessPdf(Path file, List<org.springframework.ai.document.Document> parsed) {
+  public boolean isTextlessPdf(Path file, List<org.springframework.ai.document.Document> parsed) {
     boolean hasText = parsed.stream().anyMatch(d -> d.getText() != null && !d.getText().isBlank());
     if (hasText) {
       return false;

@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  * cheap-to-get- wrong signal is not a risk worth taking for the rare case of a genuinely emptied
  * source - this class fails safe instead, and the next run with a real bestand catches up normally.
  */
-class StaleDocumentCleanupService {
+public class StaleDocumentCleanupService {
 
   private static final Logger log = LoggerFactory.getLogger(StaleDocumentCleanupService.class);
 

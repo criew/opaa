@@ -2,6 +2,12 @@ package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
+import io.opaa.indexing.pipeline.DocumentPipeline;
+import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
+import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.observability.IndexingMetrics;
@@ -507,7 +513,7 @@ public class FileProcessingService {
    *
    * @return whether the document was actually re-indexed
    */
-  boolean reindexStoredDocument(UUID documentId, Path storedFile) {
+  public boolean reindexStoredDocument(UUID documentId, Path storedFile) {
     return processStoredFile(documentId, storedFile, true);
   }
 
