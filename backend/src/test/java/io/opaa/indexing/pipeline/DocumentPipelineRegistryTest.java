@@ -40,6 +40,59 @@ class DocumentPipelineRegistryTest {
     }
   }
 
+  /** A stand-in pipeline declaring an arbitrary, non-default passthrough key set. */
+  private record FakePipelineWithPassthroughKeys(
+      String id, short version, Set<String> handledFormats, Set<String> passthroughMetadataKeys)
+      implements DocumentPipeline {
+
+    @Override
+    public DocumentPipelineResult run(DocumentPipelineSource source) {
+      return DocumentPipelineResult.chunked(List.of());
+    }
+  }
+
+  /**
+   * A stand-in pipeline violating the "never null" contract of {@code passthroughMetadataKeys()}.
+   */
+  private record FakePipelineWithNullPassthroughKeys(
+      String id, short version, Set<String> handledFormats) implements DocumentPipeline {
+
+    @Override
+    public DocumentPipelineResult run(DocumentPipelineSource source) {
+      return DocumentPipelineResult.chunked(List.of());
+    }
+
+    @Override
+    public Set<String> passthroughMetadataKeys() {
+      return null;
+    }
+  }
+
+  @Test
+  void allPassthroughMetadataKeysIsTheUnionOverEveryRegisteredPipeline() {
+    DocumentPipeline pdfPipeline =
+        new FakePipelineWithPassthroughKeys("pdf", (short) 1, Set.of(".pdf"), Set.of("location"));
+    DocumentPipeline mailPipeline =
+        new FakePipelineWithPassthroughKeys(
+            "email", (short) 1, Set.of(".eml"), Set.of("location", "mail_subject"));
+    DocumentPipelineRegistry registry = registryWith(pdfPipeline, mailPipeline);
+
+    // fallback's own default (location) is part of the union too - it is a registered pipeline
+    // like any other.
+    assertThat(registry.allPassthroughMetadataKeys())
+        .containsExactlyInAnyOrder("location", "mail_subject");
+  }
+
+  @Test
+  void aPipelineReturningNullFromPassthroughMetadataKeysFailsFastAtConstruction() {
+    DocumentPipeline brokenPipeline =
+        new FakePipelineWithNullPassthroughKeys("broken", (short) 1, Set.of(".broken"));
+
+    assertThatThrownBy(() -> registryWith(brokenPipeline))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("broken");
+  }
+
   private DocumentPipelineRegistry registryWith(DocumentPipeline... specialized) {
     return new DocumentPipelineRegistry(
         java.util.stream.Stream.concat(

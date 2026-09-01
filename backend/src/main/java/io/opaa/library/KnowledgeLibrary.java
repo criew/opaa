@@ -133,6 +133,22 @@ public class KnowledgeLibrary {
   @Column(name = "schedule_cron", length = 100)
   private String scheduleCron;
 
+  /**
+   * Diagnosesperre (#1052, docs/features/hybrid-retrieval.md, Leitplanke (e)): while {@code true},
+   * a search diagnosis in a <em>foreign</em> rights context ("Sicht als") yields nothing from this
+   * library - no hits, no titles, no counts. It says nothing about ordinary access; reading,
+   * searching and answering in one's own context are unaffected.
+   *
+   * <p>Initialised {@code true}, and the column defaults to {@code true} for every pre-existing
+   * row: the leitplanke requires Bestaende of Personalvertretung, Schwerbehindertenvertretung,
+   * Gleichstellung and Personalvorgaenge to be locked by default, and no reliable classification of
+   * those exists on an already-populated installation. The default is therefore the lock itself,
+   * lifted deliberately by the responsible owner - never by the administration, see {@code
+   * io.opaa.diagnosticaccess.LibraryDiagnosticsLockService}.
+   */
+  @Column(name = "diagnostics_locked", nullable = false)
+  private boolean diagnosticsLocked = true;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -431,5 +447,14 @@ public class KnowledgeLibrary {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public boolean isDiagnosticsLocked() {
+    return diagnosticsLocked;
+  }
+
+  /** See {@link #diagnosticsLocked} - only the responsible owner reaches this, never an admin. */
+  public void setDiagnosticsLocked(boolean diagnosticsLocked) {
+    this.diagnosticsLocked = diagnosticsLocked;
   }
 }

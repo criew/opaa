@@ -962,6 +962,66 @@ feststellen.
 
 ### Berechtigungs-Leitplanken
 
+> **Stand: gebaut** ([#1052](https://github.com/criew/opaa/issues/1052)). Das Befugnis- und
+> Protokollmodell liegt im Backend-Paket `io.opaa.diagnosticaccess`; die Regeln unten bleiben die
+> maßgebliche Fassung. Drei Festlegungen der Umsetzung, die dieser Abschnitt offenließ:
+>
+> - **Geltungsbereich** ist eine Gruppe der Art `ORG_UNIT` (die Organisationseinheit aus dem
+>   Verzeichnisabgleich); **Gültigkeitsdauer** ist auf zwölf Monate je Vergabe begrenzt. Beides sind
+>   `NOT NULL`-Spalten mit zusätzlicher `CHECK`-Bedingung — ein unbefristetes, bereichsloses
+>   Dauerrecht ist nicht speicherbar, nicht nur nicht anlegbar.
+> - **Die Befugnis zur Protokollauswertung** ist die vorhandene Rolle `AUDITOR` (die „benannten
+>   Stellen" aus (h)); sie und „Sicht als" haben keinerlei Ableitungsbeziehung, und `SYSTEM_ADMIN`
+>   trägt keine von beiden.
+> - **„Standardmäßig gesperrt"** ist als Voreinstellung der Sperre selbst umgesetzt: jede
+>   Bibliothek — auch jede bereits vorhandene — ist diagnosegesperrt, bis die zuständige Stelle die
+>   Sperre bewusst aufhebt. Eine Kategorienerkennung („ist das ein Personalvertretungsbestand?")
+>   gibt es nicht und kann es für Altbestände nicht geben; die Sperre als Grundzustand deckt die
+>   vier genannten Bestände zuverlässig ab und fällt im Zweifel zugunsten des Schutzes aus.
+> - **Reichweite der Zusage aus (e)** — die Sperre löst nur, wer einen `OWNER`-Grant auf der
+>   Bibliothek hält, den er sich nicht selbst gegeben hat (oder wer die benannte zuständige Stelle
+>   ist: Eigentümerperson bzw. Mitglied der Eigentümergruppe). Damit ist der Zwei-Schritt-Weg
+>   geschlossen, sich über die Administratorbefugnis des Grant-Endpunkts erst selbst `OWNER` zu
+>   geben und dann als „Zuständige Stelle“ zu entsperren — auch dann, wenn dazu nur ein bereits
+>   vorhandener Fremd-Grant angehoben würde, denn `granted_by_user_id` wird beim Rollenwechsel auf
+>   die ändernde Person fortgeschrieben. Fortgeschrieben wird bei einer echten Rollenänderung **und
+>   bei der Wiederbelebung einer bereits abgelaufenen Berechtigung**: Eine abgelaufene Berechtigung
+>   zählt für die Zusage nicht mit, also verschafft die Rolle, wer sie wieder wirksam macht — auch
+>   wenn die Rolle dabei unverändert bleibt. Ohne diesen zweiten Fall stünde der Weg über die
+>   *abgelaufene* Fremd-Berechtigung offen: Frist neu setzen, Rolle unverändert lassen, weiterhin als
+>   fremd vergeben gelten. Die Verlängerung einer **noch laufenden** Berechtigung macht dagegen
+>   niemanden zum eigenen Vergeber; sie verschafft nichts, was nicht schon galt.
+>
+>   Für Zeilen, deren Rolle bereits vor dieser Änderung angehoben wurde, zieht Changeset `008` den
+>   Vergeber einmalig aus der Rechtehistorie (`asset_grant_history`) nach; ohne diesen Nachzug bliebe
+>   der Weg für den Altbestand offen. **Der Nachzug deckt den Wiederbelebungsfall nicht ab:** `008`
+>   rekonstruiert ausschließlich aus Intervallen, deren Rolle sich von der des Vorgängerintervalls
+>   unterscheidet. Eine Wiederbelebung vor dem Deploy — jemand hat die Frist einer abgelaufenen
+>   Fremd-Berechtigung verlängert, ohne die Rolle zu ändern — bleibt damit im Bestand mit dem alten
+>   Vergeber stehen. Die Laufzeitkorrektur heilt das nicht mit: Sie greift erst, wenn dieselbe Zeile
+>   nach dem Deploy erneut angefasst wird. Rekonstruierbar wäre der Fall (`asset_grant_history` führt
+>   `expires_at` und `valid_from`); dass er nicht nachgezogen wird, ist eine bewusste offene Stelle
+>   für den Altbestand.
+>
+>   **Was die Administration weiterhin allein erreicht**, ohne dass eine zweite Person mitwirkt:
+>   Gehört die Bibliothek einer Gruppe, die keine `ORG_UNIT` ist, kann ein `SYSTEM_ADMIN` sich über
+>   `POST /api/v1/groups/{id}/members` selbst in diese Eigentümergruppe eintragen — die
+>   Gruppenverwaltung kennt keinen Selbstausschluss, und `rejectOrgUnit` greift nur für
+>   Verzeichnis-Organisationseinheiten. Danach ist er „benannte zuständige Stelle“ und löst die
+>   Sperre. Die Eigentümerperson (`ownerUserId`) ist von diesem Weg nicht betroffen: sie ist
+>   unveränderlich. Ebenfalls nicht ausgeschlossen bleibt, dass die Administration einem anderen,
+>   benannten Konto `OWNER` gibt, das die Sperre dann löst. Beide Wege stehen vollständig im
+>   Protokoll, keiner ist verhindert; der Selbstausschluss bei der Gruppenmitgliedschaft ist ein
+>   eigener Eingriff mit eigener Abwägung und als Folgearbeit in
+>   [#1124](https://github.com/criew/opaa/issues/1124) vorgemerkt. Solange er fehlt, gilt das
+>   Abnahmekriterium „nicht die Administration" aus #1052 als **nicht erfüllt**.
+>
+> Das Protokoll liegt in einer eigenen Tabelle (`diagnostic_context_log`) unter derselben
+> Eigentümertrennung wie `audit_log` (ADR-0015), nicht als weiterer Ereignistyp darin: seine
+> Aufbewahrung beträgt nach (i) zwölf Monate, die von `audit_log` 12–120 — und eine kürzere Frist
+> für eine Teilmenge der Zeilen wäre nur mit einem zeilenweisen `DELETE` erreichbar, das es auf
+> `audit_log` nicht geben darf.
+
 Ein Werkzeug, das zeigt, was ein anderer Mensch sieht, ist ein Berechtigungswerkzeug — und in einer
 Behörde zugleich ein mitbestimmungsrelevantes. Die folgenden Regeln sind deshalb nicht verhandelbar;
 sie sind Baubedingung, nicht Ausbaustufe.

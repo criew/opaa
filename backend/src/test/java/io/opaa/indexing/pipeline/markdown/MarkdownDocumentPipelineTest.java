@@ -31,6 +31,15 @@ class MarkdownDocumentPipelineTest {
     assertThat(pipeline.version()).isEqualTo((short) 1);
   }
 
+  @Test
+  void passesThroughOnlyTheLocationKey() {
+    // Not covered by the registry-wide neutrality guard
+    // (DocumentPipelineRegistryRoutingIntegrationTest) because this pipeline is deliberately not
+    // registered as a bean (see markdownDocumentPipelineIsDeliberatelyNotRegisteredAsABean there).
+    assertThat(pipeline.passthroughMetadataKeys())
+        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
+  }
+
   private static final String SATZUNG =
       """
       # Verwaltungsgebuehrensatzung
