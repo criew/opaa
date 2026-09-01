@@ -4802,7 +4802,10 @@ components:
             abstraction existed count as version 0 and are therefore always included. Rejected with
             400 above the pipeline's own currentVersion: a re-index cannot produce a version the
             pipeline does not have, so every rewritten chunk would still be below the bound and the
-            same documents would be selected again on every following batch.
+            same documents would be selected again on every following batch. A chunk still naming
+            the fallback pipeline whose format pipelineId now claims (#1105) is also always
+            included regardless of belowVersion - it is unreachable by any other call, not merely
+            below a version bound.
         batchSize:
           type: integer
           minimum: 1
@@ -4841,9 +4844,14 @@ components:
           description: >
             Documents this call could not advance: their file lies outside what this deployment may
             read (an allowlist narrowed since indexing, a path no longer resolving underneath its
-            library's configured directory), or the pipeline produced no chunks for them this time.
-            Nothing about them is changed - a working document keeps its existing chunks rather than
-            being emptied - and their chunks stay visible as outstanding in the status figures.
+            library's configured directory), the pipeline produced no chunks for them this time, or
+            the document was re-indexed but its chunks still name the fallback pipeline, which is
+            counted here instead of as reindexedDocuments to avoid re-selecting it forever. For the
+            first two causes, nothing about the document is changed - a working document keeps its
+            existing chunks rather than being emptied. The third cause has already read the file,
+            replaced its chunks and paid for new embeddings; a persistent case of it is re-parsed
+            and re-embedded on every call that requests that pipeline. Regardless of cause, their
+            chunks stay visible as outstanding in the status figures.
         removedOrphanChunkSets:
           type: integer
           description: Chunk sets whose document row no longer exists; deleted rather than re-read.
