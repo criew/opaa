@@ -6,8 +6,10 @@ für Parameter, Stand `main` nach der Stufen-Zerlegung aus
 Ergänzung zu [Wissensschicht und Retrieval](./data-indexing-rag.md), das überwiegend das **Zielbild**
 beschreibt (siehe dessen „Lesehinweis zum Umsetzungsstand"): Abschnitte wie
 [Hybride Suche](./data-indexing-rag.md#hybride-suche) und [Reranking](./data-indexing-rag.md#reranking)
-dort sind Vision — im heutigen Code gibt es **keine Volltextsuche und kein separates Reranking-Modell**,
-nur Vektorsuche mit den unten beschriebenen Nachbearbeitungsschritten. Wer wissen will, was gebaut ist,
+dort sind Vision — im heutigen Code gibt es **kein separates Reranking-Modell**, und der seit
+[#1048](https://github.com/criew/opaa/issues/1048) gebaute lexikalische Suchpfad (Schritt 3b) ist
+**noch keine Eingangsliste der Fusion**: Was die Endauswahl bestimmt, ist unverändert allein die
+Vektorsuche mit den unten beschriebenen Nachbearbeitungsschritten. Wer wissen will, was gebaut ist,
 liest dieses Dokument; wer wissen will, wohin es geht, liest `data-indexing-rag.md`.
 
 Die Stellschrauben-Tabelle in `data-indexing-rag.md` bleibt die eine Quelle der Wahrheit für Parameter und
@@ -61,8 +63,8 @@ Die Nummerierung der folgenden Schritte ist zugleich die Reihenfolge der registr
 
 ## Teil 1: Ablauf einer Anfrage
 
-Eine Anfrage (`QueryService#query`) durchläuft die folgenden sieben Schritte der Reihe nach; die Schritte 1
-bis 6 sind die registrierten Stufen der `RetrievalPipeline`, Schritt 7 liegt außerhalb. Jeder Schritt
+Eine Anfrage (`QueryService#query`) durchläuft die folgenden Schritte der Reihe nach; die Schritte 1
+bis 6 einschließlich 3b sind die registrierten Stufen der `RetrievalPipeline`, Schritt 7 liegt außerhalb. Jeder Schritt
 arbeitet nur mit dem, was der vorherige ihm übergibt — kein Schritt weitet die Berechtigungs- oder
 Ähnlichkeitsschwellengrenze eines früheren wieder auf (die Kandidatenmenge selbst schöpft Schritt 6
 weiterhin aus dem in Schritt 3 gebildeten Pool, siehe dort).
@@ -110,6 +112,45 @@ Teilfrage. Parameter: `opaa.query.fetch-k` (`OPAA_QUERY_FETCH_K`, Default `25`) 
 ohne Kontextbezug decodiert typischerweise zu genau einer Suchanfrage; dieser Fall läuft denselben Pfad
 wie vor #923, nur ohne die vorangestellte Verlaufs-Heuristik. Details zu beiden Parametern in der
 Stellschrauben-Tabelle.
+
+### 3b. Volltextsuche je Teilfrage (#1048)
+
+`FullTextSearchStage` führt für **jede** Suchanfrage aus Schritt 2 eine PostgreSQL-Volltextabfrage gegen
+`chunk_full_text` aus — mit **identischem Rechtefilter** wie Schritt 3 (`library_id = ANY(...)` als Teil
+der `WHERE`-Klausel, nie ein Nachfilter, ADR-0008 §5) und identischem `opaa.query.fetch-k`. Sortiert wird
+nach `ts_rank`.
+
+**Die Suchanfrage wird genauso gebaut wie der Index** (`FullTextChunkSearch`), aus zwei Hälften:
+
+- die `german`-Analysekette über die Wörter der Frage, ODER-verknüpft (`to_tsquery('german', 'w1 | w2 | …')`).
+  ODER, nicht UND: Der Pfad liefert Kandidaten für eine Fusion; eine Frage, deren sämtliche Wörter
+  vorkommen müssten, träfe nichts.
+- die **unzerlegten Kennungs-Tokens** (`FullTextIdentifiers`), ODER darübergelegt. Sie tragen im Index das
+  Gewicht `A` gegen das `D` des Fließtexts — der Mechanismus, der „§ 34" und „§ 35" in einer Rangliste mit
+  Konkurrenz auseinanderhält und nicht nur im Treffer. Erkannt werden Paragrafenverweise (auch
+  Aufzählungen hinter `§§`), gerichtliche Aktenzeichen sowie Dienstanweisungs-, Formular-, Erlass- und
+  Drucksachennummern — jedes schlüsselwortgeführte Muster mit einem schlüsselwortfreien Gegenstück,
+  weil ein Dokument die Nummer hinter einem Schlüsselwort nennt und eine Frage sie nackt.
+
+Beide Hälften entstehen aus bereinigten Tokens (Wörter auf Buchstaben und Ziffern reduziert,
+Kennungs-Lexeme per Konstruktion ASCII-alphanumerisch); kein Zeichen der Nutzerfrage erreicht
+`to_tsquery` als Operator.
+
+**Zwei Tore, beide verengend:** `opaa.query.full-text-search.enabled` (Ebene-1-Wert, Default `true`) und
+das Backfill-Tor — eine Bibliothek, deren Volltext-Backfill nicht abgeschlossen ist, wird nicht durchsucht
+(`FullTextBackfillGate`, siehe [Arbeitspaket 2a](./hybrid-retrieval.md#arbeitspaket-2a-backfill-des-bestands)).
+Ein halb gefüllter Volltextindex liefert Treffer und verschweigt den Rest; das ist schlechter als nichts
+zu liefern.
+
+**Ein Fehlschlag degradiert den Pfad, nie die Antwort.** Eine defekte oder fehlende Volltextspalte darf
+Suchqualität kosten, aber nie zum Fehler für den fragenden Menschen werden; die Rückfallebene ist eine
+**leere** Kandidatenliste, nie eine ungefilterte.
+
+**Noch keine Eingangsliste der Fusion.** Die Listen dieser Stufe landen im Erklärprotokoll und dort
+enden sie; der Pipeline-Zustand wird unverändert weitergereicht, die Endauswahl ist bit-identisch zu der
+ohne diese Stufe. Das ist Absicht: Die Aufnahme in die RRF ist
+[#1049](https://github.com/criew/opaa/issues/1049), und dorthin gehören die Verhaltensänderung und die
+dafür neu zu ziehenden Benchmark-Baselines.
 
 ### 4. MMR-Auswahl je Teilfrage
 
@@ -194,6 +235,9 @@ Frage + Gesprächsverlauf
 2. LLM-Teilfragen-Zerlegung (1..max-sub-queries Suchanfragen, Fallback: Einzelfrage)
         ↓
 3. Je Suchanfrage: similaritySearch (fetch-k Kandidaten, Rechtefilter + Schwelle)
+        ↓
+3b. Je Suchanfrage: Volltextsuche (fetch-k, identischer Rechtefilter, Backfill-Tor)
+    → nur ins Erklärprotokoll, noch nicht in die Fusion (#1049)
         ↓
 4. Je Suchanfrage: MMR-Auswahl auf top-k (mmr-lambda)
         ↓

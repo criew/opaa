@@ -98,6 +98,13 @@ class QueryServiceTest {
                 new SearchScopeStage(),
                 new SubQueryDecompositionStage(queryDecompositionService),
                 new VectorSearchStage(vectorStore),
+                // Lexical path switched off: this class is about what QueryService does with the
+                // selection, and the lexical stage does not change it (see
+                // FullTextSearchStageTest).
+                new FullTextSearchStage(
+                    mock(FullTextChunkSearch.class),
+                    mock(FullTextBackfillGate.class),
+                    new FullTextSearchProperties(false)),
                 new MmrSelectionStage(chunkEmbeddingLookup),
                 new RankFusionStage(),
                 new DocumentCompletionStage(),

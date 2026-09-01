@@ -510,6 +510,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_QUERY_DECOMPOSITION_ENABLED` | `true` | `true` | Zerlegt eine Frage vor dem Retrieval per LLM-Aufruf in bis zu `OPAA_QUERY_MAX_SUB_QUERIES` eigenständige Suchanfragen, je mit eigenem berechtigungs- und schwellenwertgeprüften `similaritySearch`-Aufruf, rangbasiert (Reciprocal Rank Fusion) zusammengeführt (#923). Ersetzt zugleich die feste "erste Chat-Nachricht voranstellen"-Heuristik der Kontext-Anreicherung. Ein LLM-Fehlschlag oder eine unparsebare Antwort fällt auf die bisherige Ein-Suche-Logik zurück, nie auf einen Fehler; Modellwahl folgt dem systemweiten aktiven Chat-Modell (kein zusätzlicher API-Anbindungsweg) |
 | `OPAA_QUERY_MAX_SUB_QUERIES` | `3` | `3` | Obergrenze der Teilfragen aus der Zerlegung (#923) — darüber hinaus kappt die Zerlegung, ohne die Zahl der `similaritySearch`-Aufrufe (und damit die Retrieval-Latenz) unbegrenzt wachsen zu lassen |
 | `OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT` | `2` | `2` | Nach der Fusions-/MMR-Auswahl bevorzugt bis zu diese viele Chunks je bereits ausgewähltem Dokument aus der ohnehin berechtigungs- und schwellenwertgefilterten Kandidatenmenge (#932, Zuschnitt v2) — zweistufige Verdrängung: zuerst der schwächste Chunk eines Dokuments, das schon mit mindestens zwei Chunks vertreten ist; existiert keine solche Quelle, der auswahlrang-letzte Chunk der Gesamtauswahl, sofern das zu vervollständigende Dokument mit seinem besten Chunk strikt besser rankt als dieser (die Dokumentvielfalt darf dabei sinken) — auf `max(1, OPAA_QUERY_TOP_K / 4)` solcher Verdrängungen je Abfrage gedeckelt (bei Default `OPAA_QUERY_TOP_K=8` also 2), damit eine einzelne Abfrage nicht mehrere Themen zugunsten eines einzigen verdrängt. `1` schaltet die Dokument-Vervollständigung vollständig ab (Stand vor #932) |
+| `OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED` | `true` | nicht gesetzt (Anwendungs-Default gilt) | Ob der lexikalische Suchpfad seine Volltextabfrage ausführt (#1048, siehe [„Volltextsuche (lexikalischer Suchpfad)"](#volltextsuche-lexikalischer-suchpfad)). `false` spart die Abfrage; der Pfad erscheint dann weiterhin im Erklärprotokoll der Suche und weist sich dort als abgeschaltet aus. Solange die Kandidaten des Pfads nicht in die Ergebnis-Fusion eingehen, ändert der Wert an keiner Antwort etwas |
 | **Indizierung** | | | |
 | `OPAA_INDEXING_CHUNK_SIZE` | `1000` | `1000` | Ziel-Tokens pro Chunk (1–10.000) |
 | `OPAA_INDEXING_CHUNK_OVERLAP` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Anzahl der Tokens, die jeder Chunk vom Ende seines Vorgängers wiederholt, damit eine Aussage an einer Chunk-Grenze in mindestens einem Chunk vollständig erhalten bleibt (#374). Muss kleiner als `OPAA_INDEXING_CHUNK_SIZE` sein; `0` deaktiviert die Überlappung, ein negativer Wert wird auf `0` normalisiert |
@@ -984,6 +985,65 @@ docker compose down -v
 > benannte Volume `opaa-ollama-data`** — die dort gespeicherten Modelle (`nomic-embed-text`,
 > `phi3:mini`, zusammen rund 2,5 GB). Ein danach erneut gestarteter Stack lädt beide Modelle über
 > `ollama-pull` vollständig neu herunter, siehe [„Lokal betriebenes Ollama im Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack-720).
+
+## Volltextsuche (lexikalischer Suchpfad)
+
+Neben der Vektorsuche läuft eine klassische Volltextsuche direkt in PostgreSQL — `tsvector` mit der
+`german`-Konfiguration und einem GIN-Index auf der Tabelle `chunk_full_text`. Es gibt **kein zweites
+System**: derselbe Sicherungslauf, dieselbe Wiederherstellung, derselbe Verschlüsselungsnachweis. Der
+Pfad findet, woran eine Vektorsuche strukturell scheitert — Paragrafenverweise, Aktenzeichen,
+Erlassnummern, seltene Fachbegriffe.
+
+> **Stand:** Der Pfad ist gebaut und läuft mit, **wirkt aber noch nicht auf die Antwort**. Seine
+> Kandidaten gehen bislang nur in das Erklärprotokoll der Suche; in die Ergebnis-Fusion aufgenommen wird
+> er mit einem eigenen, gesondert gemessenen Schritt.
+
+### Was zu tun ist
+
+Nichts. Jeder neu indexierte Chunk bekommt seinen Volltexteintrag in derselben Transaktion wie den
+Vektor. Der **Bestand** aus der Zeit davor wird von einem Hintergrundlauf nachgezogen, der in kleinen
+Stapeln arbeitet, jederzeit unterbrechbar ist und nach einem Neustart dort weitermacht, wo er stand.
+Erst wenn der Nachlauf einer Bibliothek abgeschlossen ist, wird diese Bibliothek volltextlich
+durchsucht — ein halb gefüllter Index liefert Treffer und verschweigt den Rest, und das ist schlechter,
+als gar nichts zu liefern.
+
+Dasselbe passiert automatisch, wenn ein Update die Art ändert, wie der Volltextindex gebildet wird: Die
+betroffenen Zeilen gelten dann als fehlend und werden nachgezogen. Ein manueller Reindex ist dafür
+**nicht** nötig — anders als bei einer Änderung am Einbettungsmodell (siehe
+[„Was ein Update mit dem Index macht"](#was-ein-update-mit-dem-index-macht)), denn hier ist kein
+Modellaufruf im Spiel.
+
+### Bekannte Grenze: `ts_rank` ist kein BM25
+
+PostgreSQL bewertet Volltexttreffer mit `ts_rank`. Das ist **nicht** das BM25-Verfahren, das
+spezialisierte Suchmaschinen verwenden, und der Unterschied ist im Betrieb spürbar:
+
+- **Keine Normalisierung auf die Textlänge.** Lange Abschnitte werden systematisch überbewertet.
+- **Keine Gewichtung nach Seltenheit.** Ein Wort, das in fünf von 50 000 Abschnitten vorkommt, zählt
+  kaum mehr als eines, das überall steht. Bei einem Bestand aus vielen ähnlich formulierten Satzungen
+  ist genau das die schwache Stelle.
+
+Diese Grenze ist bewusst in Kauf genommen, aus zwei Gründen. Erstens braucht die Ergebnis-Fusion keine
+richtige *Bewertung*, sondern nur eine brauchbare *Reihenfolge* — eine deutlich schwächere Anforderung.
+Zweitens wird die Schwäche dort, wo der Pfad seinen Zweck erfüllt, kaum wirksam: Bei einer exakten
+Kennung ist der richtige Abschnitt meist der einzige, der die Zeichenfolge überhaupt enthält.
+
+Gegen den zweiten Punkt ist zusätzlich vorgesorgt: Paragrafenverweise, Aktenzeichen, Dienstanweisungs-
+und Formularnummern sowie Erlass- und Drucksachennummern werden **zusätzlich als unzerlegte Kennungen**
+geführt und höher gewichtet als Fließtext. Ohne das gewönne ein Abschnitt, der die Wörter der Frage nur
+oft genug wiederholt, gegen den einen Abschnitt, der die gesuchte Kennung tatsächlich führt — genau die
+Schwäche von `ts_rank`. Dabei ist gleichgültig, ob das Dokument die Kennung hinter einem Schlüsselwort
+nennt („mit dem Aktenzeichen BAU-DA-2/2024") und die Frage sie nackt („Was regelt die Dienstanweisung
+BAU-DA-2/2024?") — beide Schreibweisen führen auf dieselbe Kennung.
+
+**Wann diese Grenze relevant wird:** Wenn Fragen mit exakten Kennungen die falsche Fundstelle liefern,
+ist sie der erste Verdacht. Ob der Wechsel auf eine echte BM25-Erweiterung nötig ist, wird gemessen und
+nicht vermutet; die Bedingung dafür steht in
+[Hybride Suche mit Reranking](../features/hybrid-retrieval.md#eskalationsstufen-mit-eintrittsbedingung).
+
+**Keine Kompositazerlegung.** „Genehmigung" findet „Baugenehmigungsverfahren" im Volltextpfad nicht.
+Auch das ist eine bewusste Festlegung: Eine Zerlegung, die „Gebührenordnung" in „Gebühr" und „Ordnung"
+auflöst, verwässert auch Treffer. Ob sich der Tausch lohnt, entscheidet eine Messung, keine Vermutung.
 
 ## Fehlerbehebung
 

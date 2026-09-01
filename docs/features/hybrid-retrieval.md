@@ -15,10 +15,13 @@ bereits mit „ja" beantwortet hat — [Hybride Suche](./data-indexing-rag.md#hy
 [Reranking](./data-indexing-rag.md#reranking) — und die im heutigen Code nicht existieren (siehe
 [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md)). Sie ersetzt keines der beiden Dokumente:
 `data-indexing-rag.md` bleibt Quelle der Wahrheit für Zielbild und Stellschrauben-Tabelle,
-`retrieval-algorithm.md` für den jeweils gebauten Ablauf. **Gebaut ist bisher ausschließlich
-Arbeitspaket 1** (Pipeline als benannte Stufen mit Erklärprotokoll,
-[#1046](https://github.com/criew/opaa/issues/1046)) — es ändert kein Verhalten. Volltextpfad, Fusion um
-eine Eingangsliste, Reranking und Admin-Diagnose sind unverändert nicht gebaut.
+`retrieval-algorithm.md` für den jeweils gebauten Ablauf. **Gebaut sind Arbeitspaket 1** (Pipeline als
+benannte Stufen mit Erklärprotokoll, [#1046](https://github.com/criew/opaa/issues/1046)), **Arbeitspaket
+2a** (Volltextspalte, GIN-Index, wiederaufnehmbarer Backfill,
+[#1047](https://github.com/criew/opaa/issues/1047)) **und Arbeitspaket 2** (lexikalischer Suchpfad mit
+Kennungsschutz und Rechtefilter, [#1048](https://github.com/criew/opaa/issues/1048)) — **keines davon
+ändert bisher die Endauswahl**. Fusion um eine Eingangsliste, Reranking und Admin-Diagnose sind
+unverändert nicht gebaut.
 
 ---
 
@@ -232,15 +235,15 @@ Kandidaten sehen, als ihr übergeben wurden.
 | Suchbereich bestimmen | lesbare Bibliotheken ∩ Kontext des Chats | gebaut |
 | Teilfragen bilden | 1..`max-sub-queries` eigenständige Suchanfragen | gebaut (#923) |
 | Vektorsuche je Teilfrage | `fetch-k` Kandidaten, Rechtefilter, Ähnlichkeitsschwelle | gebaut |
-| **Volltextsuche je Teilfrage** | `fetch-k` Kandidaten, identischer Rechtefilter | **neu (AP 2)** |
+| **Volltextsuche je Teilfrage** | `fetch-k` Kandidaten, identischer Rechtefilter | gebaut (#1048), noch nicht in der Fusion |
 | Vielfaltsauswahl (MMR) je Teilfrage | Relevanz gegen Redundanz | gebaut, voreingestellt aus |
 | Fusion | RRF über alle Listen aller Teilfragen | gebaut, erweitert (AP 3) |
 | **Reranking** | Cross-Encoder über die fusionierte Kandidatenmenge | **neu (AP 4)** |
 | Dokument-Vervollständigung | bis `max-chunks-per-document` Chunks je Dokument | gebaut (#932/#935) |
 
 Als Stufen registriert sind heute `SEARCH_SCOPE`, `SUB_QUERY_DECOMPOSITION`, `VECTOR_SEARCH`,
-`MMR_SELECTION`, `RANK_FUSION` und `DOCUMENT_COMPLETION`, in dieser Reihenfolge; die beiden neuen Stufen
-werden an den in der Tabelle genannten Stellen eingehängt.
+`FULL_TEXT_SEARCH`, `MMR_SELECTION`, `RANK_FUSION` und `DOCUMENT_COMPLETION`, in dieser Reihenfolge; die
+Reranking-Stufe wird an der in der Tabelle genannten Stelle eingehängt.
 
 Zwei Eigenschaften sind verbindlich, weil alles Weitere daran hängt:
 
@@ -285,6 +288,25 @@ nebenbei die Suchqualität verändert, ist im Nachhinein nicht mehr von einer Re
 ---
 
 ## Arbeitspaket 2: Der lexikalische Suchpfad
+
+> **Stand: gebaut** ([#1048](https://github.com/criew/opaa/issues/1048)); die Schemaänderung und der
+> Backfill (AP 2a) davor mit [#1047](https://github.com/criew/opaa/issues/1047). Der gebaute Ablauf steht
+> in [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md#3b-volltextsuche-je-teilfrage-1048);
+> dieser Abschnitt bleibt die Begründung und der Zuschnitt.
+>
+> **Noch nicht in der Fusion.** Die Stufe läuft, filtert nach Rechten und liefert je Teilfrage eine
+> gelabelte Kandidatenliste — aber ausschließlich ins Erklärprotokoll. Die Endauswahl ist bit-identisch
+> zu der ohne diese Stufe, und die committeten Baselines bewegen sich deshalb nicht. Aufgenommen wird der
+> Pfad in [Arbeitspaket 3](#arbeitspaket-3-fusion) mit
+> [#1049](https://github.com/criew/opaa/issues/1049); dort gehört die Verhaltensänderung hin, mitsamt den
+> dafür neu zu ziehenden Baselines.
+>
+> **Auflage für #1049:** Sobald der Pfad die Endauswahl beeinflusst, muss
+> `opaa.query.full-text-search.enabled` in den Messvertrag und den Harness-Guard
+> (`PipelineHarnessSupport#requireMeasurableConfiguration`) aufgenommen werden — aus demselben Grund, aus
+> dem dort schon die abgeschalteten Stufen abgewiesen werden: Ein Lauf mit `enabled=false` wäre sonst am
+> `runConfiguration`-Abdruck von einem Volllauf nicht zu unterscheiden, und seine Zahlen würden gegen die
+> committete Baseline als Codeänderung verbucht.
 
 ### Entscheidung: Postgres-nativ
 
@@ -355,6 +377,40 @@ ohne Gesetzeskürzel, Aktenzeichen in den üblichen Formen, Erlass- und Drucksac
 allgemeiner Erkennungsversuch. Eine falsch erkannte Kennung erzeugt ein Token, das nie gesucht wird;
 eine nicht erkannte Kennung ist der Fehler, der wehtut.
 
+**Wie es gebaut ist** (`io.opaa.indexing.FullTextIdentifiers`, #1048):
+
+- **Dieselbe Liste auf beiden Seiten.** Schreibpfad und Suchpfad rufen dieselbe Methode. Ein Token aus
+  einem Chunk und ein Token aus einer Frage entstehen im selben Code, sonst träfen sie einander nie.
+- **Jedes schlüsselwortgeführte Muster hat ein schlüsselwortfreies Gegenstück.** Das ist keine
+  Bequemlichkeit, sondern die Bedingung dafür, dass der Mechanismus überhaupt läuft: Ein Dokument
+  schreibt „Dienstanweisung mit dem Aktenzeichen BAU-DA-2/2024", eine Frage nennt die Nummer nackt.
+  Ein Muster, das das Schlüsselwort braucht, greift damit nur auf einer der beiden Seiten — und der
+  Schutz tut still gar nichts. Genau das war bei acht von zehn `exact_identifier`-Golden-Fällen der
+  Fall, bis das Review zu #1048 es aufdeckte; ein Symmetrietest hält beide Schreibweisen derselben
+  Kennung jetzt gegeneinander.
+- **Ein Kandidat wird nur als Kennung angenommen, wenn er strukturell eine ist** — mindestens eine
+  Ziffer und mindestens ein Trennzeichen. Ohne diese Prüfung erzeugt „Aktenzeichen der Satzung" das
+  Token `xakzder`, das dann auf jedem gewöhnlichen Fließtext-Chunk mit derselben Wendung mit Gewicht
+  `A` sitzt: Rauschen an der Spitze der Rangliste, erzeugt vom Mechanismus, der sie schärfen soll.
+- **Aufzählungen hinter `§§`** („§§ 34, 35 BauGB") liefern je Nummer ein Token; das Gesetzeskürzel gilt
+  für alle, ein `Abs.` nur bei einer einzelnen Nummer — bei einer Aufzählung ist aus dem Text nicht
+  entscheidbar, zu welcher es gehört.
+- **Jedes Token ist kleingeschriebenes ASCII-Alphanumerisch mit Typpräfix** (`xpar`, `xakz`, `xnr`).
+  Daraus folgen zwei tragende Eigenschaften: Ein solcher String kann nicht mit einem Lexem der deutschen
+  Analysekette kollidieren, und er passiert `to_tsquery`, ohne ein Operatorzeichen mitzubringen.
+- **Ein Paragrafenverweis liefert immer auch seine nackte Form.** `§ 35 BauGB` erzeugt `xpar35` *und*
+  `xpar35baugb`; das spezifische Token trennt zwei Dokumente, die beide von § 35 sprechen, das nackte
+  trifft noch, wenn nur eine Seite das Gesetz nennt.
+- **Die Tokens tragen Gewicht `A`**, der Fließtext das voreingestellte `D`. Das ist der eigentliche
+  Wirkmechanismus: `ts_rank` zählt Trefferhäufigkeit, also gewinnt sonst ein Chunk, der die Wörter der
+  Frage oft wiederholt, gegen den einen Chunk, der die Kennung tatsächlich führt (gemessen als roter
+  Testlauf in #1048). Technische Fußangel dabei: `array_to_tsvector` wäre der direktere Weg,
+  unzerlegte Lexeme einzufügen, erzeugt aber einen Vektor **ohne Positionen** — und `setweight`
+  schreibt Gewichte in Positionen, ist dort also stillschweigend wirkungslos. Gebaut ist deshalb
+  `setweight(to_tsvector('simple', …), 'A')`.
+- **Eine Änderung der Tokenbildung erhöht `content_tsv_version`.** Bestandszeilen gelten damit als
+  fehlend und werden vom Backfill des Arbeitspakets 2a nachgezogen — ohne Migration, ohne Skript.
+
 ### Die bekannte Grenze: `ts_rank` ist kein BM25
 
 PostgreSQLs `ts_rank` gewichtet nach Trefferhäufigkeit und Position, aber **nicht** nach der
@@ -399,6 +455,32 @@ kein Rangproblem des lexikalischen Pfads, und eine BM25-Extension hilft nicht. D
 darf zum Zeitpunkt dieser Spezifikation offen bleiben, **muss aber vor dem ersten Variantenvergleich
 festgelegt und committet sein** — eine nach der Messung gewählte Schwelle belegt nichts (Verfahren
 siehe [Retrieval-Benchmark](./retrieval-benchmark.md#6-der-benchmark-als-eintrittsbedingungs-maschine)).
+
+#### Festlegung: **X = 0,80** (committet mit #1048, vor dem ersten Variantenvergleich)
+
+**Die Schwelle gilt je Fallgruppe einzeln, nicht für beide gemeinsam.** Bleibt *eine* der beiden Gruppen
+unter X, ist die Eintrittsbedingung für den Mechanismus dieser Gruppe erfüllt — `compound_word` spricht
+für Kompositabehandlung, `exact_identifier` für eine echte BM25-Bewertung. Ein Mittelwert über beide
+würde genau die Aussage verwischen, für die die Gruppen getrennt ausgewiesen werden (Koordinator-
+Entscheidung im Review zu #1048).
+
+Die Zahl ist aus dem Betrieb begründet, nicht aus den Messwerten abgeleitet: Hit Rate@5 = 0,80 heißt
+„höchstens jede fünfte Frage dieser Klasse verfehlt die richtige Fundstelle im sichtbaren Fenster".
+Unterhalb davon ist eine Klasse, für die der lexikalische Pfad überhaupt gebaut wurde, nicht
+betriebstauglich; oberhalb ist der verbleibende Rest kein Argument für einen zweiten
+Suchmechanismus mit eigenem PostgreSQL-Image.
+
+Zur Einordnung, ausdrücklich **nicht** als Herleitung — die Ausgangswerte der Verwaltungsdomäne auf dem
+Pipeline-Pfad (`eval/baseline/pipeline-verwaltung.json`, gezogen mit #1043, also vor jeder Zeile dieses
+Arbeitspakets): `compound_word` 0,778, `exact_identifier` 1,000. Die Schwelle liegt damit vor der Messung
+fest und **kann** ablehnen: Sie würde bei unverändertem `compound_word`-Wert greifen, bei unverändertem
+`exact_identifier`-Wert nicht. Genau das ist der Zweck einer Eintrittsbedingung — sie muss beide Ausgänge
+haben, sonst dokumentiert sie eine Entscheidung, statt sie herbeizuführen.
+
+Zwei Bedingungen der Aussage sind heute noch nicht erfüllt und werden vor dem Vergleich hergestellt:
+Der lexikalische Pfad wirkt erst mit [#1049](https://github.com/criew/opaa/issues/1049) auf die
+Endauswahl, und einen Reranker gibt es erst mit Arbeitspaket 4. Bis dahin ist die Bedingung **nicht
+auswertbar** — was sie nicht schwächer macht, sondern der Grund ist, sie jetzt festzuschreiben.
 
 Ist die Bedingung erfüllt, gilt Stufe 1 dennoch nicht automatisch als beauftragt. Vier
 **Betriebsauflagen** sind vor dem Bau zu erfüllen; jede einzelne verworfene Auflage verwirft die Stufe:
@@ -961,6 +1043,6 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   Messfrage, keine Entwurfsfrage. Ob ein Ergebnis **gespeichert** werden darf, ist dagegen entschieden:
   im eigenen Kontext und für Rechteprofile ja, in einem fremden Personenkontext nie (siehe
   [Berechtigungs-Leitplanken](#berechtigungs-leitplanken)).
-- **Der Schwellenwert X der Eskalationsstufe 1.** Er darf jetzt offen bleiben, muss aber vor dem ersten
-  Variantenvergleich festgelegt und committet sein (siehe
+- ~~**Der Schwellenwert X der Eskalationsstufe 1.**~~ Entschieden mit #1048: **X = 0,80**, festgelegt vor
+  dem ersten Variantenvergleich (siehe
   [Eskalationsstufen](#eskalationsstufen-mit-eintrittsbedingung)).

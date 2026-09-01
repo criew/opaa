@@ -22,7 +22,11 @@ import org.springframework.context.annotation.Configuration;
  * cross-cutting convention this issue did not change.
  */
 @Configuration
-@EnableConfigurationProperties({QueryProperties.class, RetrievalPipelineProperties.class})
+@EnableConfigurationProperties({
+  QueryProperties.class,
+  RetrievalPipelineProperties.class,
+  FullTextSearchProperties.class
+})
 public class QueryConfiguration {
 
   /**
@@ -33,14 +37,15 @@ public class QueryConfiguration {
    * and it belongs somewhere it can be read off in one line.
    *
    * <p>New stages are inserted here, at the position they belong to - the lexical search path next
-   * to {@link VectorSearchStage}, reranking between {@link RankFusionStage} and {@link
-   * DocumentCompletionStage} (docs/features/hybrid-retrieval.md, Arbeitspaket 2/4).
+   * to {@link VectorSearchStage} (in place since #1048), reranking between {@link RankFusionStage}
+   * and {@link DocumentCompletionStage} (docs/features/hybrid-retrieval.md, Arbeitspaket 4).
    */
   @Bean
   RetrievalPipeline retrievalPipeline(
       SearchScopeStage searchScopeStage,
       SubQueryDecompositionStage subQueryDecompositionStage,
       VectorSearchStage vectorSearchStage,
+      FullTextSearchStage fullTextSearchStage,
       MmrSelectionStage mmrSelectionStage,
       RankFusionStage rankFusionStage,
       DocumentCompletionStage documentCompletionStage,
@@ -50,6 +55,7 @@ public class QueryConfiguration {
             searchScopeStage,
             subQueryDecompositionStage,
             vectorSearchStage,
+            fullTextSearchStage,
             mmrSelectionStage,
             rankFusionStage,
             documentCompletionStage),
