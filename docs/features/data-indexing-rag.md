@@ -533,7 +533,7 @@ heute läuft, und dem, was zum Zielbild gehört.
 | Präsentation | PowerPoint (`.pptx`), OpenDocument (`.odp`) | — |
 | Auszeichnungssprache | — | HTML, XML |
 | Strukturierte Daten | — | JSON, CSV, XML-Datensätze |
-| Nachricht aus einem Postfach | — | Einzelnachrichten (`.eml`, `.msg`), Postfachexporte (MBOX, PST) |
+| Nachricht aus einem Postfach | Einzelnachrichten (`.eml`, `.msg`) | Postfachexporte (MBOX, PST) |
 | Bild oder gescannte Seite | — | Rasterbilder (`.png`, `.jpg`, `.tiff`), Bild-PDF über Texterkennung |
 
 Die Liste gilt für **alle dateibasierten Aufnahmewege gleichermaßen** — den Weg über ein Verzeichnis im

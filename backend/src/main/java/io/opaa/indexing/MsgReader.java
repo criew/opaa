@@ -24,11 +24,13 @@ import org.slf4j.LoggerFactory;
  * loads an entire {@code .msg} compound file - including every attachment's bytes - into memory as
  * part of parsing it, before this class ever sees it; there is no streaming point left to enforce
  * {@link MailProperties#maxAttachmentBytes()} against while reading, the way {@link
- * MailAttachmentIo#copyBounded} does for EML. The message file's own size is still bounded by the
- * ordinary upload/connector checks (the same reasoning {@link EmlReader} documents); this class
- * adds a post-hoc check that skips writing an oversized attachment to disk rather than routing it
- * through the pipeline registry, so at least the downstream steps (format detection, embedding)
- * never see it.
+ * MailAttachmentIo#copyBounded} does for EML. This class adds a post-hoc check that skips writing
+ * an oversized attachment to disk rather than routing it through the pipeline registry, so at least
+ * the downstream steps (format detection, embedding) never see it - but by the time that check
+ * runs, the whole message (including every attachment's bytes) is already fully resident in memory.
+ * The actual memory bound is {@link MailProperties#maxMessageBytes()}, checked by {@link
+ * MailDocumentPipeline} against the message file's own size before this reader ever runs at all
+ * (see {@link MailProperties}'s own Javadoc).
  *
  * <p><b>An embedded Outlook item attachment (a message attached as its own MAPI object, not as
  * bytes) is skipped, not recursed into.</b> {@link AttachmentChunks#getAttachData()} is {@code
@@ -43,14 +45,14 @@ final class MsgReader {
   private MsgReader() {}
 
   static ParsedMailMessage read(Path file, MailProperties properties) throws IOException {
-    try (InputStream in = Files.newInputStream(file)) {
-      MAPIMessage message = new MAPIMessage(in);
+    try (InputStream in = Files.newInputStream(file);
+        MAPIMessage message = new MAPIMessage(in)) {
       String subject = safeGet(message::getSubject);
       String from = safeGet(message::getDisplayFrom);
       String to = safeGet(message::getDisplayTo);
       Instant date = safeDate(message);
       String body = extractBody(message);
-      List<ParsedMailAttachment> attachments = extractAttachments(message, properties);
+      List<ParsedMailAttachment> attachments = extractAttachments(message, file, properties);
       return new ParsedMailMessage(subject, from, to, date, body, attachments);
     }
   }
@@ -65,27 +67,57 @@ final class MsgReader {
   }
 
   private static List<ParsedMailAttachment> extractAttachments(
-      MAPIMessage message, MailProperties properties) throws IOException {
+      MAPIMessage message, Path file, MailProperties properties) throws IOException {
     AttachmentChunks[] chunks = message.getAttachmentFiles();
     List<ParsedMailAttachment> attachments = new ArrayList<>(chunks.length);
-    for (AttachmentChunks chunk : chunks) {
-      ParsedMailAttachment attachment = extractAttachment(chunk, properties);
-      if (attachment != null) {
-        attachments.add(attachment);
+    AttachmentBudget budget = new AttachmentBudget(properties.maxAttachmentsPerMessage());
+    try {
+      for (AttachmentChunks chunk : chunks) {
+        if (!budget.hasCapacity()) {
+          // Not extracted at all - no temp file is ever created for an attachment beyond the
+          // configured limit (#1101 review, finding 3c).
+          continue;
+        }
+        budget.reserve();
+        ParsedMailAttachment attachment = extractAttachment(chunk, properties);
+        if (attachment != null) {
+          attachments.add(attachment);
+        }
       }
+    } catch (IOException | RuntimeException e) {
+      // See EmlReader#read's identical reasoning: whatever this pass already extracted must not
+      // leak as an orphaned temp file just because a later attachment failed to read.
+      for (ParsedMailAttachment attachment : attachments) {
+        deleteQuietly(attachment.tempFile());
+      }
+      throw e;
+    }
+    if (budget.exhausted()) {
+      log.warn(
+          "{} carries more than the configured limit of {} attachments; the remainder was never"
+              + " extracted (opaa.indexing.mail.max-attachments-per-message)",
+          file,
+          properties.maxAttachmentsPerMessage());
     }
     return attachments;
   }
 
   private static ParsedMailAttachment extractAttachment(
       AttachmentChunks chunk, MailProperties properties) throws IOException {
-    byte[] data = chunk.getAttachData() != null ? chunk.getAttachData().getValue() : null;
+    byte[] data;
+    String fileName;
+    try {
+      data = chunk.getAttachData() != null ? chunk.getAttachData().getValue() : null;
+      fileName = resolveFilename(chunk);
+    } catch (RuntimeException e) {
+      log.warn("Skipping a mail attachment that could not be read", e);
+      return null;
+    }
     if (data == null) {
       // An embedded Outlook item attachment, not a plain file - see this class's own Javadoc.
       log.info("Skipping unsupported (embedded-message) mail attachment chunk");
       return null;
     }
-    String fileName = resolveFilename(chunk);
     if (data.length > properties.maxAttachmentBytes()) {
       log.warn(
           "Skipping mail attachment {} exceeding the size limit of {} bytes",
@@ -96,6 +128,9 @@ final class MsgReader {
     Path tempFile = MailAttachmentIo.createTempFile(fileName);
     try (OutputStream out = Files.newOutputStream(tempFile)) {
       out.write(data);
+    } catch (IOException e) {
+      Files.deleteIfExists(tempFile);
+      throw e;
     }
     return new ParsedMailAttachment(fileName, tempFile);
   }
@@ -130,6 +165,18 @@ final class MsgReader {
       return supplier.get();
     } catch (ChunkNotFoundException e) {
       return null;
+    }
+  }
+
+  /**
+   * Logs rather than throws on a failed delete - called from a {@code catch} block that is already
+   * about to rethrow the real failure; a secondary I/O error here must not replace it.
+   */
+  private static void deleteQuietly(Path file) {
+    try {
+      Files.deleteIfExists(file);
+    } catch (IOException e) {
+      log.warn("Failed to delete temp file: {}", file, e);
     }
   }
 }

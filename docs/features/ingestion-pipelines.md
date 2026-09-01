@@ -587,9 +587,23 @@ Beleg) folgt dabei den bestehenden Regeln des Anlagenwegs, siehe
 #### Umgesetzt (#1060)
 
 `MailDocumentPipeline` (`id` `email`, Version 1) beansprucht `.eml` und `.msg` in der
-`DocumentPipelineRegistry`; beide Endungen sind jetzt in `SupportedDocumentFormats` zugelassen, mit
-den eindeutigen Tika-Medientypen `message/rfc822` bzw. `application/vnd.ms-outlook` als strikte
-Erkennungsgrenze (wie bei PDF/DOCX, nicht wie bei Markdown/Klartext).
+`DocumentPipelineRegistry`; beide Endungen sind jetzt in `SupportedDocumentFormats` zugelassen —
+unterschiedlich streng, mit einem empirisch belegten Grund: `.msg` bekommt mit
+`application/vnd.ms-outlook` einen eindeutigen, strikten Medientyp (wie PDF/DOCX). `.eml` dagegen
+läuft wie Markdown/Klartext/CSV über die textolerante Erkennung (Inhalt *und* Endung müssen passen) —
+Tikas `message/rfc822`-Erkennung ist eine lose Textzeilen-Heuristik (sucht nach kopfzeilenartigen
+Zeilen wie `Date:`/`Subject:`/`To:`/`From:` nahe dem Anfang), keine feste Byte-Signatur, und
+`message/rfc822` ist in Tikas eigener Medientyp-Hierarchie tatsächlich eine Spezialisierung von
+`text/plain` (#1101 Review, empirisch bestätigt). Als strikter Typ hätte das zwei Fehlklassen
+erzeugt: ein `log.txt` mit `Date:`/`Status:`-Zeilen, ein `protokoll.md` mit `To:`/`From:`-Zeilen oder
+ein `export.csv` mit `Date:`/`Subject:`-Spalten wären ohne jedes Mismatch-Ereignis in die Mail-Pipeline
+geroutet worden — und umgekehrt wäre eine echte `.eml` mit unüblicher erster Kopfzeile (z. B.
+`Authentication-Results:` oder deutsches `Von:`/`An:`) komplett abgewiesen worden, weil Tikas
+Heuristik dafür nicht zuverlässig genug feuert. Die textolerante Einordnung löst beides: Die drei
+genannten Fehlklassen behalten ihre eigene, namensbasierte Einordnung (das Routing entscheidet immer
+anhand der *eigenen* beanspruchten Endung der Datei, nie anhand dessen, welchem texttoleranten Typ
+der Inhalt bloß ähnelt), und eine echte `.eml` wird unabhängig davon angenommen, welche Kopfzeile
+zuerst kommt — es genügt, dass der Inhalt überhaupt wie Text aussieht.
 
 **Zwei eigene Leser statt eines gemeinsamen Tika-Parsers**, weil Kopfdaten, Text und Anhänge getrennt
 werden müssen, statt in einen Block zu fließen:
@@ -615,30 +629,68 @@ zufällig passenden Zeile mitten im Satz zu zerschneiden (falsches Positiv). Jed
 dieselben Kopfdaten der äußeren MIME-Hülle — die Kopfzeile einer zitierten Nachricht ist freier Text
 der jeweiligen Zitierkonvention, keine zuverlässig strukturiert rückführbare Angabe.
 
+**Ein Segment, das trotzdem zu lang für einen Chunk ist, fällt auf `ChunkingService`s gewöhnlichen
+Token-Splitter zurück** (#1101 Review): Ein langer Rundbrief oder eine Weiterleitungskette ohne
+erkennbare Zitat-Trennzeile würde sonst ein einzelner, unbegrenzt großer Chunk — jenseits des
+Token-Limits des Einbettungsmodells, das ganze Dokument scheitert am Embedding-Aufruf. Da
+`ChunkingService#chunkDocuments` für Text unterhalb der konfigurierten `opaa.indexing.chunk-size`
+ohnehin nur einen einzigen, unveränderten Chunk zurückgibt, ändert sich am Normalfall (kurze
+Nachricht, ein Chunk) nichts; nur ein Segment, das die Grenze tatsächlich überschreitet, wird weiter
+zerlegt — derselbe Rückfall, den Token-Chunking projektweit spielt, sobald Struktur ausgeht (Teil 2,
+„Der Grundsatz"). Jedes weiter zerlegte Teilstück trägt weiterhin dieselben Kopfdaten und einen
+disambiguierenden Fundort (`Teil j von M`, ggf. kombiniert mit `Nachricht i von N`).
+
 **Anhänge laufen rekursiv durch `DocumentPipelineRegistry`.** `MailDocumentPipeline` selbst injiziert
 die Registry über `ObjectProvider<DocumentPipelineRegistry>` statt direkt — die Registry wird aus
 jeder registrierten `DocumentPipeline` gebaut, auch dieser selbst, eine direkte Konstruktorabhängigkeit
 würde also einen Zirkel in Springs Bean-Erzeugung schließen. Ein Anhang durchläuft dieselbe
 Formatzulassung wie jedes andere Dokument (`SupportedDocumentFormats.decideForFileName`) — ein nicht
-zugelassenes Format wird übersprungen und protokolliert, nicht `FAILED` für die ganze Mail. Ein
-EML-in-EML-Anhang (eine Weiterleitung) erreicht `MailDocumentPipeline` dadurch ein weiteres Mal, mit
-seinen eigenen Kopfdaten. Der Fundort eines Anhang-Chunks trägt `Anhang: <Dateiname>` als Präfix vor
-dem Fundort, den die Sub-Pipeline selbst ermittelt hat (z. B. `Anhang: antrag.pdf`).
+zugelassenes Format wird übersprungen und protokolliert, nicht `FAILED` für die ganze Mail; dasselbe
+gilt, wenn die zuständige Sub-Pipeline selbst mit einer Exception scheitert (eine defekte
+verschachtelte `.eml` oder ein beschädigtes XLSX kostet nur diesen einen Anhang). Ein EML-in-EML-Anhang
+(eine Weiterleitung) erreicht `MailDocumentPipeline` dadurch ein weiteres Mal, mit seinen eigenen
+Kopfdaten. Der Fundort eines Anhang-Chunks trägt `Anhang: <Dateiname>` als Präfix vor dem Fundort, den
+die Sub-Pipeline selbst ermittelt hat (z. B. `Anhang: antrag.pdf`).
 
-**Zwei Sicherheits-Grenzfälle, Muster `TabularProperties`** (`MailProperties`,
+**Bekannte Einschränkung: Jeder Chunk — auch ein rekursiv erzeugter Anhang-Chunk — trägt
+`pipeline_id=email`/die Version dieser Pipeline** (#1101 Review), nicht die der Sub-Pipeline, die ihn
+tatsächlich erzeugt hat. `FileProcessingService#storeChunks` prägt `pipeline_id`/`pipeline_version`
+genau einmal, von der einen Top-Level-Pipeline, die für das ganze Dokument aufgerufen wurde — ein
+Versionssprung der PDF-Pipeline erreicht einen PDF-Anhang innerhalb einer Mail über
+`PipelineReindexService`s selektiven Nachlauf deshalb nicht; nur ein erneuter Durchlauf der Mail
+selbst (diese Pipeline-Version) zieht ihn nach. Das ist zugleich eine bewusste Abweichung vom
+gewöhnlichen Anlagenweg-Muster (docs/features/knowledge-sources.md): Dort wird ein Anhang eine eigene
+`Document`-Zeile mit eigener Pipeline-Zuordnung (`AttachmentIndexer`/`processUrlFile`); ein
+Mail-Anhang wird stattdessen zu weiteren Chunks derselben `Document`-Zeile wie die Nachricht selbst,
+weil `FileProcessingService#storeChunks` immer nur für ein Dokument auf einmal schreibt und dieser
+Pipeline kein Kanal zur Verfügung steht, dafür eine zusätzliche Dokumentzeile anzulegen.
+
+**Drei Sicherheits-Grenzfälle, Muster `TabularProperties`** (`MailProperties`,
 `opaa.indexing.mail.*`): `max-attachment-depth` (gesetzt 5) deckelt die Rekursionstiefe gegen eine
-Mail, die sich selbst oder zyklisch weiterleitet; `max-attachments-per-message` (gesetzt 50) und
-`max-attachment-bytes` (gesetzt 50 MiB) deckeln Anzahl und Größe der Anhänge einer einzelnen Nachricht.
-Bei EML wird die Byte-Grenze beim Kopieren des Anhangs in eine temporäre Datei durchgesetzt (wie
-`TabularDocumentPipeline`s ODS-Leser), nicht nachträglich. Bei MSG ist das nur nachträglich möglich:
-`MAPIMessage` liest die gesamte `.msg`-Datei einschließlich aller Anhangsbytes vollständig in den
-Speicher, bevor dieser Code sie zu sehen bekommt — ein eingebetteter Outlook-Anhang (ein Element als
-eigenes MAPI-Objekt statt als Datei) wird deshalb übersprungen statt rekonstruiert, da POI dafür
-keinen öffentlichen `.msg`-Writer anbietet.
+Mail, die sich selbst oder zyklisch weiterleitet; `max-attachments-per-message` (gesetzt 50) deckelt
+die Anzahl der Anhänge — durchgesetzt direkt in der Extraktionsschleife von `EmlReader`/`MsgReader`
+selbst, sodass für einen Anhang jenseits der Grenze erst gar keine temporäre Datei entsteht; und
+`max-attachment-bytes` (gesetzt 50 MiB) deckelt die Größe eines einzelnen Anhangs. Bei EML wird diese
+Byte-Grenze beim Kopieren des Anhangs in eine temporäre Datei durchgesetzt (wie
+`TabularDocumentPipeline`s ODS-Leser), bei MSG nur nachträglich (siehe unten). **Diese drei Grenzen
+schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang selbst** — sowohl mime4j
+(`BasicBodyFactory`) als auch POI (`MAPIMessage`) halten beim Parsen ohnehin jeden Teil der Nachricht,
+Anhänge eingeschlossen, vollständig im Heap, bevor dieser Code auch nur entscheidet, ob ein Teil ein
+Anhang ist. Die eigentliche Speichergrenze ist eine vierte, neue Eigenschaft: `max-message-bytes`
+(gesetzt 100 MiB) — geprüft gegen die Größe der `.eml`/`.msg`-Datei selbst, bevor überhaupt geparst
+wird, denn `FileProcessingService#processFile` erzwingt keine Einzeldateigrößen-Grenze (nur die
+Speicherplatz-Quote der Bibliothek insgesamt). Bei MSG bleibt die Anhangsgrenze zusätzlich
+Best-Effort: `MAPIMessage` liest die gesamte Datei samt aller Anhangsbytes vollständig in den Speicher,
+bevor dieser Code sie zu sehen bekommt, sodass `max-attachment-bytes` dort nur noch verhindert, dass
+ein überdimensionierter Anhang auf die Platte geschrieben und weiterverarbeitet wird — ein eingebetteter
+Outlook-Anhang (ein Element als eigenes MAPI-Objekt statt als Datei) wird zudem übersprungen statt
+rekonstruiert, da POI dafür keinen öffentlichen `.msg`-Writer anbietet.
 
-**Chunk-Größe:** entfällt — eine Nachricht wird genau ein Chunk (oder einer je Thread-Segment), nie
-nach Tokenzahl geschnitten; anders als bei `TabularDocumentPipeline` gibt es hier keinen
-Zuschnitts-Parameter, der gesetzt oder gemessen sein könnte.
+**Chunk-Größe:** im Regelfall entfällt sie — eine Nachricht wird genau ein Chunk (oder einer je
+Thread-Segment), nie nach Tokenzahl geschnitten. Ein Segment, das trotzdem die konfigurierte
+`opaa.indexing.chunk-size` überschreitet (ein langer Rundbrief ohne erkennbare Zitatgrenze), fällt auf
+denselben Token-Splitter zurück, den `TikaFallbackPipeline` ohnehin verwendet — kein eigener
+Zuschnitts-Parameter dieser Pipeline, sondern der bestehende projektweite Fallback.
 
 **Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine EML- oder MSG-Dokumente.
 

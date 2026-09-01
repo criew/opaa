@@ -33,7 +33,16 @@ class MailDocumentPipelineTest {
 
   @TempDir Path tempDir;
 
-  private final MailProperties defaultProperties = new MailProperties(0, 0, 0);
+  private final MailProperties defaultProperties = new MailProperties(0, 0, 0, 0);
+
+  private static ChunkingService defaultChunkingService() {
+    return new ChunkingService(
+        new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
+  }
+
+  private MailDocumentPipeline pipeline(MailProperties properties) {
+    return pipeline(properties, defaultChunkingService());
+  }
 
   /**
    * Mirrors the production circular-bean resolution ({@link IndexingConfiguration}'s own comment on
@@ -42,8 +51,15 @@ class MailDocumentPipelineTest {
    * pipeline needs the registry - so the registry is only assembled (into this holder) once the
    * pipeline itself already exists, and {@code getObject()} reads it lazily, after that assembly,
    * exactly the way a real attachment routing call would.
+   *
+   * @param extraPipelines additional pipelines registered alongside the fallback and tabular ones -
+   *     e.g. a {@link FakePipeline} that throws, for the "a sub-pipeline failure costs only the
+   *     attachment" regression (#1101 review, finding 4a)
    */
-  private MailDocumentPipeline pipeline(MailProperties properties) {
+  private MailDocumentPipeline pipeline(
+      MailProperties properties,
+      ChunkingService chunkingService,
+      DocumentPipeline... extraPipelines) {
     DocumentPipelineRegistry[] registryHolder = new DocumentPipelineRegistry[1];
     ObjectProvider<DocumentPipelineRegistry> provider =
         new ObjectProvider<>() {
@@ -62,18 +78,31 @@ class MailDocumentPipelineTest {
             return registryHolder[0];
           }
         };
-    MailDocumentPipeline mailPipeline = new MailDocumentPipeline(provider, properties);
+    MailDocumentPipeline mailPipeline =
+        new MailDocumentPipeline(provider, chunkingService, properties);
 
     TikaFallbackPipeline fallback =
-        new TikaFallbackPipeline(
-            new DocumentService(),
-            new ChunkingService(
-                new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1)));
+        new TikaFallbackPipeline(new DocumentService(), defaultChunkingService());
     TabularDocumentPipeline tabular =
         new TabularDocumentPipeline(new TabularProperties(0, 0, 0, 0));
-    registryHolder[0] =
-        new DocumentPipelineRegistry(List.of(fallback, tabular, mailPipeline), fallback);
+    List<DocumentPipeline> pipelines = new java.util.ArrayList<>();
+    pipelines.add(fallback);
+    pipelines.add(tabular);
+    pipelines.add(mailPipeline);
+    pipelines.addAll(List.of(extraPipelines));
+    registryHolder[0] = new DocumentPipelineRegistry(pipelines, fallback);
     return mailPipeline;
+  }
+
+  /** A stand-in for a sub-pipeline that throws, mirroring {@code DocumentPipelineRegistryTest}. */
+  private record FakePipeline(
+      String id, short version, java.util.Set<String> handledFormats, RuntimeException toThrow)
+      implements DocumentPipeline {
+
+    @Override
+    public DocumentPipelineResult run(DocumentPipelineSource source) {
+      throw toThrow;
+    }
   }
 
   @Test
@@ -208,7 +237,7 @@ class MailDocumentPipelineTest {
     Path file = writeEml(DefaultMessageWriter.asBytes(outer));
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(5, 0, 0))
+        pipeline(new MailProperties(5, 0, 0, 0))
             .run(DocumentPipelineSource.ofFile(file, "weiterleitung.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
@@ -256,7 +285,8 @@ class MailDocumentPipelineTest {
     // Depth 1: the outer message and its direct attachment (Ebene 1) are read, but Ebene 1's own
     // nested attachment (Ebene 2) is one level too deep and is skipped.
     DocumentPipelineResult result =
-        pipeline(new MailProperties(1, 0, 0)).run(DocumentPipelineSource.ofFile(file, "tief.eml"));
+        pipeline(new MailProperties(1, 0, 0, 0))
+            .run(DocumentPipelineSource.ofFile(file, "tief.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     List<String> texts = result.chunks().stream().map(Document::getText).toList();
@@ -282,7 +312,8 @@ class MailDocumentPipelineTest {
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(0, 2, 0)).run(DocumentPipelineSource.ofFile(file, "viele.eml"));
+        pipeline(new MailProperties(0, 2, 0, 0))
+            .run(DocumentPipelineSource.ofFile(file, "viele.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     // Body chunk plus exactly two of the three CSV attachments (each a single-row chunk).
@@ -306,7 +337,7 @@ class MailDocumentPipelineTest {
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(0, 0, 10)) // 10 bytes - smaller than the PDF fixture
+        pipeline(new MailProperties(0, 0, 10, 0)) // 10 bytes - smaller than the PDF fixture
             .run(DocumentPipelineSource.ofFile(file, "gross.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
@@ -339,6 +370,174 @@ class MailDocumentPipelineTest {
     assertThat(
             result.chunks().get(1).getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
         .isEqualTo("Terminabstimmung");
+  }
+
+  @Test
+  void aSegmentTooLongForOneChunkFallsBackToTokenSplittingWithoutFailingTheDocument()
+      throws Exception {
+    // #1101 review, finding 2: a long body with no recognizable quote separator must not become
+    // one unboundedly large chunk - a tiny configured chunk-size here stands in for "a real
+    // newsletter exceeding the embedding model's own token limit" without needing a multi-MB
+    // fixture.
+    String longBody = "Wort ".repeat(400).strip();
+    Message message =
+        newMessageBuilder("Langer Rundbrief", "amt@example.org", "verteiler@example.org")
+            .setBody(longBody, StandardCharsets.UTF_8)
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+    ChunkingService tinyChunking =
+        new ChunkingService(
+            new IndexingProperties(20, 5, 50, null, null, List.of(), null, null, null, 1));
+
+    DocumentPipelineResult result =
+        pipeline(defaultProperties, tinyChunking)
+            .run(DocumentPipelineSource.ofFile(file, "rundbrief.eml"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSizeGreaterThan(1);
+    // Every further-split piece still carries the message's own Kopfdaten and a disambiguating
+    // "Teil j von M" Fundort.
+    assertThat(result.chunks())
+        .allSatisfy(
+            chunk -> {
+              assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
+                  .isEqualTo("Langer Rundbrief");
+              assertThat(chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+                  .asString()
+                  .startsWith("Teil ");
+            });
+  }
+
+  @Test
+  void anOrdinaryShortMessageStaysExactlyOneChunkRegardlessOfTheTokenSplitterFallback()
+      throws Exception {
+    // The fallback in the previous test must be a no-op for the common case - an ordinary message
+    // well under the configured chunk-size still becomes exactly one chunk.
+    Path file = writeEml(simpleEmlBytes());
+
+    DocumentPipelineResult result =
+        pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "anfrage.eml"));
+
+    assertThat(result.chunks()).hasSize(1);
+  }
+
+  // --- Message-size cap (#1101 review, finding 3b) --------------------------------------------
+
+  @Test
+  void aMessageFileExceedingTheConfiguredSizeLimitIsSkippedBeforeParsing() throws Exception {
+    Path file = writeEml(simpleEmlBytes());
+    long fileSize = Files.size(file);
+
+    DocumentPipelineResult result =
+        pipeline(new MailProperties(0, 0, 0, fileSize - 1))
+            .run(DocumentPipelineSource.ofFile(file, "zu-gross.eml"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void aMessageFileUnderTheConfiguredSizeLimitIsParsedNormally() throws Exception {
+    Path file = writeEml(simpleEmlBytes());
+    long fileSize = Files.size(file);
+
+    DocumentPipelineResult result =
+        pipeline(new MailProperties(0, 0, 0, fileSize + 1))
+            .run(DocumentPipelineSource.ofFile(file, "passt.eml"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+  }
+
+  // --- Attachment robustness (#1101 review, finding 4) ----------------------------------------
+
+  @Test
+  void aFailingSubPipelineSkipsOnlyThatAttachmentNotTheWholeMessage() throws Exception {
+    Message message =
+        newMessageBuilder("Mit defektem Anhang", "a@example.org", "b@example.org")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("Der Anhang ist kaputt.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody("Inhalt".getBytes(StandardCharsets.UTF_8), "text/csv")
+                            .setContentDisposition("attachment", "kaputt.csv"))
+                    .build())
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+    // Claims .csv itself, in a registry built without the shared helper's own tabular pipeline
+    // (which would otherwise also claim .csv and collide) - see pipelineWithFailingCsvPipeline.
+    FakePipeline throwingOnCsv =
+        new FakePipeline(
+            "broken",
+            (short) 1,
+            java.util.Set.of(".csv"),
+            new IllegalStateException("simulated sub-pipeline failure"));
+
+    DocumentPipelineResult result = pipelineWithFailingCsvPipeline(file, throwingOnCsv);
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).contains("Der Anhang ist kaputt.");
+  }
+
+  /**
+   * Builds a registry with {@code throwingOnCsv} as the sole claimant of {@code .csv} (no tabular
+   * pipeline, which would otherwise collide) and runs {@code file} through it - the "a sub-pipeline
+   * failure costs only the attachment" regression (#1101 review, finding 4a) needs a pipeline that
+   * actually throws, which neither the fallback nor the tabular pipeline ever does for well-formed
+   * input.
+   */
+  private DocumentPipelineResult pipelineWithFailingCsvPipeline(
+      Path file, FakePipeline throwingOnCsv) {
+    DocumentPipelineRegistry[] registryHolder = new DocumentPipelineRegistry[1];
+    ObjectProvider<DocumentPipelineRegistry> provider =
+        new ObjectProvider<>() {
+          @Override
+          public DocumentPipelineRegistry getObject() {
+            return registryHolder[0];
+          }
+
+          @Override
+          public DocumentPipelineRegistry getIfAvailable() {
+            return registryHolder[0];
+          }
+
+          @Override
+          public DocumentPipelineRegistry getIfUnique() {
+            return registryHolder[0];
+          }
+        };
+    MailDocumentPipeline mailPipeline =
+        new MailDocumentPipeline(provider, defaultChunkingService(), defaultProperties);
+    TikaFallbackPipeline fallback =
+        new TikaFallbackPipeline(new DocumentService(), defaultChunkingService());
+    registryHolder[0] =
+        new DocumentPipelineRegistry(List.of(fallback, mailPipeline, throwingOnCsv), fallback);
+    return mailPipeline.run(DocumentPipelineSource.ofFile(file, file.getFileName().toString()));
+  }
+
+  @Test
+  void anAttachmentWithAnUnsafeFileNameIsSkippedNotFailed() throws Exception {
+    // #1101 review, finding 4c: a colon is invalid in a Windows temp-file suffix and used to throw
+    // InvalidPathException, failing the whole message.
+    Message message =
+        newMessageBuilder("Mit unsicherem Dateinamen", "a@example.org", "b@example.org")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("Siehe Anhang.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody("Inhalt".getBytes(StandardCharsets.UTF_8), "text/csv")
+                            .setContentDisposition("attachment", "bericht.q1:2024"))
+                    .build())
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+
+    DocumentPipelineResult result =
+        pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "unsicher.eml"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).contains("Siehe Anhang.");
   }
 
   // --- MSG: real fixtures --------------------------------------------------------------------

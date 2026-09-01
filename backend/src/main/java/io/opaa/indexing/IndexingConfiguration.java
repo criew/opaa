@@ -81,8 +81,9 @@ public class IndexingConfiguration {
   @Bean
   MailDocumentPipeline mailDocumentPipeline(
       ObjectProvider<DocumentPipelineRegistry> documentPipelineRegistry,
+      ChunkingService chunkingService,
       MailProperties mailProperties) {
-    return new MailDocumentPipeline(documentPipelineRegistry, mailProperties);
+    return new MailDocumentPipeline(documentPipelineRegistry, chunkingService, mailProperties);
   }
 
   /**

@@ -24,18 +24,32 @@ import org.springframework.beans.factory.ObjectProvider;
  *   <li><b>Kopfdaten become chunk metadata, never chunk text</b> (see {@link ChunkMailMetadata}) -
  *       a Mailablage's chunks would otherwise all embed the same Verteilerkopf.
  *   <li><b>One chunk per message; a quoted reply thread splits into one chunk per message in the
- *       thread</b> (see {@link MailThreadSplitter}).
+ *       thread</b> (see {@link MailThreadSplitter}); a segment still too long for a single chunk
+ *       falls back to {@link ChunkingService}'s ordinary token splitter (see {@link #bodyChunks}).
  *   <li><b>An attachment runs through the pipeline of its own type</b>, recursively via {@link
  *       DocumentPipelineRegistry} - the actual justification for the registry
  *       (ingestion-pipelines.md, Teil 1): an attachment that is itself an EML/MSG (a forward)
  *       reaches this class again, one recursion level deeper. An attachment {@link
  *       SupportedDocumentFormats} does not admit is skipped and logged, the same way an unsupported
- *       RSS attachment is ({@link AttachmentIndexer}) - never {@code FAILED} for the whole message.
+ *       RSS attachment is ({@link AttachmentIndexer}) - never {@code FAILED} for the whole message,
+ *       and neither is a sub-pipeline that throws while processing one (see {@link
+ *       #processAttachment}).
  * </ul>
  *
- * <p>Chunk size: not applicable - a message becomes exactly one chunk (or one per thread segment),
- * never split by token count, so there is no chunk-size dial to mark gesetzt/gemessen the way
- * {@link TabularDocumentPipeline} does.
+ * <p><b>Known limitation: every chunk this pipeline produces - including an attachment's own,
+ * recursively produced chunks - is attributed to this pipeline's {@link #id()}/{@link #version()}
+ * (#1101 review, finding 7).</b> {@code FileProcessingService#storeChunks} stamps {@code
+ * pipeline_id}/{@code pipeline_version} once, from the single top-level pipeline {@code
+ * FileProcessingService} invoked for the whole document - it has no notion of a chunk-level
+ * override for a sub-pipeline's own chunks nested inside a mail. A version bump of, say, the PDF
+ * pipeline is therefore not selectively reachable for a PDF attachment buried inside a mail via
+ * {@code PipelineReindexService}; only reprocessing the mail itself (this pipeline's own version)
+ * picks it up. This is also a departure from the Anlagenweg's ordinary pattern
+ * (docs/features/knowledge-sources.md), where an attachment is its own {@code Document} row with
+ * its own pipeline attribution ({@code AttachmentIndexer}/{@code processUrlFile}) - a mail
+ * attachment instead becomes more chunks of the same {@code Document} row as the message itself,
+ * because {@link FileProcessingService#storeChunks} only ever writes chunks for one document at a
+ * time and this pipeline's {@link #run} has no channel to create an additional document row.
  *
  * <p>{@code registryProvider} is injected as an {@link ObjectProvider}, not a plain constructor
  * dependency, to break the circular bean graph this pipeline's own recursion creates: {@link
@@ -62,11 +76,15 @@ public class MailDocumentPipeline implements DocumentPipeline {
   private static final ThreadLocal<Integer> RECURSION_DEPTH = new ThreadLocal<>();
 
   private final ObjectProvider<DocumentPipelineRegistry> registryProvider;
+  private final ChunkingService chunkingService;
   private final MailProperties properties;
 
   public MailDocumentPipeline(
-      ObjectProvider<DocumentPipelineRegistry> registryProvider, MailProperties properties) {
+      ObjectProvider<DocumentPipelineRegistry> registryProvider,
+      ChunkingService chunkingService,
+      MailProperties properties) {
     this.registryProvider = registryProvider;
+    this.chunkingService = chunkingService;
     this.properties = properties;
   }
 
@@ -95,6 +113,24 @@ public class MailDocumentPipeline implements DocumentPipeline {
       return DocumentPipelineResult.noExtractableText();
     }
 
+    try {
+      if (Files.size(source.file()) > properties.maxMessageBytes()) {
+        // Checked before either reader ever runs - both build the message's full DOM in memory
+        // (see MailProperties's own Javadoc), so this is the actual memory bound, not
+        // maxAttachmentBytes further down. FileProcessingService#processFile enforces no
+        // per-file size limit of its own (only the library's total storage quota).
+        log.warn(
+            "Skipping {}: {} bytes exceeds the configured limit of {} bytes"
+                + " (opaa.indexing.mail.max-message-bytes)",
+            source.fileName(),
+            Files.size(source.file()),
+            properties.maxMessageBytes());
+        return DocumentPipelineResult.noContent();
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException("Could not read mail document " + source.fileName(), e);
+    }
+
     boolean topLevel = RECURSION_DEPTH.get() == null;
     int depth = topLevel ? 0 : RECURSION_DEPTH.get();
     if (topLevel) {
@@ -111,7 +147,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
         throw new UncheckedIOException("Could not read mail document " + source.fileName(), e);
       }
 
-      List<Document> chunks = new ArrayList<>(bodyChunks(message));
+      List<Document> chunks = new ArrayList<>(bodyChunks(message, source.fileName()));
       chunks.addAll(processAttachments(message.attachments(), source.fileName(), depth));
 
       if (chunks.isEmpty()) {
@@ -138,8 +174,17 @@ public class MailDocumentPipeline implements DocumentPipeline {
    * reply chain - every segment carries the same, single set of Kopfdaten: a quoted prior message's
    * own header lines are free text inside the client's quoting convention, not reliably parseable
    * back into structured From/To/Date/Subject the way the outer MIME envelope's headers are.
+   *
+   * <p><b>A segment too long for one chunk falls back to {@link ChunkingService}'s ordinary token
+   * splitter</b> (#1101 review, finding 2): a long newsletter or a forwarded chain with no
+   * recognizable quote separator would otherwise become a single, unboundedly large chunk - past
+   * the embedding model's own token limit, failing the whole document. {@link
+   * ChunkingService#chunkDocuments} already returns a single, unmodified chunk for text under its
+   * configured {@code opaa.indexing.chunk-size}, so an ordinary message is unaffected; only a
+   * segment that actually exceeds it is further cut, exactly the fallback role token-chunking plays
+   * project-wide once structure runs out (ingestion-pipelines.md, Teil 2, "Der Grundsatz").
    */
-  private List<Document> bodyChunks(ParsedMailMessage message) {
+  private List<Document> bodyChunks(ParsedMailMessage message, String fileName) {
     List<String> segments = MailThreadSplitter.split(message.bodyText());
     List<Document> chunks = new ArrayList<>(segments.size());
     for (int i = 0; i < segments.size(); i++) {
@@ -147,32 +192,51 @@ public class MailDocumentPipeline implements DocumentPipeline {
       if (text.isBlank()) {
         continue;
       }
-      Map<String, Object> metadata = new HashMap<>();
-      if (message.subject() != null) {
-        metadata.put(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY, message.subject());
+      List<Document> parts = chunkingService.chunkDocuments(fileName, List.of(new Document(text)));
+      for (int j = 0; j < parts.size(); j++) {
+        Map<String, Object> metadata = new HashMap<>();
+        if (message.subject() != null) {
+          metadata.put(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY, message.subject());
+        }
+        if (message.from() != null) {
+          metadata.put(ChunkMailMetadata.MAIL_FROM_METADATA_KEY, message.from());
+        }
+        if (message.to() != null) {
+          metadata.put(ChunkMailMetadata.MAIL_TO_METADATA_KEY, message.to());
+        }
+        if (message.date() != null) {
+          metadata.put(ChunkMailMetadata.MAIL_DATE_METADATA_KEY, message.date().toString());
+        }
+        String location = locationFor(i, segments.size(), j, parts.size());
+        if (location != null) {
+          metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+        }
+        chunks.add(new Document(parts.get(j).getText(), metadata));
       }
-      if (message.from() != null) {
-        metadata.put(ChunkMailMetadata.MAIL_FROM_METADATA_KEY, message.from());
-      }
-      if (message.to() != null) {
-        metadata.put(ChunkMailMetadata.MAIL_TO_METADATA_KEY, message.to());
-      }
-      if (message.date() != null) {
-        metadata.put(ChunkMailMetadata.MAIL_DATE_METADATA_KEY, message.date().toString());
-      }
-      if (segments.size() > 1) {
-        metadata.put(
-            ChunkingService.LOCATION_METADATA_KEY,
-            "Nachricht " + (i + 1) + " von " + segments.size());
-      }
-      chunks.add(new Document(text, metadata));
     }
     return chunks;
   }
 
   /**
-   * Routes every attachment through {@link DocumentPipelineRegistry}, up to {@link
-   * MailProperties#maxAttachmentsPerMessage()}; beyond either that count or {@link
+   * The Fundort for the {@code partIndex}-th (of {@code partCount}) further-split piece of the
+   * {@code segmentIndex}-th (of {@code segmentCount}) thread segment, or {@code null} when neither
+   * dimension needs disambiguating (the common case: one message, not further split).
+   */
+  private static String locationFor(
+      int segmentIndex, int segmentCount, int partIndex, int partCount) {
+    String segmentPart =
+        segmentCount > 1 ? "Nachricht " + (segmentIndex + 1) + " von " + segmentCount : null;
+    String subPart = partCount > 1 ? "Teil " + (partIndex + 1) + " von " + partCount : null;
+    if (segmentPart == null) {
+      return subPart;
+    }
+    return subPart == null ? segmentPart : segmentPart + " · " + subPart;
+  }
+
+  /**
+   * Routes every attachment {@link EmlReader}/{@link MsgReader} already extracted (both cap the
+   * count at {@link MailProperties#maxAttachmentsPerMessage()} themselves, in their own extraction
+   * loop) through {@link DocumentPipelineRegistry}. Beyond {@link
    * MailProperties#maxAttachmentDepth()}, an attachment is skipped and logged rather than recursed
    * into - a message attaching itself (directly or through a cycle) must not recurse without bound.
    * Every temp file {@code attachments} carries is deleted here regardless of outcome.
@@ -194,21 +258,9 @@ public class MailDocumentPipeline implements DocumentPipeline {
       return chunks;
     }
 
-    int limit = Math.min(attachments.size(), properties.maxAttachmentsPerMessage());
-    if (attachments.size() > limit) {
-      log.warn(
-          "{} carries {} attachments, processing only the first {}"
-              + " (opaa.indexing.mail.max-attachments-per-message)",
-          parentFileName,
-          attachments.size(),
-          limit);
-    }
-    for (int i = 0; i < attachments.size(); i++) {
-      ParsedMailAttachment attachment = attachments.get(i);
+    for (ParsedMailAttachment attachment : attachments) {
       try {
-        if (i < limit) {
-          chunks.addAll(processAttachment(attachment, depth));
-        }
+        chunks.addAll(processAttachment(attachment, depth));
       } finally {
         deleteQuietly(attachment.tempFile());
       }
@@ -255,6 +307,16 @@ public class MailDocumentPipeline implements DocumentPipeline {
       return result.chunks().stream()
           .map(chunk -> withAttachmentLocation(chunk, fileName))
           .toList();
+    } catch (RuntimeException e) {
+      // #1101 review, finding 4a: a sub-pipeline failure (a corrupted nested EML, a malformed
+      // XLSX) costs only this one attachment, never the whole message - the same "skip, do not
+      // fail the message" contract this pipeline already applies to an unsupported format.
+      log.warn(
+          "Skipping mail attachment {}: pipeline {} failed to process it",
+          fileName,
+          routed.pipeline().id(),
+          e);
+      return List.of();
     } finally {
       RECURSION_DEPTH.set(depth);
     }

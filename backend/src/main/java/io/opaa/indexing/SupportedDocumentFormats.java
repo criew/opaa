@@ -78,8 +78,25 @@ public final class SupportedDocumentFormats {
    * joins {@code .md}/{@code .txt} here for the same reason (ingestion-pipelines.md, Teil 3, Punkt
    * 3): content alone cannot tell a comma- or semicolon-separated export apart from a Markdown
    * table or plain text, so a CSV file is only accepted once its own extension already claims it.
+   *
+   * <p>{@code .eml} joins this set (#1101 review) rather than the strict one below, for a reason
+   * specific to Tika's own {@code message/rfc822} detector: it is a loose textual heuristic (looks
+   * for header-shaped lines such as {@code Date:}/{@code Subject:}/{@code To:}/{@code From:} near
+   * the top of the content), not a fixed byte signature the way a PDF header or an OLE2/ZIP
+   * container is - {@code message/rfc822} is registered in Tika's own media type hierarchy as a
+   * specialization of {@code text/plain} (confirmed empirically), so it is exactly as ambiguous by
+   * content alone as Markdown or plain text: a log file with {@code Date:}/{@code Status:} lines, a
+   * changelog with {@code To:}/{@code From:} lines, or a CSV export with {@code Date:}/{@code
+   * Subject:} columns can trip the same heuristic. Treating {@code message/rfc822} as strictly
+   * detected content (as an earlier version of this class did) would route such files into the mail
+   * pipeline with no mismatch reported at all, and - the mirror failure - reject a genuine {@code
+   * .eml} whose first header line does not match the heuristic (e.g. a leading {@code
+   * Authentication-Results:} or a German {@code Von:}/{@code An:} pair) outright. Requiring the
+   * file's own {@code .eml} extension in addition to "looks like text" fixes both: an unrelated
+   * text file never gets routed as mail regardless of what its content resembles, and a genuine
+   * {@code .eml} is admitted regardless of which header happens to come first.
    */
-  private static final Set<String> TEXT_TOLERANT_EXTENSIONS = Set.of(".md", ".txt", ".csv");
+  private static final Set<String> TEXT_TOLERANT_EXTENSIONS = Set.of(".md", ".txt", ".csv", ".eml");
 
   /**
    * The Tika-detected media type(s) consistent with each non-text extension in {@link #EXTENSIONS}.
@@ -111,11 +128,9 @@ public final class SupportedDocumentFormats {
           Map.entry(".odt", Set.of("application/vnd.oasis.opendocument.text")),
           Map.entry(".ods", Set.of("application/vnd.oasis.opendocument.spreadsheet")),
           Map.entry(".odp", Set.of("application/vnd.oasis.opendocument.presentation")),
-          // EML and MSG each have one specific, unambiguous Tika-detected media type - message/
-          // rfc822 for EML (mime4j's own RFC822 detector) and application/vnd.ms-outlook for MSG
-          // (the OLE2/MAPI container POI's HSMF module identifies), so both join the strict set
-          // rather than the text-tolerant one (ingestion-pipelines.md, Teil 3, Punkt 5).
-          Map.entry(".eml", Set.of("message/rfc822")),
+          // MSG's application/vnd.ms-outlook is a genuinely distinctive OLE2/MAPI container type,
+          // unlike EML's message/rfc822 (see TEXT_TOLERANT_EXTENSIONS's own Javadoc for why EML
+          // joins the text-tolerant set instead).
           Map.entry(".msg", Set.of("application/vnd.ms-outlook")));
 
   private SupportedDocumentFormats() {}

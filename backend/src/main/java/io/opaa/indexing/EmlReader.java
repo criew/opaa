@@ -47,6 +47,14 @@ import org.slf4j.LoggerFactory;
  * EML-in-EML forward) is re-serialized via {@link DefaultMessageWriter#writeMessage} into a
  * standalone temp file - a valid EML in its own right, read again by this same class one recursion
  * level deeper (see {@link MailDocumentPipeline}'s depth guard).
+ *
+ * <p><b>Memory, not just disk, is bounded by {@link MailProperties#maxMessageBytes()}, checked by
+ * the caller before this class ever runs</b> (#1101 review, finding 3) - mime4j's {@code
+ * BasicBodyFactory} already holds every part of the message, attachments included, fully in memory
+ * as a side effect of parsing it, before {@link #walk} ever gets to classify a single part as an
+ * attachment. {@link MailProperties#maxAttachmentBytes()} therefore only bounds what this class
+ * writes to disk (and, per attachment, streams while writing - see {@link MailAttachmentIo}); it
+ * cannot retroactively bound memory the parse itself already committed to.
  */
 final class EmlReader {
 
@@ -55,11 +63,6 @@ final class EmlReader {
   private EmlReader() {}
 
   static ParsedMailMessage read(Path file, MailProperties properties) throws IOException {
-    // Header/body line length are deliberately unbounded here: the message file itself already
-    // passed the ordinary upload/connector size checks (opaa.upload.max-file-size, library storage
-    // quota) before reaching this pipeline - what those checks do not bound is an attachment
-    // carved back out of an already-admitted container, which properties.maxAttachmentBytes()
-    // guards instead (see MailAttachmentIo).
     MimeConfig config = MimeConfig.custom().setMaxLineLen(-1).setMaxHeaderLen(-1).build();
     Message.Builder builder = Message.Builder.of();
     builder.use(config);
@@ -70,7 +73,25 @@ final class EmlReader {
 
     BodyCollector collector = new BodyCollector();
     List<ParsedMailAttachment> attachments = new ArrayList<>();
-    walk(message, collector, attachments, properties);
+    AttachmentBudget budget = new AttachmentBudget(properties.maxAttachmentsPerMessage());
+    try {
+      walk(message, collector, attachments, properties, budget);
+    } catch (IOException | RuntimeException e) {
+      // Whatever this pass already extracted must not leak as an orphaned temp file just because a
+      // later part in the same message failed to read (#1101 review, finding 4b) - the caller never
+      // gets a ParsedMailMessage to clean these up itself, since this call never returns one.
+      for (ParsedMailAttachment attachment : attachments) {
+        deleteQuietly(attachment.tempFile());
+      }
+      throw e;
+    }
+    if (budget.exhausted()) {
+      log.warn(
+          "{} carries more than the configured limit of {} attachments; the remainder was never"
+              + " extracted (opaa.indexing.mail.max-attachments-per-message)",
+          file,
+          properties.maxAttachmentsPerMessage());
+    }
 
     return new ParsedMailMessage(
         message.getSubject(),
@@ -89,7 +110,8 @@ final class EmlReader {
       Entity entity,
       BodyCollector collector,
       List<ParsedMailAttachment> attachments,
-      MailProperties properties)
+      MailProperties properties,
+      AttachmentBudget budget)
       throws IOException {
     Body body = entity.getBody();
     if (body instanceof Multipart multipart) {
@@ -103,11 +125,17 @@ final class EmlReader {
         return;
       }
       for (Entity child : multipart.getBodyParts()) {
-        walk(child, collector, attachments, properties);
+        walk(child, collector, attachments, properties, budget);
       }
       return;
     }
     if (isAttachment(entity)) {
+      if (!budget.hasCapacity()) {
+        // Not extracted at all - no temp file is ever created for an attachment beyond the
+        // configured limit (#1101 review, finding 3c).
+        return;
+      }
+      budget.reserve();
       ParsedMailAttachment attachment = extractAttachment(entity, properties);
       if (attachment != null) {
         attachments.add(attachment);
@@ -167,10 +195,23 @@ final class EmlReader {
     return "text/html".equalsIgnoreCase(entity.getMimeType()) ? Jsoup.parse(text).text() : text;
   }
 
+  /**
+   * Extracts one attachment to its own temp file, or {@code null} when it could not be extracted at
+   * all - a malformed part (mime4j throwing while decoding it) must only cost this one attachment,
+   * never the whole message's extraction (#1101 review, finding 4a), the same "skip, do not fail
+   * the message" contract {@link MailDocumentPipeline#processAttachment} already applies one level
+   * up for a sub-pipeline failure.
+   */
   private static ParsedMailAttachment extractAttachment(Entity entity, MailProperties properties)
       throws IOException {
     String fileName = resolveFilename(entity);
-    Body body = entity.getBody();
+    Body body;
+    try {
+      body = entity.getBody();
+    } catch (RuntimeException e) {
+      log.warn("Skipping a mail attachment that could not be read", e);
+      return null;
+    }
     boolean nestedMessage = body instanceof Message;
     if (fileName == null || fileName.isBlank()) {
       fileName = nestedMessage ? "nachricht.eml" : "anhang";
@@ -203,6 +244,12 @@ final class EmlReader {
     } catch (IOException e) {
       Files.deleteIfExists(tempFile);
       throw e;
+    } catch (RuntimeException e) {
+      // A malformed part (e.g. mime4j failing mid-decode on a truncated or corrupt attachment)
+      // costs only this attachment, not the whole message.
+      log.warn("Skipping mail attachment {} that could not be read", fileName, e);
+      Files.deleteIfExists(tempFile);
+      return null;
     }
     return new ParsedMailAttachment(fileName, tempFile);
   }
@@ -235,5 +282,17 @@ final class EmlReader {
     return name != null && !name.isBlank()
         ? name + " <" + mailbox.getAddress() + ">"
         : mailbox.getAddress();
+  }
+
+  /**
+   * Logs rather than throws on a failed delete - called from a {@code catch} block that is already
+   * about to rethrow the real failure; a secondary I/O error here must not replace it.
+   */
+  private static void deleteQuietly(Path file) {
+    try {
+      Files.deleteIfExists(file);
+    } catch (IOException e) {
+      log.warn("Failed to delete temp file: {}", file, e);
+    }
   }
 }
