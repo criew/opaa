@@ -102,8 +102,8 @@ class FullTextChunkSearch {
       return List.of();
     }
 
-    List<Object> parameters = new ArrayList<>();
-    String tsQueryExpression = tsQueryExpression(wordTokens, identifierLexemes, parameters);
+    List<String> tsQueryParameters = new ArrayList<>();
+    String tsQueryExpression = tsQueryExpression(wordTokens, identifierLexemes, tsQueryParameters);
     String sql =
         "WITH q AS (SELECT "
             + tsQueryExpression
@@ -123,13 +123,12 @@ class FullTextChunkSearch {
             + "LIMIT ?";
 
     UUID[] libraries = libraryIds.toArray(UUID[]::new);
-    List<Object> queryParameters = new ArrayList<>(parameters);
     return jdbcTemplate.query(
         connection -> {
           var statement = connection.prepareStatement(sql);
           int index = 1;
-          for (Object parameter : queryParameters) {
-            statement.setString(index++, (String) parameter);
+          for (String parameter : tsQueryParameters) {
+            statement.setString(index++, parameter);
           }
           statement.setArray(index++, connection.createArrayOf("uuid", libraries));
           statement.setShort(index++, FullTextChunkStore.CURRENT_TSV_VERSION);
@@ -152,7 +151,7 @@ class FullTextChunkSearch {
    * "sanitized, therefore safe to concatenate" is the reasoning that produces injection defects.
    */
   private String tsQueryExpression(
-      List<String> wordTokens, List<String> identifierLexemes, List<Object> parameters) {
+      List<String> wordTokens, List<String> identifierLexemes, List<String> parameters) {
     if (identifierLexemes.isEmpty()) {
       parameters.add(FullTextChunkStore.TEXT_SEARCH_CONFIGURATION);
       parameters.add(String.join(" | ", wordTokens));
