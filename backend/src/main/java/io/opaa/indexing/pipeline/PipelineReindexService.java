@@ -18,9 +18,12 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -109,19 +112,22 @@ public class PipelineReindexService {
   public List<PipelineVersionProgress> progressForOrganization(UUID organizationId) {
     Map<String, Short> currentVersions = currentVersionsById();
     String sql =
-        "SELECT (metadata->>'library_id')::uuid AS library_id, "
-            + "       COALESCE(metadata->>'"
+        "SELECT (v.metadata->>'library_id')::uuid AS library_id, "
+            + "       COALESCE(v.metadata->>'"
             + ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY
             + "', ?) AS pipeline_id, "
-            + "       COALESCE((metadata->>'"
+            + "       COALESCE((v.metadata->>'"
             + ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY
             + "')::int, ?) AS pipeline_version, "
+            + "       d.file_name AS file_name, "
             + "       count(*) AS chunk_count "
             + "FROM "
             + vectorStoreTable
-            + " WHERE metadata->>'library_id' IS NOT NULL "
-            + "  AND metadata->>'organization_id' = ? "
-            + "GROUP BY 1, 2, 3";
+            + " v "
+            + "LEFT JOIN documents d ON d.id = (v.metadata->>'document_id')::uuid "
+            + "WHERE v.metadata->>'library_id' IS NOT NULL "
+            + "  AND v.metadata->>'organization_id' = ? "
+            + "GROUP BY 1, 2, 3, 4";
 
     Map<UUID, long[]> byLibrary = new HashMap<>();
     jdbcTemplate.query(
@@ -130,6 +136,7 @@ public class PipelineReindexService {
           UUID libraryId = (UUID) rs.getObject("library_id");
           String pipelineId = rs.getString("pipeline_id");
           int version = rs.getInt("pipeline_version");
+          String fileName = rs.getString("file_name");
           long count = rs.getLong("chunk_count");
           long[] counters = byLibrary.computeIfAbsent(libraryId, key -> new long[3]);
           counters[0] += count;
@@ -139,7 +146,13 @@ public class PipelineReindexService {
             // re-indexable. Counted in the total only, so it is visible without being promised.
             return;
           }
-          if (version >= currentVersion) {
+          // A chunk at its own pipeline's current version is only truly current if that pipeline
+          // is still the one handling this document's format today - see
+          // #currentPipelineIdForFileName for why a routing change (#1105) makes it stale even
+          // then, regardless of the version comparison below.
+          boolean routingCurrent =
+              fileName == null || pipelineId.equals(currentPipelineIdForFileName(fileName));
+          if (routingCurrent && version >= currentVersion) {
             counters[1] += count;
           } else {
             counters[2] += count;
@@ -337,6 +350,7 @@ public class PipelineReindexService {
 
   private List<UUID> selectStaleDocuments(
       UUID organizationId, String pipelineId, int belowVersion, int batchSize, int offset) {
+    MisroutedPredicate misrouted = misroutedPredicateFor(pipelineId);
     String sql =
         "SELECT DISTINCT (v.metadata->>'document_id')::uuid AS document_id "
             + "FROM "
@@ -345,12 +359,22 @@ public class PipelineReindexService {
             + "LEFT JOIN documents d ON d.id = (v.metadata->>'document_id')::uuid "
             + "WHERE v.metadata->>'document_id' IS NOT NULL "
             + "  AND v.metadata->>'organization_id' = ? "
-            + "  AND COALESCE(v.metadata->>'"
+            + "  AND ("
+            + "       (COALESCE(v.metadata->>'"
             + ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY
             + "', ?) = ? "
-            + "  AND COALESCE((v.metadata->>'"
+            + "        AND COALESCE((v.metadata->>'"
             + ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY
-            + "')::int, ?) < ? "
+            + "')::int, ?) < ?)"
+            // The routing gap (#1105): a document whose format is claimed by pipelineId today, but
+            // whose chunks still name a different pipeline - stale regardless of that other
+            // pipeline's own version, since no request naming it would ever select this document.
+            + "       OR ("
+            + misrouted.sql()
+            + "            AND COALESCE(v.metadata->>'"
+            + ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY
+            + "', ?) <> ?)"
+            + "      ) "
             // A remote document already marked for its next run (both change markers cleared, see
             // DocumentRepository#markForReindexOnNextRun) has had everything done to it that this
             // run can do; keeping it selected would make every further batch report the same
@@ -362,20 +386,105 @@ public class PipelineReindexService {
             // found unadvanceable, instead of reshuffling them back into view.
             + "ORDER BY 1 "
             + "OFFSET ? LIMIT ?";
+    List<Object> params = new ArrayList<>();
+    params.add(organizationId.toString());
+    params.add(ChunkPipelineMetadata.LEGACY_PIPELINE_ID);
+    params.add(pipelineId);
+    params.add(ChunkPipelineMetadata.LEGACY_PIPELINE_VERSION);
+    params.add(belowVersion);
+    params.addAll(misrouted.params());
+    params.add(ChunkPipelineMetadata.LEGACY_PIPELINE_ID);
+    params.add(pipelineId);
+    params.add(offset);
+    params.add(batchSize);
+
     List<UUID> ids = new ArrayList<>();
     jdbcTemplate.query(
         sql,
         rs -> {
           ids.add((UUID) rs.getObject("document_id"));
         },
-        organizationId.toString(),
-        ChunkPipelineMetadata.LEGACY_PIPELINE_ID,
-        pipelineId,
-        ChunkPipelineMetadata.LEGACY_PIPELINE_VERSION,
-        belowVersion,
-        offset,
-        batchSize);
+        params.toArray());
     return ids;
+  }
+
+  /** A SQL fragment over {@code d.file_name} plus the positional parameters it needs. */
+  private record MisroutedPredicate(String sql, List<Object> params) {}
+
+  /**
+   * Whether {@code d.file_name} currently routes to {@code pipelineId}, purely by extension - the
+   * same claim {@link #currentPipelineIdForFileName} resolves in Java for {@link
+   * #progressForOrganization}, expressed in SQL so {@link #selectStaleDocuments} can keep filtering
+   * (and paginating) in the database instead of scanning every document of the organization.
+   */
+  private MisroutedPredicate misroutedPredicateFor(String pipelineId) {
+    DocumentPipeline pipeline =
+        pipelineRegistry.pipelines().stream()
+            .filter(candidate -> candidate.id().equals(pipelineId))
+            .findFirst()
+            .orElse(null);
+    if (pipeline == null) {
+      return new MisroutedPredicate("FALSE", List.of());
+    }
+    if (pipeline == pipelineRegistry.fallbackPipeline()) {
+      Set<String> claimedElsewhere =
+          pipelineRegistry.pipelines().stream()
+              .filter(candidate -> candidate != pipelineRegistry.fallbackPipeline())
+              .flatMap(candidate -> candidate.handledFormats().stream())
+              .collect(Collectors.toSet());
+      if (claimedElsewhere.isEmpty()) {
+        return new MisroutedPredicate("d.file_name IS NOT NULL", List.of());
+      }
+      String sql =
+          claimedElsewhere.stream()
+              .map(extension -> "LOWER(d.file_name) NOT LIKE ?")
+              .collect(Collectors.joining(" AND ", "(", ")"));
+      List<Object> params =
+          claimedElsewhere.stream()
+              .map(extension -> "%" + extension.toLowerCase(Locale.ROOT))
+              .map(Object.class::cast)
+              .toList();
+      return new MisroutedPredicate(sql, params);
+    }
+    Set<String> extensions = pipeline.handledFormats();
+    if (extensions.isEmpty()) {
+      return new MisroutedPredicate("FALSE", List.of());
+    }
+    String sql =
+        extensions.stream()
+            .map(extension -> "LOWER(d.file_name) LIKE ?")
+            .collect(Collectors.joining(" OR ", "(", ")"));
+    List<Object> params =
+        extensions.stream()
+            .map(extension -> "%" + extension.toLowerCase(Locale.ROOT))
+            .map(Object.class::cast)
+            .toList();
+    return new MisroutedPredicate(sql, params);
+  }
+
+  /**
+   * The id of the pipeline that would claim {@code fileName} today, purely by its extension - the
+   * java-side counterpart {@link #progressForOrganization} needs for the same routing-gap check
+   * {@link #misroutedPredicateFor} expresses in SQL for {@link #selectStaleDocuments}. Deliberately
+   * not a re-detection from the file's own content (unlike {@link DocumentPipelineRegistry}'s own
+   * routing): the document may no longer be locally readable at all, and the extensions {@link
+   * DocumentPipeline#handledFormats()} claims are unambiguous for every currently registered
+   * pipeline, so the file name alone is enough to tell whether a chunk's own {@code pipeline_id} is
+   * still the one responsible for it.
+   */
+  private String currentPipelineIdForFileName(String fileName) {
+    String lowerCased = fileName.toLowerCase(Locale.ROOT);
+    for (DocumentPipeline pipeline : pipelineRegistry.pipelines()) {
+      if (pipeline == pipelineRegistry.fallbackPipeline()) {
+        continue;
+      }
+      for (String extension : pipeline.handledFormats()) {
+        if (lowerCased.endsWith(extension)) {
+          return pipeline.id();
+        }
+      }
+    }
+    return pipelineRegistry.fallbackPipeline().id();
   }
 
   private Map<String, Short> currentVersionsById() {

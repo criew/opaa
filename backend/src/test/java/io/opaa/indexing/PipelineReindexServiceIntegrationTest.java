@@ -7,6 +7,8 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
+import io.opaa.indexing.pipeline.DocumentPipeline;
+import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.PipelineReindexResult;
 import io.opaa.indexing.pipeline.PipelineReindexService;
 import io.opaa.indexing.pipeline.PipelineVersionProgress;
@@ -26,6 +28,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -53,6 +61,7 @@ class PipelineReindexServiceIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UploadProperties uploadProperties;
+  @Autowired private DocumentPipelineRegistry pipelineRegistry;
 
   private UUID userId;
   private KnowledgeLibrary library;
@@ -137,6 +146,73 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(progress.currentVersionChunks()).isZero();
     assertThat(progress.staleChunks()).isZero();
     assertThat(progress.isComplete()).isTrue();
+  }
+
+  @Test
+  void aDocumentMisroutedToTheFallbackPipelineIsSelectableAndReportedAsStale() throws IOException {
+    // Simulates the routing gap (#1105): the PDF pipeline was registered after this document was
+    // indexed, so its chunks still carry tika-fallback at the fallback's own current version - a
+    // state no version-only comparison against either pipeline can ever call stale.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document = persistedFilesystemPdfDocument("satzung.pdf");
+    seedChunk(
+        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+
+    PipelineVersionProgress progress =
+        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    assertThat(progress.staleChunks()).isEqualTo(1);
+    assertThat(progress.currentVersionChunks()).isZero();
+    assertThat(progress.isComplete()).isFalse();
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(pdfPipeline.id());
+    assertThat(
+            reindexService
+                .progressForOrganization(Organization.DEFAULT_ID)
+                .getFirst()
+                .staleChunks())
+        .isZero();
+  }
+
+  private DocumentPipeline pdfPipeline() {
+    return pipelineRegistry.pipelines().stream()
+        .filter(candidate -> candidate.handledFormats().contains(".pdf"))
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("No PDF pipeline registered"));
+  }
+
+  private Document persistedFilesystemPdfDocument(String fileName) throws IOException {
+    Path file = classTempDir.resolve(UUID.randomUUID() + "-" + fileName);
+    try (PDDocument pdf = new PDDocument()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      pdf.addPage(page);
+      try (PDPageContentStream stream = new PDPageContentStream(pdf, page)) {
+        stream.beginText();
+        stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+        stream.newLineAtOffset(50, 700);
+        stream.showText("Die Verwaltungsgebühr für einen Personalausweis beträgt 37,00 EUR.");
+        stream.endText();
+      }
+      pdf.save(file.toFile());
+    }
+    Document document =
+        new Document(
+            fileName, file.toAbsolutePath().toString(), "application/pdf", Files.size(file));
+    document.setLibraryId(library.getId());
+    document.setOrganizationId(Organization.DEFAULT_ID);
+    document.setChecksum("checksum-" + fileName);
+    return documentRepository.save(document);
+  }
+
+  private List<String> pipelineIdsOf(UUID documentId) {
+    return jdbcTemplate.queryForList(
+        "SELECT metadata->>'pipeline_id' FROM vector_store WHERE metadata->>'document_id' = ?",
+        String.class,
+        documentId.toString());
   }
 
   @Test
