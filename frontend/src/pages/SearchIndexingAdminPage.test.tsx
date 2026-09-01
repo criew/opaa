@@ -102,6 +102,10 @@ describe('SearchIndexingAdminPage', () => {
     expect(
       within(row as HTMLElement).getByText('Vektorindex und Dokumentzählung weichen ab'),
     ).toBeInTheDocument()
+
+    // A single missing chunk reads as a sentence, not as "1 Abschnitte fehlen".
+    const singularRow = within(table).getByText('Protokolle').closest('tr')
+    expect(within(singularRow as HTMLElement).getByText('1 Abschnitt fehlt')).toBeInTheDocument()
   })
 
   it('offers permission profiles and the own context, never a person', async () => {

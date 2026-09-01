@@ -87,10 +87,15 @@ public class SearchStatusService {
 
   /**
    * Daemon threads: a probe hanging on an unresponsive endpoint must not keep the JVM from shutting
-   * down. A cached pool rather than a single thread, so one hung probe cannot block the next one.
+   * down. Bounded to two threads, because {@link Future#cancel(boolean)} cannot interrupt a
+   * blocking socket read in the Spring AI client - against a permanently unresponsive endpoint an
+   * unbounded pool would leak one thread and one connection per probe. A caller whose probe finds
+   * both threads occupied runs into {@link #EMBEDDING_PROBE_TIMEOUT} and reports the endpoint as
+   * unreachable, which is what an endpoint that hangs on every call in fact is.
    */
   private final ExecutorService probeExecutor =
-      Executors.newCachedThreadPool(
+      Executors.newFixedThreadPool(
+          2,
           runnable -> {
             Thread thread = new Thread(runnable, "search-status-probe");
             thread.setDaemon(true);
@@ -102,6 +107,13 @@ public class SearchStatusService {
 
   /** The two network-probed roles together with the instant their shared result goes stale. */
   private record ProbedRoles(ModelRoleStatus chat, ModelRoleStatus embedding, Instant expiresAt) {}
+
+  /**
+   * A probed role and whether the result says anything about the endpoint. A result caused by the
+   * calling thread alone is answered to that caller but never shared, so a single interrupted
+   * request cannot show every administrator a fault for a whole {@link #PROBE_CACHE_TTL}.
+   */
+  private record ProbeOutcome(ModelRoleStatus status, boolean cacheable) {}
 
   public SearchStatusService(
       LlmModelService llmModelService,
@@ -163,9 +175,13 @@ public class SearchStatusService {
       if (current != null && clock.instant().isBefore(current.expiresAt())) {
         return current;
       }
+      ModelRoleStatus chat = chatRole();
+      ProbeOutcome embedding = embeddingRole();
       ProbedRoles refreshed =
-          new ProbedRoles(chatRole(), embeddingRole(), clock.instant().plus(PROBE_CACHE_TTL));
-      probedRoles = refreshed;
+          new ProbedRoles(chat, embedding.status(), clock.instant().plus(PROBE_CACHE_TTL));
+      if (embedding.cacheable()) {
+        probedRoles = refreshed;
+      }
       return refreshed;
     }
   }
@@ -216,26 +232,32 @@ public class SearchStatusService {
    * EmbeddingsHealthIndicator} makes, and the only way to tell a configured endpoint from a
    * reachable one.
    */
-  private ModelRoleStatus embeddingRole() {
+  private ProbeOutcome embeddingRole() {
     EmbeddingInfo info = embeddingInfoService.getEmbeddingInfo();
-    Future<float[]> probe =
-        probeExecutor.submit(() -> embeddingModel.embed(REACHABILITY_PROBE_TEXT));
+    // The submit belongs inside the try: a rejected probe is one unreachable role, not a failed
+    // status endpoint.
+    Future<float[]> probe = null;
     try {
+      probe = probeExecutor.submit(() -> embeddingModel.embed(REACHABILITY_PROBE_TEXT));
       probe.get(EMBEDDING_PROBE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-      return new ModelRoleStatus(
-          ModelRole.EMBEDDING,
-          ModelRoleCondition.ACTIVE,
-          null,
-          info.model(),
-          "Das Einbettungsmodell hat auf die Erreichbarkeitsprüfung geantwortet.");
+      return new ProbeOutcome(
+          new ModelRoleStatus(
+              ModelRole.EMBEDDING,
+              ModelRoleCondition.ACTIVE,
+              null,
+              info.model(),
+              "Das Einbettungsmodell hat auf die Erreichbarkeitsprüfung geantwortet."),
+          true);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       probe.cancel(true);
-      return unreachableEmbedding(info);
+      return new ProbeOutcome(unreachableEmbedding(info), false);
     } catch (ExecutionException | TimeoutException | RuntimeException e) {
-      probe.cancel(true);
+      if (probe != null) {
+        probe.cancel(true);
+      }
       log.warn("Embedding role reachability probe failed: {}", e.toString());
-      return unreachableEmbedding(info);
+      return new ProbeOutcome(unreachableEmbedding(info), true);
     }
   }
 
@@ -340,10 +362,10 @@ public class SearchStatusService {
     Map<UUID, LibraryDocumentStats> statsByLibrary =
         documentStatsReader.statsForOrganization(organizationId);
     List<KnowledgeLibrary> libraries = libraryRepository.findByOrganizationId(organizationId);
-    // Only this organization's libraries are ever displayed, so only those are counted - the
-    // unfiltered variant scanned the whole vector store across organizations for nothing (#1053
-    // review, finding 5). The remaining scan cost is the missing expression index, see the
-    // Javadoc of FullTextBackfillProgressService#progressForLibraries.
+    // Only this organization's libraries are counted; an unfiltered progress read would scan the
+    // whole vector store across organizations for rows this page never shows. The remaining scan
+    // cost is the missing expression index (#1119), see the Javadoc of
+    // FullTextBackfillProgressService#progressForLibraries.
     Set<UUID> libraryIds = new LinkedHashSet<>();
     for (KnowledgeLibrary library : libraries) {
       libraryIds.add(library.getId());
