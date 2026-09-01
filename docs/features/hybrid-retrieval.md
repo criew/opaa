@@ -903,7 +903,11 @@ feststellen.
 >   geschlossen, sich über die Administratorbefugnis des Grant-Endpunkts erst selbst `OWNER` zu
 >   geben und dann als „Zuständige Stelle“ zu entsperren — auch dann, wenn dazu nur ein bereits
 >   vorhandener Fremd-Grant angehoben würde, denn `granted_by_user_id` wird beim Rollenwechsel auf
->   die ändernde Person fortgeschrieben.
+>   die ändernde Person fortgeschrieben. Fortgeschrieben wird nur bei einer echten Rollenänderung —
+>   eine bloße Fristverlängerung macht niemanden zum eigenen Vergeber. Für Zeilen, deren Rolle
+>   bereits vor dieser Änderung angehoben wurde, zieht Changeset `008` den Vergeber einmalig aus der
+>   Rechtehistorie (`asset_grant_history`) nach; ohne diesen Nachzug bliebe der Weg für den
+>   Altbestand offen.
 >
 >   **Was die Administration weiterhin allein erreicht**, ohne dass eine zweite Person mitwirkt:
 >   Gehört die Bibliothek einer Gruppe, die keine `ORG_UNIT` ist, kann ein `SYSTEM_ADMIN` sich über

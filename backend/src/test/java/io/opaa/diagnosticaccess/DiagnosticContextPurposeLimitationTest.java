@@ -35,7 +35,9 @@ import org.yaml.snakeyaml.Yaml;
  *       paging number or {@code reason}. A package-private or protected method is not covered - the
  *       filter is on {@code public} - so a read path built as one would slip through.
  *   <li>The published schemas of the two protocol responses and their pages carry no
- *       aggregate-looking field and neither of the two stable per-person grouping keys.
+ *       aggregate-looking field and no {@code permissionSnapshot}. {@code targetRef} is not checked
+ *       here - it is a declared property of the schema, and only the mapper suppresses it for a
+ *       {@code USER} entry (covered by {@code DiagnosticAccessResponseMapperTest}).
  *   <li>The two protocol operations declare exactly the request parameters listed here.
  * </ul>
  *

@@ -5506,7 +5506,9 @@ components:
         What this does not claim: that correlating individual rows is impossible. recordedAt,
         actorRef and hitRefs remain, and two entries produced by the same test question against the
         same rights carry the same hitRefs. The response withholds the keys that make grouping by
-        person a one-step operation; it does not turn the protocol into unlinkable rows.
+        person a one-step operation as long as the test questions vary - with a single, standardised
+        test question, hitRefs itself groups in one step. It does not turn the protocol into
+        unlinkable rows.
       required:
         [eventId, recordedAt, actorRef, targetKind, testQuestion, hitCount, hitRefs]
       properties:

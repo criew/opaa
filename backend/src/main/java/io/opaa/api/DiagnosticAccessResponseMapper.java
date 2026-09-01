@@ -97,7 +97,9 @@ final class DiagnosticAccessResponseMapper {
    *
    * <p>This is not a claim that individual rows cannot be correlated: {@code recordedAt}, {@code
    * actorRef} and {@code hitRefs} remain, and the same test question against the same rights yields
-   * the same {@code hitRefs} twice.
+   * the same {@code hitRefs} twice. Withholding the two keys costs a grouping client one step only
+   * as long as the test questions vary - against a single, standardised test question {@code
+   * hitRefs} groups in one step by itself.
    */
   static DiagnosticContextEventResponse toResponse(DiagnosticContextLogEntry entry) {
     return new DiagnosticContextEventResponse(

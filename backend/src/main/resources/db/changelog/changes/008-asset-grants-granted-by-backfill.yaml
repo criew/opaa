@@ -1,0 +1,85 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-asset-grants-granted-by-backfill
+      author: opaa
+      comment: >-
+        asset_grants.granted_by_user_id beantwortet seit #1052 "wer hat die aktuell eingetragene
+        Rolle verschafft", nicht mehr "wer hat die Zeile angelegt" - der Anwendungscode schreibt den
+        Aendernden bei einer echten Rollenaenderung fort. Ohne diesen Backfill gilt das nur fuer
+        Aenderungen nach dem Deploy: eine Bestandszeile, deren Rolle vorher von einer anderen Person
+        angehoben wurde, nennt weiter den urspruenglichen Vergeber, und
+        LibraryAccessService#holdsIndependentOwnerRole haelt eine so selbst verschaffte
+        OWNER-Rolle weiterhin fuer fremd vergeben - genau der Weg, ueber den sich eine
+        Administration die Diagnosesperre einer fremden Bibliothek oeffnen kann.
+
+        Rekonstruiert wird aus asset_grant_history (#238): jede Aenderung liegt dort als eigenes
+        Intervall mit cause und actor_user_id. Gesucht ist je Berechtigung das juengste
+        ROLE_CHANGED-Intervall, dessen Rolle sich von der des Vorgaengerintervalls unterscheidet -
+        ein reiner Fristwechsel schreibt zwar ebenfalls ein ROLE_CHANGED-Intervall, aendert die
+        Rolle aber nicht und verschiebt den Vergeber deshalb auch im Anwendungscode nicht. Betrachtet
+        wird nur die aktuelle Episode der Berechtigung, also der Abschnitt ab dem letzten
+        GRANTED/BACKFILL-Intervall; eine Historie aus der Zeit vor einem zwischenzeitlichen Widerruf
+        gehoert zu einer anderen Zeile. Ohne passendes Intervall - keine Historie, nie geaendert,
+        oder eine Historie, deren juengste Rolle nicht zur heutigen Rolle der Zeile passt - bleibt
+        die Zeile unveraendert; der Backfill raet nicht.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              WITH ordered AS (
+                  SELECT h.library_id,
+                         h.subject_type,
+                         h.subject_user_id,
+                         h.subject_group_id,
+                         h.role,
+                         h.cause,
+                         h.actor_user_id,
+                         h.valid_from,
+                         h.created_at,
+                         lag(h.role) OVER (
+                             PARTITION BY h.library_id, h.subject_type, h.subject_user_id, h.subject_group_id
+                             ORDER BY h.valid_from, h.created_at
+                         ) AS previous_role,
+                         max(CASE WHEN h.cause IN ('GRANTED', 'BACKFILL') THEN h.valid_from END) OVER (
+                             PARTITION BY h.library_id, h.subject_type, h.subject_user_id, h.subject_group_id
+                             ORDER BY h.valid_from, h.created_at
+                             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                         ) AS episode_start
+                  FROM public.asset_grant_history h
+                  WHERE h.cause IN ('GRANTED', 'ROLE_CHANGED', 'BACKFILL')
+              ),
+              in_current_episode AS (
+                  SELECT o.*,
+                         max(o.episode_start) OVER (
+                             PARTITION BY o.library_id, o.subject_type, o.subject_user_id, o.subject_group_id
+                         ) AS current_episode_start
+                  FROM ordered o
+              ),
+              last_role_change AS (
+                  SELECT DISTINCT ON (c.library_id, c.subject_type, c.subject_user_id, c.subject_group_id)
+                         c.library_id,
+                         c.subject_type,
+                         c.subject_user_id,
+                         c.subject_group_id,
+                         c.role,
+                         c.actor_user_id
+                  FROM in_current_episode c
+                  WHERE c.cause = 'ROLE_CHANGED'
+                    AND c.actor_user_id IS NOT NULL
+                    AND c.episode_start IS NOT NULL
+                    AND c.episode_start = c.current_episode_start
+                    AND c.role IS DISTINCT FROM c.previous_role
+                  ORDER BY c.library_id, c.subject_type, c.subject_user_id, c.subject_group_id,
+                           c.valid_from DESC, c.created_at DESC
+              )
+              UPDATE public.asset_grants g
+              SET granted_by_user_id = r.actor_user_id
+              FROM last_role_change r
+              WHERE g.library_id = r.library_id
+                AND g.subject_type = r.subject_type
+                AND g.subject_user_id IS NOT DISTINCT FROM r.subject_user_id
+                AND g.subject_group_id IS NOT DISTINCT FROM r.subject_group_id
+                AND g.role = r.role
+                AND g.granted_by_user_id IS DISTINCT FROM r.actor_user_id;
+      # Kein Rollback: der ueberschriebene Vorzustand ist nach dem Lauf nicht mehr rekonstruierbar -
+      # asset_grants haelt nur den aktuellen Wert. Die Historie bleibt unangetastet.

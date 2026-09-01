@@ -143,11 +143,17 @@ public class AssetGrant {
    * AssetRole#OWNER} from one somebody else issued, and without carrying the changer forward an
    * administrator could raise a pre-existing foreign grant to {@code OWNER} and still appear as
    * "not self-granted".
+   *
+   * <p>Only an actual role change rewrites {@code granted_by_user_id}: an unchanged role - a pure
+   * expiry extension or an identical upsert - leaves the original conferrer in place, so extending
+   * one's own grant does not turn its holder into its own conferrer.
    */
   public void updateRole(AssetRole role, Instant expiresAt, UUID grantedByUserId) {
+    if (role != this.role) {
+      this.grantedByUserId = grantedByUserId;
+    }
     this.role = role;
     this.expiresAt = expiresAt;
-    this.grantedByUserId = grantedByUserId;
   }
 
   public boolean isExpired(Instant now) {
