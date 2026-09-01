@@ -97,6 +97,11 @@ describe('SearchIndexingAdminPage', () => {
     // still missing - the two numbers the page exists to keep permanently visible.
     expect(within(row as HTMLElement).getByText('2')).toBeInTheDocument()
     expect(within(row as HTMLElement).getByText('56 Abschnitte fehlen')).toBeInTheDocument()
+    // Both chunk counts, because a gap between them is itself the finding.
+    expect(within(row as HTMLElement).getByText(/236 \/ 240/)).toBeInTheDocument()
+    expect(
+      within(row as HTMLElement).getByText('Vektorindex und Dokumentzählung weichen ab'),
+    ).toBeInTheDocument()
   })
 
   it('offers permission profiles and the own context, never a person', async () => {
@@ -112,7 +117,7 @@ describe('SearchIndexingAdminPage', () => {
     expect(options.map((option) => option.textContent)).toEqual([
       'Eigener Rechtekontext',
       'Rechteprofil „Sachbearbeitung Buergerbuero“ (2 Bibliotheken)',
-      'Rechteprofil „Projektbeteiligte Phoenix“ (1 Bibliotheken)',
+      'Rechteprofil „Projektbeteiligte Phoenix“ (1 Bibliothek)',
     ])
     expect(screen.getByText(/nicht zur Wahl/)).toBeInTheDocument()
   })

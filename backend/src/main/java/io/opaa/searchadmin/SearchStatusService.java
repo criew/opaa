@@ -15,13 +15,25 @@ import io.opaa.llm.RerankRoleStatusProvider;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.RetrievalPipelineProperties;
 import io.opaa.query.RetrievalStageName;
+import jakarta.annotation.PreDestroy;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -38,6 +50,14 @@ import org.springframework.stereotype.Service;
  * else</b> - the same query the completion gate reads before it lets the lexical path search a
  * library. A second count with its own logic could show "vollständig" while the gate still refuses
  * the library, which is precisely the confusion this page exists to end.
+ *
+ * <p><b>The two reachability probes are bounded in time and shared across callers.</b> Without that
+ * bound every page load costs one chat and one embedding round trip per administrator, per
+ * navigation and per StrictMode double mount, and an unresponsive embedding endpoint holds the
+ * request thread for as long as it likes - the Spring AI client this service borrows carries no
+ * timeout of our own making. A probe pair is therefore reused process-wide for {@link
+ * #PROBE_CACHE_TTL}, and the embedding probe is bounded by {@link #EMBEDDING_PROBE_TIMEOUT} so both
+ * roles report an unresponsive endpoint the same way.
  */
 @Service
 public class SearchStatusService {
@@ -46,6 +66,12 @@ public class SearchStatusService {
 
   /** Sent to the embedding endpoint purely to see whether it answers. */
   private static final String REACHABILITY_PROBE_TEXT = "Erreichbarkeitspruefung";
+
+  /** How long one probe pair answers every caller. Short enough to still be a live status. */
+  static final Duration PROBE_CACHE_TTL = Duration.ofSeconds(45);
+
+  /** The same bound {@link LlmModelConnectionTester} puts on the chat probe. */
+  static final Duration EMBEDDING_PROBE_TIMEOUT = Duration.ofSeconds(10);
 
   private final LlmModelService llmModelService;
   private final LlmModelConnectionTester connectionTester;
@@ -57,6 +83,25 @@ public class SearchStatusService {
   private final FullTextBackfillProgressService fullTextBackfillProgressService;
   private final QueryProperties queryProperties;
   private final RetrievalPipelineProperties pipelineProperties;
+  private final Clock clock;
+
+  /**
+   * Daemon threads: a probe hanging on an unresponsive endpoint must not keep the JVM from shutting
+   * down. A cached pool rather than a single thread, so one hung probe cannot block the next one.
+   */
+  private final ExecutorService probeExecutor =
+      Executors.newCachedThreadPool(
+          runnable -> {
+            Thread thread = new Thread(runnable, "search-status-probe");
+            thread.setDaemon(true);
+            return thread;
+          });
+
+  private final Object probeLock = new Object();
+  private volatile ProbedRoles probedRoles;
+
+  /** The two network-probed roles together with the instant their shared result goes stale. */
+  private record ProbedRoles(ModelRoleStatus chat, ModelRoleStatus embedding, Instant expiresAt) {}
 
   public SearchStatusService(
       LlmModelService llmModelService,
@@ -68,7 +113,8 @@ public class SearchStatusService {
       LibraryDocumentStatsReader documentStatsReader,
       FullTextBackfillProgressService fullTextBackfillProgressService,
       QueryProperties queryProperties,
-      RetrievalPipelineProperties pipelineProperties) {
+      RetrievalPipelineProperties pipelineProperties,
+      Clock clock) {
     this.llmModelService = llmModelService;
     this.connectionTester = connectionTester;
     this.embeddingInfoService = embeddingInfoService;
@@ -79,6 +125,12 @@ public class SearchStatusService {
     this.fullTextBackfillProgressService = fullTextBackfillProgressService;
     this.queryProperties = queryProperties;
     this.pipelineProperties = pipelineProperties;
+    this.clock = clock;
+  }
+
+  @PreDestroy
+  void stopProbing() {
+    probeExecutor.shutdownNow();
   }
 
   /** The whole status display for {@code organizationId}, libraries by name. */
@@ -87,8 +139,35 @@ public class SearchStatusService {
     return new SearchStatus(modelRoles(), searchPaths(libraries), libraries);
   }
 
+  /**
+   * Chat and embedding come from the cached probe pair; the rerank role is read fresh because its
+   * provider contract forbids a network round trip to begin with.
+   */
   private List<ModelRoleStatus> modelRoles() {
-    return List.of(chatRole(), embeddingRole(), rerankRole());
+    ProbedRoles probed = currentProbes();
+    return List.of(probed.chat(), probed.embedding(), rerankRole());
+  }
+
+  /**
+   * One probe pair per {@link #PROBE_CACHE_TTL}, however many administrators look at the page at
+   * once: the refresh runs under a lock, so concurrent callers wait for the running probe instead
+   * of starting their own.
+   */
+  private ProbedRoles currentProbes() {
+    ProbedRoles cached = probedRoles;
+    if (cached != null && clock.instant().isBefore(cached.expiresAt())) {
+      return cached;
+    }
+    synchronized (probeLock) {
+      ProbedRoles current = probedRoles;
+      if (current != null && clock.instant().isBefore(current.expiresAt())) {
+        return current;
+      }
+      ProbedRoles refreshed =
+          new ProbedRoles(chatRole(), embeddingRole(), clock.instant().plus(PROBE_CACHE_TTL));
+      probedRoles = refreshed;
+      return refreshed;
+    }
   }
 
   /**
@@ -139,24 +218,35 @@ public class SearchStatusService {
    */
   private ModelRoleStatus embeddingRole() {
     EmbeddingInfo info = embeddingInfoService.getEmbeddingInfo();
+    Future<float[]> probe =
+        probeExecutor.submit(() -> embeddingModel.embed(REACHABILITY_PROBE_TEXT));
     try {
-      embeddingModel.embed(REACHABILITY_PROBE_TEXT);
+      probe.get(EMBEDDING_PROBE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
       return new ModelRoleStatus(
           ModelRole.EMBEDDING,
           ModelRoleCondition.ACTIVE,
           null,
           info.model(),
           "Das Einbettungsmodell hat auf die Erreichbarkeitsprüfung geantwortet.");
-    } catch (RuntimeException e) {
-      log.warn("Embedding role reachability probe failed: {}", e.getMessage());
-      return new ModelRoleStatus(
-          ModelRole.EMBEDDING,
-          ModelRoleCondition.UNREACHABLE,
-          null,
-          info.model(),
-          "Das Einbettungsmodell hat auf die Erreichbarkeitsprüfung nicht geantwortet. Ohne"
-              + " Einbettungen findet die Vektorsuche nichts.");
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      probe.cancel(true);
+      return unreachableEmbedding(info);
+    } catch (ExecutionException | TimeoutException | RuntimeException e) {
+      probe.cancel(true);
+      log.warn("Embedding role reachability probe failed: {}", e.toString());
+      return unreachableEmbedding(info);
     }
+  }
+
+  private static ModelRoleStatus unreachableEmbedding(EmbeddingInfo info) {
+    return new ModelRoleStatus(
+        ModelRole.EMBEDDING,
+        ModelRoleCondition.UNREACHABLE,
+        null,
+        info.model(),
+        "Das Einbettungsmodell hat auf die Erreichbarkeitsprüfung nicht geantwortet. Ohne"
+            + " Einbettungen findet die Vektorsuche nichts.");
   }
 
   /**
@@ -249,14 +339,23 @@ public class SearchStatusService {
   private List<LibrarySearchStatus> libraryStatus(UUID organizationId) {
     Map<UUID, LibraryDocumentStats> statsByLibrary =
         documentStatsReader.statsForOrganization(organizationId);
+    List<KnowledgeLibrary> libraries = libraryRepository.findByOrganizationId(organizationId);
+    // Only this organization's libraries are ever displayed, so only those are counted - the
+    // unfiltered variant scanned the whole vector store across organizations for nothing (#1053
+    // review, finding 5). The remaining scan cost is the missing expression index, see the
+    // Javadoc of FullTextBackfillProgressService#progressForLibraries.
+    Set<UUID> libraryIds = new LinkedHashSet<>();
+    for (KnowledgeLibrary library : libraries) {
+      libraryIds.add(library.getId());
+    }
     Map<UUID, FullTextBackfillProgress> progressByLibrary = new HashMap<>();
     for (FullTextBackfillProgress progress :
-        fullTextBackfillProgressService.progressForAllLibraries()) {
+        fullTextBackfillProgressService.progressForLibraries(libraryIds)) {
       progressByLibrary.put(progress.libraryId(), progress);
     }
 
     List<LibrarySearchStatus> result = new ArrayList<>();
-    for (KnowledgeLibrary library : libraryRepository.findByOrganizationId(organizationId)) {
+    for (KnowledgeLibrary library : libraries) {
       LibraryDocumentStats stats =
           statsByLibrary.getOrDefault(library.getId(), LibraryDocumentStats.empty(library.getId()));
       FullTextBackfillProgress progress =

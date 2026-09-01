@@ -35,6 +35,7 @@ import io.opaa.searchadmin.SearchPathStatus;
 import io.opaa.searchadmin.SearchStatus;
 import io.opaa.searchadmin.TrackedDocumentVerdict;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -311,6 +312,45 @@ class SearchAdminResponseMapperTest {
     assertThat(tracked.getOutcome()).isEqualTo(TrackedDocumentOutcome.NOT_RETRIEVED);
     assertThat(tracked.getDisplacedAtStage()).isNull();
     assertThat(tracked.getDisplacedReason()).isNull();
+  }
+
+  /**
+   * The stage list an operator actually sees must be the stage list the run produced - one entry
+   * per stage, in order, nothing dropped on the way through the mapper. The service-level test of
+   * the same equality cannot catch a reduction that happens here.
+   */
+  @Test
+  void everyStageOfTheRunSurvivesIntoTheResponse() {
+    List<StageExplanation> everyStage =
+        Arrays.stream(RetrievalStageName.values())
+            .map(
+                stage ->
+                    new StageExplanation(stage, StageStatus.EXECUTED, 1, 1, List.of(), List.of()))
+            .toList();
+    SearchDiagnosis fullRun = withStages(everyStage);
+
+    SearchDiagnosisResponse response = SearchAdminResponseMapper.toDiagnosisResponse(fullRun);
+
+    assertThat(response.getStages())
+        .extracting(stage -> stage.getStage().name())
+        .containsExactlyElementsOf(
+            fullRun.explanation().stages().stream().map(stage -> stage.stage().name()).toList());
+    assertThat(response.getStages()).hasSameSizeAs(RetrievalStageName.values());
+  }
+
+  private static SearchDiagnosis withStages(List<StageExplanation> stages) {
+    SearchDiagnosis base = diagnosis(null);
+    return new SearchDiagnosis(
+        base.question(),
+        base.contextType(),
+        base.permissionProfileName(),
+        base.executedAt(),
+        base.searchScope(),
+        base.searchQueries(),
+        new RetrievalExplanation(stages),
+        base.selection(),
+        base.documentsByKey(),
+        base.trackedDocument());
   }
 
   private static SearchDiagnosis diagnosis(TrackedDocumentVerdict tracked) {

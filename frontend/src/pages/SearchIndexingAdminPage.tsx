@@ -42,6 +42,11 @@ import { useSearchAdminStore } from '../stores/searchAdminStore'
 
 const OWN_CONTEXT_VALUE = 'SELF'
 
+/** German singular/plural, so the page never says "1 Bibliotheken". */
+function plural(count: number, one: string, many: string) {
+  return `${count} ${count === 1 ? one : many}`
+}
+
 const ROLE_LABELS: Record<SearchModelRole, string> = {
   CHAT: 'Chat',
   EMBEDDING: 'Einbettung',
@@ -119,7 +124,7 @@ function trackedDocumentMessage(tracked: TrackedDocumentResponse): {
     case 'IN_FINAL_SELECTION':
       return {
         severity: 'success',
-        text: `„${name}“ steht mit ${tracked.selectedChunkCount} Abschnitt(en) in der Endauswahl.`,
+        text: `„${name}“ steht mit ${plural(tracked.selectedChunkCount, 'Abschnitt', 'Abschnitten')} in der Endauswahl.`,
       }
     case 'OUTSIDE_SEARCH_SCOPE':
       return {
@@ -142,7 +147,7 @@ function trackedDocumentMessage(tracked: TrackedDocumentResponse): {
       return {
         severity: 'warning',
         text:
-          `„${name}“ wurde gefunden (${tracked.retrievedChunkCount} Abschnitt(e)), aber in der ` +
+          `„${name}“ wurde gefunden (${plural(tracked.retrievedChunkCount, 'Abschnitt', 'Abschnitte')}), aber in der ` +
           `Stufe „${tracked.displacedAtStage ? STAGE_LABELS[tracked.displacedAtStage] : 'unbekannt'}“ ` +
           `verdrängt${tracked.displacedReason ? `: ${REASON_LABELS[tracked.displacedReason]}` : ''}. ` +
           'Das ist ein Problem der Rangfolge, nicht der Indexierung.',
@@ -197,7 +202,7 @@ function LibraryStatusTable({ libraries }: { libraries: LibrarySearchStatusRespo
             <TableCell>Bibliothek</TableCell>
             <TableCell align="right">Dokumente</TableCell>
             <TableCell align="right">Rückstand</TableCell>
-            <TableCell align="right">Abschnitte</TableCell>
+            <TableCell align="right">Abschnitte (im Index / laut Dokumenten)</TableCell>
             <TableCell align="right">Ohne oder mit auffällig wenigen Abschnitten</TableCell>
             <TableCell>Letzter Lauf</TableCell>
             <TableCell>Vektorindex</TableCell>
@@ -212,7 +217,14 @@ function LibraryStatusTable({ libraries }: { libraries: LibrarySearchStatusRespo
                 {library.indexedDocumentCount} / {library.documentCount}
               </TableCell>
               <TableCell align="right">{library.pendingDocumentCount}</TableCell>
-              <TableCell align="right">{library.vectorChunkCount}</TableCell>
+              <TableCell align="right">
+                {`${library.vectorChunkCount} / ${library.chunkCount}`}
+                {library.vectorChunkCount !== library.chunkCount && (
+                  <Typography variant="caption" color="text.secondary" component="div">
+                    Vektorindex und Dokumentzählung weichen ab
+                  </Typography>
+                )}
+              </TableCell>
               <TableCell align="right">{library.lowChunkDocumentCount}</TableCell>
               <TableCell>
                 {library.lastIndexedAt
@@ -234,7 +246,7 @@ function LibraryStatusTable({ libraries }: { libraries: LibrarySearchStatusRespo
                 />
                 {library.fullTextMissingChunks > 0 && (
                   <Typography variant="caption" color="text.secondary" component="div">
-                    {library.fullTextMissingChunks} Abschnitte fehlen
+                    {plural(library.fullTextMissingChunks, 'Abschnitt fehlt', 'Abschnitte fehlen')}
                   </Typography>
                 )}
               </TableCell>
@@ -483,6 +495,9 @@ export default function SearchIndexingAdminPage() {
             size="small"
             fullWidth
           />
+          {/* Every library the chosen context may read is diagnosable; the per-library
+              diagnosis lock of Leitplanke (e) needs the Befugnismodell of #1052 and does not
+              exist yet. */}
           <TextField
             select
             label="Sicht als"
@@ -495,7 +510,7 @@ export default function SearchIndexingAdminPage() {
             <MenuItem value={OWN_CONTEXT_VALUE}>Eigener Rechtekontext</MenuItem>
             {profiles.map((profile) => (
               <MenuItem key={profile.id} value={profile.id}>
-                {`Rechteprofil „${profile.name}“ (${profile.libraryCount} Bibliotheken)`}
+                {`Rechteprofil „${profile.name}“ (${plural(profile.libraryCount, 'Bibliothek', 'Bibliotheken')})`}
               </MenuItem>
             ))}
           </TextField>

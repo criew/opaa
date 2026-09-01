@@ -76,7 +76,7 @@ class SearchDiagnosisIntegrationTest {
         "diagnosis-it-" + adminId + "@example.com",
         DEFAULT_ORGANIZATION_ID);
     insertLibrary(grantedLibraryId, "Satzungen & Gebührenordnungen");
-    insertLibrary(ungrantedLibraryId, "Personalvorgänge");
+    insertLibrary(ungrantedLibraryId, "Bauleitplanung");
     jdbcTemplate.update(
         "INSERT INTO groups (id, organization_id, kind, name, created_at, updated_at, dissolved)"
             + " VALUES (?, ?, 'AD_HOC', 'Sachbearbeitung Bürgerbüro', now(), now(), false)",
@@ -104,7 +104,7 @@ class SearchDiagnosisIntegrationTest {
     documentWithoutChunks = UUID.randomUUID();
     insertDocument(documentWithoutChunks, grantedLibraryId, "scan-ohne-textebene.pdf", 0);
     documentInUngrantedLibrary = UUID.randomUUID();
-    insertDocument(documentInUngrantedLibrary, ungrantedLibraryId, "personalakte.pdf", 3);
+    insertDocument(documentInUngrantedLibrary, ungrantedLibraryId, "bebauungsplan.pdf", 3);
     vectorStore.add(chunks);
   }
 
@@ -172,8 +172,8 @@ class SearchDiagnosisIntegrationTest {
 
     assertThat(diagnosis.trackedDocument().outcome())
         .isEqualTo(TrackedDocumentVerdict.Outcome.OUTSIDE_SEARCH_SCOPE);
-    assertThat(diagnosis.trackedDocument().fileName()).isEqualTo("personalakte.pdf");
-    assertThat(diagnosis.trackedDocument().libraryName()).isEqualTo("Personalvorgänge");
+    assertThat(diagnosis.trackedDocument().fileName()).isEqualTo("bebauungsplan.pdf");
+    assertThat(diagnosis.trackedDocument().libraryName()).isEqualTo("Bauleitplanung");
   }
 
   @Test
