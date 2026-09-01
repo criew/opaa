@@ -10,9 +10,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The HTML pipeline (#1059; ingestion-pipelines.md Teil 3, Punkt 4): boilerplate (navigation,
- * footer, cookie banner) never reaches a chunk, and the cut follows h1-h3 with every chunk carrying
- * its heading path.
+ * The HTML pipeline (#1059; ingestion-pipelines.md Teil 3, Punkt 4): boilerplate outside the chosen
+ * content area never reaches a chunk, the cut follows h1-h3 with every chunk carrying its heading
+ * path (in text and metadata alike), and an oversized section is split further at block boundaries
+ * rather than growing a single chunk without bound.
  */
 class HtmlDocumentPipelineTest {
 
@@ -65,7 +66,7 @@ class HtmlDocumentPipelineTest {
       """;
 
   @Test
-  void boilerplateNeverReachesAChunk() throws IOException {
+  void boilerplateOutsideTheContentAreaNeverReachesAChunk() throws IOException {
     DocumentPipelineResult result = pipeline.run(sourceFor(REALISTIC_PAGE));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
@@ -80,22 +81,33 @@ class HtmlDocumentPipelineTest {
   }
 
   @Test
-  void cutsFollowH1ToH3WithOneChunkPerSection() throws IOException {
+  void cutsFollowH1ToH3WithOneChunkPerSectionAndTheHeadingInTheChunkText() throws IOException {
     DocumentPipelineResult result = pipeline.run(sourceFor(REALISTIC_PAGE));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     // Personalausweis (h1), Voraussetzungen (h2), Fuer Minderjaehrige (h3), Gebuehren (h2).
     assertThat(result.chunks()).hasSize(4);
-    assertThat(result.chunks().get(0).getText()).contains("amtliches Ausweisdokument");
+    // #1059 review, finding 6: the heading path must be part of the chunk's own text, not only
+    // its location metadatum - otherwise it is unreachable for embedding and for the lexical path
+    // (#1097).
+    assertThat(result.chunks().get(0).getText())
+        .startsWith("Personalausweis beantragen")
+        .contains("amtliches Ausweisdokument");
     assertThat(result.chunks().get(0).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
         .isEqualTo("Abschn. Personalausweis beantragen");
-    assertThat(result.chunks().get(1).getText()).contains("biometrisches Lichtbild");
+    assertThat(result.chunks().get(1).getText())
+        .startsWith("Personalausweis beantragen › Voraussetzungen")
+        .contains("biometrisches Lichtbild");
     assertThat(result.chunks().get(1).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
         .isEqualTo("Abschn. Personalausweis beantragen › Voraussetzungen");
-    assertThat(result.chunks().get(2).getText()).contains("Erziehungsberechtigten");
+    assertThat(result.chunks().get(2).getText())
+        .startsWith("Personalausweis beantragen › Voraussetzungen › Fuer Minderjaehrige")
+        .contains("Erziehungsberechtigten");
     assertThat(result.chunks().get(2).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
         .isEqualTo("Abschn. Personalausweis beantragen › Voraussetzungen › Fuer Minderjaehrige");
-    assertThat(result.chunks().get(3).getText()).contains("37,00 EUR");
+    assertThat(result.chunks().get(3).getText())
+        .startsWith("Personalausweis beantragen › Gebuehren")
+        .contains("37,00 EUR");
     assertThat(result.chunks().get(3).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
         .isEqualTo("Abschn. Personalausweis beantragen › Gebuehren");
   }
@@ -109,6 +121,96 @@ class HtmlDocumentPipelineTest {
     String lastPath =
         (String) result.chunks().getLast().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
     assertThat(lastPath).doesNotContain("Minderjaehrige");
+  }
+
+  @Test
+  void aHeadingWithNoBodyTextStillBecomesItsOwnChunkInsteadOfNoExtractableText()
+      throws IOException {
+    // #1059 review, finding 6: a section that is nothing but its own heading must not disappear -
+    // it is real, searchable content even without a paragraph beneath it.
+    String headingOnly = "<html><body><main><h1>Nur eine Ueberschrift</h1></main></body></html>";
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(headingOnly));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).isEqualTo("Nur eine Ueberschrift");
+  }
+
+  // --- #1059 review, finding 4: header/footer nested inside the content area survive ----------
+
+  @Test
+  void headerAndFooterNestedInsideTheContentAreaAreNotStripped() throws IOException {
+    String page =
+        """
+        <html>
+          <body>
+            <nav><a href="/">Startseite</a></nav>
+            <article>
+              <header>
+                <h1>Verwaltungsgebuehrensatzung</h1>
+                <p>Stand: 01.01.2026</p>
+              </header>
+              <p>Diese Satzung regelt die Gebuehren der Stadt.</p>
+              <footer><p>Autor: Kaemmerei</p></footer>
+            </article>
+          </body>
+        </html>
+        """;
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(page));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    String allText = String.join("\n", result.chunks().stream().map(d -> d.getText()).toList());
+    assertThat(allText)
+        .contains("Stand: 01.01.2026")
+        .contains("Autor: Kaemmerei")
+        .doesNotContain("Startseite");
+  }
+
+  // --- #1059 review, finding 5: every main/article match is processed, not just the first -------
+
+  @Test
+  void everyArticleOnAnOverviewPageIsProcessed() throws IOException {
+    String overviewPage =
+        """
+        <html>
+          <body>
+            <nav><a href="/">Startseite</a></nav>
+            <article><h2>Meldung eins</h2><p>Erster Teaser.</p></article>
+            <article><h2>Meldung zwei</h2><p>Zweiter Teaser.</p></article>
+          </body>
+        </html>
+        """;
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(overviewPage));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    String allText = String.join("\n", result.chunks().stream().map(d -> d.getText()).toList());
+    assertThat(allText).contains("Erster Teaser").contains("Zweiter Teaser");
+  }
+
+  // --- #1059 review, finding 7: inline markup must not introduce a spurious word-internal space -
+
+  @Test
+  void inlineMarkupDoesNotIntroduceASpuriousSpaceInsideAWord() throws IOException {
+    String page =
+        "<html><body><main><h1>T</h1><p><b>Personal</b>ausweis beantragen</p></main></body></html>";
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(page));
+
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Personalausweis beantragen")
+        .doesNotContain("Personal ausweis");
+  }
+
+  @Test
+  void inlineMarkupWithARealSpaceInTheSourceKeepsTheSpace() throws IOException {
+    String page = "<html><body><main><h1>T</h1><p><b>Personal</b> ausweis</p></main></body></html>";
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(page));
+
+    assertThat(result.chunks().getFirst().getText()).contains("Personal ausweis");
   }
 
   // --- Grenzfall: eine Seite, die ausschliesslich aus Boilerplate besteht --------------------
@@ -133,10 +235,42 @@ class HtmlDocumentPipelineTest {
     assertThat(result.chunks()).isEmpty();
   }
 
-  // --- Grenzfall: eine riesige Seite ohne weitere Gliederung ----------------------------------
+  // --- #1059 review, finding 3: size control -------------------------------------------------
 
   @Test
-  void aGiantSectionIsTruncatedAtTheHardCharacterLimit() throws IOException {
+  void manyParagraphsWithNoHeadingStructureAreSplitAtBlockBoundariesInsteadOfOneGiantChunk()
+      throws IOException {
+    // A "Div-Suppe" and a page whose §-style headings are just <p><strong> both share the same
+    // shape: block-level text with no h1-h3 to cut on. Before the fix, this became a single
+    // ever-growing chunk; the soft budget must split it into several, ordinary-sized ones instead.
+    StringBuilder body = new StringBuilder();
+    for (int i = 1; i <= 150; i++) {
+      body.append("<p>§ ").append(i).append(" Ein Absatz mit etwas Verwaltungstext hier drin.</p>");
+    }
+    String page = "<html><body><main>" + body + "</main></body></html>";
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(page));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSizeGreaterThanOrEqualTo(2);
+    assertThat(result.chunks())
+        .as("no chunk should silently grow past the soft budget by more than a single block")
+        .allSatisfy(
+            chunk ->
+                assertThat(chunk.getText().length())
+                    .isLessThan(HtmlDocumentPipeline.SOFT_CHUNK_CHAR_LIMIT + 200));
+    // Nothing is lost across the split.
+    String allText = String.join("\n", result.chunks().stream().map(d -> d.getText()).toList());
+    assertThat(allText).contains("§ 1 ").contains("§ 150 ");
+  }
+
+  // --- Grenzfall: ein einzelner, riesiger Block ohne weitere Blockgrenzen (Backstop) ----------
+
+  @Test
+  void aSinglePathologicallyLargeBlockIsTruncatedAtTheHardCharacterLimitAsABackstop()
+      throws IOException {
+    // One giant paragraph with no internal block boundary at all - block splitting cannot help
+    // here, so the hard limit is the only thing left to guard the embedding call.
     String hugeParagraph = "Verwaltungsvorgang. ".repeat(2_000); // well past 20 000 characters
     String hugePage =
         "<html><body><main><h1>Grosser Vorgang</h1><p>"

@@ -581,30 +581,67 @@ plus Überschriftenschnitt sind mit Jsoup unmittelbar wenige hundert Zeilen, kei
 eine zusätzliche Abhängigkeit. Dieselbe Abwägung trifft `TabularDocumentPipeline` bereits für Apache
 POI statt eines Spring-AI-Tabellen-Readers.
 
-**Boilerplate-Entfernung:** Vor der Auswahl des Hauptinhalts werden `nav`, `header`, `footer`,
-`aside`, die zugehörigen ARIA-Rollen sowie gängige Cookie-Banner-Selektoren entfernt — dieselbe
-Menge, die `DetailPageExtractor` für eine RSS-Detailseite bereits verwendet, um Cookie-Banner-Marker
-ergänzt. Der Hauptinhalt wird danach über `main, article, [role=main]` adressiert — derselbe
-Selektor, den `IndexingProperties.Rss#DEFAULT_MAIN_CONTENT_SELECTOR` schon für die überwiegende
-Mehrheit deutscher Verwaltungs-CMS-Templates für ausreichend befunden hat; ohne Treffer fällt die
-Pipeline auf `body` zurück.
+**Boilerplate-Entfernung nur außerhalb des gewählten Inhaltsbereichs.** `nav`, `header`, `footer`,
+`aside`, die zugehörigen ARIA-Rollen sowie gängige Cookie-Banner-Selektoren werden entfernt —
+dieselbe Menge, die `DetailPageExtractor` für eine RSS-Detailseite bereits verwendet, um
+Cookie-Banner-Marker ergänzt —, aber nur dort, wo sie **nicht** innerhalb des adressierten
+Hauptinhalts liegen: Ein Standard-CMS-Artikel führt legitim ein eigenes `<header>` (Titel,
+Stand-Datum) oder `<footer>` (Autor, Schlagworte), und ein unbedingtes Entfernen würde diese
+zusammen mit der umgebenden Seitenchrome verwerfen (#1059 Review, Befund 4). Der Hauptinhalt wird
+über `main, article, [role=main]` adressiert — derselbe Selektor, den
+`IndexingProperties.Rss#DEFAULT_MAIN_CONTENT_SELECTOR` schon für die überwiegende Mehrheit
+deutscher Verwaltungs-CMS-Templates für ausreichend befunden hat; **jeder** Treffer wird
+verarbeitet, nicht nur der erste (#1059 Review, Befund 5) — eine Übersichtsseite mit mehreren
+`<article>`-Teasern verliert damit nicht alle bis auf den ersten. Nur wenn der Selektor gar nichts
+trifft, fällt die Pipeline auf `body` zurück; in diesem Fall gilt die unbedingte,
+seitenweite Entfernung, weil es dann keinen engeren Bereich gibt, dessen eigene Chrome zu erhalten
+wäre.
 
 **Zuschnitt:** Ein neuer Chunk beginnt bei jeder h1-h3-Überschrift; h4-h6 bleiben Teil des
-umgebenden Abschnitts. Jeder Chunk trägt seinen Überschriftenpfad (z. B. „Abschn. Personalausweis
-beantragen › Voraussetzungen") im bestehenden, generischen `location`-Metadatenfeld — demselben
-Kanal, über den `ChunkLocationResolver` Seiten-/Überschriftenstruktur aus flachem Text
-rekonstruiert; diese Pipeline kennt die Struktur direkt aus dem DOM und muss sie nicht erst wieder
-erraten. Text vor der ersten Überschrift wird als eigener, pfadloser Chunk ausgegeben.
+umgebenden Abschnitts. Jeder Chunk trägt seinen Überschriftenpfad doppelt: als bestehendes,
+generisches `location`-Metadatenfeld (derselbe Kanal, über den `ChunkLocationResolver`
+Seiten-/Überschriftenstruktur aus flachem Text rekonstruiert) **und** als erste Zeile des
+Chunk-Texts selbst (#1059 Review, Befund 6) — ein Metadatenfeld allein ist für das Einbettungsmodell
+und den lexikalischen Pfad (#1097) unerreichbar. Eine Überschrift ohne jeden Textkörper wird
+trotzdem als eigener, einzeiliger Chunk ausgegeben, statt fälschlich als `NO_EXTRACTABLE_TEXT` zu
+gelten. Text vor der ersten Überschrift wird als eigener, pfadloser Chunk ausgegeben.
 
-Eine Obergrenze von 20.000 Zeichen je Chunk (**gesetzt, nicht gemessen** — der
-Evaluierungskorpus enthält bislang keine HTML-Dokumente, siehe unten) schützt vor einem
-Abschnitt ohne weitere Gliederung, der allein schon das Einbettungsmodell-Limit sprengen würde;
-betroffener Text wird mit sichtbarem „[…gekürzt]"-Vermerk gekappt, nach demselben Muster wie
+**Größenkontrolle über Blockgrenzen, nicht nur über einen harten Deckel** (#1059 Review, Befund 3):
+Ein Abschnitt ohne weitere Gliederung — eine „Div-Suppe" oder eine Seite, deren §-Überschriften nur
+als `<p><strong>…</strong></p>` ausgezeichnet sind — wird an Blockgrenzen (Absätze, Listenpunkte,
+Tabellenzeilen) in mehrere, je höchstens 4.000 Zeichen große Chunks weitergeschnitten, statt einen
+einzigen, mit der Seite mitwachsenden Chunk zu bilden. **Gesetzt, nicht gemessen** — der
+Evaluierungskorpus enthält bislang keine HTML-Dokumente (siehe unten); 4.000 Zeichen liegen in der
+Größenordnung des bestehenden Bestands (`opaa.indexing.chunk-size` = 1000 Token). Eine harte
+Obergrenze von 20.000 Zeichen bleibt als **letzter Rückfall** bestehen, wenn ein einzelner Block
+(z. B. ein Absatz ohne jede innere Gliederung) für sich allein schon diese Grenze sprengt; betroffener
+Text wird dann mit sichtbarem „[…gekürzt]"-Vermerk gekappt, nach demselben Muster wie
 `TabularDocumentPipeline#HARD_CHUNK_CHAR_LIMIT`.
+
+**Wortgrenzen an der rohen Textquelle, nicht pauschal** (#1059 Review, Befund 7): Inline-Auszeichnung
+wie `<b>Personal</b>ausweis` darf keinen künstlichen Leerraum einfügen („Personal ausweis"). Ob
+zwischen zwei Textfragmenten ein Trennzeichen eingefügt wird, entscheidet, ob an dieser Stelle im
+Quelltext tatsächlich Leerraum stand — dasselbe Verhalten, das Jsoups eigenes `Element#text()`
+bereits für eine einzelne Elementauswahl zeigt.
 
 Eine Seite, deren gesamter Inhalt Boilerplate ist (nur Navigation/Fußzeile/Cookie-Banner, kein
 `main`/`article` und kein sonstiger Textinhalt), meldet `NO_EXTRACTABLE_TEXT` — dasselbe Ergebnis,
 das jede andere Pipeline für Text meldet, der auf nichts herunter zerlegt.
+
+**Markdown-/Klartext-/CSV-Sonderregel geht der HTML-Erkennung vor** (#1059 Review, Befund 1): Tika
+registriert `text/html` in `tika-mimetypes.xml` als Spezialisierung von `text/plain` — eine
+Markdown-Datei, die mit einem rohen `<div>`/`<h1>` beginnt, wird deshalb als `text/html` erkannt.
+`SupportedDocumentFormats#decideForFileName` prüft die text-tolerante Sonderregel (Inhalt *und*
+Endung müssen passen) deshalb **vor** jeder strengen Erkennung, nicht nur als Rückfall — sonst würde
+eine solche Datei stillschweigend über die HTML-Pipeline laufen, ohne dass auch nur ein
+`FORMAT_MISMATCH` gemeldet würde.
+
+**Grenze: Feed-Detailseiten laufen weiterhin über die Fallback-Pipeline, nicht über diese.**
+`FileProcessingService#processRssEntry` übergibt den bereits extrahierten Haupttext eines
+RSS-Eintrags direkt an die Tika-Fallback-Pipeline (ADR-0017, Entscheidung 2) — dieser Text war nie
+eine Datei und durchläuft das inhaltsbasierte Routing der `DocumentPipelineRegistry` gar nicht, kann
+diese Pipeline also grundsätzlich nicht erreichen. Nur echte `.html`-Dateien — Verzeichnis-Crawl,
+Dateisystem oder ein Anhang eines RSS-Eintrags — profitieren von `HtmlDocumentPipeline`.
 
 **Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine HTML-Dokumente.
 
