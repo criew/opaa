@@ -76,7 +76,7 @@ class VariantReportWriterTest {
   @Test
   void rendersTheEffectivelyChangedParametersPerVariant() {
     var reference = VariantOutcome.executed(variant("reference"), report());
-    var mmrOverride = new PipelineVariant.QueryOverrides(null, 0.7, null, null, null, null);
+    var mmrOverride = new PipelineVariant.QueryOverrides(null, 0.7, null, null, null, null, null);
     var changed = VariantOutcome.executed(variantWithOverrides("mmr-0.7", mmrOverride), report());
     var comparisonAgainstReference = VariantComparisonRunner.delta(changed, reference);
     var report =
@@ -132,7 +132,8 @@ class VariantReportWriterTest {
                         VariantComparisonRunnerTest.runConfiguration()))
             .toList();
     MultiRunSummary summary = MultiRunAggregator.summarize(runs);
-    var decompositionOn = new PipelineVariant.QueryOverrides(null, null, null, true, null, null);
+    var decompositionOn =
+        new PipelineVariant.QueryOverrides(null, null, null, true, null, null, null);
     var multiRunOutcome =
         VariantOutcome.executedMultiRun(
             variantWithOverrides("decomposition-on", decompositionOn),

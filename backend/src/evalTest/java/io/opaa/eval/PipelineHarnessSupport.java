@@ -72,7 +72,12 @@ public final class PipelineHarnessSupport {
       String corpusManifestSha256,
       int corpusDocumentCount,
       String goldenDatasetFile,
-      String goldenDatasetSha256) {}
+      String goldenDatasetSha256,
+      // Issue #1049: a fact about the index this run measures, read from
+      // FullTextBackfillProgressService after indexing — the lexical path contributes nothing for a
+      // library whose backfill is incomplete, and a run in which it silently contributed nothing
+      // must not look like a hybrid one.
+      boolean fullTextBackfillComplete) {}
 
   /**
    * Runs the pipeline measurement path and writes its report — <b>without ever failing the harness
@@ -224,6 +229,14 @@ public final class PipelineHarnessSupport {
    *       measurement-contract change (new fixed point, raised {@code
    *       PipelineEvaluationReport#PIPELINE_MEASUREMENT_CONTRACT_VERSION}, re-drawn baselines), not
    *       something a property may do silently.
+   *   <li><b>The lexical search path must be switched on</b> (issue #1049, the Auflage recorded in
+   *       docs/features/hybrid-retrieval.md, Arbeitspaket 2). Since it feeds the fusion, {@code
+   *       opaa.query.full-text-search-enabled} moves the selection; the committed pipeline baseline
+   *       describes the shipped hybrid configuration, and a run that quietly measured the
+   *       vector-only one would be judged against it as a code regression. The vector-only
+   *       measurement is not forbidden — it is a named variant of the Variantenvergleich ({@link
+   *       VariantRunner}, which measures deliberately labelled configurations and writes no
+   *       baseline), and its value is a fixed point of every report either way.
    * </ul>
    */
   public static void requireMeasurableConfiguration(
@@ -263,6 +276,15 @@ public final class PipelineHarnessSupport {
               + "measured dimension deliberately: new fixed point, raised "
               + "PIPELINE_MEASUREMENT_CONTRACT_VERSION, re-drawn baselines.");
     }
+    if (!queryProperties.fullTextSearchEnabled()) {
+      throw new IllegalStateException(
+          "opaa.query.full-text-search-enabled is false, but the committed pipeline baseline "
+              + "describes the shipped hybrid configuration, in which the lexical path feeds the "
+              + "fusion (#1049). This run would measure the vector-only configuration and its "
+              + "numbers would be judged against that baseline as a code change. Measure the "
+              + "vector-only configuration as a named variant instead "
+              + "(eval/variants/*-lexical-path.json, -Dopaa.eval.runVariantComparison=true).");
+    }
   }
 
   /**
@@ -295,6 +317,8 @@ public final class PipelineHarnessSupport {
         SIMILARITY_THRESHOLD_NOTE,
         queryProperties.maxChunksPerDocument(),
         queryProperties.mmrLambda(),
+        queryProperties.fullTextSearchEnabled(),
+        identity.fullTextBackfillComplete(),
         queryProperties.queryDecompositionEnabled(),
         queryProperties.maxSubQueries(),
         // Null rather than a placeholder string: no chat model took part in this run at all, and

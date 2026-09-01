@@ -19,6 +19,7 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
+import io.opaa.indexing.FullTextBackfillProgressService;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingProperties;
@@ -57,6 +58,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -476,7 +478,24 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   // very beans a real request runs through, not a re-implementation of steps 2 to 6.
   @Autowired private QueryService queryService;
   @Autowired private QueryProperties queryProperties;
+  // #1049: the fill state of the measured library's full-text index, a fixed point of every
+  // pipeline report since the lexical path feeds the fusion.
+  @Autowired private FullTextBackfillProgressService fullTextBackfillProgressService;
   @Autowired private RetrievalPipelineProperties pipelineProperties;
+
+  // #1041/#1049: the variant-comparison step builds its own QueryService instances around the same
+  // collaborators the autowired queryService above uses - two of those collaborators
+  // (ChunkEmbeddingLookup, QueryDecompositionService) are package-private in io.opaa.query and
+  // cannot be named from this package at all. QueryServiceDependencies#fromContext is the seam
+  // that crosses that boundary via bean lookups instead.
+  @Autowired private ApplicationContext applicationContext;
+
+  /**
+   * This domain's default comparison file; {@code -Dopaa.eval.variantComparisonFile} overrides it
+   * (see {@link VariantComparisonStep} and eval/variants/README.md).
+   */
+  private static final String DEFAULT_VARIANT_COMPARISON_FILE =
+      "eval/variants/city-landmarks-lexical-path.json";
 
   // #419: triggerIndexing needs a caller-chosen target library and an authorized caller -
   // set up once per run, not pinned to a well-known system library id, since #419 already stopped
@@ -548,6 +567,13 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     // check reads nothing but the query configuration, which is fixed from context startup. Failing
     // it after the hour-long raw-vector path would cost that path its baseline verdict for nothing.
     PipelineHarnessSupport.requireMeasurableConfiguration(queryProperties, pipelineProperties);
+
+    // Same reasoning for the variant-comparison opt-in (#1041 review, Befund 3): a broken
+    // comparison file, an unresolvable referenceVariant or an invalid QueryProperties override
+    // must fail before indexing, not after it.
+    if (VariantComparisonStep.isRequested()) {
+      VariantComparisonStep.loadAndValidate(queryProperties, DEFAULT_VARIANT_COMPARISON_FILE);
+    }
 
     Path evalDir = RepoPaths.evalDir();
     Path corpusDir = evalDir.resolve("corpus").resolve(DOMAIN.name());
@@ -900,7 +926,9 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             CorpusManifest.sha256Hex(manifestFile),
             manifest.fileNames().size(),
             "eval/golden/" + DOMAIN.goldenDatasetFileName(),
-            GoldenDataset.sha256(goldenFile)),
+            GoldenDataset.sha256(goldenFile),
+            // Issue #1049: whether the lexical path could contribute at all in this run.
+            fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete()),
         queryService,
         queryProperties,
         pipelineProperties,
@@ -909,6 +937,35 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
         goldenCases,
         pipelineRunStart,
         log);
+
+    // 7. Variant comparison (#1041/#1049, docs/features/retrieval-benchmark.md §2): an opt-in step,
+    //    off by default so a normal harness/baseline run is unaffected. Guarded like step 6 — a
+    //    failure here must not cost the raw-vector path its baseline verdict.
+    if (VariantComparisonStep.isRequested()) {
+      VariantComparisonStep.run(
+          DOMAIN,
+          DEFAULT_VARIANT_COMPARISON_FILE,
+          applicationContext,
+          new PipelineHarnessSupport.RunIdentity(
+              "ollama",
+              EMBEDDING_MODEL,
+              actualEmbeddingModelDigest,
+              EvalOllamaEndpoint.describeImageOrEndpoint(OLLAMA_IMAGE),
+              EMBEDDING_DIMENSIONS,
+              actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
+              PGVECTOR_INDEX_TYPE,
+              CorpusManifest.sha256Hex(manifestFile),
+              manifest.fileNames().size(),
+              "eval/golden/" + DOMAIN.goldenDatasetFileName(),
+              GoldenDataset.sha256(goldenFile),
+              fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete()),
+          queryService,
+          queryProperties,
+          indexingProperties,
+          evalLibraryId,
+          goldenCases,
+          log);
+    }
   }
 
   private static WorstQuery toWorstQuery(RetrievalMetrics.QueryResult r) {

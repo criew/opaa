@@ -26,11 +26,22 @@ class PipelineHarnessSupportTest {
 
   private static final PipelineHarnessSupport.RunIdentity IDENTITY =
       new PipelineHarnessSupport.RunIdentity(
-          "ollama", "model", "digest", "image", 768, true, "hnsw", "manifest", 1, "golden", "hash");
+          "ollama",
+          "model",
+          "digest",
+          "image",
+          768,
+          true,
+          "hnsw",
+          "manifest",
+          1,
+          "golden",
+          "hash",
+          true);
 
   private static QueryProperties productionLikeProperties(
       int topK, boolean queryDecompositionEnabled) {
-    return new QueryProperties(topK, 25, 1.0, 0.3, 1.0, queryDecompositionEnabled, 3, 2);
+    return new QueryProperties(topK, 25, 1.0, 0.3, 1.0, queryDecompositionEnabled, 3, 2, true);
   }
 
   private static List<GoldenCase> oneCase() {
@@ -118,6 +129,20 @@ class PipelineHarnessSupportTest {
                     new RetrievalPipelineProperties(Set.of(RetrievalStageName.MMR_SELECTION))))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("disabled-stages");
+  }
+
+  /**
+   * Issue #1049: the committed pipeline baseline describes the shipped hybrid configuration, so the
+   * path that writes it must not quietly measure the vector-only one. Measuring vector-only is not
+   * forbidden - it is a named variant of the Variantenvergleich, which writes no baseline.
+   */
+  @Test
+  void aRunWithoutTheLexicalPathIsRejectedAsUnmeasurable() {
+    QueryProperties vectorOnly = new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false);
+
+    assertThatThrownBy(() -> runWith(vectorOnly, RetrievalPipelineProperties.allStagesEnabled()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("full-text-search-enabled");
   }
 
   /** Collaborators are null on purpose: the guard must reject before touching any of them. */

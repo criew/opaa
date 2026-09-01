@@ -15,6 +15,11 @@ final class VariantPrerequisites {
   private VariantPrerequisites() {}
 
   /**
+   * The prerequisites decidable before the corpus is indexed — everything that follows from the
+   * variant's declaration and its effective {@link QueryProperties} alone. {@link
+   * VariantComparison#requireExecutableReference} uses this overload, because at that point no
+   * index exists to ask about the full-text backfill.
+   *
    * @param effective the variant's {@link QueryProperties} after {@link
    *     VariantQueryProperties#apply} — prerequisites are checked against what would actually run,
    *     not against the declared overrides alone.
@@ -36,6 +41,31 @@ final class VariantPrerequisites {
               + "Zerlegung würde je Anfrage fehlschlagen und still auf Einzelanfragen-Retrieval "
               + "zurückfallen. Welches Modell der Pipeline-Pfad künftig dafür nutzen soll, ist offen "
               + "(docs/features/retrieval-benchmark.md, \"Offene Punkte\" 3).");
+    }
+    return Optional.empty();
+  }
+
+  /**
+   * The full set of prerequisites, including the one only an existing index can answer (issue
+   * #1049): a variant that runs the lexical path needs the measured library's full-text backfill to
+   * be complete, because {@code FullTextBackfillGate} keeps an incomplete library out of that path
+   * entirely. Such a variant would measure the vector-only configuration under a name that promises
+   * the hybrid one — and its Δ0.000 against the vector-only reference would read as "the lexical
+   * path changes nothing", the strongest possible wrong conclusion this comparison could produce.
+   */
+  static Optional<String> unmetReason(
+      PipelineVariant variant, QueryProperties effective, boolean fullTextBackfillComplete) {
+    Optional<String> earlier = unmetReason(variant, effective);
+    if (earlier.isPresent()) {
+      return earlier;
+    }
+    if (effective.fullTextSearchEnabled() && !fullTextBackfillComplete) {
+      return Optional.of(
+          "Diese Variante lässt den lexikalischen Pfad laufen, aber der Volltext-Backfill der "
+              + "gemessenen Bibliothek ist unvollständig — das Backfill-Tor "
+              + "(FullTextBackfillGate) hält die Bibliothek dann vollständig aus diesem Pfad "
+              + "heraus. Die Variante würde die vector-only-Konfiguration unter dem Namen der "
+              + "hybriden messen.");
     }
     return Optional.empty();
   }

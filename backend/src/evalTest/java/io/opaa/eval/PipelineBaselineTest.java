@@ -98,7 +98,7 @@ class PipelineBaselineTest {
   private static final String VALID_JSON =
       """
       {
-        "pipelineMeasurementContractVersion": 2,
+        "pipelineMeasurementContractVersion": 3,
         "fixedPoints": {
           "embeddingModel": "nomic-embed-text:v1.5",
           "embeddingModelDigest": "abc",
@@ -111,6 +111,8 @@ class PipelineBaselineTest {
           "similarityThreshold": 0.3,
           "maxChunksPerDocument": 2,
           "mmrLambda": 1.0,
+          "fullTextSearchEnabled": true,
+          "fullTextBackfillComplete": true,
           "queryDecompositionEnabled": false,
           "maxSubQueries": 3,
           "chatModel": null,

@@ -42,7 +42,8 @@ public final class VariantRunner {
     QueryProperties effective =
         VariantQueryProperties.apply(productionQueryProperties, variant.queryOverrides());
 
-    var unmetReason = VariantPrerequisites.unmetReason(variant, effective);
+    var unmetReason =
+        VariantPrerequisites.unmetReason(variant, effective, identity.fullTextBackfillComplete());
     if (unmetReason.isPresent()) {
       return VariantOutcome.skipped(variant, unmetReason.get());
     }

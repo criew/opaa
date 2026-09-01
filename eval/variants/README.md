@@ -36,9 +36,13 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
 - `queryOverrides` ist ein partielles Override von `io.opaa.query.QueryProperties`: ein
   weggelassenes oder `null`-Feld übernimmt den Produktionswert unverändert. Unterstützte Felder:
   `fetchK`, `mmrLambda`, `similarityThreshold`, `queryDecompositionEnabled`, `maxSubQueries`,
-  `maxChunksPerDocument`. `topK` ist bewusst kein Feld — die Metriknamen des Pipeline-Pfads
-  (`hitRateAt5`, `ndcgAt8`, …) sind an das Produktionsfenster gebunden (siehe
-  `retrieval-benchmark.md`, Abschnitt 1).
+  `maxChunksPerDocument`, `fullTextSearchEnabled` (seit Issue #1049). `topK` ist bewusst kein
+  Feld — die Metriknamen des Pipeline-Pfads (`hitRateAt5`, `ndcgAt8`, …) sind an das
+  Produktionsfenster gebunden (siehe `retrieval-benchmark.md`, Abschnitt 1).
+- Eine Variante mit `fullTextSearchEnabled: true` wird als „nicht ausgeführt" gemeldet, solange der
+  Volltext-Backfill der gemessenen Bibliothek unvollständig ist: Das Backfill-Tor hielte die
+  Bibliothek dann vollständig aus dem lexikalischen Pfad heraus, und die Variante hätte die
+  vector-only-Konfiguration unter dem Namen der hybriden gemessen.
 - `requiresReindex: true` markiert eine Variante, die ein anderes Embedding-Modell oder eine
   andere Chunking-Konfiguration bräuchte. Diese Variantenmechanik führt noch keinen Reindex je
   Variante aus — eine solche Variante wird als „nicht ausgeführt“ gemeldet, nicht stillschweigend
@@ -76,26 +80,42 @@ deshalb ausschließlich manuell aus, wie im Abschnitt „Ausführen" oben beschr
 
 ## Ausführen
 
-Ein Variantenvergleich läuft als zusätzlicher, standardmäßig **abgeschalteter** Schritt am Ende
-des bestehenden `evaluateRetrieval`-Laufs (`RetrievalEvaluationHarnessTest`), nachdem der Korpus
-bereits indiziert und der Rohvektor- sowie der Pipeline-Pfad bereits gemessen wurden — kein
-zweiter Indizierungslauf, keine zusätzliche Belastung der nächtlichen Baseline-Prüfung:
+Ein Variantenvergleich läuft als zusätzlicher, standardmäßig **abgeschalteter** Schritt am Ende des
+Harness-Laufs **jeder** der drei Domänen (`io.opaa.eval.VariantComparisonStep`, seit Issue #1049 in
+allen drei Harnessen statt nur in `RetrievalEvaluationHarnessTest`), nachdem der Korpus bereits
+indiziert und der Rohvektor- sowie der Pipeline-Pfad bereits gemessen wurden — kein zweiter
+Indizierungslauf, keine zusätzliche Belastung der nächtlichen Baseline-Prüfung:
 
 ```bash
 cd backend
-./gradlew evaluateRetrieval \
-  -Dopaa.eval.runVariantComparison=true \
-  -Dopaa.eval.variantComparisonFile=eval/variants/comic-characters-selection-mechanics.json
+./gradlew evaluateRetrieval -Dopaa.eval.runVariantComparison=true
+./gradlew evaluateVerwaltungRetrieval -Dopaa.eval.runVariantComparison=true
+./gradlew evaluateCityLandmarksRetrieval -Dopaa.eval.runVariantComparison=true
+
+# Anderer Vergleich derselben Domäne: Datei explizit angeben
+./gradlew evaluateRetrieval -Dopaa.eval.runVariantComparison=true \
+  -Dopaa.eval.variantComparisonFile=eval/variants/comic-characters-lexical-path.json
 ```
 
-`opaa.eval.variantComparisonFile` ist relativ zum Repository-Wurzelverzeichnis. Ein neuer
-Vergleich ist damit ohne Codeänderung auslösbar: eine neue JSON-Datei hier, dieselbe
-Kommandozeile mit einem anderen Pfad.
+`opaa.eval.variantComparisonFile` ist relativ zum Repository-Wurzelverzeichnis und optional: Jede
+Domäne hat eine Voreinstellung (`comic-characters-selection-mechanics.json` für comic-characters,
+`<domäne>-lexical-path.json` für die beiden anderen). Ein neuer Vergleich ist damit ohne
+Codeänderung auslösbar: eine neue JSON-Datei hier, dieselbe Kommandozeile mit einem anderen Pfad.
 
 Der Bericht wird nach `build/eval-reports/variant-report-<comparisonName>.json` geschrieben und
 zusätzlich als lesbare Zusammenfassung auf der Konsole ausgegeben — ein Artefakt, kein
 committetes Ergebnis (siehe `docs/features/retrieval-benchmark.md`, Abschnitt 2, „Der Bericht ist
-ein Artefakt, keine Baseline“).
+ein Artefakt, keine Baseline").
+
+### Wirkungsnachweis des lexikalischen Pfads (Issue #1049)
+
+`comic-characters-lexical-path.json`, `verwaltung-lexical-path.json` und
+`city-landmarks-lexical-path.json` stellen `vector+fulltext-rrf` (die Produktion seit #1049) gegen
+`vector-only` (den Stand davor). Referenzvariante ist die **Produktions**variante, weil die
+Selbstprüfung unten das verlangt; die ausgewiesenen Deltas sind deshalb `vector-only` minus hybrid —
+ein negatives Delta ist ein Gewinn des lexikalischen Pfads. Dass die `vector-only`-Variante exakt die
+Zahlen der bis #1049 committeten Pipeline-Baseline reproduziert, ist der eigentliche Beleg: Die
+Verschiebung kommt vom Volltextpfad und nicht von einem Nebeneffekt derselben Änderung.
 
 ## Referenzvarianten-Selbstprüfung
 

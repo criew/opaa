@@ -47,6 +47,11 @@ public record PipelineBaseline(
    * an unnoticed {@code mmr-lambda} change would silently redefine what the committed numbers mean,
    * so all of them are validity fields here.
    *
+   * <p>Since issue #1049 that set includes the two full-text fields: {@code fullTextSearchEnabled}
+   * and {@code fullTextBackfillComplete}. The lexical path moves the selection, so a run in which
+   * it was switched off — or in which the backfill gate kept it out of the measured library — is
+   * measuring a different configuration, not scoring worse.
+   *
    * @param chatModel {@code null} while the harness measures the {@code decomposition-off} variant
    *     — a value here would claim a model took part in the run that did not.
    * @param hitRateK the two metric windows the report's field names state literally; a change makes
@@ -65,6 +70,8 @@ public record PipelineBaseline(
       double similarityThreshold,
       int maxChunksPerDocument,
       double mmrLambda,
+      boolean fullTextSearchEnabled,
+      boolean fullTextBackfillComplete,
       boolean queryDecompositionEnabled,
       int maxSubQueries,
       String chatModel,
