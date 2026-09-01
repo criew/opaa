@@ -1,5 +1,6 @@
 package io.opaa.indexing.pipeline.mail;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.ChunkingService;
@@ -9,6 +10,7 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
 import io.opaa.indexing.pipeline.tabular.TabularDocumentPipeline;
 import io.opaa.indexing.pipeline.tabular.TabularProperties;
@@ -19,6 +21,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.message.BodyPartBuilder;
 import org.apache.james.mime4j.message.DefaultMessageWriter;
@@ -162,6 +165,15 @@ class MailDocumentPipelineTest {
     assertThat(chunk.getMetadata()).containsKey(ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
     // Single message, no thread split: no "Nachricht n von N" location needed.
     assertThat(chunk.getMetadata()).doesNotContainKey(ChunkingService.LOCATION_METADATA_KEY);
+    // A produced key that is part of the registry-wide passthrough union must be declared - only a
+    // union key can ever ride along onto the persisted chunk.
+    Set<String> actualKeysInUnion =
+        result.chunks().stream()
+            .flatMap(c -> c.getMetadata().keySet().stream())
+            .filter(PassthroughMetadataKeysTestSupport.REGISTRY_UNION::contains)
+            .collect(toSet());
+    assertThat(pipeline(defaultProperties).passthroughMetadataKeys())
+        .containsAll(actualKeysInUnion);
   }
 
   @Test

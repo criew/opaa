@@ -50,12 +50,11 @@ public interface DocumentPipeline {
    * {@link ChunkPipelineMetadata}'s keys, which {@code storeChunks} writes itself on every chunk
    * regardless of any pipeline's declaration here) that {@code FileProcessingService#storeChunks}
    * carries onto the persisted chunk. A key this pipeline never actually set on a given chunk is
-   * simply skipped - declaring it here is a ceiling, not a promise every chunk carries it. A
-   * pipeline's bookkeeping keys ({@code document_id}, {@code chunk_index}, {@code file_name},
-   * {@code library_id}, {@code organization_id}, {@code pipeline_id}, {@code pipeline_version}) can
-   * never be overridden this way, declared or not - {@code storeChunks} writes those itself before
-   * consulting any pipeline's declaration. This is the sole extension point for adding a
-   * passthrough key: overriding this method, nothing in the caller. Never returns {@code null}.
+   * simply skipped - declaring it here is a ceiling, not a promise every chunk carries it. The
+   * bookkeeping keys {@code storeChunks} writes itself on every chunk can never be overridden this
+   * way, declared or not - {@code storeChunks} writes those before consulting any pipeline's
+   * declaration. This is the sole extension point for adding a passthrough key: overriding this
+   * method, nothing in the caller. Never returns {@code null}.
    *
    * <p>{@code storeChunks} is called with one pipeline per document, but filters against the
    * <b>union</b> of every registered pipeline's declaration ({@link

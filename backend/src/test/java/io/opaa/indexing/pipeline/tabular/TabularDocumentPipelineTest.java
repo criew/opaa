@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
@@ -65,12 +66,17 @@ class TabularDocumentPipelineTest {
         .contains("Personalausweis | 37,00 EUR");
     assertThat(result.chunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
         .isEqualTo("Blatt Gebühren · Zeile 2");
-    // The keys actually produced must stay within what the pipeline declares - the guard
-    // DocumentPipelineRegistryRoutingIntegrationTest#everyPipelineDeclaresExactlyItsOwnMetadataKeys
-    // checks the declaration; this checks the declaration against real output.
-    Set<String> actualKeys =
-        result.chunks().stream().flatMap(c -> c.getMetadata().keySet().stream()).collect(toSet());
-    assertThat(pipeline.passthroughMetadataKeys()).containsAll(actualKeys);
+    // A key this pipeline actually produced that also belongs to the registry-wide passthrough
+    // union must be part of its own declaration - storeChunks copies any union key it finds on a
+    // chunk regardless of which pipeline declares it (nested-pipeline attribution), so an
+    // undeclared union key here would silently ride along. A key outside the union is irrelevant:
+    // storeChunks never copies it, declared or not.
+    Set<String> actualKeysInUnion =
+        result.chunks().stream()
+            .flatMap(c -> c.getMetadata().keySet().stream())
+            .filter(PassthroughMetadataKeysTestSupport.REGISTRY_UNION::contains)
+            .collect(toSet());
+    assertThat(pipeline.passthroughMetadataKeys()).containsAll(actualKeysInUnion);
   }
 
   @Test

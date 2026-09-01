@@ -474,6 +474,54 @@ class FileProcessingServiceTest {
     assertThat(metadata).doesNotContainKeys("declared_but_absent_key", "undeclared_key");
   }
 
+  @Test
+  void aPipelineCannotOverrideStoreChunksOwnBookkeepingKeysByDeclaringThem() {
+    // A pipeline declaring one of storeChunks's own bookkeeping keys (here file_name and
+    // library_id, the key the library-scoped search filter relies on) must never win over the
+    // value storeChunks writes itself - the passthrough loop skips a key it already wrote before
+    // ever consulting the chunk's own metadata for it.
+    var chunks =
+        List.of(
+            new org.springframework.ai.document.Document(
+                "chunk1",
+                Map.of(
+                    "file_name", "smuggled-name.txt", "library_id", UUID.randomUUID().toString())));
+    var fakePipeline = new FakePassthroughPipeline(Set.of("file_name", "library_id"), chunks);
+    var registry = new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline);
+    FileProcessingService serviceWithFakePipeline =
+        new FileProcessingService(
+            registry,
+            documentRepository,
+            vectorChunkStore,
+            checksumService,
+            new IndexingMetrics(meterRegistry),
+            storageQuotaService,
+            defaultIndexingProperties(),
+            Runnable::run);
+
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
+    when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    serviceWithFakePipeline.processRssEntry(
+        "entry main text",
+        "Titel",
+        "https://example.gov/entry",
+        "2025-06-15T10:30:00Z",
+        targetLibrary);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
+    Map<String, Object> metadata = chunkCaptor.getValue().getFirst().getMetadata();
+    assertThat(metadata).containsEntry("file_name", "Titel");
+    // library_id carries the permission-scoped search filter - a chunk that smuggled a different
+    // value through here would leak or hide content across library boundaries.
+    assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
+  }
+
   /**
    * A stand-in for a future format pipeline with its own structural metadata (Docling-style, e.g.
    * {@code slide_number}) - stands in for a real pipeline claiming {@code .pdf} without pulling a
