@@ -11,6 +11,7 @@ import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
 import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -76,6 +77,22 @@ public class IndexingConfiguration {
   @Bean
   HtmlDocumentPipeline htmlDocumentPipeline() {
     return new HtmlDocumentPipeline();
+  }
+
+  /**
+   * EML/MSG pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) - an {@link
+   * org.springframework.beans.factory.ObjectProvider}, not a direct {@link
+   * DocumentPipelineRegistry} dependency, breaks the circular bean graph the recursive-attachment
+   * case creates (see {@link MailDocumentPipeline}'s own Javadoc): {@link
+   * #documentPipelineRegistry} below needs every {@link DocumentPipeline} bean including this one,
+   * so this one cannot in turn need the finished registry at construction time.
+   */
+  @Bean
+  MailDocumentPipeline mailDocumentPipeline(
+      ObjectProvider<DocumentPipelineRegistry> documentPipelineRegistry,
+      ChunkingService chunkingService,
+      MailProperties mailProperties) {
+    return new MailDocumentPipeline(documentPipelineRegistry, chunkingService, mailProperties);
   }
 
   /**

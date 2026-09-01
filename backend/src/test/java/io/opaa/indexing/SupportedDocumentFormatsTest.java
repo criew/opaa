@@ -320,6 +320,84 @@ class SupportedDocumentFormatsTest {
     assertThat(SupportedDocumentFormats.detectMediaType(file)).isEqualTo("application/pdf");
   }
 
+  // --- #1060/#1101: EML and MSG ------------------------------------------------------------------
+
+  @Test
+  void isSupportedAcceptsEmlAndMsgByName() {
+    assertThat(SupportedDocumentFormats.isSupported("vorgang.eml")).isTrue();
+    assertThat(SupportedDocumentFormats.isSupported("vorgang.msg")).isTrue();
+  }
+
+  @Test
+  void contentMatchesExtensionAcceptsTheExactMediaTypeForMsg() {
+    assertThat(
+            SupportedDocumentFormats.contentMatchesExtension(".msg", "application/vnd.ms-outlook"))
+        .isTrue();
+  }
+
+  @Test
+  void contentMatchesExtensionAcceptsEmlOnlyAsTextTolerantContent() {
+    // #1101 review, finding 1: message/rfc822 is a text/plain specialization in Tika's own media
+    // type hierarchy, not a distinctive byte signature - .eml is admitted the same tolerant way
+    // .md/.txt/.csv are, not as a strictly detected type.
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".eml", "message/rfc822")).isTrue();
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".eml", "text/plain")).isTrue();
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".eml", "application/pdf"))
+        .isFalse();
+  }
+
+  @Test
+  void decideForFileNameAcceptsMsgContentRegardlessOfExtension() {
+    var msg =
+        SupportedDocumentFormats.decideForFileName("vorgang.msg", "application/vnd.ms-outlook");
+    assertThat(msg.supported()).isTrue();
+    assertThat(msg.detectedExtension()).isEqualTo(".msg");
+    assertThat(msg.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void decideForFileNameAcceptsEmlOnlyUnderItsOwnExtension() {
+    var wrongExtension =
+        SupportedDocumentFormats.decideForFileName("vorgang.pdf", "message/rfc822");
+    assertThat(wrongExtension.supported()).isFalse();
+
+    var eml = SupportedDocumentFormats.decideForFileName("vorgang.eml", "message/rfc822");
+    assertThat(eml.supported()).isTrue();
+    assertThat(eml.detectedExtension()).isEqualTo(".eml");
+    assertThat(eml.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void decideForFileNameDoesNotRouteUnrelatedTextFilesIntoTheMailPipelineEvenIfTikaGuessesRfc822() {
+    // #1101 review, finding 1 (empirically confirmed hijack): a log file, a Markdown changelog and
+    // a CSV export can all trip Tika's loose message/rfc822 header-line heuristic, but each keeps
+    // its own extension's routing because decideForFileName's text-tolerant branch always
+    // classifies
+    // by the file's own claimed extension, never by which text-tolerant type the content merely
+    // resembles.
+    var log = SupportedDocumentFormats.decideForFileName("system.log", "message/rfc822");
+    assertThat(log.supported()).isFalse();
+
+    var markdown = SupportedDocumentFormats.decideForFileName("protokoll.md", "message/rfc822");
+    assertThat(markdown.supported()).isTrue();
+    assertThat(markdown.detectedExtension()).isEqualTo(".md");
+
+    var csv = SupportedDocumentFormats.decideForFileName("export.csv", "message/rfc822");
+    assertThat(csv.supported()).isTrue();
+    assertThat(csv.detectedExtension()).isEqualTo(".csv");
+  }
+
+  @Test
+  void decideForFileNameAcceptsARealEmlEvenWhenTikaDoesNotRecognizeItsFirstHeaderLine() {
+    // #1101 review, finding 1: an .eml whose first header does not match Tika's rfc822 heuristic
+    // (e.g. a leading Authentication-Results: or German Von:/An: pair) can be detected as plain
+    // text/plain instead of message/rfc822 - still admitted, since .eml only demands text-tolerant
+    // content, not the rfc822 heuristic specifically.
+    var eml = SupportedDocumentFormats.decideForFileName("weiterleitung.eml", "text/plain");
+    assertThat(eml.supported()).isTrue();
+    assertThat(eml.detectedExtension()).isEqualTo(".eml");
+  }
+
   @Test
   void detectMediaTypeDetectsPlainText() throws IOException {
     Path file = tempDir.resolve("data.bin");
@@ -399,6 +477,25 @@ class SupportedDocumentFormatsTest {
 
     assertThat(decision.supported()).isTrue();
     assertThat(decision.detectedExtension()).isEqualTo(".txt");
+    assertThat(decision.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void decideForFileNameKeepsTheEmlRuleWinningOverAHtmlContentDetection() {
+    // #1101 review (post-#1100-merge): .eml joined TEXT_TOLERANT_EXTENSIONS after #1100 already
+    // established that the text-tolerant branch must win over a strict detection - the same
+    // rationale applies here without any change to decideForFileName itself. An HTML-formatted
+    // mail body (common for a genuine .eml exported as raw markup, or one saved without its own
+    // MIME headers) detects as text/html, exactly the Markdown/Klartext case above - the file's
+    // own .eml extension decides, not the content, so it is routed to MailDocumentPipeline rather
+    // than silently to HtmlDocumentPipeline with no FORMAT_MISMATCH reported. A file genuinely
+    // named .html with the same content is unaffected (own extension is not text-tolerant, so it
+    // still takes the strict branch and reaches HtmlDocumentPipeline as normal) - only a file
+    // already claiming .eml benefits from this priority.
+    var decision = SupportedDocumentFormats.decideForFileName("nachricht.eml", "text/html");
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".eml");
     assertThat(decision.extensionMismatch()).isFalse();
   }
 }

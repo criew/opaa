@@ -779,6 +779,13 @@ public class FileProcessingService {
                   if (location != null) {
                     metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
                   }
+                  // A message's Kopfdaten (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) -
+                  // present only on chunks MailDocumentPipeline produced for a message's own body,
+                  // never on an attachment's recursively produced chunks.
+                  copyIfPresent(chunk, metadata, ChunkMailMetadata.MAIL_FROM_METADATA_KEY);
+                  copyIfPresent(chunk, metadata, ChunkMailMetadata.MAIL_TO_METADATA_KEY);
+                  copyIfPresent(chunk, metadata, ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY);
+                  copyIfPresent(chunk, metadata, ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
                   org.springframework.ai.document.Document enrichedChunk =
                       new org.springframework.ai.document.Document(chunk.getText(), metadata);
                   enrichedChunk.setContentFormatter(embedFormatter);
@@ -787,6 +794,15 @@ public class FileProcessingService {
             .toList();
 
     addToVectorStore(enriched);
+  }
+
+  /** Copies {@code key} from {@code chunk}'s own metadata into {@code target}, if present. */
+  private static void copyIfPresent(
+      org.springframework.ai.document.Document chunk, Map<String, Object> target, String key) {
+    Object value = chunk.getMetadata().get(key);
+    if (value != null) {
+      target.put(key, value);
+    }
   }
 
   /**

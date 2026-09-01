@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.james.mime4j.dom.Message;
+import org.apache.james.mime4j.message.DefaultMessageWriter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
@@ -196,6 +198,51 @@ class DocumentFormatParityTest {
 
     assertThat(new DocumentService().isSupportedFormat(file)).isFalse();
     assertThat(networkPathDecision(file, "image.pdf").supported()).isFalse();
+  }
+
+  // --- #1101 review, finding 6: no test exercised the real content detection for EML/MSG - the
+  // .msg detection specifically depends on the optional tika-parser-microsoft-module; without a
+  // guard like this, a future dependency trim could silently break it. ------------------------
+
+  @Test
+  void bothIndexingPathsAcceptAGenuineEmlUnderItsOwnExtension() throws Exception {
+    Message message =
+        Message.Builder.of()
+            .setSubject("Anfrage Bauantrag")
+            .setFrom("max@example.org")
+            .setTo("erika@example.org")
+            .setBody("Bitte pruefen Sie den Antrag.", StandardCharsets.UTF_8)
+            .build();
+    Path file = tempDir.resolve("vorgang.eml");
+    Files.write(file, DefaultMessageWriter.asBytes(message));
+
+    assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
+    var networkDecision = networkPathDecision(file, "vorgang.eml");
+    assertThat(networkDecision.supported()).isTrue();
+    assertThat(networkDecision.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void bothIndexingPathsAcceptAGenuineMsgUnderItsOwnExtension() throws IOException {
+    Path file = tempDir.resolve("vorgang.msg");
+    try (InputStream in =
+        DocumentFormatParityTest.class
+            .getClassLoader()
+            .getResourceAsStream("test-documents/mail/simple_test_msg.msg")) {
+      assertThat(in).as("Test resource must exist").isNotNull();
+      Files.copy(in, file);
+    }
+
+    assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
+    var networkDecision = networkPathDecision(file, "vorgang.msg");
+    assertThat(networkDecision.supported()).isTrue();
+    assertThat(networkDecision.extensionMismatch()).isFalse();
+    assertThat(networkDecision.detectedExtension())
+        .as(
+            "the .msg detection depends on the optional tika-parser-microsoft-module actually"
+                + " being on the classpath - if this ever silently drops, this assertion catches"
+                + " it instead of every real MSG upload quietly starting to fail")
+        .isEqualTo(".msg");
   }
 
   // --- #404 review, finding 2: the RSS attachment path decides alike too --------------------
