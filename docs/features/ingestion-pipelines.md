@@ -532,12 +532,25 @@ entpackten `content.xml`-Strom (`opaa.indexing.odf.max-content-xml-bytes`, geset
 bzw. 5.000) — anders als beim ODS-Leser wird `table:number-columns-repeated`/
 `table:number-rows-repeated` hier nicht expandiert (eine Tabelle in einem Textdokument oder einer
 Folie wird elementweise gelesen), sodass für diese beiden Attribute kein eigener
-Verstärkungs-Deckel nötig ist.
+Verstärkungs-Deckel nötig ist. `text:s`s eigenes `text:c`-Wiederholungsattribut ist ein eigener
+Verstärkungsvektor und braucht deshalb zwei Deckel: `opaa.indexing.odf.max-space-repeat` (gesetzt
+1.000) begrenzt ein einzelnes `text:s`-Element, `opaa.indexing.odf.max-text-characters` (gesetzt
+10.000.000) begrenzt zusätzlich, kumulativ über das ganze Dokument, wie viele Zeichen insgesamt in
+einen Absatz-/Zellen-Textpuffer wachsen dürfen — ohne diesen zweiten Deckel summieren sich beliebig
+viele `text:s`-Elemente innerhalb desselben Absatzes unbegrenzt, weil der Puffer nur einmal je Absatz
+zurückgesetzt wird (#1143).
 
 - **ODT** entspricht fachlich `DocxDocumentPipeline`: Die Gliederungsebene kommt direkt aus `text:h`s
   eigenem `text:outline-level`-Attribut (kein Stilname-Abgleich nötig, anders als bei DOCX' eingebauten
   Word-Formatvorlagen), mit Abbruch der Schnittebene bei 3 wie bei DOCX. Eine `table:table` wird
   zellenweise in einen einzelnen Fließtext-Absatz je Tabelle gelesen, nie als Überschrift.
+
+**Bewusste Bestandsregression: eine in eine Tabellenzelle verschachtelte Tabelle geht vollständig
+verloren.** Sowohl `OdtDocumentPipeline` als auch `OdpDocumentPipeline` lesen die äußere Tabelle
+korrekt zeilenweise weiter — die Trägerzeile und ihre übrigen Zellen bleiben intakt —, aber der
+Inhalt der verschachtelten Tabelle selbst wird verworfen, nicht etwa in die Trägerzelle
+übernommen. Über `TikaFallbackPipeline` war dieser Inhalt bisher (unstrukturiert) mit indiziert;
+mit den beiden ODF-Pipelines ist er es nicht mehr (#1110/#1143).
 - **ODP** entspricht fachlich `PptxDocumentPipeline`: eine Folie (`draw:page`) = ein Chunk. Die Rolle
   eines Rahmens kommt aus seinem eigenen `presentation:class`-Attribut — `"title"` wird Fundort und
   führende Zeile des Chunks, jeder andere Rahmen (auch `"subtitle"`) wird Fließtext, Text in

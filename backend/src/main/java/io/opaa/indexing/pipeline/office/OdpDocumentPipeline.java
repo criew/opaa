@@ -68,7 +68,10 @@ public class OdpDocumentPipeline implements DocumentPipeline {
       return DocumentPipelineResult.noContent();
     }
     OdpContentHandler handler =
-        new OdpContentHandler(odfProperties.maxOdpSlides(), odfProperties.maxSpaceRepeat());
+        new OdpContentHandler(
+            odfProperties.maxOdpSlides(),
+            odfProperties.maxSpaceRepeat(),
+            odfProperties.maxTextCharacters());
     boolean found;
     try {
       found = OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler);
@@ -99,7 +102,12 @@ public class OdpDocumentPipeline implements DocumentPipeline {
 
     private final int maxSlides;
     private final int maxSpaceRepeat;
+    private final long maxTextCharacters;
     private int slideCount;
+    // Cumulative across the whole document, not reset with text - text.setLength(0) only bounds
+    // one paragraph's buffer, not how many text:s elements a single paragraph can carry (see
+    // OdfProperties#maxTextCharacters).
+    private long textCharacterCount;
 
     private final List<Document> chunks = new ArrayList<>();
     private boolean anySlideHasText;
@@ -122,9 +130,10 @@ public class OdpDocumentPipeline implements DocumentPipeline {
     // list and cell buffer so it cannot overwrite the carrier row/cell of the table around it.
     private final Deque<TableFrame> tableStack = new ArrayDeque<>();
 
-    OdpContentHandler(int maxSlides, int maxSpaceRepeat) {
+    OdpContentHandler(int maxSlides, int maxSpaceRepeat, long maxTextCharacters) {
       this.maxSlides = maxSlides;
       this.maxSpaceRepeat = maxSpaceRepeat;
+      this.maxTextCharacters = maxTextCharacters;
     }
 
     List<Document> chunks() {
@@ -197,12 +206,14 @@ public class OdpDocumentPipeline implements DocumentPipeline {
       }
     }
 
-    private void appendRepeatedSpace(Attributes attributes) {
+    private void appendRepeatedSpace(Attributes attributes) throws SAXException {
       if (paragraphDepth == 0) {
         return;
       }
       int count = parsePositiveIntOrDefault(attributes.getValue("text:c"), 1);
-      text.append(" ".repeat(Math.min(count, maxSpaceRepeat)));
+      int repeated = Math.min(count, maxSpaceRepeat);
+      checkTextCharacterBudget(repeated);
+      text.append(" ".repeat(repeated));
     }
 
     private static int parsePositiveIntOrDefault(String value, int defaultValue) {
@@ -218,9 +229,18 @@ public class OdpDocumentPipeline implements DocumentPipeline {
     }
 
     @Override
-    public void characters(char[] ch, int start, int length) {
+    public void characters(char[] ch, int start, int length) throws SAXException {
       if (paragraphDepth > 0) {
+        checkTextCharacterBudget(length);
         text.append(ch, start, length);
+      }
+    }
+
+    private void checkTextCharacterBudget(int added) throws SAXException {
+      textCharacterCount += added;
+      if (textCharacterCount > maxTextCharacters) {
+        throw new SAXException(
+            "ODP presentation exceeds the configured text character limit of " + maxTextCharacters);
       }
     }
 

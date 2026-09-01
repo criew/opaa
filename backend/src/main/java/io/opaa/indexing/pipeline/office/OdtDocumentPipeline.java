@@ -23,7 +23,8 @@ import org.xml.sax.helpers.DefaultHandler;
  * {@code text:h}'s own {@code text:outline-level} (default 1); cutting stops at level 3 ({@link
  * #MAX_CUTTING_LEVEL}), mirroring {@link DocxDocumentPipeline}. A {@code table:table} is read cell
  * by cell into one paragraph-level text block; a table nested inside a cell keeps the outer table's
- * rows intact but does not separately emit its own rows, an accepted narrow gap. {@code
+ * rows intact, but the nested table's own content is discarded entirely - it never reaches the
+ * carrier cell either, an accepted narrow gap (docs/features/ingestion-pipelines.md). {@code
  * text:tracked-changes} (deleted text pending review) is skipped entirely. Header/footer text in
  * {@code styles.xml} is not read at all - a known, deliberate content regression versus the
  * previous Tika-based extraction (see docs/features/ingestion-pipelines.md).
@@ -68,7 +69,10 @@ public class OdtDocumentPipeline implements DocumentPipeline {
     List<HeadingSectionSplitter.Event> events;
     try {
       OdtContentHandler handler =
-          new OdtContentHandler(odfProperties.maxOdtParagraphs(), odfProperties.maxSpaceRepeat());
+          new OdtContentHandler(
+              odfProperties.maxOdtParagraphs(),
+              odfProperties.maxSpaceRepeat(),
+              odfProperties.maxTextCharacters());
       boolean found =
           OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler);
       if (!found) {
@@ -102,7 +106,12 @@ public class OdtDocumentPipeline implements DocumentPipeline {
 
     private final int maxParagraphs;
     private final int maxSpaceRepeat;
+    private final long maxTextCharacters;
     private int paragraphCount;
+    // Cumulative across the whole document, not reset with text - text.setLength(0) only bounds
+    // one paragraph's buffer, not how many text:s elements a single paragraph can carry (see
+    // OdfProperties#maxTextCharacters).
+    private long textCharacterCount;
 
     private final List<HeadingSectionSplitter.Event> events = new ArrayList<>();
 
@@ -117,9 +126,10 @@ public class OdtDocumentPipeline implements DocumentPipeline {
 
     private boolean insideTrackedChanges;
 
-    OdtContentHandler(int maxParagraphs, int maxSpaceRepeat) {
+    OdtContentHandler(int maxParagraphs, int maxSpaceRepeat, long maxTextCharacters) {
       this.maxParagraphs = maxParagraphs;
       this.maxSpaceRepeat = maxSpaceRepeat;
+      this.maxTextCharacters = maxTextCharacters;
     }
 
     List<HeadingSectionSplitter.Event> events() {
@@ -127,7 +137,8 @@ public class OdtDocumentPipeline implements DocumentPipeline {
     }
 
     @Override
-    public void startElement(String uri, String localName, String qName, Attributes attributes) {
+    public void startElement(String uri, String localName, String qName, Attributes attributes)
+        throws SAXException {
       if (insideTrackedChanges) {
         return;
       }
@@ -181,18 +192,29 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       }
     }
 
-    private void appendRepeatedSpace(Attributes attributes) {
+    private void appendRepeatedSpace(Attributes attributes) throws SAXException {
       if (paragraphDepth == 0) {
         return;
       }
       int count = parsePositiveIntOrDefault(attributes.getValue("text:c"), 1);
-      text.append(" ".repeat(Math.min(count, maxSpaceRepeat)));
+      int repeated = Math.min(count, maxSpaceRepeat);
+      checkTextCharacterBudget(repeated);
+      text.append(" ".repeat(repeated));
     }
 
     @Override
-    public void characters(char[] ch, int start, int length) {
+    public void characters(char[] ch, int start, int length) throws SAXException {
       if (paragraphDepth > 0) {
+        checkTextCharacterBudget(length);
         text.append(ch, start, length);
+      }
+    }
+
+    private void checkTextCharacterBudget(int added) throws SAXException {
+      textCharacterCount += added;
+      if (textCharacterCount > maxTextCharacters) {
+        throw new SAXException(
+            "ODT document exceeds the configured text character limit of " + maxTextCharacters);
       }
     }
 

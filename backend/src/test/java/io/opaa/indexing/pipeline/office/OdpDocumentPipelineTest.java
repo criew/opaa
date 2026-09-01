@@ -30,7 +30,7 @@ class OdpDocumentPipelineTest {
   @TempDir Path tempDir;
 
   private final OdpDocumentPipeline pipeline =
-      new OdpDocumentPipeline(new OdfProperties(0, 0, 0, 0));
+      new OdpDocumentPipeline(new OdfProperties(0, 0, 0, 0, 0));
 
   @Test
   void claimsExactlyOdp() {
@@ -286,7 +286,8 @@ class OdpDocumentPipelineTest {
 
   @Test
   void aContentXmlExceedingTheByteLimitIsRejectedRatherThanExhaustingMemory() throws IOException {
-    OdpDocumentPipeline tinyLimitPipeline = new OdpDocumentPipeline(new OdfProperties(50, 0, 0, 0));
+    OdpDocumentPipeline tinyLimitPipeline =
+        new OdpDocumentPipeline(new OdfProperties(50, 0, 0, 0, 0));
     Path file = tempDir.resolve("gross.odp");
     writeOdp(file, odpSlide(odpFrame("title", "Titel") + odpFrame(null, "Ein laengerer Text.")));
 
@@ -301,7 +302,8 @@ class OdpDocumentPipelineTest {
   void aTextSWithAnExtremeRepeatCountIsCappedRatherThanExhaustingMemory() throws IOException {
     // regression guard for #1143: text:c is attacker-controlled and unrelated to content.xml's
     // byte size - without a cap, a single element requests gigabytes of in-memory spaces.
-    OdpDocumentPipeline tinyLimitPipeline = new OdpDocumentPipeline(new OdfProperties(0, 0, 0, 5));
+    OdpDocumentPipeline tinyLimitPipeline =
+        new OdpDocumentPipeline(new OdfProperties(0, 0, 0, 5, 0));
     Path file = tempDir.resolve("weite-luecke.odp");
     writeOdp(file, odpSlide(odpFrame(null, "A<text:s text:c=\"2000000000\"/>B")));
 
@@ -313,9 +315,37 @@ class OdpDocumentPipelineTest {
   }
 
   @Test
+  void
+      manyTextSElementsInOneParagraphAreRejectedByTheCumulativeCharacterBudgetRatherThanExhaustingMemory()
+          throws IOException {
+    // regression guard for #1143: the per-element cap (maxSpaceRepeat) bounds a single text:s
+    // element, but text is only reset once per paragraph - an unbounded number of text:s elements
+    // inside the same <text:p> would otherwise sum into the same buffer without limit.
+    OdpDocumentPipeline tinyLimitPipeline =
+        new OdpDocumentPipeline(new OdfProperties(0, 0, 0, 5, 12));
+    Path file = tempDir.resolve("viele-leerzeichen.odp");
+    writeOdp(
+        file,
+        odpSlide(
+            odpFrame(
+                null,
+                "<text:s text:c=\"5\"/><text:s text:c=\"5\"/><text:s text:c=\"5\"/>"
+                    + "<text:s text:c=\"5\"/>")));
+
+    assertThatThrownBy(
+            () ->
+                tinyLimitPipeline.run(
+                    DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odp", ".odp")))
+        .isInstanceOf(UncheckedIOException.class)
+        .rootCause()
+        .hasMessageContaining("text character limit");
+  }
+
+  @Test
   void aPresentationExceedingTheSlideLimitIsRejectedRatherThanExhaustingMemory()
       throws IOException {
-    OdpDocumentPipeline tinyLimitPipeline = new OdpDocumentPipeline(new OdfProperties(0, 0, 1, 0));
+    OdpDocumentPipeline tinyLimitPipeline =
+        new OdpDocumentPipeline(new OdfProperties(0, 0, 1, 0, 0));
     Path file = tempDir.resolve("viele-folien.odp");
     writeOdp(
         file, odpSlide(odpFrame(null, "Folie eins.")) + odpSlide(odpFrame(null, "Folie zwei.")));

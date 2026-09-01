@@ -30,7 +30,7 @@ class OdtDocumentPipelineTest {
   @TempDir Path tempDir;
 
   private final OdtDocumentPipeline pipeline =
-      new OdtDocumentPipeline(new OdfProperties(0, 0, 0, 0));
+      new OdtDocumentPipeline(new OdfProperties(0, 0, 0, 0, 0));
 
   @Test
   void claimsExactlyOdt() {
@@ -288,7 +288,8 @@ class OdtDocumentPipelineTest {
 
   @Test
   void aContentXmlExceedingTheByteLimitIsRejectedRatherThanExhaustingMemory() throws IOException {
-    OdtDocumentPipeline tinyLimitPipeline = new OdtDocumentPipeline(new OdfProperties(50, 0, 0, 0));
+    OdtDocumentPipeline tinyLimitPipeline =
+        new OdtDocumentPipeline(new OdfProperties(50, 0, 0, 0, 0));
     Path file = tempDir.resolve("gross.odt");
     writeOdt(file, odtHeading(1, "Ueberschrift") + odtParagraph("Ein laengerer Textkoerper."));
 
@@ -303,7 +304,8 @@ class OdtDocumentPipelineTest {
   void aTextSWithAnExtremeRepeatCountIsCappedRatherThanExhaustingMemory() throws IOException {
     // regression guard for #1143: text:c is attacker-controlled and unrelated to content.xml's
     // byte size - without a cap, a single element requests gigabytes of in-memory spaces.
-    OdtDocumentPipeline tinyLimitPipeline = new OdtDocumentPipeline(new OdfProperties(0, 0, 0, 5));
+    OdtDocumentPipeline tinyLimitPipeline =
+        new OdtDocumentPipeline(new OdfProperties(0, 0, 0, 5, 0));
     Path file = tempDir.resolve("weite-luecke.odt");
     writeOdt(file, odtParagraph("A<text:s text:c=\"2000000000\"/>B"));
 
@@ -315,9 +317,35 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
+  void
+      manyTextSElementsInOneParagraphAreRejectedByTheCumulativeCharacterBudgetRatherThanExhaustingMemory()
+          throws IOException {
+    // regression guard for #1143: the per-element cap (maxSpaceRepeat) bounds a single text:s
+    // element, but text is only reset once per paragraph - an unbounded number of text:s elements
+    // inside the same <text:p> would otherwise sum into the same buffer without limit.
+    OdtDocumentPipeline tinyLimitPipeline =
+        new OdtDocumentPipeline(new OdfProperties(0, 0, 0, 5, 12));
+    Path file = tempDir.resolve("viele-leerzeichen.odt");
+    writeOdt(
+        file,
+        odtParagraph(
+            "<text:s text:c=\"5\"/><text:s text:c=\"5\"/><text:s text:c=\"5\"/>"
+                + "<text:s text:c=\"5\"/>"));
+
+    assertThatThrownBy(
+            () ->
+                tinyLimitPipeline.run(
+                    DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odt", ".odt")))
+        .isInstanceOf(UncheckedIOException.class)
+        .rootCause()
+        .hasMessageContaining("text character limit");
+  }
+
+  @Test
   void aDocumentExceedingTheParagraphLimitIsRejectedRatherThanExhaustingMemory()
       throws IOException {
-    OdtDocumentPipeline tinyLimitPipeline = new OdtDocumentPipeline(new OdfProperties(0, 1, 0, 0));
+    OdtDocumentPipeline tinyLimitPipeline =
+        new OdtDocumentPipeline(new OdfProperties(0, 1, 0, 0, 0));
     Path file = tempDir.resolve("viele-absaetze.odt");
     writeOdt(file, odtParagraph("Erster Absatz.") + odtParagraph("Zweiter Absatz."));
 

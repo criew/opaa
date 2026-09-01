@@ -27,10 +27,20 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     without this, {@code text:c} lets a few bytes of markup request an arbitrarily large
  *     in-memory string (mirrors {@code TabularProperties#maxOdsCellRepeat}'s reasoning for the ODS
  *     reader's own repeat attribute). Default 1 000.
+ * @param maxTextCharacters the maximum number of characters accumulated, across the whole document,
+ *     into a paragraph/cell text buffer before parsing aborts - {@link #maxSpaceRepeat} bounds one
+ *     {@code text:s} element, but a paragraph resets its buffer only once per {@code text:h}/{@code
+ *     text:p} and can carry an unbounded number of {@code text:s} elements, so the per-element cap
+ *     alone does not bound total memory use (mirrors {@code TabularProperties#maxOdsRows}'s
+ *     cumulative, rather than per-row, reasoning). Default 10 000 000.
  */
 @ConfigurationProperties(prefix = "opaa.indexing.odf")
 public record OdfProperties(
-    long maxContentXmlBytes, int maxOdtParagraphs, int maxOdpSlides, int maxSpaceRepeat) {
+    long maxContentXmlBytes,
+    int maxOdtParagraphs,
+    int maxOdpSlides,
+    int maxSpaceRepeat,
+    long maxTextCharacters) {
 
   public OdfProperties {
     if (maxContentXmlBytes <= 0) {
@@ -44,6 +54,9 @@ public record OdfProperties(
     }
     if (maxSpaceRepeat <= 0) {
       maxSpaceRepeat = 1_000;
+    }
+    if (maxTextCharacters <= 0) {
+      maxTextCharacters = 10_000_000L;
     }
   }
 }
