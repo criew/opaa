@@ -15,11 +15,14 @@ import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * Opens an ODF file's {@code content.xml} entry and parses it with a hardened {@link SAXParser} -
- * shared by {@link OdtDocumentPipeline} and {@link OdpDocumentPipeline}, mirroring the parser setup
- * {@code TabularDocumentPipeline} carries inline for its own ODS reader (XXE hardening: no DOCTYPE,
- * no external entities; a byte ceiling on the decompressed stream against a zip bomb).
+ * shared by {@link OdtDocumentPipeline}, {@link OdpDocumentPipeline} and {@code
+ * TabularDocumentPipeline}'s own ODS reader (XXE hardening: no DOCTYPE, no external entities; a
+ * byte ceiling on the decompressed stream against a zip bomb). Public - not {@code
+ * office}-package-private - solely so {@code io.opaa.indexing.pipeline.tabular} can reuse this same
+ * hardened reader instead of carrying its own copy (#1108); every other member of this package
+ * stays unexported.
  */
-final class OdfContentXml {
+public final class OdfContentXml {
 
   private OdfContentXml() {}
 
@@ -31,7 +34,7 @@ final class OdfContentXml {
    *     including any limit {@code handler} itself enforces from a {@code SAXException} it raises
    *     (mirrors {@code TabularDocumentPipeline#readOds}'s own row-limit guard).
    */
-  static boolean parse(Path file, long maxContentXmlBytes, DefaultHandler handler)
+  public static boolean parse(Path file, long maxContentXmlBytes, DefaultHandler handler)
       throws IOException {
     try (ZipFile zip = new ZipFile(file.toFile())) {
       ZipEntry entry = zip.getEntry("content.xml");

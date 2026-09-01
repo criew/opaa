@@ -2,14 +2,12 @@ package io.opaa.indexing.pipeline.office;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -255,13 +253,14 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
-  void aFileThatIsNotAValidZipArchiveThrows() throws IOException {
+  void aFileThatIsNotAValidZipArchiveHasNoContent() throws IOException {
     Path file = tempDir.resolve("kaputt.odt");
     Files.writeString(file, "das ist kein odt");
 
-    assertThatThrownBy(
-            () -> pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.odt", ".odt")))
-        .isInstanceOf(UncheckedIOException.class);
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -282,8 +281,10 @@ class OdtDocumentPipelineTest {
       out.closeEntry();
     }
 
-    assertThatThrownBy(() -> pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.odt", ".odt")))
-        .isInstanceOf(UncheckedIOException.class);
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -293,11 +294,10 @@ class OdtDocumentPipelineTest {
     Path file = tempDir.resolve("gross.odt");
     writeOdt(file, odtHeading(1, "Ueberschrift") + odtParagraph("Ein laengerer Textkoerper."));
 
-    assertThatThrownBy(
-            () -> tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.odt", ".odt")))
-        .isInstanceOf(UncheckedIOException.class)
-        .rootCause()
-        .hasMessageContaining("size limit");
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -332,13 +332,10 @@ class OdtDocumentPipelineTest {
             "<text:s text:c=\"5\"/><text:s text:c=\"5\"/><text:s text:c=\"5\"/>"
                 + "<text:s text:c=\"5\"/>"));
 
-    assertThatThrownBy(
-            () ->
-                tinyLimitPipeline.run(
-                    DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odt", ".odt")))
-        .isInstanceOf(UncheckedIOException.class)
-        .rootCause()
-        .hasMessageContaining("text character limit");
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -349,13 +346,10 @@ class OdtDocumentPipelineTest {
     Path file = tempDir.resolve("viele-absaetze.odt");
     writeOdt(file, odtParagraph("Erster Absatz.") + odtParagraph("Zweiter Absatz."));
 
-    assertThatThrownBy(
-            () ->
-                tinyLimitPipeline.run(
-                    DocumentPipelineSource.ofFile(file, "viele-absaetze.odt", ".odt")))
-        .isInstanceOf(UncheckedIOException.class)
-        .rootCause()
-        .hasMessageContaining("paragraph limit");
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-absaetze.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   private static void writeOdt(Path file, String textBodyXml) throws IOException {

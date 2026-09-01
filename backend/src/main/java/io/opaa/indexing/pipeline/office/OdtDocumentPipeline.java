@@ -5,12 +5,13 @@ import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
@@ -30,6 +31,8 @@ import org.xml.sax.helpers.DefaultHandler;
  * previous Tika-based extraction (see docs/features/ingestion-pipelines.md).
  */
 public class OdtDocumentPipeline implements DocumentPipeline {
+
+  private static final Logger log = LoggerFactory.getLogger(OdtDocumentPipeline.class);
 
   static final String ID = "odt";
   static final short VERSION = 1;
@@ -82,8 +85,12 @@ public class OdtDocumentPipeline implements DocumentPipeline {
         return DocumentPipelineResult.noContent();
       }
       events = handler.events();
-    } catch (IOException e) {
-      throw new UncheckedIOException("Could not read ODT document " + source.fileName(), e);
+    } catch (IOException | RuntimeException e) {
+      // Unparsable content (a corrupt ZIP, a rejected XXE attempt, a limit SAXException wraps into
+      // an IOException) is reported the same way as PDF/DOCX/PPTX/Tabular - see
+      // DocumentPipelineResult's own Javadoc for the shared contract.
+      log.warn("Could not read ODT document {}", source.fileName(), e);
+      return DocumentPipelineResult.noContent();
     }
     List<Document> chunks = HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL);
     if (chunks.isEmpty()) {

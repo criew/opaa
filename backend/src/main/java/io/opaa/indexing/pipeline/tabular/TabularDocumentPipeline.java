@@ -5,10 +5,9 @@ import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
-import java.io.FilterInputStream;
+import io.opaa.indexing.pipeline.HeadingSectionSplitter;
+import io.opaa.indexing.pipeline.office.OdfContentXml;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
@@ -23,12 +22,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import javax.xml.XMLConstants;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -78,22 +71,10 @@ public class TabularDocumentPipeline implements DocumentPipeline {
    * against a pathologically wide sheet (a "Riesenzeile" with hundreds of columns, or one huge
    * cell) producing an unboundedly large chunk. A single row that alone already exceeds this still
    * becomes its own one-row chunk rather than being split mid-row or silently dropped - see {@link
-   * #HARD_CHUNK_CHAR_LIMIT} for the absolute ceiling that row is still subject to.
+   * HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT} for the absolute ceiling that row is still
+   * subject to.
    */
   static final int MAX_CHUNK_CHARS = 6_000;
-
-  /**
-   * Absolute ceiling on a single chunk's rendered text length, applied after {@link
-   * #MAX_CHUNK_CHARS} has already done its normal job - a lone row wide or long enough to exceed
-   * even this (a true "Riesenzeile") is truncated with a logged, visible marker rather than handed
-   * to the embedding model unbounded, where it would fail the call outright once past the model's
-   * own token limit. ~20 000 characters stays safely under every embedding model's context window
-   * this project targets (roughly 4 characters per token, well below an 8k-token limit) while still
-   * being generous enough that no real Gebühren-/Zuständigkeitszeile is ever affected.
-   */
-  static final int HARD_CHUNK_CHAR_LIMIT = 20_000;
-
-  private static final String TRUNCATION_MARKER = " […gekürzt]";
 
   private static final char[] CSV_DELIMITER_CANDIDATES = {',', ';', '\t'};
 
@@ -141,8 +122,12 @@ public class TabularDocumentPipeline implements DocumentPipeline {
             case ".ods" -> readOds(source);
             default -> readXlsx(source);
           };
-    } catch (IOException e) {
-      throw new UncheckedIOException("Could not read tabular document " + source.fileName(), e);
+    } catch (IOException | RuntimeException e) {
+      // Unparsable content (a corrupt workbook, an invalid ZIP, a rejected XXE attempt) is reported
+      // the same way as PDF/DOCX/PPTX/ODT/ODP - see DocumentPipelineResult's own Javadoc for the
+      // shared contract.
+      log.warn("Could not read tabular document {}", source.fileName(), e);
+      return DocumentPipelineResult.noContent();
     }
     if (chunks.isEmpty()) {
       // Covers an empty file and a workbook whose every sheet is empty - the same "parsed, but
@@ -388,14 +373,16 @@ public class TabularDocumentPipeline implements DocumentPipeline {
    * Reads an ODS spreadsheet directly from its {@code content.xml} - deliberately not Apache POI,
    * which only reads OOXML (XLSX/DOCX/PPTX) and legacy binary Office formats, never OpenDocument.
    * An ODS file is a ZIP archive; {@code content.xml} inside it is plain, well-formed XML ({@code
-   * table:table}/{@code table:table-row}/{@code table:table-cell} elements) - reading it with a
-   * hardened {@link SAXParser} avoids pulling in a full ODF library (ODF Toolkit) for a single,
-   * narrow read.
+   * table:table}/{@code table:table-row}/{@code table:table-cell} elements) - opened and parsed
+   * through {@link OdfContentXml}, the hardened ZIP/SAX reader shared with {@code
+   * OdtDocumentPipeline}/{@code OdpDocumentPipeline}, rather than pulling in a full ODF library
+   * (ODF Toolkit) for a single, narrow read.
    *
    * <p>Two independent zip-bomb guards apply while reading {@code content.xml}: a byte ceiling on
-   * the entry's decompressed stream ({@link #maxOdsContentXmlBytes}) and a row-count ceiling on the
-   * parse itself ({@link #maxOdsRows}) - a small, deeply repetitive {@code content.xml} could stay
-   * under the byte limit while still describing an unreasonable number of rows. Either one exceeded
+   * the entry's decompressed stream ({@link #maxOdsContentXmlBytes}, enforced by {@link
+   * OdfContentXml}) and a row-count ceiling on the parse itself ({@link #maxOdsRows}, enforced by
+   * {@link OdsContentHandler}) - a small, deeply repetitive {@code content.xml} could stay under
+   * the byte limit while still describing an unreasonable number of rows. Either one exceeded
    * aborts the parse with an {@link IOException} naming which limit was hit, the same "named
    * rejection instead of an OutOfMemoryError" contract {@code IndexingProperties.Rss}'s own
    * streaming bounds already have.
@@ -404,54 +391,21 @@ public class TabularDocumentPipeline implements DocumentPipeline {
     if (source.file() == null) {
       return List.of();
     }
+    OdsContentHandler handler = new OdsContentHandler(maxRowColumns, maxOdsCellRepeat, maxOdsRows);
+    boolean found = OdfContentXml.parse(source.file(), maxOdsContentXmlBytes, handler);
+    if (!found) {
+      return List.of();
+    }
+    if (handler.anyCellTruncated()) {
+      log.warn(
+          "One or more ODS rows have more than the configured limit of {} columns; truncating",
+          maxRowColumns);
+    }
     List<Document> chunks = new ArrayList<>();
-    try (ZipFile zip = new ZipFile(source.file().toFile())) {
-      ZipEntry entry = zip.getEntry("content.xml");
-      if (entry == null) {
-        return List.of();
-      }
-      List<OdsSheet> sheets;
-      try (InputStream in = boundedStream(zip.getInputStream(entry), maxOdsContentXmlBytes)) {
-        sheets = OdsContentHandler.parse(in, maxRowColumns, maxOdsCellRepeat, maxOdsRows);
-      }
-      for (OdsSheet sheet : sheets) {
-        chunks.addAll(chunksFromRawRows(sheet.name(), sheet.name(), sheet.rows()));
-      }
+    for (OdsSheet sheet : handler.sheets()) {
+      chunks.addAll(chunksFromRawRows(sheet.name(), sheet.name(), sheet.rows()));
     }
     return chunks;
-  }
-
-  /** Wraps {@code in} so reading past {@code maxBytes} fails loudly instead of exhausting heap. */
-  private static InputStream boundedStream(InputStream in, long maxBytes) {
-    return new FilterInputStream(in) {
-      private long total;
-
-      @Override
-      public int read() throws IOException {
-        int b = super.read();
-        if (b != -1) {
-          checkLimit(++total);
-        }
-        return b;
-      }
-
-      @Override
-      public int read(byte[] b, int off, int len) throws IOException {
-        int n = super.read(b, off, len);
-        if (n > 0) {
-          total += n;
-          checkLimit(total);
-        }
-        return n;
-      }
-
-      private void checkLimit(long readSoFar) throws IOException {
-        if (readSoFar > maxBytes) {
-          throw new IOException(
-              "ODS content.xml exceeds the configured size limit of " + maxBytes + " bytes");
-        }
-      }
-    };
   }
 
   private record OdsSheet(String name, List<RawRow> rows) {}
@@ -494,36 +448,18 @@ public class TabularDocumentPipeline implements DocumentPipeline {
     private boolean insideCell;
     private boolean anyCellTruncated;
 
-    private OdsContentHandler(int maxRowColumns, int maxCellRepeat, int maxRows) {
+    OdsContentHandler(int maxRowColumns, int maxCellRepeat, int maxRows) {
       this.maxRowColumns = maxRowColumns;
       this.maxCellRepeat = maxCellRepeat;
       this.maxRows = maxRows;
     }
 
-    static List<OdsSheet> parse(InputStream in, int maxRowColumns, int maxCellRepeat, int maxRows)
-        throws IOException {
-      try {
-        SAXParserFactory factory = SAXParserFactory.newInstance();
-        factory.setNamespaceAware(false);
-        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        // XXE hardening: content.xml originates from an uploaded/indexed file, never trusted input.
-        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-        factory.setXIncludeAware(false);
-        SAXParser parser = factory.newSAXParser();
-        OdsContentHandler handler = new OdsContentHandler(maxRowColumns, maxCellRepeat, maxRows);
-        parser.parse(in, handler);
-        if (handler.anyCellTruncated) {
-          log.warn(
-              "One or more ODS rows have more than the configured limit of {} columns;"
-                  + " truncating",
-              maxRowColumns);
-        }
-        return handler.sheets;
-      } catch (ParserConfigurationException | SAXException e) {
-        throw new IOException("Could not parse ODS content.xml", e);
-      }
+    List<OdsSheet> sheets() {
+      return sheets;
+    }
+
+    boolean anyCellTruncated() {
+      return anyCellTruncated;
     }
 
     @Override
@@ -681,7 +617,8 @@ public class TabularDocumentPipeline implements DocumentPipeline {
         sheetName != null
             ? "Blatt: " + sheetName + " · Tabelle: " + tableName
             : "Tabelle: " + tableName;
-    String text = capChunkLength(prefix + "\n\n" + String.join(" | ", row.values()));
+    String text =
+        HeadingSectionSplitter.capChunkLength(prefix + "\n\n" + String.join(" | ", row.values()));
 
     String rowRange = "Zeile " + row.number();
     String location = sheetName != null ? "Blatt " + sheetName + " · " + rowRange : rowRange;
@@ -766,24 +703,7 @@ public class TabularDocumentPipeline implements DocumentPipeline {
 
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
-    return new Document(capChunkLength(text.toString().stripTrailing()), metadata);
-  }
-
-  /**
-   * The absolute backstop {@link #HARD_CHUNK_CHAR_LIMIT} is: a single row so wide or so long that
-   * even one row alone (past {@link #MAX_CHUNK_CHARS}'s own, softer guard) exceeds it is truncated
-   * with a visible marker rather than handed to the embedding model unbounded, where it would fail
-   * the whole document at embedding time instead of degrading gracefully at indexing time.
-   */
-  private static String capChunkLength(String text) {
-    if (text.length() <= HARD_CHUNK_CHAR_LIMIT) {
-      return text;
-    }
-    log.warn(
-        "A chunk exceeds the hard limit of {} characters ({} actual); truncating",
-        HARD_CHUNK_CHAR_LIMIT,
-        text.length());
-    return text.substring(0, HARD_CHUNK_CHAR_LIMIT - TRUNCATION_MARKER.length())
-        + TRUNCATION_MARKER;
+    return new Document(
+        HeadingSectionSplitter.capChunkLength(text.toString().stripTrailing()), metadata);
   }
 }

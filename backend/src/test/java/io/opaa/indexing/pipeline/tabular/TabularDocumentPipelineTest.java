@@ -2,14 +2,13 @@ package io.opaa.indexing.pipeline.tabular;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -464,7 +463,7 @@ class TabularDocumentPipelineTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     String text = result.chunks().getFirst().getText();
-    assertThat(text.length()).isLessThanOrEqualTo(TabularDocumentPipeline.HARD_CHUNK_CHAR_LIMIT);
+    assertThat(text.length()).isLessThanOrEqualTo(HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT);
     assertThat(text).endsWith("[…gekürzt]");
   }
 
@@ -618,8 +617,9 @@ class TabularDocumentPipelineTest {
       out.closeEntry();
     }
 
-    assertThatThrownBy(() -> pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.ods")))
-        .isInstanceOf(UncheckedIOException.class);
+    DocumentPipelineResult result = pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -658,11 +658,10 @@ class TabularDocumentPipelineTest {
     Path file = tempDir.resolve("gross.ods");
     writeOds(file, odsTable("Blatt1", odsRow("Name", "Amt"), odsRow("Müller", "Bauamt")));
 
-    assertThatThrownBy(
-            () -> tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.ods")))
-        .isInstanceOf(UncheckedIOException.class)
-        .rootCause()
-        .hasMessageContaining("size limit");
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -678,11 +677,10 @@ class TabularDocumentPipelineTest {
         odsTable(
             "Blatt1", odsRow("Name", "Amt"), odsRow("A", "1"), odsRow("B", "2"), odsRow("C", "3")));
 
-    assertThatThrownBy(
-            () -> tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-zeilen.ods")))
-        .isInstanceOf(UncheckedIOException.class)
-        .rootCause()
-        .hasMessageContaining("row limit");
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-zeilen.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   private static void writeOds(Path file, String spreadsheetBodyXml) throws IOException {

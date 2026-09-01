@@ -2,14 +2,12 @@ package io.opaa.indexing.pipeline.office;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -250,13 +248,14 @@ class OdpDocumentPipelineTest {
   }
 
   @Test
-  void aFileThatIsNotAValidZipArchiveThrows() throws IOException {
+  void aFileThatIsNotAValidZipArchiveHasNoContent() throws IOException {
     Path file = tempDir.resolve("kaputt.odp");
     Files.writeString(file, "das ist kein odp");
 
-    assertThatThrownBy(
-            () -> pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.odp", ".odp")))
-        .isInstanceOf(UncheckedIOException.class);
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -280,8 +279,10 @@ class OdpDocumentPipelineTest {
       out.closeEntry();
     }
 
-    assertThatThrownBy(() -> pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.odp", ".odp")))
-        .isInstanceOf(UncheckedIOException.class);
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -291,11 +292,10 @@ class OdpDocumentPipelineTest {
     Path file = tempDir.resolve("gross.odp");
     writeOdp(file, odpSlide(odpFrame("title", "Titel") + odpFrame(null, "Ein laengerer Text.")));
 
-    assertThatThrownBy(
-            () -> tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.odp", ".odp")))
-        .isInstanceOf(UncheckedIOException.class)
-        .rootCause()
-        .hasMessageContaining("size limit");
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -332,13 +332,10 @@ class OdpDocumentPipelineTest {
                 "<text:s text:c=\"5\"/><text:s text:c=\"5\"/><text:s text:c=\"5\"/>"
                     + "<text:s text:c=\"5\"/>")));
 
-    assertThatThrownBy(
-            () ->
-                tinyLimitPipeline.run(
-                    DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odp", ".odp")))
-        .isInstanceOf(UncheckedIOException.class)
-        .rootCause()
-        .hasMessageContaining("text character limit");
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -350,13 +347,10 @@ class OdpDocumentPipelineTest {
     writeOdp(
         file, odpSlide(odpFrame(null, "Folie eins.")) + odpSlide(odpFrame(null, "Folie zwei.")));
 
-    assertThatThrownBy(
-            () ->
-                tinyLimitPipeline.run(
-                    DocumentPipelineSource.ofFile(file, "viele-folien.odp", ".odp")))
-        .isInstanceOf(UncheckedIOException.class)
-        .rootCause()
-        .hasMessageContaining("slide limit");
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-folien.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   private static void writeOdp(Path file, String presentationBodyXml) throws IOException {
