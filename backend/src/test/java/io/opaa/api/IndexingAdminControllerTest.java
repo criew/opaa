@@ -6,13 +6,21 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.indexing.DocumentPipeline;
+import io.opaa.indexing.DocumentPipelineRegistry;
+import io.opaa.indexing.DocumentPipelineResult;
+import io.opaa.indexing.DocumentPipelineSource;
 import io.opaa.indexing.LowChunkDocumentAuditService;
+import io.opaa.indexing.PipelineReindexResult;
+import io.opaa.indexing.PipelineReindexService;
+import io.opaa.indexing.PipelineVersionProgress;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +32,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -45,7 +54,22 @@ class IndexingAdminControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private LowChunkDocumentAuditService lowChunkDocumentAuditService;
+  @MockitoBean private PipelineReindexService pipelineReindexService;
+  @MockitoBean private DocumentPipelineRegistry pipelineRegistry;
   @MockitoBean private UserService userService;
+
+  /** Stands in for the registered pipelines without needing Tika or a chunking configuration. */
+  private record StubPipeline(String id, short version, java.util.Set<String> handledFormats)
+      implements DocumentPipeline {
+
+    @Override
+    public DocumentPipelineResult run(DocumentPipelineSource source) {
+      throw new UnsupportedOperationException("not exercised by controller tests");
+    }
+  }
+
+  private static final DocumentPipeline TIKA_FALLBACK =
+      new StubPipeline("tika-fallback", (short) 1, java.util.Set.of());
 
   private final UUID actingAdminId = UUID.randomUUID();
   private final UUID actingAdminOrganizationId = UUID.randomUUID();
@@ -69,6 +93,9 @@ class IndexingAdminControllerTest {
     setId(actingAdmin, actingAdminId);
     when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
         .thenReturn(actingAdmin);
+    org.mockito.Mockito.lenient()
+        .when(pipelineRegistry.pipelines())
+        .thenReturn(List.of(TIKA_FALLBACK));
   }
 
   private void setId(User user, UUID id) {
@@ -148,5 +175,87 @@ class IndexingAdminControllerTest {
             get("/api/v1/admin/indexing/low-chunk-documents").param("page", "-1").with(asAdmin()))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.error").value("page darf nicht negativ sein, war -1"));
+  }
+
+  @Test
+  void pipelineVersionsAsRegularUserReturns403() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/admin/indexing/pipeline-versions").with(asRegularUser()))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void pipelineVersionsReportsRegisteredPipelinesAndPerLibraryFillState() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    when(pipelineReindexService.progressForOrganization(actingAdminOrganizationId))
+        .thenReturn(List.of(new PipelineVersionProgress(libraryId, 10L, 7L, 3L)));
+
+    mockMvc
+        .perform(get("/api/v1/admin/indexing/pipeline-versions").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.pipelines[0].id").value("tika-fallback"))
+        .andExpect(jsonPath("$.pipelines[0].currentVersion").value(1))
+        .andExpect(jsonPath("$.libraries[0].libraryId").value(libraryId.toString()))
+        .andExpect(jsonPath("$.libraries[0].totalChunks").value(10))
+        .andExpect(jsonPath("$.libraries[0].currentVersionChunks").value(7))
+        .andExpect(jsonPath("$.libraries[0].staleChunks").value(3))
+        .andExpect(jsonPath("$.libraries[0].complete").value(false));
+
+    verify(pipelineReindexService).progressForOrganization(actingAdminOrganizationId);
+  }
+
+  @Test
+  void pipelineReindexScopesToTheCallersOwnOrganizationAndReportsWhenDone() throws Exception {
+    when(pipelineReindexService.reindexBatch(actingAdminOrganizationId, "tika-fallback", 2, 5))
+        .thenReturn(new PipelineReindexResult(0, 0, 0));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/pipeline-reindex")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pipelineId\":\"tika-fallback\",\"belowVersion\":2,\"batchSize\":5}")
+                .with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.done").value(true))
+        .andExpect(jsonPath("$.reindexedDocuments").value(0));
+
+    verify(pipelineReindexService).reindexBatch(actingAdminOrganizationId, "tika-fallback", 2, 5);
+  }
+
+  @Test
+  void pipelineReindexRejectsAnUnknownPipelineWith400() throws Exception {
+    // Without this guard an unbekannte id would report "done" for a re-index that never had a
+    // chance of matching anything - a silent no-op dressed as success.
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/pipeline-reindex")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pipelineId\":\"docling-pdf\",\"belowVersion\":2}")
+                .with(asAdmin()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("Unbekannte Pipeline: docling-pdf"));
+  }
+
+  @Test
+  void pipelineReindexRejectsAnOversizedBatchWith400() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/pipeline-reindex")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pipelineId\":\"tika-fallback\",\"belowVersion\":1,\"batchSize\":101}")
+                .with(asAdmin()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("batchSize muss zwischen 1 und 100 liegen, war 101"));
+  }
+
+  @Test
+  void pipelineReindexAsRegularUserReturns403() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/pipeline-reindex")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pipelineId\":\"tika-fallback\",\"belowVersion\":1}")
+                .with(asRegularUser()))
+        .andExpect(status().isForbidden());
   }
 }

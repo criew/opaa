@@ -72,8 +72,7 @@ class FileProcessingServiceTest {
             vectorStore, embeddingModel, batchingStrategy, vectorStoreWriter, fullTextChunkStore);
     service =
         new FileProcessingService(
-            documentService,
-            chunkingService,
+            TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
             documentRepository,
             vectorChunkStore,
             checksumService,
@@ -177,8 +176,7 @@ class FileProcessingServiceTest {
 
     FileProcessingService serviceWithRealScanDetection =
         new FileProcessingService(
-            realDocumentService,
-            chunkingService,
+            TestPipelineRegistries.fallbackOnly(realDocumentService, chunkingService),
             documentRepository,
             vectorChunkStore,
             checksumService,
@@ -287,8 +285,7 @@ class FileProcessingServiceTest {
             documentRepository, new UploadProperties(null, 0, null, 0, 1000));
     FileProcessingService serviceWithRealQuota =
         new FileProcessingService(
-            documentService,
-            chunkingService,
+            TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
             documentRepository,
             vectorChunkStore,
             checksumService,
@@ -379,6 +376,13 @@ class FileProcessingServiceTest {
         .containsEntry("organization_id", targetLibrary.getOrganizationId().toString());
     // #667: the chunk's Fundort rides along to the vector store.
     assertThat(metadata).containsEntry(ChunkingService.LOCATION_METADATA_KEY, "S. 2");
+    // #1056, ingestion-pipelines.md Querschnittsregel (d): every chunk names the verfahren that
+    // produced it - without it, a bestand containing chunks from two pipelines is not feststellbar.
+    assertThat(metadata)
+        .containsEntry(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY, TikaFallbackPipeline.ID)
+        .containsEntry(
+            ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY,
+            (int) TikaFallbackPipeline.VERSION);
   }
 
   @Test

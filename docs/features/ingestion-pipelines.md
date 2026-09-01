@@ -189,6 +189,33 @@ Datei ───────────────────┤              
                               Embedding · Volltextindex · Vektorablage
 ```
 
+### Umgesetzt: die Abstraktion selbst (#1056)
+
+Die Abstraktion steht; noch ohne eine einzige Format-Pipeline, und das ist der Punkt: Solange nur die
+Fallback-Pipeline registriert ist, läuft jedes Format exakt den bisherigen Weg — die Umstellung ist
+für den Bestand nachweislich verhaltensneutral.
+
+| Baustein | Was er tut |
+|---|---|
+| `DocumentPipeline` | Reader, Splitter, Metadaten-Anreicherung und Chunk-Größe einer Dokumentklasse hinter einem Aufruf; dazu `id()` und `version()`, die auf jedem erzeugten Chunk landen |
+| `DocumentPipelineRegistry` | Routing über den **erkannten Inhalt** — es fragt dieselbe Stelle (`SupportedDocumentFormats.decideForFileName`), die auch über die Zulassung entscheidet, statt die Regel ein zweites Mal zu formulieren. Damit gilt die Markdown-/Klartext-Sonderregel (Inhalt *und* Endung) fürs Routing automatisch mit |
+| `TikaFallbackPipeline` | Der bisherige Weg (Tika-Reader + Token-Splitter mit `opaa.indexing.chunk-size`/`-overlap`), zuständig für alles, wofür keine spezialisierte Pipeline registriert ist. Chunk-Größe: **gesetzt, nicht gemessen** |
+
+Eine neue Format-Pipeline hinzuzufügen heißt: eine Klasse schreiben und als Bean registrieren. Weder
+die Registry noch `FileProcessingService` noch `SupportedDocumentFormats` ändern dafür ihre Form.
+Zwei Pipelines, die dasselbe Format beanspruchen, sind ein Verdrahtungsfehler und lassen den Kontext
+beim Start scheitern, statt die Bean-Reihenfolge entscheiden zu lassen.
+
+Die drei Ausgänge, die `FileProcessingService` bisher selbst entschied — „Scan ohne Textebene",
+„gar nichts geparst", „Text, aber keine Chunks" — entscheidet jetzt die Pipeline für ihr eigenes
+Format. Genau das braucht eine PDF-Pipeline später, um Scan-Erkennung anders zu beantworten als eine
+Tabellen-Pipeline.
+
+**Keine Datenbankänderung nötig.** Die Pipeline-Version ist ein Chunk-Metadatum und liegt damit dort,
+wo Chunk-Metadaten liegen: in `vector_store.metadata`. Diese Tabelle legt Spring AI beim Start an,
+nicht Liquibase — eine Spalte wäre dort gar nicht verfügbar, und eine zweite Tabelle wäre eine dritte
+Zeile je Chunk für einen Wert, der definitorisch zum Chunk gehört.
+
 ### Parsing-Strategie: hybrid, nicht ein Werkzeug für alles
 
 Für die Frage „womit parsen" gibt es keine einheitliche Antwort, und der Versuch, eine zu erzwingen,
@@ -602,6 +629,36 @@ stillschweigend unterschritten.
 **Diese Entscheidung fällt vor der ersten Typ-Pipeline**, nicht nach ihr. Nachträglich eingeführt,
 trägt die Version für den gesamten bis dahin erzeugten Bestand den Wert „unbekannt", und genau dieser
 Bestand ist der, den man später gezielt anfassen möchte.
+
+#### Umgesetzt (#1056)
+
+Jeder Chunk trägt `pipeline_id` und `pipeline_version` als Metadatum. Der Bestand von **vor** dieser
+Einführung trägt keines von beidem — er ist trotzdem nicht „unbekannt", sondern zuordenbar: Bis zur
+Abstraktion erzeugte ausschließlich der Tika-Weg Chunks, also zählt ein Chunk ohne diese Angaben als
+`tika-fallback` in Version 0. Damit ist gerade der Altbestand vollständig auswählbar, statt der einzige
+zu sein, den man nicht ansprechen kann.
+
+Zwei Administrationsendpunkte (`SYSTEM_ADMIN`, auf die eigene Organisation begrenzt):
+
+- `GET /api/v1/admin/indexing/pipeline-versions` — registrierte Pipelines mit ihrer aktuellen Version
+  und der Füllstand je Bibliothek (Chunks insgesamt / auf aktueller Version / darunter). Ein Chunk, der
+  eine Pipeline nennt, die diese Installation gar nicht hat, zählt weder als aktuell noch als
+  nachzuziehen — er ließe sich von keiner vorhandenen Pipeline neu erzeugen.
+- `POST /api/v1/admin/indexing/pipeline-reindex` — verarbeitet **eine Charge** und wird wiederholt
+  aufgerufen, bis `done` gemeldet wird. Der Reststand wird bei jedem Aufruf neu aus den
+  Chunk-Metadaten abgeleitet; ein abgebrochener Lauf verliert damit höchstens eine Charge und setzt
+  fort, statt von vorn zu beginnen.
+
+Ein Dokument, dessen Quelldatei lokal liegt (Dateisystem, Upload), wird sofort neu gelesen, zerlegt
+und gespeichert — **unter seiner eigenen Dokument-ID**, damit Belege und Deep Links es überleben. Ein
+Dokument aus einer entfernten Quelle kann nur sein eigener Konnektorlauf neu lesen; es wird dafür
+vorgemerkt (sein Prüfsummenwert wird geleert, was den Lauf davon abhält, es als unverändert zu
+überspringen) und fällt danach aus der Auswahl, damit der Lauf abschließt. Seine Chunks bleiben bis
+dahin als nachzuziehen ausgewiesen — der Füllstand beschönigt das nicht.
+
+**Ausgelöst wird nichts von selbst.** Ob und wann ein Bestand nachgezogen wird, bleibt die oben unter
+[Offene Punkte](#offene-punkte) genannte, bewusst offene Frage; deshalb gibt es hier keinen
+Hintergrund-Tick, der bei einer Versionserhöhung eigenmächtig den ganzen Bestand anfasst.
 
 ---
 

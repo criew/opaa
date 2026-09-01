@@ -266,4 +266,19 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("indexedAt") Instant indexedAt,
       @Param("checksum") String checksum,
       @Param("lastModifiedRemote") String lastModifiedRemote);
+
+  /**
+   * Marks a document for reprocessing by its own connector run: a {@code null} checksum can never
+   * equal a freshly computed one, so {@link FileProcessingService#processFile}/{@code
+   * #processUrlFile} stop treating the document as unchanged and re-parse it. Used by {@link
+   * PipelineReindexService} for documents whose source is remote and therefore only re-readable by
+   * that run.
+   *
+   * @return the number of rows updated - {@code 0} means the row was deleted meanwhile, which needs
+   *     no further action here
+   */
+  @Modifying
+  @Transactional
+  @Query("update Document d set d.checksum = null where d.id = :id")
+  int clearChecksum(@Param("id") UUID id);
 }
