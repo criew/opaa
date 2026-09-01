@@ -3,8 +3,12 @@ package io.opaa.indexing.pipeline;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.indexing.ChunkingService;
+import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline;
 import io.opaa.test.OpaaIndexingIntegrationTest;
+import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,5 +93,40 @@ class DocumentPipelineRegistryRoutingIntegrationTest {
     // if a future change happened to keep the fallback routing correct by coincidence.
     assertThatThrownBy(() -> applicationContext.getBean(MarkdownDocumentPipeline.class))
         .isInstanceOf(NoSuchBeanDefinitionException.class);
+  }
+
+  /**
+   * Every pipeline actually wired into the application declares exactly the passthrough metadata
+   * keys it set before the hardcoded {@code storeChunks} allowlist was replaced by {@link
+   * DocumentPipeline#passthroughMetadataKeys()} - a single parametrized guard against declaration
+   * drift, replacing what used to be one near-identical unit test per pipeline class (each of them
+   * asserting the declaration against itself, not against a shared expectation).
+   */
+  @Test
+  void everyPipelineDeclaresExactlyItsOwnMetadataKeys() {
+    Map<String, Set<String>> expectedByPipelineId =
+        Map.of(
+            "pdf", Set.of(ChunkingService.LOCATION_METADATA_KEY),
+            "docx", Set.of(ChunkingService.LOCATION_METADATA_KEY),
+            "pptx", Set.of(ChunkingService.LOCATION_METADATA_KEY),
+            "tabular", Set.of(ChunkingService.LOCATION_METADATA_KEY),
+            "html", Set.of(ChunkingService.LOCATION_METADATA_KEY),
+            "tika-fallback", Set.of(ChunkingService.LOCATION_METADATA_KEY),
+            "email",
+                Set.of(
+                    ChunkingService.LOCATION_METADATA_KEY,
+                    ChunkMailMetadata.MAIL_FROM_METADATA_KEY,
+                    ChunkMailMetadata.MAIL_TO_METADATA_KEY,
+                    ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY,
+                    ChunkMailMetadata.MAIL_DATE_METADATA_KEY));
+
+    assertThat(registry.pipelines())
+        .extracting(DocumentPipeline::id)
+        .containsExactlyInAnyOrderElementsOf(expectedByPipelineId.keySet());
+    for (DocumentPipeline pipeline : registry.pipelines()) {
+      assertThat(pipeline.passthroughMetadataKeys())
+          .as("passthroughMetadataKeys() of pipeline %s", pipeline.id())
+          .isEqualTo(expectedByPipelineId.get(pipeline.id()));
+    }
   }
 }

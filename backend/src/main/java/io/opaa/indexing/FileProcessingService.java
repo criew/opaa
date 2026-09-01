@@ -7,7 +7,6 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
-import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.observability.IndexingMetrics;
@@ -21,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -747,7 +747,12 @@ public class FileProcessingService {
    *     rule depends on which of those this chunk set came from, not on {@code document}'s source
    *     type alone (#940 review).
    * @param pipeline the pipeline that produced {@code chunks}; its id and version are written onto
-   *     every chunk (see {@link ChunkPipelineMetadata})
+   *     every chunk (see {@link ChunkPipelineMetadata}). Which further chunk metadata keys ride
+   *     along is decided by {@link DocumentPipelineRegistry#allPassthroughMetadataKeys()}, not by
+   *     {@code pipeline} alone - {@code pipeline} is the outer pipeline a nested attachment's
+   *     chunks are attributed to (see {@code MailDocumentPipeline#processAttachment}), so filtering
+   *     by its own declaration would silently drop a key only the inner, per-attachment pipeline
+   *     declares
    */
   private void storeChunks(
       Document document,
@@ -759,6 +764,7 @@ public class FileProcessingService {
         documentWasSplit && contextTitle != null
             ? chunkEmbedFormatterWithPrefix(contextTitle)
             : CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX;
+    Set<String> passthroughKeys = pipelineRegistry.allPassthroughMetadataKeys();
 
     List<org.springframework.ai.document.Document> enriched =
         chunks.stream()
@@ -780,18 +786,18 @@ public class FileProcessingService {
                   metadata.put(
                       ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY,
                       (int) pipeline.version());
-                  // The chunk's Fundort, when ChunkingService could derive one.
-                  Object location = chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
-                  if (location != null) {
-                    metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+                  // The registry-wide declared passthrough keys (DocumentPipeline#
+                  // passthroughMetadataKeys) - e.g. the chunk's Fundort, or a message's Kopfdaten
+                  // (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) - copied only when this
+                  // particular chunk actually carries them, and never for a key already written
+                  // above: those are FileProcessingService's own bookkeeping, not a pipeline's to
+                  // set.
+                  for (String passthroughKey : passthroughKeys) {
+                    if (metadata.containsKey(passthroughKey)) {
+                      continue;
+                    }
+                    copyIfPresent(chunk, metadata, passthroughKey);
                   }
-                  // A message's Kopfdaten (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) -
-                  // present only on chunks MailDocumentPipeline produced for a message's own body,
-                  // never on an attachment's recursively produced chunks.
-                  copyIfPresent(chunk, metadata, ChunkMailMetadata.MAIL_FROM_METADATA_KEY);
-                  copyIfPresent(chunk, metadata, ChunkMailMetadata.MAIL_TO_METADATA_KEY);
-                  copyIfPresent(chunk, metadata, ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY);
-                  copyIfPresent(chunk, metadata, ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
                   org.springframework.ai.document.Document enrichedChunk =
                       new org.springframework.ai.document.Document(chunk.getText(), metadata);
                   enrichedChunk.setContentFormatter(embedFormatter);

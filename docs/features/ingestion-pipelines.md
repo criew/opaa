@@ -589,9 +589,12 @@ schlichtes, wohlgeformtes XML. Damit bedient dieselbe Pipeline auch das „ODS w
 
 - Die erste nicht-leere Zeile eines Blatts bzw. der Datei ist die Kopfzeile; jeder folgende Chunk trägt
   sie erneut, zusammen mit einer Strukturkontext-Zeile (`Blatt: … · Tabelle: …` für XLSX/ODS, `Tabelle:
-  …` für CSV) — direkt im Chunk-Text, nicht als separates Metadatenfeld, weil `FileProcessingService`
-  nur eine feste, generische Metadatenmenge auf einen gespeicherten Chunk überträgt (siehe
-  [Teil 5](#teil-5--übergabepunkt-an-das-metadatenschema)). Für XLSX/ODS fallen Blatt- und Tabellenname
+  …` für CSV) — direkt im Chunk-Text, nicht als separates Metadatenfeld. Das war bis #1107 auch
+  technisch erzwungen (`FileProcessingService` übertrug eine feste, für alle Pipelines gemeinsame
+  Metadatenmenge auf einen gespeicherten Chunk); seit `DocumentPipeline#passthroughMetadataKeys()`
+  könnte diese Pipeline ein eigenes Metadatenfeld deklarieren, tut es aber unverändert nicht — die
+  Zeile geht damit auch in den Volltextindex, den ein separates Metadatenfeld nicht erreicht (Regel
+  (a)), und bleibt an derselben Stelle zitierfähig wie der übrige Chunk-Text. Für XLSX/ODS fallen Blatt- und Tabellenname
   zusammen: Excels separates Konzept „definierte Tabelle" wird nicht eigens erkannt.
 - Eine Zeilengruppe von bis zu 50 Datenzeilen bildet einen Chunk, vorzeitig geschlossen, wenn die
   nächste Zeile den Chunk über 6.000 Zeichen triebe (Schutz gegen eine Riesenzeile mit hunderten
@@ -786,8 +789,9 @@ werden müssen, statt in einen Block zu fließen:
   referenziert): liest Betreff/Von/An/Datum/Text sowie `AttachmentChunks` für Anhänge.
 
 **Kopfdaten landen als Chunk-Metadaten, nicht im Fließtext** — `ChunkMailMetadata` definiert
-`mail_from`/`mail_to`/`mail_subject`/`mail_date`; `FileProcessingService#storeChunks` kopiert sie auf
-den gespeicherten Chunk, genau wie es das schon für `location` tut (Teil 5, Übergabepunkt).
+`mail_from`/`mail_to`/`mail_subject`/`mail_date`, deklariert über
+`MailDocumentPipeline#passthroughMetadataKeys()` (#1107); `FileProcessingService#storeChunks` kopiert
+sie auf den gespeicherten Chunk, genau wie es das schon für `location` tut (Teil 5, Übergabepunkt).
 
 **Ein Chunk je Nachricht, bei erkanntem Zitatverlauf ein Chunk je Nachricht im Thread** —
 `MailThreadSplitter` schneidet an den Zitat-Trennzeilen, die Outlook/Thunderbird/Gmail auf Deutsch und
@@ -820,6 +824,15 @@ verschachtelte `.eml` oder ein beschädigtes XLSX kostet nur diesen einen Anhang
 (eine Weiterleitung) erreicht `MailDocumentPipeline` dadurch ein weiteres Mal, mit seinen eigenen
 Kopfdaten. Der Fundort eines Anhang-Chunks trägt `Anhang: <Dateiname>` als Präfix vor dem Fundort, den
 die Sub-Pipeline selbst ermittelt hat (z. B. `Anhang: antrag.pdf`).
+
+**Welche Metadaten-Schlüssel eines Anhang-Chunks durchgereicht werden, entscheidet nicht allein
+`MailDocumentPipeline#passthroughMetadataKeys()`.** `FileProcessingService#storeChunks` filtert gegen
+die Vereinigung der Deklarationen aller registrierten Pipelines (`DocumentPipelineRegistry
+#allPassthroughMetadataKeys()`), nicht gegen die eine Pipeline, mit der `storeChunks` für das
+Gesamtdokument aufgerufen wurde — sonst würde ein Struktur-Schlüssel, den nur die innere,
+tatsächlich für den Anhang zuständige Pipeline deklariert (z. B. eine künftige Folien-/
+Blatt-Metadatum-Pipeline), an genau der Stelle verworfen, an der `pipeline_id`/`pipeline_version`
+ohnehin schon die äußere Mail-Pipeline tragen (siehe die Einschränkung unten).
 
 **Bekannte Einschränkung: Jeder Chunk — auch ein rekursiv erzeugter Anhang-Chunk — trägt
 `pipeline_id=email`/die Version dieser Pipeline** (#1101 Review), nicht die der Sub-Pipeline, die ihn
@@ -1099,7 +1112,16 @@ beim Anlegen einer Bibliothek ein Schema vorschlägt — das ist eine eigene, sp
 Hier wird nur der **Übergabepunkt** definiert:
 
 1. Jede Pipeline liefert ihre Struktur-Metadaten als Teil des Chunks ab, in einer für alle Pipelines
-   einheitlichen Form — nicht jede Pipeline mit eigenen Schlüsselnamen für dasselbe Konzept.
+   einheitlichen Form — nicht jede Pipeline mit eigenen Schlüsselnamen für dasselbe Konzept. **Der
+   Übergabemechanismus selbst ist seit #1107 offen für jede Pipeline**: `DocumentPipeline` deklariert
+   über `passthroughMetadataKeys()`, welche seiner Chunk-Metadatenschlüssel `storeChunks` auf den
+   gespeicherten Chunk kopiert — eine neue Pipeline erweitert diese Menge selbst, ohne
+   `FileProcessingService` zu ändern (Open-Closed, Teil 1). Die *Form* ist damit trotzdem uneinheitlich
+   geblieben: `MailDocumentPipeline` nutzt eigene Metadatenfelder (`mail_from` usw.), während
+   `TabularDocumentPipeline`/`HtmlDocumentPipeline`/`PptxDocumentPipeline` ihren Strukturkontext in den
+   Chunk-Text backen (`location` plus eine Kontextzeile) statt in ein Feld — offen, ob das eine
+   bewusste, formatabhängige Entscheidung bleibt (Mail-Kopfdaten sind kein Fließtext, eine
+   Blatt-/Tabellenzeile schon) oder vereinheitlicht werden soll.
 2. Struktur-Metadaten sind **abgeleitet, nicht geraten**. Sie stammen aus dem Dokument selbst
    (Gliederung, Folienzähler, Blattname, Mail-Header). Inhaltlich interpretierende Felder — Dokumentart,
    Fassung, Thema — entstehen hier ausdrücklich nicht; sie gehören in die Metadaten-Spezifikation, mit
@@ -1189,6 +1211,10 @@ Hier wird nur der **Übergabepunkt** definiert:
   Inhaltsverzeichnis für die ersten drei Kapitel und flachem Text danach? Vollständiger Rückfall auf
   Token-Chunking oder gemischter Zuschnitt innerhalb eines Dokuments? Letzteres ist fachlich besser und
   macht die Erklärbarkeit der Zerlegung schwerer.
+- **Bleibt Strukturkontext pipeline-abhängig Metadatenfeld oder Chunk-Text?** #1107 hat den
+  Übergabepunkt selbst zum Erweiterungspunkt gemacht (`DocumentPipeline#passthroughMetadataKeys()`),
+  aber bewusst nicht entschieden, ob die *Form* über Mail (Metadatenfelder) und
+  Tabular/HTML/PPTX (Text + `location`) hinweg vereinheitlicht werden soll (Teil 5, Punkt 1).
 - **Wann wird ein Bestand nach einer Pipeline-Umstellung tatsächlich neu indiziert?** Dass ein
   gemischter Bestand **erkennbar** ist und selektiv nachgezogen werden **kann**, ist mit
   [Regel (d)](#d-jeder-chunk-trägt-die-version-des-verfahrens-das-ihn-erzeugt-hat) entschieden. Offen
