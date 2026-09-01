@@ -55,6 +55,13 @@ class RetrievalPipelineTest {
             new SearchScopeStage(),
             new SubQueryDecompositionStage(queryDecompositionService),
             new VectorSearchStage(vectorStore),
+            // Lexical path switched off: this class asserts the structural guarantees over the
+            // vector path's candidates. The lexical stage's own behaviour - including that it
+            // leaves the selection untouched - is covered by FullTextSearchStageTest.
+            new FullTextSearchStage(
+                mock(FullTextChunkSearch.class),
+                mock(FullTextBackfillGate.class),
+                new FullTextSearchProperties(false)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new DocumentCompletionStage(),

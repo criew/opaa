@@ -985,6 +985,62 @@ docker compose down -v
 > `phi3:mini`, zusammen rund 2,5 GB). Ein danach erneut gestarteter Stack lädt beide Modelle über
 > `ollama-pull` vollständig neu herunter, siehe [„Lokal betriebenes Ollama im Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack-720).
 
+## Volltextsuche (lexikalischer Suchpfad)
+
+Neben der Vektorsuche läuft eine klassische Volltextsuche direkt in PostgreSQL — `tsvector` mit der
+`german`-Konfiguration und einem GIN-Index auf der Tabelle `chunk_full_text`. Es gibt **kein zweites
+System**: derselbe Sicherungslauf, dieselbe Wiederherstellung, derselbe Verschlüsselungsnachweis. Der
+Pfad findet, woran eine Vektorsuche strukturell scheitert — Paragrafenverweise, Aktenzeichen,
+Erlassnummern, seltene Fachbegriffe.
+
+> **Stand:** Der Pfad ist gebaut und läuft mit, **wirkt aber noch nicht auf die Antwort**. Seine
+> Kandidaten gehen bislang nur in das Erklärprotokoll der Suche; in die Ergebnis-Fusion aufgenommen wird
+> er mit einem eigenen, gesondert gemessenen Schritt.
+
+### Was zu tun ist
+
+Nichts. Jeder neu indexierte Chunk bekommt seinen Volltexteintrag in derselben Transaktion wie den
+Vektor. Der **Bestand** aus der Zeit davor wird von einem Hintergrundlauf nachgezogen, der in kleinen
+Stapeln arbeitet, jederzeit unterbrechbar ist und nach einem Neustart dort weitermacht, wo er stand.
+Erst wenn der Nachlauf einer Bibliothek abgeschlossen ist, wird diese Bibliothek volltextlich
+durchsucht — ein halb gefüllter Index liefert Treffer und verschweigt den Rest, und das ist schlechter,
+als gar nichts zu liefern.
+
+Dasselbe passiert automatisch, wenn ein Update die Art ändert, wie der Volltextindex gebildet wird: Die
+betroffenen Zeilen gelten dann als fehlend und werden nachgezogen. Ein manueller Reindex ist dafür
+**nicht** nötig — anders als bei einer Änderung am Einbettungsmodell (siehe
+[„Was ein Update mit dem Index macht"](#was-ein-update-mit-dem-index-macht)), denn hier ist kein
+Modellaufruf im Spiel.
+
+### Bekannte Grenze: `ts_rank` ist kein BM25
+
+PostgreSQL bewertet Volltexttreffer mit `ts_rank`. Das ist **nicht** das BM25-Verfahren, das
+spezialisierte Suchmaschinen verwenden, und der Unterschied ist im Betrieb spürbar:
+
+- **Keine Normalisierung auf die Textlänge.** Lange Abschnitte werden systematisch überbewertet.
+- **Keine Gewichtung nach Seltenheit.** Ein Wort, das in fünf von 50 000 Abschnitten vorkommt, zählt
+  kaum mehr als eines, das überall steht. Bei einem Bestand aus vielen ähnlich formulierten Satzungen
+  ist genau das die schwache Stelle.
+
+Diese Grenze ist bewusst in Kauf genommen, aus zwei Gründen. Erstens braucht die Ergebnis-Fusion keine
+richtige *Bewertung*, sondern nur eine brauchbare *Reihenfolge* — eine deutlich schwächere Anforderung.
+Zweitens wird die Schwäche dort, wo der Pfad seinen Zweck erfüllt, kaum wirksam: Bei einer exakten
+Kennung ist der richtige Abschnitt meist der einzige, der die Zeichenfolge überhaupt enthält.
+
+Gegen den zweiten Punkt ist zusätzlich vorgesorgt: Paragrafenverweise, Aktenzeichen sowie Erlass- und
+Drucksachennummern werden **zusätzlich als unzerlegte Kennungen** geführt und höher gewichtet als
+Fließtext. Ohne das gewönne ein Abschnitt, der die Wörter der Frage nur oft genug wiederholt, gegen den
+einen Abschnitt, der die gesuchte Kennung tatsächlich führt — genau die Schwäche von `ts_rank`.
+
+**Wann diese Grenze relevant wird:** Wenn Fragen mit exakten Kennungen die falsche Fundstelle liefern,
+ist sie der erste Verdacht. Ob der Wechsel auf eine echte BM25-Erweiterung nötig ist, wird gemessen und
+nicht vermutet; die Bedingung dafür steht in
+[Hybride Suche mit Reranking](../features/hybrid-retrieval.md#eskalationsstufen-mit-eintrittsbedingung).
+
+**Keine Kompositazerlegung.** „Genehmigung" findet „Baugenehmigungsverfahren" im Volltextpfad nicht.
+Auch das ist eine bewusste Festlegung: Eine Zerlegung, die „Gebührenordnung" in „Gebühr" und „Ordnung"
+auflöst, verwässert auch Treffer. Ob sich der Tausch lohnt, entscheidet eine Messung, keine Vermutung.
+
 ## Fehlerbehebung
 
 ### Backend gibt leere Antworten oder "Connection refused" zurück

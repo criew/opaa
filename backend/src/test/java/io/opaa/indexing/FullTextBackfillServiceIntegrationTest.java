@@ -146,11 +146,7 @@ class FullTextBackfillServiceIntegrationTest {
   }
 
   /**
-   * #1047 review, finding 1 (second round): {@code content_tsv_version} is provisional scaffolding
-   * for #1048 - this proves the mechanics that scaffolding depends on actually work today, using a
-   * row planted directly at an older version (since {@link FullTextChunkStore#CURRENT_TSV_VERSION}
-   * itself is fixed at {@code 1} in this codebase and cannot be bumped without a code change): a
-   * stale-version row is selected by {@link FullTextBackfillService#backfillBatch} exactly like a
+   * A stale-version row is selected by {@link FullTextBackfillService#backfillBatch} exactly like a
    * missing one, and {@code ON CONFLICT (chunk_id) DO UPDATE} actually brings it up to date - not
    * {@code DO NOTHING}, which would have left it stale and reselected forever.
    */
@@ -188,6 +184,49 @@ class FullTextBackfillServiceIntegrationTest {
     FullTextBackfillProgress afterBackfill = progressService.progressForLibrary(libraryId);
     assertThat(afterBackfill.missingChunks()).isZero();
     assertThat(afterBackfill.isComplete()).isTrue();
+  }
+
+  /**
+   * The version scaffolding doing the job it was built for (#1048): a row written under version 1 -
+   * the exact state every chunk indexed before the identifier protection is in - carries no
+   * undecomposed identifier lexeme and would silently miss every identifier query. The backfill
+   * treats it as missing and rebuilds it, without anyone having to write a migration or a one-off
+   * script. The row is planted with the pre-#1048 {@code content_tsv} expression on purpose: an
+   * assertion against a row that already had the lexemes would hold before and after the bump and
+   * prove nothing.
+   */
+  @Test
+  void aRowWrittenBeforeTheIdentifierProtectionIsRebuiltWithItsIdentifierLexemes() {
+    UUID chunkId = seedUnindexedChunk("Zulässig im Außenbereich nach § 35 BauGB.");
+    jdbcTemplate.update(
+        "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv, "
+            + "content_tsv_version) VALUES (?, ?, ?, to_tsvector('german', ?), 1)",
+        chunkId,
+        documentId,
+        libraryId,
+        "Zulässig im Außenbereich nach § 35 BauGB.");
+
+    assertThat(identifierMatches(chunkId)).isZero();
+    assertThat(progressService.progressForLibrary(libraryId).isComplete()).isFalse();
+
+    assertThat(backfillService.backfillBatch(10)).isEqualTo(1);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT content_tsv_version FROM chunk_full_text WHERE chunk_id = ?",
+                Short.class,
+                chunkId))
+        .isEqualTo(FullTextChunkStore.CURRENT_TSV_VERSION);
+    assertThat(identifierMatches(chunkId)).isEqualTo(1L);
+    assertThat(progressService.progressForLibrary(libraryId).isComplete()).isTrue();
+  }
+
+  private long identifierMatches(UUID chunkId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT count(*) FROM chunk_full_text WHERE chunk_id = ? "
+            + "AND content_tsv @@ to_tsquery('simple', 'xpar35baugb')",
+        Long.class,
+        chunkId);
   }
 
   private void seedUnindexedChunks(int count) {

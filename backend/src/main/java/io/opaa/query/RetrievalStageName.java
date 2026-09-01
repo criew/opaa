@@ -53,6 +53,18 @@ public enum RetrievalStageName {
   VECTOR_SEARCH,
 
   /**
+   * One PostgreSQL full-text query per search query, each with the identical filter from {@link
+   * #SEARCH_SCOPE} and the identical {@link QueryProperties#fetchK}, over the libraries whose
+   * full-text backfill has finished (docs/features/hybrid-retrieval.md, Arbeitspaket 2).
+   *
+   * <p><b>Its candidates do not reach the fusion yet</b> - they are recorded in the explanation
+   * protocol and nowhere else, so this stage is currently the identity for the selection and
+   * switching it off changes nothing but the protocol. #1049 makes its lists an input of {@link
+   * #RANK_FUSION}, and that is where the behaviour change and the re-drawn baselines belong.
+   */
+  FULL_TEXT_SEARCH,
+
+  /**
    * Narrows each candidate list to {@link QueryProperties#topK} via {@link MmrSelector}, trading
    * relevance against redundancy at {@link QueryProperties#mmrLambda} (at the shipped default
    * {@code 1.0} this is plain top-k by relevance). Switched off, every list stays at its full
