@@ -119,7 +119,14 @@ class FullTextChunkSearch {
             + "WHERE f.library_id = ANY(?) "
             + "  AND f.content_tsv_version = ? "
             + "  AND f.content_tsv @@ q.tsq "
-            + "ORDER BY rank DESC, chunk_id "
+            // Ties in ts_rank are common - identically structured documents of one office score the
+            // same for a question naming none of them. The tie-break must therefore be derived from
+            // the chunk's content, not from its id: a chunk id is a fresh UUID per indexing run, so
+            // an id-based order silently reshuffles the tail between two runs over the same corpus
+            // and costs the retrieval benchmark its run-to-run reproducibility (ADR-0013). The id
+            // stays as the last key so the order is total even for two chunks of one document that
+            // somehow share a chunk_index.
+            + "ORDER BY rank DESC, v.metadata->>'file_name', v.metadata->>'chunk_index', chunk_id "
             + "LIMIT ?";
 
     UUID[] libraries = libraryIds.toArray(UUID[]::new);

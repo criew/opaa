@@ -95,6 +95,29 @@ class VariantReportWriterTest {
   }
 
   /**
+   * Issue #1049: the same requirement for the lexical path's switch. Without it a {@code
+   * vector-only} variant would be rendered as "keine Änderung" next to the hybrid reference —
+   * exactly the indistinguishability the test above exists to prevent.
+   */
+  @Test
+  void rendersTheLexicalPathOverride() {
+    var reference = VariantOutcome.executed(variant("vector+fulltext-rrf"), report());
+    var vectorOnly = new PipelineVariant.QueryOverrides(null, null, null, null, null, null, false);
+    var changed =
+        VariantOutcome.executed(variantWithOverrides("vector-only", vectorOnly), report());
+    var report =
+        new VariantReport(
+            "c",
+            "desc",
+            "verwaltung",
+            "vector+fulltext-rrf",
+            List.of(reference, changed),
+            List.of(VariantComparisonRunner.delta(changed, reference)));
+
+    assertThat(VariantReportWriter.renderSummary(report)).contains("fullTextSearchEnabled=false");
+  }
+
+  /**
    * Issue #1044 review, Befund 1(c): a multi-run variant's summary must show the min/median/max
    * lines and the deviation line, and the deviation count must reflect a fixture where only the
    * third of three runs actually differs — not "any pair differs" or an off-by-one over the runs.

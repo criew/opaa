@@ -207,6 +207,29 @@ class FullTextChunkSearchIntegrationTest {
     assertThat(hits).extracting(Document::getId).containsExactly(chunkId.toString());
   }
 
+  /**
+   * Ties in {@code ts_rank} are the normal case, not an edge case: identically structured documents
+   * of one office score the same for a question that names none of them. The order among them must
+   * come from the chunk's content, never from its id - a chunk id is a fresh UUID per indexing run,
+   * so an id-based tie-break reshuffles the tail of every such result between two runs over the
+   * same corpus, which is exactly what costs the retrieval benchmark its run-to-run reproducibility
+   * (#1049, ADR-0013).
+   */
+  @Test
+  void chunksWithTheSameRankAreOrderedByTheirContentAndNotByTheirId() {
+    // Same text, therefore the same ts_rank; inserted in the reverse of the expected order, so an
+    // insertion- or id-ordered result would show it.
+    seed(readableLibrary, "Die Satzung regelt die Gebühr.", "z-satzung.md", 1);
+    seed(readableLibrary, "Die Satzung regelt die Gebühr.", "a-satzung.md", 0);
+    backfillService.backfillBatch(100);
+
+    List<Document> hits = fullTextChunkSearch.search("Satzung Gebühr", Set.of(readableLibrary), 25);
+
+    assertThat(hits)
+        .extracting(hit -> hit.getMetadata().get("file_name"))
+        .containsExactly("a-satzung.md", "z-satzung.md");
+  }
+
   private UUID seed(UUID libraryId, String text) {
     Document chunk =
         new Document(
@@ -216,5 +239,21 @@ class FullTextChunkSearchIntegrationTest {
                 VectorChunkStore.LIBRARY_ID_METADATA_KEY, libraryId.toString()));
     vectorStore.add(List.of(chunk));
     return UUID.fromString(chunk.getId());
+  }
+
+  private void seed(UUID libraryId, String text, String fileName, int chunkIndex) {
+    vectorStore.add(
+        List.of(
+            new Document(
+                text,
+                Map.of(
+                    VectorChunkStore.DOCUMENT_ID_METADATA_KEY,
+                    documentId.toString(),
+                    VectorChunkStore.LIBRARY_ID_METADATA_KEY,
+                    libraryId.toString(),
+                    "file_name",
+                    fileName,
+                    "chunk_index",
+                    chunkIndex))));
   }
 }
