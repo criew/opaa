@@ -20,12 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
  * or absence of such a row <em>is</em> the persisted progress. Calling this method again after a
  * crash, a restart or simply the next scheduled tick re-derives exactly the remaining work from the
  * database; nothing is lost, and nothing already done is redone (a chunk that made it into {@code
- * chunk_full_text} on a previous, interrupted call is excluded from every later batch). This is also
- * why {@link FullTextChunkStore#indexChunks}'s own {@code ON CONFLICT (chunk_id) DO NOTHING} matters
- * here: even if two calls raced on the same chunk (e.g. this backfill and a concurrent re-index of
- * the same chunk on the write path, an unlikely but possible overlap since chunk ids are freshly
- * generated per write - see {@code FileProcessingService#storeChunks}), neither raises a
- * primary-key violation.
+ * chunk_full_text} on a previous, interrupted call is excluded from every later batch). This is
+ * also why {@link FullTextChunkStore#indexChunks}'s own {@code ON CONFLICT (chunk_id) DO NOTHING}
+ * matters here: even if two calls raced on the same chunk (e.g. this backfill and a concurrent
+ * re-index of the same chunk on the write path, an unlikely but possible overlap since chunk ids
+ * are freshly generated per write - see {@code FileProcessingService#storeChunks}), neither raises
+ * a primary-key violation.
  *
  * <p><b>Rückwirkungsarm (low-impact):</b> one call processes at most {@code batchSize} chunks and
  * returns; {@link FullTextBackfillScheduler} is what turns that into an ongoing background job,
@@ -34,8 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
  * other {@code @Scheduled} job in this package.
  *
  * <p>Table/schema name are read from the same {@code spring.ai.vectorstore.pgvector.*} properties
- * {@code PgVectorStore} itself binds, mirroring {@code io.opaa.query.ChunkEmbeddingLookup}'s pattern
- * (never hardcoded independently of that configuration).
+ * {@code PgVectorStore} itself binds, mirroring {@code io.opaa.query.ChunkEmbeddingLookup}'s
+ * pattern (never hardcoded independently of that configuration).
  */
 @Component
 public class FullTextBackfillService {

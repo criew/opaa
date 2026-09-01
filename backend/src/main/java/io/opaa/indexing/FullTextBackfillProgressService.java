@@ -17,8 +17,8 @@ import org.springframework.stereotype.Component;
  * Javadoc (#1047 review, finding 2).
  *
  * <p>Table/schema name are read from the same {@code spring.ai.vectorstore.pgvector.*} properties
- * {@code PgVectorStore} itself binds, mirroring {@code io.opaa.query.ChunkEmbeddingLookup}'s pattern
- * (never hardcoded independently of that configuration).
+ * {@code PgVectorStore} itself binds, mirroring {@code io.opaa.query.ChunkEmbeddingLookup}'s
+ * pattern (never hardcoded independently of that configuration).
  */
 @Component
 public class FullTextBackfillProgressService {

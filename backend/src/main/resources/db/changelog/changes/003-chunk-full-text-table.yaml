@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 002-chunk-full-text-table
+      id: 003-chunk-full-text-table
       author: opaa
       comment: >-
         AP2a (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a: Backfill des Bestands"): the table
@@ -18,7 +18,7 @@ databaseChangeLog:
         content_tsv is built can bump the version a row was built with, and future selection logic
         can then treat a row built under an old version the same as a missing one - not wired into
         any actual reprocessing yet, only the column and its default exist so far. The GIN index
-        itself lives in the following changeset (003), built CONCURRENTLY and therefore unable to
+        itself lives in the following changeset (004), built CONCURRENTLY and therefore unable to
         share a transaction with this one. Fills nothing (AP2a's own rule): rows are added by the
         write path at chunk-write time (same transaction as the vector write, see
         VectorChunkStore#addChunks) and, for the pre-existing backlog, by a separate, resumable

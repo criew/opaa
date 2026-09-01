@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
  * Writes/deletes rows in {@code chunk_full_text} (docs/features/hybrid-retrieval.md, "Arbeitspaket
  * 2a") - the lexical-search counterpart of {@link VectorChunkStore}'s {@code vector_store} writes.
  * A dedicated table, not columns on {@code vector_store} itself: see {@code
- * changes/002-chunk-full-text-table.yaml}'s own comment for why.
+ * changes/003-chunk-full-text-table.yaml}'s own comment for why.
  *
  * <p>Never called directly by {@link FileProcessingService} - {@link VectorChunkStore} owns both
  * writes (see {@link VectorChunkStore#addChunks}) so a chunk can never be vectorized without also
@@ -34,9 +34,10 @@ public class FullTextChunkStore {
 
   /**
    * The {@code content_tsv_version} every row written by {@link #indexChunks} carries - provisional
-   * scaffolding for #1048 (see {@code changes/002-chunk-full-text-table.yaml}'s own comment on the
-   * column): not yet read anywhere except {@link FullTextBackfillService}'s own selection query, and
-   * not yet bumped by anything, since no #1047-era change alters how {@code content_tsv} is built.
+   * scaffolding for #1048 (see {@code changes/003-chunk-full-text-table.yaml}'s own comment on the
+   * column): not yet read anywhere except {@link FullTextBackfillService}'s own selection query,
+   * and not yet bumped by anything, since no #1047-era change alters how {@code content_tsv} is
+   * built.
    */
   static final short CURRENT_TSV_VERSION = 1;
 

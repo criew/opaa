@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -35,6 +36,14 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
   List<Document> findByLibraryId(UUID libraryId);
+
+  /**
+   * Backs {@link LowChunkDocumentAuditService#findLowChunkDocuments}: one organization's {@link
+   * DocumentStatus#INDEXED} documents at or below {@code chunkCountThreshold} chunks, paged. Backed
+   * by the partial index {@code idx_documents_indexed_chunk_count} (migration 002).
+   */
+  Page<Document> findByOrganizationIdAndStatusAndChunkCountLessThanEqual(
+      UUID organizationId, DocumentStatus status, int chunkCountThreshold, Pageable pageable);
 
   /**
    * Backs {@link StaleDocumentCleanupService#cleanupVanished}: every document of a single {@code

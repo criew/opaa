@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 /**
  * Drives {@link FullTextBackfillService#backfillBatch} on a fixed tick (docs/features/hybrid-
  * retrieval.md, "Arbeitspaket 2a") - one small batch every {@code
- * opaa.indexing.full-text-backfill.tick-ms} (default {@link #DEFAULT_TICK_MS}), not a tight loop, so
- * the backfill stays nachrangig (low priority) against query/ingest traffic on the same database
+ * opaa.indexing.full-text-backfill.tick-ms} (default {@link #DEFAULT_TICK_MS}), not a tight loop,
+ * so the backfill stays nachrangig (low priority) against query/ingest traffic on the same database
  * rather than saturating it. No leader election, no distributed lock: assumes exactly one backend
  * process (ADR-0021), matching every other {@code @Scheduled} job in this package ({@link
  * LibraryIndexingScheduler}, {@link IndexingJobRecoveryScheduler}). Resumability itself does not
@@ -53,7 +53,8 @@ public class FullTextBackfillScheduler {
     this.properties = properties;
   }
 
-  @Scheduled(fixedDelayString = "${opaa.indexing.full-text-backfill.tick-ms:" + DEFAULT_TICK_MS + "}")
+  @Scheduled(
+      fixedDelayString = "${opaa.indexing.full-text-backfill.tick-ms:" + DEFAULT_TICK_MS + "}")
   public void runBackfillBatch() {
     if (drained.get()) {
       return;

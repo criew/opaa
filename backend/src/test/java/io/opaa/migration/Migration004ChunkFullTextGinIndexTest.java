@@ -13,18 +13,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta test for {@code changes/003-chunk-full-text-gin-index.yaml} (issue #1047, AP2a): applies
- * the baseline, then 002 ({@code chunk_full_text} itself) and 003 (this changeSet) in sequence, and
- * asserts the GIN index on {@code content_tsv} - built {@code CONCURRENTLY}, outside 003's own
+ * Delta test for {@code changes/004-chunk-full-text-gin-index.yaml} (issue #1047, AP2a): applies
+ * the baseline, then 003 ({@code chunk_full_text} itself) and 004 (this changeSet) in sequence, and
+ * asserts the GIN index on {@code content_tsv} - built {@code CONCURRENTLY}, outside 004's own
  * transaction, so it does not block concurrent writes to an already-populated table for the
  * duration of the build (see that changeSet's own comment).
  */
-class Migration003ChunkFullTextGinIndexTest extends AbstractMigrationTest {
+class Migration004ChunkFullTextGinIndexTest extends AbstractMigrationTest {
 
   private static final String TABLE_CHANGELOG_PATH =
-      "db/changelog/changes/002-chunk-full-text-table.yaml";
+      "db/changelog/changes/003-chunk-full-text-table.yaml";
   private static final String GIN_INDEX_CHANGELOG_PATH =
-      "db/changelog/changes/003-chunk-full-text-gin-index.yaml";
+      "db/changelog/changes/004-chunk-full-text-gin-index.yaml";
   private static final String GIN_INDEX_NAME = "idx_chunk_full_text_content_tsv";
 
   private Connection connection;

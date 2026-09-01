@@ -13,22 +13,22 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta test for {@code changes/002-chunk-full-text-table.yaml} (issue #1047, AP2a): applies the
+ * Delta test for {@code changes/003-chunk-full-text-table.yaml} (issue #1047, AP2a): applies the
  * baseline, then this one changeSet in isolation, and asserts the resulting {@code chunk_full_text}
  * table and its btree indexes - the schema the AP2a write path (VectorChunkStore /
  * FullTextChunkStore) and backfill (FullTextBackfillService) both depend on. The GIN index on
- * {@code content_tsv} is a separate changeset (003, {@link Migration003ChunkFullTextGinIndexTest}) -
- * {@code CREATE INDEX CONCURRENTLY} cannot share a transaction with this one's table creation.
+ * {@code content_tsv} is a separate changeset (004, {@link Migration004ChunkFullTextGinIndexTest})
+ * - {@code CREATE INDEX CONCURRENTLY} cannot share a transaction with this one's table creation.
  *
  * <p>Deliberately a table of its own rather than columns added to {@code vector_store}: {@code
  * vector_store} is created by Spring AI at application startup, never by Liquibase (see the
  * changeSet's own comment) - it does not exist in this test's fixture chain at all, which is
  * exactly why altering it directly here is not an option this delta test could ever exercise.
  */
-class Migration002ChunkFullTextTableTest extends AbstractMigrationTest {
+class Migration003ChunkFullTextTableTest extends AbstractMigrationTest {
 
   private static final String CHANGELOG_PATH =
-      "db/changelog/changes/002-chunk-full-text-table.yaml";
+      "db/changelog/changes/003-chunk-full-text-table.yaml";
 
   private Connection connection;
 
@@ -90,7 +90,7 @@ class Migration002ChunkFullTextTableTest extends AbstractMigrationTest {
 
   @Test
   void theGinIndexDoesNotExistYet() throws SQLException {
-    // Confirms the split between 002 (table) and 003 (GIN index, CONCURRENTLY) is real: this
+    // Confirms the split between 003 (table) and 004 (GIN index, CONCURRENTLY) is real: this
     // changeSet alone must not create it.
     assertThat(indexExists("idx_chunk_full_text_content_tsv")).isFalse();
   }

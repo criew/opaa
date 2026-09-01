@@ -210,6 +210,16 @@ public final class SupportedDocumentFormats {
   }
 
   /**
+   * Whether {@code detectedMimeType} is Tika-detected PDF content - used by {@link
+   * DocumentService#isTextlessPdf} to tell a scan PDF (ingestion-pipelines.md, Teil 3, Punkt 1
+   * "Scan-Erkennung und Bestandsprüfung") apart from any other format that happens to also yield
+   * blank extracted text.
+   */
+  public static boolean isPdfContent(String detectedMimeType) {
+    return ".pdf".equals(extensionForDetectedContent(detectedMimeType));
+  }
+
+  /**
    * The entry of {@link #EXTENSIONS} that {@code fileName} ends with, or empty when it ends with
    * none of them - the file's own claimed extension, used only as a hint once {@link
    * #decideForFileName} has already decided acceptance from the content. Package-visible so {@code

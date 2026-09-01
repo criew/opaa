@@ -1,9 +1,9 @@
 databaseChangeLog:
   - changeSet:
-      id: 003-chunk-full-text-gin-index
+      id: 004-chunk-full-text-gin-index
       author: opaa
       comment: >-
-        AP2a (docs/features/hybrid-retrieval.md): the GIN index on chunk_full_text.content_tsv (002
+        AP2a (docs/features/hybrid-retrieval.md): the GIN index on chunk_full_text.content_tsv (003
         added the table itself), built CONCURRENTLY and therefore outside this changeSet's own
         transaction (runInTransaction: false) - a GIN build over an already-populated table must not
         block concurrent writes for its duration. The leading DROP INDEX CONCURRENTLY IF EXISTS is

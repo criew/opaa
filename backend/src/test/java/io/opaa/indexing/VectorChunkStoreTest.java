@@ -38,7 +38,8 @@ class VectorChunkStoreTest {
           vectorStore, embeddingModel, batchingStrategy, vectorStoreWriter, fullTextChunkStore);
 
   @Test
-  void addChunksEmbedsFirstThenHandsTheResultToVectorStoreWriterWithoutTouchingVectorStoreDirectly() {
+  void
+      addChunksEmbedsFirstThenHandsTheResultToVectorStoreWriterWithoutTouchingVectorStoreDirectly() {
     List<Document> chunks = List.of(new Document("chunk text"));
     List<float[]> embeddings = List.of(new float[] {0.1f, 0.2f});
     when(embeddingModel.embed(eq(chunks), any(EmbeddingOptions.class), eq(batchingStrategy)))

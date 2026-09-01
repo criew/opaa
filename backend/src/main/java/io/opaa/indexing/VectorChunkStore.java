@@ -35,8 +35,8 @@ import org.springframework.stereotype.Component;
  * method try to participate in a transaction whose physical commit has already happened - Spring
  * still reports {@code TransactionSynchronizationManager#isSynchronizationActive()} as {@code true}
  * at that point, so a fresh transaction is not reliably started. Two independent statements are
- * simpler and no worse here: each is a single-row-set {@code DELETE}, already atomic on its own, and
- * idempotent if only one of the two ever runs.
+ * simpler and no worse here: each is a single-row-set {@code DELETE}, already atomic on its own,
+ * and idempotent if only one of the two ever runs.
  */
 @Component
 public class VectorChunkStore {

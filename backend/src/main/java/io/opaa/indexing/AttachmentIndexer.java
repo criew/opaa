@@ -186,6 +186,17 @@ class AttachmentIndexer {
         ctx.anyEntryDeferred().set(true);
         return;
       }
+      if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
+        // The document was already rejected and marked FAILED (DocumentService#isTextlessPdf) -
+        // not deferred: unlike a transient quota/availability issue, a scan PDF will not gain a
+        // text layer on retry.
+        ctx.events()
+            .record(
+                IndexingEventCategory.REJECTED,
+                DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
+                candidate.url());
+        return;
+      }
       // An unchanged attachment (same checksum as an already-indexed document) is deduplicated by
       // processUrlFile itself and returns SKIPPED - must not inflate the document count again.
       if (result == FileProcessingResult.PROCESSED) {

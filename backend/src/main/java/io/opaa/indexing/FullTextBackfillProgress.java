@@ -23,8 +23,8 @@ public record FullTextBackfillProgress(
    * condition docs/features/hybrid-retrieval.md's "Paket 2 steht vor Paket 3" ordering names as the
    * gate before the lexical search path may include a library: "Aufgenommen in die Fusion wird der
    * Pfad erst, wenn der Backfill einer Bibliothek abgeschlossen ist." Defined on {@link
-   * #missingChunks} directly, not on {@link #totalChunks}/{@link #indexedChunks} - see this record's
-   * own Javadoc for why that comparison alone is not safe.
+   * #missingChunks} directly, not on {@link #totalChunks}/{@link #indexedChunks} - see this
+   * record's own Javadoc for why that comparison alone is not safe.
    */
   public boolean isComplete() {
     return missingChunks == 0;

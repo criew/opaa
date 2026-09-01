@@ -117,7 +117,8 @@ class FullTextBackfillServiceIntegrationTest {
    * row (e.g. left behind by a bug, or by a chunk deleted through a path that skipped {@link
    * VectorChunkStore}) must never make {@link FullTextBackfillProgress#isComplete()} look complete
    * for chunks that are genuinely still missing - {@code indexedChunks} and {@code totalChunks}
-   * alone cannot tell the two situations apart, only the direct {@code missingChunks} anti-join can.
+   * alone cannot tell the two situations apart, only the direct {@code missingChunks} anti-join
+   * can.
    */
   @Test
   void anOrphanedFullTextRowDoesNotMaskAGenuinelyMissingChunk() {
