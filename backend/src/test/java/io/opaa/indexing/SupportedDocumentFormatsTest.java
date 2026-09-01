@@ -54,6 +54,95 @@ class SupportedDocumentFormatsTest {
         .isTrue();
   }
 
+  // --- #1057: ODF (ODT, ODS, ODP) ---------------------------------------------------------------
+
+  @Test
+  void contentMatchesExtensionAcceptsTheExactMediaTypeForEveryOdfExtension() {
+    assertThat(
+            SupportedDocumentFormats.contentMatchesExtension(
+                ".odt", "application/vnd.oasis.opendocument.text"))
+        .isTrue();
+    assertThat(
+            SupportedDocumentFormats.contentMatchesExtension(
+                ".ods", "application/vnd.oasis.opendocument.spreadsheet"))
+        .isTrue();
+    assertThat(
+            SupportedDocumentFormats.contentMatchesExtension(
+                ".odp", "application/vnd.oasis.opendocument.presentation"))
+        .isTrue();
+  }
+
+  // Review nit 3 (#1057): pins DOCX and ODT apart from each other the same way the OOXML-container
+  // tests above pin real Office content apart from its generic, unresolved container type - so a
+  // later "tolerance" widening of either extension's strict set cannot silently start accepting
+  // the other family's content.
+  @Test
+  void contentMatchesExtensionRejectsDocxContentForOdtAndOdtContentForDocx() {
+    assertThat(
+            SupportedDocumentFormats.contentMatchesExtension(
+                ".odt", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+        .isFalse();
+    assertThat(
+            SupportedDocumentFormats.contentMatchesExtension(
+                ".docx", "application/vnd.oasis.opendocument.text"))
+        .isFalse();
+  }
+
+  @Test
+  void extensionForDetectedContentResolvesEveryOdfType() {
+    assertThat(
+            SupportedDocumentFormats.extensionForDetectedContent(
+                "application/vnd.oasis.opendocument.text"))
+        .isEqualTo(".odt");
+    assertThat(
+            SupportedDocumentFormats.extensionForDetectedContent(
+                "application/vnd.oasis.opendocument.spreadsheet"))
+        .isEqualTo(".ods");
+    assertThat(
+            SupportedDocumentFormats.extensionForDetectedContent(
+                "application/vnd.oasis.opendocument.presentation"))
+        .isEqualTo(".odp");
+  }
+
+  @Test
+  void decideForFileNameAcceptsOdfContentRegardlessOfExtension() {
+    // Routing (ingestion-pipelines.md, Teil 3, Punkt 2): ODT is admitted purely from its detected
+    // content, exactly like DOCX - the file's own extension only decides the mismatch flag.
+    var decision =
+        SupportedDocumentFormats.decideForFileName(
+            "satzung.odt", "application/vnd.oasis.opendocument.text");
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".odt");
+    assertThat(decision.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void isSupportedAcceptsEveryOdfExtensionByName() {
+    assertThat(SupportedDocumentFormats.isSupported("satzung.odt")).isTrue();
+    assertThat(SupportedDocumentFormats.isSupported("haushalt.ods")).isTrue();
+    assertThat(SupportedDocumentFormats.isSupported("vortrag.odp")).isTrue();
+  }
+
+  @Test
+  void detectMediaTypeReadsEveryOdfFormatFromARealFixture() throws IOException {
+    assertThat(SupportedDocumentFormats.detectMediaType(testResource("test-document.odt")))
+        .isEqualTo("application/vnd.oasis.opendocument.text");
+    assertThat(SupportedDocumentFormats.detectMediaType(testResource("test-document.ods")))
+        .isEqualTo("application/vnd.oasis.opendocument.spreadsheet");
+    assertThat(SupportedDocumentFormats.detectMediaType(testResource("test-document.odp")))
+        .isEqualTo("application/vnd.oasis.opendocument.presentation");
+  }
+
+  private Path testResource(String name) throws IOException {
+    Path file = tempDir.resolve(name);
+    try (var in = getClass().getClassLoader().getResourceAsStream("test-documents/" + name)) {
+      assertThat(in).as("Test resource %s must exist", name).isNotNull();
+      Files.copy(in, file);
+    }
+    return file;
+  }
+
   @Test
   void contentMatchesExtensionAcceptsAnyTextSpecializationForTheTextTolerantExtensions() {
     assertThat(SupportedDocumentFormats.contentMatchesExtension(".txt", "text/plain")).isTrue();

@@ -43,7 +43,8 @@ public final class SupportedDocumentFormats {
   private static final Tika TIKA = new Tika();
 
   private static final Set<String> EXTENSIONS =
-      Set.of(".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv");
+      Set.of(
+          ".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv", ".odt", ".ods", ".odp");
 
   /**
    * Maps a {@code Content-Type} header value to one of the {@link #EXTENSIONS} above, for sources
@@ -53,15 +54,20 @@ public final class SupportedDocumentFormats {
    * detect: this map only needs to cover the same formats {@link #EXTENSIONS} already accepts.
    */
   private static final Map<String, String> EXTENSIONS_BY_CONTENT_TYPE =
-      Map.of(
-          "application/pdf", ".pdf",
-          "application/msword", ".doc",
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx",
-          "application/vnd.openxmlformats-officedocument.presentationml.presentation", ".pptx",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx",
-          "text/plain", ".txt",
-          "text/markdown", ".md",
-          "text/csv", ".csv");
+      Map.ofEntries(
+          Map.entry("application/pdf", ".pdf"),
+          Map.entry("application/msword", ".doc"),
+          Map.entry(
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx"),
+          Map.entry(
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation", ".pptx"),
+          Map.entry("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
+          Map.entry("text/plain", ".txt"),
+          Map.entry("text/markdown", ".md"),
+          Map.entry("text/csv", ".csv"),
+          Map.entry("application/vnd.oasis.opendocument.text", ".odt"),
+          Map.entry("application/vnd.oasis.opendocument.spreadsheet", ".ods"),
+          Map.entry("application/vnd.oasis.opendocument.presentation", ".odp"));
 
   /**
    * Extensions whose content is only checked for being text at all - {@code .md}, {@code .txt} and
@@ -82,18 +88,28 @@ public final class SupportedDocumentFormats {
    * worth rejecting outright rather than tolerating.
    */
   private static final Map<String, Set<String>> STRICT_CONTENT_TYPES_BY_EXTENSION =
-      Map.of(
-          ".pdf", Set.of("application/pdf"),
+      Map.ofEntries(
+          Map.entry(".pdf", Set.of("application/pdf")),
           // Deliberately not including application/x-tika-msoffice: that is the generic, unresolved
           // OLE2 container type Tika falls back to when POI's format-specific sniffing inside the
           // container fails - any OLE2 file this system cannot actually identify would pass as a
           // "matching" .doc, defeating the point of this check.
-          ".doc", Set.of("application/msword"),
-          ".docx",
-              Set.of("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
-          ".pptx",
-              Set.of("application/vnd.openxmlformats-officedocument.presentationml.presentation"),
-          ".xlsx", Set.of("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+          Map.entry(".doc", Set.of("application/msword")),
+          Map.entry(
+              ".docx",
+              Set.of("application/vnd.openxmlformats-officedocument.wordprocessingml.document")),
+          Map.entry(
+              ".pptx",
+              Set.of("application/vnd.openxmlformats-officedocument.presentationml.presentation")),
+          Map.entry(
+              ".xlsx", Set.of("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
+          // ODF, unlike .docx/.pptx, has one specific, unambiguous media type per format straight
+          // from Tika's ZIP-mimetype-entry detector - there is no generic "unresolved ODF
+          // container" fallback the way there is application/x-tika-ooxml, so no exclusion note
+          // is needed here.
+          Map.entry(".odt", Set.of("application/vnd.oasis.opendocument.text")),
+          Map.entry(".ods", Set.of("application/vnd.oasis.opendocument.spreadsheet")),
+          Map.entry(".odp", Set.of("application/vnd.oasis.opendocument.presentation")));
 
   private SupportedDocumentFormats() {}
 

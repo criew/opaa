@@ -149,27 +149,12 @@ public class TabularDocumentPipeline implements DocumentPipeline {
       records = parser.getRecords();
     }
 
-    List<String> header = null;
-    List<List<String>> dataRows = new ArrayList<>();
-    List<Long> dataRowNumbers = new ArrayList<>();
+    List<RawRow> rows = new ArrayList<>(records.size());
     for (CSVRecord record : records) {
-      List<String> values = toValues(record);
-      if (isBlankRow(values)) {
-        continue;
-      }
-      if (header == null) {
-        header = values;
-        continue;
-      }
-      dataRows.add(values);
-      dataRowNumbers.add(record.getRecordNumber());
+      rows.add(new RawRow(record.getRecordNumber(), toValues(record)));
     }
-    if (header == null || dataRows.isEmpty()) {
-      return List.of();
-    }
-
     String tableTitle = ChunkContextTitle.deriveTitle(source.fileName());
-    return buildChunks(null, tableTitle, header, dataRows, dataRowNumbers);
+    return chunksFromRawRows(null, tableTitle, rows);
   }
 
   private static List<String> toValues(CSVRecord record) {
@@ -230,7 +215,7 @@ public class TabularDocumentPipeline implements DocumentPipeline {
       // 1-based, matching the row number Excel itself displays (getRowNum() is 0-based).
       rows.add(new RawRow(row.getRowNum() + 1L, values));
     }
-    return chunksFromRawRows(sheet.getSheetName(), rows);
+    return chunksFromRawRows(sheet.getSheetName(), sheet.getSheetName(), rows);
   }
 
   private static List<String> toValues(Row row, int minColumns) {
@@ -273,7 +258,7 @@ public class TabularDocumentPipeline implements DocumentPipeline {
         for (int i = 0; i < sheet.rows().size(); i++) {
           rows.add(new RawRow(i + 1L, sheet.rows().get(i)));
         }
-        chunks.addAll(chunksFromRawRows(sheet.name(), rows));
+        chunks.addAll(chunksFromRawRows(sheet.name(), sheet.name(), rows));
       }
     }
     return chunks;
@@ -405,34 +390,68 @@ public class TabularDocumentPipeline implements DocumentPipeline {
   private record RawRow(long number, List<String> values) {}
 
   /**
-   * Shared header/data-row detection for the two readers ({@link #readSheet}, {@link #readOds})
-   * that iterate a sequence of already-extracted rows: the first non-blank row is the header, every
-   * following non-blank row is data, and a workbook/sheet contributing no data rows contributes no
-   * chunk at all.
+   * Shared header/data-row detection for all three readers ({@link #readCsv}, {@link #readSheet},
+   * {@link #readOds}) that iterate a sequence of already-extracted rows: the first non-blank row is
+   * the header, every following non-blank row is data, and a table contributing no data rows
+   * contributes no chunk at all - this is the {@code NO_EXTRACTABLE_TEXT} guard for a genuine
+   * "nur-Kopfzeilen-Datei" (header exported, no rows underneath).
+   *
+   * <p><b>Exactly one non-blank row with at most one column is the exception</b>: that is not a
+   * header without data, it is a single line of content with no header/data split to make at all
+   * (e.g. a minimal spreadsheet used as a tiny text container, one cell, one row) - discarding it
+   * the same way as a genuine header-only export would silently drop real content. A single row
+   * with more than one column is still treated as a header without data, since multiple columns is
+   * what makes a lone row look like field names rather than a sentence.
+   *
+   * @param sheetName the sheet name, or {@code null} for CSV, forwarded to {@link #buildChunks} /
+   *     {@link #renderSingleRowChunk} unchanged
+   * @param tableName see {@link #buildChunks}
    */
-  private static List<Document> chunksFromRawRows(String sheetName, List<RawRow> rows) {
-    List<String> header = null;
+  private static List<Document> chunksFromRawRows(
+      String sheetName, String tableName, List<RawRow> rows) {
+    List<RawRow> nonBlank = new ArrayList<>();
+    for (RawRow row : rows) {
+      if (!isBlankRow(row.values())) {
+        nonBlank.add(row);
+      }
+    }
+    if (nonBlank.isEmpty()) {
+      return List.of();
+    }
+    if (nonBlank.size() == 1 && nonBlank.getFirst().values().size() <= 1) {
+      return List.of(renderSingleRowChunk(sheetName, tableName, nonBlank.getFirst()));
+    }
+
+    List<String> header = nonBlank.getFirst().values();
     List<List<String>> dataRows = new ArrayList<>();
     List<Long> dataRowNumbers = new ArrayList<>();
-    for (RawRow row : rows) {
-      if (isBlankRow(row.values())) {
-        continue;
-      }
-      if (header == null) {
-        header = row.values();
-        continue;
-      }
+    for (RawRow row : nonBlank.subList(1, nonBlank.size())) {
       dataRows.add(row.values());
       dataRowNumbers.add(row.number());
     }
-    if (header == null || dataRows.isEmpty()) {
+    if (dataRows.isEmpty()) {
       return List.of();
     }
-    return buildChunks(sheetName, sheetName, header, dataRows, dataRowNumbers);
+    return buildChunks(sheetName, tableName, header, dataRows, dataRowNumbers);
   }
 
   private static boolean isBlankRow(List<String> values) {
     return values.stream().allMatch(String::isBlank);
+  }
+
+  private static Document renderSingleRowChunk(String sheetName, String tableName, RawRow row) {
+    String prefix =
+        sheetName != null
+            ? "Blatt: " + sheetName + " · Tabelle: " + tableName
+            : "Tabelle: " + tableName;
+    String text = prefix + "\n\n" + String.join(" | ", row.values());
+
+    String rowRange = "Zeile " + row.number();
+    String location = sheetName != null ? "Blatt " + sheetName + " · " + rowRange : rowRange;
+
+    Map<String, Object> metadata = new HashMap<>();
+    metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+    return new Document(text, metadata);
   }
 
   /**
