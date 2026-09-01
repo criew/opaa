@@ -44,7 +44,8 @@ public final class SupportedDocumentFormats {
 
   private static final Set<String> EXTENSIONS =
       Set.of(
-          ".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv", ".odt", ".ods", ".odp");
+          ".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv", ".odt", ".ods", ".odp",
+          ".html");
 
   /**
    * Maps a {@code Content-Type} header value to one of the {@link #EXTENSIONS} above, for sources
@@ -67,7 +68,8 @@ public final class SupportedDocumentFormats {
           Map.entry("text/csv", ".csv"),
           Map.entry("application/vnd.oasis.opendocument.text", ".odt"),
           Map.entry("application/vnd.oasis.opendocument.spreadsheet", ".ods"),
-          Map.entry("application/vnd.oasis.opendocument.presentation", ".odp"));
+          Map.entry("application/vnd.oasis.opendocument.presentation", ".odp"),
+          Map.entry("text/html", ".html"));
 
   /**
    * Extensions whose content is only checked for being text at all - {@code .md}, {@code .txt} and
@@ -109,7 +111,11 @@ public final class SupportedDocumentFormats {
           // is needed here.
           Map.entry(".odt", Set.of("application/vnd.oasis.opendocument.text")),
           Map.entry(".ods", Set.of("application/vnd.oasis.opendocument.spreadsheet")),
-          Map.entry(".odp", Set.of("application/vnd.oasis.opendocument.presentation")));
+          Map.entry(".odp", Set.of("application/vnd.oasis.opendocument.presentation")),
+          // HTML has a distinctive enough signature (DOCTYPE/<html> tag) that Tika reliably tells
+          // it apart from plain text - both text/html and the XHTML variant are accepted, mirroring
+          // DetailPageExtractor's own isHtmlContentType (ingestion-pipelines.md, Teil 3, Punkt 4).
+          Map.entry(".html", Set.of("text/html", "application/xhtml+xml")));
 
   private SupportedDocumentFormats() {}
 
@@ -267,32 +273,47 @@ public final class SupportedDocumentFormats {
   /**
    * The single decision both indexing paths make once a file's bytes are available.
    *
-   * <p>An unambiguous, {@link #extensionForDetectedContent strictly detected} type is accepted
-   * outright, regardless of what the file is named - {@code fileName}'s own claimed extension only
-   * decides whether the caller needs to report a mismatch, never whether the file is indexed.
+   * <p>The Markdown/Klartext/CSV special rule ({@link #TEXT_TOLERANT_EXTENSIONS}) is checked
+   * <b>first</b>, ahead of any strict detection - not just as a fallback for content a strict
+   * detection could not resolve at all. {@code text/html} is registered in Tika's own {@code
+   * tika-mimetypes.xml} as a specialization of {@code text/plain} (confirmed empirically, see
+   * {@code SupportedDocumentFormatsTest}), so a Markdown file that happens to open with a raw
+   * {@code <div>}/{@code <h1>} detects as {@code text/html}, an otherwise-strict type (#1059
+   * review, finding 1) - the special rule must still win, per ingestion-pipelines.md, Teil 1 ("gilt
+   * für das Routing unverändert weiter"), or such a file would be silently routed to the HTML
+   * pipeline with no {@code FORMAT_MISMATCH} even reported (the same content that makes the
+   * text-tolerant match succeed also makes the strict branch's own mismatch check come out {@code
+   * false}).
    *
-   * <p>An ambiguous, text-tolerant detection (see {@link #TEXT_TOLERANT_EXTENSIONS}) is different:
-   * content alone cannot tell a Markdown file apart from a CSV export or a source file, so this
-   * only accepts it when {@code fileName}'s own extension already claims one of {@link
-   * #TEXT_TOLERANT_EXTENSIONS} - never as a mismatch, and never for any other or missing extension.
+   * <p>Once that is ruled out, an unambiguous, {@link #extensionForDetectedContent strictly
+   * detected} type is accepted outright, regardless of what the file is named - {@code fileName}'s
+   * own claimed extension only decides whether the caller needs to report a mismatch, never whether
+   * the file is indexed. A text-tolerant name over genuinely non-text content (e.g. a PDF misnamed
+   * {@code .csv}) never satisfies the first check above (PDF is not an {@code isInstanceOf
+   * text/plain}), so it still falls through to this strict branch and is reported as a mismatch
+   * there, exactly as before this method's own text-tolerant priority check existed.
+   *
+   * <p>Content that is neither a text-tolerant match nor a strict detection is unsupported -
+   * content alone cannot tell a Markdown file apart from a CSV export or a source file, so an
+   * ambiguous, text-tolerant detection is only ever accepted under one of {@link
+   * #TEXT_TOLERANT_EXTENSIONS}, never as a mismatch, and never for any other or missing extension.
    */
   public static ContentDecision decideForFileName(String fileName, String detectedMimeType) {
     if (detectedMimeType == null) {
       return ContentDecision.UNSUPPORTED;
-    }
-    String strictExtension = extensionForDetectedContent(detectedMimeType);
-    if (strictExtension != null) {
-      Optional<String> claimedExtension = matchedExtension(fileName);
-      boolean matches =
-          claimedExtension.isPresent()
-              && contentMatchesExtension(claimedExtension.get(), detectedMimeType);
-      return new ContentDecision(true, strictExtension, !matches);
     }
     Optional<String> claimedExtension = matchedExtension(fileName);
     if (claimedExtension.isPresent()
         && TEXT_TOLERANT_EXTENSIONS.contains(claimedExtension.get())
         && contentMatchesExtension(claimedExtension.get(), detectedMimeType)) {
       return new ContentDecision(true, claimedExtension.get(), false);
+    }
+    String strictExtension = extensionForDetectedContent(detectedMimeType);
+    if (strictExtension != null) {
+      boolean matches =
+          claimedExtension.isPresent()
+              && contentMatchesExtension(claimedExtension.get(), detectedMimeType);
+      return new ContentDecision(true, strictExtension, !matches);
     }
     return ContentDecision.UNSUPPORTED;
   }

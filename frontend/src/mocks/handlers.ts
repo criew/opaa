@@ -62,6 +62,7 @@ const SUPPORTED_DOCUMENT_EXTENSIONS = [
   '.csv',
   '.doc',
   '.docx',
+  '.html',
   '.md',
   '.odp',
   '.ods',

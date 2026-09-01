@@ -126,6 +126,21 @@ class DocumentFormatParityTest {
   }
 
   @Test
+  void bothIndexingPathsAcceptAGenuineHtmlPageUnderItsOwnExtension() throws IOException {
+    // #1059: HTML is admitted the same way DOCX/PPTX/XLSX are - both indexing paths must agree.
+    Path file = tempDir.resolve("seite.html");
+    Files.writeString(
+        file,
+        "<html><body><main><h1>Titel</h1><p>Inhalt.</p></main></body></html>",
+        StandardCharsets.UTF_8);
+
+    assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
+    var networkDecision = networkPathDecision(file, "seite.html");
+    assertThat(networkDecision.supported()).isTrue();
+    assertThat(networkDecision.extensionMismatch()).isFalse();
+  }
+
+  @Test
   void bothIndexingPathsAcceptAGenuineXlsxUnderItsOwnExtension() throws IOException {
     // #1096 review, optional item: a real POI-built XLSX (not merely a media-type string) through
     // both indexing paths - mirrors the DOCX/PPTX cases above.

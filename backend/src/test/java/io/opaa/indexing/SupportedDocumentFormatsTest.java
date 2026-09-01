@@ -327,4 +327,78 @@ class SupportedDocumentFormatsTest {
 
     assertThat(SupportedDocumentFormats.detectMediaType(file)).startsWith("text/plain");
   }
+
+  // --- #1059: HTML ------------------------------------------------------------------------------
+
+  @Test
+  void contentMatchesExtensionAcceptsHtmlAndXhtmlForTheHtmlExtension() {
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".html", "text/html")).isTrue();
+    assertThat(SupportedDocumentFormats.contentMatchesExtension(".html", "application/xhtml+xml"))
+        .isTrue();
+  }
+
+  @Test
+  void extensionForDetectedContentResolvesHtml() {
+    assertThat(SupportedDocumentFormats.extensionForDetectedContent("text/html"))
+        .isEqualTo(".html");
+  }
+
+  @Test
+  void decideForFileNameAcceptsHtmlContentRegardlessOfExtension() {
+    // Routing (ingestion-pipelines.md, Teil 3, Punkt 4): HTML is admitted purely from its detected
+    // content, exactly like PDF/DOCX - the file's own extension only decides the mismatch flag.
+    var decision = SupportedDocumentFormats.decideForFileName("seite.htm", "text/html");
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".html");
+    assertThat(decision.extensionMismatch()).isTrue();
+  }
+
+  @Test
+  void isSupportedAcceptsHtmlByName() {
+    assertThat(SupportedDocumentFormats.isSupported("seite.html")).isTrue();
+  }
+
+  @Test
+  void detectMediaTypeReadsHtmlFromARealFile() throws IOException {
+    Path file = tempDir.resolve("seite.html");
+    Files.writeString(file, "<html><body><main><h1>Titel</h1><p>Inhalt.</p></main></body></html>");
+
+    assertThat(SupportedDocumentFormats.detectMediaType(file)).isEqualTo("text/html");
+  }
+
+  @Test
+  void decideForFileNameKeepsTheMarkdownRuleWinningOverAHtmlContentDetection() throws IOException {
+    // #1059 review, finding 1 (blocking): Tika's tika-mimetypes.xml registers text/html as a
+    // specialization of text/plain, so a Markdown file that happens to open with a raw
+    // <div>/<h1> is detected as text/html, not text/plain - confirmed empirically against the
+    // real Tika detector below, not assumed from a literal mime string. Without the fix, the
+    // strict (HTML) branch would win over the Markdown/Klartext/CSV special rule
+    // (ingestion-pipelines.md, Teil 1, "gilt für das Routing unverändert weiter"), silently
+    // routing the file to HtmlDocumentPipeline with no FORMAT_MISMATCH ever reported (the
+    // content passing contentMatchesExtension(".md", "text/html") means the strict branch's own
+    // mismatch check comes out false too).
+    Path file = tempDir.resolve("readme.md");
+    Files.writeString(
+        file, "<div><h1>Nicht wirklich Markdown</h1><p>Text</p></div>", StandardCharsets.UTF_8);
+    String detected = SupportedDocumentFormats.detectMediaType(file);
+    assertThat(detected).isEqualTo("text/html");
+
+    var decision = SupportedDocumentFormats.decideForFileName("readme.md", detected);
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".md");
+    assertThat(decision.extensionMismatch()).isFalse();
+  }
+
+  @Test
+  void decideForFileNameKeepsTheKlartextRuleWinningOverAHtmlContentDetection() {
+    // Same rule for .txt as for .md above - the special rule covers all three text-tolerant
+    // extensions (.md/.txt/.csv), not just Markdown.
+    var decision = SupportedDocumentFormats.decideForFileName("notiz.txt", "text/html");
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".txt");
+    assertThat(decision.extensionMismatch()).isFalse();
+  }
 }
