@@ -36,6 +36,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param targetValidation the SSRF target-address check {@code
  *     io.opaa.sourceaccess.TargetAddressValidator} applies to every {@code HTTP_DIRECTORY}/{@code
  *     RSS_FEED} fetch - see {@link TargetValidation}'s own Javadoc.
+ * @param fullTextBackfill batch size for the resumable full-text backfill of the pre-#1047 chunk
+ *     bestand (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a"), driven by {@link
+ *     FullTextBackfillScheduler}. Ebene 1 (docs/features/hybrid-retrieval.md,
+ *     "Konfigurations-Ebenenmodell") - an internal default overridable via properties, not an
+ *     administration-UI setting.
  * @param embeddingConcurrency the maximum number of sub-batches a single document's chunks are
  *     split into for concurrent embedding and persistence ({@code
  *     OPAA_INDEXING_EMBEDDING_CONCURRENCY}) - see {@code
@@ -64,6 +69,7 @@ public record IndexingProperties(
     List<String> filesystemAllowlist,
     Duration staleJobTimeout,
     TargetValidation targetValidation,
+    FullTextBackfill fullTextBackfill,
     int embeddingConcurrency) {
 
   public IndexingProperties {
@@ -110,6 +116,9 @@ public record IndexingProperties(
     }
     if (targetValidation == null) {
       targetValidation = new TargetValidation(true, List.of());
+    }
+    if (fullTextBackfill == null) {
+      fullTextBackfill = new FullTextBackfill(200);
     }
     if (embeddingConcurrency <= 0) {
       embeddingConcurrency = 3;
@@ -241,6 +250,26 @@ public record IndexingProperties(
     public TargetValidation {
       if (allowlist == null) {
         allowlist = List.of();
+      }
+    }
+  }
+
+  /**
+   * @param batchSize the upper bound on chunks one {@link FullTextBackfillService#backfillBatch}
+   *     call indexes. Default 200: small enough that a single batch's {@code SELECT ... NOT EXISTS}
+   *     scan and subsequent inserts stay cheap on every {@link FullTextBackfillScheduler} tick,
+   *     large enough that a realistically sized backlog drains in a reasonable number of ticks.
+   *     Valid range: 1-10 000.
+   */
+  public record FullTextBackfill(int batchSize) {
+
+    public FullTextBackfill {
+      if (batchSize <= 0) {
+        batchSize = 200;
+      }
+      if (batchSize > 10_000) {
+        throw new IllegalArgumentException(
+            "fullTextBackfill.batchSize must be at most 10000, got " + batchSize);
       }
     }
   }

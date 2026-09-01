@@ -144,7 +144,7 @@ class LibraryDocumentServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
 

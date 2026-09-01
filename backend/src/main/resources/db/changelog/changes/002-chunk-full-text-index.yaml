@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-chunk-full-text-index
+      author: opaa
+      comment: >-
+        AP2a (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a: Backfill des Bestands"): schema for
+        the lexical search path - tsvector column and GIN index, in a dedicated table rather than added
+        to vector_store directly. vector_store is created by Spring AI at application startup
+        (spring.ai.vectorstore.pgvector.initialize-schema=true), never by Liquibase, so it does not
+        exist yet when this changelog runs in isolation - which every io.opaa.migration delta test
+        does, and which is also the only way this changeset itself can be tested. chunk_id mirrors
+        vector_store's own id column (no FK: the referenced table is not Liquibase-owned and its
+        existence relative to this migration is not guaranteed); document_id/library_id mirror the
+        document_id/library_id keys FileProcessingService already writes into vector_store's own
+        metadata (see VectorChunkStore) - kept as plain columns here, not JSON, so both indexes below
+        are possible. Fills nothing (AP2a's own rule): rows are added by the write path at chunk-write
+        time (same transaction as the vector write, see VectorChunkStore#addChunks) and, for the
+        pre-existing backlog, by a separate, resumable backfill batch job (FullTextBackfillService) -
+        never by this changeset. The GIN index is built CONCURRENTLY, outside this changeSet's own
+        transaction (runInTransaction: false), so a future re-run of this build against an
+        already-populated table never blocks concurrent writes for its duration.
+      runInTransaction: false
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE IF NOT EXISTS public.chunk_full_text (
+                  chunk_id uuid NOT NULL PRIMARY KEY,
+                  document_id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  content_tsv tsvector NOT NULL
+              );
+              CREATE INDEX IF NOT EXISTS idx_chunk_full_text_document_id ON public.chunk_full_text (document_id);
+              CREATE INDEX IF NOT EXISTS idx_chunk_full_text_library_id ON public.chunk_full_text (library_id);
+              CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_chunk_full_text_content_tsv ON public.chunk_full_text USING gin (content_tsv);
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS public.chunk_full_text CASCADE;

@@ -47,6 +47,7 @@ class FileProcessingServiceTest {
   @Mock private ChunkingService chunkingService;
   @Mock private DocumentRepository documentRepository;
   @Mock private VectorStore vectorStore;
+  @Mock private FullTextChunkStore fullTextChunkStore;
   private VectorChunkStore vectorChunkStore;
   @Mock private ChecksumService checksumService;
   @Mock private LibraryStorageQuotaService storageQuotaService;
@@ -63,13 +64,12 @@ class FileProcessingServiceTest {
   @BeforeEach
   void setUp() {
     meterRegistry = new SimpleMeterRegistry();
-    vectorChunkStore = new VectorChunkStore(vectorStore);
+    vectorChunkStore = new VectorChunkStore(vectorStore, fullTextChunkStore);
     service =
         new FileProcessingService(
             documentService,
             chunkingService,
             documentRepository,
-            vectorStore,
             vectorChunkStore,
             checksumService,
             new IndexingMetrics(meterRegistry),
@@ -101,7 +101,7 @@ class FileProcessingServiceTest {
   // storeChunks path (a single vectorStore.add call) unless it opts into concurrency itself (see
   // EmbeddingConcurrencyTest) - Runnable::run above is therefore never actually invoked here.
   private static IndexingProperties defaultIndexingProperties() {
-    return new IndexingProperties(1000, 0, 50, null, null, null, null, null, 1);
+    return new IndexingProperties(1000, 0, 50, null, null, null, null, null, null, 1);
   }
 
   // Mirrors VectorChunkStore#deleteByDocumentId's own filter construction, so assertions here
@@ -196,7 +196,6 @@ class FileProcessingServiceTest {
             documentService,
             chunkingService,
             documentRepository,
-            vectorStore,
             vectorChunkStore,
             checksumService,
             new IndexingMetrics(meterRegistry),

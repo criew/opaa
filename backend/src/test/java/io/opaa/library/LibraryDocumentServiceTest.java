@@ -27,6 +27,7 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.FilesystemPathAllowlist;
+import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
@@ -111,7 +112,7 @@ class LibraryDocumentServiceTest {
     checksumService = mock(ChecksumService.class);
     fileProcessingService = mock(FileProcessingService.class);
     vectorStore = mock(VectorStore.class);
-    vectorChunkStore = new VectorChunkStore(vectorStore);
+    vectorChunkStore = new VectorChunkStore(vectorStore, mock(FullTextChunkStore.class));
     UploadProperties uploadProperties =
         new UploadProperties(storageDir.toString(), 10L * 1024, null, 0, 0);
     storageQuotaService = mock(LibraryStorageQuotaService.class);

@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -107,7 +108,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
       VectorStore vectorStore, int embeddingConcurrency, int batchSize) {
     IndexingProperties properties =
         new IndexingProperties(
-            1000, 0, batchSize, null, null, null, null, null, embeddingConcurrency);
+            1000, 0, batchSize, null, null, null, null, null, null, embeddingConcurrency);
     // Mirrors IndexingConfiguration#embeddingTaskExecutor exactly (#734): the concurrency bound
     // is the executor's own pool size, not anything FileProcessingService enforces itself - a
     // test executor sized differently from embeddingConcurrency would not actually exercise the
@@ -118,8 +119,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         documentService,
         chunkingService,
         documentRepository,
-        vectorStore,
-        new VectorChunkStore(vectorStore),
+        new VectorChunkStore(vectorStore, mock(FullTextChunkStore.class)),
         checksumService,
         new IndexingMetrics(meterRegistry),
         storageQuotaService,
