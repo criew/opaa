@@ -891,6 +891,43 @@ class FileProcessingServiceTest {
   }
 
   @Test
+  void processUrlFileChunkingProducingNoChunksIsRejectedInsteadOfIndexedWithZeroChunks()
+      throws IOException {
+    // #1090 review finding 2: the post-chunking guard test above only covered processFile - this
+    // mirrors it for processUrlFile, the second of the three ingest paths carrying the guard.
+    Path file = tempDir.resolve("noise-only-remote.txt");
+    Files.writeString(file, "content that survives parsing but not chunking");
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-noise");
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), "https://example.com/docs/noise-only-remote.txt"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("content that is not blank"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+    when(chunkingService.chunkDocuments(eq("noise-only-remote.txt"), eq(parsed)))
+        .thenReturn(List.of());
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            file,
+            "noise-only-remote.txt",
+            "https://example.com/docs/noise-only-remote.txt",
+            null,
+            1024,
+            targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
+    verify(vectorStore, never()).add(any());
+    verify(documentRepository, never()).markIndexedFromSource(any(), anyInt(), any(), any(), any());
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(docCaptor.capture());
+    verify(documentRepository)
+        .markFailed(docCaptor.getValue().getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+  }
+
+  @Test
   void processUrlFileSkipsWithoutPersistingWhenTheLibraryQuotaWouldBeExceeded() throws IOException {
     Path file = tempDir.resolve("over-quota-remote.pdf");
     Files.writeString(file, "pdf content");

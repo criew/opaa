@@ -24,9 +24,8 @@ class Migration002DocumentsIndexedChunkCountIndexTest extends AbstractMigrationT
   }
 
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() throws SQLException {
     connection = connect();
-    applyChangelog(connection, "db/changelog/changes/002-documents-indexed-chunk-count-index.yaml");
   }
 
   @AfterEach
@@ -36,18 +35,28 @@ class Migration002DocumentsIndexedChunkCountIndexTest extends AbstractMigrationT
 
   @Test
   void createsAPartialIndexOnOrganizationIdAndChunkCountScopedToIndexedDocuments()
-      throws SQLException {
+      throws Exception {
+    assertThat(indexDef()).isNull();
+
+    applyChangelog(connection, "db/changelog/changes/002-documents-indexed-chunk-count-index.yaml");
+
+    String indexDef = indexDef();
+    assertThat(indexDef)
+        .isNotNull()
+        .contains("(organization_id, chunk_count)")
+        .contains("WHERE ((status)::text = 'INDEXED'::text)");
+  }
+
+  /**
+   * {@code indexdef} of {@code idx_documents_indexed_chunk_count}, or null if it does not exist.
+   */
+  private String indexDef() throws SQLException {
     try (Statement statement = connection.createStatement();
         ResultSet rs =
             statement.executeQuery(
                 "SELECT indexdef FROM pg_indexes WHERE indexname ="
                     + " 'idx_documents_indexed_chunk_count'")) {
-      assertThat(rs.next()).isTrue();
-      String indexDef = rs.getString("indexdef");
-      assertThat(indexDef)
-          .contains("(organization_id, chunk_count)")
-          .contains("WHERE ((status)::text = 'INDEXED'::text)");
-      assertThat(rs.next()).isFalse();
+      return rs.next() ? rs.getString("indexdef") : null;
     }
   }
 }

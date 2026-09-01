@@ -36,8 +36,14 @@ public class IndexingAdminController {
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
       @Caller CurrentUser caller) {
+    // Validated here, not left to PageRequest.of's own IllegalArgumentException, whose English
+    // message would otherwise reach the response body verbatim via GlobalExceptionHandler - every
+    // user-facing API error is German (AGENTS.md, Projektsprache).
+    if (page < 0) {
+      throw new IllegalArgumentException("page darf nicht negativ sein, war " + page);
+    }
     if (size < 1 || size > 100) {
-      throw new IllegalArgumentException("size must be between 1 and 100, got " + size);
+      throw new IllegalArgumentException("size muss zwischen 1 und 100 liegen, war " + size);
     }
     Pageable pageable =
         PageRequest.of(

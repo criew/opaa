@@ -4,7 +4,9 @@ databaseChangeLog:
       author: opaa
       comment: >
         Backs LowChunkDocumentAuditService#findLowChunkDocuments: (organization_id, chunk_count),
-        partial on status = 'INDEXED' - the only status this query filters on.
+        partial on status = 'INDEXED' - the only status this query filters on. Not CONCURRENTLY:
+        documents is a small table and the resulting short exclusive lock is accepted, unlike the
+        larger-table build #1047 uses CONCURRENTLY for.
       changes:
         - sql:
             splitStatements: false

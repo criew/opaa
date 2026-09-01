@@ -135,6 +135,18 @@ class IndexingAdminControllerTest {
     mockMvc
         .perform(
             get("/api/v1/admin/indexing/low-chunk-documents").param("size", "101").with(asAdmin()))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("size muss zwischen 1 und 100 liegen, war 101"));
+  }
+
+  @Test
+  void listLowChunkDocumentsRejectsANegativePageWith400() throws Exception {
+    // #1090 review: PageRequest.of's own English "Page index must not be less than zero" must
+    // never reach the response body verbatim (AGENTS.md, Projektsprache) - validated before it.
+    mockMvc
+        .perform(
+            get("/api/v1/admin/indexing/low-chunk-documents").param("page", "-1").with(asAdmin()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("page darf nicht negativ sein, war -1"));
   }
 }
