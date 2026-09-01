@@ -84,6 +84,7 @@ Eine Neuindizierung wird erst durch Änderungen nötig, die nichts mit dem Image
 | PostgreSQL-Hauptversion gewechselt (Image-Tag von `pg18` auf eine höhere Version) | Das Datenverzeichnis im Volume ist nicht aufwärtskompatibel; ein solcher Wechsel ist ein eigener Migrationsvorgang, kein `docker compose pull` |
 | Update von einer Version **zwischen #766 und #773** (jede Version, die Vektoren über die OpenAI-kompatible Schicht indiziert hat, bevor #773 die Metadaten-Kontamination der Einbettung behoben hat) | In dieser Zeitspanne indizierte Vektoren tragen fünf Zeilen Metadaten-Rauschen (`document_id`/`chunk_index`/`file_name`/`library_id`/`organization_id`) vor dem eigentlichen Text mit eingebettet (Kosinus-Ähnlichkeit zum sauberen Vektor: rund 0.42) — **betroffene Bibliotheken müssen neu indiziert werden**, sonst liegen kontaminierte und saubere Vektoren nebeneinander im selben Suchraum. Siehe die eigene Anleitung dazu direkt unten |
 | Update auf einen Stand **ab #933** (Contextual Chunking: der Dateiname wird jedem Chunk als Kontext-Präfix vorangestellt, nur für die Einbettung, siehe [Retrieval-Algorithmus](../features/retrieval-algorithm.md)) | Vor #933 eingebettete Vektoren tragen kein Präfix und ranken inkonsistent gegen neu eingebettete Vektoren mit Präfix im selben Suchraum — **jede Bibliothek muss vollständig neu indiziert werden**. Siehe die eigene Anleitung dazu direkt unten |
+| Update auf einen Stand **ab #1054** (Ingestion-Pipelines je Dokumenttyp: eigene Zuschnitte für `.pdf`/`.docx`/`.pptx`/`.xlsx`/`.csv`/`.ods`/`.html`/`.eml`/`.msg` statt des einheitlichen Tika-Wegs, siehe [Ingestion-Pipelines je Dokumenttyp](../features/ingestion-pipelines.md)) | Bestand, der vor der jeweiligen Pipeline-Registrierung indiziert wurde, liegt mit dem alten, generischen Zuschnitt im selben Suchraum neben neu erzeugten Chunks der spezialisierten Pipeline — **je Pipeline gezielt nachziehen**, kein Bibliotheks-Reset nötig. Siehe die eigene Anleitung dazu direkt unten |
 
 Wer ein Compose-Profil mit fest gekoppeltem Embedding-Modell und `OPAA_PGVECTOR_DIMENSIONS` betreibt
 (Vorbild: `demo/README.md`, „Öffentliche Instanz betreiben"), muss bei einem Wechsel des
@@ -136,6 +137,65 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 > Anschließend die Bibliothek regulär neu indizieren. Für eine Demo-/Testinstanz mit überschaubarem
 > Korpus ist ein vollständiger Re-Seed (Datenbank-Volume verwerfen, Korpus neu einspielen) statt
 > eines gezielten Rücksetzens pro Bibliothek ebenfalls zulässig und oft einfacher.
+
+> **Neuindizierung nach #1054 (Ingestion-Pipelines je Dokumenttyp).** Vor diesem Update lief jedes
+> zugelassene Format über denselben Weg (Tika-Extraktion, Token-Chunking). Seitdem übernehmen eigene
+> Pipelines den Zuschnitt für `.pdf` (`pdf`), `.docx` (`docx`), `.pptx` (`pptx`),
+> `.xlsx`/`.csv`/`.ods` (`tabular`), `.html` (`html`) sowie `.eml`/`.msg` (`email`) — jede mit ihrer
+> eigenen `pipeline_id`/`pipeline_version` am Chunk (siehe [Ingestion-Pipelines je
+> Dokumenttyp](../features/ingestion-pipelines.md#umgesetzt-die-abstraktion-selbst-1056)). `.md`,
+> `.txt`, `.doc`, `.odt`, `.odp` sowie jedes Format ohne eigene Pipeline laufen unverändert über
+> `TikaFallbackPipeline` weiter — für sie ändert sich am bestehenden Bestand nichts.
+>
+> Anders als bei #773/#933 oben ist kein bibliotheksweites Rücksetzen von `documents`/`vector_store`
+> nötig: Die selektive Neuindizierung wählt gezielt über die Chunk-Metadaten aus, welcher Bestand vom
+> alten, generischen Zuschnitt betroffen ist. **Der eigentliche Migrationsschritt ist ein siebter,
+> vorangestellter Aufruf mit `pipelineId: "tika-fallback"`**, wiederholt bis `done: true` in der
+> Antwort steht:
+>
+> ```bash
+> curl -X POST http://localhost:8081/api/v1/admin/indexing/pipeline-reindex \
+>   -H "Content-Type: application/json" \
+>   -H "Authorization: Bearer <token>" \
+>   -d '{"pipelineId": "tika-fallback", "belowVersion": 1, "batchSize": 10}'
+> ```
+>
+> Dieser Aufruf wählt jeden Chunk ohne `pipeline_id`/`pipeline_version` aus (Altbestand vor #1094,
+> siehe unten) **und** jeden Chunk, den `tika-fallback` selbst in Version 0 erzeugt hat — beides
+> wird beim Neuerzeugen über die Registry an die heute zuständige Pipeline geroutet, nicht mehr an
+> `TikaFallbackPipeline` zurück. Erst danach folgen, ebenfalls je wiederholt bis `done: true`, die
+> sechs formatbezogenen Aufrufe (`pdf`, `docx`, `pptx`, `tabular`, `html`, `email`) — sie decken nur
+> noch den #1094-Zwischenstand ab, also Chunks, die bereits mit `pipeline_id`/`pipeline_version`
+> geschrieben wurden, aber noch auf einer älteren Version ihrer heutigen Pipeline liegen:
+>
+> ```bash
+> curl -X POST http://localhost:8081/api/v1/admin/indexing/pipeline-reindex \
+>   -H "Content-Type: application/json" \
+>   -H "Authorization: Bearer <token>" \
+>   -d '{"pipelineId": "pdf", "belowVersion": 1, "batchSize": 10}'
+> ```
+>
+> Fortschritt und Füllstand je Bibliothek (Chunks insgesamt / auf aktueller Version / darunter) sind
+> jederzeit über `GET /api/v1/admin/indexing/pipeline-versions` abfragbar (`SYSTEM_ADMIN`, auf die
+> eigene Organisation begrenzt). Beide Endpunkte sind authentifiziert; ein Aufruf ohne gültiges Token
+> scheitert mit 401, genauso wie der Indizierungs-Endpunkt oben.
+>
+> **Altbestand vor #1094** (vor Einführung der Pipeline-Metadaten selbst) trägt weder `pipeline_id`
+> noch `pipeline_version` und zählt dafür als `tika-fallback` Version 0 — er ist **ausschließlich**
+> über den `tika-fallback`-Aufruf oben erfasst, nicht über die sechs formatbezogenen Aufrufe: Die
+> Auswahlabfrage der selektiven Neuindizierung matcht einen Chunk ohne `pipeline_id` nur gegen
+> `pipelineId: "tika-fallback"` (`COALESCE` auf den Legacy-Wert), niemals gegen eine der sechs
+> übrigen Kennungen. Wer den `tika-fallback`-Aufruf auslässt, bekommt bei den sechs formatbezogenen
+> Aufrufen sofort `done: true` und hat den gesamten Vor-#1094-Bestand — bei jeder heutigen
+> Installation der Normalfall — nicht angefasst.
+>
+> **Bekannte Lücke (#1105):** Ein Dokument, das zwischen #1094 und der Registrierung seiner heute
+> zuständigen Format-Pipeline indiziert wurde, trägt bereits `tika-fallback` Version 1 und zählt in
+> `pipeline-versions` als „auf aktueller Version" — es ist über keinen der obigen Aufrufe (auch nicht
+> den `tika-fallback`-Aufruf, dessen `belowVersion: 1` es nicht mehr erfasst) nachziehbar, obwohl es
+> inzwischen einer anderen Pipeline (PDF/DOCX/PPTX/XLSX/HTML/EML) gehört. Betroffen ist nur dieses
+> schmale Zwischenfenster; #1105 ist noch offen. Wer für die betroffenen Formate sichergehen will,
+> setzt ersatzweise das bibliotheksweite Rücksetzen wie bei #933 oben ein.
 
 ## Sicherheitshinweis: `POST /api/v1/libraries/{libraryId}/indexing` ist von außen erreichbar
 

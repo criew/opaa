@@ -1,6 +1,7 @@
 # Ingestion-Pipelines je Dokumenttyp
 
-> **Status: Entwurf zur Review.**
+> **Status: Umgesetzt bis auf dokumentierte Zurückstellungen (#1062, #1103, #1105, #1110); Pflege
+> fortlaufend.**
 
 Diese Spezifikation führt zusammen, was in den Diskussionspapieren zu
 [Dateitypen der Verwaltung und geführter Metadaten-Anreicherung](../discussions/discussion-dateitypen-und-metadaten.md)
@@ -460,13 +461,42 @@ Betriebszustände stehen.
 Der Dreischritt aus dem vorigen Abschnitt ist hier nicht einschlägig: Es entsteht kein neuer Zuschnitt,
 kein Chunk ändert sich, die Baseline bleibt unberührt.
 
+#### Umgesetzt (#1055)
+
+Beide Teile sind gebaut. **(1) Erkennung und Abweisung:** Jede `DocumentPipeline` meldet für ein
+Dokument ohne extrahierbaren Text `NO_EXTRACTABLE_TEXT` statt `CHUNKED` mit null Chunks — der
+gemeinsame Guard, den `TikaFallbackPipeline` und jede seither hinzugekommene Typ-Pipeline (PDF, DOCX,
+PPTX, Tabellen, HTML, E-Mail) für ihr eigenes Format beantworten, siehe [Teil 1](#umgesetzt-die-abstraktion-selbst-1056).
+Eine so abgewiesene Datei erscheint in der Zählung des Indizierungslaufs als übersprungen und wird
+namentlich protokolliert, wie jede andere abgewiesene Datei auch. **(2) Bestandsprüfung:**
+`LowChunkDocumentAuditService` ermittelt als indiziert geführte Dokumente mit null oder auffällig
+wenigen Chunks (`chunkCountThreshold`, Vorgabe konfigurierbar über den Aufruf) und berichtet sie je
+Bibliothek mit Dateiname, Größe und Chunk-Zahl.
+
+Die Kennzahl bleibt **dauerhaft** abfragbar, nicht nur als einmaliger Bericht: `GET
+/api/v1/admin/indexing/low-chunk-documents` (`SYSTEM_ADMIN`, auf die eigene Organisation begrenzt,
+seitenweise) liefert sie bei jedem Aufruf frisch aus dem aktuellen Bestand. Die UI-Anzeige auf der
+Administrationsseite „Suche & Indexierung" folgt mit #1053 — bis dahin ist die Kennzahl über den
+Endpunkt direkt abfragbar, aber ohne eigene Oberfläche.
+
+Kein Dreischritt zur Baseline: Es ist kein Zuschnitt entstanden, kein Chunk hat sich geändert.
+
 ### 2. ODF — ODT, ODS, ODP
 
 Viele Behörden arbeiten mit LibreOffice. Tika parst ODF nativ; es fehlt praktisch nur der Eintrag in
 der Zulassungsliste und in der Medientyp-Zuordnung der Formaterkennung.
 
-**Zuschnitt:** wie die jeweiligen Microsoft-Pendants — ODT wie DOCX, ODS wie XLSX, ODP wie PPTX. Die
-Pipelines sind dieselben; nur das Routing kennt einen weiteren erkannten Medientyp.
+**Zuschnitt (Zusage korrigiert, #1104):** Ursprünglich hier zugesagt war „wie die jeweiligen
+Microsoft-Pendants — ODT wie DOCX, ODS wie XLSX, ODP wie PPTX, die Pipelines sind dieselben". Das ist
+seit #1104 uneinlösbar: Apache POI, das `DocxDocumentPipeline` und `PptxDocumentPipeline` für ihren
+strukturbewussten Zuschnitt verwenden, liest kein ODF — POI deckt OOXML (DOCX/PPTX/XLSX) und die
+alten Binärformate ab, nie OpenDocument (siehe die gleiche Einschränkung unter
+[Punkt 3](#3-xlsx-und-csv)). Nur ODS bekommt tatsächlich einen strukturerhaltenden Zuschnitt, über
+einen eigenen, POI-unabhängigen ODF-Leser (`TabularDocumentPipeline`, #1058) — „ODS wie XLSX" gilt
+also im Ergebnis, aber nicht über dieselbe Pipeline-Implementierung. **ODT und ODP verbleiben
+dauerhaft auf `TikaFallbackPipeline`**, solange es keinen eigenen ODF-Text-/Präsentationsleser gibt;
+ein strukturbewusster Zuschnitt dafür ist als Folge-Issue vermerkt:
+[#1110](https://github.com/criew/opaa/issues/1110).
 
 #### Umgesetzt (#1057)
 

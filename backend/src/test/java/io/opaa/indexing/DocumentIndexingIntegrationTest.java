@@ -327,6 +327,26 @@ class DocumentIndexingIntegrationTest {
             SearchRequest.builder().query("OPAA").topK(100).similarityThreshold(0.0).build());
     assertThat(results).isNotEmpty();
     assertThat(results).allMatch(r -> r.getText() != null && !r.getText().isBlank());
+
+    // #1096/#1100 Hausstandard: pipeline_id at the stored chunk proves each file actually ran
+    // through its own dedicated pipeline (PdfDocumentPipeline/DocxDocumentPipeline), not merely
+    // through Tika - both would produce a non-empty, non-blank result above.
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT metadata->>'pipeline_id' FROM vector_store WHERE metadata->>'file_name' ="
+                    + " ?",
+                String.class,
+                "report.pdf"))
+        .isNotEmpty()
+        .allMatch(PdfDocumentPipeline.ID::equals);
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT metadata->>'pipeline_id' FROM vector_store WHERE metadata->>'file_name' ="
+                    + " ?",
+                String.class,
+                "notes.docx"))
+        .isNotEmpty()
+        .allMatch(DocxDocumentPipeline.ID::equals);
   }
 
   @Test
