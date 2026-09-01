@@ -534,16 +534,26 @@ class LibraryDocumentServiceIntegrationTest {
     crawlDoc.setOrganizationId(organizationId);
     crawlDoc = documentRepository.save(crawlDoc);
 
-    vectorStore.add(
-        List.of(
-            new org.springframework.ai.document.Document(
-                "Diese Dienstanweisung regelt den Publikumsverkehr.",
-                Map.of(
-                    "document_id", crawlDoc.getId().toString(),
-                    "chunk_index", 0,
-                    "file_name", crawlDoc.getFileName(),
-                    "library_id", connectorLibrary.library().getId().toString(),
-                    "organization_id", organizationId.toString()))));
+    org.springframework.ai.document.Document crawlChunk =
+        new org.springframework.ai.document.Document(
+            "Diese Dienstanweisung regelt den Publikumsverkehr.",
+            Map.of(
+                "document_id", crawlDoc.getId().toString(),
+                "chunk_index", 0,
+                "file_name", crawlDoc.getFileName(),
+                "library_id", connectorLibrary.library().getId().toString(),
+                "organization_id", organizationId.toString()));
+    vectorStore.add(List.of(crawlChunk));
+    // Written directly (bypassing VectorChunkStore#addChunks, like the vectorStore.add call
+    // above) so the pre-delete state has a matching chunk_full_text row to prove the delete path
+    // actually clears - not because it started out empty.
+    jdbcTemplate.update(
+        "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv) "
+            + "VALUES (?, ?, ?, to_tsvector('german', ?))",
+        java.util.UUID.fromString(crawlChunk.getId()),
+        crawlDoc.getId(),
+        connectorLibrary.library().getId(),
+        crawlChunk.getText());
 
     Long chunksBefore =
         jdbcTemplate.queryForObject(
@@ -551,6 +561,12 @@ class LibraryDocumentServiceIntegrationTest {
             Long.class,
             connectorLibrary.library().getId().toString());
     assertThat(chunksBefore).isEqualTo(1);
+    Long fullTextChunksBefore =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM chunk_full_text WHERE library_id = ?",
+            Long.class,
+            connectorLibrary.library().getId());
+    assertThat(fullTextChunksBefore).isEqualTo(chunksBefore);
 
     libraryService.deleteLibrary(connectorLibrary.library().getId(), currentUserOf(editor));
 
@@ -562,6 +578,15 @@ class LibraryDocumentServiceIntegrationTest {
             Long.class,
             connectorLibrary.library().getId().toString());
     assertThat(chunksAfter).isZero();
+    // #1047 review (second round), finding 2: the second half of the delete-path proof - a
+    // library delete (KnowledgeLibraryService#deleteLibrary -> VectorChunkStore#deleteByLibraryId)
+    // must clear chunk_full_text exactly as it clears vector_store.
+    Long fullTextChunksAfter =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM chunk_full_text WHERE library_id = ?",
+            Long.class,
+            connectorLibrary.library().getId());
+    assertThat(fullTextChunksAfter).isZero();
 
     // #479 review nit: documentsRemoved in the LIBRARY_DELETED audit entry must come from
     // DocumentRepository#deleteByLibraryId's own bulk-delete row count, not from a count taken

@@ -312,7 +312,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     }
 
     @Override
-    void writeEmbeddedChunks(
+    public void writeEmbeddedChunks(
         List<org.springframework.ai.document.Document> chunks, List<float[]> embeddings) {
       int current = concurrentWriteCalls.incrementAndGet();
       maxConcurrentWriteCalls.updateAndGet(max -> Math.max(max, current));
@@ -347,7 +347,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     }
 
     @Override
-    void writeEmbeddedChunks(
+    public void writeEmbeddedChunks(
         List<org.springframework.ai.document.Document> chunks, List<float[]> embeddings) {
       throw new RuntimeException("embedding call blew up");
     }

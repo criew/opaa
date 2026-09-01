@@ -11,9 +11,9 @@ import java.util.UUID;
  * totalChunks - indexedChunks} - the two counts are disjoint sets that a stale, orphaned {@code
  * chunk_full_text} row (e.g. left behind by a bug, or by a chunk whose {@code vector_store} row was
  * since deleted through a path that skipped {@link VectorChunkStore}) could otherwise make cancel
- * out, masking a chunk that is genuinely un-indexed (#1047 review, finding 2). All three counts are
- * read together, from the same query, by {@link FullTextBackfillProgressService} - never combined
- * from separate reads a concurrent backfill batch could interleave between.
+ * out, masking a chunk that is genuinely un-indexed. All three counts are read together, from the
+ * same query, by {@link FullTextBackfillProgressService} - never combined from separate reads a
+ * concurrent backfill batch could interleave between.
  */
 public record FullTextBackfillProgress(
     UUID libraryId, long totalChunks, long indexedChunks, long missingChunks) {

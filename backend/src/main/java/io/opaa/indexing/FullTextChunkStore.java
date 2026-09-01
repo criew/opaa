@@ -54,12 +54,17 @@ public class FullTextChunkStore {
    * chunk must already carry {@link VectorChunkStore#DOCUMENT_ID_METADATA_KEY}/{@link
    * VectorChunkStore#LIBRARY_ID_METADATA_KEY} metadata (see {@code
    * FileProcessingService#storeChunks} - every caller of this method already goes through that
-   * path). {@code ON CONFLICT DO NOTHING} makes a repeated call idempotent, matching {@link
-   * FullTextBackfillService}'s own idempotency contract - a chunk id already present here (e.g.
-   * inserted by a concurrently running backfill batch) is left untouched rather than raising a
-   * primary-key violation. Every row is written at {@link #CURRENT_TSV_VERSION} - reprocessing an
-   * existing row at a newer version once one exists is not implemented yet (see that constant's own
-   * Javadoc).
+   * path). {@code ON CONFLICT (chunk_id) DO UPDATE} - not {@code DO NOTHING} - makes a repeated
+   * call idempotent while still updating a row that already exists at an older {@link
+   * #CURRENT_TSV_VERSION}: a chunk id already present here at the current version is overwritten
+   * with the same values (a genuine no-op), and one present at an older version is brought up to
+   * date. {@code DO NOTHING} would have been wrong here: {@link
+   * FullTextBackfillService#backfillBatch} selects rows whose {@code content_tsv_version} does not
+   * match {@link #CURRENT_TSV_VERSION} - once that constant is ever bumped (#1048), {@code DO
+   * NOTHING} would make every such row permanently unreachable: selected again on every tick,
+   * written nowhere, forever reported as {@code processed}, and {@link FullTextBackfillScheduler}
+   * would never see an empty batch to go dormant on. Mirrors the vector upsert {@link
+   * VectorStoreWriter#writeEmbeddedChunks} already performs on an {@code id} conflict.
    */
   void indexChunks(List<org.springframework.ai.document.Document> chunks) {
     if (chunks.isEmpty()) {
@@ -68,7 +73,9 @@ public class FullTextChunkStore {
     jdbcTemplate.batchUpdate(
         "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv, "
             + "content_tsv_version) VALUES (?, ?, ?, to_tsvector(?::regconfig, ?), ?) "
-            + "ON CONFLICT (chunk_id) DO NOTHING",
+            + "ON CONFLICT (chunk_id) DO UPDATE SET "
+            + "content_tsv = EXCLUDED.content_tsv, "
+            + "content_tsv_version = EXCLUDED.content_tsv_version",
         chunks,
         chunks.size(),
         (ps, chunk) -> {

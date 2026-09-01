@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  *
  * <p>{@code missingChunks} - not a subtraction of {@code totalChunks} and {@code indexedChunks} -
  * is what {@link FullTextBackfillProgress#isComplete()} actually gates on; see that record's own
- * Javadoc (#1047 review, finding 2).
+ * Javadoc.
  *
  * <p>Table/schema name are read from the same {@code spring.ai.vectorstore.pgvector.*} properties
  * {@code PgVectorStore} itself binds, mirroring {@code io.opaa.query.ChunkEmbeddingLookup}'s
@@ -57,7 +57,10 @@ public class FullTextBackfillProgressService {
             + "  (SELECT count(*) FROM "
             + vectorStoreTable
             + " v WHERE metadata->>'library_id' = ? "
-            + "     AND NOT EXISTS (SELECT 1 FROM chunk_full_text f WHERE f.chunk_id = v.id)"
+            + "     AND NOT EXISTS ("
+            + "       SELECT 1 FROM chunk_full_text f "
+            + "       WHERE f.chunk_id = v.id AND f.content_tsv_version = ?"
+            + "     )"
             + "  ) AS missing";
     return jdbcTemplate.queryForObject(
         sql,
@@ -66,7 +69,8 @@ public class FullTextBackfillProgressService {
                 libraryId, rs.getLong("total"), rs.getLong("indexed"), rs.getLong("missing")),
         libraryId.toString(),
         libraryId,
-        libraryId.toString());
+        libraryId.toString(),
+        FullTextChunkStore.CURRENT_TSV_VERSION);
   }
 
   /**
@@ -97,7 +101,10 @@ public class FullTextBackfillProgressService {
             + vectorStoreTable
             + " v2 "
             + "  WHERE v2.metadata->>'library_id' IS NOT NULL "
-            + "    AND NOT EXISTS (SELECT 1 FROM chunk_full_text f2 WHERE f2.chunk_id = v2.id) "
+            + "    AND NOT EXISTS ("
+            + "      SELECT 1 FROM chunk_full_text f2 "
+            + "      WHERE f2.chunk_id = v2.id AND f2.content_tsv_version = ?"
+            + "    ) "
             + "  GROUP BY 1"
             + ") m ON COALESCE(v.library_id, f.library_id) = m.library_id";
     return jdbcTemplate.query(
@@ -107,6 +114,7 @@ public class FullTextBackfillProgressService {
                 (UUID) rs.getObject("library_id"),
                 rs.getLong("total"),
                 rs.getLong("indexed"),
-                rs.getLong("missing")));
+                rs.getLong("missing")),
+        FullTextChunkStore.CURRENT_TSV_VERSION);
   }
 }

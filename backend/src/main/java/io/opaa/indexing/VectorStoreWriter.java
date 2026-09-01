@@ -17,16 +17,15 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Writes already-embedded chunks into {@code vector_store} and {@code chunk_full_text} in a single
- * transaction (#1047 review, finding 3) - deliberately a plain JDBC upsert mirroring {@code
- * PgVectorStore#doAdd}'s own SQL, not a call to {@link
- * org.springframework.ai.vectorstore.VectorStore#add}: that call embeds <em>and</em> writes in one
- * step, which would hold the connection this transaction needs for the whole embedding HTTP round
- * trip. {@link VectorChunkStore#addChunks} embeds first, outside any transaction, and only calls
- * into this class afterwards - so the connection this class checks out is held for a handful of
- * local {@code INSERT}s, never for a network call. Without that split, {@code embeddingConcurrency}
- * sub-batches (up to 32, see {@code IndexingProperties}) each holding a connection for the duration
- * of an embedding call can exceed HikariCP's default {@code maximum-pool-size} of 10, starving the
- * query path of connections.
+ * transaction - deliberately a plain JDBC upsert mirroring {@code PgVectorStore#doAdd}'s own SQL,
+ * not a call to {@link org.springframework.ai.vectorstore.VectorStore#add}: that call embeds
+ * <em>and</em> writes in one step, which would hold the connection this transaction needs for the
+ * whole embedding HTTP round trip. {@link VectorChunkStore#addChunks} embeds first, outside any
+ * transaction, and only calls into this class afterwards - so the connection this class checks out
+ * is held for a handful of local {@code INSERT}s, never for a network call. Without that split,
+ * {@code embeddingConcurrency} sub-batches (up to 32, see {@code IndexingProperties}) each holding
+ * a connection for the duration of an embedding call can exceed HikariCP's default {@code
+ * maximum-pool-size} of 10, starving the query path of connections.
  *
  * <p>Schema/table name are read from the same {@code spring.ai.vectorstore.pgvector.*} properties
  * {@code PgVectorStore} itself binds, with the same defaults ({@code public}/{@code vector_store})
@@ -64,7 +63,7 @@ public class VectorStoreWriter {
    * EmbeddingModel#embed(List, EmbeddingOptions, BatchingStrategy)} already guarantees.
    */
   @Transactional
-  void writeEmbeddedChunks(List<Document> chunks, List<float[]> embeddings) {
+  public void writeEmbeddedChunks(List<Document> chunks, List<float[]> embeddings) {
     if (chunks.isEmpty()) {
       return;
     }

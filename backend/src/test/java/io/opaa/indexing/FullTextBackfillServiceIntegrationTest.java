@@ -145,6 +145,51 @@ class FullTextBackfillServiceIntegrationTest {
     assertThat(progress.isComplete()).isFalse();
   }
 
+  /**
+   * #1047 review, finding 1 (second round): {@code content_tsv_version} is provisional scaffolding
+   * for #1048 - this proves the mechanics that scaffolding depends on actually work today, using a
+   * row planted directly at an older version (since {@link FullTextChunkStore#CURRENT_TSV_VERSION}
+   * itself is fixed at {@code 1} in this codebase and cannot be bumped without a code change): a
+   * stale-version row is selected by {@link FullTextBackfillService#backfillBatch} exactly like a
+   * missing one, and {@code ON CONFLICT (chunk_id) DO UPDATE} actually brings it up to date - not
+   * {@code DO NOTHING}, which would have left it stale and reselected forever.
+   */
+  @Test
+  void aRowAtAnOlderContentTsvVersionIsUpdatedNotSkipped() {
+    UUID chunkId = seedUnindexedChunk("Befreiung von der Verwaltungsgebühr wegen Bedürftigkeit");
+    jdbcTemplate.update(
+        "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv, "
+            + "content_tsv_version) VALUES (?, ?, ?, to_tsvector('german', 'stale content'), 0)",
+        chunkId,
+        documentId,
+        libraryId);
+
+    FullTextBackfillProgress beforeBackfill = progressService.progressForLibrary(libraryId);
+    assertThat(beforeBackfill.missingChunks()).isEqualTo(1);
+    assertThat(beforeBackfill.isComplete()).isFalse();
+
+    int processed = backfillService.backfillBatch(10);
+
+    assertThat(processed).isEqualTo(1);
+    Short version =
+        jdbcTemplate.queryForObject(
+            "SELECT content_tsv_version FROM chunk_full_text WHERE chunk_id = ?",
+            Short.class,
+            chunkId);
+    assertThat(version).isEqualTo(FullTextChunkStore.CURRENT_TSV_VERSION);
+    Long matches =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM chunk_full_text WHERE chunk_id = ? "
+                + "AND content_tsv @@ to_tsquery('german', 'Bedürftigkeit')",
+            Long.class,
+            chunkId);
+    assertThat(matches).isEqualTo(1L);
+
+    FullTextBackfillProgress afterBackfill = progressService.progressForLibrary(libraryId);
+    assertThat(afterBackfill.missingChunks()).isZero();
+    assertThat(afterBackfill.isComplete()).isTrue();
+  }
+
   private void seedUnindexedChunks(int count) {
     List<org.springframework.ai.document.Document> chunks =
         IntStream.range(0, count).mapToObj(i -> chunkDocument("chunk text " + i)).toList();

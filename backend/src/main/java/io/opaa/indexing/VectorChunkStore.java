@@ -29,8 +29,8 @@ import org.springframework.stereotype.Component;
  * why); {@link VectorStoreWriter} only ever sees already-embedded chunks.
  *
  * <p>Both delete methods deliberately do <em>not</em> share a transaction across the vector and
- * full-text delete (#1047 review, finding 4): both callers of this class that run a delete from a
- * deferred {@code TransactionSynchronization#afterCommit} callback (see {@code
+ * full-text delete: both callers of this class that run a delete from a deferred {@code
+ * TransactionSynchronization#afterCommit} callback (see {@code
  * LibraryDocumentService#deleteDocument}) would otherwise have a {@code @Transactional} delete
  * method try to participate in a transaction whose physical commit has already happened - Spring
  * still reports {@code TransactionSynchronizationManager#isSynchronizationActive()} as {@code true}
@@ -73,7 +73,7 @@ public class VectorChunkStore {
    * Transaktion wie Text und Vektor"). Deliberately two steps rather than one {@code
    * VectorStore#add} call inside a transaction: embedding is an HTTP round trip, and holding a
    * pooled database connection for its duration - as a transaction spanning the whole call would -
-   * risks exhausting the connection pool under concurrent writes (#1047 review, finding 3).
+   * risks exhausting the connection pool under concurrent writes.
    */
   public void addChunks(List<Document> chunks) {
     if (chunks.isEmpty()) {
