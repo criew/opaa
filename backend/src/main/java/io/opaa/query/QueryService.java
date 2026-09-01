@@ -604,6 +604,16 @@ public class QueryService {
                     QueryService::mergeSourceReferences,
                     LinkedHashMap::new));
 
+    // The chunk-position score above is only the merge's tie-break for #mergeSourceReferences'
+    // "preferred" instance; the value a client sees is the entry's own rank. The map's insertion
+    // order is the documents' first-appearance order in the selection, so renumbering its values
+    // turns a chunk rank (which skips a position whenever one document contributed two chunks)
+    // into a gap-free source rank (#1102).
+    int sourceRank = 1;
+    for (ChatSource source : fromChunksByDocumentId.values()) {
+      source.setRelevanceScore(relevanceScoreForRank(sourceRank++));
+    }
+
     List<ChatSource> orphanEntries =
         buildOrphanSourceReferences(validatedCitations, retrievedDocumentIds);
     List<ChatSource> unmatchedOrphanEntries = new ArrayList<>();
@@ -624,10 +634,10 @@ public class QueryService {
   }
 
   /**
-   * The reciprocal of a chunk's 1-based position in the final selection - {@code 1.0} for the
-   * top-ranked chunk, strictly decreasing and always within {@code (0, 1]}, so it stays inside
-   * {@code SourceReference#relevanceScore}'s declared bounds. A position is comparable across
-   * search paths, a raw {@link Document#getScore()} is not (#1102).
+   * The reciprocal of a 1-based position - {@code 1.0} for the first, strictly decreasing and
+   * always within {@code (0, 1]}, so it stays inside {@code SourceReference#relevanceScore}'s
+   * declared bounds. A position is comparable across search paths, a raw {@link
+   * Document#getScore()} is not (#1102).
    */
   private static double relevanceScoreForRank(int rank) {
     return 1.0 / rank;

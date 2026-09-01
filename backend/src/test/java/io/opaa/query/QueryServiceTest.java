@@ -2135,6 +2135,13 @@ class QueryServiceTest {
 
     private QueryService newHybridQueryService(
         FullTextChunkSearch fullTextChunkSearch, FullTextBackfillGate backfillGate) {
+      return newHybridQueryService(fullTextChunkSearch, backfillGate, 1);
+    }
+
+    private QueryService newHybridQueryService(
+        FullTextChunkSearch fullTextChunkSearch,
+        FullTextBackfillGate backfillGate,
+        int maxChunksPerDocument) {
       RetrievalPipeline pipeline =
           new QueryConfiguration()
               .retrievalPipeline(
@@ -2157,7 +2164,7 @@ class QueryServiceTest {
           permissionHistoryService,
           chatService,
           new QueryMetrics(new SimpleMeterRegistry()),
-          new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 1, true),
+          new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, maxChunksPerDocument, true),
           knowledgeLibraryRepository);
     }
 
@@ -2198,6 +2205,44 @@ class QueryServiceTest {
       assertThat(response.getSources())
           .extracting(ChatSource::getFileName, ChatSource::getRelevanceScore)
           .containsExactly(tuple("vector.md", 1.0), tuple("lexical.md", 0.5));
+    }
+
+    /**
+     * The rank is a source's own position, not its best chunk's: a document contributing two of the
+     * three selected chunks occupies one row, and the next document is rank 2 - never rank 3, which
+     * would label a two-row list "Rang 1" and "Rang 3" (#1102).
+     */
+    @Test
+    void ranksSourcesByTheirOwnPositionWhenOneDocumentContributesSeveralChunks() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      FullTextChunkSearch fullTextChunkSearch = mock(FullTextChunkSearch.class);
+      FullTextBackfillGate backfillGate = mock(FullTextBackfillGate.class);
+      when(backfillGate.searchableLibraries(Set.of(readableLibraryId)))
+          .thenReturn(Set.of(readableLibraryId));
+      var firstChunkOfA = chunkOf("a.md", "doc-a", "A, erster Abschnitt", 0.9);
+      var secondChunkOfA = chunkOf("a.md", "doc-a", "A, zweiter Abschnitt", 0.85);
+      var chunkOfB = chunkOf("b.md", "doc-b", "B, einziger Abschnitt", 0.8);
+      when(vectorStore.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(firstChunkOfA, secondChunkOfA, chunkOfB));
+      when(fullTextChunkSearch.search(any(), any(), anyInt())).thenReturn(List.of());
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+      QueryResult response =
+          newHybridQueryService(fullTextChunkSearch, backfillGate, 2)
+              .query("Frage", null, caller, true, List.of());
+
+      assertThat(response.getSources())
+          .extracting(ChatSource::getFileName, ChatSource::getRelevanceScore)
+          .containsExactly(tuple("a.md", 1.0), tuple("b.md", 0.5));
+    }
+
+    private Document chunkOf(String fileName, String documentId, String text, double score) {
+      return Document.builder()
+          .text(text)
+          .metadata(Map.of("file_name", fileName, "document_id", documentId))
+          .score(score)
+          .build();
     }
   }
 

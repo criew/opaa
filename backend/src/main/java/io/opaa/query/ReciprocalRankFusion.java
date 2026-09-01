@@ -24,11 +24,9 @@ import org.springframework.ai.document.Document;
  * <p>That tie-break is deliberately positional and not "the higher {@link Document#getScore()}"
  * (its rule until #1049): since the lexical path became an input, duplicate instances of one chunk
  * can carry a cosine similarity and a {@code ts_rank}, and picking the larger of those two numbers
- * would be the very cross-scale comparison this class exists to avoid. The pipeline hands its lists
- * in stage order, so the earliest list is the vector path's - the score that survives is the
- * similarity every consumer of {@code ChatSource#getRelevanceScore()} expects. Only a chunk no
- * vector list found at all carries a {@code ts_rank} downstream; the ranking itself is the fused
- * score in either case and never a document's own.
+ * would be the very cross-scale comparison this class exists to avoid. Which of the two scores
+ * survives has no downstream effect - since #1102 no consumer reads a surviving {@link
+ * Document#getScore()} - and the ranking is the fused score in either case, never a document's own.
  */
 final class ReciprocalRankFusion {
 

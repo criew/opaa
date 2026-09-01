@@ -2786,10 +2786,12 @@ components:
           minimum: 0
           maximum: 1
           description: >-
-            Reciprocal of this source's rank within the answer (1.0 for the top-ranked one, 0.5 for
-            the second) - not a similarity score. A raw score is not comparable across sources
-            since a lexical-only chunk carries a ts_rank and a vector chunk a cosine similarity;
-            the rank is. 0 for a synthetic entry no retrieved chunk backs.
+            Reciprocal of this source's 1-based position in this answer's sources array (1.0 for
+            the first entry, 0.5 for the second) - not a similarity score, and counted per source,
+            not per retrieved chunk, so a source contributing several chunks still occupies exactly
+            one position. A raw score is not comparable across sources since a lexical-only chunk
+            carries a ts_rank and a vector chunk a cosine similarity; the rank is. 0 for a synthetic
+            entry no retrieved chunk backs.
           example: 1.0
         matchCount:
           type: integer

@@ -126,6 +126,75 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(drawer).queryByText(/Gewicht/)).not.toBeInTheDocument()
   })
 
+  // #1102: the rank is the row's position in the drawer's own, unfiltered list - a message
+  // persisted before #1102 carries raw path-dependent scores in its snapshot, and labelling from
+  // 1 / relevanceScore would call the pipeline's first source "Rang 11".
+  it('labels a legacy message by row position, not by 1 / relevanceScore', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MessageBubble
+        message={{
+          id: 'ev-legacy-rank',
+          role: 'assistant',
+          content: 'Beleg【source: a#0 | lexikalisch.md】 und【source: b#0 | vektor.md】.',
+          sources: [source('lexikalisch.md', true, 0.09), source('vektor.md', true, 0.8)],
+          timestamp: new Date('2026-08-22T09:00:00'),
+        }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    const rows = within(drawer).getAllByTestId('evidence-doc')
+    expect(within(rows[0]).getByText(/Rang 1/)).toBeInTheDocument()
+    expect(within(rows[1]).getByText(/Rang 2/)).toBeInTheDocument()
+  })
+
+  it('keeps a row rank when the list is filtered', async () => {
+    const { user, drawer } = await openDrawer()
+
+    await user.type(within(drawer).getByPlaceholderText('In Belegen suchen …'), 'dritter')
+
+    const rows = within(drawer).getAllByTestId('evidence-doc')
+    expect(rows).toHaveLength(1)
+    expect(within(rows[0]).getByText(/Rang 3/)).toBeInTheDocument()
+  })
+
+  // #386: a synthetic entry backs no retrieved passage (relevanceScore 0), so it holds no rank -
+  // and consumes none either, leaving the numbering of the real rows gap-free.
+  it('gives a synthetic entry no rank and lets it consume none', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MessageBubble
+        message={{
+          id: 'ev-synthetic',
+          role: 'assistant',
+          content:
+            'Echt【source: a#0 | echt.md】, erfunden【source: x#0 | erfunden.md】, ' +
+            'ungenutzt bleibt übrig.',
+          sources: [
+            source('echt.md', true, 1),
+            source('erfunden.md', true, 0, false),
+            source('ungenutzt.md', false, 0.5),
+          ],
+          timestamp: new Date('2026-08-22T09:00:00'),
+        }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    const rows = within(drawer).getAllByTestId('evidence-doc')
+    expect(rows.map((el) => el.getAttribute('data-file'))).toEqual([
+      'echt.md',
+      'erfunden.md',
+      'ungenutzt.md',
+    ])
+    expect(within(rows[0]).getByText(/Rang 1/)).toBeInTheDocument()
+    expect(within(rows[1]).queryByText(/Rang/)).not.toBeInTheDocument()
+    expect(within(rows[2]).getByText(/Rang 2/)).toBeInTheDocument()
+  })
+
   it('filters by the search field', async () => {
     const { user, drawer } = await openDrawer()
 

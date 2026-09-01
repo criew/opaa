@@ -72,7 +72,12 @@ export function buildCitationIndex(
   const indexBySource = new Map((sources ?? []).map((s, i) => [s, i]))
 
   function sourceIndexOf(source: SourceReference | undefined): number {
-    return source === undefined ? Number.MAX_SAFE_INTEGER : (indexBySource.get(source) ?? 0)
+    // Both branches sort an unresolvable row last, never first: a row without a source has no
+    // pipeline position, and neither has one whose source is not part of this message's list.
+    if (source === undefined) {
+      return Number.MAX_SAFE_INTEGER
+    }
+    return indexBySource.get(source) ?? Number.MAX_SAFE_INTEGER
   }
 
   function resolveSource(

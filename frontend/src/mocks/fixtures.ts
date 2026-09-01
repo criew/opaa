@@ -102,7 +102,7 @@ export const mockQueryResponses: QueryResponse[] = [
     sources: [
       {
         fileName: 'architecture-overview.md',
-        relevanceScore: 0.92,
+        relevanceScore: 1,
         matchCount: 3,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
@@ -116,7 +116,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'getting-started.pdf',
-        relevanceScore: 0.85,
+        relevanceScore: 0.5,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
@@ -128,7 +128,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'adr-0002-technology-stack.md',
-        relevanceScore: 0.78,
+        relevanceScore: 0.33,
         matchCount: 2,
         indexedAt: '2025-01-14T08:00:00Z',
         cited: false,
@@ -158,7 +158,7 @@ export const mockQueryResponses: QueryResponse[] = [
     sources: [
       {
         fileName: 'contributing-guide.md',
-        relevanceScore: 0.95,
+        relevanceScore: 1,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
@@ -190,7 +190,7 @@ export const mockQueryResponses: QueryResponse[] = [
     sources: [
       {
         fileName: 'docker-compose.yml',
-        relevanceScore: 0.97,
+        relevanceScore: 1,
         matchCount: 2,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
@@ -198,7 +198,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'deployment-guide.pdf',
-        relevanceScore: 0.91,
+        relevanceScore: 0.5,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
@@ -206,7 +206,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'adr-0002-technology-stack.md',
-        relevanceScore: 0.88,
+        relevanceScore: 0.33,
         matchCount: 3,
         indexedAt: '2025-01-14T08:00:00Z',
         cited: true,
@@ -214,7 +214,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'ci-pipeline.md',
-        relevanceScore: 0.85,
+        relevanceScore: 0.25,
         matchCount: 1,
         indexedAt: '2025-01-13T15:00:00Z',
         cited: true,
@@ -222,7 +222,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'liquibase-changelog.xml',
-        relevanceScore: 0.82,
+        relevanceScore: 0.2,
         matchCount: 1,
         indexedAt: '2025-01-12T09:00:00Z',
         cited: true,
@@ -230,7 +230,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'postgres-setup.md',
-        relevanceScore: 0.79,
+        relevanceScore: 0.17,
         matchCount: 1,
         indexedAt: '2025-01-11T14:00:00Z',
         cited: false,
@@ -238,7 +238,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'environment-config.md',
-        relevanceScore: 0.76,
+        relevanceScore: 0.14,
         matchCount: 1,
         indexedAt: '2025-01-10T11:00:00Z',
         cited: false,
@@ -246,7 +246,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'monitoring-guide.md',
-        relevanceScore: 0.72,
+        relevanceScore: 0.13,
         matchCount: 1,
         indexedAt: '2025-01-09T16:00:00Z',
         cited: false,
@@ -254,7 +254,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'backup-strategy.pdf',
-        relevanceScore: 0.68,
+        relevanceScore: 0.11,
         matchCount: 1,
         indexedAt: null,
         cited: false,
@@ -262,7 +262,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'security-checklist.md',
-        relevanceScore: 0.65,
+        relevanceScore: 0.1,
         matchCount: 1,
         indexedAt: null,
         cited: false,

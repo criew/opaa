@@ -38,9 +38,16 @@ interface EvidenceDoc {
    *  source that does not match the chunks actually retrieved for this answer. */
   citationValid: boolean
   relevanceScore?: number
-  /** #1102: position in the backend's `sources` array within this doc's group - the order the
-   *  retrieval pipeline settled on. */
-  sourceIndex: number
+  /** #1102: this row's position in the backend's `sources` array, which the cited rows are sorted
+   *  by - undefined for an uncited row (that group already arrives in `sources` order and is never
+   *  re-sorted) and for a cited row whose source this message's list does not contain. */
+  sourceIndex?: number
+  /** #1102: the rank shown in the row, derived from the row's position in the unfiltered list, not
+   *  from `relevanceScore` - a message persisted before #1102 still carries a raw path-dependent
+   *  score in its snapshot. Undefined for a synthetic entry (#386), which backs no retrieved
+   *  passage and therefore holds no rank; such a row does not consume a rank either, so the
+   *  numbering stays gap-free. */
+  rank?: number
   indexedAt?: string | null
   sourceEntryUrl?: string | null
   /** #739/#747: the original's document id - openable via GET /documents/{id}/content for every
@@ -100,13 +107,12 @@ export default function SourceEvidenceDrawer({
       sourceType: doc.source?.sourceType,
       sourceUrl: doc.source?.sourceUrl,
     }))
-    const uncited: EvidenceDoc[] = citations.uncited.map((source, index) => ({
+    const uncited: EvidenceDoc[] = citations.uncited.map((source) => ({
       fileName: source.fileName,
       numbers: [],
       cited: false,
       citationValid: source.citationValid !== false,
       relevanceScore: source.relevanceScore,
-      sourceIndex: index,
       indexedAt: source.indexedAt,
       sourceEntryUrl: source.sourceEntryUrl,
       documentId: source.documentId,
@@ -117,8 +123,17 @@ export default function SourceEvidenceDrawer({
     // a persisted message's snapshot may still carry the pre-#1102 path-dependent raw score, and
     // sorting by that would drop a lexical-only source to the bottom. `citations.uncited` already
     // arrives in that order; the cited rows arrive in first-appearance order instead.
-    const byPipelineOrder = (a: EvidenceDoc, b: EvidenceDoc) => a.sourceIndex - b.sourceIndex
-    return [...cited.sort(byPipelineOrder), ...uncited]
+    const byPipelineOrder = (a: EvidenceDoc, b: EvidenceDoc) =>
+      (a.sourceIndex ?? Number.MAX_SAFE_INTEGER) - (b.sourceIndex ?? Number.MAX_SAFE_INTEGER)
+    // The rank is the row's own position here, never `1 / relevanceScore`: this list is already in
+    // the pipeline's selection order, while the score in a message persisted before #1102 is still
+    // a raw, path-dependent one that would label a lexical-only source "Rang 11". A synthetic
+    // entry (#386) backs no retrieved passage, holds no rank and consumes none.
+    let nextRank = 1
+    return [...cited.sort(byPipelineOrder), ...uncited].map((doc) => ({
+      ...doc,
+      rank: doc.relevanceScore === undefined || doc.relevanceScore === 0 ? undefined : nextRank++,
+    }))
   }, [citations])
 
   const visibleDocs = useMemo(() => {
@@ -211,7 +226,9 @@ export default function SourceEvidenceDrawer({
         ) : (
           visibleDocs.map((doc) => (
             <Box
-              key={doc.fileName}
+              // #739: two distinct documents may share a file name and each get their own row,
+              // so the file name alone is not a unique key.
+              key={doc.documentId ?? doc.fileName}
               data-testid="evidence-doc"
               data-file={doc.fileName}
               data-cited={doc.cited ? 'true' : 'false'}
@@ -274,12 +291,7 @@ export default function SourceEvidenceDrawer({
               >
                 <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
                   {[
-                    // #1102: relevanceScore is the reciprocal of the source's rank in this
-                    // answer, not a similarity - a synthetic entry (#386) carries 0 and gets no
-                    // rank at all.
-                    doc.relevanceScore !== undefined && doc.relevanceScore > 0
-                      ? `Rang ${Math.round(1 / doc.relevanceScore)}`
-                      : null,
+                    doc.rank !== undefined ? `Rang ${doc.rank}` : null,
                     doc.indexedAt
                       ? `indiziert ${new Date(doc.indexedAt).toLocaleDateString('de-DE', { dateStyle: 'medium' })}`
                       : null,
