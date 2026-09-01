@@ -112,6 +112,54 @@ class PdfDocumentPipelineTest {
   }
 
   @Test
+  void leadTextBeforeARunsFirstTitleStaysFindableInThePrecedingSection() throws IOException {
+    // #1104 review round 2, wichtig 1: § 1's own body continues onto the page § 2/§ 3 are
+    // bookmarked to (the run's shared page) before either title appears - that lead text must
+    // stay attached to § 1, not vanish because it sits ahead of the run's first title.
+    Path file = tempDir.resolve("fortlaufender-paragraph.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page1 =
+          addPageWithLines(
+              doc, List.of("§ 1 Anwendungsbereich", "Text zu Paragraph eins, Teil eins."));
+      PDPage page2 =
+          addPageWithLines(
+              doc,
+              List.of(
+                  "Text zu Paragraph eins, Teil zwei (Fortsetzung).",
+                  "§ 2 Gebuehren",
+                  "Text zu Paragraph zwei.",
+                  "§ 3 Schlussbestimmungen",
+                  "Text zu Paragraph drei."));
+
+      PDDocumentOutline outline = new PDDocumentOutline();
+      doc.getDocumentCatalog().setDocumentOutline(outline);
+      outline.addLast(outlineItem("§ 1 Anwendungsbereich", page1));
+      outline.addLast(outlineItem("§ 2 Gebuehren", page2));
+      outline.addLast(outlineItem("§ 3 Schlussbestimmungen", page2));
+
+      doc.save(file.toFile());
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "fortlaufender-paragraph.pdf", ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(3);
+    assertThat(result.chunks().get(0).getText())
+        .startsWith("§ 1 Anwendungsbereich")
+        .contains("Teil eins")
+        .contains("Fortsetzung");
+    assertThat(result.chunks().get(1).getText())
+        .startsWith("§ 2 Gebuehren")
+        .contains("Paragraph zwei")
+        .doesNotContain("Fortsetzung");
+    assertThat(result.chunks().get(2).getText())
+        .startsWith("§ 3 Schlussbestimmungen")
+        .contains("Paragraph drei")
+        .doesNotContain("Fortsetzung");
+  }
+
+  @Test
   void fallsBackToOnePagePerChunkWhenThereIsNoOutline() throws IOException {
     Path file = tempDir.resolve("ohne-gliederung.pdf");
     try (PDDocument doc = new PDDocument()) {

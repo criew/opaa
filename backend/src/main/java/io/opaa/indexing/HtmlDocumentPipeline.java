@@ -15,8 +15,6 @@ import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 import org.jsoup.select.NodeVisitor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
@@ -72,8 +70,6 @@ import org.springframework.ai.document.Document;
  * reader.
  */
 public class HtmlDocumentPipeline implements DocumentPipeline {
-
-  private static final Logger log = LoggerFactory.getLogger(HtmlDocumentPipeline.class);
 
   static final String ID = "html";
   static final short VERSION = 1;

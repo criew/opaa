@@ -50,10 +50,14 @@ import org.springframework.ai.document.Document;
  * per page) share that page's extracted text rather than each getting the whole page: the text
  * between one entry's title and the next entry's title (both located within the shared page's own
  * text) becomes that entry's body, so the first §'s text does not silently end up attached to the
- * second §'s chunk. When a title cannot be located verbatim in the extracted page text (differing
- * whitespace/line-break normalization between the catalog string and the page content stream), the
- * whole shared range falls back to the last entry in the run - the earlier entries in the run still
- * get their own heading-only chunk rather than being silently dropped.
+ * second §'s chunk. Text found <em>before</em> the run's first title - the tail of whatever
+ * preceded the run, e.g. the end of a § whose own heading sits on an earlier page while its body
+ * continues onto this shared page - is not attributed to the run at all: it is folded into
+ * whichever section is still open when the run starts (the preamble, or the previous entry's own
+ * body), never dropped. When a title cannot be located verbatim in the extracted page text
+ * (differing whitespace/line-break normalization between the catalog string and the page content
+ * stream), the whole shared range falls back to the last entry in the run - the earlier entries in
+ * the run still get their own heading-only chunk rather than being silently dropped.
  *
  * <p><b>Page-based chunking is the fallback</b> when the document has no outline, or none of its
  * entries resolve to a page - one chunk per non-blank page, carrying {@code "S. n"} as its {@link
@@ -175,11 +179,19 @@ public class PdfDocumentPipeline implements DocumentPipeline {
               ? entries.get(runEnd + 1).pageIndex()
               : doc.getNumberOfPages();
       String rangeText = extractPageRangeText(doc, page, rangeEnd);
-      List<String> bodies = splitAmongSiblingTitles(rangeText, run);
+      Attribution attribution = splitAmongSiblingTitles(rangeText, run);
+      if (!attribution.head().isBlank()) {
+        // Text before the run's first title belongs to whichever section is still open when
+        // this run starts - the preamble (first run) or the previous run's last entry (#1104
+        // review round 2, wichtig 1). Added before this run's own Heading events, so
+        // HeadingSectionSplitter#chunk folds it into that still-open section rather than
+        // dropping it.
+        events.add(new HeadingSectionSplitter.Paragraph(attribution.head().strip()));
+      }
       for (int k = 0; k < run.size(); k++) {
         OutlineEntry entry = run.get(k);
         events.add(new HeadingSectionSplitter.Heading(entry.level(), entry.title()));
-        String body = bodies.get(k);
+        String body = attribution.bodies().get(k);
         if (!body.isBlank()) {
           events.add(new HeadingSectionSplitter.Paragraph(body.strip()));
         }
@@ -196,39 +208,49 @@ public class PdfDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * Attributes {@code rangeText} (the extracted text of the page(s) {@code run} shares) to each
-   * entry in {@code run} individually, by locating each entry's title text in document order and
-   * cutting between consecutive matches - see this class's own Javadoc, "Several outline entries on
-   * the same page". A single-entry run returns the whole range unchanged (the common case, no
-   * splitting needed). Falls back to attributing the whole range to the last entry - today's
-   * pre-fix behaviour, kept as the graceful degradation - when any title cannot be located.
+   * @param head the text before the run's first entry's title, in document order - see {@link
+   *     #chunkByOutline}'s own use of it. Empty when the run's first title sits at the very start
+   *     of {@code rangeText}, or when the fallback below applies.
+   * @param bodies one entry per {@code run} entry, its own text between its title and the next
+   *     one's (or the range's end for the last entry).
    */
-  private static List<String> splitAmongSiblingTitles(String rangeText, List<OutlineEntry> run) {
-    if (run.size() == 1) {
-      return List.of(rangeText);
-    }
+  private record Attribution(String head, List<String> bodies) {}
+
+  /**
+   * Attributes {@code rangeText} (the extracted text of the page(s) {@code run} shares) to each
+   * entry in {@code run} individually plus the run's own head, by locating every entry's title text
+   * in document order and cutting between consecutive matches - see this class's own Javadoc,
+   * "Several outline entries on the same page". Titles are located even for a single-entry run: the
+   * page a lone entry is bookmarked to can itself carry trailing content from whatever preceded it
+   * (the same head-attribution concern, just with a run of one). Falls back to attributing the
+   * whole range to the last entry, with no head - today's pre-split-fix behaviour, kept as the
+   * graceful degradation - when any title cannot be located verbatim (differing
+   * whitespace/line-break normalization between the catalog string and the page content stream).
+   */
+  private static Attribution splitAmongSiblingTitles(String rangeText, List<OutlineEntry> run) {
     List<Integer> starts = new ArrayList<>(run.size());
     int searchFrom = 0;
     for (OutlineEntry entry : run) {
       int index = rangeText.indexOf(entry.title(), searchFrom);
       if (index < 0) {
-        List<String> fallback = new ArrayList<>(run.size());
+        List<String> fallbackBodies = new ArrayList<>(run.size());
         for (int i = 0; i < run.size() - 1; i++) {
-          fallback.add("");
+          fallbackBodies.add("");
         }
-        fallback.add(rangeText);
-        return fallback;
+        fallbackBodies.add(rangeText);
+        return new Attribution("", fallbackBodies);
       }
       starts.add(index);
       searchFrom = index + entry.title().length();
     }
+    String head = rangeText.substring(0, starts.get(0));
     List<String> bodies = new ArrayList<>(run.size());
     for (int i = 0; i < run.size(); i++) {
       int bodyStart = starts.get(i) + run.get(i).title().length();
       int bodyEnd = i + 1 < run.size() ? starts.get(i + 1) : rangeText.length();
       bodies.add(rangeText.substring(bodyStart, Math.max(bodyStart, bodyEnd)));
     }
-    return bodies;
+    return new Attribution(head, bodies);
   }
 
   private static DocumentPipelineResult chunkByPage(PDDocument doc) throws IOException {

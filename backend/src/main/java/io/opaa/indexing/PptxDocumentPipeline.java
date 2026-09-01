@@ -228,8 +228,14 @@ public class PptxDocumentPipeline implements DocumentPipeline {
     }
     StringBuilder text = new StringBuilder();
     for (XSLFShape shape : notes.getShapes()) {
-      if (!(shape instanceof XSLFTextShape textShape)
-          || NON_CONTENT_NOTES_PLACEHOLDERS.contains(textShape.getTextType())) {
+      if (!(shape instanceof XSLFTextShape textShape)) {
+        continue;
+      }
+      // getTextType() is null for an ordinary text box that is not inherited from a notes-master
+      // placeholder - Set.of(...)#contains(null) throws rather than returning false, so the null
+      // case must short-circuit before it (#1104 review round 2, wichtig 2).
+      Placeholder textType = textShape.getTextType();
+      if (textType != null && NON_CONTENT_NOTES_PLACEHOLDERS.contains(textType)) {
         continue;
       }
       String shapeText = textShape.getText();

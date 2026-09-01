@@ -172,6 +172,38 @@ class PptxDocumentPipelineTest {
   }
 
   @Test
+  void aNotesTextBoxWithoutAPlaceholderTypeIsIncludedWithoutThrowing() throws IOException {
+    // #1104 review round 2, wichtig 2: XSLFTextShape#getTextType() returns null for an ordinary
+    // text box that is not inherited from a notes-master placeholder - the existing notes tests
+    // only ever hit placeholders, so this NPE (Set.of(...)#contains(null)) went unnoticed and
+    // crashed the whole presentation, not just this one slide.
+    Path file = tempDir.resolve("notiz-textfeld.pptx");
+    try (XMLSlideShow show = new XMLSlideShow()) {
+      XSLFSlide slide = show.createSlide();
+      slide.createTextBox().setText("Folieninhalt.");
+      var notesSlide = show.getNotesSlide(slide);
+      XSLFTextBox notesBox = notesSlide.createTextBox();
+      notesBox.setAnchor(new Rectangle(0, 0, 400, 100));
+      notesBox.setText("Freitext ohne Platzhaltertyp.");
+      write(show, file);
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "notiz-textfeld.pptx", ".pptx"));
+
+    // The point is that this does not throw (the notes slide's own BODY placeholder, with its
+    // master's literal prompt text, sits alongside the plain text box added here and is not
+    // filtered - only slide-number/date/footer/header placeholders are, see this class's own
+    // NON_CONTENT_NOTES_PLACEHOLDERS).
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Folieninhalt.")
+        .contains("Notizen:")
+        .contains("Freitext ohne Platzhaltertyp.");
+  }
+
+  @Test
   void aPresentationWithoutAnySlideHasNoContent() throws IOException {
     Path file = tempDir.resolve("keine-folien.pptx");
     try (XMLSlideShow show = new XMLSlideShow()) {
