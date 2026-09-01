@@ -1,5 +1,6 @@
 package io.opaa.indexing.pipeline.office;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.ChunkingService;
@@ -10,6 +11,7 @@ import java.io.OutputStream;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
@@ -33,13 +35,6 @@ class DocxDocumentPipelineTest {
     assertThat(pipeline.handledFormats()).containsExactly(".docx");
     assertThat(pipeline.id()).isEqualTo("docx");
     assertThat(pipeline.version()).isEqualTo((short) 1);
-  }
-
-  @Test
-  void passesThroughOnlyTheLocationKey() {
-    // #1107 neutrality guard: unchanged from the pre-refactor hardcoded allowlist.
-    assertThat(pipeline.passthroughMetadataKeys())
-        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
   }
 
   @Test
@@ -67,6 +62,12 @@ class DocxDocumentPipelineTest {
     assertThat(result.chunks().get(1).getText())
         .startsWith("Verwaltungsgebuehrensatzung › Personaldokumente")
         .contains("Personalausweises");
+    // The keys actually produced must stay within what the pipeline declares - the guard
+    // DocumentPipelineRegistryRoutingIntegrationTest#everyPipelineDeclaresExactlyItsOwnMetadataKeys
+    // checks the declaration; this checks the declaration against real output.
+    Set<String> actualKeys =
+        result.chunks().stream().flatMap(c -> c.getMetadata().keySet().stream()).collect(toSet());
+    assertThat(pipeline.passthroughMetadataKeys()).containsAll(actualKeys);
   }
 
   @Test

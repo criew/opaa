@@ -1,5 +1,6 @@
 package io.opaa.indexing.pipeline.office;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.ChunkingService;
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 import org.apache.poi.sl.usermodel.Placeholder;
 import org.apache.poi.sl.usermodel.TextShape;
 import org.apache.poi.xslf.usermodel.SlideLayout;
@@ -42,13 +44,6 @@ class PptxDocumentPipelineTest {
   }
 
   @Test
-  void passesThroughOnlyTheLocationKey() {
-    // #1107 neutrality guard: unchanged from the pre-refactor hardcoded allowlist.
-    assertThat(pipeline.passthroughMetadataKeys())
-        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
-  }
-
-  @Test
   void oneChunkPerSlideCarryingTitleAndSlideNumber() throws IOException {
     Path file = tempDir.resolve("praesentation.pptx");
     try (XMLSlideShow show = new XMLSlideShow()) {
@@ -74,6 +69,12 @@ class PptxDocumentPipelineTest {
         .contains("Notizen: Bitte langsam sprechen.");
     assertThat(result.chunks().get(1).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
         .isEqualTo("Folie 2: Gebuehren");
+    // The keys actually produced must stay within what the pipeline declares - the guard
+    // DocumentPipelineRegistryRoutingIntegrationTest#everyPipelineDeclaresExactlyItsOwnMetadataKeys
+    // checks the declaration; this checks the declaration against real output.
+    Set<String> actualKeys =
+        result.chunks().stream().flatMap(c -> c.getMetadata().keySet().stream()).collect(toSet());
+    assertThat(pipeline.passthroughMetadataKeys()).containsAll(actualKeys);
   }
 
   @Test

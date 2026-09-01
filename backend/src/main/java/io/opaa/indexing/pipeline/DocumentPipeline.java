@@ -47,12 +47,22 @@ public interface DocumentPipeline {
 
   /**
    * Chunk metadata keys this pipeline may set on a produced chunk's own metadata (as opposed to
-   * {@link ChunkPipelineMetadata}'s keys, which every pipeline gets unconditionally) that {@code
-   * FileProcessingService#storeChunks} carries onto the persisted chunk. A key this pipeline never
-   * actually set on a given chunk is simply skipped - declaring it here is a ceiling, not a promise
-   * every chunk carries it. This is the extension point #1107 replaced a hardcoded allowlist in
-   * {@code storeChunks} with: adding a passthrough key means overriding this method, nothing in the
-   * caller.
+   * {@link ChunkPipelineMetadata}'s keys, which {@code storeChunks} writes itself on every chunk
+   * regardless of any pipeline's declaration here) that {@code FileProcessingService#storeChunks}
+   * carries onto the persisted chunk. A key this pipeline never actually set on a given chunk is
+   * simply skipped - declaring it here is a ceiling, not a promise every chunk carries it. A
+   * pipeline's bookkeeping keys ({@code document_id}, {@code chunk_index}, {@code file_name},
+   * {@code library_id}, {@code organization_id}, {@code pipeline_id}, {@code pipeline_version}) can
+   * never be overridden this way, declared or not - {@code storeChunks} writes those itself before
+   * consulting any pipeline's declaration. This is the sole extension point for adding a
+   * passthrough key: overriding this method, nothing in the caller. Never returns {@code null}.
+   *
+   * <p>{@code storeChunks} is called with one pipeline per document, but filters against the
+   * <b>union</b> of every registered pipeline's declaration ({@link
+   * DocumentPipelineRegistry#allPassthroughMetadataKeys()}), not just that one pipeline's own - a
+   * document's chunks can come from a different, nested pipeline than the one they end up
+   * attributed to (an attachment routed recursively by {@code MailDocumentPipeline}), so a key only
+   * the nested pipeline declares must still pass through.
    *
    * <p>Defaults to {@link ChunkingService#LOCATION_METADATA_KEY}, the Fundort most pipelines derive
    * via {@link HeadingSectionSplitter} or their own splitting; override to add further structural

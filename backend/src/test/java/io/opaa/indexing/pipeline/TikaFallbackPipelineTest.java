@@ -42,14 +42,6 @@ class TikaFallbackPipelineTest {
   }
 
   @Test
-  void passesThroughOnlyTheLocationKeyLikeBeforeTheHardcodedAllowlistWasRemoved() {
-    // #1107 neutrality guard: this pipeline never set mail_* keys before the allowlist moved
-    // onto DocumentPipeline itself, so its declared set stays the interface default.
-    assertThat(pipeline.passthroughMetadataKeys())
-        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
-  }
-
-  @Test
   void producesTheSameChunksTheReaderAndSplitterProduceOnTheirOwn() throws IOException {
     Path file = tempDir.resolve("vermerk.txt");
     Files.writeString(file, "Die Verwaltungsgebühr beträgt 37,00 EUR. ".repeat(200));

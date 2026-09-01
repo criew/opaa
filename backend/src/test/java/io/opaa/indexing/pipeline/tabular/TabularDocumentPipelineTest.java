@@ -1,5 +1,6 @@
 package io.opaa.indexing.pipeline.tabular;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -13,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.apache.poi.ss.usermodel.Cell;
@@ -41,14 +43,6 @@ class TabularDocumentPipelineTest {
     assertThat(pipeline.version()).isEqualTo((short) 1);
   }
 
-  @Test
-  void passesThroughOnlyTheLocationKey() {
-    // #1107 neutrality guard: unchanged from the pre-refactor hardcoded allowlist - Blatt/Tabelle
-    // context is baked into the chunk text (Teil 3, Punkt 3), not carried as its own metadata key.
-    assertThat(pipeline.passthroughMetadataKeys())
-        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
-  }
-
   // --- XLSX ------------------------------------------------------------------------------------
 
   @Test
@@ -71,6 +65,12 @@ class TabularDocumentPipelineTest {
         .contains("Personalausweis | 37,00 EUR");
     assertThat(result.chunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
         .isEqualTo("Blatt Gebühren · Zeile 2");
+    // The keys actually produced must stay within what the pipeline declares - the guard
+    // DocumentPipelineRegistryRoutingIntegrationTest#everyPipelineDeclaresExactlyItsOwnMetadataKeys
+    // checks the declaration; this checks the declaration against real output.
+    Set<String> actualKeys =
+        result.chunks().stream().flatMap(c -> c.getMetadata().keySet().stream()).collect(toSet());
+    assertThat(pipeline.passthroughMetadataKeys()).containsAll(actualKeys);
   }
 
   @Test

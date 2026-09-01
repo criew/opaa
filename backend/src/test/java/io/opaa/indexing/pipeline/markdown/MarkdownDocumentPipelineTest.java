@@ -33,7 +33,9 @@ class MarkdownDocumentPipelineTest {
 
   @Test
   void passesThroughOnlyTheLocationKey() {
-    // #1107 neutrality guard: unchanged from the pre-refactor hardcoded allowlist.
+    // Not covered by the registry-wide neutrality guard
+    // (DocumentPipelineRegistryRoutingIntegrationTest) because this pipeline is deliberately not
+    // registered as a bean (see markdownDocumentPipelineIsDeliberatelyNotRegisteredAsABean there).
     assertThat(pipeline.passthroughMetadataKeys())
         .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
   }

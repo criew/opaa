@@ -784,6 +784,15 @@ verschachtelte `.eml` oder ein beschädigtes XLSX kostet nur diesen einen Anhang
 Kopfdaten. Der Fundort eines Anhang-Chunks trägt `Anhang: <Dateiname>` als Präfix vor dem Fundort, den
 die Sub-Pipeline selbst ermittelt hat (z. B. `Anhang: antrag.pdf`).
 
+**Welche Metadaten-Schlüssel eines Anhang-Chunks durchgereicht werden, entscheidet nicht allein
+`MailDocumentPipeline#passthroughMetadataKeys()`.** `FileProcessingService#storeChunks` filtert gegen
+die Vereinigung der Deklarationen aller registrierten Pipelines (`DocumentPipelineRegistry
+#allPassthroughMetadataKeys()`), nicht gegen die eine Pipeline, mit der `storeChunks` für das
+Gesamtdokument aufgerufen wurde — sonst würde ein Struktur-Schlüssel, den nur die innere,
+tatsächlich für den Anhang zuständige Pipeline deklariert (z. B. eine künftige Folien-/
+Blatt-Metadatum-Pipeline), an genau der Stelle verworfen, an der `pipeline_id`/`pipeline_version`
+ohnehin schon die äußere Mail-Pipeline tragen (siehe die Einschränkung unten).
+
 **Bekannte Einschränkung: Jeder Chunk — auch ein rekursiv erzeugter Anhang-Chunk — trägt
 `pipeline_id=email`/die Version dieser Pipeline** (#1101 Review), nicht die der Sub-Pipeline, die ihn
 tatsächlich erzeugt hat. `FileProcessingService#storeChunks` prägt `pipeline_id`/`pipeline_version`

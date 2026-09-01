@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -746,9 +747,12 @@ public class FileProcessingService {
    *     rule depends on which of those this chunk set came from, not on {@code document}'s source
    *     type alone (#940 review).
    * @param pipeline the pipeline that produced {@code chunks}; its id and version are written onto
-   *     every chunk (see {@link ChunkPipelineMetadata}), and its {@link
-   *     DocumentPipeline#passthroughMetadataKeys()} decides which further chunk metadata keys ride
-   *     along
+   *     every chunk (see {@link ChunkPipelineMetadata}). Which further chunk metadata keys ride
+   *     along is decided by {@link DocumentPipelineRegistry#allPassthroughMetadataKeys()}, not by
+   *     {@code pipeline} alone - {@code pipeline} is the outer pipeline a nested attachment's
+   *     chunks are attributed to (see {@code MailDocumentPipeline#processAttachment}), so filtering
+   *     by its own declaration would silently drop a key only the inner, per-attachment pipeline
+   *     declares
    */
   private void storeChunks(
       Document document,
@@ -760,6 +764,7 @@ public class FileProcessingService {
         documentWasSplit && contextTitle != null
             ? chunkEmbedFormatterWithPrefix(contextTitle)
             : CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX;
+    Set<String> passthroughKeys = pipelineRegistry.allPassthroughMetadataKeys();
 
     List<org.springframework.ai.document.Document> enriched =
         chunks.stream()
@@ -781,11 +786,16 @@ public class FileProcessingService {
                   metadata.put(
                       ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY,
                       (int) pipeline.version());
-                  // The pipeline's own declared passthrough keys (DocumentPipeline#
-                  // passthroughMetadataKeys, #1107) - e.g. the chunk's Fundort, or a message's
-                  // Kopfdaten (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) - copied only
-                  // when this particular chunk actually carries them.
-                  for (String passthroughKey : pipeline.passthroughMetadataKeys()) {
+                  // The registry-wide declared passthrough keys (DocumentPipeline#
+                  // passthroughMetadataKeys) - e.g. the chunk's Fundort, or a message's Kopfdaten
+                  // (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) - copied only when this
+                  // particular chunk actually carries them, and never for a key already written
+                  // above: those are FileProcessingService's own bookkeeping, not a pipeline's to
+                  // set.
+                  for (String passthroughKey : passthroughKeys) {
+                    if (metadata.containsKey(passthroughKey)) {
+                      continue;
+                    }
                     copyIfPresent(chunk, metadata, passthroughKey);
                   }
                   org.springframework.ai.document.Document enrichedChunk =

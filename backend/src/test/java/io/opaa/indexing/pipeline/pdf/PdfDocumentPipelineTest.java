@@ -1,5 +1,6 @@
 package io.opaa.indexing.pipeline.pdf;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.ChunkingService;
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -37,13 +39,6 @@ class PdfDocumentPipelineTest {
     assertThat(pipeline.handledFormats()).containsExactly(".pdf");
     assertThat(pipeline.id()).isEqualTo("pdf");
     assertThat(pipeline.version()).isEqualTo((short) 1);
-  }
-
-  @Test
-  void passesThroughOnlyTheLocationKey() {
-    // #1107 neutrality guard: unchanged from the pre-refactor hardcoded allowlist.
-    assertThat(pipeline.passthroughMetadataKeys())
-        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
   }
 
   @Test
@@ -81,6 +76,12 @@ class PdfDocumentPipelineTest {
     assertThat(result.chunks().get(2).getText())
         .startsWith("§ 1 Personaldokumente › Abs. 2 Ermaessigung")
         .contains("Minderjaehrige");
+    // The keys actually produced must stay within what the pipeline declares - the guard
+    // DocumentPipelineRegistryRoutingIntegrationTest#everyPipelineDeclaresExactlyItsOwnMetadataKeys
+    // checks the declaration; this checks the declaration against real output.
+    Set<String> actualKeys =
+        result.chunks().stream().flatMap(c -> c.getMetadata().keySet().stream()).collect(toSet());
+    assertThat(pipeline.passthroughMetadataKeys()).containsAll(actualKeys);
   }
 
   @Test

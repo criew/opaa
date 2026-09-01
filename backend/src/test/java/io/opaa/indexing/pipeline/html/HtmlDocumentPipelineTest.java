@@ -1,5 +1,6 @@
 package io.opaa.indexing.pipeline.html;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.ChunkingService;
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -29,13 +31,6 @@ class HtmlDocumentPipelineTest {
     assertThat(pipeline.handledFormats()).containsExactly(".html");
     assertThat(pipeline.id()).isEqualTo("html");
     assertThat(pipeline.version()).isEqualTo((short) 1);
-  }
-
-  @Test
-  void passesThroughOnlyTheLocationKey() {
-    // #1107 neutrality guard: unchanged from the pre-refactor hardcoded allowlist.
-    assertThat(pipeline.passthroughMetadataKeys())
-        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
   }
 
   // A realistic Government Site Builder-style page: nav, header, footer and a cookie banner
@@ -120,6 +115,12 @@ class HtmlDocumentPipelineTest {
         .contains("37,00 EUR");
     assertThat(result.chunks().get(3).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
         .isEqualTo("Abschn. Personalausweis beantragen › Gebuehren");
+    // The keys actually produced must stay within what the pipeline declares - the guard
+    // DocumentPipelineRegistryRoutingIntegrationTest#everyPipelineDeclaresExactlyItsOwnMetadataKeys
+    // checks the declaration; this checks the declaration against real output.
+    Set<String> actualKeys =
+        result.chunks().stream().flatMap(c -> c.getMetadata().keySet().stream()).collect(toSet());
+    assertThat(pipeline.passthroughMetadataKeys()).containsAll(actualKeys);
   }
 
   @Test
