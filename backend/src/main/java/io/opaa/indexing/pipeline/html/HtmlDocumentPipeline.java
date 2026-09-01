@@ -4,6 +4,7 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
+import io.opaa.indexing.source.web.DetailPageExtractor;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;

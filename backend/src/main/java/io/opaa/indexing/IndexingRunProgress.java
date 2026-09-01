@@ -1,13 +1,18 @@
 package io.opaa.indexing;
 
+import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
 import java.util.UUID;
 
 /**
  * Tracks the processed/failed/skipped counters of a single indexing run and reports them through
  * {@link IndexingJobService} - the shared place for that bookkeeping, so every {@link
  * SourceIndexingExecutor} reuses it instead of repeating it independently.
+ *
+ * <p>Public - constructed from every {@code source.*} executor package (#1113); still not part of
+ * any cross-module API surface.
  */
-final class IndexingRunProgress {
+public final class IndexingRunProgress {
 
   private final IndexingJobService indexingJobService;
   private final UUID jobId;
@@ -24,21 +29,21 @@ final class IndexingRunProgress {
    */
   private int documentsIndexedTotal;
 
-  IndexingRunProgress(IndexingJobService indexingJobService, UUID jobId) {
+  public IndexingRunProgress(IndexingJobService indexingJobService, UUID jobId) {
     this.indexingJobService = indexingJobService;
     this.jobId = jobId;
   }
 
-  void setTotal(int total) {
+  public void setTotal(int total) {
     indexingJobService.setTotalDocuments(jobId, total);
   }
 
   /** Adds an already-known count of skipped documents (e.g. rejected formats) without reporting. */
-  void addSkipped(int count) {
+  public void addSkipped(int count) {
     skipped += count;
   }
 
-  void recordProcessed() {
+  public void recordProcessed() {
     processed++;
     documentsIndexedTotal++;
   }
@@ -48,11 +53,11 @@ final class IndexingRunProgress {
    * failed attachment must never call this: {@code AttachmentIndexer#indexOne} only reaches this
    * method once the attachment download and format checks it guards have all succeeded.
    */
-  void recordDocumentIndexed() {
+  public void recordDocumentIndexed() {
     documentsIndexedTotal++;
   }
 
-  void recordFailed() {
+  public void recordFailed() {
     failed++;
   }
 
@@ -61,24 +66,24 @@ final class IndexingRunProgress {
    * RssFeedIndexingExecutor}, which needs to know whether a run failed anything before deciding
    * whether the feed's conditional-GET state may be persisted.
    */
-  int failedCount() {
+  public int failedCount() {
     return failed;
   }
 
-  void recordSkipped() {
+  public void recordSkipped() {
     skipped++;
   }
 
   /** Reports the current counters. Callers decide when a report is due, exactly as before. */
-  void report() {
+  public void report() {
     indexingJobService.updateProgress(jobId, processed, failed, skipped, documentsIndexedTotal);
   }
 
-  void complete() {
+  public void complete() {
     indexingJobService.completeJob(jobId, processed, failed, skipped, documentsIndexedTotal);
   }
 
-  void fail(String message) {
+  public void fail(String message) {
     indexingJobService.failJob(jobId, message);
   }
 }

@@ -1,6 +1,9 @@
 package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
+import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
+import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import java.util.List;
 import java.util.Set;
@@ -32,8 +35,11 @@ import org.slf4j.LoggerFactory;
  * "successful run" invariant above. Deleting a library's entire bestand on that single,
  * cheap-to-get- wrong signal is not a risk worth taking for the rare case of a genuinely emptied
  * source - this class fails safe instead, and the next run with a real bestand catches up normally.
+ *
+ * <p>Public - constructed from the {@code source.filesystem}/{@code source.web} executor packages
+ * (#1113); still not part of any cross-module API surface.
  */
-class StaleDocumentCleanupService {
+public class StaleDocumentCleanupService {
 
   private static final Logger log = LoggerFactory.getLogger(StaleDocumentCleanupService.class);
 
@@ -42,7 +48,7 @@ class StaleDocumentCleanupService {
   private final DocumentRepository documentRepository;
   private final VectorChunkStore vectorChunkStore;
 
-  StaleDocumentCleanupService(
+  public StaleDocumentCleanupService(
       DocumentRepository documentRepository, VectorChunkStore vectorChunkStore) {
     this.documentRepository = documentRepository;
     this.vectorChunkStore = vectorChunkStore;
@@ -62,7 +68,7 @@ class StaleDocumentCleanupService {
    *
    * @return the number of documents removed
    */
-  int cleanupVanished(
+  public int cleanupVanished(
       KnowledgeLibrary library,
       DocumentSourceType sourceType,
       Set<String> currentFilePaths,

@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.indexing.source.SourceIndexingExecutor;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,9 @@ import org.slf4j.LoggerFactory;
  * {@link SourceIndexingExecutor} for the duration of its {@code execute} call. Every executor runs
  * on exactly one thread (its own {@code @Async} invocation), so the in-memory counter below needs
  * no synchronization.
+ *
+ * <p>Public - constructed from every {@code source.*} executor package (#1113); still not part of
+ * any cross-module API surface.
  *
  * <p>Capped at {@link #MAX_EVENTS_PER_RUN}: a run that skips thousands of items must not turn its
  * own protocol into an unbounded table scan or an unusable page - events beyond the cap are
@@ -25,7 +29,7 @@ import org.slf4j.LoggerFactory;
  * JobStatus#RUNNING} forever and permanently blocking every future run of that library. Centralized
  * here rather than in each executor's own call sites, so every executor is covered by construction.
  */
-final class IndexingRunEventRecorder {
+public final class IndexingRunEventRecorder {
 
   private static final Logger log = LoggerFactory.getLogger(IndexingRunEventRecorder.class);
 
@@ -37,7 +41,7 @@ final class IndexingRunEventRecorder {
   private int persistedCount;
   private int overflowCount;
 
-  IndexingRunEventRecorder(
+  public IndexingRunEventRecorder(
       IndexingRunEventRepository repository, IndexingJobService indexingJobService, UUID jobId) {
     this.repository = repository;
     this.indexingJobService = indexingJobService;
@@ -49,7 +53,7 @@ final class IndexingRunEventRecorder {
    * {@link IndexingRunEvent}'s Javadoc on what {@code reference} may and may not contain (never a
    * raw challenge/redirect URL). Never throws - see the class Javadoc.
    */
-  void record(IndexingEventCategory category, String message, String reference) {
+  public void record(IndexingEventCategory category, String message, String reference) {
     if (persistedCount >= MAX_EVENTS_PER_RUN) {
       overflowCount++;
       return;
@@ -71,7 +75,7 @@ final class IndexingRunEventRecorder {
    * was truncated. Never throws - see the class Javadoc; called from every executor's terminal
    * branches ({@code progress.complete()}/{@code progress.fail()}).
    */
-  void finalizeRun() {
+  public void finalizeRun() {
     if (overflowCount == 0) {
       return;
     }

@@ -2,6 +2,8 @@ package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
+import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;

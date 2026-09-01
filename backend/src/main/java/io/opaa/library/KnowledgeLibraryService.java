@@ -22,13 +22,13 @@ import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
 import io.opaa.indexing.LibraryScheduleCodec;
-import io.opaa.indexing.RssFeedStateRepository;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
+import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
@@ -932,15 +932,15 @@ public class KnowledgeLibraryService {
    * the path portion of {@code sourceUrl} has no value it could resend even if it wanted to, and
    * without this fallback that edit alone would silently wipe an unrelated, previously configured
    * credential. The fallback is deliberately restricted to the same origin: {@link
-   * io.opaa.indexing.AutoindexCrawlerService} sends the stored {@code Authorization} header
-   * preemptively on the very first request (RFC 7617 does not require a 401 challenge first), so a
-   * caller who does not know a configured credential could otherwise redirect it to a host they
-   * control simply by changing {@code sourceUrl} and leaving the credentials field blank - turning
-   * "must know the credential" into "can exfiltrate the credential". A host change intentionally
-   * drops the stored credential instead (matching the pre-fallback behaviour of #476), forcing the
-   * caller to re-enter it for the new host. There is deliberately no way to explicitly clear a
-   * stored credential while keeping the same origin - blank input is indistinguishable from "leave
-   * unchanged" by design.
+   * io.opaa.indexing.source.web.AutoindexCrawlerService} sends the stored {@code Authorization}
+   * header preemptively on the very first request (RFC 7617 does not require a 401 challenge
+   * first), so a caller who does not know a configured credential could otherwise redirect it to a
+   * host they control simply by changing {@code sourceUrl} and leaving the credentials field blank
+   * - turning "must know the credential" into "can exfiltrate the credential". A host change
+   * intentionally drops the stored credential instead (matching the pre-fallback behaviour of
+   * #476), forcing the caller to re-enter it for the new host. There is deliberately no way to
+   * explicitly clear a stored credential while keeping the same origin - blank input is
+   * indistinguishable from "leave unchanged" by design.
    */
   private SourceConfiguration validateSourceConfigurationForUpdate(
       KnowledgeLibrary library, LibraryUpdate request) {

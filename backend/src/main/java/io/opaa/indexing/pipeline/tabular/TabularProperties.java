@@ -1,5 +1,7 @@
 package io.opaa.indexing.pipeline.tabular;
 
+import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.source.web.CrawlProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**

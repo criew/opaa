@@ -1,5 +1,10 @@
 package io.opaa.indexing;
 
+import io.opaa.indexing.source.IndexingSourceType;
+import io.opaa.indexing.source.attachment.AttachmentProfile;
+import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
+import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
+import io.opaa.indexing.source.rss.RssFeedParser;
 import java.time.Duration;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;

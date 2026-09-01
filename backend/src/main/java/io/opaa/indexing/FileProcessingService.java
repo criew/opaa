@@ -8,6 +8,8 @@ import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
+import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
+import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.observability.IndexingMetrics;

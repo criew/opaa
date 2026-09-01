@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.indexing.source.IndexingSourceType;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;

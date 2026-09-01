@@ -1,5 +1,8 @@
 package io.opaa.indexing;
 
+import io.opaa.indexing.source.attachment.AttachmentProfile;
+import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
+import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
