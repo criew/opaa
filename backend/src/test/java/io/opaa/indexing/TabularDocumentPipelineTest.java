@@ -643,7 +643,9 @@ class TabularDocumentPipelineTest {
 
     assertThatThrownBy(
             () -> tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.ods")))
-        .isInstanceOf(UncheckedIOException.class);
+        .isInstanceOf(UncheckedIOException.class)
+        .rootCause()
+        .hasMessageContaining("size limit");
   }
 
   @Test
@@ -661,7 +663,9 @@ class TabularDocumentPipelineTest {
 
     assertThatThrownBy(
             () -> tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-zeilen.ods")))
-        .isInstanceOf(UncheckedIOException.class);
+        .isInstanceOf(UncheckedIOException.class)
+        .rootCause()
+        .hasMessageContaining("row limit");
   }
 
   private static void writeOds(Path file, String spreadsheetBodyXml) throws IOException {

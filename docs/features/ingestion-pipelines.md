@@ -531,9 +531,9 @@ schlichtes, wohlgeformtes XML. Damit bedient dieselbe Pipeline auch das „ODS w
   auf eine harte Obergrenze von 20.000 Zeichen gekürzt (mit Protokolleintrag und sichtbarem
   „[…gekürzt]"-Vermerk) — ohne diese zweite Grenze würde eine echte Riesenzeile unbegrenzt an das
   Einbettungsmodell gehen und dort am Token-Limit scheitern, statt beim Zerlegen selbst zu enden.
-- Die Spaltenzahl je Zeile ist für XLSX und ODS gleichermaßen gedeckelt (`opaa.indexing.tabular.
-  max-row-columns`, gesetzt 200) — eine überbreite Zeile wird abgeschnitten statt verworfen, mit
-  Protokolleintrag je betroffenem Blatt.
+- Die Spaltenzahl je Zeile ist für XLSX und ODS gleichermaßen gedeckelt
+  (`opaa.indexing.tabular.max-row-columns`, gesetzt 200) — eine überbreite Zeile wird abgeschnitten
+  statt verworfen, mit Protokolleintrag je betroffenem Blatt.
 - ODS-eigene Grenzfälle: `table:number-columns-repeated` — ODF-Exporte polstern eine Zeile
   routinemäßig mit einer einzigen wiederholten Leerzelle bis zur vollen Blattbreite (bis zu 16384) —
   wird pro Zelle (`opaa.indexing.tabular.max-ods-cell-repeat`, gesetzt 50) und pro Zeile (dieselbe

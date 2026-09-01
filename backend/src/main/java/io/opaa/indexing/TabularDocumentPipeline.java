@@ -320,6 +320,15 @@ public class TabularDocumentPipeline implements DocumentPipeline {
 
   // --- XLSX ----------------------------------------------------------------------------------
 
+  /**
+   * Unlike {@link #readOds}, this reader has no explicit byte/row zip-bomb ceiling of its own
+   * ({@link TabularProperties} carries none for XLSX) - POI already guards every ZIP-backed reader
+   * process-wide via {@code org.apache.poi.openxml4j.util.ZipSecureFile}'s default minimum inflate
+   * ratio (rejects an entry that decompresses to more than ~100x its compressed size) and maximum
+   * entry size, active for every {@code WorkbookFactory.create} call without this pipeline having
+   * to configure or duplicate it. The ODS reader needs its own guard precisely because it bypasses
+   * POI (see {@link #readOds}'s own Javadoc) and reads the ZIP entry itself.
+   */
   private List<Document> readXlsx(DocumentPipelineSource source) throws IOException {
     if (source.file() == null) {
       // Never actually reached through the registry (an XLSX admission always carries a file, see
