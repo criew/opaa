@@ -1,14 +1,17 @@
 package io.opaa.indexing.pipeline.pdf;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -74,6 +77,17 @@ class PdfDocumentPipelineTest {
     assertThat(result.chunks().get(2).getText())
         .startsWith("§ 1 Personaldokumente › Abs. 2 Ermaessigung")
         .contains("Minderjaehrige");
+    // A key this pipeline actually produced that also belongs to the registry-wide passthrough
+    // union must be part of its own declaration - storeChunks copies any union key it finds on a
+    // chunk regardless of which pipeline declares it (nested-pipeline attribution), so an
+    // undeclared union key here would silently ride along. A key outside the union is irrelevant:
+    // storeChunks never copies it, declared or not.
+    Set<String> actualKeysInUnion =
+        result.chunks().stream()
+            .flatMap(c -> c.getMetadata().keySet().stream())
+            .filter(PassthroughMetadataKeysTestSupport.REGISTRY_UNION::contains)
+            .collect(toSet());
+    assertThat(pipeline.passthroughMetadataKeys()).containsAll(actualKeysInUnion);
   }
 
   @Test

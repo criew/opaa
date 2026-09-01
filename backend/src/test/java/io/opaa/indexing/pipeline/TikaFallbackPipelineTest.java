@@ -1,5 +1,6 @@
 package io.opaa.indexing.pipeline;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -12,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -110,6 +112,16 @@ class TikaFallbackPipelineTest {
     assertThat(result.chunks())
         .anyMatch(
             chunk -> chunk.getText() != null && chunk.getText().toLowerCase().contains("opaa"));
+    // A real Tika-parsed chunk here also carries the reader's own parser metadata (e.g. "source",
+    // via OverlappingTokenTextSplitter's HashMap copy of the document's metadata) - keys outside
+    // the registry-wide passthrough union, which this guard ignores: only a produced key that IS
+    // part of the union must be declared, since only a union key can ever ride along.
+    Set<String> actualKeysInUnion =
+        result.chunks().stream()
+            .flatMap(c -> c.getMetadata().keySet().stream())
+            .filter(PassthroughMetadataKeysTestSupport.REGISTRY_UNION::contains)
+            .collect(toSet());
+    assertThat(pipeline.passthroughMetadataKeys()).containsAll(actualKeysInUnion);
   }
 
   @ParameterizedTest

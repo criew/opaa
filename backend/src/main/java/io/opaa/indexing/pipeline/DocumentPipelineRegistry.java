@@ -5,8 +5,10 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +38,7 @@ public class DocumentPipelineRegistry {
   private final Map<String, DocumentPipeline> byFormat;
   private final DocumentPipeline fallback;
   private final List<DocumentPipeline> all;
+  private final Set<String> allPassthroughMetadataKeys;
 
   /**
    * @param pipelines every registered pipeline, including {@code fallback} itself when it is a bean
@@ -73,6 +76,16 @@ public class DocumentPipelineRegistry {
       }
     }
     this.byFormat = Map.copyOf(claims);
+    Set<String> passthroughKeys = new HashSet<>();
+    for (DocumentPipeline pipeline : all) {
+      Set<String> declared = pipeline.passthroughMetadataKeys();
+      if (declared == null) {
+        throw new IllegalStateException(
+            "Document pipeline " + pipeline.id() + " returned null from passthroughMetadataKeys()");
+      }
+      passthroughKeys.addAll(declared);
+    }
+    this.allPassthroughMetadataKeys = Set.copyOf(passthroughKeys);
   }
 
   /**
@@ -139,5 +152,18 @@ public class DocumentPipelineRegistry {
   /** Every registered pipeline - the source of the reported current versions. */
   public Collection<DocumentPipeline> pipelines() {
     return all;
+  }
+
+  /**
+   * The union of every registered pipeline's {@link DocumentPipeline#passthroughMetadataKeys()},
+   * computed once here rather than read per-chunk from the pipeline that produced a given result.
+   * {@code FileProcessingService#storeChunks} filters against this union, not against the single
+   * pipeline it was called with - a nested pipeline (an attachment routed through {@code
+   * DocumentPipelineRegistry} by {@code MailDocumentPipeline}, for example) produces chunks that
+   * are ultimately stored under the outer pipeline's id, so a key only the inner pipeline declares
+   * must still pass through.
+   */
+  public Set<String> allPassthroughMetadataKeys() {
+    return allPassthroughMetadataKeys;
   }
 }

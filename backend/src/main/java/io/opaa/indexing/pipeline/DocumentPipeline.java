@@ -1,5 +1,6 @@
 package io.opaa.indexing.pipeline;
 
+import io.opaa.indexing.ChunkingService;
 import java.util.Set;
 
 /**
@@ -43,4 +44,30 @@ public interface DocumentPipeline {
 
   /** Parses and splits {@code source} into chunks. */
   DocumentPipelineResult run(DocumentPipelineSource source);
+
+  /**
+   * Chunk metadata keys this pipeline may set on a produced chunk's own metadata (as opposed to
+   * {@link ChunkPipelineMetadata}'s keys, which {@code storeChunks} writes itself on every chunk
+   * regardless of any pipeline's declaration here) that {@code FileProcessingService#storeChunks}
+   * carries onto the persisted chunk. A key this pipeline never actually set on a given chunk is
+   * simply skipped - declaring it here is a ceiling, not a promise every chunk carries it. The
+   * bookkeeping keys {@code storeChunks} writes itself on every chunk can never be overridden this
+   * way, declared or not - {@code storeChunks} writes those before consulting any pipeline's
+   * declaration. This is the sole extension point for adding a passthrough key: overriding this
+   * method, nothing in the caller. Never returns {@code null}.
+   *
+   * <p>{@code storeChunks} is called with one pipeline per document, but filters against the
+   * <b>union</b> of every registered pipeline's declaration ({@link
+   * DocumentPipelineRegistry#allPassthroughMetadataKeys()}), not just that one pipeline's own - a
+   * document's chunks can come from a different, nested pipeline than the one they end up
+   * attributed to (an attachment routed recursively by {@code MailDocumentPipeline}), so a key only
+   * the nested pipeline declares must still pass through.
+   *
+   * <p>Defaults to {@link ChunkingService#LOCATION_METADATA_KEY}, the Fundort most pipelines derive
+   * via {@link HeadingSectionSplitter} or their own splitting; override to add further structural
+   * fields (e.g. {@code io.opaa.indexing.pipeline.mail.ChunkMailMetadata}'s Kopfdaten keys).
+   */
+  default Set<String> passthroughMetadataKeys() {
+    return Set.of(ChunkingService.LOCATION_METADATA_KEY);
+  }
 }
