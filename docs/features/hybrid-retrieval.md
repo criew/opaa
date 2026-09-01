@@ -15,7 +15,10 @@ bereits mit „ja" beantwortet hat — [Hybride Suche](./data-indexing-rag.md#hy
 [Reranking](./data-indexing-rag.md#reranking) — und die im heutigen Code nicht existieren (siehe
 [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md)). Sie ersetzt keines der beiden Dokumente:
 `data-indexing-rag.md` bleibt Quelle der Wahrheit für Zielbild und Stellschrauben-Tabelle,
-`retrieval-algorithm.md` für den jeweils gebauten Ablauf. **Nichts aus dieser Spezifikation ist gebaut.**
+`retrieval-algorithm.md` für den jeweils gebauten Ablauf. **Gebaut ist bisher ausschließlich
+Arbeitspaket 1** (Pipeline als benannte Stufen mit Erklärprotokoll,
+[#1046](https://github.com/criew/opaa/issues/1046)) — es ändert kein Verhalten. Volltextpfad, Fusion um
+eine Eingangsliste, Reranking und Admin-Diagnose sind unverändert nicht gebaut.
 
 ---
 
@@ -196,6 +199,10 @@ Antwortgenerierung mit Belegen (gebaut)
 
 ## Arbeitspaket 1: Die Pipeline als benannte Stufen
 
+> **Stand: gebaut** ([#1046](https://github.com/criew/opaa/issues/1046)). Der gebaute Ablauf steht in
+> [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md#die-pipeline-als-benannte-stufen-1046);
+> dieser Abschnitt bleibt die Begründung und der Zuschnitt.
+
 ### Warum das zuerst kommt
 
 Der heutige Ablauf ist ein Orchestrator, der sieben Schritte nacheinander ausführt und jede Erweiterung
@@ -231,11 +238,19 @@ Kandidaten sehen, als ihr übergeben wurden.
 | **Reranking** | Cross-Encoder über die fusionierte Kandidatenmenge | **neu (AP 4)** |
 | Dokument-Vervollständigung | bis `max-chunks-per-document` Chunks je Dokument | gebaut (#932/#935) |
 
+Als Stufen registriert sind heute `SEARCH_SCOPE`, `SUB_QUERY_DECOMPOSITION`, `VECTOR_SEARCH`,
+`MMR_SELECTION`, `RANK_FUSION` und `DOCUMENT_COMPLETION`, in dieser Reihenfolge; die beiden neuen Stufen
+werden an den in der Tabelle genannten Stellen eingehängt.
+
 Zwei Eigenschaften sind verbindlich, weil alles Weitere daran hängt:
 
-**Jede Stufe ist einzeln abschaltbar**, und zwar so, dass die abgeschaltete Stufe zur Identität wird —
+**Jede Stufe ist einzeln abschaltbar** (`opaa.query.pipeline.disabled-stages`), und zwar so, dass die
+abgeschaltete Stufe zur Identität wird —
 die Pipeline läuft dann bit-identisch zu ihrem Zustand ohne diese Stufe. Nur so misst der Benchmark den
-Beitrag einer Stufe und nicht den Unterschied zweier Codepfade.
+Beitrag einer Stufe und nicht den Unterschied zweier Codepfade. **Eine Ausnahme, aus der Umsetzung:** die
+Stufe, die den Rechtefilter setzt (`SEARCH_SCOPE`), ist nicht abschaltbar — „ohne diese Stufe" wäre keine
+Messvariante, sondern eine Suche ohne Rechtefilter (ADR-0008 §5). Eine Konfiguration, die es versucht,
+scheitert beim Start, nicht bei der Abfrage.
 
 **Jede Stufe erklärt ihr Ergebnis, und zwar als Pflicht-Rückgabewert.** Das Erklärprotokoll ist Teil
 des Rückgabewerts der Stufenschnittstelle — nicht ein optionaler Nebeneffekt, den eine Stufe erzeugen

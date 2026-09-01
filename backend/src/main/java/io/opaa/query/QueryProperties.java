@@ -67,7 +67,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     QueryDecompositionService} truncates rather than growing the number of {@code
  *     similaritySearch} calls (and thus retrieval latency) without bound for an adversarial or
  *     confused decomposition response. Each sub-query is independently narrowed to the full {@link
- *     #topK} (see {@code QueryService#retrieveRelevantChunks}), so the overall chunk count stays
+ *     #topK} (see {@code MmrSelectionStage}), so the overall chunk count stays
  *     capped at {@link #topK} regardless of {@code maxSubQueries}.
  * @param maxChunksPerDocument the upper bound on how many chunks of one document {@link
  *     DocumentCompletion#complete} will pull into the final selection on top of whatever the

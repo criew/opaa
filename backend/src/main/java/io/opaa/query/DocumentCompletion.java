@@ -39,11 +39,39 @@ final class DocumentCompletion {
 
   private DocumentCompletion() {}
 
+  /**
+   * One completion step, recorded for the explanation protocol: the chunk that was added, the
+   * document it completes, and the chunk evicted to make room, if any.
+   *
+   * @param evicted {@code null} when the selection still had free budget and nothing had to go.
+   * @param evictionTier {@code 0} when nothing was evicted, otherwise the tier that chose the
+   *     victim (see this class's Javadoc) - the difference between an eviction that preserved
+   *     document diversity and one that may have dropped a document from the answer.
+   */
+  record CompletionEvent(
+      Document added, String completedDocumentKey, Document evicted, int evictionTier) {}
+
   static List<Document> complete(
       List<Document> selection,
       List<Document> candidatePool,
       int maxChunksPerDocument,
       int overallBudget) {
+    return complete(
+        selection, candidatePool, maxChunksPerDocument, overallBudget, new ArrayList<>());
+  }
+
+  /**
+   * The same completion, additionally recording one {@link CompletionEvent} per added chunk into
+   * {@code trace}. Recording only - the selection this returns is identical either way, which is
+   * what lets {@code DocumentCompletionStage} report what happened without a second implementation
+   * of it.
+   */
+  static List<Document> complete(
+      List<Document> selection,
+      List<Document> candidatePool,
+      int maxChunksPerDocument,
+      int overallBudget,
+      List<CompletionEvent> trace) {
     if (selection.isEmpty() || maxChunksPerDocument <= 1) {
       return selection;
     }
@@ -89,27 +117,39 @@ final class DocumentCompletion {
         if (result.size() < overallBudget) {
           result.add(candidate);
           completedDocumentKeys.add(documentKey);
-        } else if (evictWeakestFromAnOverrepresentedDocument(
-            result, documentKey, completedDocumentKeys, originalRankByChunkId)) {
+          trace.add(new CompletionEvent(candidate, documentKey, null, 0));
+          continue;
+        }
+        Document tier1Victim =
+            evictWeakestFromAnOverrepresentedDocument(
+                result, documentKey, completedDocumentKeys, originalRankByChunkId);
+        if (tier1Victim != null) {
           result.add(candidate);
           completedDocumentKeys.add(documentKey);
-        } else if (tier2EvictionsUsed < tier2EvictionCap
-            && evictLastRankedChunkOfSelection(
-                result,
-                documentKey,
-                bestOriginalRankByDocument.get(documentKey),
-                originalRankByChunkId)) {
+          trace.add(new CompletionEvent(candidate, documentKey, tier1Victim, 1));
+          continue;
+        }
+        Document tier2Victim =
+            tier2EvictionsUsed < tier2EvictionCap
+                ? evictLastRankedChunkOfSelection(
+                    result,
+                    documentKey,
+                    bestOriginalRankByDocument.get(documentKey),
+                    originalRankByChunkId)
+                : null;
+        if (tier2Victim != null) {
           result.add(candidate);
           completedDocumentKeys.add(documentKey);
           tier2EvictionsUsed++;
-        } else {
-          // Neither tier found an eviction source for this document right now (or tier 2's cap is
-          // exhausted) - trying its remaining candidates would not change that. A later document
-          // may still succeed: a document that failed to receive a chunk here (unlike one in
-          // completedDocumentKeys) stays a valid tier-1 eviction source for it, and its own
-          // original chunk stays a valid tier-2 one.
-          break;
+          trace.add(new CompletionEvent(candidate, documentKey, tier2Victim, 2));
+          continue;
         }
+        // Neither tier found an eviction source for this document right now (or tier 2's cap is
+        // exhausted) - trying its remaining candidates would not change that. A later document
+        // may still succeed: a document that failed to receive a chunk here (unlike one in
+        // completedDocumentKeys) stays a valid tier-1 eviction source for it, and its own
+        // original chunk stays a valid tier-2 one.
+        break;
       }
     }
     return result;
@@ -169,10 +209,11 @@ final class DocumentCompletion {
    * Removes the weakest (highest {@code originalRankByChunkId}) chunk of some document other than
    * {@code excludeDocumentKey} or any key in {@code protectedDocumentKeys} that currently holds at
    * least two chunks in {@code result} - the eviction rule that keeps document diversity from ever
-   * shrinking below what fusion/MMR already established (see this class's Javadoc). Returns {@code
-   * false}, leaving {@code result} unchanged, when no such document exists.
+   * shrinking below what fusion/MMR already established (see this class's Javadoc). Returns the
+   * evicted chunk, or {@code null} - leaving {@code result} unchanged - when no such document
+   * exists.
    */
-  private static boolean evictWeakestFromAnOverrepresentedDocument(
+  private static Document evictWeakestFromAnOverrepresentedDocument(
       List<Document> result,
       String excludeDocumentKey,
       Set<String> protectedDocumentKeys,
@@ -199,10 +240,10 @@ final class DocumentCompletion {
       }
     }
     if (weakest == null) {
-      return false;
+      return null;
     }
     result.remove(weakest);
-    return true;
+    return weakest;
   }
 
   /**
@@ -212,11 +253,11 @@ final class DocumentCompletion {
    * originalRankByChunkId} entry are eligible at all, which structurally excludes any chunk a
    * completion already added this call - a chunk from {@code candidatePool} never carries one -
    * mirroring tier 1's {@code protectedDocumentKeys} exclusion without needing a second set.
-   * Returns {@code false}, leaving {@code result} unchanged, when no eligible victim exists or the
-   * strict-rank condition fails. The caller enforces the per-call tier-2 cap (see this class's
-   * Javadoc); this method has no cap awareness of its own.
+   * Returns the evicted chunk, or {@code null} - leaving {@code result} unchanged - when no
+   * eligible victim exists or the strict-rank condition fails. The caller enforces the per-call
+   * tier-2 cap (see this class's Javadoc); this method has no cap awareness of its own.
    */
-  private static boolean evictLastRankedChunkOfSelection(
+  private static Document evictLastRankedChunkOfSelection(
       List<Document> result,
       String documentKey,
       int documentBestRank,
@@ -234,10 +275,10 @@ final class DocumentCompletion {
       }
     }
     if (weakest == null || documentBestRank >= weakestRank) {
-      return false;
+      return null;
     }
     result.remove(weakest);
-    return true;
+    return weakest;
   }
 
   /** {@code null} scores lose to any non-null one; between two non-null scores, the higher wins. */

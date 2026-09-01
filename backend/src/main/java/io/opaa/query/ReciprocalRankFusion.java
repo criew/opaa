@@ -36,14 +36,33 @@ final class ReciprocalRankFusion {
 
   private ReciprocalRankFusion() {}
 
+  /** One fused candidate and the fused score it was ranked by. */
+  record FusedCandidate(Document document, double fusedScore) {}
+
   /**
    * Fuses {@code rankedResultsPerSubQuery} (one ranked, already permission/threshold-filtered chunk
-   * list per sub-query - see {@code QueryService#retrieveRelevantChunks}) into at most {@code
-   * overallBudget} chunks, highest fused score first. An empty input, or a non-positive {@code
-   * overallBudget}, yields an empty list.
+   * list per sub-query - see {@code RankFusionStage}) into at most {@code overallBudget} chunks,
+   * highest fused score first. An empty input, or a non-positive {@code overallBudget}, yields an
+   * empty list.
    */
   static List<Document> fuse(List<List<Document>> rankedResultsPerSubQuery, int overallBudget) {
-    if (rankedResultsPerSubQuery.isEmpty() || overallBudget <= 0) {
+    if (overallBudget <= 0) {
+      return List.of();
+    }
+    return fuseRanked(rankedResultsPerSubQuery).stream()
+        .limit(overallBudget)
+        .map(FusedCandidate::document)
+        .toList();
+  }
+
+  /**
+   * The same fusion as {@link #fuse}, uncapped and with each candidate's fused score - what the
+   * pipeline stage needs to report, in one protocol entry, both the chunks that made the budget and
+   * the ones that missed it, each with the number it was ranked by. {@link #fuse} is this method
+   * capped, so the two can never drift apart into two ranking rules.
+   */
+  static List<FusedCandidate> fuseRanked(List<List<Document>> rankedResultsPerSubQuery) {
+    if (rankedResultsPerSubQuery.isEmpty()) {
       return List.of();
     }
 
@@ -62,8 +81,7 @@ final class ReciprocalRankFusion {
 
     return fusedScoreByChunkId.entrySet().stream()
         .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-        .limit(overallBudget)
-        .map(entry -> documentByChunkId.get(entry.getKey()))
+        .map(entry -> new FusedCandidate(documentByChunkId.get(entry.getKey()), entry.getValue()))
         .toList();
   }
 

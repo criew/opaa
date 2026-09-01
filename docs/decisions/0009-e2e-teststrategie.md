@@ -137,7 +137,7 @@ bleibt unverändert, damit erkennbar bleibt, was wann galt.
   unverändert zurückgibt — beides ohne jede Modellinferenz, also bitgenau deterministisch über
   jeden Lauf hinweg. Das ist mehr als ein Implementierungsdetail: Da die Rechteprüfung in der
   Vektorsuche darüber entscheidet, welche Chunks überhaupt in eine Anfrage gelangen (siehe
-  `io.opaa.query.QueryService#libraryFilter`), hängt das Ergebnis der ACL-Szenarien in
+  `io.opaa.query.SearchScopeStage#libraryFilter`), hängt das Ergebnis der ACL-Szenarien in
   `tests/knowledge-libraries.spec.ts` (#424) ausschließlich vom Rechtefilter ab, nie von einer
   echten, potenziell schwankenden Relevanzbewertung eines Modells — genau das, was diese Szenarien
   belegen sollen, nicht Antwortqualität (die ist Sache von Epic #224). Ein echtes Modell, auch

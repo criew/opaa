@@ -499,7 +499,7 @@ class QueryIntegrationTest {
    * authorized setup as {@link
    * #queryOnlyReturnsChunksFromTheGrantedLibraryEvenWhenUnauthorizedChunksWouldOutscoreThem}, but
    * with query decomposition forced to two sub-queries (a two-line decomposition response) so every
-   * one of {@code QueryService#retrieveRelevantChunks}'s per-sub-query {@code similaritySearch}
+   * one of {@code VectorSearchStage}'s per-sub-query {@code similaritySearch}
    * calls - not only the first - is exercised end to end. A hypothetical implementation that
    * dropped the permission filter on any sub-query but the first would leak {@code b*.md} sources
    * into the fused result; this test would then fail on the {@code allSatisfy} assertion below.

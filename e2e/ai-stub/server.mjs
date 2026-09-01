@@ -13,7 +13,7 @@
 // integration tests). This is deliberate, not a shortcut: with every chunk and every query
 // embedding identical, cosine similarity is always 1.0, so retrieval outcomes in the E2E suite
 // hinge entirely on the permission filter applied to the vector store query (see
-// io.opaa.query.QueryService#libraryFilter) - never on whether the embedding model judged content
+// io.opaa.query.SearchScopeStage#libraryFilter) - never on whether the embedding model judged content
 // "relevant". That is exactly the property #424's scenarios need to prove the ACL filter, not
 // answer quality (which is Epic #224's job, out of scope here).
 //

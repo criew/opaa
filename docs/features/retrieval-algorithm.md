@@ -1,7 +1,8 @@
 # Retrieval-Algorithmus (Ist-Stand)
 
 Dieses Dokument beschreibt, **wie das Retrieval heute tatsächlich arbeitet** — Klasse für Klasse, Parameter
-für Parameter, Stand `main` nach PR [#935](https://github.com/criew/opaa/pull/935). Es ist damit die
+für Parameter, Stand `main` nach der Stufen-Zerlegung aus
+[#1046](https://github.com/criew/opaa/issues/1046). Es ist damit die
 Ergänzung zu [Wissensschicht und Retrieval](./data-indexing-rag.md), das überwiegend das **Zielbild**
 beschreibt (siehe dessen „Lesehinweis zum Umsetzungsstand"): Abschnitte wie
 [Hybride Suche](./data-indexing-rag.md#hybride-suche) und [Reranking](./data-indexing-rag.md#reranking)
@@ -12,13 +13,49 @@ liest dieses Dokument; wer wissen will, wohin es geht, liest `data-indexing-rag.
 Die Stellschrauben-Tabelle in `data-indexing-rag.md` bleibt die eine Quelle der Wahrheit für Parameter und
 ihre Defaults (siehe [Stellschrauben und ihre Wirkung](./data-indexing-rag.md#stellschrauben-und-ihre-wirkung));
 sie wird hier nicht dupliziert, nur je Schritt referenziert. Quelle des Codes ist
-`backend/src/main/java/io/opaa/query/`, vor allem `QueryService`, `QueryProperties`.
+`backend/src/main/java/io/opaa/query/`, vor allem `RetrievalPipeline`, die `*Stage`-Klassen und
+`QueryProperties`.
+
+---
+
+## Die Pipeline als benannte Stufen (#1046)
+
+Seit Arbeitspaket 1 von [Hybride Suche mit Reranking](./hybrid-retrieval.md#arbeitspaket-1-die-pipeline-als-benannte-stufen)
+sind die Schritte 1 bis 6 keine Verzweigungen in `QueryService` mehr, sondern **registrierte Stufen** mit
+einer gemeinsamen Schnittstelle (`RetrievalStage`): Kandidatenlisten rein, Kandidatenlisten raus, plus
+Erklärprotokoll als Pflicht-Rückgabewert. Drei Eigenschaften sind baulich zugesichert und nicht bloß
+verabredet:
+
+- **Keine Stufe verändert den Rechtekontext.** Suchbereich und Parameter stehen im unveränderlichen
+  `RetrievalContext`; eine Stufe bekommt ihn nur lesend.
+- **Keine Stufe sieht mehr Kandidaten, als ihr übergeben wurden.** Nur eine Suchstufe erweitert den
+  Kandidatenpool (`RetrievalState#withSearchResults`); alle übrigen schöpfen daraus.
+- **Keine Stufe kann stumm bleiben.** `StageOutcome` hat keinen Konstruktor ohne `StageExplanation`.
+
+**Die Reihenfolge steht an genau einer Stelle**: `QueryConfiguration#retrievalPipeline`. Dort werden auch
+der Volltextpfad (AP 2) und die Reranking-Stufe (AP 4) eingehängt.
+
+**Jede Stufe ist einzeln abschaltbar** über `opaa.query.pipeline.disabled-stages` (Ebene-1-Wert, in keiner
+Administrationsoberfläche); die abgeschaltete Stufe entfällt dann vollständig, statt neutralisiert
+mitzulaufen — nur so misst der Benchmark den Beitrag einer Stufe und nicht den Unterschied zweier
+Codepfade. Einzige Ausnahme ist die Stufe `SEARCH_SCOPE`: „ohne Rechtefilter" ist keine Messvariante,
+sondern eine Rechteumgehung, und wird beim Start abgelehnt (ADR-0008 §5).
+
+**Das Erklärprotokoll** (`RetrievalExplanation`) enthält je registrierter Stufe einen Eintrag — auch für
+eine abgeschaltete oder nicht erreichte Stufe — mit hereingekommenen, hinausgegangenen und verworfenen
+Kandidaten, Begründung aus einem festen Vokabular (`VerdictReason`) und dem stufeninternen Wert
+(Ähnlichkeit, RRF-Score, Verdrängungsstufe der Dokument-Vervollständigung). Erzeugt wird es immer; ob es
+festgehalten wird, entscheidet der Aufrufer: `QueryService#query` verwirft es, die Admin-Diagnose
+([#1053](https://github.com/criew/opaa/issues/1053)) wertet es aus.
+
+Die Nummerierung der folgenden Schritte ist zugleich die Reihenfolge der registrierten Stufen.
 
 ---
 
 ## Teil 1: Ablauf einer Anfrage
 
-Eine Anfrage (`QueryService#query`) durchläuft die folgenden sieben Schritte der Reihe nach. Jeder Schritt
+Eine Anfrage (`QueryService#query`) durchläuft die folgenden sieben Schritte der Reihe nach; die Schritte 1
+bis 6 sind die registrierten Stufen der `RetrievalPipeline`, Schritt 7 liegt außerhalb. Jeder Schritt
 arbeitet nur mit dem, was der vorherige ihm übergibt — kein Schritt weitet die Berechtigungs- oder
 Ähnlichkeitsschwellengrenze eines früheren wieder auf (die Kandidatenmenge selbst schöpft Schritt 6
 weiterhin aus dem in Schritt 3 gebildeten Pool, siehe dort).
@@ -34,7 +71,7 @@ nicht nur überschrieben. Bei einer ephemeren Anfrage gilt `useKnowledge = true`
 lesbaren Bibliotheken, `useKnowledge = false` → `requestedLibraryIds ∩ readableLibraryIds` (nie über die
 lesbare Menge hinaus erweitert). Die lesbaren Bibliotheken selbst liefert
 `LibraryAccessService#readableLibraryIds`; der resultierende Suchbereich (`searchScope`, eine Menge von
-Bibliotheks-Kennungen) wird als `library_id IN (...)`-Filter (`QueryService#libraryFilter`) **Teil des
+Bibliotheks-Kennungen) wird als `library_id IN (...)`-Filter (`SearchScopeStage#libraryFilter`) **Teil des
 `similaritySearch`-Aufrufs selbst**, nicht ein Filter auf dessen Ergebnis (siehe
 [Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit) sowie die
 Javadoc-Begründung an `QueryService#query`). Ein leerer Suchbereich überspringt die Schritte 2–6
@@ -43,22 +80,22 @@ mit null Chunks im Kontext, und markiert das Ergebnis über `QueryOutcome#answer
 
 ### 2. LLM-Teilfragen-Zerlegung/Reformulierung
 
-`QueryService#effectiveSearchQueries` ruft, sofern `opaa.query.query-decomposition-enabled`
+`SubQueryDecompositionStage` ruft, sofern `opaa.query.query-decomposition-enabled`
 (`OPAA_QUERY_DECOMPOSITION_ENABLED`, Default `true`) aktiv ist, `QueryDecompositionService#decompose`
 auf: Die aktuelle Frage geht zusammen mit dem bisherigen Gesprächsverlauf an das systemweit aktive
 Chat-Modell (`ActiveChatModelResolver`, dieselbe Anbindung wie die Antwortgenerierung), das 1 bis
 `opaa.query.max-sub-queries` (`OPAA_QUERY_MAX_SUB_QUERIES`, Default `3`) eigenständige, vollständige
 Suchanfragen zurückgibt und dabei Folgefragen kontextuell auflöst sowie Tippfehler normalisiert. Scheitert
 der Aufruf (Zeitüberschreitung, kein aktives Modell, unparsebare oder leere Antwort), liefert `decompose`
-eine leere Liste, und `QueryService#buildSearchQuery` übernimmt als Rückfallebene das Verhalten von vor
+eine leere Liste, und `SubQueryDecompositionStage#buildSearchQuery` übernimmt als Rückfallebene das Verhalten von vor
 #923: die reine Frage, oder — bei laufender Konversation — die erste Nutzernachricht der Historie,
 vorangestellt. Details, Diagramm und die Vorher/Nachher-Messung stehen in
 [Teilfragen-Zerlegung und Query-Reformulierung](./data-indexing-rag.md#teilfragen-zerlegung-und-query-reformulierung-multi-query-retrieval-923).
 
 ### 3. Vektorsuche je Teilfrage
 
-`QueryService#retrieveRelevantChunks` ruft für **jede** Suchanfrage aus Schritt 2 einen eigenen
-`VectorStore#similaritySearch`-Aufruf (`QueryService#similaritySearch`) gegen PostgreSQL/pgvector auf,
+`VectorSearchStage` ruft für **jede** Suchanfrage aus Schritt 2 einen eigenen
+`VectorStore#similaritySearch`-Aufruf gegen PostgreSQL/pgvector auf,
 mit identischem Rechtefilter (`searchScope` aus Schritt 1) und identischer Ähnlichkeitsschwelle für jede
 Teilfrage. Parameter: `opaa.query.fetch-k` (`OPAA_QUERY_FETCH_K`, Default `25`) Kandidaten je Aufruf,
 `opaa.query.similarity-threshold` (`OPAA_QUERY_SIMILARITY_THRESHOLD`, Default `0,3`) als Mindest-Kosinus-
@@ -69,7 +106,7 @@ Stellschrauben-Tabelle.
 
 ### 4. MMR-Auswahl je Teilfrage
 
-`QueryService#mmrSelect` narrowt die `fetch-k` Kandidaten **jeder Teilfrage einzeln** (nie über die
+`MmrSelectionStage` narrowt die `fetch-k` Kandidaten **jeder Teilfrage einzeln** (nie über die
 zusammengeführte Gesamtmenge) mittels `MmrSelector#select` auf `opaa.query.top-k`
 (`OPAA_QUERY_TOP_K`, Default `8`) Fundstellen. Steuernder Parameter ist `opaa.query.mmr-lambda`
 (`OPAA_QUERY_MMR_LAMBDA`, Default `1,0` = Vielfaltsauswahl per Voreinstellung deaktiviert, reine
@@ -83,17 +120,21 @@ null multipliziert wird. Details, Messwerte und die Begründung des Defaults in
 
 ### 5. Reciprocal Rank Fusion
 
-Bei mehr als einer Suchanfrage führt `ReciprocalRankFusion#fuse` die pro Teilfrage per MMR ausgewählten
+`RankFusionStage` führt über `ReciprocalRankFusion` die pro Teilfrage per MMR ausgewählten
 Ranglisten zu einer einzigen zusammen: Jeder Chunk erhält je Liste, in der er vorkommt, den Beitrag
 `1 / (60 + Rang)` (Rang 1-basiert, Dämpfungskonstante 60 nach Cormack et al.), die Beiträge werden über
 alle Listen summiert, absteigend sortiert und auf `top-k` gedeckelt. Dedupliziert wird per Chunk-Kennung
 (`Document#getId()`), nie per Score — Ähnlichkeitswerte verschiedener Suchvektoren sind nicht vergleichbar,
 genau die Wurzel des in [#912](https://github.com/criew/opaa/issues/912) dokumentierten Fehlerbilds. Bei
-genau einer Suchanfrage entfällt dieser Schritt, die MMR-Auswahl aus Schritt 4 ist bereits das Ergebnis.
+genau einer Suchanfrage läuft die Stufe mit und ist dort nachweislich die Identität: innerhalb einer Liste
+sind alle Ränge verschieden, die fusionierten Werte also streng fallend in der Listenreihenfolge, und die
+Deckelung ist durch das Listenbudget bereits erfüllt. Vor #1046 wurde dieser Fall stattdessen verzweigt
+übersprungen; dass beides dasselbe auswählt, sichert `RetrievalPipelineParityTest` gegen die
+Vorher-Implementierung ab.
 
 ### 6. Dokument-Vervollständigung
 
-`DocumentCompletion#complete` (#932/#934/#935) läuft **zuletzt** auf beiden Pfaden und zieht ausschließlich
+`DocumentCompletionStage` (`DocumentCompletion#complete`, #932/#934/#935) läuft **zuletzt** und zieht ausschließlich
 aus den bereits berechtigungs- und schwellenwertgefilterten Kandidaten von Schritt 3 nach — nie darüber
 hinaus. Ziel: Ein Dokument, das mit einem Chunk bereits in der Auswahl vertreten ist, darf bis zu
 `opaa.query.max-chunks-per-document` (`OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT`, Default `2`) Chunks stellen,
@@ -156,7 +197,7 @@ Frage + Gesprächsverlauf
 7. Antwortgenerierung, Zitatvalidierung, Quellen-Mapping
 ```
 
-Die Schritte 2 bis 6 sind über `QueryService#retrieveRelevantChunksInGivenScope(question, history, searchScope)`
+Die Schritte 1 bis 6 sind über `QueryService#retrieveRelevantChunksInGivenScope(question, history, searchScope)`
 auch einzeln aufrufbar — der Einstieg, über den der Pipeline-Messpfad des Retrieval-Harness genau
 diese Kette misst, ohne Schritt 7 (siehe
 [Retrieval-Benchmark](./retrieval-benchmark.md#1-messpfad-durch-die-produktive-pipeline)). Der
@@ -226,8 +267,8 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   behobener Fall, sondern ein bekannter, noch offener Zielkonflikt dieses Ansatzes.
 - **Nicht-rangfaire Geschwister-Sortierung über Teilfragen.** Bei mehreren Suchanfragen bestimmt
   `DocumentCompletion#complete`, welcher noch nicht ausgewählte Chunk eines zu vervollständigenden
-  Dokuments als nächstes nachrückt, über die Reihenfolge in `pooledCandidates` — der schlichten
-  Aneinanderreihung der `fetch-k`-Kandidatenlisten aller Teilfragen (`QueryService#retrieveRelevantChunks`,
+  Dokuments als nächstes nachrückt, über die Reihenfolge im Kandidatenpool — der schlichten
+  Aneinanderreihung der `fetch-k`-Kandidatenlisten aller Teilfragen (`RetrievalState#candidatePool`,
   `DocumentCompletion#unusedCandidatesByDocument`). Das ist die Ankunftsreihenfolge der Suchanfragen, keine
   über Teilfragen hinweg vergleichbare Rangfolge: Ein Geschwister-Chunk aus der zweiten oder dritten
   Teilfrage rankt in dieser Poolreihenfolge strukturell schlechter als ein gleich relevanter aus der
@@ -242,7 +283,8 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   Keine Auswahlmechanik dieses Dokuments (topK, MMR, Dokument-Vervollständigung,
   Teilfragen-Zerlegung) kann einen solchen Rückstand überbrücken — sie ordnen nur, was die
   Vektorsuche liefert. Der passende Mechanismus wäre eine lexikalische Suchkomponente
-  (Hybrid-Suche, siehe unten); ihre Umsetzung ist bewusst nicht beauftragt. Bis dahin gilt: Ein
+  (Hybrid-Suche, siehe unten); sie ist als Arbeitspaket 2 von
+  [Hybride Suche mit Reranking](./hybrid-retrieval.md) beauftragt, aber noch nicht gebaut. Bis dahin gilt: Ein
   Dokument, dessen Embedding die Anfrage nicht erreicht, bleibt für betroffene Konten unauffindbar,
   auch wenn es die maßgebliche Quelle ist (Diagnose vollständig in #938).
 

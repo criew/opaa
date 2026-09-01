@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 /**
  * Deletes chunks from the {@link VectorStore} by {@code document_id} or {@code library_id},
  * building the filter via {@link FilterExpressionBuilder} instead of string concatenation (the same
- * builder {@code QueryService#libraryFilter} already uses for reads).
+ * builder {@code SearchScopeStage#libraryFilter} already uses for reads).
  *
  * <p>{@link #DOCUMENT_ID_METADATA_KEY} and {@link #LIBRARY_ID_METADATA_KEY} are the single source
  * of truth for these two chunk metadata keys - {@code FileProcessingService} writes them on every
