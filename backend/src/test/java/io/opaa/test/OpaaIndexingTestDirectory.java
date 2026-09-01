@@ -1,5 +1,6 @@
 package io.opaa.test;
 
+import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;

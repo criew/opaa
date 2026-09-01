@@ -12,9 +12,9 @@ import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
@@ -637,13 +637,13 @@ public class LibraryDocumentService {
    *
    * <p>Also re-checks {@code sourcePath} against {@link FilesystemPathAllowlist} (#742 review,
    * finding 2) - {@code KnowledgeLibraryService} enforces this at creation/update time, and {@link
-   * io.opaa.indexing.AsyncIndexingExecutor} enforces it again before every indexing run for exactly
-   * the reason {@link FilesystemPathAllowlist}'s own Javadoc gives: the allowlist can be narrowed
-   * (or emptied, which disables the {@code FILESYSTEM} sourceType entirely) after a library was
-   * created, and a read against a {@code sourcePath} that has since fallen outside it must not
-   * silently keep succeeding just because the library once passed validation. Without this check,
-   * an operator who disables (or narrows) {@code FILESYSTEM} would still have every previously
-   * indexed file readable through this endpoint.
+   * io.opaa.indexing.source.filesystem.AsyncIndexingExecutor} enforces it again before every
+   * indexing run for exactly the reason {@link FilesystemPathAllowlist}'s own Javadoc gives: the
+   * allowlist can be narrowed (or emptied, which disables the {@code FILESYSTEM} sourceType
+   * entirely) after a library was created, and a read against a {@code sourcePath} that has since
+   * fallen outside it must not silently keep succeeding just because the library once passed
+   * validation. Without this check, an operator who disables (or narrows) {@code FILESYSTEM} would
+   * still have every previously indexed file readable through this endpoint.
    *
    * <p>Resolves both paths with {@link Path#toRealPath} rather than the lexical {@code
    * toAbsolutePath().normalize()} the allowlist check itself deliberately stops short of (#742

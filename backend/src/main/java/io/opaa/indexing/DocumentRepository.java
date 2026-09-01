@@ -21,15 +21,15 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    * Document identity is scoped to {@code (library_id, file_path)} (#877), enforced by {@code
    * uk_documents_library_path} (migration 067): the same path or URL indexed into two different
    * libraries is two independent documents, never a "move" of one into the other. Backs every
-   * dedup/change-detection lookup in {@link FileProcessingService}, {@link UrlIndexingExecutor} and
-   * {@link RssFeedIndexingExecutor}.
+   * dedup/change-detection lookup in {@link FileProcessingService}, {@code UrlIndexingExecutor} and
+   * {@code RssFeedIndexingExecutor}.
    */
   Optional<Document> findByLibraryIdAndFilePath(UUID libraryId, String filePath);
 
   /**
    * Whether at least one attachment document for {@code sourceEntryUrl} (an RSS entry's own {@code
    * file_path}) already exists in {@code libraryId}. Backs the "an entry indexed before attachments
-   * existed must still get them backfilled" check in {@link RssFeedIndexingExecutor#isUnchanged}'s
+   * existed must still get them backfilled" check in {@code RssFeedIndexingExecutor#isUnchanged}'s
    * caller. Scoped to {@code libraryId} (#877) - another library's attachments for the same entry
    * URL must never suppress this library's own backfill.
    */
@@ -269,11 +269,11 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Marks a document for reprocessing by its own connector run, by clearing <b>both</b> change
-   * markers a run consults. Used by {@link PipelineReindexService} for documents whose source can
+   * markers a run consults. Used by {@code PipelineReindexService} for documents whose source can
    * only be re-read by that run.
    *
    * <p>Both are required, and clearing only the checksum would be a no-op for the remote paths:
-   * {@link UrlIndexingExecutor#isUnchanged}/{@code RssFeedIndexingExecutor#isUnchanged} decide
+   * {@code UrlIndexingExecutor#isUnchanged}/{@code RssFeedIndexingExecutor#isUnchanged} decide
    * <em>before</em> downloading, from {@code last_modified_remote} plus {@link
    * DocumentStatus#INDEXED} alone - the checksum is never compared, because the bytes it would be
    * computed from have deliberately not been fetched yet. A {@code null} {@code

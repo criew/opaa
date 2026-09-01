@@ -60,7 +60,7 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
    * #selectContentRoots}) - a standard CMS article/section legitimately nests its own {@code
    * <header>} (title, Stand-Datum) or {@code <footer>} (author, tags), and stripping those away
    * would silently drop real content along with the surrounding page chrome (#1059 review, finding
-   * 4). Mirrors the set {@link DetailPageExtractor} uses for an RSS detail page, minus the elements
+   * 4). Mirrors the set {@code DetailPageExtractor} uses for an RSS detail page, minus the elements
    * moved to {@link #UNCONDITIONAL_BOILERPLATE_SELECTOR} above.
    */
   private static final String CONDITIONAL_BOILERPLATE_SELECTOR =
