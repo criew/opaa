@@ -23,8 +23,7 @@ public interface DocumentPipeline {
 
   /**
    * Stable identity, persisted on every chunk this pipeline produces - renaming it orphans the
-   * existing bestand from its pipeline, so it is part of the persisted contract, not a display
-   * name.
+   * existing corpus from its pipeline, so it is part of the persisted contract, not a display name.
    */
   String id();
 

@@ -268,17 +268,24 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("lastModifiedRemote") String lastModifiedRemote);
 
   /**
-   * Marks a document for reprocessing by its own connector run: a {@code null} checksum can never
-   * equal a freshly computed one, so {@link FileProcessingService#processFile}/{@code
-   * #processUrlFile} stop treating the document as unchanged and re-parse it. Used by {@link
-   * PipelineReindexService} for documents whose source is remote and therefore only re-readable by
-   * that run.
+   * Marks a document for reprocessing by its own connector run, by clearing <b>both</b> change
+   * markers a run consults. Used by {@link PipelineReindexService} for documents whose source can
+   * only be re-read by that run.
+   *
+   * <p>Both are required, and clearing only the checksum would be a no-op for the remote paths:
+   * {@link UrlIndexingExecutor#isUnchanged}/{@code RssFeedIndexingExecutor#isUnchanged} decide
+   * <em>before</em> downloading, from {@code last_modified_remote} plus {@link
+   * DocumentStatus#INDEXED} alone - the checksum is never compared, because the bytes it would be
+   * computed from have deliberately not been fetched yet. A {@code null} {@code
+   * last_modified_remote} can never equal the remote's own value, so the download happens; the
+   * {@code null} checksum then stops {@link FileProcessingService#processUrlFile} from skipping the
+   * freshly downloaded file as unchanged in the second gate.
    *
    * @return the number of rows updated - {@code 0} means the row was deleted meanwhile, which needs
    *     no further action here
    */
   @Modifying
   @Transactional
-  @Query("update Document d set d.checksum = null where d.id = :id")
-  int clearChecksum(@Param("id") UUID id);
+  @Query("update Document d set d.checksum = null, d.lastModifiedRemote = null where d.id = :id")
+  int markForReindexOnNextRun(@Param("id") UUID id);
 }

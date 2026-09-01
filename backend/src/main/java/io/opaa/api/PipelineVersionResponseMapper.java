@@ -52,6 +52,7 @@ final class PipelineVersionResponseMapper {
     PipelineReindexResponse response = new PipelineReindexResponse();
     response.setReindexedDocuments(result.reindexedDocuments());
     response.setMarkedForNextRun(result.markedForNextRun());
+    response.setSkippedDocuments(result.skippedDocuments());
     response.setRemovedOrphanChunkSets(result.removedOrphanChunkSets());
     response.setDone(result.isEmpty());
     return response;

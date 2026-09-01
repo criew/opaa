@@ -9,7 +9,7 @@ import org.springframework.ai.document.Document;
  * Fallback-Pipeline"): Tika reader plus the token splitter with the globally configured {@code
  * opaa.indexing.chunk-size}/{@code -overlap}. It claims no format at all and handles everything no
  * specialized pipeline claimed - which today is every admitted format, so the abstraction is
- * verhaltensneutral for the existing bestand by construction.
+ * behaviour-neutral for the existing corpus by construction.
  *
  * <p>Chunk size: <b>gesetzt, nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen"). The
  * 1000/100-token default predates any measurement on a verwaltungs-corpus; it is the value {@code
@@ -23,7 +23,7 @@ public class TikaFallbackPipeline implements DocumentPipeline {
 
   /**
    * Version 1 is the cut this project has produced since before the abstraction existed - the
-   * pre-#1056 bestand is therefore attributed to version {@link
+   * pre-#1056 corpus is therefore attributed to version {@link
    * ChunkPipelineMetadata#LEGACY_PIPELINE_VERSION}, not to this one, purely because those chunks
    * carry no metadata saying so.
    */

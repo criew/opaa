@@ -4,11 +4,21 @@ import io.opaa.api.dto.LowChunkDocumentPageResponse;
 import io.opaa.api.dto.PipelineReindexRequest;
 import io.opaa.api.dto.PipelineReindexResponse;
 import io.opaa.api.dto.PipelineVersionStatusResponse;
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.AuditOutcome;
+import io.opaa.audit.AuditEvent;
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.indexing.DocumentPipeline;
 import io.opaa.indexing.DocumentPipelineRegistry;
 import io.opaa.indexing.LowChunkDocumentAuditService;
+import io.opaa.indexing.PipelineReindexResult;
 import io.opaa.indexing.PipelineReindexService;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -37,14 +47,17 @@ public class IndexingAdminController {
   private final LowChunkDocumentAuditService lowChunkDocumentAuditService;
   private final PipelineReindexService pipelineReindexService;
   private final DocumentPipelineRegistry pipelineRegistry;
+  private final AuditEventRecorder auditEventRecorder;
 
   public IndexingAdminController(
       LowChunkDocumentAuditService lowChunkDocumentAuditService,
       PipelineReindexService pipelineReindexService,
-      DocumentPipelineRegistry pipelineRegistry) {
+      DocumentPipelineRegistry pipelineRegistry,
+      AuditEventRecorder auditEventRecorder) {
     this.lowChunkDocumentAuditService = lowChunkDocumentAuditService;
     this.pipelineReindexService = pipelineReindexService;
     this.pipelineRegistry = pipelineRegistry;
+    this.auditEventRecorder = auditEventRecorder;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -85,19 +98,31 @@ public class IndexingAdminController {
   public PipelineReindexResponse reindexPipelineBatch(
       @RequestBody PipelineReindexRequest request, @Caller CurrentUser caller) {
     // Validated here rather than left to the service: every user-facing API error is German
-    // (AGENTS.md, Projektsprache), and an unbekannte pipelineId would otherwise silently return
+    // (AGENTS.md, Projektsprache), and an unknown pipelineId would otherwise silently return
     // "done" for a re-index that never had a chance of matching anything.
     String pipelineId = request.getPipelineId();
-    boolean known =
+    DocumentPipeline pipeline =
         pipelineRegistry.pipelines().stream()
-            .anyMatch(pipeline -> pipeline.id().equals(pipelineId));
-    if (!known) {
-      throw new IllegalArgumentException("Unbekannte Pipeline: " + pipelineId);
-    }
+            .filter(candidate -> candidate.id().equals(pipelineId))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Unbekannte Pipeline: " + pipelineId));
     Integer belowVersion = request.getBelowVersion();
     if (belowVersion == null || belowVersion < 1) {
       throw new IllegalArgumentException(
           "belowVersion muss mindestens 1 sein, war " + belowVersion);
+    }
+    // Above the pipeline's own version there is no version to re-index *to*: the run would rewrite
+    // every chunk at the current version, find it still below the requested bound, and select the
+    // same documents again on every following batch - an unbounded loop of embedding calls, not a
+    // slow run.
+    if (belowVersion > pipeline.version()) {
+      throw new IllegalArgumentException(
+          "belowVersion darf höchstens der aktuellen Version der Pipeline "
+              + pipelineId
+              + " entsprechen ("
+              + pipeline.version()
+              + "), war "
+              + belowVersion);
     }
     int batchSize =
         request.getBatchSize() == null ? DEFAULT_REINDEX_BATCH_SIZE : request.getBatchSize();
@@ -105,8 +130,39 @@ public class IndexingAdminController {
       throw new IllegalArgumentException(
           "batchSize muss zwischen 1 und " + MAX_REINDEX_BATCH_SIZE + " liegen, war " + batchSize);
     }
-    return PipelineVersionResponseMapper.toReindexResponse(
+
+    PipelineReindexResult result =
         pipelineReindexService.reindexBatch(
-            caller.organizationId(), pipelineId, belowVersion, batchSize));
+            caller.organizationId(), pipelineId, belowVersion, batchSize);
+    recordReindexAudit(caller, pipelineId, belowVersion, result);
+    return PipelineVersionResponseMapper.toReindexResponse(result);
+  }
+
+  /**
+   * Records the triggering call, not one event per document: the call is the administrative
+   * decision, the documents are its effect. The object is the pipeline itself, identified by a
+   * name-derived UUID the way {@code AuditRetentionSettingsService} already identifies a settings
+   * object that has no row of its own.
+   */
+  private void recordReindexAudit(
+      CurrentUser caller, String pipelineId, int belowVersion, PipelineReindexResult result) {
+    auditEventRecorder.recordUserAction(
+        AuditEvent.builder()
+            .organizationId(caller.organizationId())
+            .actor(caller.id())
+            .type(AuditEventType.INDEXING_PIPELINE_REINDEX_TRIGGERED)
+            .object(
+                AuditObjectType.SYSTEM_SETTING,
+                UUID.nameUUIDFromBytes(pipelineId.getBytes(StandardCharsets.UTF_8)),
+                "Ingestion-Pipeline " + pipelineId)
+            .after(
+                Map.of(
+                    "belowVersion", belowVersion,
+                    "reindexedDocuments", result.reindexedDocuments(),
+                    "markedForNextRun", result.markedForNextRun(),
+                    "skippedDocuments", result.skippedDocuments(),
+                    "removedOrphanChunkSets", result.removedOrphanChunkSets()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
   }
 }

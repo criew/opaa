@@ -98,6 +98,12 @@ public enum AuditEventType {
   MODEL_POLICY_CHANGED,
   CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
   /**
+   * A selective re-index of the chunk bestand by ingestion pipeline version was triggered
+   * (docs/features/ingestion-pipelines.md, cross-cutting rule (d)). Recorded per triggering call,
+   * not per document: the call is the administrative decision, the documents are its effect.
+   */
+  INDEXING_PIPELINE_REINDEX_TRIGGERED,
+  /**
    * A change to the operator's branding - product name, claim, logo, accent colour or default
    * colour scheme (docs/design/guidelines.md#7). Deliberately not folded into {@link
    * #GOVERNANCE_SETTINGS_CHANGED}: branding decides what every user sees on every page, which is

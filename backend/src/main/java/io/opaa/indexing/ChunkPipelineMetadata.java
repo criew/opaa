@@ -2,7 +2,7 @@ package io.opaa.indexing;
 
 /**
  * The two chunk metadata keys carrying the version of the verfahren that produced a chunk
- * (docs/features/ingestion-pipelines.md, Querschnittsregel (d)). Written by {@code
+ * (docs/features/ingestion-pipelines.md, cross-cutting rule (d)). Written by {@code
  * FileProcessingService#storeChunks} onto every chunk, alongside the existing technical metadata,
  * and read back by {@link PipelineReindexService} to select "every chunk below version N of this
  * pipeline".
@@ -20,11 +20,11 @@ public final class ChunkPipelineMetadata {
 
   /**
    * What a chunk written before this metadata existed counts as. Not a guess: until the pipeline
-   * abstraction existed, every chunk in every bestand was produced by exactly the Tika reader plus
-   * token splitter that {@link TikaFallbackPipeline} still is, so the pre-existing bestand is
+   * abstraction existed, every chunk in every corpus was produced by exactly the Tika reader plus
+   * token splitter that {@link TikaFallbackPipeline} still is, so the pre-existing corpus is
    * attributed to that pipeline at version {@link #LEGACY_PIPELINE_VERSION} - lower than any
    * pipeline's real version, which is what makes it selectable for a re-index instead of an opaque
-   * "unbekannt".
+   * "unknown".
    */
   public static final String LEGACY_PIPELINE_ID = TikaFallbackPipeline.ID;
 

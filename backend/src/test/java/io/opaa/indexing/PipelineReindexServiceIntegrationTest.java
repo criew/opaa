@@ -3,6 +3,7 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
@@ -46,6 +47,7 @@ class PipelineReindexServiceIntegrationTest {
 
   private UUID userId;
   private KnowledgeLibrary library;
+  private KnowledgeLibrary uploadLibrary;
 
   @BeforeEach
   void setUp() {
@@ -64,11 +66,28 @@ class PipelineReindexServiceIntegrationTest {
         "pipeline-reindex-it-" + userId,
         SystemRole.SYSTEM_ADMIN.name(),
         Organization.DEFAULT_ID);
+    // A FILESYSTEM library, because sourcePath is what a FILESYSTEM document's file must resolve
+    // underneath before the re-index is allowed to read it again (ADR-0018, Entscheidung 6).
     library =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
                 Organization.DEFAULT_ID,
                 "Zielbibliothek",
+                null,
+                userId,
+                LibraryVisibility.PRIVATE,
+                false,
+                DocumentSourceType.FILESYSTEM,
+                classTempDir.toString(),
+                null,
+                null,
+                null,
+                false));
+    uploadLibrary =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID,
+                "Uploadbibliothek",
                 null,
                 userId,
                 LibraryVisibility.PRIVATE,
@@ -131,6 +150,11 @@ class PipelineReindexServiceIntegrationTest {
         .isNotEmpty();
     assertThat(pipelineVersionsOf(document.getId()))
         .containsOnly((int) TikaFallbackPipeline.VERSION);
+    // The re-index is the first path that deletes and rewrites chunks of an existing bestand, so
+    // the lexical index has to come along: exactly one chunk_full_text row per vector_store chunk
+    // of this document, none left over from the chunks that were replaced.
+    assertThat(fullTextRowCountOf(document.getId()))
+        .isEqualTo(chunkTextsOf(document.getId()).size());
 
     PipelineVersionProgress progress =
         reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
@@ -193,6 +217,97 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   @Test
+  void aFileOutsideTheLibrarysConfiguredDirectoryIsNeverReadAgain() throws IOException {
+    // ADR-0018, Entscheidung 6: file_path was validated when the document was indexed, but the
+    // allowlist and the library's own sourcePath can be narrowed afterwards. A re-index must not be
+    // the one path that silently keeps reading a file the operator has since withdrawn.
+    Path outside = Files.createTempDirectory("outside-allowlist").resolve("geheim.txt");
+    Files.writeString(outside, "Inhalt außerhalb des konfigurierten Verzeichnisses. ".repeat(20));
+    Document document =
+        persistedDocumentPointingAt(
+            "geheim.txt", outside, DocumentSourceType.FILESYSTEM, library.getId());
+    seedChunk(document.getId(), "alter chunk", null, null);
+
+    PipelineReindexResult result = reindexBatch(10);
+
+    assertThat(result.skippedDocuments()).isEqualTo(1);
+    assertThat(result.reindexedDocuments()).isZero();
+    // The old chunk is still there untouched - the file was never opened, so there was nothing to
+    // replace it with, and destroying it would have been the worse outcome.
+    assertThat(chunkTextsOf(document.getId())).containsExactly("alter chunk");
+    // A call that only skipped is the signal to stop; the outstanding chunk stays visible.
+    assertThat(result.isEmpty()).isTrue();
+    assertThat(
+            reindexService
+                .progressForOrganization(Organization.DEFAULT_ID)
+                .getFirst()
+                .staleChunks())
+        .isEqualTo(1);
+  }
+
+  @Test
+  void anUploadedFileOutsideTheManagedStorageIsNeverReadAgain() throws IOException {
+    Path outside = Files.createTempDirectory("outside-upload-storage").resolve("fremd.txt");
+    Files.writeString(outside, "Nicht von diesem Dienst geschrieben. ".repeat(20));
+    Document document =
+        persistedDocumentPointingAt(
+            "fremd.txt", outside, DocumentSourceType.UPLOAD, uploadLibrary.getId());
+    seedChunk(document.getId(), uploadLibrary.getId(), "alter chunk", null, null);
+
+    PipelineReindexResult result = reindexBatch(10);
+
+    assertThat(result.skippedDocuments()).isEqualTo(1);
+    assertThat(chunkTextsOf(document.getId())).containsExactly("alter chunk");
+  }
+
+  @Test
+  void aMarkedRemoteDocumentIsActuallyReprocessedByItsOwnConnectorRun() {
+    // The gate that decides it, before anything is downloaded: UrlIndexingExecutor#isUnchanged
+    // reads last_modified_remote plus INDEXED - never the checksum, because the bytes it would be
+    // computed from have deliberately not been fetched yet. Clearing the checksum alone would
+    // therefore have been a no-op the run never notices.
+    String remoteUrl = "https://example.test/satzung.pdf";
+    String lastModified = "Tue, 01 Sep 2026 06:00:00 GMT";
+    Document document = persistedRemoteDocument(remoteUrl);
+    document.setLastModifiedRemote(lastModified);
+    document.setStatus(DocumentStatus.INDEXED);
+    documentRepository.save(document);
+    seedChunk(document.getId(), "alter chunk", null, null);
+
+    UrlIndexingExecutor executor = urlIndexingExecutorForGateCheck();
+    assertThat(executor.isUnchanged(remoteUrl, lastModified, library))
+        .as("before the re-index the run would skip this document as unchanged")
+        .isTrue();
+
+    assertThat(reindexBatch(10).markedForNextRun()).isEqualTo(1);
+
+    assertThat(executor.isUnchanged(remoteUrl, lastModified, library))
+        .as("after being marked the very same run re-reads it instead of skipping it")
+        .isFalse();
+    Document marked = documentRepository.findById(document.getId()).orElseThrow();
+    assertThat(marked.getLastModifiedRemote()).isNull();
+    // The second gate, inside processUrlFile once the file has actually been downloaded.
+    assertThat(marked.getChecksum()).isNull();
+  }
+
+  /**
+   * The real {@link UrlIndexingExecutor}, with only the collaborators its change decision does not
+   * touch mocked away - the decision itself runs against this test's own database rows, not a
+   * reimplementation of the rule.
+   */
+  private UrlIndexingExecutor urlIndexingExecutorForGateCheck() {
+    return new UrlIndexingExecutor(
+        org.mockito.Mockito.mock(AutoindexCrawlerService.class),
+        org.mockito.Mockito.mock(io.opaa.sourceaccess.BoundedDownloader.class),
+        org.mockito.Mockito.mock(FileProcessingService.class),
+        org.mockito.Mockito.mock(IndexingJobService.class),
+        documentRepository,
+        org.mockito.Mockito.mock(IndexingRunEventRepository.class),
+        org.mockito.Mockito.mock(io.opaa.library.LibraryStorageQuotaService.class),
+        org.mockito.Mockito.mock(StaleDocumentCleanupService.class));
+  }
+
+  @Test
   void chunksWhoseDocumentRowIsGoneAreRemovedRatherThanReselectedForever() {
     UUID vanishedDocumentId = UUID.randomUUID();
     seedChunk(vanishedDocumentId, "verwaister chunk", null, null);
@@ -220,6 +335,18 @@ class PipelineReindexServiceIntegrationTest {
     return documentRepository.save(document);
   }
 
+  private Document persistedDocumentPointingAt(
+      String fileName, Path file, DocumentSourceType sourceType, UUID libraryId)
+      throws IOException {
+    Document document =
+        new Document(
+            fileName, file.toAbsolutePath().toString(), "text/plain", Files.size(file), sourceType);
+    document.setLibraryId(libraryId);
+    document.setOrganizationId(Organization.DEFAULT_ID);
+    document.setChecksum("checksum-" + fileName);
+    return documentRepository.save(document);
+  }
+
   private Document persistedRemoteDocument(String url) {
     Document document =
         new Document(
@@ -231,9 +358,14 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   private void seedChunk(UUID documentId, String text, String pipelineId, Short pipelineVersion) {
+    seedChunk(documentId, library.getId(), text, pipelineId, pipelineVersion);
+  }
+
+  private void seedChunk(
+      UUID documentId, UUID libraryId, String text, String pipelineId, Short pipelineVersion) {
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(VectorChunkStore.DOCUMENT_ID_METADATA_KEY, documentId.toString());
-    metadata.put(VectorChunkStore.LIBRARY_ID_METADATA_KEY, library.getId().toString());
+    metadata.put(VectorChunkStore.LIBRARY_ID_METADATA_KEY, libraryId.toString());
     metadata.put("organization_id", Organization.DEFAULT_ID.toString());
     if (pipelineId != null) {
       metadata.put(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY, pipelineId);
@@ -247,6 +379,11 @@ class PipelineReindexServiceIntegrationTest {
         "SELECT content FROM vector_store WHERE metadata->>'document_id' = ?",
         String.class,
         documentId.toString());
+  }
+
+  private long fullTextRowCountOf(UUID documentId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT count(*) FROM chunk_full_text WHERE document_id = ?", Long.class, documentId);
   }
 
   private List<Integer> pipelineVersionsOf(UUID documentId) {

@@ -406,9 +406,24 @@ public class FileProcessingService {
       // The entry body never was a file, so there is no content to detect a format from - it is
       // already extracted text and goes to the fallback pipeline directly (ADR-0017, decision 2).
       DocumentPipeline pipeline = pipelineRegistry.fallbackPipeline();
-      List<org.springframework.ai.document.Document> chunks =
-          pipeline.run(DocumentPipelineSource.ofExtractedText(mainText, fileName)).chunks();
-      log.debug("RSS entry {} produced {} chunks", entryUrl, chunks.size());
+      DocumentPipelineResult parsed =
+          pipeline.run(DocumentPipelineSource.ofExtractedText(mainText, fileName));
+      switch (parsed.outcome()) {
+        // Before #1056 this path ignored the outcome entirely and left an entry whose text
+        // chunked down to nothing as INDEXED with zero chunks - the same silent empty index the
+        // file paths already guard against, only reached through a feed instead of a file.
+        case NO_EXTRACTABLE_TEXT -> {
+          log.warn("No usable text in RSS entry {}", entryUrl);
+          return markConnectorRejected(doc.getId());
+        }
+        case NO_CONTENT -> {
+          log.warn("No content extracted from RSS entry: {}", entryUrl);
+          return markConnectorFailed(doc.getId());
+        }
+        case CHUNKED ->
+            log.debug("RSS entry {} produced {} chunks", entryUrl, parsed.chunks().size());
+      }
+      List<org.springframework.ai.document.Document> chunks = parsed.chunks();
 
       storeChunks(doc, chunks, contextTitle, pipeline);
 
@@ -458,34 +473,49 @@ public class FileProcessingService {
    */
   @Async("uploadTaskExecutor")
   public void processUploadedFileAsync(UUID documentId, Path storedFile) {
-    processStoredFile(documentId, storedFile);
+    processStoredFile(documentId, storedFile, false);
   }
 
   /**
    * Re-runs the current pipeline over a document whose source file is still on this machine and
    * replaces its chunks - the in-place half of {@link PipelineReindexService#reindexBatch}. The
    * document keeps its own id and row, so citations and deep links into it survive; only its chunks
-   * are exchanged. The delete happens before the new chunks are written, since chunk ids are
-   * freshly generated per write and the old ones would otherwise simply accumulate alongside the
-   * new ones.
+   * are exchanged.
+   *
+   * <p><b>Nothing is destroyed before the replacement exists.</b> The old chunks are deleted only
+   * once the pipeline has actually produced new ones, immediately before they are written (chunk
+   * ids are generated per write, so the old ones would otherwise accumulate alongside the new
+   * ones). A document that fails to parse this time - a transient reader failure, a temporarily
+   * unreadable file - keeps its working chunks and its {@code INDEXED} row and is reported back as
+   * not re-indexed, rather than being left permanently chunkless and {@code FAILED} with no path
+   * back: unlike a fresh upload, there is an existing, working state here that is worth more than a
+   * consistent-looking failure.
+   *
+   * @return whether the document was actually re-indexed
    */
-  void reindexStoredDocument(UUID documentId, Path storedFile) {
-    vectorChunkStore.deleteByDocumentId(documentId);
-    processStoredFile(documentId, storedFile);
+  boolean reindexStoredDocument(UUID documentId, Path storedFile) {
+    return processStoredFile(documentId, storedFile, true);
   }
 
   /**
    * The synchronous body shared by {@link #processUploadedFileAsync} and {@link
-   * #reindexStoredDocument} - both parse, chunk, store and transition a document whose row already
-   * exists and whose file is already on disk; they differ only in whether existing chunks have to
-   * be removed first.
+   * #reindexStoredDocument}: parse, chunk, store and transition a document whose row already exists
+   * and whose file is already on disk.
+   *
+   * @param replacingExistingChunks {@code true} for a re-index of an already-indexed document -
+   *     deletes the previous chunks just before the new ones are written, and leaves the document
+   *     untouched on every non-{@code CHUNKED} outcome (see {@link #reindexStoredDocument}). {@code
+   *     false} for a first upload, where there is no previous state to preserve and every outcome
+   *     must reach a terminal status the frontend's polling can key off.
+   * @return whether chunks were written and the document transitioned to {@code INDEXED}
    */
-  private void processStoredFile(UUID documentId, Path storedFile) {
+  private boolean processStoredFile(
+      UUID documentId, Path storedFile, boolean replacingExistingChunks) {
     Document doc = documentRepository.findById(documentId).orElse(null);
     if (doc == null) {
       log.warn(
           "Uploaded document {} no longer exists, skipping asynchronous processing", documentId);
-      return;
+      return false;
     }
 
     try {
@@ -494,22 +524,28 @@ public class FileProcessingService {
           pipeline.run(DocumentPipelineSource.ofFile(storedFile, doc.getFileName()));
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
-          // metrics.recordFailed(), not recordSkipped(): every other outcome on this path is
-          // INDEXED or FAILED - a single, deliberate upload has no "skipped" concept the way a
-          // connector run's item count does.
           log.warn(
               "No usable text extracted from stored document {} by pipeline {}",
               doc.getFileName(),
               pipeline.id());
+          if (replacingExistingChunks) {
+            return false;
+          }
+          // metrics.recordFailed(), not recordSkipped(): every other outcome on this path is
+          // INDEXED or FAILED - a single, deliberate upload has no "skipped" concept the way a
+          // connector run's item count does.
           markUploadFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
           metrics.recordFailed();
-          return;
+          return false;
         }
         case NO_CONTENT -> {
           log.warn("No content extracted from uploaded document: {}", doc.getFileName());
+          if (replacingExistingChunks) {
+            return false;
+          }
           markUploadFailed(doc.getId(), "Aus der Datei konnte kein Text extrahiert werden");
           metrics.recordFailed();
-          return;
+          return false;
         }
         case CHUNKED ->
             log.debug(
@@ -520,6 +556,9 @@ public class FileProcessingService {
       }
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
 
+      if (replacingExistingChunks) {
+        vectorChunkStore.deleteByDocumentId(doc.getId());
+      }
       storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(doc.getFileName()), pipeline);
 
       int updated = documentRepository.markIndexed(doc.getId(), chunks.size(), Instant.now());
@@ -529,17 +568,22 @@ public class FileProcessingService {
                 + " again",
             doc.getId());
         vectorChunkStore.deleteByDocumentId(doc.getId());
-        return;
+        return false;
       }
       metrics.recordProcessed();
+      return true;
     } catch (Exception e) {
       log.error("Failed to process uploaded document {}", doc.getFileName(), e);
       // Whatever failed, storeChunks may already have written chunks for doc.getId() into the
       // vector store - deleting them here mirrors processFile/processUrlFile's own re-index
-      // cleanup, so a FAILED row never leaves orphaned chunks still returned by search.
+      // cleanup, so a FAILED row never leaves orphaned chunks still returned by search. On the
+      // re-index path this runs for the same reason: once the delete-then-store sequence above has
+      // begun, a half-written replacement is worse than none, and the document's own connector run
+      // or a repeated re-index is the way back.
       vectorChunkStore.deleteByDocumentId(doc.getId());
       markUploadFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
       metrics.recordFailed();
+      return false;
     }
   }
 

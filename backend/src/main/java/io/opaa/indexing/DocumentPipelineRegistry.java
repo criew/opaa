@@ -15,8 +15,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p><b>Routing follows the detected content, not the file extension</b> - the same rule and the
  * same code path {@link SupportedDocumentFormats#decideForFileName} already applies to the
- * admission decision (#404), and for the same reason: in gewachsene Ablagen files routinely carry
- * the wrong extension. The text-tolerant special case for Markdown and Klartext (content
+ * admission decision (#404), and for the same reason: in grown file shares documents routinely
+ * carry the wrong extension. The text-tolerant special case for Markdown and Klartext (content
  * <em>and</em> extension must agree, because the two cannot be told apart by content alone)
  * therefore holds for routing too - it is not re-implemented here, it is inherited by asking {@link
  * SupportedDocumentFormats} the one question it already answers.
@@ -43,7 +43,16 @@ public class DocumentPipelineRegistry {
    */
   public DocumentPipelineRegistry(List<DocumentPipeline> pipelines, DocumentPipeline fallback) {
     this.fallback = fallback;
-    this.all = pipelines.stream().distinct().toList();
+    // The fallback is reported among the registered pipelines even if a caller passed a list that
+    // does not contain it - it is a pipeline chunks are attributed to, so a status view that omits
+    // it would report those chunks as belonging to a pipeline this deployment does not have.
+    this.all =
+        pipelines.contains(fallback)
+            ? pipelines.stream().distinct().toList()
+            : java.util.stream.Stream.concat(
+                    pipelines.stream(), java.util.stream.Stream.of(fallback))
+                .distinct()
+                .toList();
     Map<String, DocumentPipeline> claims = new HashMap<>();
     for (DocumentPipeline pipeline : all) {
       if (pipeline == fallback) {

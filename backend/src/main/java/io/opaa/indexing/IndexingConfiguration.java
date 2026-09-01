@@ -76,16 +76,22 @@ public class IndexingConfiguration {
       JdbcTemplate jdbcTemplate,
       DocumentPipelineRegistry documentPipelineRegistry,
       DocumentRepository documentRepository,
+      KnowledgeLibraryRepository libraryRepository,
       FileProcessingService fileProcessingService,
       VectorChunkStore vectorChunkStore,
+      FilesystemPathAllowlist filesystemPathAllowlist,
+      UploadProperties uploadProperties,
       @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     return new PipelineReindexService(
         jdbcTemplate,
         documentPipelineRegistry,
         documentRepository,
+        libraryRepository,
         fileProcessingService,
         vectorChunkStore,
+        filesystemPathAllowlist,
+        uploadProperties,
         schemaName,
         tableName);
   }

@@ -4472,7 +4472,10 @@ components:
           minimum: 1
           description: >
             Only chunks below this version are re-indexed. Chunks written before the pipeline
-            abstraction existed count as version 0 and are therefore always included.
+            abstraction existed count as version 0 and are therefore always included. Rejected with
+            400 above the pipeline's own currentVersion: a re-index cannot produce a version the
+            pipeline does not have, so every rewritten chunk would still be below the bound and the
+            same documents would be selected again on every following batch.
         batchSize:
           type: integer
           minimum: 1
@@ -4486,26 +4489,44 @@ components:
     PipelineReindexResponse:
       type: object
       required:
-        [reindexedDocuments, markedForNextRun, removedOrphanChunkSets, done]
+        [
+          reindexedDocuments,
+          markedForNextRun,
+          skippedDocuments,
+          removedOrphanChunkSets,
+          done,
+        ]
       properties:
         reindexedDocuments:
           type: integer
           description: >
-            Documents whose source file was locally readable and which were parsed, chunked and
-            stored again on the spot, keeping their own document id.
+            Documents whose source file was readable within the directories this deployment is
+            configured to read, and which were parsed, chunked and stored again on the spot, keeping
+            their own document id.
         markedForNextRun:
           type: integer
           description: >
             Documents whose source is remote and can only be re-read by their own connector run;
             marked so that run redoes them instead of skipping them as unchanged. Their chunks stay
             stale until that run happens, which the status figures keep showing.
+        skippedDocuments:
+          type: integer
+          description: >
+            Documents this call could not advance: their file lies outside what this deployment may
+            read (an allowlist narrowed since indexing, a path no longer resolving underneath its
+            library's configured directory), or the pipeline produced no chunks for them this time.
+            Nothing about them is changed - a working document keeps its existing chunks rather than
+            being emptied - and their chunks stay visible as outstanding in the status figures.
         removedOrphanChunkSets:
           type: integer
           description: Chunk sets whose document row no longer exists; deleted rather than re-read.
         done:
           type: boolean
           description: >
-            True when this call found nothing left to do - the signal to stop repeating it.
+            True when this call advanced nothing - the signal to stop repeating it. Deliberately
+            ignores skippedDocuments: a call that only skipped is exactly the "nothing further is
+            possible right now" state, and repeating it would retry the same unreachable documents
+            forever.
 
     LibraryFolderRequest:
       type: object
@@ -4894,6 +4915,7 @@ components:
           AUDIT_LOG_CONFIGURATION_CHANGED,
           MODEL_POLICY_CHANGED,
           CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
+          INDEXING_PIPELINE_REINDEX_TRIGGERED,
           BRANDING_SETTINGS_CHANGED,
           LLM_MODEL_CREATED,
           LLM_MODEL_CHANGED,

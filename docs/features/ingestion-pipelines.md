@@ -650,11 +650,35 @@ Zwei Administrationsendpunkte (`SYSTEM_ADMIN`, auf die eigene Organisation begre
   fort, statt von vorn zu beginnen.
 
 Ein Dokument, dessen Quelldatei lokal liegt (Dateisystem, Upload), wird sofort neu gelesen, zerlegt
-und gespeichert — **unter seiner eigenen Dokument-ID**, damit Belege und Deep Links es überleben. Ein
-Dokument aus einer entfernten Quelle kann nur sein eigener Konnektorlauf neu lesen; es wird dafür
-vorgemerkt (sein Prüfsummenwert wird geleert, was den Lauf davon abhält, es als unverändert zu
-überspringen) und fällt danach aus der Auswahl, damit der Lauf abschließt. Seine Chunks bleiben bis
-dahin als nachzuziehen ausgewiesen — der Füllstand beschönigt das nicht.
+und gespeichert — **unter seiner eigenen Dokument-ID**, damit Belege und Deep Links es überleben.
+Gelesen wird dabei nur, was diese Installation lesen darf: Die Datei muss dieselbe Laufzeitprüfung
+bestehen wie beim Ausliefern eines Originals (Allowlist, Lage unterhalb des konfigurierten
+Quellverzeichnisses der Bibliothek bzw. des verwalteten Upload-Verzeichnisses, aufgelöst über
+`toRealPath` gegen Symlinks; ADR-0018, Entscheidung 6). Eine nachträglich verkleinerte Allowlist wirkt
+damit auch auf die Neuindizierung — sie ist nicht der eine Pfad, der weiterliest.
+
+Ein Dokument aus einer entfernten Quelle kann nur sein eigener Konnektorlauf neu lesen; es wird dafür
+vorgemerkt und fällt danach aus der Auswahl, damit der Lauf abschließt. Vorgemerkt heißt: **beide**
+Änderungsmarker werden geleert. Der Lauf entscheidet vor dem Download allein anhand von
+`last_modified_remote` und dem Status `INDEXED`; die Prüfsumme vergleicht er dort noch gar nicht, weil
+die Bytes dafür bewusst noch nicht geholt wurden. Nur die Prüfsumme zu leeren wäre für den ersten
+Ausgang folglich wirkungslos gewesen. Die Chunks bleiben bis zum Lauf als nachzuziehen ausgewiesen —
+der Füllstand beschönigt das nicht.
+
+**Nichts wird zerstört, bevor der Ersatz existiert.** Die alten Chunks fallen erst, wenn die Pipeline
+tatsächlich neue erzeugt hat. Ein Dokument, das diesmal nicht verarbeitbar ist — vorübergehend
+unlesbare Datei, Lesefehler —, behält seine funktionierenden Chunks und seinen Status und wird als
+*übersprungen* zurückgemeldet, statt dauerhaft chunklos und fehlerhaft zurückzubleiben. Dasselbe gilt
+für Dokumente, deren Datei außerhalb des Erlaubten liegt. Eine Charge, die nur noch übersprungen hat,
+meldet `done` — Weiterlaufen hieße, dieselben unerreichbaren Dokumente endlos erneut zu versuchen.
+
+`belowVersion` oberhalb der aktuellen Version der Pipeline wird mit 400 abgewiesen: Jeder neu
+geschriebene Chunk läge weiterhin unterhalb der Schranke, dieselben Dokumente würden in jeder weiteren
+Charge erneut ausgewählt — kein langsamer Lauf, sondern ein unbegrenzter.
+
+Der auslösende Aufruf wird protokolliert (`INDEXING_PIPELINE_REINDEX_TRIGGERED`, mit Pipeline,
+`belowVersion` und den Chargenzählern) — ein Eintrag je Aufruf, nicht je Dokument: Der Aufruf ist die
+administrative Entscheidung, die Dokumente sind seine Wirkung.
 
 **Ausgelöst wird nichts von selbst.** Ob und wann ein Bestand nachgezogen wird, bleibt die oben unter
 [Offene Punkte](#offene-punkte) genannte, bewusst offene Frage; deshalb gibt es hier keinen

@@ -1,6 +1,8 @@
 package io.opaa.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -10,6 +12,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.AuditEventType;
+import io.opaa.audit.AuditEvent;
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
@@ -25,6 +30,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -56,6 +62,7 @@ class IndexingAdminControllerTest {
   @MockitoBean private LowChunkDocumentAuditService lowChunkDocumentAuditService;
   @MockitoBean private PipelineReindexService pipelineReindexService;
   @MockitoBean private DocumentPipelineRegistry pipelineRegistry;
+  @MockitoBean private AuditEventRecorder auditEventRecorder;
   @MockitoBean private UserService userService;
 
   /** Stands in for the registered pipelines without needing Tika or a chunking configuration. */
@@ -206,20 +213,20 @@ class IndexingAdminControllerTest {
 
   @Test
   void pipelineReindexScopesToTheCallersOwnOrganizationAndReportsWhenDone() throws Exception {
-    when(pipelineReindexService.reindexBatch(actingAdminOrganizationId, "tika-fallback", 2, 5))
-        .thenReturn(new PipelineReindexResult(0, 0, 0));
+    when(pipelineReindexService.reindexBatch(actingAdminOrganizationId, "tika-fallback", 1, 5))
+        .thenReturn(new PipelineReindexResult(0, 0, 0, 0));
 
     mockMvc
         .perform(
             post("/api/v1/admin/indexing/pipeline-reindex")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"pipelineId\":\"tika-fallback\",\"belowVersion\":2,\"batchSize\":5}")
+                .content("{\"pipelineId\":\"tika-fallback\",\"belowVersion\":1,\"batchSize\":5}")
                 .with(asAdmin()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.done").value(true))
         .andExpect(jsonPath("$.reindexedDocuments").value(0));
 
-    verify(pipelineReindexService).reindexBatch(actingAdminOrganizationId, "tika-fallback", 2, 5);
+    verify(pipelineReindexService).reindexBatch(actingAdminOrganizationId, "tika-fallback", 1, 5);
   }
 
   @Test
@@ -234,6 +241,68 @@ class IndexingAdminControllerTest {
                 .with(asAdmin()))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.error").value("Unbekannte Pipeline: docling-pdf"));
+  }
+
+  @Test
+  void pipelineReindexRejectsABelowVersionAboveThePipelinesOwnVersionWith400() throws Exception {
+    // A bound above the pipeline's own version can never be reached: every rewritten chunk would
+    // still be below it, so the same documents would be selected on every following batch -
+    // unbounded embedding work, not a slow run.
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/pipeline-reindex")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pipelineId\":\"tika-fallback\",\"belowVersion\":2}")
+                .with(asAdmin()))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.error")
+                .value(
+                    "belowVersion darf höchstens der aktuellen Version der Pipeline tika-fallback"
+                        + " entsprechen (1), war 2"));
+
+    verify(pipelineReindexService, org.mockito.Mockito.never())
+        .reindexBatch(any(), any(), org.mockito.ArgumentMatchers.anyInt(), anyInt());
+  }
+
+  @Test
+  void pipelineReindexRejectsABelowVersionBelowOneWith400() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/pipeline-reindex")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pipelineId\":\"tika-fallback\",\"belowVersion\":0}")
+                .with(asAdmin()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("belowVersion muss mindestens 1 sein, war 0"));
+  }
+
+  @Test
+  void pipelineReindexRecordsAnAuditEventForTheTriggeringCall() throws Exception {
+    when(pipelineReindexService.reindexBatch(actingAdminOrganizationId, "tika-fallback", 1, 10))
+        .thenReturn(new PipelineReindexResult(4, 1, 2, 0));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/pipeline-reindex")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pipelineId\":\"tika-fallback\",\"belowVersion\":1}")
+                .with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.skippedDocuments").value(2))
+        .andExpect(jsonPath("$.done").value(false));
+
+    ArgumentCaptor<AuditEvent> auditCaptor = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(auditEventRecorder).recordUserAction(auditCaptor.capture());
+    AuditEvent event = auditCaptor.getValue();
+    assertThat(event.eventType()).isEqualTo(AuditEventType.INDEXING_PIPELINE_REINDEX_TRIGGERED);
+    assertThat(event.organizationId()).isEqualTo(actingAdminOrganizationId);
+    assertThat(event.actorUserId()).isEqualTo(actingAdminId);
+    assertThat(event.after())
+        .containsEntry("belowVersion", 1)
+        .containsEntry("reindexedDocuments", 4)
+        .containsEntry("markedForNextRun", 1)
+        .containsEntry("skippedDocuments", 2);
   }
 
   @Test
