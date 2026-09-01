@@ -19,7 +19,8 @@ export interface CitationDoc {
    *  it is carried straight through from. */
   documentId: string | null | undefined
   /** #1102: this row's position in the backend's `sources` array - the order the retrieval
-   *  pipeline settled on, which the Belegfenster sorts by. `Number.MAX_SAFE_INTEGER` when no
+   *  pipeline settled on, which the Belegfenster sorts and numbers by. `Number.MAX_SAFE_INTEGER`
+   *  when no
    *  source matched (a persisted legacy message whose snapshot lists none). */
   sourceIndex: number
   /** #667: the distinct Fundorte of this row's footnotes, in footnote order - "S. 2–4",
@@ -35,8 +36,13 @@ export interface CitationIndex {
   docIndexByNumber: Map<number, number>
   /** Cited documents in first-appearance order, then cited-but-unreferenced sources. */
   docs: CitationDoc[]
-  /** Checked but uncited sources - the collapsible tail of the block (mockup 1a). */
+  /** Checked but uncited sources - the collapsible tail of the block (mockup 1a). A filter over
+   *  `sources`, so this arrives in the backend's order. */
   uncited: SourceReference[]
+  /** #1102: position in the backend's `sources` array per source, for the rows that carry the
+   *  {@link SourceReference} itself rather than a resolved {@link CitationDoc} - the Belegfenster
+   *  labels every row with that position ("Rang n"). */
+  sourceIndexByReference: Map<SourceReference, number>
   /** Distinct cited passages ("n Stellen"). */
   markerCount: number
   /** #667: Fundort per footnote number, for the numbers the backend could locate. */
@@ -164,6 +170,7 @@ export function buildCitationIndex(
     uncited: (sources ?? []).filter(
       (s) => !s.cited && !docIndexByRowKey.has(rowKey(s, s.fileName)),
     ),
+    sourceIndexByReference: indexBySource,
     markerCount: numberByKey.size,
     locationByNumber,
   }

@@ -150,6 +150,37 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(rows[1]).getByText(/Rang 2/)).toBeInTheDocument()
   })
 
+  // #1102: "Rang n" is the source's position in the backend's `sources` array - the same position
+  // `relevanceScore` is the reciprocal of - not the row's position in this list. The list groups
+  // the cited rows before the uncited ones, so a row position would renumber as soon as an uncited
+  // source sits between two cited ones (the normal case: the model does not cite every hit).
+  it('numbers by the position in `sources` when an uncited source sits between two cited ones', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MessageBubble
+        message={{
+          id: 'ev-interleaved',
+          role: 'assistant',
+          content: 'Erstens【source: a#0 | a.md】, drittens【source: c#0 | c.md】.',
+          sources: [
+            source('a.md', true, 1),
+            source('b.md', false, 0.5),
+            source('c.md', true, 1 / 3),
+          ],
+          timestamp: new Date('2026-08-22T09:00:00'),
+        }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    const rows = within(drawer).getAllByTestId('evidence-doc')
+    expect(rows.map((el) => el.getAttribute('data-file'))).toEqual(['a.md', 'c.md', 'b.md'])
+    expect(within(rows[0]).getByText(/Rang 1$/)).toBeInTheDocument()
+    expect(within(rows[1]).getByText(/Rang 3$/)).toBeInTheDocument()
+    expect(within(rows[2]).getByText(/Rang 2$/)).toBeInTheDocument()
+  })
+
   it('keeps a row rank when the list is filtered', async () => {
     const { user, drawer } = await openDrawer()
 

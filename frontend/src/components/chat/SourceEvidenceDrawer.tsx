@@ -38,15 +38,15 @@ interface EvidenceDoc {
    *  source that does not match the chunks actually retrieved for this answer. */
   citationValid: boolean
   relevanceScore?: number
-  /** #1102: this row's position in the backend's `sources` array, which the cited rows are sorted
-   *  by - undefined for an uncited row (that group already arrives in `sources` order and is never
-   *  re-sorted) and for a cited row whose source this message's list does not contain. */
-  sourceIndex?: number
-  /** #1102: the rank shown in the row, derived from the row's position in the unfiltered list, not
-   *  from `relevanceScore` - a message persisted before #1102 still carries a raw path-dependent
-   *  score in its snapshot. Undefined for a synthetic entry (#386), which backs no retrieved
-   *  passage and therefore holds no rank; such a row does not consume a rank either, so the
-   *  numbering stays gap-free. */
+  /** #1102: this row's position in the backend's `sources` array - the order the retrieval pipeline
+   *  settled on, which the cited rows are sorted by and every row is numbered by.
+   *  `Number.MAX_SAFE_INTEGER` when this message's source list does not contain the row's source. */
+  sourceIndex: number
+  /** #1102: the rank shown in the row, derived from {@link sourceIndex} and never from
+   *  `relevanceScore` - a message persisted before #1102 still carries a raw path-dependent score
+   *  in its snapshot. Undefined for a synthetic entry (#386), which backs no retrieved passage and
+   *  therefore holds no rank; such a row does not consume a rank either, so the numbering stays
+   *  gap-free. */
   rank?: number
   indexedAt?: string | null
   sourceEntryUrl?: string | null
@@ -113,6 +113,7 @@ export default function SourceEvidenceDrawer({
       cited: false,
       citationValid: source.citationValid !== false,
       relevanceScore: source.relevanceScore,
+      sourceIndex: citations.sourceIndexByReference.get(source) ?? Number.MAX_SAFE_INTEGER,
       indexedAt: source.indexedAt,
       sourceEntryUrl: source.sourceEntryUrl,
       documentId: source.documentId,
@@ -123,17 +124,23 @@ export default function SourceEvidenceDrawer({
     // a persisted message's snapshot may still carry the pre-#1102 path-dependent raw score, and
     // sorting by that would drop a lexical-only source to the bottom. `citations.uncited` already
     // arrives in that order; the cited rows arrive in first-appearance order instead.
-    const byPipelineOrder = (a: EvidenceDoc, b: EvidenceDoc) =>
-      (a.sourceIndex ?? Number.MAX_SAFE_INTEGER) - (b.sourceIndex ?? Number.MAX_SAFE_INTEGER)
-    // The rank is the row's own position here, never `1 / relevanceScore`: this list is already in
-    // the pipeline's selection order, while the score in a message persisted before #1102 is still
-    // a raw, path-dependent one that would label a lexical-only source "Rang 11". A synthetic
-    // entry (#386) backs no retrieved passage, holds no rank and consumes none.
+    const byPipelineOrder = (a: EvidenceDoc, b: EvidenceDoc) => a.sourceIndex - b.sourceIndex
+    const rows = [...cited.sort(byPipelineOrder), ...uncited]
+    // The rank is the row's position in `sources`, never `1 / relevanceScore` and never its
+    // position in `rows`: the score in a message persisted before #1102 is still a raw,
+    // path-dependent one that would label a lexical-only source "Rang 11", while `rows` groups the
+    // cited rows before the uncited ones and would renumber as soon as an uncited source sits
+    // between two cited ones. A synthetic entry (#386) backs no retrieved passage, holds no rank
+    // and consumes none. Numbering happens before `visibleDocs` filters, so it stays stable under
+    // search and "nur zitierte".
+    const rankByDoc = new Map<EvidenceDoc, number>()
     let nextRank = 1
-    return [...cited.sort(byPipelineOrder), ...uncited].map((doc) => ({
-      ...doc,
-      rank: doc.relevanceScore === undefined || doc.relevanceScore === 0 ? undefined : nextRank++,
-    }))
+    for (const doc of [...rows].sort(byPipelineOrder)) {
+      if (doc.relevanceScore !== undefined && doc.relevanceScore !== 0) {
+        rankByDoc.set(doc, nextRank++)
+      }
+    }
+    return rows.map((doc) => ({ ...doc, rank: rankByDoc.get(doc) }))
   }, [citations])
 
   const visibleDocs = useMemo(() => {

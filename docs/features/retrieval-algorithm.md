@@ -253,9 +253,11 @@ wenn die Fusion sie auf Rang 1 gesetzt hat. Der Rang dagegen bedeutet für jede 
 unabhängig vom Pfad. Eine synthetische Quellenangabe zu einem erfundenen Beleg (#386) hat gar keinen
 Rang und trägt weiterhin 0. Das Belegfenster (`SourceEvidenceDrawer`) sortiert entsprechend nach der
 Reihenfolge des `sources`-Arrays — also nach der Auswahlreihenfolge der Pipeline, nicht nach einem
-Zahlenwert — und beschriftet die Zeile mit „Rang n" statt mit einem Prozentgewicht. Die Beschriftung
-leitet sich aus der Zeilenposition ab, nicht aus dem Zahlenwert; so bleibt sie auch für vor #1102
-gespeicherte Nachrichten richtig, deren `sources`-JSON noch Rohwerte trägt.
+Zahlenwert — und beschriftet die Zeile mit „Rang n" statt mit einem Prozentgewicht. Auch die
+Beschriftung leitet sich allein aus der Position in `sources` ab, nicht aus dem Zahlenwert und nicht
+aus der Zeilenposition im Belegfenster: Die Liste stellt zitierte Quellen vor unzitierte, während
+„Rang n" dieselbe Position meint, deren Kehrwert `relevanceScore` trägt. So bleibt die Beschriftung
+auch für vor #1102 gespeicherte Nachrichten richtig, deren `sources`-JSON noch Rohwerte trägt.
 
 ### Zusammenfassung als Ablauf
 
