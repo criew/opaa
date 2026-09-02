@@ -110,7 +110,7 @@
     "difficulty": "hard",
     "language": "de",
     "type": "factual",
-    "answer_span": "(1) In Fällen, die von § 3 nicht erfasst sind, aber eine vergleichbare wirtschaftliche Notlage begründen, kann die Kämmerei auf begründeten Antrag eine Stundung oder eine anteilige Gebührenermäßigung gewähren.\n\n(2) Über den Härtefallantrag entscheidet die Amtsleitung der Kämmerei, nicht die für den Regelfall zuständige Sachbearbeitung.\n\n## § 13 Gebührenermäßigung für eingetragene Vereine\n\n(1) Eingetragene, gemeinnützige Vereine mit Sitz in der Stadt Kalkstadt erhalten auf schriftlichen Antrag eine Ermäßigung von 50 Prozent auf die nach dieser Satzung für allgemeine Amtshandlungen der Stadtverwaltung zu entrichtenden Gebühren.\n\n(2) Der Nachweis der Gemeinnützigkeit erfolgt durch Vorlage des aktuellen Freistellungsbescheids des Finanzamts.",
+    "answer_span": "(1) In Fällen, die von § 3 nicht erfasst sind, aber eine vergleichbare wirtschaftliche Notlage begründen, kann die Kämmerei auf begründeten Antrag eine Stundung oder eine anteilige Gebührenermäßigung gewähren.\n\n(2) Über den Härtefallantrag entscheidet die Amtsleitung der Kämmerei, nicht die für den Regelfall zuständige Sachbearbeitung.",
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
     "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md)"
@@ -126,7 +126,7 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "(3) Diese Ermäßigung ist unabhängig von der Gebührenbefreiung wegen Bedürftigkeit nach § 3 dieser Satzung zu beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 für dieselbe Amtshandlung besteht nicht, da § 3 natürliche Personen in einer persönlichen Notlage betrifft und § 13 juristische Personen in Vereinsform unabhängig von deren wirtschaftlicher Lage.\n\n## § 14 Übergangsregelung und Inkrafttreten\n\n(1) Diese Satzung in der Fassung 2024 tritt am 1.",
+    "answer_span": "(3) Diese Ermäßigung ist unabhängig von der Gebührenbefreiung wegen Bedürftigkeit nach § 3 dieser Satzung zu beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 für dieselbe Amtshandlung besteht nicht, da § 3 natürliche Personen in einer persönlichen Notlage betrifft und § 13 juristische Personen in Vereinsform unabhängig von deren wirtschaftlicher Lage.",
     "expected_state": "known_gap",
     "expected_state_since": "2026-08-31",
     "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1 — der wörtlich im Zieldokument stehende Anfragebegriff wird jetzt lexikalisch getroffen; auf dem Rohvektor-Pfad unverändert ungelöst",

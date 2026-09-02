@@ -59,7 +59,7 @@ class BaselineComparatorTest {
   // --- issue #306: case-count check for pairs where the mean tolerance is tighter than 1/n -----
 
   @Test
-  void usesCaseBasedCheckIdentifiesExactlyTheSixKnownAffectedPairsInTheCommittedBaseline()
+  void usesCaseBasedCheckIdentifiesExactlyTheFourKnownAffectedPairsInTheCommittedBaseline()
       throws IOException {
     // Issue #306 review, Befund 2: the previous version of this test hardcoded the baseline's
     // numeric literals (0.063, 15, 16, ...) instead of loading the committed baseline file, so it
@@ -96,14 +96,21 @@ class BaselineComparatorTest {
     // in lockstep with those two docs, whenever a baseline re-measurement legitimately shifts which
     // pairs are protected. A silent shift (this set changing without a matching doc update) is
     // exactly the failure this test now catches that the hardcoded-literals version could not.
+    //
+    // Shifted from six to four pairs with the #1103 baseline re-measurement
+    // (MarkdownDocumentPipeline
+    // registered): category:multi_attribute_filter's ndcgAt10 (0.137 -> 0.218) and recallAt10
+    // (0.159 -> 0.245) both rose enough that their relative cap (0.25 * baselineValue) now exceeds
+    // 1/n=0.0476 (0.0545 and 0.0613 respectively) - the pair no longer falls below the case-based
+    // check's 1/n threshold. The remaining four pairs, all category:numeric_range, are unaffected:
+    // that group's absolute values stayed on noise level (n=16 is dominated by a capability the
+    // pipeline does not build - numeric comparison), so its relative cap stays far below 1/n.
     assertThat(affectedPairs)
         .containsExactlyInAnyOrder(
             "category:numeric_range/hitRateAt5",
             "category:numeric_range/mrr",
             "category:numeric_range/ndcgAt10",
-            "category:numeric_range/recallAt10",
-            "category:multi_attribute_filter/ndcgAt10",
-            "category:multi_attribute_filter/recallAt10");
+            "category:numeric_range/recallAt10");
   }
 
   @Test

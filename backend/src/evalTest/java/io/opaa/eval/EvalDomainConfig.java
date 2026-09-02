@@ -73,14 +73,19 @@ public record EvalDomainConfig(
 
   /**
    * The city-landmarks domain (issue #234): deliberately multi-chunk documents (200 European
-   * cities, minimum 3 chunks each at the application's default {@code chunk-size=1000} — see {@code
-   * eval/corpus/city-landmarks/SOURCE.md} for the measured chunk-count distribution: minimum 3,
-   * median 8, maximum 11, after the PR #730 third review round ("Verifikationsrunde") restored
-   * {@code RANK_NEIGHBOR_RADIUS} to 2 and instead generalized/broadened the landmark query so the
-   * mehr-Chunk floor is met through richer landmark content rather than a large rank-neighbor
-   * comparison section). {@code maxChunksPerDocument=13} is a deliberately conservative upper bound
-   * above the measured maximum (11), consistent with {@link RetrievalEvaluationHarnessTest}'s own
-   * runtime check that this value is never undersized (issue #721 review, Nit 4).
+   * cities, minimum 3 chunks each at the application's default {@code chunk-size=1000}).
+   *
+   * <p>Chunk-count distribution measured by {@code CityLandmarksChunkSizeDryRunTest}: minimum 3,
+   * median 8, maximum 11 through the naive, heading-agnostic {@code TikaFallbackPipeline}/{@code
+   * ChunkingService} cut every {@code .md} document ran through before #1103. Since #1103, Markdown
+   * is routed to the heading-aware {@code MarkdownDocumentPipeline} instead — every corpus document
+   * starts with a YAML frontmatter block the splitter now drops rather than turning into a
+   * headingless leading chunk (see that pipeline's own Javadoc), and each remaining {@code
+   * #}/{@code ##}/{@code ###} heading now cuts a new chunk instead of folding into a larger one.
+   * Re-measured after that change: minimum 5, median 15, maximum 17. {@code
+   * maxChunksPerDocument=20} is a deliberately conservative upper bound above the re-measured
+   * maximum (17), consistent with {@link RetrievalEvaluationHarnessTest}'s own runtime check that
+   * this value is never undersized (issue #721 review, Nit 4).
    */
   public static final EvalDomainConfig CITY_LANDMARKS =
       new EvalDomainConfig(
@@ -89,16 +94,19 @@ public record EvalDomainConfig(
           "city-landmarks.json",
           ChunkCountExpectation.atLeast(3),
           10,
-          13);
+          20);
 
   /**
    * The verwaltung domain (issues #1042/#1043): 70 German-language administrative documents of the
-   * fictional municipality "Kalkstadt", multi-chunk like {@code city-landmarks} but with a much
-   * narrower spread — minimum 3, median 3, maximum 4 chunks per document at the application's
-   * default {@code chunk-size=1000} (measured by {@code VerwaltungChunkSizeDryRunTest}, see {@code
-   * eval/corpus/verwaltung/SOURCE.md}). {@code maxChunksPerDocument=6} is a deliberately
-   * conservative upper bound above that measured maximum, checked at runtime by the harness like
-   * every domain's.
+   * fictional municipality "Kalkstadt", multi-chunk like {@code city-landmarks}.
+   *
+   * <p>Chunk-count distribution measured by {@code VerwaltungChunkSizeDryRunTest}: minimum 3,
+   * median 3, maximum 4 through the naive, heading-agnostic {@code TikaFallbackPipeline}/{@code
+   * ChunkingService} cut every {@code .md} document ran through before #1103. Since #1103, Markdown
+   * is routed to the heading-aware {@code MarkdownDocumentPipeline} instead — see {@link
+   * #CITY_LANDMARKS}'s Javadoc for why. Re-measured after that change: minimum 10, median 15,
+   * maximum 16. {@code maxChunksPerDocument=19} is a deliberately conservative upper bound above
+   * the re-measured maximum (16), checked at runtime by the harness like every domain's.
    *
    * <p>Unlike the other two domains, this corpus is smaller than one might expect a search window
    * to need: 70 documents against {@code documentTopK=10} is still comfortably above the window, so
@@ -111,5 +119,5 @@ public record EvalDomainConfig(
           "verwaltung.json",
           ChunkCountExpectation.atLeast(3),
           10,
-          6);
+          19);
 }

@@ -33,9 +33,6 @@ class MarkdownDocumentPipelineTest {
 
   @Test
   void passesThroughOnlyTheLocationKey() {
-    // Not covered by the registry-wide neutrality guard
-    // (DocumentPipelineRegistryRoutingIntegrationTest) because this pipeline is deliberately not
-    // registered as a bean (see markdownDocumentPipelineIsDeliberatelyNotRegisteredAsABean there).
     assertThat(pipeline.passthroughMetadataKeys())
         .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
   }
@@ -160,6 +157,87 @@ class MarkdownDocumentPipelineTest {
   @Test
   void aBlankDocumentHasNoContent() throws IOException {
     DocumentPipelineResult result = pipeline.run(sourceFor("   \n\n  "));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.chunks()).isEmpty();
+  }
+
+  @Test
+  void leadingFrontmatterIsDroppedInsteadOfBecomingAHeadinglessFirstChunk() throws IOException {
+    String text =
+        """
+        ---
+        title: "Titel"
+        id: "doc-1"
+        ---
+
+        # Titel
+
+        Text nach dem Frontmatter.
+        """;
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(text));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .doesNotContain("title:")
+        .doesNotContain("id:")
+        .contains("Text nach dem Frontmatter");
+  }
+
+  @Test
+  void aHorizontalRuleInTheMiddleOfTheDocumentStaysContent() throws IOException {
+    String text =
+        """
+        # Titel
+
+        Erster Absatz.
+
+        ---
+
+        Zweiter Absatz nach der Trennlinie.
+        """;
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(text));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Erster Absatz")
+        .contains("---")
+        .contains("Zweiter Absatz nach der Trennlinie");
+  }
+
+  @Test
+  void anUnterminatedFrontmatterBlockAtTheStartStaysContent() throws IOException {
+    String text =
+        """
+        ---
+        title: "Titel ohne schliessendes Delimiter"
+
+        # Titel
+
+        Text.
+        """;
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(text));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText()).contains("title:");
+  }
+
+  @Test
+  void aDocumentConsistingOnlyOfFrontmatterHasNoContent() throws IOException {
+    String text =
+        """
+        ---
+        title: "Nur Frontmatter"
+        id: "doc-2"
+        ---
+        """;
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(text));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
     assertThat(result.chunks()).isEmpty();

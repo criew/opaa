@@ -16,7 +16,12 @@ unberührt bei 2) und den [Nachtrag zum Volltextpfad](#nachtrag-volltextpfad-in-
 (Issue #1049: der lexikalische Suchpfad wird Eingangsliste der Fusion und bewegt damit erstmals die
 Endauswahl — zwei neue Fixpunkte des Pipeline-Pfads, Pipeline-Messvertrag-Version 3, neu gezogene
 Pipeline-Baselines aller drei Domänen; die Rohvektor-Version bleibt bei 2, weil dieser Pfad den
-Volltextpfad konstruktionsbedingt nicht sieht).
+Volltextpfad konstruktionsbedingt nicht sieht) und den
+[Nachtrag zum strukturbewussten Markdown-Chunking](#nachtrag-strukturbewusstes-markdown-chunking-issue-1103)
+(Issue #1103: Markdown wird über `MarkdownDocumentPipeline` statt `TikaFallbackPipeline`
+gechunkt — kein Messvertragspunkt 1–10 ändert sich, aber alle drei Eval-Domänen brauchen neue
+Baselines auf beiden Pfaden, weil sich Chunkinhalt und -zahl der ausschließlich-Markdown-Korpora
+ändern).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -532,3 +537,88 @@ wechselt auf `solved`; die übrigen elf kann der Rohvektor-Pfad strukturell nich
 deshalb `known_gap` mit committeter `expected_state_exception`. Ob diese Definition mit einem
 produktiven zweiten Suchpfad noch die richtige ist, ist eine offene Frage an die Spezifikation und
 wird hier nicht entschieden.
+
+---
+
+## Nachtrag: Strukturbewusstes Markdown-Chunking (Issue #1103)
+
+**Datum:** 2026-09-01 · **Betrifft:** beide Messpfade, alle drei Eval-Domänen · **Messvertragspunkte
+1–10 (Rohvektor) und 11–23 (Pipeline-Pfad):** inhaltlich unverändert.
+
+#1061 liefert strukturbewusstes, überschriftenbasiertes Chunking für PDF/DOCX/PPTX
+(`HeadingSectionSplitter`) und bereitet `MarkdownDocumentPipeline` für Markdown vor, ohne sie zu
+registrieren — der Eval-Korpus besteht ausschließlich aus Markdown, sodass die Registrierung eine
+Messvertragsänderung ist, nicht eine beiläufige Formaterweiterung (siehe Kontext von #1103). Dieser
+Nachtrag hält die Entscheidung fest, die die Registrierung nachträglich trifft.
+
+### 24. Markdown wird ab sofort strukturbewusst gechunkt
+
+`.md`-Dokumente durchlaufen ab #1103 `MarkdownDocumentPipeline` (Schnitt entlang ATX-Überschriften
+Ebene 1–3, siehe deren Javadoc) statt `TikaFallbackPipeline`
+(`DocumentService`/`ChunkingService`, größenbasierter Schnitt ohne Rücksicht auf Struktur). Das ändert
+für jede der drei Eval-Domänen — die vollständig aus Markdown bestehen — sowohl die Chunkzahl je
+Dokument als auch den Wortlaut jedes einzelnen Chunks, selbst dort, wo die Chunkzahl gleich bleibt
+(`comic-characters`, siehe 25.).
+
+### 25. Frontmatter wird nicht als Inhalt gechunkt
+
+Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block (`---` … `---`) vor der
+ersten Überschrift. `HeadingSectionSplitter` kennt kein Frontmatter von sich aus — ohne besondere
+Behandlung würde der Block zu einem eigenen, überschriftslosen ersten Chunk, was bei
+`comic-characters` deterministisch **jedes** der 1448 Dokumente auf zwei Chunks gebracht und damit die
+Ein-Chunk-Invariante (ADR-0010) gebrochen hätte.
+
+Entscheidung: Ein `---`-begrenzter Block **am Dateianfang**, vor jeder Überschrift, wird verworfen
+statt zu einem Chunk zu werden — er ist strukturierte Metadaten, kein Fließtext, und liefert keinen
+beantwortbaren Inhalt. Ein `---` an jeder anderen Stelle (horizontale Linie mitten im Dokument, oder
+ein Block ohne schließenden Delimiter am Anfang) bleibt gewöhnlicher Inhalt; die Unterscheidung ist
+kein Sonderfall der Eval-Korpora, sondern folgt der verbreiteten Konvention aus Jekyll/Hugo/Obsidian.
+Die Frontmatter-**Felder** selbst werden hier nicht als Metadaten ausgewertet — das berührt die
+Metadaten-Durchreichung, an der #1107 parallel arbeitet.
+
+### 26. Gemessene Verschiebung: Chunkzahl je Domäne
+
+Chunkzahl je Dokument, gemessen mit `CityLandmarksChunkSizeDryRunTest`/`VerwaltungChunkSizeDryRunTest`
+gegen die real registrierte `MarkdownDocumentPipeline` (chunk-size=1000/chunk-overlap=100, wie
+`application.yml`):
+
+| Domäne | vorher (TikaFallbackPipeline) | nachher (MarkdownDocumentPipeline, Frontmatter verworfen) | `maxChunksPerDocument` |
+|---|---|---|---|
+| `comic-characters` | exakt 1 (Ein-Chunk-Invariante) | exakt 1 (Ein-Chunk-Invariante hält, siehe 25.) | unverändert 1 |
+| `city-landmarks` | min 3, median 8, max 11 | min 5, median 15, max 17 | 13 → 20 |
+| `verwaltung` | min 3, median 3, max 4 | min 10, median 15, max 16 | 6 → 19 |
+
+`comic-characters` bleibt bei Chunkzahl 1, aber **nicht** bei identischem Chunk-Text: Der neue
+Pipeline-Pfad formatiert den Chunk neu (Überschriften-Breadcrumb statt `#`-Präfix, neu zusammengesetzte
+Absätze) und verwirft das Frontmatter — die Einbettung dieses einen Chunks ändert sich also trotz
+gleichbleibender Chunkzahl. Alle drei Domänen brauchen deshalb neue Baselines auf beiden Pfaden, nicht
+nur `city-landmarks`/`verwaltung`.
+
+### 27. Keine Erhöhung von `measurementContractVersion`/`PIPELINE_MEASUREMENT_CONTRACT_VERSION`, aber eine neue Baseline-Pflicht für alle drei Domänen
+
+Diese Änderung berührt keine der Metrikdefinitionen (Entscheidungen 1–10) und keine der
+Pipeline-Pfad-Festlegungen (Entscheidungen 11–23) — nDCG-Gain, IDCG-Basis, Fenstergrößen,
+Schwellenbehandlung, Mittelungsart und die geprüften Fixpunkte selbst bleiben wörtlich unverändert.
+`maxChunksPerDocument`/`max-chunks-per-document` (Entscheidung 13/18), der Produktions-Query-Parameter
+in `PipelineBaseline.FixedPoints`, bleibt in allen drei Pipeline-Baselines unverändert bei 2 — er ist
+kein Fixpunkt, der sich hier bewegt. Geändert haben sich stattdessen **`chunkTopK`/`searchTopK`**
+(city-landmarks 130 → 200, verwaltung 60 → 190), abgeleitet aus dem gleichnamigen, aber eigenen
+Eval-Feld `EvalDomainConfig.maxChunksPerDocument` über `DocumentRanking.documentTopKWindowSize(...)` —
+`searchTopK` ist nach Entscheidung 3 selbst Teil des Messvertrags. Ungetrackt von jedem heutigen
+Fixpunkt bleibt zusätzlich der tatsächliche Chunk-Inhalt der drei Korpora. Nach demselben Muster wie
+ein Embedding-Modell- oder Chunk-Size-Wechsel (Entscheidung 6, Klammerbemerkung: „denselben Charakter
+wie eine Korpus- oder Modelländerung") gilt: **keine Vertragsversion steigt**, aber **jede der drei
+Domänen-Baselines auf beiden Pfaden muss neu gezogen werden**. Die Voraussetzung „sobald ein stabiler
+Stand nach #1049 vorliegt" wurde nicht abgewartet — der Maintainer hat auf den nächtlichen
+Nachlauf verzichtet und die Baselines aus dem lokalen Lauf vom 2026-09-01 gemergt (siehe
+PR-Beschreibung zu #1103 sowie die `notes`-Felder der sechs Baseline-Dateien).
+
+**Offene Lücke, nicht durch #1103 geschlossen:** Weder `Baseline.FixedPoints` noch
+`PipelineBaseline.FixedPoints` führen heute einen Fixpunkt für „welche `DocumentPipeline`
+(Id+Version) hat dieses Format zuletzt gechunkt". Ein künftiger, unbeabsichtigter Pipeline-Tausch für
+ein bereits registriertes Format (etwa ein Downgrade oder ein Bugfix, der die Chunk-Grenzen
+verschiebt) würde vom `BaselineComparator` nicht als Ungültigkeit der Baseline erkannt — anders als
+ein Chunk-Size- oder Embedding-Modell-Wechsel, die beide eigene Fixpunkte sind. Für #1103 wird das
+bewusst nicht geschlossen (Umfang des Issues ist die Registrierung samt Baseline-Neuziehung, nicht der
+Fixpunkt-Katalog); ein Folge-Issue für einen `chunkingPipeline`-Fixpunkt ist sinnvoll, sobald ein
+zweites Format nach seiner eigenen Registrierung denselben Effekt zeigt.

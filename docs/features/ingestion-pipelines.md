@@ -1,6 +1,6 @@
 # Ingestion-Pipelines je Dokumenttyp
 
-> **Status: Umgesetzt bis auf dokumentierte Zurückstellungen (#1062, #1103, #1105); Pflege
+> **Status: Umgesetzt bis auf dokumentierte Zurückstellungen (#1062, #1105); Pflege
 > fortlaufend.**
 
 Diese Spezifikation führt zusammen, was in den Diskussionspapieren zu
@@ -339,7 +339,7 @@ Alle drei — sowie `HtmlDocumentPipeline` — nutzen dieselbe, geteilte `Headin
 
 **Chunk-Größe: gesetzt, nicht gemessen** für alle drei — der bestehende Evaluierungskorpus enthält keine PDF-, DOCX- oder PPTX-Dokumente. **Baseline unberührt** — kein Korpusdokument dieses Typs.
 
-**`MarkdownDocumentPipeline` (`id` `markdown`, Version 1) ist gebaut und getestet, aber bewusst nicht als Bean registriert.** Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; ein Umschalten von `.md` auf überschriftenbewussten Zuschnitt ist damit — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung: Ein Testlauf gegen die Verwaltungsdomäne zeigte 17 statt der konfigurierten (und bislang gemessenen) höchstens 6 Chunks je Dokument, weil die §-Gliederung der Satzungen jetzt tatsächlich geschnitten wird. Gleichzeitig zieht #1049 die Pipeline-Baselines neu — zwei gleichzeitige Baseline-Bewegungen wären nicht auseinanderzuhalten. Die Registrierung (Bean-Methode plus die dafür nötige Aktualisierung von Eval-Domänenkonfiguration und Baselines) ist deshalb auf #1103 verschoben, das erst nach #1049 und einem grünen nächtlichen Lauf startet (Koordinator-Freigabe 01.09.2026). Bis dahin läuft `.md` unverändert über `TikaFallbackPipeline`.
+**`MarkdownDocumentPipeline` (`id` `markdown`, Version 1) ist seit #1103 als Bean registriert**, anstelle von `TikaFallbackPipeline` für `.md`. Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; das Umschalten war deshalb — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung, siehe [ADR-0012, Nachtrag „Strukturbewusstes Markdown-Chunking"](decisions/0012-messvertrag-retrieval-harness.md#nachtrag-strukturbewusstes-markdown-chunking-issue-1103) für die gemessene Verschiebung und die Baseline-Folgen. Ein Fund bei der Registrierung: Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block vor der ersten Überschrift, den `HeadingSectionSplitter` sonst zu einem eigenen, überschriftslosen ersten Chunk gemacht hätte — `MarkdownDocumentPipeline` verwirft einen `---`-begrenzten Block am Dateianfang deshalb, statt ihn zu chunken (siehe die Pipeline-eigene Javadoc).
 
 ### Chunk-Größen: gemessen, wo Messmaterial existiert — und sonst ehrlich gesetzt
 
