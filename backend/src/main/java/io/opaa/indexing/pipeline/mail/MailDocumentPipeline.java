@@ -32,11 +32,16 @@ import org.springframework.beans.factory.ObjectProvider;
  * prepended to the message's first body text, <b>before</b> that text reaches {@link
  * ChunkingService#chunkDocuments} (see {@link #bodyChunks}) - so a sender name, an address or a
  * Betreff reaches embedding and full-text search, and an unbounded {@code To} line (a round mail to
- * hundreds of recipients) is still cut to the configured chunk size by the same splitter instead of
- * growing the chunk past it. A message whose body never produces a chunk at all (blank, or absent
- * next to a PDF-only attachment) still gets a header-only chunk when it carries any Kopfdaten -
- * otherwise the common "see attached" mail would index its attachment but lose its own sender and
- * Betreff entirely. One chunk per message, or one per quoted-reply segment (see {@link
+ * hundreds of recipients) is always cut to the configured chunk size by the same splitter instead
+ * of growing one chunk past it - true of every path that produces a header-bearing chunk, including
+ * the header-only one below (#1130 Befund 1, review round 3). A message whose body never produces a
+ * chunk at all but carries at least one attachment still gets a header-only chunk carrying its
+ * Kopfdaten - otherwise the common "see attached" mail would index its attachment but lose its own
+ * sender and Betreff entirely. A blank body with <em>no</em> attachment stays {@code
+ * NO_EXTRACTABLE_TEXT}: nothing in it carries content of its own, and its Kopfdaten are then
+ * exactly as much template text as a repeating page header (#1130 Befund 1, review round 3,
+ * decision 3; mirrors {@code DocxDocumentPipeline}'s "header/footer text never rescues this
+ * outcome"). One chunk per message, or one per quoted-reply segment (see {@link
  * MailThreadSplitter}); a segment still too long for a single chunk falls back to {@link
  * ChunkingService}'s ordinary token splitter. An attachment runs recursively through the pipeline
  * of its own type via {@link DocumentPipelineRegistry} - an attachment that is itself an EML/MSG (a
@@ -210,10 +215,17 @@ public class MailDocumentPipeline implements DocumentPipeline {
    * segment that actually exceeds it is further cut, exactly the fallback role token-chunking plays
    * project-wide once structure runs out (ingestion-pipelines.md, Teil 2, "Der Grundsatz").
    *
-   * <p><b>A message whose body never produces a chunk still gets a header-only chunk</b> if it
-   * carries any Kopfdaten (#1130 Befund 1, review finding 4): a blank body next to a PDF attachment
-   * - the common "Anbei der Bescheid" mail - would otherwise index the attachment while losing
-   * sender and Betreff entirely, silently contradicting the very fix this method makes.
+   * <p><b>A message whose body never produces a chunk, but carries an attachment, still gets a
+   * header-only chunk</b> if it has any Kopfdaten (#1130 Befund 1): a blank body next to a PDF
+   * attachment - the common "Anbei der Bescheid" mail - would otherwise index the attachment while
+   * losing sender and Betreff entirely. This header-only text runs through the very same {@link
+   * ChunkingService#chunkDocuments} call as every other header-bearing chunk (review round 3,
+   * finding 1) - an unbounded {@code An} line does not get a free pass here just because there is
+   * no body text to prepend it to; a round mail with a blank body and hundreds of recipients is cut
+   * into {@code Teil j von M} pieces exactly like a long newsletter. A blank body with <em>no</em>
+   * attachment is not rescued this way (review round 3, finding 3): with nothing else in the
+   * message, its Kopfdaten are template text like a repeating page header, not evidence of content
+   * (mirrors {@code DocxDocumentPipeline}'s "header/footer text never rescues this outcome").
    */
   private List<Document> bodyChunks(ParsedMailMessage message, String fileName) {
     String headerContext = headerContextText(message);
@@ -239,8 +251,17 @@ public class MailDocumentPipeline implements DocumentPipeline {
         chunks.add(new Document(parts.get(j).getText(), metadata));
       }
     }
-    if (headerPending) {
-      chunks.add(new Document(headerContext, kopfdatenMetadata(message)));
+    if (headerPending && !message.attachments().isEmpty()) {
+      List<Document> headerParts =
+          chunkingService.chunkDocuments(fileName, List.of(new Document(headerContext)));
+      for (int j = 0; j < headerParts.size(); j++) {
+        Map<String, Object> metadata = kopfdatenMetadata(message);
+        String location = locationFor(0, 1, j, headerParts.size());
+        if (location != null) {
+          metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+        }
+        chunks.add(new Document(headerParts.get(j).getText(), metadata));
+      }
     }
     return chunks;
   }
@@ -263,34 +284,42 @@ public class MailDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * Renders Von/An/Betreff/Datum as German-labeled context lines, one line per present field, no
+   * Renders Von/Betreff/Datum/An as German-labeled context lines, one line per present field, no
    * line at all for an absent one - empty string when the message carries none of the four.
+   *
+   * <p><b>{@code An} is rendered last, deliberately not in its natural Von/An/Betreff/Datum reading
+   * order</b> (review round 3 nit): {@link ParsedMailMessage#to()} is the one unbounded field
+   * ({@code EmlReader} renders every recipient), so a round mail to hundreds of recipients pushes
+   * it across several chunks once {@link #bodyChunks} runs this block through the token splitter
+   * (see below). Leading with it would strand Betreff and Datum - and the body itself - past the
+   * recipient list, in a chunk a question like "Mail von Müller zum Bebauungsplan" never reaches.
+   * Von/Betreff/Datum are short and stay together in the leading chunk regardless of how large
+   * {@code An} grows.
    *
    * <p><b>Prepended once, to the raw text of the first non-blank segment, before {@link
    * ChunkingService#chunkDocuments} runs on it</b> (#1130 Befund 1) - deliberately not appended
-   * after chunking: {@link ParsedMailMessage#to()} is unbounded ({@code EmlReader} renders every
-   * recipient), so a round mail to hundreds of recipients can make this block itself several
-   * thousand characters. Appending it to an already-chunked piece of text would grow that one chunk
-   * past the configured {@code opaa.indexing.chunk-size} without bound - exactly the failure mode
-   * {@link #bodyChunks}'s own token-splitter fallback exists to prevent. Prepending before chunking
+   * after chunking: appending it to an already-chunked piece of text would grow that one chunk past
+   * the configured {@code opaa.indexing.chunk-size} without bound - exactly the failure mode {@link
+   * #bodyChunks}'s own token-splitter fallback exists to prevent. Prepending before chunking
    * instead lets the same splitter account for this block like any other text, cutting a
    * pathologically large header into its own leading chunk(s) rather than growing one chunk
-   * unboundedly. Never repeated onto a later segment or further-split part: {@link #bodyChunks}
-   * already duplicates this same information into every chunk's <em>metadata</em> (a quoted-reply
-   * thread or a long newsletter can produce many chunks from one message), and doing the same to
-   * the chunk text would dilute embedding and full-text ranking with an identical block repeated
-   * across the whole document - the same Verwässerungsproblem {@code RepeatingHeaderChunk} avoids
-   * for a page header repeating across a document's chunks.
+   * unboundedly - the same treatment {@link #bodyChunks}'s header-only branch gives it when there
+   * is no body text to attach it to at all. Never repeated onto a later segment or further-split
+   * part: {@link #bodyChunks} already duplicates this same information into every chunk's
+   * <em>metadata</em> (a quoted-reply thread or a long newsletter can produce many chunks from one
+   * message), and doing the same to the chunk text would dilute embedding and full-text ranking
+   * with an identical block repeated across the whole document - the same Verwässerungsproblem
+   * {@code RepeatingHeaderChunk} avoids for a page header repeating across a document's chunks.
    */
   private String headerContextText(ParsedMailMessage message) {
     StringBuilder text = new StringBuilder();
     appendHeaderLine(text, "Von", message.from());
-    appendHeaderLine(text, "An", message.to());
     appendHeaderLine(text, "Betreff", message.subject());
     if (message.date() != null) {
       appendHeaderLine(
           text, "Datum", DATE_FORMATTER.withZone(clock.getZone()).format(message.date()));
     }
+    appendHeaderLine(text, "An", message.to());
     return text.toString();
   }
 

@@ -1319,17 +1319,26 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   `FullTextBackfillService`/`FullTextBackfillScheduler` ziehen jede Zeile unterhalb der aktuellen
   Version in kleinen Chargen nach (Standard 200 Chunks je 5-Sekunden-Tick), ohne erneutes Einbetten.
   #1130 belegt diesen Weg erstmals in der Praxis mit einem Bump, der den gesamten Altbestand betrifft
-  (neues Muster in `FullTextIdentifiers` für E-Mail-Adressen, Version 3 → 4): Bei Standardwerten
-  erreicht der Nachlauf rund 144.000 Chunks pro Stunde. Für dieses Zeitfenster liefert
-  `FullTextChunkSearch` für einen noch nicht nachgezogenen Chunk **keinen** Treffer — die
-  versionsgleiche Filterung in der SQL-Abfrage behandelt ihn wie nicht vorhanden, nicht wie
-  vorhanden-aber-schwächer gewichtet. Seit #1106 sitzt der lexikalische Pfad in der RRF-Fusion; die
-  Suche fällt für den betroffenen Bestand in diesem Fenster auf reines Vektor-Retrieval zurück, nicht
-  auf einen Fehler oder eine leere Antwort. **Voraussetzung für einen Bump, der den gesamten Bestand
-  betrifft: #1093** (Gift-Chunk-Isolation) muss vorher gemergt sein — ohne sie hält ein einzelner
-  kaputter Chunk den Fortschritt an, bis der Scheduler-Backoff die Ticks für den Rest der
-  Prozesslaufzeit stoppt, und der Volltextindex bliebe bis zum nächsten Neustart unvollständig statt
-  nur vorübergehend.
+  (neues Muster in `FullTextIdentifiers` für E-Mail-Adressen, Version 3 → 4).
+
+  **Die tatsächliche Wirkung ist gröber als ein Zeilenfilter:** `FullTextBackfillGate` (siehe oben,
+  "Reihenfolge") nimmt eine Bibliothek erst dann wieder in den lexikalischen Suchbereich auf, wenn
+  ihr Backfill **vollständig** ist — `FullTextSearchStage` fragt `searchableLibraries(...)` und lässt
+  jede noch nicht vollständige Bibliothek ganz aus der Fusion heraus, nicht nur die einzelnen noch
+  veralteten Zeilen. Ein Versionssprung markiert jede Zeile jeder Bibliothek als veraltet, also
+  verlässt in dem Moment **der gesamte Bestand** den lexikalischen Pfad, nicht nur die noch nicht
+  bearbeiteten Chunks — exakt die Konsequenz aus "Ein Volltextpfad, der nur die Hälfte des Bestands
+  sieht, ist schlimmer als keiner" (siehe oben), hier auf die Bump-Situation angewandt: keine
+  graduelle Verschlechterung, sondern ein harter Rückfall auf reines Vektor-Retrieval für alles, bis
+  jede Bibliothek einzeln durchgelaufen ist. Bei rund 1 Mio. Chunks bei Standardwerten (144.000
+  Chunks/h) etwa sieben Stunden. Danach wird jede Bibliothek einzeln wieder aufgenommen, sobald ihr
+  eigener Nachlauf fertig ist — keine globale Wiederkehr auf einen Schlag.
+
+  **Voraussetzung für einen Bump, der den gesamten Bestand betrifft: #1093** (Gift-Chunk-Isolation)
+  muss vorher gemergt sein — ohne sie hält ein einzelner kaputter Chunk den Fortschritt einer
+  Bibliothek an, bis der Scheduler-Backoff die Ticks für den Rest der Prozesslaufzeit stoppt; diese
+  eine Bibliothek bliebe dann bis zum nächsten Neustart vollständig außerhalb des lexikalischen
+  Pfads statt nur vorübergehend.
 - **Wirkt der Kontextpräfix aus Contextual Chunking (#933/#940) auch in den Volltextindex?**
   Anthropics „contextual BM25" spricht dafür, und die Roadmap sieht es in Phase 2a vor. Es ist aber eine
   eigene Messung wert: Ein Titelpräfix in jedem Chunk verändert die Termstatistik des ganzen Index.

@@ -170,10 +170,12 @@ public class IndexingConfiguration {
    * DocumentPipelineRegistry} dependency, breaks the circular bean graph the recursive-attachment
    * case creates (see {@link MailDocumentPipeline}'s own Javadoc): {@link
    * #documentPipelineRegistry} below needs every {@link DocumentPipeline} bean including this one,
-   * so this one cannot in turn need the finished registry at construction time. {@code
-   * schedulingClock} is the same bean {@link LibraryIndexingScheduler} already uses (see {@link
-   * #schedulingClock()}) - one server-local-time {@link Clock} for the whole application, not a
-   * second one declared here.
+   * so this one cannot in turn need the finished registry at construction time. The {@code Clock}
+   * parameter resolves the same way {@link LibraryIndexingScheduler}'s own does - by type, to
+   * whichever single {@link Clock} bean is {@code @Primary} in this application ({@code
+   * io.opaa.auth.AuthConfiguration#clock()} today, not {@link #schedulingClock()} despite the
+   * parameter's name, since Spring's {@code @Primary} resolution outranks name matching) - not a
+   * second, independently configured clock.
    */
   @Bean
   MailDocumentPipeline mailDocumentPipeline(

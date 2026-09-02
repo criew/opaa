@@ -57,6 +57,14 @@ class MailDocumentPipelineTest {
    */
   private static final Clock TEST_CLOCK = Clock.fixed(Instant.EPOCH, ZoneId.of("Europe/Berlin"));
 
+  /**
+   * A generous but still meaningfully tight upper bound for one chunk under the 1000-token {@code
+   * opaa.indexing.chunk-size} the round-mail tests configure - well under the ~19354 characters an
+   * unbounded header block produced before #1130 Befund 1's review round 3 fix, but well above an
+   * ordinary chunk, so it fails only on an actually unbounded chunk, not on chunk-size noise.
+   */
+  private static final int MAX_CHUNK_CHARS_FOR_CONFIGURED_SIZE = 6000;
+
   private static ChunkingService defaultChunkingService() {
     return new ChunkingService(
         new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
@@ -164,9 +172,9 @@ class MailDocumentPipelineTest {
     assertThat(chunk.getText())
         .isEqualTo(
             "Von: Max Mustermann <max@example.org>\n"
-                + "An: Erika Musterfrau <erika@example.org>\n"
                 + "Betreff: Anfrage Bauantrag\n"
                 + "Datum: 03.01.2024 10:15\n"
+                + "An: Erika Musterfrau <erika@example.org>\n"
                 + "\n"
                 + "Bitte pruefen Sie den Antrag.");
     assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
@@ -220,12 +228,50 @@ class MailDocumentPipelineTest {
   }
 
   /**
-   * #1130 Befund 1, review finding 4: a blank body must not drop its Kopfdaten - the common "Anbei
-   * der Bescheid" mail (blank body, one attachment) would otherwise index the attachment while
-   * losing sender and Betreff entirely.
+   * #1130 Befund 1: a blank body must not drop its Kopfdaten when the message carries an attachment
+   * - the common "Anbei der Bescheid" mail - or the attachment would be indexed while sender and
+   * Betreff are lost entirely.
    */
   @Test
-  void aBlankBodyWithKopfdatenGetsAHeaderOnlyChunk() throws Exception {
+  void aBlankBodyWithAnAttachmentGetsAHeaderOnlyChunk() throws Exception {
+    Message message =
+        newMessageBuilder("Leer", "a@example.org", "b@example.org")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody("Inhalt".getBytes(StandardCharsets.UTF_8), "text/csv")
+                            .setContentDisposition("attachment", "bescheid.csv"))
+                    .build())
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+
+    DocumentPipelineResult result =
+        pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "leer.eml"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    Document headerChunk = result.chunks().getFirst();
+    assertThat(headerChunk.getText())
+        .isEqualTo(
+            "Von: a@example.org\n"
+                + "Betreff: Leer\n"
+                + "Datum: 03.01.2024 10:15\n"
+                + "An: b@example.org");
+    assertThat(headerChunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
+        .isEqualTo("Leer");
+    assertThat(headerChunk.getMetadata()).doesNotContainKey(ChunkingService.LOCATION_METADATA_KEY);
+  }
+
+  /**
+   * #1130 Befund 1, review round 3 decision 3: without any attachment, a blank body carries nothing
+   * of its own - its Kopfdaten are then template text like a repeating page header, not evidence of
+   * content, and must not rescue the document from {@code NO_EXTRACTABLE_TEXT} (mirrors {@code
+   * DocxDocumentPipeline}'s "header/footer text never rescues this outcome").
+   */
+  @Test
+  void aBlankBodyWithKopfdatenButNoAttachmentHasNoExtractableText() throws Exception {
     Message message =
         newMessageBuilder("Leer", "a@example.org", "b@example.org")
             .setBody("", StandardCharsets.UTF_8)
@@ -235,17 +281,59 @@ class MailDocumentPipelineTest {
     DocumentPipelineResult result =
         pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "leer.eml"));
 
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+  }
+
+  /**
+   * The cross case the review's own probe measured directly against this branch: a blank body, a
+   * PDF attachment, and hundreds of recipients - the header-only chunk must run through the same
+   * token splitter as every other header-bearing chunk, not bypass it (#1130 Befund 1, review round
+   * 3 finding 1). Before the fix this produced one 19354-character chunk.
+   */
+  @Test
+  void aBlankBodyWithAnAttachmentAndHundredsOfRecipientsSplitsTheHeaderOnlyChunk()
+      throws Exception {
+    String[] recipients = new String[500];
+    for (int i = 0; i < recipients.length; i++) {
+      recipients[i] = "Empfaenger " + (i + 1) + " <empfaenger" + (i + 1) + "@amt.de>";
+    }
+    byte[] pdfBytes = readTestResource("test-document.pdf");
+    Message message =
+        Message.Builder.of()
+            .setSubject("Grosser Verteiler")
+            .setFrom("amt@example.org")
+            .setTo(recipients)
+            .setDate(Date.from(Instant.parse("2024-01-03T09:15:00Z")))
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody(pdfBytes, "application/pdf")
+                            .setContentDisposition("attachment", "bescheid.pdf"))
+                    .build())
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+    ChunkingService realisticChunking =
+        new ChunkingService(
+            new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
+
+    DocumentPipelineResult result =
+        pipeline(defaultProperties, realisticChunking)
+            .run(DocumentPipelineSource.ofFile(file, "verteiler.eml"));
+
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    assertThat(result.chunks()).hasSize(1);
-    Document chunk = result.chunks().getFirst();
-    assertThat(chunk.getText())
-        .isEqualTo(
-            "Von: a@example.org\n"
-                + "An: b@example.org\n"
-                + "Betreff: Leer\n"
-                + "Datum: 03.01.2024 10:15");
-    assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
-        .isEqualTo("Leer");
+    List<Document> headerChunks =
+        result.chunks().stream()
+            .filter(c -> c.getMetadata().containsKey(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
+            .toList();
+    assertThat(headerChunks).hasSizeGreaterThan(1);
+    assertThat(headerChunks)
+        .allSatisfy(
+            chunk ->
+                assertThat(chunk.getText().length())
+                    .isLessThanOrEqualTo(MAX_CHUNK_CHARS_FOR_CONFIGURED_SIZE));
+    assertThat(headerChunks.getFirst().getText()).startsWith("Von: amt@example.org");
   }
 
   // --- EML: attachments run through their own pipeline --------------------------------------
@@ -457,7 +545,6 @@ class MailDocumentPipelineTest {
     for (int i = 0; i < recipients.length; i++) {
       recipients[i] = "Empfaenger " + (i + 1) + " <empfaenger" + (i + 1) + "@amt.de>";
     }
-    int totalRecipientChars = String.join(", ", recipients).length();
     Message message =
         Message.Builder.of()
             .setSubject("Rundschreiben")
@@ -476,12 +563,15 @@ class MailDocumentPipelineTest {
             .run(DocumentPipelineSource.ofFile(file, "rundschreiben.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    // The recipient list alone is longer than any single chunk below would be if the splitter
-    // never saw it - the splitter must cut it into more than one chunk rather than growing the
-    // first one to contain it unbounded.
+    // #1130 Befund 1, review round 3: a bound against the configured chunk-size, not merely against
+    // the unbounded recipient list itself - a weaker bound let a several-thousand-character chunk
+    // through undetected (review round 3, finding 1).
     assertThat(result.chunks()).hasSizeGreaterThan(1);
     assertThat(result.chunks())
-        .allSatisfy(chunk -> assertThat(chunk.getText().length()).isLessThan(totalRecipientChars));
+        .allSatisfy(
+            chunk ->
+                assertThat(chunk.getText().length())
+                    .isLessThanOrEqualTo(MAX_CHUNK_CHARS_FOR_CONFIGURED_SIZE));
   }
 
   // --- EML: thread splitting --------------------------------------------------------------------
