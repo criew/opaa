@@ -346,6 +346,40 @@ class DocxDocumentPipelineTest {
   }
 
   @Test
+  void trackedChangesDeletionTextIsExcludedEvenThoughXWPFRunTextDoesNotExcludeIt()
+      throws IOException {
+    // regression guard for #1145 third review, finding 1: XWPFRun#text() excludes w:instrText but
+    // not w:delText - the delText exclusion is carried entirely by this pipeline's own
+    // ctr.sizeOfDelTextArray() check, not by POI. Without it, a header/footer run holding
+    // tracked-changes deletion text (deleted but pending review) would be indexed as if it were
+    // current content.
+    Path file = tempDir.resolve("geloeschter-kopfzeilentext.docx");
+    try (XWPFDocument doc = new XWPFDocument()) {
+      XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
+      XWPFHeader header = policy.createHeader(XWPFHeaderFooterPolicy.DEFAULT);
+      XWPFParagraph paragraph = header.createParagraph();
+      CTR prefix = paragraph.createRun().getCTR();
+      prefix.addNewT().setStringValue("Bleibt ");
+      CTR deleted = paragraph.createRun().getCTR();
+      deleted.addNewDelText().setStringValue("Geloescht");
+      CTR suffix = paragraph.createRun().getCTR();
+      suffix.addNewT().setStringValue("Ende");
+      addParagraph(doc, "Fachlicher Inhalt.");
+      write(doc, file);
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(
+            DocumentPipelineSource.ofFile(file, "geloeschter-kopfzeilentext.docx", ".docx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText())
+        .isEqualTo("Bleibt Ende")
+        .doesNotContain("Geloescht");
+  }
+
+  @Test
   void aFldSimpleFieldsCachedValueIsExcluded() throws IOException {
     // regression guard for #1145 second review, finding 2: w:fldSimple (LibreOffice's .docx
     // export form for a page number, as opposed to Word's own begin/separate/end run sequence) is

@@ -184,7 +184,10 @@ public class DocxDocumentPipeline implements DocumentPipeline {
    * is correct for at most one page/moment, not document content. Nested fields (a field whose
    * cached value itself contains another field, e.g. {@code IF} wrapping {@code PAGE}) are tracked
    * with a depth counter rather than a flag - a flag would clear on the inner field's own {@code
-   * END} and let the remainder of the outer field's cached value leak through.
+   * END} and let the remainder of the outer field's cached value leak through. A narrower gap
+   * remains for a nested field with no result part of its own ({@code BEGIN}/{@code instrText}/
+   * {@code END}, never updated): its own {@code END} still decrements the shared counter, ending
+   * exclusion of the outer field's result early (over-collection, not text loss) - see #1162.
    *
    * <p>A {@code w:fldSimple} field (LibreOffice's export form, as opposed to Word's begin/separate
    * /end form above) is a distinct POI run type ({@code XWPFFieldRun}) that carries neither {@code
@@ -195,9 +198,10 @@ public class DocxDocumentPipeline implements DocumentPipeline {
    * tab-separated multi-column letterhead ("Stadt Musterstadt&lt;tab&gt;Az. 12-34/2026") is
    * routinely one run with several {@code w:t}/{@code w:tab} children, so {@link XWPFRun#text()} is
    * used instead - it renders every child in order, including tabs/breaks as characters, and
-   * already excludes {@code w:instrText}/{@code w:delText} itself. A run holding tracked-changes
-   * deletion text ({@code ctr.sizeOfDelTextArray() > 0}, deleted but pending review) is skipped
-   * outright - the same exclusion {@link XWPFParagraph#getText()} applies to the body.
+   * already excludes {@code w:instrText} itself (POI's own {@code _getText} skips it) - but not
+   * {@code w:delText}. A run holding tracked-changes deletion text is therefore excluded by this
+   * method's own check ({@code ctr.sizeOfDelTextArray() > 0} below), not by {@link XWPFRun#text()}
+   * - the same exclusion {@link XWPFParagraph#getText()} applies to the body.
    */
   private static String paragraphTextExcludingFieldValues(XWPFParagraph paragraph) {
     StringBuilder text = new StringBuilder();
