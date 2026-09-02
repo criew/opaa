@@ -599,13 +599,19 @@ nur `city-landmarks`/`verwaltung`.
 Diese Änderung berührt keine der Metrikdefinitionen (Entscheidungen 1–10) und keine der
 Pipeline-Pfad-Festlegungen (Entscheidungen 11–23) — nDCG-Gain, IDCG-Basis, Fenstergrößen,
 Schwellenbehandlung, Mittelungsart und die geprüften Fixpunkte selbst bleiben wörtlich unverändert.
-Geändert hat sich nur der **Wert** eines bereits bestehenden Fixpunkts
-(`maxChunksPerDocument`/`max-chunks-per-document`, Entscheidung 13/18) sowie — ungetrackt von jedem
-heutigen Fixpunkt — der tatsächliche Chunk-Inhalt der drei Korpora. Nach demselben Muster wie ein
-Embedding-Modell- oder Chunk-Size-Wechsel (Entscheidung 6, Klammerbemerkung: „denselben Charakter wie
-eine Korpus- oder Modelländerung") gilt: **keine Vertragsversion steigt**, aber **jede der drei
-Domänen-Baselines auf beiden Pfaden muss neu gezogen werden**, sobald ein stabiler Stand nach #1049
-vorliegt (Voraussetzung dieses Issues).
+`maxChunksPerDocument`/`max-chunks-per-document` (Entscheidung 13/18), der Produktions-Query-Parameter
+in `PipelineBaseline.FixedPoints`, bleibt in allen drei Pipeline-Baselines unverändert bei 2 — er ist
+kein Fixpunkt, der sich hier bewegt. Geändert haben sich stattdessen **`chunkTopK`/`searchTopK`**
+(city-landmarks 130 → 200, verwaltung 60 → 190), abgeleitet aus dem gleichnamigen, aber eigenen
+Eval-Feld `EvalDomainConfig.maxChunksPerDocument` über `DocumentRanking.documentTopKWindowSize(...)` —
+`searchTopK` ist nach Entscheidung 3 selbst Teil des Messvertrags. Ungetrackt von jedem heutigen
+Fixpunkt bleibt zusätzlich der tatsächliche Chunk-Inhalt der drei Korpora. Nach demselben Muster wie
+ein Embedding-Modell- oder Chunk-Size-Wechsel (Entscheidung 6, Klammerbemerkung: „denselben Charakter
+wie eine Korpus- oder Modelländerung") gilt: **keine Vertragsversion steigt**, aber **jede der drei
+Domänen-Baselines auf beiden Pfaden muss neu gezogen werden**. Die Voraussetzung „sobald ein stabiler
+Stand nach #1049 vorliegt" wurde nicht abgewartet — der Maintainer hat auf den nächtlichen
+Nachlauf verzichtet und die Baselines aus dem lokalen Lauf vom 2026-09-01 gemergt (siehe
+PR-Beschreibung zu #1103 sowie die `notes`-Felder der sechs Baseline-Dateien).
 
 **Offene Lücke, nicht durch #1103 geschlossen:** Weder `Baseline.FixedPoints` noch
 `PipelineBaseline.FixedPoints` führen heute einen Fixpunkt für „welche `DocumentPipeline`
