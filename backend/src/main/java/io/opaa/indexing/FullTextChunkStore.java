@@ -106,7 +106,6 @@ public class FullTextChunkStore {
     if (chunks.isEmpty()) {
       return;
     }
-    List<UUID> chunkIds = chunks.stream().map(c -> UUID.fromString(c.getId())).toList();
     jdbcTemplate.batchUpdate(
         "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv, "
             + "content_tsv_version) VALUES (?, ?, ?, "
@@ -133,10 +132,22 @@ public class FullTextChunkStore {
           ps.setString(6, String.join(" ", FullTextIdentifiers.extract(chunk.getText())));
           ps.setShort(7, CURRENT_TSV_VERSION);
         });
-    // A chunk that just indexed successfully is - by definition - no longer a skip candidate
-    // (#1093 review, W1/W3): a stale chunk_full_text_skip row left over from an earlier,
-    // since-healed attempt would otherwise keep inflating FullTextBackfillProgress#skippedChunks
-    // forever for a chunk that is, in truth, fully indexed now.
+  }
+
+  /**
+   * Deletes any {@code chunk_full_text_skip} row for {@code chunkIds} - called only by {@link
+   * FullTextBackfillService} after a successful {@link #indexChunks}, never from the regular ingest
+   * path ({@code VectorStoreWriter#writeEmbeddedChunks}): an ingest-path chunk id is freshly
+   * generated on every write, so a skip row for it can never exist, and the delete would be a
+   * guaranteed no-op there. On the backfill path, a chunk that just indexed successfully is - by
+   * definition - no longer a skip candidate: a stale row left over from an earlier, since-healed
+   * attempt would otherwise keep inflating {@link FullTextBackfillProgress#skippedChunks} forever
+   * for a chunk that is, in truth, fully indexed now.
+   */
+  void clearSkipRows(List<UUID> chunkIds) {
+    if (chunkIds.isEmpty()) {
+      return;
+    }
     jdbcTemplate.update(
         "DELETE FROM chunk_full_text_skip WHERE chunk_id = ANY (?)",
         ps -> ps.setArray(1, ps.getConnection().createArrayOf("uuid", chunkIds.toArray())));
@@ -147,15 +158,10 @@ public class FullTextChunkStore {
    * after {@link FullTextBackfillService} isolated it as the one row a batch cannot get past, and
    * returns the resulting attempt count. {@code ON CONFLICT (chunk_id) DO UPDATE} increments {@code
    * attempts} when the previous row is at the same version (a repeated failure of the same chunk)
-   * and resets it to 1 when it is not (a version bump, or the row's first failure) - the caller
-   * ({@link FullTextBackfillService#isolateFailingChunk}) only excludes a chunk from further
-   * selection once {@code attempts} reaches its confirmation threshold, so a transient failure that
-   * heals within a couple of ticks (#1093 review, Blocker 1: a concurrent {@code DELETE} on the
-   * same row, a lock timeout) never reaches that threshold and the chunk is simply retried again.
-   *
-   * <p>Undone by a later successful index of the same chunk: {@link #indexChunks} deletes this row
-   * once the chunk indexes successfully, so a resolved failure does not keep counting toward {@link
-   * io.opaa.indexing.FullTextBackfillProgress#skippedChunks} - see that method's own Javadoc.
+   * and resets it to 1 when it is not (a version bump, or the row's first failure); {@link
+   * #clearSkipRows} resets it further by removing the row outright on a later success. The caller
+   * only excludes a chunk from further selection once {@code attempts} reaches its confirmation
+   * threshold, so a failure that heals within a couple of ticks is simply retried again.
    */
   int recordOrIncrementSkip(
       UUID chunkId, UUID documentId, UUID libraryId, String errorMessage, String sqlState) {
@@ -181,12 +187,40 @@ public class FullTextChunkStore {
   }
 
   /**
+   * Records {@code chunkId} as an immediately, permanently skipped chunk - {@code attempts} is
+   * written as {@link FullTextBackfillService#SKIP_CONFIRMATION_ATTEMPTS} directly rather than
+   * incremented, since the caller ({@link FullTextBackfillService}, for a chunk whose {@code
+   * document_id} metadata is not a well-formed UUID) already knows the defect is structural and
+   * will not heal by retrying. {@code documentId} is nullable for exactly that case - the malformed
+   * value itself is not a {@link UUID} this column could hold.
+   */
+  void recordConfirmedSkip(
+      UUID chunkId, UUID documentId, UUID libraryId, String errorMessage, int attempts) {
+    jdbcTemplate.update(
+        "INSERT INTO chunk_full_text_skip (chunk_id, document_id, library_id, "
+            + "content_tsv_version, error_message, attempts, skipped_at) "
+            + "VALUES (?, ?, ?, ?, ?, ?, now()) "
+            + "ON CONFLICT (chunk_id) DO UPDATE SET "
+            + "document_id = EXCLUDED.document_id, "
+            + "content_tsv_version = EXCLUDED.content_tsv_version, "
+            + "error_message = EXCLUDED.error_message, "
+            + "attempts = EXCLUDED.attempts, "
+            + "skipped_at = EXCLUDED.skipped_at",
+        chunkId,
+        documentId,
+        libraryId,
+        CURRENT_TSV_VERSION,
+        errorMessage,
+        attempts);
+  }
+
+  /**
    * Deletes every {@code chunk_full_text} and {@code chunk_full_text_skip} row for {@code
    * documentId} - mirrors {@link VectorChunkStore#deleteByDocumentId}. Clearing {@code
-   * chunk_full_text_skip} too (#1093 review, W3) keeps the invariant {@code VectorChunkStore}'s own
-   * Javadoc already states for {@code chunk_full_text} - "a full-text row can never outlive the
-   * vector chunk it belongs to" - true for this table as well: without it, an operator who deletes
-   * and re-indexes a document to fix a poison chunk would find {@link
+   * chunk_full_text_skip} too keeps the invariant {@code VectorChunkStore}'s own Javadoc already
+   * states for {@code chunk_full_text} - "a full-text row can never outlive the vector chunk it
+   * belongs to" - true for this table as well: without it, an operator who deletes and re-indexes a
+   * document to fix a poison chunk would find {@link
    * io.opaa.indexing.FullTextBackfillProgress#skippedChunks} permanently stuck at its old count,
    * since the replacement chunk gets a fresh id the skip row never matches.
    */

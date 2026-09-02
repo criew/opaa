@@ -477,6 +477,54 @@ class FullTextBackfillServiceIntegrationTest {
     return chunkId;
   }
 
+  /**
+   * Reproduction for #1093 review round 3, finding 2: a chunk whose {@code document_id} metadata is
+   * not a well-formed UUID must not be dropped from selection entirely - that would leave {@code
+   * missingChunks} stuck at 1 forever (nothing ever indexes it, and nothing ever confirms it as
+   * skipped either), which keeps {@link FullTextBackfillProgress#isComplete()} permanently false
+   * and therefore {@code io.opaa.query.FullTextBackfillGate} permanently closed for the
+   * <em>whole</em> library - including its other, healthy chunks. It is instead recorded as an
+   * immediately confirmed skip on the very first {@link FullTextBackfillService#backfillBatch}
+   * call.
+   */
+  @Test
+  void aChunkWithAMalformedDocumentIdIsImmediatelyConfirmedSkippedWithoutBlockingTheGate() {
+    UUID healthyChunk = seedUnindexedChunk("Befreiung von der Verwaltungsgebühr");
+    UUID malformedChunk = seedChunkWithMalformedDocumentId("not-a-uuid");
+
+    int resolved = backfillService.backfillBatch(10);
+
+    assertThat(resolved).isEqualTo(2);
+    assertThat(isIndexed(healthyChunk)).isTrue();
+    assertThat(isIndexed(malformedChunk)).isFalse();
+    assertThat(isConfirmedSkipped(malformedChunk)).isTrue();
+
+    FullTextBackfillProgress progress = progressService.progressForLibrary(libraryId);
+    assertThat(progress.totalChunks()).isEqualTo(2);
+    assertThat(progress.indexedChunks()).isEqualTo(1);
+    assertThat(progress.missingChunks()).isZero();
+    assertThat(progress.skippedChunks()).isEqualTo(1);
+    // The whole point: the gate must not stay closed for the library's one healthy chunk because
+    // of the one it can never resolve.
+    assertThat(progress.isComplete()).isTrue();
+
+    // A second tick never re-selects the confirmed skip - no repeated WARN/ERROR log spam.
+    assertThat(backfillService.backfillBatch(10)).isZero();
+  }
+
+  private UUID seedChunkWithMalformedDocumentId(String malformedDocumentId) {
+    UUID chunkId = UUID.randomUUID();
+    String zeroVector = "[" + String.join(",", java.util.Collections.nCopies(1536, "0")) + "]";
+    jdbcTemplate.update(
+        "INSERT INTO public.vector_store (id, content, metadata, embedding) "
+            + "VALUES (?, ?, ?::jsonb, ?::vector)",
+        chunkId,
+        "Auszug aus der Gebührenordnung",
+        "{\"document_id\":\"" + malformedDocumentId + "\",\"library_id\":\"" + libraryId + "\"}",
+        zeroVector);
+    return chunkId;
+  }
+
   private long identifierMatches(UUID chunkId) {
     return matchesLexeme(chunkId, "xpar35baugb");
   }

@@ -11,12 +11,17 @@ databaseChangeLog:
         changed) makes the row eligible for a fresh attempt again, exactly like a stale
         chunk_full_text row would be. attempts counts consecutive failures at the current
         content_tsv_version; only once it reaches FullTextBackfillService's confirmation threshold
-        is the chunk excluded from further selection (#1093 review, Blocker 1) - a transient failure
-        that heals within a couple of ticks (e.g. a concurrent DELETE on the same row, a lock
-        timeout) never reaches that threshold and the chunk is retried normally. sqlstate is the
-        PostgreSQL error class (e.g. 54000) that classified the failure as attributable to this row
-        rather than to the database itself - nullable, since a non-SQL failure (e.g. malformed
-        metadata) can also be recorded here. No FK to vector_store for the same reason
+        is the chunk excluded from further selection - a transient failure that heals within a
+        couple of ticks (e.g. a concurrent DELETE on the same row, a lock timeout) never reaches
+        that threshold and the chunk is retried normally. sqlstate is the PostgreSQL error class
+        (e.g. 54000) that classified the failure as attributable to this row rather than to the
+        database itself - nullable, since a non-SQL failure (a malformed document_id/library_id
+        metadata value) can also be recorded here. document_id is likewise nullable: a chunk whose
+        document_id metadata is not even a well-formed UUID is recorded here immediately (see
+        FullTextBackfillService's own handling of that case) with a null document_id rather than
+        being dropped from selection entirely - dropping it would leave it permanently pending,
+        which keeps a library's chunk_full_text_skip-aware completion check from ever reporting
+        that library complete. No FK to vector_store for the same reason
         003-chunk-full-text-table.yaml has none: that table is not Liquibase-owned.
       changes:
         - sql:
@@ -24,7 +29,7 @@ databaseChangeLog:
             sql: |
               CREATE TABLE IF NOT EXISTS public.chunk_full_text_skip (
                   chunk_id uuid NOT NULL PRIMARY KEY,
-                  document_id uuid NOT NULL,
+                  document_id uuid,
                   library_id uuid NOT NULL,
                   content_tsv_version smallint NOT NULL,
                   error_message text NOT NULL,

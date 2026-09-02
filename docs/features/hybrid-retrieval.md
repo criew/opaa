@@ -1333,7 +1333,19 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   `FullTextBackfillGate` an dieser einen Bibliothek für immer zu blockieren (`isComplete()` gated nur
   auf noch ausstehende, nicht auf dauerhaft übersprungene Chunks). Eine echte Systemstörung
   (Verbindung weg, Pool erschöpft, Deadlock) trägt kein `SQLSTATE` der Poison-Allowlist und lässt
-  weiterhin `FullTextBackfillScheduler`s Backoff greifen.
+  weiterhin `FullTextBackfillScheduler`s Backoff greifen — ebenso jeder generische
+  `RuntimeException`, der weder ein `IllegalArgumentException` (nie bei der Datenbank angekommen)
+  noch ein passend klassifizierter `DataAccessException` ist: ein Programmierfehler in einer
+  geteilten Hilfsmethode träfe sonst jeden Chunk gleich und würde über die Mehrfachbestätigung
+  hinweg den gesamten Bestand als „bestätigt übersprungen" verbuchen, bis der Gate auf einen in
+  Wahrheit leeren Index öffnet. Ein Chunk, dessen `document_id`-Metadatum selbst kein
+  wohlgeformtes UUID ist, wird nicht über diese Mehrfachbestätigung geführt, sondern sofort als
+  bestätigter Skip verbucht (`document_id` in `chunk_full_text_skip` dafür nullable) — ein
+  struktureller Defekt heilt nicht durch Wiederholung, und ihn stattdessen aus der Auswahl
+  auszuschließen würde `missingChunks` für seine Bibliothek dauerhaft bei 1 belassen. Indiziert ein
+  zuvor gescheiterter Chunk später erfolgreich, löscht `FullTextChunkStore.clearSkipRows` seine
+  Skip-Zeile wieder — nur auf dem Backfill-Pfad, nie beim regulären Ingest, wo eine Skip-Zeile
+  wegen frisch erzeugter Chunk-IDs ohnehin nie existieren kann.
 - **Wirkt der Kontextpräfix aus Contextual Chunking (#933/#940) auch in den Volltextindex?**
   Anthropics „contextual BM25" spricht dafür, und die Roadmap sieht es in Phase 2a vor. Es ist aber eine
   eigene Messung wert: Ein Titelpräfix in jedem Chunk verändert die Termstatistik des ganzen Index.

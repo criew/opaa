@@ -21,13 +21,13 @@ import org.springframework.stereotype.Component;
  * is what {@link FullTextBackfillProgress#isComplete()} actually gates on; see that record's own
  * Javadoc.
  *
- * <p><b>Every count is filtered to {@link FullTextChunkStore#CURRENT_TSV_VERSION} (#1093 review,
- * W1), including {@code indexedChunks}.</b> Without that filter on {@code indexedChunks}, a chunk
- * indexed at an older version, then reselected after a version bump and permanently skipped this
- * time, would count in both {@code indexedChunks} (its stale row) and {@code skippedChunks} (its
- * new skip row) - {@code indexed + skipped} could then exceed {@code totalChunks}, and the same
- * chunk would look simultaneously "indexed" and "given up on". {@code skippedChunks} itself only
- * counts <em>confirmed</em> skips ({@code attempts >= }{@link
+ * <p><b>Every count is filtered to {@link FullTextChunkStore#CURRENT_TSV_VERSION}, including {@code
+ * indexedChunks}.</b> Without that filter on {@code indexedChunks}, a chunk indexed at an older
+ * version, then reselected after a version bump and permanently skipped this time, would count in
+ * both {@code indexedChunks} (its stale row) and {@code skippedChunks} (its new skip row) - {@code
+ * indexed + skipped} could then exceed {@code totalChunks}, and the same chunk would look
+ * simultaneously "indexed" and "given up on". {@code skippedChunks} itself only counts
+ * <em>confirmed</em> skips ({@code attempts >= }{@link
  * FullTextBackfillService#SKIP_CONFIRMATION_ATTEMPTS}), not every not-yet-confirmed candidate -
  * mirroring exactly what {@link FullTextBackfillService#selectPending} still treats as pending.
  *

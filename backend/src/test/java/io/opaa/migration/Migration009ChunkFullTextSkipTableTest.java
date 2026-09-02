@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Delta test for {@code changes/009-chunk-full-text-skip-table.yaml} (#1093): the table {@code
- * io.opaa.indexing.FullTextBackfillService} uses to track ("recordOrIncrementSkip") a chunk it
- * cannot index into {@code chunk_full_text} - the schema {@code FullTextChunkStore} and {@code
+ * io.opaa.indexing.FullTextBackfillService} uses to track a chunk it cannot index into {@code
+ * chunk_full_text} - the schema {@code FullTextChunkStore} and {@code
  * FullTextBackfillProgressService} both depend on.
  */
 class Migration009ChunkFullTextSkipTableTest extends AbstractMigrationTest {
@@ -66,6 +66,36 @@ class Migration009ChunkFullTextSkipTableTest extends AbstractMigrationTest {
         assertThat(rs.next()).isTrue();
         assertThat(rs.getShort("attempts")).isEqualTo((short) 1);
         assertThat(rs.getString("sqlstate")).isNull();
+      }
+    }
+  }
+
+  /**
+   * document_id is nullable (#1093 review round 3, finding 2): a chunk whose document_id metadata
+   * is itself malformed is recorded here with a null document_id rather than being dropped from
+   * selection entirely, which would otherwise leave it permanently pending and its library's
+   * completion check permanently false.
+   */
+  @Test
+  void documentIdIsNullable() throws SQLException {
+    UUID chunkId = UUID.randomUUID();
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "INSERT INTO chunk_full_text_skip (chunk_id, document_id, library_id, "
+                + "content_tsv_version, error_message) VALUES (?, NULL, ?, 1, ?)")) {
+      statement.setObject(1, chunkId);
+      statement.setObject(2, UUID.randomUUID());
+      statement.setString(3, "malformed document_id metadata");
+      statement.executeUpdate();
+    }
+
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "SELECT document_id FROM chunk_full_text_skip WHERE chunk_id = ?")) {
+      statement.setObject(1, chunkId);
+      try (ResultSet rs = statement.executeQuery()) {
+        assertThat(rs.next()).isTrue();
+        assertThat(rs.getObject("document_id")).isNull();
       }
     }
   }

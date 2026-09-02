@@ -106,6 +106,13 @@ describe('SearchIndexingAdminPage', () => {
     // A single missing chunk reads as a sentence, not as "1 Abschnitte fehlen".
     const singularRow = within(table).getByText('Protokolle').closest('tr')
     expect(within(singularRow as HTMLElement).getByText('1 Abschnitt fehlt')).toBeInTheDocument()
+
+    // A library with only a permanently skipped chunk (#1093 review, Blocker 2) - nothing
+    // missing/pending - must not look flawlessly ready either: its own hint stays visible.
+    const skippedRow = within(table).getByText('Formulare').closest('tr')
+    expect(
+      within(skippedRow as HTMLElement).getByText('1 Abschnitt dauerhaft übersprungen'),
+    ).toBeInTheDocument()
   })
 
   it('offers permission profiles and the own context, never a person', async () => {

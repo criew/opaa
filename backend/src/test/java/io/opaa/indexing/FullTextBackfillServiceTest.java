@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,10 +27,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
 /**
- * The isolation decision inside {@link FullTextBackfillService#backfillBatch} (#1093 review,
- * Blocker 1/W2/W4): whether a single chunk's failure is treated as a poison-chunk candidate
- * (recorded, retried a bounded number of times, then permanently skipped) or as a systemic failure
- * that must reach {@link FullTextBackfillScheduler}'s consecutive-failure backoff untouched. {@link
+ * The isolation decision inside {@link FullTextBackfillService#backfillBatch}: whether a single
+ * chunk's failure is treated as a poison-chunk candidate (recorded, retried a bounded number of
+ * times, then permanently skipped) or as a systemic failure that must reach {@link
+ * FullTextBackfillScheduler}'s consecutive-failure backoff untouched. {@link
  * FullTextBackfillServiceIntegrationTest} covers the real, end-to-end poison-chunk case against
  * Postgres; this class isolates the classification logic itself with a scripted failure, which a
  * real database cannot reliably reproduce for the systemic (non-poison) branch.
@@ -67,10 +68,10 @@ class FullTextBackfillServiceTest {
   }
 
   /**
-   * Reproduction for Blocker 1: a failure whose {@code SQLSTATE} class is outside the poison
-   * allowlist (here {@code 40001}, serialization_failure - a concurrent-write conflict, not a bad
-   * row) must propagate out of {@link FullTextBackfillService#backfillBatch} untouched, so {@link
-   * FullTextBackfillScheduler}'s backoff still applies - and must never reach {@link
+   * Reproduction for #1093 review Blocker 1: a failure whose {@code SQLSTATE} class is outside the
+   * poison allowlist (here {@code 40001}, serialization_failure - a concurrent-write conflict, not
+   * a bad row) must propagate out of {@link FullTextBackfillService#backfillBatch} untouched, so
+   * {@link FullTextBackfillScheduler}'s backoff still applies - and must never reach {@link
    * FullTextChunkStore#recordOrIncrementSkip}, which would misdiagnose a transient conflict as a
    * permanent poison chunk.
    */
@@ -117,16 +118,15 @@ class FullTextBackfillServiceTest {
   }
 
   /**
-   * #1093 review, W2: a plain {@link RuntimeException} that never reached the database (e.g. a
-   * malformed value thrown from within {@link FullTextChunkStore#indexChunks}'s own row mapping) is
-   * still treated as a poison-chunk candidate, not as a systemic failure - it is definitionally
-   * about this one chunk's data, since no SQL statement was ever sent for it to fail.
+   * {@link IllegalArgumentException} - the type {@code UUID.fromString} throws - never reached the
+   * database at all, so it is treated as a poison-chunk candidate even though it is not a {@link
+   * org.springframework.dao.DataAccessException}.
    */
   @Test
-  void aNonDataAccessRuntimeExceptionIsAlsoTreatedAsAPoisonCandidate() {
+  void anIllegalArgumentExceptionIsTreatedAsAPoisonCandidate() {
     Document chunk = chunk();
     stubOnePendingChunk(chunk);
-    doThrow(new IllegalArgumentException("simulated malformed row"))
+    doThrow(new IllegalArgumentException("simulated malformed value"))
         .when(fullTextChunkStore)
         .indexChunks(List.of(chunk));
     when(fullTextChunkStore.recordOrIncrementSkip(any(), any(), any(), any(), any())).thenReturn(1);
@@ -139,30 +139,62 @@ class FullTextBackfillServiceTest {
   }
 
   /**
-   * The second safeguard the review asked for, independent of the {@code SQLSTATE} allowlist: a
-   * chunk is not excluded from future selection on its first failure - {@link
-   * FullTextChunkStore#recordOrIncrementSkip} only confirms it once {@link
-   * FullTextBackfillService#SKIP_CONFIRMATION_ATTEMPTS} consecutive failures are reached, which
-   * this test asserts by inspecting the returned attempt count rather than the (mocked) database
-   * state - a transient, per-row failure that heals within a couple of ticks never reaches that
-   * count.
+   * Reproduction for #1093 review round 3, finding 3: a {@link RuntimeException} that is neither a
+   * {@link org.springframework.dao.DataAccessException} nor an {@link IllegalArgumentException}
+   * (e.g. a programming defect in a helper every chunk goes through) must propagate rather than be
+   * isolated as a poison-chunk candidate. Isolating it instead would let the bisection in {@link
+   * FullTextBackfillService#backfillBatch} confirm-skip every chunk in the backlog independently
+   * over a few ticks - {@code missingChunks} would fall to zero, {@code
+   * io.opaa.query.FullTextBackfillGate} would open on an index that is, in truth, empty, and the
+   * lexical path would silently return nothing while reporting itself complete.
    */
   @Test
-  void aChunkIsResolvedButNotYetConfirmedSkippedBelowTheAttemptThreshold() {
+  void aGenericRuntimeExceptionThatNeverReachedTheDatabasePropagatesWithoutRecordingASkip() {
+    Document chunk = chunk();
+    stubOnePendingChunk(chunk);
+    doThrow(new NullPointerException("simulated programming defect"))
+        .when(fullTextChunkStore)
+        .indexChunks(List.of(chunk));
+
+    assertThatThrownBy(() -> service.backfillBatch(10)).isInstanceOf(NullPointerException.class);
+
+    verify(fullTextChunkStore, never()).recordOrIncrementSkip(any(), any(), any(), any(), any());
+  }
+
+  /**
+   * The second safeguard the review asked for, independent of the {@code SQLSTATE} allowlist: a
+   * chunk is not excluded from future selection on its first failure, and a later success clears
+   * whatever attempt count it had accrued - so a fresh, later failure of the same chunk starts over
+   * rather than continuing an old count.
+   */
+  @Test
+  void aChunkThatLaterSucceedsIsClearedAndALaterFreshFailureIsRecordedAgain() {
     Document chunk = chunk();
     stubOnePendingChunk(chunk);
     SQLException tooLongForTsvector = new SQLException("string is too long for tsvector", "54000");
     doThrow(new DataIntegrityViolationException("simulated poison chunk", tooLongForTsvector))
+        .doNothing()
+        .doThrow(
+            new DataIntegrityViolationException("simulated poison chunk again", tooLongForTsvector))
         .when(fullTextChunkStore)
         .indexChunks(List.of(chunk));
     when(fullTextChunkStore.recordOrIncrementSkip(any(), any(), any(), any(), any())).thenReturn(1);
 
-    int resolved = service.backfillBatch(10);
+    // First tick: fails, recorded as one failed attempt.
+    assertThat(service.backfillBatch(10)).isEqualTo(1);
+    verify(fullTextChunkStore, times(1)).recordOrIncrementSkip(any(), any(), any(), any(), any());
 
-    // Resolved (this tick made progress and the scheduler must not go dormant), but the mocked
-    // attempt count (1) is below FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS - a real
-    // FullTextChunkStore would still select this chunk again on the next tick.
-    assertThat(resolved).isEqualTo(1);
-    assertThat(FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS).isGreaterThan(1);
+    // Second tick: the chunk now indexes successfully (its cause was fixed) - the service clears
+    // any earlier skip row for it, rather than leaving a stale one behind that would keep
+    // inflating FullTextBackfillProgress#skippedChunks for a chunk that is, in truth, indexed.
+    assertThat(service.backfillBatch(10)).isEqualTo(1);
+    verify(fullTextChunkStore).clearSkipRows(List.of(UUID.fromString(chunk.getId())));
+
+    // Third tick: a fresh failure. FullTextChunkStore#recordOrIncrementSkip's own ON CONFLICT
+    // logic is what actually resets attempts to 1 in the real database (the second tick's
+    // success already deleted the earlier row) - this service only calls it again and trusts
+    // whatever attempt count it returns, never tracking a counter of its own.
+    assertThat(service.backfillBatch(10)).isEqualTo(1);
+    verify(fullTextChunkStore, times(2)).recordOrIncrementSkip(any(), any(), any(), any(), any());
   }
 }

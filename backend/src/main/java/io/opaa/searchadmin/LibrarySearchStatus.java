@@ -52,12 +52,12 @@ public record LibrarySearchStatus(
 
   /**
    * Incomplete while a chunk still lacks its full-text row, or once one has been permanently given
-   * up on (#1093 review, Blocker 2). The two are not the same condition - {@code
-   * io.opaa.indexing.FullTextBackfillGate} only closes on the former, since a chunk it will never
-   * resolve on its own must not silence every other, healthy chunk of the library - but this
-   * display deliberately does not distinguish them: a library must never look flawlessly READY
-   * while it is quietly missing content the lexical search can never find. {@link
-   * #fullTextSkippedChunks} stays separately visible for an operator to tell the two apart.
+   * up on. The two are not the same condition - {@code io.opaa.indexing.FullTextBackfillGate} only
+   * closes on the former, since a chunk it will never resolve on its own must not silence every
+   * other, healthy chunk of the library - but this display deliberately does not distinguish them:
+   * a library must never look flawlessly READY while it is quietly missing content the lexical
+   * search can never find. {@link #fullTextSkippedChunks} stays separately visible for an operator
+   * to tell the two apart.
    */
   public IndexCondition fullTextIndexCondition() {
     if (vectorChunkCount == 0) {
