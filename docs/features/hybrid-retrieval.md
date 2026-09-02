@@ -1,6 +1,10 @@
 # Hybride Suche mit Reranking
 
-> **Status: Entwurf zur Review.**
+> **Status: umgesetzt.** Jedes Arbeitspaket dieser Spezifikation ist gebaut; der jeweils gebaute
+> Stand steht als Kasten am Kopf des zugehörigen Abschnitts. Ausgenommen ist allein das
+> [Latenz-/Hardwareprofil](#arbeitspaket-latenz-hardwareprofil), das der Maintainer zurückgestellt
+> hat. Die Spezifikation bleibt Begründung und Zuschnitt; den jeweils gebauten Ablauf beschreibt
+> [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md).
 >
 > Diese Spezifikation setzt die Maintainer-Entscheidungen um, die aus den Recherchedokumenten
 > [Retrieval-Strategien (Tech-Report)](../discussions/discussion-retrieval-strategien.md) und
@@ -12,18 +16,28 @@
 **Themenbereich A** der [Produktvision](../VISION.md), **Phase 1**. Diese Spezifikation ist der
 Umsetzungsschnitt zweier Punkte, die [Wissensschicht und Retrieval](./data-indexing-rag.md) als Zielbild
 bereits mit „ja" beantwortet hat — [Hybride Suche](./data-indexing-rag.md#hybride-suche) und
-[Reranking](./data-indexing-rag.md#reranking) — und die im heutigen Code nicht existieren (siehe
-[Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md)). Sie ersetzt keines der beiden Dokumente:
+[Reranking](./data-indexing-rag.md#reranking) — und die vor diesem Epic im Code nicht existierten
+(der jetzige Ablauf steht in [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md)). Sie
+ersetzt keines der beiden Dokumente:
 `data-indexing-rag.md` bleibt Quelle der Wahrheit für Zielbild und Stellschrauben-Tabelle,
-`retrieval-algorithm.md` für den jeweils gebauten Ablauf. **Gebaut sind Arbeitspaket 1** (Pipeline als
-benannte Stufen mit Erklärprotokoll, [#1046](https://github.com/criew/opaa/issues/1046)), **Arbeitspaket
-2a** (Volltextspalte, GIN-Index, wiederaufnehmbarer Backfill,
-[#1047](https://github.com/criew/opaa/issues/1047)), **Arbeitspaket 2** (lexikalischer Suchpfad mit
-Kennungsschutz und Rechtefilter, [#1048](https://github.com/criew/opaa/issues/1048)) **und
-Arbeitspaket 3** (Aufnahme dieses Pfads in die RRF-Fusion,
-[#1049](https://github.com/criew/opaa/issues/1049)) — **mit Arbeitspaket 3 ändert sich zum ersten Mal
-die Endauswahl**, entsprechend sind die Pipeline-Baselines aller drei Domänen neu gezogen. Reranking
-und Admin-Diagnose sind unverändert nicht gebaut.
+`retrieval-algorithm.md` für den jeweils gebauten Ablauf. Gebaut sind inzwischen alle Arbeitspakete:
+
+- **Arbeitspaket 1** — Pipeline als benannte Stufen mit Erklärprotokoll
+  ([#1046](https://github.com/criew/opaa/issues/1046))
+- **Arbeitspaket 2a** — Volltextspalte, GIN-Index, wiederaufnehmbarer Backfill
+  ([#1047](https://github.com/criew/opaa/issues/1047))
+- **Arbeitspaket 2** — lexikalischer Suchpfad mit Kennungsschutz und Rechtefilter
+  ([#1048](https://github.com/criew/opaa/issues/1048))
+- **Arbeitspaket 3** — Aufnahme dieses Pfads in die RRF-Fusion
+  ([#1049](https://github.com/criew/opaa/issues/1049)); **damit ändert sich zum ersten Mal die
+  Endauswahl**, entsprechend sind die Pipeline-Baselines aller drei Domänen neu gezogen
+- **Arbeitspaket 4** — Reranking als Modellrolle mit eigenem Schalter, **per Voreinstellung aus**
+  ([#1050](https://github.com/criew/opaa/issues/1050))
+- **Die Administrationsseite „Suche & Indexierung"** samt Diagnosepfad
+  ([#1053](https://github.com/criew/opaa/issues/1053)) und ihren Berechtigungs-Leitplanken
+  ([#1052](https://github.com/criew/opaa/issues/1052))
+
+Zurückgestellt ist allein das [Latenz-/Hardwareprofil](#arbeitspaket-latenz-hardwareprofil).
 
 ---
 
@@ -989,7 +1003,7 @@ Sicht als:  Rechteprofil „Sachbearbeitung Bürgerbüro" (Satzungen & Gebühren
 2  Teilfragen           "Gebührenbefreiung Bedürftigkeit" · "Voraussetzungen Befreiung Verwaltungsgebühr"
 3  Vektorsuche          25 Kandidaten je Teilfrage   → beste 5 mit Score
 4  Volltextsuche        18 Kandidaten je Teilfrage   → beste 5 mit Rang und Treffertermen
-5  Fusion (RRF)         31 Kandidaten                → Rangänderung je Chunk gegenüber Eingangslisten
+5  Fusion (RRF)         86 Listeneinträge → 62 Kandidaten, davon 50 im Budget
 6  Reranking            50 → 8                       → Reranker-Score je Kandidat, Verworfene sichtbar
 7  Dokument-Verv.       8 Chunks aus 5 Dokumenten    → welcher Chunk wodurch verdrängt wurde
    Endauswahl           mit Begründung je Chunk: über welchen Pfad hereingekommen, wo verloren

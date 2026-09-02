@@ -85,15 +85,20 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param rerankCandidateCount how many fused candidates {@link RetrievalStageName#RERANK} hands to
  *     the rerank model, and therefore the budget {@link RetrievalStageName#RANK_FUSION} keeps for
  *     it instead of {@link #topK} whenever reranking actually runs
- *     (docs/features/hybrid-retrieval.md, Arbeitspaket 4). Default 50: the fundstelle #938 missed
- *     sat at rank 50, exactly the reach of a reranker with this window. An Ebene-1 value -
- *     overridable for benchmark and development, in no administration surface - and one that is
- *     measured rather than set and forgotten (see eval/variants/verwaltung-reranking.json). {@code
- *     0} switches the stage off through its own parameter, the same explicit opt-out {@code
- *     maxChunksPerDocument = 1} is for document completion; whether reranking runs at all is
- *     additionally governed by the rerank model role's own switch ({@code OPAA_RERANK_ENABLED},
- *     {@code io.opaa.llm.RerankProperties}), which is deliberately not a field of this record: it
- *     is an installation decision about a model role, not a retrieval parameter.
+ *     (docs/features/hybrid-retrieval.md, Arbeitspaket 4). Default 50: two search paths at the
+ *     default {@link #fetchK} of 25 can deliver 50 distinct candidates per search query, so the
+ *     window covers a full one-sub-query run of the shipped configuration. <b>The window does not
+ *     extend the reach of retrieval</b> - what no search stage returned cannot be fused and cannot
+ *     be reranked. The reach is {@link #fetchK} per list times the lists actually in flight
+ *     (sub-queries times active search paths), which is why raising this value without raising
+ *     {@link #fetchK} buys nothing. An Ebene-1 value - overridable for benchmark and development,
+ *     in no administration surface - and one that is measured rather than set and forgotten (see
+ *     eval/variants/verwaltung-reranking.json). {@code 0} switches the stage off through its own
+ *     parameter, the same explicit opt-out {@code maxChunksPerDocument = 1} is for document
+ *     completion; whether reranking runs at all is additionally governed by the rerank model role's
+ *     own switch ({@code OPAA_RERANK_ENABLED}, {@code io.opaa.llm.RerankProperties}), which is
+ *     deliberately not a field of this record: it is an installation decision about a model role,
+ *     not a retrieval parameter.
  * @param maxChunksPerDocument the upper bound on how many chunks of one document {@link
  *     DocumentCompletion#complete} will pull into the final selection on top of whatever the
  *     fusion/MMR step already picked (#932 scope v2 - v1's single-tier eviction was a no-op
@@ -157,6 +162,8 @@ public record QueryProperties(
       throw new IllegalArgumentException(
           "maxChunksPerDocument must be between 1 and 10, got " + maxChunksPerDocument);
     }
+    // Deliberately not checked against fetchK: the window's reach is fetchK per list times the
+    // lists in flight, a per-query quantity this constructor cannot know. See the field's Javadoc.
     if (rerankCandidateCount < 0 || rerankCandidateCount > 200) {
       throw new IllegalArgumentException(
           "rerankCandidateCount must be between 0 and 200, got " + rerankCandidateCount);

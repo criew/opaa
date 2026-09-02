@@ -48,8 +48,12 @@ import org.springframework.stereotype.Service;
  *
  * <p><b>The full-text fill state comes from {@link FullTextBackfillProgressService} and nowhere
  * else</b> - the same query the completion gate reads before it lets the lexical path search a
- * library. A second count with its own logic could show "vollständig" while the gate still refuses
- * the library, which is precisely the confusion this page exists to end.
+ * library. A second count with its own logic could show "vollständig" against a gate that refuses
+ * the library on a different rule, which is precisely the confusion this page exists to end. The
+ * two can still disagree for a moment: this page reads the count fresh on every load, while {@code
+ * FullTextBackfillGate} keeps an incomplete library's answer for its recheck interval, so a
+ * backfill that just finished shows as complete here up to that interval before the gate lets the
+ * library into the fusion.
  *
  * <p><b>The two reachability probes are bounded in time and shared across callers.</b> Without that
  * bound every page load costs one chat and one embedding round trip per administrator, per

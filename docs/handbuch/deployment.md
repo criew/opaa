@@ -572,7 +572,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_RERANK_MODEL` | — (leer) | nicht gesetzt | Modell-Kennung, die mit jeder Rerank-Anfrage mitgeschickt wird (Beispiel: `BAAI/bge-reranker-v2-m3`). Zusammen mit der Basis-Adresse *belegt* sie die Rolle; fehlt eine der beiden, gilt die Rolle als unbelegt |
 | `OPAA_RERANK_API_KEY` | — (leer) | nicht gesetzt | Optionaler Zugangsschlüssel. Er erscheint ausschließlich im `Authorization`-Header der Rerank-Anfrage — nie in einem Log, nie in einer Zustandsantwort, auch nicht gekürzt |
 | `OPAA_RERANK_TIMEOUT` | `10s` | nicht gesetzt | Zeitbudget einer einzelnen Rerank-Anfrage. Läuft es ab, behält die Suche die fusionierte Reihenfolge — ein langsamer Endpunkt kostet die Sortierung, nie die Antwort |
-| `OPAA_QUERY_RERANK_CANDIDATE_COUNT` | `50` | nicht gesetzt (Anwendungs-Default gilt) | Wie viele fusionierte Kandidaten die Rerank-Stufe bewertet, und zugleich das Budget, das MMR-Auswahl und Fusion für sie behalten, solange Reranking läuft (0–200, #1050). `0` schaltet die Stufe über ihren eigenen Parameter ab, unabhängig von `OPAA_RERANK_ENABLED`. Der Startwert 50 stammt aus der Diagnose zu #938 (die dort verfehlte Fundstelle lag auf Rang 50) und ist gegen die Verwaltungs-Evaldomäne gemessen — der Wert gehört zu den benchmark-gehärteten internen Defaults und nicht in eine Administrationsoberfläche |
+| `OPAA_QUERY_RERANK_CANDIDATE_COUNT` | `50` | nicht gesetzt (Anwendungs-Default gilt) | Wie viele fusionierte Kandidaten die Rerank-Stufe bewertet, und zugleich das Budget, das MMR-Auswahl und Fusion für sie behalten, solange Reranking läuft (0–200, #1050). `0` schaltet die Stufe über ihren eigenen Parameter ab, unabhängig von `OPAA_RERANK_ENABLED`. Der Startwert 50 entspricht dem, was zwei Suchpfade bei `OPAA_QUERY_FETCH_K=25` je Teilfrage überhaupt liefern können — das Fenster deckt damit einen vollständigen Lauf des Auslieferungsstands mit einer Teilfrage ab. **Das Fenster vergrößert die Reichweite der Suche nicht:** Was keine Suchstufe zurückgibt, kann keine Fusion und kein Reranking heben. Die Reichweite ist `OPAA_QUERY_FETCH_K` je Liste mal der Zahl der Listen (Teilfragen mal aktive Suchpfade); diesen Wert anzuheben, ohne `OPAA_QUERY_FETCH_K` mit anzuheben, bringt deshalb nichts (siehe [„Reranking einschalten“](#reranking-einschalten)). Gemessen wird er gegen die Verwaltungs-Evaldomäne — der Wert gehört zu den benchmark-gehärteten internen Defaults und nicht in eine Administrationsoberfläche |
 | **Indizierung** | | | |
 | `OPAA_INDEXING_CHUNK_SIZE` | `1000` | `1000` | Ziel-Tokens pro Chunk (1–10.000) |
 | `OPAA_INDEXING_CHUNK_OVERLAP` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Anzahl der Tokens, die jeder Chunk vom Ende seines Vorgängers wiederholt, damit eine Aussage an einer Chunk-Grenze in mindestens einem Chunk vollständig erhalten bleibt (#374). Muss kleiner als `OPAA_INDEXING_CHUNK_SIZE` sein; `0` deaktiviert die Überlappung, ein negativer Wert wird auf `0` normalisiert |
@@ -1108,6 +1108,27 @@ nicht vermutet; die Bedingung dafür steht in
 **Keine Kompositazerlegung.** „Genehmigung" findet „Baugenehmigungsverfahren" im Volltextpfad nicht.
 Auch das ist eine bewusste Festlegung: Eine Zerlegung, die „Gebührenordnung" in „Gebühr" und „Ordnung"
 auflöst, verwässert auch Treffer. Ob sich der Tausch lohnt, entscheidet eine Messung, keine Vermutung.
+
+## Reranking einschalten
+
+Reranking ist voreingestellt **aus** (`OPAA_RERANK_ENABLED=false`). Die Modellrolle ist gebaut, aber
+nicht aktiviert: Sie braucht einen eigenen Endpunkt, und ob sie auf einem gegebenen Bestand etwas
+bringt, wird gemessen und nicht vermutet (siehe
+[Hybride Suche mit Reranking](../features/hybrid-retrieval.md)).
+
+Zum Einschalten gehören drei Angaben zusammen: `OPAA_RERANK_ENABLED=true`, `OPAA_RERANK_BASE_URL`
+und `OPAA_RERANK_MODEL`. Fehlt eine der beiden Endpunktangaben oder antwortet der Endpunkt nicht,
+meldet die Anwendung das im Log und führt den Zustand auf der Seite „Suche & Indizierung“
+fortlaufend mit; die Suche läuft dann ohne Reranking weiter — ein Ausfall kostet die Sortierung,
+nie die Antwort.
+
+> **`OPAA_QUERY_FETCH_K` mit anheben.** Der Reranker bewertet nur, was die Suchstufen zuvor
+> zurückgegeben haben. Bei `OPAA_QUERY_FETCH_K=25` liefern Vektor- und Volltextpfad je Teilfrage
+> zusammen höchstens 50 verschiedene Abschnitte; ein Kandidatenfenster von 50
+> (`OPAA_QUERY_RERANK_CANDIDATE_COUNT`) ist damit gerade gedeckt, ein größeres läuft ins Leere. Wer
+> dem Reranking mehr Material geben will — und genau dafür ist es da: eine Fundstelle aus der Tiefe
+> nach vorn zu holen —, hebt `OPAA_QUERY_FETCH_K` mit an. Reranking allein einzuschalten und die
+> Abrufbreite zu lassen, wie sie ist, wirkt nur zur Hälfte.
 
 ## Fehlerbehebung
 
