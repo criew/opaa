@@ -283,6 +283,11 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         events.record(
             IndexingEventCategory.REJECTED, DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE, entryUrl);
         progress.recordSkipped();
+      } else if (result == FileProcessingResult.FAILED) {
+        // See AsyncIndexingExecutor's own handling of this outcome. Its attachments are
+        // deliberately not indexed, mirroring every other rejected entry.
+        events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entryUrl);
+        progress.recordFailed();
       } else if (result == FileProcessingResult.SKIPPED) {
         progress.recordSkipped();
       } else {

@@ -9,7 +9,6 @@ import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,6 +17,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * The ODP pipeline (#1110; ingestion-pipelines.md Teil 3 Punkt 2: "eine Folie = ein Chunk"):
@@ -250,13 +250,14 @@ class OdpDocumentPipelineTest {
   }
 
   @Test
-  void aFileThatIsNotAValidZipArchiveThrows() throws IOException {
+  void aFileThatIsNotAValidZipArchiveHasNoContent() throws IOException {
     Path file = tempDir.resolve("kaputt.odp");
     Files.writeString(file, "das ist kein odp");
 
-    assertThatThrownBy(
-            () -> pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.odp", ".odp")))
-        .isInstanceOf(UncheckedIOException.class);
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -280,8 +281,10 @@ class OdpDocumentPipelineTest {
       out.closeEntry();
     }
 
-    assertThatThrownBy(() -> pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.odp", ".odp")))
-        .isInstanceOf(UncheckedIOException.class);
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -291,10 +294,22 @@ class OdpDocumentPipelineTest {
     Path file = tempDir.resolve("gross.odp");
     writeOdp(file, odpSlide(odpFrame("title", "Titel") + odpFrame(null, "Ein laengerer Text.")));
 
-    assertThatThrownBy(
-            () -> tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.odp", ".odp")))
-        .isInstanceOf(UncheckedIOException.class)
-        .rootCause()
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit() throws IOException {
+    // #1108 review, finding 4: the pipeline's own catch-all collapses every parse failure into the
+    // same NO_CONTENT outcome, so a wrong-reason failure would stay green there. This test goes
+    // straight at OdfContentXml.parse instead, the one place the byte limit's own message survives.
+    Path file = tempDir.resolve("gross-direkt.odp");
+    writeOdp(file, odpSlide(odpFrame("title", "Titel") + odpFrame(null, "Ein laengerer Text.")));
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 50, new DefaultHandler()))
+        .isInstanceOf(IOException.class)
         .hasMessageContaining("size limit");
   }
 
@@ -332,11 +347,29 @@ class OdpDocumentPipelineTest {
                 "<text:s text:c=\"5\"/><text:s text:c=\"5\"/><text:s text:c=\"5\"/>"
                     + "<text:s text:c=\"5\"/>")));
 
-    assertThatThrownBy(
-            () ->
-                tinyLimitPipeline.run(
-                    DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odp", ".odp")))
-        .isInstanceOf(UncheckedIOException.class)
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void theTextCharacterBudgetDirectlyThrowsASaxExceptionNamingWhichLimitWasHit()
+      throws IOException {
+    // See theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit's own Javadoc.
+    Path file = tempDir.resolve("viele-leerzeichen-direkt.odp");
+    writeOdp(
+        file,
+        odpSlide(
+            odpFrame(
+                null,
+                "<text:s text:c=\"5\"/><text:s text:c=\"5\"/><text:s text:c=\"5\"/>"
+                    + "<text:s text:c=\"5\"/>")));
+    OdpDocumentPipeline.OdpContentHandler handler =
+        new OdpDocumentPipeline.OdpContentHandler(5_000, 5, 12);
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+        .isInstanceOf(IOException.class)
         .rootCause()
         .hasMessageContaining("text character limit");
   }
@@ -350,11 +383,23 @@ class OdpDocumentPipelineTest {
     writeOdp(
         file, odpSlide(odpFrame(null, "Folie eins.")) + odpSlide(odpFrame(null, "Folie zwei.")));
 
-    assertThatThrownBy(
-            () ->
-                tinyLimitPipeline.run(
-                    DocumentPipelineSource.ofFile(file, "viele-folien.odp", ".odp")))
-        .isInstanceOf(UncheckedIOException.class)
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-folien.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void theSlideLimitDirectlyThrowsASaxExceptionNamingWhichLimitWasHit() throws IOException {
+    // See theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit's own Javadoc.
+    Path file = tempDir.resolve("viele-folien-direkt.odp");
+    writeOdp(
+        file, odpSlide(odpFrame(null, "Folie eins.")) + odpSlide(odpFrame(null, "Folie zwei.")));
+    OdpDocumentPipeline.OdpContentHandler handler =
+        new OdpDocumentPipeline.OdpContentHandler(1, 1_000, 10_000_000L);
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+        .isInstanceOf(IOException.class)
         .rootCause()
         .hasMessageContaining("slide limit");
   }

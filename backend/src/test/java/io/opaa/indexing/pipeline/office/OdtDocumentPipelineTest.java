@@ -9,7 +9,6 @@ import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,6 +17,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * The ODT pipeline (#1110; ingestion-pipelines.md Teil 3 Punkt 2): the cut follows {@code text:h}'s
@@ -255,13 +255,14 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
-  void aFileThatIsNotAValidZipArchiveThrows() throws IOException {
+  void aFileThatIsNotAValidZipArchiveHasNoContent() throws IOException {
     Path file = tempDir.resolve("kaputt.odt");
     Files.writeString(file, "das ist kein odt");
 
-    assertThatThrownBy(
-            () -> pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.odt", ".odt")))
-        .isInstanceOf(UncheckedIOException.class);
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -282,8 +283,10 @@ class OdtDocumentPipelineTest {
       out.closeEntry();
     }
 
-    assertThatThrownBy(() -> pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.odt", ".odt")))
-        .isInstanceOf(UncheckedIOException.class);
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -293,10 +296,22 @@ class OdtDocumentPipelineTest {
     Path file = tempDir.resolve("gross.odt");
     writeOdt(file, odtHeading(1, "Ueberschrift") + odtParagraph("Ein laengerer Textkoerper."));
 
-    assertThatThrownBy(
-            () -> tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.odt", ".odt")))
-        .isInstanceOf(UncheckedIOException.class)
-        .rootCause()
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit() throws IOException {
+    // #1108 review, finding 4: the pipeline's own catch-all collapses every parse failure into the
+    // same NO_CONTENT outcome, so a wrong-reason failure would stay green there. This test goes
+    // straight at OdfContentXml.parse instead, the one place the byte limit's own message survives.
+    Path file = tempDir.resolve("gross-direkt.odt");
+    writeOdt(file, odtHeading(1, "Ueberschrift") + odtParagraph("Ein laengerer Textkoerper."));
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 50, new DefaultHandler()))
+        .isInstanceOf(IOException.class)
         .hasMessageContaining("size limit");
   }
 
@@ -332,11 +347,27 @@ class OdtDocumentPipelineTest {
             "<text:s text:c=\"5\"/><text:s text:c=\"5\"/><text:s text:c=\"5\"/>"
                 + "<text:s text:c=\"5\"/>"));
 
-    assertThatThrownBy(
-            () ->
-                tinyLimitPipeline.run(
-                    DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odt", ".odt")))
-        .isInstanceOf(UncheckedIOException.class)
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void theTextCharacterBudgetDirectlyThrowsASaxExceptionNamingWhichLimitWasHit()
+      throws IOException {
+    // See theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit's own Javadoc.
+    Path file = tempDir.resolve("viele-leerzeichen-direkt.odt");
+    writeOdt(
+        file,
+        odtParagraph(
+            "<text:s text:c=\"5\"/><text:s text:c=\"5\"/><text:s text:c=\"5\"/>"
+                + "<text:s text:c=\"5\"/>"));
+    OdtDocumentPipeline.OdtContentHandler handler =
+        new OdtDocumentPipeline.OdtContentHandler(50_000, 5, 12);
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+        .isInstanceOf(IOException.class)
         .rootCause()
         .hasMessageContaining("text character limit");
   }
@@ -349,11 +380,22 @@ class OdtDocumentPipelineTest {
     Path file = tempDir.resolve("viele-absaetze.odt");
     writeOdt(file, odtParagraph("Erster Absatz.") + odtParagraph("Zweiter Absatz."));
 
-    assertThatThrownBy(
-            () ->
-                tinyLimitPipeline.run(
-                    DocumentPipelineSource.ofFile(file, "viele-absaetze.odt", ".odt")))
-        .isInstanceOf(UncheckedIOException.class)
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-absaetze.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void theParagraphLimitDirectlyThrowsASaxExceptionNamingWhichLimitWasHit() throws IOException {
+    // See theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit's own Javadoc.
+    Path file = tempDir.resolve("viele-absaetze-direkt.odt");
+    writeOdt(file, odtParagraph("Erster Absatz.") + odtParagraph("Zweiter Absatz."));
+    OdtDocumentPipeline.OdtContentHandler handler =
+        new OdtDocumentPipeline.OdtContentHandler(1, 1_000, 10_000_000L);
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+        .isInstanceOf(IOException.class)
         .rootCause()
         .hasMessageContaining("paragraph limit");
   }

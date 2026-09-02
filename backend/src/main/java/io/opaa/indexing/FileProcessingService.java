@@ -663,7 +663,11 @@ public class FileProcessingService {
    * The connector counterpart to {@link #markUploadFailed}, backing the {@code FAILED} transition
    * in {@link #processFile}/{@link #processUrlFile}/{@link #processRssEntry} when no content could
    * be extracted. Called before {@link #storeChunks} ever runs on this code path, so unlike {@link
-   * #markConnectorIndexed} there are no chunks to clean up on a zero-rows result.
+   * #markConnectorIndexed} there are no chunks to clean up on a zero-rows result. Reports {@link
+   * FileProcessingResult#FAILED} and counts the document as failed, the same accounting {@link
+   * #markConnectorFailedAfterException} gives an uncaught pipeline exception - a document row can
+   * be marked {@code FAILED} without ever throwing here, and the caller-facing outcome must not
+   * depend on which of the two paths reached it.
    */
   private FileProcessingResult markConnectorFailed(UUID documentId) {
     int updated = documentRepository.markFailed(documentId, null);
@@ -672,7 +676,8 @@ public class FileProcessingService {
       metrics.recordSkipped();
       return FileProcessingResult.SKIPPED;
     }
-    return FileProcessingResult.PROCESSED;
+    metrics.recordFailed();
+    return FileProcessingResult.FAILED;
   }
 
   /**

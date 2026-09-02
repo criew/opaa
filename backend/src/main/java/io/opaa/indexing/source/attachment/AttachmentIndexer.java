@@ -206,6 +206,18 @@ public class AttachmentIndexer {
                 candidate.url());
         return;
       }
+      if (result == FileProcessingResult.FAILED) {
+        // See AsyncIndexingExecutor's own handling of this outcome; deferred like the catch-all
+        // below, unlike NO_EXTRACTABLE_TEXT above, because a parse failure can be transient
+        // (I/O, an in-flux upstream file) where a scan PDF's missing text layer is not.
+        ctx.events()
+            .record(
+                IndexingEventCategory.ERROR,
+                "Verarbeitung der Anlage fehlgeschlagen",
+                candidate.url());
+        ctx.anyEntryDeferred().set(true);
+        return;
+      }
       // An unchanged attachment (same checksum as an already-indexed document) is deduplicated by
       // processUrlFile itself and returns SKIPPED - must not inflate the document count again.
       if (result == FileProcessingResult.PROCESSED) {

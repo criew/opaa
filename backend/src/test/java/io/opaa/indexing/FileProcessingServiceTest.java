@@ -250,6 +250,36 @@ class FileProcessingServiceTest {
   }
 
   @Test
+  void processFileMarksDocumentFailedAndReportsFailedWhenThePipelineCannotParseTheDocumentAtAll()
+      throws IOException {
+    // #1108 review, blocker 1: NO_CONTENT (an unparseable document - a corrupt archive, e.g.) must
+    // be reported the same way an uncaught pipeline exception on the same document would be -
+    // FileProcessingResult#FAILED, documentsFailed incremented, never counted as processed.
+    Path file = tempDir.resolve("unparseable.txt");
+    Files.writeString(file, "content the fallback pipeline reports as unparseable");
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-unparseable");
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(documentService.parseDocument(file)).thenReturn(List.of());
+
+    FileProcessingResult result = service.processFile(file, targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.FAILED);
+    verify(chunkingService, never()).chunkDocuments(anyString(), any());
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+    verify(documentRepository, never()).markIndexedFromSource(any(), anyInt(), any(), any(), any());
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(docCaptor.capture());
+    verify(documentRepository).markFailed(docCaptor.getValue().getId(), null);
+    assertThat(
+            meterRegistry.get("opaa.indexing.documents").tag("result", "failed").counter().count())
+        .isEqualTo(1.0);
+  }
+
+  @Test
   void processFileSkipsWithoutPersistingWhenTheLibraryQuotaWouldBeExceeded() throws IOException {
     // #119: nothing is persisted - no document row, no chunks - once the library's quota would be
     // exceeded, and the caller (an indexing executor) learns exactly why via the distinct

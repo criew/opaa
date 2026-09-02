@@ -6,7 +6,6 @@ import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -14,6 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
@@ -34,6 +35,8 @@ import org.xml.sax.helpers.DefaultHandler;
  * docs/features/ingestion-pipelines.md).
  */
 public class OdpDocumentPipeline implements DocumentPipeline {
+
+  private static final Logger log = LoggerFactory.getLogger(OdpDocumentPipeline.class);
 
   static final String ID = "odp";
   static final short VERSION = 1;
@@ -75,8 +78,12 @@ public class OdpDocumentPipeline implements DocumentPipeline {
     boolean found;
     try {
       found = OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler);
-    } catch (IOException e) {
-      throw new UncheckedIOException("Could not read ODP document " + source.fileName(), e);
+    } catch (IOException | RuntimeException e) {
+      // Unparsable content (a corrupt ZIP, a rejected XXE attempt, a limit SAXException wraps into
+      // an IOException) is reported the same way as PDF/DOCX/PPTX/Tabular/ODT - see
+      // DocumentPipelineResult's own Javadoc for the shared contract.
+      log.warn("Could not read ODP document {}", source.fileName(), e);
+      return DocumentPipelineResult.noContent();
     }
     if (!found) {
       // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed" case
@@ -98,7 +105,7 @@ public class OdpDocumentPipeline implements DocumentPipeline {
    * deliberately narrow: it reads only what {@link #run} needs (title, body, notes, slide number)
    * and ignores everything else in {@code content.xml} (styles, images, animations).
    */
-  private static final class OdpContentHandler extends DefaultHandler {
+  static final class OdpContentHandler extends DefaultHandler {
 
     private final int maxSlides;
     private final int maxSpaceRepeat;
