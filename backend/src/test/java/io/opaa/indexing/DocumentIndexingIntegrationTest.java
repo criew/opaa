@@ -23,14 +23,22 @@ import io.opaa.test.OpaaIndexingIntegrationTest;
 import io.opaa.test.OpaaIndexingTestDirectory;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.apache.james.mime4j.dom.Message;
+import org.apache.james.mime4j.message.BodyPartBuilder;
+import org.apache.james.mime4j.message.DefaultMessageWriter;
+import org.apache.james.mime4j.message.MultipartBuilder;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFTextBox;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -463,6 +471,128 @@ class DocumentIndexingIntegrationTest {
             r ->
                 "Abschn. Personalausweis beantragen"
                     .equals(r.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY)));
+  }
+
+  @Test
+  void indexesPptxDocumentsThroughTheDedicatedPipeline() throws IOException {
+    // #1109 (Epic #1054/#1110 review, E3): PPTX was the only supported format never exercised
+    // end-to-end at this layer (admission -> registry -> pipeline -> stored chunk) - only its own
+    // unit test covered it. Mirrors indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline's shape.
+    try (XMLSlideShow ppt = new XMLSlideShow()) {
+      XSLFSlide slide = ppt.createSlide();
+      XSLFTextBox textBox = slide.createTextBox();
+      textBox.setText("Der Personalausweis kostet 37,00 EUR Verwaltungsgebuehr.");
+      try (var out = Files.newOutputStream(classTempDir.resolve("praesentation.pptx"))) {
+        ppt.write(out);
+      }
+    }
+
+    IndexingJob job = triggerIndexing();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(completedJob.getDocumentsProcessed()).isEqualTo(1);
+    assertThat(completedJob.getDocumentsFailed()).isZero();
+    assertThat(completedJob.getDocumentsSkipped()).isZero();
+
+    List<Document> documents = documentRepository.findAll();
+    assertThat(documents).hasSize(1);
+    assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
+    assertThat(documents.getFirst().getChunkCount()).isPositive();
+
+    List<org.springframework.ai.document.Document> results =
+        vectorStore.similaritySearch(
+            SearchRequest.builder()
+                .query("Personalausweis")
+                .topK(100)
+                .similarityThreshold(0.0)
+                .build());
+    assertThat(results).isNotEmpty();
+    // The pipeline_id proves the slide-per-chunk PptxDocumentPipeline actually ran, not the Tika
+    // fallback, which would also happily produce a non-empty, non-blank chunk.
+    assertThat(results)
+        .allMatch(
+            r ->
+                "pptx".equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
+    assertThat(results)
+        .allMatch(
+            r -> "Folie 1".equals(r.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY)));
+  }
+
+  @Test
+  void indexesEmlDocumentWithAttachmentRoutedRecursivelyThroughTheRealRegistry() throws Exception {
+    // #1109 (Epic #1054/#1110 review, E3): EML/MSG were the only supported formats never exercised
+    // end-to-end - and EML's attachment path is the only place in the whole system where
+    // DocumentPipelineRegistry is used reentrantly (temp file -> sub-pipeline -> "Anhang: ..."
+    // Fundort). MailDocumentPipelineTest already proves this against a hand-built registry; this
+    // proves the real, circularly-wired Spring bean graph (MailDocumentPipeline's ObjectProvider<
+    // DocumentPipelineRegistry>, see its own Javadoc) does the same thing.
+    Message message =
+        Message.Builder.of()
+            .setSubject("Anfrage Bauantrag")
+            .setFrom("Buergeramt <buergeramt@example.org>")
+            .setTo("Sachbearbeitung <sachbearbeitung@example.org>")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("Bitte pruefen Sie den Antrag.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody(
+                                "Anhangsinhalt fuer den Bauantrag."
+                                    .getBytes(StandardCharsets.UTF_8),
+                                "text/plain")
+                            .setContentDisposition("attachment", "anlage.txt"))
+                    .build())
+            .build();
+    Files.write(classTempDir.resolve("anfrage.eml"), DefaultMessageWriter.asBytes(message));
+
+    IndexingJob job = triggerIndexing();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(completedJob.getDocumentsProcessed()).isEqualTo(1);
+    assertThat(completedJob.getDocumentsFailed()).isZero();
+    assertThat(completedJob.getDocumentsSkipped()).isZero();
+
+    List<Document> documents = documentRepository.findAll();
+    assertThat(documents).hasSize(1);
+    assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
+    // At least the body chunk and the attachment's own chunk.
+    assertThat(documents.getFirst().getChunkCount()).isGreaterThanOrEqualTo(2);
+
+    List<org.springframework.ai.document.Document> bodyResults =
+        vectorStore.similaritySearch(
+            SearchRequest.builder()
+                .query("Bitte pruefen Sie den Antrag")
+                .topK(100)
+                .similarityThreshold(0.0)
+                .build());
+    assertThat(bodyResults).isNotEmpty();
+    // Every chunk this pipeline produces - including the attachment's own - is attributed to the
+    // mail pipeline's own id (MailDocumentPipeline's own Javadoc), never to the attachment's own
+    // sub-pipeline (here, the Tika fallback for the .txt attachment).
+    assertThat(bodyResults)
+        .allMatch(
+            r ->
+                "email"
+                    .equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
+
+    List<org.springframework.ai.document.Document> attachmentResults =
+        vectorStore.similaritySearch(
+            SearchRequest.builder()
+                .query("Anhangsinhalt fuer den Bauantrag")
+                .topK(100)
+                .similarityThreshold(0.0)
+                .build());
+    assertThat(attachmentResults).isNotEmpty();
+    assertThat(attachmentResults)
+        .anyMatch(
+            r ->
+                "email".equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY))
+                    && String.valueOf(r.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+                        .startsWith("Anhang: anlage.txt"));
   }
 
   @Test

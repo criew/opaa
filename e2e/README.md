@@ -147,7 +147,7 @@ Der `dev`-Modus kennt weder Anmeldedaten noch einen Signaturschlüssel. `e2e/e2e
 vollständig frei von Secrets und bewusst in git eingecheckt; `scripts/run-e2e.mjs` erzeugt und
 reicht nichts Vertrauliches mehr durch.
 
-### Drei Testnutzer
+### Vier Testnutzer
 
 Der `dev`-Modus bringt standardmäßig zwei Nutzer mit (`backend/src/main/resources/application.yml`,
 `opaa.auth.dev.users`):
@@ -160,15 +160,33 @@ Der `dev`-Modus bringt standardmäßig zwei Nutzer mit (`backend/src/main/resour
 Szenarien, die Berechtigungsgrenzen prüfen, verwenden dafür die Fixture `regularUserPage`. Die
 frühere Einschränkung auf einen einzigen Testnutzer (#260) besteht nicht mehr.
 
-Ein dritter Nutzer, `dev-outsider` (`outsider@opaa.local`, regulär, Fixture `outsiderPage`),
-existiert **nur für diese Suite** — er wird über indizierte `OPAA_AUTH_DEV_USERS_*`-Umgebungsvariablen
-in `docker-compose.e2e.yml` ergänzt, nicht in `application.yml`s Standardliste. Ein einfacher
-`SPRING_PROFILES_ACTIVE=local,dev`-Backend kennt ihn nicht. Szenarien, die eine Person ganz ohne
-jede Beziehung zu den Testdaten brauchen (der Negativfall in #424: eine Freigabe darf niemals bei
-jemandem landen, dem sie nie erteilt wurde), verwenden ihn statt `dev-user` — dessen eigene
-Freigaben aus anderen Szenarien sonst das Ergebnis verfälschen könnten.
+Zwei weitere Nutzer existieren **nur für diese Suite** — sie werden über indizierte
+`OPAA_AUTH_DEV_USERS_*`-Umgebungsvariablen in `docker-compose.e2e.yml` ergänzt, nicht in
+`application.yml`s Standardliste. Ein einfacher `SPRING_PROFILES_ACTIVE=local,dev`-Backend kennt sie
+nicht.
 
-Einordnung dieser drei Nutzer neben den übrigen Testkonto-Mustern des Repos (Keycloak-Realm-Nutzer,
+| Subject                 | E-Mail                         | Rolle                                                |
+| ------------------------ | ------------------------------ | ----------------------------------------------------- |
+| `dev-outsider`           | `outsider@opaa.local`          | regulärer Nutzer, Fixture `outsiderPage`               |
+| `dev-format-pipelines`   | `format-pipelines@opaa.local`  | regulärer Nutzer, Fixture `formatPipelinesPage` (#1109) |
+
+`dev-outsider` ist für Szenarien, die eine Person ganz ohne jede Beziehung zu den Testdaten
+brauchen (der Negativfall in #424: eine Freigabe darf niemals bei jemandem landen, dem sie nie
+erteilt wurde) — verwendet statt `dev-user`, dessen eigene Freigaben aus anderen Szenarien sonst
+das Ergebnis verfälschen könnten.
+
+`dev-format-pipelines` ist für Szenarien, die Dokumente hochladen, ohne je eine Chatfrage zu
+stellen: Mit dem deterministischen Embedding des KI-Stubs (jeder Chunk gleich „relevant"
+unabhängig vom Inhalt) kann ein Upload in eines der drei anderen Konten das erwartete Ergebnis
+eines *anderen*, zitatprüfenden Szenarios aus den obersten Treffern verdrängen (siehe
+`format-pipelines-upload.spec.ts` und den zugehörigen Kommentar in `docker-compose.e2e.yml`). Als
+Faustregel gilt: **Wer hochlädt, ohne Zitate zu prüfen, nimmt `formatPipelinesPage`; wer unter
+einem zitat-prüfenden Konto hochlädt, sortiert die Datei weiterhin nach `knowledge-librar*`** (die
+Namenskonvention aus PR #554, siehe die Erläuterung bei `space-chats.spec.ts` unter „Szenarien"
+unten) — beide
+Mechanismen bestehen nebeneinander und lösen dasselbe Problem auf unterschiedlichen Ebenen.
+
+Einordnung dieser vier Nutzer neben den übrigen Testkonto-Mustern des Repos (Keycloak-Realm-Nutzer,
 Quellenzugangsdaten): [`docs/handbuch/deployment.md`, Abschnitt „Testkonten im
 Überblick"](../docs/handbuch/deployment.md#testkonten-im-überblick).
 
@@ -236,6 +254,13 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   der Reihenfolge der Suite unabhängig. Der Durchklick durch die Admin-Sekundärspalte liegt
   seit #805 in `tests/admin-area-navigation.spec.ts` (mit 320-px-Geometrie-Zusicherung), weil
   er keine axe-Analyse ausführt.
+- `tests/csp.spec.ts` (#707) — lädt die App durch die echte nginx-Auslieferung des Stacks und
+  sammelt Content-Security-Policy-Verstöße aus der Browser-Konsole ein; die Konsole muss leer
+  bleiben. Reproduziert den Fall, in dem Vite kleine Font-Subsets als `data:`-URIs bündelt, die
+  nginx' `font-src 'self'` blockiert.
+- `tests/http-caching.spec.ts` (#812) — prüft die Cache-Control-Header der echten nginx-Auslieferung:
+  `index.html` (auch über den SPA-Fallback) verlangt Revalidierung, ein gehashtes Asset cacht
+  unbegrenzt, und die Security-Header (`x-content-type-options`) bleiben dabei erhalten.
 - `tests/knowledge-libraries.spec.ts` (#424) — Wissensbibliotheken über den vollen Stack: Nutzer A
   legt eine Bibliothek an und lädt ein Dokument hoch, sieht es nach der Verarbeitung als indiziert,
   und die Suche findet den eigenen Inhalt mit Quellenangabe. A gibt die Bibliothek an Nutzer B frei
@@ -362,6 +387,18 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   Die wiederverwendbaren Bausteine (Chat starten/fragen, zitierte Quelle prüfen, Bibliothek anlegen
   und befüllen, Bibliothek mit einer Person teilen) leben in `fixtures/chat.ts`, extrahiert aus
   `knowledge-libraries.spec.ts` (#424) und von beiden Dateien importiert, statt dupliziert.
+
+- `tests/format-pipelines-upload.spec.ts` (#1109) — lädt XLSX, HTML und EML in einem Durchlauf
+  hoch und prüft, dass alle drei nach der Verarbeitung als indiziert erscheinen. Deckt damit Formate
+  ab, die die Suite sonst nie durch die echte Upload-Oberfläche treibt (bisher nur `.txt` und ein
+  `.pdf`-Fixture); `.eml` ist der wertvollste der drei Fälle, weil es als einziges Format über eine
+  inhaltstolerante statt einer strikten Medientyp-Prüfung zugelassen wird und über seinen Anhang ein
+  zweites, anderes Format erneut durch die Pipeline-Registry schickt. Keine erschöpfende Abdeckung
+  jedes zugelassenen Formats — das leistet die Backend-Ebene
+  (`DocumentIndexingIntegrationTest`). Stellt selbst nie eine Chatfrage und läuft deshalb unter der
+  eigenen Fixture `formatPipelinesPage` (Konto `dev-format-pipelines`) statt unter `dev-admin` — ein
+  Upload allein könnte sonst mit dem deterministischen KI-Stub-Embedding das erwartete Ergebnis eines
+  anderen, zitatprüfenden Szenarios verdrängen (siehe „Vier Testnutzer" oben).
 
 ## Demo-Smoke (#232)
 
