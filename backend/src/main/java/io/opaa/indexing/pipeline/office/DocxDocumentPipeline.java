@@ -4,20 +4,30 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
+import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFFieldRun;
+import org.apache.poi.xwpf.usermodel.XWPFFooter;
+import org.apache.poi.xwpf.usermodel.XWPFHeader;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFldChar;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STFldCharType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -31,16 +41,34 @@ import org.springframework.ai.document.Document;
  * (English or localized, e.g. {@code Ueberschrift1}), falling back to the paragraph's direct
  * outline level ({@code w:outlineLvl}). A paragraph with neither is body text. Cutting stops at
  * level 3 ({@link #MAX_CUTTING_LEVEL}). Tables are read cell by cell into one paragraph-level text
- * block per table (never a heading); header/footer content is not read at all, since it is not part
- * of {@link XWPFDocument#getBodyElements()}. Only {@code .docx} is handled - the legacy binary
- * {@code .doc} keeps running through the Tika fallback pipeline.
+ * block per table (never a heading). Only {@code .docx} is handled - the legacy binary {@code .doc}
+ * keeps running through the Tika fallback pipeline.
+ *
+ * <p><b>Every header/footer part</b> - {@link XWPFDocument#getHeaderList()}/{@link
+ * XWPFDocument#getFooterList()}, the union across every section and every default/first/even
+ * variant a multi-section document can carry - becomes one deduplicated leading chunk (location
+ * "Kopf-/Fußzeile") rather than being repeated per page or dropped, since none of it is part of
+ * {@link XWPFDocument#getBodyElements()}; see {@link RepeatingHeaderChunk}. Two paragraphs whose
+ * whitespace-normalized text is equal contribute only once. A field's cached value (e.g. a page
+ * number computed the last time the file was saved, correct for at most one page) is excluded
+ * rather than indexed as if it were static text.
+ *
+ * <p><b>Header/footer text never rescues an otherwise body-less document from {@code NO_CONTENT}/
+ * {@code NO_EXTRACTABLE_TEXT}.</b> It is template text - present on a scan-only document exactly as
+ * much as on one with a text layer - and is therefore no evidence that this document itself carries
+ * content; a scanned letter must stay visible as OCR-needing, the single most expensive failure an
+ * ingestion pipeline can make (docs/features/ingestion-pipelines.md). The guard is evaluated purely
+ * against the body text {@link XWPFDocument#getBodyElements()} yields, before the header/footer
+ * chunk is ever added to the result.
  */
 public class DocxDocumentPipeline implements DocumentPipeline {
 
   private static final Logger log = LoggerFactory.getLogger(DocxDocumentPipeline.class);
 
   static final String ID = "docx";
-  static final short VERSION = 1;
+  static final short VERSION = 2;
+
+  private static final String HEADER_FOOTER_LOCATION = "Kopf-/Fußzeile";
 
   /**
    * Cutting stops at level 3, per the Teil 2 table; a deeper heading folds into its section's text.
@@ -73,31 +101,129 @@ public class DocxDocumentPipeline implements DocumentPipeline {
       // PptxDocumentPipeline.
       return DocumentPipelineResult.noContent();
     }
-    List<IBodyElement> elements = readBodyElements(source);
-    if (elements == null) {
+    DocxContent content = readDocxContent(source);
+    if (content == null) {
       return DocumentPipelineResult.noContent();
     }
-    List<HeadingSectionSplitter.Event> events = toEvents(elements);
+    List<HeadingSectionSplitter.Event> events = toEvents(content.bodyElements());
     if (events.isEmpty()) {
+      // A genuinely empty document (no body elements at all). Header/footer text never rescues
+      // this outcome - see this class's own Javadoc on why the guard ignores it entirely.
       return DocumentPipelineResult.noContent();
     }
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL);
+    List<Document> chunks =
+        new ArrayList<>(HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL));
     if (chunks.isEmpty()) {
       return DocumentPipelineResult.noExtractableText();
+    }
+    Document headerFooterChunk =
+        RepeatingHeaderChunk.ofOrNull(HEADER_FOOTER_LOCATION, content.headerFooterText());
+    if (headerFooterChunk != null) {
+      chunks.add(0, headerFooterChunk);
     }
     return DocumentPipelineResult.chunked(chunks);
   }
 
+  private record DocxContent(List<IBodyElement> bodyElements, String headerFooterText) {}
+
   /** {@code null} when the file could not be opened as a DOCX at all - reported as no content. */
-  private static List<IBodyElement> readBodyElements(DocumentPipelineSource source) {
+  private static DocxContent readDocxContent(DocumentPipelineSource source) {
     try (InputStream in = Files.newInputStream(source.file())) {
       try (XWPFDocument document = new XWPFDocument(in)) {
-        return document.getBodyElements();
+        return new DocxContent(document.getBodyElements(), headerFooterText(document));
       }
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read DOCX document {}", source.fileName(), e);
       return null;
     }
+  }
+
+  private static String headerFooterText(XWPFDocument document) {
+    Map<String, String> headerLines = new LinkedHashMap<>();
+    Map<String, String> footerLines = new LinkedHashMap<>();
+    for (XWPFHeader header : document.getHeaderList()) {
+      collectParagraphLines(header.getParagraphs(), headerLines);
+    }
+    for (XWPFFooter footer : document.getFooterList()) {
+      collectParagraphLines(footer.getParagraphs(), footerLines);
+    }
+    String header = String.join("\n", headerLines.values());
+    String footer = String.join("\n", footerLines.values());
+    if (header.isEmpty()) {
+      return footer;
+    }
+    if (footer.isEmpty()) {
+      return header;
+    }
+    return header + "\n\n" + footer;
+  }
+
+  /**
+   * Adds each paragraph's field-excluding text to {@code lines}, keyed by its whitespace-normalized
+   * form so a paragraph repeated verbatim across header/footer variants or sections is kept once.
+   */
+  private static void collectParagraphLines(
+      List<XWPFParagraph> paragraphs, Map<String, String> lines) {
+    for (XWPFParagraph paragraph : paragraphs) {
+      String stripped = paragraphTextExcludingFieldValues(paragraph).strip();
+      if (!stripped.isBlank()) {
+        // \\s alone does not match a non-breaking space (U+00A0) or narrow no-break space
+        // (U+202F) - both routine in an authority letterhead's column separators - so a variant
+        // using one and the default using a plain space would otherwise be treated as distinct
+        // lines and both survive deduplication.
+        lines.putIfAbsent(stripped.replaceAll("[\\s\\u00A0\\u202F]+", " "), stripped);
+      }
+    }
+  }
+
+  /**
+   * A Word complex field (e.g. "Seitenzahl einfügen") is stored as a run sequence: a {@code begin}
+   * marker, the field's instruction code ({@code w:instrText}, e.g. {@code " PAGE "} - never
+   * content), a {@code separate} marker, then one or more runs holding the field's cached
+   * last-computed display value, then an {@code end} marker. The cached value is excluded here - it
+   * is correct for at most one page/moment, not document content. Nested fields (a field whose
+   * cached value itself contains another field, e.g. {@code IF} wrapping {@code PAGE}) are tracked
+   * with a depth counter rather than a flag - a flag would clear on the inner field's own {@code
+   * END} and let the remainder of the outer field's cached value leak through. A narrower gap
+   * remains for a nested field with no result part of its own ({@code BEGIN}/{@code instrText}/
+   * {@code END}, never updated): its own {@code END} still decrements the shared counter, ending
+   * exclusion of the outer field's result early (over-collection, not text loss) - see #1162.
+   *
+   * <p>A {@code w:fldSimple} field (LibreOffice's export form, as opposed to Word's begin/separate
+   * /end form above) is a distinct POI run type ({@code XWPFFieldRun}) that carries neither {@code
+   * w:fldChar} nor {@code w:instrText} on its own {@link org.apache.poi.xwpf.usermodel.XWPFRun
+   * #getCTR()} - it is excluded by type rather than by the state machine above.
+   *
+   * <p>{@link XWPFRun#getText(int)} returns only a run's <em>first</em> {@code w:t} child; a
+   * tab-separated multi-column letterhead ("Stadt Musterstadt&lt;tab&gt;Az. 12-34/2026") is
+   * routinely one run with several {@code w:t}/{@code w:tab} children, so {@link XWPFRun#text()} is
+   * used instead - it renders every child in order, including tabs/breaks as characters, and
+   * already excludes {@code w:instrText} itself (POI's own {@code _getText} skips it) - but not
+   * {@code w:delText}. A run holding tracked-changes deletion text is therefore excluded by this
+   * method's own check ({@code ctr.sizeOfDelTextArray() > 0} below), not by {@link XWPFRun#text()}
+   * - the same exclusion {@link XWPFParagraph#getText()} applies to the body.
+   */
+  private static String paragraphTextExcludingFieldValues(XWPFParagraph paragraph) {
+    StringBuilder text = new StringBuilder();
+    int fieldValueDepth = 0;
+    for (XWPFRun run : paragraph.getRuns()) {
+      if (run instanceof XWPFFieldRun) {
+        continue;
+      }
+      CTR ctr = run.getCTR();
+      for (CTFldChar fldChar : ctr.getFldCharArray()) {
+        if (fldChar.getFldCharType() == STFldCharType.SEPARATE) {
+          fieldValueDepth++;
+        } else if (fldChar.getFldCharType() == STFldCharType.END && fieldValueDepth > 0) {
+          fieldValueDepth--;
+        }
+      }
+      if (ctr.sizeOfInstrTextArray() > 0 || ctr.sizeOfDelTextArray() > 0 || fieldValueDepth > 0) {
+        continue;
+      }
+      text.append(run.text());
+    }
+    return text.toString();
   }
 
   private static List<HeadingSectionSplitter.Event> toEvents(List<IBodyElement> elements) {

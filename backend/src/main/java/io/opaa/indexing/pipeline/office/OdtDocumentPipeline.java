@@ -4,11 +4,14 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
+import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,16 +29,35 @@ import org.xml.sax.helpers.DefaultHandler;
  * by cell into one paragraph-level text block; a table nested inside a cell keeps the outer table's
  * rows intact, but the nested table's own content is discarded entirely - it never reaches the
  * carrier cell either, an accepted narrow gap (docs/features/ingestion-pipelines.md). {@code
- * text:tracked-changes} (deleted text pending review) is skipped entirely. Header/footer text in
- * {@code styles.xml} is not read at all - a known, deliberate content regression versus the
- * previous Tika-based extraction (see docs/features/ingestion-pipelines.md).
+ * text:tracked-changes} (deleted text pending review) is skipped entirely.
+ *
+ * <p><b>{@code styles.xml}'s master page {@code style:header}/{@code style:footer} text</b> is read
+ * through the same hardened reader and, if present, becomes one deduplicated leading chunk
+ * (location "Kopf-/Fußzeile") rather than being repeated per page or dropped - see {@link
+ * RepeatingHeaderChunk}. Every header/footer variant ({@code style:header}, {@code
+ * style:header-left}, {@code style:header-first} and their footer counterparts) is read, since a
+ * document with "different first page" set (the common German-authority-letterhead case) carries
+ * its letterhead only in the first-page variant; two variants whose text is equal after whitespace
+ * normalization contribute only once. A malformed/oversized/malicious {@code styles.xml} only
+ * forfeits this leading chunk; the document's own body content, once successfully parsed, is still
+ * indexed.
+ *
+ * <p><b>Header/footer text never rescues an otherwise body-less document from {@code
+ * NO_EXTRACTABLE_TEXT}.</b> It is template text - present on a scan-only document exactly as much
+ * as on one with a text layer - and is therefore no evidence that this document itself carries
+ * content; a scanned letter must stay visible as OCR-needing, the single most expensive failure an
+ * ingestion pipeline can make (docs/features/ingestion-pipelines.md). The guard is evaluated purely
+ * against the body {@code content.xml} yields, before the header/footer chunk is ever added to the
+ * result.
  */
 public class OdtDocumentPipeline implements DocumentPipeline {
 
   private static final Logger log = LoggerFactory.getLogger(OdtDocumentPipeline.class);
 
   static final String ID = "odt";
-  static final short VERSION = 1;
+  static final short VERSION = 2;
+
+  private static final String HEADER_FOOTER_LOCATION = "Kopf-/Fußzeile";
 
   /** Cutting stops at level 3, mirroring {@link DocxDocumentPipeline#MAX_CUTTING_LEVEL}. */
   private static final int MAX_CUTTING_LEVEL = 3;
@@ -97,10 +119,38 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       // Covers both a genuinely empty <office:text/> and text that chunked down to nothing - the
       // same NO_EXTRACTABLE_TEXT outcome TikaFallbackPipeline reported for either case before this
       // pipeline existed (#1057), so an already-empty document's user-facing treatment (skipped,
-      // not failed) does not change with the routing.
+      // not failed) does not change with the routing. Header/footer text never rescues this
+      // outcome - see this class's own Javadoc on why the guard ignores it entirely.
       return DocumentPipelineResult.noExtractableText();
     }
-    return DocumentPipelineResult.chunked(chunks);
+    List<Document> allChunks = new ArrayList<>(chunks);
+    Document headerFooterChunk =
+        RepeatingHeaderChunk.ofOrNull(HEADER_FOOTER_LOCATION, readHeaderFooterText(source));
+    if (headerFooterChunk != null) {
+      allChunks.add(0, headerFooterChunk);
+    }
+    return DocumentPipelineResult.chunked(allChunks);
+  }
+
+  /**
+   * A missing entry, a missing header/footer or a parse failure all resolve to no header/footer
+   * text - this is supplementary content, and a broken {@code styles.xml} must not fail a document
+   * whose {@code content.xml} parsed successfully above.
+   */
+  private String readHeaderFooterText(DocumentPipelineSource source) {
+    OdtStylesHandler stylesHandler =
+        new OdtStylesHandler(odfProperties.maxSpaceRepeat(), odfProperties.maxTextCharacters());
+    try {
+      OdfContentXml.parse(
+          source.file(), "styles.xml", odfProperties.maxContentXmlBytes(), stylesHandler);
+    } catch (IOException | RuntimeException e) {
+      log.warn(
+          "Could not read styles.xml of ODT document {}; continuing without header/footer text",
+          source.fileName(),
+          e);
+      return "";
+    }
+    return stylesHandler.headerFooterText();
   }
 
   /**
@@ -327,6 +377,94 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       private final StringBuilder cellText = new StringBuilder();
       private List<String> currentRowCells;
       private boolean insideCell;
+    }
+  }
+
+  /**
+   * Collects deduplicated {@code style:header}/{@code style:footer} paragraph text from {@code
+   * styles.xml}'s master page(s) via {@link OdfParagraphTextCollector}. Every variant ({@code
+   * style:header}, {@code style:header-left}, {@code style:header-first} and their footer
+   * counterparts) is read - a document with "different first page" set carries its letterhead only
+   * in the first-page variant, so skipping it (as an earlier version of this handler did) would
+   * miss the exact case motivating this class. Two paragraphs whose whitespace-normalized text is
+   * equal (the common case of the same header/footer repeated verbatim across variants or master
+   * pages) contribute only once, keeping the header role and the footer role each a single
+   * deduplicated block.
+   */
+  static final class OdtStylesHandler extends DefaultHandler {
+
+    private final OdfParagraphTextCollector collector;
+    private boolean insideHeader;
+    private boolean insideFooter;
+    // Normalized (whitespace-collapsed) line -> first-seen original line, insertion-ordered so the
+    // rendered text preserves the order paragraphs appeared in.
+    private final Map<String, String> headerLines = new LinkedHashMap<>();
+    private final Map<String, String> footerLines = new LinkedHashMap<>();
+
+    OdtStylesHandler(int maxSpaceRepeat, long maxTextCharacters) {
+      collector = new OdfParagraphTextCollector(maxSpaceRepeat, maxTextCharacters);
+    }
+
+    /** Header text followed by footer text, blank-line separated when both are present. */
+    String headerFooterText() {
+      String header = String.join("\n", headerLines.values());
+      String footer = String.join("\n", footerLines.values());
+      if (header.isEmpty()) {
+        return footer;
+      }
+      if (footer.isEmpty()) {
+        return header;
+      }
+      return header + "\n\n" + footer;
+    }
+
+    @Override
+    public void startElement(String uri, String localName, String qName, Attributes attributes)
+        throws SAXException {
+      switch (qName) {
+        case "style:header", "style:header-left", "style:header-first" -> insideHeader = true;
+        case "style:footer", "style:footer-left", "style:footer-first" -> insideFooter = true;
+        default -> {
+          // See OdfParagraphTextCollector for text/field handling.
+        }
+      }
+      collector.startElement(qName, attributes);
+    }
+
+    @Override
+    public void characters(char[] ch, int start, int length) throws SAXException {
+      collector.characters(ch, start, length);
+    }
+
+    @Override
+    public void endElement(String uri, String localName, String qName) {
+      String paragraphText = collector.endElement(qName);
+      if (paragraphText != null) {
+        if (insideHeader) {
+          addLineIfNew(headerLines, paragraphText);
+        } else if (insideFooter) {
+          addLineIfNew(footerLines, paragraphText);
+        }
+      }
+      switch (qName) {
+        case "style:header", "style:header-left", "style:header-first" -> insideHeader = false;
+        case "style:footer", "style:footer-left", "style:footer-first" -> insideFooter = false;
+        default -> {
+          // See startElement.
+        }
+      }
+    }
+
+    private static void addLineIfNew(Map<String, String> lines, String value) {
+      String stripped = value.strip();
+      if (stripped.isBlank()) {
+        return;
+      }
+      // \s alone does not match a non-breaking space (U+00A0) or narrow no-break space
+      // (U+202F) - both routine in an authority letterhead's column separators - so a variant
+      // using one and the default using a plain space would otherwise be treated as distinct
+      // lines and both survive deduplication.
+      lines.putIfAbsent(stripped.replaceAll("[\\s\\u00A0\\u202F]+", " "), stripped);
     }
   }
 }

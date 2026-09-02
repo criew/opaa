@@ -5,11 +5,13 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
+import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,20 +30,28 @@ import org.xml.sax.helpers.DefaultHandler;
  * of {@code "title"} becomes the chunk's leading line and {@link
  * ChunkingService#LOCATION_METADATA_KEY location}, every other frame's text becomes body text.
  * {@code presentation:notes} becomes a final labeled paragraph, excluding the same non-content
- * placeholder classes {@link PptxDocumentPipeline} excludes. A presentation where no slide carries
- * any text is rejected as {@code NO_EXTRACTABLE_TEXT}. A placeholder class on a slide's own {@code
- * draw:frame} (not just in notes) and master-slide text in {@code styles.xml} are not read at all,
- * a known, deliberate content regression versus the previous Tika-based extraction (see
- * docs/features/ingestion-pipelines.md).
+ * placeholder classes {@link PptxDocumentPipeline} excludes. A presentation where <b>no slide</b>
+ * carries any text is rejected as {@code NO_EXTRACTABLE_TEXT} regardless of any master-slide text
+ * found (below) - master-slide text is template boilerplate, not evidence that this document itself
+ * carries content, and must not defeat the scan/empty-deck guard. A placeholder class on a slide's
+ * own {@code draw:frame} (not just in notes) is not read at all.
+ *
+ * <p><b>{@code styles.xml}'s master page text</b> is read through the same hardened reader and, if
+ * present, becomes one deduplicated leading chunk (location "Masterfolie") rather than being
+ * repeated per slide or dropped - see {@link RepeatingHeaderChunk}. A malformed/oversized/malicious
+ * {@code styles.xml} only forfeits that leading chunk; the presentation's own slide content, once
+ * successfully parsed, is still indexed.
  */
 public class OdpDocumentPipeline implements DocumentPipeline {
 
   private static final Logger log = LoggerFactory.getLogger(OdpDocumentPipeline.class);
 
   static final String ID = "odp";
-  static final short VERSION = 1;
+  static final short VERSION = 2;
 
-  private static final Set<String> NON_CONTENT_NOTES_CLASSES =
+  private static final String MASTER_SLIDE_LOCATION = "Masterfolie";
+
+  private static final Set<String> NON_CONTENT_PLACEHOLDER_CLASSES =
       Set.of("header", "footer", "date-time", "page-number");
 
   private final OdfProperties odfProperties;
@@ -94,10 +104,38 @@ public class OdpDocumentPipeline implements DocumentPipeline {
     if (handler.chunks().isEmpty() || !handler.anySlideHasText()) {
       // Covers both a genuinely empty <office:presentation/> (zero draw:page elements) and a
       // presentation whose slides carry no text - the same NO_EXTRACTABLE_TEXT outcome
-      // TikaFallbackPipeline reported for either case before this pipeline existed (#1057).
+      // TikaFallbackPipeline reported for either case before this pipeline existed (#1057). A
+      // master-slide chunk never overrides this - see this class's own Javadoc.
       return DocumentPipelineResult.noExtractableText();
     }
-    return DocumentPipelineResult.chunked(handler.chunks());
+    List<Document> chunks = new ArrayList<>(handler.chunks());
+    Document masterSlideChunk =
+        RepeatingHeaderChunk.ofOrNull(MASTER_SLIDE_LOCATION, readMasterSlideText(source));
+    if (masterSlideChunk != null) {
+      chunks.add(0, masterSlideChunk);
+    }
+    return DocumentPipelineResult.chunked(chunks);
+  }
+
+  /**
+   * A missing entry, a missing master page or a parse failure all resolve to no master-slide text -
+   * this is supplementary content, and a broken {@code styles.xml} must not fail a presentation
+   * whose {@code content.xml} parsed successfully above.
+   */
+  private String readMasterSlideText(DocumentPipelineSource source) {
+    OdpStylesHandler stylesHandler =
+        new OdpStylesHandler(odfProperties.maxSpaceRepeat(), odfProperties.maxTextCharacters());
+    try {
+      OdfContentXml.parse(
+          source.file(), "styles.xml", odfProperties.maxContentXmlBytes(), stylesHandler);
+    } catch (IOException | RuntimeException e) {
+      log.warn(
+          "Could not read styles.xml of ODP document {}; continuing without master-slide text",
+          source.fileName(),
+          e);
+      return "";
+    }
+    return stylesHandler.masterSlideText();
   }
 
   /**
@@ -323,7 +361,8 @@ public class OdpDocumentPipeline implements DocumentPipeline {
       }
       String stripped = value.strip();
       if (insideNotes) {
-        if (currentFrameClass != null && NON_CONTENT_NOTES_CLASSES.contains(currentFrameClass)) {
+        if (currentFrameClass != null
+            && NON_CONTENT_PLACEHOLDER_CLASSES.contains(currentFrameClass)) {
           return;
         }
         if (currentNotes.length() > 0) {
@@ -373,6 +412,81 @@ public class OdpDocumentPipeline implements DocumentPipeline {
       private final StringBuilder cellText = new StringBuilder();
       private List<String> currentRowCells;
       private boolean insideCell;
+    }
+  }
+
+  /**
+   * Collects deduplicated paragraph text found inside {@code styles.xml}'s {@code
+   * style:master-page} element(s) via {@link OdfParagraphTextCollector}, deliberately narrow like
+   * {@link OdpContentHandler}: it does not distinguish title/body/notes the way a slide does. A
+   * frame whose {@code presentation:class} is one of {@link #NON_CONTENT_PLACEHOLDER_CLASSES}
+   * (layout scaffolding such as an outline "edit master text" prompt) is excluded, mirroring {@link
+   * OdpContentHandler}'s own notes filter. Two paragraphs whose whitespace-normalized text is equal
+   * (e.g. the same footer repeated across several master pages, or across a page's default/left/odd
+   * layout variants) contribute only once.
+   */
+  static final class OdpStylesHandler extends DefaultHandler {
+
+    private final OdfParagraphTextCollector collector;
+    private boolean insideMasterPage;
+    private String currentFrameClass;
+    // Normalized (whitespace-collapsed) line -> first-seen original line, insertion-ordered so the
+    // rendered text preserves the order paragraphs appeared in.
+    private final Map<String, String> lines = new LinkedHashMap<>();
+
+    OdpStylesHandler(int maxSpaceRepeat, long maxTextCharacters) {
+      collector = new OdfParagraphTextCollector(maxSpaceRepeat, maxTextCharacters);
+    }
+
+    String masterSlideText() {
+      return String.join("\n", lines.values());
+    }
+
+    @Override
+    public void startElement(String uri, String localName, String qName, Attributes attributes)
+        throws SAXException {
+      switch (qName) {
+        case "style:master-page" -> insideMasterPage = true;
+        case "draw:frame" -> currentFrameClass = attributes.getValue("presentation:class");
+        default -> {
+          // See OdfParagraphTextCollector for text/field handling.
+        }
+      }
+      collector.startElement(qName, attributes);
+    }
+
+    @Override
+    public void characters(char[] ch, int start, int length) throws SAXException {
+      collector.characters(ch, start, length);
+    }
+
+    @Override
+    public void endElement(String uri, String localName, String qName) {
+      String paragraphText = collector.endElement(qName);
+      boolean isPlaceholder =
+          currentFrameClass != null && NON_CONTENT_PLACEHOLDER_CLASSES.contains(currentFrameClass);
+      if (paragraphText != null && insideMasterPage && !isPlaceholder) {
+        addLineIfNew(paragraphText);
+      }
+      switch (qName) {
+        case "style:master-page" -> insideMasterPage = false;
+        case "draw:frame" -> currentFrameClass = null;
+        default -> {
+          // See startElement.
+        }
+      }
+    }
+
+    private void addLineIfNew(String value) {
+      String stripped = value.strip();
+      if (stripped.isBlank()) {
+        return;
+      }
+      // \s alone does not match a non-breaking space (U+00A0) or narrow no-break space
+      // (U+202F) - both routine in an authority letterhead's column separators - so a variant
+      // using one and the default using a plain space would otherwise be treated as distinct
+      // lines and both survive deduplication.
+      lines.putIfAbsent(stripped.replaceAll("[\\s\\u00A0\\u202F]+", " "), stripped);
     }
   }
 }
