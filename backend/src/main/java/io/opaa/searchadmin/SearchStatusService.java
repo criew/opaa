@@ -400,7 +400,8 @@ public class SearchStatusService {
               progress.totalChunks(),
               stats.lastIndexedAt(),
               progress.indexedChunks(),
-              progress.missingChunks()));
+              progress.missingChunks(),
+              progress.skippedChunks()));
     }
     result.sort(
         Comparator.comparing(LibrarySearchStatus::libraryName, String.CASE_INSENSITIVE_ORDER));

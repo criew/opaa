@@ -158,7 +158,8 @@ final class SearchAdminResponseMapper {
             toIndexState(status.vectorIndexCondition()),
             toIndexState(status.fullTextIndexCondition()),
             status.fullTextIndexedChunks(),
-            status.fullTextMissingChunks())
+            status.fullTextMissingChunks(),
+            status.fullTextSkippedChunks())
         .lastIndexedAt(status.lastIndexedAt());
   }
 

@@ -1317,13 +1317,23 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   einzelner „Gift-Chunk" (Inhalt, an dem `to_tsvector` scheitert, z. B. weil der resultierende
   Vektor Postgres' 1-MiB-Grenze überschreitet) dabei nicht den gesamten Bestand blockiert, halbiert
   `FullTextBackfillService.backfillBatch` einen fehlschlagenden Batch rekursiv, bis der
-  verursachende Chunk isoliert ist, und trägt ihn dann dauerhaft in `chunk_full_text_skip` ein statt
-  ihn erneut zu versuchen — sichtbar über `FullTextBackfillProgress#skippedChunks`, ohne
-  `FullTextBackfillGate` an dieser einen Bibliothek für immer zu blockieren (`isComplete()` gated
-  nur auf noch ausstehende, nicht auf dauerhaft übersprungene Chunks). Eine echte
-  Datenbankstörung (Verbindung weg, Pool erschöpft) wird über eine `SELECT 1`-Sonde von einem
-  Gift-Chunk unterschieden und lässt weiterhin `FullTextBackfillScheduler`s
-  Backoff greifen.
+  verursachende Chunk isoliert ist. Ein isolierter Chunk wird anhand des PostgreSQL-`SQLSTATE` der
+  ursprünglichen Fehlermeldung klassifiziert (Klassen `22`/`54`/`42` als Gift-Chunk-Kandidat, alles
+  andere als Systemstörung) — **nicht** über eine nachträgliche Sonde: eine Sonde liefe auf einer
+  anderen, später geliehenen Verbindung und würde alles, was im Zeitfenster dazwischen ausheilt (ein
+  konkurrierendes `DELETE`, ein Lock-Timeout), fälschlich als „Datenbank gesund, also Gift-Chunk"
+  einordnen und den Chunk dauerhaft verlieren (#1093-Review, Blocker 1). Ein als Gift-Chunk-Kandidat
+  eingestufter Chunk wird zusätzlich nicht beim ersten Fehlschlag aufgegeben, sondern erst nach
+  `FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS` aufeinanderfolgenden Fehlschlägen dauerhaft in
+  `chunk_full_text_skip` eingetragen — ein Fehlschlag, der sich innerhalb weniger Ticks von selbst
+  löst, wird stattdessen einfach erneut versucht. Erst ein bestätigter Skip zählt in
+  `FullTextBackfillProgress#skippedChunks` (sichtbar auf der Administrationsseite „Suche &
+  Indexierung“ als eigener Hinweis je Bibliothek, `LibrarySearchStatusResponse.fullTextSkippedChunks`
+  — eine Bibliothek mit bestätigten Skips gilt dort nicht mehr als makellos „bereit“), ohne
+  `FullTextBackfillGate` an dieser einen Bibliothek für immer zu blockieren (`isComplete()` gated nur
+  auf noch ausstehende, nicht auf dauerhaft übersprungene Chunks). Eine echte Systemstörung
+  (Verbindung weg, Pool erschöpft, Deadlock) trägt kein `SQLSTATE` der Poison-Allowlist und lässt
+  weiterhin `FullTextBackfillScheduler`s Backoff greifen.
 - **Wirkt der Kontextpräfix aus Contextual Chunking (#933/#940) auch in den Volltextindex?**
   Anthropics „contextual BM25" spricht dafür, und die Roadmap sieht es in Phase 2a vor. Es ist aber eine
   eigene Messung wert: Ein Titelpräfix in jedem Chunk verändert die Termstatistik des ganzen Index.

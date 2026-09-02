@@ -141,7 +141,8 @@ class SearchAdminControllerTest {
                         100,
                         Instant.EPOCH,
                         80,
-                        20))));
+                        20,
+                        0))));
 
     mockMvc
         .perform(get("/api/v1/admin/search/status").with(asAdmin()))

@@ -3,13 +3,20 @@ databaseChangeLog:
       id: 009-chunk-full-text-skip-table
       author: opaa
       comment: >-
-        #1093: persists a chunk the full-text backfill (io.opaa.indexing.FullTextBackfillService)
-        gave up on permanently ("poison chunk", e.g. content to_tsvector cannot process) instead of
-        retrying it - and therefore the whole batch containing it - forever. Keyed by chunk_id like
-        chunk_full_text itself; content_tsv_version records which version the failing attempt was
-        made at, mirroring chunk_full_text's own version column - a later version bump (the lexical
-        analysis chain changed) makes the row eligible for a fresh attempt again, exactly like a
-        stale chunk_full_text row would be. No FK to vector_store for the same reason
+        #1093: tracks a chunk the full-text backfill (io.opaa.indexing.FullTextBackfillService)
+        cannot index - a "poison chunk" candidate - instead of retrying it, and therefore the whole
+        batch containing it, forever. Keyed by chunk_id like chunk_full_text itself;
+        content_tsv_version records which version the failing attempt was made at, mirroring
+        chunk_full_text's own version column - a later version bump (the lexical analysis chain
+        changed) makes the row eligible for a fresh attempt again, exactly like a stale
+        chunk_full_text row would be. attempts counts consecutive failures at the current
+        content_tsv_version; only once it reaches FullTextBackfillService's confirmation threshold
+        is the chunk excluded from further selection (#1093 review, Blocker 1) - a transient failure
+        that heals within a couple of ticks (e.g. a concurrent DELETE on the same row, a lock
+        timeout) never reaches that threshold and the chunk is retried normally. sqlstate is the
+        PostgreSQL error class (e.g. 54000) that classified the failure as attributable to this row
+        rather than to the database itself - nullable, since a non-SQL failure (e.g. malformed
+        metadata) can also be recorded here. No FK to vector_store for the same reason
         003-chunk-full-text-table.yaml has none: that table is not Liquibase-owned.
       changes:
         - sql:
@@ -21,6 +28,8 @@ databaseChangeLog:
                   library_id uuid NOT NULL,
                   content_tsv_version smallint NOT NULL,
                   error_message text NOT NULL,
+                  sqlstate text,
+                  attempts smallint NOT NULL DEFAULT 1,
                   skipped_at timestamptz NOT NULL DEFAULT now()
               );
               CREATE INDEX IF NOT EXISTS idx_chunk_full_text_skip_library_id ON public.chunk_full_text_skip (library_id);

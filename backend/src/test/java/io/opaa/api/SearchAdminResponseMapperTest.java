@@ -133,7 +133,8 @@ class SearchAdminResponseMapperTest {
             230,
             Instant.parse("2026-09-01T08:00:00Z"),
             200,
-            30);
+            30,
+            0);
 
     var response =
         SearchAdminResponseMapper.toStatusResponse(
@@ -168,7 +169,7 @@ class SearchAdminResponseMapperTest {
                     List.of(),
                     List.of(
                         new LibrarySearchStatus(
-                            LIBRARY_ID, "Leer", 0, 0, 0, 0, 0, 0, 0, null, 0, 0))))
+                            LIBRARY_ID, "Leer", 0, 0, 0, 0, 0, 0, 0, null, 0, 0, 0))))
             .getLibraries()
             .get(0);
 

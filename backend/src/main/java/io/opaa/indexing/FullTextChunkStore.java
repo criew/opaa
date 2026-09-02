@@ -106,6 +106,7 @@ public class FullTextChunkStore {
     if (chunks.isEmpty()) {
       return;
     }
+    List<UUID> chunkIds = chunks.stream().map(c -> UUID.fromString(c.getId())).toList();
     jdbcTemplate.batchUpdate(
         "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv, "
             + "content_tsv_version) VALUES (?, ?, ?, "
@@ -132,49 +133,75 @@ public class FullTextChunkStore {
           ps.setString(6, String.join(" ", FullTextIdentifiers.extract(chunk.getText())));
           ps.setShort(7, CURRENT_TSV_VERSION);
         });
+    // A chunk that just indexed successfully is - by definition - no longer a skip candidate
+    // (#1093 review, W1/W3): a stale chunk_full_text_skip row left over from an earlier,
+    // since-healed attempt would otherwise keep inflating FullTextBackfillProgress#skippedChunks
+    // forever for a chunk that is, in truth, fully indexed now.
+    jdbcTemplate.update(
+        "DELETE FROM chunk_full_text_skip WHERE chunk_id = ANY (?)",
+        ps -> ps.setArray(1, ps.getConnection().createArrayOf("uuid", chunkIds.toArray())));
   }
 
   /**
-   * Permanently records that {@link FullTextBackfillService} gave up on {@code chunkId} at {@link
-   * #CURRENT_TSV_VERSION} after isolating it as the one row a batch cannot get past (see that
-   * class's own Javadoc for the isolation strategy) - a "poison chunk". {@code ON CONFLICT
-   * (chunk_id) DO UPDATE} keeps this idempotent across retries and, in the rare case a chunk was
-   * already skipped at an older version, replaces that stale attempt with the current one.
+   * Records one more failed attempt at indexing {@code chunkId} at {@link #CURRENT_TSV_VERSION}
+   * after {@link FullTextBackfillService} isolated it as the one row a batch cannot get past, and
+   * returns the resulting attempt count. {@code ON CONFLICT (chunk_id) DO UPDATE} increments {@code
+   * attempts} when the previous row is at the same version (a repeated failure of the same chunk)
+   * and resets it to 1 when it is not (a version bump, or the row's first failure) - the caller
+   * ({@link FullTextBackfillService#isolateFailingChunk}) only excludes a chunk from further
+   * selection once {@code attempts} reaches its confirmation threshold, so a transient failure that
+   * heals within a couple of ticks (#1093 review, Blocker 1: a concurrent {@code DELETE} on the
+   * same row, a lock timeout) never reaches that threshold and the chunk is simply retried again.
    *
-   * <p>Not undone by a later successful index of the same chunk: once {@code content_tsv_version}
-   * here no longer matches {@link #CURRENT_TSV_VERSION} (a later version bump made the chunk
-   * eligible again and it indexed successfully this time), {@link FullTextBackfillProgressService}
-   * simply stops counting the stale row - see that class's own Javadoc. No explicit cleanup needed,
-   * mirroring how a stale {@code chunk_full_text} row is handled.
+   * <p>Undone by a later successful index of the same chunk: {@link #indexChunks} deletes this row
+   * once the chunk indexes successfully, so a resolved failure does not keep counting toward {@link
+   * io.opaa.indexing.FullTextBackfillProgress#skippedChunks} - see that method's own Javadoc.
    */
-  void recordSkip(UUID chunkId, UUID documentId, UUID libraryId, String errorMessage) {
-    jdbcTemplate.update(
+  int recordOrIncrementSkip(
+      UUID chunkId, UUID documentId, UUID libraryId, String errorMessage, String sqlState) {
+    return jdbcTemplate.queryForObject(
         "INSERT INTO chunk_full_text_skip (chunk_id, document_id, library_id, "
-            + "content_tsv_version, error_message, skipped_at) VALUES (?, ?, ?, ?, ?, now()) "
+            + "content_tsv_version, error_message, sqlstate, attempts, skipped_at) "
+            + "VALUES (?, ?, ?, ?, ?, ?, 1, now()) "
             + "ON CONFLICT (chunk_id) DO UPDATE SET "
+            + "attempts = CASE WHEN chunk_full_text_skip.content_tsv_version = EXCLUDED.content_tsv_version "
+            + "THEN chunk_full_text_skip.attempts + 1 ELSE 1 END, "
             + "content_tsv_version = EXCLUDED.content_tsv_version, "
             + "error_message = EXCLUDED.error_message, "
-            + "skipped_at = EXCLUDED.skipped_at",
+            + "sqlstate = EXCLUDED.sqlstate, "
+            + "skipped_at = EXCLUDED.skipped_at "
+            + "RETURNING attempts",
+        Integer.class,
         chunkId,
         documentId,
         libraryId,
         CURRENT_TSV_VERSION,
-        errorMessage);
+        errorMessage,
+        sqlState);
   }
 
   /**
-   * Deletes every {@code chunk_full_text} row for {@code documentId} - mirrors {@link
-   * VectorChunkStore#deleteByDocumentId}.
+   * Deletes every {@code chunk_full_text} and {@code chunk_full_text_skip} row for {@code
+   * documentId} - mirrors {@link VectorChunkStore#deleteByDocumentId}. Clearing {@code
+   * chunk_full_text_skip} too (#1093 review, W3) keeps the invariant {@code VectorChunkStore}'s own
+   * Javadoc already states for {@code chunk_full_text} - "a full-text row can never outlive the
+   * vector chunk it belongs to" - true for this table as well: without it, an operator who deletes
+   * and re-indexes a document to fix a poison chunk would find {@link
+   * io.opaa.indexing.FullTextBackfillProgress#skippedChunks} permanently stuck at its old count,
+   * since the replacement chunk gets a fresh id the skip row never matches.
    */
   void deleteByDocumentId(UUID documentId) {
     jdbcTemplate.update("DELETE FROM chunk_full_text WHERE document_id = ?", documentId);
+    jdbcTemplate.update("DELETE FROM chunk_full_text_skip WHERE document_id = ?", documentId);
   }
 
   /**
-   * Deletes every {@code chunk_full_text} row for {@code libraryId} - mirrors {@link
-   * VectorChunkStore#deleteByLibraryId}.
+   * Deletes every {@code chunk_full_text} and {@code chunk_full_text_skip} row for {@code
+   * libraryId} - mirrors {@link VectorChunkStore#deleteByLibraryId}; see {@link
+   * #deleteByDocumentId} for why the skip table is cleared symmetrically here too.
    */
   void deleteByLibraryId(UUID libraryId) {
     jdbcTemplate.update("DELETE FROM chunk_full_text WHERE library_id = ?", libraryId);
+    jdbcTemplate.update("DELETE FROM chunk_full_text_skip WHERE library_id = ?", libraryId);
   }
 }

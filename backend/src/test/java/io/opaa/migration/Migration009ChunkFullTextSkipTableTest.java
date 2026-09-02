@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Delta test for {@code changes/009-chunk-full-text-skip-table.yaml} (#1093): the table {@code
- * io.opaa.indexing.FullTextBackfillService} uses to permanently record a chunk it gave up indexing
- * into {@code chunk_full_text} - the schema {@code FullTextChunkStore#recordSkip} and {@code
+ * io.opaa.indexing.FullTextBackfillService} uses to track ("recordOrIncrementSkip") a chunk it
+ * cannot index into {@code chunk_full_text} - the schema {@code FullTextChunkStore} and {@code
  * FullTextBackfillProgressService} both depend on.
  */
 class Migration009ChunkFullTextSkipTableTest extends AbstractMigrationTest {
@@ -49,18 +49,34 @@ class Migration009ChunkFullTextSkipTableTest extends AbstractMigrationTest {
     assertThat(columnType("library_id")).isEqualTo("uuid");
     assertThat(columnType("content_tsv_version")).isEqualTo("smallint");
     assertThat(columnType("error_message")).isEqualTo("text");
+    assertThat(columnType("sqlstate")).isEqualTo("text");
+    assertThat(columnType("attempts")).isEqualTo("smallint");
     assertThat(columnType("skipped_at")).isEqualTo("timestamp with time zone");
+  }
+
+  @Test
+  void attemptsDefaultsToOneAndSqlstateIsNullable() throws SQLException {
+    UUID chunkId = insertRow(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "failure");
+
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "SELECT attempts, sqlstate FROM chunk_full_text_skip WHERE chunk_id = ?")) {
+      statement.setObject(1, chunkId);
+      try (ResultSet rs = statement.executeQuery()) {
+        assertThat(rs.next()).isTrue();
+        assertThat(rs.getShort("attempts")).isEqualTo((short) 1);
+        assertThat(rs.getString("sqlstate")).isNull();
+      }
+    }
   }
 
   @Test
   void chunkIdIsThePrimaryKeyAndRejectsDuplicates() throws SQLException {
     UUID chunkId = UUID.randomUUID();
-    insertRow(chunkId, UUID.randomUUID(), UUID.randomUUID(), (short) 1, "first failure");
+    insertRow(chunkId, UUID.randomUUID(), UUID.randomUUID(), "first failure");
 
     assertThatThrownBy(
-            () ->
-                insertRow(
-                    chunkId, UUID.randomUUID(), UUID.randomUUID(), (short) 1, "second failure"))
+            () -> insertRow(chunkId, UUID.randomUUID(), UUID.randomUUID(), "second failure"))
         .isInstanceOf(SQLException.class);
   }
 
@@ -69,20 +85,19 @@ class Migration009ChunkFullTextSkipTableTest extends AbstractMigrationTest {
     assertThat(indexExists("idx_chunk_full_text_skip_library_id")).isTrue();
   }
 
-  private void insertRow(
-      UUID chunkId, UUID documentId, UUID libraryId, short version, String errorMessage)
+  private UUID insertRow(UUID chunkId, UUID documentId, UUID libraryId, String errorMessage)
       throws SQLException {
     try (PreparedStatement statement =
         connection.prepareStatement(
             "INSERT INTO chunk_full_text_skip (chunk_id, document_id, library_id, "
-                + "content_tsv_version, error_message) VALUES (?, ?, ?, ?, ?)")) {
+                + "content_tsv_version, error_message) VALUES (?, ?, ?, 1, ?)")) {
       statement.setObject(1, chunkId);
       statement.setObject(2, documentId);
       statement.setObject(3, libraryId);
-      statement.setShort(4, version);
-      statement.setString(5, errorMessage);
+      statement.setString(4, errorMessage);
       statement.executeUpdate();
     }
+    return chunkId;
   }
 
   private boolean tableExists(String tableName) throws SQLException {

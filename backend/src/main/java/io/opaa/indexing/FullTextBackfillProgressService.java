@@ -21,6 +21,16 @@ import org.springframework.stereotype.Component;
  * is what {@link FullTextBackfillProgress#isComplete()} actually gates on; see that record's own
  * Javadoc.
  *
+ * <p><b>Every count is filtered to {@link FullTextChunkStore#CURRENT_TSV_VERSION} (#1093 review,
+ * W1), including {@code indexedChunks}.</b> Without that filter on {@code indexedChunks}, a chunk
+ * indexed at an older version, then reselected after a version bump and permanently skipped this
+ * time, would count in both {@code indexedChunks} (its stale row) and {@code skippedChunks} (its
+ * new skip row) - {@code indexed + skipped} could then exceed {@code totalChunks}, and the same
+ * chunk would look simultaneously "indexed" and "given up on". {@code skippedChunks} itself only
+ * counts <em>confirmed</em> skips ({@code attempts >= }{@link
+ * FullTextBackfillService#SKIP_CONFIRMATION_ATTEMPTS}), not every not-yet-confirmed candidate -
+ * mirroring exactly what {@link FullTextBackfillService#selectPending} still treats as pending.
+ *
  * <p>Table/schema name are read from the same {@code spring.ai.vectorstore.pgvector.*} properties
  * {@code PgVectorStore} itself binds, mirroring {@code io.opaa.query.ChunkEmbeddingLookup}'s
  * pattern (never hardcoded independently of that configuration).
@@ -42,9 +52,9 @@ public class FullTextBackfillProgressService {
   }
 
   /**
-   * The fill state of one library. All three counts come from a single query (a scalar subquery
+   * The fill state of one library. All four counts come from a single query (a scalar subquery
    * each), not separate round trips, so a backfill batch committing concurrently cannot produce an
-   * inconsistent triple - {@code READ COMMITTED} allows exactly that across separate statements.
+   * inconsistent tuple - {@code READ COMMITTED} allows exactly that across separate statements.
    *
    * <p>{@code progressForLibrary}/{@code progressForLibraries} query {@code vector_store} with a
    * predicate on {@code metadata->>'library_id'} that no expression index backs, so each call is a
@@ -57,7 +67,8 @@ public class FullTextBackfillProgressService {
             + "  (SELECT count(*) FROM "
             + vectorStoreTable
             + " WHERE metadata->>'library_id' = ?) AS total, "
-            + "  (SELECT count(*) FROM chunk_full_text WHERE library_id = ?) AS indexed, "
+            + "  (SELECT count(*) FROM chunk_full_text "
+            + "     WHERE library_id = ? AND content_tsv_version = ?) AS indexed, "
             + "  (SELECT count(*) FROM "
             + vectorStoreTable
             + " v WHERE metadata->>'library_id' = ? "
@@ -67,11 +78,11 @@ public class FullTextBackfillProgressService {
             + "     )"
             + "     AND NOT EXISTS ("
             + "       SELECT 1 FROM chunk_full_text_skip s "
-            + "       WHERE s.chunk_id = v.id AND s.content_tsv_version = ?"
+            + "       WHERE s.chunk_id = v.id AND s.content_tsv_version = ? AND s.attempts >= ?"
             + "     )"
             + "  ) AS missing, "
             + "  (SELECT count(*) FROM chunk_full_text_skip "
-            + "     WHERE library_id = ? AND content_tsv_version = ?) AS skipped";
+            + "     WHERE library_id = ? AND content_tsv_version = ? AND attempts >= ?) AS skipped";
     return jdbcTemplate.queryForObject(
         sql,
         (rs, rowNum) ->
@@ -83,11 +94,14 @@ public class FullTextBackfillProgressService {
                 rs.getLong("skipped")),
         libraryId.toString(),
         libraryId,
+        FullTextChunkStore.CURRENT_TSV_VERSION,
         libraryId.toString(),
         FullTextChunkStore.CURRENT_TSV_VERSION,
         FullTextChunkStore.CURRENT_TSV_VERSION,
+        FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS,
         libraryId,
-        FullTextChunkStore.CURRENT_TSV_VERSION);
+        FullTextChunkStore.CURRENT_TSV_VERSION,
+        FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS);
   }
 
   /**
@@ -127,7 +141,7 @@ public class FullTextBackfillProgressService {
             + "  SELECT library_id, count(*) AS indexed FROM chunk_full_text "
             + "  WHERE library_id IN ("
             + textPlaceholders
-            + ") GROUP BY 1"
+            + ") AND content_tsv_version = ? GROUP BY 1"
             + ") f ON v.library_id = f.library_id "
             + "FULL OUTER JOIN ("
             + "  SELECT (v2.metadata->>'library_id')::uuid AS library_id, count(*) AS missing "
@@ -143,7 +157,7 @@ public class FullTextBackfillProgressService {
             + "    ) "
             + "    AND NOT EXISTS ("
             + "      SELECT 1 FROM chunk_full_text_skip s2 "
-            + "      WHERE s2.chunk_id = v2.id AND s2.content_tsv_version = ?"
+            + "      WHERE s2.chunk_id = v2.id AND s2.content_tsv_version = ? AND s2.attempts >= ?"
             + "    ) "
             + "  GROUP BY 1"
             + ") m ON COALESCE(v.library_id, f.library_id) = m.library_id "
@@ -151,17 +165,20 @@ public class FullTextBackfillProgressService {
             + "  SELECT library_id, count(*) AS skipped FROM chunk_full_text_skip "
             + "  WHERE library_id IN ("
             + textPlaceholders
-            + ") AND content_tsv_version = ? GROUP BY 1"
+            + ") AND content_tsv_version = ? AND attempts >= ? GROUP BY 1"
             + ") sk ON COALESCE(v.library_id, f.library_id, m.library_id) = sk.library_id";
 
     List<Object> arguments = new ArrayList<>();
     distinct.forEach(id -> arguments.add(id.toString()));
     arguments.addAll(distinct);
+    arguments.add(FullTextChunkStore.CURRENT_TSV_VERSION);
     distinct.forEach(id -> arguments.add(id.toString()));
     arguments.add(FullTextChunkStore.CURRENT_TSV_VERSION);
     arguments.add(FullTextChunkStore.CURRENT_TSV_VERSION);
+    arguments.add(FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS);
     arguments.addAll(distinct);
     arguments.add(FullTextChunkStore.CURRENT_TSV_VERSION);
+    arguments.add(FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS);
 
     return jdbcTemplate.query(
         sql,
