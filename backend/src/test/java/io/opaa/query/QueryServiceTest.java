@@ -31,6 +31,7 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
 import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.RerankRoleStatus;
 import io.opaa.observability.QueryMetrics;
 import java.lang.reflect.Method;
 import java.time.Instant;
@@ -108,7 +109,7 @@ class QueryServiceTest {
                     mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
                 new MmrSelectionStage(chunkEmbeddingLookup),
                 new RankFusionStage(),
-                new RerankStage(mock(RerankModelRole.class)),
+                new RerankStage(disabledRerankRole()),
                 new DocumentCompletionStage(),
                 RetrievalPipelineProperties.allStagesEnabled());
     return new QueryService(
@@ -124,7 +125,18 @@ class QueryServiceTest {
         new QueryMetrics(new SimpleMeterRegistry()),
         queryProperties,
         knowledgeLibraryRepository,
-        mock(RerankModelRole.class));
+        disabledRerankRole());
+  }
+
+  /**
+   * A rerank role whose switch is off - the state {@link QueryService} reads once per run. A bare
+   * {@code mock(RerankModelRole.class)} returns {@code null} there, which no production caller
+   * sees.
+   */
+  private static RerankModelRole disabledRerankRole() {
+    RerankModelRole role = mock(RerankModelRole.class);
+    lenient().when(role.currentStatus()).thenReturn(RerankRoleStatus.disabled());
+    return role;
   }
 
   @BeforeEach
@@ -2157,7 +2169,7 @@ class QueryServiceTest {
                   new FullTextSearchStage(fullTextChunkSearch, backfillGate),
                   new MmrSelectionStage(chunkEmbeddingLookup),
                   new RankFusionStage(),
-                  new RerankStage(mock(RerankModelRole.class)),
+                  new RerankStage(disabledRerankRole()),
                   new DocumentCompletionStage(),
                   RetrievalPipelineProperties.allStagesEnabled());
       return new QueryService(
@@ -2173,7 +2185,7 @@ class QueryServiceTest {
           new QueryMetrics(new SimpleMeterRegistry()),
           new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, maxChunksPerDocument, true, 50),
           knowledgeLibraryRepository,
-          mock(RerankModelRole.class));
+          disabledRerankRole());
     }
 
     /**
