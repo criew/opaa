@@ -296,6 +296,19 @@ Diese engen Toleranzen sind bewusst gewählt, **weil** die Reproduzierbarkeit ob
 weite Toleranz würde bei nachgewiesener Stabilität keinen zusätzlichen Schutz vor falschem
 Alarm kaufen, sondern nur echte Regressionen durchlassen.
 
+**Nachtrag (Issue #1103, 2026-09-02): nur noch vier statt sechs Paare betroffen.** Mit der
+Baseline-Neuziehung nach der Registrierung von `MarkdownDocumentPipeline` stiegen
+`category:multi_attribute_filter`s Baseline-Werte für `ndcgAt10` (0,137 → 0,218) und `recallAt10`
+(0,159 → 0,245) genug, dass ihre relative Deckelung (`0,25 · Baselinewert`) jetzt über `1/n=0,0476`
+liegt (0,0545 bzw. 0,0613) — beide Paare unterschreiten die `1/n`-Schwelle der fallzahlbasierten
+Prüfung nicht mehr und fallen aus ihr heraus. Betroffen sind seither ausschließlich die vier
+`category:numeric_range`-Paare; diese Gruppe bleibt auf Rauschniveau (n=16, misst eine nicht
+gebaute Fähigkeit — numerischer Vergleich), ihre relative Deckelung bleibt deshalb deutlich unter
+`1/n`. `usesCaseBasedCheck` bestimmt das weiterhin dynamisch aus der committeten Baseline, nicht aus
+einer festen Liste — dieser Nachtrag hält nur den aktuellen Stand fest, den
+`BaselineComparatorTest#usesCaseBasedCheckIdentifiesExactlyTheFourKnownAffectedPairsInTheCommittedBaseline`
+gegen die Baseline-Datei prüft.
+
 ### Harte Untergrenze (zweite Stufe)
 
 > **Korrigiert in der zweiten Review-Runde zu PR #301.** Die erste Fassung dieses Abschnitts
