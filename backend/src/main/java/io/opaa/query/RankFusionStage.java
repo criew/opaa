@@ -20,6 +20,12 @@ import org.springframework.stereotype.Component;
  *
  * <p>Deduplicates by chunk id, never by score: a chunk two lists found independently is one
  * candidate with two contributions, and scores from different searches are not comparable (#912).
+ *
+ * <p>The budget is {@link RetrievalContext#candidateBudget()}, not {@link QueryProperties#topK}
+ * directly: with reranking active the reranker decides the final {@code top-k}, so fusion keeps the
+ * wider rerank candidate window and {@link RerankStage} restores the cap
+ * (docs/features/hybrid-retrieval.md, Arbeitspaket 4). Without reranking the two are the same value
+ * and this stage behaves exactly as before.
  */
 @Component
 class RankFusionStage implements RetrievalStage {
@@ -33,7 +39,7 @@ class RankFusionStage implements RetrievalStage {
 
   @Override
   public StageOutcome apply(RetrievalContext context, RetrievalState state) {
-    int budget = context.queryProperties().topK();
+    int budget = context.candidateBudget();
     List<List<Document>> rankedLists =
         state.candidateLists().stream().map(CandidateList::documents).toList();
     List<FusedCandidate> fused = ReciprocalRankFusion.fuseRanked(rankedLists);
@@ -66,7 +72,9 @@ class RankFusionStage implements RetrievalStage {
             verdicts,
             List.of(
                 "reciprocal rank fusion over " + rankedLists.size() + " list(s)",
-                "overall budget top-k " + budget,
+                context.rerankActive()
+                    ? "budget widened to the rerank candidate window " + budget
+                    : "overall budget top-k " + budget,
                 "deduplicated by chunk id: "
                     + incoming
                     + " list entries became "

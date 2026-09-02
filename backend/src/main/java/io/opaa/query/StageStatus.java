@@ -7,11 +7,20 @@ public enum StageStatus {
   EXECUTED("executed"),
 
   /**
-   * The stage is registered but switched off for this run (see {@link
-   * RetrievalPipelineProperties}). The pipeline then behaves as if the stage were not in the chain
-   * at all.
+   * The stage is registered but switched off for this run - through {@link
+   * RetrievalPipelineProperties}, or through the stage's own configuration switch, in which case
+   * the explanation's note says which. The pipeline then behaves as if the stage were not in the
+   * chain at all.
    */
   DISABLED("stage switched off for this run"),
+
+  /**
+   * The stage was switched on but could not do its work: the model role it needs is unbound, its
+   * endpoint did not answer, or the call failed. The run continued without it - a degraded
+   * ordering, never a failed query - and says so here rather than looking like a stage that decided
+   * nothing.
+   */
+  UNAVAILABLE("stage switched on but unavailable: the run continued without it"),
 
   /**
    * The run halted before reaching this stage - today only because the search scope was empty, in

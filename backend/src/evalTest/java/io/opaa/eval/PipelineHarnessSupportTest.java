@@ -41,7 +41,7 @@ class PipelineHarnessSupportTest {
 
   private static QueryProperties productionLikeProperties(
       int topK, boolean queryDecompositionEnabled) {
-    return new QueryProperties(topK, 25, 1.0, 0.3, 1.0, queryDecompositionEnabled, 3, 2, true);
+    return new QueryProperties(topK, 25, 1.0, 0.3, 1.0, queryDecompositionEnabled, 3, 2, true, 50);
   }
 
   private static List<GoldenCase> oneCase() {
@@ -81,6 +81,7 @@ class PipelineHarnessSupportTest {
                     failing,
                     productionLikeProperties(8, false),
                     RetrievalPipelineProperties.allStagesEnabled(),
+                    false,
                     // Never dereferenced on this path: the failure happens while querying, before
                     // the run configuration (the only reader of indexing properties) is built.
                     null,
@@ -138,22 +139,59 @@ class PipelineHarnessSupportTest {
    */
   @Test
   void aRunWithoutTheLexicalPathIsRejectedAsUnmeasurable() {
-    QueryProperties vectorOnly = new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false);
+    QueryProperties vectorOnly = new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
 
     assertThatThrownBy(() -> runWith(vectorOnly, RetrievalPipelineProperties.allStagesEnabled()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("full-text-search-enabled");
   }
 
-  /** Collaborators are null on purpose: the guard must reject before touching any of them. */
+  /**
+   * A run whose production configuration would actually rerank is rejected too: the committed
+   * baseline describes the shipped configuration, and that one does not rerank (#1050).
+   */
+  @Test
+  void aRunThatWouldRerankIsRejectedAsUnmeasurable() {
+    QueryProperties reranking = new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, true, 50);
+
+    assertThatThrownBy(
+            () -> runWith(reranking, RetrievalPipelineProperties.allStagesEnabled(), true))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("rerank-candidate-count");
+  }
+
+  /**
+   * A usable rerank role alone does not make a run unmeasurable: with the candidate window at zero
+   * the stage does not rerank, which is exactly how the variant comparison measures its reference.
+   */
+  @Test
+  void aUsableRerankRoleWithAZeroCandidateWindowStaysMeasurable() {
+    QueryProperties windowOff = new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, true, 0);
+
+    assertThatCode(
+            () ->
+                PipelineHarnessSupport.requireMeasurableConfiguration(
+                    windowOff, RetrievalPipelineProperties.allStagesEnabled(), true))
+        .doesNotThrowAnyException();
+  }
+
   private static void runWith(
       QueryProperties queryProperties, RetrievalPipelineProperties pipelineProperties) {
+    runWith(queryProperties, pipelineProperties, false);
+  }
+
+  /** Collaborators are null on purpose: the guard must reject before touching any of them. */
+  private static void runWith(
+      QueryProperties queryProperties,
+      RetrievalPipelineProperties pipelineProperties,
+      boolean rerankRoleUsable) {
     PipelineHarnessSupport.runAndWriteGuarded(
         EvalDomainConfig.COMIC_CHARACTERS,
         IDENTITY,
         null,
         queryProperties,
         pipelineProperties,
+        rerankRoleUsable,
         null,
         UUID.randomUUID(),
         oneCase(),

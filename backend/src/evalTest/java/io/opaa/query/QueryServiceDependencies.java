@@ -5,6 +5,7 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
+import io.opaa.llm.RerankModelRole;
 import io.opaa.observability.QueryMetrics;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.context.ApplicationContext;
@@ -41,7 +42,8 @@ public record QueryServiceDependencies(
     PermissionHistoryService permissionHistoryService,
     ChatService chatService,
     QueryMetrics metrics,
-    KnowledgeLibraryRepository knowledgeLibraryRepository) {
+    KnowledgeLibraryRepository knowledgeLibraryRepository,
+    RerankModelRole rerankModelRole) {
 
   public static QueryServiceDependencies fromContext(ApplicationContext context) {
     return new QueryServiceDependencies(
@@ -55,7 +57,8 @@ public record QueryServiceDependencies(
         context.getBean(PermissionHistoryService.class),
         context.getBean(ChatService.class),
         context.getBean(QueryMetrics.class),
-        context.getBean(KnowledgeLibraryRepository.class));
+        context.getBean(KnowledgeLibraryRepository.class),
+        context.getBean(RerankModelRole.class));
   }
 
   public QueryService buildQueryService(QueryProperties queryProperties) {
@@ -71,6 +74,7 @@ public record QueryServiceDependencies(
         chatService,
         metrics,
         queryProperties,
-        knowledgeLibraryRepository);
+        knowledgeLibraryRepository,
+        rerankModelRole);
   }
 }

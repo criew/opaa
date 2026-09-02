@@ -9,9 +9,11 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
+import io.opaa.llm.RerankModelRole;
 import io.opaa.query.CandidateOutcome;
 import io.opaa.query.CandidateVerdict;
 import io.opaa.query.QueryProperties;
+import io.opaa.query.RerankAvailability;
 import io.opaa.query.RetrievalContext;
 import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalPipelineResult;
@@ -43,6 +45,11 @@ import org.springframework.stereotype.Service;
  *       that filter differently from a chat query; it never omits it (ADR-0008 §5).
  *   <li><b>No chat is ever read.</b> The pipeline runs with an empty conversation history - there
  *       is no parameter on this service that could name an existing conversation.
+ *   <li><b>The same retrieval a chat query runs.</b> Every parameter that decides what the pipeline
+ *       does is read from the same source the chat path reads it from - the production {@link
+ *       QueryProperties} and the rerank model role's current state. A diagnosis that differed from
+ *       the real search in even one stage would answer "why these findings?" about findings no user
+ *       ever got.
  *   <li><b>No reconstruction.</b> {@link RetrievalPipelineResult#explanation()} is passed through
  *       unchanged. Nothing here re-derives what a stage decided.
  * </ul>
@@ -59,6 +66,7 @@ public class SearchDiagnosisService {
   private final KnowledgeLibraryRepository libraryRepository;
   private final GroupService groupService;
   private final DocumentRepository documentRepository;
+  private final RerankModelRole rerankModelRole;
   private final Clock clock;
 
   public SearchDiagnosisService(
@@ -67,13 +75,15 @@ public class SearchDiagnosisService {
       LibraryAccessService libraryAccessService,
       KnowledgeLibraryRepository libraryRepository,
       GroupService groupService,
-      DocumentRepository documentRepository) {
+      DocumentRepository documentRepository,
+      RerankModelRole rerankModelRole) {
     this.retrievalPipeline = retrievalPipeline;
     this.queryProperties = queryProperties;
     this.libraryAccessService = libraryAccessService;
     this.libraryRepository = libraryRepository;
     this.groupService = groupService;
     this.documentRepository = documentRepository;
+    this.rerankModelRole = rerankModelRole;
     this.clock = Clock.systemUTC();
   }
 
@@ -119,9 +129,16 @@ public class SearchDiagnosisService {
     }
 
     // Empty history, deliberately: the diagnosis never reads a conversation (Leitplanke (a)).
+    // The rerank role's state is read exactly as QueryService reads it, so this run reranks
+    // whenever a chat query would.
     RetrievalPipelineResult result =
         retrievalPipeline.run(
-            new RetrievalContext(query.question(), List.of(), searchScope, queryProperties));
+            new RetrievalContext(
+                query.question(),
+                List.of(),
+                searchScope,
+                queryProperties,
+                RerankAvailability.of(rerankModelRole.currentStatus().state())));
 
     Map<String, String> documentKeyByChunkId = documentKeyByChunkId(result);
     List<SearchDiagnosis.SelectedChunk> selection = selection(result, documentKeyByChunkId);

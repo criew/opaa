@@ -26,6 +26,7 @@ import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.JobStatus;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.llm.RerankModelRole;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;
@@ -486,6 +487,9 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   // pipeline report since the lexical path feeds the fusion.
   @Autowired private FullTextBackfillProgressService fullTextBackfillProgressService;
   @Autowired private RetrievalPipelineProperties pipelineProperties;
+  // #1050: whether this run could rerank at all - a fact about the context, and the one
+  // requireMeasurableConfiguration needs to keep a reranking run out of the committed baseline.
+  @Autowired private RerankModelRole rerankModelRole;
 
   // #1041/#1049: the variant-comparison step builds its own QueryService instances around the same
   // collaborators the autowired queryService above uses - two of those collaborators
@@ -570,7 +574,8 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     // Decided up front although the pipeline path (step 6 below) only runs at the very end: the
     // check reads nothing but the query configuration, which is fixed from context startup. Failing
     // it after the hour-long raw-vector path would cost that path its baseline verdict for nothing.
-    PipelineHarnessSupport.requireMeasurableConfiguration(queryProperties, pipelineProperties);
+    PipelineHarnessSupport.requireMeasurableConfiguration(
+        queryProperties, pipelineProperties, rerankModelRole.usable());
 
     // Same reasoning for the variant-comparison opt-in (#1041 review, Befund 3): a broken
     // comparison file, an unresolvable referenceVariant or an invalid QueryProperties override
@@ -939,6 +944,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
         queryService,
         queryProperties,
         pipelineProperties,
+        rerankModelRole.usable(),
         indexingProperties,
         evalLibraryId,
         goldenCases,

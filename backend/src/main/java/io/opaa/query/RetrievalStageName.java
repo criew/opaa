@@ -65,20 +65,42 @@ public enum RetrievalStageName {
   FULL_TEXT_SEARCH,
 
   /**
-   * Narrows each candidate list to {@link QueryProperties#topK} via {@link MmrSelector}, trading
-   * relevance against redundancy at {@link QueryProperties#mmrLambda} (at the shipped default
-   * {@code 1.0} this is plain top-k by relevance). Switched off, every list stays at its full
-   * {@link QueryProperties#fetchK} length and the budget is enforced by {@link #RANK_FUSION} alone.
+   * Narrows each candidate list to {@link RetrievalContext#candidateBudget()} via {@link
+   * MmrSelector} - {@link QueryProperties#topK} unless reranking runs, the wider rerank candidate
+   * window if it does - trading relevance against redundancy at {@link QueryProperties#mmrLambda}
+   * (at the shipped default {@code 1.0} this is plain top-k by relevance). Switched off, every list
+   * stays at its full {@link QueryProperties#fetchK} length and the budget is enforced by {@link
+   * #RANK_FUSION} alone.
    */
   MMR_SELECTION,
 
   /**
    * Merges every candidate list into one by rank via {@link ReciprocalRankFusion} and caps it at
-   * {@link QueryProperties#topK}. Switched off, the lists are collapsed by ordered concatenation
-   * deduplicated by chunk id and the top-k cap does not apply (see {@link
+   * {@link RetrievalContext#candidateBudget()}. Switched off, the lists are collapsed by ordered
+   * concatenation deduplicated by chunk id and the top-k cap does not apply (see {@link
    * RetrievalState#selection}).
    */
   RANK_FUSION,
+
+  /**
+   * Re-scores the fused candidate window with the rerank model role ({@code
+   * io.opaa.llm.RerankModelRole}) and cuts it back to {@link QueryProperties#topK}
+   * (docs/features/hybrid-retrieval.md, Arbeitspaket 4). Runs after {@link #RANK_FUSION} and before
+   * {@link #DOCUMENT_COMPLETION}: completion adds sibling chunks of already selected documents and
+   * must therefore work on the final ranking, not on one the reranker would resort.
+   *
+   * <p>Reranking is off in the shipped configuration ({@code OPAA_RERANK_ENABLED}), and off it is
+   * the identity - fusion then keeps {@code top-k} as before and this stage passes its input
+   * through. Switched on but unusable (role unbound, endpoint silent, call failed), the stage still
+   * restores the {@code top-k} cap and records that it could not rerank, so a broken endpoint costs
+   * the ordering, never the query.
+   *
+   * <p>Switching the stage off through {@link RetrievalPipelineProperties} while reranking is
+   * enabled leaves fusion's widened budget uncapped and hands on up to {@link
+   * QueryProperties#rerankCandidateCount} chunks - a benchmark variant, never a shipped
+   * configuration, the same way a switched-off {@link #RANK_FUSION} loses its own cap.
+   */
+  RERANK,
 
   /**
    * Lets a document already represented in the selection contribute up to {@link

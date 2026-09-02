@@ -6,7 +6,9 @@ import io.opaa.query.QueryProperties;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -19,12 +21,30 @@ import org.junit.jupiter.api.Test;
  */
 class VariantRunnerTest {
 
+  /** A role that never reranked and never will - the shipped configuration's watch. */
+  private static final RerankRunWatch NO_RERANKING =
+      watch(new AtomicLong(0), new AtomicBoolean(false));
+
+  private static RerankRunWatch watch(AtomicLong degradedCalls, AtomicBoolean usable) {
+    return new RerankRunWatch() {
+      @Override
+      public long degradedCallCount() {
+        return degradedCalls.get();
+      }
+
+      @Override
+      public boolean usable() {
+        return usable.get();
+      }
+    };
+  }
+
   private static PipelineVariant variant(String name, PipelineVariant.QueryOverrides overrides) {
     return new PipelineVariant(name, "desc", false, overrides);
   }
 
   private static QueryProperties productionProperties(boolean queryDecompositionEnabled) {
-    return new QueryProperties(8, 25, 1.0, 0.3, 1.0, queryDecompositionEnabled, 3, 2, true);
+    return new QueryProperties(8, 25, 1.0, 0.3, 1.0, queryDecompositionEnabled, 3, 2, true, 50);
   }
 
   /**
@@ -70,7 +90,8 @@ class VariantRunnerTest {
             () -> {
               calls.incrementAndGet();
               return reportWithNdcg(1);
-            });
+            },
+            NO_RERANKING);
 
     assertThat(calls.get()).isEqualTo(1);
     assertThat(outcome.executed()).isTrue();
@@ -89,7 +110,8 @@ class VariantRunnerTest {
             () -> {
               calls.incrementAndGet();
               return reportWithNdcg(1);
-            });
+            },
+            NO_RERANKING);
 
     assertThat(calls.get()).isEqualTo(MultiRunAggregator.DECOMPOSITION_RUN_COUNT);
     assertThat(outcome.multiRun()).isNotNull();
@@ -103,7 +125,8 @@ class VariantRunnerTest {
   @Test
   void runsThreeTimesWhenDecompositionIsEnabledOnlyThroughAnOverride() {
     AtomicInteger calls = new AtomicInteger();
-    var overrides = new PipelineVariant.QueryOverrides(null, null, null, true, null, null, null);
+    var overrides =
+        new PipelineVariant.QueryOverrides(null, null, null, true, null, null, null, null);
     QueryProperties effective =
         VariantQueryProperties.apply(productionProperties(false), overrides);
     assertThat(effective.queryDecompositionEnabled()).isTrue();
@@ -115,7 +138,8 @@ class VariantRunnerTest {
             () -> {
               calls.incrementAndGet();
               return reportWithNdcg(1);
-            });
+            },
+            NO_RERANKING);
 
     assertThat(calls.get()).isEqualTo(MultiRunAggregator.DECOMPOSITION_RUN_COUNT);
     assertThat(outcome.multiRun()).isNotNull();
@@ -137,7 +161,8 @@ class VariantRunnerTest {
               PipelineEvaluationReport report = reportWithNdcg(runsInOrder.size() == 1 ? 0 : 1);
               runsInOrder.add(report);
               return report;
-            });
+            },
+            NO_RERANKING);
 
     assertThat(runsInOrder).hasSize(3);
     assertThat(outcome.multiRun().medianRunIndex()).isEqualTo(0);
@@ -184,9 +209,98 @@ class VariantRunnerTest {
                           new PipelineRetrievalEvaluator.PipelineInvocationResult(
                               List.of("a.md"), subQueriesPerRun.get(run))),
                   VariantComparisonRunnerTest.runConfiguration());
-            });
+            },
+            NO_RERANKING);
 
     assertThat(outcome.multiRun().decompositionDeviatingCaseCount()).isEqualTo(1);
     assertThat(outcome.multiRun().decompositionDeviatingCaseIds()).containsExactly("a");
+  }
+
+  /**
+   * The failure mode a prerequisite check before the variant cannot see: the role was usable at the
+   * start, the endpoint dropped out during the measurement and recovered before it ended. Its state
+   * afterwards says {@code usable}, so only the degraded-call reading catches it - and the affected
+   * questions fell back to the fused order of the widened window, which is neither the reranked
+   * result nor the one the configuration without reranking would produce.
+   */
+  @Test
+  void aRerankRoleThatDroppedOutMidRunMakesTheVariantUnmeasurableEvenAfterRecovery() {
+    AtomicLong degradedCalls = new AtomicLong();
+    AtomicBoolean usable = new AtomicBoolean(true);
+
+    var outcome =
+        VariantRunner.run(
+            variant("rerank-50", PipelineVariant.QueryOverrides.NONE),
+            productionProperties(false),
+            () -> {
+              degradedCalls.incrementAndGet();
+              return reportWithNdcg(1);
+            },
+            watch(degradedCalls, usable));
+
+    assertThat(usable.get()).isTrue();
+    assertThat(outcome.executed()).isFalse();
+    assertThat(outcome.report()).isNull();
+    assertThat(outcome.skipReason()).contains("nicht verwertbar");
+  }
+
+  @Test
+  void aRerankRoleThatHeldThroughoutLeavesTheMeasurementStanding() {
+    AtomicLong degradedCalls = new AtomicLong();
+
+    var outcome =
+        VariantRunner.run(
+            variant("rerank-50", PipelineVariant.QueryOverrides.NONE),
+            productionProperties(false),
+            () -> reportWithNdcg(1),
+            watch(degradedCalls, new AtomicBoolean(true)));
+
+    assertThat(outcome.executed()).isTrue();
+    assertThat(outcome.report()).isNotNull();
+  }
+
+  /** A role that is usable at the start but not at the end is caught by the state alone. */
+  @Test
+  void aRerankRoleThatIsUnusableAtTheEndMakesTheVariantUnmeasurable() {
+    AtomicBoolean usable = new AtomicBoolean(true);
+
+    var outcome =
+        VariantRunner.run(
+            variant("rerank-50", PipelineVariant.QueryOverrides.NONE),
+            productionProperties(false),
+            () -> {
+              usable.set(false);
+              return reportWithNdcg(1);
+            },
+            watch(new AtomicLong(), usable));
+
+    assertThat(outcome.executed()).isFalse();
+    assertThat(outcome.skipReason()).contains("nicht verwertbar");
+  }
+
+  /**
+   * A variant that does not rerank is judged on its own terms: whatever a rerank endpoint does
+   * elsewhere in the same comparison run cannot invalidate it.
+   */
+  @Test
+  void aVariantWithoutRerankingIsUnaffectedByADegradedRole() {
+    AtomicLong degradedCalls = new AtomicLong();
+    var noReranking =
+        new PipelineVariant.QueryOverrides(null, null, null, null, null, null, null, 0);
+    QueryProperties effective =
+        VariantQueryProperties.apply(productionProperties(false), noReranking);
+    assertThat(effective.rerankCandidateCount()).isZero();
+
+    var outcome =
+        VariantRunner.run(
+            variant("no-reranking", noReranking),
+            effective,
+            () -> {
+              degradedCalls.incrementAndGet();
+              return reportWithNdcg(1);
+            },
+            watch(degradedCalls, new AtomicBoolean(true)));
+
+    assertThat(outcome.executed()).isTrue();
   }
 }

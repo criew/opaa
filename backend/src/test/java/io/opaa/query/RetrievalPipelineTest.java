@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.llm.RerankModelRole;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,7 @@ class RetrievalPipelineTest {
 
   private static final UUID LIBRARY_ID = UUID.randomUUID();
   private static final QueryProperties PROPERTIES =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false);
+      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
 
   private final VectorStore vectorStore = mock(VectorStore.class);
   private final ChunkEmbeddingLookup chunkEmbeddingLookup = mock(ChunkEmbeddingLookup.class);
@@ -63,12 +64,14 @@ class RetrievalPipelineTest {
                 mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
+            new RerankStage(mock(RerankModelRole.class)),
             new DocumentCompletionStage(),
             pipelineProperties);
   }
 
   private RetrievalContext context(Set<UUID> searchScope) {
-    return new RetrievalContext("Frage", List.of(), searchScope, PROPERTIES);
+    return new RetrievalContext(
+        "Frage", List.of(), searchScope, PROPERTIES, RerankAvailability.SWITCHED_OFF);
   }
 
   private void stubSearch(List<Document> results) {
@@ -91,8 +94,16 @@ class RetrievalPipelineTest {
     assertThat(result.explanation().stages())
         .extracting(StageExplanation::stage)
         .containsExactlyElementsOf(pipeline.registeredStages());
+    // Every stage but the reranker runs: this pipeline is wired with a rerank model role that is
+    // not usable, the shipped configuration (OPAA_RERANK_ENABLED off, #1050). A switched-off stage
+    // is recorded, not omitted - that is the property this test exists for.
     assertThat(result.explanation().stages())
+        .filteredOn(stage -> stage.stage() != RetrievalStageName.RERANK)
         .allSatisfy(stage -> assertThat(stage.status()).isEqualTo(StageStatus.EXECUTED));
+    assertThat(result.explanation().stages())
+        .filteredOn(stage -> stage.stage() == RetrievalStageName.RERANK)
+        .singleElement()
+        .satisfies(stage -> assertThat(stage.status()).isEqualTo(StageStatus.DISABLED));
   }
 
   /** The count holds for a run with a switched-off stage too - it is recorded, not skipped. */
@@ -167,11 +178,18 @@ class RetrievalPipelineTest {
                   ? List.of(shared, firstOnly)
                   : List.of(shared, secondOnly);
             });
-    QueryProperties twoChunkBudget = new QueryProperties(2, 25, 1.0, 0.3, 1.0, true, 3, 1, false);
+    QueryProperties twoChunkBudget =
+        new QueryProperties(2, 25, 1.0, 0.3, 1.0, true, 3, 1, false, 50);
 
     RetrievalPipelineResult withoutFusion =
         pipeline(new RetrievalPipelineProperties(Set.of(RetrievalStageName.RANK_FUSION)))
-            .run(new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), twoChunkBudget));
+            .run(
+                new RetrievalContext(
+                    "Frage",
+                    List.of(),
+                    Set.of(LIBRARY_ID),
+                    twoChunkBudget,
+                    RerankAvailability.SWITCHED_OFF));
 
     // Deduplicated by chunk id (shared appears once, at its first position), in list order, and
     // three chunks despite a top-k of two - the cap belonged to the stage that is gone.
@@ -198,7 +216,8 @@ class RetrievalPipelineTest {
                     "Zweite Frage",
                     history,
                     Set.of(LIBRARY_ID),
-                    new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false)));
+                    new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false, 50),
+                    RerankAvailability.SWITCHED_OFF));
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
@@ -221,12 +240,15 @@ class RetrievalPipelineTest {
             chunk("c-0", "doc-c", 0.7),
             chunk("a-1", "doc-a", 0.5));
     stubSearch(candidates);
-    QueryProperties completing = new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 2, false);
-    QueryProperties notCompleting = new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 1, false);
+    QueryProperties completing = new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
+    QueryProperties notCompleting =
+        new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 1, false, 50);
     RetrievalContext completingRun =
-        new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), completing);
+        new RetrievalContext(
+            "Frage", List.of(), Set.of(LIBRARY_ID), completing, RerankAvailability.SWITCHED_OFF);
     RetrievalContext notCompletingRun =
-        new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), notCompleting);
+        new RetrievalContext(
+            "Frage", List.of(), Set.of(LIBRARY_ID), notCompleting, RerankAvailability.SWITCHED_OFF);
 
     List<Document> stageSwitchedOff =
         pipeline(new RetrievalPipelineProperties(Set.of(RetrievalStageName.DOCUMENT_COMPLETION)))

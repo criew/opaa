@@ -36,13 +36,30 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
 - `queryOverrides` ist ein partielles Override von `io.opaa.query.QueryProperties`: ein
   weggelassenes oder `null`-Feld übernimmt den Produktionswert unverändert. Unterstützte Felder:
   `fetchK`, `mmrLambda`, `similarityThreshold`, `queryDecompositionEnabled`, `maxSubQueries`,
-  `maxChunksPerDocument`, `fullTextSearchEnabled` (seit Issue #1049). `topK` ist bewusst kein
+  `maxChunksPerDocument`, `fullTextSearchEnabled` (seit Issue #1049), `rerankCandidateCount`
+  (seit Issue #1050; `0` ist die Variante ohne Reranking). `topK` ist bewusst kein
   Feld — die Metriknamen des Pipeline-Pfads (`hitRateAt5`, `ndcgAt8`, …) sind an das
   Produktionsfenster gebunden (siehe `retrieval-benchmark.md`, Abschnitt 1).
 - Eine Variante mit `fullTextSearchEnabled: true` wird als „nicht ausgeführt" gemeldet, solange der
   Volltext-Backfill der gemessenen Bibliothek unvollständig ist: Das Backfill-Tor hielte die
   Bibliothek dann vollständig aus dem lexikalischen Pfad heraus, und die Variante hätte die
   vector-only-Konfiguration unter dem Namen der hybriden gemessen.
+- Der Vergleich `verwaltung-reranking.json` (Issue #1050) misst die Rerank-Stufe und ihr
+  Kandidatenfenster; das Ergebnis steht in
+  [`docs/features/hybrid-retrieval.md`](../../docs/features/hybrid-retrieval.md), Arbeitspaket 4.
+- Eine Variante, die `rerankCandidateCount > 0` **ausdrücklich setzt**, wird als „nicht ausgeführt" gemeldet, solange die
+  Rerank-Modellrolle des Laufs nicht nutzbar ist (Schalter aus, Rolle unbelegt oder Endpunkt
+  nicht erreichbar) — sie hätte sonst die Konfiguration ohne Reranking unter dem Namen der mit
+  Reranking gemessen. **Diese Prüfung wiederholt sich nach jeder Variante:** Fällt der Endpunkt
+  mitten im Lauf aus, ist jede betroffene Frage auf die fusionierte Reihenfolge des verbreiterten
+  Fensters zurückgefallen — weder das Ergebnis mit Reranking noch das der Konfiguration ohne
+  Reranking (siehe [retrieval-algorithm.md](../../docs/features/retrieval-algorithm.md), Schritt
+  5b). Die Variante wird dann als „nicht verwertbar" gemeldet statt als Messwert. Maßgeblich ist
+  dabei nicht der Rollenzustand am Ende, sondern die Zahl der Aufrufe ohne verwertbare Rangfolge
+  (`RerankModelRole#degradedCallCount`) vor und nach der Variante — eine Rolle, die ausfällt und
+  sich wieder fängt, sähe am Ende unauffällig aus. Ein Rerank-Vergleichslauf setzt deshalb `-Dopaa.rerank.enabled=true`,
+  `-Dopaa.rerank.base-url=…`, `-Dopaa.rerank.model=…` und — damit der Baseline-Pfad desselben
+  Laufs weiter die ausgelieferte Konfiguration misst — `-Dopaa.query.rerank-candidate-count=0`.
 - `requiresReindex: true` markiert eine Variante, die ein anderes Embedding-Modell oder eine
   andere Chunking-Konfiguration bräuchte. Diese Variantenmechanik führt noch keinen Reindex je
   Variante aus — eine solche Variante wird als „nicht ausgeführt“ gemeldet, nicht stillschweigend

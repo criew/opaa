@@ -34,9 +34,9 @@ class FullTextSearchStageTest {
   private static final UUID COMPLETE_LIBRARY = UUID.randomUUID();
   private static final UUID BACKFILLING_LIBRARY = UUID.randomUUID();
   private static final QueryProperties PROPERTIES =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, true);
+      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, true, 50);
   private static final QueryProperties LEXICAL_PATH_OFF =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false);
+      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
 
   private final FullTextChunkSearch search = mock(FullTextChunkSearch.class);
   private final FullTextBackfillGate gate = mock(FullTextBackfillGate.class);
@@ -50,7 +50,12 @@ class FullTextSearchStageTest {
   }
 
   private static RetrievalContext context(Set<UUID> searchScope, QueryProperties properties) {
-    return new RetrievalContext("Was gilt nach § 35 BauGB?", List.of(), searchScope, properties);
+    return new RetrievalContext(
+        "Was gilt nach § 35 BauGB?",
+        List.of(),
+        searchScope,
+        properties,
+        RerankAvailability.SWITCHED_OFF);
   }
 
   private static RetrievalState scopedState(Set<UUID> searchScope) {

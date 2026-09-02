@@ -9,8 +9,12 @@ import org.springframework.stereotype.Component;
 
 /**
  * Step 4 of docs/features/retrieval-algorithm.md as a pipeline stage: narrows every candidate list
- * to {@link QueryProperties#topK} via {@link MmrSelector}, each list on its own - MMR runs inside
- * one sub-query's single-topic candidate pool, never across the pooled cross-topic result.
+ * to {@link RetrievalContext#candidateBudget()} via {@link MmrSelector}, each list on its own - MMR
+ * runs inside one sub-query's single-topic candidate pool, never across the pooled cross-topic
+ * result. That budget is {@link QueryProperties#topK} unless reranking runs, in which case it is
+ * the wider rerank candidate window: a reranker that only ever saw {@code top-k} candidates could
+ * not promote anything the earlier stages had already dropped, which is the entire point of the
+ * stage (docs/features/hybrid-retrieval.md, Arbeitspaket 4).
  *
  * <p>The chunk embeddings MMR needs are read back once for the whole run, over the pooled
  * candidates, rather than once per list: {@link ChunkEmbeddingLookup} does not care which list a
@@ -56,7 +60,7 @@ class MmrSelectionStage implements RetrievalStage {
     for (CandidateList list : state.candidateLists()) {
       List<Document> selected =
           MmrSelector.select(
-              list.documents(), properties.topK(), properties.mmrLambda(), embeddings);
+              list.documents(), context.candidateBudget(), properties.mmrLambda(), embeddings);
       narrowed.add(new CandidateList(list.label(), selected));
       incoming += list.documents().size();
 
@@ -88,7 +92,7 @@ class MmrSelectionStage implements RetrievalStage {
             outgoing,
             verdicts,
             List.of(
-                "per-list budget top-k " + properties.topK(),
+                "per-list budget " + context.candidateBudget(),
                 "mmr-lambda "
                     + properties.mmrLambda()
                     + (properties.mmrLambda() >= 1.0

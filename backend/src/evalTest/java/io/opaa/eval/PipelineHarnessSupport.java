@@ -111,12 +111,13 @@ public final class PipelineHarnessSupport {
       QueryService queryService,
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
+      boolean rerankRoleUsable,
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
       List<GoldenCase> goldenCases,
       Instant pipelineRunStart,
       Logger log) {
-    requireMeasurableConfiguration(queryProperties, pipelineProperties);
+    requireMeasurableConfiguration(queryProperties, pipelineProperties, rerankRoleUsable);
     try {
       PipelineEvaluationReport report =
           measure(
@@ -229,6 +230,10 @@ public final class PipelineHarnessSupport {
    *       measurement-contract change (new fixed point, raised {@code
    *       PipelineEvaluationReport#PIPELINE_MEASUREMENT_CONTRACT_VERSION}, re-drawn baselines), not
    *       something a property may do silently.
+   *   <li><b>Reranking must not run.</b> Same argument as for the lexical path, in the other
+   *       direction: the committed baseline is the shipped configuration, and that one does not
+   *       rerank. A rerank run belongs in the Variantenvergleich, whose candidate-window overrides
+   *       are exactly what issue #1050 has to measure.
    *   <li><b>The lexical search path must be switched on</b> (issue #1049, the Auflage recorded in
    *       docs/features/hybrid-retrieval.md, Arbeitspaket 2). Since it feeds the fusion, {@code
    *       opaa.query.full-text-search-enabled} moves the selection; the committed pipeline baseline
@@ -240,7 +245,9 @@ public final class PipelineHarnessSupport {
    * </ul>
    */
   public static void requireMeasurableConfiguration(
-      QueryProperties queryProperties, RetrievalPipelineProperties pipelineProperties) {
+      QueryProperties queryProperties,
+      RetrievalPipelineProperties pipelineProperties,
+      boolean rerankRoleUsable) {
     if (queryProperties.topK() != PipelineMetricsAggregate.RANKING_K) {
       throw new IllegalStateException(
           "opaa.query.top-k is "
@@ -284,6 +291,17 @@ public final class PipelineHarnessSupport {
               + "numbers would be judged against that baseline as a code change. Measure the "
               + "vector-only configuration as a named variant instead "
               + "(eval/variants/*-lexical-path.json, -Dopaa.eval.runVariantComparison=true).");
+    }
+    if (rerankRoleUsable && queryProperties.rerankCandidateCount() > 0) {
+      throw new IllegalStateException(
+          "the rerank model role is usable and opaa.query.rerank-candidate-count is "
+              + queryProperties.rerankCandidateCount()
+              + ", so this run would rerank - but the committed pipeline baseline describes the "
+              + "shipped configuration, in which reranking is off (OPAA_RERANK_ENABLED). Its "
+              + "numbers would be judged against that baseline as a code change. Measure "
+              + "reranking as a named variant instead (eval/variants/*-reranking.json, "
+              + "-Dopaa.eval.runVariantComparison=true), with the production configuration "
+              + "left at rerank-candidate-count=0 for the run.");
     }
   }
 

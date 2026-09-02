@@ -1,0 +1,32 @@
+{
+  "name": "verwaltung-reranking",
+  "description": "Wirkungs- und Fenstermessung der Rerank-Stufe (Issue #1050, docs/features/hybrid-retrieval.md, Arbeitspaket 4). Domäne Verwaltung, weil die Modellvorauswahl gegen diese Evaldomäne entschieden wird und nicht per Leaderboard. Referenzvariante ist 'ohne-reranking' (Kandidatenfenster 0) — das ist zugleich die ausgelieferte Voreinstellung, sodass die Deltas 'mit Reranking minus ohne Reranking' sind. Der Lauf braucht einen erreichbaren Rerank-Endpunkt (OPAA_RERANK_ENABLED=true, OPAA_RERANK_BASE_URL, OPAA_RERANK_MODEL) und die Produktionskonfiguration auf OPAA_QUERY_RERANK_CANDIDATE_COUNT=0, damit der Baseline-Pfad desselben Harness-Laufs weiter die ausgelieferte Konfiguration misst. Ohne nutzbare Rerank-Rolle werden alle Varianten mit Fenster > 0 als 'nicht ausgeführt' gemeldet, nicht still ohne Reranking gemessen. Bewusst kein Fenster über 50: Der Harness misst mit abgeschalteter Teilfragen-Zerlegung, also je Anfrage genau eine Vektor- und eine Volltextliste zu je fetch-k=25 Kandidaten. Die fusionierte Liste kann damit höchstens 50 verschiedene Chunks enthalten, ein größeres Fenster wäre nachweislich dieselbe Messung bei doppelter Laufzeit.",
+  "domain": "verwaltung",
+  "referenceVariant": "ohne-reranking",
+  "variants": [
+    {
+      "name": "ohne-reranking",
+      "description": "Die ausgelieferte Voreinstellung: Kandidatenfenster 0, die Rerank-Stufe ist über ihren eigenen Parameter abgeschaltet und Fusion und MMR behalten wie bisher top-k. Die Referenzvariante — muss bitgleiche Zahlen zum direkten Pipeline-Lauf desselben Harness-Laufs liefern (Selbstprüfung).",
+      "requiresReindex": false,
+      "queryOverrides": {
+        "rerankCandidateCount": 0
+      }
+    },
+    {
+      "name": "rerank-25",
+      "description": "Halbes Startfenster: Der Reranker sieht die besten 25 fusionierten Kandidaten. Prüft, ob der Gewinn schon vor dem Startwert eintritt — dann wäre 50 unnötig teuer.",
+      "requiresReindex": false,
+      "queryOverrides": {
+        "rerankCandidateCount": 25
+      }
+    },
+    {
+      "name": "rerank-50",
+      "description": "Der Startwert aus der Spezifikation: rund 50 Kandidaten, hergeleitet aus der Diagnose zu #938 (die verfehlte Fundstelle lag auf Rang 50).",
+      "requiresReindex": false,
+      "queryOverrides": {
+        "rerankCandidateCount": 50
+      }
+    }
+  ]
+}

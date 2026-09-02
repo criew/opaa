@@ -89,7 +89,7 @@ class SearchStatusProbeCacheTest {
             libraryRepository,
             documentStatsReader,
             backfillProgressService,
-            new QueryProperties(8, 25, 1.0, 0.0, 1.0, true, 3, 2, true),
+            new QueryProperties(8, 25, 1.0, 0.0, 1.0, true, 3, 2, true, 50),
             new RetrievalPipelineProperties(Set.of()),
             clock);
   }
