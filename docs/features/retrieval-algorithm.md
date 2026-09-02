@@ -1,17 +1,18 @@
 # Retrieval-Algorithmus (Ist-Stand)
 
 Dieses Dokument beschreibt, **wie das Retrieval heute tatsächlich arbeitet** — Klasse für Klasse, Parameter
-für Parameter, Stand `main` nach der Stufen-Zerlegung aus
-[#1046](https://github.com/criew/opaa/issues/1046). Es ist damit die
+für Parameter, Stand `main` nach dem Epic
+[#1045](https://github.com/criew/opaa/issues/1045). Es ist damit die
 Ergänzung zu [Wissensschicht und Retrieval](./data-indexing-rag.md), das überwiegend das **Zielbild**
 beschreibt (siehe dessen „Lesehinweis zum Umsetzungsstand"): Abschnitte wie
 [Hybride Suche](./data-indexing-rag.md#hybride-suche) und [Reranking](./data-indexing-rag.md#reranking)
-dort sind teils Vision, teils gebaut: Ein **separates Reranking-Modell** gibt es im heutigen Code
-nicht; die **hybride Suche** dagegen schon — der mit
-[#1048](https://github.com/criew/opaa/issues/1048) gebaute lexikalische Suchpfad (Schritt 3b) ist seit
+dort sind inzwischen beide gebaut: Die **hybride Suche** — der mit
+[#1048](https://github.com/criew/opaa/issues/1048) gebaute lexikalische Suchpfad (Schritt 3b) — ist seit
 [#1049](https://github.com/criew/opaa/issues/1049) eine Eingangsliste der Fusion und bestimmt die
-Endauswahl mit. Wer wissen will, was gebaut ist, liest dieses Dokument; wer wissen will, wohin es
-geht, liest `data-indexing-rag.md`.
+Endauswahl mit, und ein **separates Reranking-Modell** gibt es seit
+[#1050](https://github.com/criew/opaa/issues/1050) als eigene Modellrolle (Schritt 5b) — mit einem
+eigenen Schalter und **per Voreinstellung aus**. Wer wissen will, was gebaut ist, liest dieses
+Dokument; wer wissen will, wohin es geht, liest `data-indexing-rag.md`.
 
 Die Stellschrauben-Tabelle in `data-indexing-rag.md` bleibt die eine Quelle der Wahrheit für Parameter und
 ihre Defaults (siehe [Stellschrauben und ihre Wirkung](./data-indexing-rag.md#stellschrauben-und-ihre-wirkung));
@@ -219,8 +220,15 @@ läuft weiter, aber nicht unbemerkt.
 Die Kandidatenzahl steuert `opaa.query.rerank-candidate-count`
 (`OPAA_QUERY_RERANK_CANDIDATE_COUNT`, Default `50`, Ebene-1-Wert). `0` schaltet die Stufe über ihren
 eigenen Parameter ab — dieselbe explizite Abwahl, die `max-chunks-per-document = 1` für die
-Dokument-Vervollständigung ist. Der Startwert 50 folgt der Diagnose zu
-[#938](https://github.com/criew/opaa/issues/938): Die dort verfehlte Fundstelle lag auf Rang 50.
+Dokument-Vervollständigung ist. Der Startwert 50 entspricht dem, was zwei Suchpfade bei
+`fetch-k = 25` je Teilfrage überhaupt liefern können.
+
+**Das Fenster vergrößert die Reichweite nicht.** Was keine Suchstufe zurückgegeben hat, kann weder
+die Fusion noch der Reranker heben; die Reichweite ist `fetch-k` je Liste mal der Zahl der Listen im
+Lauf (Teilfragen mal aktive Suchpfade). Wer die Fundstelle aus [#938](https://github.com/criew/opaa/issues/938)
+— dort auf Rang 50 einer Vektorliste — allein über das Reranking erreichen will, muss `fetch-k`
+mitheben; im Auslieferungsstand mit `fetch-k = 25` liegt Rang 50 einer einzelnen Liste außerhalb
+dessen, was die Suche überhaupt liefert.
 
 Angebunden wird über denselben Weg wie Chat und Einbettung: ein `POST {base-url}/rerank` mit
 `{model, query, documents}`, das vLLM, Text Embeddings Inference, Infinity, Jina, Cohere und Voyage

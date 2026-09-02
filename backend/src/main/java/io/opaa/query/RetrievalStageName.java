@@ -95,10 +95,13 @@ public enum RetrievalStageName {
    * restores the {@code top-k} cap and records that it could not rerank, so a broken endpoint costs
    * the ordering, never the query.
    *
-   * <p>Switching the stage off through {@link RetrievalPipelineProperties} while reranking is
-   * enabled leaves fusion's widened budget uncapped and hands on up to {@link
-   * QueryProperties#rerankCandidateCount} chunks - a benchmark variant, never a shipped
-   * configuration, the same way a switched-off {@link #RANK_FUSION} loses its own cap.
+   * <p>Switching the stage off through {@link RetrievalPipelineProperties} takes reranking out of
+   * the run entirely: {@link RetrievalPipeline} then runs with {@link
+   * RetrievalContext#withoutReranking()}, so the narrowing stages fall back to {@link
+   * QueryProperties#topK} instead of widening their budget for a stage that would never restore the
+   * cap. Switching it off is therefore the identity here too, whatever {@link
+   * QueryProperties#rerankCandidateCount} says - unlike a switched-off {@link #RANK_FUSION}, which
+   * does lose its own cap.
    */
   RERANK,
 

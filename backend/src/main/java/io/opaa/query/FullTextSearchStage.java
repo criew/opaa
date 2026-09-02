@@ -142,8 +142,13 @@ class FullTextSearchStage implements RetrievalStage {
             + " of "
             + context.searchScope().size()
             + " scoped libraries searched, the rest awaiting their backfill");
+    // Records the queries actually searched when this stage derived them itself, so a run never
+    // reports having searched nothing while it did - the vector path does the same, and either
+    // path may be the one that runs.
+    RetrievalState searched =
+        state.searchQueries().isEmpty() ? state.withSearchQueries(searchQueries) : state;
     return new StageOutcome(
-        state.withSearchResults(lists),
+        searched.withSearchResults(lists),
         StageExplanation.executed(name(), inFlight, inFlight + retrieved, verdicts, notes));
   }
 

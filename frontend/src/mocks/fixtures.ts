@@ -633,7 +633,10 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
       status: 'EXECUTED',
       incomingCount: 0,
       outgoingCount: 0,
-      notes: ['2 Bibliotheken im Suchbereich'],
+      notes: [
+        'search scope: 2 libraries',
+        'permission filter applied inside every search of this run, never afterwards',
+      ],
       verdicts: [],
     },
     {
@@ -641,7 +644,7 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
       status: 'EXECUTED',
       incomingCount: 0,
       outgoingCount: 2,
-      notes: [],
+      notes: ['vector search, 1 list(s)', 'fetch-k 25 per list'],
       verdicts: [
         {
           chunkId: 'chunk-1',
@@ -650,7 +653,7 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
           libraryName: 'Satzungen & Gebuehrenordnungen',
           outcome: 'ADDED',
           reason: 'RETRIEVED_BY_SEARCH',
-          listLabel: 'vector#1',
+          listLabel: 'vector search · sub-query 1',
           rank: 1,
           value: 0.81,
         },
@@ -661,7 +664,7 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
           libraryName: 'Formulare',
           outcome: 'ADDED',
           reason: 'RETRIEVED_BY_SEARCH',
-          listLabel: 'vector#1',
+          listLabel: 'vector search · sub-query 1',
           rank: 2,
           value: 0.64,
         },
@@ -672,7 +675,11 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
       status: 'EXECUTED',
       incomingCount: 2,
       outgoingCount: 1,
-      notes: [],
+      notes: [
+        'reciprocal rank fusion over 1 list(s)',
+        'overall budget top-k 8',
+        'deduplicated by chunk id: 2 list entries became 2 distinct candidates',
+      ],
       verdicts: [
         {
           chunkId: 'chunk-1',
