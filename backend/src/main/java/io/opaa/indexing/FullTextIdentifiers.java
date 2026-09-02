@@ -59,6 +59,7 @@ public final class FullTextIdentifiers {
   private static final String PARAGRAPH_PREFIX = "xpar";
   private static final String FILE_NUMBER_PREFIX = "xakz";
   private static final String ORDINANCE_NUMBER_PREFIX = "xnr";
+  private static final String EMAIL_PREFIX = "xmail";
 
   /**
    * A law abbreviation as it is actually written in German administrative texts: initial capital
@@ -123,6 +124,29 @@ public final class FullTextIdentifiers {
           "\\b(?:Drucksache|Drs|Erlass(?:\\s+Nr)?|Runderlass(?:\\s+Nr)?|Nr|Nummer)\\.?\\s*:?\\s*"
               + "(\\d{1,6}\\s*[-/]\\s*\\d{1,6}(?:\\s*[-/]\\s*\\d{1,6})?)");
 
+  /**
+   * An email address (#1130 Befund 1, Querschnittsregel a). PostgreSQL's own parser already keeps
+   * an email address as one {@code email}-class token in {@code to_tsvector} - the gap this pattern
+   * closes is on the <em>question</em> side: {@code io.opaa.query.FullTextChunkSearch#wordTokens}
+   * splits a question at every non-alphanumeric character, so "max.mustermann@example.org" asked
+   * back becomes four separate word tokens that never match the one token the chunk carries
+   * (confirmed against a live PostgreSQL: {@code to_tsvector('german', '...
+   * max.mustermann@example.org ...') @@ to_tsquery('german', 'max|mustermann|example|org')} is
+   * {@code false} when none of the four also occurs as an ordinary word). Carrying the address as
+   * an undecomposed lexeme on both sides restores the match, the same fix this class already
+   * applies to §-references and file numbers.
+   *
+   * <p><b>ASCII-only local part and domain</b> - an umlaut is neither letter nor separator to this
+   * pattern, so it ends the match early rather than including it: {@code jörg@stadt.de} yields
+   * {@code xmailrgstadtde} (the match starts at "rg@stadt.de", the leading "j" and "ö" are outside
+   * it), and {@code info@köln.de} yields no lexeme at all (no ASCII run reaches a literal "."
+   * before the umlaut). Both sides of the write/query symmetry apply this same pattern, so this is
+   * a coverage gap, not a mismatch - it never produces a false positive, only a missed address
+   * around an umlaut.
+   */
+  private static final Pattern EMAIL_ADDRESS =
+      Pattern.compile("\\b([A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\\.[A-Za-z]{2,})\\b");
+
   private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^a-z0-9]");
 
   /** At least one digit and at least one separator - see {@link #looksLikeIdentifier}. */
@@ -146,6 +170,7 @@ public final class FullTextIdentifiers {
     collect(KEYWORD_FILE_NUMBER, text, FILE_NUMBER_PREFIX, true, lexemes);
     collect(STRUCTURED_FILE_NUMBER, text, FILE_NUMBER_PREFIX, true, lexemes);
     collect(ORDINANCE_NUMBER, text, ORDINANCE_NUMBER_PREFIX, false, lexemes);
+    collect(EMAIL_ADDRESS, text, EMAIL_PREFIX, false, lexemes);
     List<String> result = new ArrayList<>(lexemes);
     return result.size() <= MAX_LEXEMES
         ? List.copyOf(result)

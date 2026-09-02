@@ -272,9 +272,14 @@ ein Detail von `MailDocumentPipeline`.
 Ein bereits indizierter Mail-Anhang liegt heute als Chunks seiner Elternmail im Index, mit
 `pipeline_id=email`. Es gibt keinen separaten Migrations-/Rückwirkungsmechanismus — die Umstellung nutzt
 das bereits gebaute Verfahren aus `docs/features/ingestion-pipelines.md`, Teil 4 Regel (d):
-`MailDocumentPipeline#version()` wird mit dieser Änderung erhöht (v1 → v2, da sich Zuschnitt und erzeugte
-Struktur ändern — Anhänge erscheinen nicht mehr als Chunks der Mail überhaupt). Bestehende
-`email`-Chunks unterhalb v2 sind damit über die vorhandenen Administrationsendpunkte
+`MailDocumentPipeline#version()` wird mit dieser Änderung erhöht.
+
+**Korrektur (Review zu PR #1166):** Diese ADR ging bei ihrer ursprünglichen Fassung von v1 → v2 für den
+hier beschriebenen Anhangsumbau aus. Zwischenzeitlich hat #1130 Befund 1 (Mail-Kopfdaten als
+Kontextzeilen im Chunk-Text, PR #1166) bereits v2 belegt — dieser PR lag zeitlich vor der Umsetzung
+dieses ADR. Der hier beschriebene Anhangsumbau geht deshalb auf **v3**, nicht v2; die Bestandsmigration
+in diesem Abschnitt gilt inhaltlich unverändert, nur mit der verschobenen Versionsnummer. Bestehende
+`email`-Chunks unterhalb v3 sind damit über die vorhandenen Administrationsendpunkte
 (`GET /pipeline-versions`, `POST /pipeline-reindex`) als nachzuziehen erkennbar und lassen sich gezielt
 neu erzeugen — kein Sonderfall, dieselbe Mechanik, die für jede andere Pipeline-Versionsänderung bereits
 gilt.

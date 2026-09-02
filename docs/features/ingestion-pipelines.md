@@ -797,8 +797,12 @@ aus Kopfdaten, Text und Anhangstext.
 
 Die Pipeline trennt drei Dinge:
 
-- **Kopfdaten werden Metadaten, nicht Fließtext.** Von, An, Betreff, Datum gehören an den Chunk, nicht
-  in seinen Text — sonst embedded jeder Chunk einer Mailablage denselben Verteilerkopf mit.
+- **Kopfdaten landen sowohl als Metadaten als auch als Kontextzeilen im Text des ersten Chunks.** Von,
+  An, Betreff, Datum werden auf jeden Kopfdaten tragenden Chunk als Metadatenfeld geschrieben (bewusste
+  Vorhaltung für eine spätere strukturierte Filterung, siehe #1164 — heute ohne Leser) und zusätzlich
+  einmalig, deutsch beschriftet, vor den Nachrichtentext des jeweils ersten erzeugten Chunks gesetzt —
+  nicht wiederholt auf jedes Thread-Segment oder jedes weiter zerlegte Teilstück, sonst würde derselbe
+  Verteilerkopf jeden Chunk eines langen Threads verwässern (#1130 Befund 1).
 - **Ein Chunk je Nachricht**, bei langen Threads je Nachricht im Thread. Ein Thread ist kein Dokument,
   sondern eine Folge von Dokumenten.
 - **Anhänge laufen durch die Pipeline ihres eigenen Typs.** Ein PDF-Anhang einer Mail wird von der
@@ -812,7 +816,7 @@ Beleg) folgt dabei den bestehenden Regeln des Anlagenwegs, siehe
 
 #### Umgesetzt (#1060)
 
-`MailDocumentPipeline` (`id` `email`, Version 1) beansprucht `.eml` und `.msg` in der
+`MailDocumentPipeline` (`id` `email`, Version 2 seit #1130 Befund 1) beansprucht `.eml` und `.msg` in der
 `DocumentPipelineRegistry`; beide Endungen sind jetzt in `SupportedDocumentFormats` zugelassen —
 unterschiedlich streng, mit einem empirisch belegten Grund: `.msg` bekommt mit
 `application/vnd.ms-outlook` einen eindeutigen, strikten Medientyp (wie PDF/DOCX). `.eml` dagegen
@@ -842,10 +846,38 @@ werden müssen, statt in einen Block zu fließen:
 - **MSG** über Apache POI HSMF (`org.apache.poi.hsmf.MAPIMessage`, `poi-scratchpad` jetzt direkt
   referenziert): liest Betreff/Von/An/Datum/Text sowie `AttachmentChunks` für Anhänge.
 
-**Kopfdaten landen als Chunk-Metadaten, nicht im Fließtext** — `ChunkMailMetadata` definiert
+**Kopfdaten landen als Chunk-Metadaten** — `ChunkMailMetadata` definiert
 `mail_from`/`mail_to`/`mail_subject`/`mail_date`, deklariert über
 `MailDocumentPipeline#passthroughMetadataKeys()` (#1107); `FileProcessingService#storeChunks` kopiert
 sie auf den gespeicherten Chunk, genau wie es das schon für `location` tut (Teil 5, Übergabepunkt).
+Diese Felder haben heute keinen Leser — eine bewusste Vorhaltung für die strukturierte Filterung nach
+Absender/Zeitraum/Betreff aus #1164, keine Fehlmodellierung (siehe `ChunkMailMetadata`-Javadoc).
+
+**Dieselben Kopfdaten landen zusätzlich, deutsch beschriftet, als Kontextzeilen vor dem
+Nachrichtentext** (#1130 Befund 1, entschieden gegen die zuvor offene Formfrage aus Teil 5, Punkt 1)
+— nach dem Vorbild von `TabularDocumentPipeline`/`HtmlDocumentPipeline`/`PptxDocumentPipeline`, die
+ihren Strukturkontext ebenfalls in den Chunk-Text backen, nicht nur in ein Metadatenfeld. Damit wirken
+Absender, Empfänger und Betreff in Embedding **und** Volltextindex, sobald der Chunk (neu) entsteht —
+eine Frage wie „Mail von Müller zum Bebauungsplan" findet eine neu oder erneut indizierte Nachricht
+jetzt tatsächlich. Für den bestehenden Mail-Bestand gilt das erst nach einer gezielten
+Neuindizierung: Regel (d) („Ausgelöst wird nichts von selbst") gilt unverändert — die Pipeline-Version
+steigt mit diesem Zuschnitt (siehe unten), ein Altbestand unterhalb dieser Version bleibt bis zum
+Nachzug beim alten, metadatenreinen Chunk-Text. Eine fehlende Angabe erzeugt keine leere Zeile.
+
+**Das Kopfdaten-Feld `An` steht als letzte Zeile des Blocks, nicht in der natürlichen
+Von/An/Betreff/Datum-Lesereihenfolge** (#1130 Befund 1, Review-Runde 3): `An` ist als einziges Feld
+unbegrenzt lang (`EmlReader` rendert jeden Empfänger einzeln), ein Rundschreiben an hunderte
+Empfänger würde die kurzen, aussagekräftigen Felder Betreff und Datum sonst hinter die Adressliste
+verdrängen. Von/Betreff/Datum bleiben so zusammen in der ersten aus dem Kopfblock entstehenden Zeile,
+unabhängig davon, wie lang `An` wird.
+
+**Der Kopfblock wird VOR dem Zuschnitt an den Rohtext gehängt, nicht danach** — er durchläuft
+`ChunkingService#chunkDocuments` wie jeder andere Text und ist deshalb selbst nicht unbegrenzt lang:
+Bei einem sehr großen Verteiler zerlegt derselbe Token-Splitter, der auch einen langen Rundbrief
+zerschneidet (siehe unten), den Kopfblock in mehrere `Teil j von M`-Chunks. Der Nachrichtentext folgt
+dabei unmittelbar auf das letzte Feld des Kopfblocks (`An`) — bei einem großen Verteiler landet der
+Nachrichtentext deshalb im letzten dieser Kopfblock-Chunks, nicht im ersten. Betreff/Datum sind aber
+in jedem Fall im ersten Chunk auffindbar, weil sie vor `An` stehen.
 
 **Ein Chunk je Nachricht, bei erkanntem Zitatverlauf ein Chunk je Nachricht im Thread** —
 `MailThreadSplitter` schneidet an den Zitat-Trennzeilen, die Outlook/Thunderbird/Gmail auf Deutsch und
@@ -853,8 +885,39 @@ Englisch erzeugen (`"Am … schrieb …:"`, `"On … wrote:"`, der `-----Ursprü
 Nachricht-----`/`-----Original Message-----`-Block). **Gesetzt, nicht gemessen**: Eine nicht erkannte
 Zitierkonvention bleibt bewusst ein einziger Chunk (falsches Negativ), statt Fließtext an einer
 zufällig passenden Zeile mitten im Satz zu zerschneiden (falsches Positiv). Jedes Thread-Segment trägt
-dieselben Kopfdaten der äußeren MIME-Hülle — die Kopfzeile einer zitierten Nachricht ist freier Text
-der jeweiligen Zitierkonvention, keine zuverlässig strukturiert rückführbare Angabe.
+dieselben Kopfdaten der äußeren MIME-Hülle als Metadatum — die Kopfzeile einer zitierten Nachricht ist
+freier Text der jeweiligen Zitierkonvention, keine zuverlässig strukturiert rückführbare Angabe. Der
+Kopfblock im Chunk-Text landet dagegen **nur am Anfang der Nachricht** (im ersten nicht-leeren
+Segment, vor dessen Zuschnitt), nicht auf jedem weiteren Thread-Segment und nicht erneut auf einem
+später ohnehin schon eigenständig zerlegten Teilstück — sonst würde derselbe Verteilerkopf jeden Chunk
+eines langen Threads verwässern, dasselbe Problem, das #1145s `RepeatingHeaderChunk` für einen
+wiederholten Seitenkopf vermeidet.
+
+**Eine Nachricht mit leerem Body bekommt einen reinen Kopfdaten-Chunk, aber nur, wenn sie mindestens
+einen Anhang trägt** (#1130 Befund 1, Review-Runde 3, Entscheidung 3): Ohne diese Sonderbehandlung
+würde die verbreitete „Anbei der Bescheid"-Mail ihren Anhang indizieren, aber Absender und Betreff
+verlieren, weil `MailThreadSplitter` aus einem leeren Body keinen Chunk erzeugt. Der Kopfdaten-Chunk
+durchläuft denselben Zuschnitt wie jeder andere Kopfblock (siehe oben) — ein großer Verteiler bei
+leerem Body zerlegt sich ebenso in `Teil j von M`-Chunks. **Ohne Anhang bleibt eine leere Nachricht
+`NO_EXTRACTABLE_TEXT`**: Ohne jeden eigenen Inhalt sind ihre Kopfdaten dann Vorlagentext wie ein
+wiederholter Seitenkopf, kein Beleg für tatsächlichen Inhalt — dieselbe Regel, die
+`DocxDocumentPipeline` für Kopf-/Fußzeilentext bereits festhält („Header/footer text never rescues
+this outcome").
+
+**Ein drittes Muster für denselben Zweck, bewusst keines der beiden bestehenden.**
+`TabularDocumentPipeline` backt ihre Strukturzeile in **jeden** Chunk (Blatt-/Tabellenname ist für
+jede Zeilengruppe eigenständig relevant, keine Dopplung desselben Inhalts); `RepeatingHeaderChunk`
+erzeugt einen **eigenen**, von der Nachricht getrennten Chunk (ein Seitenkopf trägt für sich genommen
+keinen zitierfähigen Inhalt). Der Mail-Kopf ist keines von beiden: Er gehört inhaltlich zum Anfang
+einer Nachricht, nicht zu jedem ihrer Chunks, und er ist als Kontext einer konkreten Nachricht
+sinnvoll zitierfähig, nicht als eigenständiger, inhaltsloser Beleg. Prepending an den Anfang der
+Nachricht ist deshalb die engste Passung. **Die Folge ist bewusst in Kauf genommen:** Für eine Frage
+wie „Mail von Müller zum Bebauungsplan" antworten zuverlässig nur die führenden Chunks einer Nachricht
+— findet die Suche stattdessen einen späteren Chunk (eine spätere Antwort im selben Thread, oder bei
+einem sehr großen Verteiler den Chunk, der den eigentlichen Nachrichtentext trägt), trägt der keinen
+Von/Betreff-Kontext im Text mehr, nur noch die `mail_*`-Metadaten ohne Leser. Das ist der Grund, warum
+Folge-Issue #1164 eine strukturierte Beleganzeige nachliefern soll, statt sich auf den Textweg allein
+zu verlassen.
 
 **Ein Segment, das trotzdem zu lang für einen Chunk ist, fällt auf `ChunkingService`s gewöhnlichen
 Token-Splitter zurück** (#1101 Review): Ein langer Rundbrief oder eine Weiterleitungskette ohne
@@ -971,10 +1034,11 @@ als eine Parser-Auswahl.
 
 ### (a) Exakte Kennungen müssen den lexikalischen Suchpfad unzerlegt erreichen
 
-Paragrafenangaben, Aktenzeichen und Erlassnummern sind Identifikatoren, keine Wörter. Ein
-Vektorvergleich trifft sie unzuverlässig; die Volltextsuche trifft sie exakt — aber nur, wenn sie dort
-unzerlegt ankommen. „§ 3 Abs. 2 VwGebS" darf nicht durch Tokenisierung, Stemming oder Decompounding
-zu Bruchstücken werden, und „AZ 31/2-2026-0815" ist kein Text, den man an Sonderzeichen trennt.
+Paragrafenangaben, Aktenzeichen, Erlassnummern und E-Mail-Adressen sind Identifikatoren, keine
+Wörter. Ein Vektorvergleich trifft sie unzuverlässig; die Volltextsuche trifft sie exakt — aber nur,
+wenn sie dort unzerlegt ankommen. „§ 3 Abs. 2 VwGebS" darf nicht durch Tokenisierung, Stemming oder
+Decompounding zu Bruchstücken werden, und „AZ 31/2-2026-0815" ist kein Text, den man an Sonderzeichen
+trennt — ebenso wenig „max.mustermann@example.org" (#1130).
 
 Die Typ-Pipeline ist der Ort, an dem der Text entsteht, der in **beide** Indizes geht — Vektorindex
 und Volltextindex. Sie befüllt deshalb beide, und die Kennungen gehen dabei in exakte Felder statt
@@ -1200,12 +1264,16 @@ Hier wird nur der **Übergabepunkt** definiert:
    Übergabemechanismus selbst ist seit #1107 offen für jede Pipeline**: `DocumentPipeline` deklariert
    über `passthroughMetadataKeys()`, welche seiner Chunk-Metadatenschlüssel `storeChunks` auf den
    gespeicherten Chunk kopiert — eine neue Pipeline erweitert diese Menge selbst, ohne
-   `FileProcessingService` zu ändern (Open-Closed, Teil 1). Die *Form* ist damit trotzdem uneinheitlich
-   geblieben: `MailDocumentPipeline` nutzt eigene Metadatenfelder (`mail_from` usw.), während
+   `FileProcessingService` zu ändern (Open-Closed, Teil 1). Die *Form* war bis #1130 uneinheitlich:
+   `MailDocumentPipeline` nutzte ausschließlich eigene Metadatenfelder (`mail_from` usw.), während
    `TabularDocumentPipeline`/`HtmlDocumentPipeline`/`PptxDocumentPipeline` ihren Strukturkontext in den
-   Chunk-Text backen (`location` plus eine Kontextzeile) statt in ein Feld — offen, ob das eine
-   bewusste, formatabhängige Entscheidung bleibt (Mail-Kopfdaten sind kein Fließtext, eine
-   Blatt-/Tabellenzeile schon) oder vereinheitlicht werden soll.
+   Chunk-Text backen (`location` plus eine Kontextzeile). **Entschieden mit #1130 Befund 1: beides.**
+   Die Metadatenfelder bleiben — als Grundlage einer künftigen strukturierten Filterung nach
+   Absender/Zeitraum/Betreff (#1164) —, zusätzlich trägt `MailDocumentPipeline` dieselben Kopfdaten
+   jetzt auch als deutsch beschriftete Kontextzeilen in den Chunk-Text, einmalig auf dem ersten
+   erzeugten Chunk, damit sie Embedding und Volltextindex tatsächlich erreichen. Ein Metadatenfeld
+   ohne Leser ist wirkungslos — die Textform ist die einzige, die vor einer strukturierten Filterung
+   in Suchtreffern ankommt.
 2. Struktur-Metadaten sind **abgeleitet, nicht geraten**. Sie stammen aus dem Dokument selbst
    (Gliederung, Folienzähler, Blattname, Mail-Header). Inhaltlich interpretierende Felder — Dokumentart,
    Fassung, Thema — entstehen hier ausdrücklich nicht; sie gehören in die Metadaten-Spezifikation, mit
@@ -1296,10 +1364,6 @@ Hier wird nur der **Übergabepunkt** definiert:
   Inhaltsverzeichnis für die ersten drei Kapitel und flachem Text danach? Vollständiger Rückfall auf
   Token-Chunking oder gemischter Zuschnitt innerhalb eines Dokuments? Letzteres ist fachlich besser und
   macht die Erklärbarkeit der Zerlegung schwerer.
-- **Bleibt Strukturkontext pipeline-abhängig Metadatenfeld oder Chunk-Text?** #1107 hat den
-  Übergabepunkt selbst zum Erweiterungspunkt gemacht (`DocumentPipeline#passthroughMetadataKeys()`),
-  aber bewusst nicht entschieden, ob die *Form* über Mail (Metadatenfelder) und
-  Tabular/HTML/PPTX (Text + `location`) hinweg vereinheitlicht werden soll (Teil 5, Punkt 1).
 - **Wann wird ein Bestand nach einer Pipeline-Umstellung tatsächlich neu indiziert?** Dass ein
   gemischter Bestand **erkennbar** ist und selektiv nachgezogen werden **kann**, ist mit
   [Regel (d)](#d-jeder-chunk-trägt-die-version-des-verfahrens-das-ihn-erzeugt-hat) entschieden. Offen

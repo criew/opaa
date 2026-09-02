@@ -391,9 +391,17 @@ keine Wörter, und werden als solche behandelt: „§ 34" und „§ 35" müssen 
 ist der ganze Pfad für seinen Hauptzweck wertlos.
 
 Welche Muster als Kennung gelten, ist eine überschaubare, gepflegte Liste (Paragrafenverweise mit und
-ohne Gesetzeskürzel, Aktenzeichen in den üblichen Formen, Erlass- und Drucksachennummern) — nicht ein
-allgemeiner Erkennungsversuch. Eine falsch erkannte Kennung erzeugt ein Token, das nie gesucht wird;
-eine nicht erkannte Kennung ist der Fehler, der wehtut.
+ohne Gesetzeskürzel, Aktenzeichen in den üblichen Formen, Erlass- und Drucksachennummern,
+E-Mail-Adressen seit #1130) — nicht ein allgemeiner Erkennungsversuch. Eine falsch erkannte Kennung
+erzeugt ein Token, das nie gesucht wird; eine nicht erkannte Kennung ist der Fehler, der wehtut.
+
+Bei E-Mail-Adressen liegt die Lücke anders als bei Aktenzeichen: PostgreSQLs eigener Parser hält eine
+Adresse bereits als ein einzelnes `email`-Token — die Zerstörung passiert nicht beim Schreiben, sondern
+beim Fragen. `io.opaa.query.FullTextChunkSearch#wordTokens` zerlegt eine Frage an jedem
+Nicht-Alphanumerikum, „max.mustermann@example.org" wird dort zu vier einzelnen Worttokens, die das eine
+Chunk-Token nie treffen — belegt gegen ein echtes PostgreSQL (siehe `FullTextIdentifiersTest` und
+`FullTextChunkSearchIntegrationTest`). Die Adresse als unzerlegtes Token auf beiden Seiten zu führen
+behebt genau diese Asymmetrie, mit demselben Mechanismus wie bei Aktenzeichen.
 
 **Wie es gebaut ist** (`io.opaa.indexing.FullTextIdentifiers`, #1048):
 
@@ -1306,46 +1314,69 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
 - **Kompositazerlegung: ispell-Wörterbuch oder german-decompounder-Ansatz?** Erst nach der Messung
   entscheidbar — und nur, wenn das Komposita-Segment des Benchmarks überhaupt eine Lücke zeigt. Beide
   Wege haben unterschiedliche Pflegekosten für das Wörterbuch.
-- **Wie wird der Volltextindex bei einer Änderung der Analysekette nachgezogen?** Eine geänderte
-  `tsvector`-Konfiguration macht bestehende Einträge inkonsistent — vergleichbar mit einem Wechsel des
-  Einbettungsmodells, aber ohne dessen Modellaufrufe. Vollständiger Neuaufbau des Volltextindex ohne
-  erneutes Einbetten wäre der naheliegende Weg; er ist noch nicht ausgearbeitet. **Der
-  Robustheitsteil ist mit #1093 entschieden:** `content_tsv_version` als Versionsstempel (bereits
-  seit #1047 vorhanden) macht jede Analysekettenänderung zu genau dem Fall, den
-  `FullTextBackfillService` ohnehin beherrscht — ein Versionssprung markiert den gesamten Bestand
-  als rückstandsbehaftet, und der Backfill arbeitet ihn wie jeden anderen Rückstand ab. Damit ein
-  einzelner „Gift-Chunk" (Inhalt, an dem `to_tsvector` scheitert, z. B. weil der resultierende
-  Vektor Postgres' 1-MiB-Grenze überschreitet) dabei nicht den gesamten Bestand blockiert, halbiert
-  `FullTextBackfillService.backfillBatch` einen fehlschlagenden Batch rekursiv, bis der
-  verursachende Chunk isoliert ist. Ein isolierter Chunk wird anhand des PostgreSQL-`SQLSTATE` der
-  ursprünglichen Fehlermeldung klassifiziert (Klassen `22`/`54`/`42` als Gift-Chunk-Kandidat, alles
-  andere als Systemstörung) — **nicht** über eine nachträgliche Sonde: eine Sonde liefe auf einer
-  anderen, später geliehenen Verbindung und würde alles, was im Zeitfenster dazwischen ausheilt (ein
-  konkurrierendes `DELETE`, ein Lock-Timeout), fälschlich als „Datenbank gesund, also Gift-Chunk"
-  einordnen und den Chunk dauerhaft verlieren (#1093-Review, Blocker 1). Ein als Gift-Chunk-Kandidat
-  eingestufter Chunk wird zusätzlich nicht beim ersten Fehlschlag aufgegeben, sondern erst nach
-  `FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS` aufeinanderfolgenden Fehlschlägen dauerhaft in
-  `chunk_full_text_skip` eingetragen — ein Fehlschlag, der sich innerhalb weniger Ticks von selbst
-  löst, wird stattdessen einfach erneut versucht. Erst ein bestätigter Skip zählt in
+- ~~**Wie wird der Volltextindex bei einer Änderung der Analysekette nachgezogen?**~~ Beantwortet
+  mit #1047/#1048/#1093: `FullTextChunkStore#CURRENT_TSV_VERSION` markiert jede geänderte
+  `tsvector`-Form, `FullTextBackfillService`/`FullTextBackfillScheduler` ziehen jede Zeile
+  unterhalb der aktuellen Version in kleinen Chargen nach (Standard 200 Chunks je 5-Sekunden-Tick),
+  ohne erneutes Einbetten. #1130 belegt diesen Weg erstmals in der Praxis mit einem Bump, der den
+  gesamten Altbestand betrifft (neues Muster in `FullTextIdentifiers` für E-Mail-Adressen, Version
+  3 → 4).
+
+  **Die tatsächliche Wirkung ist gröber als ein Zeilenfilter:** `FullTextBackfillGate` (siehe oben,
+  "Reihenfolge") nimmt eine Bibliothek erst dann wieder in den lexikalischen Suchbereich auf, wenn
+  ihr Backfill **vollständig** ist — `FullTextSearchStage` fragt `searchableLibraries(...)` und lässt
+  jede noch nicht vollständige Bibliothek ganz aus der Fusion heraus, nicht nur die einzelnen noch
+  veralteten Zeilen. Ein Versionssprung markiert jede Zeile jeder Bibliothek als veraltet, also
+  verlässt in dem Moment **der gesamte Bestand** den lexikalischen Pfad, nicht nur die noch nicht
+  bearbeiteten Chunks — exakt die Konsequenz aus "Ein Volltextpfad, der nur die Hälfte des Bestands
+  sieht, ist schlimmer als keiner" (siehe oben), hier auf die Bump-Situation angewandt: keine
+  graduelle Verschlechterung, sondern ein harter Rückfall auf reines Vektor-Retrieval für alles, bis
+  jede Bibliothek einzeln durchgelaufen ist. Bei rund 1 Mio. Chunks bei Standardwerten (144.000
+  Chunks/h) etwa sieben Stunden. Danach wird jede Bibliothek einzeln wieder aufgenommen, sobald ihr
+  eigener Nachlauf fertig ist — keine globale Wiederkehr auf einen Schlag.
+
+  **Genau dieses Fenster ist der Grund, warum #1093 (Gift-Chunk-Isolation) Voraussetzung war, nicht
+  nur Komfort.** Ohne sie hätte ein einzelner Gift-Chunk (Inhalt, an dem `to_tsvector` scheitert,
+  z. B. weil der resultierende Vektor Postgres' 1-MiB-Grenze überschreitet) den Fortschritt der
+  gesamten Bibliothek angehalten, in der er liegt: `FullTextBackfillService.backfillBatch` halbiert
+  einen fehlschlagenden Batch rekursiv, bis der verursachende Chunk isoliert ist, klassifiziert ihn
+  anhand des PostgreSQL-`SQLSTATE` der ursprünglichen Fehlermeldung (Klassen `22`/`54`/`42` als
+  Gift-Chunk-Kandidat, alles andere als Systemstörung) — **nicht** über eine nachträgliche Sonde:
+  eine Sonde liefe auf einer anderen, später geliehenen Verbindung und würde alles, was im
+  Zeitfenster dazwischen ausheilt (ein konkurrierendes `DELETE`, ein Lock-Timeout), fälschlich als
+  „Datenbank gesund, also Gift-Chunk" einordnen und den Chunk dauerhaft verlieren (#1093-Review,
+  Blocker 1). Ein als Gift-Chunk-Kandidat eingestufter Chunk wird zusätzlich nicht beim ersten
+  Fehlschlag aufgegeben, sondern erst nach `FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS`
+  aufeinanderfolgenden Fehlschlägen dauerhaft in `chunk_full_text_skip` eingetragen — ein
+  Fehlschlag, der sich innerhalb weniger Ticks von selbst löst, wird stattdessen einfach erneut
+  versucht. **Ein Versionssprung macht dabei auch einen bereits bestätigten Skip wieder angreifbar**
+  (`recordOrIncrementSkip` setzt `attempts` auf 1 zurück, sobald die gespeicherte
+  `content_tsv_version` von der aktuellen abweicht, und die Selektion in `selectPending` schließt
+  nur Zeilen bei der jeweils aktuellen Version aus) — ein Chunk, der unter der Analysekette vor
+  #1130 als Gift-Chunk galt, bekommt unter der neuen Version dieselbe dreimalige Chance wie jeder
+  andere, bevor er erneut als Skip verbucht wird. Erst ein bestätigter Skip zählt in
   `FullTextBackfillProgress#skippedChunks` (sichtbar auf der Administrationsseite „Suche &
-  Indexierung“ als eigener Hinweis je Bibliothek, `LibrarySearchStatusResponse.fullTextSkippedChunks`
-  — eine Bibliothek mit bestätigten Skips gilt dort nicht mehr als makellos „bereit“), ohne
-  `FullTextBackfillGate` an dieser einen Bibliothek für immer zu blockieren (`isComplete()` gated nur
-  auf noch ausstehende, nicht auf dauerhaft übersprungene Chunks). Eine echte Systemstörung
-  (Verbindung weg, Pool erschöpft, Deadlock) trägt kein `SQLSTATE` der Poison-Allowlist und lässt
-  weiterhin `FullTextBackfillScheduler`s Backoff greifen — ebenso jeder generische
-  `RuntimeException`, der weder ein `IllegalArgumentException` (nie bei der Datenbank angekommen)
-  noch ein passend klassifizierter `DataAccessException` ist: ein Programmierfehler in einer
-  geteilten Hilfsmethode träfe sonst jeden Chunk gleich und würde über die Mehrfachbestätigung
-  hinweg den gesamten Bestand als „bestätigt übersprungen" verbuchen, bis der Gate auf einen in
-  Wahrheit leeren Index öffnet. Ein Chunk, dessen `document_id`-Metadatum selbst kein
+  Indexierung" als eigener Hinweis je Bibliothek, `LibrarySearchStatusResponse.fullTextSkippedChunks`
+  — eine Bibliothek mit bestätigten Skips gilt dort nicht mehr als makellos „bereit",
+  `fullTextIndexCondition()` zeigt `INCOMPLETE`), **ohne `FullTextBackfillGate` an dieser einen
+  Bibliothek für immer zu blockieren** — `isComplete()`, die Methode, die den Gate tatsächlich
+  steuert, gated bewusst nur auf noch ausstehende (`missingChunks`), nicht auf dauerhaft
+  übersprungene Chunks. Das ist die Stelle, an der sich Betriebsanleitung und Isolationsmechanik
+  schließen: Ohne #1093 hätte ein einzelner kaputter Datensatz eine Bibliothek dauerhaft aus dem
+  lexikalischen Pfad gehalten (der Scheduler-Backoff hätte die Ticks für den Rest der
+  Prozesslaufzeit gestoppt, bevor die übrigen Chunks überhaupt durchlaufen); mit #1093 bleibt der
+  betroffene Chunk als bestätigter Skip sichtbar liegen, aber die Bibliothek als Ganzes kehrt in
+  den lexikalischen Pfad zurück, sobald ihr übriger Bestand fertig ist — begrenzt auf das oben
+  beschriebene Zeitfenster, nicht dauerhaft. Ein Chunk, dessen `document_id`-Metadatum selbst kein
   wohlgeformtes UUID ist, wird nicht über diese Mehrfachbestätigung geführt, sondern sofort als
   bestätigter Skip verbucht (`document_id` in `chunk_full_text_skip` dafür nullable) — ein
-  struktureller Defekt heilt nicht durch Wiederholung, und ihn stattdessen aus der Auswahl
-  auszuschließen würde `missingChunks` für seine Bibliothek dauerhaft bei 1 belassen. Indiziert ein
-  zuvor gescheiterter Chunk später erfolgreich, löscht `FullTextChunkStore.clearSkipRows` seine
-  Skip-Zeile wieder — nur auf dem Backfill-Pfad, nie beim regulären Ingest, wo eine Skip-Zeile
-  wegen frisch erzeugter Chunk-IDs ohnehin nie existieren kann.
+  struktureller Defekt heilt nicht durch Wiederholung. Indiziert ein zuvor gescheiterter Chunk
+  später erfolgreich, löscht `FullTextChunkStore.clearSkipRows` seine Skip-Zeile wieder — nur auf
+  dem Backfill-Pfad, nie beim regulären Ingest, wo eine Skip-Zeile wegen frisch erzeugter Chunk-IDs
+  ohnehin nie existieren kann.
+
+  **Voraussetzung erfüllt:** #1093 ist mit PR #1168 gemergt, bevor #1130s Versionssprung den ersten
+  bestandsweiten Bump auslöst — genau die Reihenfolge, die oben beschrieben ist.
 - **Wirkt der Kontextpräfix aus Contextual Chunking (#933/#940) auch in den Volltextindex?**
   Anthropics „contextual BM25" spricht dafür, und die Roadmap sieht es in Phase 2a vor. Es ist aber eine
   eigene Messung wert: Ein Titelpräfix in jedem Chunk verändert die Termstatistik des ganzen Index.

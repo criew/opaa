@@ -55,13 +55,18 @@ public class FullTextChunkStore {
    * missing row - the version scaffolding #1047 put in place for this. Nothing else has to happen
    * for existing rows to be brought up to date: {@link FullTextBackfillScheduler} re-checks the
    * backlog after every process restart, which a deployment carrying a new value of this constant
-   * necessarily is.
+   * necessarily is. Version 4 (#1130 Befund 1) added the undecomposed email-address lexeme - the
+   * first bump to actually reach a running bestand, and therefore the first to also exercise a side
+   * effect of #1093's poison-chunk isolation: raising this constant does not just re-queue ordinary
+   * rows, it also makes an already-confirmed {@code chunk_full_text_skip} row retryable again,
+   * since that table's own {@code content_tsv_version} column no longer matches (see {@code
+   * recordOrIncrementSkip}'s own Javadoc, and docs/features/hybrid-retrieval.md, "Offene Punkte").
    *
    * <p>Public for the same reason {@link #TEXT_SEARCH_CONFIGURATION} is: the lexical search path
    * ({@code io.opaa.query.FullTextChunkSearch}) must restrict its query to rows built under this
    * version, or it would read a row whose lexemes were built by a different chain.
    */
-  public static final short CURRENT_TSV_VERSION = 3;
+  public static final short CURRENT_TSV_VERSION = 4;
 
   private final JdbcTemplate jdbcTemplate;
 
