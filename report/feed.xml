@@ -5,8 +5,31 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-01T05:27:36Z</updated>
+  <updated>2026-09-02T04:53:25Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Dienstag, 1. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-01.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-01.html</id>
+    <updated>2026-09-02T04:53:25Z</updated>
+    <summary type="text">feat(indexing): Ingestion-Pipelines je Dokumenttyp:
+— Strukturbewusstes Chunking je Dokumenttyp implementiert
+— EML/MSG-Pipeline mit Metadaten und rekursiven Anhängen
+— HTML-, XLSX/CSV- und ODF-Pipelines mit Strukturerhalt
+feat: Confluence als Datenquelle anbinden (Konnektor für Cloud und Data Center):
+— Confluence-Konnektor mit Cloud- und Data-Center-Unterstützung geplant
+— Zwölf Tickets für Zugriffsschicht, Abgleich und Betrieb angelegt
+feat(retrieval): Hybride Suche mit Reranking:
+— Hybride Suche mit Volltextpfad und RRF-Fusion umgesetzt
+— Diagnosewerkzeug und Admin-Seite für Suchqualität bereitgestellt
+feat(eval): Suchqualitäts-Benchmark — Konfigurationsvergleiche und Verwaltungs-Evaldomäne:
+— Verwaltungs-Evaldomäne mit Golden Cases und Baselines
+— Mehrfachlauf-Regel für LLM-Varianten im nächtlichen Job
+Sonstiges:
+— Format-Pipelines und Quellen-Achse in Unterpackages gegliedert
+— Bestand auf tika-fallback v1 selektiv nachziehbar gemacht
+— Relevanzwert für rein lexikalisch gefundene Fundstellen korrigiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Montag, 31. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-31.html"/>
