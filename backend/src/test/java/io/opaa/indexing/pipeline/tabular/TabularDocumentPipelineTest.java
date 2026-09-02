@@ -7,9 +7,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
+import io.opaa.indexing.pipeline.office.OdfContentXml;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -24,6 +25,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * The XLSX/CSV/ODS pipeline (#1058, #1057; ingestion-pipelines.md Teil 3, Punkt 3): tabular
@@ -464,7 +466,7 @@ class TabularDocumentPipelineTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     String text = result.chunks().getFirst().getText();
-    assertThat(text.length()).isLessThanOrEqualTo(TabularDocumentPipeline.HARD_CHUNK_CHAR_LIMIT);
+    assertThat(text.length()).isLessThanOrEqualTo(HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT);
     assertThat(text).endsWith("[…gekürzt]");
   }
 
@@ -618,8 +620,27 @@ class TabularDocumentPipelineTest {
       out.closeEntry();
     }
 
-    assertThatThrownBy(() -> pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.ods")))
-        .isInstanceOf(UncheckedIOException.class);
+    DocumentPipelineResult result = pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void aZipWithoutAContentXmlEntryHasNoContent() throws IOException {
+    // #1108 review, finding 7: mirrors OdtDocumentPipelineTest/OdpDocumentPipelineTest's identical
+    // case - not a genuine ODF ZIP, the same "could not be parsed" failure as a corrupt ZIP, not
+    // the "parsed, but empty" NO_EXTRACTABLE_TEXT a well-formed empty spreadsheet gets below.
+    Path file = tempDir.resolve("ohne-content-xml.ods");
+    try (var out = new ZipOutputStream(Files.newOutputStream(file))) {
+      out.putNextEntry(new ZipEntry("mimetype"));
+      out.write("application/vnd.oasis.opendocument.spreadsheet".getBytes(StandardCharsets.UTF_8));
+      out.closeEntry();
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "ohne-content-xml.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -658,10 +679,23 @@ class TabularDocumentPipelineTest {
     Path file = tempDir.resolve("gross.ods");
     writeOds(file, odsTable("Blatt1", odsRow("Name", "Amt"), odsRow("Müller", "Bauamt")));
 
-    assertThatThrownBy(
-            () -> tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.ods")))
-        .isInstanceOf(UncheckedIOException.class)
-        .rootCause()
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void theOdsByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit() throws IOException {
+    // #1108 review, finding 4: the pipeline's own catch-all collapses every parse failure into
+    // the same NO_CONTENT outcome, so a wrong-reason failure would stay green there. This test
+    // goes straight at OdfContentXml.parse instead, the one place the byte limit's own message
+    // survives.
+    Path file = tempDir.resolve("gross-direkt.ods");
+    writeOds(file, odsTable("Blatt1", odsRow("Name", "Amt"), odsRow("Müller", "Bauamt")));
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 50, new DefaultHandler()))
+        .isInstanceOf(IOException.class)
         .hasMessageContaining("size limit");
   }
 
@@ -678,9 +712,25 @@ class TabularDocumentPipelineTest {
         odsTable(
             "Blatt1", odsRow("Name", "Amt"), odsRow("A", "1"), odsRow("B", "2"), odsRow("C", "3")));
 
-    assertThatThrownBy(
-            () -> tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-zeilen.ods")))
-        .isInstanceOf(UncheckedIOException.class)
+    DocumentPipelineResult result =
+        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-zeilen.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void theOdsRowLimitDirectlyThrowsASaxExceptionNamingWhichLimitWasHit() throws IOException {
+    // See theOdsByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit's own Javadoc.
+    Path file = tempDir.resolve("viele-zeilen-direkt.ods");
+    writeOds(
+        file,
+        odsTable(
+            "Blatt1", odsRow("Name", "Amt"), odsRow("A", "1"), odsRow("B", "2"), odsRow("C", "3")));
+    TabularDocumentPipeline.OdsContentHandler handler =
+        new TabularDocumentPipeline.OdsContentHandler(1_000, 1_000, 2);
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+        .isInstanceOf(IOException.class)
         .rootCause()
         .hasMessageContaining("row limit");
   }

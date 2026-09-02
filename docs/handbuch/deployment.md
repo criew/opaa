@@ -141,15 +141,18 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 > **Neuindizierung nach #1054 (Ingestion-Pipelines je Dokumenttyp).** Vor diesem Update lief jedes
 > zugelassene Format über denselben Weg (Tika-Extraktion, Token-Chunking). Seitdem übernehmen eigene
 > Pipelines den Zuschnitt für `.pdf` (`pdf`), `.docx` (`docx`), `.pptx` (`pptx`),
-> `.xlsx`/`.csv`/`.ods` (`tabular`), `.html` (`html`) sowie `.eml`/`.msg` (`email`) — jede mit ihrer
-> eigenen `pipeline_id`/`pipeline_version` am Chunk (siehe [Ingestion-Pipelines je
-> Dokumenttyp](../features/ingestion-pipelines.md#umgesetzt-die-abstraktion-selbst-1056)). `.md`,
-> `.txt`, `.doc`, `.odt`, `.odp` sowie jedes Format ohne eigene Pipeline laufen unverändert über
-> `TikaFallbackPipeline` weiter — für sie ändert sich am bestehenden Bestand nichts.
+> `.xlsx`/`.csv`/`.ods` (`tabular`), `.html` (`html`), `.eml`/`.msg` (`email`) sowie `.odt` (`odt`)
+> und `.odp` (`odp`, #1110) — jede mit ihrer eigenen `pipeline_id`/`pipeline_version` am Chunk (siehe
+> [Ingestion-Pipelines je Dokumenttyp](../features/ingestion-pipelines.md#umgesetzt-die-abstraktion-selbst-1056)).
+> `.md`, `.txt`, `.doc` sowie jedes Format ohne eigene Pipeline laufen unverändert über
+> `TikaFallbackPipeline` weiter — für sie ändert sich am bestehenden Bestand nichts. Für `.odt`/`.odp`
+> ändert sich der Bestand dagegen genauso wie für die anderen sechs Formate: Wer diese Anleitung
+> abarbeitet, muss `odt`/`odp` als eigene Aufrufe mitnehmen (siehe unten), sonst bleiben bestehende
+> ODT-/ODP-Dokumente dauerhaft auf dem Fallback-Zuschnitt.
 >
 > Anders als bei #773/#933 oben ist kein bibliotheksweites Rücksetzen von `documents`/`vector_store`
 > nötig: Die selektive Neuindizierung wählt gezielt über die Chunk-Metadaten aus, welcher Bestand vom
-> alten, generischen Zuschnitt betroffen ist. **Der eigentliche Migrationsschritt ist ein siebter,
+> alten, generischen Zuschnitt betroffen ist. **Der eigentliche Migrationsschritt ist ein neunter,
 > vorangestellter Aufruf mit `pipelineId: "tika-fallback"`**, wiederholt bis `done: true` in der
 > Antwort steht:
 >
@@ -164,9 +167,10 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 > siehe unten) **und** jeden Chunk, den `tika-fallback` selbst in Version 0 erzeugt hat — beides
 > wird beim Neuerzeugen über die Registry an die heute zuständige Pipeline geroutet, nicht mehr an
 > `TikaFallbackPipeline` zurück. Erst danach folgen, ebenfalls je wiederholt bis `done: true`, die
-> sechs formatbezogenen Aufrufe (`pdf`, `docx`, `pptx`, `tabular`, `html`, `email`) — sie decken nur
-> noch den #1094-Zwischenstand ab, also Chunks, die bereits mit `pipeline_id`/`pipeline_version`
-> geschrieben wurden, aber noch auf einer älteren Version ihrer heutigen Pipeline liegen:
+> acht formatbezogenen Aufrufe (`pdf`, `docx`, `pptx`, `tabular`, `html`, `email`, `odt`, `odp`) — sie
+> decken nur noch den #1094-Zwischenstand ab, also Chunks, die bereits mit
+> `pipeline_id`/`pipeline_version` geschrieben wurden, aber noch auf einer älteren Version ihrer
+> heutigen Pipeline liegen:
 >
 > ```bash
 > curl -X POST http://localhost:8081/api/v1/admin/indexing/pipeline-reindex \
@@ -182,20 +186,12 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 >
 > **Altbestand vor #1094** (vor Einführung der Pipeline-Metadaten selbst) trägt weder `pipeline_id`
 > noch `pipeline_version` und zählt dafür als `tika-fallback` Version 0 — er ist **ausschließlich**
-> über den `tika-fallback`-Aufruf oben erfasst, nicht über die sechs formatbezogenen Aufrufe: Die
+> über den `tika-fallback`-Aufruf oben erfasst, nicht über die acht formatbezogenen Aufrufe: Die
 > Auswahlabfrage der selektiven Neuindizierung matcht einen Chunk ohne `pipeline_id` nur gegen
-> `pipelineId: "tika-fallback"` (`COALESCE` auf den Legacy-Wert), niemals gegen eine der sechs
-> übrigen Kennungen. Wer den `tika-fallback`-Aufruf auslässt, bekommt bei den sechs formatbezogenen
+> `pipelineId: "tika-fallback"` (`COALESCE` auf den Legacy-Wert), niemals gegen eine der acht
+> übrigen Kennungen. Wer den `tika-fallback`-Aufruf auslässt, bekommt bei den acht formatbezogenen
 > Aufrufen sofort `done: true` und hat den gesamten Vor-#1094-Bestand — bei jeder heutigen
 > Installation der Normalfall — nicht angefasst.
->
-> **Bekannte Lücke (#1105):** Ein Dokument, das zwischen #1094 und der Registrierung seiner heute
-> zuständigen Format-Pipeline indiziert wurde, trägt bereits `tika-fallback` Version 1 und zählt in
-> `pipeline-versions` als „auf aktueller Version" — es ist über keinen der obigen Aufrufe (auch nicht
-> den `tika-fallback`-Aufruf, dessen `belowVersion: 1` es nicht mehr erfasst) nachziehbar, obwohl es
-> inzwischen einer anderen Pipeline (PDF/DOCX/PPTX/XLSX/HTML/EML) gehört. Betroffen ist nur dieses
-> schmale Zwischenfenster; #1105 ist noch offen. Wer für die betroffenen Formate sichergehen will,
-> setzt ersatzweise das bibliotheksweite Rücksetzen wie bei #933 oben ein.
 
 ## Sicherheitshinweis: `POST /api/v1/libraries/{libraryId}/indexing` ist von außen erreichbar
 
@@ -1014,7 +1010,7 @@ und folgt dessen jeweils eigenem Mechanismus:
 | Entwicklungsnutzer des `dev`-Profils (`opaa.auth.dev.users`) | Lokale Entwicklung, `dev`-Auth-Modus (siehe [„Entwicklungsmodus (dev)"](#entwicklungsmodus-dev) oben) | `dev-admin` (`admin@opaa.local`, `SYSTEM_ADMIN`), `dev-user` (regulärer Nutzer) |
 | Keycloak-Realm-Nutzer (`keycloak/realm-export.json`) | `oidc`-Auth-Modus mit dem gebündelten Keycloak (siehe [„OIDC (Keycloak)"](#oidc-keycloak) oben) | `testuser`/`testpass` (E-Mail `test@opaa.local`) — wird zum `SYSTEM_ADMIN`, sobald `OPAA_INITIAL_ADMIN_EMAIL` in der lokalen `.env.docker` auf dieselbe Adresse gesetzt ist, sonst ein regulärer Nutzer |
 | Demo-Realm-Nutzer (`keycloak/realm-export.json`, Issue #712) | Demo-Instanz „Stadt Rheinfurt" (`--profile demo`, siehe [`demo/README.md`](../../demo/README.md), Abschnitt „Seed ausführen") | `demo-admin` (`admin@stadt-rheinfurt.example`, `SYSTEM_ADMIN` bei entsprechend gesetztem `OPAA_INITIAL_ADMIN_EMAIL`), `maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt` — alle mit dem offenen Demo-Passwort `RheinfurtDemo!2026`, siehe `demo/README.md`, Abschnitt „Nutzerkonten". Zusätzlich der Client `opaa-seed` (Resource Owner Password Grant, `directAccessGrantsEnabled: true`) — ausschließlich für `demo/seed/seed.py`, nie für eine reguläre Anmeldung |
-| E2E-Suite (`e2e/e2e.env`, `e2e/docker-compose.e2e.yml`) | Playwright-Suite (siehe [`e2e/README.md`](../../e2e/README.md), Abschnitt „Drei Testnutzer") | Wiederverwendet `dev-admin` und `dev-user` aus dem `dev`-Profil, ergänzt um `dev-outsider` (nur für diese Suite, über `OPAA_AUTH_DEV_USERS_*` hinzugefügt) |
+| E2E-Suite (`e2e/e2e.env`, `e2e/docker-compose.e2e.yml`) | Playwright-Suite (siehe [`e2e/README.md`](../../e2e/README.md), Abschnitt „Vier Testnutzer") | Wiederverwendet `dev-admin` und `dev-user` aus dem `dev`-Profil, ergänzt um `dev-outsider` und `dev-format-pipelines` (nur für diese Suite, über `OPAA_AUTH_DEV_USERS_*` hinzugefügt) |
 | Quellenzugangsdaten (`sourceCredentials`, siehe [„Zugangsdaten-Verschlüsselung"](#zugangsdaten-verschlüsselung-483) oben) | Kein Testkonto für OPAA selbst — Basic-Auth-Zugangsdaten (`user:password`), mit denen eine `HTTP_DIRECTORY`- oder `RSS_FEED`-Bibliothek eine *externe* Dokumentenquelle abruft | Kein fester Beispielwert; frei je Bibliothek |
 
 Warum keine Vereinheitlichung:

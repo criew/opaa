@@ -1,2 +1,9 @@
-/** The DOCX/PPTX format pipelines (docs/features/ingestion-pipelines.md). */
+/**
+ * The DOCX/PPTX/ODT/ODP format pipelines (docs/features/ingestion-pipelines.md). ODT/ODP mirror
+ * their DOCX/PPTX counterparts' cut but read {@code content.xml} directly through a hardened SAX
+ * parser ({@link io.opaa.indexing.pipeline.office.OdfContentXml}) rather than Apache POI, which
+ * never reads OpenDocument. {@link io.opaa.indexing.pipeline.office.OdfContentXml} is the only type
+ * here made public purely for reuse - by {@code io.opaa.indexing.pipeline.tabular}'s ODS reader
+ * (#1108); the package's other public types are the pipeline beans themselves.
+ */
 package io.opaa.indexing.pipeline.office;

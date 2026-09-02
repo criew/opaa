@@ -10,8 +10,9 @@ obtained.
 - "demo": the rich, evolving Rheinfurt corpus from docs/features/demo-instance.md. Authenticates
   via Keycloak (see keycloak/realm-export.json).
 - "e2e": the minimal, frozen profile for the E2E docker-compose stack (e2e/docker-compose.e2e.yml).
-  Authenticates via the dev-auth header against the "dev-admin"/"dev-user"/"dev-outsider" accounts
-  that stack already provisions (see docker-compose.e2e.yml's OPAA_AUTH_DEV_USERS_* block). Since
+  Authenticates via the dev-auth header against the "dev-admin"/"dev-user"/"dev-outsider"/
+  "dev-format-pipelines" accounts that stack already provisions (see docker-compose.e2e.yml's
+  OPAA_AUTH_DEV_USERS_* block). Since
   #233, its data (this file plus e2e-data/) is the E2E suite's only source of pre-existing content -
   e2e/fixtures/rss-feed/ and e2e/fixtures/test-documents/ used to be a second, independent way to
   fill an instance and no longer exist; their content lives under e2e-data/ instead, next to the

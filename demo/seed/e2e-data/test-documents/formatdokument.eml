@@ -1,0 +1,25 @@
+Content-Type: multipart/mixed; boundary="===============4172575699976085967=="
+MIME-Version: 1.0
+Subject: Formatdokument Anfrage
+From: Buergeramt <buergeramt@example.org>
+To: Sachbearbeitung <sachbearbeitung@example.org>
+Date: Tue, 01 Sep 2026 23:33:03 -0000
+
+--===============4172575699976085967==
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+
+T1BBQSBGb3JtYXRkb2t1bWVudCBFTUwuCgpEaWVzZXMgRG9rdW1lbnQgcHJ1ZWZ0LCBkYXNzIGVp
+bmUgaG9jaGdlbGFkZW5lIEVNTC1EYXRlaSBzYW10IEFuaGFuZyB1ZWJlciBkaWUgTWFpbERvY3Vt
+ZW50UGlwZWxpbmUgaW5kaXppZXJ0IHdpcmQgKElzc3VlICMxMTA5KS4=
+
+--===============4172575699976085967==
+Content-Type: application/octet-stream
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="formatdokument-anhang.txt"
+
+QW5oYW5nc2luaGFsdCBmdWVyIGRlbiBGb3JtYXRkb2t1bWVudC1UZXN0Lg==
+
+--===============4172575699976085967==--
