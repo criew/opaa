@@ -36,7 +36,7 @@ class OdtDocumentPipelineTest {
   void claimsExactlyOdt() {
     assertThat(pipeline.handledFormats()).containsExactly(".odt");
     assertThat(pipeline.id()).isEqualTo("odt");
-    assertThat(pipeline.version()).isEqualTo((short) 1);
+    assertThat(pipeline.version()).isEqualTo((short) 2);
   }
 
   @Test
@@ -196,6 +196,86 @@ class OdtDocumentPipelineTest {
         .contains(" | Randnotiz")
         .contains("Personalausweis | 37,00 EUR")
         .doesNotContain("innen");
+  }
+
+  @Test
+  void headerAndFooterTextFromStylesXmlBecomeOneDeduplicatedLeadingChunk() throws IOException {
+    // regression guard for #1145: an authority name/Aktenzeichen placed exclusively in the
+    // Kopf-/Fußzeile must still be lexically searchable, and only once - not per page and not
+    // dropped, as it was after #1110 stopped reading styles.xml at all.
+    Path file = tempDir.resolve("mit-kopfzeile.odt");
+    writeOdtWithStyles(
+        file,
+        odtHeading(1, "Antrag") + odtParagraph("Fachlicher Inhalt des Antrags."),
+        "<style:header><text:p>Stadt Musterstadt</text:p></style:header>"
+            + "<style:footer><text:p>Az. 12-34/2026</text:p></style:footer>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "mit-kopfzeile.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Stadt Musterstadt")
+        .contains("Az. 12-34/2026");
+    assertThat(result.chunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+        .isEqualTo("Kopf-/Fußzeile");
+    assertThat(result.chunks().get(1).getText()).startsWith("Antrag");
+  }
+
+  @Test
+  void headerLeftAndFirstVariantsAreNotReadToAvoidDuplication() throws IOException {
+    Path file = tempDir.resolve("kopfzeile-varianten.odt");
+    writeOdtWithStyles(
+        file,
+        odtParagraph("Fachlicher Inhalt."),
+        "<style:header><text:p>Stadt Musterstadt</text:p></style:header>"
+            + "<style:header-left><text:p>Stadt Musterstadt</text:p></style:header-left>"
+            + "<style:header-first><text:p>Stadt Musterstadt</text:p></style:header-first>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "kopfzeile-varianten.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    long occurrences =
+        result.chunks().getFirst().getText().split("Stadt Musterstadt", -1).length - 1;
+    assertThat(occurrences).isEqualTo(1);
+  }
+
+  @Test
+  void aDocumentWithOnlyHeaderFooterTextAndNoBodyIsStillChunked() throws IOException {
+    Path file = tempDir.resolve("nur-kopfzeile.odt");
+    writeOdtWithStyles(file, "", "<style:header><text:p>Stadt Musterstadt</text:p></style:header>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "nur-kopfzeile.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).isEqualTo("Stadt Musterstadt");
+  }
+
+  @Test
+  void aStylesXmlWithADoctypeIsRejectedRatherThanResolvingExternalEntities() throws IOException {
+    // XXE hardening applies to styles.xml exactly as it does to content.xml (#1145).
+    Path file = tempDir.resolve("xxe-styles.odt");
+    String maliciousStyles =
+        "<?xml version=\"1.0\"?>"
+            + "<!DOCTYPE office:document-styles [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]>"
+            + "<office:document-styles"
+            + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+            + " xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\""
+            + " xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\">"
+            + "<office:master-styles><style:master-page>"
+            + "<style:header><text:p>&xxe;</text:p></style:header>"
+            + "</style:master-page></office:master-styles>"
+            + "</office:document-styles>";
+    writeOdtWithRawStyles(file, odtHeading(1, "Titel") + odtParagraph("Inhalt."), maliciousStyles);
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "xxe-styles.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
   }
 
   @Test
@@ -401,6 +481,28 @@ class OdtDocumentPipelineTest {
   }
 
   private static void writeOdt(Path file, String textBodyXml) throws IOException {
+    writeOdtWithStyles(file, textBodyXml, null);
+  }
+
+  private static void writeOdtWithStyles(Path file, String textBodyXml, String masterPageStylesXml)
+      throws IOException {
+    String styles =
+        masterPageStylesXml == null
+            ? null
+            : "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                + "<office:document-styles"
+                + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+                + " xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\""
+                + " xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\">"
+                + "<office:master-styles><style:master-page>"
+                + masterPageStylesXml
+                + "</style:master-page></office:master-styles>"
+                + "</office:document-styles>";
+    writeOdtWithRawStyles(file, textBodyXml, styles);
+  }
+
+  private static void writeOdtWithRawStyles(Path file, String textBodyXml, String stylesXml)
+      throws IOException {
     String content =
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<office:document-content"
@@ -414,6 +516,11 @@ class OdtDocumentPipelineTest {
       out.putNextEntry(new ZipEntry("content.xml"));
       out.write(content.getBytes(StandardCharsets.UTF_8));
       out.closeEntry();
+      if (stylesXml != null) {
+        out.putNextEntry(new ZipEntry("styles.xml"));
+        out.write(stylesXml.getBytes(StandardCharsets.UTF_8));
+        out.closeEntry();
+      }
     }
   }
 

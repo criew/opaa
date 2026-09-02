@@ -13,7 +13,10 @@ import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
+import org.apache.poi.xwpf.model.XWPFHeaderFooterPolicy;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFFooter;
+import org.apache.poi.xwpf.usermodel.XWPFHeader;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.junit.jupiter.api.Test;
@@ -35,7 +38,7 @@ class DocxDocumentPipelineTest {
   void claimsExactlyDocx() {
     assertThat(pipeline.handledFormats()).containsExactly(".docx");
     assertThat(pipeline.id()).isEqualTo("docx");
-    assertThat(pipeline.version()).isEqualTo((short) 1);
+    assertThat(pipeline.version()).isEqualTo((short) 2);
   }
 
   @Test
@@ -141,6 +144,54 @@ class DocxDocumentPipelineTest {
     assertThat(result.chunks().getFirst().getText())
         .startsWith("Erster Abschnitt")
         .contains("Text im ersten Abschnitt");
+  }
+
+  @Test
+  void headerAndFooterTextBecomeOneDeduplicatedLeadingChunk() throws IOException {
+    // regression guard for #1145: an authority name/Aktenzeichen placed exclusively in the
+    // Kopf-/Fußzeile must still be lexically searchable, and only once - not per page and not
+    // dropped, as it always was for DOCX (getBodyElements() never carried it).
+    Path file = tempDir.resolve("mit-kopfzeile.docx");
+    try (XWPFDocument doc = new XWPFDocument()) {
+      XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
+      XWPFHeader header = policy.createHeader(XWPFHeaderFooterPolicy.DEFAULT);
+      header.createParagraph().createRun().setText("Stadt Musterstadt");
+      XWPFFooter footer = policy.createFooter(XWPFHeaderFooterPolicy.DEFAULT);
+      footer.createParagraph().createRun().setText("Az. 12-34/2026");
+      addHeading(doc, "Antrag", "Heading1");
+      addParagraph(doc, "Fachlicher Inhalt des Antrags.");
+      write(doc, file);
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "mit-kopfzeile.docx", ".docx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Stadt Musterstadt")
+        .contains("Az. 12-34/2026");
+    assertThat(result.chunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+        .isEqualTo("Kopf-/Fußzeile");
+    assertThat(result.chunks().get(1).getText()).startsWith("Antrag");
+  }
+
+  @Test
+  void aDocumentWithOnlyHeaderTextAndNoBodyIsStillChunked() throws IOException {
+    Path file = tempDir.resolve("nur-kopfzeile.docx");
+    try (XWPFDocument doc = new XWPFDocument()) {
+      XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
+      XWPFHeader header = policy.createHeader(XWPFHeaderFooterPolicy.DEFAULT);
+      header.createParagraph().createRun().setText("Stadt Musterstadt");
+      write(doc, file);
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "nur-kopfzeile.docx", ".docx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).isEqualTo("Stadt Musterstadt");
   }
 
   @Test

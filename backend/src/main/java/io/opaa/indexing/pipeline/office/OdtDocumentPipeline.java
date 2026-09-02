@@ -4,6 +4,7 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
+import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -26,16 +27,22 @@ import org.xml.sax.helpers.DefaultHandler;
  * by cell into one paragraph-level text block; a table nested inside a cell keeps the outer table's
  * rows intact, but the nested table's own content is discarded entirely - it never reaches the
  * carrier cell either, an accepted narrow gap (docs/features/ingestion-pipelines.md). {@code
- * text:tracked-changes} (deleted text pending review) is skipped entirely. Header/footer text in
- * {@code styles.xml} is not read at all - a known, deliberate content regression versus the
- * previous Tika-based extraction (see docs/features/ingestion-pipelines.md).
+ * text:tracked-changes} (deleted text pending review) is skipped entirely.
+ *
+ * <p><b>{@code styles.xml}'s master page {@code style:header}/{@code style:footer} text</b> (#1145)
+ * is read through the same hardened reader and, if present, becomes one deduplicated leading chunk
+ * (location "Kopf-/Fußzeile") rather than being repeated per page or dropped - see {@link
+ * RepeatingHeaderChunk}. {@code style:header-left}/{@code style:footer-left}/{@code -first}
+ * variants are not read, to avoid indexing the same text twice.
  */
 public class OdtDocumentPipeline implements DocumentPipeline {
 
   private static final Logger log = LoggerFactory.getLogger(OdtDocumentPipeline.class);
 
   static final String ID = "odt";
-  static final short VERSION = 1;
+  static final short VERSION = 2;
+
+  private static final String HEADER_FOOTER_LOCATION = "Kopf-/Fußzeile";
 
   /** Cutting stops at level 3, mirroring {@link DocxDocumentPipeline#MAX_CUTTING_LEVEL}. */
   private static final int MAX_CUTTING_LEVEL = 3;
@@ -70,6 +77,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       return DocumentPipelineResult.noContent();
     }
     List<HeadingSectionSplitter.Event> events;
+    String headerFooterText;
     try {
       OdtContentHandler handler =
           new OdtContentHandler(
@@ -85,6 +93,15 @@ public class OdtDocumentPipeline implements DocumentPipeline {
         return DocumentPipelineResult.noContent();
       }
       events = handler.events();
+
+      OdtStylesHandler stylesHandler =
+          new OdtStylesHandler(odfProperties.maxSpaceRepeat(), odfProperties.maxTextCharacters());
+      // styles.xml missing an entry (or missing entirely) is the common, header/footer-less case,
+      // not a parse failure - only a malformed/oversized/malicious entry aborts the document,
+      // exactly as for content.xml above.
+      OdfContentXml.parse(
+          source.file(), "styles.xml", odfProperties.maxContentXmlBytes(), stylesHandler);
+      headerFooterText = stylesHandler.headerFooterText();
     } catch (IOException | RuntimeException e) {
       // Unparsable content (a corrupt ZIP, a rejected XXE attempt, a limit SAXException wraps into
       // an IOException) is reported the same way as PDF/DOCX/PPTX/Tabular - see
@@ -92,7 +109,13 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       log.warn("Could not read ODT document {}", source.fileName(), e);
       return DocumentPipelineResult.noContent();
     }
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL);
+    List<Document> chunks =
+        new ArrayList<>(HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL));
+    Document headerFooterChunk =
+        RepeatingHeaderChunk.ofOrNull(HEADER_FOOTER_LOCATION, headerFooterText);
+    if (headerFooterChunk != null) {
+      chunks.add(0, headerFooterChunk);
+    }
     if (chunks.isEmpty()) {
       // Covers both a genuinely empty <office:text/> and text that chunked down to nothing - the
       // same NO_EXTRACTABLE_TEXT outcome TikaFallbackPipeline reported for either case before this
@@ -327,6 +350,141 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       private final StringBuilder cellText = new StringBuilder();
       private List<String> currentRowCells;
       private boolean insideCell;
+    }
+  }
+
+  /**
+   * Collects {@code style:header}/{@code style:footer} paragraph text from {@code styles.xml}'s
+   * master page(s), deliberately narrow like {@link OdtContentHandler}: only the default
+   * header/footer (not the {@code -left}/{@code -first} variants, which would otherwise duplicate
+   * the same text) and only {@code text:h}/{@code text:p} content within them.
+   */
+  static final class OdtStylesHandler extends DefaultHandler {
+
+    private final int maxSpaceRepeat;
+    private final long maxTextCharacters;
+    private long textCharacterCount;
+
+    private boolean insideHeader;
+    private boolean insideFooter;
+    private int paragraphDepth;
+    private final StringBuilder text = new StringBuilder();
+    private final StringBuilder headerText = new StringBuilder();
+    private final StringBuilder footerText = new StringBuilder();
+
+    OdtStylesHandler(int maxSpaceRepeat, long maxTextCharacters) {
+      this.maxSpaceRepeat = maxSpaceRepeat;
+      this.maxTextCharacters = maxTextCharacters;
+    }
+
+    /** Header text followed by footer text, blank-line separated when both are present. */
+    String headerFooterText() {
+      if (headerText.isEmpty()) {
+        return footerText.toString();
+      }
+      if (footerText.isEmpty()) {
+        return headerText.toString();
+      }
+      return headerText + "\n\n" + footerText;
+    }
+
+    @Override
+    public void startElement(String uri, String localName, String qName, Attributes attributes)
+        throws SAXException {
+      switch (qName) {
+        case "style:header" -> insideHeader = true;
+        case "style:footer" -> insideFooter = true;
+        case "text:h", "text:p" -> {
+          if (paragraphDepth == 0) {
+            text.setLength(0);
+          }
+          paragraphDepth++;
+        }
+        case "text:s" -> appendRepeatedSpace(attributes);
+        case "text:tab" -> {
+          if (paragraphDepth > 0) {
+            text.append('\t');
+          }
+        }
+        case "text:line-break" -> {
+          if (paragraphDepth > 0) {
+            text.append('\n');
+          }
+        }
+        default -> {
+          // Everything else in styles.xml (fonts, page layouts, the -left/-first header/footer
+          // variants) carries no structure this collector renders and is ignored.
+        }
+      }
+    }
+
+    private void appendRepeatedSpace(Attributes attributes) throws SAXException {
+      if (paragraphDepth == 0) {
+        return;
+      }
+      int count = parsePositiveIntOrDefault(attributes.getValue("text:c"), 1);
+      int repeated = Math.min(count, maxSpaceRepeat);
+      checkTextCharacterBudget(repeated);
+      text.append(" ".repeat(repeated));
+    }
+
+    @Override
+    public void characters(char[] ch, int start, int length) throws SAXException {
+      if (paragraphDepth > 0) {
+        checkTextCharacterBudget(length);
+        text.append(ch, start, length);
+      }
+    }
+
+    private void checkTextCharacterBudget(int added) throws SAXException {
+      textCharacterCount += added;
+      if (textCharacterCount > maxTextCharacters) {
+        throw new SAXException(
+            "ODT styles.xml exceeds the configured text character limit of " + maxTextCharacters);
+      }
+    }
+
+    @Override
+    public void endElement(String uri, String localName, String qName) {
+      switch (qName) {
+        case "style:header" -> insideHeader = false;
+        case "style:footer" -> insideFooter = false;
+        case "text:h", "text:p" -> {
+          paragraphDepth--;
+          if (paragraphDepth == 0) {
+            String value = text.toString().strip();
+            if (!value.isBlank()) {
+              if (insideHeader) {
+                appendLine(headerText, value);
+              } else if (insideFooter) {
+                appendLine(footerText, value);
+              }
+            }
+          }
+        }
+        default -> {
+          // See startElement.
+        }
+      }
+    }
+
+    private static void appendLine(StringBuilder target, String value) {
+      if (!target.isEmpty()) {
+        target.append('\n');
+      }
+      target.append(value);
+    }
+
+    private static Integer parsePositiveIntOrDefault(String value, int defaultValue) {
+      if (value == null) {
+        return defaultValue;
+      }
+      try {
+        int parsed = Integer.parseInt(value);
+        return parsed > 0 ? parsed : defaultValue;
+      } catch (NumberFormatException e) {
+        return defaultValue;
+      }
     }
   }
 }

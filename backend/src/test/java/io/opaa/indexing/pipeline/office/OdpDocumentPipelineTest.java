@@ -36,7 +36,7 @@ class OdpDocumentPipelineTest {
   void claimsExactlyOdp() {
     assertThat(pipeline.handledFormats()).containsExactly(".odp");
     assertThat(pipeline.id()).isEqualTo("odp");
-    assertThat(pipeline.version()).isEqualTo((short) 1);
+    assertThat(pipeline.version()).isEqualTo((short) 2);
   }
 
   @Test
@@ -94,6 +94,45 @@ class OdpDocumentPipelineTest {
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(2);
     assertThat(result.chunks().get(1).getText()).isEqualTo("Folie 2");
+  }
+
+  @Test
+  void masterSlideTextFromStylesXmlBecomesOneDeduplicatedLeadingChunk() throws IOException {
+    // regression guard for #1145: an authority name/Aktenzeichen placed exclusively on the
+    // Masterfolie must still be lexically searchable, and only once - not per slide and not
+    // dropped, as it was after #1110 stopped reading styles.xml at all.
+    Path file = tempDir.resolve("mit-masterfolie.odp");
+    writeOdpWithStyles(
+        file,
+        odpSlide(odpFrame("title", "Einfuehrung") + odpFrame(null, "Willkommen.")),
+        "<draw:frame><draw:text-box><text:p>Stadt Musterstadt · Az. 12-34/2026</text:p>"
+            + "</draw:text-box></draw:frame>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "mit-masterfolie.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText()).contains("Stadt Musterstadt · Az. 12-34/2026");
+    assertThat(result.chunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+        .isEqualTo("Masterfolie");
+    assertThat(result.chunks().get(1).getText()).startsWith("Einfuehrung");
+  }
+
+  @Test
+  void aPresentationWithOnlyMasterSlideTextAndNoSlideTextIsStillChunked() throws IOException {
+    Path file = tempDir.resolve("nur-masterfolie.odp");
+    writeOdpWithStyles(
+        file,
+        odpSlide(""),
+        "<draw:frame><draw:text-box><text:p>Stadt Musterstadt</text:p></draw:text-box>"
+            + "</draw:frame>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "nur-masterfolie.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText()).isEqualTo("Stadt Musterstadt");
   }
 
   @Test
@@ -405,6 +444,11 @@ class OdpDocumentPipelineTest {
   }
 
   private static void writeOdp(Path file, String presentationBodyXml) throws IOException {
+    writeOdpWithStyles(file, presentationBodyXml, null);
+  }
+
+  private static void writeOdpWithStyles(
+      Path file, String presentationBodyXml, String masterPageXml) throws IOException {
     String content =
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<office:document-content"
@@ -416,10 +460,28 @@ class OdpDocumentPipelineTest {
             + "<office:body><office:presentation>"
             + presentationBodyXml
             + "</office:presentation></office:body></office:document-content>";
+    String styles =
+        masterPageXml == null
+            ? null
+            : "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                + "<office:document-styles"
+                + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+                + " xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\""
+                + " xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\""
+                + " xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\">"
+                + "<office:master-styles><style:master-page>"
+                + masterPageXml
+                + "</style:master-page></office:master-styles>"
+                + "</office:document-styles>";
     try (var out = new ZipOutputStream(Files.newOutputStream(file))) {
       out.putNextEntry(new ZipEntry("content.xml"));
       out.write(content.getBytes(StandardCharsets.UTF_8));
       out.closeEntry();
+      if (styles != null) {
+        out.putNextEntry(new ZipEntry("styles.xml"));
+        out.write(styles.getBytes(StandardCharsets.UTF_8));
+        out.closeEntry();
+      }
     }
   }
 

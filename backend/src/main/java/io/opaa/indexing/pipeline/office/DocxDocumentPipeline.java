@@ -4,6 +4,7 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
+import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -12,8 +13,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.poi.xwpf.model.XWPFHeaderFooterPolicy;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFHeaderFooter;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
@@ -31,16 +34,22 @@ import org.springframework.ai.document.Document;
  * (English or localized, e.g. {@code Ueberschrift1}), falling back to the paragraph's direct
  * outline level ({@code w:outlineLvl}). A paragraph with neither is body text. Cutting stops at
  * level 3 ({@link #MAX_CUTTING_LEVEL}). Tables are read cell by cell into one paragraph-level text
- * block per table (never a heading); header/footer content is not read at all, since it is not part
- * of {@link XWPFDocument#getBodyElements()}. Only {@code .docx} is handled - the legacy binary
- * {@code .doc} keeps running through the Tika fallback pipeline.
+ * block per table (never a heading). Only {@code .docx} is handled - the legacy binary {@code .doc}
+ * keeps running through the Tika fallback pipeline.
+ *
+ * <p><b>The default header/footer</b> (#1145) - not the {@code -left}/{@code -first} variants, to
+ * avoid indexing the same text twice - becomes one deduplicated leading chunk (location
+ * "Kopf-/Fußzeile") rather than being repeated per page or dropped, since it is not part of {@link
+ * XWPFDocument#getBodyElements()}; see {@link RepeatingHeaderChunk}.
  */
 public class DocxDocumentPipeline implements DocumentPipeline {
 
   private static final Logger log = LoggerFactory.getLogger(DocxDocumentPipeline.class);
 
   static final String ID = "docx";
-  static final short VERSION = 1;
+  static final short VERSION = 2;
+
+  private static final String HEADER_FOOTER_LOCATION = "Kopf-/Fußzeile";
 
   /**
    * Cutting stops at level 3, per the Teil 2 table; a deeper heading folds into its section's text.
@@ -73,31 +82,69 @@ public class DocxDocumentPipeline implements DocumentPipeline {
       // PptxDocumentPipeline.
       return DocumentPipelineResult.noContent();
     }
-    List<IBodyElement> elements = readBodyElements(source);
-    if (elements == null) {
+    DocxContent content = readDocxContent(source);
+    if (content == null) {
       return DocumentPipelineResult.noContent();
     }
-    List<HeadingSectionSplitter.Event> events = toEvents(elements);
-    if (events.isEmpty()) {
+    List<HeadingSectionSplitter.Event> events = toEvents(content.bodyElements());
+    List<Document> chunks =
+        events.isEmpty()
+            ? new ArrayList<>()
+            : new ArrayList<>(HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL));
+    Document headerFooterChunk =
+        RepeatingHeaderChunk.ofOrNull(HEADER_FOOTER_LOCATION, content.headerFooterText());
+    if (headerFooterChunk != null) {
+      chunks.add(0, headerFooterChunk);
+    }
+    if (events.isEmpty() && headerFooterChunk == null) {
+      // A genuinely empty document (no body elements, no header/footer text) - distinct from
+      // NO_EXTRACTABLE_TEXT below, which only applies once at least one non-empty event stream
+      // itself chunked down to nothing.
       return DocumentPipelineResult.noContent();
     }
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL);
     if (chunks.isEmpty()) {
       return DocumentPipelineResult.noExtractableText();
     }
     return DocumentPipelineResult.chunked(chunks);
   }
 
+  private record DocxContent(List<IBodyElement> bodyElements, String headerFooterText) {}
+
   /** {@code null} when the file could not be opened as a DOCX at all - reported as no content. */
-  private static List<IBodyElement> readBodyElements(DocumentPipelineSource source) {
+  private static DocxContent readDocxContent(DocumentPipelineSource source) {
     try (InputStream in = Files.newInputStream(source.file())) {
       try (XWPFDocument document = new XWPFDocument(in)) {
-        return document.getBodyElements();
+        return new DocxContent(document.getBodyElements(), headerFooterText(document));
       }
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read DOCX document {}", source.fileName(), e);
       return null;
     }
+  }
+
+  private static String headerFooterText(XWPFDocument document) {
+    XWPFHeaderFooterPolicy policy = document.getHeaderFooterPolicy();
+    if (policy == null) {
+      return "";
+    }
+    StringBuilder text = new StringBuilder();
+    appendHeaderFooterText(text, policy.getDefaultHeader());
+    appendHeaderFooterText(text, policy.getDefaultFooter());
+    return text.toString();
+  }
+
+  private static void appendHeaderFooterText(StringBuilder text, XWPFHeaderFooter part) {
+    if (part == null) {
+      return;
+    }
+    String value = part.getText();
+    if (value == null || value.isBlank()) {
+      return;
+    }
+    if (!text.isEmpty()) {
+      text.append("\n\n");
+    }
+    text.append(value.strip());
   }
 
   private static List<HeadingSectionSplitter.Event> toEvents(List<IBodyElement> elements) {

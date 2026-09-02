@@ -16,8 +16,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * vector, though: it is guarded by {@link #maxSpaceRepeat} below.
  *
  * @param maxContentXmlBytes the maximum number of bytes read from an ODT/ODP file's {@code
- *     content.xml} entry before parsing aborts - the zip-bomb guard, mirroring {@code
- *     TabularProperties#maxOdsContentXmlBytes}. Default 10 MiB.
+ *     content.xml} or {@code styles.xml} entry before parsing aborts - the zip-bomb guard,
+ *     mirroring {@code TabularProperties#maxOdsContentXmlBytes}. Applied to both entries alike;
+ *     {@code styles.xml} carries far less content than {@code content.xml} in practice, so a single
+ *     shared ceiling is not a meaningfully looser guard for it. Default 10 MiB.
  * @param maxOdtParagraphs the maximum number of paragraph/heading/table elements read from an ODT
  *     document before parsing aborts - a second guard alongside {@link #maxContentXmlBytes} against
  *     a pathologically large number of small elements. Default 50 000.
