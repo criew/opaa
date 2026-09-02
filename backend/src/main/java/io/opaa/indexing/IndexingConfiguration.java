@@ -170,14 +170,19 @@ public class IndexingConfiguration {
    * DocumentPipelineRegistry} dependency, breaks the circular bean graph the recursive-attachment
    * case creates (see {@link MailDocumentPipeline}'s own Javadoc): {@link
    * #documentPipelineRegistry} below needs every {@link DocumentPipeline} bean including this one,
-   * so this one cannot in turn need the finished registry at construction time.
+   * so this one cannot in turn need the finished registry at construction time. {@code
+   * schedulingClock} is the same bean {@link LibraryIndexingScheduler} already uses (see {@link
+   * #schedulingClock()}) - one server-local-time {@link Clock} for the whole application, not a
+   * second one declared here.
    */
   @Bean
   MailDocumentPipeline mailDocumentPipeline(
       ObjectProvider<DocumentPipelineRegistry> documentPipelineRegistry,
       ChunkingService chunkingService,
-      MailProperties mailProperties) {
-    return new MailDocumentPipeline(documentPipelineRegistry, chunkingService, mailProperties);
+      MailProperties mailProperties,
+      Clock schedulingClock) {
+    return new MailDocumentPipeline(
+        documentPipelineRegistry, chunkingService, mailProperties, schedulingClock);
   }
 
   /**

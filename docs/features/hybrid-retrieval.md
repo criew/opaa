@@ -1314,10 +1314,22 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
 - **Kompositazerlegung: ispell-Wörterbuch oder german-decompounder-Ansatz?** Erst nach der Messung
   entscheidbar — und nur, wenn das Komposita-Segment des Benchmarks überhaupt eine Lücke zeigt. Beide
   Wege haben unterschiedliche Pflegekosten für das Wörterbuch.
-- **Wie wird der Volltextindex bei einer Änderung der Analysekette nachgezogen?** Eine geänderte
-  `tsvector`-Konfiguration macht bestehende Einträge inkonsistent — vergleichbar mit einem Wechsel des
-  Einbettungsmodells, aber ohne dessen Modellaufrufe. Vollständiger Neuaufbau des Volltextindex ohne
-  erneutes Einbetten wäre der naheliegende Weg; er ist noch nicht ausgearbeitet.
+- ~~**Wie wird der Volltextindex bei einer Änderung der Analysekette nachgezogen?**~~ Beantwortet
+  mit #1047/#1048: `FullTextChunkStore#CURRENT_TSV_VERSION` markiert jede geänderte `tsvector`-Form,
+  `FullTextBackfillService`/`FullTextBackfillScheduler` ziehen jede Zeile unterhalb der aktuellen
+  Version in kleinen Chargen nach (Standard 200 Chunks je 5-Sekunden-Tick), ohne erneutes Einbetten.
+  #1130 belegt diesen Weg erstmals in der Praxis mit einem Bump, der den gesamten Altbestand betrifft
+  (neues Muster in `FullTextIdentifiers` für E-Mail-Adressen, Version 3 → 4): Bei Standardwerten
+  erreicht der Nachlauf rund 144.000 Chunks pro Stunde. Für dieses Zeitfenster liefert
+  `FullTextChunkSearch` für einen noch nicht nachgezogenen Chunk **keinen** Treffer — die
+  versionsgleiche Filterung in der SQL-Abfrage behandelt ihn wie nicht vorhanden, nicht wie
+  vorhanden-aber-schwächer gewichtet. Seit #1106 sitzt der lexikalische Pfad in der RRF-Fusion; die
+  Suche fällt für den betroffenen Bestand in diesem Fenster auf reines Vektor-Retrieval zurück, nicht
+  auf einen Fehler oder eine leere Antwort. **Voraussetzung für einen Bump, der den gesamten Bestand
+  betrifft: #1093** (Gift-Chunk-Isolation) muss vorher gemergt sein — ohne sie hält ein einzelner
+  kaputter Chunk den Fortschritt an, bis der Scheduler-Backoff die Ticks für den Rest der
+  Prozesslaufzeit stoppt, und der Volltextindex bliebe bis zum nächsten Neustart unvollständig statt
+  nur vorübergehend.
 - **Wirkt der Kontextpräfix aus Contextual Chunking (#933/#940) auch in den Volltextindex?**
   Anthropics „contextual BM25" spricht dafür, und die Roadmap sieht es in Phase 2a vor. Es ist aber eine
   eigene Messung wert: Ein Titelpräfix in jedem Chunk verändert die Termstatistik des ganzen Index.

@@ -18,7 +18,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -47,6 +49,13 @@ class MailDocumentPipelineTest {
   @TempDir Path tempDir;
 
   private final MailProperties defaultProperties = new MailProperties(0, 0, 0, 0);
+
+  /**
+   * A fixed non-UTC zone (winter CET, UTC+1) - #1130 Befund 1 review, finding 2: the leading
+   * context line's Datum must render in this zone, not UTC, or a message sent at German local time
+   * gets a silently wrong hour in embedding, full-text index and cited Beleg alike.
+   */
+  private static final Clock TEST_CLOCK = Clock.fixed(Instant.EPOCH, ZoneId.of("Europe/Berlin"));
 
   private static ChunkingService defaultChunkingService() {
     return new ChunkingService(
@@ -92,7 +101,7 @@ class MailDocumentPipelineTest {
           }
         };
     MailDocumentPipeline mailPipeline =
-        new MailDocumentPipeline(provider, chunkingService, properties);
+        new MailDocumentPipeline(provider, chunkingService, properties, TEST_CLOCK);
 
     TikaFallbackPipeline fallback =
         new TikaFallbackPipeline(new DocumentService(), defaultChunkingService());
@@ -157,7 +166,7 @@ class MailDocumentPipelineTest {
             "Von: Max Mustermann <max@example.org>\n"
                 + "An: Erika Musterfrau <erika@example.org>\n"
                 + "Betreff: Anfrage Bauantrag\n"
-                + "Datum: 03.01.2024 09:15\n"
+                + "Datum: 03.01.2024 10:15\n"
                 + "\n"
                 + "Bitte pruefen Sie den Antrag.");
     assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
@@ -200,7 +209,23 @@ class MailDocumentPipelineTest {
   }
 
   @Test
-  void aBlankBodyWithNoAttachmentsHasNoExtractableText() throws Exception {
+  void aBlankBodyWithNoAttachmentsAndNoKopfdatenAtAllHasNoExtractableText() throws Exception {
+    Message message = Message.Builder.of().setBody("", StandardCharsets.UTF_8).build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+
+    DocumentPipelineResult result =
+        pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "leer.eml"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+  }
+
+  /**
+   * #1130 Befund 1, review finding 4: a blank body must not drop its Kopfdaten - the common "Anbei
+   * der Bescheid" mail (blank body, one attachment) would otherwise index the attachment while
+   * losing sender and Betreff entirely.
+   */
+  @Test
+  void aBlankBodyWithKopfdatenGetsAHeaderOnlyChunk() throws Exception {
     Message message =
         newMessageBuilder("Leer", "a@example.org", "b@example.org")
             .setBody("", StandardCharsets.UTF_8)
@@ -210,7 +235,17 @@ class MailDocumentPipelineTest {
     DocumentPipelineResult result =
         pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "leer.eml"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    Document chunk = result.chunks().getFirst();
+    assertThat(chunk.getText())
+        .isEqualTo(
+            "Von: a@example.org\n"
+                + "An: b@example.org\n"
+                + "Betreff: Leer\n"
+                + "Datum: 03.01.2024 10:15");
+    assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
+        .isEqualTo("Leer");
   }
 
   // --- EML: attachments run through their own pipeline --------------------------------------
@@ -247,6 +282,10 @@ class MailDocumentPipelineTest {
     // an attachment routed through a different pipeline entirely.
     assertThat(attachmentChunk.getMetadata())
         .doesNotContainKey(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY);
+    // Nor does it carry the leading context block - #1130 Befund 1: that block is prepended before
+    // chunking runs on the message's own body text, never on a recursively produced attachment
+    // chunk.
+    assertThat(attachmentChunk.getText()).doesNotContain("Von:", "Betreff:");
   }
 
   @Test
@@ -404,6 +443,47 @@ class MailDocumentPipelineTest {
     assertThat(result.chunks().getFirst().getText()).contains("Der Anhang ist zu gross.");
   }
 
+  // --- EML: an unbounded header block is bounded by the token splitter (#1130 Befund 1) -------
+
+  /**
+   * Review finding 1: {@link ParsedMailMessage#to()} is unbounded - a round mail to hundreds of
+   * recipients must not grow the first chunk past the configured chunk-size. Prepending the context
+   * block before {@link ChunkingService#chunkDocuments} runs, rather than after, lets the same
+   * splitter cut it like any other text.
+   */
+  @Test
+  void aRoundMailWithHundredsOfRecipientsDoesNotGrowOneChunkUnboundedly() throws Exception {
+    String[] recipients = new String[200];
+    for (int i = 0; i < recipients.length; i++) {
+      recipients[i] = "Empfaenger " + (i + 1) + " <empfaenger" + (i + 1) + "@amt.de>";
+    }
+    int totalRecipientChars = String.join(", ", recipients).length();
+    Message message =
+        Message.Builder.of()
+            .setSubject("Rundschreiben")
+            .setFrom("amt@example.org")
+            .setTo(recipients)
+            .setDate(Date.from(Instant.parse("2024-01-03T09:15:00Z")))
+            .setBody("Bitte beachten Sie die neue Regelung.", StandardCharsets.UTF_8)
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+    ChunkingService realisticChunking =
+        new ChunkingService(
+            new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
+
+    DocumentPipelineResult result =
+        pipeline(defaultProperties, realisticChunking)
+            .run(DocumentPipelineSource.ofFile(file, "rundschreiben.eml"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    // The recipient list alone is longer than any single chunk below would be if the splitter
+    // never saw it - the splitter must cut it into more than one chunk rather than growing the
+    // first one to contain it unbounded.
+    assertThat(result.chunks()).hasSizeGreaterThan(1);
+    assertThat(result.chunks())
+        .allSatisfy(chunk -> assertThat(chunk.getText().length()).isLessThan(totalRecipientChars));
+  }
+
   // --- EML: thread splitting --------------------------------------------------------------------
 
   @Test
@@ -469,6 +549,12 @@ class MailDocumentPipelineTest {
                   .asString()
                   .startsWith("Teil ");
             });
+    // The context block itself is subject to the same token splitter (#1130 Befund 1, review
+    // finding 1) - it lands only in the leading part, never repeated onto a later further-split
+    // piece.
+    assertThat(result.chunks().getFirst().getText()).startsWith("Von: amt@example.org");
+    assertThat(result.chunks().subList(1, result.chunks().size()))
+        .allSatisfy(chunk -> assertThat(chunk.getText()).doesNotContain("Von:", "Betreff:"));
   }
 
   @Test
@@ -570,7 +656,7 @@ class MailDocumentPipelineTest {
           }
         };
     MailDocumentPipeline mailPipeline =
-        new MailDocumentPipeline(provider, defaultChunkingService(), defaultProperties);
+        new MailDocumentPipeline(provider, defaultChunkingService(), defaultProperties, TEST_CLOCK);
     TikaFallbackPipeline fallback =
         new TikaFallbackPipeline(new DocumentService(), defaultChunkingService());
     registryHolder[0] =

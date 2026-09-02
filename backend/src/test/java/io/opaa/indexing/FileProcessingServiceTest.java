@@ -628,7 +628,8 @@ class FileProcessingServiceTest {
         new io.opaa.indexing.pipeline.mail.MailDocumentPipeline(
             registryProvider,
             new ChunkingService(defaultIndexingProperties()),
-            new io.opaa.indexing.pipeline.mail.MailProperties(0, 0, 0, 0));
+            new io.opaa.indexing.pipeline.mail.MailProperties(0, 0, 0, 0),
+            java.time.Clock.systemUTC());
     registryHolder[0] =
         new io.opaa.indexing.pipeline.DocumentPipelineRegistry(
             List.of(fallback, fakeAttachmentPipeline, mailPipeline), fallback);

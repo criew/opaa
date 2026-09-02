@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.ZoneOffset;
+import java.time.Clock;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,16 +29,22 @@ import org.springframework.beans.factory.ObjectProvider;
  *
  * <p>Kopfdaten land both as chunk metadata (see {@link ChunkMailMetadata} - unread today, a
  * deliberate vorhaltung for future filtering, #1130 Befund 1) and as German-labeled context lines
- * prepended to the message's first body chunk (see {@link #headerContextText}), so a sender name,
- * an address or a Betreff reaches embedding and full-text search. One chunk per message, or one per
- * quoted-reply segment (see {@link MailThreadSplitter}); a segment still too long for a single
- * chunk falls back to {@link ChunkingService}'s ordinary token splitter. An attachment runs
- * recursively through the pipeline of its own type via {@link DocumentPipelineRegistry} - an
- * attachment that is itself an EML/MSG (a forward) reaches this class again, one recursion level
- * deeper, bounded by {@link MailProperties#maxAttachmentDepth()}. Every chunk this pipeline
- * produces, including an attachment's own, is attributed to this pipeline's {@link #id()}/{@link
- * #version()} - a version-selective re-index of a nested attachment's own pipeline is therefore not
- * reachable except by reprocessing the whole mail.
+ * prepended to the message's first body text, <b>before</b> that text reaches {@link
+ * ChunkingService#chunkDocuments} (see {@link #bodyChunks}) - so a sender name, an address or a
+ * Betreff reaches embedding and full-text search, and an unbounded {@code To} line (a round mail to
+ * hundreds of recipients) is still cut to the configured chunk size by the same splitter instead of
+ * growing the chunk past it. A message whose body never produces a chunk at all (blank, or absent
+ * next to a PDF-only attachment) still gets a header-only chunk when it carries any Kopfdaten -
+ * otherwise the common "see attached" mail would index its attachment but lose its own sender and
+ * Betreff entirely. One chunk per message, or one per quoted-reply segment (see {@link
+ * MailThreadSplitter}); a segment still too long for a single chunk falls back to {@link
+ * ChunkingService}'s ordinary token splitter. An attachment runs recursively through the pipeline
+ * of its own type via {@link DocumentPipelineRegistry} - an attachment that is itself an EML/MSG (a
+ * forward) reaches this class again, one recursion level deeper, bounded by {@link
+ * MailProperties#maxAttachmentDepth()}. Every chunk this pipeline produces, including an
+ * attachment's own, is attributed to this pipeline's {@link #id()}/{@link #version()} - a
+ * version-selective re-index of a nested attachment's own pipeline is therefore not reachable
+ * except by reprocessing the whole mail.
  *
  * <p>{@code registryProvider} is an {@link ObjectProvider} rather than a plain constructor
  * dependency to break the circular bean graph this pipeline's own recursion creates: {@link
@@ -53,12 +59,15 @@ public class MailDocumentPipeline implements DocumentPipeline {
   static final short VERSION = 2;
 
   /**
-   * Renders {@link ParsedMailMessage#date()} in the leading context line - fixed to UTC since the
-   * originating header's own zone offset does not survive parsing into an {@link
-   * java.time.Instant}.
+   * Renders {@link ParsedMailMessage#date()} in the leading context line, in {@link #clock}'s own
+   * zone (the same choice {@code LibraryIndexingScheduler} makes for cron evaluation) - never a
+   * fixed zone: the originating header's own offset does not survive parsing into an {@link
+   * java.time.Instant}, but rendering in UTC regardless would put a silently wrong local time into
+   * embedding, full-text index and the cited Beleg alike, off by one or two hours for every German
+   * sender.
    */
   private static final DateTimeFormatter DATE_FORMATTER =
-      DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", Locale.GERMANY).withZone(ZoneOffset.UTC);
+      DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", Locale.GERMANY);
 
   /**
    * How many levels of mail-in-mail attachment recursion the current thread is at - {@code null}
@@ -73,14 +82,17 @@ public class MailDocumentPipeline implements DocumentPipeline {
   private final ObjectProvider<DocumentPipelineRegistry> registryProvider;
   private final ChunkingService chunkingService;
   private final MailProperties properties;
+  private final Clock clock;
 
   public MailDocumentPipeline(
       ObjectProvider<DocumentPipelineRegistry> registryProvider,
       ChunkingService chunkingService,
-      MailProperties properties) {
+      MailProperties properties,
+      Clock clock) {
     this.registryProvider = registryProvider;
     this.chunkingService = chunkingService;
     this.properties = properties;
+    this.clock = clock;
   }
 
   @Override
@@ -184,8 +196,10 @@ public class MailDocumentPipeline implements DocumentPipeline {
    * reply chain - every segment carries the same, single set of Kopfdaten metadata: a quoted prior
    * message's own header lines are free text inside the client's quoting convention, not reliably
    * parseable back into structured From/To/Date/Subject the way the outer MIME envelope's headers
-   * are. The rendered {@link #headerContextText} block, by contrast, is prepended to the text of
-   * only the very first produced chunk (see {@link #headerContextText}'s own Javadoc for why).
+   * are. The rendered {@link #headerContextText} block, by contrast, is prepended to the raw text
+   * of only the first non-blank segment, <b>before</b> {@link ChunkingService#chunkDocuments} ever
+   * runs on it (see {@link #headerContextText}'s own Javadoc for why prepending here, rather than
+   * after chunking, is load-bearing) - never repeated onto a later segment or further-split part.
    *
    * <p><b>A segment too long for one chunk falls back to {@link ChunkingService}'s ordinary token
    * splitter</b> (#1101 review, finding 2): a long newsletter or a forwarded chain with no
@@ -195,9 +209,15 @@ public class MailDocumentPipeline implements DocumentPipeline {
    * configured {@code opaa.indexing.chunk-size}, so an ordinary message is unaffected; only a
    * segment that actually exceeds it is further cut, exactly the fallback role token-chunking plays
    * project-wide once structure runs out (ingestion-pipelines.md, Teil 2, "Der Grundsatz").
+   *
+   * <p><b>A message whose body never produces a chunk still gets a header-only chunk</b> if it
+   * carries any Kopfdaten (#1130 Befund 1, review finding 4): a blank body next to a PDF attachment
+   * - the common "Anbei der Bescheid" mail - would otherwise index the attachment while losing
+   * sender and Betreff entirely, silently contradicting the very fix this method makes.
    */
   private List<Document> bodyChunks(ParsedMailMessage message, String fileName) {
     String headerContext = headerContextText(message);
+    boolean headerPending = !headerContext.isEmpty();
     List<String> segments = MailThreadSplitter.split(message.bodyText());
     List<Document> chunks = new ArrayList<>(segments.size());
     for (int i = 0; i < segments.size(); i++) {
@@ -205,46 +225,62 @@ public class MailDocumentPipeline implements DocumentPipeline {
       if (text.isBlank()) {
         continue;
       }
+      if (headerPending) {
+        text = headerContext + "\n\n" + text;
+        headerPending = false;
+      }
       List<Document> parts = chunkingService.chunkDocuments(fileName, List.of(new Document(text)));
       for (int j = 0; j < parts.size(); j++) {
-        Map<String, Object> metadata = new HashMap<>();
-        if (message.subject() != null) {
-          metadata.put(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY, message.subject());
-        }
-        if (message.from() != null) {
-          metadata.put(ChunkMailMetadata.MAIL_FROM_METADATA_KEY, message.from());
-        }
-        if (message.to() != null) {
-          metadata.put(ChunkMailMetadata.MAIL_TO_METADATA_KEY, message.to());
-        }
-        if (message.date() != null) {
-          metadata.put(ChunkMailMetadata.MAIL_DATE_METADATA_KEY, message.date().toString());
-        }
+        Map<String, Object> metadata = kopfdatenMetadata(message);
         String location = locationFor(i, segments.size(), j, parts.size());
         if (location != null) {
           metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
         }
-        String chunkText = parts.get(j).getText();
-        if (chunks.isEmpty() && !headerContext.isEmpty()) {
-          chunkText = headerContext + "\n\n" + chunkText;
-        }
-        chunks.add(new Document(chunkText, metadata));
+        chunks.add(new Document(parts.get(j).getText(), metadata));
       }
     }
+    if (headerPending) {
+      chunks.add(new Document(headerContext, kopfdatenMetadata(message)));
+    }
     return chunks;
+  }
+
+  private static Map<String, Object> kopfdatenMetadata(ParsedMailMessage message) {
+    Map<String, Object> metadata = new HashMap<>();
+    if (message.subject() != null) {
+      metadata.put(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY, message.subject());
+    }
+    if (message.from() != null) {
+      metadata.put(ChunkMailMetadata.MAIL_FROM_METADATA_KEY, message.from());
+    }
+    if (message.to() != null) {
+      metadata.put(ChunkMailMetadata.MAIL_TO_METADATA_KEY, message.to());
+    }
+    if (message.date() != null) {
+      metadata.put(ChunkMailMetadata.MAIL_DATE_METADATA_KEY, message.date().toString());
+    }
+    return metadata;
   }
 
   /**
    * Renders Von/An/Betreff/Datum as German-labeled context lines, one line per present field, no
    * line at all for an absent one - empty string when the message carries none of the four.
    *
-   * <p><b>Prepended once, to the first produced body chunk only</b> (#1130 Befund 1), never
-   * repeated onto a later thread segment or further-split part: {@link #bodyChunks} already
-   * duplicates this same information into every chunk's <em>metadata</em> (a quoted-reply thread or
-   * a long newsletter can produce many chunks from one message), and doing the same to the chunk
-   * text would dilute embedding and full-text ranking with an identical block repeated across the
-   * whole document - the same Verwässerungsproblem {@code RepeatingHeaderChunk} avoids for a page
-   * header repeating across a document's chunks.
+   * <p><b>Prepended once, to the raw text of the first non-blank segment, before {@link
+   * ChunkingService#chunkDocuments} runs on it</b> (#1130 Befund 1) - deliberately not appended
+   * after chunking: {@link ParsedMailMessage#to()} is unbounded ({@code EmlReader} renders every
+   * recipient), so a round mail to hundreds of recipients can make this block itself several
+   * thousand characters. Appending it to an already-chunked piece of text would grow that one chunk
+   * past the configured {@code opaa.indexing.chunk-size} without bound - exactly the failure mode
+   * {@link #bodyChunks}'s own token-splitter fallback exists to prevent. Prepending before chunking
+   * instead lets the same splitter account for this block like any other text, cutting a
+   * pathologically large header into its own leading chunk(s) rather than growing one chunk
+   * unboundedly. Never repeated onto a later segment or further-split part: {@link #bodyChunks}
+   * already duplicates this same information into every chunk's <em>metadata</em> (a quoted-reply
+   * thread or a long newsletter can produce many chunks from one message), and doing the same to
+   * the chunk text would dilute embedding and full-text ranking with an identical block repeated
+   * across the whole document - the same Verwässerungsproblem {@code RepeatingHeaderChunk} avoids
+   * for a page header repeating across a document's chunks.
    */
   private String headerContextText(ParsedMailMessage message) {
     StringBuilder text = new StringBuilder();
@@ -252,7 +288,8 @@ public class MailDocumentPipeline implements DocumentPipeline {
     appendHeaderLine(text, "An", message.to());
     appendHeaderLine(text, "Betreff", message.subject());
     if (message.date() != null) {
-      appendHeaderLine(text, "Datum", DATE_FORMATTER.format(message.date()));
+      appendHeaderLine(
+          text, "Datum", DATE_FORMATTER.withZone(clock.getZone()).format(message.date()));
     }
     return text.toString();
   }

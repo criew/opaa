@@ -857,9 +857,13 @@ Absender/Zeitraum/Betreff aus #1164, keine Fehlmodellierung (siehe `ChunkMailMet
 Nachrichtentext des ersten erzeugten Chunks** (#1130 Befund 1, entschieden gegen die zuvor offene
 Formfrage aus Teil 5, Punkt 1) — nach dem Vorbild von `TabularDocumentPipeline`/
 `HtmlDocumentPipeline`/`PptxDocumentPipeline`, die ihren Strukturkontext ebenfalls in den Chunk-Text
-backen, nicht nur in ein Metadatenfeld. Damit wirken Absender, Empfänger und Betreff sofort in
-Embedding **und** Volltextindex — eine Frage wie „Mail von Müller zum Bebauungsplan" findet die
-Nachricht jetzt tatsächlich. Eine fehlende Angabe erzeugt keine leere Zeile.
+backen, nicht nur in ein Metadatenfeld. Damit wirken Absender, Empfänger und Betreff in Embedding
+**und** Volltextindex, sobald der Chunk (neu) entsteht — eine Frage wie „Mail von Müller zum
+Bebauungsplan" findet eine neu oder erneut indizierte Nachricht jetzt tatsächlich. Für den
+bestehenden Mail-Bestand gilt das erst nach einer gezielten Neuindizierung: Regel (d) („Ausgelöst wird
+nichts von selbst") gilt unverändert — die Pipeline-Version steigt mit diesem Zuschnitt (siehe unten),
+ein Altbestand unterhalb dieser Version bleibt bis zum Nachzug beim alten, metadatenreinen Chunk-Text.
+Eine fehlende Angabe erzeugt keine leere Zeile.
 
 **Ein Chunk je Nachricht, bei erkanntem Zitatverlauf ein Chunk je Nachricht im Thread** —
 `MailThreadSplitter` schneidet an den Zitat-Trennzeilen, die Outlook/Thunderbird/Gmail auf Deutsch und
@@ -873,6 +877,20 @@ Kontextzeilen im Chunk-Text landen dagegen **nur auf dem ersten Chunk**, nicht a
 Thread-Segment und nicht auf jedem weiter zerlegten Teilstück — sonst würde derselbe Verteilerkopf
 jeden Chunk eines langen Threads verwässern, dasselbe Problem, das #1145s `RepeatingHeaderChunk` für
 einen wiederholten Seitenkopf vermeidet.
+
+**Ein drittes Muster für denselben Zweck, bewusst keines der beiden bestehenden.**
+`TabularDocumentPipeline` backt ihre Strukturzeile in **jeden** Chunk (Blatt-/Tabellenname ist für
+jede Zeilengruppe eigenständig relevant, keine Dopplung desselben Inhalts); `RepeatingHeaderChunk`
+erzeugt einen **eigenen**, von der Nachricht getrennten Chunk (ein Seitenkopf trägt für sich genommen
+keinen zitierfähigen Inhalt). Der Mail-Kopf ist keines von beiden: Er gehört inhaltlich zur ersten
+Nachricht eines Threads, nicht zu jedem ihrer Chunks, und er ist als Kontext einer konkreten
+Nachricht sinnvoll zitierfähig, nicht als eigenständiger, inhaltsloser Beleg. Prepending auf den
+ersten Chunk ist deshalb die engste Passung. **Die Folge ist bewusst in Kauf genommen:** Für eine
+Frage wie „Mail von Müller zum Bebauungsplan" antwortet nur der erste Chunk eines langen Threads
+zuverlässig — findet die Suche stattdessen Chunk 5 (eine spätere Antwort im selben Thread), trägt der
+keinen Von/Betreff-Kontext mehr, nur noch die `mail_*`-Metadaten ohne Leser. Das ist der Grund, warum
+Folge-Issue #1164 eine strukturierte Beleganzeige nachliefern soll, statt sich auf den Textweg allein
+zu verlassen.
 
 **Ein Segment, das trotzdem zu lang für einen Chunk ist, fällt auf `ChunkingService`s gewöhnlichen
 Token-Splitter zurück** (#1101 Review): Ein langer Rundbrief oder eine Weiterleitungskette ohne
@@ -989,10 +1007,11 @@ als eine Parser-Auswahl.
 
 ### (a) Exakte Kennungen müssen den lexikalischen Suchpfad unzerlegt erreichen
 
-Paragrafenangaben, Aktenzeichen und Erlassnummern sind Identifikatoren, keine Wörter. Ein
-Vektorvergleich trifft sie unzuverlässig; die Volltextsuche trifft sie exakt — aber nur, wenn sie dort
-unzerlegt ankommen. „§ 3 Abs. 2 VwGebS" darf nicht durch Tokenisierung, Stemming oder Decompounding
-zu Bruchstücken werden, und „AZ 31/2-2026-0815" ist kein Text, den man an Sonderzeichen trennt.
+Paragrafenangaben, Aktenzeichen, Erlassnummern und E-Mail-Adressen sind Identifikatoren, keine
+Wörter. Ein Vektorvergleich trifft sie unzuverlässig; die Volltextsuche trifft sie exakt — aber nur,
+wenn sie dort unzerlegt ankommen. „§ 3 Abs. 2 VwGebS" darf nicht durch Tokenisierung, Stemming oder
+Decompounding zu Bruchstücken werden, und „AZ 31/2-2026-0815" ist kein Text, den man an Sonderzeichen
+trennt — ebenso wenig „max.mustermann@example.org" (#1130).
 
 Die Typ-Pipeline ist der Ort, an dem der Text entsteht, der in **beide** Indizes geht — Vektorindex
 und Volltextindex. Sie befüllt deshalb beide, und die Kennungen gehen dabei in exakte Felder statt

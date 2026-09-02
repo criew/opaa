@@ -135,6 +135,14 @@ public final class FullTextIdentifiers {
    * {@code false} when none of the four also occurs as an ordinary word). Carrying the address as
    * an undecomposed lexeme on both sides restores the match, the same fix this class already
    * applies to §-references and file numbers.
+   *
+   * <p><b>ASCII-only local part and domain</b> - an umlaut is neither letter nor separator to this
+   * pattern, so it ends the match early rather than including it: {@code jörg@stadt.de} yields
+   * {@code xmailrgstadtde} (the match starts at "rg@stadt.de", the leading "j" and "ö" are outside
+   * it), and {@code info@köln.de} yields no lexeme at all (no ASCII run reaches a literal "."
+   * before the umlaut). Both sides of the write/query symmetry apply this same pattern, so this is
+   * a coverage gap, not a mismatch - it never produces a false positive, only a missed address
+   * around an umlaut.
    */
   private static final Pattern EMAIL_ADDRESS =
       Pattern.compile("\\b([A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\\.[A-Za-z]{2,})\\b");
