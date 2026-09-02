@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.auth.DevAuthFilter;
@@ -21,6 +20,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadProperties;
 import io.opaa.organization.Organization;
+import io.opaa.test.EmbeddingModelFakeConfiguration;
 import io.opaa.test.OpaaMockMvcTest;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,12 +31,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -51,20 +47,16 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 // Own EmbeddingModel fake, unlike every other @OpaaMockMvcTest class: this is the one HTTP-level
 // test that actually runs a real re-index batch (PipelineReindexService re-embeds every rewritten
 // chunk), which would otherwise dial the real, unreachable-in-CI Ollama endpoint
-// (application.yml's default spring.ai.openai.embedding.base-url). Own Spring context per
-// AGENTS.md "Spring-Testkontexte".
+// (application.yml's default spring.ai.openai.embedding.base-url). Real HTTP client instead of
+// MockMvc against @OpaaIndexingIntegrationTest was evaluated and rejected: Spring Boot 4's
+// TestRestTemplate needs its own opt-in @AutoConfigureTestRestTemplate, which would recreate the
+// same per-class context split this comment already documents, just for a different bean. Own
+// Spring context per AGENTS.md "Spring-Testkontexte"; EmbeddingModelFakeConfiguration is a shared,
+// top-level class in io.opaa.test so a second @OpaaMockMvcTest class with the same need shares this
+// context instead of each declaring its own class-local equivalent.
 @OpaaMockMvcTest
-@Import(PipelineReindexHttpIntegrationTest.FakeEmbeddingModelConfig.class)
+@Import(EmbeddingModelFakeConfiguration.class)
 class PipelineReindexHttpIntegrationTest {
-
-  @TestConfiguration
-  static class FakeEmbeddingModelConfig {
-    @Bean
-    @Primary
-    EmbeddingModel embeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
 
   @Autowired private MockMvc mockMvc;
   @Autowired private UserRepository userRepository;
@@ -182,16 +174,38 @@ class PipelineReindexHttpIntegrationTest {
     assertThat(pipelineIds).containsOnly(TikaFallbackPipeline.ID);
   }
 
+  // IndexingAdminControllerTest already covers "unknown pipelineId" and "belowVersion above the
+  // pipeline's own version" against a mocked DocumentPipelineRegistry with a fabricated version
+  // number. What that mock cannot prove is that the guard engages with the *real*
+  // TikaFallbackPipeline.VERSION wired up in production - a real registry bean whose version this
+  // test does not control could drift out of sync with a mock's hardcoded stand-in without either
+  // test noticing. This test exercises exactly that: an actually registered pipeline id with a
+  // belowVersion one above its real, current version.
   @Test
-  void anUnknownPipelineIdIsRejectedBeforeTouchingTheRealService() throws Exception {
+  void aBelowVersionAboveTheRealPipelinesOwnVersionIsRejectedBeforeTouchingTheRealService()
+      throws Exception {
+    int belowVersion = TikaFallbackPipeline.VERSION + 1;
     mockMvc
         .perform(
             post("/api/v1/admin/indexing/pipeline-reindex")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"pipelineId\":\"unbekannte-pipeline\",\"belowVersion\":1}")
+                .content(
+                    "{\"pipelineId\":\""
+                        + TikaFallbackPipeline.ID
+                        + "\",\"belowVersion\":"
+                        + belowVersion
+                        + "}")
                 .with(devUser()))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.error").value("Unbekannte Pipeline: unbekannte-pipeline"));
+        .andExpect(
+            jsonPath("$.error")
+                .value(
+                    "belowVersion darf höchstens der aktuellen Version der Pipeline "
+                        + TikaFallbackPipeline.ID
+                        + " entsprechen ("
+                        + TikaFallbackPipeline.VERSION
+                        + "), war "
+                        + belowVersion));
 
     // The seeded chunk survives untouched - a validation failure must never reach the real
     // service and rewrite (or delete) anything.
