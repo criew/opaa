@@ -36,6 +36,13 @@ import org.springframework.stereotype.Component;
  * FullTextChunkStore#CURRENT_TSV_VERSION}, which turns every existing row into a stale one - can
  * only arrive with a new deployment, and therefore with a fresh process and an empty cache. Same
  * reasoning as {@code FullTextBackfillScheduler}'s own dormancy flag; single instance per ADR-0021.
+ *
+ * <p><b>A permanently skipped ("poison") chunk does not hold a library's completion hostage
+ * (#1093).</b> {@code io.opaa.indexing.FullTextBackfillProgress#isComplete()}, which this gate
+ * reads via {@link #isComplete(UUID, Instant)}, is defined on the library's still-pending count
+ * only - a chunk the backfill gave up on for good is not pending, so it cannot keep a library
+ * incomplete forever the way a genuinely stuck chunk would. See that record's own Javadoc for why
+ * the alternative would be worse than the half-filled index this gate exists to prevent.
  */
 @Component
 class FullTextBackfillGate {

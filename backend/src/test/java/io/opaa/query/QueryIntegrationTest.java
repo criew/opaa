@@ -107,7 +107,7 @@ class QueryIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
     // Spring AI 2.0 merges ChatModel.getOptions() into every request; a bare mock returns null
     when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
     when(activeChatModelResolver.resolveChatClient())

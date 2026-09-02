@@ -1309,7 +1309,43 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
 - **Wie wird der Volltextindex bei einer Änderung der Analysekette nachgezogen?** Eine geänderte
   `tsvector`-Konfiguration macht bestehende Einträge inkonsistent — vergleichbar mit einem Wechsel des
   Einbettungsmodells, aber ohne dessen Modellaufrufe. Vollständiger Neuaufbau des Volltextindex ohne
-  erneutes Einbetten wäre der naheliegende Weg; er ist noch nicht ausgearbeitet.
+  erneutes Einbetten wäre der naheliegende Weg; er ist noch nicht ausgearbeitet. **Der
+  Robustheitsteil ist mit #1093 entschieden:** `content_tsv_version` als Versionsstempel (bereits
+  seit #1047 vorhanden) macht jede Analysekettenänderung zu genau dem Fall, den
+  `FullTextBackfillService` ohnehin beherrscht — ein Versionssprung markiert den gesamten Bestand
+  als rückstandsbehaftet, und der Backfill arbeitet ihn wie jeden anderen Rückstand ab. Damit ein
+  einzelner „Gift-Chunk" (Inhalt, an dem `to_tsvector` scheitert, z. B. weil der resultierende
+  Vektor Postgres' 1-MiB-Grenze überschreitet) dabei nicht den gesamten Bestand blockiert, halbiert
+  `FullTextBackfillService.backfillBatch` einen fehlschlagenden Batch rekursiv, bis der
+  verursachende Chunk isoliert ist. Ein isolierter Chunk wird anhand des PostgreSQL-`SQLSTATE` der
+  ursprünglichen Fehlermeldung klassifiziert (Klassen `22`/`54`/`42` als Gift-Chunk-Kandidat, alles
+  andere als Systemstörung) — **nicht** über eine nachträgliche Sonde: eine Sonde liefe auf einer
+  anderen, später geliehenen Verbindung und würde alles, was im Zeitfenster dazwischen ausheilt (ein
+  konkurrierendes `DELETE`, ein Lock-Timeout), fälschlich als „Datenbank gesund, also Gift-Chunk"
+  einordnen und den Chunk dauerhaft verlieren (#1093-Review, Blocker 1). Ein als Gift-Chunk-Kandidat
+  eingestufter Chunk wird zusätzlich nicht beim ersten Fehlschlag aufgegeben, sondern erst nach
+  `FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS` aufeinanderfolgenden Fehlschlägen dauerhaft in
+  `chunk_full_text_skip` eingetragen — ein Fehlschlag, der sich innerhalb weniger Ticks von selbst
+  löst, wird stattdessen einfach erneut versucht. Erst ein bestätigter Skip zählt in
+  `FullTextBackfillProgress#skippedChunks` (sichtbar auf der Administrationsseite „Suche &
+  Indexierung“ als eigener Hinweis je Bibliothek, `LibrarySearchStatusResponse.fullTextSkippedChunks`
+  — eine Bibliothek mit bestätigten Skips gilt dort nicht mehr als makellos „bereit“), ohne
+  `FullTextBackfillGate` an dieser einen Bibliothek für immer zu blockieren (`isComplete()` gated nur
+  auf noch ausstehende, nicht auf dauerhaft übersprungene Chunks). Eine echte Systemstörung
+  (Verbindung weg, Pool erschöpft, Deadlock) trägt kein `SQLSTATE` der Poison-Allowlist und lässt
+  weiterhin `FullTextBackfillScheduler`s Backoff greifen — ebenso jeder generische
+  `RuntimeException`, der weder ein `IllegalArgumentException` (nie bei der Datenbank angekommen)
+  noch ein passend klassifizierter `DataAccessException` ist: ein Programmierfehler in einer
+  geteilten Hilfsmethode träfe sonst jeden Chunk gleich und würde über die Mehrfachbestätigung
+  hinweg den gesamten Bestand als „bestätigt übersprungen" verbuchen, bis der Gate auf einen in
+  Wahrheit leeren Index öffnet. Ein Chunk, dessen `document_id`-Metadatum selbst kein
+  wohlgeformtes UUID ist, wird nicht über diese Mehrfachbestätigung geführt, sondern sofort als
+  bestätigter Skip verbucht (`document_id` in `chunk_full_text_skip` dafür nullable) — ein
+  struktureller Defekt heilt nicht durch Wiederholung, und ihn stattdessen aus der Auswahl
+  auszuschließen würde `missingChunks` für seine Bibliothek dauerhaft bei 1 belassen. Indiziert ein
+  zuvor gescheiterter Chunk später erfolgreich, löscht `FullTextChunkStore.clearSkipRows` seine
+  Skip-Zeile wieder — nur auf dem Backfill-Pfad, nie beim regulären Ingest, wo eine Skip-Zeile
+  wegen frisch erzeugter Chunk-IDs ohnehin nie existieren kann.
 - **Wirkt der Kontextpräfix aus Contextual Chunking (#933/#940) auch in den Volltextindex?**
   Anthropics „contextual BM25" spricht dafür, und die Roadmap sieht es in Phase 2a vor. Es ist aber eine
   eigene Messung wert: Ein Titelpräfix in jedem Chunk verändert die Termstatistik des ganzen Index.

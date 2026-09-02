@@ -386,7 +386,7 @@ public class SearchStatusService {
           statsByLibrary.getOrDefault(library.getId(), LibraryDocumentStats.empty(library.getId()));
       FullTextBackfillProgress progress =
           progressByLibrary.getOrDefault(
-              library.getId(), new FullTextBackfillProgress(library.getId(), 0, 0, 0));
+              library.getId(), new FullTextBackfillProgress(library.getId(), 0, 0, 0, 0));
       result.add(
           new LibrarySearchStatus(
               library.getId(),
@@ -400,7 +400,8 @@ public class SearchStatusService {
               progress.totalChunks(),
               stats.lastIndexedAt(),
               progress.indexedChunks(),
-              progress.missingChunks()));
+              progress.missingChunks(),
+              progress.skippedChunks()));
     }
     result.sort(
         Comparator.comparing(LibrarySearchStatus::libraryName, String.CASE_INSENSITIVE_ORDER));

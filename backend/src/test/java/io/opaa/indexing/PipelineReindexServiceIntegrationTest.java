@@ -69,7 +69,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
     documentRepository.deleteAll();
     jdbcTemplate.update(
         "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
