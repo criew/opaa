@@ -162,6 +162,24 @@ export async function createLibraryWithDocument(
   documentPath: string,
   documentName: string,
 ): Promise<void> {
+  await createLibraryWithDocuments(page, libraryName, [
+    { path: documentPath, name: documentName },
+  ])
+}
+
+/**
+ * Creates a fresh UPLOAD library named libraryName for the acting user and uploads every one of
+ * documents in a single {@link https://playwright.dev/docs/api/class-locator#locator-set-input-files
+ * setInputFiles} call (the upload zone's file input carries the `multiple` attribute, see
+ * LibraryDetailPage.tsx), waiting for every one of them to reach "indiziert" - the multi-format
+ * upload scenario (#1109) needs several distinct formats accepted and indexed side by side, not
+ * one file at a time the way {@link createLibraryWithDocument} exercises everywhere else.
+ */
+export async function createLibraryWithDocuments(
+  page: Page,
+  libraryName: string,
+  documents: { path: string; name: string }[],
+): Promise<void> {
   await gotoLibraries(page)
   await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
   await page.getByLabel('Name').fill(libraryName)
@@ -176,11 +194,18 @@ export async function createLibraryWithDocument(
   ])
   await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
 
-  await page.getByLabel('Dateien auswählen').setInputFiles(documentPath)
-  // exact: true - a non-exact match risks a strict-mode violation once anything else on the page
-  // (e.g. a status hint) also happens to contain this filename as a substring.
-  await expect(page.getByText(documentName, { exact: true })).toBeVisible()
-  await expect(page.getByText('indiziert')).toBeVisible({ timeout: 30_000 })
+  await page
+    .getByLabel('Dateien auswählen')
+    .setInputFiles(documents.map((document) => document.path))
+  for (const { name } of documents) {
+    // exact: true - a non-exact match risks a strict-mode violation once anything else on the
+    // page (e.g. a status hint) also happens to contain this filename as a substring.
+    await expect(page.getByText(name, { exact: true })).toBeVisible()
+  }
+  // A fresh library (created moments ago, above) holds nothing but these uploads, so one
+  // "indiziert" status chip per document is the whole, exact expectation - not just "at least
+  // one", which a single stuck upload amid several finished ones would still satisfy.
+  await expect(page.getByText('indiziert')).toHaveCount(documents.length, { timeout: 30_000 })
 }
 
 /**
