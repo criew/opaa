@@ -121,6 +121,9 @@ public class PipelineReindexService {
             + "')::int, ?) AS pipeline_version, "
             + "       d.file_name AS file_name, "
             + "       d.source_type AS source_type, "
+            + "       v.metadata->>'"
+            + ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY
+            + "' AS routing_extension, "
             + "       count(*) AS chunk_count "
             + "FROM "
             + vectorStoreTable
@@ -133,7 +136,7 @@ public class PipelineReindexService {
             + "LEFT JOIN documents d ON d.id::text = v.metadata->>'document_id' "
             + "WHERE v.metadata->>'library_id' IS NOT NULL "
             + "  AND v.metadata->>'organization_id' = ? "
-            + "GROUP BY 1, 2, 3, 4, 5";
+            + "GROUP BY 1, 2, 3, 4, 5, 6";
 
     Map<UUID, long[]> byLibrary = new HashMap<>();
     jdbcTemplate.query(
@@ -144,6 +147,7 @@ public class PipelineReindexService {
           int version = rs.getInt("pipeline_version");
           String fileName = rs.getString("file_name");
           String sourceType = rs.getString("source_type");
+          String routingExtension = rs.getString("routing_extension");
           long count = rs.getLong("chunk_count");
           long[] counters = byLibrary.computeIfAbsent(libraryId, key -> new long[3]);
           counters[0] += count;
@@ -153,28 +157,18 @@ public class PipelineReindexService {
             // re-indexable. Counted in the total only, so it is visible without being promised.
             return;
           }
-          // Mirrors the same narrowing selectStaleDocuments applies (see #misroutedPredicateFor):
-          // the routing gap (#1105) only makes a chunk stale while it is still fallback-labeled,
-          // and never for an RSS entry - its body is handed to the fallback pipeline
-          // unconditionally
-          // (ADR-0017, decision 2), so its file name (a title or the entry URL) is never a routing
-          // signal, not evidence of staleness. A chunk already naming a specialized pipeline is
-          // left
-          // to the plain version comparison, even if its file name no longer matches that
-          // pipeline's
-          // own extensions - reporting it stale here without selectStaleDocuments ever being able
-          // to
-          // reach it would leave isComplete() permanently false for a document no re-index call can
-          // advance. This closes only the direction from fallback into a claimed specialized
-          // pipeline; a document whose extension already claims that pipeline but whose
-          // content-based routing keeps sending it back to the fallback stays permanently
-          // fallback-labeled, and isComplete() stays permanently false for it - a known,
-          // unaddressed gap (see docs/features/ingestion-pipelines.md, same section).
+          // Mirrors the narrowing selectStaleDocuments applies (see #misroutedPredicateFor): a
+          // chunk is only routing-stale while still fallback-labeled, never for an RSS entry
+          // (ADR-0017, decision 2). Exact via pipelineIdForRoutingExtension where routingExtension
+          // is present (#1126); the file-name approximation (#1105) only for a chunk without it.
           boolean routingStale =
-              fileName != null
-                  && !DocumentSourceType.RSS_FEED.name().equals(sourceType)
+              !DocumentSourceType.RSS_FEED.name().equals(sourceType)
                   && pipelineId.equals(pipelineRegistry.fallbackPipeline().id())
-                  && !pipelineId.equals(currentPipelineIdForFileName(fileName));
+                  && (routingExtension != null
+                      ? !pipelineId.equals(
+                          pipelineRegistry.pipelineIdForRoutingExtension(routingExtension))
+                      : fileName != null
+                          && !pipelineId.equals(currentPipelineIdForFileName(fileName)));
           if (!routingStale && version >= currentVersion) {
             counters[1] += count;
           } else {
@@ -488,10 +482,12 @@ public class PipelineReindexService {
   private record MisroutedPredicate(String sql, List<Object> params) {}
 
   /**
-   * Whether {@code d.file_name} currently routes to {@code pipelineId}, purely by extension - the
-   * same claim {@link #currentPipelineIdForFileName} resolves in Java for {@link
-   * #progressForOrganization}, expressed in SQL so {@link #selectStaleDocuments} can keep filtering
-   * (and paginating) in the database instead of scanning every document of the organization.
+   * Whether a chunk currently routes to {@code pipelineId} today - exactly, via its own {@link
+   * ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} where present (#1126), falling back to
+   * the file-name approximation {@link #currentPipelineIdForFileName} mirrors in Java for {@link
+   * #progressForOrganization} where it is not (a chunk written before #1126). Expressed in SQL so
+   * {@link #selectStaleDocuments} can keep filtering (and paginating) in the database instead of
+   * scanning every document of the organization.
    *
    * <p>{@code FALSE} for the fallback pipeline itself: the misrouted branch this feeds exists to
    * pull a document <em>out</em> of the fallback into the specialized pipeline that now claims its
@@ -511,22 +507,47 @@ public class PipelineReindexService {
     if (extensions.isEmpty()) {
       return new MisroutedPredicate("FALSE", List.of());
     }
-    String sql =
+    // Exact branch: this pipeline's own extensions against the chunk's stored routing key - `IN`
+    // over a NULL left side (the key was never written) is neither true nor false in SQL, so this
+    // alone already excludes a legacy chunk without falling through to the heuristic by accident.
+    String exactSql =
+        "v.metadata->>'"
+            + ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY
+            + "' IN ("
+            + extensions.stream().map(extension -> "?").collect(Collectors.joining(", "))
+            + ")";
+    List<Object> exactParams = List.copyOf(extensions);
+    // Heuristic branch: only reached for a chunk that never had the key written at all (#1125's
+    // pre-#1126 approximation, kept unchanged as the Altbestand path).
+    String heuristicSql =
         extensions.stream()
             .map(extension -> "LOWER(d.file_name) LIKE ?")
             .collect(Collectors.joining(" OR ", "(", ")"));
-    List<Object> params =
+    List<Object> heuristicParams =
         extensions.stream()
             .map(extension -> "%" + extension.toLowerCase(Locale.ROOT))
             .map(Object.class::cast)
             .toList();
+    String sql =
+        "("
+            + exactSql
+            + " OR (v.metadata->>'"
+            + ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY
+            + "' IS NULL AND "
+            + heuristicSql
+            + "))";
+    List<Object> params = new ArrayList<>(exactParams);
+    params.addAll(heuristicParams);
     return new MisroutedPredicate(sql, params);
   }
 
   /**
    * The id of the pipeline that would claim {@code fileName} today, purely by its extension - the
    * java-side counterpart {@link #progressForOrganization} needs for the same routing-gap check
-   * {@link #misroutedPredicateFor} expresses in SQL for {@link #selectStaleDocuments}.
+   * {@link #misroutedPredicateFor} expresses in SQL for {@link #selectStaleDocuments}, for a chunk
+   * that has no {@link ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} of its own (written
+   * before #1126) - the exact comparison in both callers is tried first and only falls back to this
+   * method when that key is absent.
    *
    * <p><b>A deliberately narrower approximation of routing, not a second implementation of it.</b>
    * The actual routing contract - {@link DocumentPipelineRegistry}, this package's own {@code
@@ -538,14 +559,15 @@ public class PipelineReindexService {
    * re-routes on re-detected content on every actual re-index (see {@code
    * FileProcessingService#reindexStoredDocument}), never on this guess.
    *
-   * <p>Known gaps this approximation does not close, all read-only consequences (a chunk stays
-   * where it is, never mis-embedded): an RSS entry's chunk names {@code tika-fallback} by design
-   * (ADR-0017, routing is skipped for extracted entry text) with {@code fileName} its title or URL
-   * - an incidental {@code .html} there is not a routing signal. A document already re-indexed
-   * under a <em>specialized</em> pipeline whose file name no longer matches that pipeline's own
-   * extensions (renamed since, or the extension never matched the true content) is likewise left
-   * alone here - {@link #misroutedPredicateFor} only re-examines chunks still naming the fallback
-   * pipeline.
+   * <p>Known gaps this approximation does not close for a chunk without a routing key, all
+   * read-only consequences (a chunk stays where it is, never mis-embedded): an RSS entry's chunk
+   * names {@code tika-fallback} by design (ADR-0017, routing is skipped for extracted entry text)
+   * with {@code fileName} its title or URL - an incidental {@code .html} there is not a routing
+   * signal. A document already re-indexed under a <em>specialized</em> pipeline whose file name no
+   * longer matches that pipeline's own extensions (renamed since, or the extension never matched
+   * the true content) is likewise left alone here - {@link #misroutedPredicateFor} only re-examines
+   * chunks still naming the fallback pipeline. A chunk written since #1126 does not carry these
+   * gaps at all, since it is never compared through this method in the first place.
    */
   private String currentPipelineIdForFileName(String fileName) {
     String lowerCased = fileName.toLowerCase(Locale.ROOT);

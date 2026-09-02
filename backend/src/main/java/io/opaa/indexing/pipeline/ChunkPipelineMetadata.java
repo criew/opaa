@@ -33,5 +33,23 @@ public final class ChunkPipelineMetadata {
    */
   public static final int LEGACY_PIPELINE_VERSION = 0;
 
+  /**
+   * The extension {@link DocumentPipelineRegistry#routedPipelineFor} actually resolved when this
+   * chunk was written (#1126), never the chunk's file name. Absent for a chunk where routing could
+   * not be attempted or completed (the pre-#1126 Altbestand; a failed detection) - {@link
+   * PipelineReindexService} then falls back to its pre-#1126 file-name approximation instead of the
+   * exact comparison {@link DocumentPipelineRegistry#pipelineIdForRoutingExtension(String)} gives.
+   */
+  public static final String ROUTING_EXTENSION_METADATA_KEY = "routing_extension";
+
+  /**
+   * The sentinel {@link #ROUTING_EXTENSION_METADATA_KEY} carries when routing resolved no extension
+   * at all (content admits nothing) - distinct from the key's absence. Required, not merely chosen:
+   * {@code org.springframework.ai.document.Document}'s constructor asserts no metadata value is
+   * {@code null} (spring-ai-commons, {@code Assert.noNullElements}), so {@code null} itself could
+   * never be written.
+   */
+  public static final String NO_ROUTING_EXTENSION = "";
+
   private ChunkPipelineMetadata() {}
 }

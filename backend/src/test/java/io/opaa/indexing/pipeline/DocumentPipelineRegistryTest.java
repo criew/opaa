@@ -148,6 +148,23 @@ class DocumentPipelineRegistryTest {
   }
 
   @Test
+  void aFileThatCannotBeReadForDetectionFallsBackWithFormatDetectionFailedSet() {
+    // Regression guard for the #1165 review: a read failure (deleted, permission-denied, briefly
+    // locked) must not be indistinguishable from a content decision that admits nothing -
+    // FileProcessingService relies on formatDetectionFailed() to avoid persisting a routing key
+    // for a chunk this method never actually routed on content.
+    DocumentPipelineRegistry registry = registryWith();
+    java.nio.file.Path missing =
+        java.nio.file.Path.of("does-not-exist-" + java.util.UUID.randomUUID());
+
+    DocumentPipelineRegistry.Routed routed = registry.routedPipelineFor(missing, "bericht.pdf");
+
+    assertThat(routed.pipeline()).isSameAs(fallback);
+    assertThat(routed.detectedExtension()).isNull();
+    assertThat(routed.formatDetectionFailed()).isTrue();
+  }
+
+  @Test
   void twoPipelinesClaimingTheSameFormatFailFast() {
     DocumentPipeline first = new FakePipeline("pdf-a", (short) 1, Set.of(".pdf"));
     DocumentPipeline second = new FakePipeline("pdf-b", (short) 1, Set.of(".pdf"));
