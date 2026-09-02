@@ -15,26 +15,33 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * element-for-element. {@code text:s}'s own {@code text:c} repeat count is a distinct amplification
  * vector, though: it is guarded by {@link #maxSpaceRepeat} below.
  *
- * @param maxContentXmlBytes the maximum number of bytes read from an ODT/ODP file's {@code
- *     content.xml} or {@code styles.xml} entry before parsing aborts - the zip-bomb guard,
- *     mirroring {@code TabularProperties#maxOdsContentXmlBytes}. Applied to both entries alike;
- *     {@code styles.xml} carries far less content than {@code content.xml} in practice, so a single
- *     shared ceiling is not a meaningfully looser guard for it. Default 10 MiB.
+ * @param maxContentXmlBytes the maximum number of bytes read from a single ODT/ODP ZIP entry -
+ *     {@code content.xml} or {@code styles.xml} - before parsing that entry aborts; the zip-bomb
+ *     guard, mirroring {@code TabularProperties#maxOdsContentXmlBytes}. Each entry gets this same
+ *     budget on its own read, not a budget shared across both. Default 10 MiB.
  * @param maxOdtParagraphs the maximum number of paragraph/heading/table elements read from an ODT
- *     document before parsing aborts - a second guard alongside {@link #maxContentXmlBytes} against
- *     a pathologically large number of small elements. Default 50 000.
- * @param maxOdpSlides the maximum number of {@code draw:page} slides read from an ODP presentation
- *     before parsing aborts - the ODP counterpart of {@link #maxOdtParagraphs}. Default 5 000.
+ *     document's {@code content.xml} before parsing aborts - a second guard alongside {@link
+ *     #maxContentXmlBytes} against a pathologically large number of small elements. Does <b>not</b>
+ *     apply to {@code styles.xml}'s own header/footer paragraphs, which {@link #maxContentXmlBytes}
+ *     and {@link #maxTextCharacters} alone bound - a page header/footer has no comparable
+ *     "thousands of tiny elements" risk in practice. Default 50 000.
+ * @param maxOdpSlides the maximum number of {@code draw:page} slides read from an ODP
+ *     presentation's {@code content.xml} before parsing aborts - the ODP counterpart of {@link
+ *     #maxOdtParagraphs}, with the same styles.xml exception. Default 5 000.
  * @param maxSpaceRepeat the maximum number of spaces a single {@code text:s} element expands to -
  *     without this, {@code text:c} lets a few bytes of markup request an arbitrarily large
  *     in-memory string (mirrors {@code TabularProperties#maxOdsCellRepeat}'s reasoning for the ODS
- *     reader's own repeat attribute). Default 1 000.
- * @param maxTextCharacters the maximum number of characters accumulated, across the whole document,
- *     into a paragraph/cell text buffer before parsing aborts - {@link #maxSpaceRepeat} bounds one
- *     {@code text:s} element, but a paragraph resets its buffer only once per {@code text:h}/{@code
- *     text:p} and can carry an unbounded number of {@code text:s} elements, so the per-element cap
- *     alone does not bound total memory use (mirrors {@code TabularProperties#maxOdsRows}'s
- *     cumulative, rather than per-row, reasoning). Default 10 000 000.
+ *     reader's own repeat attribute). Applies to {@code content.xml} and {@code styles.xml} alike.
+ *     Default 1 000.
+ * @param maxTextCharacters the maximum number of characters accumulated into a paragraph/cell text
+ *     buffer before parsing aborts - {@link #maxSpaceRepeat} bounds one {@code text:s} element, but
+ *     a paragraph resets its buffer only once per {@code text:h}/{@code text:p} and can carry an
+ *     unbounded number of {@code text:s} elements, so the per-element cap alone does not bound
+ *     total memory use (mirrors {@code TabularProperties#maxOdsRows}'s cumulative, rather than
+ *     per-row, reasoning). <b>Counted separately per handler, not shared</b>: {@code content.xml}'s
+ *     own handler and a {@code styles.xml} handler each start their own counter at zero, so this is
+ *     a per-entry budget, not a total-document one, the same as {@link #maxContentXmlBytes}.
+ *     Default 10 000 000.
  */
 @ConfigurationProperties(prefix = "opaa.indexing.odf")
 public record OdfProperties(

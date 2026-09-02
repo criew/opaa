@@ -9,18 +9,24 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.poi.xwpf.model.XWPFHeaderFooterPolicy;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFHeaderFooter;
+import org.apache.poi.xwpf.usermodel.XWPFFooter;
+import org.apache.poi.xwpf.usermodel.XWPFHeader;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFldChar;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STFldCharType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -37,10 +43,14 @@ import org.springframework.ai.document.Document;
  * block per table (never a heading). Only {@code .docx} is handled - the legacy binary {@code .doc}
  * keeps running through the Tika fallback pipeline.
  *
- * <p><b>The default header/footer</b> (#1145) - not the {@code -left}/{@code -first} variants, to
- * avoid indexing the same text twice - becomes one deduplicated leading chunk (location
- * "Kopf-/Fußzeile") rather than being repeated per page or dropped, since it is not part of {@link
- * XWPFDocument#getBodyElements()}; see {@link RepeatingHeaderChunk}.
+ * <p><b>Every header/footer part</b> - {@link XWPFDocument#getHeaderList()}/{@link
+ * XWPFDocument#getFooterList()}, the union across every section and every default/first/even
+ * variant a multi-section document can carry - becomes one deduplicated leading chunk (location
+ * "Kopf-/Fußzeile") rather than being repeated per page or dropped, since none of it is part of
+ * {@link XWPFDocument#getBodyElements()}; see {@link RepeatingHeaderChunk}. Two paragraphs whose
+ * whitespace-normalized text is equal contribute only once. A field's cached value (e.g. a page
+ * number computed the last time the file was saved, correct for at most one page) is excluded
+ * rather than indexed as if it were static text.
  */
 public class DocxDocumentPipeline implements DocumentPipeline {
 
@@ -123,28 +133,67 @@ public class DocxDocumentPipeline implements DocumentPipeline {
   }
 
   private static String headerFooterText(XWPFDocument document) {
-    XWPFHeaderFooterPolicy policy = document.getHeaderFooterPolicy();
-    if (policy == null) {
-      return "";
+    Map<String, String> headerLines = new LinkedHashMap<>();
+    Map<String, String> footerLines = new LinkedHashMap<>();
+    for (XWPFHeader header : document.getHeaderList()) {
+      collectParagraphLines(header.getParagraphs(), headerLines);
     }
-    StringBuilder text = new StringBuilder();
-    appendHeaderFooterText(text, policy.getDefaultHeader());
-    appendHeaderFooterText(text, policy.getDefaultFooter());
-    return text.toString();
+    for (XWPFFooter footer : document.getFooterList()) {
+      collectParagraphLines(footer.getParagraphs(), footerLines);
+    }
+    String header = String.join("\n", headerLines.values());
+    String footer = String.join("\n", footerLines.values());
+    if (header.isEmpty()) {
+      return footer;
+    }
+    if (footer.isEmpty()) {
+      return header;
+    }
+    return header + "\n\n" + footer;
   }
 
-  private static void appendHeaderFooterText(StringBuilder text, XWPFHeaderFooter part) {
-    if (part == null) {
-      return;
+  /**
+   * Adds each paragraph's field-excluding text to {@code lines}, keyed by its whitespace-normalized
+   * form so a paragraph repeated verbatim across header/footer variants or sections is kept once.
+   */
+  private static void collectParagraphLines(
+      List<XWPFParagraph> paragraphs, Map<String, String> lines) {
+    for (XWPFParagraph paragraph : paragraphs) {
+      String stripped = paragraphTextExcludingFieldValues(paragraph).strip();
+      if (!stripped.isBlank()) {
+        lines.putIfAbsent(stripped.replaceAll("\\s+", " "), stripped);
+      }
     }
-    String value = part.getText();
-    if (value == null || value.isBlank()) {
-      return;
+  }
+
+  /**
+   * A Word field (e.g. "Seitenzahl einfügen") is stored as a run sequence: a {@code begin} marker,
+   * the field's instruction code ({@code w:instrText}, e.g. {@code " PAGE "} - never content), a
+   * {@code separate} marker, then one or more runs holding the field's cached last-computed display
+   * value, then an {@code end} marker. The cached value is excluded here - it is correct for at
+   * most one page/moment, not document content.
+   */
+  private static String paragraphTextExcludingFieldValues(XWPFParagraph paragraph) {
+    StringBuilder text = new StringBuilder();
+    boolean insideFieldValue = false;
+    for (XWPFRun run : paragraph.getRuns()) {
+      CTR ctr = run.getCTR();
+      for (CTFldChar fldChar : ctr.getFldCharArray()) {
+        if (fldChar.getFldCharType() == STFldCharType.SEPARATE) {
+          insideFieldValue = true;
+        } else if (fldChar.getFldCharType() == STFldCharType.END) {
+          insideFieldValue = false;
+        }
+      }
+      if (ctr.sizeOfInstrTextArray() > 0 || insideFieldValue) {
+        continue;
+      }
+      String runText = run.getText(0);
+      if (runText != null) {
+        text.append(runText);
+      }
     }
-    if (!text.isEmpty()) {
-      text.append("\n\n");
-    }
-    text.append(value.strip());
+    return text.toString();
   }
 
   private static List<HeadingSectionSplitter.Event> toEvents(List<IBodyElement> elements) {

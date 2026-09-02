@@ -332,7 +332,7 @@ bedeutungsleer, mit ihr eine beantwortbare Frage.
 `TikaFallbackPipeline` — POIs OOXML-Leser kann das ältere Binärformat gar nicht öffnen.
 
 - **PDF** liest über Apache PDFBox direkt (nicht den in Teil 1 genannten Spring-AI-`ParagraphPdfDocumentReader`/`PagePdfDocumentReader` — kein solches Modul liegt auf dem Klassenpfad, dieselbe Abwägung wie bei `HtmlDocumentPipeline`/Jsoup). Trägt der PDF-Katalog ein Inhaltsverzeichnis (Outline/Bookmarks), schneidet die Pipeline entlang **jeder** dort vorhandenen Verschachtelungstiefe — anders als bei Markdown/DOCX/HTML gibt es hier **kein** Level-3-Limit, weil § und Absatz in einer Satzung typischerweise zwei Katalogebenen sind und eine tiefere Gliederung ebenso zitierfähig bleiben soll. Ein Katalogeintrag, dessen Ziel sich nicht auf eine Seite auflösen lässt, wird übersprungen (seine Kinder bleiben auf ihrer eigenen Ebene). **Mehrere Katalogeinträge auf derselben Seite** (der Satzungs-Normalfall: mehrere §§ je Seite) teilen sich den Seitentext nach ihren Titeltexten auf — der Text zwischen einem Titel und dem nächsten wird dem jeweils vorangehenden Eintrag zugeordnet, statt der gesamten Seite nur dem letzten Eintrag (#1104 Review, wichtig 1); lässt sich ein Titel im extrahierten Text nicht wortgleich wiederfinden, fällt der geteilte Bereich auf den letzten Eintrag zurück, die übrigen Geschwister behalten trotzdem ihren eigenen, wenn auch körperlosen Abschnitt. Ohne auflösbaren Katalog fällt die Pipeline auf eine Seite = ein Chunk zurück (`location` = „S. n"). Der #1055-Scan-Guard wird aus der eigenen PDFBox-Extraktion beantwortet (leerer Volltext über das ganze Dokument), nicht mehr aus einem separaten, anschließend verworfenen Tika-Lauf (#1104 Review, wichtig 6) — die Semantik ist unverändert, weil Tikas PDF-Modul selbst auf PDFBox aufsetzt.
-- **DOCX** liest direkt über Apache POI (`XWPFDocument`) statt über Tika, weil die Absatzformat-Überschriftenebene — genau das, worauf diese Pipeline schneidet — bei Tikas Extraktion verloren geht. Die Ebene kommt aus der eingebauten Word-Formatvorlage (Style-ID `Heading1`…`Heading9` im üblichen englischsprachig-templateten Fall, aber die Style-ID ist **nicht** verlässlich englisch — LibreOffice und manche deutschen Word-Vorlagen exportieren `berschrift1`/`Ueberschrift1`, das führende „Ü" fällt der OOXML-Bereinigung zum Opfer, siehe #1104 Review, Nit 5) oder ersatzweise aus dem direkten Gliederungsattribut (`w:outlineLvl`); ein Absatz ohne beides bleibt Fließtext im laufenden Abschnitt. **Tabellen werden zellenweise gelesen**, nicht übersprungen (#1104 Review, wichtig 2): Ein Gebührenverzeichnis oder Formular ist praktisch immer eine Tabelle, und Tikas Extraktion (das Vor-#1061-Verhalten) trug diesen Inhalt bereits — die Pipeline durchläuft dafür `getBodyElements()` statt nur `getParagraphs()` und wandelt jede `XWPFTable` in einen Absatz-Textblock um (eine Zeile je Tabellenzeile, Zellen mit „ | " verbunden). **Kopf-/Fußzeilentext wird seit #1145 mitgelesen**, obwohl er nicht zu `getBodyElements()` gehört: Der Standard-Header/-Footer (`XWPFHeaderFooterPolicy`, nicht die `-first`/`-even`-Varianten, um denselben Text nicht doppelt zu indizieren) wird über POI ausgelesen und — genau wie bei `OdtDocumentPipeline`/`OdpDocumentPipeline` — als ein einziger, deduplizierter führender Chunk aufgenommen (`location` „Kopf-/Fußzeile", `RepeatingHeaderChunk`, geteilt mit den beiden ODF-Pipelines), statt pro Seite dupliziert oder verworfen zu werden.
+- **DOCX** liest direkt über Apache POI (`XWPFDocument`) statt über Tika, weil die Absatzformat-Überschriftenebene — genau das, worauf diese Pipeline schneidet — bei Tikas Extraktion verloren geht. Die Ebene kommt aus der eingebauten Word-Formatvorlage (Style-ID `Heading1`…`Heading9` im üblichen englischsprachig-templateten Fall, aber die Style-ID ist **nicht** verlässlich englisch — LibreOffice und manche deutschen Word-Vorlagen exportieren `berschrift1`/`Ueberschrift1`, das führende „Ü" fällt der OOXML-Bereinigung zum Opfer, siehe #1104 Review, Nit 5) oder ersatzweise aus dem direkten Gliederungsattribut (`w:outlineLvl`); ein Absatz ohne beides bleibt Fließtext im laufenden Abschnitt. **Tabellen werden zellenweise gelesen**, nicht übersprungen (#1104 Review, wichtig 2): Ein Gebührenverzeichnis oder Formular ist praktisch immer eine Tabelle, und Tikas Extraktion (das Vor-#1061-Verhalten) trug diesen Inhalt bereits — die Pipeline durchläuft dafür `getBodyElements()` statt nur `getParagraphs()` und wandelt jede `XWPFTable` in einen Absatz-Textblock um (eine Zeile je Tabellenzeile, Zellen mit „ | " verbunden). **Kopf-/Fußzeilentext wird seit #1145 mitgelesen**, obwohl er nicht zu `getBodyElements()` gehört: Jeder Header-/Footer-Teil aus `XWPFDocument#getHeaderList()`/`#getFooterList()` — die Vereinigung über alle Abschnitte und alle Standard-/Erste-Seite-/Gerade-Varianten eines mehrabschnittigen Dokuments, nicht nur der zuletzt im Dokument stehende `sectPr`-Header/-Footer — wird über POI ausgelesen und — genau wie bei `OdtDocumentPipeline`/`OdpDocumentPipeline` — als ein einziger, deduplizierter führender Chunk aufgenommen (`location` „Kopf-/Fußzeile“, `RepeatingHeaderChunk`, geteilt mit den beiden ODF-Pipelines), statt pro Seite dupliziert oder verworfen zu werden. Zwei Absätze mit gleichem, auf Leerraum normalisiertem Text tragen nur einmal bei — der übliche Fall, wenn derselbe Header für mehrere Abschnitte oder Varianten gilt. Der zuletzt berechnete Wert eines Word-Feldes (z. B. `PAGE`) wird beim Auslesen ausgeschlossen (erkannt über die `w:fldChar`-Runs zwischen `separate` und `end`); `RepeatingHeaderChunk` verwirft als Netz darunter zusätzlich jeden Kandidaten ohne einen einzigen Buchstaben.
 - **PPTX** liest über Apache POI (`XMLSlideShow`): eine Folie mit Text = ein Chunk, mit Folientitel und -nummer als Fundort und Sprechernotizen als eigenem, klar benannten Absatz (Platzhalter für Foliennummer/Datum in den Notizen werden dabei ausgefiltert, #1104 Review, Nit 7). Eine `XSLFGroupShape` wird rekursiv abgestiegen und eine `XSLFTable` zeilenweise gelesen (#1104 Review, wichtig 3) — beide sind keine `XSLFTextShape` und wären sonst unsichtbar; der Titel-Shape wird über Objektidentität ausgeschlossen, nicht über Textgleichheit, damit ein Textfeld mit zufällig demselben Wortlaut wie der Titel nicht mit verschwindet. Eine leere Folie neben anderen Folien mit Text erzeugt weiterhin einen (fast leeren) Chunk, damit die Foliennummerierung als Fundstelle lückenlos bleibt — **trägt aber keine einzige Folie der Präsentation Text**, meldet die Pipeline `NO_EXTRACTABLE_TEXT` statt `CHUNKED` mit lauter inhaltsleeren „Folie n"-Chunks (#1104 Review, wichtig 4): Ohne diese Schranke kehrt die in Teil 3, Punkt 1 behobene stille Leer-Index-Fehlfunktion für rein bildbasierte Präsentationen zurück.
 
 Alle drei — sowie `HtmlDocumentPipeline` — nutzen dieselbe, geteilte `HeadingSectionSplitter`-Logik (Überschriftenpfad, Soft-/Hard-Zeichenlimit, „Abschn. …“-Fundort, Unterdrückung körperloser Abschnitte): `HtmlDocumentPipeline` baut seinen eigenen Block-/Überschriftenpfad-Zustand aus der DOM-Traversierung auf, ruft für die Abschnittsbildung selbst aber `HeadingSectionSplitter.flushSection`/`capChunkLength` direkt statt einer eigenen Kopie (#1104 Review, Nit 9) — die #1100-Nachbesserungen an dieser Logik leben damit an genau einer Stelle.
@@ -555,28 +555,44 @@ mit den beiden ODF-Pipelines ist er es nicht mehr (#1110/#1143).
   eines Rahmens kommt aus seinem eigenen `presentation:class`-Attribut — `"title"` wird Fundort und
   führende Zeile des Chunks, jeder andere Rahmen (auch `"subtitle"`) wird Fließtext, Text in
   `presentation:notes` wird als eigener, benannter Absatz angehängt, mit denselben ausgefilterten
-  Platzhalterklassen (`header`/`footer`/`date-time`/`page-number`) wie bei PPTX. Eine Präsentation, in
-  der keine Folie Text trägt, meldet `NO_EXTRACTABLE_TEXT`.
+  Platzhalterklassen (`header`/`footer`/`date-time`/`page-number`) wie bei PPTX. **Trägt keine Folie Text, meldet die Pipeline `NO_EXTRACTABLE_TEXT`
+  — unabhängig davon, ob die Masterfolie (unten) selbst Text trägt.** Masterfolien-Text ist
+  Vorlagentext, kein Beleg dafür, dass dieses Dokument eigenen Inhalt hat; er darf den
+  Scan-/Leer-Guard aus #1055 nicht aushebeln — eine 30-Folien-Scanpräsentation mit einer
+  Behörden-Masterfolie bleibt `NO_EXTRACTABLE_TEXT`, statt 31 Chunks zu liefern, von denen 30
+  nur aus der eigenen Foliennummer bestehen.
 
 **`styles.xml` wird seit #1145 mitgelesen.** Beide Pipelines lesen zusätzlich `styles.xml` — über
-denselben gehärteten `OdfContentXml`-Leser, mit demselben Byte-Deckel
-(`opaa.indexing.odf.max-content-xml-bytes`, gilt für beide Einträge) und derselben
-`text:s`/Zeichen-Budget-Härtung wie `content.xml`. Kopf-/Fußzeilentext (ODT: `style:header`/
-`style:footer` einer `style:master-page`, ohne die `-left`/`-first`-Varianten, um denselben Text
-nicht doppelt zu indizieren) und Masterfolien-Text (ODP: jeder Absatztext innerhalb einer
-`style:master-page`) werden nicht pro Seite/Folie dupliziert und nicht verworfen, sondern als **ein
-einziger, deduplizierter führender Chunk** aufgenommen (`location` „Kopf-/Fußzeile" bzw.
-„Masterfolie") — dieselbe `RepeatingHeaderChunk`-Bauweise wie bei `DocxDocumentPipeline` (siehe
-unten). Ein fehlender `styles.xml`-Eintrag oder ein Dokument ohne Kopf-/Fußzeile bzw.
-Masterfolien-Text bleibt unverändert (kein zusätzlicher Chunk); ein XXE-Versuch oder eine
-Grenzüberschreitung in `styles.xml` lässt das gesamte Dokument scheitern (`NO_CONTENT`), genau wie
-bei `content.xml`.
+denselben gehärteten `OdfContentXml`-Leser, mit demselben Byte-Deckel je Eintrag
+(`opaa.indexing.odf.max-content-xml-bytes`, gilt pro Lesevorgang, nicht als über beide Einträge
+geteiltes Budget) und derselben `text:s`-Härtung wie `content.xml`; der Zeichen-Budget-Zähler
+(`opaa.indexing.odf.max-text-characters`) läuft dagegen je Handler eigenständig, ist also ebenfalls
+ein Budget pro Eintrag, kein gemeinsames — und der Element-Deckel (`max-odt-paragraphs`/
+`max-odp-slides`) gilt ausschließlich für `content.xml`, nicht für `styles.xml`. Kopf-/Fußzeilentext
+(ODT: `style:header`/`style:footer` **und** ihre `-left`/`-first`-Varianten einer
+`style:master-page` — ein Dokument mit „Erste Seite anders“, der übliche Fall eines deutschen
+Behördenbriefkopfs, trägt seinen Briefkopf ausschließlich in der `-first`-Variante) und
+Masterfolien-Text (ODP: jeder Absatztext innerhalb einer `style:master-page`, mit Ausnahme der
+Platzhalterklassen `header`/`footer`/`date-time`/`page-number`, die schon bei den Notizen
+ausgefiltert werden) werden nicht pro Seite/Folie dupliziert und nicht verworfen, sondern als **ein
+einziger, deduplizierter führender Chunk** aufgenommen (`location` „Kopf-/Fußzeile“ bzw.
+„Masterfolie“) — dieselbe `RepeatingHeaderChunk`-Bauweise wie bei `DocxDocumentPipeline` (siehe
+unten). **Dedupliziert** heißt hier wortwörtlich: Zwei Absätze, deren auf Leerraum normalisierter
+Text übereinstimmt — etwa dieselbe Fußzeile, wiederholt über mehrere Seitenvorlagen oder über
+Standard-/Links-/Erste-Seite-Varianten —, tragen nur einmal bei. Ein ODF-Feldelement
+(`text:page-number`, `text:page-count`, `text:date`, `text:time`) wird von der Sammlung
+ausgenommen — sein zuletzt berechneter Wert ist beim nächsten Speichern falsch und kein
+Dokumenteninhalt; als Netz darunter verwirft `RepeatingHeaderChunk` zusätzlich jeden Kandidaten,
+dessen bereinigter Text keinen einzigen Buchstaben enthält (etwa eine Fußzeile, die nur aus dem
+Seitenzahlfeld bestand). Ein fehlender `styles.xml`-Eintrag oder ein Dokument ohne Kopf-/Fußzeile
+bzw. Masterfolien-Text bleibt unverändert (kein zusätzlicher Chunk); ein XXE-Versuch oder eine
+Grenzüberschreitung in `styles.xml` kostet nur diesen führenden Chunk (`log.warn`, Dokument sonst
+unverändert indiziert) — anders als bei `content.xml` scheitert dabei nicht das ganze Dokument,
+weil `styles.xml` ergänzenden, nicht tragenden Inhalt liefert.
 
 Vor #1145 war dieser Text über `TikaFallbackPipeline` indiziert, mit `OdtDocumentPipeline`/
 `OdpDocumentPipeline` seit #1110 aber nicht mehr — eine bewusst in Kauf genommene
 Bestandsregression, die #1145 behebt.
-
-Baseline unberührt — kein ODT-, ODP- oder DOCX-Korpusdokument im Evaluierungskorpus.
 
 **Reindex-Nachzug (#1105):** Ein bereits als ODT/ODP indizierter Bestand trägt heute noch
 `tika-fallback` als Pipeline-Metadatum. Der in #1105 gebaute Fehlrouting-Zweig von

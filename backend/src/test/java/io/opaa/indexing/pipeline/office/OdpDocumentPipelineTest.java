@@ -120,19 +120,124 @@ class OdpDocumentPipelineTest {
   }
 
   @Test
-  void aPresentationWithOnlyMasterSlideTextAndNoSlideTextIsStillChunked() throws IOException {
+  void masterSlideTextAloneDoesNotDefeatTheScanEmptyDeckGuard() throws IOException {
+    // regression guard for #1145 review, B1: an earlier version of this pipeline's guard read
+    // "(no slide chunks or no slide has text) AND no master-slide chunk", so a scan-only
+    // presentation whose master slide carried a Behoerdenname (the normal case for any authority
+    // template) reported CHUNKED with N-1 empty "Folie n" chunks plus the master chunk instead of
+    // NO_EXTRACTABLE_TEXT - reopening exactly the #1055 stille-Leer-Index-Fehlfunktion the guard
+    // exists to prevent.
     Path file = tempDir.resolve("nur-masterfolie.odp");
     writeOdpWithStyles(
         file,
-        odpSlide(""),
+        odpSlide("") + odpSlide(""),
         "<draw:frame><draw:text-box><text:p>Stadt Musterstadt</text:p></draw:text-box>"
             + "</draw:frame>");
 
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "nur-masterfolie.odp", ".odp"));
 
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.chunks()).isEmpty();
+  }
+
+  @Test
+  void multipleMasterPagesWithAnIdenticalTextContributeOnlyOnce() throws IOException {
+    // regression guard for #1145 review, B2.
+    Path file = tempDir.resolve("mehrere-masterfolien.odp");
+    String masterPagesXml =
+        "<style:master-page style:name=\"Standard\">"
+            + "<draw:frame><draw:text-box><text:p>Stadt Musterstadt</text:p></draw:text-box>"
+            + "</draw:frame></style:master-page>"
+            + "<style:master-page style:name=\"Titel\">"
+            + "<draw:frame><draw:text-box><text:p>Stadt Musterstadt</text:p></draw:text-box>"
+            + "</draw:frame></style:master-page>";
+    writeOdpWithRawStyles(
+        file,
+        odpSlide(odpFrame("title", "Einfuehrung") + odpFrame(null, "Willkommen.")),
+        wrapOdpMasterStyles(masterPagesXml));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "mehrere-masterfolien.odp", ".odp"));
+
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    assertThat(result.chunks().getFirst().getText()).isEqualTo("Stadt Musterstadt");
+    assertThat(result.chunks()).hasSize(2);
+    long occurrences =
+        result.chunks().getFirst().getText().split("Stadt Musterstadt", -1).length - 1;
+    assertThat(occurrences).isEqualTo(1);
+  }
+
+  @Test
+  void aPageNumberFieldOnTheMasterSlideIsExcludedButSurroundingTextIsKept() throws IOException {
+    // regression guard for #1145 review, B3.
+    Path file = tempDir.resolve("seitenzahl-masterfolie.odp");
+    writeOdpWithStyles(
+        file,
+        odpSlide(odpFrame("title", "Einfuehrung") + odpFrame(null, "Willkommen.")),
+        "<draw:frame><draw:text-box><text:p>Seite "
+            + "<text:page-number>1</text:page-number></text:p></draw:text-box></draw:frame>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "seitenzahl-masterfolie.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText()).isEqualTo("Seite");
+  }
+
+  @Test
+  void aNonContentPlaceholderClassOnTheMasterSlideIsExcluded() throws IOException {
+    // regression guard for #1145 review, W3: OdpStylesHandler must apply the same
+    // NON_CONTENT_PLACEHOLDER_CLASSES filter OdpContentHandler already applies to notes, or an
+    // outline scaffolding prompt ("Mastertextformat bearbeiten") ends up indexed as if it were
+    // authored content.
+    Path file = tempDir.resolve("platzhalter-masterfolie.odp");
+    writeOdpWithStyles(
+        file,
+        odpSlide(odpFrame("title", "Einfuehrung") + odpFrame(null, "Willkommen.")),
+        "<draw:frame presentation:class=\"footer\"><draw:text-box>"
+            + "<text:p>Seite 1 von 3</text:p></draw:text-box></draw:frame>"
+            + "<draw:frame><draw:text-box><text:p>Stadt Musterstadt</text:p></draw:text-box>"
+            + "</draw:frame>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "platzhalter-masterfolie.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText())
+        .isEqualTo("Stadt Musterstadt")
+        .doesNotContain("Seite 1 von 3");
+  }
+
+  @Test
+  void aStylesXmlWithADoctypeOnlyForfeitsTheMasterSlideChunkNotTheWholePresentation()
+      throws IOException {
+    // regression guard for #1145 review, W2.
+    Path file = tempDir.resolve("xxe-styles.odp");
+    String maliciousStyles =
+        "<?xml version=\"1.0\"?>"
+            + "<!DOCTYPE office:document-styles [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]>"
+            + "<office:document-styles"
+            + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+            + " xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\""
+            + " xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\""
+            + " xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\">"
+            + "<office:master-styles><style:master-page>"
+            + "<draw:frame><draw:text-box><text:p>&xxe;</text:p></draw:text-box></draw:frame>"
+            + "</style:master-page></office:master-styles>"
+            + "</office:document-styles>";
+    writeOdpWithRawStyles(
+        file,
+        odpSlide(odpFrame("title", "Einfuehrung") + odpFrame(null, "Willkommen.")),
+        maliciousStyles);
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "xxe-styles.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).startsWith("Einfuehrung");
   }
 
   @Test
@@ -449,6 +554,33 @@ class OdpDocumentPipelineTest {
 
   private static void writeOdpWithStyles(
       Path file, String presentationBodyXml, String masterPageXml) throws IOException {
+    String styles =
+        masterPageXml == null
+            ? null
+            : wrapOdpMasterStyles("<style:master-page>" + masterPageXml + "</style:master-page>");
+    writeOdpWithRawStyles(file, presentationBodyXml, styles);
+  }
+
+  /**
+   * Wraps one or more already-complete {@code <style:master-page>} elements into a full styles.xml,
+   * for tests that need more than one master page (a single {@code writeOdpWithStyles} call only
+   * ever produces one).
+   */
+  private static String wrapOdpMasterStyles(String masterPagesXml) {
+    return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        + "<office:document-styles"
+        + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+        + " xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\""
+        + " xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\""
+        + " xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\">"
+        + "<office:master-styles>"
+        + masterPagesXml
+        + "</office:master-styles>"
+        + "</office:document-styles>";
+  }
+
+  private static void writeOdpWithRawStyles(Path file, String presentationBodyXml, String stylesXml)
+      throws IOException {
     String content =
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<office:document-content"
@@ -460,26 +592,13 @@ class OdpDocumentPipelineTest {
             + "<office:body><office:presentation>"
             + presentationBodyXml
             + "</office:presentation></office:body></office:document-content>";
-    String styles =
-        masterPageXml == null
-            ? null
-            : "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-                + "<office:document-styles"
-                + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
-                + " xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\""
-                + " xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\""
-                + " xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\">"
-                + "<office:master-styles><style:master-page>"
-                + masterPageXml
-                + "</style:master-page></office:master-styles>"
-                + "</office:document-styles>";
     try (var out = new ZipOutputStream(Files.newOutputStream(file))) {
       out.putNextEntry(new ZipEntry("content.xml"));
       out.write(content.getBytes(StandardCharsets.UTF_8));
       out.closeEntry();
-      if (styles != null) {
+      if (stylesXml != null) {
         out.putNextEntry(new ZipEntry("styles.xml"));
-        out.write(styles.getBytes(StandardCharsets.UTF_8));
+        out.write(stylesXml.getBytes(StandardCharsets.UTF_8));
         out.closeEntry();
       }
     }

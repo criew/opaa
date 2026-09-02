@@ -224,7 +224,11 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
-  void headerLeftAndFirstVariantsAreNotReadToAvoidDuplication() throws IOException {
+  void identicalHeaderVariantsContributeOnlyOnce() throws IOException {
+    // regression guard for #1145 review, B2: an earlier version of this handler concatenated every
+    // header/footer variant's text unconditionally, so the same authority name repeated across
+    // default/left/first variants would have diluted the embedding just one level higher than the
+    // -left/-first exclusion it replaced.
     Path file = tempDir.resolve("kopfzeile-varianten.odt");
     writeOdtWithStyles(
         file,
@@ -237,9 +241,93 @@ class OdtDocumentPipelineTest {
         pipeline.run(DocumentPipelineSource.ofFile(file, "kopfzeile-varianten.odt", ".odt"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
     long occurrences =
         result.chunks().getFirst().getText().split("Stadt Musterstadt", -1).length - 1;
     assertThat(occurrences).isEqualTo(1);
+  }
+
+  @Test
+  void aFirstPageOnlyHeaderIsStillIndexed() throws IOException {
+    // regression guard for #1145 review, B4: "Erste Seite anders" (w:titlePg's ODF counterpart) is
+    // the common German-authority-letterhead layout - the letterhead lives exclusively in
+    // style:header-first, never in style:header. An earlier version of this handler read only
+    // style:header and therefore missed exactly the case #1145 was filed to fix.
+    Path file = tempDir.resolve("nur-erste-seite.odt");
+    writeOdtWithStyles(
+        file,
+        odtParagraph("Fachlicher Inhalt."),
+        "<style:header-first><text:p>Stadt Musterstadt</text:p></style:header-first>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "nur-erste-seite.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText()).isEqualTo("Stadt Musterstadt");
+  }
+
+  @Test
+  void multipleMasterPagesWithAnIdenticalFooterContributeOnlyOnce() throws IOException {
+    // regression guard for #1145 review, B2: "Erste Seite" and "Standard" master pages sharing the
+    // same footer text is the common case a real ODT template produces.
+    Path file = tempDir.resolve("mehrere-seitenvorlagen.odt");
+    String masterStyles =
+        "<style:master-page style:name=\"Standard\">"
+            + "<style:footer><text:p>Stadt Musterstadt</text:p></style:footer>"
+            + "</style:master-page>"
+            + "<style:master-page style:name=\"Erste_20_Seite\">"
+            + "<style:footer><text:p>Stadt Musterstadt</text:p></style:footer>"
+            + "</style:master-page>";
+    writeOdtWithRawStyles(
+        file, odtParagraph("Fachlicher Inhalt."), wrapOdtMasterStyles(masterStyles));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "mehrere-seitenvorlagen.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    long occurrences =
+        result.chunks().getFirst().getText().split("Stadt Musterstadt", -1).length - 1;
+    assertThat(occurrences).isEqualTo(1);
+  }
+
+  @Test
+  void aPageNumberFieldInTheFooterIsExcludedButSurroundingTextIsKept() throws IOException {
+    // regression guard for #1145 review, B3: a field's cached last-computed value (here the page
+    // number) is wrong for every page but the one it was current on, and must not become indexed
+    // content - the surrounding static text ("Seite ") is real content and must survive.
+    Path file = tempDir.resolve("seitenzahl-fusszeile.odt");
+    writeOdtWithStyles(
+        file,
+        odtParagraph("Fachlicher Inhalt."),
+        "<style:footer><text:p>Seite <text:page-number>1</text:page-number></text:p></style:footer>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "seitenzahl-fusszeile.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText()).isEqualTo("Seite");
+  }
+
+  @Test
+  void aFooterThatIsOnlyAPageNumberFieldContributesNoLeadingChunkAtAll() throws IOException {
+    // regression guard for #1145 review, B3 (the safety net): once the field value is excluded,
+    // nothing but digits/whitespace is left - RepeatingHeaderChunk's letter check must reject it
+    // rather than index a chunk of pure noise.
+    Path file = tempDir.resolve("nur-seitenzahl.odt");
+    writeOdtWithStyles(
+        file,
+        odtParagraph("Fachlicher Inhalt."),
+        "<style:footer><text:p><text:page-number>1</text:page-number></text:p></style:footer>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "nur-seitenzahl.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).startsWith("Fachlicher Inhalt");
   }
 
   @Test
@@ -256,8 +344,11 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
-  void aStylesXmlWithADoctypeIsRejectedRatherThanResolvingExternalEntities() throws IOException {
-    // XXE hardening applies to styles.xml exactly as it does to content.xml (#1145).
+  void aStylesXmlWithADoctypeOnlyForfeitsTheHeaderFooterChunkNotTheWholeDocument()
+      throws IOException {
+    // XXE hardening applies to styles.xml exactly as it does to content.xml - but unlike
+    // content.xml, styles.xml is supplementary: a rejected styles.xml must not fail a document
+    // whose content.xml parsed successfully (#1145 review, W2).
     Path file = tempDir.resolve("xxe-styles.odt");
     String maliciousStyles =
         "<?xml version=\"1.0\"?>"
@@ -275,7 +366,32 @@ class OdtDocumentPipelineTest {
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "xxe-styles.odt", ".odt"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).startsWith("Titel");
+  }
+
+  @Test
+  void aStylesXmlExceedingTheByteLimitOnlyForfeitsTheHeaderFooterChunkNotTheWholeDocument()
+      throws IOException {
+    // regression guard for #1145 review, W2.
+    OdtDocumentPipeline tinyStylesLimitPipeline =
+        new OdtDocumentPipeline(new OdfProperties(500, 0, 0, 0, 0));
+    Path file = tempDir.resolve("grosse-styles.odt");
+    writeOdtWithStyles(
+        file,
+        odtHeading(1, "Titel") + odtParagraph("Inhalt."),
+        "<style:header><text:p>Ein ziemlich langer Kopfzeilentext, der den winzigen"
+            + " Byte-Deckel dieses Tests sicher \u00fcbersteigt und damit den styles.xml-Parse"
+            + " zum Scheitern bringt.</text:p></style:header>");
+
+    DocumentPipelineResult result =
+        tinyStylesLimitPipeline.run(
+            DocumentPipelineSource.ofFile(file, "grosse-styles.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).startsWith("Titel");
   }
 
   @Test
@@ -499,6 +615,23 @@ class OdtDocumentPipelineTest {
                 + "</style:master-page></office:master-styles>"
                 + "</office:document-styles>";
     writeOdtWithRawStyles(file, textBodyXml, styles);
+  }
+
+  /**
+   * Wraps one or more already-complete {@code <style:master-page>} elements into a full styles.xml,
+   * for tests that need more than one master page (a single {@code writeOdtWithStyles} call only
+   * ever produces one).
+   */
+  private static String wrapOdtMasterStyles(String masterPagesXml) {
+    return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        + "<office:document-styles"
+        + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+        + " xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\""
+        + " xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\">"
+        + "<office:master-styles>"
+        + masterPagesXml
+        + "</office:master-styles>"
+        + "</office:document-styles>";
   }
 
   private static void writeOdtWithRawStyles(Path file, String textBodyXml, String stylesXml)
