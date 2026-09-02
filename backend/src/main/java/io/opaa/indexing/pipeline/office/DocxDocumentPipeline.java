@@ -17,6 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFFieldRun;
 import org.apache.poi.xwpf.usermodel.XWPFFooter;
 import org.apache.poi.xwpf.usermodel.XWPFHeader;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -51,6 +52,14 @@ import org.springframework.ai.document.Document;
  * whitespace-normalized text is equal contribute only once. A field's cached value (e.g. a page
  * number computed the last time the file was saved, correct for at most one page) is excluded
  * rather than indexed as if it were static text.
+ *
+ * <p><b>Header/footer text never rescues an otherwise body-less document from {@code NO_CONTENT}/
+ * {@code NO_EXTRACTABLE_TEXT}.</b> It is template text - present on a scan-only document exactly as
+ * much as on one with a text layer - and is therefore no evidence that this document itself carries
+ * content; a scanned letter must stay visible as OCR-needing, the single most expensive failure an
+ * ingestion pipeline can make (docs/features/ingestion-pipelines.md). The guard is evaluated purely
+ * against the body text {@link XWPFDocument#getBodyElements()} yields, before the header/footer
+ * chunk is ever added to the result.
  */
 public class DocxDocumentPipeline implements DocumentPipeline {
 
@@ -97,23 +106,20 @@ public class DocxDocumentPipeline implements DocumentPipeline {
       return DocumentPipelineResult.noContent();
     }
     List<HeadingSectionSplitter.Event> events = toEvents(content.bodyElements());
+    if (events.isEmpty()) {
+      // A genuinely empty document (no body elements at all). Header/footer text never rescues
+      // this outcome - see this class's own Javadoc on why the guard ignores it entirely.
+      return DocumentPipelineResult.noContent();
+    }
     List<Document> chunks =
-        events.isEmpty()
-            ? new ArrayList<>()
-            : new ArrayList<>(HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL));
+        new ArrayList<>(HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL));
+    if (chunks.isEmpty()) {
+      return DocumentPipelineResult.noExtractableText();
+    }
     Document headerFooterChunk =
         RepeatingHeaderChunk.ofOrNull(HEADER_FOOTER_LOCATION, content.headerFooterText());
     if (headerFooterChunk != null) {
       chunks.add(0, headerFooterChunk);
-    }
-    if (events.isEmpty() && headerFooterChunk == null) {
-      // A genuinely empty document (no body elements, no header/footer text) - distinct from
-      // NO_EXTRACTABLE_TEXT below, which only applies once at least one non-empty event stream
-      // itself chunked down to nothing.
-      return DocumentPipelineResult.noContent();
-    }
-    if (chunks.isEmpty()) {
-      return DocumentPipelineResult.noExtractableText();
     }
     return DocumentPipelineResult.chunked(chunks);
   }
@@ -161,37 +167,57 @@ public class DocxDocumentPipeline implements DocumentPipeline {
     for (XWPFParagraph paragraph : paragraphs) {
       String stripped = paragraphTextExcludingFieldValues(paragraph).strip();
       if (!stripped.isBlank()) {
-        lines.putIfAbsent(stripped.replaceAll("\\s+", " "), stripped);
+        // \\s alone does not match a non-breaking space (U+00A0) or narrow no-break space
+        // (U+202F) - both routine in an authority letterhead's column separators - so a variant
+        // using one and the default using a plain space would otherwise be treated as distinct
+        // lines and both survive deduplication.
+        lines.putIfAbsent(stripped.replaceAll("[\\s\\u00A0\\u202F]+", " "), stripped);
       }
     }
   }
 
   /**
-   * A Word field (e.g. "Seitenzahl einfügen") is stored as a run sequence: a {@code begin} marker,
-   * the field's instruction code ({@code w:instrText}, e.g. {@code " PAGE "} - never content), a
-   * {@code separate} marker, then one or more runs holding the field's cached last-computed display
-   * value, then an {@code end} marker. The cached value is excluded here - it is correct for at
-   * most one page/moment, not document content.
+   * A Word complex field (e.g. "Seitenzahl einfügen") is stored as a run sequence: a {@code begin}
+   * marker, the field's instruction code ({@code w:instrText}, e.g. {@code " PAGE "} - never
+   * content), a {@code separate} marker, then one or more runs holding the field's cached
+   * last-computed display value, then an {@code end} marker. The cached value is excluded here - it
+   * is correct for at most one page/moment, not document content. Nested fields (a field whose
+   * cached value itself contains another field, e.g. {@code IF} wrapping {@code PAGE}) are tracked
+   * with a depth counter rather than a flag - a flag would clear on the inner field's own {@code
+   * END} and let the remainder of the outer field's cached value leak through.
+   *
+   * <p>A {@code w:fldSimple} field (LibreOffice's export form, as opposed to Word's begin/separate
+   * /end form above) is a distinct POI run type ({@code XWPFFieldRun}) that carries neither {@code
+   * w:fldChar} nor {@code w:instrText} on its own {@link org.apache.poi.xwpf.usermodel.XWPFRun
+   * #getCTR()} - it is excluded by type rather than by the state machine above.
+   *
+   * <p>{@link XWPFRun#getText(int)} returns only a run's <em>first</em> {@code w:t} child; a
+   * tab-separated multi-column letterhead ("Stadt Musterstadt&lt;tab&gt;Az. 12-34/2026") is
+   * routinely one run with several {@code w:t}/{@code w:tab} children, so {@link XWPFRun#text()} is
+   * used instead - it renders every child in order, including tabs/breaks as characters, and
+   * already excludes {@code w:instrText}/{@code w:delText} itself. A run holding tracked-changes
+   * deletion text ({@code ctr.sizeOfDelTextArray() > 0}, deleted but pending review) is skipped
+   * outright - the same exclusion {@link XWPFParagraph#getText()} applies to the body.
    */
   private static String paragraphTextExcludingFieldValues(XWPFParagraph paragraph) {
     StringBuilder text = new StringBuilder();
-    boolean insideFieldValue = false;
+    int fieldValueDepth = 0;
     for (XWPFRun run : paragraph.getRuns()) {
+      if (run instanceof XWPFFieldRun) {
+        continue;
+      }
       CTR ctr = run.getCTR();
       for (CTFldChar fldChar : ctr.getFldCharArray()) {
         if (fldChar.getFldCharType() == STFldCharType.SEPARATE) {
-          insideFieldValue = true;
-        } else if (fldChar.getFldCharType() == STFldCharType.END) {
-          insideFieldValue = false;
+          fieldValueDepth++;
+        } else if (fldChar.getFldCharType() == STFldCharType.END && fieldValueDepth > 0) {
+          fieldValueDepth--;
         }
       }
-      if (ctr.sizeOfInstrTextArray() > 0 || insideFieldValue) {
+      if (ctr.sizeOfInstrTextArray() > 0 || ctr.sizeOfDelTextArray() > 0 || fieldValueDepth > 0) {
         continue;
       }
-      String runText = run.getText(0);
-      if (runText != null) {
-        text.append(runText);
-      }
+      text.append(run.text());
     }
     return text.toString();
   }

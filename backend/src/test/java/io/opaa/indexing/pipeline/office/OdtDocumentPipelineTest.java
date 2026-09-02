@@ -248,6 +248,27 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
+  void aNonBreakingSpaceVariantIsDeduplicatedAgainstThePlainSpaceVariant() throws IOException {
+    // regression guard for #1145 second review, nit: a non-breaking space (U+00A0) is routine in
+    // an authority letterhead's column separators; \s alone does not match it, so a variant using
+    // NBSP and the default using a plain space would otherwise both survive deduplication.
+    Path file = tempDir.resolve("geschuetztes-leerzeichen.odt");
+    writeOdtWithStyles(
+        file,
+        odtParagraph("Fachlicher Inhalt."),
+        "<style:header><text:p>Stadt Musterstadt</text:p></style:header>"
+            + "<style:header-left><text:p>Stadt\u00A0Musterstadt</text:p></style:header-left>");
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "geschuetztes-leerzeichen.odt", ".odt"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    long occurrences = result.chunks().getFirst().getText().split("Stadt", -1).length - 1;
+    assertThat(occurrences).isEqualTo(1);
+  }
+
+  @Test
   void aFirstPageOnlyHeaderIsStillIndexed() throws IOException {
     // regression guard for #1145 review, B4: "Erste Seite anders" (w:titlePg's ODF counterpart) is
     // the common German-authority-letterhead layout - the letterhead lives exclusively in
@@ -331,16 +352,21 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
-  void aDocumentWithOnlyHeaderFooterTextAndNoBodyIsStillChunked() throws IOException {
+  void headerFooterTextAloneDoesNotDefeatTheScanEmptyDeckGuard() throws IOException {
+    // regression guard for #1145 second review, finding 3: a scanned authority letter carries its
+    // letterhead in the Kopf-/Fusszeile just like a text-layer document, so header/footer text is
+    // no evidence this document itself has extractable content. An earlier version of this
+    // pipeline added the header/footer chunk before the guard check, so this reported CHUNKED
+    // instead of NO_EXTRACTABLE_TEXT - reopening the #1055 stille-Leer-Index-Fehlfunktion this
+    // guard exists to prevent, silently, because there is no telltale "Folie n" chunk to notice.
     Path file = tempDir.resolve("nur-kopfzeile.odt");
     writeOdtWithStyles(file, "", "<style:header><text:p>Stadt Musterstadt</text:p></style:header>");
 
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "nur-kopfzeile.odt", ".odt"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    assertThat(result.chunks()).hasSize(1);
-    assertThat(result.chunks().getFirst().getText()).isEqualTo("Stadt Musterstadt");
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.chunks()).isEmpty();
   }
 
   @Test

@@ -482,7 +482,11 @@ public class OdpDocumentPipeline implements DocumentPipeline {
       if (stripped.isBlank()) {
         return;
       }
-      lines.putIfAbsent(stripped.replaceAll("\\s+", " "), stripped);
+      // \s alone does not match a non-breaking space (U+00A0) or narrow no-break space
+      // (U+202F) - both routine in an authority letterhead's column separators - so a variant
+      // using one and the default using a plain space would otherwise be treated as distinct
+      // lines and both survive deduplication.
+      lines.putIfAbsent(stripped.replaceAll("[\\s\\u00A0\\u202F]+", " "), stripped);
     }
   }
 }

@@ -41,6 +41,14 @@ import org.xml.sax.helpers.DefaultHandler;
  * normalization contribute only once. A malformed/oversized/malicious {@code styles.xml} only
  * forfeits this leading chunk; the document's own body content, once successfully parsed, is still
  * indexed.
+ *
+ * <p><b>Header/footer text never rescues an otherwise body-less document from {@code
+ * NO_EXTRACTABLE_TEXT}.</b> It is template text - present on a scan-only document exactly as much
+ * as on one with a text layer - and is therefore no evidence that this document itself carries
+ * content; a scanned letter must stay visible as OCR-needing, the single most expensive failure an
+ * ingestion pipeline can make (docs/features/ingestion-pipelines.md). The guard is evaluated purely
+ * against the body {@code content.xml} yields, before the header/footer chunk is ever added to the
+ * result.
  */
 public class OdtDocumentPipeline implements DocumentPipeline {
 
@@ -106,21 +114,22 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       log.warn("Could not read ODT document {}", source.fileName(), e);
       return DocumentPipelineResult.noContent();
     }
-    List<Document> chunks =
-        new ArrayList<>(HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL));
-    Document headerFooterChunk =
-        RepeatingHeaderChunk.ofOrNull(HEADER_FOOTER_LOCATION, readHeaderFooterText(source));
-    if (headerFooterChunk != null) {
-      chunks.add(0, headerFooterChunk);
-    }
+    List<Document> chunks = HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL);
     if (chunks.isEmpty()) {
       // Covers both a genuinely empty <office:text/> and text that chunked down to nothing - the
       // same NO_EXTRACTABLE_TEXT outcome TikaFallbackPipeline reported for either case before this
       // pipeline existed (#1057), so an already-empty document's user-facing treatment (skipped,
-      // not failed) does not change with the routing.
+      // not failed) does not change with the routing. Header/footer text never rescues this
+      // outcome - see this class's own Javadoc on why the guard ignores it entirely.
       return DocumentPipelineResult.noExtractableText();
     }
-    return DocumentPipelineResult.chunked(chunks);
+    List<Document> allChunks = new ArrayList<>(chunks);
+    Document headerFooterChunk =
+        RepeatingHeaderChunk.ofOrNull(HEADER_FOOTER_LOCATION, readHeaderFooterText(source));
+    if (headerFooterChunk != null) {
+      allChunks.add(0, headerFooterChunk);
+    }
+    return DocumentPipelineResult.chunked(allChunks);
   }
 
   /**
@@ -451,7 +460,11 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       if (stripped.isBlank()) {
         return;
       }
-      lines.putIfAbsent(stripped.replaceAll("\\s+", " "), stripped);
+      // \s alone does not match a non-breaking space (U+00A0) or narrow no-break space
+      // (U+202F) - both routine in an authority letterhead's column separators - so a variant
+      // using one and the default using a plain space would otherwise be treated as distinct
+      // lines and both survive deduplication.
+      lines.putIfAbsent(stripped.replaceAll("[\\s\\u00A0\\u202F]+", " "), stripped);
     }
   }
 }

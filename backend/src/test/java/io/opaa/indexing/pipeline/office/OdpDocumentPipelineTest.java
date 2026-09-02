@@ -168,6 +168,33 @@ class OdpDocumentPipelineTest {
   }
 
   @Test
+  void aNonBreakingSpaceVariantIsDeduplicatedAgainstThePlainSpaceVariant() throws IOException {
+    // regression guard for #1145 second review, nit: a non-breaking space (U+00A0) is routine in
+    // an authority letterhead's column separators; \s alone does not match it, so a master page
+    // using NBSP and another using a plain space would otherwise both survive deduplication.
+    Path file = tempDir.resolve("geschuetztes-leerzeichen.odp");
+    String masterPagesXml =
+        "<style:master-page style:name=\"Standard\">"
+            + "<draw:frame><draw:text-box><text:p>Stadt Musterstadt</text:p></draw:text-box>"
+            + "</draw:frame></style:master-page>"
+            + "<style:master-page style:name=\"Titel\">"
+            + "<draw:frame><draw:text-box><text:p>Stadt\u00A0Musterstadt</text:p></draw:text-box>"
+            + "</draw:frame></style:master-page>";
+    writeOdpWithRawStyles(
+        file,
+        odpSlide(odpFrame("title", "Einfuehrung") + odpFrame(null, "Willkommen.")),
+        wrapOdpMasterStyles(masterPagesXml));
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "geschuetztes-leerzeichen.odp", ".odp"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    long occurrences = result.chunks().getFirst().getText().split("Stadt", -1).length - 1;
+    assertThat(occurrences).isEqualTo(1);
+  }
+
+  @Test
   void aPageNumberFieldOnTheMasterSlideIsExcludedButSurroundingTextIsKept() throws IOException {
     // regression guard for #1145 review, B3.
     Path file = tempDir.resolve("seitenzahl-masterfolie.odp");

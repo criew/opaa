@@ -22,6 +22,9 @@ import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDecimalNumber;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSimpleField;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STFldCharType;
 
 /**
@@ -178,7 +181,13 @@ class DocxDocumentPipelineTest {
   }
 
   @Test
-  void aDocumentWithOnlyHeaderTextAndNoBodyIsStillChunked() throws IOException {
+  void headerTextAloneDoesNotDefeatTheScanEmptyDeckGuard() throws IOException {
+    // regression guard for #1145 second review, finding 3: a scanned authority letter carries its
+    // letterhead in the Kopf-/Fusszeile just like a text-layer document, so header/footer text is
+    // no evidence this document itself has extractable content. An earlier version of this
+    // pipeline added the header/footer chunk before the guard check, so this reported CHUNKED
+    // instead of NO_CONTENT - reopening the #1055 stille-Leer-Index-Fehlfunktion this guard exists
+    // to prevent, silently, because there is no telltale empty-slide chunk to notice.
     Path file = tempDir.resolve("nur-kopfzeile.docx");
     try (XWPFDocument doc = new XWPFDocument()) {
       XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
@@ -190,9 +199,8 @@ class DocxDocumentPipelineTest {
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "nur-kopfzeile.docx", ".docx"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    assertThat(result.chunks()).hasSize(1);
-    assertThat(result.chunks().getFirst().getText()).isEqualTo("Stadt Musterstadt");
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.chunks()).isEmpty();
   }
 
   @Test
@@ -307,6 +315,97 @@ class DocxDocumentPipelineTest {
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(1);
     assertThat(result.chunks().getFirst().getText()).startsWith("Fachlicher Inhalt");
+  }
+
+  @Test
+  void aRunWithSeveralWTChildrenIsRenderedInFullNotJustItsFirstWT() throws IOException {
+    // regression guard for #1145 second review, finding 1: Word routinely writes a tab-separated
+    // multi-column letterhead ("Stadt Musterstadt<TAB>Az. 12-34/2026") as one run with several
+    // w:t/w:tab children, not one run per column - built here directly at the CT level (not via
+    // XWPFRun#setText, which always produces the single-w:t form and would hide this bug).
+    // XWPFRun#getText(int) returns only a run's first w:t child; #text() renders every child.
+    Path file = tempDir.resolve("mehrspaltige-kopfzeile.docx");
+    try (XWPFDocument doc = new XWPFDocument()) {
+      XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
+      XWPFHeader header = policy.createHeader(XWPFHeaderFooterPolicy.DEFAULT);
+      XWPFParagraph paragraph = header.createParagraph();
+      CTR ctr = paragraph.createRun().getCTR();
+      ctr.addNewT().setStringValue("Stadt Musterstadt");
+      ctr.addNewTab();
+      ctr.addNewT().setStringValue("Az. 12-34/2026");
+      addParagraph(doc, "Fachlicher Inhalt.");
+      write(doc, file);
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "mehrspaltige-kopfzeile.docx", ".docx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText()).isEqualTo("Stadt Musterstadt\tAz. 12-34/2026");
+  }
+
+  @Test
+  void aFldSimpleFieldsCachedValueIsExcluded() throws IOException {
+    // regression guard for #1145 second review, finding 2: w:fldSimple (LibreOffice's .docx
+    // export form for a page number, as opposed to Word's own begin/separate/end run sequence) is
+    // exposed by POI as an XWPFFieldRun that carries neither w:fldChar nor w:instrText, so the
+    // begin/separate/end state machine alone never sees it - built here via CTP#addNewFldSimple()
+    // directly, the form the earlier state-machine-only fix could not have caught.
+    Path file = tempDir.resolve("fldsimple-fusszeile.docx");
+    try (XWPFDocument doc = new XWPFDocument()) {
+      XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
+      XWPFFooter footer = policy.createFooter(XWPFHeaderFooterPolicy.DEFAULT);
+      XWPFParagraph paragraph = footer.createParagraph();
+      CTP ctp = paragraph.getCTP();
+      CTR prefix = ctp.addNewR();
+      prefix.addNewT().setStringValue("Seite ");
+      CTSimpleField field = ctp.addNewFldSimple();
+      field.setInstr(" PAGE ");
+      field.addNewR().addNewT().setStringValue("7");
+      CTR suffix = ctp.addNewR();
+      suffix.addNewT().setStringValue(" von 9");
+      addParagraph(doc, "Fachlicher Inhalt.");
+      write(doc, file);
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "fldsimple-fusszeile.docx", ".docx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText()).isEqualTo("Seite  von 9");
+  }
+
+  @Test
+  void aNonBreakingSpaceVariantIsDeduplicatedAgainstThePlainSpaceVariant() throws IOException {
+    // regression guard for #1145 second review, nit: a non-breaking space (U+00A0) is routine in
+    // an authority letterhead's column separators; \s alone does not match it, so a variant using
+    // NBSP and the default using a plain space would otherwise both survive deduplication.
+    Path file = tempDir.resolve("geschuetztes-leerzeichen.docx");
+    try (XWPFDocument doc = new XWPFDocument()) {
+      XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
+      policy
+          .createHeader(XWPFHeaderFooterPolicy.DEFAULT)
+          .createParagraph()
+          .createRun()
+          .setText("Stadt Musterstadt");
+      policy
+          .createHeader(XWPFHeaderFooterPolicy.EVEN)
+          .createParagraph()
+          .createRun()
+          .setText("Stadt\u00A0Musterstadt");
+      addParagraph(doc, "Fachlicher Inhalt.");
+      write(doc, file);
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "geschuetztes-leerzeichen.docx", ".docx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    long occurrences = result.chunks().getFirst().getText().split("Stadt", -1).length - 1;
+    assertThat(occurrences).isEqualTo(1);
   }
 
   @Test
