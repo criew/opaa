@@ -169,19 +169,33 @@ class FullTextSearchStageTest {
 
   /**
    * Without a decomposition stage the state carries no search queries; the bare question is
-   * searched then, exactly as the vector path does it.
+   * searched then, exactly as the vector path does it - and the derived query is written back, so a
+   * run whose only search stage is this one never reports having searched nothing while it did.
    */
   @Test
-  void searchesTheBareQuestionWhenNoSearchQueriesWereBuilt() {
+  void searchesTheBareQuestionWhenNoSearchQueriesWereBuiltAndRecordsIt() {
     Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
     when(gate.searchableLibraries(scope)).thenReturn(scope);
     when(search.search(anyString(), any(), anyInt())).thenReturn(List.of());
     RetrievalState state =
         RetrievalState.initial().withLibraryFilter(SearchScopeStage.libraryFilter(scope));
 
-    stage().apply(context(scope), state);
+    StageOutcome outcome = stage().apply(context(scope), state);
 
     verify(search).search("Was gilt nach § 35 BauGB?", scope, PROPERTIES.fetchK());
+    assertThat(outcome.state().searchQueries()).containsExactly("Was gilt nach § 35 BauGB?");
+  }
+
+  /** Queries an earlier stage built are the ones searched and are not overwritten. */
+  @Test
+  void keepsTheSearchQueriesAnEarlierStageBuilt() {
+    Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
+    when(gate.searchableLibraries(scope)).thenReturn(scope);
+    when(search.search(anyString(), any(), anyInt())).thenReturn(List.of());
+
+    StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
+
+    assertThat(outcome.state().searchQueries()).containsExactly("Außenbereich § 35");
   }
 
   /**

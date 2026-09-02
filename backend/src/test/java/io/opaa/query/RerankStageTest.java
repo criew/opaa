@@ -89,6 +89,30 @@ class RerankStageTest {
     verify(role, never()).rerank(anyString(), any());
   }
 
+  /**
+   * "Switched off is the identity" (RetrievalStageName) down to the candidate lists: with rank
+   * fusion switched off too, several labelled lists are still in flight when this stage is reached,
+   * and collapsing them into one fused-labelled list would tell the diagnosis that a fusion
+   * happened which did not.
+   */
+  @Test
+  void aSwitchedOffStageLeavesSeveralListsAndTheirLabelsAlone() {
+    RetrievalState state =
+        RetrievalState.initial()
+            .withCandidateLists(
+                List.of(
+                    new CandidateList(VectorSearchStage.listLabel(0), List.of(chunk("v0"))),
+                    new CandidateList(FullTextSearchStage.listLabel(0), List.of(chunk("f0")))));
+
+    StageOutcome outcome = stage.apply(context(50, RerankAvailability.SWITCHED_OFF), state);
+
+    assertThat(outcome.state().candidateLists())
+        .extracting(CandidateList::label)
+        .containsExactly(VectorSearchStage.listLabel(0), FullTextSearchStage.listLabel(0));
+    assertThat(outcome.explanation().incomingCount()).isEqualTo(2);
+    assertThat(outcome.explanation().outgoingCount()).isEqualTo(2);
+  }
+
   @Test
   void aZeroCandidateWindowSwitchesTheStageOffThroughItsOwnParameter() {
     StageOutcome outcome = stage.apply(context(0, RerankAvailability.USABLE), stateWith(TOP_K));

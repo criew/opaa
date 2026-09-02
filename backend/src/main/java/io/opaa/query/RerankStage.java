@@ -50,24 +50,21 @@ class RerankStage implements RetrievalStage {
     int topK = properties.topK();
 
     if (properties.rerankCandidateCount() == 0) {
-      return unchanged(
+      return identity(
           state,
-          incoming,
           StageStatus.DISABLED,
           "reranking switched off through opaa.query.rerank-candidate-count=0");
     }
     if (context.rerankAvailability() == RerankAvailability.SWITCHED_OFF) {
-      return unchanged(
+      return identity(
           state,
-          incoming,
           StageStatus.DISABLED,
           "reranking switched off through the rerank model role's own switch "
               + "(opaa.rerank.enabled / OPAA_RERANK_ENABLED)");
     }
     if (context.rerankAvailability() == RerankAvailability.NOT_USABLE) {
-      return unchanged(
+      return identity(
           state,
-          incoming,
           StageStatus.UNAVAILABLE,
           "the rerank model role is switched on but was not usable when this run started - no "
               + "endpoint or model is configured for it, or its endpoint did not answer; the "
@@ -91,7 +88,7 @@ class RerankStage implements RetrievalStage {
     List<ScoredCandidate> scored =
         role.rerank(context.question(), window.stream().map(RerankStage::textOf).toList());
     if (scored.isEmpty()) {
-      return unchanged(
+      return cappedWithoutRerank(
           state,
           incoming.subList(0, Math.min(incoming.size(), topK)),
           StageStatus.UNAVAILABLE,
@@ -139,11 +136,25 @@ class RerankStage implements RetrievalStage {
   }
 
   /**
-   * The stage did not rerank: {@code kept} is passed on unchanged in its incoming order, truncated
-   * where the widened fusion budget made that necessary, and the note says why no reranking
-   * happened.
+   * The stage did not run at all: the state travels on untouched, lists and labels included. None
+   * of these paths widened the fusion budget - {@link RetrievalContext#candidateBudget()} only
+   * widens it while reranking is active - so there is nothing to cap, and rewriting the lists into
+   * a single fused one would misstate where the candidates came from ({@link RetrievalStageName}: a
+   * stage that did not run is the identity).
    */
-  private StageOutcome unchanged(
+  private StageOutcome identity(RetrievalState state, StageStatus status, String note) {
+    int candidates =
+        state.candidateLists().stream().mapToInt(list -> list.documents().size()).sum();
+    return new StageOutcome(
+        state, StageExplanation.notRun(name(), status, candidates, candidates, note));
+  }
+
+  /**
+   * The stage ran but could not rerank: the fused order is kept and cut back to {@code top-k},
+   * because the fusion budget was widened for a reranker that then scored nothing. Only this path
+   * needs a single list - a truncation of a merged order has no other honest shape.
+   */
+  private StageOutcome cappedWithoutRerank(
       RetrievalState state, List<Document> kept, StageStatus status, String note) {
     int incoming = state.candidateLists().stream().mapToInt(list -> list.documents().size()).sum();
     return new StageOutcome(

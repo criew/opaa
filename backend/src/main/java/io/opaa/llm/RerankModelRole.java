@@ -145,7 +145,10 @@ public class RerankModelRole implements RerankRoleStatusProvider {
         degradedCalls.incrementAndGet();
       }
       return scored;
-    } catch (RerankClient.RerankUnavailableException e) {
+    } catch (RuntimeException e) {
+      // Deliberately every runtime failure, not just RerankUnavailableException: the promise above
+      // is absolute, and a client-side fault (an unserializable request body, say) must cost the
+      // ordering exactly as an unreachable endpoint does.
       degradedCalls.incrementAndGet();
       lastKnown.set(status(RerankRoleState.UNREACHABLE, e.getMessage()));
       log.warn(
