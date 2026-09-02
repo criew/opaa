@@ -109,7 +109,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
    * that splitter needs and ignores everything else in {@code content.xml} (styles, images,
    * change-tracking).
    */
-  private static final class OdtContentHandler extends DefaultHandler {
+  static final class OdtContentHandler extends DefaultHandler {
 
     private final int maxParagraphs;
     private final int maxSpaceRepeat;

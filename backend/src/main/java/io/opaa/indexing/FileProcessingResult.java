@@ -19,5 +19,16 @@ public enum FileProcessingResult {
    * being indexed with zero chunks; a caller must report this as a rejection, the same way it
    * already reports {@link #QUOTA_EXCEEDED}.
    */
-  NO_EXTRACTABLE_TEXT
+  NO_EXTRACTABLE_TEXT,
+
+  /**
+   * A pipeline could not parse the document at all (a corrupt archive, a rejected XXE attempt, a
+   * DoS-hardening limit - see {@link
+   * io.opaa.indexing.pipeline.DocumentPipelineResult.Outcome#NO_CONTENT}). The document row is
+   * marked {@code FAILED}; a caller must report this the same way it reports an uncaught exception
+   * from the same pipeline run - an {@code ERROR} run event and a failed-document count, not a
+   * silent {@link #PROCESSED}. Distinct from {@link #NO_EXTRACTABLE_TEXT}, which is a rejection
+   * (the pipeline parsed the document but found no usable text), not a parse failure.
+   */
+  FAILED
 }

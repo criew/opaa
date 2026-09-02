@@ -394,7 +394,12 @@ public class TabularDocumentPipeline implements DocumentPipeline {
     OdsContentHandler handler = new OdsContentHandler(maxRowColumns, maxOdsCellRepeat, maxOdsRows);
     boolean found = OdfContentXml.parse(source.file(), maxOdsContentXmlBytes, handler);
     if (!found) {
-      return List.of();
+      // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed" case
+      // OdtDocumentPipeline/OdpDocumentPipeline report for a corrupt .odt/.odp (#1108 review,
+      // finding 7), distinct from a well-formed but empty spreadsheet below. Thrown, not returned
+      // as an empty list, so the outer catch below reports it as NO_CONTENT the same way it
+      // already does for a corrupt XLSX workbook POI rejects outright.
+      throw new IOException("No content.xml entry in ODS file " + source.fileName());
     }
     if (handler.anyCellTruncated()) {
       log.warn(
@@ -430,7 +435,7 @@ public class TabularDocumentPipeline implements DocumentPipeline {
    * represents a "Riesenzeile" of blank filler cells (routinely repeated to the full sheet width,
    * e.g. 16384).
    */
-  private static final class OdsContentHandler extends DefaultHandler {
+  static final class OdsContentHandler extends DefaultHandler {
 
     private final int maxRowColumns;
     private final int maxCellRepeat;

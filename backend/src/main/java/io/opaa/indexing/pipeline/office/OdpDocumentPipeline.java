@@ -105,7 +105,7 @@ public class OdpDocumentPipeline implements DocumentPipeline {
    * deliberately narrow: it reads only what {@link #run} needs (title, body, notes, slide number)
    * and ignores everything else in {@code content.xml} (styles, images, animations).
    */
-  private static final class OdpContentHandler extends DefaultHandler {
+  static final class OdpContentHandler extends DefaultHandler {
 
     private final int maxSlides;
     private final int maxSpaceRepeat;

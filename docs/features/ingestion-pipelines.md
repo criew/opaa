@@ -720,8 +720,9 @@ Größenordnung des bestehenden Bestands (`opaa.indexing.chunk-size` = 1000 Toke
 Obergrenze von 20.000 Zeichen bleibt als **letzter Rückfall** bestehen, wenn ein einzelner Block
 (z. B. ein Absatz ohne jede innere Gliederung) für sich allein schon diese Grenze sprengt; betroffener
 Text wird dann mit sichtbarem „[…gekürzt]"-Vermerk gekappt, über dieselbe geteilte
-`HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT`/`#capChunkLength`-Logik wie jede andere Pipeline
-(#1108).
+`HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT`/`#capChunkLength`-Logik wie die
+überschriftenbasierten Pipelines (#1108) — die Mail- und die Tika-Fallback-Pipeline nutzen
+`HeadingSectionSplitter` nicht.
 
 **Wortgrenzen an der rohen Textquelle, nicht pauschal** (#1059 Review, Befund 7): Inline-Auszeichnung
 wie `<b>Personal</b>ausweis` darf keinen künstlichen Leerraum einfügen („Personal ausweis"). Ob

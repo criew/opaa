@@ -152,6 +152,30 @@ class AsyncIndexingExecutorTest {
   }
 
   @Test
+  void aFileThePipelineCannotParseAtAllIsCountedAsFailedAndRecordedAsAnErrorEvent()
+      throws IOException {
+    // #1108 review, blocker 1: FileProcessingResult#FAILED (NO_CONTENT - the pipeline could not
+    // parse the document at all) must be reported like the catch block's own ERROR event, not
+    // silently counted as processed the way it was before this fix.
+    Path file = documentDir.resolve("corrupt.txt");
+    Files.writeString(file, "content");
+
+    when(fileProcessingService.processFile(eq(file), eq(library), isNull()))
+        .thenReturn(FileProcessingResult.FAILED);
+
+    executor.execute(UUID.randomUUID(), library);
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(1), eq(0), anyInt());
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.ERROR
+                        && "corrupt.txt".equals(event.getReference())
+                        && "Verarbeitung fehlgeschlagen".equals(event.getMessage())));
+  }
+
+  @Test
   void aRealScanPdfEndToEndIsRejectedWithoutMockingTheFileProcessingServiceSeam()
       throws IOException {
     // #1090 review finding 3: aScanPdfWithoutExtractableTextIsSkippedAndRecordedAsARejectedEvent

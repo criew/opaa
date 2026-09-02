@@ -29,9 +29,10 @@ public record DocumentPipelineResult(Outcome outcome, List<Document> chunks) {
      * DoS-hardening limit) and returning {@link #noContent()} with a single {@code log.warn} naming
      * the document - never by letting the exception propagate out of {@link DocumentPipeline#run}.
      * PDF, DOCX, PPTX, ODT, ODP and the XLSX/CSV/ODS pipeline (tabular) follow this contract
-     * (#1108); HTML, Markdown and mail still propagate an unchecked exception on a parse failure
-     * instead - a known, pre-existing gap outside this refactor's scope, not a model to copy for a
-     * new pipeline.
+     * (#1108); HTML, Markdown, mail and the Tika fallback pipeline (the catch-all for every format
+     * none of those claim, so a corrupt file is likeliest to reach it) still propagate an unchecked
+     * exception on a parse failure instead - a known, pre-existing gap outside this refactor's
+     * scope, not a model to copy for a new pipeline.
      */
     NO_CONTENT,
     /**

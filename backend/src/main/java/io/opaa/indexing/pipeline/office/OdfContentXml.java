@@ -17,10 +17,10 @@ import org.xml.sax.helpers.DefaultHandler;
  * Opens an ODF file's {@code content.xml} entry and parses it with a hardened {@link SAXParser} -
  * shared by {@link OdtDocumentPipeline}, {@link OdpDocumentPipeline} and {@code
  * TabularDocumentPipeline}'s own ODS reader (XXE hardening: no DOCTYPE, no external entities; a
- * byte ceiling on the decompressed stream against a zip bomb). Public - not {@code
- * office}-package-private - solely so {@code io.opaa.indexing.pipeline.tabular} can reuse this same
- * hardened reader instead of carrying its own copy (#1108); every other member of this package
- * stays unexported.
+ * byte ceiling on the decompressed stream against a zip bomb). Public solely so {@code
+ * io.opaa.indexing.pipeline.tabular} can reuse this same hardened reader instead of carrying its
+ * own copy (#1108) - the only type in this package made public purely for that cross-package reuse,
+ * as opposed to the package's other public types, which are the pipeline beans themselves.
  */
 public final class OdfContentXml {
 

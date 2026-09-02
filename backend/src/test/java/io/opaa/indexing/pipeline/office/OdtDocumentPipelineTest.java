@@ -2,6 +2,7 @@ package io.opaa.indexing.pipeline.office;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
@@ -16,6 +17,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * The ODT pipeline (#1110; ingestion-pipelines.md Teil 3 Punkt 2): the cut follows {@code text:h}'s
@@ -301,6 +303,19 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
+  void theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit() throws IOException {
+    // #1108 review, finding 4: the pipeline's own catch-all collapses every parse failure into the
+    // same NO_CONTENT outcome, so a wrong-reason failure would stay green there. This test goes
+    // straight at OdfContentXml.parse instead, the one place the byte limit's own message survives.
+    Path file = tempDir.resolve("gross-direkt.odt");
+    writeOdt(file, odtHeading(1, "Ueberschrift") + odtParagraph("Ein laengerer Textkoerper."));
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 50, new DefaultHandler()))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("size limit");
+  }
+
+  @Test
   void aTextSWithAnExtremeRepeatCountIsCappedRatherThanExhaustingMemory() throws IOException {
     // regression guard for #1143: text:c is attacker-controlled and unrelated to content.xml's
     // byte size - without a cap, a single element requests gigabytes of in-memory spaces.
@@ -339,6 +354,25 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
+  void theTextCharacterBudgetDirectlyThrowsASaxExceptionNamingWhichLimitWasHit()
+      throws IOException {
+    // See theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit's own Javadoc.
+    Path file = tempDir.resolve("viele-leerzeichen-direkt.odt");
+    writeOdt(
+        file,
+        odtParagraph(
+            "<text:s text:c=\"5\"/><text:s text:c=\"5\"/><text:s text:c=\"5\"/>"
+                + "<text:s text:c=\"5\"/>"));
+    OdtDocumentPipeline.OdtContentHandler handler =
+        new OdtDocumentPipeline.OdtContentHandler(50_000, 5, 12);
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+        .isInstanceOf(IOException.class)
+        .rootCause()
+        .hasMessageContaining("text character limit");
+  }
+
+  @Test
   void aDocumentExceedingTheParagraphLimitIsRejectedRatherThanExhaustingMemory()
       throws IOException {
     OdtDocumentPipeline tinyLimitPipeline =
@@ -350,6 +384,20 @@ class OdtDocumentPipelineTest {
         tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-absaetze.odt", ".odt"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void theParagraphLimitDirectlyThrowsASaxExceptionNamingWhichLimitWasHit() throws IOException {
+    // See theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit's own Javadoc.
+    Path file = tempDir.resolve("viele-absaetze-direkt.odt");
+    writeOdt(file, odtParagraph("Erster Absatz.") + odtParagraph("Zweiter Absatz."));
+    OdtDocumentPipeline.OdtContentHandler handler =
+        new OdtDocumentPipeline.OdtContentHandler(1, 1_000, 10_000_000L);
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+        .isInstanceOf(IOException.class)
+        .rootCause()
+        .hasMessageContaining("paragraph limit");
   }
 
   private static void writeOdt(Path file, String textBodyXml) throws IOException {

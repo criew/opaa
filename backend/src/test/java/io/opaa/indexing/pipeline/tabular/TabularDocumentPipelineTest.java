@@ -2,12 +2,14 @@ package io.opaa.indexing.pipeline.tabular;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
+import io.opaa.indexing.pipeline.office.OdfContentXml;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +25,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * The XLSX/CSV/ODS pipeline (#1058, #1057; ingestion-pipelines.md Teil 3, Punkt 3): tabular
@@ -623,6 +626,24 @@ class TabularDocumentPipelineTest {
   }
 
   @Test
+  void aZipWithoutAContentXmlEntryHasNoContent() throws IOException {
+    // #1108 review, finding 7: mirrors OdtDocumentPipelineTest/OdpDocumentPipelineTest's identical
+    // case - not a genuine ODF ZIP, the same "could not be parsed" failure as a corrupt ZIP, not
+    // the "parsed, but empty" NO_EXTRACTABLE_TEXT a well-formed empty spreadsheet gets below.
+    Path file = tempDir.resolve("ohne-content-xml.ods");
+    try (var out = new ZipOutputStream(Files.newOutputStream(file))) {
+      out.putNextEntry(new ZipEntry("mimetype"));
+      out.write("application/vnd.oasis.opendocument.spreadsheet".getBytes(StandardCharsets.UTF_8));
+      out.closeEntry();
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "ohne-content-xml.ods"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
   void odsRowNumbersAdvanceByTheFullRepeatSpanOfARepeatedBlankRow() throws IOException {
     // #1096 review, finding 11: table:number-rows-repeated must advance the running row counter
     // by the full repeat span, not by one, so a citation's "Zeile n" is correct for every row
@@ -665,6 +686,20 @@ class TabularDocumentPipelineTest {
   }
 
   @Test
+  void theOdsByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit() throws IOException {
+    // #1108 review, finding 4: the pipeline's own catch-all collapses every parse failure into
+    // the same NO_CONTENT outcome, so a wrong-reason failure would stay green there. This test
+    // goes straight at OdfContentXml.parse instead, the one place the byte limit's own message
+    // survives.
+    Path file = tempDir.resolve("gross-direkt.ods");
+    writeOds(file, odsTable("Blatt1", odsRow("Name", "Amt"), odsRow("Müller", "Bauamt")));
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 50, new DefaultHandler()))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("size limit");
+  }
+
+  @Test
   void anOdsSpreadsheetExceedingTheRowLimitIsRejectedRatherThanExhaustingMemory()
       throws IOException {
     // #1096 review, finding 6: the second, row-count-based zip-bomb guard - a small, repetitive
@@ -681,6 +716,23 @@ class TabularDocumentPipelineTest {
         tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-zeilen.ods"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void theOdsRowLimitDirectlyThrowsASaxExceptionNamingWhichLimitWasHit() throws IOException {
+    // See theOdsByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit's own Javadoc.
+    Path file = tempDir.resolve("viele-zeilen-direkt.ods");
+    writeOds(
+        file,
+        odsTable(
+            "Blatt1", odsRow("Name", "Amt"), odsRow("A", "1"), odsRow("B", "2"), odsRow("C", "3")));
+    TabularDocumentPipeline.OdsContentHandler handler =
+        new TabularDocumentPipeline.OdsContentHandler(1_000, 1_000, 2);
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+        .isInstanceOf(IOException.class)
+        .rootCause()
+        .hasMessageContaining("row limit");
   }
 
   private static void writeOds(Path file, String spreadsheetBodyXml) throws IOException {

@@ -206,6 +206,12 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
                 DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
                 fileName);
             progress.recordSkipped();
+          } else if (result == FileProcessingResult.FAILED) {
+            // See DocumentPipelineResult.Outcome#NO_CONTENT: the pipeline could not parse the
+            // document at all - the same failure the catch block below reports, only reached
+            // without throwing (#1108).
+            events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", fileName);
+            progress.recordFailed();
           } else if (result == FileProcessingResult.SKIPPED) {
             progress.recordSkipped();
           } else {

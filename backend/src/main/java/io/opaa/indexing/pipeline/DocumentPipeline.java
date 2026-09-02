@@ -42,7 +42,11 @@ public interface DocumentPipeline {
    */
   Set<String> handledFormats();
 
-  /** Parses and splits {@code source} into chunks. */
+  /**
+   * Parses and splits {@code source} into chunks. Never throws for a parse failure of {@code
+   * source} itself - reports it as {@link DocumentPipelineResult.Outcome#NO_CONTENT} instead (see
+   * that outcome's own Javadoc for the exact contract a new implementation must follow).
+   */
   DocumentPipelineResult run(DocumentPipelineSource source);
 
   /**

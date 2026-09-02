@@ -2,6 +2,7 @@ package io.opaa.indexing.pipeline.office;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
@@ -16,6 +17,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * The ODP pipeline (#1110; ingestion-pipelines.md Teil 3 Punkt 2: "eine Folie = ein Chunk"):
@@ -299,6 +301,19 @@ class OdpDocumentPipelineTest {
   }
 
   @Test
+  void theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit() throws IOException {
+    // #1108 review, finding 4: the pipeline's own catch-all collapses every parse failure into the
+    // same NO_CONTENT outcome, so a wrong-reason failure would stay green there. This test goes
+    // straight at OdfContentXml.parse instead, the one place the byte limit's own message survives.
+    Path file = tempDir.resolve("gross-direkt.odp");
+    writeOdp(file, odpSlide(odpFrame("title", "Titel") + odpFrame(null, "Ein laengerer Text.")));
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 50, new DefaultHandler()))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("size limit");
+  }
+
+  @Test
   void aTextSWithAnExtremeRepeatCountIsCappedRatherThanExhaustingMemory() throws IOException {
     // regression guard for #1143: text:c is attacker-controlled and unrelated to content.xml's
     // byte size - without a cap, a single element requests gigabytes of in-memory spaces.
@@ -339,6 +354,27 @@ class OdpDocumentPipelineTest {
   }
 
   @Test
+  void theTextCharacterBudgetDirectlyThrowsASaxExceptionNamingWhichLimitWasHit()
+      throws IOException {
+    // See theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit's own Javadoc.
+    Path file = tempDir.resolve("viele-leerzeichen-direkt.odp");
+    writeOdp(
+        file,
+        odpSlide(
+            odpFrame(
+                null,
+                "<text:s text:c=\"5\"/><text:s text:c=\"5\"/><text:s text:c=\"5\"/>"
+                    + "<text:s text:c=\"5\"/>")));
+    OdpDocumentPipeline.OdpContentHandler handler =
+        new OdpDocumentPipeline.OdpContentHandler(5_000, 5, 12);
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+        .isInstanceOf(IOException.class)
+        .rootCause()
+        .hasMessageContaining("text character limit");
+  }
+
+  @Test
   void aPresentationExceedingTheSlideLimitIsRejectedRatherThanExhaustingMemory()
       throws IOException {
     OdpDocumentPipeline tinyLimitPipeline =
@@ -351,6 +387,21 @@ class OdpDocumentPipelineTest {
         tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-folien.odp", ".odp"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+  }
+
+  @Test
+  void theSlideLimitDirectlyThrowsASaxExceptionNamingWhichLimitWasHit() throws IOException {
+    // See theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit's own Javadoc.
+    Path file = tempDir.resolve("viele-folien-direkt.odp");
+    writeOdp(
+        file, odpSlide(odpFrame(null, "Folie eins.")) + odpSlide(odpFrame(null, "Folie zwei.")));
+    OdpDocumentPipeline.OdpContentHandler handler =
+        new OdpDocumentPipeline.OdpContentHandler(1, 1_000, 10_000_000L);
+
+    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+        .isInstanceOf(IOException.class)
+        .rootCause()
+        .hasMessageContaining("slide limit");
   }
 
   private static void writeOdp(Path file, String presentationBodyXml) throws IOException {

@@ -241,6 +241,10 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                 DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
                 entry.url());
             progress.recordSkipped();
+          } else if (result == FileProcessingResult.FAILED) {
+            // See AsyncIndexingExecutor's own handling of this outcome.
+            events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entry.url());
+            progress.recordFailed();
           } else if (result == FileProcessingResult.SKIPPED) {
             progress.recordSkipped();
           } else {
