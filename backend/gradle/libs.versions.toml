@@ -61,7 +61,7 @@ mime4j = "0.8.14"
 # reads the PDF catalog (bookmarks) and page text directly through org.apache.pdfbox rather than only
 # through Tika's own extraction. Version pinned to what that transitive dependency resolves to today
 # (`./gradlew dependencies`).
-pdfbox = "3.0.7"
+pdfbox = "3.0.8"
 # opaa-api's tests are deliberately Spring-free (issue #896) and use plain JUnit Jupiter/AssertJ
 # instead of the Spring Boot-managed test-deps bundle below - these two versions are therefore
 # pinned explicitly rather than inherited from the Spring Boot BOM. The module's main sourceSet is
