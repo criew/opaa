@@ -168,6 +168,27 @@ class FullTextIdentifiersTest {
     assertThat(FullTextIdentifiers.extract("Nr. 5 der Anlage")).isEmpty();
   }
 
+  /**
+   * #1130 Befund 1, Querschnittsregel a: an email address survives as one lexeme, symmetric between
+   * a chunk's text ("...Kontakt: max.mustermann@example.org...") and a question naming the same
+   * address bare - the property {@link #theSameFileNumberYieldsTheSameLexemeInAChunkAndInAQuestion}
+   * already pins for file numbers.
+   */
+  @Test
+  void anEmailAddressSurvivesAsOneLexeme() {
+    assertThat(FullTextIdentifiers.extract("Kontakt: max.mustermann@example.org"))
+        .containsExactly("xmailmaxmustermannexampleorg");
+    assertThat(FullTextIdentifiers.extract("Was regelt max.mustermann@example.org?"))
+        .containsExactly("xmailmaxmustermannexampleorg");
+  }
+
+  /** Two email addresses differing in one local-part component must not share a lexeme. */
+  @Test
+  void neighbouringEmailAddressesStayApart() {
+    assertThat(FullTextIdentifiers.extract("max.mustermann@example.org"))
+        .doesNotContainAnyElementsOf(FullTextIdentifiers.extract("erika.musterfrau@example.org"));
+  }
+
   @Test
   void ordinaryProseProducesNothing() {
     assertThat(FullTextIdentifiers.extract("Die Gebührenbefreiung wegen Bedürftigkeit")).isEmpty();

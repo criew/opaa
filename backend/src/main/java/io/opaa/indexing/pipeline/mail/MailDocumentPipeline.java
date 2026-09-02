@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,15 +27,18 @@ import org.springframework.beans.factory.ObjectProvider;
  * The EML/MSG pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5): separates
  * Kopfdaten, body and attachment text, which Tika's native parse otherwise flattens into one block.
  *
- * <p>Kopfdaten become chunk metadata (see {@link ChunkMailMetadata}), never chunk text. One chunk
- * per message, or one per quoted-reply segment (see {@link MailThreadSplitter}); a segment still
- * too long for a single chunk falls back to {@link ChunkingService}'s ordinary token splitter. An
- * attachment runs recursively through the pipeline of its own type via {@link
- * DocumentPipelineRegistry} - an attachment that is itself an EML/MSG (a forward) reaches this
- * class again, one recursion level deeper, bounded by {@link MailProperties#maxAttachmentDepth()}.
- * Every chunk this pipeline produces, including an attachment's own, is attributed to this
- * pipeline's {@link #id()}/{@link #version()} - a version-selective re-index of a nested
- * attachment's own pipeline is therefore not reachable except by reprocessing the whole mail.
+ * <p>Kopfdaten land both as chunk metadata (see {@link ChunkMailMetadata} - unread today, a
+ * deliberate vorhaltung for future filtering, #1130 Befund 1) and as German-labeled context lines
+ * prepended to the message's first body chunk (see {@link #headerContextText}), so a sender name,
+ * an address or a Betreff reaches embedding and full-text search. One chunk per message, or one per
+ * quoted-reply segment (see {@link MailThreadSplitter}); a segment still too long for a single
+ * chunk falls back to {@link ChunkingService}'s ordinary token splitter. An attachment runs
+ * recursively through the pipeline of its own type via {@link DocumentPipelineRegistry} - an
+ * attachment that is itself an EML/MSG (a forward) reaches this class again, one recursion level
+ * deeper, bounded by {@link MailProperties#maxAttachmentDepth()}. Every chunk this pipeline
+ * produces, including an attachment's own, is attributed to this pipeline's {@link #id()}/{@link
+ * #version()} - a version-selective re-index of a nested attachment's own pipeline is therefore not
+ * reachable except by reprocessing the whole mail.
  *
  * <p>{@code registryProvider} is an {@link ObjectProvider} rather than a plain constructor
  * dependency to break the circular bean graph this pipeline's own recursion creates: {@link
@@ -45,7 +50,15 @@ public class MailDocumentPipeline implements DocumentPipeline {
   private static final Logger log = LoggerFactory.getLogger(MailDocumentPipeline.class);
 
   static final String ID = "email";
-  static final short VERSION = 1;
+  static final short VERSION = 2;
+
+  /**
+   * Renders {@link ParsedMailMessage#date()} in the leading context line - fixed to UTC since the
+   * originating header's own zone offset does not survive parsing into an {@link
+   * java.time.Instant}.
+   */
+  private static final DateTimeFormatter DATE_FORMATTER =
+      DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", Locale.GERMANY).withZone(ZoneOffset.UTC);
 
   /**
    * How many levels of mail-in-mail attachment recursion the current thread is at - {@code null}
@@ -168,9 +181,11 @@ public class MailDocumentPipeline implements DocumentPipeline {
 
   /**
    * One chunk per message, or one per thread segment when {@link MailThreadSplitter} finds a quoted
-   * reply chain - every segment carries the same, single set of Kopfdaten: a quoted prior message's
-   * own header lines are free text inside the client's quoting convention, not reliably parseable
-   * back into structured From/To/Date/Subject the way the outer MIME envelope's headers are.
+   * reply chain - every segment carries the same, single set of Kopfdaten metadata: a quoted prior
+   * message's own header lines are free text inside the client's quoting convention, not reliably
+   * parseable back into structured From/To/Date/Subject the way the outer MIME envelope's headers
+   * are. The rendered {@link #headerContextText} block, by contrast, is prepended to the text of
+   * only the very first produced chunk (see {@link #headerContextText}'s own Javadoc for why).
    *
    * <p><b>A segment too long for one chunk falls back to {@link ChunkingService}'s ordinary token
    * splitter</b> (#1101 review, finding 2): a long newsletter or a forwarded chain with no
@@ -182,6 +197,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
    * project-wide once structure runs out (ingestion-pipelines.md, Teil 2, "Der Grundsatz").
    */
   private List<Document> bodyChunks(ParsedMailMessage message, String fileName) {
+    String headerContext = headerContextText(message);
     List<String> segments = MailThreadSplitter.split(message.bodyText());
     List<Document> chunks = new ArrayList<>(segments.size());
     for (int i = 0; i < segments.size(); i++) {
@@ -208,10 +224,47 @@ public class MailDocumentPipeline implements DocumentPipeline {
         if (location != null) {
           metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
         }
-        chunks.add(new Document(parts.get(j).getText(), metadata));
+        String chunkText = parts.get(j).getText();
+        if (chunks.isEmpty() && !headerContext.isEmpty()) {
+          chunkText = headerContext + "\n\n" + chunkText;
+        }
+        chunks.add(new Document(chunkText, metadata));
       }
     }
     return chunks;
+  }
+
+  /**
+   * Renders Von/An/Betreff/Datum as German-labeled context lines, one line per present field, no
+   * line at all for an absent one - empty string when the message carries none of the four.
+   *
+   * <p><b>Prepended once, to the first produced body chunk only</b> (#1130 Befund 1), never
+   * repeated onto a later thread segment or further-split part: {@link #bodyChunks} already
+   * duplicates this same information into every chunk's <em>metadata</em> (a quoted-reply thread or
+   * a long newsletter can produce many chunks from one message), and doing the same to the chunk
+   * text would dilute embedding and full-text ranking with an identical block repeated across the
+   * whole document - the same Verwässerungsproblem {@code RepeatingHeaderChunk} avoids for a page
+   * header repeating across a document's chunks.
+   */
+  private String headerContextText(ParsedMailMessage message) {
+    StringBuilder text = new StringBuilder();
+    appendHeaderLine(text, "Von", message.from());
+    appendHeaderLine(text, "An", message.to());
+    appendHeaderLine(text, "Betreff", message.subject());
+    if (message.date() != null) {
+      appendHeaderLine(text, "Datum", DATE_FORMATTER.format(message.date()));
+    }
+    return text.toString();
+  }
+
+  private static void appendHeaderLine(StringBuilder text, String label, String value) {
+    if (value == null || value.isBlank()) {
+      return;
+    }
+    if (!text.isEmpty()) {
+      text.append('\n');
+    }
+    text.append(label).append(": ").append(value);
   }
 
   /**

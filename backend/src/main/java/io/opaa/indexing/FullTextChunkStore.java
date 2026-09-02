@@ -55,13 +55,13 @@ public class FullTextChunkStore {
    * missing row - the version scaffolding #1047 put in place for this. Nothing else has to happen
    * for existing rows to be brought up to date: {@link FullTextBackfillScheduler} re-checks the
    * backlog after every process restart, which a deployment carrying a new value of this constant
-   * necessarily is.
+   * necessarily is. Version 4 (#1130 Befund 1) added the undecomposed email-address lexeme.
    *
    * <p>Public for the same reason {@link #TEXT_SEARCH_CONFIGURATION} is: the lexical search path
    * ({@code io.opaa.query.FullTextChunkSearch}) must restrict its query to rows built under this
    * version, or it would read a row whose lexemes were built by a different chain.
    */
-  public static final short CURRENT_TSV_VERSION = 3;
+  public static final short CURRENT_TSV_VERSION = 4;
 
   private final JdbcTemplate jdbcTemplate;
 

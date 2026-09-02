@@ -391,9 +391,17 @@ keine Wörter, und werden als solche behandelt: „§ 34" und „§ 35" müssen 
 ist der ganze Pfad für seinen Hauptzweck wertlos.
 
 Welche Muster als Kennung gelten, ist eine überschaubare, gepflegte Liste (Paragrafenverweise mit und
-ohne Gesetzeskürzel, Aktenzeichen in den üblichen Formen, Erlass- und Drucksachennummern) — nicht ein
-allgemeiner Erkennungsversuch. Eine falsch erkannte Kennung erzeugt ein Token, das nie gesucht wird;
-eine nicht erkannte Kennung ist der Fehler, der wehtut.
+ohne Gesetzeskürzel, Aktenzeichen in den üblichen Formen, Erlass- und Drucksachennummern,
+E-Mail-Adressen seit #1130) — nicht ein allgemeiner Erkennungsversuch. Eine falsch erkannte Kennung
+erzeugt ein Token, das nie gesucht wird; eine nicht erkannte Kennung ist der Fehler, der wehtut.
+
+Bei E-Mail-Adressen liegt die Lücke anders als bei Aktenzeichen: PostgreSQLs eigener Parser hält eine
+Adresse bereits als ein einzelnes `email`-Token — die Zerstörung passiert nicht beim Schreiben, sondern
+beim Fragen. `io.opaa.query.FullTextChunkSearch#wordTokens` zerlegt eine Frage an jedem
+Nicht-Alphanumerikum, „max.mustermann@example.org" wird dort zu vier einzelnen Worttokens, die das eine
+Chunk-Token nie treffen — belegt gegen ein echtes PostgreSQL (siehe `FullTextIdentifiersTest` und
+`FullTextChunkSearchIntegrationTest`). Die Adresse als unzerlegtes Token auf beiden Seiten zu führen
+behebt genau diese Asymmetrie, mit demselben Mechanismus wie bei Aktenzeichen.
 
 **Wie es gebaut ist** (`io.opaa.indexing.FullTextIdentifiers`, #1048):
 

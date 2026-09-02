@@ -191,6 +191,29 @@ class FullTextChunkSearchIntegrationTest {
   }
 
   /**
+   * #1130 Befund 1, Querschnittsregel a: PostgreSQL's own parser keeps an email address as one
+   * {@code email}-class token, but the question path splits a question into individual word tokens
+   * ({@code io.opaa.query.FullTextChunkSearch#wordTokens}) - without the undecomposed identifier
+   * lexeme {@link io.opaa.indexing.FullTextIdentifiers} now emits, a chunk whose only occurrence of
+   * "max", "mustermann", "example" or "org" is inside the email address would never be found by a
+   * question naming that address, exactly the asymmetry the file-number test above pins for
+   * Aktenzeichen.
+   */
+  @Test
+  void anEmailAddressIsFoundThoughItOnlyOccursInsideTheAddressItself() {
+    // "max"/"mustermann"/"example"/"org" appear nowhere else in this text - a naive split of the
+    // question into those four word tokens would match nothing without the identifier lexeme.
+    UUID wanted =
+        seed(readableLibrary, "Kontakt: <max.mustermann@example.org> bezueglich Ihrer Anfrage.");
+    backfillService.backfillBatch(100);
+
+    List<Document> hits =
+        fullTextChunkSearch.search("max.mustermann@example.org", Set.of(readableLibrary), 25);
+
+    assertThat(hits).extracting(Document::getId).containsExactly(wanted.toString());
+  }
+
+  /**
    * A question is user input and reaches {@code to_tsquery}, whose own syntax has operators. The
    * tokens are reduced to letters and digits before they get there, so no character of the question
    * can be read as one - neither to raise a syntax error nor to change what is matched.

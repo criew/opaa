@@ -123,7 +123,7 @@ class MailDocumentPipelineTest {
     MailDocumentPipeline pipeline = pipeline(defaultProperties);
     assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".eml", ".msg");
     assertThat(pipeline.id()).isEqualTo("email");
-    assertThat(pipeline.version()).isEqualTo((short) 1);
+    assertThat(pipeline.version()).isEqualTo((short) 2);
   }
 
   @Test
@@ -140,10 +140,10 @@ class MailDocumentPipelineTest {
             ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
   }
 
-  // --- EML: headers as metadata, not text -----------------------------------------------------
+  // --- EML: headers as metadata AND as context lines in the chunk text (#1130 Befund 1) --------
 
   @Test
-  void headersLandAsChunkMetadataNeverAsChunkText() throws Exception {
+  void headersLandAsChunkMetadataAndAsContextLinesInTheChunkText() throws Exception {
     Path file = writeEml(simpleEmlBytes());
 
     DocumentPipelineResult result =
@@ -153,9 +153,13 @@ class MailDocumentPipelineTest {
     assertThat(result.chunks()).hasSize(1);
     Document chunk = result.chunks().getFirst();
     assertThat(chunk.getText())
-        .contains("Bitte pruefen Sie den Antrag.")
-        .doesNotContain("Max Mustermann")
-        .doesNotContain("Anfrage Bauantrag");
+        .isEqualTo(
+            "Von: Max Mustermann <max@example.org>\n"
+                + "An: Erika Musterfrau <erika@example.org>\n"
+                + "Betreff: Anfrage Bauantrag\n"
+                + "Datum: 03.01.2024 09:15\n"
+                + "\n"
+                + "Bitte pruefen Sie den Antrag.");
     assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
         .isEqualTo("Anfrage Bauantrag");
     assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_FROM_METADATA_KEY))
@@ -174,6 +178,25 @@ class MailDocumentPipelineTest {
             .collect(toSet());
     assertThat(pipeline(defaultProperties).passthroughMetadataKeys())
         .containsAll(actualKeysInUnion);
+  }
+
+  /**
+   * A message carrying no Kopfdaten at all (no From/To/Subject/Date) gets no context block and no
+   * leading blank line - the guard against an empty-but-present header prefix.
+   */
+  @Test
+  void aMessageWithoutAnyKopfdatenGetsNoContextBlock() throws Exception {
+    Message message =
+        Message.Builder.of()
+            .setBody("Nur Fliesstext, keine Kopfdaten.", StandardCharsets.UTF_8)
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+
+    DocumentPipelineResult result =
+        pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "ohne-kopf.eml"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText()).isEqualTo("Nur Fliesstext, keine Kopfdaten.");
   }
 
   @Test
@@ -399,10 +422,14 @@ class MailDocumentPipelineTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(2);
-    assertThat(result.chunks().get(0).getText()).isEqualTo("Passt, danke.");
+    // The context block lands only on the first chunk (#1130 Befund 1) - not repeated onto the
+    // second thread segment, the Verwässerungsproblem #1145 already avoided for a page header.
+    assertThat(result.chunks().get(0).getText()).endsWith("\n\nPasst, danke.");
     assertThat(result.chunks().get(0).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
         .isEqualTo("Nachricht 1 von 2");
-    assertThat(result.chunks().get(1).getText()).contains("Bitte um Rueckmeldung bis Freitag.");
+    assertThat(result.chunks().get(1).getText())
+        .doesNotContain("Von:")
+        .contains("Bitte um Rueckmeldung bis Freitag.");
     assertThat(
             result.chunks().get(1).getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
         .isEqualTo("Terminabstimmung");
