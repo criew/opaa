@@ -36,13 +36,14 @@ class FullTextBackfillServiceIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private FullTextBackfillService backfillService;
   @Autowired private FullTextBackfillProgressService progressService;
+  @Autowired private VectorChunkStore vectorChunkStore;
 
   private final UUID libraryId = UUID.randomUUID();
   private final UUID documentId = UUID.randomUUID();
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
   }
 
   @Test
@@ -128,11 +129,12 @@ class FullTextBackfillServiceIntegrationTest {
     // id that has no vector_store counterpart at all (never produced by this backfill's own
     // insert, since it only ever inserts ids it selected from vector_store).
     jdbcTemplate.update(
-        "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv) "
-            + "VALUES (?, ?, ?, to_tsvector('german', 'orphan'))",
+        "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv, "
+            + "content_tsv_version) VALUES (?, ?, ?, to_tsvector('german', 'orphan'), ?)",
         UUID.randomUUID(),
         documentId,
-        libraryId);
+        libraryId,
+        FullTextChunkStore.CURRENT_TSV_VERSION);
 
     FullTextBackfillProgress progress = progressService.progressForLibrary(libraryId);
 
@@ -250,6 +252,277 @@ class FullTextBackfillServiceIntegrationTest {
                 chunkId))
         .isEqualTo(FullTextChunkStore.CURRENT_TSV_VERSION);
     assertThat(matchesLexeme(chunkId, "xakzbauda22024")).isEqualTo(1L);
+  }
+
+  /**
+   * Reproduction for #1093: a chunk whose {@code content_tsv} PostgreSQL itself refuses to build
+   * ("string is too long for tsvector", SQLSTATE 54000/program_limit_exceeded - a genuine, not
+   * simulated, {@code to_tsvector} failure) must not take the rest of the batch down with it, and
+   * must not be given up on after a single attempt (#1093 review, Blocker 1) - it only becomes a
+   * confirmed, permanent skip after {@link FullTextBackfillService#SKIP_CONFIRMATION_ATTEMPTS}
+   * consecutive failures. Seeded directly into {@code vector_store} (bypassing {@link
+   * VectorStore#add}/the embedding model's own token-count guard) - exactly the state of a chunk
+   * written by an older pipeline version that did not yet reject such content, which is the
+   * realistic way a poison chunk like this could exist in the first place.
+   */
+  @Test
+  void aPoisonChunkIsIsolatedAndSkippedWithoutBlockingHealthyChunksInTheSameBatch() {
+    UUID healthyChunkA = seedUnindexedChunk("Befreiung von der Verwaltungsgebühr");
+    UUID healthyChunkB = seedUnindexedChunk("Zulässig im Außenbereich nach § 35 BauGB");
+    UUID poisonChunk = seedPoisonChunkExceedingTheTsvectorSizeLimit();
+
+    // First attempt: the healthy chunks index immediately; the poison chunk is isolated and its
+    // first failed attempt recorded, but not yet confirmed - it stays part of the pending
+    // backlog rather than being given up on after a single failure.
+    int firstResolved = backfillService.backfillBatch(10);
+    assertThat(firstResolved).isEqualTo(3);
+    assertThat(isIndexed(healthyChunkA)).isTrue();
+    assertThat(isIndexed(healthyChunkB)).isTrue();
+    assertThat(isIndexed(poisonChunk)).isFalse();
+    assertThat(attempts(poisonChunk)).isEqualTo(1);
+    assertThat(isConfirmedSkipped(poisonChunk)).isFalse();
+    assertThat(progressService.progressForLibrary(libraryId).isComplete()).isFalse();
+
+    // Two more failed attempts (three total) confirm it as a permanent skip.
+    for (int i = 1; i < FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS; i++) {
+      assertThat(backfillService.backfillBatch(10)).isEqualTo(1);
+    }
+    assertThat(attempts(poisonChunk)).isEqualTo(FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS);
+    assertThat(isConfirmedSkipped(poisonChunk)).isTrue();
+
+    FullTextBackfillProgress progress = progressService.progressForLibrary(libraryId);
+    assertThat(progress.totalChunks()).isEqualTo(3);
+    assertThat(progress.indexedChunks()).isEqualTo(2);
+    assertThat(progress.missingChunks()).isZero();
+    assertThat(progress.skippedChunks()).isEqualTo(1);
+    // The gate must not hold the library's two healthy, already-searchable chunks hostage to the
+    // one it will never be able to index - see FullTextBackfillProgress#isComplete's own Javadoc.
+    assertThat(progress.isComplete()).isTrue();
+  }
+
+  /**
+   * A confirmed, permanently skipped chunk is not retried on every future tick - it would otherwise
+   * cost a failing batch, and therefore isolation work, forever.
+   */
+  @Test
+  void aConfirmedPermanentlySkippedChunkIsNeverSelectedAgain() {
+    seedPoisonChunkExceedingTheTsvectorSizeLimit();
+    for (int i = 0; i < FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS; i++) {
+      assertThat(backfillService.backfillBatch(10)).isEqualTo(1);
+    }
+
+    assertThat(backfillService.backfillBatch(10)).isZero();
+  }
+
+  /**
+   * The mechanism that keeps a skip from being permanent in the wrong sense (#1093): a
+   * <em>confirmed</em> skip ({@code attempts >= }{@link
+   * FullTextBackfillService#SKIP_CONFIRMATION_ATTEMPTS}) recorded at an older {@code
+   * content_tsv_version} - simulating one that predates a lexical analysis chain change, exactly
+   * like a stale {@code chunk_full_text} row - no longer suppresses the chunk once the current
+   * version has moved past it. This is the same version-based invalidation {@link
+   * FullTextChunkStore#CURRENT_TSV_VERSION}'s own Javadoc already documents for {@code
+   * chunk_full_text} itself, applied identically to {@code chunk_full_text_skip}.
+   */
+  @Test
+  void aConfirmedSkipAtAnOlderVersionIsEligibleForRetryAfterAVersionBump() {
+    UUID chunkId = seedUnindexedChunk("Befreiung von der Verwaltungsgebühr wegen Bedürftigkeit");
+    jdbcTemplate.update(
+        "INSERT INTO chunk_full_text_skip (chunk_id, document_id, library_id, "
+            + "content_tsv_version, error_message, attempts) VALUES (?, ?, ?, ?, ?, ?)",
+        chunkId,
+        documentId,
+        libraryId,
+        (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1),
+        "simulated stale, confirmed skip from a previous content_tsv_version",
+        FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS);
+
+    int resolved = backfillService.backfillBatch(10);
+
+    assertThat(resolved).isEqualTo(1);
+    assertThat(isIndexed(chunkId)).isTrue();
+  }
+
+  /**
+   * #1093 review, W1: {@code indexedChunks} must be filtered to {@link
+   * FullTextChunkStore#CURRENT_TSV_VERSION} like every other count here - otherwise a chunk indexed
+   * at an older version, then reselected after a version bump and confirmed-skipped this time,
+   * would count in both {@code indexedChunks} (its stale row) and {@code skippedChunks} (its new
+   * skip row), letting {@code indexed + skipped} exceed {@code totalChunks}.
+   */
+  @Test
+  void indexedChunksDoesNotDoubleCountAStaleRowAlongsideAConfirmedSkipAtTheCurrentVersion() {
+    UUID chunkId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv, "
+            + "content_tsv_version) VALUES (?, ?, ?, to_tsvector('german', 'stale'), ?)",
+        chunkId,
+        documentId,
+        libraryId,
+        (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1));
+    jdbcTemplate.update(
+        "INSERT INTO chunk_full_text_skip (chunk_id, document_id, library_id, "
+            + "content_tsv_version, error_message, attempts) VALUES (?, ?, ?, ?, ?, ?)",
+        chunkId,
+        documentId,
+        libraryId,
+        FullTextChunkStore.CURRENT_TSV_VERSION,
+        "simulated confirmed skip at the current version",
+        FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS);
+
+    FullTextBackfillProgress progress = progressService.progressForLibrary(libraryId);
+
+    assertThat(progress.indexedChunks()).isZero();
+    assertThat(progress.skippedChunks()).isEqualTo(1);
+  }
+
+  /**
+   * #1093 review, W3: {@code chunk_full_text_skip} must not outlive the chunk it belongs to, the
+   * same invariant {@link VectorChunkStore}'s own Javadoc already states for {@code
+   * chunk_full_text}. Without this, an operator who deletes and re-indexes a document to fix a
+   * poison chunk would find {@code skippedChunks} permanently stuck at its old count.
+   */
+  @Test
+  void deletingTheDocumentClearsItsConfirmedSkipRowsToo() {
+    UUID chunkId = seedPoisonChunkExceedingTheTsvectorSizeLimit();
+    for (int i = 0; i < FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS; i++) {
+      backfillService.backfillBatch(10);
+    }
+    assertThat(isConfirmedSkipped(chunkId)).isTrue();
+
+    vectorChunkStore.deleteByDocumentId(documentId);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM chunk_full_text_skip WHERE chunk_id = ?",
+                Long.class,
+                chunkId))
+        .isZero();
+  }
+
+  /**
+   * Mirrors {@link #deletingTheDocumentClearsItsConfirmedSkipRowsToo} for the library-wide delete.
+   */
+  @Test
+  void deletingTheLibraryClearsItsConfirmedSkipRowsToo() {
+    UUID chunkId = seedPoisonChunkExceedingTheTsvectorSizeLimit();
+    for (int i = 0; i < FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS; i++) {
+      backfillService.backfillBatch(10);
+    }
+    assertThat(isConfirmedSkipped(chunkId)).isTrue();
+
+    vectorChunkStore.deleteByLibraryId(libraryId);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM chunk_full_text_skip WHERE chunk_id = ?",
+                Long.class,
+                chunkId))
+        .isZero();
+  }
+
+  private boolean isIndexed(UUID chunkId) {
+    Long count =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM chunk_full_text WHERE chunk_id = ? AND content_tsv_version = ?",
+            Long.class,
+            chunkId,
+            FullTextChunkStore.CURRENT_TSV_VERSION);
+    return count == 1L;
+  }
+
+  private int attempts(UUID chunkId) {
+    Integer attempts =
+        jdbcTemplate.queryForObject(
+            "SELECT attempts FROM chunk_full_text_skip WHERE chunk_id = ? AND "
+                + "content_tsv_version = ?",
+            Integer.class,
+            chunkId,
+            FullTextChunkStore.CURRENT_TSV_VERSION);
+    return attempts;
+  }
+
+  private boolean isConfirmedSkipped(UUID chunkId) {
+    Long count =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM chunk_full_text_skip WHERE chunk_id = ? AND "
+                + "content_tsv_version = ? AND attempts >= ?",
+            Long.class,
+            chunkId,
+            FullTextChunkStore.CURRENT_TSV_VERSION,
+            FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS);
+    return count == 1L;
+  }
+
+  /**
+   * Many DISTINCT words, not one repeated word: {@code to_tsvector} deduplicates identical lexemes,
+   * so a single overlong "word" is silently truncated rather than rejected - it takes enough
+   * distinct lexemes to push the resulting {@code tsvector} itself past PostgreSQL's 1 MiB size
+   * limit to reproduce a genuine {@code to_tsvector} failure.
+   */
+  private UUID seedPoisonChunkExceedingTheTsvectorSizeLimit() {
+    UUID chunkId = UUID.randomUUID();
+    StringBuilder content = new StringBuilder();
+    for (int i = 0; i < 200_000; i++) {
+      content.append("wort").append(i).append(' ');
+    }
+    String zeroVector = "[" + String.join(",", java.util.Collections.nCopies(1536, "0")) + "]";
+    jdbcTemplate.update(
+        "INSERT INTO public.vector_store (id, content, metadata, embedding) "
+            + "VALUES (?, ?, ?::jsonb, ?::vector)",
+        chunkId,
+        content.toString(),
+        "{\"document_id\":\"" + documentId + "\",\"library_id\":\"" + libraryId + "\"}",
+        zeroVector);
+    return chunkId;
+  }
+
+  /**
+   * Reproduction for #1093 review round 3, finding 2: a chunk whose {@code document_id} metadata is
+   * not a well-formed UUID must not be dropped from selection entirely - that would leave {@code
+   * missingChunks} stuck at 1 forever (nothing ever indexes it, and nothing ever confirms it as
+   * skipped either), which keeps {@link FullTextBackfillProgress#isComplete()} permanently false
+   * and therefore {@code io.opaa.query.FullTextBackfillGate} permanently closed for the
+   * <em>whole</em> library - including its other, healthy chunks. It is instead recorded as an
+   * immediately confirmed skip on the very first {@link FullTextBackfillService#backfillBatch}
+   * call.
+   */
+  @Test
+  void aChunkWithAMalformedDocumentIdIsImmediatelyConfirmedSkippedWithoutBlockingTheGate() {
+    UUID healthyChunk = seedUnindexedChunk("Befreiung von der Verwaltungsgebühr");
+    UUID malformedChunk = seedChunkWithMalformedDocumentId("not-a-uuid");
+
+    int resolved = backfillService.backfillBatch(10);
+
+    assertThat(resolved).isEqualTo(2);
+    assertThat(isIndexed(healthyChunk)).isTrue();
+    assertThat(isIndexed(malformedChunk)).isFalse();
+    assertThat(isConfirmedSkipped(malformedChunk)).isTrue();
+
+    FullTextBackfillProgress progress = progressService.progressForLibrary(libraryId);
+    assertThat(progress.totalChunks()).isEqualTo(2);
+    assertThat(progress.indexedChunks()).isEqualTo(1);
+    assertThat(progress.missingChunks()).isZero();
+    assertThat(progress.skippedChunks()).isEqualTo(1);
+    // The whole point: the gate must not stay closed for the library's one healthy chunk because
+    // of the one it can never resolve.
+    assertThat(progress.isComplete()).isTrue();
+
+    // A second tick never re-selects the confirmed skip - no repeated WARN/ERROR log spam.
+    assertThat(backfillService.backfillBatch(10)).isZero();
+  }
+
+  private UUID seedChunkWithMalformedDocumentId(String malformedDocumentId) {
+    UUID chunkId = UUID.randomUUID();
+    String zeroVector = "[" + String.join(",", java.util.Collections.nCopies(1536, "0")) + "]";
+    jdbcTemplate.update(
+        "INSERT INTO public.vector_store (id, content, metadata, embedding) "
+            + "VALUES (?, ?, ?::jsonb, ?::vector)",
+        chunkId,
+        "Auszug aus der Gebührenordnung",
+        "{\"document_id\":\"" + malformedDocumentId + "\",\"library_id\":\"" + libraryId + "\"}",
+        zeroVector);
+    return chunkId;
   }
 
   private long identifierMatches(UUID chunkId) {

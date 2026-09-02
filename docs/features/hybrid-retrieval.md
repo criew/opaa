@@ -1315,11 +1315,12 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   entscheidbar — und nur, wenn das Komposita-Segment des Benchmarks überhaupt eine Lücke zeigt. Beide
   Wege haben unterschiedliche Pflegekosten für das Wörterbuch.
 - ~~**Wie wird der Volltextindex bei einer Änderung der Analysekette nachgezogen?**~~ Beantwortet
-  mit #1047/#1048: `FullTextChunkStore#CURRENT_TSV_VERSION` markiert jede geänderte `tsvector`-Form,
-  `FullTextBackfillService`/`FullTextBackfillScheduler` ziehen jede Zeile unterhalb der aktuellen
-  Version in kleinen Chargen nach (Standard 200 Chunks je 5-Sekunden-Tick), ohne erneutes Einbetten.
-  #1130 belegt diesen Weg erstmals in der Praxis mit einem Bump, der den gesamten Altbestand betrifft
-  (neues Muster in `FullTextIdentifiers` für E-Mail-Adressen, Version 3 → 4).
+  mit #1047/#1048/#1093: `FullTextChunkStore#CURRENT_TSV_VERSION` markiert jede geänderte
+  `tsvector`-Form, `FullTextBackfillService`/`FullTextBackfillScheduler` ziehen jede Zeile
+  unterhalb der aktuellen Version in kleinen Chargen nach (Standard 200 Chunks je 5-Sekunden-Tick),
+  ohne erneutes Einbetten. #1130 belegt diesen Weg erstmals in der Praxis mit einem Bump, der den
+  gesamten Altbestand betrifft (neues Muster in `FullTextIdentifiers` für E-Mail-Adressen, Version
+  3 → 4).
 
   **Die tatsächliche Wirkung ist gröber als ein Zeilenfilter:** `FullTextBackfillGate` (siehe oben,
   "Reihenfolge") nimmt eine Bibliothek erst dann wieder in den lexikalischen Suchbereich auf, wenn
@@ -1334,11 +1335,48 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   Chunks/h) etwa sieben Stunden. Danach wird jede Bibliothek einzeln wieder aufgenommen, sobald ihr
   eigener Nachlauf fertig ist — keine globale Wiederkehr auf einen Schlag.
 
-  **Voraussetzung für einen Bump, der den gesamten Bestand betrifft: #1093** (Gift-Chunk-Isolation)
-  muss vorher gemergt sein — ohne sie hält ein einzelner kaputter Chunk den Fortschritt einer
-  Bibliothek an, bis der Scheduler-Backoff die Ticks für den Rest der Prozesslaufzeit stoppt; diese
-  eine Bibliothek bliebe dann bis zum nächsten Neustart vollständig außerhalb des lexikalischen
-  Pfads statt nur vorübergehend.
+  **Genau dieses Fenster ist der Grund, warum #1093 (Gift-Chunk-Isolation) Voraussetzung war, nicht
+  nur Komfort.** Ohne sie hätte ein einzelner Gift-Chunk (Inhalt, an dem `to_tsvector` scheitert,
+  z. B. weil der resultierende Vektor Postgres' 1-MiB-Grenze überschreitet) den Fortschritt der
+  gesamten Bibliothek angehalten, in der er liegt: `FullTextBackfillService.backfillBatch` halbiert
+  einen fehlschlagenden Batch rekursiv, bis der verursachende Chunk isoliert ist, klassifiziert ihn
+  anhand des PostgreSQL-`SQLSTATE` der ursprünglichen Fehlermeldung (Klassen `22`/`54`/`42` als
+  Gift-Chunk-Kandidat, alles andere als Systemstörung) — **nicht** über eine nachträgliche Sonde:
+  eine Sonde liefe auf einer anderen, später geliehenen Verbindung und würde alles, was im
+  Zeitfenster dazwischen ausheilt (ein konkurrierendes `DELETE`, ein Lock-Timeout), fälschlich als
+  „Datenbank gesund, also Gift-Chunk" einordnen und den Chunk dauerhaft verlieren (#1093-Review,
+  Blocker 1). Ein als Gift-Chunk-Kandidat eingestufter Chunk wird zusätzlich nicht beim ersten
+  Fehlschlag aufgegeben, sondern erst nach `FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS`
+  aufeinanderfolgenden Fehlschlägen dauerhaft in `chunk_full_text_skip` eingetragen — ein
+  Fehlschlag, der sich innerhalb weniger Ticks von selbst löst, wird stattdessen einfach erneut
+  versucht. **Ein Versionssprung macht dabei auch einen bereits bestätigten Skip wieder angreifbar**
+  (`recordOrIncrementSkip` setzt `attempts` auf 1 zurück, sobald die gespeicherte
+  `content_tsv_version` von der aktuellen abweicht, und die Selektion in `selectPending` schließt
+  nur Zeilen bei der jeweils aktuellen Version aus) — ein Chunk, der unter der Analysekette vor
+  #1130 als Gift-Chunk galt, bekommt unter der neuen Version dieselbe dreimalige Chance wie jeder
+  andere, bevor er erneut als Skip verbucht wird. Erst ein bestätigter Skip zählt in
+  `FullTextBackfillProgress#skippedChunks` (sichtbar auf der Administrationsseite „Suche &
+  Indexierung" als eigener Hinweis je Bibliothek, `LibrarySearchStatusResponse.fullTextSkippedChunks`
+  — eine Bibliothek mit bestätigten Skips gilt dort nicht mehr als makellos „bereit",
+  `fullTextIndexCondition()` zeigt `INCOMPLETE`), **ohne `FullTextBackfillGate` an dieser einen
+  Bibliothek für immer zu blockieren** — `isComplete()`, die Methode, die den Gate tatsächlich
+  steuert, gated bewusst nur auf noch ausstehende (`missingChunks`), nicht auf dauerhaft
+  übersprungene Chunks. Das ist die Stelle, an der sich Betriebsanleitung und Isolationsmechanik
+  schließen: Ohne #1093 hätte ein einzelner kaputter Datensatz eine Bibliothek dauerhaft aus dem
+  lexikalischen Pfad gehalten (der Scheduler-Backoff hätte die Ticks für den Rest der
+  Prozesslaufzeit gestoppt, bevor die übrigen Chunks überhaupt durchlaufen); mit #1093 bleibt der
+  betroffene Chunk als bestätigter Skip sichtbar liegen, aber die Bibliothek als Ganzes kehrt in
+  den lexikalischen Pfad zurück, sobald ihr übriger Bestand fertig ist — begrenzt auf das oben
+  beschriebene Zeitfenster, nicht dauerhaft. Ein Chunk, dessen `document_id`-Metadatum selbst kein
+  wohlgeformtes UUID ist, wird nicht über diese Mehrfachbestätigung geführt, sondern sofort als
+  bestätigter Skip verbucht (`document_id` in `chunk_full_text_skip` dafür nullable) — ein
+  struktureller Defekt heilt nicht durch Wiederholung. Indiziert ein zuvor gescheiterter Chunk
+  später erfolgreich, löscht `FullTextChunkStore.clearSkipRows` seine Skip-Zeile wieder — nur auf
+  dem Backfill-Pfad, nie beim regulären Ingest, wo eine Skip-Zeile wegen frisch erzeugter Chunk-IDs
+  ohnehin nie existieren kann.
+
+  **Voraussetzung erfüllt:** #1093 ist mit PR #1168 gemergt, bevor #1130s Versionssprung den ersten
+  bestandsweiten Bump auslöst — genau die Reihenfolge, die oben beschrieben ist.
 - **Wirkt der Kontextpräfix aus Contextual Chunking (#933/#940) auch in den Volltextindex?**
   Anthropics „contextual BM25" spricht dafür, und die Roadmap sieht es in Phase 2a vor. Es ist aber eine
   eigene Messung wert: Ein Titelpräfix in jedem Chunk verändert die Termstatistik des ganzen Index.

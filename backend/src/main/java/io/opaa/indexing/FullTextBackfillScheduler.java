@@ -35,10 +35,17 @@ import org.springframework.stereotype.Component;
  * silently (Spring drops a {@code @Scheduled} method's future ticks entirely if one throws) - see
  * {@link #runBackfillBatch}. After {@link #MAX_CONSECUTIVE_FAILURES} consecutive failures, ticking
  * stops entirely (one {@code ERROR} log, not an unbounded stream of {@code WARN} logs every tick)
- * until the next process restart resets {@link #consecutiveFailures}. Isolating a single malformed
- * ("poison") chunk within a batch is not implemented - a batch that keeps failing keeps failing at
- * the same {@code batchSize} on every retry until it halts; tracked as a follow-up (#1093), not
- * addressed here since no malformed row has ever actually been observed.
+ * until the next process restart resets {@link #consecutiveFailures}.
+ *
+ * <p><b>What reaches this class as a failure, after #1093.</b> {@link
+ * FullTextBackfillService#backfillBatch} isolates and permanently records a single malformed
+ * ("poison") chunk itself (see that class's own Javadoc) rather than letting it fail the whole
+ * batch - a batch of otherwise-healthy chunks with one bad row among them therefore returns
+ * normally, indexing the healthy ones and skipping only the bad one, and never reaches {@link
+ * #runBackfillBatch}'s {@code catch} at all. Only a failure that is not attributable to any single
+ * row - the database itself unreachable, the connection pool exhausted - still propagates here, so
+ * this class's consecutive-failure backoff is reserved for exactly that: a systemic condition a
+ * smaller {@code batchSize} or a different chunk selection could not have avoided.
  */
 @Component
 public class FullTextBackfillScheduler {
@@ -79,7 +86,7 @@ public class FullTextBackfillScheduler {
         drained.set(true);
         log.debug("Full-text backfill backlog drained - scheduler tick going dormant");
       } else {
-        log.debug("Full-text backfill indexed {} chunk(s) this tick", processed);
+        log.debug("Full-text backfill resolved {} chunk(s) this tick", processed);
       }
     } catch (RuntimeException e) {
       int failures = consecutiveFailures.incrementAndGet();
