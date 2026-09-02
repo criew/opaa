@@ -696,6 +696,29 @@ Entscheidung fällt gegen die Verwaltungs-Evaldomäne und gegen das gemessene La
 
 ### Arbeitspaket „Latenz-/Hardwareprofil"
 
+> **Stand: zurückgestellt** (Maintainer-Entscheidung, 02.09.2026). Das Profil wurde **nicht** erhoben;
+> [#1051](https://github.com/criew/opaa/issues/1051) ist ungebaut geschlossen, weil die Frage der
+> Reranking-Aktivierung zunächst grundsätzlich überdacht wird. Der Abschnitt bleibt als Zuschnitt
+> stehen — die Anforderungen unten gelten unverändert, sobald die Frage wieder aufgenommen wird.
+>
+> **Folge:** Es gibt keine Aktivierungsempfehlung, und es wird keine ausgesprochen. Reranking bleibt
+> voreingestellt **aus** (`OPAA_RERANK_ENABLED` steht auf `false`); ohne ausdrückliches Einschalten
+> durch einen Betreiber ändert sich am Verhalten der Suche nichts.
+>
+> **Was aus [#1050](https://github.com/criew/opaa/issues/1050) bereits bekannt ist:** Die Qualität
+> trägt deutlich (Verwaltungsdomäne, nDCG@8 gesamt 0,726 → 0,867; `literal_term_weak_embedding`
+> 0,494 → 0,846; `compound_word` 0,731 → 0,941). Das Problem ist die Laufzeit — rund **drei Minuten
+> je Frage** bei 50 Kandidaten auf 20 CPU-Kernen mit `BAAI/bge-reranker-v2-m3`. Eine Installation
+> ohne GPU rerankt mit diesem Modell voraussichtlich nicht sinnvoll; die naheliegende
+> Referenzhardware (Demo-Instanz) hat keine nutzbare GPU.
+>
+> **Zwei Fallen für eine spätere Messung:**
+> [#1154](https://github.com/criew/opaa/issues/1154) — das Rerank-Zeitlimit ist für CPU-Betrieb zu
+> knapp, ein langsamer, aber funktionierender Endpunkt wird als `UNREACHABLE` gemeldet; wer ohne
+> Anhebung misst, misst einen Ausfall statt einer Latenz.
+> [#1153](https://github.com/criew/opaa/issues/1153) — die Kandidatenzahl 50 ist nicht belegt, die
+> Wahl zwischen 25 und 50 hängt an einem einzelnen `multi_hop`-Fall.
+
 Qualität und Latenz werden getrennt gemessen, weil sie verschiedene Messaufbauten brauchen. Der
 [Retrieval-Benchmark](./retrieval-benchmark.md) misst Qualität in einem Testcontainers-Lauf auf
 wechselnder CI-Hardware — für Laufzeitaussagen ist er konstruktionsbedingt untauglich, und er erhebt
@@ -788,7 +811,13 @@ allerdings nahe, dass eine Installation ohne GPU mit diesem Modell nicht sinnvol
 **Einschränkung dieses Laufs, offen benannt:** Der Rerank-Endpunkt wurde in dem Moment gestoppt, in
 dem die letzte Anfrage der Variante `rerank-50` zurückkam. Sollte die allerletzte Anfrage davon
 betroffen gewesen sein, wäre einer der 46 Fälle dieser Variante ohne Neubewertung gemessen worden.
-Die Aussagen oben hängen an keinem Einzelfall.
+
+Die **Qualitätsaussage** hängt an keinem Einzelfall — die Sprünge bei `literal_term_weak_embedding`
+und `compound_word` sind dafür zu groß. Die **Wahl der Kandidatenzahl 50 gegenüber 25** hängt sehr
+wohl an einem: `multi_hop` hat neun Fälle, ein Fall entspricht 0,111 im Klassenwert, und genau ein
+Fall ist der gesamte Unterschied zwischen den beiden Fenstern. Die Zahl 50 ist damit begründet, aber
+nicht belegt; die Wiederholung mit dem inzwischen gebauten Ausfallwächter ist als
+[#1153](https://github.com/criew/opaa/issues/1153) festgehalten.
 
 ### Die Lehre aus MMR
 
@@ -810,7 +839,8 @@ gegen 20 von 20 ohne. Der Baustein blieb, die Voreinstellung wurde nach der Mess
 trotzdem „aus". Das ist kein Widerspruch, sondern die zweite Hälfte derselben Regel: Für eine
 Aktivierungsempfehlung fehlt das Latenz-/Hardwareprofil, und ein Qualitätsgewinn, dessen Preis
 niemand kennt, ist keine Entscheidungsgrundlage. Die Voreinstellung wird nach dieser Messung
-gesetzt — nicht vor ihr.
+gesetzt — nicht vor ihr. Da das Profil zurückgestellt ist (#1051), bleibt es bis auf Weiteres
+beim Default „aus".
 
 Dasselbe gilt für jede Teilentscheidung dieser Spezifikation, die eine Zahl trägt: Kompositazerlegung,
 Kandidatenzahl, Fusionsgewichte, Eskalationsstufen.
@@ -1153,7 +1183,7 @@ ist.
 | 3 | Lexikalischer Suchpfad + Fusion (AP 2/AP 3) | 1, 2 | Löst die #938-Klasse; wirkt ohne jedes weitere Modell — **gebaut (#1048/#1049)**, gemessen in AP 3 |
 | 4 | Rerank-Modellrolle + Reranking-Stufe | 1, 3 | Präzision auf der fusionierten Menge; nur mit Modell |
 | 5 | Admin-Seite „Suche & Indexierung" | 1, Befugnis-/Protokollmodell | Diagnosepfad; wird mit jedem weiteren Paket wertvoller |
-| 6 | Latenz-/Hardwareprofil auf Referenzhardware | 4 | Voraussetzung jeder Aktivierungsempfehlung für Reranking |
+| 6 | Latenz-/Hardwareprofil auf Referenzhardware — **zurückgestellt (#1051)** | 4 | Voraussetzung jeder Aktivierungsempfehlung für Reranking; ohne das Profil bleibt Reranking voreingestellt aus |
 
 Paket 2 steht vor Paket 3, weil ein Volltextpfad über einem halb befüllten Index falsche Messwerte und
 falsche Antworten zugleich erzeugt. Aufgenommen in die Fusion wird der Pfad erst, wenn der Backfill
