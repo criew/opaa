@@ -178,6 +178,64 @@ class PipelineReindexServiceIntegrationTest {
         .isZero();
   }
 
+  @Test
+  void aChunkWithNoResolvedRoutingExtensionIsCompleteEvenWhenItsFileNameClaimsAStrictPipeline()
+      throws IOException {
+    // Closes gap (a) of #1126: bericht.pdf with genuine plain-text content resolves no extension
+    // at all (SupportedDocumentFormats#decideForFileName), so a forward-written chunk carries
+    // ChunkPipelineMetadata#NO_ROUTING_EXTENSION rather than a guess from the file name. Without
+    // the routing key (the pre-#1126 approximation the other misrouted tests exercise), the same
+    // file name would make this chunk permanently stale - the exact gap this key closes.
+    Document document =
+        persistedFilesystemTextDocumentNamedLikePdf(
+            "bericht.pdf", "Dies ist kein PDF, sondern reiner Text. ");
+    seedChunk(
+        document.getId(),
+        library.getId(),
+        "alter chunk",
+        TikaFallbackPipeline.ID,
+        TikaFallbackPipeline.VERSION,
+        ChunkPipelineMetadata.NO_ROUTING_EXTENSION);
+
+    PipelineVersionProgress progress =
+        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+
+    assertThat(progress.staleChunks()).isZero();
+    assertThat(progress.currentVersionChunks()).isEqualTo(1);
+    assertThat(progress.isComplete()).isTrue();
+  }
+
+  @Test
+  void aChunkWithARoutingExtensionIsSelectableEvenWithoutAMatchingFileNameExtension()
+      throws IOException {
+    // Closes gap (b) of #1126: a document with no extension the registry can recognize
+    // ("download.aspx") has no file-name-based way back into a specialized pipeline once its
+    // chunks are fallback-labeled (#currentPipelineIdForFileName never matches it). A forward-
+    // written routing key sidesteps the file name entirely - the same misrouted branch now
+    // selects it on an exact match against the requested pipeline's own extensions.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document = persistedFilesystemPdfDocument("download.aspx");
+    seedChunk(
+        document.getId(),
+        library.getId(),
+        "alter chunk",
+        TikaFallbackPipeline.ID,
+        TikaFallbackPipeline.VERSION,
+        ".pdf");
+
+    PipelineVersionProgress progress =
+        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    assertThat(progress.staleChunks()).isEqualTo(1);
+    assertThat(progress.isComplete()).isFalse();
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(pdfPipeline.id());
+  }
+
   private DocumentPipeline pdfPipeline() {
     return pipelineRegistry.pipelines().stream()
         .filter(candidate -> candidate.handledFormats().contains(".pdf"))
@@ -324,6 +382,49 @@ class PipelineReindexServiceIntegrationTest {
         reindexService.reindexBatch(
             Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
     assertThat(second.isEmpty()).isTrue();
+  }
+
+  @Test
+  void aDocumentThatStaysMisroutedIsNotReparsedOnASubsequentReindexCall() throws IOException {
+    // Closes gap (c) of #1126: FileProcessingService#storeChunks now writes
+    // ChunkPipelineMetadata#NO_ROUTING_EXTENSION onto the chunks reindexStoredDocument just wrote
+    // for a document that still resolves to the fallback pipeline. #misroutedPredicateFor's exact
+    // branch then excludes those chunks outright (routing_extension "" never matches a pipeline's
+    // own extension list) instead of relying on the file-name heuristic that kept re-selecting
+    // them - so a second call must not touch this document's chunks at all, unlike before #1126
+    // (see PipelineReindexResult#skippedDocuments's own Javadoc on this exact, previously accepted
+    // cost).
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document =
+        persistedFilesystemTextDocumentNamedLikePdf(
+            "bericht.pdf", "Dies ist kein PDF, sondern reiner Text. ");
+    seedChunk(
+        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+
+    PipelineReindexResult first =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+    assertThat(first.skippedDocuments()).isEqualTo(1);
+    List<String> chunkIdsAfterFirstCall = chunkIdsOf(document.getId());
+    assertThat(chunkIdsAfterFirstCall).isNotEmpty();
+
+    PipelineReindexResult second =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(second.isEmpty()).isTrue();
+    assertThat(second.skippedDocuments()).isZero();
+    // Unchanged chunk ids prove the document was not re-read, re-chunked and re-embedded a second
+    // time - reindexStoredDocument always deletes and rewrites under fresh ids (see its own
+    // Javadoc), so identical ids are only possible if this call never touched it at all.
+    assertThat(chunkIdsOf(document.getId())).isEqualTo(chunkIdsAfterFirstCall);
+  }
+
+  private List<String> chunkIdsOf(UUID documentId) {
+    return jdbcTemplate.queryForList(
+        "SELECT id FROM vector_store WHERE metadata->>'document_id' = ? ORDER BY id",
+        String.class,
+        documentId.toString());
   }
 
   private Document persistedFilesystemTextDocumentNamedLikePdf(String fileName, String content)
@@ -658,6 +759,22 @@ class PipelineReindexServiceIntegrationTest {
 
   private void seedChunk(
       UUID documentId, UUID libraryId, String text, String pipelineId, Short pipelineVersion) {
+    seedChunk(documentId, libraryId, text, pipelineId, pipelineVersion, null);
+  }
+
+  /**
+   * Like the four-argument overload, additionally seeding {@link
+   * ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} (#1126) - {@code null} omits the key
+   * entirely (the pre-#1126 Altbestand this class's other tests already cover), matching a
+   * forward-written chunk otherwise.
+   */
+  private void seedChunk(
+      UUID documentId,
+      UUID libraryId,
+      String text,
+      String pipelineId,
+      Short pipelineVersion,
+      String routingExtension) {
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(VectorChunkStore.DOCUMENT_ID_METADATA_KEY, documentId.toString());
     metadata.put(VectorChunkStore.LIBRARY_ID_METADATA_KEY, libraryId.toString());
@@ -665,6 +782,9 @@ class PipelineReindexServiceIntegrationTest {
     if (pipelineId != null) {
       metadata.put(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY, pipelineId);
       metadata.put(ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY, (int) pipelineVersion);
+    }
+    if (routingExtension != null) {
+      metadata.put(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, routingExtension);
     }
     vectorStore.add(List.of(new org.springframework.ai.document.Document(text, metadata)));
   }

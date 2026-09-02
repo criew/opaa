@@ -420,6 +420,45 @@ class FileProcessingServiceTest {
         .containsEntry(
             ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY,
             (int) TikaFallbackPipeline.VERSION);
+    // #1126: the extension routing actually resolved for this document rides along too.
+    assertThat(metadata)
+        .containsEntry(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, ".txt");
+  }
+
+  @Test
+  void aDocumentThatCannotBeReadForFormatDetectionWritesNoRoutingKeyAtAll() throws IOException {
+    // Regression guard for the #1165 review: a transient read failure during routing (e.g. a
+    // virus scanner briefly locking the file after it was discovered) must not be persisted as a
+    // routing verdict - PipelineReindexService would otherwise treat it as "confirmed fallback"
+    // forever instead of falling back to the pre-#1126 file-name approximation for it. Deleting
+    // the file right before the re-index call reproduces the read failure inside
+    // routedPipelineFor without needing to simulate an actual lock; every other collaborator that
+    // would otherwise touch the file (parseDocument, chunkDocuments) is mocked.
+    Path file = tempDir.resolve("bericht.pdf");
+    Files.writeString(file, "some content");
+    UUID documentId = UUID.randomUUID();
+    Document existing = new Document("bericht.pdf", file.toString(), "application/pdf", 42L);
+    existing.setLibraryId(targetLibrary.getId());
+    existing.setOrganizationId(targetLibrary.getOrganizationId());
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(existing));
+    when(documentRepository.markIndexed(any(), anyInt(), any())).thenReturn(1);
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("bericht.pdf"), eq(parsed))).thenReturn(chunks);
+
+    Files.delete(file);
+
+    boolean reindexed = service.reindexStoredDocument(documentId, file);
+
+    assertThat(reindexed).isTrue();
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
+    Map<String, Object> metadata = chunkCaptor.getValue().getFirst().getMetadata();
+    assertThat(metadata).doesNotContainKey(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY);
   }
 
   /**
