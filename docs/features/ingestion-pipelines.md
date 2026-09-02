@@ -1154,8 +1154,11 @@ Lücken. Seit #1126 schreibt `storeChunks` zusätzlich fest, mit welchem Ergebni
 geroutet wurde: `ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY` trägt dieselbe Endung, die
 `DocumentPipelineRegistry#routedPipelineFor` beim Schreiben dieses Chunks tatsächlich aufgelöst hat —
 oder `ChunkPipelineMetadata#NO_ROUTING_EXTENSION`, wenn die Routing-Entscheidung keine Endung auflösen
-konnte (Inhalt weder streng noch texttolerant zuordenbar). Ein Chunk ohne diesen Schlüssel ist der
-Altbestand von vor #1126 und bleibt auf der Endungsnäherung.
+konnte (Inhalt weder streng noch texttolerant zuordenbar). Der Schlüssel fehlt sowohl beim Altbestand
+von vor #1126 als auch, wenn das Lesen der Datei zur Erkennung technisch fehlschlug
+(`DocumentPipelineRegistry.Routed#formatDetectionFailed`, z. B. kurzzeitige Sperre durch einen
+Virenscanner) — ein Lesefehler ist kein Routing-Verdikt und darf nicht als „korrekt fallback-geroutet"
+persistiert werden. Beide Fälle bleiben auf der Endungsnäherung.
 
 Wo der Schlüssel vorliegt, vergleicht sowohl `progressForOrganization` als auch
 `selectStaleDocuments` exakt (`DocumentPipelineRegistry#pipelineIdForRoutingExtension`) statt über
@@ -1208,8 +1211,9 @@ Hier wird nur der **Übergabepunkt** definiert:
    Fassung, Thema — entstehen hier ausdrücklich nicht; sie gehören in die Metadaten-Spezifikation, mit
    ihren eigenen Leitplanken gegen geratene Werte.
 3. Die heutigen technischen Chunk-Metadaten (`document_id`, `chunk_index`, `file_name`, `library_id`,
-   `organization_id`, `location`) bleiben unverändert; die Struktur-Metadaten und die Pipeline-Version
-   aus [Regel (d)](#d-jeder-chunk-trägt-die-version-des-verfahrens-das-ihn-erzeugt-hat) treten daneben,
+   `organization_id`, `location`, seit #1126 `routing_extension`) bleiben unverändert; die
+   Struktur-Metadaten und die Pipeline-Version aus [Regel
+   (d)](#d-jeder-chunk-trägt-die-version-des-verfahrens-das-ihn-erzeugt-hat) treten daneben,
    ersetzen nichts. Insbesondere bleibt `location` die Angabe, aus der der Beleg seine Fundstelle bildet — der
    Gliederungspfad verbessert sie, verdrängt sie aber nicht.
 

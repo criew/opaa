@@ -157,22 +157,10 @@ public class PipelineReindexService {
             // re-indexable. Counted in the total only, so it is visible without being promised.
             return;
           }
-          // Mirrors the same narrowing selectStaleDocuments applies (see #misroutedPredicateFor):
-          // the routing gap (#1105) only makes a chunk stale while it is still fallback-labeled,
-          // and never for an RSS entry - its body is handed to the fallback pipeline
-          // unconditionally (ADR-0017, decision 2), so its file name (a title or the entry URL) is
-          // never a routing signal, not evidence of staleness. A chunk already naming a specialized
-          // pipeline is left to the plain version comparison, even if its file name no longer
-          // matches that pipeline's own extensions - reporting it stale here without
-          // selectStaleDocuments ever being able to reach it would leave isComplete() permanently
-          // false for a document no re-index call can advance.
-          //
-          // A chunk carrying its own routing_extension (#1126, written forward since then) is
-          // compared exactly via pipelineIdForRoutingExtension - no file-name guessing, and no
-          // longer permanently stale for content whose routing never resolves an extension (the
-          // gap the file-name approximation below could not close, see
-          // ChunkPipelineMetadata#NO_ROUTING_EXTENSION). A chunk without that key (written before
-          // #1126) falls back to the same approximation as before.
+          // Mirrors the narrowing selectStaleDocuments applies (see #misroutedPredicateFor): a
+          // chunk is only routing-stale while still fallback-labeled, never for an RSS entry
+          // (ADR-0017, decision 2). Exact via pipelineIdForRoutingExtension where routingExtension
+          // is present (#1126); the file-name approximation (#1105) only for a chunk without it.
           boolean routingStale =
               !DocumentSourceType.RSS_FEED.name().equals(sourceType)
                   && pipelineId.equals(pipelineRegistry.fallbackPipeline().id())

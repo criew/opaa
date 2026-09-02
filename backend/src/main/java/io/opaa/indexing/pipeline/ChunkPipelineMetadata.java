@@ -35,29 +35,19 @@ public final class ChunkPipelineMetadata {
 
   /**
    * The extension {@link DocumentPipelineRegistry#routedPipelineFor} actually resolved when this
-   * chunk was written - {@code null} exactly when routing fell back without resolving one (see
-   * {@link DocumentPipelineRegistry.Routed#detectedExtension()}), never the chunk's file name.
-   * Written by {@code FileProcessingService#storeChunks} on every chunk since #1126, alongside
-   * {@link #PIPELINE_ID_METADATA_KEY}.
-   *
-   * <p>Replaces the endung-based approximation {@link PipelineReindexService} used before #1126
-   * (still the fallback for a chunk written before this key existed, via {@code
-   * currentPipelineIdForFileName}) with an exact comparison: {@link
-   * DocumentPipelineRegistry#pipelineIdForRoutingExtension(String)} on this stored value tells
-   * exactly which pipeline claims the format this chunk was actually routed on, without guessing
-   * from the file name. A chunk without this key is the pre-#1126 Altbestand and stays on the
-   * approximation - {@link #NO_ROUTING_EXTENSION} is what a forward-written chunk gets instead of
-   * {@code null} itself (a {@code jsonb} value cannot distinguish an absent key from one explicitly
-   * set to {@code null}), so "never written" and "written, resolved to no extension" stay
-   * distinguishable.
+   * chunk was written (#1126), never the chunk's file name. Absent for a chunk where routing could
+   * not be attempted or completed (the pre-#1126 Altbestand; a failed detection) - {@link
+   * PipelineReindexService} then falls back to its pre-#1126 file-name approximation instead of the
+   * exact comparison {@link DocumentPipelineRegistry#pipelineIdForRoutingExtension(String)} gives.
    */
   public static final String ROUTING_EXTENSION_METADATA_KEY = "routing_extension";
 
   /**
-   * The sentinel {@link #ROUTING_EXTENSION_METADATA_KEY} carries for a chunk whose routing decision
-   * did not resolve an extension at all - content that fell back without a strict or text-tolerant
-   * match (e.g. a file named like a strict format but whose actual content is plain text). See that
-   * key's own Javadoc for why this is not simply the key's absence.
+   * The sentinel {@link #ROUTING_EXTENSION_METADATA_KEY} carries when routing resolved no extension
+   * at all (content admits nothing) - distinct from the key's absence. Required, not merely chosen:
+   * {@code org.springframework.ai.document.Document}'s constructor asserts no metadata value is
+   * {@code null} (spring-ai-commons, {@code Assert.noNullElements}), so {@code null} itself could
+   * never be written.
    */
   public static final String NO_ROUTING_EXTENSION = "";
 
