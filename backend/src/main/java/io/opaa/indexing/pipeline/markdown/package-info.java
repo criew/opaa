@@ -1,4 +1,2 @@
-/**
- * The Markdown format pipeline (docs/features/ingestion-pipelines.md); not yet registered (#1103).
- */
+/** The Markdown format pipeline (docs/features/ingestion-pipelines.md). */
 package io.opaa.indexing.pipeline.markdown;

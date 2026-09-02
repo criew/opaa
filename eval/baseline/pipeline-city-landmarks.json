@@ -29,141 +29,141 @@
   "groups": {
     "overall": {
       "n": 108,
-      "hitRateAt5": 1.0,
-      "mrrAt8": 0.981,
-      "ndcgAt8": 0.973,
-      "recallAt8": 0.986,
+      "hitRateAt5": 1.000,
+      "mrrAt8": 0.980,
+      "ndcgAt8": 0.985,
+      "recallAt8": 1.000,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 48,
       "hitCountAt5": 108,
       "hitCountAt8": 108,
-      "allExpectedDocumentsHitAt8": 0.972
+      "allExpectedDocumentsHitAt8": 1.000
     },
     "category:boundary_span": {
       "n": 20,
-      "hitRateAt5": 1.0,
-      "mrrAt8": 1.0,
-      "ndcgAt8": 1.0,
-      "recallAt8": 1.0,
+      "hitRateAt5": 1.000,
+      "mrrAt8": 1.000,
+      "ndcgAt8": 1.000,
+      "recallAt8": 1.000,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 10,
       "hitCountAt5": 20,
       "hitCountAt8": 20,
-      "allExpectedDocumentsHitAt8": 1.0
+      "allExpectedDocumentsHitAt8": 1.000
     },
     "category:city_overview": {
       "n": 20,
-      "hitRateAt5": 1.0,
-      "mrrAt8": 0.95,
-      "ndcgAt8": 0.963,
-      "recallAt8": 1.0,
+      "hitRateAt5": 1.000,
+      "mrrAt8": 1.000,
+      "ndcgAt8": 1.000,
+      "recallAt8": 1.000,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 11,
       "hitCountAt5": 20,
       "hitCountAt8": 20,
-      "allExpectedDocumentsHitAt8": 1.0
+      "allExpectedDocumentsHitAt8": 1.000
     },
     "category:cross_chunk": {
       "n": 15,
-      "hitRateAt5": 1.0,
-      "mrrAt8": 1.0,
-      "ndcgAt8": 1.0,
-      "recallAt8": 1.0,
+      "hitRateAt5": 1.000,
+      "mrrAt8": 1.000,
+      "ndcgAt8": 1.000,
+      "recallAt8": 1.000,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 15,
       "hitCountAt5": 15,
       "hitCountAt8": 15,
-      "allExpectedDocumentsHitAt8": 1.0
+      "allExpectedDocumentsHitAt8": 1.000
     },
     "category:landmark_detail": {
       "n": 25,
-      "hitRateAt5": 1.0,
-      "mrrAt8": 1.0,
-      "ndcgAt8": 1.0,
-      "recallAt8": 1.0,
+      "hitRateAt5": 1.000,
+      "mrrAt8": 0.973,
+      "ndcgAt8": 0.980,
+      "recallAt8": 1.000,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 3,
       "hitCountAt5": 25,
       "hitCountAt8": 25,
-      "allExpectedDocumentsHitAt8": 1.0
+      "allExpectedDocumentsHitAt8": 1.000
     },
     "category:multi_city": {
       "n": 8,
-      "hitRateAt5": 1.0,
-      "mrrAt8": 0.875,
-      "ndcgAt8": 0.87,
-      "recallAt8": 0.938,
+      "hitRateAt5": 1.000,
+      "mrrAt8": 1.000,
+      "ndcgAt8": 1.000,
+      "recallAt8": 1.000,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 8,
       "hitCountAt5": 8,
       "hitCountAt8": 8,
-      "allExpectedDocumentsHitAt8": 0.875
+      "allExpectedDocumentsHitAt8": 1.000
     },
     "category:multi_topic": {
       "n": 20,
-      "hitRateAt5": 1.0,
-      "mrrAt8": 1.0,
-      "ndcgAt8": 0.945,
-      "recallAt8": 0.95,
+      "hitRateAt5": 1.000,
+      "mrrAt8": 0.925,
+      "ndcgAt8": 0.946,
+      "recallAt8": 1.000,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 15,
       "hitCountAt5": 20,
       "hitCountAt8": 20,
-      "allExpectedDocumentsHitAt8": 0.9
+      "allExpectedDocumentsHitAt8": 1.000
     },
     "difficulty:easy": {
       "n": 28,
-      "hitRateAt5": 1.0,
-      "mrrAt8": 0.929,
-      "ndcgAt8": 0.936,
-      "recallAt8": 0.982,
+      "hitRateAt5": 1.000,
+      "mrrAt8": 1.000,
+      "ndcgAt8": 1.000,
+      "recallAt8": 1.000,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 19,
       "hitCountAt5": 28,
       "hitCountAt8": 28,
-      "allExpectedDocumentsHitAt8": 0.964
+      "allExpectedDocumentsHitAt8": 1.000
     },
     "difficulty:hard": {
       "n": 5,
-      "hitRateAt5": 1.0,
-      "mrrAt8": 1.0,
-      "ndcgAt8": 0.923,
-      "recallAt8": 0.9,
+      "hitRateAt5": 1.000,
+      "mrrAt8": 1.000,
+      "ndcgAt8": 0.984,
+      "recallAt8": 1.000,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 5,
       "hitCountAt5": 5,
       "hitCountAt8": 5,
-      "allExpectedDocumentsHitAt8": 0.8
+      "allExpectedDocumentsHitAt8": 1.000
     },
     "difficulty:medium": {
       "n": 75,
-      "hitRateAt5": 1.0,
-      "mrrAt8": 1.0,
-      "ndcgAt8": 0.99,
-      "recallAt8": 0.993,
+      "hitRateAt5": 1.000,
+      "mrrAt8": 0.971,
+      "ndcgAt8": 0.980,
+      "recallAt8": 1.000,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 31,
       "hitCountAt5": 75,
       "hitCountAt8": 75,
-      "allExpectedDocumentsHitAt8": 0.987
+      "allExpectedDocumentsHitAt8": 1.000
     },
     "language:de": {
       "n": 108,
-      "hitRateAt5": 1.0,
-      "mrrAt8": 0.981,
-      "ndcgAt8": 0.973,
-      "recallAt8": 0.986,
+      "hitRateAt5": 1.000,
+      "mrrAt8": 0.980,
+      "ndcgAt8": 0.985,
+      "recallAt8": 1.000,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 48,
       "hitCountAt5": 108,
       "hitCountAt8": 108,
-      "allExpectedDocumentsHitAt8": 0.972
+      "allExpectedDocumentsHitAt8": 1.000
     }
   },
-  "measuredAt": "2026-09-01",
+  "measuredAt": "2026-09-02",
   "provenance": {
-    "sourceReportRunStartedAt": "2026-09-01T13:32:45.025901700Z",
-    "sourcePullRequest": "PR zu Issue #1049 (Volltextpfad in der RRF-Fusion)"
+    "sourceReportRunStartedAt": "2026-09-02T06:02:01.862135600Z",
+    "sourcePullRequest": "#1103 (Registrierung von MarkdownDocumentPipeline, Messvertrags-Änderung)"
   },
-  "notes": "Neu gezogen mit Issue #1049 (Volltextpfad als Eingangsliste der RRF-Fusion) — die erste Änderung dieses Epics, die die Endauswahl tatsächlich bewegt. Messvertragsversion 3: Neue Fixpunkte fullTextSearchEnabled und fullTextBackfillComplete (ADR-0012, Nachtrag Volltextpfad); ohne sie trüge ein vector-only-Lauf denselben runConfiguration-Abdruck wie ein hybrider. Anders als die erste Baseline dieser Domäne (Issue #1081, gezogen aus dem CPU-Artefakt des label-ausgelösten Regressionslaufs 33437536393) stammt diese aus einem lokalen CPU-Testcontainer-Lauf vom 2026-09-01 mit demselben gepinnten Ollama-Image, demselben Embedding-Digest und demselben manifest-geprüften Korpus. Die Variante vector-only desselben Laufs (eval/variants/city-landmarks-lexical-path.json) reproduziert die #1081-Werte exakt, Trefferzahlen eingeschlossen (HitRate@5 0,991, MRR@8 0,925, nDCG@8 0,926, Recall@8 0,972, AlleThemenGetroffen@8 0,954, hitCountAt5/At8 je 107 von 108) — damit ist zweierlei belegt: dass die beiden Messumgebungen für diese Domäne dieselben Zahlen liefern, und dass die Verschiebung vollständig vom Volltextpfad kommt. Vorgängerwerte (Vertragsversion 2, überholt) sind genau diese vector-only-Zahlen. Der Rohvektor-Pfad desselben Laufs reproduziert eval/baseline/city-landmarks.json unverändert. Diese Domäne ist die einzige mit durchgängig mehrchunkigen Dokumenten und lag schon vorher nahe an der Obergrenze; der Gewinn ist deshalb klein, aber in jeder Gruppe und jeder Metrik nicht-negativ — die Aussage dieser Domäne ist, dass die zusätzliche Eingangsliste neben der Dokument-Vervollständigung nichts verschlechtert. Gemessen wird weiterhin die Variante decomposition-off (chatModel = null). Nicht mit eval/baseline/city-landmarks.json vergleichbar: Dieser Pfad wendet die Produktionsschwelle (0,3) tatsächlich an und misst am Produktionsfenster top-k=8 statt bei documentTopK=10 ohne Schwelle. Toleranzformel und Fehlerkriterium: ADR-0013, unverändert."
+  "notes": "Neu gezogen mit Issue #1049 (Volltextpfad als Eingangsliste der RRF-Fusion) — die erste Änderung dieses Epics, die die Endauswahl tatsächlich bewegt. Messvertragsversion 3: Neue Fixpunkte fullTextSearchEnabled und fullTextBackfillComplete (ADR-0012, Nachtrag Volltextpfad); ohne sie trüge ein vector-only-Lauf denselben runConfiguration-Abdruck wie ein hybrider. Anders als die erste Baseline dieser Domäne (Issue #1081, gezogen aus dem CPU-Artefakt des label-ausgelösten Regressionslaufs 33437536393) stammt diese aus einem lokalen CPU-Testcontainer-Lauf vom 2026-09-01 mit demselben gepinnten Ollama-Image, demselben Embedding-Digest und demselben manifest-geprüften Korpus. Die Variante vector-only desselben Laufs (eval/variants/city-landmarks-lexical-path.json) reproduziert die #1081-Werte exakt, Trefferzahlen eingeschlossen (HitRate@5 0,991, MRR@8 0,925, nDCG@8 0,926, Recall@8 0,972, AlleThemenGetroffen@8 0,954, hitCountAt5/At8 je 107 von 108) — damit ist zweierlei belegt: dass die beiden Messumgebungen für diese Domäne dieselben Zahlen liefern, und dass die Verschiebung vollständig vom Volltextpfad kommt. Vorgängerwerte (Vertragsversion 2, überholt) sind genau diese vector-only-Zahlen. Der Rohvektor-Pfad desselben Laufs reproduziert eval/baseline/city-landmarks.json unverändert. Diese Domäne ist die einzige mit durchgängig mehrchunkigen Dokumenten und lag schon vorher nahe an der Obergrenze; der Gewinn ist deshalb klein, aber in jeder Gruppe und jeder Metrik nicht-negativ — die Aussage dieser Domäne ist, dass die zusätzliche Eingangsliste neben der Dokument-Vervollständigung nichts verschlechtert. Gemessen wird weiterhin die Variante decomposition-off (chatModel = null). Nicht mit eval/baseline/city-landmarks.json vergleichbar: Dieser Pfad wendet die Produktionsschwelle (0,3) tatsächlich an und misst am Produktionsfenster top-k=8 statt bei documentTopK=10 ohne Schwelle. Toleranzformel und Fehlerkriterium: ADR-0013, unverändert. Nachtrag (Issue #1103, 2026-09-02): MarkdownDocumentPipeline registriert statt TikaFallbackPipeline (ADR-0012, Nachtrag 'Strukturbewusstes Markdown-Chunking'). Wie beim Rohvektor-Pfad derselbe deutliche Gewinn: overall nDCG@8 0,973 → 0,985, alle zehn Gruppen erreichen jetzt entweder 1,000 oder liegen sehr nahe daran (schwächste Gruppe weiterhin category:multi_topic bei mrrAt8 0,925). hitCountAt8 bleibt bei 108/108 (bereits vorher perfekt). maxChunksPerDocument in diesem fixedPoints-Block bleibt unverändert 2 — das ist der Produktions-Fixpunkt aus io.opaa.query (QueryProperties), nicht der Eval-eigene EvalDomainConfig-Wert (der stieg 13→20, sichtbar im Rohvektor-fixedPoints chunkTopK). Lauf: CPU/Testcontainer, derselbe Lauf wie eval/baseline/city-landmarks.json (Laufzeit dieses Pfads 10,7 s). Vollständiger Vorher/Nachher-Vergleich beider Messpfade und aller drei Domänen in der PR-Beschreibung zu #1103. Voraussetzung des Issues (nächtlicher Lauf nach #1049 einmal grün) war zum Zeitpunkt dieser Baseline-Ziehung nicht erfüllt — Maintainer-Entscheidung, ohne diesen Lauf zu mergen; siehe PR-Beschreibung."
 }

@@ -14,16 +14,17 @@ import io.opaa.eval.EvaluationReport.ChunkCountInvariantResult;
 import io.opaa.eval.EvaluationReport.DatasetNotes;
 import io.opaa.eval.EvaluationReport.RunConfiguration;
 import io.opaa.eval.EvaluationReport.WorstQuery;
-import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.FullTextBackfillProgressService;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.JobStatus;
+import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
+import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.RerankModelRole;
@@ -36,6 +37,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -77,8 +79,9 @@ import tools.jackson.databind.json.JsonMapper;
  * RetrievalEvaluationHarnessTest} (issue #227) and issue #721 already provide — see {@link
  * EvalDomainConfig#CITY_LANDMARKS}'s Javadoc for the domain's chunk-count profile. Indexes the
  * frozen `eval/corpus/city-landmarks` corpus through the production pipeline ({@link
- * io.opaa.indexing.FileProcessingService} / {@link io.opaa.indexing.ChunkingService}), then runs
- * every case from {@code eval/golden/city-landmarks.json} directly against {@link
+ * io.opaa.indexing.FileProcessingService} routed to {@link
+ * io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline} for this all-Markdown corpus since
+ * #1103), then runs every case from {@code eval/golden/city-landmarks.json} directly against {@link
  * VectorStore#similaritySearch}. No LLM — retrieval-only, per ADR-0011 decision 3.
  *
  * <p>Like {@link RetrievalEvaluationHarnessTest}, it additionally runs the <b>pipeline measurement
@@ -470,11 +473,11 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   @Autowired private IndexingProperties indexingProperties;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
-  // Issue #721: reused, not reimplemented, to build the chunk map — the same production beans
-  // FileProcessingService drives (see its Javadoc), so the chunk texts the map is built from are
-  // exactly what was actually indexed, not a second, potentially drifting re-implementation.
-  @Autowired private DocumentService documentService;
-  @Autowired private ChunkingService chunkingService;
+  // Issue #721/#1103: reused, not reimplemented, to build the chunk map — the same
+  // DocumentPipelineRegistry routing FileProcessingService drives (see its Javadoc), so the chunk
+  // texts the map is built from are exactly what was actually indexed, not a second, potentially
+  // drifting re-implementation.
+  @Autowired private DocumentPipelineRegistry pipelineRegistry;
   // #1039: the production query pipeline itself, for the second (pipeline) measurement path — the
   // very beans a real request runs through, not a re-implementation of steps 2 to 6.
   @Autowired private QueryService queryService;
@@ -748,12 +751,12 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
         windowResults.size(),
         DOMAIN.documentTopK());
 
-    // 4b. Chunk map (issue #721): re-derive each document's real chunk texts through the same
-    //     production beans FileProcessingService uses (DocumentService/ChunkingService), so the map
-    //     reflects exactly what was indexed. Docker-free in principle (no embedding call needed),
-    //     kept here so the map always matches the corpus this specific run actually verified
-    // against
-    //     the manifest, rather than risking drift from a separately invoked step.
+    // 4b. Chunk map (issue #721, routing updated for #1103): re-derive each document's real chunk
+    //     texts through the same DocumentPipelineRegistry routing FileProcessingService uses, so
+    // the
+    //     map reflects exactly what was indexed. Docker-free in principle (no embedding call
+    //     needed), kept here so the map always matches the corpus this specific run actually
+    //     verified against the manifest, rather than risking drift from a separately invoked step.
     Map<String, String> answerSpansByCaseId = new LinkedHashMap<>();
     for (GoldenCase goldenCase : goldenCases) {
       if (ChunkAnswerSpanMetrics.isApplicable(goldenCase)) {
@@ -763,15 +766,14 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     List<ChunkMap.DocumentChunkMap> chunkMaps = new ArrayList<>(manifest.fileNames().size());
     for (String fileName : manifest.fileNames()) {
       Path file = corpusDir.resolve(fileName);
-      List<org.springframework.ai.document.Document> parsed = documentService.parseDocument(file);
-      String documentText =
-          parsed.stream()
-              .map(org.springframework.ai.document.Document::getText)
-              .reduce("", String::concat);
-      List<org.springframework.ai.document.Document> chunks =
-          chunkingService.chunkDocuments(fileName, parsed);
+      String documentText = Files.readString(file, StandardCharsets.UTF_8);
+      DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
+      DocumentPipelineResult result =
+          routed
+              .pipeline()
+              .run(DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()));
       List<String> chunkTexts =
-          chunks.stream().map(org.springframework.ai.document.Document::getText).toList();
+          result.chunks().stream().map(org.springframework.ai.document.Document::getText).toList();
       Map<String, String> spansForThisDocument = new LinkedHashMap<>();
       for (GoldenCase goldenCase : goldenCases) {
         String span = answerSpansByCaseId.get(goldenCase.id());

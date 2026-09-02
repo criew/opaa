@@ -153,6 +153,15 @@ import java.util.function.ToIntFunction;
  * mathematically exactly on the tolerance line does not fail on floating-point rounding alone (PR
  * #301 review: {@code category:entity_description}'s {@code hitRateAt5} landed on {@code 12/20 −
  * 0.65 = −0.05000000000000004} against a tolerance of exactly {@code 0.05}).
+ *
+ * <p><b>Nachtrag (issue #1103, 2026-09-02):</b> the {@code comic-characters} baseline re-measured
+ * after {@code MarkdownDocumentPipeline} was registered no longer affects six pairs but four, all
+ * in {@code category:numeric_range} — {@code category:multi_attribute_filter}'s {@code ndcgAt10}
+ * (0.137 -&gt; 0.218) and {@code recallAt10} (0.159 -&gt; 0.245) rose enough that their relative
+ * cap now exceeds {@code 1/n=0.0476} (0.0545 and 0.0613 respectively), demonstrating the
+ * self-adjusting behaviour described above in practice rather than only in theory. See {@code
+ * BaselineComparatorTest#usesCaseBasedCheckIdentifiesExactlyTheFourKnownAffectedPairsInTheCommittedBaseline}
+ * and {@code eval/baseline/README.md}'s matching Nachtrag for the current set.
  */
 public final class BaselineComparator {
 

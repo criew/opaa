@@ -187,8 +187,9 @@ Baseline-Vergleich damit ab.
 1. Prüft `eval/corpus/comic-characters/MANIFEST.sha256` gegen die tatsächlichen Korpusdateien und
    bricht mit einer benannten Fehlermeldung ab, falls auch nur ein Byte abweicht (ADR-0011,
    Entscheidung 1 und 6).
-2. Indiziert die Korpusdateien über die reguläre Pipeline (`FileProcessingService`/
-   `ChunkingService`, Ollama-Embedding). `chunkSize` wird **nicht** vom Harness vorgegeben, sondern
+2. Indiziert die Korpusdateien über die reguläre Pipeline (`FileProcessingService`, geroutet auf die
+   `MarkdownDocumentPipeline` für dieses durchgehend Markdown-basierte Korpus seit #1103,
+   Ollama-Embedding). `chunkSize` wird **nicht** vom Harness vorgegeben, sondern
    aus der laufenden Anwendungskonfiguration gelesen (`IndexingProperties.chunkSize()`) — siehe
    ADR-0010. Der Harness assertiert diesen Wert zusätzlich gegen den zum Zeitpunkt der letzten
    Baseline bekannten Anwendungsdefault (1000); weicht er ab, bricht der Lauf ab, statt still mit

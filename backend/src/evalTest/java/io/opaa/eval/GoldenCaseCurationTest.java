@@ -2,10 +2,12 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.DocumentService;
-import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -26,11 +28,6 @@ import org.junit.jupiter.api.Test;
  * exist fails on an ordinary build.
  */
 class GoldenCaseCurationTest {
-
-  // Same values as opaa.indexing.chunk-size/chunk-overlap in application.yml, pinned here for the
-  // same reason VerwaltungChunkSizeDryRunTest pins them: no Spring context to read them from live.
-  private static final int CHUNK_SIZE = 1000;
-  private static final int CHUNK_OVERLAP = 100;
 
   private static List<GoldenCase> verwaltungCases() throws IOException {
     return GoldenDataset.load(
@@ -123,10 +120,11 @@ class GoldenCaseCurationTest {
 
   /**
    * Every declared {@code answer_span} of <b>every</b> domain resolves to a chunk of its expected
-   * document, chunked by the production {@link ChunkingService} at the application's default
-   * parameters. Catches both failure modes the Docker-requiring harness would otherwise be the
-   * first to report: a span that is not literally in its document (typo) and one that straddles a
-   * chunk boundary.
+   * document, chunked by the production {@link MarkdownDocumentPipeline} — every domain's corpus is
+   * entirely Markdown (#1103), so this is the same pipeline {@code DocumentPipelineRegistry} routes
+   * production indexing to. Catches both failure modes the Docker-requiring harness would otherwise
+   * be the first to report: a span that is not literally in its document (typo) and one that
+   * straddles a chunk boundary.
    *
    * <p>All three domains rather than only {@code verwaltung}: the check costs nothing beyond
    * chunking the documents a span points at, and a {@code city-landmarks} span broken by a future
@@ -162,11 +160,7 @@ class GoldenCaseCurationTest {
   /** Chunks every document a span points at and collects the spans that do not resolve. */
   private static int resolveSpans(
       EvalDomainConfig domain, List<GoldenCase> cases, List<String> unresolved) throws IOException {
-    IndexingProperties properties =
-        new IndexingProperties(
-            CHUNK_SIZE, CHUNK_OVERLAP, 50, null, null, List.of(), null, null, null, 0);
-    DocumentService documentService = new DocumentService();
-    ChunkingService chunkingService = new ChunkingService(properties);
+    MarkdownDocumentPipeline pipeline = new MarkdownDocumentPipeline();
     Path corpusDir = RepoPaths.evalDir().resolve("corpus").resolve(domain.name());
 
     Map<String, Map<String, String>> spansByDocument = new LinkedHashMap<>();
@@ -183,15 +177,11 @@ class GoldenCaseCurationTest {
     int checked = 0;
     for (var entry : spansByDocument.entrySet()) {
       Path file = corpusDir.resolve(entry.getKey());
-      var parsed = documentService.parseDocument(file);
-      String documentText =
-          parsed.stream()
-              .map(org.springframework.ai.document.Document::getText)
-              .reduce("", String::concat);
+      String documentText = Files.readString(file, StandardCharsets.UTF_8);
+      DocumentPipelineResult result =
+          pipeline.run(DocumentPipelineSource.ofFile(file, entry.getKey(), ".md"));
       List<String> chunkTexts =
-          chunkingService.chunkDocuments(entry.getKey(), parsed).stream()
-              .map(org.springframework.ai.document.Document::getText)
-              .toList();
+          result.chunks().stream().map(org.springframework.ai.document.Document::getText).toList();
       ChunkMap.DocumentChunkMap map =
           ChunkMap.build(entry.getKey(), documentText, chunkTexts, entry.getValue());
       for (String caseId : entry.getValue().keySet()) {

@@ -10,6 +10,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -22,12 +23,16 @@ import org.springframework.ai.document.Document;
  * HeadingSectionSplitter}. A heading line is only recognized outside a fenced code block ({@code
  * ```}), so a commented-out {@code #} line inside an embedded shell snippet is not cut on.
  *
- * <p><b>Deliberately not registered as a {@code DocumentPipeline} bean yet</b> (#1103): the
- * retrieval-quality evaluation corpus is entirely Markdown, so routing {@code .md} through this
- * pipeline instead of {@link TikaFallbackPipeline} is a measurement-contract change, not a
- * behaviour-neutral addition - registration is deferred until the eval-domain baseline update that
- * requires. Until then {@code .md} keeps running through {@link TikaFallbackPipeline} unchanged;
- * this class is fully built and tested, just not wired in.
+ * <p>A YAML frontmatter block ({@code ---} ... {@code ---}) at the very start of the file, before
+ * any heading, is metadata rather than content and is dropped instead of becoming a headingless
+ * leading chunk; a {@code ---} anywhere else (e.g. a horizontal rule mid-document, or an
+ * unterminated block at the start) is ordinary content. Frontmatter fields themselves are not
+ * evaluated here (see #1107 for metadata extraction).
+ *
+ * <p>Registered as a {@code DocumentPipeline} bean since #1103, replacing {@link
+ * TikaFallbackPipeline} for {@code .md}: the retrieval-quality evaluation corpus is entirely
+ * Markdown, so this routing change is also a measurement-contract change for the eval domains (see
+ * {@code EvalDomainConfig}).
  */
 public class MarkdownDocumentPipeline implements DocumentPipeline {
 
@@ -44,6 +49,8 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
   private static final Pattern HEADING = Pattern.compile("^ {0,3}(#{1,6})[ \\t]+(\\S.*?)[ \\t#]*$");
 
   private static final Pattern FENCE = Pattern.compile("^ {0,3}(```|~~~)");
+
+  private static final Pattern FRONTMATTER_DELIMITER = Pattern.compile("^-{3}[ \\t]*$");
 
   @Override
   public String id() {
@@ -62,7 +69,7 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
 
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
-    String text = readText(source);
+    String text = stripLeadingFrontmatter(readText(source));
     if (text.isBlank()) {
       return DocumentPipelineResult.noContent();
     }
@@ -71,6 +78,28 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
       return DocumentPipelineResult.noExtractableText();
     }
     return DocumentPipelineResult.chunked(chunks);
+  }
+
+  /**
+   * Drops a YAML frontmatter block whose opening {@code ---} is the file's very first line, up to
+   * and including its closing {@code ---}. A block without a closing delimiter is not frontmatter
+   * and is returned unchanged, since discarding it would silently drop the rest of the document.
+   */
+  private static String stripLeadingFrontmatter(String text) {
+    String[] lines = text.split("\n", -1);
+    if (lines.length == 0 || !FRONTMATTER_DELIMITER.matcher(stripCr(lines[0])).matches()) {
+      return text;
+    }
+    for (int i = 1; i < lines.length; i++) {
+      if (FRONTMATTER_DELIMITER.matcher(stripCr(lines[i])).matches()) {
+        return String.join("\n", Arrays.asList(lines).subList(i + 1, lines.length));
+      }
+    }
+    return text;
+  }
+
+  private static String stripCr(String line) {
+    return line.endsWith("\r") ? line.substring(0, line.length() - 1) : line;
   }
 
   private static String readText(DocumentPipelineSource source) {
@@ -96,7 +125,7 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
     StringBuilder paragraph = new StringBuilder();
     boolean inFence = false;
     for (String line : text.split("\n", -1)) {
-      String withoutCr = line.endsWith("\r") ? line.substring(0, line.length() - 1) : line;
+      String withoutCr = stripCr(line);
       if (FENCE.matcher(withoutCr).find()) {
         inFence = !inFence;
         appendLine(paragraph, withoutCr);

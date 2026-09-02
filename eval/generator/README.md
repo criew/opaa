@@ -17,7 +17,8 @@ byte-identische Ausgabe.
 
 Chunk-Zahl-Verifikation ohne Docker: `io.opaa.eval.VerwaltungChunkSizeDryRunTest`
 (`backend/src/evalTest/java/io/opaa/eval/`) chunked den generierten Korpus mit der echten,
-produktiven `ChunkingService` (kein Testcontainers nötig) und schlägt fehl, sobald ein Dokument
+produktiven `MarkdownDocumentPipeline` (dieselbe Pipeline, auf die `DocumentPipelineRegistry` `.md`
+seit #1103 routet; kein Testcontainers nötig) und schlägt fehl, sobald ein Dokument
 unter die Mindestzahl von 3 Chunks fällt — siehe `eval/corpus/verwaltung/SOURCE.md` für die
 zuletzt gemessenen Werte und [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)
 für Pflegeverantwortung und das Verfahren bei einer Korpus-Neuziehung. Golden Dataset, Baseline
@@ -51,7 +52,8 @@ folgender Läufe belegt, siehe PR-Beschreibung von #234) — Städte sind bereit
 
 Chunk-Zahl-Verifikation ohne Docker: `io.opaa.eval.CityLandmarksChunkSizeDryRunTest`
 (`backend/src/evalTest/java/io/opaa/eval/`) chunked den generierten Korpus mit der echten,
-produktiven `ChunkingService` (kein Testcontainers nötig) und meldet die Chunk-Zahl-Verteilung —
+produktiven `MarkdownDocumentPipeline` (dieselbe Pipeline, auf die `DocumentPipelineRegistry` `.md`
+seit #1103 routet; kein Testcontainers nötig) und meldet die Chunk-Zahl-Verteilung —
 siehe `eval/corpus/city-landmarks/SOURCE.md` für die zuletzt gemessenen Werte.
 
 ---
