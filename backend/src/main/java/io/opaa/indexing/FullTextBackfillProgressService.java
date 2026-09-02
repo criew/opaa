@@ -65,25 +65,39 @@ public class FullTextBackfillProgressService {
             + "       SELECT 1 FROM chunk_full_text f "
             + "       WHERE f.chunk_id = v.id AND f.content_tsv_version = ?"
             + "     )"
-            + "  ) AS missing";
+            + "     AND NOT EXISTS ("
+            + "       SELECT 1 FROM chunk_full_text_skip s "
+            + "       WHERE s.chunk_id = v.id AND s.content_tsv_version = ?"
+            + "     )"
+            + "  ) AS missing, "
+            + "  (SELECT count(*) FROM chunk_full_text_skip "
+            + "     WHERE library_id = ? AND content_tsv_version = ?) AS skipped";
     return jdbcTemplate.queryForObject(
         sql,
         (rs, rowNum) ->
             new FullTextBackfillProgress(
-                libraryId, rs.getLong("total"), rs.getLong("indexed"), rs.getLong("missing")),
+                libraryId,
+                rs.getLong("total"),
+                rs.getLong("indexed"),
+                rs.getLong("missing"),
+                rs.getLong("skipped")),
         libraryId.toString(),
         libraryId,
         libraryId.toString(),
+        FullTextChunkStore.CURRENT_TSV_VERSION,
+        FullTextChunkStore.CURRENT_TSV_VERSION,
+        libraryId,
         FullTextChunkStore.CURRENT_TSV_VERSION);
   }
 
   /**
    * The fill state of each of {@code libraryIds} that has at least one chunk in {@code
-   * vector_store} or {@code chunk_full_text} - a three-way {@code FULL OUTER JOIN} rather than one
-   * query per library, so a library with chunks only on one side (fully un-backfilled, or a stale
-   * full-text row left behind by a bug) is still reported instead of silently missing from the
-   * result. Libraries without a single chunk on either side do not appear; the caller supplies the
-   * zero state for those.
+   * vector_store}, {@code chunk_full_text}, or {@code chunk_full_text_skip} - a four-way {@code
+   * FULL OUTER JOIN} rather than one query per library, so a library with chunks only on one side
+   * (fully un-backfilled, a stale full-text row left behind by a bug, or one with only permanently
+   * skipped chunks - #1093) is still reported instead of silently missing from the result.
+   * Libraries without a single chunk on any side do not appear; the caller supplies the zero state
+   * for those.
    *
    * <p>The caller always passes the libraries it is allowed to display, never "all" - the query
    * would otherwise aggregate across every organization for a display that shows one of them.
@@ -96,10 +110,11 @@ public class FullTextBackfillProgressService {
     String vectorStoreTable = schemaName + "." + tableName;
     String textPlaceholders = placeholders(distinct.size());
     String sql =
-        "SELECT COALESCE(v.library_id, f.library_id, m.library_id) AS library_id, "
+        "SELECT COALESCE(v.library_id, f.library_id, m.library_id, sk.library_id) AS library_id, "
             + "       COALESCE(v.total, 0) AS total, "
             + "       COALESCE(f.indexed, 0) AS indexed, "
-            + "       COALESCE(m.missing, 0) AS missing "
+            + "       COALESCE(m.missing, 0) AS missing, "
+            + "       COALESCE(sk.skipped, 0) AS skipped "
             + "FROM ("
             + "  SELECT (metadata->>'library_id')::uuid AS library_id, count(*) AS total "
             + "  FROM "
@@ -126,13 +141,26 @@ public class FullTextBackfillProgressService {
             + "      SELECT 1 FROM chunk_full_text f2 "
             + "      WHERE f2.chunk_id = v2.id AND f2.content_tsv_version = ?"
             + "    ) "
+            + "    AND NOT EXISTS ("
+            + "      SELECT 1 FROM chunk_full_text_skip s2 "
+            + "      WHERE s2.chunk_id = v2.id AND s2.content_tsv_version = ?"
+            + "    ) "
             + "  GROUP BY 1"
-            + ") m ON COALESCE(v.library_id, f.library_id) = m.library_id";
+            + ") m ON COALESCE(v.library_id, f.library_id) = m.library_id "
+            + "FULL OUTER JOIN ("
+            + "  SELECT library_id, count(*) AS skipped FROM chunk_full_text_skip "
+            + "  WHERE library_id IN ("
+            + textPlaceholders
+            + ") AND content_tsv_version = ? GROUP BY 1"
+            + ") sk ON COALESCE(v.library_id, f.library_id, m.library_id) = sk.library_id";
 
     List<Object> arguments = new ArrayList<>();
     distinct.forEach(id -> arguments.add(id.toString()));
     arguments.addAll(distinct);
     distinct.forEach(id -> arguments.add(id.toString()));
+    arguments.add(FullTextChunkStore.CURRENT_TSV_VERSION);
+    arguments.add(FullTextChunkStore.CURRENT_TSV_VERSION);
+    arguments.addAll(distinct);
     arguments.add(FullTextChunkStore.CURRENT_TSV_VERSION);
 
     return jdbcTemplate.query(
@@ -142,7 +170,8 @@ public class FullTextBackfillProgressService {
                 (UUID) rs.getObject("library_id"),
                 rs.getLong("total"),
                 rs.getLong("indexed"),
-                rs.getLong("missing")),
+                rs.getLong("missing"),
+                rs.getLong("skipped")),
         arguments.toArray());
   }
 

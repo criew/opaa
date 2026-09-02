@@ -386,7 +386,7 @@ public class SearchStatusService {
           statsByLibrary.getOrDefault(library.getId(), LibraryDocumentStats.empty(library.getId()));
       FullTextBackfillProgress progress =
           progressByLibrary.getOrDefault(
-              library.getId(), new FullTextBackfillProgress(library.getId(), 0, 0, 0));
+              library.getId(), new FullTextBackfillProgress(library.getId(), 0, 0, 0, 0));
       result.add(
           new LibrarySearchStatus(
               library.getId(),

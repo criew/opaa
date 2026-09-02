@@ -42,7 +42,7 @@ class FullTextBackfillServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
   }
 
   @Test
@@ -250,6 +250,122 @@ class FullTextBackfillServiceIntegrationTest {
                 chunkId))
         .isEqualTo(FullTextChunkStore.CURRENT_TSV_VERSION);
     assertThat(matchesLexeme(chunkId, "xakzbauda22024")).isEqualTo(1L);
+  }
+
+  /**
+   * Reproduction for #1093: a chunk whose {@code content_tsv} PostgreSQL itself refuses to build
+   * ("string is too long for tsvector", SQLSTATE 54000/program_limit_exceeded - a genuine, not
+   * simulated, {@code to_tsvector} failure) must not take the rest of the batch down with it.
+   * Seeded directly into {@code vector_store} (bypassing {@link VectorStore#add}/the embedding
+   * model's own token-count guard) - exactly the state of a chunk written by an older pipeline
+   * version that did not yet reject such content, which is the realistic way a poison chunk like
+   * this could exist in the first place.
+   */
+  @Test
+  void aPoisonChunkIsIsolatedAndSkippedWithoutBlockingHealthyChunksInTheSameBatch() {
+    UUID healthyChunkA = seedUnindexedChunk("Befreiung von der Verwaltungsgebühr");
+    UUID healthyChunkB = seedUnindexedChunk("Zulässig im Außenbereich nach § 35 BauGB");
+    UUID poisonChunk = seedPoisonChunkExceedingTheTsvectorSizeLimit();
+
+    int resolved = backfillService.backfillBatch(10);
+
+    assertThat(resolved).isEqualTo(3);
+    assertThat(countFullTextRows()).isEqualTo(2);
+    assertThat(isIndexed(healthyChunkA)).isTrue();
+    assertThat(isIndexed(healthyChunkB)).isTrue();
+    assertThat(isIndexed(poisonChunk)).isFalse();
+    assertThat(isSkipped(poisonChunk)).isTrue();
+
+    FullTextBackfillProgress progress = progressService.progressForLibrary(libraryId);
+    assertThat(progress.totalChunks()).isEqualTo(3);
+    assertThat(progress.indexedChunks()).isEqualTo(2);
+    assertThat(progress.missingChunks()).isZero();
+    assertThat(progress.skippedChunks()).isEqualTo(1);
+    // The gate must not hold the library's two healthy, already-searchable chunks hostage to the
+    // one it will never be able to index - see FullTextBackfillProgress#isComplete's own Javadoc.
+    assertThat(progress.isComplete()).isTrue();
+  }
+
+  /**
+   * A permanently skipped chunk is not retried on every future tick - it would otherwise cost a
+   * failing batch, and therefore isolation work, forever.
+   */
+  @Test
+  void aPermanentlySkippedChunkIsNeverSelectedAgain() {
+    seedPoisonChunkExceedingTheTsvectorSizeLimit();
+    assertThat(backfillService.backfillBatch(10)).isEqualTo(1);
+
+    assertThat(backfillService.backfillBatch(10)).isZero();
+  }
+
+  /**
+   * The mechanism that keeps a skip from being permanent in the wrong sense (#1093): a skip
+   * recorded at an older {@code content_tsv_version} - simulating one that predates a lexical
+   * analysis chain change, exactly like a stale {@code chunk_full_text} row - no longer suppresses
+   * the chunk once the current version has moved past it. This is the same version-based
+   * invalidation {@link FullTextChunkStore#CURRENT_TSV_VERSION}'s own Javadoc already documents for
+   * {@code chunk_full_text} itself, applied identically to {@code chunk_full_text_skip}.
+   */
+  @Test
+  void aChunkSkippedAtAnOlderVersionIsEligibleForRetryAfterAVersionBump() {
+    UUID chunkId = seedUnindexedChunk("Befreiung von der Verwaltungsgebühr wegen Bedürftigkeit");
+    jdbcTemplate.update(
+        "INSERT INTO chunk_full_text_skip (chunk_id, document_id, library_id, "
+            + "content_tsv_version, error_message) VALUES (?, ?, ?, ?, ?)",
+        chunkId,
+        documentId,
+        libraryId,
+        (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1),
+        "simulated stale skip from a previous content_tsv_version");
+
+    int resolved = backfillService.backfillBatch(10);
+
+    assertThat(resolved).isEqualTo(1);
+    assertThat(isIndexed(chunkId)).isTrue();
+  }
+
+  private boolean isIndexed(UUID chunkId) {
+    Long count =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM chunk_full_text WHERE chunk_id = ? AND content_tsv_version = ?",
+            Long.class,
+            chunkId,
+            FullTextChunkStore.CURRENT_TSV_VERSION);
+    return count == 1L;
+  }
+
+  private boolean isSkipped(UUID chunkId) {
+    Long count =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM chunk_full_text_skip WHERE chunk_id = ? AND "
+                + "content_tsv_version = ?",
+            Long.class,
+            chunkId,
+            FullTextChunkStore.CURRENT_TSV_VERSION);
+    return count == 1L;
+  }
+
+  /**
+   * Many DISTINCT words, not one repeated word: {@code to_tsvector} deduplicates identical lexemes,
+   * so a single overlong "word" is silently truncated rather than rejected - it takes enough
+   * distinct lexemes to push the resulting {@code tsvector} itself past PostgreSQL's 1 MiB size
+   * limit to reproduce a genuine {@code to_tsvector} failure.
+   */
+  private UUID seedPoisonChunkExceedingTheTsvectorSizeLimit() {
+    UUID chunkId = UUID.randomUUID();
+    StringBuilder content = new StringBuilder();
+    for (int i = 0; i < 200_000; i++) {
+      content.append("wort").append(i).append(' ');
+    }
+    String zeroVector = "[" + String.join(",", java.util.Collections.nCopies(1536, "0")) + "]";
+    jdbcTemplate.update(
+        "INSERT INTO public.vector_store (id, content, metadata, embedding) "
+            + "VALUES (?, ?, ?::jsonb, ?::vector)",
+        chunkId,
+        content.toString(),
+        "{\"document_id\":\"" + documentId + "\",\"library_id\":\"" + libraryId + "\"}",
+        zeroVector);
+    return chunkId;
   }
 
   private long identifierMatches(UUID chunkId) {

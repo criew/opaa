@@ -1309,7 +1309,21 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
 - **Wie wird der Volltextindex bei einer Änderung der Analysekette nachgezogen?** Eine geänderte
   `tsvector`-Konfiguration macht bestehende Einträge inkonsistent — vergleichbar mit einem Wechsel des
   Einbettungsmodells, aber ohne dessen Modellaufrufe. Vollständiger Neuaufbau des Volltextindex ohne
-  erneutes Einbetten wäre der naheliegende Weg; er ist noch nicht ausgearbeitet.
+  erneutes Einbetten wäre der naheliegende Weg; er ist noch nicht ausgearbeitet. **Der
+  Robustheitsteil ist mit #1093 entschieden:** `content_tsv_version` als Versionsstempel (bereits
+  seit #1047 vorhanden) macht jede Analysekettenänderung zu genau dem Fall, den
+  `FullTextBackfillService` ohnehin beherrscht — ein Versionssprung markiert den gesamten Bestand
+  als rückstandsbehaftet, und der Backfill arbeitet ihn wie jeden anderen Rückstand ab. Damit ein
+  einzelner „Gift-Chunk" (Inhalt, an dem `to_tsvector` scheitert, z. B. weil der resultierende
+  Vektor Postgres' 1-MiB-Grenze überschreitet) dabei nicht den gesamten Bestand blockiert, halbiert
+  `FullTextBackfillService.backfillBatch` einen fehlschlagenden Batch rekursiv, bis der
+  verursachende Chunk isoliert ist, und trägt ihn dann dauerhaft in `chunk_full_text_skip` ein statt
+  ihn erneut zu versuchen — sichtbar über `FullTextBackfillProgress#skippedChunks`, ohne
+  `FullTextBackfillGate` an dieser einen Bibliothek für immer zu blockieren (`isComplete()` gated
+  nur auf noch ausstehende, nicht auf dauerhaft übersprungene Chunks). Eine echte
+  Datenbankstörung (Verbindung weg, Pool erschöpft) wird über eine `SELECT 1`-Sonde von einem
+  Gift-Chunk unterschieden und lässt weiterhin `FullTextBackfillScheduler`s
+  Backoff greifen.
 - **Wirkt der Kontextpräfix aus Contextual Chunking (#933/#940) auch in den Volltextindex?**
   Anthropics „contextual BM25" spricht dafür, und die Roadmap sieht es in Phase 2a vor. Es ist aber eine
   eigene Messung wert: Ein Titelpräfix in jedem Chunk verändert die Termstatistik des ganzen Index.

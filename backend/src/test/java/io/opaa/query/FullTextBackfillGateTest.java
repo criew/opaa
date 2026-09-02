@@ -36,8 +36,14 @@ class FullTextBackfillGateTest {
   private final FullTextBackfillGate gate = new FullTextBackfillGate(progressService, clock);
 
   private void stubProgress(UUID libraryId, long missingChunks) {
+    stubProgress(libraryId, missingChunks, 0);
+  }
+
+  private void stubProgress(UUID libraryId, long missingChunks, long skippedChunks) {
     when(progressService.progressForLibrary(libraryId))
-        .thenReturn(new FullTextBackfillProgress(libraryId, 10, 10 - missingChunks, missingChunks));
+        .thenReturn(
+            new FullTextBackfillProgress(
+                libraryId, 10, 10 - missingChunks - skippedChunks, missingChunks, skippedChunks));
   }
 
   /**
@@ -126,6 +132,22 @@ class FullTextBackfillGateTest {
 
     stubProgress(BACKFILLING, 0);
     clock.advanceSeconds(FullTextBackfillGate.RECHECK_INTERVAL.toSeconds() + 1);
+
+    assertThat(gate.searchableLibraries(Set.of(BACKFILLING))).containsExactly(BACKFILLING);
+  }
+
+  /**
+   * #1093: a library with a permanently skipped ("poison") chunk must not be excluded from the
+   * lexical path forever. {@code missingChunks} is what {@link
+   * FullTextBackfillProgress#isComplete()} gates on, not {@code skippedChunks} - a library whose
+   * only remaining gap is a chunk the backfill gave up on for good is therefore searchable, exactly
+   * like one with none. See {@code FullTextBackfillProgress#isComplete}'s own Javadoc for why the
+   * alternative (blocking on a skipped chunk too) would silence every other, healthy chunk in the
+   * library forever.
+   */
+  @Test
+  void aLibraryWithOnlyPermanentlySkippedChunksIsStillSearchable() {
+    stubProgress(BACKFILLING, 0, 3);
 
     assertThat(gate.searchableLibraries(Set.of(BACKFILLING))).containsExactly(BACKFILLING);
   }

@@ -135,6 +135,34 @@ public class FullTextChunkStore {
   }
 
   /**
+   * Permanently records that {@link FullTextBackfillService} gave up on {@code chunkId} at {@link
+   * #CURRENT_TSV_VERSION} after isolating it as the one row a batch cannot get past (see that
+   * class's own Javadoc for the isolation strategy) - a "poison chunk". {@code ON CONFLICT
+   * (chunk_id) DO UPDATE} keeps this idempotent across retries and, in the rare case a chunk was
+   * already skipped at an older version, replaces that stale attempt with the current one.
+   *
+   * <p>Not undone by a later successful index of the same chunk: once {@code content_tsv_version}
+   * here no longer matches {@link #CURRENT_TSV_VERSION} (a later version bump made the chunk
+   * eligible again and it indexed successfully this time), {@link FullTextBackfillProgressService}
+   * simply stops counting the stale row - see that class's own Javadoc. No explicit cleanup needed,
+   * mirroring how a stale {@code chunk_full_text} row is handled.
+   */
+  void recordSkip(UUID chunkId, UUID documentId, UUID libraryId, String errorMessage) {
+    jdbcTemplate.update(
+        "INSERT INTO chunk_full_text_skip (chunk_id, document_id, library_id, "
+            + "content_tsv_version, error_message, skipped_at) VALUES (?, ?, ?, ?, ?, now()) "
+            + "ON CONFLICT (chunk_id) DO UPDATE SET "
+            + "content_tsv_version = EXCLUDED.content_tsv_version, "
+            + "error_message = EXCLUDED.error_message, "
+            + "skipped_at = EXCLUDED.skipped_at",
+        chunkId,
+        documentId,
+        libraryId,
+        CURRENT_TSV_VERSION,
+        errorMessage);
+  }
+
+  /**
    * Deletes every {@code chunk_full_text} row for {@code documentId} - mirrors {@link
    * VectorChunkStore#deleteByDocumentId}.
    */
