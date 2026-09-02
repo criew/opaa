@@ -142,6 +142,34 @@ class RerankPipelineTest {
   }
 
   /**
+   * The role is switched on but was not usable when the run started. Fusion must then never have
+   * widened its budget, so the stage can pass the state on untouched and still no more than {@code
+   * top-k} chunks reach answer generation.
+   */
+  @Test
+  void aRoleThatWasNotUsableAtTheStartLeavesTopKChunks() {
+    RetrievalPipelineResult result = run(WITH_RERANKING, RerankAvailability.NOT_USABLE);
+
+    assertThat(stageOf(result, RetrievalStageName.RANK_FUSION).outgoingCount()).isEqualTo(TOP_K);
+    assertThat(stageOf(result, RetrievalStageName.RERANK).status())
+        .isEqualTo(StageStatus.UNAVAILABLE);
+    assertThat(result.chunks()).hasSize(TOP_K);
+  }
+
+  /**
+   * The stage's own parameter switches it off even though the role itself is usable - the same
+   * untouched-state path, and the same {@code top-k} cap.
+   */
+  @Test
+  void aCandidateCountOfZeroLeavesTopKChunksEvenWithAUsableRole() {
+    RetrievalPipelineResult result = run(WITHOUT_RERANKING, RerankAvailability.USABLE);
+
+    assertThat(stageOf(result, RetrievalStageName.RANK_FUSION).outgoingCount()).isEqualTo(TOP_K);
+    assertThat(stageOf(result, RetrievalStageName.RERANK).status()).isEqualTo(StageStatus.DISABLED);
+    assertThat(result.chunks()).hasSize(TOP_K);
+  }
+
+  /**
    * The failure the specification insists must not go unnoticed: the switch is on and the endpoint
    * fails mid-run. The query still answers with top-k chunks, and the protocol says the stage was
    * unavailable rather than pretending it decided something.

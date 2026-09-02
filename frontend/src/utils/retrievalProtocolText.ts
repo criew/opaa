@@ -215,7 +215,10 @@ export function translateStageNote(note: string): string {
   return translate(NOTE_RULES, note)
 }
 
-/** The German wording of one candidate list label; `null` is the fused list of a completed run. */
+/**
+ * The German wording of one candidate list label. A missing label means the fused list of a
+ * completed run, so it gets the same wording as the explicit fused label - one name per list.
+ */
 export function translateListLabel(label: string | null | undefined): string {
-  return label == null ? 'fusioniert' : translate(LIST_LABEL_RULES, label)
+  return label == null ? 'fusioniert (RRF)' : translate(LIST_LABEL_RULES, label)
 }

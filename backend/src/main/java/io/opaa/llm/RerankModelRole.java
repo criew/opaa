@@ -151,10 +151,14 @@ public class RerankModelRole implements RerankRoleStatusProvider {
       // ordering exactly as an unreachable endpoint does.
       degradedCalls.incrementAndGet();
       lastKnown.set(status(RerankRoleState.UNREACHABLE, e.getMessage()));
+      // The exception object, not just its message: a programming error caught here (NPE from a
+      // client bug, say) has a null message and would otherwise be indistinguishable from a dead
+      // endpoint.
       log.warn(
           "Rerank call against {} failed, continuing without reranking: {}",
           properties.describeWithoutSecrets(),
-          e.getMessage());
+          e.getMessage(),
+          e);
       return List.of();
     }
   }

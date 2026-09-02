@@ -129,8 +129,8 @@ describe('translateListLabel', () => {
     expect(translateListLabel('fused (RRF)')).toBe('fusioniert (RRF)')
   })
 
-  it('names the fused list when a verdict carries no label', () => {
-    expect(translateListLabel(null)).toBe('fusioniert')
-    expect(translateListLabel(undefined)).toBe('fusioniert')
+  it('names a label-less verdict exactly like the explicit fused label', () => {
+    expect(translateListLabel(null)).toBe('fusioniert (RRF)')
+    expect(translateListLabel(undefined)).toBe('fusioniert (RRF)')
   })
 })

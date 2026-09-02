@@ -12,10 +12,12 @@ import org.springframework.stereotype.Component;
  * QueryProperties#topK} (docs/features/hybrid-retrieval.md, Arbeitspaket 4). Sits between {@link
  * RankFusionStage} and {@link DocumentCompletionStage}.
  *
- * <p><b>This stage restores the {@code top-k} cap on every path it can take</b> - reranked,
- * switched off, or unavailable. {@link RankFusionStage} widens its budget to {@link
- * QueryProperties#rerankCandidateCount} whenever reranking is active, so a path that passed on more
- * than {@code top-k} chunks would hand a multiple of the intended context to answer generation.
+ * <p><b>No path passes on more than {@code top-k} chunks.</b> {@link RankFusionStage} widens its
+ * budget to {@link QueryProperties#rerankCandidateCount} only while reranking is active, so the
+ * paths that end in {@code identity(...)} - switched off, or unavailable before the run - are
+ * already capped and leave the state untouched. Only the path where the endpoint was asked and
+ * scored nothing has to restore the cap itself, because the budget was widened for a reranker that
+ * then did not deliver.
  *
  * <p>A chunk the reranker did not score keeps its fused order behind every scored one - whether it
  * sat behind the candidate window or the endpoint simply did not score it. An endpoint that answers
