@@ -165,7 +165,9 @@ class AsyncIndexingExecutorTest {
 
     executor.execute(UUID.randomUUID(), library);
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(1), eq(0), anyInt());
+    // eq(0) on documentsIndexedTotal, not anyInt(): the claim under test is that a document the
+    // pipeline could not parse at all must not inflate the run's indexed-total either.
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(1), eq(0), eq(0));
     verify(indexingRunEventRepository, timeout(2000))
         .save(
             argThat(
