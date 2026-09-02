@@ -11,16 +11,23 @@ import { test as base, expect, type Page } from '@playwright/test'
  * `opaa.auth.initial-admin-email`, so it is provisioned as SYSTEM_ADMIN on first request.
  * `dev-user` is a plain user.
  *
- * `dev-outsider` exists only for this suite - it is added on top via environment variables in
- * e2e/docker-compose.e2e.yml (see the comment there), not part of application.yml's defaults.
- * Scenarios that need an account with no relationship whatsoever to a piece of test data (the
- * negative case in test(e2e) #424: a share must not leak to someone it was never extended to) use
- * this instead of `dev-user`, so that account's own grants (or lack of them) from other scenarios
- * never accidentally decide the outcome.
+ * `dev-outsider` and `dev-format-pipelines` exist only for this suite - both are added on top via
+ * environment variables in e2e/docker-compose.e2e.yml (see the comment there), not part of
+ * application.yml's defaults. `dev-outsider` is for scenarios that need an account with no
+ * relationship whatsoever to a piece of test data (the negative case in test(e2e) #424: a share
+ * must not leak to someone it was never extended to) - used instead of `dev-user`, so that
+ * account's own grants (or lack of them) from other scenarios never accidentally decide the
+ * outcome. `dev-format-pipelines` (#1109) is for scenarios that upload documents without asking
+ * any chat question at all: with the AI stub's deterministic embedding (every chunk equally
+ * "similar" regardless of content, see e2e/ai-stub/server.mjs), an upload into any of the other
+ * three accounts risks crowding a *different*, citation-checking scenario's expected source out
+ * of the retrieved top-k - `dev-outsider` included, since knowledge-libraries.spec.ts's own
+ * negative scenarios already ask a question under that account too.
  */
 const ADMIN_USER = 'dev-admin'
 const REGULAR_USER = 'dev-user'
 const OUTSIDER_USER = 'dev-outsider'
+const FORMAT_PIPELINES_USER = 'dev-format-pipelines'
 
 // display_name values from e2e/docker-compose.e2e.yml's OPAA_AUTH_DEV_USERS_* - what
 // GET /api/v1/auth/me actually returns for each subject, used below to prove which identity a
@@ -29,6 +36,7 @@ const DEV_USER_DISPLAY_NAMES: Record<string, string> = {
   [ADMIN_USER]: 'Dev Admin',
   [REGULAR_USER]: 'Dev User',
   [OUTSIDER_USER]: 'Dev Outsider',
+  [FORMAT_PIPELINES_USER]: 'Dev Format Pipelines',
 }
 
 /**
@@ -80,6 +88,7 @@ export const test = base.extend<{
   authenticatedPage: Page
   regularUserPage: Page
   outsiderPage: Page
+  formatPipelinesPage: Page
 }>({
   /** The app as SYSTEM_ADMIN — the default for scenarios that need indexing or admin endpoints. */
   authenticatedPage: async ({ page }, use) => {
@@ -105,6 +114,19 @@ export const test = base.extend<{
     const context = await browser.newContext()
     const page = await context.newPage()
     await openAs(page, OUTSIDER_USER)
+    await use(page)
+    await context.close()
+  },
+
+  /**
+   * The app as a fourth, isolated account for scenarios that upload documents but never ask a
+   * chat question - see the module doc comment above for why even `outsiderPage` is not safe for
+   * that (#1109).
+   */
+  formatPipelinesPage: async ({ browser }, use) => {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+    await openAs(page, FORMAT_PIPELINES_USER)
     await use(page)
     await context.close()
   },

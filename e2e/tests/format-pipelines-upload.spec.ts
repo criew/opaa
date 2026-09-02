@@ -35,7 +35,7 @@ const LIBRARY_NAME = `E2E Formatbibliothek ${runId}`
  */
 test.describe('Formatabdeckung Upload', () => {
   test('XLSX, HTML und EML werden in einem Durchlauf hochgeladen und jeweils indiziert', async ({
-    authenticatedPage: page,
+    formatPipelinesPage: page,
   }) => {
     await createLibraryWithDocuments(page, LIBRARY_NAME, [
       { path: join(FIXTURE_DIR, 'formatdokument.xlsx'), name: 'formatdokument.xlsx' },
