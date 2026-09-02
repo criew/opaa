@@ -97,10 +97,20 @@ public class DocumentPipelineRegistry {
    * ripple through every call site's argument list.
    *
    * @param detectedExtension {@code null} exactly when {@code pipeline} is the fallback because
-   *     routing could not resolve one (detection failed, or the content is not admitted at all -
+   *     routing could not resolve one (the content is not admitted at all, or reading it failed -
    *     see {@link #pipelineFor(String, String)})
+   * @param formatDetectionFailed {@code true} only when {@code file}'s bytes could not be read for
+   *     detection at all (deleted, permission-denied, briefly locked) - distinct from a content
+   *     decision that admits nothing: a caller persisting {@code detectedExtension} (#1126) must
+   *     not treat this transient case as a confirmed "no extension".
    */
-  public record Routed(DocumentPipeline pipeline, String detectedExtension) {}
+  public record Routed(
+      DocumentPipeline pipeline, String detectedExtension, boolean formatDetectionFailed) {
+
+    public Routed(DocumentPipeline pipeline, String detectedExtension) {
+      this(pipeline, detectedExtension, false);
+    }
+  }
 
   /**
    * The pipeline for {@code file}, decided from its bytes. A file whose content cannot be read for
@@ -120,7 +130,7 @@ public class DocumentPipelineRegistry {
       return routedPipelineFor(fileName, SupportedDocumentFormats.detectMediaType(file));
     } catch (IOException e) {
       log.warn("Could not read {} to route it to a pipeline, using the fallback pipeline", file, e);
-      return new Routed(fallback, null);
+      return new Routed(fallback, null, true);
     }
   }
 
@@ -147,6 +157,24 @@ public class DocumentPipelineRegistry {
    */
   public DocumentPipeline fallbackPipeline() {
     return fallback;
+  }
+
+  /**
+   * The id of the pipeline that claims {@code routingExtension} today - the exact counterpart of
+   * {@link #pipelineFor(String, String)} for a chunk's own {@link
+   * ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} instead of a freshly detected media type
+   * (#1126). Used by {@link PipelineReindexService} to tell whether a chunk is still routed the way
+   * it would be today, without re-reading or re-detecting its source file.
+   *
+   * @param routingExtension {@code null} or {@link ChunkPipelineMetadata#NO_ROUTING_EXTENSION} for
+   *     a chunk whose routing never resolved an extension - resolves to {@link #fallbackPipeline()}
+   *     the same way {@link #routedPipelineFor(String, String)} would have
+   */
+  public String pipelineIdForRoutingExtension(String routingExtension) {
+    if (routingExtension == null || routingExtension.isEmpty()) {
+      return fallback.id();
+    }
+    return byFormat.getOrDefault(routingExtension, fallback).id();
   }
 
   /** Every registered pipeline - the source of the reported current versions. */

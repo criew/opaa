@@ -196,7 +196,12 @@ public class FileProcessingService {
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
 
       // Enrich chunks with metadata and store via VectorStore
-      storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(fileName), pipeline);
+      storeChunks(
+          doc,
+          chunks,
+          ChunkContextTitle.deriveTitle(fileName),
+          pipeline,
+          routingExtensionFor(routed));
 
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, null);
@@ -332,7 +337,12 @@ public class FileProcessingService {
       // so ChunkContextTitle's filesystem-style-name assumption always applies; only
       // processRssEntry's own entry-body document (never routed through processUrlFile) uses a
       // headline instead - see storeChunks's Javadoc for why that distinction is call-site-bound.
-      storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(fileName), pipeline);
+      storeChunks(
+          doc,
+          chunks,
+          ChunkContextTitle.deriveTitle(fileName),
+          pipeline,
+          routingExtensionFor(routed));
 
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, lastModified);
@@ -441,7 +451,9 @@ public class FileProcessingService {
       }
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
 
-      storeChunks(doc, chunks, contextTitle, pipeline);
+      // No routing decision was ever made for this text (see the pipeline selection above) - no
+      // routing key is written at all, same as a failed detection (#routingExtensionFor).
+      storeChunks(doc, chunks, contextTitle, pipeline, Optional.empty());
 
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, publishedAt);
@@ -588,7 +600,12 @@ public class FileProcessingService {
         vectorChunkStore.deleteByDocumentId(doc.getId());
         previousChunksDeleted = true;
       }
-      storeChunks(doc, chunks, ChunkContextTitle.deriveTitle(doc.getFileName()), pipeline);
+      storeChunks(
+          doc,
+          chunks,
+          ChunkContextTitle.deriveTitle(doc.getFileName()),
+          pipeline,
+          routingExtensionFor(routed));
 
       int updated = documentRepository.markIndexed(doc.getId(), chunks.size(), Instant.now());
       if (updated == 0) {
@@ -730,6 +747,23 @@ public class FileProcessingService {
   }
 
   /**
+   * The value to persist as {@link ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} for {@code
+   * routed}, or {@link Optional#empty()} to omit the key entirely - {@link
+   * DocumentPipelineRegistry.Routed#formatDetectionFailed()} means the bytes could not be read at
+   * all (a transient read failure, not a routing verdict), so nothing is persisted and {@code
+   * PipelineReindexService} keeps using the pre-#1126 file-name approximation for this chunk.
+   */
+  private static Optional<String> routingExtensionFor(DocumentPipelineRegistry.Routed routed) {
+    if (routed.formatDetectionFailed()) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        routed.detectedExtension() != null
+            ? routed.detectedExtension()
+            : ChunkPipelineMetadata.NO_ROUTING_EXTENSION);
+  }
+
+  /**
    * Enriches {@code chunks} with permission-filter/citation metadata and, for a document that split
    * into 2 or more chunks, {@code contextTitle} as a prefix on the embedding input only (#933,
    * "Contextual Chunking") - see {@link #chunkEmbedFormatterWithPrefix} for the prefix contract. A
@@ -758,12 +792,16 @@ public class FileProcessingService {
    *     chunks are attributed to (see {@code MailDocumentPipeline#processAttachment}), so filtering
    *     by its own declaration would silently drop a key only the inner, per-attachment pipeline
    *     declares
+   * @param routingExtension see {@link #routingExtensionFor}: written onto every chunk as {@link
+   *     ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} when present, omitted entirely when
+   *     empty (#1126)
    */
   private void storeChunks(
       Document document,
       List<org.springframework.ai.document.Document> chunks,
       String contextTitle,
-      DocumentPipeline pipeline) {
+      DocumentPipeline pipeline,
+      Optional<String> routingExtension) {
     boolean documentWasSplit = chunks.size() >= 2;
     ContentFormatter embedFormatter =
         documentWasSplit && contextTitle != null
@@ -791,6 +829,13 @@ public class FileProcessingService {
                   metadata.put(
                       ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY,
                       (int) pipeline.version());
+                  // The routing key actually used (ingestion-pipelines.md, Querschnittsregel (d),
+                  // #1126) - what lets a later pipeline-version check compare exactly instead of
+                  // re-guessing a document's format from its file name.
+                  routingExtension.ifPresent(
+                      extension ->
+                          metadata.put(
+                              ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, extension));
                   // The registry-wide declared passthrough keys (DocumentPipeline#
                   // passthroughMetadataKeys) - e.g. the chunk's Fundort, or a message's Kopfdaten
                   // (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) - copied only when this
