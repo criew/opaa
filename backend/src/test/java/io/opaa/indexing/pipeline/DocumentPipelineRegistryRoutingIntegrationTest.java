@@ -1,7 +1,6 @@
 package io.opaa.indexing.pipeline;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
@@ -10,7 +9,6 @@ import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 
@@ -75,24 +73,22 @@ class DocumentPipelineRegistryRoutingIntegrationTest {
                 .id())
         .isEqualTo("odp");
 
-    // Every format without its own registered pipeline keeps going through TikaFallbackPipeline -
-    // the verhaltensneutral guarantee of Teil 1 (a new pipeline bean must never change this for a
-    // format it does not claim).
-    assertThat(registry.pipelineFor("notiz.md", "text/plain").id()).isEqualTo("tika-fallback");
+    // #1103: Markdown is claimed by its own pipeline now, unlike every other format without one
+    // registered, which keeps going through TikaFallbackPipeline - the verhaltensneutral guarantee
+    // of Teil 1 (a new pipeline bean must never change this for a format it does not claim).
+    assertThat(registry.pipelineFor("notiz.md", "text/plain").id()).isEqualTo("markdown");
     assertThat(registry.pipelineFor("notiz.txt", "text/plain").id()).isEqualTo("tika-fallback");
     assertThat(registry.pipelineFor("altakte.doc", "application/msword").id())
         .isEqualTo("tika-fallback");
   }
 
   @Test
-  void markdownDocumentPipelineIsDeliberatelyNotRegisteredAsABean() {
-    // #1103: MarkdownDocumentPipeline is built and tested but not wired into
-    // IndexingConfiguration - registering it would silently change the chunk shape of the entire
-    // eval corpus (Markdown), see ingestion-pipelines.md's "Umgesetzt (#1061)" section. Asserting
-    // the bean's absence, not just that routing falls back for .md above, catches a regression even
-    // if a future change happened to keep the fallback routing correct by coincidence.
-    assertThatThrownBy(() -> applicationContext.getBean(MarkdownDocumentPipeline.class))
-        .isInstanceOf(NoSuchBeanDefinitionException.class);
+  void markdownDocumentPipelineIsRegisteredAsABean() {
+    // #1103: MarkdownDocumentPipeline is registered like every other format pipeline, replacing
+    // TikaFallbackPipeline for .md - asserting the bean's presence, not just the routing decision
+    // above, catches a regression even if a future change happened to keep the routing correct by
+    // coincidence (e.g. a second, competing bean that also claims ".md").
+    assertThat(applicationContext.getBean(MarkdownDocumentPipeline.class)).isNotNull();
   }
 
   /**

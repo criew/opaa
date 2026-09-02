@@ -8,6 +8,7 @@ import io.opaa.indexing.pipeline.TikaFallbackPipeline;
 import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
 import io.opaa.indexing.pipeline.mail.MailDocumentPipeline;
 import io.opaa.indexing.pipeline.mail.MailProperties;
+import io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline;
 import io.opaa.indexing.pipeline.office.DocxDocumentPipeline;
 import io.opaa.indexing.pipeline.office.OdfProperties;
 import io.opaa.indexing.pipeline.office.OdpDocumentPipeline;
@@ -104,8 +105,16 @@ public class IndexingConfiguration {
     return new HtmlDocumentPipeline();
   }
 
-  // MarkdownDocumentPipeline is deliberately not registered here - see its own Javadoc for why
-  // (#1103, eval-corpus measurement contract).
+  /**
+   * Markdown pipeline (docs/features/ingestion-pipelines.md, Teil 2) - registered as an ordinary
+   * {@link DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}. Registration was
+   * deferred until #1103 because the eval corpus is entirely Markdown and the heading-aware cut
+   * changes the eval measurement contract (see {@link MarkdownDocumentPipeline}'s own Javadoc).
+   */
+  @Bean
+  MarkdownDocumentPipeline markdownDocumentPipeline() {
+    return new MarkdownDocumentPipeline();
+  }
 
   /**
    * DOCX pipeline (docs/features/ingestion-pipelines.md, Teil 2) - registered as an ordinary {@link
