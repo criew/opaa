@@ -1,9 +1,13 @@
 package io.opaa.eval;
 
 /**
- * One variant's outcome within a comparison run (issue #1041): either it ran and produced a {@link
- * PipelineEvaluationReport}, or it was skipped because {@link VariantPrerequisites} found an unmet
- * prerequisite — never both, never neither.
+ * One variant's outcome within a comparison run (issue #1041): either it produced a usable {@link
+ * PipelineEvaluationReport}, or it produced none and says why — never both, never neither.
+ *
+ * <p>Two ways to end up without a report, both carrying a {@code skipReason}: an unmet prerequisite
+ * found before the variant ({@link VariantPrerequisites}), or a measurement that ran but cannot be
+ * believed ({@link #notMeasurable}). A report that does not mean what the variant's name says is
+ * worse than no report, so it is dropped rather than published with a caveat.
  *
  * @param report for a single-run variant, that run's report; for a variant with an LLM component
  *     (issue #1044, docs/features/retrieval-benchmark.md §3), the <b>median run</b> among the
@@ -46,6 +50,17 @@ public record VariantOutcome(
   }
 
   public static VariantOutcome skipped(PipelineVariant variant, String reason) {
+    return new VariantOutcome(variant, false, reason, null, null);
+  }
+
+  /**
+   * A variant that ran but whose numbers do not describe the configuration its name promises —
+   * today a reranking variant whose model role stopped delivering mid-run ({@link RerankRunWatch}).
+   * Deliberately indistinguishable from a skipped variant in the report: both say "no measured
+   * value, and here is why", and only that keeps a partially degraded run from being read as a
+   * result.
+   */
+  public static VariantOutcome notMeasurable(PipelineVariant variant, String reason) {
     return new VariantOutcome(variant, false, reason, null, null);
   }
 

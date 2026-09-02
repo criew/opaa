@@ -41,9 +41,11 @@ public final class VariantRunner {
       List<GoldenCase> goldenCases) {
     QueryProperties effective =
         VariantQueryProperties.apply(productionQueryProperties, variant.queryOverrides());
+    RerankRunWatch rerankWatch = RerankRunWatch.of(dependencies.rerankModelRole());
 
     var unmetReason =
-        VariantPrerequisites.unmetReason(variant, effective, identity.fullTextBackfillComplete());
+        VariantPrerequisites.unmetReason(
+            variant, effective, identity.fullTextBackfillComplete(), rerankWatch.usable());
     if (unmetReason.isPresent()) {
       return VariantOutcome.skipped(variant, unmetReason.get());
     }
@@ -61,7 +63,8 @@ public final class VariantRunner {
                 indexingProperties,
                 evalLibraryId,
                 goldenCases,
-                Instant.now()));
+                Instant.now()),
+        rerankWatch);
   }
 
   /**
@@ -72,8 +75,42 @@ public final class VariantRunner {
    * resulting {@link VariantOutcome} without a real {@code QueryService} or corpus. The public
    * overload's prerequisite check is deliberately <b>not</b> repeated here: by the time this method
    * is reached, {@code effective} is already known to be measurable.
+   *
+   * <p><b>{@code rerankWatch} is read before and after the measurement</b>, not only before it (see
+   * {@link RerankRunWatch}): a variant whose reranking dropped out part-way through measured a
+   * third configuration — neither the reranked one nor the one configured without reranking — and
+   * is reported as not measurable instead of as a number.
    */
   static VariantOutcome run(
+      PipelineVariant variant,
+      QueryProperties effective,
+      Supplier<PipelineEvaluationReport> measure,
+      RerankRunWatch rerankWatch) {
+    boolean reranks = effective.rerankCandidateCount() > 0 && rerankWatch.usable();
+    long degradedBefore = rerankWatch.degradedCallCount();
+
+    VariantOutcome outcome = measureAll(variant, effective, measure);
+    if (!reranks) {
+      return outcome;
+    }
+    long degradedDuringRun = rerankWatch.degradedCallCount() - degradedBefore;
+    if (degradedDuringRun == 0 && rerankWatch.usable()) {
+      return outcome;
+    }
+    return VariantOutcome.notMeasurable(
+        variant,
+        "Diese Variante hat mit nutzbarer Rerank-Modellrolle begonnen, aber während des Laufs "
+            + "hat die Rolle nicht durchgehend geliefert ("
+            + degradedDuringRun
+            + " Aufruf(e) ohne verwertbare Rangfolge, Rolle am Ende "
+            + (rerankWatch.usable() ? "wieder nutzbar" : "nicht nutzbar")
+            + "). Die betroffenen Fragen sind auf die fusionierte Reihenfolge des verbreiterten "
+            + "Fensters zurückgefallen — weder das Ergebnis mit Reranking noch das der "
+            + "Konfiguration ohne Reranking. Die Zahlen dieses Laufs sind deshalb nicht "
+            + "verwertbar; Endpunkt prüfen und die Variante wiederholen.");
+  }
+
+  private static VariantOutcome measureAll(
       PipelineVariant variant,
       QueryProperties effective,
       Supplier<PipelineEvaluationReport> measure) {

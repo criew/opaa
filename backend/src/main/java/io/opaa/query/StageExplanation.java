@@ -49,7 +49,22 @@ public record StageExplanation(
    * from the protocol is the failure mode this whole record exists to make impossible.
    */
   static StageExplanation notRun(RetrievalStageName stage, StageStatus status, int candidateCount) {
+    return notRun(stage, status, candidateCount, candidateCount, status.note());
+  }
+
+  /**
+   * A stage that did not do its work but still had to hand something on - with its own note instead
+   * of the status's generic one, and with an outgoing count that may differ from the incoming one:
+   * {@link RerankStage} restores the {@code top-k} cap even when it could not rerank, and a
+   * protocol claiming it passed everything through would misstate the selection.
+   */
+  static StageExplanation notRun(
+      RetrievalStageName stage,
+      StageStatus status,
+      int incomingCount,
+      int outgoingCount,
+      String note) {
     return new StageExplanation(
-        stage, status, candidateCount, candidateCount, List.of(), List.of(status.note()));
+        stage, status, incomingCount, outgoingCount, List.of(), List.of(note));
   }
 }

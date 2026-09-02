@@ -270,6 +270,7 @@ final class SearchAdminResponseMapper {
       case FULL_TEXT_SEARCH -> RetrievalStage.FULL_TEXT_SEARCH;
       case MMR_SELECTION -> RetrievalStage.MMR_SELECTION;
       case RANK_FUSION -> RetrievalStage.RANK_FUSION;
+      case RERANK -> RetrievalStage.RERANK;
       case DOCUMENT_COMPLETION -> RetrievalStage.DOCUMENT_COMPLETION;
     };
   }
@@ -279,6 +280,7 @@ final class SearchAdminResponseMapper {
       case EXECUTED -> RetrievalStageStatus.EXECUTED;
       case DISABLED -> RetrievalStageStatus.DISABLED;
       case NOT_REACHED -> RetrievalStageStatus.NOT_REACHED;
+      case UNAVAILABLE -> RetrievalStageStatus.UNAVAILABLE;
     };
   }
 
@@ -296,6 +298,7 @@ final class SearchAdminResponseMapper {
       case WITHIN_BUDGET -> RetrievalVerdictReason.WITHIN_BUDGET;
       case OUTSIDE_LIST_BUDGET -> RetrievalVerdictReason.OUTSIDE_LIST_BUDGET;
       case OUTSIDE_FUSION_BUDGET -> RetrievalVerdictReason.OUTSIDE_FUSION_BUDGET;
+      case OUTSIDE_RERANK_BUDGET -> RetrievalVerdictReason.OUTSIDE_RERANK_BUDGET;
       case COMPLETED_AS_SIBLING -> RetrievalVerdictReason.COMPLETED_AS_SIBLING;
       case EVICTED_BY_DOCUMENT_COMPLETION_TIER_1 ->
           RetrievalVerdictReason.EVICTED_BY_DOCUMENT_COMPLETION_TIER_1;

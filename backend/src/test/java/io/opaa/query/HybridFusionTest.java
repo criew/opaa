@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.llm.RerankModelRole;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,9 +30,9 @@ class HybridFusionTest {
 
   private static final UUID LIBRARY_ID = UUID.randomUUID();
   private static final QueryProperties HYBRID =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 1, true);
+      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 1, true, 50);
   private static final QueryProperties VECTOR_ONLY =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 1, false);
+      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 1, false, 50);
 
   private final VectorStore vectorStore = mock(VectorStore.class);
   private final ChunkEmbeddingLookup chunkEmbeddingLookup = mock(ChunkEmbeddingLookup.class);
@@ -49,6 +50,7 @@ class HybridFusionTest {
             new FullTextSearchStage(fullTextChunkSearch, backfillGate),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
+            new RerankStage(mock(RerankModelRole.class)),
             new DocumentCompletionStage(),
             RetrievalPipelineProperties.allStagesEnabled());
   }
@@ -64,7 +66,13 @@ class HybridFusionTest {
 
   private List<Document> run(QueryProperties properties) {
     return pipeline()
-        .run(new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), properties))
+        .run(
+            new RetrievalContext(
+                "Frage",
+                List.of(),
+                Set.of(LIBRARY_ID),
+                properties,
+                RerankAvailability.SWITCHED_OFF))
         .chunks();
   }
 

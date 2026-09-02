@@ -137,11 +137,21 @@ fun registerEvalDomain(
         // opaa.eval.ollamaBaseUrl (issue #1076, external Ollama endpoint) and the issue #1041
         // variant-comparison opt-in share this list because all three are optional, manually-invoked
         // knobs rather than something every eval domain always needs.
+        // The opaa.rerank.*/opaa.query.rerank-candidate-count entries are Spring properties rather
+        // than harness knobs: a reranking measurement run (issue #1050) has to configure the rerank
+        // model role of the forked JVM's application context. opaa.rerank.api-key is deliberately
+        // absent - a -D value is visible in the process list, and a measurement run against a
+        // key-protected endpoint is not a supported local setup.
         listOf(
             "opaa.eval.allowGpu",
             "opaa.eval.ollamaBaseUrl",
             "opaa.eval.runVariantComparison",
             "opaa.eval.variantComparisonFile",
+            "opaa.rerank.enabled",
+            "opaa.rerank.base-url",
+            "opaa.rerank.model",
+            "opaa.rerank.timeout",
+            "opaa.query.rerank-candidate-count",
         ).forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
         testLogging {
             events("passed", "skipped", "failed", "standard_out")

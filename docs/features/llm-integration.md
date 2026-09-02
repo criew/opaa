@@ -341,7 +341,7 @@ gestrichenen Ideen:
 | [Vorgaben als Obergrenze](#vorgaben-als-obergrenze) aus System, Space, Bibliothek und Agent | Setzt Modellvorgaben an Spaces und Bibliotheken voraus, die es noch nicht gibt; die Schnittmengenregel hängt am Modelleintrag, der hier erst entsteht |
 | Auswahl eines Modells durch Nutzende im Chat | Ohne Obergrenze wäre eine freie Auswahl die Umgehung jeder späteren Beschränkung — die falsche Reihenfolge |
 | Freigabestatus, Datenklassen, Zuständigkeit, Nachfolge, Fähigkeiten am Eintrag | Felder ohne wirksame Verwendung; sie bekommen ihre Bedeutung erst mit den Vorgaben-Ebenen |
-| Voreinstellungen je Aufgabe — Reranking, Zusammenfassung, Klassifizierung, Bildverständnis | Diese Aufgaben sind im Produkt noch nicht als eigene Modellaufrufe vorhanden |
+| Voreinstellungen je Aufgabe — Zusammenfassung, Klassifizierung, Bildverständnis | Diese Aufgaben sind im Produkt noch nicht als eigene Modellaufrufe vorhanden. **Reranking ist seit [#1050](https://github.com/criew/opaa/issues/1050) die Ausnahme**: Die Rerank-Rolle ist gebaut, aber über Umgebungsvariablen konfiguriert (`OPAA_RERANK_ENABLED`, `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL`, `OPAA_RERANK_API_KEY`) und nicht als verwalteter Eintrag — dieselbe Ebene wie die Einbettungsrolle, aus demselben Grund: eine Installationsentscheidung, keine laufende Verwaltungsaufgabe. Siehe [Hybride Suche mit Reranking](./hybrid-retrieval.md#arbeitspaket-4-reranking-als-modellrolle) |
 | Verwaltbare Einbettungsmodelle | Erzwingt eine Neuindizierung, siehe oben |
 | Technische Durchsetzung, dass kein Aufruf das Haus verlässt | Hängt sinnvoll an den Vorgaben-Ebenen, nicht an einer einzelnen Modellliste |
 | [Grenzen und Kontingente](#grenzen-und-kontingente) | Eigener Themenbereich |
@@ -450,7 +450,7 @@ bekommen. Die Zuordnung von Aufgabe zu Modell und Parametern trifft die Systemve
 |---|---|---|
 | **Antwort im Chat** | Belegtreue, Sprachqualität, Kontextlänge | wenig Streuung in der Erzeugung, ausreichende Kontextlänge für die übergebenen Passagen |
 | **Einbettung** | Trefferqualität, Stabilität über die Zeit | ein Modell, das selten gewechselt wird — jeder Wechsel kostet eine Neuindizierung |
-| **Reranking** | Genauigkeit bei kurzen Texten, Geschwindigkeit | ein spezialisiertes, kleineres Modell |
+| **Reranking** (gebaut, #1050) | Genauigkeit bei kurzen Texten, Geschwindigkeit | ein spezialisiertes, kleineres Modell; per Voreinstellung abgeschaltet |
 | **Zusammenfassung** | Treue zum Ausgangstext | geringe Streuung, längenbegrenzt |
 | **Klassifizierung und Erkennung** | Verlässlichkeit, Geschwindigkeit | kleines Modell, feste Ausgabestruktur |
 | **Bildverständnis** | Fähigkeit des Modells | nur, wenn ein Modell mit dieser Fähigkeit freigegeben ist |
