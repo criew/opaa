@@ -1138,15 +1138,42 @@ weil ihr Dateiname keiner registrierten Pipeline zuordenbar ist.
 
 Die Näherung schließt nur eine Richtung — sie holt einen Kandidaten aus dem Fallback heraus, sie hält
 ihn aber nicht davon ab, dorthin zurückzufallen. Für die strikten Formate (`.pdf`/`.docx`/`.pptx`/
-`.xlsx`/`.html`/`.msg`/`.od*`) bleibt ein zweiter, hier bewusst unbehobener Fall offen: Passt die
-Dateiendung zur zuständigen Pipeline, aber entscheidet die inhaltsbasierte Erkennung in
-`routedPipelineFor` beim Nachziehen erneut auf die Fallback-Pipeline (z. B. eine `.pdf` mit reinem
-Textinhalt), bleibt der Chunk dauerhaft als Fallback-Chunk stehen, `isComplete()` für die Bibliothek
-dauerhaft `false`, und kein weiterer Nachzieh-Aufruf kann daran etwas ändern — der Kandidat scheitert
-nicht an der Auswahl, sondern am selben Routing-Ergebnis wie beim letzten Versuch. Der text-tolerante
-Pipeline-Satz ist davon nicht betroffen. Die eigentliche Behebung wäre ein Routing-Schlüssel, der
-Fallback-Chunks als solche markiert erreichbar hält, statt über die Dateiendung zu raten - vom
-Maintainer bewusst vertagt und kein Gegenstand dieser Näherung.
+`.xlsx`/`.html`/`.msg`/`.od*`) bleibt ein zweiter Fall offen: Passt die Dateiendung zur zuständigen
+Pipeline, aber entscheidet die inhaltsbasierte Erkennung in `routedPipelineFor` beim Nachziehen erneut
+auf die Fallback-Pipeline (z. B. eine `.pdf` mit reinem Textinhalt), bleibt der Chunk als
+Fallback-Chunk stehen. Für einen Chunk **ohne** den Routing-Schlüssel aus #1126 (siehe unten) bleibt das
+dauerhaft: `isComplete()` für die Bibliothek dauerhaft `false`, und kein weiterer Nachzieh-Aufruf kann
+daran etwas ändern — der Kandidat scheitert nicht an der Auswahl, sondern am selben Routing-Ergebnis
+wie beim letzten Versuch. Der text-tolerante Pipeline-Satz ist davon nicht betroffen. Für einen Chunk
+**mit** dem Routing-Schlüssel ist das kein offener Fall mehr, siehe unten.
+
+#### Exakter Vergleich statt Näherung: der Routing-Schlüssel (#1126)
+
+Die Endungsnäherung oben rät, welche Pipeline heute zuständig wäre — mit den beiden gerade genannten
+Lücken. Seit #1126 schreibt `storeChunks` zusätzlich fest, mit welchem Ergebnis ein Chunk tatsächlich
+geroutet wurde: `ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY` trägt dieselbe Endung, die
+`DocumentPipelineRegistry#routedPipelineFor` beim Schreiben dieses Chunks tatsächlich aufgelöst hat —
+oder `ChunkPipelineMetadata#NO_ROUTING_EXTENSION`, wenn die Routing-Entscheidung keine Endung auflösen
+konnte (Inhalt weder streng noch texttolerant zuordenbar). Ein Chunk ohne diesen Schlüssel ist der
+Altbestand von vor #1126 und bleibt auf der Endungsnäherung.
+
+Wo der Schlüssel vorliegt, vergleicht sowohl `progressForOrganization` als auch
+`selectStaleDocuments` exakt (`DocumentPipelineRegistry#pipelineIdForRoutingExtension`) statt über
+den Dateinamen zu raten — beide oben genannten Lücken schließen sich dadurch für jeden künftig
+geschriebenen Chunk: Ein Dokument ohne zuordenbare Endung (`download.aspx`) ist über seinen
+tatsächlichen Routing-Schlüssel erreichbar, auch wenn die Endungsnäherung ihn nie gefunden hätte; und
+ein Chunk, dessen Inhalt dauerhaft auf die Fallback-Pipeline zurückfällt, trägt
+`NO_ROUTING_EXTENSION` und gilt damit als korrekt fallback-geroutet, nicht als dauerhaft nachzuziehen.
+Derselbe exakte Vergleich verhindert außerdem, dass ein einmal so umgeschriebenes Dokument bei jedem
+weiteren Nachzieh-Aufruf erneut geparst und eingebettet wird, obwohl sein Inhalt weiterhin auf den
+Fallback zurückfällt.
+
+**Kein Nachtrag für den Altbestand in #1126 selbst.** Der Schlüssel wird ab #1126 vorwärts
+geschrieben; ein nachträgliches Setzen für vorhandene Chunks erfordert erneutes Erkennen des
+Inhaltstyps je Dokument (ein vollständiger Durchlauf über den Bestand, siehe die eng verwandte, aber
+gesondert zu entscheidende Frage oben unter [Offene Punkte](#offene-punkte): wann ein Bestand nach
+einer Pipeline-Umstellung tatsächlich nachgezogen wird) — eine eigene Betriebsentscheidung, kein
+Nebeneffekt dieses Refactorings.
 
 ---
 
