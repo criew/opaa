@@ -2,10 +2,11 @@
 
 ## Status
 
-Akzeptiert (02.09.2026) — mit offenen Punkten für den Maintainer, siehe
-[Offene Punkte für den Maintainer](#offene-punkte-für-den-maintainer). Maintainer-Entscheidung: Ein
-Anhang — an einer E-Mail wie an einer Confluence-Seite — ist eine eigene `Document`-Zeile, nie ein
-verschachtelter Chunk seines Elterndokuments.
+Akzeptiert (02.09.2026) — die fünf offenen Punkte des ersten Entwurfs (Sichtbarkeit, Bestandsmigration,
+`file_size`-Bilanzierung, kaskadierendes Löschen, `file_path`-Syntax) hat der Maintainer noch am selben
+Tag entschieden; die Entscheidungen sind unten eingearbeitet. Maintainer-Entscheidung: Ein Anhang — an
+einer E-Mail wie an einer Confluence-Seite — ist eine eigene `Document`-Zeile, nie ein verschachtelter
+Chunk seines Elterndokuments.
 
 ## Kontext
 
@@ -74,9 +75,12 @@ Anhang wird künftig als Chunk seines Elterndokuments gespeichert.
   synthetischen `file_path` dieser weitergeleiteten Mail selbst, der wiederum den `file_path` der
   äußersten Mail enthält — eine Kette, kein Sonderfall.
   Zwei gleichnamige Anhänge **derselben** Mail (z. B. zwei `anlage.pdf` in unterschiedlichen MIME-Teilen)
-  brauchen zusätzlich einen Disambiguator innerhalb dieser einen Mail. Die genaue Syntax (Trennzeichen,
-  ob Positions-Index oder Content-ID) ist ein Umsetzungsdetail des Migrations-/Mail-Umstellungstickets,
-  keine Architekturfrage — die Grundregel „schließt den Elternpfad ein" ist es.
+  brauchen zusätzlich einen Disambiguator innerhalb dieser einen Mail. **Entschieden:** Die genaue Syntax
+  (Trennzeichen, ob Positions-Index oder Content-ID) bleibt bewusst ein Umsetzungsdetail des
+  Mail-Umstellungstickets, keine Architekturfrage dieses ADR — die Grundregel „schließt den Elternpfad
+  ein" ist die Architekturaussage. Das Ticket muss die Syntax ausdrücklich festlegen; sie darf nicht
+  implizit im Code entstehen (etwa als Nebenwirkung der ersten Implementierung, die zufällig
+  funktioniert).
 
 ### 3. Löschsemantik
 
@@ -111,6 +115,20 @@ Aufrufer für ein übersprungenes Elterndokument die Pfade seiner bereits vorhan
 Datenbank nachträgt statt sie neu zu entdecken — was eine abfragbare Elternbeziehung voraussetzt (siehe
 Entscheidung 4).
 
+**Regel für jeden Pfad außerhalb des Vollabgleichs, der ein Elterndokument entfernt oder ersetzt.** Die
+oben beschriebene, automatikfreie Löschung gilt ausdrücklich nur für `StaleDocumentCleanupService`s
+eigenen, `currentFilePaths`-basierten Abgleich. **Jeder andere Codepfad, der ein Elterndokument entfernt
+oder unter seiner bestehenden ID ersetzt — eine selektive Pipeline-Neuindizierung über
+`PipelineReindexService`, eine künftige Einzeldokument-Löschfunktion für Konnektor-Bestände, jede weitere,
+heute noch nicht existierende Stelle —, muss seine Anhangszeilen ausdrücklich mitbehandeln.** Es gibt
+keinen impliziten Automatismus dafür (kein datenbankseitiges `ON DELETE CASCADE` auf
+`parent_document_id` ist Teil dieser Entscheidung, siehe Entscheidung 4 — eine reine DB-Kaskade würde die
+Dokumentzeile entfernen, aber die zugehörigen pgvector-Chunks verwaist zurücklassen). Das ist eine
+Auflage an das jeweilige Umsetzungsticket, nicht eine Annahme, die im Code entstehen darf: Jeder Pfad,
+der ein Elterndokument anfasst, muss bei seiner Umsetzung ausdrücklich entscheiden und umsetzen, was mit
+dessen Anhangszeilen geschieht (mitlöschen, unverändert lassen, oder — bei einer Ersetzung unter
+gleicher ID — auf Fortbestand prüfen), statt sich auf eine Kaskade zu verlassen, die es nicht gibt.
+
 ### 4. Elternbeziehung
 
 `Document` braucht eine abfragbare Beziehung zu seinem Elterndokument — nicht nur zur Anzeige, auch für
@@ -125,24 +143,51 @@ abfragbar ist („alle Anhänge von Elterndokument X", ohne String-Gleichheit) u
 eine künftige Änderung der Pfad-Syntax des Elterndokuments ist. Ob `sourceEntryUrl` dabei durch
 `parent_document_id` abgelöst oder als RSS-spezifisches Feld daneben bestehen bleibt (beide zeigen bei
 RSS-Anhängen auf dieselbe Information), ist eine Umsetzungsfrage des Migrationstickets, keine
-Architekturfrage dieses ADR.
+Architekturfrage dieses ADR. **Kein `ON DELETE CASCADE` auf `parent_document_id`:** Eine
+datenbankseitige Kaskade würde die Anhangszeile entfernen, aber die zugehörigen pgvector-Chunks
+verwaist zurücklassen, die nur über Anwendungscode (`VectorChunkStore#deleteByDocumentId`) erreichbar
+sind — Löschung eines Elterndokuments bleibt deshalb durchgängig Anwendungscode, mit der Auflage aus
+Entscheidung 3.
 
 Die Beleg-Anzeige (`withAttachmentLocation`, „Anhang: …") wandert von einem in den Chunk-Text
 eingebackenen Textpräfix zu einer über `parent_document_id` aufgelösten Angabe auf dem Anhangsdokument
 selbst — dieselbe fachliche Aussage, aber am Dokument statt im Fundort-Text, und für jeden Anhangsweg
 einheitlich statt mail-spezifisch.
 
-### 5. Sichtbarkeit — nutzersichtbare Änderung
+### 5. Sichtbarkeit — nutzersichtbare Änderung, gruppiert dargestellt
 
-Ein Anhang erscheint künftig als eigene Zeile in der Dokumentliste einer Bibliothek und zählt eigenständig
-in `IndexingRunProgress` (das Feld `documentsIndexedTotal` unterscheidet bereits heute „verarbeitete
+Ein Anhang wird künftig zu einer eigenen `Document`-Zeile und zählt eigenständig in
+`IndexingRunProgress` (das Feld `documentsIndexedTotal` unterscheidet bereits heute „verarbeitete
 Einträge" von „tatsächlich indizierte Dokumente" — genau für den RSS-Anhangsfall gebaut, siehe
 `recordDocumentIndexed`). Für RSS ändert sich dadurch nichts. **Für Mail ist das eine echte,
 nutzersichtbare Verhaltensänderung**: Eine Mail mit drei PDF-Anhängen wird nach dieser Umstellung vier
-Dokumentzeilen statt einer — die Dokumentzahl einer Mail-Bibliothek steigt, sobald ihr Bestand
-reindiziert wird (siehe Entscheidung 9, Bestandsmigration). Ob und wie die Dokumentliste Anhänge visuell
-unter ihrem Elterndokument gruppiert zeigt, ist eine Frontend-Frage außerhalb dieses ADR — siehe
-[Offene Punkte](#offene-punkte-für-den-maintainer).
+Dokumentzeilen statt einer.
+
+**Entschieden: Die Dokumentliste zeigt Anhänge gruppiert unter ihrem Elterndokument, nicht als flache,
+unabhängige Zeilen.** Die Liste bleibt auf Elternebene so lang wie heute; ein Anhang klappt unter seiner
+Mail bzw. Confluence-Seite auf. Begründung: Ohne Gruppierung verdreifacht (oder vervielfacht) sich für
+eine Mail-Bibliothek die Zeilenzahl der Liste ohne erkennbaren Grund — genau der Zusammenhang zwischen
+Anhang und Herkunft (die `parent_document_id` aus Entscheidung 4 trägt), den die Gruppierung sichtbar
+macht, ist die Information, die diesen Anstieg für die Nutzerin verständlich macht, statt ihn als
+unerklärte Vervielfachung wirken zu lassen.
+
+Die Gruppierung selbst ist Frontend-Arbeit und braucht ein eigenes Umsetzungsticket, getrennt von der
+Backend-Umstellung (siehe Issue-Zuschnittsvorschlag im zugehörigen PR). Nebenbedingungen, die dieses
+Ticket ausdrücklich klären muss,
+weil sie sich nicht von selbst aus „gruppiert anzeigen" ergeben:
+
+- **Filterung/Suche innerhalb der Liste:** Trifft ein Suchbegriff nur auf einen Anhang, nicht auf sein
+  Elterndokument (z. B. ein Dateiname-Treffer im Anhang, aber nicht im Betreff der Mail) — bleibt die
+  Elternzeile trotzdem sichtbar (aufgeklappt, mit dem treffenden Anhang hervorgehoben), oder verschwindet
+  sie mangels eigenen Treffers?
+- **Paginierung:** Zählt eine Seite der Liste Elterndokumente (Anhänge zählen nicht gegen die Seitengröße,
+  können sie aber überschreiten) oder Zeilen insgesamt (ein Elterndokument mit vielen Anhängen kann dann
+  allein eine Seite füllen)? Die heutige `Page<Document>`-Paginierung in `DocumentRepository` zählt
+  Dokumentzeilen undifferenziert — eine gruppierte Ansicht braucht eine bewusste Entscheidung, welche
+  Ebene die Seitengröße bemisst.
+- **Sortierung:** Sortiert die Liste über Elterndokumente (Anhänge folgen ihrem Elternteil, unabhängig von
+  ihrem eigenen Zeitstempel/Namen), oder bricht ein Sortierkriterium wie „zuletzt indiziert" die
+  Gruppierung auf, sobald ein Anhang neuer ist als sein Elterndokument?
 
 ### 6. Quote und Budgets
 
@@ -166,10 +211,10 @@ unter ihrem Elterndokument gruppiert zeigt, ist eine Frontend-Frage außerhalb d
 Bibliothek. Sobald ein Anhang eine eigene Zeile mit eigenem `fileSize` ist, zählt er darüber automatisch
 zur Quote — genauer als heute, wo sein Gewicht implizit im `fileSize` der ganzen `.eml`/`.msg`-Datei
 steckt. Das öffnet aber eine Doppelzählung: Die rohe `.eml`/`.msg`-Datei enthält die Anhangsbytes
-(Base64-kodiert) bereits in ihrer eigenen Dateigröße. **Entscheidung:** Das `fileSize` des Elterndokuments
-zählt nach dieser Umstellung nur noch Kopfdaten und Nachrichtentext, nicht die Bytes seiner Anhänge — sonst
-zählt ein Anhang doppelt gegen die Quote einer Bibliothek. Diese Zielsemantik braucht eine Bestätigung des
-Maintainers, siehe [Offene Punkte](#offene-punkte-für-den-maintainer).
+(Base64-kodiert) bereits in ihrer eigenen Dateigröße. **Entschieden:** Das `fileSize` des Elterndokuments
+zählt nach dieser Umstellung nur noch Kopfdaten und Nachrichtentext, der Anhang zählt seine eigenen Bytes
+— sonst zählt ein Anhang doppelt gegen die Quote einer Bibliothek, und es gibt keine sinnvolle
+Alternative dazu.
 
 ### 7. Änderungserkennung — der eigentliche fachliche Gewinn
 
@@ -232,9 +277,15 @@ Struktur ändern — Anhänge erscheinen nicht mehr als Chunks der Mail überhau
 `email`-Chunks unterhalb v2 sind damit über die vorhandenen Administrationsendpunkte
 (`GET /pipeline-versions`, `POST /pipeline-reindex`) als nachzuziehen erkennbar und lassen sich gezielt
 neu erzeugen — kein Sonderfall, dieselbe Mechanik, die für jede andere Pipeline-Versionsänderung bereits
-gilt. Ob dieser Nachzug aktiv ausgelöst wird, ist — wie bei jeder Pipeline-Versionsänderung — eine
-betriebliche, keine architektonische Entscheidung (siehe Teil 4 Regel (d): „Ausgelöst wird nichts von
-selbst").
+gilt.
+
+**Entschieden: Kein dediziertes Migrationsskript, und kein selbsttätiger Start.** Der Nachzug wird von
+der Betreiberin ausgelöst, genau wie jede andere Pipeline-Versionsänderung (Teil 4 Regel (d):
+„Ausgelöst wird nichts von selbst"). Ein gemischter Bestand — alte, weiterhin verschachtelte Mail-Chunks
+neben neuen, eigenständigen Anhangsdokumenten — ist über die Version am Chunk erkennbar und selektiv
+nachziehbar; das genügt. Bei großen Mail-Bibliotheken ist der von der Betreiberin gewählte Zeitpunkt für
+den Nachlauf (Ressourcen, Betriebsfenster) mehr wert als eine erzwungene, sofortige Einheitlichkeit des
+Bestands.
 
 ### 10. `MailDocumentPipeline#processAttachment` und Befund 2 von #1130
 
@@ -258,6 +309,19 @@ mehr, den ein gezielter Fix noch beheben müsste.
 ist von diesem ADR unberührt** — er betrifft die Formfrage der Struktur-Metadaten (Teil 5 Punkt 1 von
 `ingestion-pipelines.md`), nicht die Anhangsfrage, und bleibt ein eigenständiges, hier nicht
 entschiedenes Problem.
+
+**Verhältnis zu PR #1165 (Issue #1126, `routing_extension`-Chunk-Metadatum).** PR #1165 schreibt den beim
+Indizieren tatsächlich verwendeten Routing-Schlüssel auf jeden Chunk und ersetzt damit
+`PipelineReindexService`s bisherige Dateiendungs-Näherung durch einen exakten Vergleich. Die PR-Beschreibung
+stellt selbst klar, dass sie an der Anhangs-Attribution nichts ändert: Ein Mail-Anhang trägt weiterhin die
+Pipeline-Kennung der äußeren Mail-Pipeline, wie vor diesem PR. Das ist mit der hier getroffenen Aussage
+konsistent — `routing_extension` behebt die Näherung des Reindex-**Auswahl**mechanismus für Chunks, deren
+Dateiname von ihrem tatsächlichen Inhalt abweicht; es behebt nicht, welche Pipeline-Kennung ein
+verschachtelter Anhang-Chunk überhaupt trägt. Beide Änderungen ergänzen sich, ohne sich zu widersprechen:
+`routing_extension` bleibt für jeden Chunk korrekt, den dieser ADR erzeugt (ein Anhang, der über seine
+eigene Pipeline läuft, trägt seinen eigenen, exakten Routing-Schlüssel wie jedes andere eigenständige
+Dokument), und für den Altbestand vor der Umstellung dieses ADR bleibt `routing_extension` unverändert
+das, was PR #1165 bereits festgelegt hat.
 
 ## Verworfene Alternativen
 
@@ -314,27 +378,20 @@ Confluence-Anforderung an unabhängiger Versionierung gar nicht erfüllen kann.
 - Löschen eines Elterndokuments außerhalb von `StaleDocumentCleanupService` (z. B. eine selektive
   Neuindizierung über `PipelineReindexService`, eine künftige Einzeldokument-Löschfunktion für
   Konnektor-Bestände) muss seine Anhangszeilen ausdrücklich mitbehandeln — es gibt keinen impliziten
-  Automatismus dafür (siehe [Offene Punkte](#offene-punkte-für-den-maintainer)).
+  Automatismus dafür (Entscheidung 3, Regel für Nebenpfade).
+- Die gruppierte Darstellung in der Dokumentliste (Entscheidung 5) ist ein eigenes Frontend-Ticket mit
+  eigenen Nebenentscheidungen zu Filterung, Paginierung und Sortierung — nicht mit der Backend-Umstellung
+  miterledigt.
 
-## Offene Punkte für den Maintainer
+## Ausdrücklich offen
 
-1. **Sichtbarkeit in der Dokumentliste.** Erscheinen Anhänge als flache, unabhängige Zeilen (das ist die
-   Mindestanforderung dieses ADR), oder soll die Liste sie visuell unter ihrem Elterndokument gruppieren?
-   Das ist eine Frontend-Entscheidung, die dieser ADR nicht trifft.
-2. **Bestandsmigration.** Genügt der Vorschlag aus Entscheidung 9 (Versionssprung `email` v1 → v2, Nachzug
-   über die bestehenden Pipeline-Reindex-Endpunkte, kein dediziertes Migrationsskript), oder ist ein
-   aktiv ausgelöster Nachlauf für bestehende Mail-Bibliotheken gewünscht statt des heute üblichen
-   „ausgelöst wird nichts von selbst"?
-3. **`file_size`-Bilanzierung.** Entscheidung 6 schlägt vor, dass das `fileSize` eines Mail-Elterndokuments
-   nach der Umstellung nur noch Kopfdaten/Text zählt, nicht die Bytes seiner Anhänge (sonst Doppelzählung
-   gegen die Speicherquote). Zustimmung zu dieser Zielsemantik nötig.
-4. **Kaskadierendes Löschen von Anhangszeilen außerhalb des Vollabgleichs.** Wenn ein Elterndokument über
-   einen anderen Pfad als `StaleDocumentCleanupService` verschwindet oder ersetzt wird (z. B. eine
-   selektive Pipeline-Neuindizierung, die das Elterndokument unter seiner eigenen ID ersetzt) — müssen
-   seine bestehenden Anhangszeilen dabei mitgelöscht, mitgeprüft oder unverändert belassen werden? Dieser
-   ADR legt die Löschsemantik für den regulären Lauf fest (Entscheidung 3), aber nicht für jeden
-   Nebenpfad, der ein Elterndokument anfasst.
-5. **Genaue `file_path`-Syntax für Mail-Anhänge.** Entscheidung 2 legt die Grundregel fest (muss den
-   Elternpfad einschließen); Trennzeichen und Disambiguierung gleichnamiger Anhänge derselben Mail sind
-   ein Umsetzungsdetail, das im Migrationsticket festgelegt werden sollte, nicht implizit im Code
-   entstehen.
+Dieser ADR entscheidet **nicht**:
+
+- **Der genaue Paketschnitt** für den verallgemeinerten Anhangsweg (Entscheidung 8) — nur die
+  Leitplanke, keine neue Kante zwischen `io.opaa.indexing.pipeline` und `io.opaa.indexing.source.*`
+  einzuziehen; die konkrete Paketwahl fällt mit #1117 im Umsetzungsticket.
+- **Die genaue `file_path`-Syntax für Mail-Anhänge** (Entscheidung 2) — bewusst Umsetzungsdetail des
+  Mail-Umstellungstickets, muss dort aber ausdrücklich festgelegt werden.
+- **Befund 1 aus #1130** (fehlender Leser der Mail-Kopfdaten) — unberührt, eigenständiges Problem.
+- **Die visuelle Gestaltung der Gruppierung** in der Dokumentliste (Entscheidung 5) — nur, dass gruppiert
+  statt flach dargestellt wird, nicht wie.
